@@ -35,7 +35,7 @@ export function SiteHeader() {
 							className="navbar-brand-image me-3"
 							alt="Logo"
 						/>
-						NPMplus
+						NPMpro
 					</NavLink>
 				</div>
 				<div className="navbar-nav flex-row order-md-last">

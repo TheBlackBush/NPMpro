@@ -102,7 +102,7 @@ const internalUser = {
 				)}`,
 				{
 					headers: {
-						"User-Agent": `NPMplus/${pjson.version}`,
+						"User-Agent": `NPMpro/${pjson.version}`,
 					},
 				},
 			);

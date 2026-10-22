@@ -23,7 +23,7 @@ const internalIpRanges = {
 
 	fetchUrl: async (url) => {
 		const res = await fetch(url, {
-			headers: { "User-Agent": `NPMplus/${pjson.version}` },
+			headers: { "User-Agent": `NPMpro/${pjson.version}` },
 		});
 
 		if (!res.ok) {

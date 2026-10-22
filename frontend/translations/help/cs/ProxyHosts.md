@@ -4,4 +4,4 @@ Proxy hostitel je příchozí koncový bod pro webovou službu, kterou chcete p�
 
 Poskytuje volitelné ukončení TLS pro vaši službu, která nemusí mít zabudovanou podporu TLS.
 
-Proxy hostitelé jsou nejběžnějším použitím pro NPMplus.
+Proxy hostitelé jsou nejběžnějším použitím pro NPMpro.

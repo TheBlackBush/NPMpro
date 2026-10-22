@@ -249,7 +249,7 @@ export default function Login() {
 		<Page className="page-center">
 			<div className="container container-tight py-4">
 				<div className="d-flex justify-content-between align-items-center mb-4 ps-4 pe-3">
-					<img width={200} src="/images/logo-text-horizontal-grey.png" alt="NPMplus" />
+					<img width={200} src="/images/logo-text-horizontal-grey.png" alt="NPMpro" />
 					<div className="d-flex align-items-center gap-1">
 						<LocalePicker />
 						<ThemeSwitcher />

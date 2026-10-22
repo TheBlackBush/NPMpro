@@ -4,4 +4,4 @@ Un Hôte Proxy est le point de terminaison entrant d'un service web que vous sou
 
 Il assure la terminaison TLS optionnelle pour votre service qui ne prend pas en charge TLS nativement.
 
-Les Hôtes Proxy constituent l'utilisation la plus courante de NPMplus.
+Les Hôtes Proxy constituent l'utilisation la plus courante de NPMpro.

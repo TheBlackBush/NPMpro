@@ -13,7 +13,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 RULES=$(cat <<'EOF'
 def nkey: if . == "2fa.title" then "mfa.title" elif test("^2fa\\.(backup-|regenerate)") then sub("^2fa"; "mfa") elif startswith("2fa.") then sub("^2fa"; "totp") elif startswith("login.2fa-") then sub("^login\\.2fa-"; "login.totp-") elif . == "user.two-factor" then "user.mfa" end;
-def ntext($key): gsub("Nginx Proxy Manager"; "NPMplus") | gsub("(?<![A-Za-z])NPM(?![A-Za-z])"; "NPMplus") | gsub("Let's\\s+Encrypt"; "Certbot") | gsub("SSL/TLS|TLS/SSL"; "TLS") | gsub("(?<![A-Za-z])SSL(?![A-Za-z])"; if $key == "domains.force-ssl" then "HTTPS" else "TLS" end);
+def ntext($key): gsub("Nginx Proxy Manager"; "NPMpro") | gsub("(?<![A-Za-z])NPM(?![A-Za-z])"; "NPMpro") | gsub("Let's\\s+Encrypt"; "Certbot") | gsub("SSL/TLS|TLS/SSL"; "TLS") | gsub("(?<![A-Za-z])SSL(?![A-Za-z])"; if $key == "domains.force-ssl" then "HTTPS" else "TLS" end);
 def conv: with_entries(.key as $k | {key: ($k | nkey), value: (.value.defaultMessage | ntext($k))});
 EOF
 )
