@@ -1,0 +1,35 @@
+# Dependencies and build output (also covered by backend/.gitignore and frontend/.gitignore)
+node_modules/
+frontend/dist/
+
+# Root-level dot folders: editor, tooling and agent state (.claude, .vscode, .idea, ...)
+# .github holds the CI workflows and stays tracked
+/.*/
+!/.github/
+
+# Agent and tooling artifacts (ruflo/claude-flow write these into the current directory)
+.claude-flow/
+.swarm/
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+/CLAUDE.local.md
+
+# Local secrets and environment overrides
+.env
+.env.*
+
+# Local compose overrides for testing (compose.yaml is the published template)
+/compose.override.yaml
+/compose.override.yml
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
