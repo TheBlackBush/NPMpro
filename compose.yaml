@@ -168,8 +168,8 @@ services:
 #  npmplus-caddy:
 #    container_name: npmplus-caddy
 #    restart: unless-stopped
-#    image: docker.io/blackbush/npmpro:caddy
-#    pull_policy: always
+#    build: https://github.com/TheBlackBush/NPMpro.git#develop:caddy # not published as an image, built from the caddy folder
+#    pull_policy: build
 #    network_mode: bridge
 #    ports:
 #      - "80:80"
