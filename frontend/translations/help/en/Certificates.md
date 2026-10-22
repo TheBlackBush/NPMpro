@@ -26,6 +26,20 @@ certificate. Nor do you need to have your _Proxy Host_ configured for HTTP acces
 
 This process _does_ support wildcard domains.
 
+#### Saved DNS credentials
+
+The credentials for your DNS Provider are saved separately from the certificate, on the
+_DNS credentials_ tab of the Certificates page. A certificate then only picks one of the
+saved credentials, so several certificates can share them.
+
+Secrets are stored encrypted and are never shown again. When you edit a credential, leave
+a secret empty to keep the saved value. The key used for the encryption is the file
+`/data/npmplus/dns-credentials.key`, back it up together with the database, otherwise
+the saved credentials cannot be read after a restore.
+
+Providers without a form use the INI text box, where you paste the content of the
+credentials file for that provider.
+
 ### Custom Certificate
 
 Use this option to upload your own TLS Certificate, as provided by your own
