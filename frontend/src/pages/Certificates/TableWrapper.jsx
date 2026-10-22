@@ -6,6 +6,7 @@ import { Button, certificateProviderTranslation, HasPermission, LoadingPage } fr
 import { useCertificates } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import {
+	showChangeDnsCredentialModal,
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
 	showDNSCertificateModal,
@@ -164,6 +165,7 @@ export default function TableWrapper() {
 					isFiltered={search}
 					isFetching={isFetching}
 					onRenew={showRenewCertificateModal}
+					onChangeDnsCredential={showChangeDnsCredentialModal}
 					onDownload={handleDownload}
 					onEdit={(cert) => showCustomCertificateModal(cert)}
 					onTest={(domains) => showReachabilityModal(domains)}

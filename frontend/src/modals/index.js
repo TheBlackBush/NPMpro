@@ -1,4 +1,5 @@
 export * from "./AccessListModal";
+export * from "./ChangeDnsCredentialModal";
 export * from "./ChangePasswordModal";
 export * from "./CustomCertificateModal";
 export * from "./DeadHostModal";
