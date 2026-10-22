@@ -93,7 +93,7 @@ jobs:
       packages: write
     needs: [build-x86_64, build-aarch64]
     env:
-      HAS_DOCKERHUB: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+      HAS_DOCKERHUB: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_TOKEN != '' }}
     steps:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: ghcr.io-login
@@ -107,7 +107,7 @@ jobs:
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          password: ${{ secrets.DOCKER_TOKEN }}
       - name: merge
         env:
           TAGS: ${{ inputs.tags }}
@@ -122,7 +122,7 @@ jobs:
             fi
           done
           if [ "$HAS_DOCKERHUB" != "true" ]; then
-            echo "::warning::DOCKER_USERNAME/DOCKER_PASSWORD secrets are not set, only pushing to ghcr.io"
+            echo "::warning::DOCKER_USERNAME/DOCKER_TOKEN secrets are not set, only pushing to ghcr.io"
           fi
           docker buildx imagetools create "$@" "$GHCR_IMAGE@$DIGEST_X86_64" "$GHCR_IMAGE@$DIGEST_AARCH64"
           for tag in $TAGS; do
