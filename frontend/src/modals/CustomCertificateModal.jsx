@@ -6,6 +6,7 @@ import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
 import { Button } from "src/components";
+import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -16,6 +17,7 @@ const showCustomCertificateModal = (cert, provider) => {
 };
 
 const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provider = "other" }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +68,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					niceName: cert?.niceName || "",
@@ -78,6 +80,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 			>
 				{() => (
 					<Form>
+						<DirtyTracker dirtyRef={dirtyRef} />
 						<Modal.Header closeButton={!isSubmitting}>
 							<Modal.Title>
 								<T
@@ -168,7 +171,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 							</div>
 						</Modal.Body>
 						<Modal.Footer>
-							<Button onClick={remove} disabled={isSubmitting}>
+							<Button onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
 							<Button

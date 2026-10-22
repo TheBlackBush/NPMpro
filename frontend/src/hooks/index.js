@@ -18,5 +18,6 @@ export * from "./useRedirectionHosts";
 export * from "./useSetting";
 export * from "./useStream";
 export * from "./useStreams";
+export * from "./useUnsavedChangesGuard";
 export * from "./useUser";
 export * from "./useUsers";

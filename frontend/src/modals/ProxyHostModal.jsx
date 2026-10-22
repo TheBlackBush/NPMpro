@@ -16,7 +16,14 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
-import { useDirectorySuggestions, useProxyHost, useProxyHosts, useSetProxyHost } from "src/hooks";
+import {
+	DirtyTracker,
+	useDirectorySuggestions,
+	useProxyHost,
+	useProxyHosts,
+	useSetProxyHost,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
@@ -24,6 +31,7 @@ import { showTabOfInvalid, validateNumber, validateUpstreamUrl } from "src/modul
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useProxyHost(id);
 	const { data: allProxyHosts } = useProxyHosts();
 	const suggestions = useDirectorySuggestions(allProxyHosts);
@@ -38,7 +46,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 		npmplusAccessListIds: accessLists.map((accessList) => accessList.id),
 	}));
 
-	const onSubmit = (values, { setSubmitting }) => {
+	const onSubmit = (values, { resetForm, setSubmitting }) => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -80,6 +88,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
+				// the changes are saved, only the nginx config needs fixing
+				resetForm({ values });
 				setErrorMsg(<NginxConfigErrorMsg obj="proxy-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -90,7 +100,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -136,6 +146,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 				>
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T
@@ -730,7 +741,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 								</div>
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>

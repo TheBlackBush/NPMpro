@@ -323,6 +323,7 @@
 	"totp.setup-instructions": "Scan this QR code with your authenticator app, or enter the secret manually.",
 	"totp.status": "Status",
 	"totp.verify-enable": "Verify and Enable",
+	"unsaved-changes.confirm": "You have unsaved changes. Close and discard them?",
 	"update-available": "Update Available: {latestVersion}",
 	"user": "User",
 	"user.change-password": "Change Password",

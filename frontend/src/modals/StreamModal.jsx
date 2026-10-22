@@ -11,7 +11,14 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
-import { useDirectorySuggestions, useSetStream, useStream, useStreams } from "src/hooks";
+import {
+	DirtyTracker,
+	useDirectorySuggestions,
+	useSetStream,
+	useStream,
+	useStreams,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
@@ -23,6 +30,7 @@ const showStreamModal = (id) => {
 };
 
 const StreamModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useStream(id);
 	const { data: allStreams } = useStreams();
 	const suggestions = useDirectorySuggestions(allStreams);
@@ -32,7 +40,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const onSubmit = (values, { setSubmitting }) => {
+	const onSubmit = (values, { resetForm, setSubmitting }) => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -65,6 +73,8 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
+				// the changes are saved, only the nginx config needs fixing
+				resetForm({ values });
 				setErrorMsg(<NginxConfigErrorMsg obj="stream" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -75,7 +85,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -103,6 +113,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 				>
 					{({ values, setFieldValue }) => (
 						<Form onInvalid={showTabOfInvalid}>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "stream" }} />
@@ -524,7 +535,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 								</div>
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={STREAMS} permission={MANAGE} hideError>

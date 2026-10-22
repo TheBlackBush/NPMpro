@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { AccessClientFields, BasicAuthFields, Button, HasPermission, Loading } from "src/components";
-import { useAccessList, useSetAccessList } from "src/hooks";
+import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
@@ -16,6 +16,7 @@ const showAccessListModal = (id) => {
 };
 
 const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useAccessList(id);
 	const { mutate: setAccessList } = useSetAccessList();
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -83,7 +84,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -103,6 +104,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 				>
 					{({ setFieldValue }) => (
 						<Form onInvalid={showTabOfInvalid}>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "access-list" }} />
@@ -259,7 +261,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 								</div>
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
