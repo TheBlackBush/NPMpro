@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # GitHub hosted, newer than the label list built into actionlint
+  labels:
+    - ubuntu-26.04-arm
