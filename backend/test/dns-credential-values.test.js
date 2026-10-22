@@ -98,7 +98,7 @@ it("an empty secret keeps the previous value of the same provider", () => {
 	assert.deepEqual(values, { fields: { dns_namecheap_username: "u2", dns_namecheap_api_key: "old" } });
 });
 
-it("previous values are ignored when they came from another provider", () => {
+it("previous values of other keys are not used", () => {
 	const previous = { fields: { dns_vultr_key: "old" } };
 	assert.throws(() => buildValues("duckdns", { fields: f({ dns_duckdns_token: "" }) }, previous), tokenRequired);
 });
@@ -136,4 +136,43 @@ it("publicView never contains secret values", () => {
 
 it("publicView of undecryptable values marks nothing as set", () => {
 	assert.deepEqual(publicView("vultr", null), { fields: [{ key: "dns_vultr_key", is_set: false }], ini_set: false });
+});
+
+it("a submitted token replaces a saved global key without restoring it", () => {
+	const previous = { fields: { dns_cloudflare_email: "a@b.c", dns_cloudflare_api_key: "k" } };
+	const values = buildValues("cloudflare", { fields: f({ dns_cloudflare_api_token: "t" }) }, previous);
+	assert.deepEqual(values, { fields: { dns_cloudflare_api_token: "t" } });
+});
+
+it("a submitted global group does not keep a saved token", () => {
+	const previous = { fields: { dns_cloudflare_api_token: "t" } };
+	assert.throws(
+		() =>
+			buildValues(
+				"cloudflare",
+				{ fields: f({ dns_cloudflare_email: "a@b.c", dns_cloudflare_api_key: "" }) },
+				previous,
+			),
+		globalKeyRequired,
+	);
+});
+
+it("an empty global key keeps the saved key of the same group", () => {
+	const previous = { fields: { dns_cloudflare_email: "a@b.c", dns_cloudflare_api_key: "k" } };
+	const values = buildValues(
+		"cloudflare",
+		{ fields: f({ dns_cloudflare_email: "new@b.c", dns_cloudflare_api_key: "" }) },
+		previous,
+	);
+	assert.deepEqual(values, { fields: { dns_cloudflare_email: "new@b.c", dns_cloudflare_api_key: "k" } });
+});
+
+it("with nothing submitted, the group saved in the previous values is kept", () => {
+	const previous = { fields: { dns_cloudflare_api_token: "t" } };
+	const values = buildValues(
+		"cloudflare",
+		{ fields: f({ dns_cloudflare_api_token: "", dns_cloudflare_email: "", dns_cloudflare_api_key: "" }) },
+		previous,
+	);
+	assert.deepEqual(values, { fields: { dns_cloudflare_api_token: "t" } });
 });
