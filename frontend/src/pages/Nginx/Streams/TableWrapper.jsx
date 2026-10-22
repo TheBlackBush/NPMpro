@@ -5,7 +5,7 @@ import Alert from "react-bootstrap/Alert";
 import { deleteStream, toggleStream } from "src/api/backend";
 import { Button, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useStreams } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
@@ -113,12 +113,19 @@ export default function TableWrapper() {
 										<input
 											type="text"
 											className="form-control form-control-sm"
+											placeholder={intl.formatMessage({ id: "search" })}
+											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"
 											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
 										/>
 									</div>
 								) : null}
-								<Button size="sm" onClick={() => showHelpModal("Streams")}>
+								<Button
+									size="sm"
+									aria-label={intl.formatMessage({ id: "help" })}
+									title={intl.formatMessage({ id: "help" })}
+									onClick={() => showHelpModal("Streams")}
+								>
 									<IconHelp size={20} />
 								</Button>
 								<HasPermission section={STREAMS} permission={MANAGE} hideError>

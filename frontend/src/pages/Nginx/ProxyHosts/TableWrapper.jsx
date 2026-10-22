@@ -5,7 +5,7 @@ import Alert from "react-bootstrap/Alert";
 import { deleteProxyHost, toggleProxyHost } from "src/api/backend";
 import { Button, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useProxyHosts } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/modals";
 import { forwardSummary } from "src/modules/Forward";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
@@ -112,12 +112,19 @@ export default function TableWrapper() {
 										<input
 											type="text"
 											className="form-control form-control-sm"
+											placeholder={intl.formatMessage({ id: "search" })}
+											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"
 											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
 										/>
 									</div>
 								) : null}
-								<Button size="sm" onClick={() => showHelpModal("ProxyHosts")}>
+								<Button
+									size="sm"
+									aria-label={intl.formatMessage({ id: "help" })}
+									title={intl.formatMessage({ id: "help" })}
+									onClick={() => showHelpModal("ProxyHosts")}
+								>
 									<IconHelp size={20} />
 								</Button>
 								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>

@@ -202,7 +202,6 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 												<a
 													href="#tab-advanced"
 													className="nav-link"
-													title="Settings"
 													data-bs-toggle="tab"
 													aria-selected="false"
 													role="tab"
@@ -274,8 +273,16 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	>
 																		<option value="http">http://</option>
 																		<option value="https">https://</option>
-																		<option value="path">path: </option>
-																		<option value="empty">empty</option>
+																		<option value="path">
+																			{intl.formatMessage({
+																				id: "host.forward-scheme.path",
+																			})}
+																		</option>
+																		<option value="empty">
+																			{intl.formatMessage({
+																				id: "host.forward-scheme.empty",
+																			})}
+																		</option>
 																		<option value="grpc">grpc://</option>
 																		<option value="grpcs">grpcs://</option>
 																	</select>
@@ -321,7 +328,10 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																		inputMode="numeric"
 																		pattern="[1-9][0-9]*"
 																		className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
-																		placeholder="eg: 8081"
+																		placeholder={intl.formatMessage(
+																			{ id: "form.example" },
+																			{ example: "8081" },
+																		)}
 																		{...field}
 																	/>
 

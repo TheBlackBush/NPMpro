@@ -92,7 +92,9 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 												<button
 													type="button"
 													tabIndex={-1}
-													aria-label="toggle visibility"
+													aria-label={intl.formatMessage({
+														id: "password.toggle-visibility",
+													})}
 													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 													onClick={() => setShowCurrent((v) => !v)}
 												>
@@ -129,7 +131,9 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 												<button
 													type="button"
 													tabIndex={-1}
-													aria-label="toggle visibility"
+													aria-label={intl.formatMessage({
+														id: "password.toggle-visibility",
+													})}
 													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 													onClick={() => setShowNew((v) => !v)}
 												>
@@ -166,7 +170,9 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 												<button
 													type="button"
 													tabIndex={-1}
-													aria-label="toggle visibility"
+													aria-label={intl.formatMessage({
+														id: "password.toggle-visibility",
+													})}
 													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 													onClick={() => setShowConfirm((v) => !v)}
 												>

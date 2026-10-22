@@ -6,7 +6,7 @@ import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
 import { Button } from "src/components";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
 
@@ -176,7 +176,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<span className="input-group-text">
 								<button
 									type="button"
-									aria-label="copy"
+									aria-label={intl.formatMessage({ id: "aria.copy" })}
 									className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 									onClick={() => navigator.clipboard.writeText(setupData.secret)}
 								>
@@ -210,7 +210,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 													<button
 														type="button"
 														tabIndex={-1}
-														aria-label="toggle visibility"
+														aria-label={intl.formatMessage({
+															id: "password.toggle-visibility",
+														})}
 														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 														onClick={() => setShowCode((v) => !v)}
 													>
@@ -304,7 +306,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 													<button
 														type="button"
 														tabIndex={-1}
-														aria-label="toggle visibility"
+														aria-label={intl.formatMessage({
+															id: "password.toggle-visibility",
+														})}
 														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 														onClick={() => setShowCode((v) => !v)}
 													>
@@ -379,7 +383,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 													<button
 														type="button"
 														tabIndex={-1}
-														aria-label="toggle visibility"
+														aria-label={intl.formatMessage({
+															id: "password.toggle-visibility",
+														})}
 														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
 														onClick={() => setShowCode((v) => !v)}
 													>

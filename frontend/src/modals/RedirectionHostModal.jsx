@@ -21,7 +21,7 @@ import {
 	useSetRedirectionHost,
 	useUnsavedChangesGuard,
 } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
 import { showTabOfInvalid, validateString } from "src/modules/Validations";
@@ -160,7 +160,6 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 												<a
 													href="#tab-advanced"
 													className="nav-link"
-													title="Settings"
 													data-bs-toggle="tab"
 													aria-selected="false"
 													role="tab"
@@ -198,7 +197,11 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 																		required
 																		{...field}
 																	>
-																		<option value="$scheme">keep</option>
+																		<option value="$scheme">
+																			{intl.formatMessage({
+																				id: "redirection.scheme.keep",
+																			})}
+																		</option>
 																		<option value="http">http</option>
 																		<option value="https">https</option>
 																	</select>

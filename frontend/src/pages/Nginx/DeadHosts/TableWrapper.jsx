@@ -5,7 +5,7 @@ import Alert from "react-bootstrap/Alert";
 import { deleteDeadHost, toggleDeadHost } from "src/api/backend";
 import { Button, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useDeadHosts } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { showDeadHostModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
@@ -108,12 +108,19 @@ export default function TableWrapper() {
 										<input
 											type="text"
 											className="form-control form-control-sm"
+											placeholder={intl.formatMessage({ id: "search" })}
+											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"
 											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
 										/>
 									</div>
 								) : null}
-								<Button size="sm" onClick={() => showHelpModal("DeadHosts")}>
+								<Button
+									size="sm"
+									aria-label={intl.formatMessage({ id: "help" })}
+									title={intl.formatMessage({ id: "help" })}
+									onClick={() => showHelpModal("DeadHosts")}
+								>
 									<IconHelp size={20} />
 								</Button>
 								<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
