@@ -10,6 +10,7 @@ const ajv = new Ajv({
 
 const untrimmedPaths = new Set([
 	"/secret",
+	"/ini",
 	"/current",
 	"/auth/secret",
 	"/items/username",

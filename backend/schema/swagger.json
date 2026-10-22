@@ -183,6 +183,25 @@
 				"$ref": "./paths/nginx/certificates/certID/upload/post.json"
 			}
 		},
+		"/nginx/dns-credentials": {
+			"get": {
+				"$ref": "./paths/nginx/dns-credentials/get.json"
+			},
+			"post": {
+				"$ref": "./paths/nginx/dns-credentials/post.json"
+			}
+		},
+		"/nginx/dns-credentials/{credentialID}": {
+			"get": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/get.json"
+			},
+			"put": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/nginx/dns-credentials/credentialID/delete.json"
+			}
+		},
 		"/nginx/proxy-hosts": {
 			"get": {
 				"$ref": "./paths/nginx/proxy-hosts/get.json"
