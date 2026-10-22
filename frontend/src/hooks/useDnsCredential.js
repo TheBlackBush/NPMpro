@@ -5,7 +5,7 @@ const fetchDnsCredential = (id) => {
 	if (id === "new") {
 		return Promise.resolve({ id: 0, name: "", provider: "", fields: [], iniSet: false, decryptError: false });
 	}
-	return getDnsCredential(id);
+	return getDnsCredential(id, ["certificates"]);
 };
 
 const useDnsCredential = (id) =>
