@@ -74,8 +74,9 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
-				// the changes are saved, only the nginx config needs fixing
-				resetForm({ values });
+				// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend
+				// created, otherwise saving again with "new" would request another one
+				resetForm({ values: { ...values, certificateId: row.certificateId } });
 				setErrorMsg(<NginxConfigErrorMsg obj="redirection-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -122,7 +123,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T
-										id={data?.id ? "object.edit" : "object.add"}
+										id={savedId || data?.id ? "object.edit" : "object.add"}
 										tData={{ object: "redirection-host" }}
 									/>
 								</Modal.Title>
