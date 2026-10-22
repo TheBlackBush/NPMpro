@@ -15,6 +15,7 @@ import { flushSync } from "react-dom";
 import { AccessFields } from "src/components";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
+import { getOptionHintId } from "src/modules/ProxyOptions";
 import { upstreamUrlPattern } from "src/modules/Validations";
 
 export function LocationsFields({ initialValues, name = "locations" }) {
@@ -280,7 +281,9 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 								<button
 									type="button"
 									className="btn p-0"
-									title="Advanced"
+									title={intl.formatMessage({ id: "location.config.toggle" })}
+									aria-label={intl.formatMessage({ id: "location.config.toggle" })}
+									aria-expanded={advVisible.includes(item.uiKey)}
 									onClick={() => toggle(item.uiKey, advVisible, setAdvVisible)}
 								>
 									<IconSettings size={20} />
@@ -384,6 +387,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										>
 											<span className="col">
 												<T id="host.flags.disable-crowdsec-appsec" />
+												{item.npmplusProxyRequestBuffering && (
+													<small className="form-hint">
+														<T id="host.flags.hint.appsec-request-buffering" />
+													</small>
+												)}
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
@@ -409,6 +417,22 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										>
 											<span className="col">
 												<T id="host.flags.disable-request-buffering" />
+												<small className="form-hint">
+													<T id="host.flags.hint.request-buffering-appsec" />
+												</small>
+												{getOptionHintId(
+													"npmplusProxyRequestBuffering",
+													item.forwardScheme,
+												) && (
+													<small className="form-hint">
+														<T
+															id={getOptionHintId(
+																"npmplusProxyRequestBuffering",
+																item.forwardScheme,
+															)}
+														/>
+													</small>
+												)}
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
@@ -439,6 +463,19 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										>
 											<span className="col">
 												<T id="host.flags.disable-response-buffering" />
+												{getOptionHintId(
+													"npmplusProxyResponseBuffering",
+													item.forwardScheme,
+												) && (
+													<small className="form-hint">
+														<T
+															id={getOptionHintId(
+																"npmplusProxyResponseBuffering",
+																item.forwardScheme,
+															)}
+														/>
+													</small>
+												)}
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
@@ -469,6 +506,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										>
 											<span className="col">
 												<T id="host.flags.upstream-compression" />
+												{getOptionHintId("npmplusUpstreamCompression", item.forwardScheme) && (
+													<small className="form-hint">
+														<T
+															id={getOptionHintId(
+																"npmplusUpstreamCompression",
+																item.forwardScheme,
+															)}
+														/>
+													</small>
+												)}
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
@@ -499,6 +546,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										>
 											<span className="col">
 												<T id="host.flags.fancyindex" />
+												{getOptionHintId("npmplusFancyindex", item.forwardScheme) && (
+													<small className="form-hint">
+														<T
+															id={getOptionHintId(
+																"npmplusFancyindex",
+																item.forwardScheme,
+															)}
+														/>
+													</small>
+												)}
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
@@ -628,7 +685,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 						</div>
 						{advVisible.includes(item.uiKey) && (
 							<div className="">
+								<label className="form-label" htmlFor={`advancedConfig-${item.uiKey}`}>
+									<T id="location.config.label" />
+								</label>
 								<textarea
+									id={`advancedConfig-${item.uiKey}`}
 									className="form-control font-monospace"
 									spellCheck={false}
 									placeholder={intl.formatMessage({
