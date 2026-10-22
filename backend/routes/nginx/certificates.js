@@ -6,6 +6,7 @@ import { rateLimit } from "express-rate-limit";
 import multer from "multer";
 import dnsPlugins from "../../certbot/dns-plugins.json" with { type: "json" };
 import internalCertificate from "../../internal/certificate.js";
+import { getFieldDefinition } from "../../lib/dns-credential-values.js";
 import errs from "../../lib/error.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
 import requireLogin from "../../lib/express/require-login.js";
@@ -118,7 +119,13 @@ router
 	.get((_, res) => {
 		res.status(200).send(
 			Object.entries(dnsPlugins)
-				.map(([id, { name, credentials }]) => ({ id, name, credentials }))
+				.map(([id, { name, credentials }]) => ({
+					id,
+					name,
+					credentials,
+					fields: getFieldDefinition(id)?.fields ?? null,
+					one_of: getFieldDefinition(id)?.one_of ?? null,
+				}))
 				.sort((a, b) => a.name.localeCompare(b.name)),
 		);
 	});
