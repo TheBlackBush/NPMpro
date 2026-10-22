@@ -50,7 +50,7 @@ const certificateFields = [
 	"npmplus_reuse_key",
 	"npmplus_dns_challenge",
 	"npmplus_dns_provider",
-	"npmplus_dns_provider_credentials",
+	"npmplus_dns_credential_id",
 	"npmplus_propagation_seconds",
 ];
 
@@ -63,15 +63,7 @@ const removeCertificateFields = (obj) =>
 const jsonReplacer = (key, value) => {
 	if (typeof value !== "string") return value;
 	if (key === "password") return "";
-	if (
-		[
-			"certificate",
-			"certificate_key",
-			"dns_provider_credentials",
-			"npmplus_dns_provider_credentials",
-			"hint",
-		].includes(key)
-	) {
+	if (["certificate", "certificate_key", "hint"].includes(key)) {
 		return;
 	}
 	if (["created_on", "modified_on", "expires_on"].includes(key) && localDateTimePattern.test(value)) {
