@@ -21,7 +21,7 @@ import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
 import { showTabOfInvalid, validateNumber, validateUpstreamUrl } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { data, isPending, error } = useProxyHost(id);
@@ -29,6 +29,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const suggestions = useDirectorySuggestions(allProxyHosts);
 	const { mutate: setProxyHost } = useSetProxyHost();
 	const [errorMsg, setErrorMsg] = useState(null);
+	// set once a new host was created but its nginx config failed, so saving again updates it
+	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [advVisible, setAdvVisible] = useState(false);
 	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
@@ -49,7 +51,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 		}
 
 		const payload = {
-			id: id === "new" || isClone ? undefined : id,
+			id: savedId ?? (id === "new" || isClone ? undefined : id),
 			...values,
 			npmplusAccessListIds: globalAclIds,
 			forwardPort: values.forwardPort || 0,
@@ -70,9 +72,15 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					setErrorMsg(<T id={err.message} />);
 				}
 			},
-			onSuccess: () => {
-				showObjectSuccess("proxy-host", "saved");
-				remove();
+			onSuccess: (row) => {
+				const nginxErr = getNginxConfigError(row);
+				if (nginxErr === null) {
+					showObjectSuccess("proxy-host", "saved");
+					remove();
+					return;
+				}
+				setSavedId(row.id);
+				setErrorMsg(<NginxConfigErrorMsg obj="proxy-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
 				setIsSubmitting(false);

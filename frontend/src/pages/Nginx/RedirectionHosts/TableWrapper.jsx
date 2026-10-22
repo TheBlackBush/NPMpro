@@ -8,7 +8,7 @@ import { getDirectory, useRedirectionHosts } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showRedirectionHostModal } from "src/modals";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
-import { showError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -34,12 +34,17 @@ export default function TableWrapper() {
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
-			await toggleRedirectionHost(id, enabled);
+			const row = await toggleRedirectionHost(id, enabled);
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["redirection-hosts"] }),
 				queryClient.invalidateQueries({ queryKey: ["redirection-host", id] }),
 			]);
-			showObjectSuccess("redirection-host", enabled ? "enabled" : "disabled");
+			const nginxErr = getNginxConfigError(row);
+			if (nginxErr === null) {
+				showObjectSuccess("redirection-host", enabled ? "enabled" : "disabled");
+			} else {
+				showNginxConfigError("redirection-host", nginxErr);
+			}
 		} catch (err) {
 			showError(<T id={err.message} />);
 		}

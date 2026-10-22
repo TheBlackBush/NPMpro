@@ -16,7 +16,7 @@ import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { showTabOfInvalid, validateString } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const showStreamModal = (id) => {
 	EasyModal.show(StreamModal, { id });
@@ -28,6 +28,8 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const suggestions = useDirectorySuggestions(allStreams);
 	const { mutate: setStream } = useSetStream();
 	const [errorMsg, setErrorMsg] = useState(null);
+	// set once a new host was created but its nginx config failed, so saving again updates it
+	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const onSubmit = (values, { setSubmitting }) => {
@@ -36,7 +38,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 		setErrorMsg(null);
 
 		const payload = {
-			id: id === "new" ? undefined : id,
+			id: savedId ?? (id === "new" ? undefined : id),
 			...values,
 			domainNames: values.certificateId === "new" ? values.domainNames : undefined,
 		};
@@ -55,9 +57,15 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 					setErrorMsg(<T id={err.message} />);
 				}
 			},
-			onSuccess: () => {
-				showObjectSuccess("stream", "saved");
-				remove();
+			onSuccess: (row) => {
+				const nginxErr = getNginxConfigError(row);
+				if (nginxErr === null) {
+					showObjectSuccess("stream", "saved");
+					remove();
+					return;
+				}
+				setSavedId(row.id);
+				setErrorMsg(<NginxConfigErrorMsg obj="stream" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
 				setIsSubmitting(false);

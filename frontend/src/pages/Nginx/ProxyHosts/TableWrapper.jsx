@@ -9,7 +9,7 @@ import { T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/modals";
 import { forwardSummary } from "src/modules/Forward";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { showError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -35,12 +35,17 @@ export default function TableWrapper() {
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
-			await toggleProxyHost(id, enabled);
+			const row = await toggleProxyHost(id, enabled);
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["proxy-hosts"] }),
 				queryClient.invalidateQueries({ queryKey: ["proxy-host", id] }),
 			]);
-			showObjectSuccess("proxy-host", enabled ? "enabled" : "disabled");
+			const nginxErr = getNginxConfigError(row);
+			if (nginxErr === null) {
+				showObjectSuccess("proxy-host", enabled ? "enabled" : "disabled");
+			} else {
+				showNginxConfigError("proxy-host", nginxErr);
+			}
 		} catch (err) {
 			showError(<T id={err.message} />);
 		}

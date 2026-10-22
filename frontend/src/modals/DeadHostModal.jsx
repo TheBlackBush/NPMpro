@@ -17,7 +17,7 @@ import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { showTabOfInvalid } from "src/modules/Validations";
-import { showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const showDeadHostModal = (id) => {
 	EasyModal.show(DeadHostModal, { id });
@@ -29,6 +29,8 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data: allDeadHosts } = useDeadHosts();
 	const suggestions = useDirectorySuggestions(allDeadHosts);
 	const [errorMsg, setErrorMsg] = useState(null);
+	// set once a new host was created but its nginx config failed, so saving again updates it
+	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const onSubmit = (values, { setSubmitting }) => {
@@ -37,7 +39,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 		setErrorMsg(null);
 
 		const payload = {
-			id: id === "new" ? undefined : id,
+			id: savedId ?? (id === "new" ? undefined : id),
 			...values,
 		};
 
@@ -55,9 +57,15 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 					setErrorMsg(<T id={err.message} />);
 				}
 			},
-			onSuccess: () => {
-				showObjectSuccess("dead-host", "saved");
-				remove();
+			onSuccess: (row) => {
+				const nginxErr = getNginxConfigError(row);
+				if (nginxErr === null) {
+					showObjectSuccess("dead-host", "saved");
+					remove();
+					return;
+				}
+				setSavedId(row.id);
+				setErrorMsg(<NginxConfigErrorMsg obj="dead-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
 				setIsSubmitting(false);
