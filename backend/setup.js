@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import dnsPlugins from "./certbot/dns-plugins.json" with { type: "json" };
 import internalHost from "./internal/host.js";
@@ -115,38 +116,38 @@ const setupCertbotPlugins = async () => {
 };
 
 /**
- * regenerate all hosts if needed
+ * Regenerates host configs. All enabled hosts when an env or the template version changed (start.sh then deleted
+ * all configs), otherwise only enabled hosts whose config file is missing, e.g. because a previous start deleted the
+ * configs and stopped before regenerating them.
  *
  * @returns {Promise}
  */
-const regenerateAllHosts = async () => {
-	if (process.env.REGENERATE_ALL === "true") {
-		const proxyHosts = await proxyModel
-			.query()
-			.where("enabled", 1)
-			.withGraphFetched("[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]");
-		for (const host of proxyHosts) {
-			await internalNginx.configure(proxyModel, "proxy_host", host, { skipReload: true });
-		}
+const regenerateHosts = async () => {
+	const regenerateAll = process.env.REGENERATE_ALL === "true";
+	const hostTypes = [
+		[proxyModel, "proxy_host", "[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]"],
+		[redirectionModel, "redirection_host", "certificate"],
+		[deadModel, "dead_host", "certificate"],
+		[streamModel, "stream", "certificate"],
+	];
 
-		const redirectionHosts = await redirectionModel.query().where("enabled", 1).withGraphFetched("certificate");
-		for (const host of redirectionHosts) {
-			await internalNginx.configure(redirectionModel, "redirection_host", host, { skipReload: true });
+	let regenerated = 0;
+	for (const [model, hostType, graph] of hostTypes) {
+		for (const host of await model.query().where("enabled", 1).withGraphFetched(graph)) {
+			const configFile = internalNginx.getConfigName(hostType, host.id);
+			// a config nginx rejected is kept as .err, regenerating it on every start would only fail again
+			if (!regenerateAll && (existsSync(configFile) || existsSync(`${configFile}.err`))) continue;
+			await internalNginx.configure(model, hostType, host, { skipReload: true });
+			regenerated++;
 		}
-
-		const deadHosts = await deadModel.query().where("enabled", 1).withGraphFetched("certificate");
-		for (const host of deadHosts) {
-			await internalNginx.configure(deadModel, "dead_host", host, { skipReload: true });
-		}
-
-		const streamHosts = await streamModel.query().where("enabled", 1).withGraphFetched("certificate");
-		for (const host of streamHosts) {
-			await internalNginx.configure(streamModel, "stream", host, { skipReload: true });
-		}
-
-		await writeFile("/data/npmplus/env.sha512sum", process.env.ENV_SHA512SUM);
-		await internalNginx.reload();
 	}
+
+	if (regenerateAll) {
+		await writeFile("/data/npmplus/env.sha512sum", process.env.ENV_SHA512SUM);
+	} else if (regenerated > 0) {
+		logger.warn(`Regenerated ${regenerated} host config(s) that were missing`);
+	}
+	if (regenerated > 0) await internalNginx.reload();
 };
 
 /**
@@ -193,6 +194,6 @@ export default async () => {
 	await setupDefaultUser();
 	await setupDefaultSettings();
 	await setupCertbotPlugins();
-	await regenerateAllHosts();
+	await regenerateHosts();
 	await setupAio();
 };
