@@ -27,7 +27,7 @@ Replaced text, in every language:
 
 | Upstream | NPMplus |
 |---|---|
-| `Nginx Proxy Manager`, `NPM` | `NPMplus` |
+| `Nginx Proxy Manager`, `NPM` | `NPMpro` |
 | `Let's Encrypt` | `Certbot` |
 | `SSL/TLS`, `TLS/SSL`, `SSL` | `TLS` |
 | `SSL` in `domains.force-ssl` | `HTTPS` |

@@ -842,7 +842,7 @@ const internalCertificate = {
 			const response = await fetch("https://www.site24x7.com/tools/restapi-tester", {
 				method: "POST",
 				headers: {
-					"User-Agent": `NPMplus/${pjson.version}`,
+					"User-Agent": `NPMpro/${pjson.version}`,
 					"Content-Type": "application/x-www-form-urlencoded",
 				},
 				body: `method=G&url=${encodeURI(`http://${domainToASCII(domain)}/.well-known/acme-challenge/test-challenge`)}&bodytype=T&locationid=10`,

@@ -3,7 +3,7 @@ services:
   npmplus:
     container_name: npmplus
     restart: unless-stopped
-    image: docker.io/zoeyvid/npmplus:latest # or ghcr.io/zoeyvid/npmplus:latest
+    image: docker.io/blackbush/npmpro:latest # or ghcr.io/theblackbush/npmpro:latest
     pull_policy: always
     network_mode: host
     cap_drop:
@@ -168,7 +168,7 @@ services:
 #  npmplus-caddy:
 #    container_name: npmplus-caddy
 #    restart: unless-stopped
-#    image: docker.io/zoeyvid/npmplus:caddy
+#    image: docker.io/blackbush/npmpro:caddy
 #    pull_policy: always
 #    network_mode: bridge
 #    ports:

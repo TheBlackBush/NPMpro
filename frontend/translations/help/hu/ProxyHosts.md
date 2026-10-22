@@ -4,4 +4,4 @@ A Proxy Kiszolgáló egy bejövő végpont egy olyan webszolgáltatáshoz, amely
 
 Opcionális TLS lezárást biztosít a szolgáltatásodhoz, amelyben esetleg nincs beépített TLS támogatás.
 
-A Proxy Kiszolgálók az NPMplus leggyakoribb felhasználási módjai.
+A Proxy Kiszolgálók az NPMpro leggyakoribb felhasználási módjai.

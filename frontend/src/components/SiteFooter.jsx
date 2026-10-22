@@ -2,12 +2,18 @@ import { IconBrandGithub } from "@tabler/icons-react";
 import { useCheckVersion } from "src/hooks";
 import { T } from "src/locale";
 
+const repoUrl = "https://github.com/TheBlackBush/NPMpro";
+// release builds are "<MAJOR.MINOR.PATCH>-<commit>", beta and develop builds end with "-<commit>"
+const releaseBuildPattern = /^(?<release>\d+\.\d+\.\d+)-[0-9a-f]+$/u;
+const commitPattern = /-(?<commit>[0-9a-f]+)$/u;
+
 export function SiteFooter() {
 	const { data: versionData } = useCheckVersion();
 
 	const version = versionData?.current || "";
-	const githubTag = version.split("-").slice(0, 4).join("-");
-	const githubLinkType = githubTag.length < 13 ? "tree" : "releases/tag";
+	const release = releaseBuildPattern.exec(version)?.groups.release;
+	const commit = commitPattern.exec(version)?.groups.commit;
+	const versionUrl = release ? `${repoUrl}/releases/tag/v${release}` : commit ? `${repoUrl}/tree/${commit}` : repoUrl;
 
 	return (
 		<footer className="footer d-print-none py-3">
@@ -16,12 +22,7 @@ export function SiteFooter() {
 					<div className="col-lg-auto ms-lg-auto">
 						<ul className="list-inline list-inline-dots mb-0">
 							<li className="list-inline-item">
-								<a
-									href="https://github.com/ZoeyVid/NPMplus"
-									target="_blank"
-									className="link-secondary"
-									rel="noopener"
-								>
+								<a href={repoUrl} target="_blank" className="link-secondary" rel="noopener">
 									<T id="footer.github" />
 									<IconBrandGithub className="icon icon-inline me-1" />
 								</a>
@@ -38,12 +39,12 @@ export function SiteFooter() {
 							</li>
 							<li className="list-inline-item">
 								<a
-									href="https://github.com/ZoeyVid"
+									href="https://github.com/ZoeyVid/NPMplus"
 									rel="noreferrer"
 									target="_blank"
 									className="link-secondary"
 								>
-									ZoeyVid
+									NPMplus by ZoeyVid
 								</a>
 							</li>
 							<li className="list-inline-item">
@@ -53,12 +54,7 @@ export function SiteFooter() {
 								</a>
 							</li>
 							<li className="list-inline-item">
-								<a
-									href={`https://github.com/ZoeyVid/NPMplus/${githubLinkType}/${githubTag}`}
-									className="link-secondary"
-									target="_blank"
-									rel="noopener"
-								>
+								<a href={versionUrl} className="link-secondary" target="_blank" rel="noopener">
 									{" "}
 									{version}{" "}
 								</a>
@@ -66,7 +62,7 @@ export function SiteFooter() {
 							{versionData?.updateAvailable && (
 								<li className="list-inline-item">
 									<a
-										href={`https://github.com/ZoeyVid/NPMplus/releases/tag/${versionData.latest}`}
+										href={`${repoUrl}/releases/tag/${versionData.latest}`}
 										className="link-warning fw-bold"
 										target="_blank"
 										rel="noopener"

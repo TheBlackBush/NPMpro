@@ -4,4 +4,4 @@ Ein Proxy-Host ist der eingehende Endpunkt für einen Webdienst, den Sie weiterl
 
 Er bietet optionale TLS-Terminierung für Ihren Dienst, der möglicherweise keine integrierte TLS-Unterstützung hat.
 
-Proxy-Hosts sind die häufigste Verwendung für NPMplus.
+Proxy-Hosts sind die häufigste Verwendung für NPMpro.

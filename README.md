@@ -1,3 +1,11 @@
+# NPMpro
+
+NPMpro is a fork of [NPMplus](https://github.com/ZoeyVid/NPMplus) by ZoeyVid, which is itself based on [nginx-proxy-manager](https://github.com/NginxProxyManager/nginx-proxy-manager) by jc21.
+
+Images: `docker.io/blackbush/npmpro` and `ghcr.io/theblackbush/npmpro` (tags: `latest`, `<version>`, `beta`, `develop`). Use the [compose.yaml](compose.yaml) of this repository.
+
+The documentation below is inherited from NPMplus and still refers to it by that name.
+
 # NPMplus
 
 If you don't need the web GUI of NPMplus, you may also have a look at caddy: https://caddyserver.com
@@ -52,7 +60,7 @@ If you don't need the web GUI of NPMplus, you may also have a look at caddy: htt
 1. Install Docker and Docker Compose (podman or docker rootless may also work)
 - [Docker Install documentation](https://docs.docker.com/engine/install)
 - [Docker Compose Install documentation](https://docs.docker.com/compose/install/linux)
-2. Download this [compose.yaml](https://raw.githubusercontent.com/ZoeyVid/NPMplus/refs/heads/develop/compose.yaml) (or use its content as a portainer stack)
+2. Download this [compose.yaml](https://raw.githubusercontent.com/TheBlackBush/NPMpro/refs/heads/develop/compose.yaml) (or use its content as a portainer stack)
 3. Adjust TZ to match your Timezone and maybe adjust other env options to your needs
 4. Start NPMplus by running (or deploy your portainer stack)
 ```bash
