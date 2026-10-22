@@ -83,7 +83,7 @@ export function DNSProviderFields({ showBoundaryBox }) {
 						)}
 					</Field>
 					<Field name="npmplusPropagationSeconds">
-						{({ field }) => (
+						{({ field, form }) => (
 							<div className="mt-3">
 								<label htmlFor="propagationSeconds" className="form-label">
 									<T id="certificates.dns.propagation-seconds" />
@@ -94,9 +94,19 @@ export function DNSProviderFields({ showBoundaryBox }) {
 									className="form-control"
 									min={0}
 									max={7200}
-									required
-									{...field}
-									value={field.value ?? 0}
+									placeholder={intl.formatMessage({
+										id: "certificates.dns.propagation-seconds-default",
+									})}
+									name={field.name}
+									onBlur={field.onBlur}
+									// 0 means the default of the DNS plugin, shown as an empty field
+									value={field.value || ""}
+									onChange={(e) =>
+										form.setFieldValue(
+											field.name,
+											e.target.value === "" ? 0 : Number(e.target.value),
+										)
+									}
 								/>
 
 								<small className="text-secondary">

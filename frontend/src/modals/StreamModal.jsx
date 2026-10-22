@@ -29,6 +29,10 @@ const showStreamModal = (id) => {
 	EasyModal.show(StreamModal, { id });
 };
 
+// without a certificate "TLS to upstream" would downgrade the stream to plain text
+const isProxyTlsPossible = (values) =>
+	!values.udpForwarding && (values.certificateId === "new" || values.certificateId > 0);
+
 const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useStream(id);
@@ -49,6 +53,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 			id: savedId ?? (id === "new" ? undefined : id),
 			...values,
 			domainNames: values.certificateId === "new" ? values.domainNames : undefined,
+			npmplusProxyTls: values.npmplusProxyTls && isProxyTlsPossible(values),
 		};
 
 		setStream(payload, {
@@ -429,6 +434,12 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="streams.tls" />
+																	{!values.udpForwarding &&
+																		!isProxyTlsPossible(values) && (
+																			<small className="form-hint">
+																				<T id="streams.tls.requires-certificate" />
+																			</small>
+																		)}
 																</span>
 																<span className="col-auto">
 																	<Field name="npmplusProxyTls" type="checkbox">
@@ -439,8 +450,13 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																					className="form-check-input"
 																					type="checkbox"
 																					name={field.name}
-																					checked={field.value}
-																					disabled={values.udpForwarding}
+																					checked={
+																						field.value &&
+																						isProxyTlsPossible(values)
+																					}
+																					disabled={
+																						!isProxyTlsPossible(values)
+																					}
 																					onChange={(e) => {
 																						setFieldValue(
 																							field.name,
