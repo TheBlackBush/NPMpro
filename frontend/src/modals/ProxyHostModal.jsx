@@ -27,6 +27,7 @@ import {
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
+import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptions";
 import { showTabOfInvalid, validateNumber, validateUpstreamUrl } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
@@ -41,6 +42,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [advVisible, setAdvVisible] = useState(false);
+	const [schemeResetNotice, setSchemeResetNotice] = useState(false);
 	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
 		...location,
 		npmplusAccessListIds: accessLists.map((accessList) => accessList.id),
@@ -238,8 +240,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																		required
 																		{...field}
 																		onChange={(e) => {
-																			field.onChange(e);
 																			const scheme = e.target.value;
+																			setSchemeResetNotice(
+																				getOptionsResetByScheme(
+																					form.values,
+																					scheme,
+																				).length > 0,
+																			);
+																			field.onChange(e);
 																			if (scheme === "empty") return;
 																			if (!["http", "https"].includes(scheme)) {
 																				form.setFieldValue(
@@ -271,6 +279,11 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																		<option value="grpc">grpc://</option>
 																		<option value="grpcs">grpcs://</option>
 																	</select>
+																	{schemeResetNotice && (
+																		<small className="form-hint text-warning">
+																			<T id="host.forward-scheme.options-reset" />
+																		</small>
+																	)}
 																</div>
 															)}
 														</Field>
@@ -329,7 +342,13 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															<button
 																type="button"
 																className="btn p-0"
-																title="LocationConfig"
+																title={intl.formatMessage({
+																	id: "host.location-config.toggle",
+																})}
+																aria-label={intl.formatMessage({
+																	id: "host.location-config.toggle",
+																})}
+																aria-expanded={advVisible}
 																onClick={() => setAdvVisible((prev) => !prev)}
 															>
 																<IconSettings size={20} />
@@ -376,6 +395,11 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="host.flags.disable-crowdsec-appsec" />
+																	{values.npmplusProxyRequestBuffering && (
+																		<small className="form-hint">
+																			<T id="host.flags.hint.appsec-request-buffering" />
+																		</small>
+																	)}
 																</span>
 																<span className="col-auto">
 																	<Field name="npmplusCrowdsecAppsec" type="checkbox">
@@ -411,6 +435,22 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="host.flags.disable-request-buffering" />
+																	<small className="form-hint">
+																		<T id="host.flags.hint.request-buffering-appsec" />
+																	</small>
+																	{getOptionHintId(
+																		"npmplusProxyRequestBuffering",
+																		values.forwardScheme,
+																	) && (
+																		<small className="form-hint">
+																			<T
+																				id={getOptionHintId(
+																					"npmplusProxyRequestBuffering",
+																					values.forwardScheme,
+																				)}
+																			/>
+																		</small>
+																	)}
 																</span>
 																<span className="col-auto">
 																	<Field
@@ -455,6 +495,19 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="host.flags.disable-response-buffering" />
+																	{getOptionHintId(
+																		"npmplusProxyResponseBuffering",
+																		values.forwardScheme,
+																	) && (
+																		<small className="form-hint">
+																			<T
+																				id={getOptionHintId(
+																					"npmplusProxyResponseBuffering",
+																					values.forwardScheme,
+																				)}
+																			/>
+																		</small>
+																	)}
 																</span>
 																<span className="col-auto">
 																	<Field
@@ -490,6 +543,19 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="host.flags.upstream-compression" />
+																	{getOptionHintId(
+																		"npmplusUpstreamCompression",
+																		values.forwardScheme,
+																	) && (
+																		<small className="form-hint">
+																			<T
+																				id={getOptionHintId(
+																					"npmplusUpstreamCompression",
+																					values.forwardScheme,
+																				)}
+																			/>
+																		</small>
+																	)}
 																</span>
 																<span className="col-auto">
 																	<Field
@@ -525,6 +591,19 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															>
 																<span className="col">
 																	<T id="host.flags.fancyindex" />
+																	{getOptionHintId(
+																		"npmplusFancyindex",
+																		values.forwardScheme,
+																	) && (
+																		<small className="form-hint">
+																			<T
+																				id={getOptionHintId(
+																					"npmplusFancyindex",
+																					values.forwardScheme,
+																				)}
+																			/>
+																		</small>
+																	)}
 																</span>
 																<span className="col-auto">
 																	<Field name="npmplusFancyindex" type="checkbox">
@@ -697,7 +776,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<>
 															{advVisible && (
 																<div className="">
+																	<label
+																		className="form-label"
+																		htmlFor="npmplusLocationConfig"
+																	>
+																		<T id="host.location-config.label" />
+																	</label>
 																	<textarea
+																		id="npmplusLocationConfig"
 																		className="form-control font-monospace"
 																		spellCheck={false}
 																		placeholder={intl.formatMessage({
