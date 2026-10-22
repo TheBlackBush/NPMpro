@@ -14,6 +14,7 @@ const credentialsRequired = /credentials/u;
 const noDefinitionError = /no field definition/u;
 const eitherError = /either/u;
 const secretValue = /secret"/u;
+const cannotStoreError = /cannot be stored/u;
 
 const f = (pairs) => Object.entries(pairs).map(([key, value]) => ({ key, value }));
 
@@ -175,4 +176,19 @@ it("with nothing submitted, the group saved in the previous values is kept", () 
 		previous,
 	);
 	assert.deepEqual(values, { fields: { dns_cloudflare_api_token: "t" } });
+});
+
+const apiKeyOf = (value) => buildValues("cloudflare", { fields: f({ dns_cloudflare_api_token: value }) }, null);
+
+it("toIni quotes values that certbot would misparse", () => {
+	assert.equal(toIni({ fields: { k: "a#b" } }), 'k = "a#b"\n');
+	assert.equal(toIni({ fields: { k: "a,b" } }), 'k = "a,b"\n');
+	assert.equal(toIni({ fields: { k: 'say "hi"' } }), `k = 'say "hi"'\n`);
+	assert.equal(toIni({ fields: { k: `it's "x"` } }), `k = """it's "x""""\n`);
+	assert.equal(toIni({ fields: { k: "plain" } }), "k = plain\n");
+});
+
+it("buildValues rejects values that cannot be quoted and any control character", () => {
+	assert.throws(() => apiKeyOf(`a"""b'c`), cannotStoreError);
+	assert.throws(() => apiKeyOf("a\tb"), lineBreakError);
 });

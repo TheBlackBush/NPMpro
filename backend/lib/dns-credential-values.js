@@ -1,12 +1,27 @@
 import dnsFields from "../certbot/dns-fields.json" with { type: "json" };
 import errs from "./error.js";
 
-const lineBreakPattern = /[\r\n]/u;
+const controlCharPattern = /[\p{Cc}\u2028\u2029]/u;
+const needsQuotePattern = /[#,"']|^\s|\s$/u;
 
 /**
  * @param   {String}  provider
  * @returns {Object|null}
  */
+/**
+ * Quotes a value the way certbot's ConfigObj parser expects it, or returns null when it cannot be stored.
+ *
+ * @param   {String}  value
+ * @returns {String|null}
+ */
+const quoteValue = (value) => {
+	if (!needsQuotePattern.test(value)) return value;
+	if (!value.includes('"')) return `"${value}"`;
+	if (!value.includes("'")) return `'${value}'`;
+	if (!value.includes('"""')) return `"""${value}"""`;
+	return null;
+};
+
 const getFieldDefinition = (provider) => dnsFields[provider] ?? null;
 
 const isFilled = (fields, key) => typeof fields[key] === "string" && fields[key] !== "";
@@ -46,8 +61,12 @@ const buildFields = (provider, def, input, previous) => {
 	for (const { key, value } of input) {
 		if (!known.has(key)) throw new errs.ValidationError(`Unknown field ${key} for DNS provider ${provider}`);
 		const text = String(value ?? "").trim();
-		if (lineBreakPattern.test(text))
-			throw new errs.ValidationError(`${known.get(key).label} must not contain a line break`);
+		if (controlCharPattern.test(text))
+			throw new errs.ValidationError(
+				`${known.get(key).label} must not contain a line break or control character`,
+			);
+		if (quoteValue(text) === null)
+			throw new errs.ValidationError(`${known.get(key).label} contains characters that cannot be stored`);
 		if (text !== "") submitted[key] = text;
 	}
 
@@ -110,7 +129,7 @@ const buildValues = (provider, input, previous) => {
 const toIni = (values) => {
 	if (typeof values.ini === "string") return `${values.ini}\n`;
 	return Object.entries(values.fields)
-		.map(([key, value]) => `${key} = ${value}\n`)
+		.map(([key, value]) => `${key} = ${quoteValue(value) ?? value}\n`)
 		.join("");
 };
 
