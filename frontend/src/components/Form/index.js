@@ -3,6 +3,7 @@ export * from "./AccessFields";
 export * from "./BasicAuthFields";
 export * from "./DirectoryField";
 export * from "./DNSProviderFields";
+export * from "./DnsCredentialSelect";
 export * from "./DnsCredentialValuesFields";
 export * from "./DomainNamesField";
 export * from "./LocationsFields";
