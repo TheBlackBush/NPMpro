@@ -90,8 +90,9 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
-				// the changes are saved, only the nginx config needs fixing
-				resetForm({ values });
+				// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend
+				// created, otherwise saving again with "new" would request another one
+				resetForm({ values: { ...values, certificateId: row.certificateId } });
 				setErrorMsg(<NginxConfigErrorMsg obj="proxy-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -152,7 +153,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T
-										id={data?.id && !isClone ? "object.edit" : "object.add"}
+										id={savedId || (data?.id && !isClone) ? "object.edit" : "object.add"}
 										tData={{ object: "proxy-host" }}
 									/>
 								</Modal.Title>
