@@ -17,3 +17,7 @@ File Structure:
   ...
 }
 ```
+
+## Saved credential fields
+
+Field definitions for the DNS credential form live in `dns-fields.json`. Its keys must match the variable names in the plugin's INI template in `dns-plugins.json`; a unit test (`backend/test/dns-credential-values.test.js`) checks this. Providers without an entry in `dns-fields.json` (e.g. Google, TransIP) use a plain INI text box instead.

@@ -35,7 +35,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 		void setFieldValue(fieldName, e.target.checked);
 		if (fieldName === "npmplusDnsChallenge" && !e.target.checked) {
 			void setFieldValue("npmplusDnsProvider", undefined);
-			void setFieldValue("npmplusDnsProviderCredentials", undefined);
+			void setFieldValue("npmplusDnsCredentialId", undefined);
 			void setFieldValue("npmplusPropagationSeconds", undefined);
 		}
 		if (fieldName === "sslForced" && !e.target.checked) {

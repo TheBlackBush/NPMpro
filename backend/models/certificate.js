@@ -28,7 +28,6 @@ class Certificate extends Model {
 
 		// Default for meta
 		this.meta ??= {};
-		this.npmplus_dns_provider_credentials ??= "";
 	}
 
 	$beforeUpdate() {

@@ -6,6 +6,7 @@ import { Button, certificateProviderTranslation, HasPermission, LoadingPage } fr
 import { useCertificates } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import {
+	showChangeDnsCredentialModal,
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
 	showDNSCertificateModal,
@@ -17,6 +18,7 @@ import {
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
+import { Tabs } from "./Tabs";
 
 export default function TableWrapper() {
 	const [search, setSearch] = useState("");
@@ -67,6 +69,7 @@ export default function TableWrapper() {
 	return (
 		<div className="card mt-4">
 			<div className="card-status-top bg-pink" />
+			<Tabs />
 			<div className="card-table">
 				<div className="card-header">
 					<div className="row w-full">
@@ -162,6 +165,7 @@ export default function TableWrapper() {
 					isFiltered={search}
 					isFetching={isFetching}
 					onRenew={showRenewCertificateModal}
+					onChangeDnsCredential={showChangeDnsCredentialModal}
 					onDownload={handleDownload}
 					onEdit={(cert) => showCustomCertificateModal(cert)}
 					onTest={(domains) => showReachabilityModal(domains)}

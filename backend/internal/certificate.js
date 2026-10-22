@@ -21,6 +21,7 @@ import streamModel from "../models/stream.js";
 import pjson from "../package.json" with { type: "json" };
 import { getValidationSchema } from "../schema/index.js";
 import internalAuditLog from "./audit-log.js";
+import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
 
 const cnPattern = /\bCN=(?<cn>[^\n]+)/iu;
@@ -129,9 +130,14 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		data.owner_user_id = access.token.getUserId(1);
 
-		if (!data.npmplus_dns_challenge) {
+		if (data.npmplus_dns_challenge) {
+			const credential = await internalDnsCredential.get(access, { id: data.npmplus_dns_credential_id });
+			if (credential.provider !== data.npmplus_dns_provider) {
+				throw new error.ValidationError("The DNS credential belongs to another DNS provider");
+			}
+		} else {
 			delete data.npmplus_dns_provider;
-			delete data.npmplus_dns_provider_credentials;
+			delete data.npmplus_dns_credential_id;
 			delete data.npmplus_propagation_seconds;
 		}
 
@@ -645,7 +651,7 @@ const internalCertificate = {
 		);
 
 		const credentialsLocation = `/tmp/certbot-credentials/credentials-${certificate.id}`;
-		await writeFile(credentialsLocation, certificate.npmplus_dns_provider_credentials, { mode: 0o600 });
+		await internalDnsCredential.writeCertificateFile(certificate);
 
 		try {
 			const result = await utils.execFile("certbot", [
@@ -673,6 +679,38 @@ const internalCertificate = {
 			await rm(credentialsLocation, { force: true });
 			throw err;
 		}
+	},
+
+	/**
+	 * Links another saved DNS credential, used from the next renewal on
+	 *
+	 * @param   {Access}  access
+	 * @param   {Object}  data
+	 * @param   {Number}  data.id
+	 * @param   {Number}  data.npmplus_dns_credential_id
+	 * @returns {Promise}
+	 */
+	setDnsCredential: async (access, data) => {
+		access.can("certificates:manage");
+		const certificate = await internalCertificate.get(access, { id: data.id });
+		if (certificate.provider !== "letsencrypt" || !certificate.npmplus_dns_challenge) {
+			throw new error.ValidationError("Only DNS challenge certificates use a DNS credential");
+		}
+		const credential = await internalDnsCredential.get(access, { id: data.npmplus_dns_credential_id });
+		if (credential.provider !== certificate.npmplus_dns_provider) {
+			throw new error.ValidationError("The DNS credential belongs to another DNS provider");
+		}
+		const saved = await certificateModel
+			.query()
+			.patchAndFetchById(certificate.id, { npmplus_dns_credential_id: credential.id });
+		await internalDnsCredential.writeCertificateFile(saved);
+		await internalAuditLog.add(access, {
+			action: "updated",
+			object_type: "certificate",
+			object_id: saved.id,
+			meta: saved,
+		});
+		return saved;
 	},
 
 	/**

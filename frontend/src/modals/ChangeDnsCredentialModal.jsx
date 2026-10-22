@@ -1,0 +1,92 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { Form, Formik } from "formik";
+import { useState } from "react";
+import { Alert } from "react-bootstrap";
+import Modal from "react-bootstrap/Modal";
+import { setCertificateDnsCredential } from "src/api/backend";
+import { Button, DnsCredentialSelect } from "src/components";
+import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { T } from "src/locale";
+import EasyModal from "src/modules/easyModal";
+import { showObjectSuccess } from "src/notifications";
+
+const showChangeDnsCredentialModal = (certificate) => {
+	EasyModal.show(ChangeDnsCredentialModal, { certificate });
+};
+
+const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remove }) => {
+	const queryClient = useQueryClient();
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	const [errorMsg, setErrorMsg] = useState(null);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const onSubmit = async (values, { setSubmitting }) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		setErrorMsg(null);
+		try {
+			await setCertificateDnsCredential(certificate.id, values.npmplusDnsCredentialId);
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
+				queryClient.invalidateQueries({ queryKey: ["dns-credentials"] }),
+			]);
+			showObjectSuccess("certificate", "updated");
+			remove();
+		} catch (err) {
+			setErrorMsg(<T id={err.message} />);
+		} finally {
+			setIsSubmitting(false);
+			setSubmitting(false);
+		}
+	};
+
+	return (
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+			<Formik
+				initialValues={{ npmplusDnsCredentialId: certificate.npmplusDnsCredentialId ?? undefined }}
+				onSubmit={onSubmit}
+			>
+				{({ values }) => (
+					<Form>
+						<DirtyTracker dirtyRef={dirtyRef} />
+						<Modal.Header closeButton={!isSubmitting}>
+							<Modal.Title>
+								<T id="dns-credentials.change" />
+							</Modal.Title>
+						</Modal.Header>
+						<Modal.Body>
+							<Alert
+								variant="danger"
+								show={Boolean(errorMsg)}
+								onClose={() => setErrorMsg(null)}
+								dismissible
+							>
+								{errorMsg}
+							</Alert>
+							<DnsCredentialSelect
+								name="npmplusDnsCredentialId"
+								provider={certificate.npmplusDnsProvider}
+							/>
+						</Modal.Body>
+						<Modal.Footer>
+							<Button onClick={close} disabled={isSubmitting}>
+								<T id="cancel" />
+							</Button>
+							<Button
+								type="submit"
+								color="pink"
+								className="ms-auto"
+								isLoading={isSubmitting}
+								disabled={isSubmitting || !values.npmplusDnsCredentialId}
+							>
+								<T id="save" />
+							</Button>
+						</Modal.Footer>
+					</Form>
+				)}
+			</Formik>
+		</Modal>
+	);
+});
+
+export { showChangeDnsCredentialModal };

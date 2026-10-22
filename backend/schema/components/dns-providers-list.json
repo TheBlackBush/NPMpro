@@ -21,6 +21,26 @@
 			"credentials": {
 				"type": "string",
 				"description": "Instructions on how to format the credentials for this DNS provider"
+			},
+			"fields": {
+				"type": [
+					"array",
+					"null"
+				],
+				"description": "Structured credential field definitions, null when the provider only supports raw INI",
+				"items": {
+					"type": "object"
+				}
+			},
+			"one_of": {
+				"type": [
+					"array",
+					"null"
+				],
+				"description": "Field groups of which exactly one must be filled, null when not applicable",
+				"items": {
+					"type": "string"
+				}
 			}
 		}
 	}
