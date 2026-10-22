@@ -55,7 +55,12 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 							</Modal.Title>
 						</Modal.Header>
 						<Modal.Body>
-							<Alert variant="danger" show={Boolean(errorMsg)} onClose={() => setErrorMsg(null)} dismissible>
+							<Alert
+								variant="danger"
+								show={Boolean(errorMsg)}
+								onClose={() => setErrorMsg(null)}
+								dismissible
+							>
 								{errorMsg}
 							</Alert>
 							<DnsCredentialSelect
