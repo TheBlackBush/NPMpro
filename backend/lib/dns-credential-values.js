@@ -11,43 +11,59 @@ const getFieldDefinition = (provider) => dnsFields[provider] ?? null;
 
 const isFilled = (fields, key) => typeof fields[key] === "string" && fields[key] !== "";
 
-const checkGroups = (def, fields) => {
-	const groupFields = (group) => def.fields.filter((field) => field.group === group && !field.optional);
-	const filledGroups = def.one_of.filter((group) => groupFields(group).some((field) => isFilled(fields, field.key)));
-	if (filledGroups.length !== 1) {
-		const names = def.one_of
-			.map((group) =>
-				groupFields(group)
-					.map((field) => field.label)
-					.join(" + "),
-			)
-			.join(" or ");
-		throw new errs.ValidationError(`Fill in exactly one of: ${names}`);
-	}
-	return filledGroups[0];
+const groupError = (def) => {
+	const names = def.one_of
+		.map((group) =>
+			def.fields
+				.filter((field) => field.group === group && !field.optional)
+				.map((field) => field.label)
+				.join(" + "),
+		)
+		.join(" or ");
+	return new errs.ValidationError(`Fill in exactly one of: ${names}`);
+};
+
+/** Groups that have at least one filled field in the source. */
+const filledGroups = (def, source) =>
+	def.one_of.filter((group) => def.fields.some((field) => field.group === group && isFilled(source, field.key)));
+
+/**
+ * The active group comes from the submitted input. When nothing was submitted for a group,
+ * the group that is filled in the previous values is kept.
+ */
+const pickActiveGroup = (def, submitted, previous) => {
+	const fromInput = filledGroups(def, submitted);
+	if (fromInput.length > 1) throw groupError(def);
+	if (fromInput.length === 1) return fromInput[0];
+	const fromPrevious = filledGroups(def, previous);
+	if (fromPrevious.length !== 1) throw groupError(def);
+	return fromPrevious[0];
 };
 
 const buildFields = (provider, def, input, previous) => {
 	const known = new Map(def.fields.map((field) => [field.key, field]));
-	const fields = {};
+	const submitted = {};
 	for (const { key, value } of input) {
 		if (!known.has(key)) throw new errs.ValidationError(`Unknown field ${key} for DNS provider ${provider}`);
 		const text = String(value ?? "").trim();
 		if (lineBreakPattern.test(text))
 			throw new errs.ValidationError(`${known.get(key).label} must not contain a line break`);
-		if (text !== "") fields[key] = text;
+		if (text !== "") submitted[key] = text;
 	}
 
-	// an empty secret keeps its saved value
+	const activeGroup = def.one_of ? pickActiveGroup(def, submitted, previous) : null;
+	const fields = { ...submitted };
+
+	// an empty secret keeps its saved value, but never one from the inactive group
 	for (const field of def.fields) {
-		if (field.type === "secret" && !isFilled(fields, field.key) && isFilled(previous, field.key)) {
+		const inActiveGroup = !field.group || field.group === activeGroup;
+		if (field.type === "secret" && inActiveGroup && !isFilled(fields, field.key) && isFilled(previous, field.key)) {
 			fields[field.key] = previous[field.key];
 		}
 	}
 
-	const activeGroup = def.one_of ? checkGroups(def, fields) : null;
 	for (const field of def.fields) {
-		if (field.group && activeGroup && field.group !== activeGroup) {
+		if (field.group && field.group !== activeGroup) {
 			delete fields[field.key];
 			continue;
 		}
