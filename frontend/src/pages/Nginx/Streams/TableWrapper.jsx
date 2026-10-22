@@ -8,7 +8,7 @@ import { getDirectory, useStreams } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { showError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -34,12 +34,17 @@ export default function TableWrapper() {
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
-			await toggleStream(id, enabled);
+			const row = await toggleStream(id, enabled);
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["streams"] }),
 				queryClient.invalidateQueries({ queryKey: ["stream", id] }),
 			]);
-			showObjectSuccess("stream", enabled ? "enabled" : "disabled");
+			const nginxErr = getNginxConfigError(row);
+			if (nginxErr === null) {
+				showObjectSuccess("stream", enabled ? "enabled" : "disabled");
+			} else {
+				showNginxConfigError("stream", nginxErr);
+			}
 		} catch (err) {
 			showError(<T id={err.message} />);
 		}
