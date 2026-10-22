@@ -77,6 +77,9 @@ const internalDnsCredential = {
 		if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id)) > 0) {
 			throw new errs.ValidationError("The provider cannot change while certificates use this credential");
 		}
+		if (provider !== row.provider && data.fields === undefined && data.ini === undefined) {
+			throw new errs.ValidationError("Changing the DNS provider requires entering its credentials");
+		}
 		if (data.name !== undefined && data.name !== row.name) {
 			await internalDnsCredential.assertNameFree(row.owner_user_id, data.name);
 		}
