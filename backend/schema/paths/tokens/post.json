@@ -1,0 +1,71 @@
+{
+	"operationId": "requestToken",
+	"summary": "Request a new access token from credentials",
+	"tags": [
+		"tokens"
+	],
+	"requestBody": {
+		"description": "Credentials Payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"additionalProperties": false,
+					"properties": {
+						"identity": {
+							"minLength": 1,
+							"type": "string",
+							"example": "me@example.com"
+						},
+						"secret": {
+							"minLength": 1,
+							"type": "string",
+							"example": "bigredhorsebanana"
+						},
+						"code": {
+							"minLength": 6,
+							"maxLength": 8,
+							"type": "string",
+							"example": "123456"
+						}
+					},
+					"required": [
+						"identity",
+						"secret"
+					],
+					"type": "object"
+				},
+				"example": {
+					"identity": "me@example.com",
+					"secret": "bigredhorsebanana"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"expires": "2025-02-04T20:40:46.340Z"
+							}
+						}
+					},
+					"schema": {
+						"oneOf": [
+							{
+								"$ref": "../../components/token-object.json"
+							},
+							{
+								"$ref": "../../components/token-challenge.json"
+							}
+						]
+					}
+				}
+			},
+			"description": "200 response"
+		}
+	}
+}

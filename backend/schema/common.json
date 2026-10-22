@@ -1,0 +1,342 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "common",
+	"type": "object",
+	"properties": {
+		"id": {
+			"description": "Unique identifier",
+			"readOnly": true,
+			"type": "integer",
+			"minimum": 1,
+			"example": 11
+		},
+		"expand": {
+			"anyOf": [
+				{
+					"type": "null"
+				},
+				{
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": {
+						"type": "string"
+					}
+				}
+			]
+		},
+		"query": {
+			"anyOf": [
+				{
+					"type": "null"
+				},
+				{
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 255
+				}
+			]
+		},
+		"created_on": {
+			"description": "Date and time of creation",
+			"readOnly": true,
+			"type": "string",
+			"example": "2025-10-28T04:17:54.000Z"
+		},
+		"modified_on": {
+			"description": "Date and time of last update",
+			"readOnly": true,
+			"type": "string",
+			"example": "2025-10-28T04:17:54.000Z"
+		},
+		"user_id": {
+			"description": "User ID",
+			"type": "integer",
+			"minimum": 1,
+			"example": 2
+		},
+		"certificate_id": {
+			"description": "Certificate ID",
+			"anyOf": [
+				{
+					"type": "integer",
+					"minimum": 0,
+					"example": 5
+				},
+				{
+					"const": "new",
+					"example": "new"
+				}
+			],
+			"default": 0,
+			"example": 5
+		},
+		"domain_names": {
+			"description": "Domain Names array",
+			"type": "array",
+			"minItems": 1,
+			"maxItems": 100,
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 253,
+				"pattern": "^(~\\S*|(?!.*:[0-9]+$)[^\\s/]+)$"
+			},
+			"example": [
+				"example.com",
+				"www.example.com"
+			]
+		},
+		"enabled": {
+			"description": "Is Enabled",
+			"type": "boolean",
+			"default": true,
+			"example": false
+		},
+		"ssl_forced": {
+			"description": "Is SSL Forced",
+			"type": "boolean",
+			"default": false,
+			"example": true
+		},
+		"hsts_enabled": {
+			"description": "Is HSTS Enabled",
+			"type": "boolean",
+			"default": false,
+			"example": true
+		},
+		"hsts_subdomains": {
+			"description": "Is HSTS applicable to all subdomains",
+			"type": "boolean",
+			"default": false,
+			"example": true
+		},
+		"ssl_provider": {
+			"type": "string",
+			"pattern": "^(letsencrypt|other|mtls)$",
+			"example": "letsencrypt"
+		},
+		"npmplus_http3_support": {
+			"description": "HTTP3 Protocol Support",
+			"type": "boolean",
+			"default": false,
+			"example": true
+		},
+		"npmplus_nginx_online": {
+			"description": "Whether the nginx config of this host is loaded",
+			"type": "boolean",
+			"readOnly": true,
+			"example": true
+		},
+		"npmplus_nginx_err": {
+			"description": "nginx error if the config of this host could not be loaded",
+			"type": "string",
+			"readOnly": true,
+			"example": ""
+		},
+		"npmplus_directory": {
+			"description": "Directory to group this host in the UI",
+			"type": "string",
+			"maxLength": 255,
+			"default": "",
+			"example": "Production"
+		},
+		"npmplus_mtls_certificate_id": {
+			"description": "mTLS Certificate ID",
+			"type": "integer",
+			"minimum": 0,
+			"default": 0,
+			"example": 0
+		},
+		"npmplus_mtls_verify_client_optional": {
+			"description": "Make the mTLS client verification optional",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_mtls_bypass_auth_request": {
+			"description": "Skip the auth request if the mTLS client verification succeeded",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_noindex": {
+			"description": "Send noindex header and block some user agents",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_crowdsec_appsec": {
+			"description": "Disable Crowdsec Appsec",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_proxy_request_buffering": {
+			"description": "Disable Request Buffering",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_proxy_response_buffering": {
+			"description": "Disable Response Buffering",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_upstream_compression": {
+			"description": "Enable compression by upstream",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"npmplus_fancyindex": {
+			"description": "Enable fancyindex",
+			"type": "boolean",
+			"default": false,
+			"example": false
+		},
+		"email": {
+			"description": "Email address",
+			"type": "string",
+			"pattern": "@",
+			"minLength": 3,
+			"maxLength": 255,
+			"example": "me@example.com"
+		},
+		"directive": {
+			"type": "string",
+			"enum": [
+				"allow",
+				"deny"
+			],
+			"example": "allow"
+		},
+		"address": {
+			"type": "string",
+			"maxLength": 255,
+			"pattern": "^\\S*$",
+			"example": "192.168.0.11"
+		},
+		"access_items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"username",
+					"password"
+				],
+				"properties": {
+					"username": {
+						"type": "string",
+						"minLength": 1,
+						"pattern": "^[^:\\p{Cc}]+$",
+						"maxLength": 255
+					},
+					"password": {
+						"type": "string"
+					}
+				},
+				"example": {
+					"username": "admin",
+					"password": "pass"
+				}
+			},
+			"default": [],
+			"example": [
+				{
+					"username": "admin",
+					"password": "pass"
+				}
+			]
+		},
+		"access_clients": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"address",
+					"directive"
+				],
+				"properties": {
+					"address": {
+						"$ref": "#/properties/address"
+					},
+					"directive": {
+						"$ref": "#/properties/directive"
+					}
+				},
+				"example": {
+					"directive": "allow",
+					"address": "192.168.0.0/24"
+				}
+			},
+			"default": [],
+			"example": [
+				{
+					"directive": "allow",
+					"address": "192.168.0.0/24"
+				}
+			]
+		},
+		"npmplus_access_list_ids": {
+			"writeOnly": true,
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"default": []
+		},
+		"npmplus_host_access_list_type": {
+			"type": "string",
+			"enum": [
+				"public",
+				"custom"
+			],
+			"default": "public"
+		},
+		"npmplus_location_access_list_type": {
+			"type": "string",
+			"enum": [
+				"global",
+				"public",
+				"custom"
+			],
+			"default": "global"
+		},
+		"certificate_files": {
+			"description": "Certificate Files",
+			"content": {
+				"multipart/form-data": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"certificate"
+						],
+						"properties": {
+							"certificate": {
+								"type": "string",
+								"example": "-----BEGIN CERTIFICATE-----\nMIID...-----END CERTIFICATE-----"
+							},
+							"certificate_key": {
+								"type": "string",
+								"description": "Required for custom certificates, not used for mTLS certificates",
+								"example": "-----BEGIN PRIVATE KEY-----\nMIIE...-----END PRIVATE KEY-----"
+							}
+						}
+					},
+					"example": {
+						"certificate": "-----BEGIN CERTIFICATE-----\nMIID...-----END CERTIFICATE-----",
+						"certificate_key": "-----BEGIN PRIVATE KEY-----\nMIIE...-----END PRIVATE KEY-----"
+					}
+				}
+			}
+		}
+	}
+}

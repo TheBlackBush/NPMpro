@@ -1,0 +1,80 @@
+// Objection Docs:
+// http://vincit.github.io/objection.js/
+
+import bcrypt from "bcryptjs";
+import { Model } from "objection";
+import db from "../db.js";
+import { hash, verify } from "../lib/argon2.js";
+import now from "./now_helper.js";
+import User from "./user.js";
+
+Model.knex(db());
+
+const encryptPassword = async (auth) => {
+	if (auth.type === "password" && auth.secret) auth.secret = await hash(auth.secret);
+};
+
+class Auth extends Model {
+	$beforeInsert() {
+		this.created_on = now();
+		this.modified_on = now();
+
+		// Default for meta
+		this.meta ??= {};
+
+		return encryptPassword(this);
+	}
+
+	$beforeUpdate() {
+		this.modified_on = now();
+		return encryptPassword(this);
+	}
+
+	$parseDatabaseJson(json) {
+		const { is_deleted, meta, ...thisJson } = super.$parseDatabaseJson(json);
+		return thisJson;
+	}
+
+	/**
+	 * Verify a plain password against the encrypted password, replacing a legacy bcrypt hash on success
+	 *
+	 * @param {String} password
+	 * @returns {Promise}
+	 */
+	async verifyPassword(password) {
+		if (!this.secret.startsWith("$2")) return verify(password, this.secret);
+		if (!(await bcrypt.compare(password, this.secret))) return false;
+
+		await this.$query().patch({ type: this.type, secret: password });
+		return true;
+	}
+
+	/**
+	 * Get the password auth row for a user, or undefined if none exists
+	 *
+	 * @param   {number} userId
+	 * @returns {Promise<object|undefined>}
+	 */
+	static getPasswordAuth(userId) {
+		return Auth.query().where("user_id", userId).andWhere("type", "password").first();
+	}
+
+	static tableName = "auth";
+
+	static jsonAttributes = ["meta"];
+
+	static get relationMappings() {
+		return {
+			user: {
+				relation: Model.HasOneRelation,
+				modelClass: User,
+				join: {
+					from: "auth.user_id",
+					to: "user.id",
+				},
+			},
+		};
+	}
+}
+
+export default Auth;

@@ -1,0 +1,339 @@
+import cn from "clsx";
+import { Field, Form, Formik } from "formik";
+import { useState } from "react";
+import { Alert } from "react-bootstrap";
+import Modal from "react-bootstrap/Modal";
+import {
+	Button,
+	DirectoryField,
+	DomainNamesField,
+	HasPermission,
+	Loading,
+	NginxConfigField,
+	SSLCertificateField,
+	SSLOptionsFields,
+} from "src/components";
+import { useDirectorySuggestions, useRedirectionHost, useRedirectionHosts, useSetRedirectionHost } from "src/hooks";
+import { T } from "src/locale";
+import EasyModal from "src/modules/easyModal";
+import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
+import { showTabOfInvalid, validateString } from "src/modules/Validations";
+import { showObjectSuccess } from "src/notifications";
+
+const showRedirectionHostModal = (id) => {
+	EasyModal.show(RedirectionHostModal, { id });
+};
+
+const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
+	const { data, isPending, error } = useRedirectionHost(id);
+	const { mutate: setRedirectionHost } = useSetRedirectionHost();
+	const { data: allRedirectionHosts } = useRedirectionHosts();
+	const suggestions = useDirectorySuggestions(allRedirectionHosts);
+	const [errorMsg, setErrorMsg] = useState(null);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const onSubmit = (values, { setSubmitting }) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		setErrorMsg(null);
+
+		const payload = {
+			id: id === "new" ? undefined : id,
+			...values,
+		};
+
+		setRedirectionHost(payload, {
+			onError: (err) => {
+				if (err.payload?.error?.output) {
+					setErrorMsg(
+						<div className="w-100">
+							<pre>
+								<code>{err.payload.error.output}</code>
+							</pre>
+						</div>,
+					);
+				} else {
+					setErrorMsg(<T id={err.message} />);
+				}
+			},
+			onSuccess: () => {
+				showObjectSuccess("redirection-host", "saved");
+				remove();
+			},
+			onSettled: () => {
+				setIsSubmitting(false);
+				setSubmitting(false);
+			},
+		});
+	};
+
+	return (
+		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+			{error && (
+				<Alert variant="danger" className="m-3">
+					{error?.message}
+				</Alert>
+			)}
+			{isPending && <Loading noLogo />}
+			{data && (
+				<Formik
+					initialValues={{
+						// Details tab
+						domainNames: data?.domainNames,
+						forwardDomainName: data?.forwardDomainName,
+						forwardScheme: data?.forwardScheme,
+						forwardHttpCode: data?.forwardHttpCode,
+						preservePath: data?.preservePath,
+						// SSL tab
+						certificateId: data?.certificateId,
+						sslForced: data?.sslForced,
+						npmplusHttp3Support: data?.npmplusHttp3Support,
+						hstsEnabled: data?.hstsEnabled,
+						hstsSubdomains: data?.hstsSubdomains,
+						// Advanced tab
+						advancedConfig: data?.advancedConfig,
+						npmplusDirectory: data?.npmplusDirectory,
+						npmplusMtlsCertificateId: data?.npmplusMtlsCertificateId,
+						npmplusMtlsVerifyClientOptional: data?.npmplusMtlsVerifyClientOptional,
+					}}
+					onSubmit={onSubmit}
+				>
+					{({ values }) => (
+						<Form onInvalid={showTabOfInvalid}>
+							<Modal.Header closeButton={!isSubmitting}>
+								<Modal.Title>
+									<T
+										id={data?.id ? "object.edit" : "object.add"}
+										tData={{ object: "redirection-host" }}
+									/>
+								</Modal.Title>
+							</Modal.Header>
+							<Modal.Body className="p-0">
+								<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
+									{errorMsg}
+								</Alert>
+								<div className="card m-0 border-0">
+									<div className="card-header">
+										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+											<li className="nav-item" role="presentation">
+												<a
+													href="#tab-details"
+													className="nav-link active"
+													data-bs-toggle="tab"
+													aria-selected="true"
+													role="tab"
+												>
+													<T id="column.details" />
+												</a>
+											</li>
+											<li className="nav-item" role="presentation">
+												<a
+													href="#tab-ssl"
+													className="nav-link"
+													data-bs-toggle="tab"
+													aria-selected="false"
+													role="tab"
+												>
+													<T id="column.ssl" />
+												</a>
+											</li>
+											<li className="nav-item ms-auto" role="presentation">
+												<a
+													href="#tab-advanced"
+													className="nav-link"
+													title="Settings"
+													data-bs-toggle="tab"
+													aria-selected="false"
+													role="tab"
+												>
+													<T id="domains.advanced" />
+													{values?.advancedConfig?.trim() ? "*" : ""}
+												</a>
+											</li>
+										</ul>
+									</div>
+									<div className="card-body">
+										<div className="tab-content">
+											<div className="tab-pane active show" id="tab-details" role="tabpanel">
+												<DomainNamesField
+													isWildcardPermitted={
+														values.certificateId !== "new" || values.npmplusDnsChallenge
+													}
+													dnsProviderWildcardSupported
+													forCertificate={values.certificateId === "new"}
+												/>
+												<div className="row">
+													<div className="col-md-4">
+														<Field name="forwardScheme">
+															{({ field }) => (
+																<div className="mb-3">
+																	<label
+																		className="form-label"
+																		htmlFor="forwardScheme"
+																	>
+																		<T id="host.forward-scheme" />
+																	</label>
+																	<select
+																		id="forwardScheme"
+																		className="form-select"
+																		required
+																		{...field}
+																	>
+																		<option value="$scheme">keep</option>
+																		<option value="http">http</option>
+																		<option value="https">https</option>
+																	</select>
+																</div>
+															)}
+														</Field>
+													</div>
+													<div className="col-md-8">
+														<Field
+															name="forwardDomainName"
+															validate={validateString(1, 253)}
+														>
+															{({ field, form }) => (
+																<div className="mb-3">
+																	<label
+																		className="form-label"
+																		htmlFor="forwardDomainName"
+																	>
+																		<T id="redirection-host.forward-domain" />
+																	</label>
+																	<input
+																		id="forwardDomainName"
+																		type="text"
+																		className={`form-control ${form.errors.forwardDomainName && form.touched.forwardDomainName ? "is-invalid" : ""}`}
+																		required
+																		pattern="\S+"
+																		placeholder="example.com"
+																		{...field}
+																	/>
+
+																	{form.errors.forwardDomainName ? (
+																		<div className="invalid-feedback">
+																			{form.touched.forwardDomainName
+																				? form.errors.forwardDomainName
+																				: null}
+																		</div>
+																	) : null}
+																</div>
+															)}
+														</Field>
+													</div>
+												</div>
+												<Field name="forwardHttpCode">
+													{({ field }) => (
+														<div className="mb-3">
+															<label className="form-label" htmlFor="forwardHttpCode">
+																<T id="redirection-host.forward-http-code" />
+															</label>
+															<select
+																id="forwardHttpCode"
+																className="form-select"
+																required
+																{...field}
+															>
+																<option value="301">
+																	<T id="redirection-hosts.http-code.301" />
+																</option>
+																<option value="302">
+																	<T id="redirection-hosts.http-code.302" />
+																</option>
+																<option value="303">
+																	<T id="redirection-hosts.http-code.303" />
+																</option>
+																<option value="307">
+																	<T id="redirection-hosts.http-code.307" />
+																</option>
+																<option value="308">
+																	<T id="redirection-hosts.http-code.308" />
+																</option>
+															</select>
+														</div>
+													)}
+												</Field>
+												<div className="my-3">
+													<h4 className="py-2">
+														<T id="options" />
+													</h4>
+													<div className="divide-y">
+														<div>
+															<label
+																className="row cursor-pointer"
+																htmlFor="preservePath"
+															>
+																<span className="col">
+																	<T id="host.flags.preserve-path" />
+																</span>
+																<span className="col-auto">
+																	<Field name="preservePath" type="checkbox">
+																		{({ field }) => (
+																			<span className="form-check form-check-single form-switch">
+																				<input
+																					{...field}
+																					id="preservePath"
+																					className={cn("form-check-input", {
+																						"bg-yellow": field.checked,
+																					})}
+																					type="checkbox"
+																				/>
+																			</span>
+																		)}
+																	</Field>
+																</span>
+															</label>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div className="tab-pane" id="tab-ssl" role="tabpanel">
+												<SSLCertificateField
+													name="certificateId"
+													label="ssl-certificate"
+													allowNew
+												/>
+
+												<SSLOptionsFields color="bg-yellow" />
+											</div>
+											<div className="tab-pane" id="tab-advanced" role="tabpanel">
+												<NginxConfigField />
+												<div className="row mt-3">
+													<div className="col-md-12 mb-3">
+														<DirectoryField
+															labelId="redirection-host.directory"
+															datalistId="directory-suggestions-redirection"
+															suggestions={suggestions}
+														/>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</Modal.Body>
+							<Modal.Footer>
+								<Button onClick={remove} disabled={isSubmitting}>
+									<T id="cancel" />
+								</Button>
+								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
+									<Button
+										type="submit"
+										color="yellow"
+										className="ms-auto"
+										isLoading={isSubmitting}
+										disabled={isSubmitting}
+									>
+										<T id="save" />
+									</Button>
+								</HasPermission>
+							</Modal.Footer>
+						</Form>
+					)}
+				</Formik>
+			)}
+		</Modal>
+	);
+});
+
+export { showRedirectionHostModal };

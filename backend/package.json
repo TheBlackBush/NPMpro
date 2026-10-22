@@ -1,0 +1,35 @@
+{
+	"name": "NPMplus",
+	"version": "0.0.0",
+	"description": "A beautiful interface for creating Nginx endpoints",
+	"author": "Jamie Curnow <jc@jc21.com> and ZoeyVid <zoeyvid@zvcdn.de>",
+	"license": "AGPL-3.0 (and MIT)",
+	"main": "index.js",
+	"type": "module",
+	"dependencies": {
+		"@apidevtools/json-schema-ref-parser": "16.0.5",
+		"ajv": "8.20.0",
+		"archiver": "8.0.0",
+		"bcryptjs": "3.0.3",
+		"better-sqlite3": "13.0.3",
+		"cookie-parser": "1.4.7",
+		"dayjs": "1.11.23",
+		"express": "5.3.0",
+		"express-rate-limit": "8.7.1",
+		"jsonwebtoken": "9.0.3",
+		"knex": "3.3.0",
+		"liquidjs": "10.30.0",
+		"multer": "2.4.0",
+		"mysql2": "3.24.6",
+		"objection": "4.2.0",
+		"openid-client": "6.8.8",
+		"otplib": "13.5.0",
+		"pg": "8.23.1",
+		"swagger-ui-express": "5.0.1",
+		"undici": "8.12.3"
+	},
+	"devDependencies": {
+		"@apidevtools/swagger-parser": "13.1.0",
+		"@biomejs/biome": "2.6.2"
+	}
+}

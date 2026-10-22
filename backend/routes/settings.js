@@ -1,0 +1,79 @@
+import express from "express";
+import internalSetting from "../internal/setting.js";
+import jwtdecode from "../lib/express/jwt-decode.js";
+import apiValidator from "../lib/validator/api.js";
+import validator from "../lib/validator/index.js";
+import { getValidationSchema } from "../schema/index.js";
+
+const settingSchema = {
+	type: "object",
+	required: ["setting_id"],
+	additionalProperties: false,
+	properties: {
+		setting_id: {
+			type: "string",
+			minLength: 1,
+		},
+	},
+};
+
+const router = express.Router({
+	caseSensitive: true,
+	strict: true,
+	mergeParams: true,
+});
+
+/**
+ * /api/settings
+ */
+router
+	.route("/")
+	.all(jwtdecode())
+
+	/**
+	 * GET /api/settings
+	 *
+	 * Retrieve all settings
+	 */
+	.get(async (_, res) => {
+		const rows = await internalSetting.getAll(res.locals.access);
+		res.status(200).send(rows);
+	});
+
+/**
+ * Specific setting
+ *
+ * /api/settings/something
+ */
+router
+	.route("/:setting_id")
+	.all(jwtdecode())
+
+	/**
+	 * GET /settings/something
+	 *
+	 * Retrieve a specific setting
+	 */
+	.get(async (req, res) => {
+		const data = validator(settingSchema, {
+			setting_id: req.params.setting_id,
+		});
+		const row = await internalSetting.get(res.locals.access, {
+			id: data.setting_id,
+		});
+		res.status(200).send(row);
+	})
+
+	/**
+	 * PUT /api/settings/something
+	 *
+	 * Update and existing setting
+	 */
+	.put(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/settings/{settingID}", "put"), req.body);
+		payload.id = req.params.setting_id;
+		const result = await internalSetting.update(res.locals.access, payload);
+		res.status(200).send(result);
+	});
+
+export default router;

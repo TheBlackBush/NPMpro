@@ -1,0 +1,30 @@
+{
+	"type": "object",
+	"description": "Health object",
+	"additionalProperties": false,
+	"required": [
+		"status"
+	],
+	"properties": {
+		"status": {
+			"type": "string",
+			"description": "Healthy",
+			"example": "OK"
+		},
+		"setup": {
+			"type": "boolean",
+			"description": "Whether the initial setup has been completed",
+			"example": true
+		},
+		"password": {
+			"type": "boolean",
+			"description": "Whether the password login is enabled",
+			"example": true
+		},
+		"oidc": {
+			"type": "boolean",
+			"description": "Whether the OIDC login is enabled",
+			"example": false
+		}
+	}
+}

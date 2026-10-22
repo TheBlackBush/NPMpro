@@ -1,0 +1,542 @@
+import { Field, Form, Formik } from "formik";
+import { useState } from "react";
+import { Alert } from "react-bootstrap";
+import Modal from "react-bootstrap/Modal";
+import {
+	Button,
+	DirectoryField,
+	HasPermission,
+	Loading,
+	NginxConfigField,
+	SSLCertificateField,
+	SSLOptionsFields,
+} from "src/components";
+import { useDirectorySuggestions, useSetStream, useStream, useStreams } from "src/hooks";
+import { intl, T } from "src/locale";
+import EasyModal from "src/modules/easyModal";
+import { MANAGE, STREAMS } from "src/modules/Permissions";
+import { showTabOfInvalid, validateString } from "src/modules/Validations";
+import { showObjectSuccess } from "src/notifications";
+
+const showStreamModal = (id) => {
+	EasyModal.show(StreamModal, { id });
+};
+
+const StreamModal = EasyModal.create(({ id, visible, remove }) => {
+	const { data, isPending, error } = useStream(id);
+	const { data: allStreams } = useStreams();
+	const suggestions = useDirectorySuggestions(allStreams);
+	const { mutate: setStream } = useSetStream();
+	const [errorMsg, setErrorMsg] = useState(null);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const onSubmit = (values, { setSubmitting }) => {
+		if (isSubmitting) return;
+		setIsSubmitting(true);
+		setErrorMsg(null);
+
+		const payload = {
+			id: id === "new" ? undefined : id,
+			...values,
+			domainNames: values.certificateId === "new" ? values.domainNames : undefined,
+		};
+
+		setStream(payload, {
+			onError: (err) => {
+				if (err.payload?.error?.output) {
+					setErrorMsg(
+						<div className="w-100">
+							<pre>
+								<code>{err.payload.error.output}</code>
+							</pre>
+						</div>,
+					);
+				} else {
+					setErrorMsg(<T id={err.message} />);
+				}
+			},
+			onSuccess: () => {
+				showObjectSuccess("stream", "saved");
+				remove();
+			},
+			onSettled: () => {
+				setIsSubmitting(false);
+				setSubmitting(false);
+			},
+		});
+	};
+
+	return (
+		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+			{error && (
+				<Alert variant="danger" className="m-3">
+					{error?.message}
+				</Alert>
+			)}
+			{isPending && <Loading noLogo />}
+			{data && (
+				<Formik
+					initialValues={{
+						incomingPort: data?.incomingPort,
+						forwardingHost: data?.forwardingHost,
+						forwardingPort: data?.forwardingPort,
+						tcpForwarding: data?.tcpForwarding,
+						udpForwarding: data?.udpForwarding,
+						npmplusProxyProtocolForwarding: data?.npmplusProxyProtocolForwarding,
+						npmplusProxyTls: data?.npmplusProxyTls,
+						certificateId: data?.certificateId,
+						npmplusAdvancedConfig: data?.npmplusAdvancedConfig,
+						npmplusDirectory: data?.npmplusDirectory,
+						npmplusMtlsCertificateId: data?.npmplusMtlsCertificateId,
+						npmplusMtlsVerifyClientOptional: data?.npmplusMtlsVerifyClientOptional,
+						npmplusDescription: data?.npmplusDescription,
+					}}
+					onSubmit={onSubmit}
+				>
+					{({ values, setFieldValue }) => (
+						<Form onInvalid={showTabOfInvalid}>
+							<Modal.Header closeButton={!isSubmitting}>
+								<Modal.Title>
+									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "stream" }} />
+								</Modal.Title>
+							</Modal.Header>
+							<Modal.Body className="p-0">
+								<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
+									{errorMsg}
+								</Alert>
+
+								<div className="card m-0 border-0">
+									<div className="card-header">
+										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+											<li className="nav-item" role="presentation">
+												<a
+													href="#tab-details"
+													className="nav-link active"
+													data-bs-toggle="tab"
+													aria-selected="true"
+													role="tab"
+												>
+													<T id="column.details" />
+												</a>
+											</li>
+											<li className="nav-item" role="presentation">
+												<a
+													href="#tab-ssl"
+													className={`nav-link ${values.udpForwarding ? "disabled" : ""}`}
+													data-bs-toggle={values.udpForwarding ? undefined : "tab"}
+													aria-selected="false"
+													aria-disabled={values.udpForwarding}
+													role="tab"
+												>
+													<T id="column.ssl" />
+												</a>
+											</li>
+											<li className="nav-item ms-auto" role="presentation">
+												<a
+													href="#tab-advanced"
+													className="nav-link"
+													title="Settings"
+													data-bs-toggle="tab"
+													aria-selected="false"
+													role="tab"
+												>
+													<T id="domains.advanced" />
+													{values?.npmplusAdvancedConfig?.trim() ? "*" : ""}
+												</a>
+											</li>
+										</ul>
+									</div>
+									<div className="card-body">
+										<div className="tab-content">
+											<div className="tab-pane active show" id="tab-details" role="tabpanel">
+												<Field name="incomingPort" validate={validateString(1, 11)}>
+													{({ field, form }) => (
+														<div className="mb-3">
+															<label className="form-label" htmlFor="incomingPort">
+																<T id="stream.incoming-port" />
+															</label>
+															<input
+																id="incomingPort"
+																type="text"
+																minLength={1}
+																maxLength={11}
+																pattern="[0-9]{1,5}(-[0-9]{1,5})?"
+																className={`form-control ${form.errors.incomingPort && form.touched.incomingPort ? "is-invalid" : ""}`}
+																required
+																placeholder="eg: 8080"
+																{...field}
+															/>
+
+															{form.errors.incomingPort ? (
+																<div className="invalid-feedback">
+																	{form.touched.incomingPort
+																		? form.errors.incomingPort
+																		: null}
+																</div>
+															) : null}
+														</div>
+													)}
+												</Field>
+												<Field name="npmplusDescription" validate={validateString(0, 255)}>
+													{({ field, form }) => (
+														<div className="mb-3">
+															<label className="form-label" htmlFor="npmplusDescription">
+																<T id="stream.description" />
+															</label>
+															<input
+																id="npmplusDescription"
+																type="text"
+																maxLength={255}
+																className={`form-control ${form.errors.npmplusDescription && form.touched.npmplusDescription ? "is-invalid" : ""}`}
+																placeholder={intl.formatMessage({
+																	id: "stream.description.placeholder",
+																})}
+																{...field}
+															/>
+
+															{form.errors.npmplusDescription ? (
+																<div className="invalid-feedback">
+																	{form.touched.npmplusDescription
+																		? form.errors.npmplusDescription
+																		: null}
+																</div>
+															) : null}
+														</div>
+													)}
+												</Field>
+												<div className="row">
+													<div className="col-md-8">
+														<Field name="forwardingHost" validate={validateString(1, 253)}>
+															{({ field, form }) => (
+																<div className="mb-3">
+																	<label
+																		className="form-label"
+																		htmlFor="forwardingHost"
+																	>
+																		<T id="stream.forward-host" />
+																	</label>
+																	<input
+																		id="forwardingHost"
+																		type="text"
+																		className={`form-control ${form.errors.forwardingHost && form.touched.forwardingHost ? "is-invalid" : ""}`}
+																		required
+																		pattern="\S+"
+																		placeholder={intl.formatMessage({
+																			id: "stream.forward-host.placeholder",
+																		})}
+																		{...field}
+																	/>
+
+																	{form.errors.forwardingHost ? (
+																		<div className="invalid-feedback">
+																			{form.touched.forwardingHost
+																				? form.errors.forwardingHost
+																				: null}
+																		</div>
+																	) : null}
+																</div>
+															)}
+														</Field>
+													</div>
+													<div className="col-md-4">
+														<Field name="forwardingPort" validate={validateString(0, 12)}>
+															{({ field, form }) => (
+																<div className="mb-3">
+																	<label
+																		className="form-label"
+																		htmlFor="forwardingPort"
+																	>
+																		<T id="host.forward-port" />
+																	</label>
+																	<input
+																		id="forwardingPort"
+																		type="text"
+																		maxLength={12}
+																		pattern="[0-9]{0,5}|\$server_port"
+																		className={`form-control ${form.errors.forwardingPort && form.touched.forwardingPort ? "is-invalid" : ""}`}
+																		placeholder="eg: 8081"
+																		{...field}
+																	/>
+
+																	{form.errors.forwardingPort ? (
+																		<div className="invalid-feedback">
+																			{form.touched.forwardingPort
+																				? form.errors.forwardingPort
+																				: null}
+																		</div>
+																	) : null}
+																</div>
+															)}
+														</Field>
+													</div>
+												</div>
+												<div className="my-3">
+													<h3 className="py-2">
+														<T id="host.flags.protocols" />
+													</h3>
+													<div className="divide-y">
+														<div>
+															<label
+																className="row cursor-pointer"
+																htmlFor="tcpForwarding"
+															>
+																<span className="col">
+																	<T id="streams.tcp" />
+																</span>
+																<span className="col-auto">
+																	<Field name="tcpForwarding" type="checkbox">
+																		{({ field }) => (
+																			<span className="form-check form-check-single form-switch">
+																				<input
+																					id="tcpForwarding"
+																					className="form-check-input"
+																					type="checkbox"
+																					name={field.name}
+																					checked={field.value}
+																					onChange={(e) => {
+																						setFieldValue(
+																							field.name,
+																							e.target.checked,
+																						);
+																						if (!e.target.checked) {
+																							setFieldValue(
+																								"udpForwarding",
+																								true,
+																							);
+																							if (
+																								values.npmplusProxyProtocolForwarding ===
+																								1
+																							) {
+																								setFieldValue(
+																									"npmplusProxyProtocolForwarding",
+																									0,
+																								);
+																							}
+																							setFieldValue(
+																								"npmplusProxyTls",
+																								false,
+																							);
+																							setFieldValue(
+																								"certificateId",
+																								0,
+																							);
+																							setFieldValue(
+																								"npmplusMtlsCertificateId",
+																								0,
+																							);
+																							setFieldValue(
+																								"npmplusMtlsVerifyClientOptional",
+																								false,
+																							);
+																						}
+																					}}
+																				/>
+																			</span>
+																		)}
+																	</Field>
+																</span>
+															</label>
+														</div>
+														<div>
+															<label
+																className="row cursor-pointer"
+																htmlFor="udpForwarding"
+															>
+																<span className="col">
+																	<T id="streams.udp" />
+																</span>
+																<span className="col-auto">
+																	<Field name="udpForwarding" type="checkbox">
+																		{({ field }) => (
+																			<span className="form-check form-check-single form-switch">
+																				<input
+																					id="udpForwarding"
+																					className="form-check-input"
+																					type="checkbox"
+																					name={field.name}
+																					checked={field.value}
+																					onChange={(e) => {
+																						setFieldValue(
+																							field.name,
+																							e.target.checked,
+																						);
+
+																						if (e.target.checked) {
+																							if (
+																								values.npmplusProxyProtocolForwarding ===
+																								1
+																							) {
+																								setFieldValue(
+																									"npmplusProxyProtocolForwarding",
+																									0,
+																								);
+																							}
+																							setFieldValue(
+																								"npmplusProxyTls",
+																								false,
+																							);
+																							setFieldValue(
+																								"certificateId",
+																								0,
+																							);
+																							setFieldValue(
+																								"npmplusMtlsCertificateId",
+																								0,
+																							);
+																							setFieldValue(
+																								"npmplusMtlsVerifyClientOptional",
+																								false,
+																							);
+																						}
+
+																						if (!e.target.checked) {
+																							setFieldValue(
+																								"tcpForwarding",
+																								true,
+																							);
+																						}
+																					}}
+																				/>
+																			</span>
+																		)}
+																	</Field>
+																</span>
+															</label>
+														</div>
+														<div>
+															<label
+																className="row cursor-pointer"
+																htmlFor="npmplusProxyTls"
+															>
+																<span className="col">
+																	<T id="streams.tls" />
+																</span>
+																<span className="col-auto">
+																	<Field name="npmplusProxyTls" type="checkbox">
+																		{({ field }) => (
+																			<span className="form-check form-check-single form-switch">
+																				<input
+																					id="npmplusProxyTls"
+																					className="form-check-input"
+																					type="checkbox"
+																					name={field.name}
+																					checked={field.value}
+																					disabled={values.udpForwarding}
+																					onChange={(e) => {
+																						setFieldValue(
+																							field.name,
+																							e.target.checked,
+																						);
+																					}}
+																				/>
+																			</span>
+																		)}
+																	</Field>
+																</span>
+															</label>
+														</div>
+														<div>
+															<label
+																className="row cursor-pointer"
+																htmlFor="npmplusProxyProtocolForwarding"
+															>
+																<span className="col">
+																	<T id="streams.pp" />
+																</span>
+																<span className="col-auto">
+																	<Field name="npmplusProxyProtocolForwarding">
+																		{({ field }) => (
+																			<select
+																				id="npmplusProxyProtocolForwarding"
+																				className="form-select w-auto"
+																				required
+																				{...field}
+																				onChange={(e) =>
+																					setFieldValue(
+																						field.name,
+																						Number(e.target.value),
+																					)
+																				}
+																			>
+																				<option value={0}>
+																					{intl.formatMessage({
+																						id: "streams.pp.off",
+																					})}
+																				</option>
+																				{values.tcpForwarding &&
+																				!values.udpForwarding ? (
+																					<option value={1}>
+																						{intl.formatMessage({
+																							id: "streams.pp.v1",
+																						})}
+																					</option>
+																				) : null}
+																				<option value={2}>
+																					{intl.formatMessage({
+																						id: "streams.pp.v2",
+																					})}
+																				</option>
+																			</select>
+																		)}
+																	</Field>
+																</span>
+															</label>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div className="tab-pane" id="tab-ssl" role="tabpanel">
+												<SSLCertificateField
+													name="certificateId"
+													label="ssl-certificate"
+													allowNew
+													forHttp={false}
+												/>
+
+												<SSLOptionsFields color="bg-blue" forHttp={false} />
+											</div>
+											<div className="tab-pane" id="tab-advanced" role="tabpanel">
+												<NginxConfigField
+													name="npmplusAdvancedConfig"
+													id="npmplusAdvancedConfig"
+												/>
+
+												<div className="row mt-3">
+													<div className="col-md-12 mb-3">
+														<DirectoryField
+															labelId="stream.directory"
+															datalistId="directory-suggestions-stream"
+															suggestions={suggestions}
+														/>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</Modal.Body>
+							<Modal.Footer>
+								<Button onClick={remove} disabled={isSubmitting}>
+									<T id="cancel" />
+								</Button>
+								<HasPermission section={STREAMS} permission={MANAGE} hideError>
+									<Button
+										type="submit"
+										actionType="primary"
+										className="ms-auto"
+										isLoading={isSubmitting}
+										disabled={isSubmitting}
+									>
+										<T id="save" />
+									</Button>
+								</HasPermission>
+							</Modal.Footer>
+						</Form>
+					)}
+				</Formik>
+			)}
+		</Modal>
+	);
+});
+
+export { showStreamModal };

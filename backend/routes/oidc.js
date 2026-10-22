@@ -1,0 +1,225 @@
+import express from "express";
+import { rateLimit } from "express-rate-limit";
+import {
+	authorizationCodeGrant,
+	buildAuthorizationUrl,
+	calculatePKCECodeChallenge,
+	discovery,
+	fetchUserInfo,
+	randomNonce,
+	randomPKCECodeVerifier,
+	randomState,
+} from "openid-client";
+import internalToken from "../internal/token.js";
+import errs from "../lib/error.js";
+import { oidc as logger } from "../logger.js";
+
+const router = express.Router({
+	caseSensitive: true,
+	strict: true,
+	mergeParams: true,
+});
+
+const limiter = rateLimit({
+	windowMs: 5 * 60 * 1000,
+	limit: 10,
+	standardHeaders: "draft-8",
+	legacyHeaders: false,
+	ipv6Subnet: 48,
+});
+
+router.use(limiter);
+
+router
+	.route("/")
+
+	/**
+	 * GET /api/oidc
+	 *
+	 * OAuth Authorization Code flow initialisation
+	 */
+	.get(async (_, res) => {
+		try {
+			const config = await discovery(
+				new URL(process.env.OIDC_ISSUER_URL),
+				process.env.OIDC_CLIENT_ID,
+				process.env.OIDC_CLIENT_SECRET,
+			);
+
+			const code_verifier = randomPKCECodeVerifier();
+			const parameters = {
+				redirect_uri: `https://${process.env.OIDC_REDIRECT_DOMAIN}/api/oidc/callback`,
+				scope: "openid email",
+				state: randomState(),
+				nonce: randomNonce(),
+				code_challenge_method: "S256",
+				code_challenge: await calculatePKCECodeChallenge(code_verifier),
+			};
+
+			res.cookie("__Host-npmplus_oidc_no_redirect", "true", {
+				secure: true,
+				sameSite: "Strict",
+				maxAge: 60 * 60 * 1000,
+			});
+			res.cookie("__Host-Http-npmplus_oidc_code_verifier", code_verifier, {
+				signed: true,
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+				maxAge: 15 * 60 * 1000,
+			});
+			res.cookie("__Host-Http-npmplus_oidc_state", parameters.state, {
+				signed: true,
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+				maxAge: 15 * 60 * 1000,
+			});
+			res.cookie("__Host-Http-npmplus_oidc_nonce", parameters.nonce, {
+				signed: true,
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+				maxAge: 15 * 60 * 1000,
+			});
+
+			res.redirect(buildAuthorizationUrl(config, parameters).toString());
+		} catch (err) {
+			logger.error(`Init error: ${err.message}`);
+			res.cookie("__Host-npmplus_oidc_no_redirect", "true", {
+				secure: true,
+				sameSite: "Strict",
+				maxAge: 60 * 60 * 1000,
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_state", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_nonce", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_code_verifier", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.redirect("/");
+		}
+	});
+
+router
+	.route("/callback")
+
+	/**
+	 * GET /api/oidc/callback
+	 *
+	 * Oauth Authorization Code flow callback
+	 */
+	.get(async (req, res) => {
+		try {
+			const config = await discovery(
+				new URL(process.env.OIDC_ISSUER_URL),
+				process.env.OIDC_CLIENT_ID,
+				process.env.OIDC_CLIENT_SECRET,
+			);
+
+			const tokens = await authorizationCodeGrant(
+				config,
+				new URL(`${req.protocol}://${req.host}${req.originalUrl}`),
+				{
+					pkceCodeVerifier: req.signedCookies?.["__Host-Http-npmplus_oidc_code_verifier"],
+					expectedState: req.signedCookies?.["__Host-Http-npmplus_oidc_state"],
+					expectedNonce: req.signedCookies?.["__Host-Http-npmplus_oidc_nonce"],
+					idTokenExpected: true,
+				},
+			);
+
+			const idTokenClaims = tokens.claims();
+
+			let claims = idTokenClaims;
+			if (!idTokenClaims.email) {
+				const userinfo = await fetchUserInfo(config, tokens.access_token, idTokenClaims.sub);
+				claims = { ...idTokenClaims, ...userinfo };
+			}
+
+			if (!claims.email) throw new errs.PermissionError("The Identity Provider didn't send the 'email' claim");
+
+			if (process.env.OIDC_REQUIRE_VERIFIED_EMAIL === "true" && claims.email_verified !== true) {
+				throw new errs.PermissionError("The email address has not been verified.");
+			}
+
+			logger.info(`Successful authentication for email: ${claims.email.toLowerCase().trim()}`);
+
+			const data = await internalToken.getTokenFromOAuthClaim({ identity: claims.email.toLowerCase().trim() });
+
+			res.clearCookie("__Host-Http-npmplus_oidc_state", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_nonce", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_code_verifier", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+
+			if (data.requiresTotp) {
+				res.cookie("__Host-Http-challenge_token", data.token, {
+					signed: true,
+					httpOnly: true,
+					secure: true,
+					sameSite: "Strict",
+					expires: new Date(data.expires),
+				});
+				if (data.requiresTotp) {
+					res.cookie("__Host-npmplus_oidc_totp_required", "true", {
+						secure: true,
+						sameSite: "Strict",
+						expires: new Date(data.expires),
+					});
+				}
+			} else {
+				res.cookie("__Host-Http-token", data.token, {
+					signed: true,
+					httpOnly: true,
+					secure: true,
+					sameSite: "Strict",
+					expires: new Date(data.expires),
+				});
+			}
+			res.redirect("/");
+		} catch (err) {
+			logger.error(`Callback error: ${err.message}`);
+			res.cookie("__Host-npmplus_oidc_no_redirect", "true", {
+				secure: true,
+				sameSite: "Strict",
+				maxAge: 60 * 60 * 1000,
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_state", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_nonce", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.clearCookie("__Host-Http-npmplus_oidc_code_verifier", {
+				httpOnly: true,
+				secure: true,
+				sameSite: "Lax",
+			});
+			res.redirect("/");
+		}
+	});
+
+export default router;

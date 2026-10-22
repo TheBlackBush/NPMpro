@@ -1,0 +1,60 @@
+import { Alert } from "react-bootstrap";
+import Modal from "react-bootstrap/Modal";
+import { decamelizeKeys } from "src/api/backend/caseConvert";
+import { Button, EventFormatter, GravatarFormatter, Loading } from "src/components";
+import { useAuditLog } from "src/hooks";
+import { T } from "src/locale";
+import EasyModal from "src/modules/easyModal";
+
+const showEventDetailsModal = (id) => {
+	EasyModal.show(EventDetailsModal, { id });
+};
+
+const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
+	const { data, isPending, error } = useAuditLog(id);
+
+	return (
+		<Modal show={visible} onHide={remove}>
+			{error && (
+				<Alert variant="danger" className="m-3">
+					{error?.message}
+				</Alert>
+			)}
+			{isPending && <Loading noLogo />}
+			{data && (
+				<>
+					<Modal.Header closeButton>
+						<Modal.Title>
+							<T id="action.view-details" />
+						</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<div className="row">
+							<div className="col-md-2">
+								<GravatarFormatter url={data.user?.avatar} />
+							</div>
+							<div className="col-md-10">
+								<EventFormatter row={data} />
+							</div>
+							<hr className="mt-4 mb-3" />
+							<textarea
+								className="form-control font-monospace"
+								spellCheck={false}
+								rows={9}
+								readOnly
+								value={JSON.stringify(decamelizeKeys(data.meta), null, 2)}
+							/>
+						</div>
+					</Modal.Body>
+					<Modal.Footer>
+						<Button onClick={remove}>
+							<T id="action.close" />
+						</Button>
+					</Modal.Footer>
+				</>
+			)}
+		</Modal>
+	);
+});
+
+export { showEventDetailsModal };

@@ -1,0 +1,27 @@
+{
+	"type": "object",
+	"description": "Error object",
+	"additionalProperties": false,
+	"required": [
+		"code",
+		"message"
+	],
+	"properties": {
+		"code": {
+			"type": "integer",
+			"example": 400
+		},
+		"message": {
+			"type": "string",
+			"example": "Bad Request"
+		},
+		"message_i18n": {
+			"type": "string",
+			"example": "error.invalid-auth"
+		},
+		"output": {
+			"type": "string",
+			"example": "Some challenges have failed."
+		}
+	}
+}

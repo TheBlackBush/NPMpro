@@ -1,0 +1,81 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": ["**", "!**/*.json", "!**/*.yaml"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineWidth": 120,
+		"formatWithErrors": false
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "all",
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "off",
+				"noExcessiveLinesPerFunction": "off",
+				"noPlaywrightUselessAwait": "off",
+				"noVoid": "off",
+				"useSimplifiedLogicExpression": "off"
+			},
+			"correctness": {
+				"noNodejsModules": "off",
+				"noProcessGlobal": "off",
+				"noUnresolvedImports": "off",
+				"useQwikValidLexicalScope": "off"
+			},
+			"nursery": {
+				"noFloatingPromises": "error"
+			},
+			"performance": {
+				"noAwaitInLoops": "off",
+				"noDelete": "off"
+			},
+			"style": {
+				"noContinue": "off",
+				"noDefaultExport": "off",
+				"noExcessiveClassesPerFile": "off",
+				"noExcessiveLinesPerFile": "off",
+				"noIncrementDecrement": "off",
+				"noMagicNumbers": "off",
+				"noNegationElse": "off",
+				"noProcessEnv": "off",
+				"noTernary": "off",
+				"useBlockStatements": "off",
+				"useConsistentObjectDefinitions": "off",
+				"useDestructuring": "off",
+				"useErrorCause": "off",
+				"useNamingConvention": "off",
+				"useNumericSeparators": "off"
+			},
+			"suspicious": {
+				"noConsole": "off",
+				"noEmptyBlockStatements": "off",
+				"noImportCycles": "off",
+				"noUnnecessaryConditions": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	}
+}
