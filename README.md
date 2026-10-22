@@ -40,6 +40,8 @@ If you don't need the web GUI of NPMplus, you may also have a look at caddy: htt
 - zstd and brotli compression in addition to gzip
 - Goaccess log analytics (/goaccess) and a Swagger UI (/api/docs) for the api, both in the web UI
 - password/mfa reset (only sqlite): `docker exec -it npmplus password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin
+- database backup before upgrades (only sqlite): before running database migrations, the database is copied to `/data/npmplus/backups` (the newest 5 are kept). To go back to the previous image, stop the container, replace `/data/npmplus/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
+- host configs that are missing on startup are regenerated, even when no env or template changed
 - alpine based, much smaller image
 - punycode domain support
 - option to replace custom certs
