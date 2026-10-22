@@ -78,3 +78,47 @@ it("works with no DNS certificates", async () => {
 	assert.equal((await knex("npmplus_dns_credential")).length, 0);
 	await knex.destroy();
 });
+
+it("is safe to run twice", async () => {
+	const knex = await setup();
+	await knex("certificate").insert({
+		owner_user_id: 1,
+		npmplus_dns_challenge: 1,
+		npmplus_dns_provider: "cloudflare",
+		npmplus_dns_provider_credentials: "a",
+	});
+	await up(knex, { encrypt });
+	await up(knex, { encrypt });
+	assert.equal((await knex("npmplus_dns_credential")).length, 1);
+	assert.equal((await knex("certificate").first()).npmplus_dns_credential_id, 1);
+	await knex.destroy();
+});
+
+it("completes a partially applied run", async () => {
+	const knex = await setup();
+	await knex.schema.createTable("npmplus_dns_credential", (t) => {
+		t.increments();
+		t.dateTime("created_on").notNull();
+		t.dateTime("modified_on").notNull();
+		t.integer("owner_user_id").notNull().unsigned();
+		t.string("name", 255).notNull();
+		t.string("provider", 255).notNull();
+		t.text("values").notNull();
+		t.unique(["owner_user_id", "name"]);
+	});
+	await knex.schema.alterTable("certificate", (t) => {
+		t.integer("npmplus_dns_credential_id").unsigned().nullable().defaultTo(null);
+	});
+	await knex("certificate").insert({
+		owner_user_id: 1,
+		npmplus_dns_challenge: 1,
+		npmplus_dns_provider: "cloudflare",
+		npmplus_dns_provider_credentials: "a",
+	});
+	await up(knex, { encrypt });
+	const credentials = await knex("npmplus_dns_credential");
+	assert.equal(credentials.length, 1);
+	assert.equal((await knex("certificate").first()).npmplus_dns_credential_id, credentials[0].id);
+	assert.equal(await knex.schema.hasColumn("certificate", "npmplus_dns_provider_credentials"), false);
+	await knex.destroy();
+});

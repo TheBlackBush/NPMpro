@@ -16,65 +16,79 @@ const migrateName = "dns_credentials";
 const up = async (knex, { encrypt = defaultSecretBox.encrypt } = {}) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 
-	await knex.schema.createTable("npmplus_dns_credential", (table) => {
-		table.increments().primary();
-		table.dateTime("created_on").notNull();
-		table.dateTime("modified_on").notNull();
-		table.integer("owner_user_id").notNull().unsigned();
-		table.string("name", 255).notNull();
-		table.string("provider", 255).notNull();
-		table.text("values").notNull();
-		table.unique(["owner_user_id", "name"]);
-	});
-	await knex.schema.alterTable("certificate", (table) => {
-		table.integer("npmplus_dns_credential_id").unsigned().nullable().defaultTo(null);
-	});
+	// MySQL DDL is not transactional, so every step tolerates a partially applied earlier run
+	if (!(await knex.schema.hasTable("npmplus_dns_credential"))) {
+		await knex.schema.createTable("npmplus_dns_credential", (table) => {
+			table.increments().primary();
+			table.dateTime("created_on").notNull();
+			table.dateTime("modified_on").notNull();
+			table.integer("owner_user_id").notNull().unsigned();
+			table.string("name", 255).notNull();
+			table.string("provider", 255).notNull();
+			table.text("values").notNull();
+			table.unique(["owner_user_id", "name"]);
+		});
+	}
+	if (!(await knex.schema.hasColumn("certificate", "npmplus_dns_credential_id"))) {
+		await knex.schema.alterTable("certificate", (table) => {
+			table.integer("npmplus_dns_credential_id").unsigned().nullable().defaultTo(null);
+		});
+	}
 	logger.info(`[${migrateName}] npmplus_dns_credential Table created`);
 
-	const now = knex.fn.now();
-	const groups = new Map();
-	const certificates = await knex("certificate")
-		.where("npmplus_dns_challenge", 1)
-		.select("id", "owner_user_id", "npmplus_dns_provider", "npmplus_dns_provider_credentials")
-		.orderBy("id");
+	if (await knex.schema.hasColumn("certificate", "npmplus_dns_provider_credentials")) {
+		const now = knex.fn.now();
+		const groups = new Map();
+		// certificates already linked by an earlier, interrupted run are skipped
+		const certificates = await knex("certificate")
+			.where("npmplus_dns_challenge", 1)
+			.whereNull("npmplus_dns_credential_id")
+			.select("id", "owner_user_id", "npmplus_dns_provider", "npmplus_dns_provider_credentials")
+			.orderBy("id");
+		const takenNames = new Set(
+			(await knex("npmplus_dns_credential").select("owner_user_id", "name")).map((row) =>
+				JSON.stringify([row.owner_user_id, row.name]),
+			),
+		);
 
-	for (const cert of certificates) {
-		const groupKey = JSON.stringify([
-			cert.owner_user_id,
-			cert.npmplus_dns_provider,
-			cert.npmplus_dns_provider_credentials,
-		]);
-		if (!groups.has(groupKey)) {
-			const baseName = dnsPlugins[cert.npmplus_dns_provider]?.name ?? cert.npmplus_dns_provider;
-			const sameProvider = [...groups.values()].filter(
-				(group) => group.owner === cert.owner_user_id && group.provider === cert.npmplus_dns_provider,
-			).length;
-			const [inserted] = await knex("npmplus_dns_credential").insert(
-				{
-					created_on: now,
-					modified_on: now,
-					owner_user_id: cert.owner_user_id,
-					name: sameProvider === 0 ? baseName : `${baseName} ${sameProvider + 1}`,
-					provider: cert.npmplus_dns_provider,
-					values: encrypt({ ini: cert.npmplus_dns_provider_credentials }),
-				},
-				["id"],
-			);
-			groups.set(groupKey, {
-				id: typeof inserted === "object" ? inserted.id : inserted,
-				owner: cert.owner_user_id,
-				provider: cert.npmplus_dns_provider,
-			});
+		for (const cert of certificates) {
+			const groupKey = JSON.stringify([
+				cert.owner_user_id,
+				cert.npmplus_dns_provider,
+				cert.npmplus_dns_provider_credentials,
+			]);
+			if (!groups.has(groupKey)) {
+				const baseName = dnsPlugins[cert.npmplus_dns_provider]?.name ?? cert.npmplus_dns_provider;
+				let name = baseName;
+				for (let n = 2; takenNames.has(JSON.stringify([cert.owner_user_id, name])); n++) {
+					name = `${baseName} ${n}`;
+				}
+				takenNames.add(JSON.stringify([cert.owner_user_id, name]));
+				const [inserted] = await knex("npmplus_dns_credential").insert(
+					{
+						created_on: now,
+						modified_on: now,
+						owner_user_id: cert.owner_user_id,
+						name,
+						provider: cert.npmplus_dns_provider,
+						values: encrypt({ ini: cert.npmplus_dns_provider_credentials }),
+					},
+					["id"],
+				);
+				groups.set(groupKey, typeof inserted === "object" ? inserted.id : inserted);
+			}
+			await knex("certificate")
+				.where("id", cert.id)
+				.update({ npmplus_dns_credential_id: groups.get(groupKey) });
 		}
-		await knex("certificate")
-			.where("id", cert.id)
-			.update({ npmplus_dns_credential_id: groups.get(groupKey).id });
-	}
-	logger.info(`[${migrateName}] ${groups.size} DNS credential(s) created from ${certificates.length} certificate(s)`);
+		logger.info(
+			`[${migrateName}] ${groups.size} DNS credential(s) created from ${certificates.length} certificate(s)`,
+		);
 
-	await knex.schema.alterTable("certificate", (table) => {
-		table.dropColumn("npmplus_dns_provider_credentials");
-	});
+		await knex.schema.alterTable("certificate", (table) => {
+			table.dropColumn("npmplus_dns_provider_credentials");
+		});
+	}
 	logger.info(`[${migrateName}] certificate Table altered`);
 };
 
