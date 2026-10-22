@@ -13,6 +13,7 @@
 		"npmplus_reuse_key",
 		"npmplus_dns_challenge",
 		"npmplus_dns_provider",
+		"npmplus_dns_credential_id",
 		"npmplus_propagation_seconds"
 	],
 	"additionalProperties": false,
@@ -115,12 +116,11 @@
 			"default": "",
 			"example": "cloudflare"
 		},
-		"npmplus_dns_provider_credentials": {
-			"description": "DNS provider credentials",
-			"type": "string",
-			"writeOnly": true,
-			"default": "",
-			"example": "dns_cloudflare_api_token=123"
+		"npmplus_dns_credential_id": {
+			"description": "Saved DNS credential used for the DNS challenge",
+			"type": ["integer", "null"],
+			"minimum": 1,
+			"example": 1
 		},
 		"npmplus_propagation_seconds": {
 			"description": "DNS propagation seconds, 0 uses the default of the DNS plugin",
