@@ -212,6 +212,30 @@ router
 	});
 
 /**
+ * Change the DNS credential of a certificate
+ *
+ * /api/nginx/certificates/123/dns-credential
+ */
+router
+	.route("/:certificate_id/dns-credential")
+	.all(jwtdecode())
+
+	/**
+	 * PUT /api/nginx/certificates/123/dns-credential
+	 */
+	.put(async (req, res) => {
+		const payload = apiValidator(
+			getValidationSchema("/nginx/certificates/{certID}/dns-credential", "put"),
+			req.body,
+		);
+		const result = await internalCertificate.setDnsCredential(res.locals.access, {
+			id: Number.parseInt(req.params.certificate_id, 10),
+			npmplus_dns_credential_id: payload.npmplus_dns_credential_id,
+		});
+		res.status(200).send(result);
+	});
+
+/**
  * Upload Certs
  *
  * /api/nginx/certificates/123/upload

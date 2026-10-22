@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import dnsPlugins from "./certbot/dns-plugins.json" with { type: "json" };
+import internalDnsCredential from "./internal/dns-credential.js";
 import internalHost from "./internal/host.js";
 import internalNginx from "./internal/nginx.js";
 import internalProxyHost from "./internal/proxy-host.js";
@@ -94,11 +95,11 @@ const setupCertbotPlugins = async () => {
 				plugins.push(certificate.npmplus_dns_provider);
 			}
 
-			await writeFile(
-				`/tmp/certbot-credentials/credentials-${certificate.id}`,
-				certificate.npmplus_dns_provider_credentials,
-				{ mode: 0o600 },
-			);
+			try {
+				await internalDnsCredential.writeCertificateFile(certificate);
+			} catch (err) {
+				logger.error(`Cert #${certificate.id}: ${err.message}`);
+			}
 		}
 	}
 

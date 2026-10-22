@@ -44,7 +44,8 @@
 						"required": [
 							"domain_names",
 							"npmplus_dns_challenge",
-							"npmplus_dns_provider"
+							"npmplus_dns_provider",
+							"npmplus_dns_credential_id"
 						],
 						"properties": {
 							"npmplus_dns_challenge": {
@@ -91,8 +92,8 @@
 						"npmplus_dns_provider": {
 							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_provider"
 						},
-						"npmplus_dns_provider_credentials": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_provider_credentials"
+						"npmplus_dns_credential_id": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_credential_id"
 						},
 						"npmplus_propagation_seconds": {
 							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_propagation_seconds"
