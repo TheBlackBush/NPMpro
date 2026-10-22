@@ -1,7 +1,28 @@
-import { jsonReplacer } from "../lib/helpers.js";
 import { migrate as logger } from "../logger.js";
 
 const migrateName = "clean_audit_log_meta";
+
+// Frozen copy of the strip logic at the time of this migration, independent of lib/helpers.js.
+const localDateTimePattern = /^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/u;
+const strippedKeys = [
+	"certificate",
+	"certificate_key",
+	"dns_provider_credentials",
+	"npmplus_dns_provider_credentials",
+	"hint",
+];
+
+const jsonReplacer = (key, value) => {
+	if (typeof value !== "string") return value;
+	if (key === "password") return "";
+	if (strippedKeys.includes(key)) {
+		return;
+	}
+	if (["created_on", "modified_on", "expires_on"].includes(key) && localDateTimePattern.test(value)) {
+		return new Date(value.replace(" ", "T")).toISOString();
+	}
+	return value;
+};
 
 /**
  * Migrate
