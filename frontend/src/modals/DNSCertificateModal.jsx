@@ -6,6 +6,7 @@ import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate } from "src/api/backend";
 import { Button, DNSProviderFields, DomainNamesField } from "src/components";
+import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { showObjectSuccess } from "src/notifications";
@@ -15,6 +16,7 @@ const showDNSCertificateModal = () => {
 };
 
 const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					domainNames: [],
@@ -62,6 +64,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 			>
 				{() => (
 					<Form>
+						<DirtyTracker dirtyRef={dirtyRef} />
 						<Modal.Header closeButton={!isSubmitting}>
 							<Modal.Title>
 								<T id="object.add" tData={{ object: "lets-encrypt-via-dns" }} />
@@ -99,7 +102,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 							</div>
 						</Modal.Body>
 						<Modal.Footer>
-							<Button onClick={remove} disabled={isSubmitting}>
+							<Button onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
 							<Button

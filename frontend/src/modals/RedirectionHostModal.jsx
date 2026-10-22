@@ -13,7 +13,14 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
-import { useDirectorySuggestions, useRedirectionHost, useRedirectionHosts, useSetRedirectionHost } from "src/hooks";
+import {
+	DirtyTracker,
+	useDirectorySuggestions,
+	useRedirectionHost,
+	useRedirectionHosts,
+	useSetRedirectionHost,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
@@ -25,6 +32,7 @@ const showRedirectionHostModal = (id) => {
 };
 
 const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useRedirectionHost(id);
 	const { mutate: setRedirectionHost } = useSetRedirectionHost();
 	const { data: allRedirectionHosts } = useRedirectionHosts();
@@ -34,7 +42,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const onSubmit = (values, { setSubmitting }) => {
+	const onSubmit = (values, { resetForm, setSubmitting }) => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -66,6 +74,8 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
+				// the changes are saved, only the nginx config needs fixing
+				resetForm({ values });
 				setErrorMsg(<NginxConfigErrorMsg obj="redirection-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -76,7 +86,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -108,6 +118,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 				>
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T
@@ -321,7 +332,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 								</div>
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>

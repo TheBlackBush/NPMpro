@@ -12,7 +12,14 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
-import { useDeadHost, useDeadHosts, useDirectorySuggestions, useSetDeadHost } from "src/hooks";
+import {
+	DirtyTracker,
+	useDeadHost,
+	useDeadHosts,
+	useDirectorySuggestions,
+	useSetDeadHost,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
@@ -24,6 +31,7 @@ const showDeadHostModal = (id) => {
 };
 
 const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useDeadHost(id);
 	const { mutate: setDeadHost } = useSetDeadHost();
 	const { data: allDeadHosts } = useDeadHosts();
@@ -33,7 +41,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const [savedId, setSavedId] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const onSubmit = (values, { setSubmitting }) => {
+	const onSubmit = (values, { resetForm, setSubmitting }) => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -65,6 +73,8 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 					return;
 				}
 				setSavedId(row.id);
+				// the changes are saved, only the nginx config needs fixing
+				resetForm({ values });
 				setErrorMsg(<NginxConfigErrorMsg obj="dead-host" nginxErr={nginxErr} />);
 			},
 			onSettled: () => {
@@ -75,7 +85,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -100,6 +110,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 				>
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "dead-host" }} />
@@ -186,7 +197,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 								</div>
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>

@@ -6,7 +6,7 @@ import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { setPermissions } from "src/api/backend";
 import { Button, Loading } from "src/components";
-import { useUser } from "src/hooks";
+import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { isAdmin } from "src/modules/Permissions";
@@ -17,6 +17,7 @@ const showPermissionsModal = (id) => {
 };
 
 const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const { data, isPending, error } = useUser(id);
@@ -135,7 +136,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
 					{error?.message}
@@ -157,6 +158,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 				>
 					{() => (
 						<Form>
+							<DirtyTracker dirtyRef={dirtyRef} />
 							<Modal.Header closeButton={!isSubmitting}>
 								<Modal.Title>
 									<T id="user.set-permissions" data={{ name: data?.name }} />
@@ -265,7 +267,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 								)}
 							</Modal.Body>
 							<Modal.Footer>
-								<Button onClick={remove} disabled={isSubmitting}>
+								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<Button

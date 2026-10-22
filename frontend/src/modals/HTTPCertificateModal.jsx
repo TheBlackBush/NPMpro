@@ -7,6 +7,7 @@ import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
 import { Button, DomainNamesField } from "src/components";
+import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { showObjectSuccess } from "src/notifications";
@@ -16,6 +17,7 @@ const showHTTPCertificateModal = () => {
 };
 
 const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,7 +107,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 	);
 
 	return (
-		<Modal show={visible} onHide={isSubmitting || isTesting ? undefined : remove}>
+		<Modal show={visible} onHide={isSubmitting || isTesting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					domainNames: [],
@@ -116,6 +118,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 			>
 				{() => (
 					<Form>
+						<DirtyTracker dirtyRef={dirtyRef} />
 						<Modal.Header closeButton={!(isSubmitting || isTesting)}>
 							<Modal.Title>
 								<T id="object.add" tData={{ object: "lets-encrypt-via-http" }} />
@@ -171,7 +174,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 							</div>
 						</Modal.Body>
 						<Modal.Footer>
-							<Button onClick={remove} disabled={isSubmitting || isTesting}>
+							<Button onClick={close} disabled={isSubmitting || isTesting}>
 								<T id="cancel" />
 							</Button>
 							<div className="ms-auto">
