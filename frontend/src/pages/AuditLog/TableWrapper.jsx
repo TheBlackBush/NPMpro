@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Alert from "react-bootstrap/Alert";
 import { LoadingPage } from "src/components";
 import { useAuditLogs } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
 import Table from "./Table";
 
@@ -57,6 +57,8 @@ export default function TableWrapper() {
 										<input
 											type="text"
 											className="form-control form-control-sm"
+											placeholder={intl.formatMessage({ id: "search" })}
+											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"
 											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
 										/>

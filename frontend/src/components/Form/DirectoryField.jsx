@@ -1,12 +1,12 @@
 import { Field } from "formik";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 
 export function DirectoryField({
 	labelId,
 	datalistId,
 	name = "npmplusDirectory",
 	suggestions,
-	placeholder = "eg: Production, Staging",
+	placeholder = intl.formatMessage({ id: "form.example" }, { example: "Production, Staging" }),
 }) {
 	return (
 		<Field name={name}>

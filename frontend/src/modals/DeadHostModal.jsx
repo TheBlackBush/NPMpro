@@ -149,7 +149,6 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 												<a
 													href="#tab-advanced"
 													className="nav-link"
-													title="Settings"
 													data-bs-toggle="tab"
 													aria-selected="false"
 													role="tab"

@@ -225,7 +225,7 @@ export function AccessFields({
 							{idx > 0 ? (
 								<button
 									type="button"
-									aria-label="Move up"
+									aria-label={intl.formatMessage({ id: "aria.move-up" })}
 									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveUp(idx);
@@ -237,7 +237,7 @@ export function AccessFields({
 							{idx < values.length - 1 ? (
 								<button
 									type="button"
-									aria-label="Move down"
+									aria-label={intl.formatMessage({ id: "aria.move-down" })}
 									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveDown(idx);
@@ -248,7 +248,7 @@ export function AccessFields({
 							) : null}
 							<button
 								type="button"
-								aria-label="Remove"
+								aria-label={intl.formatMessage({ id: "aria.remove" })}
 								className="btn btn-ghost btn-danger p-0 mb-1"
 								onClick={() => {
 									handleRemove(item);

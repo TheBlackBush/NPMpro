@@ -2,7 +2,7 @@ import { IconDevicesX, IconLock, IconLogout, IconShieldLock, IconUser } from "@t
 import { LocalePicker, NavLink, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
 import { useUser } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
 import { isAdmin } from "src/modules/Permissions";
 import { showError } from "src/notifications";
@@ -22,7 +22,7 @@ export function SiteHeader() {
 					data-bs-target="#navbar-menu"
 					aria-controls="navbar-menu"
 					aria-expanded="false"
-					aria-label="Toggle navigation"
+					aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })}
 				>
 					<span className="navbar-toggler-icon" />
 				</button>
@@ -53,7 +53,7 @@ export function SiteHeader() {
 								href="/"
 								className="nav-link d-flex lh-1"
 								data-bs-toggle="dropdown"
-								aria-label="Open user menu"
+								aria-label={intl.formatMessage({ id: "aria.user-menu" })}
 							>
 								<span
 									className="avatar avatar-square avatar-sm"

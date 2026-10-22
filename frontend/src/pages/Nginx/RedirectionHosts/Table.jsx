@@ -128,6 +128,7 @@ export default function Table({
 						<button
 							type="button"
 							className="btn dropdown-toggle btn-action btn-sm px-1"
+							aria-label={intl.formatMessage({ id: "actions" })}
 							data-bs-boundary="viewport"
 							data-bs-toggle="dropdown"
 							data-bs-popper-config='{"strategy":"fixed"}'

@@ -4,7 +4,7 @@ import Alert from "react-bootstrap/Alert";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
 import { Button, certificateProviderTranslation, HasPermission, LoadingPage } from "src/components";
 import { useCertificates } from "src/hooks";
-import { formatDateTime, T } from "src/locale";
+import { formatDateTime, intl, T } from "src/locale";
 import {
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
@@ -85,12 +85,19 @@ export default function TableWrapper() {
 										<input
 											type="text"
 											className="form-control form-control-sm"
+											placeholder={intl.formatMessage({ id: "search" })}
+											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"
 											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
 										/>
 									</div>
 								) : null}
-								<Button size="sm" onClick={() => showHelpModal("Certificates")}>
+								<Button
+									size="sm"
+									aria-label={intl.formatMessage({ id: "help" })}
+									title={intl.formatMessage({ id: "help" })}
+									onClick={() => showHelpModal("Certificates")}
+								>
 									<IconHelp size={20} />
 								</Button>
 								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>

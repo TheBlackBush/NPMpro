@@ -159,7 +159,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 												<a
 													href="#tab-advanced"
 													className="nav-link"
-													title="Settings"
 													data-bs-toggle="tab"
 													aria-selected="false"
 													role="tab"
@@ -187,7 +186,10 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																pattern="[0-9]{1,5}(-[0-9]{1,5})?"
 																className={`form-control ${form.errors.incomingPort && form.touched.incomingPort ? "is-invalid" : ""}`}
 																required
-																placeholder="eg: 8080"
+																placeholder={intl.formatMessage(
+																	{ id: "form.example" },
+																	{ example: "8080" },
+																)}
 																{...field}
 															/>
 
@@ -278,7 +280,10 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																		maxLength={12}
 																		pattern="[0-9]{0,5}|\$server_port"
 																		className={`form-control ${form.errors.forwardingPort && form.touched.forwardingPort ? "is-invalid" : ""}`}
-																		placeholder="eg: 8081"
+																		placeholder={intl.formatMessage(
+																			{ id: "form.example" },
+																			{ example: "8081" },
+																		)}
 																		{...field}
 																	/>
 

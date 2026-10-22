@@ -251,7 +251,9 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 						<div className="row">
 							<div className="col-md-10">
 								<div className="input-group mb-3">
-									<span className="input-group-text">Location</span>
+									<span className="input-group-text">
+										<T id="location" />
+									</span>
 									<select
 										id={`locationType-${item.uiKey}`}
 										className="form-select w-auto flex-grow-0"
@@ -311,8 +313,12 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									>
 										<option value="http">http://</option>
 										<option value="https">https://</option>
-										<option value="path">path: </option>
-										<option value="empty">empty</option>
+										<option value="path">
+											{intl.formatMessage({ id: "host.forward-scheme.path" })}
+										</option>
+										<option value="empty">
+											{intl.formatMessage({ id: "host.forward-scheme.empty" })}
+										</option>
 										<option value="grpc">grpc://</option>
 										<option value="grpcs">grpcs://</option>
 									</select>
@@ -329,7 +335,10 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										className="form-control"
 										required={item.forwardScheme !== "empty"}
 										pattern="(?=\S{0,255}$)[^\s\/]{0,253}(\/\S*)?"
-										placeholder="eg: 10.0.0.1/path/"
+										placeholder={intl.formatMessage(
+											{ id: "form.example" },
+											{ example: "10.0.0.1/path/" },
+										)}
 										value={item.forwardHost}
 										onChange={(e) => handleChange(idx, "forwardHost", e.target.value)}
 									/>
@@ -346,7 +355,7 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										min={1}
 										max={65535}
 										className="form-control"
-										placeholder="eg: 8081"
+										placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
 										value={item.forwardPort || ""}
 										onChange={(e) => handleChange(idx, "forwardPort", e.target.value)}
 									/>
