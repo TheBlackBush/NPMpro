@@ -45,6 +45,7 @@ If you don't need the web GUI of NPMplus, you may also have a look at caddy: htt
 - alpine based, much smaller image
 - punycode domain support
 - option to replace custom certs
+- saved DNS credentials: enter DNS provider credentials once (Certificates, DNS credentials tab) and reuse them; they are stored encrypted with the key /data/npmplus/dns-credentials.key, keep it with your backups, without it saved credentials must be entered again
 - many other things, see this README.md and the compose.yaml
 
 ## Compatibility (to Upstream)

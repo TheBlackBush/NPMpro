@@ -1,4 +1,12 @@
-import { IconDotsVertical, IconDownload, IconEdit, IconFlask, IconRefresh, IconTrash } from "@tabler/icons-react";
+import {
+	IconDotsVertical,
+	IconDownload,
+	IconEdit,
+	IconFlask,
+	IconKey,
+	IconRefresh,
+	IconTrash,
+} from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -46,7 +54,17 @@ const isInUse = (row) =>
 		row.mtlsStreams,
 	].some((hosts) => hosts?.length > 0);
 
-export default function Table({ data, isFetching, onDelete, onRenew, onDownload, onTest, onEdit, isFiltered }) {
+export default function Table({
+	data,
+	isFetching,
+	onDelete,
+	onRenew,
+	onDownload,
+	onTest,
+	onEdit,
+	onChangeDnsCredential,
+	isFiltered,
+}) {
 	const columnHelper = createColumnHelper();
 	const columns = useMemo(
 		() => [
@@ -196,6 +214,19 @@ export default function Table({ data, isFetching, onDelete, onRenew, onDownload,
 										</button>
 									)}
 
+									{row.provider === "letsencrypt" && row.npmplusDnsChallenge && (
+										<button
+											type="button"
+											className="dropdown-item"
+											onClick={() => {
+												onChangeDnsCredential?.(row);
+											}}
+										>
+											<IconKey size={16} />
+											<T id="dns-credentials.change" />
+										</button>
+									)}
+
 									<button
 										type="button"
 										className="dropdown-item"
@@ -232,7 +263,7 @@ export default function Table({ data, isFetching, onDelete, onRenew, onDownload,
 				},
 			}),
 		],
-		[columnHelper, onDelete, onRenew, onDownload, onTest, onEdit],
+		[columnHelper, onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential],
 	);
 
 	const tableInstance = useTable({

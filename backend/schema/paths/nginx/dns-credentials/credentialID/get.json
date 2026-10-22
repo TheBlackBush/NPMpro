@@ -1,0 +1,69 @@
+{
+	"operationId": "getDnsCredential",
+	"summary": "Get a DNS credential",
+	"tags": [
+		"certificates"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "credentialID",
+			"description": "DNS credential ID",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"example": 1
+		},
+		{
+			"in": "query",
+			"name": "expand",
+			"description": "Expansions",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"owner",
+					"certificates"
+				]
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"created_on": "2024-10-09T05:31:58.000Z",
+								"modified_on": "2024-10-09T05:32:11.000Z",
+								"owner_user_id": 1,
+								"name": "Cloudflare main",
+								"provider": "cloudflare",
+								"fields": [
+									{
+										"key": "dns_cloudflare_api_token",
+										"is_set": true
+									}
+								],
+								"ini_set": false,
+								"decrypt_error": false
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/dns-credential-object.json"
+					}
+				}
+			}
+		}
+	}
+}

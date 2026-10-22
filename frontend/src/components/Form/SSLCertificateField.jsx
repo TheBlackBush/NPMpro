@@ -47,7 +47,7 @@ export function SSLCertificateField({
 			npmplusReuseKey,
 			npmplusDnsChallenge,
 			npmplusDnsProvider,
-			npmplusDnsProviderCredentials,
+			npmplusDnsCredentialId,
 			npmplusPropagationSeconds,
 		} = v;
 		if (forHttp && !newValue?.value) {
@@ -60,7 +60,7 @@ export function SSLCertificateField({
 			if (npmplusReuseKey) void setFieldValue("npmplusReuseKey", undefined);
 			if (npmplusDnsChallenge) void setFieldValue("npmplusDnsChallenge", undefined);
 			if (npmplusDnsProvider) void setFieldValue("npmplusDnsProvider", undefined);
-			if (npmplusDnsProviderCredentials) void setFieldValue("npmplusDnsProviderCredentials", undefined);
+			if (npmplusDnsCredentialId) void setFieldValue("npmplusDnsCredentialId", undefined);
 			if (npmplusPropagationSeconds !== undefined) void setFieldValue("npmplusPropagationSeconds", undefined);
 		}
 	};

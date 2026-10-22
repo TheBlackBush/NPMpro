@@ -30,6 +30,8 @@ jobs:
         run: pnpm biome ci
       - name: openapi schema
         run: node validate-schema.js
+      - name: unit tests
+        run: node --test 'test/*.test.js' # a directory argument is not supported by node --test before Node 23
 
   frontend:
     runs-on: ubuntu-slim
@@ -83,4 +85,4 @@ jobs:
           check_filenames: true
           check_hidden: true
           skip: pnpm-lock.yaml,./frontend/translations
-          ignore_words_list: afterAll,alog,clen,Nd
+          ignore_words_list: afterAll,alog,clen,Nd,hasTable

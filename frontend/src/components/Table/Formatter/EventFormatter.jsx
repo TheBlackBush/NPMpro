@@ -3,6 +3,7 @@ import {
 	IconBolt,
 	IconBoltOff,
 	IconDisc,
+	IconKey,
 	IconLock,
 	IconSettings,
 	IconShield,
@@ -14,6 +15,7 @@ import { formatDateTime, T } from "src/locale";
 const getEventValue = (event) => {
 	switch (event.objectType) {
 		case "access-list":
+		case "dns-credential":
 		case "user":
 			return event.meta?.name;
 		case "proxy-host":
@@ -63,6 +65,9 @@ const getIcon = (row) => {
 			break;
 		case "access-list":
 			ico = <IconLock size={16} className={c} />;
+			break;
+		case "dns-credential":
+			ico = <IconKey size={16} className={c} />;
 			break;
 		case "certificate":
 			ico = <IconShield size={16} className={c} />;

@@ -4,6 +4,7 @@ import Select from "react-select";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
+import { DnsCredentialSelect } from "./DnsCredentialSelect";
 
 export function DNSProviderFields({ showBoundaryBox }) {
 	const { values, setFieldValue } = useFormikContext();
@@ -11,13 +12,12 @@ export function DNSProviderFields({ showBoundaryBox }) {
 
 	const handleChange = (newValue, _actionMeta) => {
 		void setFieldValue("npmplusDnsProvider", newValue?.value);
-		void setFieldValue("npmplusDnsProviderCredentials", newValue?.credentials);
+		void setFieldValue("npmplusDnsCredentialId", undefined);
 	};
 
 	const options = dnsProviders?.map((p) => ({
 		value: p.id,
 		label: p.name,
-		credentials: p.credentials,
 	}));
 
 	return (
@@ -55,33 +55,12 @@ export function DNSProviderFields({ showBoundaryBox }) {
 
 			{values.npmplusDnsProvider ? (
 				<>
-					<Field name="npmplusDnsProviderCredentials">
-						{({ field }) => (
-							<div className="mt-3">
-								<label htmlFor="dnsProviderCredentials" className="form-label">
-									<T id="certificates.dns.credentials" />
-								</label>
-								<textarea
-									className="form-control font-monospace"
-									spellCheck={false}
-									id="dnsProviderCredentials"
-									rows={6}
-									{...field}
-								/>
-
-								<div>
-									<small className="text-secondary">
-										<T id="certificates.dns.credentials-note" />
-									</small>
-								</div>
-								<div>
-									<small className="text-danger">
-										<T id="certificates.dns.credentials-warning" />
-									</small>
-								</div>
-							</div>
-						)}
-					</Field>
+					<DnsCredentialSelect name="npmplusDnsCredentialId" provider={values.npmplusDnsProvider} />
+					<p className="mt-2 mb-0">
+						<small className="text-secondary">
+							<T id="certificates.dns.credentials-saved-note" />
+						</small>
+					</p>
 					<Field name="npmplusPropagationSeconds">
 						{({ field, form }) => (
 							<div className="mt-3">
