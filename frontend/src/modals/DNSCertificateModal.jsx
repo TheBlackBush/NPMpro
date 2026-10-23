@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { createCertificate } from "src/api/backend";
@@ -11,6 +10,7 @@ import {
 	DomainNamesField,
 	ErrorAlert,
 	RequestProgress,
+	SwitchField,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
@@ -44,9 +44,6 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 		setSubmitting(false);
 	};
 
-	const toggleClasses = "form-check-input";
-	const toggleEnabled = cn(toggleClasses, "bg-cyan");
-
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
@@ -72,25 +69,16 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 							</ErrorAlert>
 							<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 							<DNSProviderFields />
-							<div className="row">
-								<div className="col-6">
-									<Field name="npmproReuseKey">
-										{({ field }) => (
-											<label className="form-check form-switch mt-1">
-												<input
-													{...field}
-													className={field.value ? toggleEnabled : toggleClasses}
-													type="checkbox"
-													checked={field.value}
-												/>
-
-												<span className="form-check-label">
-													<T id="domains.reuse-key" />
-												</span>
-											</label>
-										)}
-									</Field>
-								</div>
+							<div className="divide-y">
+								<Field name="npmproReuseKey" type="checkbox">
+									{({ field }) => (
+										<SwitchField
+											id="npmproReuseKey"
+											label={<T id="domains.reuse-key" />}
+											{...field}
+										/>
+									)}
+								</Field>
 							</div>
 							<RequestProgress
 								running={isSubmitting}

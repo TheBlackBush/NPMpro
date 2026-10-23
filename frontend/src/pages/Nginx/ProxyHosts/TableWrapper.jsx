@@ -89,6 +89,7 @@ export default function TableWrapper() {
 					<div className="card-actions btn-list">
 						<Button
 							size="sm"
+							className="btn-icon"
 							aria-label={intl.formatMessage({ id: "help" })}
 							title={intl.formatMessage({ id: "help" })}
 							onClick={() => showHelpModal("ProxyHosts")}

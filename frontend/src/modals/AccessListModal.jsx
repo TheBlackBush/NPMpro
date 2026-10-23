@@ -1,4 +1,3 @@
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import {
@@ -10,6 +9,7 @@ import {
 	ErrorAlert,
 	HasPermission,
 	Loading,
+	SwitchField,
 } from "src/components";
 import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -86,9 +86,6 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 			},
 		});
 	};
-
-	const toggleClasses = "form-check-input";
-	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
@@ -182,70 +179,32 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="options" />
 											</h3>
 											<div className="divide-y">
-												<div>
-													<label className="row cursor-pointer" htmlFor="satisfyAny">
-														<span className="col">
-															<T id="access-list.satisfy-any" />
-														</span>
-														<span className="col-auto">
-															<Field name="satisfyAny" type="checkbox">
-																{({ field }) => (
-																	<span className="form-check form-check-single form-switch">
-																		<input
-																			id="satisfyAny"
-																			className={
-																				field.value
-																					? toggleEnabled
-																					: toggleClasses
-																			}
-																			type="checkbox"
-																			name={field.name}
-																			checked={field.value}
-																			onChange={(e) => {
-																				setFieldValue(
-																					field.name,
-																					e.target.checked,
-																				);
-																			}}
-																		/>
-																	</span>
-																)}
-															</Field>
-														</span>
-													</label>
-												</div>
-												<div>
-													<label className="row cursor-pointer" htmlFor="passAuth">
-														<span className="col">
-															<T id="access-list.pass-auth" />
-														</span>
-														<span className="col-auto">
-															<Field name="passAuth" type="checkbox">
-																{({ field }) => (
-																	<span className="form-check form-check-single form-switch">
-																		<input
-																			id="passAuth"
-																			className={
-																				field.value
-																					? toggleEnabled
-																					: toggleClasses
-																			}
-																			type="checkbox"
-																			name={field.name}
-																			checked={field.value}
-																			onChange={(e) => {
-																				setFieldValue(
-																					field.name,
-																					e.target.checked,
-																				);
-																			}}
-																		/>
-																	</span>
-																)}
-															</Field>
-														</span>
-													</label>
-												</div>
+												<Field name="satisfyAny" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="satisfyAny"
+															label={<T id="access-list.satisfy-any" />}
+															name={field.name}
+															checked={field.value}
+															onChange={(e) => {
+																setFieldValue(field.name, e.target.checked);
+															}}
+														/>
+													)}
+												</Field>
+												<Field name="passAuth" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="passAuth"
+															label={<T id="access-list.pass-auth" />}
+															name={field.name}
+															checked={field.value}
+															onChange={(e) => {
+																setFieldValue(field.name, e.target.checked);
+															}}
+														/>
+													)}
+												</Field>
 											</div>
 										</div>
 									</div>

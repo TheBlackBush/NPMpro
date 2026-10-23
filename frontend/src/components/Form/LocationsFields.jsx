@@ -11,7 +11,7 @@ import cn from "clsx";
 import { useFormikContext } from "formik";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { AccessFields } from "src/components";
+import { AccessFields, SwitchField } from "src/components";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
@@ -229,24 +229,12 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 						}
 					>
 						<div className="row mb-3">
-							<label className="row cursor-pointer" htmlFor={`npmproEnabled-${item.uiKey}`}>
-								<span className="col">
-									<T id="enabled" />
-								</span>
-								<span className="col-auto">
-									<span className="form-check form-check-single form-switch">
-										<input
-											id={`npmproEnabled-${item.uiKey}`}
-											className={cn("form-check-input", {
-												"bg-lime": item.npmproEnabled,
-											})}
-											type="checkbox"
-											checked={item.npmproEnabled}
-											onChange={(e) => handleChange(idx, "npmproEnabled", e.target.checked)}
-										/>
-									</span>
-								</span>
-							</label>
+							<SwitchField
+								id={`npmproEnabled-${item.uiKey}`}
+								label={<T id="enabled" />}
+								checked={item.npmproEnabled}
+								onChange={(e) => handleChange(idx, "npmproEnabled", e.target.checked)}
+							/>
 						</div>
 						<div className="row">
 							<div className="col-md-10">
@@ -366,308 +354,173 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<T id="options" />
 								</h4>
 								<div className="divide-y">
-									<div>
-										<label className="row cursor-pointer" htmlFor={`npmproNoindex-${item.uiKey}`}>
-											<span className="col">
-												<T id="host.flags.send-noindex" />
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproNoindex-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproNoindex,
-														})}
-														type="checkbox"
-														checked={item.npmproNoindex}
-														onChange={(e) =>
-															handleChange(idx, "npmproNoindex", e.target.checked)
-														}
-													/>
+									<SwitchField
+										id={`npmproNoindex-${item.uiKey}`}
+										label={<T id="host.flags.send-noindex" />}
+										checked={item.npmproNoindex}
+										onChange={(e) => handleChange(idx, "npmproNoindex", e.target.checked)}
+									/>
+									<SwitchField
+										id={`npmproCrowdsecAppsec-${item.uiKey}`}
+										label={<T id="host.flags.disable-crowdsec-appsec" />}
+										hint={
+											item.npmproProxyRequestBuffering && (
+												<span className="d-block">
+													<T id="host.flags.hint.appsec-request-buffering" />
 												</span>
-											</span>
-										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproCrowdsecAppsec-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-crowdsec-appsec" />
-												{item.npmproProxyRequestBuffering && (
-													<small className="form-hint">
-														<T id="host.flags.hint.appsec-request-buffering" />
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproCrowdsecAppsec-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproCrowdsecAppsec,
-														})}
-														type="checkbox"
-														checked={item.npmproCrowdsecAppsec}
-														onChange={(e) =>
-															handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)
-														}
-													/>
-												</span>
-											</span>
-										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproProxyRequestBuffering-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-request-buffering" />
-												<small className="form-hint">
+											)
+										}
+										checked={item.npmproCrowdsecAppsec}
+										onChange={(e) => handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)}
+									/>
+									<SwitchField
+										id={`npmproProxyRequestBuffering-${item.uiKey}`}
+										label={<T id="host.flags.disable-request-buffering" />}
+										hint={
+											<>
+												<span className="d-block">
 													<T id="host.flags.hint.request-buffering-appsec" />
-												</small>
+												</span>
 												{getOptionHintId("npmproProxyRequestBuffering", item.forwardScheme) && (
-													<small className="form-hint">
+													<span className="d-block">
 														<T
 															id={getOptionHintId(
 																"npmproProxyRequestBuffering",
 																item.forwardScheme,
 															)}
 														/>
-													</small>
+													</span>
 												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproProxyRequestBuffering-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproProxyRequestBuffering,
-														})}
-														type="checkbox"
-														checked={item.npmproProxyRequestBuffering}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproProxyRequestBuffering",
-																e.target.checked,
-															)
-														}
-														disabled={!["http", "https"].includes(item.forwardScheme)}
+											</>
+										}
+										checked={item.npmproProxyRequestBuffering}
+										onChange={(e) =>
+											handleChange(idx, "npmproProxyRequestBuffering", e.target.checked)
+										}
+										disabled={!["http", "https"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproProxyResponseBuffering-${item.uiKey}`}
+										label={<T id="host.flags.disable-response-buffering" />}
+										hint={
+											getOptionHintId("npmproProxyResponseBuffering", item.forwardScheme) && (
+												<span className="d-block">
+													<T
+														id={getOptionHintId(
+															"npmproProxyResponseBuffering",
+															item.forwardScheme,
+														)}
 													/>
 												</span>
-											</span>
-										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproProxyResponseBuffering-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-response-buffering" />
-												{getOptionHintId(
-													"npmproProxyResponseBuffering",
-													item.forwardScheme,
-												) && (
-													<small className="form-hint">
-														<T
-															id={getOptionHintId(
-																"npmproProxyResponseBuffering",
-																item.forwardScheme,
-															)}
-														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproProxyResponseBuffering-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproProxyResponseBuffering,
-														})}
-														type="checkbox"
-														checked={item.npmproProxyResponseBuffering}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproProxyResponseBuffering",
-																e.target.checked,
-															)
-														}
-														disabled={!["http", "https"].includes(item.forwardScheme)}
+											)
+										}
+										checked={item.npmproProxyResponseBuffering}
+										onChange={(e) =>
+											handleChange(idx, "npmproProxyResponseBuffering", e.target.checked)
+										}
+										disabled={!["http", "https"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproUpstreamCompression-${item.uiKey}`}
+										label={<T id="host.flags.upstream-compression" />}
+										hint={
+											getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
+												<span className="d-block">
+													<T
+														id={getOptionHintId(
+															"npmproUpstreamCompression",
+															item.forwardScheme,
+														)}
 													/>
 												</span>
-											</span>
-										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproUpstreamCompression-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.upstream-compression" />
-												{getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
-													<small className="form-hint">
-														<T
-															id={getOptionHintId(
-																"npmproUpstreamCompression",
-																item.forwardScheme,
-															)}
-														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproUpstreamCompression-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproUpstreamCompression,
-														})}
-														type="checkbox"
-														checked={item.npmproUpstreamCompression}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproUpstreamCompression",
-																e.target.checked,
-															)
-														}
-														disabled={["path", "empty"].includes(item.forwardScheme)}
-													/>
+											)
+										}
+										checked={item.npmproUpstreamCompression}
+										onChange={(e) =>
+											handleChange(idx, "npmproUpstreamCompression", e.target.checked)
+										}
+										disabled={["path", "empty"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproFancyindex-${item.uiKey}`}
+										label={<T id="host.flags.fancyindex" />}
+										hint={
+											getOptionHintId("npmproFancyindex", item.forwardScheme) && (
+												<span className="d-block">
+													<T id={getOptionHintId("npmproFancyindex", item.forwardScheme)} />
 												</span>
-											</span>
+											)
+										}
+										checked={item.npmproFancyindex}
+										onChange={(e) => handleChange(idx, "npmproFancyindex", e.target.checked)}
+										disabled={item.forwardScheme !== "path"}
+									/>
+								</div>
+								<div className="mt-3">
+									<div className="mb-3">
+										<label className="form-label" htmlFor={`npmproXFrameOptions-${item.uiKey}`}>
+											X-Frame-Options
 										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproFancyindex-${item.uiKey}`}
+										<select
+											id={`npmproXFrameOptions-${item.uiKey}`}
+											className="form-select"
+											value={item.npmproXFrameOptions}
+											onChange={(e) => handleChange(idx, "npmproXFrameOptions", e.target.value)}
 										>
-											<span className="col">
-												<T id="host.flags.fancyindex" />
-												{getOptionHintId("npmproFancyindex", item.forwardScheme) && (
-													<small className="form-hint">
-														<T
-															id={getOptionHintId("npmproFancyindex", item.forwardScheme)}
-														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproFancyindex-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproFancyindex,
-														})}
-														type="checkbox"
-														checked={item.npmproFancyindex}
-														onChange={(e) =>
-															handleChange(idx, "npmproFancyindex", e.target.checked)
-														}
-														disabled={item.forwardScheme !== "path"}
-													/>
-												</span>
-											</span>
-										</label>
+											<option value="SAMEORIGIN">SAMEORIGIN</option>
+											<option value="DENY">DENY</option>
+											<option value="none">none</option>
+											<option value="upstream">upstream</option>
+										</select>
 									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproXFrameOptions-${item.uiKey}`}
-										>
-											<span className="col">X-Frame-Options</span>
-											<span className="col-auto">
-												<select
-													id={`npmproXFrameOptions-${item.uiKey}`}
-													className="form-select"
-													value={item.npmproXFrameOptions}
-													onChange={(e) =>
-														handleChange(idx, "npmproXFrameOptions", e.target.value)
-													}
-												>
-													<option value="SAMEORIGIN">SAMEORIGIN</option>
-													<option value="DENY">DENY</option>
-													<option value="none">none</option>
-													<option value="upstream">upstream</option>
-												</select>
-											</span>
+									<div className="mb-3">
+										<label className="form-label" htmlFor={`npmproAuthRequest-${item.uiKey}`}>
+											<T id="host.auth-request" />
 										</label>
-									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproAuthRequest-${item.uiKey}`}
+										<select
+											id={`npmproAuthRequest-${item.uiKey}`}
+											className="form-select"
+											value={item.npmproAuthRequest}
+											onChange={(e) => handleChange(idx, "npmproAuthRequest", e.target.value)}
 										>
-											<span className="col">
-												<T id="host.auth-request" />
-											</span>
-											<span className="col-auto">
-												<select
-													id={`npmproAuthRequest-${item.uiKey}`}
-													className="form-select"
-													value={item.npmproAuthRequest}
-													onChange={(e) =>
-														handleChange(idx, "npmproAuthRequest", e.target.value)
-													}
-												>
-													<option value="none">none</option>
-													<option value="anubis">anubis</option>
-													<option value="tinyauth">tinyauth</option>
-													<option value="oauth2proxy">oauth2proxy</option>
-													<option value="voidauth">voidauth</option>
-													<option value="authelia">authelia (modern)</option>
-													<option value="authentik">authentik</option>
-													<option value="authentik-send-basic-auth">
-														authentik-send-basic-auth
-													</option>
-												</select>
-											</span>
-										</label>
+											<option value="none">none</option>
+											<option value="anubis">anubis</option>
+											<option value="tinyauth">tinyauth</option>
+											<option value="oauth2proxy">oauth2proxy</option>
+											<option value="voidauth">voidauth</option>
+											<option value="authelia">authelia (modern)</option>
+											<option value="authentik">authentik</option>
+											<option value="authentik-send-basic-auth">authentik-send-basic-auth</option>
+										</select>
 									</div>
 									{item?.npmproAuthRequest?.length > 0 && item.npmproAuthRequest !== "none" && (
-										<div>
+										<div className="mb-3">
 											<label
-												className="row cursor-pointer"
+												className="form-label"
 												htmlFor={`npmproAuthRequestUpstream-${item.uiKey}`}
 											>
-												<span className="col">
-													<T id="host.auth-request-upstream" />
-												</span>
-												<span className="col-auto">
-													<input
-														id={`npmproAuthRequestUpstream-${item.uiKey}`}
-														type="text"
-														className={`form-control ${item.npmproAuthRequestUpstream && !upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? "is-invalid" : ""}`}
-														placeholder={intl.formatMessage({
-															id: "host.auth-request-upstream.placeholder",
-														})}
-														maxLength={255}
-														pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
-														value={item.npmproAuthRequestUpstream}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproAuthRequestUpstream",
-																e.target.value,
-															)
-														}
-													/>
-
-													{item.npmproAuthRequestUpstream &&
-													!upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? (
-														<div className="invalid-feedback">
-															<T id="error.invalid-upstream-url" />
-														</div>
-													) : null}
-												</span>
+												<T id="host.auth-request-upstream" />
 											</label>
+											<input
+												id={`npmproAuthRequestUpstream-${item.uiKey}`}
+												type="text"
+												className={`form-control ${item.npmproAuthRequestUpstream && !upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? "is-invalid" : ""}`}
+												placeholder={intl.formatMessage({
+													id: "host.auth-request-upstream.placeholder",
+												})}
+												maxLength={255}
+												pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
+												value={item.npmproAuthRequestUpstream}
+												onChange={(e) =>
+													handleChange(idx, "npmproAuthRequestUpstream", e.target.value)
+												}
+											/>
+											{item.npmproAuthRequestUpstream &&
+											!upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? (
+												<div className="invalid-feedback">
+													<T id="error.invalid-upstream-url" />
+												</div>
+											) : null}
 										</div>
 									)}
 								</div>

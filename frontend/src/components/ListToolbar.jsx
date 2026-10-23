@@ -117,7 +117,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						/>
 					</div>
 				) : null}
-				{active ? (
+				{active && shown > 0 ? (
 					<div className="col-12 col-md-auto d-flex align-items-center gap-2">
 						<span className="text-secondary small">
 							<T id="list.shown" data={{ shown, total }} />

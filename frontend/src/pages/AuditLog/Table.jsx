@@ -29,6 +29,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 		() => [
 			columnHelper.accessor((row) => row.user?.name, {
 				id: "avatar",
+				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original.user;
 					return (

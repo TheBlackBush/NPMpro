@@ -60,9 +60,10 @@ export default function Table({
 		() => [
 			columnHelper.accessor((row) => row.name, {
 				id: "avatar",
+				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original;
-					return <GravatarFormatter url={value.avatar} name={value.name} />;
+					return <GravatarFormatter url={value.avatar} name={value.name} decorative />;
 				},
 				meta: {
 					className: "text-nowrap",
