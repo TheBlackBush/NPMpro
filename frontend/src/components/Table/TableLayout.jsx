@@ -6,7 +6,7 @@ function TableLayout(props) {
 	const showHeader = props.showHeader ?? true;
 	return (
 		<div className="table-responsive">
-			<table className="table table-vcenter table-selectable mb-0">
+			<table className="table table-vcenter table-selectable table-mobile-md mb-0">
 				{hasRows && showHeader ? <TableHeader tableInstance={props.tableInstance} /> : null}
 				<TableBody {...props} />
 			</table>

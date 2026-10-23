@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconDotsVertical, IconEdit, IconKey, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,6 +9,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import cn from "clsx";
 import { useMemo } from "react";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
@@ -65,7 +66,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.name, {
@@ -103,7 +104,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 						<span className="dropdown">
 							<button
 								type="button"
-								className="btn dropdown-toggle btn-action btn-sm px-1"
+								className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
 								aria-label={intl.formatMessage({ id: "actions" })}
 								data-bs-boundary="viewport"
 								data-bs-toggle="dropdown"
@@ -126,21 +127,21 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 										onEdit?.(info.row.original.id);
 									}}
 								>
-									<IconEdit size={16} />
+									<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="action.edit" />
 								</button>
 								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 									<div className="dropdown-divider" />
 									<button
 										type="button"
-										className="dropdown-item"
+										className={cn("dropdown-item", !inUse && "text-danger")}
 										disabled={inUse}
 										title={inUse ? intl.formatMessage({ id: "dns-credentials.in-use" }) : undefined}
 										onClick={() => {
 											onDelete?.(info.row.original.id);
 										}}
 									>
-										<IconTrash size={16} />
+										<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="action.delete" />
 									</button>
 								</HasPermission>
@@ -149,7 +150,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					);
 				},
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],
@@ -172,6 +173,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconKey}
 					object="dns-credential"
 					objects="dns-credentials"
 					tableInstance={tableInstance}

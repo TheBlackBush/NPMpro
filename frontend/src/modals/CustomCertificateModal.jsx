@@ -1,11 +1,9 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
-import { ApiErrorContent, Button } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -90,15 +88,12 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 							</Modal.Title>
 						</Modal.Header>
 						<Modal.Body className="p-0">
-							<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-								{errorMsg}
-							</Alert>
+							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<div className="card m-0 border-0">
 								<div className="card-body">
-									<p className="text-warning">
-										<IconAlertTriangle size={16} className="me-1" />
+									<NoticeAlert>
 										<T id="certificates.custom.warning" />
-									</p>
+									</NoticeAlert>
 									<Field name="niceName" validate={isEdit ? undefined : validateString(1, 255)}>
 										{({ field, form }) => (
 											<div className="mb-3">

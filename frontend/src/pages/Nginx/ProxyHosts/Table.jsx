@@ -1,4 +1,4 @@
-import { IconCopy, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconBolt, IconCopy, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -65,7 +65,7 @@ export default function Table({
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.domainNames.join(", "), {
@@ -145,7 +145,7 @@ export default function Table({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 			columnHelper.display({
@@ -154,7 +154,7 @@ export default function Table({
 					<span className="dropdown">
 						<button
 							type="button"
-							className="btn dropdown-toggle btn-action btn-sm px-1"
+							className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
 							aria-label={intl.formatMessage({ id: "actions" })}
 							data-bs-boundary="viewport"
 							data-bs-toggle="dropdown"
@@ -177,7 +177,7 @@ export default function Table({
 									onEdit?.(info.row.original.id);
 								}}
 							>
-								<IconEdit size={16} />
+								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
 								<T id="action.edit" />
 							</button>
 							<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
@@ -188,7 +188,7 @@ export default function Table({
 										onClone?.(info.row.original.id);
 									}}
 								>
-									<IconCopy size={16} />
+									<IconCopy className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="action.clone" />
 								</button>
 								<button
@@ -198,18 +198,18 @@ export default function Table({
 										onDisableToggle?.(info.row.original.id, !info.row.original.enabled);
 									}}
 								>
-									<IconPower size={16} />
+									<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id={info.row.original.enabled ? "action.disable" : "action.enable"} />
 								</button>
 								<div className="dropdown-divider" />
 								<button
 									type="button"
-									className="dropdown-item"
+									className="dropdown-item text-danger"
 									onClick={() => {
 										onDelete?.(info.row.original.id);
 									}}
 								>
-									<IconTrash size={16} />
+									<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="action.delete" />
 								</button>
 							</HasPermission>
@@ -217,7 +217,7 @@ export default function Table({
 					</span>
 				),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],
@@ -245,6 +245,7 @@ export default function Table({
 			renderGroupLabel={renderGroupLabel}
 			emptyState={
 				<EmptyData
+					icon={IconBolt}
 					object="proxy-host"
 					objects="proxy-hosts"
 					tableInstance={tableInstance}

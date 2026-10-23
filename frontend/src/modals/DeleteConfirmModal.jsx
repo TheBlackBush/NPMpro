@@ -1,9 +1,9 @@
+import { IconAlertTriangle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
-import { ApiErrorContent, Button } from "src/components";
-import { T } from "src/locale";
+import { ApiErrorContent, Button, ErrorAlert } from "src/components";
+import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
 const showDeleteConfirmModal = (props) => {
@@ -32,54 +32,48 @@ const DeleteConfirmModal = EasyModal.create(
 		};
 
 		return (
-			<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
-				<Modal.Header closeButton={!isSubmitting}>
-					<Modal.Title>{tTitle ? <T id={tTitle} /> : title}</Modal.Title>
-				</Modal.Header>
-				<Modal.Body>
-					<Alert variant="danger" show={error} onClose={() => setError(null)} dismissible>
-						{error}
-					</Alert>
-					<div className="text-center mb-3">
-						<svg
-							role="img"
-							aria-hidden="true"
-							xmlns="http://www.w3.org/2000/svg"
-							className="icon mb-2 text-danger icon-lg"
-							width="24"
-							height="24"
-							viewBox="0 0 24 24"
-							strokeWidth="2"
-							stroke="currentColor"
-							fill="none"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path stroke="none" d="M0 0h24v24H0z" fill="none" />
-							<path d="M12 9v2m0 4v.01" />
-							<path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
-						</svg>
-					</div>
-					<div className="text-center mb-3">
+			<Modal show={visible} onHide={isSubmitting ? undefined : remove} size="sm" centered>
+				<button
+					type="button"
+					className="btn-close"
+					aria-label={intl.formatMessage({ id: "cancel" })}
+					onClick={remove}
+					disabled={isSubmitting}
+				/>
+				<div className="modal-status bg-danger" />
+				<Modal.Body className="text-center py-4">
+					<IconAlertTriangle className="icon mb-2 text-danger icon-lg" aria-hidden="true" />
+					<h3>{tTitle ? <T id={tTitle} /> : title}</h3>
+					<div className="text-secondary">
 						{children}
 						{subject ? <div className="mt-2 fw-bold text-break">{subject}</div> : null}
-						{details ? <div className="mt-1 text-secondary small text-break">{details}</div> : null}
+						{details ? <div className="mt-1 small text-break">{details}</div> : null}
 					</div>
+					<ErrorAlert className="mt-3 mb-0 text-start" onClose={() => setError(null)}>
+						{error}
+					</ErrorAlert>
 				</Modal.Body>
 				<Modal.Footer>
-					<Button onClick={remove} disabled={isSubmitting}>
-						<T id="cancel" />
-					</Button>
-					<Button
-						type="submit"
-						actionType="primary"
-						className="ms-auto btn-red"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-						onClick={onSubmit}
-					>
-						<T id={tTitle ?? "action.delete"} />
-					</Button>
+					<div className="w-100">
+						<div className="row">
+							<div className="col">
+								<Button className="w-100" onClick={remove} disabled={isSubmitting}>
+									<T id="cancel" />
+								</Button>
+							</div>
+							<div className="col">
+								<Button
+									type="submit"
+									className="btn-danger w-100"
+									isLoading={isSubmitting}
+									disabled={isSubmitting}
+									onClick={onSubmit}
+								>
+									<T id={tTitle ?? "action.delete"} />
+								</Button>
+							</div>
+						</div>
+					</div>
 				</Modal.Footer>
 			</Modal>
 		);

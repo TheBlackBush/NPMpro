@@ -2,9 +2,8 @@ import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import { createSetupUser } from "src/api/backend";
-import { ApiErrorContent, Button, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -59,9 +58,7 @@ export default function Setup() {
 					</div>
 				</div>
 				<div className="card card-md">
-					<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-						{errorMsg}
-					</Alert>
+					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 					<Formik
 						initialValues={{
 							name: "",

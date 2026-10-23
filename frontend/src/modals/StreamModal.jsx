@@ -1,11 +1,11 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import {
 	ApiErrorContent,
 	Button,
 	DirectoryField,
+	ErrorAlert,
 	HasPermission,
 	Loading,
 	NginxConfigField,
@@ -84,11 +84,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 
 	return (
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
-			{error && (
-				<Alert variant="danger" className="m-3">
-					<ApiErrorContent error={error} />
-				</Alert>
-			)}
+			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
 				<Formik
@@ -121,9 +117,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 								</Modal.Title>
 							</Modal.Header>
 							<Modal.Body className="p-0">
-								<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-									{errorMsg}
-								</Alert>
+								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 
 								<div className="card m-0 border-0">
 									<div className="card-header">

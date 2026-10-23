@@ -1,11 +1,16 @@
 import {
+	IconCloud,
 	IconDotsVertical,
 	IconDownload,
 	IconEdit,
 	IconFlask,
 	IconKey,
 	IconRefresh,
+	IconShield,
+	IconShieldLock,
 	IconTrash,
+	IconUpload,
+	IconWorld,
 } from "@tabler/icons-react";
 import {
 	createColumnHelper,
@@ -81,7 +86,7 @@ export default function Table({
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.domainNames.join(", "), {
@@ -145,7 +150,7 @@ export default function Table({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 			columnHelper.display({
@@ -158,7 +163,7 @@ export default function Table({
 						<span className="dropdown">
 							<button
 								type="button"
-								className="btn dropdown-toggle btn-action btn-sm px-1"
+								className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
 								aria-label={intl.formatMessage({ id: "actions" })}
 								data-bs-boundary="viewport"
 								data-bs-toggle="dropdown"
@@ -183,7 +188,7 @@ export default function Table({
 											onTest?.(row.domainNames);
 										}}
 									>
-										<IconFlask size={16} />
+										<IconFlask className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="test" />
 									</button>
 								)}
@@ -197,7 +202,7 @@ export default function Table({
 												onEdit?.(row);
 											}}
 										>
-											<IconEdit size={16} />
+											<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="action.edit" />
 										</button>
 									)}
@@ -210,7 +215,7 @@ export default function Table({
 												onRenew?.(row.id);
 											}}
 										>
-											<IconRefresh size={16} />
+											<IconRefresh className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="action.renew" />
 										</button>
 									)}
@@ -223,7 +228,7 @@ export default function Table({
 												onChangeDnsCredential?.(row);
 											}}
 										>
-											<IconKey size={16} />
+											<IconKey className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="dns-credentials.change" />
 										</button>
 									)}
@@ -235,7 +240,7 @@ export default function Table({
 											onDownload?.(row.id);
 										}}
 									>
-										<IconDownload size={16} />
+										<IconDownload className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="action.download" />
 									</button>
 
@@ -244,12 +249,12 @@ export default function Table({
 											<div className="dropdown-divider" />
 											<button
 												type="button"
-												className="dropdown-item"
+												className="dropdown-item text-danger"
 												onClick={() => {
 													onDelete?.(row.id);
 												}}
 											>
-												<IconTrash size={16} />
+												<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
 												<T id="action.delete" />
 											</button>
 										</>
@@ -260,7 +265,7 @@ export default function Table({
 					);
 				},
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],
@@ -297,6 +302,7 @@ export default function Table({
 						showHTTPCertificateModal();
 					}}
 				>
+					<IconWorld className="icon dropdown-item-icon" aria-hidden="true" />
 					<T id="lets-encrypt-via-http" />
 				</button>
 				<button
@@ -306,6 +312,7 @@ export default function Table({
 						showDNSCertificateModal();
 					}}
 				>
+					<IconCloud className="icon dropdown-item-icon" aria-hidden="true" />
 					<T id="lets-encrypt-via-dns" />
 				</button>
 				<div className="dropdown-divider" />
@@ -316,6 +323,7 @@ export default function Table({
 						showCustomCertificateModal();
 					}}
 				>
+					<IconUpload className="icon dropdown-item-icon" aria-hidden="true" />
 					<T id="certificates.custom" />
 				</button>
 				<div className="dropdown-divider" />
@@ -326,7 +334,8 @@ export default function Table({
 						showCustomCertificateModal(undefined, "mtls");
 					}}
 				>
-					mTLS
+					<IconShieldLock className="icon dropdown-item-icon" aria-hidden="true" />
+					<T id="certificates.mtls" />
 				</button>
 			</div>
 		</div>
@@ -337,6 +346,7 @@ export default function Table({
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconShield}
 					object="certificate"
 					objects="certificates"
 					tableInstance={tableInstance}

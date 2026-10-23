@@ -59,78 +59,82 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-purple" />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="auditlogs" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<div className="ms-auto d-flex flex-wrap gap-2 align-items-center">
-								<select
-									className="form-select form-select-sm w-auto"
-									aria-label={intl.formatMessage({ id: "audit-log.filter.type" })}
-									value={objectType}
-									onChange={(e) => setObjectType(e.target.value)}
-								>
-									<option value="">
-										{intl.formatMessage({ id: "audit-log.filter.type" })}:{" "}
-										{intl.formatMessage({ id: "list.filter.all" })}
-									</option>
-									{OBJECT_TYPES.map((t) => (
-										<option key={t} value={t}>
-											{intl.formatMessage({ id: t })}
-										</option>
-									))}
-								</select>
-								<select
-									className="form-select form-select-sm w-auto"
-									aria-label={intl.formatMessage({ id: "audit-log.filter.action" })}
-									value={action}
-									onChange={(e) => setAction(e.target.value)}
-								>
-									<option value="">
-										{intl.formatMessage({ id: "audit-log.filter.action" })}:{" "}
-										{intl.formatMessage({ id: "list.filter.all" })}
-									</option>
-									{ACTIONS.map((a) => (
-										<option key={a} value={a}>
-											{intl.formatMessage({ id: `audit-log.action.${a}` })}
-										</option>
-									))}
-								</select>
-								<select
-									className="form-select form-select-sm w-auto"
-									aria-label={intl.formatMessage({ id: "audit-log.filter.user" })}
-									value={userId}
-									onChange={(e) => setUserId(e.target.value)}
-								>
-									<option value="">
-										{intl.formatMessage({ id: "audit-log.filter.user" })}:{" "}
-										{intl.formatMessage({ id: "list.filter.all" })}
-									</option>
-									{(users ?? []).map((u) => (
-										<option key={u.id} value={u.id}>
-											{u.name}
-										</option>
-									))}
-								</select>
-								<div className="input-group input-group-flat w-auto">
-									<span className="input-group-text input-group-text-sm">
-										<IconSearch size={16} />
-									</span>
-									<input
-										type="text"
-										className="form-control form-control-sm"
-										placeholder={intl.formatMessage({ id: "search" })}
-										aria-label={intl.formatMessage({ id: "search" })}
-										autoComplete="off"
-										maxLength={255}
-										value={search}
-										onChange={(e) => setSearch(e.target.value)}
-									/>
-								</div>
+					<h2 className="card-title">
+						<T id="auditlogs" />
+					</h2>
+				</div>
+				<div className="card-body border-bottom py-3">
+					<div className="row g-2 align-items-center">
+						<div className="col-12 col-md">
+							<div className="input-group input-group-flat input-group-sm">
+								<span className="input-group-text">
+									<IconSearch className="icon" aria-hidden="true" />
+								</span>
+								<input
+									type="text"
+									className="form-control"
+									placeholder={intl.formatMessage({ id: "search" })}
+									aria-label={intl.formatMessage({ id: "search" })}
+									autoComplete="off"
+									maxLength={255}
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+								/>
 							</div>
+						</div>
+						<div className="col-6 col-md-auto">
+							<select
+								className="form-select form-select-sm w-100"
+								aria-label={intl.formatMessage({ id: "audit-log.filter.type" })}
+								value={objectType}
+								onChange={(e) => setObjectType(e.target.value)}
+							>
+								<option value="">
+									{intl.formatMessage({ id: "audit-log.filter.type" })}:{" "}
+									{intl.formatMessage({ id: "list.filter.all" })}
+								</option>
+								{OBJECT_TYPES.map((t) => (
+									<option key={t} value={t}>
+										{intl.formatMessage({ id: t })}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="col-6 col-md-auto">
+							<select
+								className="form-select form-select-sm w-100"
+								aria-label={intl.formatMessage({ id: "audit-log.filter.action" })}
+								value={action}
+								onChange={(e) => setAction(e.target.value)}
+							>
+								<option value="">
+									{intl.formatMessage({ id: "audit-log.filter.action" })}:{" "}
+									{intl.formatMessage({ id: "list.filter.all" })}
+								</option>
+								{ACTIONS.map((a) => (
+									<option key={a} value={a}>
+										{intl.formatMessage({ id: `audit-log.action.${a}` })}
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="col-6 col-md-auto">
+							<select
+								className="form-select form-select-sm w-100"
+								aria-label={intl.formatMessage({ id: "audit-log.filter.user" })}
+								value={userId}
+								onChange={(e) => setUserId(e.target.value)}
+							>
+								<option value="">
+									{intl.formatMessage({ id: "audit-log.filter.user" })}:{" "}
+									{intl.formatMessage({ id: "list.filter.all" })}
+								</option>
+								{(users ?? []).map((u) => (
+									<option key={u.id} value={u.id}>
+										{u.name}
+									</option>
+								))}
+							</select>
 						</div>
 					</div>
 				</div>

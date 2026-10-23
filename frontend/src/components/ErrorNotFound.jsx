@@ -8,6 +8,7 @@ export function ErrorNotFound() {
 	return (
 		<div className="container-tight py-4">
 			<div className="empty">
+				<div className="empty-header">404</div>
 				<p className="empty-title">
 					<T id="notfound.title" />
 				</p>
@@ -15,7 +16,7 @@ export function ErrorNotFound() {
 					<T id="notfound.content" />
 				</p>
 				<div className="empty-action">
-					<Button type="button" size="md" onClick={() => navigate("/")}>
+					<Button type="button" color="primary" onClick={() => navigate("/")}>
 						<T id="notfound.action" />
 					</Button>
 				</div>

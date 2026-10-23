@@ -1,3 +1,4 @@
+import { Collapse } from "@tabler/core";
 import { IconDevicesX, IconLock, IconLogout, IconShieldLock, IconUser } from "@tabler/icons-react";
 import { LocalePicker, NavLink, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
@@ -53,6 +54,13 @@ export function SiteHeader() {
 								href="/"
 								className="nav-link d-flex lh-1"
 								data-bs-toggle="dropdown"
+								onClick={() => {
+									// on phones the navigation and the user menu overlap; close the navigation when the menu opens
+									const menu = document.querySelector("#navbar-menu");
+									if (menu?.classList.contains("show")) {
+										Collapse.getOrCreateInstance(menu).hide();
+									}
+								}}
 								aria-label={intl.formatMessage({ id: "aria.user-menu" })}
 							>
 								<span

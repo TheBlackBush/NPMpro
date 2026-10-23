@@ -2,10 +2,9 @@ import { IconCopy, IconEye, IconEyeOff } from "@tabler/icons-react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, Button } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -152,9 +151,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "setup") {
 			return (
 				<div className="py-2">
-					<Alert variant="warning">
+					<NoticeAlert>
 						<T id="logout-other-devices" />
-					</Alert>
+					</NoticeAlert>
 					<p className="text-secondary mb-3">
 						<T id="totp.setup-instructions" />
 					</p>
@@ -257,9 +256,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "backup") {
 			return (
 				<div className="py-2">
-					<Alert variant="warning">
+					<NoticeAlert>
 						<T id="mfa.backup-warning" />
-					</Alert>
+					</NoticeAlert>
 					<div className="mb-3">
 						<div className="row g-2">
 							{backupCodes.map((code, index) => (
@@ -279,9 +278,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "disable") {
 			return (
 				<div className="py-2">
-					<Alert variant="warning">
+					<NoticeAlert>
 						<T id="totp.disable-warning" />
-					</Alert>
+					</NoticeAlert>
 					<Formik initialValues={{ code: "" }} onSubmit={handleDisable}>
 						{() => (
 							<Form>
@@ -353,9 +352,9 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "verify") {
 			return (
 				<div className="py-2">
-					<Alert variant="warning">
+					<NoticeAlert>
 						<T id="logout-other-devices" />
-					</Alert>
+					</NoticeAlert>
 					<p className="text-secondary mb-3">
 						<T id="mfa.regenerate-instructions" />
 					</p>
@@ -438,9 +437,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 				</Modal.Title>
 			</Modal.Header>
 			<Modal.Body>
-				<Alert variant="danger" show={error} onClose={() => setError(null)} dismissible>
-					{error}
-				</Alert>
+				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 				{renderContent()}
 			</Modal.Body>
 		</Modal>

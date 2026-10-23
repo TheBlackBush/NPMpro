@@ -1,10 +1,9 @@
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { updateAuth } from "src/api/backend";
-import { ApiErrorContent, Button } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -50,12 +49,10 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 							</Modal.Title>
 						</Modal.Header>
 						<Modal.Body>
-							<Alert variant="danger" show={error} onClose={() => setError(null)} dismissible>
-								{error}
-							</Alert>
-							<Alert variant="warning">
+							<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
+							<NoticeAlert>
 								<T id="logout-other-devices" />
-							</Alert>
+							</NoticeAlert>
 							<div className="mb-3">
 								<Field name="new" validate={validateString(8, 255, false)}>
 									{({ field, form }) => (

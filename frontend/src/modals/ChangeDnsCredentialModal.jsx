@@ -1,10 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { setCertificateDnsCredential } from "src/api/backend";
-import { ApiErrorContent, Button, DnsCredentialSelect } from "src/components";
+import { ApiErrorContent, Button, DnsCredentialSelect, ErrorAlert } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -55,14 +54,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 							</Modal.Title>
 						</Modal.Header>
 						<Modal.Body>
-							<Alert
-								variant="danger"
-								show={Boolean(errorMsg)}
-								onClose={() => setErrorMsg(null)}
-								dismissible
-							>
-								{errorMsg}
-							</Alert>
+							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<DnsCredentialSelect
 								name="npmproDnsCredentialId"
 								provider={certificate.npmproDnsProvider}

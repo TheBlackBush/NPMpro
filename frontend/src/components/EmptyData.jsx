@@ -1,3 +1,4 @@
+import { IconSearch } from "@tabler/icons-react";
 import cn from "clsx";
 import { Button, HasPermission } from "src/components";
 import { T } from "src/locale";
@@ -14,38 +15,48 @@ function EmptyData({
 	customAddBtn,
 	permissionSection,
 	permission,
+	icon: Icon,
 }) {
 	return (
 		<tr>
 			<td colSpan={tableInstance.getAllFlatColumns().length}>
-				<div className="text-center my-4">
+				<div className="empty">
+					<div className="empty-icon">
+						{isFiltered || !Icon ? (
+							<IconSearch className="icon" aria-hidden="true" />
+						) : (
+							<Icon className="icon" aria-hidden="true" />
+						)}
+					</div>
 					{isFiltered ? (
 						<>
-							<h2>
+							<p className="empty-title">
 								<T id={onClearFilters ? "list.no-match" : "empty-search"} />
-							</h2>
+							</p>
 							{onClearFilters ? (
-								<Button className="my-3" onClick={onClearFilters}>
-									<T id="list.clear-filters" />
-								</Button>
+								<div className="empty-action">
+									<Button onClick={onClearFilters}>
+										<T id="list.clear-filters" />
+									</Button>
+								</div>
 							) : null}
 						</>
 					) : (
 						<>
-							<h2>
+							<p className="empty-title">
 								<T id="object.empty" tData={{ objects }} />
-							</h2>
+							</p>
 							<HasPermission section={permissionSection} permission={permission || MANAGE} hideError>
-								<p className="text-secondary">
+								<p className="empty-subtitle text-secondary">
 									<T id="empty-subtitle" />
 								</p>
-								{customAddBtn ? (
-									customAddBtn
-								) : (
-									<Button className={cn("my-3", `btn-${color}`)} onClick={onNew}>
-										<T id="object.add" tData={{ object }} />
-									</Button>
-								)}
+								<div className="empty-action">
+									{customAddBtn ?? (
+										<Button className={cn(`btn-${color}`)} onClick={onNew}>
+											<T id="object.add" tData={{ object }} />
+										</Button>
+									)}
+								</div>
 							</HasPermission>
 						</>
 					)}

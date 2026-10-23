@@ -2,7 +2,6 @@ import { IconSettings } from "@tabler/icons-react";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import {
 	AccessFields,
@@ -10,6 +9,7 @@ import {
 	Button,
 	DirectoryField,
 	DomainNamesField,
+	ErrorAlert,
 	HasPermission,
 	Loading,
 	LocationsFields,
@@ -96,11 +96,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 
 	return (
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
-			{error && (
-				<Alert variant="danger" className="m-3">
-					<ApiErrorContent error={error} />
-				</Alert>
-			)}
+			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
 				<Formik
@@ -151,9 +147,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 								</Modal.Title>
 							</Modal.Header>
 							<Modal.Body className="p-0">
-								<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-									{errorMsg}
-								</Alert>
+								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="card m-0 border-0">
 									<div className="card-header">
 										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">

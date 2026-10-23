@@ -40,52 +40,48 @@ export default function TableWrapper() {
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="dns-credentials" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<div className="ms-auto d-flex flex-wrap btn-list">
-								{data?.length ? (
-									<div className="input-group input-group-flat w-auto">
-										<span className="input-group-text input-group-text-sm">
-											<IconSearch size={16} />
-										</span>
-										<input
-											type="text"
-											className="form-control form-control-sm"
-											placeholder={intl.formatMessage({ id: "search" })}
-											aria-label={intl.formatMessage({ id: "search" })}
-											autoComplete="off"
-											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
-										/>
-									</div>
-								) : null}
-								<Button
-									size="sm"
-									aria-label={intl.formatMessage({ id: "help" })}
-									title={intl.formatMessage({ id: "help" })}
-									onClick={() => showHelpModal("Certificates")}
-								>
-									<IconHelp size={20} />
+					<h2 className="card-title">
+						<T id="dns-credentials" />
+					</h2>
+					<div className="card-actions btn-list">
+						<Button
+							size="sm"
+							aria-label={intl.formatMessage({ id: "help" })}
+							title={intl.formatMessage({ id: "help" })}
+							onClick={() => showHelpModal("Certificates")}
+						>
+							<IconHelp className="icon" aria-hidden="true" />
+						</Button>
+						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
+							{data?.length ? (
+								<Button size="sm" className="btn-pink" onClick={() => showDnsCredentialModal("new")}>
+									<T id="dns-credentials.add" />
 								</Button>
-								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-									{data?.length ? (
-										<Button
-											size="sm"
-											className="btn-pink"
-											onClick={() => showDnsCredentialModal("new")}
-										>
-											<T id="dns-credentials.add" />
-										</Button>
-									) : null}
-								</HasPermission>
+							) : null}
+						</HasPermission>
+					</div>
+				</div>
+				{data?.length ? (
+					<div className="card-body border-bottom py-3">
+						<div className="row g-2 align-items-center">
+							<div className="col-12 col-md">
+								<div className="input-group input-group-flat input-group-sm">
+									<span className="input-group-text">
+										<IconSearch className="icon" aria-hidden="true" />
+									</span>
+									<input
+										type="text"
+										className="form-control"
+										placeholder={intl.formatMessage({ id: "search" })}
+										aria-label={intl.formatMessage({ id: "search" })}
+										autoComplete="off"
+										onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
+									/>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				) : null}
 				<Table
 					data={filtered ?? data ?? []}
 					isFetching={isFetching}

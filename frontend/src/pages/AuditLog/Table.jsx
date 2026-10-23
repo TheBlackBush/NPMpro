@@ -39,7 +39,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.createdOn, {
@@ -62,7 +62,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					</button>
 				),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],
