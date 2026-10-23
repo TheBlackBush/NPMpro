@@ -1,3 +1,4 @@
+import { carryAuthMethod } from "../lib/auth-method.js";
 import errs from "../lib/error.js";
 import { parseDatePeriod } from "../lib/helpers.js";
 import authModel from "../models/auth.js";
@@ -59,6 +60,7 @@ export default {
 					iss: "api",
 					attrs: {
 						id: user.id,
+						auth_method: "password",
 					},
 					scope: ["mfa-challenge"],
 					expiresIn: "3m",
@@ -76,6 +78,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: user.id,
+				auth_method: "password",
 			},
 			scope: ["user"],
 			expiresIn: "1h",
@@ -109,6 +112,7 @@ export default {
 				iss: "api",
 				attrs: {
 					id: user.id,
+					auth_method: "oidc",
 				},
 				scope: ["mfa-challenge"],
 				expiresIn: "3m",
@@ -125,6 +129,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: user.id,
+				auth_method: "oidc",
 			},
 			scope: ["user"],
 			expiresIn: "1h",
@@ -149,6 +154,7 @@ export default {
 				scope: ["user"],
 				attrs: {
 					id: access.token.getUserId(0),
+					auth_method: access.token.getAuthMethod(),
 				},
 				expiresIn: "1h",
 				iat: Math.floor(Date.now() / 1000) + (afterRevoke ? 1 : 0),
@@ -213,6 +219,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: userId,
+				auth_method: carryAuthMethod(tokenData.attrs),
 			},
 			scope: ["user"],
 			expiresIn: "1h",
