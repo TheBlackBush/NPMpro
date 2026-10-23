@@ -41,7 +41,7 @@ export default function TableWrapper() {
 	const { filters, setFilter, clear } = useListFilters();
 
 	if (isPending) {
-		return <LoadingPage />;
+		return <LoadingPage noLogo delay={300} />;
 	}
 
 	if (isError) {

@@ -20,7 +20,7 @@ export default function TableWrapper() {
 	const { filters, setFilter, clear } = useListFilters(groups);
 
 	if (isPending) {
-		return <LoadingPage />;
+		return <LoadingPage noLogo delay={300} />;
 	}
 
 	if (isError) {

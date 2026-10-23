@@ -23,7 +23,7 @@ export default function TableWrapper() {
 	const { data: currentUser } = useUser("me");
 
 	if (isPending) {
-		return <LoadingPage />;
+		return <LoadingPage noLogo delay={300} />;
 	}
 
 	if (isError) {

@@ -46,7 +46,7 @@ export default function TableWrapper() {
 	} = useAuditLogs(["user"], { query, objectType, action, userId });
 
 	if (isPending) {
-		return <LoadingPage />;
+		return <LoadingPage noLogo delay={300} />;
 	}
 
 	// A failed next page keeps the loaded rows, a failed first load shows the error under the toolbar

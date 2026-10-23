@@ -7,6 +7,7 @@ export * from "./useCertificates";
 export * from "./useCheckVersion";
 export * from "./useDeadHost";
 export * from "./useDeadHosts";
+export * from "./useDelayElapsed";
 export * from "./useDirectorySuggestions";
 export * from "./useDnsCredential";
 export * from "./useDnsCredentials";
