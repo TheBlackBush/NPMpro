@@ -80,6 +80,8 @@ jobs:
           "$RUNNER_TEMP/actionlint" -ignore SC2086 -ignore SC2012
       - name: json syntax
         run: git ls-files '*.json' | xargs -n1 jq empty
+      - name: old project name
+        run: sh .github/scripts/check-names.sh
       - name: nginx config format
         run: |
           npx --yes nginxbeautifier@1.0.19 -s 2 -r rootfs/usr/local/nginx/conf
