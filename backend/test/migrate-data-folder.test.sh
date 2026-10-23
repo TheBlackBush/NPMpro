@@ -58,6 +58,23 @@ check "both exits 0" "$([ "$code" = 0 ]; echo $?)"
 check "both keeps npmpro untouched" "$([ "$(cat "$d/npmpro/marker")" = mine ] && [ ! -e "$d/npmpro/keys-ec.json" ]; echo $?)"
 check "both renames npmplus to a backup" "$([ ! -e "$d/npmplus" ] && [ "$(backup_count "$d")" = 1 ]; echo $?)"
 
+# both folders, npmplus database newer (for example after a rollback): refuse and change nothing
+d="$(new_data)"; make_old "$d"; mkdir -p "$d/npmpro"; make_db "$d/npmpro/database.sqlite"; echo mine > "$d/npmpro/marker"
+touch -t 202601010000 "$d/npmpro/database.sqlite"
+touch -t 202602010000 "$d/npmplus/database.sqlite"
+code="$(run "$d")"
+check "both, npmplus newer exits 1" "$([ "$code" = 1 ]; echo $?)"
+check "both, npmplus newer changes nothing" "$([ -f "$d/npmplus/keys-ec.json" ] && [ "$(cat "$d/npmpro/marker")" = mine ] && [ "$(backup_count "$d")" = 0 ]; echo $?)"
+check "both, npmplus newer explains" "$(grep -q 'looks newer' "$d.log"; echo $?)"
+
+# both folders, npmpro database newer: npmpro wins, npmplus becomes a backup
+d="$(new_data)"; make_old "$d"; mkdir -p "$d/npmpro"; make_db "$d/npmpro/database.sqlite"; echo mine > "$d/npmpro/marker"
+touch -t 202602010000 "$d/npmpro/database.sqlite"
+touch -t 202601010000 "$d/npmplus/database.sqlite"
+code="$(run "$d")"
+check "both, npmpro newer exits 0" "$([ "$code" = 0 ]; echo $?)"
+check "both, npmpro newer keeps npmpro and backs up npmplus" "$([ "$(cat "$d/npmpro/marker")" = mine ] && [ ! -e "$d/npmplus" ] && [ "$(backup_count "$d")" = 1 ]; echo $?)"
+
 # only the new folder: nothing to do
 d="$(new_data)"; mkdir -p "$d/npmpro"; echo mine > "$d/npmpro/marker"
 code="$(run "$d")"

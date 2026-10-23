@@ -15,14 +15,6 @@ fail() {
     exit 1
 }
 
-file_count() {
-    find "$1" -type f | wc -l | tr -d ' '
-}
-
-byte_size() {
-    find "$1" -type f -exec cat {} + | wc -c | tr -d ' '
-}
-
 backup_name() {
     name="$OLD.backup-$(date +%Y%m%d-%H%M)"
     n=1
@@ -59,6 +51,11 @@ if [ ! -d "$OLD" ]; then
 fi
 
 if [ -d "$NEW" ]; then
+    if [ -f "$OLD/database.sqlite" ] && [ -f "$NEW/database.sqlite" ] && [ "$OLD/database.sqlite" -nt "$NEW/database.sqlite" ]; then
+        echo "Both $OLD and $NEW exist, and $OLD looks newer (its database.sqlite was changed last)."
+        echo "Nothing was changed. Move the folder you do not want out of /data (or rename it), then restart the container."
+        exit 1
+    fi
     echo "Both $OLD and $NEW exist, using $NEW."
     keep_old
     exit 0
@@ -72,8 +69,7 @@ fi
 
 echo "Moving $OLD to $NEW..."
 cp -a "$OLD" "$TMP" || fail "copy failed"
-[ "$(file_count "$OLD")" = "$(file_count "$TMP")" ] || fail "the copy has a different number of files"
-[ "$(byte_size "$OLD")" = "$(byte_size "$TMP")" ] || fail "the copy has a different size"
+diff -r "$OLD" "$TMP" > /dev/null || fail "the copy differs from the original"
 
 if [ -f "$TMP/database.sqlite" ]; then
     result="$(node --no-warnings -e 'const { DatabaseSync } = require("node:sqlite"); const db = new DatabaseSync(process.argv[1]); console.log(db.prepare("PRAGMA integrity_check").get().integrity_check); db.close();' "$TMP/database.sqlite" 2>&1)"

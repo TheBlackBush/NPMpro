@@ -102,4 +102,77 @@ for (const { label, client, url } of servers) {
 			]);
 		});
 	});
+
+	if (client === "pg") {
+		const suite = url ? describe : describe.skip;
+		suite("rename migration inside a transaction on postgres", () => {
+			let knex;
+			const all = [
+				"proxy_host",
+				"npmplus_location",
+				"npmpro_location",
+				"npmplus_dns_credential",
+				"npmpro_dns_credential",
+				"other",
+			];
+
+			before(async () => {
+				knex = knexFactory({ client, connection: url });
+				for (const table of all) {
+					await knex.schema.dropTableIfExists(table);
+				}
+				await knex.schema.createTable("other", (t) => {
+					t.increments("id");
+					t.integer("a");
+				});
+				// the rename target of npmplus_location_proxy_host_id_index already exists
+				await knex.raw("CREATE INDEX ?? ON other (a)", ["npmpro_location_proxy_host_id_index"]);
+				await knex.schema.createTable("npmplus_location", (t) => {
+					t.increments("id");
+					t.integer("proxy_host_id").notNull().unsigned().index();
+					t.string("npmplus_kind").notNull().defaultTo("");
+				});
+				await knex.schema.createTable("npmplus_dns_credential", (t) => {
+					t.increments("id");
+					t.integer("owner_user_id").notNull();
+					t.string("name").notNull();
+					t.unique(["owner_user_id", "name"]);
+				});
+			});
+
+			after(async () => {
+				for (const table of all) {
+					await knex?.schema.dropTableIfExists(table);
+				}
+				await knex?.destroy();
+			});
+
+			it("commits and only the conflicting index keeps its old name", async () => {
+				await knex.transaction((trx) => up(trx));
+
+				assert.deepEqual(Object.keys(await knex("npmpro_location").columnInfo()).sort(), [
+					"id",
+					"npmpro_kind",
+					"proxy_host_id",
+				]);
+				await knex("npmpro_dns_credential").select();
+				const names = rowsOf(client, await knex.raw(indexQuery.pg)).map((row) => row.name);
+				assert.deepEqual(
+					names.filter((name) => name.includes("npmplus")),
+					["npmplus_location_proxy_host_id_index"],
+				);
+				assert.ok(names.includes("npmpro_dns_credential_owner_user_id_name_unique"));
+				const sequences = rowsOf(
+					client,
+					await knex.raw(
+						"SELECT sequence_name AS name FROM information_schema.sequences WHERE sequence_schema = current_schema()",
+					),
+				).map((row) => row.name);
+				assert.deepEqual(
+					sequences.filter((name) => name.includes("npmplus")),
+					[],
+				);
+			});
+		});
+	}
 }

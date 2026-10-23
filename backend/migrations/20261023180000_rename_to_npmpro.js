@@ -70,9 +70,15 @@ const renameColumns = async (knex, client) => {
 					`[${migrateName}] Both columns ${table}.${column} and ${target} exist, repair the database manually`,
 				);
 			}
-			await knex.schema.alterTable(table, (t) => {
-				t.renameColumn(column, target);
-			});
+			if (client === "mysql") {
+				// knex rebuilds the column with CHANGE on MySQL (lossy); needs MySQL 8.0+ or MariaDB 10.5.2+
+				await knex.raw("ALTER TABLE ?? RENAME COLUMN ?? TO ??", [table, column, target]);
+			} else {
+				// SQLite and Postgres issue a native rename
+				await knex.schema.alterTable(table, (t) => {
+					t.renameColumn(column, target);
+				});
+			}
 		}
 	}
 	logger.info(`[${migrateName}] Columns renamed`);
@@ -91,10 +97,19 @@ const renameSqliteIndexes = async (knex) => {
 	return indexes.length;
 };
 
-// cosmetic only: a failed rename is logged and skipped, so it cannot leave a half-migrated install
-const tryRename = async (knex, label, sql, bindings) => {
+// cosmetic only: a failed rename is logged and skipped, so it cannot leave a half-migrated install.
+// On Postgres a failed statement aborts the surrounding migration transaction, so each rename runs in
+// its own nested transaction (a savepoint) and the error is caught outside it. MySQL DDL is not
+// transactional, so a plain try/catch is enough there.
+const tryRename = async (knex, client, label, sql, bindings) => {
 	try {
-		await knex.raw(sql, bindings);
+		if (client === "pg") {
+			await knex.transaction(async (trx) => {
+				await trx.raw(sql, bindings);
+			});
+		} else {
+			await knex.raw(sql, bindings);
+		}
 		return 1;
 	} catch (err) {
 		logger.warn(`[${migrateName}] Could not rename ${label}, keeping the old name: ${err.message}`);
@@ -113,7 +128,7 @@ const renamePgObjects = async (knex) => {
 	);
 	let count = 0;
 	for (const { name } of indexes) {
-		count += await tryRename(knex, `index ${name}`, "ALTER INDEX ?? RENAME TO ??", [name, renamed(name)]);
+		count += await tryRename(knex, "pg", `index ${name}`, "ALTER INDEX ?? RENAME TO ??", [name, renamed(name)]);
 	}
 	const sequences = rowsOf(
 		"pg",
@@ -123,7 +138,10 @@ const renamePgObjects = async (knex) => {
 		),
 	);
 	for (const { name } of sequences) {
-		count += await tryRename(knex, `sequence ${name}`, "ALTER SEQUENCE ?? RENAME TO ??", [name, renamed(name)]);
+		count += await tryRename(knex, "pg", `sequence ${name}`, "ALTER SEQUENCE ?? RENAME TO ??", [
+			name,
+			renamed(name),
+		]);
 	}
 	return count;
 };
@@ -139,7 +157,7 @@ const renameMysqlIndexes = async (knex) => {
 	);
 	let count = 0;
 	for (const { name, tbl } of indexes) {
-		count += await tryRename(knex, `index ${tbl}.${name}`, "ALTER TABLE ?? RENAME INDEX ?? TO ??", [
+		count += await tryRename(knex, "mysql", `index ${tbl}.${name}`, "ALTER TABLE ?? RENAME INDEX ?? TO ??", [
 			tbl,
 			name,
 			renamed(name),

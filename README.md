@@ -72,11 +72,11 @@ docker compose up -d
 
 NPMpro can take over an existing NPMplus data volume. Paths like `/data/...` are paths inside the container; on the host, `/data` is the folder you mounted to it (for example `/opt/npmplus`).
 
-- On the first start, NPMpro copies `/data/npmplus` to `/data/npmpro`, checks the copy (number of files, size and, for SQLite, a database integrity check) and renames the old folder to `/data/npmplus.backup-<date>`, with a `MOVED-TO-NPMPRO.txt` note inside. If a check fails, the container stops and `/data/npmplus` stays unchanged.
+- On the first start, NPMpro copies `/data/npmplus` to `/data/npmpro`, checks the copy (content comparison and, for SQLite, a database integrity check) and renames the old folder to `/data/npmplus.backup-<date>`, with a `MOVED-TO-NPMPRO.txt` note inside. If a check fails, the container stops starting and waits, showing the reason in the logs, and `/data/npmplus` stays unchanged. If both `/data/npmplus` and `/data/npmpro` exist, NPMpro keeps `/data/npmpro`, unless `/data/npmplus/database.sqlite` is newer: then it changes nothing, waits, and asks you to move the folder you do not want out of `/data`.
 - The database is then migrated: tables and columns named `npmplus_*` become `npmpro_*`. NPMplus images cannot use the migrated database.
 - The host path of the volume does not matter to NPMpro. You can keep `/opt/npmplus` or rename it to `/opt/npmpro` while the container is stopped.
 - Users stay logged in. An OIDC login that is in progress during the upgrade has to be started again.
-- External databases (MySQL/MariaDB via `DB_MYSQL_*`, Postgres via `DB_POSTGRES_*`) are renamed in place and are not part of the data folder backup. Dump the database before upgrading. External databases need MySQL 5.7 or later or MariaDB 10.5.2 or later (any supported Postgres version works).
+- External databases (MySQL/MariaDB via `DB_MYSQL_*`, Postgres via `DB_POSTGRES_*`) are renamed in place and are not part of the data folder backup. Dump the database before upgrading. External databases need MySQL 8.0 or later or MariaDB 10.5.2 or later (any supported Postgres version works).
 - Once everything works, you can delete `/data/npmplus.backup-<date>`.
 
 To go back to NPMplus: stop the container, move `/data/npmpro` away, rename `/data/npmplus.backup-<date>` back to `/data/npmplus` and start the NPMplus image. This only restores SQLite installs, because their database lives in that folder. With an external database, also restore the dump you made before upgrading.
