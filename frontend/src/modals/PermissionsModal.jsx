@@ -265,7 +265,8 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 								</Button>
 								<Button
 									type="submit"
-									className="ms-auto btn-orange"
+									className="ms-auto"
+									color="orange"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>

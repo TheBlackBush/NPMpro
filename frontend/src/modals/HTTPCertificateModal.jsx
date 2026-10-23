@@ -166,7 +166,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 							<div className="ms-auto">
 								<Button
 									type="button"
-									actionType="secondary"
+									color="secondary"
 									className="me-3"
 									isLoading={isTesting}
 									disabled={isSubmitting || domains.length === 0}

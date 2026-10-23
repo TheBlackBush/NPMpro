@@ -123,8 +123,8 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 										</Button>
 										{data?.avatar?.startsWith("/images/avatar/") && (
 											<Button
-												actionType="danger"
-												variant="outline"
+												color="danger"
+												outline
 												onClick={() => changeAvatar(() => deleteAvatar(id))}
 											>
 												<T id="avatar.remove" />
@@ -245,7 +245,8 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 								</Button>
 								<Button
 									type="submit"
-									className="ms-auto btn-orange"
+									className="ms-auto"
+									color="orange"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>

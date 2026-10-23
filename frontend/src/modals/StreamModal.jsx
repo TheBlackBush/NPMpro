@@ -556,7 +556,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 								<HasPermission section={STREAMS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										actionType="primary"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}

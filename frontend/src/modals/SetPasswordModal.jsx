@@ -99,7 +99,7 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 							</Button>
 							<Button
 								type="submit"
-								actionType="primary"
+								color="primary"
 								className="ms-auto"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}

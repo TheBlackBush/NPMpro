@@ -1,5 +1,4 @@
 import { IconSearch } from "@tabler/icons-react";
-import cn from "clsx";
 import { Button, HasPermission } from "src/components";
 import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
@@ -52,7 +51,7 @@ function EmptyData({
 								</p>
 								<div className="empty-action">
 									{customAddBtn ?? (
-										<Button className={cn(`btn-${color}`)} onClick={onNew}>
+										<Button color={color} onClick={onNew}>
 											<T id="object.add" tData={{ object }} />
 										</Button>
 									)}

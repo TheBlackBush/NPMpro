@@ -98,7 +98,7 @@ export default function TableWrapper() {
 						</Button>
 						<HasPermission section={STREAMS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" className="btn-blue" onClick={() => showStreamModal("new")}>
+								<Button size="sm" color="blue" onClick={() => showStreamModal("new")}>
 									<T id="object.add" tData={{ object: "stream" }} />
 								</Button>
 							) : null}

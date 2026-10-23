@@ -57,14 +57,15 @@ const DeleteConfirmModal = EasyModal.create(
 					<div className="w-100">
 						<div className="row">
 							<div className="col">
-								<Button className="w-100" onClick={remove} disabled={isSubmitting}>
+								<Button fullWidth onClick={remove} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 							</div>
 							<div className="col">
 								<Button
 									type="submit"
-									className="btn-danger w-100"
+									color="danger"
+									fullWidth
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 									onClick={onSubmit}
