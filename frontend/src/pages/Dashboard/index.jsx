@@ -85,10 +85,9 @@ const Dashboard = () => {
 						{errorTotal === null ? (
 							<span className="text-secondary">-</span>
 						) : (
-							<>
-								{errorTotal > 0 ? <span className="badge bg-red-lt me-2">{errorTotal}</span> : null}
+							<span className={errorTotal > 0 ? "badge bg-red-lt text-wrap text-start" : undefined}>
 								<T id="dashboard.config-errors" data={{ count: errorTotal }} />
-							</>
+							</span>
 						)}
 					</DashboardTile>
 				) : null}
@@ -98,13 +97,20 @@ const Dashboard = () => {
 							<span className="text-secondary">-</span>
 						) : (
 							<>
-								<div>
-									{expiring > 0 ? <span className="badge bg-orange-lt me-2">{expiring}</span> : null}
-									<T id="dashboard.expiring" data={{ count: expiring, days: EXPIRY_WARNING_DAYS }} />
+								<div className="mb-1">
+									<span
+										className={expiring > 0 ? "badge bg-orange-lt text-wrap text-start" : undefined}
+									>
+										<T
+											id="dashboard.expiring"
+											data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
+										/>
+									</span>
 								</div>
 								<div>
-									{expired > 0 ? <span className="badge bg-red-lt me-2">{expired}</span> : null}
-									<T id="dashboard.expired" data={{ count: expired }} />
+									<span className={expired > 0 ? "badge bg-red-lt text-wrap text-start" : undefined}>
+										<T id="dashboard.expired" data={{ count: expired }} />
+									</span>
 								</div>
 							</>
 						)}
