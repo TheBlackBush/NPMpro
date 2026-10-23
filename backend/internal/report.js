@@ -5,6 +5,15 @@ import internalProxyHost from "./proxy-host.js";
 import internalRedirectionHost from "./redirection-host.js";
 import internalStream from "./stream.js";
 
+const canView = (access, permission) => {
+	try {
+		access.can(permission);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
 const internalReport = {
 	/**
 	 * @param  {Access}   access
@@ -12,6 +21,15 @@ const internalReport = {
 	 */
 	getHostsReport: async (access) => {
 		const userId = access.token.getUserId(1);
+
+		const view = {
+			proxy: canView(access, "proxy_hosts:view"),
+			redirection: canView(access, "redirection_hosts:view"),
+			dead: canView(access, "dead_hosts:view"),
+			stream: canView(access, "streams:view"),
+			certificate: canView(access, "certificates:view"),
+		};
+		const zero = Promise.resolve(0);
 
 		const [proxy, redirection, stream, dead, access_list, certificate, errors, expiry] = await Promise.all([
 			internalProxyHost.getCount(userId, access.visibility),
@@ -21,12 +39,14 @@ const internalReport = {
 			internalAccessList.getCount(userId, access.visibility),
 			internalCertificate.getCount(userId, access.visibility),
 			Promise.all([
-				internalProxyHost.getErrorCount(userId, access.visibility),
-				internalRedirectionHost.getErrorCount(userId, access.visibility),
-				internalDeadHost.getErrorCount(userId, access.visibility),
-				internalStream.getErrorCount(userId, access.visibility),
+				view.proxy ? internalProxyHost.getErrorCount(userId, access.visibility) : zero,
+				view.redirection ? internalRedirectionHost.getErrorCount(userId, access.visibility) : zero,
+				view.dead ? internalDeadHost.getErrorCount(userId, access.visibility) : zero,
+				view.stream ? internalStream.getErrorCount(userId, access.visibility) : zero,
 			]),
-			internalCertificate.getExpiryCounts(userId, access.visibility),
+			view.certificate
+				? internalCertificate.getExpiryCounts(userId, access.visibility)
+				: { expiring: 0, expired: 0 },
 		]);
 
 		return {
