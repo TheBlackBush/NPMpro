@@ -43,17 +43,32 @@ const CONNECTION_KEYS = ["issuer_url", "client_id", "client_secret", "redirect_d
  * @returns {{values: Object, locked: string[], active: boolean}}
  */
 const mergeOidcConfig = (stored, env) => {
+	const clean = Object.fromEntries(
+		Object.entries(stored).filter(([, value]) => value !== null && value !== undefined),
+	);
 	const values = {
 		...OIDC_DEFAULTS,
-		...stored,
-		auto_create: { ...OIDC_DEFAULTS.auto_create, ...stored.auto_create },
-		button: { ...OIDC_DEFAULTS.button, ...stored.button },
+		...clean,
+		auto_create: {
+			...OIDC_DEFAULTS.auto_create,
+			...clean.auto_create,
+			permissions: { ...OIDC_DEFAULTS.auto_create.permissions, ...clean.auto_create?.permissions },
+		},
+		button: {
+			...OIDC_DEFAULTS.button,
+			...clean.button,
+			icon: clean.button?.icon ?? OIDC_DEFAULTS.button.icon,
+		},
 	};
 	const locked = [];
 	for (const [key, name] of Object.entries(ENV_KEYS)) {
 		const raw = env[name];
 		if (raw === undefined || raw === "") continue;
-		values[key] = BOOLEAN_KEYS.has(key) ? raw === "true" : raw;
+		if (key === "require_verified_email") {
+			values[key] = raw !== "false";
+		} else {
+			values[key] = BOOLEAN_KEYS.has(key) ? raw === "true" : raw;
+		}
 		locked.push(key);
 	}
 	const allFromEnv = CONNECTION_KEYS.every((key) => locked.includes(key));
@@ -66,9 +81,12 @@ const callbackUrl = (redirectDomain) => `https://${redirectDomain}/api/oidc/call
 const emailDomainAllowed = (email, allowedDomains) => {
 	const at = String(email).lastIndexOf("@");
 	if (at < 1) return false;
-	if (!allowedDomains?.length) return true;
 	const domain = email.slice(at + 1).toLowerCase();
-	return allowedDomains.some((allowed) => allowed.toLowerCase() === domain);
+	if (!domain) return false;
+	if (!allowedDomains?.length) return true;
+	return allowedDomains.some(
+		(allowed) => typeof allowed === "string" && allowed.trim() !== "" && allowed.trim().toLowerCase() === domain,
+	);
 };
 
 /**

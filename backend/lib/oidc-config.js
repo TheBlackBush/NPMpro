@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { discovery } from "openid-client";
 import { oidc as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
-import { mergeOidcConfig } from "./oidc-rules.js";
+import { ENV_KEYS, mergeOidcConfig } from "./oidc-rules.js";
 import { defaultSecretBox } from "./secret-box.js";
 
 const discoveryCache = new Map();
@@ -16,8 +17,9 @@ const readStoredOidc = async () => (await settingModel.query().where("id", "oidc
  */
 const getOidcConfig = async () => {
 	const { client_secret: encrypted, ...stored } = await readStoredOidc();
+	const secretFromEnv = Boolean(process.env[ENV_KEYS.client_secret]);
 	let secretError = false;
-	if (encrypted) {
+	if (encrypted && !secretFromEnv) {
 		try {
 			stored.client_secret = defaultSecretBox.decrypt(encrypted);
 		} catch (err) {
@@ -26,17 +28,18 @@ const getOidcConfig = async () => {
 			warnedSecret = true;
 		}
 	}
-	const merged = mergeOidcConfig(stored, process.env);
-	if (secretError && !merged.locked.includes("client_secret")) merged.active = false;
-	return { ...merged, secretError };
+	return { ...mergeOidcConfig(stored, process.env), secretError };
 };
 
-const getDiscovery = (values) => {
-	const key = `${values.issuer_url}\n${values.client_id}`;
+const getDiscovery = async (values) => {
+	const secretHash = createHash("sha256")
+		.update(String(values.client_secret ?? ""))
+		.digest("hex");
+	const key = `${values.issuer_url}\n${values.client_id}\n${secretHash}`;
 	if (!discoveryCache.has(key)) {
-		const pending = discovery(new URL(values.issuer_url), values.client_id, values.client_secret).catch((err) => {
-			discoveryCache.delete(key);
-			throw err;
+		const pending = (async () => discovery(new URL(values.issuer_url), values.client_id, values.client_secret))();
+		pending.catch(() => {
+			if (discoveryCache.get(key) === pending) discoveryCache.delete(key);
 		});
 		discoveryCache.set(key, pending);
 	}

@@ -92,3 +92,34 @@ it("derives a user name from claims", () => {
 	assert.equal(userNameFromClaims({ preferred_username: "ada", email: "ada@example.com" }), "ada");
 	assert.equal(userNameFromClaims({ email: "ada.l@example.com" }), "ada.l");
 });
+
+it("partial stored permissions and button keep the other defaults", () => {
+	const { values } = mergeOidcConfig(
+		{ auto_create: { permissions: { streams: "manage" } }, button: { label: "SSO" } },
+		{},
+	);
+	assert.deepEqual(values.auto_create.permissions, { ...OIDC_DEFAULTS.auto_create.permissions, streams: "manage" });
+	assert.equal(values.button.label, "SSO");
+	assert.equal(values.button.color, OIDC_DEFAULTS.button.color);
+	assert.deepEqual(values.button.icon, OIDC_DEFAULTS.button.icon);
+});
+
+it("stored null values are treated as absent", () => {
+	const { values } = mergeOidcConfig({ require_verified_email: null, skip_mfa: null, button: null }, {});
+	assert.equal(values.require_verified_email, true);
+	assert.equal(values.skip_mfa, false);
+	assert.deepEqual(values.button, OIDC_DEFAULTS.button);
+});
+
+it("require_verified_email from env fails closed", () => {
+	assert.equal(mergeOidcConfig({}, { OIDC_REQUIRE_VERIFIED_EMAIL: "false" }).values.require_verified_email, false);
+	assert.equal(mergeOidcConfig({}, { OIDC_REQUIRE_VERIFIED_EMAIL: "bogus" }).values.require_verified_email, true);
+	assert.equal(mergeOidcConfig({}, { OIDC_SKIP_MFA: "bogus" }).values.skip_mfa, false);
+});
+
+it("rejects empty domains and ignores bad allow-list entries", () => {
+	assert.equal(emailDomainAllowed("a@", [""]), false);
+	assert.equal(emailDomainAllowed("a@", []), false);
+	assert.equal(emailDomainAllowed("a@example.com", [" Example.com ", null, ""]), true);
+	assert.equal(emailDomainAllowed("a@other.com", [null, ""]), false);
+});
