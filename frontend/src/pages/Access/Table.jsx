@@ -41,7 +41,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.name, {
@@ -76,7 +76,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 			columnHelper.display({
@@ -128,7 +128,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					</span>
 				),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],

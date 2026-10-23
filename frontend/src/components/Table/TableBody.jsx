@@ -1,5 +1,6 @@
 import { flexRender } from "@tanstack/react-table";
 import { Fragment } from "react";
+import { cellLabel } from "src/modules/TableCells";
 import { EmptyRow } from "./EmptyRow";
 
 function TableBody(props) {
@@ -19,7 +20,7 @@ function TableBody(props) {
 			{row.getAllCells().map((cell) => {
 				const { className } = cell.column.columnDef.meta ?? {};
 				return (
-					<td key={cell.id} className={className}>
+					<td key={cell.id} className={className} data-label={cellLabel(cell.column.columnDef)}>
 						{flexRender(cell.column.columnDef.cell, cell.getContext())}
 					</td>
 				);

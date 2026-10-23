@@ -81,7 +81,7 @@ export default function Table({
 					);
 				},
 				meta: {
-					className: "w-1",
+					className: "text-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.domainNames.join(", "), {
@@ -145,7 +145,7 @@ export default function Table({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 			columnHelper.display({
@@ -260,7 +260,7 @@ export default function Table({
 					);
 				},
 				meta: {
-					className: "text-end w-1",
+					className: "text-end text-nowrap",
 				},
 			}),
 		],
