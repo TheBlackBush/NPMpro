@@ -99,6 +99,7 @@
 	"certificates.request.status": "Requesting certificate",
 	"certificates.request.subtitle": "with Certbot",
 	"certificates.request.title": "Request a new Certificate",
+	"close": "Close",
 	"column.access": "Access",
 	"column.authorization": "Authorization",
 	"column.authorizations": "Authorizations",

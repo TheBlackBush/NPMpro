@@ -63,6 +63,7 @@
 	"certificates.mtls": "mTLS sertifikatı",
 	"certificates.request.subtitle": "Certbot ilə",
 	"certificates.request.title": "Yeni sertifikat sorğula",
+	"close": "Bağla",
 	"column.access": "Giriş",
 	"column.authorization": "Səlahiyyət",
 	"column.authorizations": "Səlahiyyətlər",

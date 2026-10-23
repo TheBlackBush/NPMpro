@@ -162,8 +162,11 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 									{parseTestResults()}
 								</div>
 							) : null}
+							<RequestProgress
+								running={isSubmitting}
+								propagationSeconds={values.npmproPropagationSeconds}
+							/>
 						</AppModal.Body>
-						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
 						<AppModal.Footer>
 							<Button
 								className="btn-link link-secondary"

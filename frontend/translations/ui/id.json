@@ -58,6 +58,7 @@
 	"certificates.mtls": "Sertifikat mTLS",
 	"certificates.request.subtitle": "dengan Certbot",
 	"certificates.request.title": "Minta Sertifikat Baru",
+	"close": "Tutup",
 	"column.access": "Akses",
 	"column.authorization": "Otorisasi",
 	"column.authorizations": "Otorisasi",

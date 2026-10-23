@@ -62,6 +62,7 @@
 	"certificates.mtls": "Certifikát mTLS",
 	"certificates.request.subtitle": "pomocí Certbot",
 	"certificates.request.title": "Vyžádat nový certifikát",
+	"close": "Zavřít",
 	"column.access": "Přístup",
 	"column.authorization": "Autorizace",
 	"column.authorizations": "Autorizace",

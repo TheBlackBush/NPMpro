@@ -66,6 +66,7 @@
 	"certificates.mtls": "mTLS-sertifikaat",
 	"certificates.request.subtitle": "Certbotiga",
 	"certificates.request.title": "Taotle uut sertifikaati",
+	"close": "Sulge",
 	"column.access": "Juurdepääs",
 	"column.authorization": "Autentimine",
 	"column.authorizations": "Autentimised",

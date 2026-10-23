@@ -62,6 +62,7 @@
 	"certificates.mtls": "mTLS 인증서",
 	"certificates.request.subtitle": "Certbot 사용",
 	"certificates.request.title": "새 인증서 요청",
+	"close": "닫기",
 	"column.access": "접근 정책",
 	"column.authorization": "인증 사용자",
 	"column.authorizations": "인증 사용자",

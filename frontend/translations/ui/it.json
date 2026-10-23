@@ -66,6 +66,7 @@
 	"certificates.mtls": "Certificato mTLS",
 	"certificates.request.subtitle": "con Certbot",
 	"certificates.request.title": "Richiedi un nuovo Certificato",
+	"close": "Chiudi",
 	"column.access": "Accesso",
 	"column.authorization": "Autorizzazione",
 	"column.authorizations": "Autorizzazioni",

@@ -63,6 +63,7 @@
 	"certificates.mtls": "گواهی mTLS",
 	"certificates.request.subtitle": "از طریق Certbot",
 	"certificates.request.title": "درخواست گواهی جدید",
+	"close": "بستن",
 	"column.access": "دسترسی",
 	"column.authorization": "احراز هویت",
 	"column.authorizations": "کاربران احراز هویت",

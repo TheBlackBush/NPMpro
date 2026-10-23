@@ -48,9 +48,8 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				<ErrorAlert>{errorMsg}</ErrorAlert>
 				{isPending && <Loading noLogo />}
 				{error && <ErrorAlert error={error} className="m-3" />}
-				{isSubmitting ? <p className="text-center mt-3">Please wait ...</p> : null}
+				<RequestProgress running={isSubmitting} />
 			</AppModal.Body>
-			<RequestProgress running={isSubmitting} />
 			<AppModal.Footer>
 				<Button className="ms-auto" onClick={remove} disabled={isSubmitting}>
 					<T id="action.close" />

@@ -62,6 +62,7 @@
 	"certificates.mtls": "Сертификат mTLS",
 	"certificates.request.subtitle": "через Certbot",
 	"certificates.request.title": "Получить новый сертификат",
+	"close": "Закрыть",
 	"column.access": "Доступ",
 	"column.authorization": "Авторизация",
 	"column.authorizations": "Авторизации",

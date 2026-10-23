@@ -92,8 +92,11 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 									</Field>
 								</div>
 							</div>
+							<RequestProgress
+								running={isSubmitting}
+								propagationSeconds={values.npmproPropagationSeconds}
+							/>
 						</AppModal.Body>
-						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
 						<AppModal.Footer>
 							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
