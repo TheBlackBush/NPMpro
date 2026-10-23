@@ -27,7 +27,7 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 							<GravatarFormatter url={data.user?.avatar} name={data.user?.name} />
 							<EventFormatter row={data} />
 						</div>
-						{/* pre-wrap keeps the JSON line breaks; Tabler's text-wrap would collapse them */}
+						{/* pre-wrap wraps long values instead of scrolling sideways */}
 						<pre className="form-control font-monospace mb-0" style={{ whiteSpace: "pre-wrap" }}>
 							{JSON.stringify(decamelizeKeys(data.meta), null, 2)}
 						</pre>

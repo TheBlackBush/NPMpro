@@ -167,14 +167,14 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 								readOnly
 								onClick={(e) => e.target.select()}
 							/>
-							<span className="input-group-text">
+							<span className="input-group-text py-0">
 								<button
 									type="button"
 									aria-label={intl.formatMessage({ id: "aria.copy" })}
-									className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
+									className="btn btn-icon btn-ghost btn-sm"
 									onClick={() => navigator.clipboard.writeText(setupData.secret)}
 								>
-									<IconCopy size={18} />
+									<IconCopy className="icon" aria-hidden="true" />
 								</button>
 							</span>
 						</div>

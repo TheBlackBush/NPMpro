@@ -6,9 +6,9 @@ export default function Layout() {
 		<div className="card">
 			<div className="card-status-top bg-teal" />
 			<div className="card-header">
-				<h2 className="card-title">
+				<h3 className="card-title">
 					<T id="settings.default-site" />
-				</h2>
+				</h3>
 			</div>
 			<DefaultSite />
 		</div>

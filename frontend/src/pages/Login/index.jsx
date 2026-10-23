@@ -205,7 +205,7 @@ export default function Login() {
 					<ThemeSwitcher />
 				</div>
 				<div className="text-center mb-4">
-					<h1 className="navbar-brand navbar-brand-autodark">
+					<h1 className="navbar-brand navbar-brand-autodark fs-2">
 						<img
 							src="/images/logo-no-text.svg"
 							width={40}

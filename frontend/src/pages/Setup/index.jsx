@@ -54,7 +54,7 @@ export default function Setup() {
 					<ThemeSwitcher />
 				</div>
 				<div className="text-center mb-4">
-					<div className="navbar-brand navbar-brand-autodark">
+					<div className="navbar-brand navbar-brand-autodark fs-2">
 						<img
 							src="/images/logo-no-text.svg"
 							width={40}
