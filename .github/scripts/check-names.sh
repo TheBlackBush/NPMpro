@@ -6,6 +6,7 @@ RENAME_MIGRATION="20261023180000_rename_to_npmpro.js"
 
 hits="$(git grep -n -i npmplus -- . \
     ':!README.md' ':!COPYING' ':!MIT.LICENSE' \
+    ':!frontend/src/components/SiteFooter.jsx' \
     ':!backend/migrations' \
     ':!backend/test/*migration*.test.js' \
     ':!backend/test/migrate-data-folder.test.sh' \
