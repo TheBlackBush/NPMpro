@@ -17,9 +17,11 @@ const internalSetting = {
 	 */
 	update: async (access, data) => {
 		access.canAdmin();
-		if (data.id === "oidc") throw new errs.ValidationError("Use /api/settings/oidc to change the OIDC settings");
+		const oidcRefused = () => new errs.ValidationError("Use /api/settings/oidc to change the OIDC settings");
+		if (String(data.id).trim().toLowerCase() === "oidc") throw oidcRefused();
 
 		const existingRow = await internalSetting.get(access, { id: data.id });
+		if (existingRow.id === "oidc") throw oidcRefused();
 
 		const merged = { ...existingRow, ...data };
 		if (["html", "redirect"].includes(merged.value) && !merged.meta?.[merged.value]) {

@@ -23,19 +23,19 @@
 							"type": "string",
 							"maxLength": 2048,
 							"pattern": "^$|^https://[^\\s/$.?#].[^\\s]*$",
-							"description": "Issuer URL (https), empty to clear",
+							"description": "Issuer URL (https), empty uses the saved value",
 							"example": "https://id.example.com/application/o/npmpro/"
 						},
 						"client_id": {
 							"type": "string",
 							"maxLength": 255,
-							"description": "Client ID",
+							"description": "Client ID, empty uses the saved value",
 							"example": "npmpro"
 						},
 						"client_secret": {
 							"type": "string",
 							"maxLength": 1024,
-							"description": "Client secret, empty keeps the saved one",
+							"description": "Client secret, empty uses the saved value",
 							"example": "s3cr3t"
 						}
 					}

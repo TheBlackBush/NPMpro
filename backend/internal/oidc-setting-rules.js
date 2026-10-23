@@ -58,15 +58,19 @@ const applyOidcUpdate = (stored, body, locked, encrypt) => {
 };
 
 /**
- * Password login may only be disabled from a session that signed in with OIDC.
- * A locked disable_password is ignored in the body, so it is never refused.
+ * Password login may only be turned on as disabled from a session that signed in with OIDC.
+ * Re-sending an already disabled value is allowed, and a locked disable_password is ignored in the body.
  *
  * @param   {Object}    body
  * @param   {string[]}  locked
  * @param   {string}    authMethod  "oidc" or "password"
+ * @param   {boolean}   current     effective disable_password before this save
  * @returns {boolean}
  */
-const disablePasswordRefused = (body, locked, authMethod) =>
-	body?.disable_password === true && !locked.includes("disable_password") && authMethod !== "oidc";
+const disablePasswordRefused = (body, locked, authMethod, current) =>
+	body?.disable_password === true &&
+	current !== true &&
+	!locked.includes("disable_password") &&
+	authMethod !== "oidc";
 
 export { applyOidcUpdate, disablePasswordRefused, normalizeDomains, sanitizeOidcRow };

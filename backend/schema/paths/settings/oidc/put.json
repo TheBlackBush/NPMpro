@@ -46,7 +46,7 @@
 						"redirect_domain": {
 							"type": "string",
 							"maxLength": 260,
-							"pattern": "^$|^[^/\\s:]+(:[0-9]{1,5})?$",
+							"pattern": "^$|^(?=.{1,253}(:[0-9]{1,5})?$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(:[0-9]{1,5})?$",
 							"description": "Domain (and port) this instance is reached on, without scheme or path",
 							"example": "npm.example.com"
 						},

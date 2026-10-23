@@ -10,8 +10,6 @@ import { applyOidcUpdate, disablePasswordRefused, sanitizeOidcRow } from "./oidc
 const DISCOVERY_TIMEOUT_SECONDS = 10;
 const TEST_KEYS = ["issuer_url", "client_id", "client_secret"];
 
-const lockedKeys = () => mergeOidcConfig({}, process.env).locked;
-
 const internalOidcSetting = {
 	/**
 	 * Effective OIDC settings, never including the client secret
@@ -41,16 +39,17 @@ const internalOidcSetting = {
 	 */
 	update: async (access, body) => {
 		access.canAdmin();
-		const locked = lockedKeys();
+		const stored = await readStoredOidc();
+		const { client_secret: _secret, ...storedPlain } = stored;
+		const { values: current, locked } = mergeOidcConfig(storedPlain, process.env);
 
-		if (disablePasswordRefused(body, locked, access.token.getAuthMethod())) {
+		if (disablePasswordRefused(body, locked, access.token.getAuthMethod(), current.disable_password)) {
 			throw new errs.ValidationError(
 				"Password login can only be disabled from a session that signed in with OIDC",
 				"error.oidc-disable-password-session",
 			);
 		}
 
-		const stored = await readStoredOidc();
 		const next = applyOidcUpdate(stored, body, locked, (secret) => defaultSecretBox.encrypt(secret));
 
 		const permissionError = validateDefaultPermissions({

@@ -89,10 +89,11 @@ it("normalises allowed domains", () => {
 	assert.deepEqual(out.auto_create.allowed_domains, ["a.com"]);
 });
 
-it("refuses disabling password login only from a non-OIDC session", () => {
-	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password"), true);
-	assert.equal(disablePasswordRefused({ disable_password: true }, [], "oidc"), false);
-	assert.equal(disablePasswordRefused({ disable_password: false }, [], "password"), false);
-	assert.equal(disablePasswordRefused({}, [], "password"), false);
-	assert.equal(disablePasswordRefused({ disable_password: true }, ["disable_password"], "password"), false);
+it("refuses turning password login off only from a non-OIDC session", () => {
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", false), true);
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "oidc", false), false);
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", true), false);
+	assert.equal(disablePasswordRefused({ disable_password: false }, [], "password", false), false);
+	assert.equal(disablePasswordRefused({}, [], "password", false), false);
+	assert.equal(disablePasswordRefused({ disable_password: true }, ["disable_password"], "password", false), false);
 });
