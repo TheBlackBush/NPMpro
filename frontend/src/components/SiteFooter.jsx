@@ -61,8 +61,9 @@ export function SiteFooter() {
 							<li className="list-inline-item">
 								Theme by{" "}
 								<a href="https://tabler.io" rel="noreferrer" target="_blank" className="link-secondary">
-									Tabler {tablerVersion}
-								</a>
+									Tabler
+								</a>{" "}
+								({tablerVersion})
 							</li>
 							<li className="list-inline-item">
 								<a href={versionUrl} className="link-secondary" target="_blank" rel="noopener">
