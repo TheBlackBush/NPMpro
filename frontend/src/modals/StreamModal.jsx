@@ -1,8 +1,8 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DirectoryField,
 	ErrorAlert,
@@ -83,7 +83,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -108,15 +108,15 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 					{({ values, setFieldValue }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T
 										id={savedId || data?.id ? "object.edit" : "object.add"}
 										tData={{ object: "stream" }}
 									/>
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body className="p-0">
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 
 								<div className="card m-0 border-0">
@@ -544,13 +544,13 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-							</Modal.Body>
+							</AppModal.Body>
 							<RequestProgress
 								running={isSubmitting && values.certificateId === "new"}
 								propagationSeconds={values.npmproPropagationSeconds}
 							/>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={STREAMS} permission={MANAGE} hideError>
@@ -564,12 +564,12 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

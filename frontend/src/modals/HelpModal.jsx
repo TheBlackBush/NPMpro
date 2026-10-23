@@ -1,5 +1,5 @@
 import Markdown from "markdown-to-jsx";
-import Modal from "react-bootstrap/Modal";
+import { AppModal } from "src/components";
 import { getHelpFile, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -11,16 +11,16 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 	const markdownText = getHelpFile(section);
 
 	return (
-		<Modal show={visible} onHide={remove}>
-			<Modal.Header closeButton>
-				<Modal.Title>
+		<AppModal show={visible} onHide={remove}>
+			<AppModal.Header closeButton>
+				<AppModal.Title>
 					<T id="help" />
-				</Modal.Title>
-			</Modal.Header>
-			<Modal.Body>
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
 				<Markdown options={{ disableParsingRawHTML: true }}>{markdownText}</Markdown>
-			</Modal.Body>
-		</Modal>
+			</AppModal.Body>
+		</AppModal>
 	);
 });
 

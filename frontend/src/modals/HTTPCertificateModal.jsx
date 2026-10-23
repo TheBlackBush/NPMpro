@@ -2,9 +2,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, DomainNamesField, ErrorAlert, NoticeAlert, RequestProgress } from "src/components";
+import {
+	ApiErrorContent,
+	AppModal,
+	Button,
+	DomainNamesField,
+	ErrorAlert,
+	NoticeAlert,
+	RequestProgress,
+} from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -95,7 +102,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 	);
 
 	return (
-		<Modal show={visible} onHide={isSubmitting || isTesting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting || isTesting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					domainNames: [],
@@ -107,12 +114,12 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
-						<Modal.Header closeButton={!(isSubmitting || isTesting)}>
-							<Modal.Title>
+						<AppModal.Header closeButton={!(isSubmitting || isTesting)}>
+							<AppModal.Title>
 								<T id="object.add" tData={{ object: "lets-encrypt-via-http" }} />
-							</Modal.Title>
-						</Modal.Header>
-						<Modal.Body className="p-0">
+							</AppModal.Title>
+						</AppModal.Header>
+						<AppModal.Body className="p-0">
 							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<div className="card m-0 border-0">
 								<div className="card-body">
@@ -157,10 +164,14 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 									</div>
 								) : null}
 							</div>
-						</Modal.Body>
+						</AppModal.Body>
 						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
-						<Modal.Footer>
-							<Button onClick={close} disabled={isSubmitting || isTesting}>
+						<AppModal.Footer>
+							<Button
+								className="btn-link link-secondary"
+								onClick={close}
+								disabled={isSubmitting || isTesting}
+							>
 								<T id="cancel" />
 							</Button>
 							<div className="ms-auto">
@@ -176,18 +187,18 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								</Button>
 								<Button
 									type="submit"
-									color="pink"
+									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting || isTesting}
 								>
 									<T id="save" />
 								</Button>
 							</div>
-						</Modal.Footer>
+						</AppModal.Footer>
 					</Form>
 				)}
 			</Formik>
-		</Modal>
+		</AppModal>
 	);
 });
 

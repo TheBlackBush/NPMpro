@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "react-bootstrap";
-import Modal from "react-bootstrap/Modal";
 import { testHttpCertificate } from "src/api/backend";
-import { ApiErrorContent, ErrorAlert } from "src/components";
+import { ApiErrorContent, AppModal, ErrorAlert } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -68,13 +67,13 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 	);
 
 	return (
-		<Modal show={visible} onHide={remove}>
-			<Modal.Header closeButton>
-				<Modal.Title>
+		<AppModal show={visible} onHide={remove}>
+			<AppModal.Header closeButton>
+				<AppModal.Title>
 					<T id="certificates.http.test-results" />
-				</Modal.Title>
-			</Modal.Header>
-			<Modal.Body className="p-0">
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body className="p-0">
 				<ErrorAlert>{errorMsg}</ErrorAlert>
 				<div className="card m-0 border-0">
 					{testResults ? (
@@ -87,8 +86,8 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 						)
 					)}
 				</div>
-			</Modal.Body>
-		</Modal>
+			</AppModal.Body>
+		</AppModal>
 	);
 });
 

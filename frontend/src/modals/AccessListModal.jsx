@@ -1,10 +1,10 @@
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	AccessClientFields,
 	ApiErrorContent,
+	AppModal,
 	BasicAuthFields,
 	Button,
 	ErrorAlert,
@@ -91,7 +91,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -108,12 +108,12 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 					{({ setFieldValue }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "access-list" }} />
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body className="p-0">
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="card m-0 border-0">
 									<div className="card-header">
@@ -260,15 +260,15 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-							</Modal.Body>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+							</AppModal.Body>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										color="cyan"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
@@ -276,12 +276,12 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

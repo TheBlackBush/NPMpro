@@ -2,9 +2,8 @@ import { IconCopy, IconEye, IconEyeOff } from "@tabler/icons-react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -335,7 +334,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									<Button
 										type="submit"
 										fullWidth
-										color="red"
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
@@ -430,17 +429,17 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
-			<Modal.Header closeButton={!isSubmitting}>
-				<Modal.Title>
+		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
+			<AppModal.Header closeButton={!isSubmitting}>
+				<AppModal.Title>
 					<T id="mfa.title" />
-				</Modal.Title>
-			</Modal.Header>
-			<Modal.Body>
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
 				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 				{renderContent()}
-			</Modal.Body>
-		</Modal>
+			</AppModal.Body>
+		</AppModal>
 	);
 });
 

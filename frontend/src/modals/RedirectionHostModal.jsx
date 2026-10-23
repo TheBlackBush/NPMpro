@@ -1,9 +1,9 @@
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DirectoryField,
 	DomainNamesField,
@@ -79,7 +79,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -108,15 +108,15 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T
 										id={savedId || data?.id ? "object.edit" : "object.add"}
 										tData={{ object: "redirection-host" }}
 									/>
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body className="p-0">
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="card m-0 border-0">
 									<div className="card-header">
@@ -320,19 +320,19 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-							</Modal.Body>
+							</AppModal.Body>
 							<RequestProgress
 								running={isSubmitting && values.certificateId === "new"}
 								propagationSeconds={values.npmproPropagationSeconds}
 							/>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										color="yellow"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
@@ -340,12 +340,12 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

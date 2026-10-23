@@ -2,9 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { setPermissions } from "src/api/backend";
-import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -135,7 +134,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -154,12 +153,12 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 					{() => (
 						<Form>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T id="user.set-permissions" data={{ name: data?.name }} />
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body>
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body>
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="mb-3">
 									<div className="form-label">
@@ -258,26 +257,26 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</>
 								)}
-							</Modal.Body>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+							</AppModal.Body>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<Button
 									type="submit"
 									className="ms-auto"
-									color="orange"
+									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>
 									<T id="save" />
 								</Button>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

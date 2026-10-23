@@ -2,10 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { createCertificate } from "src/api/backend";
 import {
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DNSProviderFields,
 	DomainNamesField,
@@ -48,7 +48,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					domainNames: [],
@@ -61,12 +61,12 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
-						<Modal.Header closeButton={!isSubmitting}>
-							<Modal.Title>
+						<AppModal.Header closeButton={!isSubmitting}>
+							<AppModal.Title>
 								<T id="object.add" tData={{ object: "lets-encrypt-via-dns" }} />
-							</Modal.Title>
-						</Modal.Header>
-						<Modal.Body className="p-0">
+							</AppModal.Title>
+						</AppModal.Header>
+						<AppModal.Body className="p-0">
 							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<div className="card m-0 border-0">
 								<div className="card-body">
@@ -94,26 +94,26 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 									</div>
 								</div>
 							</div>
-						</Modal.Body>
+						</AppModal.Body>
 						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
-						<Modal.Footer>
-							<Button onClick={close} disabled={isSubmitting}>
+						<AppModal.Footer>
+							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
 							<Button
 								type="submit"
-								color="pink"
+								color="primary"
 								className="ms-auto"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}
 							>
 								<T id="save" />
 							</Button>
-						</Modal.Footer>
+						</AppModal.Footer>
 					</Form>
 				)}
 			</Formik>
-		</Modal>
+		</AppModal>
 	);
 });
 

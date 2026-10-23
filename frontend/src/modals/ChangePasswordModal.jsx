@@ -1,9 +1,8 @@
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { updateAuth } from "src/api/backend";
-import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -43,7 +42,7 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
 			<Formik
 				initialValues={{
 					current: "",
@@ -54,12 +53,12 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 			>
 				{() => (
 					<Form>
-						<Modal.Header closeButton={!isSubmitting}>
-							<Modal.Title>
+						<AppModal.Header closeButton={!isSubmitting}>
+							<AppModal.Title>
 								<T id="user.change-password" />
-							</Modal.Title>
-						</Modal.Header>
-						<Modal.Body>
+							</AppModal.Title>
+						</AppModal.Header>
+						<AppModal.Body>
 							<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 							<NoticeAlert>
 								<T id="logout-other-devices" />
@@ -181,9 +180,9 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 								</Field>
 								<ErrorMessage name="confirm" component="div" className="invalid-feedback d-block" />
 							</div>
-						</Modal.Body>
-						<Modal.Footer>
-							<Button onClick={remove} disabled={isSubmitting}>
+						</AppModal.Body>
+						<AppModal.Footer>
+							<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
 							<Button
@@ -195,11 +194,11 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 							>
 								<T id="save" />
 							</Button>
-						</Modal.Footer>
+						</AppModal.Footer>
 					</Form>
 				)}
 			</Formik>
-		</Modal>
+		</AppModal>
 	);
 });
 
