@@ -31,13 +31,15 @@ const getOidcConfig = async () => {
 	return { ...mergeOidcConfig(stored, process.env), secretError };
 };
 
-const getDiscovery = async (values) => {
+const getDiscovery = (values) => {
 	const secretHash = createHash("sha256")
 		.update(String(values.client_secret ?? ""))
 		.digest("hex");
 	const key = `${values.issuer_url}\n${values.client_id}\n${secretHash}`;
 	if (!discoveryCache.has(key)) {
-		const pending = (async () => discovery(new URL(values.issuer_url), values.client_id, values.client_secret))();
+		const pending = Promise.resolve().then(() =>
+			discovery(new URL(values.issuer_url), values.client_id, values.client_secret),
+		);
 		pending.catch(() => {
 			if (discoveryCache.get(key) === pending) discoveryCache.delete(key);
 		});
