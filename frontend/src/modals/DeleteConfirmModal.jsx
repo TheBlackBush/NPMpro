@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
-import { Button } from "src/components";
+import { ApiErrorContent, Button } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -26,7 +26,7 @@ const DeleteConfirmModal = EasyModal.create(
 				// invalidate caches as requested
 				await Promise.all(invalidations.map((inv) => queryClient.invalidateQueries({ queryKey: inv })));
 			} catch (err) {
-				setError(<T id={err.message} />);
+				setError(<ApiErrorContent error={err} />);
 			}
 			setIsSubmitting(false);
 		};

@@ -1,14 +1,13 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { deleteStream, toggleStream } from "src/api/backend";
-import { Button, HasPermission, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useStreams } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -29,7 +28,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDisableToggle = async (id, enabled) => {
@@ -46,7 +45,7 @@ export default function TableWrapper() {
 				showNginxConfigError("stream", nginxErr);
 			}
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 

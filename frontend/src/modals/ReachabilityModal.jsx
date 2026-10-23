@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, Spinner } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { testHttpCertificate } from "src/api/backend";
+import { ApiErrorContent } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -21,7 +22,7 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 				const result = await testHttpCertificate(domains);
 				setTestResults(result);
 			} catch (err) {
-				setErrorMsg(<T id={err.message} />);
+				setErrorMsg(<ApiErrorContent error={err} />);
 			}
 		};
 

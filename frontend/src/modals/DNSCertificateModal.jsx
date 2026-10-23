@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate } from "src/api/backend";
-import { Button, DNSProviderFields, DomainNamesField } from "src/components";
+import { ApiErrorContent, Button, DNSProviderFields, DomainNamesField } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -31,17 +31,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 			showObjectSuccess("certificate", "saved");
 			remove();
 		} catch (err) {
-			if (err.payload?.error?.output) {
-				setErrorMsg(
-					<div className="w-100">
-						<pre>
-							<code>{err.payload.error.output}</code>
-						</pre>
-					</div>,
-				);
-			} else {
-				setErrorMsg(<T id={err.message} />);
-			}
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 		await queryClient.invalidateQueries({ queryKey: ["certificates"] });
 		setIsSubmitting(false);

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import Select from "react-select";
-import { Button, DnsCredentialValuesFields, HasPermission, Loading } from "src/components";
+import { ApiErrorContent, Button, DnsCredentialValuesFields, HasPermission, Loading } from "src/components";
 import {
 	DirtyTracker,
 	useDnsCredential,
@@ -59,7 +59,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 
 		const provider = providers?.find((p) => p.id === values.provider);
 		setDnsCredential(toPayload(values, id, provider), {
-			onError: (err) => setErrorMsg(<T id={err.message} />),
+			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: (row) => {
 				onSaved?.(row);
 				showObjectSuccess("dns-credential", "saved");
@@ -84,7 +84,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 		return {
 			name: credential.name ?? "",
 			provider: providerId,
-			useIni: !provider?.fields || !!credential.iniSet,
+			useIni: !provider?.fields || Boolean(credential.iniSet),
 			fieldValues,
 			ini: "",
 			oneOfGroup: defaultGroup(provider, credential),
@@ -97,7 +97,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
-					{error?.message}
+					<ApiErrorContent error={error} />
 				</Alert>
 			)}
 			{(isPending || providersPending) && <Loading noLogo />}
@@ -120,7 +120,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 								<Modal.Body>
 									<Alert
 										variant="danger"
-										show={!!errorMsg}
+										show={Boolean(errorMsg)}
 										onClose={() => setErrorMsg(null)}
 										dismissible
 									>

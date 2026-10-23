@@ -1,15 +1,14 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { deleteProxyHost, toggleProxyHost } from "src/api/backend";
-import { Button, HasPermission, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useProxyHosts } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/modals";
 import { forwardSummary } from "src/modules/Forward";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -30,7 +29,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDisableToggle = async (id, enabled) => {
@@ -47,7 +46,7 @@ export default function TableWrapper() {
 				showNginxConfigError("proxy-host", nginxErr);
 			}
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 

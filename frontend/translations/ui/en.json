@@ -155,6 +155,8 @@
 	"enabled": "Enabled",
 	"error.access.at-least-one": "Either one Authorization or one Access Rule is required",
 	"error.access.duplicate-usernames": "Authorization Usernames must be unique",
+	"error.details.hide": "Hide details",
+	"error.details.show": "Show details",
 	"error.invalid-auth": "Invalid email or password",
 	"error.invalid-code": "Invalid verification code",
 	"error.invalid-domain": "Invalid domain: {domain}",

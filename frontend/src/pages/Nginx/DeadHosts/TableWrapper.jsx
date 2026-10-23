@@ -1,14 +1,13 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { deleteDeadHost, toggleDeadHost } from "src/api/backend";
-import { Button, HasPermission, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, LoadingPage } from "src/components";
 import { getDirectory, useDeadHosts } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeadHostModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
-import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -29,7 +28,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDisableToggle = async (id, enabled) => {
@@ -46,7 +45,7 @@ export default function TableWrapper() {
 				showNginxConfigError("dead-host", nginxErr);
 			}
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 
