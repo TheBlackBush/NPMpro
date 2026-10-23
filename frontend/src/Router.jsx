@@ -59,7 +59,7 @@ function Router() {
 					<SiteMenu />
 				</div>
 				<SiteContainer>
-					<Suspense fallback={<LoadingPage noLogo />}>
+					<Suspense fallback={<LoadingPage noLogo delay={300} />}>
 						<Routes>
 							<Route path="*" element={<ErrorNotFound />} />
 							<Route path="/certificates" element={<Certificates />} />

@@ -1,6 +1,15 @@
+import { useDelayElapsed } from "src/hooks";
 import { intl, T } from "src/locale";
 
-export function Loading({ label, noLogo }) {
+/**
+ * @param {Object}  props
+ * @param {number}  [props.delay]  render nothing for this many milliseconds, so fast loads do not flash a spinner
+ */
+export function Loading({ label, noLogo, delay = 0 }) {
+	const visible = useDelayElapsed(delay);
+	if (!visible) {
+		return null;
+	}
 	if (noLogo) {
 		return (
 			<div className="empty">

@@ -22,7 +22,7 @@ export default function TableWrapper() {
 	});
 
 	if (isPending) {
-		return <LoadingPage />;
+		return <LoadingPage noLogo delay={300} />;
 	}
 
 	if (isError) {
