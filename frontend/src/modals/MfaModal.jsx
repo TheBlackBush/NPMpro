@@ -266,7 +266,6 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 												id="mfa-code"
 												label={<T id="totp.enter-code-disable" />}
 												textWhenEmpty
-												inputMode="numeric"
 												autoComplete="one-time-code"
 												required
 												className="text-center font-monospace"
