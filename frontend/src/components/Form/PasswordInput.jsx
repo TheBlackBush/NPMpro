@@ -13,7 +13,7 @@ function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputPro
 					{label}
 				</label>
 			) : null}
-			<div className="input-group input-group-flat has-validation">
+			<div className={cn("input-group input-group-flat", error && "has-validation")}>
 				<input
 					{...inputProps}
 					id={id}

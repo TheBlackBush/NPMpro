@@ -88,7 +88,7 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 								onChange={(e) => handleChange(idx, "password", e.target.value)}
 							/>
 
-							<span className="input-group-text">
+							<span className="input-group-text py-0">
 								<button
 									type="button"
 									aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}

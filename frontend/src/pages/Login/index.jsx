@@ -43,20 +43,18 @@ function TotpForm() {
 						<div className="mb-3">
 							<Field name="code" validate={validateString(6, 8)}>
 								{({ field, form }) => (
-									<>
-										<PasswordInput
-											{...field}
-											id="login-totp-code"
-											label={<T id="login.totp-code" />}
-											ref={codeRef}
-											textWhenEmpty
-											autoComplete="one-time-code"
-											required
-											maxLength={8}
-											error={form.errors.code && form.touched.code ? form.errors.code : null}
-											placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
-										/>
-									</>
+									<PasswordInput
+										{...field}
+										id="login-totp-code"
+										label={<T id="login.totp-code" />}
+										ref={codeRef}
+										textWhenEmpty
+										autoComplete="one-time-code"
+										required
+										maxLength={8}
+										error={form.errors.code && form.touched.code ? form.errors.code : null}
+										placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
+									/>
 								)}
 							</Field>
 						</div>
