@@ -14,19 +14,19 @@ Model.knex(db());
 
 const boolFields = [
 	"ssl_forced",
-	"npmplus_http3_support",
+	"npmpro_http3_support",
 	"enabled",
 	"hsts_enabled",
 	"hsts_subdomains",
-	"npmplus_noindex",
-	"npmplus_crowdsec_appsec",
-	"npmplus_proxy_request_buffering",
-	"npmplus_proxy_response_buffering",
-	"npmplus_upstream_compression",
-	"npmplus_fancyindex",
-	"npmplus_nginx_online",
-	"npmplus_mtls_verify_client_optional",
-	"npmplus_mtls_bypass_auth_request",
+	"npmpro_noindex",
+	"npmpro_crowdsec_appsec",
+	"npmpro_proxy_request_buffering",
+	"npmpro_proxy_response_buffering",
+	"npmpro_upstream_compression",
+	"npmpro_fancyindex",
+	"npmpro_nginx_online",
+	"npmpro_mtls_verify_client_optional",
+	"npmpro_mtls_bypass_auth_request",
 ];
 
 class ProxyHost extends Model {
@@ -40,11 +40,11 @@ class ProxyHost extends Model {
 		// Default for meta
 		this.meta ??= {};
 		this.advanced_config ??= "";
-		this.npmplus_location_config ??= "";
-		this.npmplus_nginx_err ??= "";
+		this.npmpro_location_config ??= "";
+		this.npmpro_nginx_err ??= "";
 
 		// Default for access list type
-		this.npmplus_access_list_type ??= "public";
+		this.npmpro_access_list_type ??= "public";
 	}
 
 	$beforeUpdate() {
@@ -68,7 +68,7 @@ class ProxyHost extends Model {
 	}
 
 	$formatDatabaseJson(json) {
-		const { npmplus_access_list_ids, ...thisJson } = convertBoolFieldsToInt(
+		const { npmpro_access_list_ids, ...thisJson } = convertBoolFieldsToInt(
 			removeCertificateFields(json),
 			boolFields,
 		);
@@ -95,14 +95,14 @@ class ProxyHost extends Model {
 				join: {
 					from: "proxy_host.id",
 					through: {
-						from: "npmplus_proxy_host_access_list.proxy_host_id",
-						to: "npmplus_proxy_host_access_list.access_list_id",
+						from: "npmpro_proxy_host_access_list.proxy_host_id",
+						to: "npmpro_proxy_host_access_list.access_list_id",
 					},
 					to: "access_list.id",
 				},
 				modify: (qb) => {
-					qb.where("npmplus_proxy_host_access_list.location_id", 0).orderBy(
-						"npmplus_proxy_host_access_list.position",
+					qb.where("npmpro_proxy_host_access_list.location_id", 0).orderBy(
+						"npmpro_proxy_host_access_list.position",
 					);
 				},
 			},
@@ -119,10 +119,10 @@ class ProxyHost extends Model {
 				modelClass: Location,
 				join: {
 					from: "proxy_host.id",
-					to: "npmplus_location.proxy_host_id",
+					to: "npmpro_location.proxy_host_id",
 				},
 				modify: (qb) => {
-					qb.orderBy("npmplus_location.id");
+					qb.orderBy("npmpro_location.id");
 				},
 			},
 		};

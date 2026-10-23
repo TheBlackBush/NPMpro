@@ -36,14 +36,14 @@ const internalNginx = {
 
 		try {
 			await (skipReload ? internalNginx.test() : internalNginx.reload());
-			status = { npmplus_nginx_online: true, npmplus_nginx_err: "" };
+			status = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
 
 			await model.query().where("id", host.id).patch(status);
 		} catch (err) {
 			logger.error(err.message);
 
 			// config is bad, update status and rename config
-			status = { npmplus_nginx_online: false, npmplus_nginx_err: err.message };
+			status = { npmpro_nginx_online: false, npmpro_nginx_err: err.message };
 
 			await model.query().where("id", host.id).patch(status);
 
@@ -123,7 +123,7 @@ const internalNginx = {
 		let renderedLocations = "";
 
 		for (const [idx, location] of (host.locations || []).entries()) {
-			if (location.npmplus_enabled === false) {
+			if (location.npmpro_enabled === false) {
 				continue;
 			}
 
@@ -182,7 +182,7 @@ const internalNginx = {
 		}
 
 		for (const [idx, location] of (host.locations || []).entries()) {
-			if (location.npmplus_enabled === false) {
+			if (location.npmpro_enabled === false) {
 				continue;
 			}
 
@@ -239,7 +239,7 @@ const internalNginx = {
 		if (host.domain_names) {
 			host.server_names = host.domain_names.map((domain_name) => domainToASCII(domain_name) || domain_name);
 		}
-		if (host.npmplus_access_list_type === "custom") {
+		if (host.npmpro_access_list_type === "custom") {
 			// note that there is access_lists -> an array in the correct order
 			// and access_list -> an object used in the config generation
 			// note the (s) in the former and lack thereof in the latter
@@ -254,9 +254,9 @@ const internalNginx = {
 
 		if (host.locations) {
 			for (const location of host.locations) {
-				if (location.npmplus_access_list_type === "global") {
+				if (location.npmpro_access_list_type === "global") {
 					location.access_list = host.access_list;
-				} else if (location.npmplus_access_list_type === "custom") {
+				} else if (location.npmpro_access_list_type === "custom") {
 					// note that there is access_lists -> an array in the correct order
 					// and access_list -> an object used in the config generation
 					// note the (s) in the former and lack thereof in the latter
@@ -267,11 +267,11 @@ const internalNginx = {
 				if (htpasswdFileName.length > 0) {
 					location.filename = htpasswdFileName;
 				}
-				if (location.npmplus_enabled === false) continue;
+				if (location.npmpro_enabled === false) continue;
 				const provider =
-					location.npmplus_auth_request === "authentik-send-basic-auth"
+					location.npmpro_auth_request === "authentik-send-basic-auth"
 						? "authentik"
-						: location.npmplus_auth_request;
+						: location.npmpro_auth_request;
 				if (authRequestProviders.includes(provider)) host[`create_${provider}_locations`] = true;
 			}
 
@@ -282,21 +282,21 @@ const internalNginx = {
 				let effectiveUpstream = "";
 
 				if (
-					(host.npmplus_auth_request === provider ||
-						(provider === "authentik" && host.npmplus_auth_request === "authentik-send-basic-auth")) &&
-					host.npmplus_auth_request_upstream
+					(host.npmpro_auth_request === provider ||
+						(provider === "authentik" && host.npmpro_auth_request === "authentik-send-basic-auth")) &&
+					host.npmpro_auth_request_upstream
 				) {
-					effectiveUpstream = host.npmplus_auth_request_upstream;
+					effectiveUpstream = host.npmpro_auth_request_upstream;
 				} else {
 					for (const location of originalLocations) {
 						if (
-							location.npmplus_enabled !== false &&
-							(location.npmplus_auth_request === provider ||
+							location.npmpro_enabled !== false &&
+							(location.npmpro_auth_request === provider ||
 								(provider === "authentik" &&
-									location.npmplus_auth_request === "authentik-send-basic-auth")) &&
-							location.npmplus_auth_request_upstream
+									location.npmpro_auth_request === "authentik-send-basic-auth")) &&
+							location.npmpro_auth_request_upstream
 						) {
-							effectiveUpstream = location.npmplus_auth_request_upstream;
+							effectiveUpstream = location.npmpro_auth_request_upstream;
 							break;
 						}
 					}

@@ -38,15 +38,15 @@ const internalHost = {
 
 		if (!(combinedData.certificate_id > 0) && !newCert) {
 			combinedData.ssl_forced = false;
-			combinedData.npmplus_http3_support = false;
-			combinedData.npmplus_mtls_certificate_id = 0;
+			combinedData.npmpro_http3_support = false;
+			combinedData.npmpro_mtls_certificate_id = 0;
 		}
 
-		if (!(combinedData.npmplus_mtls_certificate_id > 0)) {
-			combinedData.npmplus_mtls_verify_client_optional = false;
+		if (!(combinedData.npmpro_mtls_certificate_id > 0)) {
+			combinedData.npmpro_mtls_verify_client_optional = false;
 		}
 
-		if (combinedData.npmplus_mtls_certificate_id > 0 && !combinedData.npmplus_mtls_verify_client_optional) {
+		if (combinedData.npmpro_mtls_certificate_id > 0 && !combinedData.npmpro_mtls_verify_client_optional) {
 			combinedData.ssl_forced = true;
 		}
 
@@ -58,11 +58,11 @@ const internalHost = {
 			combinedData.hsts_subdomains = false;
 		}
 
-		combinedData.npmplus_mtls_bypass_auth_request &&=
-			combinedData.npmplus_mtls_certificate_id > 0 &&
-			combinedData.npmplus_mtls_verify_client_optional === true &&
+		combinedData.npmpro_mtls_bypass_auth_request &&=
+			combinedData.npmpro_mtls_certificate_id > 0 &&
+			combinedData.npmpro_mtls_verify_client_optional === true &&
 			[combinedData, ...(combinedData.locations ?? [])].some(
-				({ npmplus_auth_request = "none" }) => npmplus_auth_request !== "none",
+				({ npmpro_auth_request = "none" }) => npmpro_auth_request !== "none",
 			);
 
 		return combinedData;

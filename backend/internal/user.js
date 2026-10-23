@@ -194,7 +194,7 @@ const internalUser = {
 			);
 		}
 
-		if (data.is_disabled) data.npmplus_token_valid_after = Math.floor(Date.now() / 1000);
+		if (data.is_disabled) data.npmpro_token_valid_after = Math.floor(Date.now() / 1000);
 
 		await userModel.query().findById(existingUser.id).patch(data);
 		const user = await internalUser.get(access, { id: data.id });
@@ -355,7 +355,7 @@ const internalUser = {
 			await userModel
 				.query(trx)
 				.where("id", user.id)
-				.patch({ npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 		});
 
 		await internalAuditLog.add(access, {
@@ -434,7 +434,7 @@ const internalUser = {
 		access.canUser(userId);
 		const user = await userModel
 			.query()
-			.patchAndFetchById(userId, { npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+			.patchAndFetchById(userId, { npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 		if (!user) throw new errs.ItemNotFoundError(userId);
 
 		await internalAuditLog.add(access, {

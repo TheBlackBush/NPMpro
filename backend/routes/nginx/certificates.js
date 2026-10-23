@@ -230,7 +230,7 @@ router
 		);
 		const result = await internalCertificate.setDnsCredential(res.locals.access, {
 			id: Number.parseInt(req.params.certificate_id, 10),
-			npmplus_dns_credential_id: payload.npmplus_dns_credential_id,
+			npmpro_dns_credential_id: payload.npmpro_dns_credential_id,
 		});
 		res.status(200).send(result);
 	});

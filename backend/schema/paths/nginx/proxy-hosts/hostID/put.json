@@ -34,19 +34,19 @@
 						{
 							"if": {
 								"properties": {
-									"npmplus_dns_challenge": {
+									"npmpro_dns_challenge": {
 										"type": "boolean",
 										"const": true
 									}
 								},
 								"required": [
-									"npmplus_dns_challenge"
+									"npmpro_dns_challenge"
 								]
 							},
 							"then": {
 								"required": [
-									"npmplus_dns_provider",
-									"npmplus_dns_credential_id"
+									"npmpro_dns_provider",
+									"npmpro_dns_credential_id"
 								]
 							}
 						},
@@ -64,13 +64,13 @@
 							"then": {
 								"if": {
 									"properties": {
-										"npmplus_dns_challenge": {
+										"npmpro_dns_challenge": {
 											"type": "boolean",
 											"const": true
 										}
 									},
 									"required": [
-										"npmplus_dns_challenge"
+										"npmpro_dns_challenge"
 									]
 								},
 								"then": {
@@ -111,17 +111,17 @@
 						{
 							"if": {
 								"properties": {
-									"npmplus_access_list_type": {
+									"npmpro_access_list_type": {
 										"const": "custom"
 									}
 								},
 								"required": [
-									"npmplus_access_list_type"
+									"npmpro_access_list_type"
 								]
 							},
 							"then": {
 								"properties": {
-									"npmplus_access_list_ids": {
+									"npmpro_access_list_ids": {
 										"minItems": 1
 									}
 								}
@@ -130,18 +130,18 @@
 						{
 							"if": {
 								"properties": {
-									"npmplus_mtls_certificate_id": {
+									"npmpro_mtls_certificate_id": {
 										"type": "integer",
 										"minimum": 1
 									},
-									"npmplus_mtls_verify_client_optional": {
+									"npmpro_mtls_verify_client_optional": {
 										"type": "boolean",
 										"const": false
 									}
 								},
 								"required": [
-									"npmplus_mtls_certificate_id",
-									"npmplus_mtls_verify_client_optional"
+									"npmpro_mtls_certificate_id",
+									"npmpro_mtls_verify_client_optional"
 								]
 							},
 							"then": {
@@ -180,74 +180,74 @@
 						"hsts_subdomains": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/hsts_subdomains"
 						},
-						"npmplus_http3_support": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_http3_support"
+						"npmpro_http3_support": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_http3_support"
 						},
-						"npmplus_noindex": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_noindex"
+						"npmpro_noindex": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_noindex"
 						},
-						"npmplus_crowdsec_appsec": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_crowdsec_appsec"
+						"npmpro_crowdsec_appsec": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_crowdsec_appsec"
 						},
-						"npmplus_proxy_request_buffering": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_proxy_request_buffering"
+						"npmpro_proxy_request_buffering": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_proxy_request_buffering"
 						},
-						"npmplus_proxy_response_buffering": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_proxy_response_buffering"
+						"npmpro_proxy_response_buffering": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_proxy_response_buffering"
 						},
-						"npmplus_upstream_compression": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_upstream_compression"
+						"npmpro_upstream_compression": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_upstream_compression"
 						},
-						"npmplus_fancyindex": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_fancyindex"
+						"npmpro_fancyindex": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_fancyindex"
 						},
-						"npmplus_x_frame_options": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_x_frame_options"
+						"npmpro_x_frame_options": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_x_frame_options"
 						},
-						"npmplus_auth_request": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_auth_request"
+						"npmpro_auth_request": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_auth_request"
 						},
-						"npmplus_auth_request_upstream": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_auth_request_upstream"
+						"npmpro_auth_request_upstream": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_auth_request_upstream"
 						},
-						"npmplus_access_list_ids": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_access_list_ids"
+						"npmpro_access_list_ids": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_access_list_ids"
 						},
-						"npmplus_access_list_type": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_access_list_type"
+						"npmpro_access_list_type": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_access_list_type"
 						},
 						"advanced_config": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/advanced_config"
 						},
-						"npmplus_location_config": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_location_config"
+						"npmpro_location_config": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_location_config"
 						},
-						"npmplus_directory": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_directory"
+						"npmpro_directory": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_directory"
 						},
-						"npmplus_mtls_certificate_id": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_mtls_certificate_id"
+						"npmpro_mtls_certificate_id": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_mtls_certificate_id"
 						},
-						"npmplus_mtls_verify_client_optional": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_mtls_verify_client_optional"
+						"npmpro_mtls_verify_client_optional": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_mtls_verify_client_optional"
 						},
-						"npmplus_mtls_bypass_auth_request": {
-							"$ref": "../../../../components/proxy-host-object.json#/properties/npmplus_mtls_bypass_auth_request"
+						"npmpro_mtls_bypass_auth_request": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_mtls_bypass_auth_request"
 						},
-						"npmplus_reuse_key": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_reuse_key"
+						"npmpro_reuse_key": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_reuse_key"
 						},
-						"npmplus_dns_challenge": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_challenge"
+						"npmpro_dns_challenge": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_dns_challenge"
 						},
-						"npmplus_dns_provider": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_provider"
+						"npmpro_dns_provider": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_dns_provider"
 						},
-						"npmplus_dns_credential_id": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_dns_credential_id"
+						"npmpro_dns_credential_id": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_dns_credential_id"
 						},
-						"npmplus_propagation_seconds": {
-							"$ref": "../../../../components/certificate-object.json#/properties/npmplus_propagation_seconds"
+						"npmpro_propagation_seconds": {
+							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
 						},
 						"locations": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/locations"
@@ -274,27 +274,27 @@
 								],
 								"forward_host": "127.0.0.1",
 								"forward_port": 8080,
-								"npmplus_access_list_type": "public",
+								"npmpro_access_list_type": "public",
 								"certificate_id": 0,
 								"ssl_forced": false,
-								"npmplus_noindex": false,
-								"npmplus_crowdsec_appsec": false,
-								"npmplus_proxy_request_buffering": false,
-								"npmplus_proxy_response_buffering": false,
-								"npmplus_upstream_compression": false,
-								"npmplus_fancyindex": false,
-								"npmplus_x_frame_options": "DENY",
-								"npmplus_auth_request": "none",
-								"npmplus_auth_request_upstream": "",
+								"npmpro_noindex": false,
+								"npmpro_crowdsec_appsec": false,
+								"npmpro_proxy_request_buffering": false,
+								"npmpro_proxy_response_buffering": false,
+								"npmpro_upstream_compression": false,
+								"npmpro_fancyindex": false,
+								"npmpro_x_frame_options": "DENY",
+								"npmpro_auth_request": "none",
+								"npmpro_auth_request_upstream": "",
 								"advanced_config": "",
-								"npmplus_location_config": "",
-								"npmplus_nginx_online": true,
-								"npmplus_nginx_err": "",
-								"npmplus_directory": "",
-								"npmplus_mtls_certificate_id": 0,
-								"npmplus_mtls_verify_client_optional": false,
-								"npmplus_mtls_bypass_auth_request": false,
-								"npmplus_http3_support": false,
+								"npmpro_location_config": "",
+								"npmpro_nginx_online": true,
+								"npmpro_nginx_err": "",
+								"npmpro_directory": "",
+								"npmpro_mtls_certificate_id": 0,
+								"npmpro_mtls_verify_client_optional": false,
+								"npmpro_mtls_bypass_auth_request": false,
+								"npmpro_http3_support": false,
 								"forward_scheme": "http",
 								"enabled": true,
 								"locations": [],

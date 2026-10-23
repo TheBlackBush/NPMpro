@@ -131,15 +131,15 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		data.owner_user_id = access.token.getUserId(1);
 
-		if (data.npmplus_dns_challenge) {
-			const credential = await internalDnsCredential.get(access, { id: data.npmplus_dns_credential_id });
-			if (credential.provider !== data.npmplus_dns_provider) {
+		if (data.npmpro_dns_challenge) {
+			const credential = await internalDnsCredential.get(access, { id: data.npmpro_dns_credential_id });
+			if (credential.provider !== data.npmpro_dns_provider) {
 				throw new error.ValidationError("The DNS credential belongs to another DNS provider");
 			}
 		} else {
-			delete data.npmplus_dns_provider;
-			delete data.npmplus_dns_credential_id;
-			delete data.npmplus_propagation_seconds;
+			delete data.npmpro_dns_provider;
+			delete data.npmpro_dns_credential_id;
+			delete data.npmpro_propagation_seconds;
 		}
 
 		if (data.provider === "letsencrypt") {
@@ -152,7 +152,7 @@ const internalCertificate = {
 		try {
 			if (certificate.provider === "letsencrypt") {
 				// Request a new Cert with Certbot. Let the fun begin.
-				if (certificate.npmplus_dns_challenge) {
+				if (certificate.npmpro_dns_challenge) {
 					await internalCertificate.requestCertbotWithDnsChallenge(certificate);
 				} else {
 					await internalCertificate.requestCertbot(certificate);
@@ -326,7 +326,7 @@ const internalCertificate = {
 				(await hostModel
 					.query()
 					.where("certificate_id", row.id)
-					.orWhere("npmplus_mtls_certificate_id", row.id)
+					.orWhere("npmpro_mtls_certificate_id", row.id)
 					.resultSize()) > 0
 			) {
 				throw new error.ValidationError("Certificate is still in use");
@@ -654,7 +654,7 @@ const internalCertificate = {
 			`npm-${certificate.id}`,
 			...(domains.length > 0 ? ["--domains", domains.map(domainToASCII).join(",")] : []),
 			...ips.flatMap((ip) => ["--ip-address", ip]),
-			...(certificate.npmplus_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+			...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
 			"--authenticator",
 			"webroot",
 		]);
@@ -667,11 +667,11 @@ const internalCertificate = {
 	 * @returns {Promise}
 	 */
 	requestCertbotWithDnsChallenge: async (certificate) => {
-		const dnsPlugin = dnsPlugins[certificate.npmplus_dns_provider];
+		const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
 		if (!dnsPlugin) {
-			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmplus_dns_provider}'`);
+			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
-		await installPlugin(certificate.npmplus_dns_provider);
+		await installPlugin(certificate.npmpro_dns_provider);
 
 		logger.info(
 			`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
@@ -691,13 +691,13 @@ const internalCertificate = {
 				`npm-${certificate.id}`,
 				"--domains",
 				certificate.domain_names.map(domainToASCII).join(","),
-				...(certificate.npmplus_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
+				...(certificate.npmpro_reuse_key ? ["--reuse-key"] : ["--no-reuse-key"]),
 				"--authenticator",
 				dnsPlugin.full_plugin_name,
 				`--${dnsPlugin.full_plugin_name}-credentials`,
 				credentialsLocation,
-				...(certificate.npmplus_propagation_seconds > 0
-					? [`--${dnsPlugin.full_plugin_name}-propagation-seconds`, certificate.npmplus_propagation_seconds]
+				...(certificate.npmpro_propagation_seconds > 0
+					? [`--${dnsPlugin.full_plugin_name}-propagation-seconds`, certificate.npmpro_propagation_seconds]
 					: []),
 			]);
 			logger.info(result);
@@ -714,22 +714,22 @@ const internalCertificate = {
 	 * @param   {Access}  access
 	 * @param   {Object}  data
 	 * @param   {Number}  data.id
-	 * @param   {Number}  data.npmplus_dns_credential_id
+	 * @param   {Number}  data.npmpro_dns_credential_id
 	 * @returns {Promise}
 	 */
 	setDnsCredential: async (access, data) => {
 		access.can("certificates:manage");
 		const certificate = await internalCertificate.get(access, { id: data.id });
-		if (certificate.provider !== "letsencrypt" || !certificate.npmplus_dns_challenge) {
+		if (certificate.provider !== "letsencrypt" || !certificate.npmpro_dns_challenge) {
 			throw new error.ValidationError("Only DNS challenge certificates use a DNS credential");
 		}
-		const credential = await internalDnsCredential.get(access, { id: data.npmplus_dns_credential_id });
-		if (credential.provider !== certificate.npmplus_dns_provider) {
+		const credential = await internalDnsCredential.get(access, { id: data.npmpro_dns_credential_id });
+		if (credential.provider !== certificate.npmpro_dns_provider) {
 			throw new error.ValidationError("The DNS credential belongs to another DNS provider");
 		}
 		const saved = await certificateModel
 			.query()
-			.patchAndFetchById(certificate.id, { npmplus_dns_credential_id: credential.id });
+			.patchAndFetchById(certificate.id, { npmpro_dns_credential_id: credential.id });
 		await internalDnsCredential.writeCertificateFile(saved);
 		await internalAuditLog.add(access, {
 			action: "updated",
@@ -784,9 +784,9 @@ const internalCertificate = {
 	 * @returns {Promise}
 	 */
 	renewCertbot: async (certificate) => {
-		const dnsPlugin = certificate.npmplus_dns_challenge ? dnsPlugins[certificate.npmplus_dns_provider] : null;
-		if (certificate.npmplus_dns_challenge && !dnsPlugin) {
-			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmplus_dns_provider}'`);
+		const dnsPlugin = certificate.npmpro_dns_challenge ? dnsPlugins[certificate.npmpro_dns_provider] : null;
+		if (certificate.npmpro_dns_challenge && !dnsPlugin) {
+			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
 
 		logger.info(

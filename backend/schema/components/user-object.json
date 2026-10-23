@@ -70,7 +70,7 @@
 				]
 			}
 		},
-		"npmplus_token_valid_after": {
+		"npmpro_token_valid_after": {
 			"type": "integer",
 			"description": "Tokens issued at or before this unix time are rejected",
 			"readOnly": true,

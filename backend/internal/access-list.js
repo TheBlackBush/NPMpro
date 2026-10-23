@@ -205,12 +205,8 @@ const internalAccessList = {
 		const query = accessListModel
 			.query()
 			.select("access_list.*", accessListModel.raw("COUNT(DISTINCT proxy_host.id) as proxy_host_count"))
-			.leftJoin(
-				"npmplus_proxy_host_access_list",
-				"npmplus_proxy_host_access_list.access_list_id",
-				"access_list.id",
-			)
-			.leftJoin("proxy_host", "proxy_host.id", "npmplus_proxy_host_access_list.proxy_host_id")
+			.leftJoin("npmpro_proxy_host_access_list", "npmpro_proxy_host_access_list.access_list_id", "access_list.id")
+			.leftJoin("proxy_host", "proxy_host.id", "npmpro_proxy_host_access_list.proxy_host_id")
 			.where("access_list.id", data.id)
 			.groupBy("access_list.id")
 			.allowGraph(
@@ -266,7 +262,7 @@ const internalAccessList = {
 			updatedHost.access_lists = updatedHost.access_lists.filter((acl) => acl.id !== row.id);
 
 			if (updatedHost.access_lists.length === 0) {
-				updatedHost.npmplus_access_list_type = "public";
+				updatedHost.npmpro_access_list_type = "public";
 			}
 			if (!Array.isArray(updatedHost.locations)) {
 				throw new errs.ConfigurationError("Invalid location structure. Expected an array");
@@ -274,11 +270,8 @@ const internalAccessList = {
 			updatedHost.locations = updatedHost.locations.map((location) => {
 				const updatedLocation = { ...location };
 				updatedLocation.access_lists = updatedLocation.access_lists.filter((acl) => acl.id !== row.id);
-				if (
-					updatedLocation.access_lists.length === 0 &&
-					updatedLocation.npmplus_access_list_type === "custom"
-				) {
-					updatedLocation.npmplus_access_list_type = "global";
+				if (updatedLocation.access_lists.length === 0 && updatedLocation.npmpro_access_list_type === "custom") {
+					updatedLocation.npmpro_access_list_type = "global";
 				}
 				return updatedLocation;
 			});
@@ -288,18 +281,18 @@ const internalAccessList = {
 
 		await accessListModel.transaction(async (trx) => {
 			// 1. update row to be deleted
-			await trx("npmplus_proxy_host_access_list").where("access_list_id", row.id).delete();
+			await trx("npmpro_proxy_host_access_list").where("access_list_id", row.id).delete();
 			await accessListAuthModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListClientModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListModel.query(trx).deleteById(row.id);
 			// 2. update any proxy hosts that were using it (ignoring permissions)
 			for (const host of affectedHosts) {
 				await proxyHostModel.query(trx).findById(host.id).patch({
-					npmplus_access_list_type: host.npmplus_access_list_type,
+					npmpro_access_list_type: host.npmpro_access_list_type,
 				});
 				for (const location of host.locations) {
 					await locationModel.query(trx).where("id", location.id).patch({
-						npmplus_access_list_type: location.npmplus_access_list_type,
+						npmpro_access_list_type: location.npmpro_access_list_type,
 					});
 				}
 			}
@@ -340,12 +333,8 @@ const internalAccessList = {
 		const query = accessListModel
 			.query()
 			.select("access_list.*", accessListModel.raw("COUNT(DISTINCT proxy_host.id) as proxy_host_count"))
-			.leftJoin(
-				"npmplus_proxy_host_access_list",
-				"npmplus_proxy_host_access_list.access_list_id",
-				"access_list.id",
-			)
-			.leftJoin("proxy_host", "proxy_host.id", "npmplus_proxy_host_access_list.proxy_host_id")
+			.leftJoin("npmpro_proxy_host_access_list", "npmpro_proxy_host_access_list.access_list_id", "access_list.id")
+			.leftJoin("proxy_host", "proxy_host.id", "npmpro_proxy_host_access_list.proxy_host_id")
 			.groupBy("access_list.id")
 			.allowGraph("[owner,items,clients]")
 			.orderBy("access_list.name", "ASC");

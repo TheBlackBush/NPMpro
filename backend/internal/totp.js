@@ -106,7 +106,7 @@ const internalTotp = {
 			await userModel
 				.query(trx)
 				.where("id", userId)
-				.patch({ npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 
 			await onEnable?.(trx);
 		});

@@ -9,32 +9,32 @@
 		"domain_names",
 		"forward_host",
 		"forward_port",
-		"npmplus_access_list_type",
+		"npmpro_access_list_type",
 		"certificate_id",
 		"ssl_forced",
 		"advanced_config",
-		"npmplus_location_config",
-		"npmplus_nginx_online",
-		"npmplus_nginx_err",
-		"npmplus_directory",
-		"npmplus_mtls_certificate_id",
-		"npmplus_mtls_verify_client_optional",
-		"npmplus_mtls_bypass_auth_request",
-		"npmplus_http3_support",
+		"npmpro_location_config",
+		"npmpro_nginx_online",
+		"npmpro_nginx_err",
+		"npmpro_directory",
+		"npmpro_mtls_certificate_id",
+		"npmpro_mtls_verify_client_optional",
+		"npmpro_mtls_bypass_auth_request",
+		"npmpro_http3_support",
 		"forward_scheme",
 		"enabled",
 		"locations",
 		"hsts_enabled",
 		"hsts_subdomains",
-		"npmplus_noindex",
-		"npmplus_crowdsec_appsec",
-		"npmplus_proxy_request_buffering",
-		"npmplus_proxy_response_buffering",
-		"npmplus_upstream_compression",
-		"npmplus_fancyindex",
-		"npmplus_x_frame_options",
-		"npmplus_auth_request",
-		"npmplus_auth_request_upstream"
+		"npmpro_noindex",
+		"npmpro_crowdsec_appsec",
+		"npmpro_proxy_request_buffering",
+		"npmpro_proxy_response_buffering",
+		"npmpro_upstream_compression",
+		"npmpro_fancyindex",
+		"npmpro_x_frame_options",
+		"npmpro_auth_request",
+		"npmpro_auth_request_upstream"
 	],
 	"additionalProperties": false,
 	"properties": {
@@ -67,11 +67,11 @@
 			"default": 0,
 			"example": 8080
 		},
-		"npmplus_access_list_ids":{
-			"$ref": "../common.json#/properties/npmplus_access_list_ids"
+		"npmpro_access_list_ids":{
+			"$ref": "../common.json#/properties/npmpro_access_list_ids"
 		},
-		"npmplus_access_list_type": {
-			"$ref": "../common.json#/properties/npmplus_host_access_list_type"
+		"npmpro_access_list_type": {
+			"$ref": "../common.json#/properties/npmpro_host_access_list_type"
 		},
 		"certificate_id": {
 			"$ref": "../common.json#/properties/certificate_id"
@@ -79,25 +79,25 @@
 		"ssl_forced": {
 			"$ref": "../common.json#/properties/ssl_forced"
 		},
-		"npmplus_noindex": {
-			"$ref": "../common.json#/properties/npmplus_noindex"
+		"npmpro_noindex": {
+			"$ref": "../common.json#/properties/npmpro_noindex"
 		},
-		"npmplus_crowdsec_appsec": {
-			"$ref": "../common.json#/properties/npmplus_crowdsec_appsec"
+		"npmpro_crowdsec_appsec": {
+			"$ref": "../common.json#/properties/npmpro_crowdsec_appsec"
 		},
-		"npmplus_proxy_request_buffering": {
-			"$ref": "../common.json#/properties/npmplus_proxy_request_buffering"
+		"npmpro_proxy_request_buffering": {
+			"$ref": "../common.json#/properties/npmpro_proxy_request_buffering"
 		},
-		"npmplus_proxy_response_buffering": {
-			"$ref": "../common.json#/properties/npmplus_proxy_response_buffering"
+		"npmpro_proxy_response_buffering": {
+			"$ref": "../common.json#/properties/npmpro_proxy_response_buffering"
 		},
-		"npmplus_upstream_compression": {
-			"$ref": "../common.json#/properties/npmplus_upstream_compression"
+		"npmpro_upstream_compression": {
+			"$ref": "../common.json#/properties/npmpro_upstream_compression"
 		},
-		"npmplus_fancyindex": {
-			"$ref": "../common.json#/properties/npmplus_fancyindex"
+		"npmpro_fancyindex": {
+			"$ref": "../common.json#/properties/npmpro_fancyindex"
 		},
-		"npmplus_x_frame_options": {
+		"npmpro_x_frame_options": {
 			"type": "string",
 			"enum": [
 				"DENY",
@@ -108,7 +108,7 @@
 			"default": "SAMEORIGIN",
 			"example": "DENY"
 		},
-		"npmplus_auth_request": {
+		"npmpro_auth_request": {
 			"type": "string",
 			"enum": [
 				"none",
@@ -123,7 +123,7 @@
 			"default": "none",
 			"example": "none"
 		},
-		"npmplus_auth_request_upstream": {
+		"npmpro_auth_request_upstream": {
 			"type": "string",
 			"pattern": "^(https?://(([^\\s/:]+|\\[[a-fA-F0-9:]+\\]):[0-9]+|cu_[^\\s/:]+))?$",
 			"maxLength": 255,
@@ -135,31 +135,31 @@
 			"default": "",
 			"example": ""
 		},
-		"npmplus_location_config": {
+		"npmpro_location_config": {
 			"type": "string",
 			"default": "",
 			"example": ""
 		},
-		"npmplus_nginx_online": {
-			"$ref": "../common.json#/properties/npmplus_nginx_online"
+		"npmpro_nginx_online": {
+			"$ref": "../common.json#/properties/npmpro_nginx_online"
 		},
-		"npmplus_nginx_err": {
-			"$ref": "../common.json#/properties/npmplus_nginx_err"
+		"npmpro_nginx_err": {
+			"$ref": "../common.json#/properties/npmpro_nginx_err"
 		},
-		"npmplus_directory": {
-			"$ref": "../common.json#/properties/npmplus_directory"
+		"npmpro_directory": {
+			"$ref": "../common.json#/properties/npmpro_directory"
 		},
-		"npmplus_mtls_certificate_id": {
-			"$ref": "../common.json#/properties/npmplus_mtls_certificate_id"
+		"npmpro_mtls_certificate_id": {
+			"$ref": "../common.json#/properties/npmpro_mtls_certificate_id"
 		},
-		"npmplus_mtls_verify_client_optional": {
-			"$ref": "../common.json#/properties/npmplus_mtls_verify_client_optional"
+		"npmpro_mtls_verify_client_optional": {
+			"$ref": "../common.json#/properties/npmpro_mtls_verify_client_optional"
 		},
-		"npmplus_mtls_bypass_auth_request": {
-			"$ref": "../common.json#/properties/npmplus_mtls_bypass_auth_request"
+		"npmpro_mtls_bypass_auth_request": {
+			"$ref": "../common.json#/properties/npmpro_mtls_bypass_auth_request"
 		},
-		"npmplus_http3_support": {
-			"$ref": "../common.json#/properties/npmplus_http3_support"
+		"npmpro_http3_support": {
+			"$ref": "../common.json#/properties/npmpro_http3_support"
 		},
 		"forward_scheme": {
 			"type": "string",
@@ -211,20 +211,20 @@
 					{
 						"if": {
 							"properties": {
-								"npmplus_access_list_type": {
+								"npmpro_access_list_type": {
 									"const": "custom"
 								}
 							},
 							"required": [
-								"npmplus_access_list_type"
+								"npmpro_access_list_type"
 							]
 						},
 						"then": {
 							"required": [
-								"npmplus_access_list_ids"
+								"npmpro_access_list_ids"
 							],
 							"properties": {
-								"npmplus_access_list_ids": {
+								"npmpro_access_list_ids": {
 									"minItems": 1
 								}
 							}
@@ -232,7 +232,7 @@
 					}
 				],
 				"properties": {
-					"npmplus_enabled": {
+					"npmpro_enabled": {
 						"$ref": "../common.json#/properties/enabled"
 					},
 					"path": {
@@ -262,42 +262,42 @@
 					"forward_port": {
 						"$ref": "#/properties/forward_port"
 					},
-					"npmplus_noindex": {
-						"$ref": "#/properties/npmplus_noindex"
+					"npmpro_noindex": {
+						"$ref": "#/properties/npmpro_noindex"
 					},
-					"npmplus_crowdsec_appsec": {
-						"$ref": "#/properties/npmplus_crowdsec_appsec"
+					"npmpro_crowdsec_appsec": {
+						"$ref": "#/properties/npmpro_crowdsec_appsec"
 					},
-					"npmplus_proxy_request_buffering": {
-						"$ref": "#/properties/npmplus_proxy_request_buffering"
+					"npmpro_proxy_request_buffering": {
+						"$ref": "#/properties/npmpro_proxy_request_buffering"
 					},
-					"npmplus_proxy_response_buffering": {
-						"$ref": "#/properties/npmplus_proxy_response_buffering"
+					"npmpro_proxy_response_buffering": {
+						"$ref": "#/properties/npmpro_proxy_response_buffering"
 					},
-					"npmplus_upstream_compression": {
-						"$ref": "#/properties/npmplus_upstream_compression"
+					"npmpro_upstream_compression": {
+						"$ref": "#/properties/npmpro_upstream_compression"
 					},
-					"npmplus_fancyindex": {
-						"$ref": "#/properties/npmplus_fancyindex"
+					"npmpro_fancyindex": {
+						"$ref": "#/properties/npmpro_fancyindex"
 					},
-					"npmplus_x_frame_options": {
-						"$ref": "#/properties/npmplus_x_frame_options"
+					"npmpro_x_frame_options": {
+						"$ref": "#/properties/npmpro_x_frame_options"
 					},
-					"npmplus_auth_request": {
-						"$ref": "#/properties/npmplus_auth_request"
+					"npmpro_auth_request": {
+						"$ref": "#/properties/npmpro_auth_request"
 					},
-					"npmplus_auth_request_upstream": {
-						"$ref": "#/properties/npmplus_auth_request_upstream"
+					"npmpro_auth_request_upstream": {
+						"$ref": "#/properties/npmpro_auth_request_upstream"
 					},
 					"advanced_config": {
 						"type": "string",
 						"default": ""
 					},
-					"npmplus_access_list_ids":{
-						"$ref": "../common.json#/properties/npmplus_access_list_ids"
+					"npmpro_access_list_ids":{
+						"$ref": "../common.json#/properties/npmpro_access_list_ids"
 					},
-					"npmplus_access_list_type": {
-						"$ref": "../common.json#/properties/npmplus_location_access_list_type"
+					"npmpro_access_list_type": {
+						"$ref": "../common.json#/properties/npmpro_location_access_list_type"
 					}
 				}
 			},
@@ -308,8 +308,8 @@
 					"forward_scheme": "http",
 					"forward_host": "example.com",
 					"forward_port": 80,
-					"npmplus_access_list_ids": [1, 2],
-					"npmplus_access_list_type": "custom"
+					"npmpro_access_list_ids": [1, 2],
+					"npmpro_access_list_type": "custom"
 				}
 			]
 		},

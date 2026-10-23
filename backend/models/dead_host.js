@@ -12,12 +12,12 @@ Model.knex(db());
 
 const boolFields = [
 	"ssl_forced",
-	"npmplus_http3_support",
+	"npmpro_http3_support",
 	"enabled",
 	"hsts_enabled",
 	"hsts_subdomains",
-	"npmplus_nginx_online",
-	"npmplus_mtls_verify_client_optional",
+	"npmpro_nginx_online",
+	"npmpro_mtls_verify_client_optional",
 ];
 
 class DeadHost extends Model {
@@ -31,7 +31,7 @@ class DeadHost extends Model {
 		// Default for meta
 		this.meta ??= {};
 		this.advanced_config ??= "";
-		this.npmplus_nginx_err ??= "";
+		this.npmpro_nginx_err ??= "";
 	}
 
 	$beforeUpdate() {

@@ -14,9 +14,9 @@ const boolFields = [
 	"enabled",
 	"tcp_forwarding",
 	"udp_forwarding",
-	"npmplus_proxy_tls",
-	"npmplus_nginx_online",
-	"npmplus_mtls_verify_client_optional",
+	"npmpro_proxy_tls",
+	"npmpro_nginx_online",
+	"npmpro_mtls_verify_client_optional",
 ];
 
 class Stream extends Model {
@@ -26,8 +26,8 @@ class Stream extends Model {
 
 		// Default for meta
 		this.meta ??= {};
-		this.npmplus_advanced_config ??= "";
-		this.npmplus_nginx_err ??= "";
+		this.npmpro_advanced_config ??= "";
+		this.npmpro_nginx_err ??= "";
 	}
 
 	$beforeUpdate() {

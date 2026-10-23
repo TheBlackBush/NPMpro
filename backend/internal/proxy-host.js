@@ -11,7 +11,7 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 const replaceLocationsAndAccessLists = async (trx, proxyHostId, data) => {
 	const insertAccessLists = async (locationId, accessListIds) => {
 		if (accessListIds.length > 0) {
-			await trx("npmplus_proxy_host_access_list").insert(
+			await trx("npmpro_proxy_host_access_list").insert(
 				accessListIds.map((access_list_id, position) => ({
 					proxy_host_id: proxyHostId,
 					location_id: locationId,
@@ -22,10 +22,10 @@ const replaceLocationsAndAccessLists = async (trx, proxyHostId, data) => {
 		}
 	};
 
-	await trx("npmplus_proxy_host_access_list").where("proxy_host_id", proxyHostId).delete();
+	await trx("npmpro_proxy_host_access_list").where("proxy_host_id", proxyHostId).delete();
 	await locationModel.query(trx).where("proxy_host_id", proxyHostId).delete();
-	await insertAccessLists(0, data.npmplus_access_list_ids);
-	for (const { id, npmplus_access_list_ids: accessListIds, ...location } of data.locations ?? []) {
+	await insertAccessLists(0, data.npmpro_access_list_ids);
+	for (const { id, npmpro_access_list_ids: accessListIds, ...location } of data.locations ?? []) {
 		await insertAccessLists(
 			(await locationModel.query(trx).insert({ ...location, proxy_host_id: proxyHostId })).id,
 			accessListIds,
@@ -37,17 +37,17 @@ const cleanForwardOptions = (item) => {
 	const scheme = item.forward_scheme ?? "http";
 	if (scheme !== "empty") {
 		if (!["http", "https"].includes(scheme)) {
-			item.npmplus_proxy_request_buffering = false;
-			item.npmplus_proxy_response_buffering = false;
+			item.npmpro_proxy_request_buffering = false;
+			item.npmpro_proxy_response_buffering = false;
 		}
 		if (scheme === "path") {
-			item.npmplus_upstream_compression = false;
+			item.npmpro_upstream_compression = false;
 		} else {
-			item.npmplus_fancyindex = false;
+			item.npmpro_fancyindex = false;
 		}
 	}
-	if (!item.npmplus_crowdsec_appsec) item.npmplus_proxy_request_buffering = false;
-	if ((item.npmplus_auth_request ?? "none") === "none") item.npmplus_auth_request_upstream = "";
+	if (!item.npmpro_crowdsec_appsec) item.npmpro_proxy_request_buffering = false;
+	if ((item.npmpro_auth_request ?? "none") === "none") item.npmpro_auth_request_upstream = "";
 };
 
 const internalProxyHost = {
@@ -65,8 +65,8 @@ const internalProxyHost = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("proxy_hosts:manage");
@@ -136,8 +136,8 @@ const internalProxyHost = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("proxy_hosts:manage");
@@ -245,7 +245,7 @@ const internalProxyHost = {
 		const row = await internalProxyHost.get(access, { id: data.id });
 
 		await proxyHostModel.transaction(async (trx) => {
-			await trx("npmplus_proxy_host_access_list").where("proxy_host_id", row.id).delete();
+			await trx("npmpro_proxy_host_access_list").where("proxy_host_id", row.id).delete();
 			await locationModel.query(trx).where("proxy_host_id", row.id).delete();
 			await proxyHostModel.query(trx).deleteById(row.id);
 		});
@@ -418,7 +418,7 @@ const internalProxyHost = {
 	 * @returns {Promise}
 	 */
 	getErrorCount: (user_id, visibility) => {
-		const query = proxyHostModel.query().where("enabled", 1).andWhere("npmplus_nginx_online", 0);
+		const query = proxyHostModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
 
 		if (visibility !== "all") {
 			query.andWhere("owner_user_id", user_id);

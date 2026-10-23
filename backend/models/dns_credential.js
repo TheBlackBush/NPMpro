@@ -25,7 +25,7 @@ class DnsCredential extends Model {
 		return thisJson;
 	}
 
-	static tableName = "npmplus_dns_credential";
+	static tableName = "npmpro_dns_credential";
 
 	static get relationMappings() {
 		return {
@@ -33,7 +33,7 @@ class DnsCredential extends Model {
 				relation: Model.HasOneRelation,
 				modelClass: userModel,
 				join: {
-					from: "npmplus_dns_credential.owner_user_id",
+					from: "npmpro_dns_credential.owner_user_id",
 					to: "user.id",
 				},
 			},
@@ -41,8 +41,8 @@ class DnsCredential extends Model {
 				relation: Model.HasManyRelation,
 				modelClass: certificateModel,
 				join: {
-					from: "npmplus_dns_credential.id",
-					to: "certificate.npmplus_dns_credential_id",
+					from: "npmpro_dns_credential.id",
+					to: "certificate.npmpro_dns_credential_id",
 				},
 			},
 		};

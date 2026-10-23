@@ -85,7 +85,7 @@ try {
 					"INSERT INTO auth (created_on, modified_on, user_id, type, secret, meta) VALUES (datetime('now','localtime'), datetime('now','localtime'), ?, 'password', ?, '{}')",
 				).run(user.id, secret);
 			}
-			db.prepare("UPDATE user SET npmplus_token_valid_after = ? WHERE id = ?").run(
+			db.prepare("UPDATE user SET npmpro_token_valid_after = ? WHERE id = ?").run(
 				Math.floor(Date.now() / 1000),
 				user.id,
 			);

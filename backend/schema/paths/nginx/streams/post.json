@@ -30,12 +30,12 @@
 					"then": {
 						"required": [
 							"domain_names",
-							"npmplus_dns_challenge",
-							"npmplus_dns_provider",
-							"npmplus_dns_credential_id"
+							"npmpro_dns_challenge",
+							"npmpro_dns_provider",
+							"npmpro_dns_credential_id"
 						],
 						"properties": {
-							"npmplus_dns_challenge": {
+							"npmpro_dns_challenge": {
 								"type": "boolean",
 								"const": true
 							}
@@ -61,11 +61,11 @@
 						"udp_forwarding": {
 							"$ref": "../../../components/stream-object.json#/properties/udp_forwarding"
 						},
-						"npmplus_proxy_protocol_forwarding": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_proxy_protocol_forwarding"
+						"npmpro_proxy_protocol_forwarding": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_proxy_protocol_forwarding"
 						},
-						"npmplus_proxy_tls": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_proxy_tls"
+						"npmpro_proxy_tls": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_proxy_tls"
 						},
 						"certificate_id": {
 							"$ref": "../../../components/stream-object.json#/properties/certificate_id"
@@ -73,35 +73,35 @@
 						"domain_names": {
 							"$ref": "../../../components/certificate-object.json#/properties/domain_names_dns"
 						},
-						"npmplus_reuse_key": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_reuse_key"
+						"npmpro_reuse_key": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_reuse_key"
 						},
-						"npmplus_dns_challenge": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_challenge"
+						"npmpro_dns_challenge": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_challenge"
 						},
-						"npmplus_dns_provider": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_provider"
+						"npmpro_dns_provider": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_provider"
 						},
-						"npmplus_dns_credential_id": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_credential_id"
+						"npmpro_dns_credential_id": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_credential_id"
 						},
-						"npmplus_propagation_seconds": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_propagation_seconds"
+						"npmpro_propagation_seconds": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
 						},
-						"npmplus_advanced_config": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_advanced_config"
+						"npmpro_advanced_config": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_advanced_config"
 						},
-						"npmplus_directory": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_directory"
+						"npmpro_directory": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_directory"
 						},
-						"npmplus_mtls_certificate_id": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_mtls_certificate_id"
+						"npmpro_mtls_certificate_id": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_mtls_certificate_id"
 						},
-						"npmplus_mtls_verify_client_optional": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_mtls_verify_client_optional"
+						"npmpro_mtls_verify_client_optional": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_mtls_verify_client_optional"
 						},
-						"npmplus_description": {
-							"$ref": "../../../components/stream-object.json#/properties/npmplus_description"
+						"npmpro_description": {
+							"$ref": "../../../components/stream-object.json#/properties/npmpro_description"
 						}
 					}
 				},
@@ -133,14 +133,14 @@
 								"forwarding_port": 80,
 								"tcp_forwarding": true,
 								"udp_forwarding": false,
-								"npmplus_proxy_protocol_forwarding": 0,
-								"npmplus_proxy_tls": false,
-								"npmplus_advanced_config": "",
-								"npmplus_nginx_online": true,
-								"npmplus_nginx_err": "",
-								"npmplus_directory": "",
-								"npmplus_mtls_certificate_id": 0,
-								"npmplus_mtls_verify_client_optional": false,
+								"npmpro_proxy_protocol_forwarding": 0,
+								"npmpro_proxy_tls": false,
+								"npmpro_advanced_config": "",
+								"npmpro_nginx_online": true,
+								"npmpro_nginx_err": "",
+								"npmpro_directory": "",
+								"npmpro_mtls_certificate_id": 0,
+								"npmpro_mtls_verify_client_optional": false,
 								"enabled": true,
 								"certificate_id": 0
 							}
