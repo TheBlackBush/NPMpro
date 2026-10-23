@@ -1,6 +1,6 @@
 import { NavLink, useParams } from "react-router";
 import { ErrorNotFound } from "src/components";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { SECTIONS } from "./sections";
 
 export default function Layout() {
@@ -19,7 +19,10 @@ export default function Layout() {
 			<div className="row g-0">
 				<div className="col-12 col-md-3 border-end">
 					<div className="card-body">
-						<nav className="list-group list-group-transparent" aria-label="Settings">
+						<nav
+							className="list-group list-group-transparent"
+							aria-label={intl.formatMessage({ id: "settings" })}
+						>
 							{SECTIONS.map(({ id, labelKey, icon: Icon }) => (
 								<NavLink
 									key={id}
