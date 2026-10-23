@@ -1,11 +1,12 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
 import { getCookie } from "src/modules/Cookies";
+import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
 import { validateEmail, validateString } from "src/modules/Validations";
 
 function TotpForm() {
@@ -83,7 +84,7 @@ const redirectToOIDC = () => {
 	window.location.href = "/api/oidc";
 };
 
-function PasswordForm() {
+function PasswordForm({ oidcError }) {
 	const emailRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
 	const { login } = useAuthState();
@@ -102,27 +103,39 @@ function PasswordForm() {
 	// Once, when the health check first answers: the check repeats every 15 seconds, and refocusing on each
 	// answer would move the cursor out of the password field while someone types
 	const passwordAllowed = health.data?.password;
+	const oidc = health.data?.oidc;
+	const oidcActive = oidc?.active === true;
+	const noRedirect = oidcError !== null || getCookie("__Host-npmpro_oidc_no_redirect") === "true";
 	const startedRef = useRef(false);
 	useEffect(() => {
 		if (passwordAllowed === undefined || startedRef.current) return;
 		startedRef.current = true;
 		if (passwordAllowed === false) {
-			if (getCookie("__Host-npmpro_oidc_no_redirect") !== "true") {
+			if (oidcActive && !noRedirect) {
 				redirectToOIDC();
 			}
 		} else if (!emailRef.current?.form?.contains(document.activeElement)) {
 			emailRef.current?.focus();
 		}
 		window.cookieStore.delete("__Host-npmpro_oidc_no_redirect");
-	}, [passwordAllowed]);
+	}, [passwordAllowed, oidcActive, noRedirect]);
 
 	return (
 		<>
 			<h2 className="h2 text-center mb-4">
 				<T id="login.title" />
 			</h2>
+			{oidcError !== null && <ErrorAlert error={intl.formatMessage({ id: oidcErrorKey(oidcError) })} />}
 			{formErr && <ErrorAlert error={formErr} />}
-			{health.data?.password && (
+			{oidcActive && (
+				<OidcButton label={oidc.label} color={oidc.color} icon={oidc.icon} onClick={redirectToOIDC} />
+			)}
+			{oidcActive && passwordAllowed && (
+				<div className="hr-text my-3">
+					<T id="or" />
+				</div>
+			)}
+			{passwordAllowed && (
 				<Formik
 					initialValues={{
 						email: "",
@@ -184,15 +197,10 @@ function PasswordForm() {
 					)}
 				</Formik>
 			)}
-			{health.data?.password && health.data?.oidc && (
-				<div className="hr-text my-3">
-					<T id="or" />
-				</div>
-			)}
-			{health.data?.oidc && (
-				<div className="form-footer my-0">
-					<Button type="button" fullWidth outline color="azure" onClick={redirectToOIDC}>
-						<T id="sign-in-with-oidc" />
+			{oidcActive && passwordAllowed === false && noRedirect && (
+				<div className="form-footer">
+					<Button type="button" fullWidth color="azure" onClick={redirectToOIDC}>
+						<T id="login.oidc-try-again" />
 					</Button>
 				</div>
 			)}
@@ -202,6 +210,8 @@ function PasswordForm() {
 
 export default function Login() {
 	const { totpChallenge } = useAuthState();
+	// Read once: this removes the parameter from the address bar, and the message must survive re-renders
+	const [oidcError] = useState(takeOidcError);
 
 	return (
 		<Page className="page-center">
@@ -225,7 +235,9 @@ export default function Login() {
 					</h1>
 				</div>
 				<div className="card card-md">
-					<div className="card-body">{totpChallenge ? <TotpForm /> : <PasswordForm />}</div>
+					<div className="card-body">
+						{totpChallenge ? <TotpForm /> : <PasswordForm oidcError={oidcError} />}
+					</div>
 				</div>
 			</div>
 		</Page>

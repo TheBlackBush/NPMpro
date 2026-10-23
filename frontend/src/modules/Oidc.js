@@ -49,7 +49,7 @@ const EDITABLE_KEYS = [
 	"button",
 ];
 
-const camel = (s) => s.replaceAll(/_(?<c>[a-z])/g, (...m) => m.at(-1).c.toUpperCase());
+const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
 /**
  * Black or white, whichever has the higher WCAG contrast against the hex background
