@@ -24,6 +24,8 @@
 	"action.permissions": "Права",
 	"action.renew": "Подновяване",
 	"action.view-details": "Преглед на детайли",
+	"aria.main-navigation": "Основна навигация",
+	"aria.select-language": "Избор на език",
 	"auditlogs": "Журнали за одит",
 	"auto": "Автоматично",
 	"cancel": "Отказ",

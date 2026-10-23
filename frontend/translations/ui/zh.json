@@ -36,6 +36,8 @@
 	"action.permissions": "权限",
 	"action.renew": "续期",
 	"action.view-details": "查看详情",
+	"aria.main-navigation": "主导航",
+	"aria.select-language": "选择语言",
 	"auditlogs": "审计日志",
 	"auto": "自动",
 	"avatar.remove": "移除头像",

@@ -50,9 +50,9 @@ export function SiteHeader() {
 					</div>
 					<div className="nav-item d-md-flex">
 						<div className="nav-item dropdown">
-							<a
-								href="/"
-								className="nav-link d-flex lh-1"
+							<button
+								type="button"
+								className="nav-link d-flex lh-1 text-reset"
 								data-bs-toggle="dropdown"
 								onClick={() => {
 									// on phones the navigation and the user menu overlap; close the navigation when the menu opens
@@ -76,66 +76,60 @@ export function SiteHeader() {
 										<T id={role} />
 									</div>
 								</div>
-							</a>
+							</button>
 							<div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
 								<div className="d-md-none">
-									{/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents lint/a11y/noNoninteractiveElementInteractions: onClick only stops propagation so clicking the user info does not close the dropdown. */}
+									<div className="dropdown-header">
+										<div>{currentUser?.name}</div>
+										<div className="small text-secondary text-nowrap">
+											<T id={role} />
+										</div>
+									</div>
+									{/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents lint/a11y/noNoninteractiveElementInteractions: onClick only stops propagation so using the theme and language buttons does not close the user menu. */}
 									<div
-										className="p-2 pb-1 pe-1 d-flex align-items-center"
+										className="dropdown-item-text d-flex align-items-center gap-2"
 										onClick={(e) => e.stopPropagation()}
 									>
-										<div className="ps-2 pe-1 me-auto">
-											<div>{currentUser?.name}</div>
-											<div className="mt-1 small text-secondary text-nowrap">
-												<T id={role} />
-											</div>
-										</div>
-										<div className="d-flex align-items-center">
-											<ThemeSwitcher className="me-n2" />
-											<LocalePicker menuAlign="end" />
-										</div>
+										<ThemeSwitcher />
+										<LocalePicker menuAlign="end" />
 									</div>
 									<div className="dropdown-divider" />
 								</div>
-								<a
-									href="?"
+								<button
+									type="button"
 									className="dropdown-item"
-									onClick={(e) => {
-										e.preventDefault();
+									onClick={() => {
 										showUserModal("me");
 									}}
 								>
-									<IconUser width={18} />
+									<IconUser className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="user.edit-profile" />
-								</a>
-								<a
-									href="?"
+								</button>
+								<button
+									type="button"
 									className="dropdown-item"
-									onClick={(e) => {
-										e.preventDefault();
+									onClick={() => {
 										showChangePasswordModal("me");
 									}}
 								>
-									<IconLock width={18} />
+									<IconLock className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="user.change-password" />
-								</a>
-								<a
-									href="?"
+								</button>
+								<button
+									type="button"
 									className="dropdown-item"
-									onClick={(e) => {
-										e.preventDefault();
+									onClick={() => {
 										showMfaModal("me");
 									}}
 								>
-									<IconShieldLock width={18} />
+									<IconShieldLock className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="user.mfa" />
-								</a>
+								</button>
 								<div className="dropdown-divider" />
-								<a
-									href="?"
+								<button
+									type="button"
 									className="dropdown-item"
-									onClick={async (e) => {
-										e.preventDefault();
+									onClick={async () => {
 										try {
 											await logout();
 										} catch (err) {
@@ -143,14 +137,13 @@ export function SiteHeader() {
 										}
 									}}
 								>
-									<IconLogout width={18} />
+									<IconLogout className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="user.logout" />
-								</a>
-								<a
-									href="?"
+								</button>
+								<button
+									type="button"
 									className="dropdown-item"
-									onClick={async (e) => {
-										e.preventDefault();
+									onClick={async () => {
 										try {
 											await logoutEverywhere();
 										} catch (err) {
@@ -158,9 +151,9 @@ export function SiteHeader() {
 										}
 									}}
 								>
-									<IconDevicesX width={18} />
+									<IconDevicesX className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="user.logout-everywhere" />
-								</a>
+								</button>
 							</div>
 						</div>
 					</div>

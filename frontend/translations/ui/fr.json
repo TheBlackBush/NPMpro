@@ -28,6 +28,8 @@
 	"action.permissions": "Permissions",
 	"action.renew": "Renouveler",
 	"action.view-details": "Voir les détails",
+	"aria.main-navigation": "Navigation principale",
+	"aria.select-language": "Choisir la langue",
 	"auditlogs": "Journaux d'audit",
 	"auto": "Auto",
 	"cancel": "Annuler",

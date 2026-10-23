@@ -1,12 +1,13 @@
+import cn from "clsx";
 import { useNavigate } from "react-router";
 
-export function NavLink({ children, to, href, isDropdownItem, active, onClick }) {
+export function NavLink({ children, to, href, isDropdownItem, active, className, onClick }) {
 	const navigate = useNavigate();
 
 	if (href) {
 		return (
 			<a
-				className={isDropdownItem ? "dropdown-item" : "nav-link"}
+				className={cn(isDropdownItem ? "dropdown-item" : "nav-link", className)}
 				href={href}
 				target="_blank"
 				rel="noopener noreferrer"
@@ -19,8 +20,9 @@ export function NavLink({ children, to, href, isDropdownItem, active, onClick })
 
 	return (
 		<a
-			className={`${isDropdownItem ? "dropdown-item" : "nav-link"}${active ? " active" : ""}`}
+			className={cn(isDropdownItem ? "dropdown-item" : "nav-link", { active }, className)}
 			href={to}
+			aria-current={active ? "page" : undefined}
 			onClick={(e) => {
 				e.preventDefault();
 				if (onClick) {
