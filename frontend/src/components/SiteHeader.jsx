@@ -53,6 +53,13 @@ export function SiteHeader() {
 								href="/"
 								className="nav-link d-flex lh-1"
 								data-bs-toggle="dropdown"
+								onClick={() => {
+									// on phones the navigation and the user menu overlap; close the navigation when the menu opens
+									const menu = document.querySelector("#navbar-menu");
+									if (menu?.classList.contains("show")) {
+										document.querySelector('[data-bs-target="#navbar-menu"]')?.click();
+									}
+								}}
 								aria-label={intl.formatMessage({ id: "aria.user-menu" })}
 							>
 								<span

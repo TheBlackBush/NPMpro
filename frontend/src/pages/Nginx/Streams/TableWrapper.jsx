@@ -84,41 +84,36 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-blue" />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="streams" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<ListToolbar
-								filters={filters}
-								setFilter={setFilter}
-								clear={clear}
-								total={data?.length ?? 0}
-								shown={displayedStreams.length}
-								kinds={["status", "tls", "group"]}
-								groups={groups}
-							>
-								<Button
-									size="sm"
-									aria-label={intl.formatMessage({ id: "help" })}
-									title={intl.formatMessage({ id: "help" })}
-									onClick={() => showHelpModal("Streams")}
-								>
-									<IconHelp size={20} />
+					<h2 className="card-title">
+						<T id="streams" />
+					</h2>
+					<div className="card-actions btn-list">
+						<Button
+							size="sm"
+							aria-label={intl.formatMessage({ id: "help" })}
+							title={intl.formatMessage({ id: "help" })}
+							onClick={() => showHelpModal("Streams")}
+						>
+							<IconHelp className="icon" aria-hidden="true" />
+						</Button>
+						<HasPermission section={STREAMS} permission={MANAGE} hideError>
+							{data?.length ? (
+								<Button size="sm" className="btn-blue" onClick={() => showStreamModal("new")}>
+									<T id="object.add" tData={{ object: "stream" }} />
 								</Button>
-								<HasPermission section={STREAMS} permission={MANAGE} hideError>
-									{data?.length ? (
-										<Button size="sm" className="btn-blue" onClick={() => showStreamModal("new")}>
-											<T id="object.add" tData={{ object: "stream" }} />
-										</Button>
-									) : null}
-								</HasPermission>
-							</ListToolbar>
-						</div>
+							) : null}
+						</HasPermission>
 					</div>
 				</div>
+				<ListToolbar
+					filters={filters}
+					setFilter={setFilter}
+					clear={clear}
+					total={data?.length ?? 0}
+					shown={displayedStreams.length}
+					kinds={["status", "tls", "group"]}
+					groups={groups}
+				/>
 				<Table
 					data={displayedStreams}
 					groupBy={groupingActive ? getDirectory : undefined}

@@ -83,45 +83,36 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-lime" />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="proxy-hosts" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<ListToolbar
-								filters={filters}
-								setFilter={setFilter}
-								clear={clear}
-								total={data?.length ?? 0}
-								shown={displayedHosts.length}
-								kinds={["status", "tls", "group"]}
-								groups={groups}
-							>
-								<Button
-									size="sm"
-									aria-label={intl.formatMessage({ id: "help" })}
-									title={intl.formatMessage({ id: "help" })}
-									onClick={() => showHelpModal("ProxyHosts")}
-								>
-									<IconHelp size={20} />
+					<h2 className="card-title">
+						<T id="proxy-hosts" />
+					</h2>
+					<div className="card-actions btn-list">
+						<Button
+							size="sm"
+							aria-label={intl.formatMessage({ id: "help" })}
+							title={intl.formatMessage({ id: "help" })}
+							onClick={() => showHelpModal("ProxyHosts")}
+						>
+							<IconHelp className="icon" aria-hidden="true" />
+						</Button>
+						<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
+							{data?.length ? (
+								<Button size="sm" className="btn-lime" onClick={() => showProxyHostModal("new")}>
+									<T id="object.add" tData={{ object: "proxy-host" }} />
 								</Button>
-								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
-									{data?.length ? (
-										<Button
-											size="sm"
-											className="btn-lime"
-											onClick={() => showProxyHostModal("new")}
-										>
-											<T id="object.add" tData={{ object: "proxy-host" }} />
-										</Button>
-									) : null}
-								</HasPermission>
-							</ListToolbar>
-						</div>
+							) : null}
+						</HasPermission>
 					</div>
 				</div>
+				<ListToolbar
+					filters={filters}
+					setFilter={setFilter}
+					clear={clear}
+					total={data?.length ?? 0}
+					shown={displayedHosts.length}
+					kinds={["status", "tls", "group"]}
+					groups={groups}
+				/>
 				<Table
 					data={displayedHosts}
 					groupBy={groupingActive ? getDirectory : undefined}

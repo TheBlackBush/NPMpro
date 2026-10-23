@@ -67,86 +67,81 @@ export default function TableWrapper() {
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="certificates" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<ListToolbar
-								filters={filters}
-								setFilter={setFilter}
-								clear={clear}
-								total={data?.length ?? 0}
-								shown={displayed.length}
-								kinds={["expiry"]}
-							>
-								<Button
-									size="sm"
-									aria-label={intl.formatMessage({ id: "help" })}
-									title={intl.formatMessage({ id: "help" })}
-									onClick={() => showHelpModal("Certificates")}
-								>
-									<IconHelp size={20} />
-								</Button>
-								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-									{data?.length ? (
-										<div className="dropdown">
-											<button
-												type="button"
-												className="btn btn-sm dropdown-toggle btn-pink mt-1"
-												data-bs-toggle="dropdown"
-											>
-												<T id="object.add" tData={{ object: "certificate" }} />
-											</button>
-											<div className="dropdown-menu">
-												<button
-													type="button"
-													className="dropdown-item"
-													onClick={() => {
-														showHTTPCertificateModal();
-													}}
-												>
-													<T id="lets-encrypt-via-http" />
-												</button>
-												<button
-													type="button"
-													className="dropdown-item"
-													onClick={() => {
-														showDNSCertificateModal();
-													}}
-												>
-													<T id="lets-encrypt-via-dns" />
-												</button>
-												<div className="dropdown-divider" />
-												<button
-													type="button"
-													className="dropdown-item"
-													onClick={() => {
-														showCustomCertificateModal();
-													}}
-												>
-													<T id="certificates.custom" />
-												</button>
-												<div className="dropdown-divider" />
-												<button
-													type="button"
-													className="dropdown-item"
-													onClick={() => {
-														showCustomCertificateModal(undefined, "mtls");
-													}}
-												>
-													mTLS
-												</button>
-											</div>
-										</div>
-									) : null}
-								</HasPermission>
-							</ListToolbar>
-						</div>
+					<h2 className="card-title">
+						<T id="certificates" />
+					</h2>
+					<div className="card-actions btn-list">
+						<Button
+							size="sm"
+							aria-label={intl.formatMessage({ id: "help" })}
+							title={intl.formatMessage({ id: "help" })}
+							onClick={() => showHelpModal("Certificates")}
+						>
+							<IconHelp className="icon" aria-hidden="true" />
+						</Button>
+						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
+							{data?.length ? (
+								<div className="dropdown">
+									<button
+										type="button"
+										className="btn btn-sm dropdown-toggle btn-pink"
+										data-bs-toggle="dropdown"
+									>
+										<T id="object.add" tData={{ object: "certificate" }} />
+									</button>
+									<div className="dropdown-menu">
+										<button
+											type="button"
+											className="dropdown-item"
+											onClick={() => {
+												showHTTPCertificateModal();
+											}}
+										>
+											<T id="lets-encrypt-via-http" />
+										</button>
+										<button
+											type="button"
+											className="dropdown-item"
+											onClick={() => {
+												showDNSCertificateModal();
+											}}
+										>
+											<T id="lets-encrypt-via-dns" />
+										</button>
+										<div className="dropdown-divider" />
+										<button
+											type="button"
+											className="dropdown-item"
+											onClick={() => {
+												showCustomCertificateModal();
+											}}
+										>
+											<T id="certificates.custom" />
+										</button>
+										<div className="dropdown-divider" />
+										<button
+											type="button"
+											className="dropdown-item"
+											onClick={() => {
+												showCustomCertificateModal(undefined, "mtls");
+											}}
+										>
+											mTLS
+										</button>
+									</div>
+								</div>
+							) : null}
+						</HasPermission>
 					</div>
 				</div>
+				<ListToolbar
+					filters={filters}
+					setFilter={setFilter}
+					clear={clear}
+					total={data?.length ?? 0}
+					shown={displayed.length}
+					kinds={["expiry"]}
+				/>
 				<Table
 					data={displayed}
 					isFiltered={isFiltered}

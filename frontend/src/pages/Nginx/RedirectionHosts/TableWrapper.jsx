@@ -85,45 +85,40 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-yellow" />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="redirection-hosts" />
-							</h2>
-						</div>
-						<div className="col-md-auto col-sm-12">
-							<ListToolbar
-								filters={filters}
-								setFilter={setFilter}
-								clear={clear}
-								total={data?.length ?? 0}
-								shown={displayedHosts.length}
-								kinds={["status", "tls", "group"]}
-								groups={groups}
-							>
+					<h2 className="card-title">
+						<T id="redirection-hosts" />
+					</h2>
+					<div className="card-actions btn-list">
+						<Button
+							size="sm"
+							aria-label={intl.formatMessage({ id: "help" })}
+							title={intl.formatMessage({ id: "help" })}
+							onClick={() => showHelpModal("RedirectionHosts")}
+						>
+							<IconHelp className="icon" aria-hidden="true" />
+						</Button>
+						<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
+							{data?.length ? (
 								<Button
 									size="sm"
-									aria-label={intl.formatMessage({ id: "help" })}
-									title={intl.formatMessage({ id: "help" })}
-									onClick={() => showHelpModal("RedirectionHosts")}
+									className="btn-yellow"
+									onClick={() => showRedirectionHostModal("new")}
 								>
-									<IconHelp size={20} />
+									<T id="object.add" tData={{ object: "redirection-host" }} />
 								</Button>
-								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-									{data?.length ? (
-										<Button
-											size="sm"
-											className="btn-yellow"
-											onClick={() => showRedirectionHostModal("new")}
-										>
-											<T id="object.add" tData={{ object: "redirection-host" }} />
-										</Button>
-									) : null}
-								</HasPermission>
-							</ListToolbar>
-						</div>
+							) : null}
+						</HasPermission>
 					</div>
 				</div>
+				<ListToolbar
+					filters={filters}
+					setFilter={setFilter}
+					clear={clear}
+					total={data?.length ?? 0}
+					shown={displayedHosts.length}
+					kinds={["status", "tls", "group"]}
+					groups={groups}
+				/>
 				<Table
 					data={displayedHosts}
 					groupBy={groupingActive ? getDirectory : undefined}
