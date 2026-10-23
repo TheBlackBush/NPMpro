@@ -12,6 +12,8 @@ import {
 } from "openid-client";
 import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
+import { readStoredOidc } from "../lib/oidc-config.js";
+import { ICON_MIME, readIconFile } from "../lib/oidc-icon.js";
 import { oidc as logger } from "../logger.js";
 
 const router = express.Router({
@@ -26,6 +28,30 @@ const limiter = rateLimit({
 	standardHeaders: "draft-8",
 	legacyHeaders: false,
 	ipv6Subnet: 48,
+});
+
+/**
+ * GET /api/oidc/icon
+ *
+ * Public login button icon. Registered before the rate limiter because the
+ * login page loads it on every visit.
+ */
+router.get("/icon", async (_, res) => {
+	const icon = (await readStoredOidc()).button?.icon;
+	const file = icon?.type === "file" ? await readIconFile(icon.ext) : null;
+	if (!file) throw new errs.ItemNotFoundError("icon");
+	res.set({
+		"Content-Type": ICON_MIME[icon.ext],
+		"X-Content-Type-Options": "nosniff",
+		"Cache-Control": "public, max-age=86400",
+	});
+	if (icon.ext === "svg") {
+		res.set({
+			"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+			"Content-Disposition": "inline",
+		});
+	}
+	res.status(200).send(file);
 });
 
 router.use(limiter);

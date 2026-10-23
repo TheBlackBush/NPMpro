@@ -1,6 +1,7 @@
 import { discovery } from "openid-client";
 import errs from "../lib/error.js";
 import { clearDiscoveryCache, getOidcConfig, readStoredOidc } from "../lib/oidc-config.js";
+import { checkIcon, downloadIcon, removeIconFiles, writeIconFile } from "../lib/oidc-icon.js";
 import { callbackUrl, mergeOidcConfig, OIDC_DEFAULTS, validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import settingModel from "../models/setting.js";
@@ -9,6 +10,43 @@ import { applyOidcUpdate, disablePasswordRefused, sanitizeOidcRow } from "./oidc
 
 const DISCOVERY_TIMEOUT_SECONDS = 10;
 const TEST_KEYS = ["issuer_url", "client_id", "client_secret"];
+
+/**
+ * Upserts the `oidc` setting row
+ *
+ * @param {Object} meta
+ */
+const saveStored = async (meta) => {
+	const existing = await settingModel.query().where("id", "oidc").first();
+	if (existing) {
+		await settingModel.query().where("id", "oidc").patch({ meta });
+	} else {
+		await settingModel.query().insert({
+			id: "oidc",
+			name: "OIDC",
+			description: "OIDC login",
+			value: "oidc",
+			meta,
+		});
+	}
+};
+
+/**
+ * Stores a new button icon value and audit logs the change (never the file content)
+ *
+ * @param {Access}  access
+ * @param {Object}  icon
+ * @param {string}  change  "uploaded", "downloaded" or "removed"
+ */
+const saveIcon = async (access, icon, change) => {
+	const stored = await readStoredOidc();
+	await saveStored({ ...stored, button: { ...stored.button, icon } });
+	await internalAuditLog.add(access, {
+		action: "updated",
+		object_type: "setting",
+		meta: { id: "oidc", icon: change },
+	});
+};
 
 const internalOidcSetting = {
 	/**
@@ -58,19 +96,9 @@ const internalOidcSetting = {
 		});
 		if (permissionError) throw new errs.ValidationError(permissionError);
 
-		const existing = await settingModel.query().where("id", "oidc").first();
-		if (existing) {
-			await settingModel.query().where("id", "oidc").patch({ meta: next });
-		} else {
-			await settingModel.query().insert({
-				id: "oidc",
-				name: "OIDC",
-				description: "OIDC login",
-				value: "oidc",
-				meta: next,
-			});
-		}
+		await saveStored(next);
 		clearDiscoveryCache();
+		if (stored.button?.icon?.type === "file" && next.button?.icon?.type !== "file") await removeIconFiles();
 
 		await internalAuditLog.add(access, {
 			action: "updated",
@@ -78,6 +106,48 @@ const internalOidcSetting = {
 			meta: { id: "oidc", ...sanitizeOidcRow(next) },
 		});
 
+		return internalOidcSetting.get(access);
+	},
+
+	/**
+	 * Stores an icon file for the login button
+	 *
+	 * @param   {Access}  access
+	 * @param   {Buffer}  buffer
+	 * @param   {string}  [change]  audit value, "uploaded" or "downloaded"
+	 * @returns {Promise<Object>}  the same as get()
+	 */
+	setIcon: async (access, buffer, change = "uploaded") => {
+		access.canAdmin();
+		if (!buffer) throw new errs.ValidationError("No icon file was sent");
+		const ext = checkIcon(buffer);
+		await writeIconFile(buffer, ext);
+		await saveIcon(access, { type: "file", ext, updated_on: Date.now() }, change);
+		return internalOidcSetting.get(access);
+	},
+
+	/**
+	 * Downloads the icon from a URL and stores it
+	 *
+	 * @param   {Access}  access
+	 * @param   {string}  url  http or https
+	 * @returns {Promise<Object>}  the same as get()
+	 */
+	setIconFromUrl: async (access, url) => {
+		access.canAdmin();
+		return internalOidcSetting.setIcon(access, await downloadIcon(url), "downloaded");
+	},
+
+	/**
+	 * Removes the icon file, the button falls back to the default builtin icon
+	 *
+	 * @param   {Access}  access
+	 * @returns {Promise<Object>}  the same as get()
+	 */
+	deleteIcon: async (access) => {
+		access.canAdmin();
+		await removeIconFiles();
+		await saveIcon(access, { ...OIDC_DEFAULTS.button.icon }, "removed");
 		return internalOidcSetting.get(access);
 	},
 

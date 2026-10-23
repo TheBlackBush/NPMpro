@@ -1,0 +1,25 @@
+{
+	"operationId": "deleteOidcIcon",
+	"summary": "Remove the OIDC login button icon file",
+	"description": "The button falls back to the default builtin icon.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response, the OIDC settings",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/oidc-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
