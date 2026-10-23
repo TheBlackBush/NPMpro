@@ -11,6 +11,7 @@ export * from "./useDirectorySuggestions";
 export * from "./useDnsCredential";
 export * from "./useDnsCredentials";
 export * from "./useDnsProviders";
+export * from "./useElapsed";
 export * from "./useHealth";
 export * from "./useHostReport";
 export * from "./useListFilters";

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, DNSProviderFields, DomainNamesField } from "src/components";
+import { ApiErrorContent, Button, DNSProviderFields, DomainNamesField, RequestProgress } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -52,7 +52,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 				}}
 				onSubmit={onSubmit}
 			>
-				{() => (
+				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
 						<Modal.Header closeButton={!isSubmitting}>
@@ -91,6 +91,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 								</div>
 							</div>
 						</Modal.Body>
+						<RequestProgress running={isSubmitting} propagationSeconds={values.npmplusPropagationSeconds} />
 						<Modal.Footer>
 							<Button onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />

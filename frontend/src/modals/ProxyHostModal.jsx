@@ -14,6 +14,7 @@ import {
 	Loading,
 	LocationsFields,
 	NginxConfigField,
+	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
@@ -828,6 +829,10 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 									</div>
 								</div>
 							</Modal.Body>
+							<RequestProgress
+								running={isSubmitting && values.certificateId === "new"}
+								propagationSeconds={values.npmplusPropagationSeconds}
+							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />

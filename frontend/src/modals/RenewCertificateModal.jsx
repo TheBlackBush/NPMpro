@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { renewCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, Loading } from "src/components";
+import { ApiErrorContent, Button, Loading, RequestProgress } from "src/components";
 import { useCertificate } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -58,6 +58,7 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				)}
 				{isSubmitting ? <p className="text-center mt-3">Please wait ...</p> : null}
 			</Modal.Body>
+			<RequestProgress running={isSubmitting} />
 			<Modal.Footer>
 				<Button onClick={remove} disabled={isSubmitting}>
 					<T id="action.close" />
