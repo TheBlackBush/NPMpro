@@ -49,10 +49,8 @@ export default function TableWrapper() {
 		return <LoadingPage />;
 	}
 
-	// A failed next page keeps the loaded rows, only a failed first load replaces the page
-	if (isError && !isFetchNextPageError && !rows.length) {
-		return <ErrorAlert error={error} />;
-	}
+	// A failed next page keeps the loaded rows, a failed first load shows the error under the toolbar
+	const firstPageFailed = isError && !isFetchNextPageError && !rows.length;
 
 	const filtered = Boolean(query || objectType || action || userId);
 
@@ -127,6 +125,7 @@ export default function TableWrapper() {
 										placeholder={intl.formatMessage({ id: "search" })}
 										aria-label={intl.formatMessage({ id: "search" })}
 										autoComplete="off"
+										maxLength={255}
 										value={search}
 										onChange={(e) => setSearch(e.target.value)}
 									/>
@@ -135,11 +134,15 @@ export default function TableWrapper() {
 						</div>
 					</div>
 				</div>
-				<Table
-					data={rows}
-					isFetching={isFetching && !isFetchingNextPage}
-					onSelectItem={showEventDetailsModal}
-				/>
+				{firstPageFailed ? (
+					<ErrorAlert error={error} className="m-3" />
+				) : (
+					<Table
+						data={rows}
+						isFetching={isFetching && !isFetchingNextPage}
+						onSelectItem={showEventDetailsModal}
+					/>
+				)}
 				{isFetchNextPageError ? <ErrorAlert error={error} className="m-3" /> : null}
 				{rows.length && (hasNextPage || filtered || total !== null) ? (
 					<div className="card-footer d-flex align-items-center gap-3">
