@@ -64,6 +64,7 @@ export default function Table({
 	onEdit,
 	onChangeDnsCredential,
 	isFiltered,
+	onClearFilters,
 }) {
 	const columnHelper = createColumnHelper();
 	const columns = useMemo(
@@ -340,6 +341,7 @@ export default function Table({
 					objects="certificates"
 					tableInstance={tableInstance}
 					isFiltered={isFiltered}
+					onClearFilters={onClearFilters}
 					color="pink"
 					customAddBtn={customAddBtn}
 					permissionSection={CERTIFICATES}

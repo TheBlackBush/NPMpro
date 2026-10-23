@@ -1,8 +1,14 @@
-import { IconHelp, IconSearch } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { IconHelp } from "@tabler/icons-react";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
-import { Button, certificateProviderTranslation, ErrorAlert, HasPermission, LoadingPage } from "src/components";
-import { useCertificates } from "src/hooks";
+import {
+	Button,
+	certificateProviderTranslation,
+	ErrorAlert,
+	HasPermission,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
+import { useCertificates, useListFilters } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import {
 	showChangeDnsCredentialModal,
@@ -14,13 +20,13 @@ import {
 	showReachabilityModal,
 	showRenewCertificateModal,
 } from "src/modals";
+import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 import { Tabs } from "./Tabs";
 
 export default function TableWrapper() {
-	const [search, setSearch] = useState("");
 	const { isFetching, isPending, isError, error, data } = useCertificates([
 		"owner",
 		"dead_hosts",
@@ -32,13 +38,7 @@ export default function TableWrapper() {
 		"mtls_redirection_hosts",
 		"mtls_streams",
 	]);
-
-	useEffect(() => {
-		// this can happen if someone deletes the last item while searching
-		if (search !== "" && !data?.length) {
-			setSearch("");
-		}
-	});
+	const { filters, setFilter, clear } = useListFilters();
 
 	if (isPending) {
 		return <LoadingPage />;
@@ -56,14 +56,10 @@ export default function TableWrapper() {
 		}
 	};
 
-	let filtered = null;
-	if (search) {
-		filtered = data?.filter(
-			(item) =>
-				item.domainNames.some((domain) => domain.toLowerCase().includes(search)) ||
-				item.niceName.toLowerCase().includes(search),
-		);
-	}
+	const displayed = filterCertificates(data ?? [], filters, {
+		searchText: (item) => `${item.domainNames.join(" ")} ${item.niceName}`,
+	});
+	const isFiltered = activeFilterCount(filters) > 0 && Boolean(data?.length);
 
 	return (
 		<div className="card mt-4">
@@ -78,22 +74,14 @@ export default function TableWrapper() {
 							</h2>
 						</div>
 						<div className="col-md-auto col-sm-12">
-							<div className="ms-auto d-flex flex-wrap btn-list">
-								{data?.length ? (
-									<div className="input-group input-group-flat w-auto">
-										<span className="input-group-text input-group-text-sm">
-											<IconSearch size={16} />
-										</span>
-										<input
-											type="text"
-											className="form-control form-control-sm"
-											placeholder={intl.formatMessage({ id: "search" })}
-											aria-label={intl.formatMessage({ id: "search" })}
-											autoComplete="off"
-											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
-										/>
-									</div>
-								) : null}
+							<ListToolbar
+								filters={filters}
+								setFilter={setFilter}
+								clear={clear}
+								total={data?.length ?? 0}
+								shown={displayed.length}
+								kinds={["expiry"]}
+							>
 								<Button
 									size="sm"
 									aria-label={intl.formatMessage({ id: "help" })}
@@ -155,13 +143,14 @@ export default function TableWrapper() {
 										</div>
 									) : null}
 								</HasPermission>
-							</div>
+							</ListToolbar>
 						</div>
 					</div>
 				</div>
 				<Table
-					data={filtered ?? data ?? []}
-					isFiltered={search}
+					data={displayed}
+					isFiltered={isFiltered}
+					onClearFilters={clear}
 					isFetching={isFetching}
 					onRenew={showRenewCertificateModal}
 					onChangeDnsCredential={showChangeDnsCredentialModal}

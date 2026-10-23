@@ -13,6 +13,7 @@ export * from "./useDnsCredentials";
 export * from "./useDnsProviders";
 export * from "./useHealth";
 export * from "./useHostReport";
+export * from "./useListFilters";
 export * from "./useProxyHost";
 export * from "./useProxyHosts";
 export * from "./useRedirectionHost";
