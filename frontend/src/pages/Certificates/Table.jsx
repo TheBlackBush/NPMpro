@@ -100,17 +100,17 @@ export default function Table({
 				},
 			}),
 			columnHelper.accessor(
-				(row) => (row.npmplusDnsProvider ? `${row.provider} - ${row.npmplusDnsProvider}` : row.provider),
+				(row) => (row.npmproDnsProvider ? `${row.provider} - ${row.npmproDnsProvider}` : row.provider),
 				{
 					id: "provider",
 					header: intl.formatMessage({ id: "column.provider" }),
 					cell: (info) => {
 						const r = info.row.original;
 						if (r.provider === "letsencrypt") {
-							if (r.npmplusDnsChallenge) {
+							if (r.npmproDnsChallenge) {
 								return (
 									<>
-										<T id="lets-encrypt" /> &ndash; {r.npmplusDnsProvider}
+										<T id="lets-encrypt" /> &ndash; {r.npmproDnsProvider}
 									</>
 								);
 							}
@@ -175,7 +175,7 @@ export default function Table({
 									/>
 								</span>
 
-								{row.provider === "letsencrypt" && !row.npmplusDnsProvider && (
+								{row.provider === "letsencrypt" && !row.npmproDnsProvider && (
 									<button
 										type="button"
 										className="dropdown-item"
@@ -215,7 +215,7 @@ export default function Table({
 										</button>
 									)}
 
-									{row.provider === "letsencrypt" && row.npmplusDnsChallenge && (
+									{row.provider === "letsencrypt" && row.npmproDnsChallenge && (
 										<button
 											type="button"
 											className="dropdown-item"

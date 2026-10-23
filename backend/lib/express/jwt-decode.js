@@ -23,7 +23,7 @@ export default () => async (req, res, next) => {
 			sameSite: "Strict",
 		});
 		if (token) {
-			res.cookie("__Host-npmplus_oidc_no_redirect", "true", {
+			res.cookie("__Host-npmpro_oidc_no_redirect", "true", {
 				secure: true,
 				sameSite: "Strict",
 				maxAge: 60 * 60 * 1000,

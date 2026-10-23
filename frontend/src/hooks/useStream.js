@@ -13,15 +13,15 @@ const fetchStream = (id) => {
 			forwardingPort: "",
 			tcpForwarding: true,
 			udpForwarding: false,
-			npmplusProxyProtocolForwarding: 0,
-			npmplusProxyTls: false,
-			npmplusAdvancedConfig: "",
-			npmplusDirectory: "",
-			npmplusMtlsCertificateId: 0,
-			npmplusMtlsVerifyClientOptional: false,
+			npmproProxyProtocolForwarding: 0,
+			npmproProxyTls: false,
+			npmproAdvancedConfig: "",
+			npmproDirectory: "",
+			npmproMtlsCertificateId: 0,
+			npmproMtlsVerifyClientOptional: false,
 			enabled: true,
 			certificateId: 0,
-			npmplusDescription: "",
+			npmproDescription: "",
 		});
 	}
 	return getStream(id);

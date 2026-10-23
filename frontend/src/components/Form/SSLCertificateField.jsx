@@ -25,7 +25,7 @@ export function SSLCertificateField({
 	id = "certificateId",
 	allowNew,
 	forHttp = true,
-	mtlsName = "npmplusMtlsCertificateId",
+	mtlsName = "npmproMtlsCertificateId",
 	mtlsLabel = "mtls-certificate",
 }) {
 	const { isPending, isError, error, data } = useCertificates();
@@ -37,32 +37,32 @@ export function SSLCertificateField({
 
 		if (!(newValue?.value > 0)) {
 			void setFieldValue(mtlsName, 0);
-			void setFieldValue("npmplusMtlsVerifyClientOptional", false);
+			void setFieldValue("npmproMtlsVerifyClientOptional", false);
 		}
 
 		const {
 			sslForced,
-			npmplusHttp3Support,
+			npmproHttp3Support,
 			hstsEnabled,
 			hstsSubdomains,
-			npmplusReuseKey,
-			npmplusDnsChallenge,
-			npmplusDnsProvider,
-			npmplusDnsCredentialId,
-			npmplusPropagationSeconds,
+			npmproReuseKey,
+			npmproDnsChallenge,
+			npmproDnsProvider,
+			npmproDnsCredentialId,
+			npmproPropagationSeconds,
 		} = v;
 		if (forHttp && !newValue?.value) {
 			if (sslForced) void setFieldValue("sslForced", false);
-			if (npmplusHttp3Support) void setFieldValue("npmplusHttp3Support", false);
+			if (npmproHttp3Support) void setFieldValue("npmproHttp3Support", false);
 			if (hstsEnabled) void setFieldValue("hstsEnabled", false);
 			if (hstsSubdomains) void setFieldValue("hstsSubdomains", false);
 		}
 		if (newValue?.value !== "new") {
-			if (npmplusReuseKey) void setFieldValue("npmplusReuseKey", undefined);
-			if (npmplusDnsChallenge) void setFieldValue("npmplusDnsChallenge", undefined);
-			if (npmplusDnsProvider) void setFieldValue("npmplusDnsProvider", undefined);
-			if (npmplusDnsCredentialId) void setFieldValue("npmplusDnsCredentialId", undefined);
-			if (npmplusPropagationSeconds !== undefined) void setFieldValue("npmplusPropagationSeconds", undefined);
+			if (npmproReuseKey) void setFieldValue("npmproReuseKey", undefined);
+			if (npmproDnsChallenge) void setFieldValue("npmproDnsChallenge", undefined);
+			if (npmproDnsProvider) void setFieldValue("npmproDnsProvider", undefined);
+			if (npmproDnsCredentialId) void setFieldValue("npmproDnsCredentialId", undefined);
+			if (npmproPropagationSeconds !== undefined) void setFieldValue("npmproPropagationSeconds", undefined);
 		}
 	};
 
@@ -183,7 +183,7 @@ export function SSLCertificateField({
 								onChange={(newValue) => {
 									void setFieldValue(mtlsName, newValue?.value);
 									if (!(newValue?.value > 0)) {
-										void setFieldValue("npmplusMtlsVerifyClientOptional", false);
+										void setFieldValue("npmproMtlsVerifyClientOptional", false);
 									}
 								}}
 								isDisabled={v?.udpForwarding || !(v?.certificateId > 0)}

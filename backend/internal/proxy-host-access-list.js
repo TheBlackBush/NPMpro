@@ -140,7 +140,7 @@ const internalProxyHostAccessList = {
 	 * @returns
 	 */
 	getHostFileName: (proxyHost) => {
-		if (proxyHost.npmplus_access_list_type === "custom") {
+		if (proxyHost.npmpro_access_list_type === "custom") {
 			const accessLists = Array.isArray(proxyHost.access_lists) ? proxyHost.access_lists : [];
 			if (accessLists.length === 1) {
 				return internalAccessList.getFilename(accessLists[0]);
@@ -157,10 +157,10 @@ const internalProxyHostAccessList = {
 	 * @returns
 	 */
 	getLocationFileName: (proxyHost, location) => {
-		if (location.npmplus_access_list_type === "global") {
+		if (location.npmpro_access_list_type === "global") {
 			return internalProxyHostAccessList.getHostFileName(proxyHost);
 		}
-		if (location.npmplus_access_list_type === "custom") {
+		if (location.npmpro_access_list_type === "custom") {
 			const accessLists = Array.isArray(location.access_lists) ? location.access_lists : [];
 			if (accessLists.length === 1) {
 				return internalAccessList.getFilename(accessLists[0]);
@@ -186,7 +186,7 @@ const internalProxyHostAccessList = {
 
 		for (const location of proxyHost.locations || []) {
 			// global will use the host file name anyway
-			if (location.npmplus_access_list_type === "custom") {
+			if (location.npmpro_access_list_type === "custom") {
 				await buildLocationFile(proxyHost, location, location.access_lists ?? []);
 			}
 		}
@@ -220,10 +220,10 @@ const internalProxyHostAccessList = {
 			}
 		};
 
-		validateCustomSelection(proxyHost.npmplus_access_list_type, proxyHost.npmplus_access_list_ids);
+		validateCustomSelection(proxyHost.npmpro_access_list_type, proxyHost.npmpro_access_list_ids);
 		if (Array.isArray(proxyHost.locations)) {
 			for (const location of proxyHost.locations) {
-				validateCustomSelection(location.npmplus_access_list_type, location.npmplus_access_list_ids);
+				validateCustomSelection(location.npmpro_access_list_type, location.npmpro_access_list_ids);
 			}
 		}
 		// make sure no ACLs that are being uploaded have been deleted
@@ -244,20 +244,20 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 * used by the create/update functions of proxy_host, this sets the npmplus_access_list_ids
+	 * used by the create/update functions of proxy_host, this sets the npmpro_access_list_ids
 	 * @param {Object} proxyHost
 	 * @returns {Object}
 	 */
 	cleanAccessListTypes(proxyHost) {
 		const getAccessListIds = (item) => {
-			if (item.npmplus_access_list_type === "custom") {
-				return item.npmplus_access_list_ids ?? item.access_lists?.map(({ id }) => id) ?? [];
+			if (item.npmpro_access_list_type === "custom") {
+				return item.npmpro_access_list_ids ?? item.access_lists?.map(({ id }) => id) ?? [];
 			}
 			return [];
 		};
 
-		proxyHost.npmplus_access_list_ids = getAccessListIds(proxyHost);
-		for (const location of proxyHost.locations ?? []) location.npmplus_access_list_ids = getAccessListIds(location);
+		proxyHost.npmpro_access_list_ids = getAccessListIds(proxyHost);
+		for (const location of proxyHost.locations ?? []) location.npmpro_access_list_ids = getAccessListIds(location);
 		return proxyHost;
 	},
 };

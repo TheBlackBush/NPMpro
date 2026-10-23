@@ -190,7 +190,7 @@ export default {
 		}
 
 		const user = await userModel.query().where("id", userId).andWhere("is_disabled", 0).first();
-		if (!user || tokenData.iat <= user.npmplus_token_valid_after || tokenData.iat <= startTime) {
+		if (!user || tokenData.iat <= user.npmpro_token_valid_after || tokenData.iat <= startTime) {
 			throw new errs.AuthError("Invalid challenge token");
 		}
 

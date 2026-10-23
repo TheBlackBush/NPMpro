@@ -87,13 +87,13 @@ const setupCertbotPlugins = async () => {
 	const plugins = [];
 
 	for (const certificate of await certificateModel.query().where("provider", "letsencrypt")) {
-		if (certificate.npmplus_dns_challenge) {
-			if (dnsPlugins[certificate.npmplus_dns_provider]?.package_name === undefined) {
+		if (certificate.npmpro_dns_challenge) {
+			if (dnsPlugins[certificate.npmpro_dns_provider]?.package_name === undefined) {
 				logger.warn(
-					`Unknown DNS provider '${certificate.npmplus_dns_provider}' for Cert #${certificate.id}, skipping Certbot plugin installation`,
+					`Unknown DNS provider '${certificate.npmpro_dns_provider}' for Cert #${certificate.id}, skipping Certbot plugin installation`,
 				);
-			} else if (!plugins.includes(certificate.npmplus_dns_provider)) {
-				plugins.push(certificate.npmplus_dns_provider);
+			} else if (!plugins.includes(certificate.npmpro_dns_provider)) {
+				plugins.push(certificate.npmpro_dns_provider);
 			}
 
 			try {
@@ -144,7 +144,7 @@ const regenerateHosts = async () => {
 	}
 
 	if (regenerateAll) {
-		await writeFile("/data/npmplus/env.sha512sum", process.env.ENV_SHA512SUM);
+		await writeFile("/data/npmpro/env.sha512sum", process.env.ENV_SHA512SUM);
 	} else if (regenerated > 0) {
 		logger.warn(`Regenerated ${regenerated} host config(s) that were missing`);
 	}
@@ -170,19 +170,19 @@ const setupAio = async () => {
 			forward_scheme: "http",
 			forward_host: "127.0.0.1",
 			forward_port: 11000,
-			npmplus_crowdsec_appsec: true,
-			npmplus_proxy_request_buffering: true,
-			npmplus_proxy_response_buffering: true,
-			npmplus_upstream_compression: true,
+			npmpro_crowdsec_appsec: true,
+			npmpro_proxy_request_buffering: true,
+			npmpro_proxy_response_buffering: true,
+			npmpro_upstream_compression: true,
 			certificate_id: "new",
 			ssl_forced: true,
 			hsts_enabled: true,
 			hsts_subdomains: true,
-			npmplus_http3_support: true,
+			npmpro_http3_support: true,
 		});
 		logger.info("AIO proxy host created");
 	} catch (err) {
-		logger.error(`AIO proxy host setup failed, create it manually in the NPMplus UI: ${err.message}`);
+		logger.error(`AIO proxy host setup failed, create it manually in the NPMpro UI: ${err.message}`);
 	}
 };
 

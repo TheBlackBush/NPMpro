@@ -45,7 +45,7 @@ const showObjectSuccess = (obj, action) => {
  * Returns the nginx error (possibly empty) for such a host, or null if the config is fine.
  */
 const getNginxConfigError = (row) =>
-	row?.enabled && row.npmplusNginxOnline === false ? row.npmplusNginxErr || "" : null;
+	row?.enabled && row.npmproNginxOnline === false ? row.npmproNginxErr || "" : null;
 
 const NginxConfigErrorMsg = ({ obj, nginxErr }) => (
 	<>

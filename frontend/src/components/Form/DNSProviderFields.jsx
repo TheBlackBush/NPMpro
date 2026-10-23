@@ -11,8 +11,8 @@ export function DNSProviderFields({ showBoundaryBox }) {
 	const { data: dnsProviders, isPending } = useDnsProviders();
 
 	const handleChange = (newValue, _actionMeta) => {
-		void setFieldValue("npmplusDnsProvider", newValue?.value);
-		void setFieldValue("npmplusDnsCredentialId", undefined);
+		void setFieldValue("npmproDnsProvider", newValue?.value);
+		void setFieldValue("npmproDnsCredentialId", undefined);
 	};
 
 	const options = dnsProviders?.map((p) => ({
@@ -27,7 +27,7 @@ export function DNSProviderFields({ showBoundaryBox }) {
 				<T id="certificates.dns.warning" />
 			</p>
 
-			<Field name="npmplusDnsProvider">
+			<Field name="npmproDnsProvider">
 				{({ field }) => (
 					<div className="row">
 						<label htmlFor="dnsProvider" className="form-label">
@@ -53,15 +53,15 @@ export function DNSProviderFields({ showBoundaryBox }) {
 				)}
 			</Field>
 
-			{values.npmplusDnsProvider ? (
+			{values.npmproDnsProvider ? (
 				<>
-					<DnsCredentialSelect name="npmplusDnsCredentialId" provider={values.npmplusDnsProvider} />
+					<DnsCredentialSelect name="npmproDnsCredentialId" provider={values.npmproDnsProvider} />
 					<p className="mt-2 mb-0">
 						<small className="text-secondary">
 							<T id="certificates.dns.credentials-saved-note" />
 						</small>
 					</p>
-					<Field name="npmplusPropagationSeconds">
+					<Field name="npmproPropagationSeconds">
 						{({ field, form }) => (
 							<div className="mt-3">
 								<label htmlFor="propagationSeconds" className="form-label">

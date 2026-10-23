@@ -21,8 +21,8 @@ const internalDeadHost = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("dead_hosts:manage");
@@ -85,8 +85,8 @@ const internalDeadHost = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("dead_hosts:manage");
@@ -349,7 +349,7 @@ const internalDeadHost = {
 	 * @returns {Promise}
 	 */
 	getErrorCount: (user_id, visibility) => {
-		const query = deadHostModel.query().where("enabled", 1).andWhere("npmplus_nginx_online", 0);
+		const query = deadHostModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
 
 		if (visibility !== "all") {
 			query.andWhere("owner_user_id", user_id);

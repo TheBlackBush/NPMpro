@@ -4,7 +4,7 @@ import { intl, T } from "src/locale";
 export function DirectoryField({
 	labelId,
 	datalistId,
-	name = "npmplusDirectory",
+	name = "npmproDirectory",
 	suggestions,
 	placeholder = intl.formatMessage({ id: "form.example" }, { example: "Production, Staging" }),
 }) {

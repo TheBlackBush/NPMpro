@@ -9,13 +9,13 @@ import AccessList from "./access_list.js";
 Model.knex(db());
 
 const boolFields = [
-	"npmplus_enabled",
-	"npmplus_noindex",
-	"npmplus_crowdsec_appsec",
-	"npmplus_proxy_request_buffering",
-	"npmplus_proxy_response_buffering",
-	"npmplus_upstream_compression",
-	"npmplus_fancyindex",
+	"npmpro_enabled",
+	"npmpro_noindex",
+	"npmpro_crowdsec_appsec",
+	"npmpro_proxy_request_buffering",
+	"npmpro_proxy_response_buffering",
+	"npmpro_upstream_compression",
+	"npmpro_fancyindex",
 ];
 
 class Location extends Model {
@@ -31,7 +31,7 @@ class Location extends Model {
 		return super.$formatDatabaseJson(convertBoolFieldsToInt(json, boolFields));
 	}
 
-	static tableName = "npmplus_location";
+	static tableName = "npmpro_location";
 
 	static get relationMappings() {
 		return {
@@ -39,15 +39,15 @@ class Location extends Model {
 				relation: Model.ManyToManyRelation,
 				modelClass: AccessList,
 				join: {
-					from: "npmplus_location.id",
+					from: "npmpro_location.id",
 					through: {
-						from: "npmplus_proxy_host_access_list.location_id",
-						to: "npmplus_proxy_host_access_list.access_list_id",
+						from: "npmpro_proxy_host_access_list.location_id",
+						to: "npmpro_proxy_host_access_list.access_list_id",
 					},
 					to: "access_list.id",
 				},
 				modify: (qb) => {
-					qb.orderBy("npmplus_proxy_host_access_list.position");
+					qb.orderBy("npmpro_proxy_host_access_list.position");
 				},
 			},
 		};

@@ -92,12 +92,12 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 						certificateId: data?.certificateId,
 						sslForced: data?.sslForced,
 						advancedConfig: data?.advancedConfig,
-						npmplusHttp3Support: data?.npmplusHttp3Support,
+						npmproHttp3Support: data?.npmproHttp3Support,
 						hstsEnabled: data?.hstsEnabled,
 						hstsSubdomains: data?.hstsSubdomains,
-						npmplusDirectory: data?.npmplusDirectory,
-						npmplusMtlsCertificateId: data?.npmplusMtlsCertificateId,
-						npmplusMtlsVerifyClientOptional: data?.npmplusMtlsVerifyClientOptional,
+						npmproDirectory: data?.npmproDirectory,
+						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
+						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
 					}}
 					onSubmit={onSubmit}
 				>
@@ -160,7 +160,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 											<div className="tab-pane active show" id="tab-details" role="tabpanel">
 												<DomainNamesField
 													isWildcardPermitted={
-														values.certificateId !== "new" || values.npmplusDnsChallenge
+														values.certificateId !== "new" || values.npmproDnsChallenge
 													}
 													dnsProviderWildcardSupported
 													forCertificate={values.certificateId === "new"}
@@ -193,7 +193,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 							</Modal.Body>
 							<RequestProgress
 								running={isSubmitting && values.certificateId === "new"}
-								propagationSeconds={values.npmplusPropagationSeconds}
+								propagationSeconds={values.npmproPropagationSeconds}
 							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>

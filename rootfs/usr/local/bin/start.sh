@@ -118,8 +118,8 @@ mkdir -p /tmp/npmhome \
          /tmp/certbot-log \
          /tmp/certbot-work \
          /tmp/certbot-credentials
-mkdir -vp /data/npmplus/avatar \
-          /data/npmplus/gravatar \
+mkdir -vp /data/npmpro/avatar \
+          /data/npmpro/gravatar \
           /data/tls/certbot/renewal \
           /data/tls/certbot/acme-challenge/.well-known/acme-challenge \
           /data/tls/custom \
@@ -159,13 +159,13 @@ rm -vrf /data/etc
 
 #tmp
 if [ -n "$(ls -A /data/npm 2> /dev/null)" ]; then
-    cp -van /data/npm/* /data/npmplus
+    cp -van /data/npm/* /data/npmpro
 fi
 rm -vrf /data/npm
 
 #tmp
 if [ -s /data/database.sqlite ]; then
-    mv -vn /data/database.sqlite /data/npmplus/database.sqlite
+    mv -vn /data/database.sqlite /data/npmpro/database.sqlite
 fi
 
 
@@ -237,7 +237,7 @@ rm -vrf /data/letsencrypt-acme-challenge \
         /data/nginx/temp \
         /data/logs \
         /data/keys.json \
-        /data/npmplus/keys.json
+        /data/npmpro/keys.json
 
 touch /data/tls/ech/nginx.conf \
       /data/tls/ech/cron.sh \
@@ -367,25 +367,25 @@ if [ -s "$DEFAULT_STAPLING_FILE" ]; then
     sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /app/templates/default.conf
 fi
 
-sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /usr/local/nginx/conf/conf.d/npmplus.conf
-sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /usr/local/nginx/conf/conf.d/npmplus.conf
+sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
+sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
 if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /usr/local/nginx/conf/conf.d/npmplus.conf
-    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /usr/local/nginx/conf/conf.d/npmplus.conf
-    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /usr/local/nginx/conf/conf.d/npmplus.conf
+    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /usr/local/nginx/conf/conf.d/npmpro.conf
+    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
+    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /usr/local/nginx/conf/conf.d/npmpro.conf
 fi
 
-sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmplus.conf
+sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 
 if [ "$DISABLE_IPV6" = "true" ]; then
     sed -i "s|ipv6=on;|ipv6=off;|g" /usr/local/nginx/conf/nginx.conf
-    sed -i "s|#\?listen \[::\]:81 |#listen $NPM_IPV6_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmplus.conf
+    sed -i "s|#\?listen \[::\]:81 |#listen $NPM_IPV6_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 else
-    sed -i "s|#\?listen \[::\]:81 |listen $NPM_IPV6_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmplus.conf
+    sed -i "s|#\?listen \[::\]:81 |listen $NPM_IPV6_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 fi
 
 if [ "$ENABLE_MPTCP" = "false" ]; then
-    sed -i "s| multipath||g" /usr/local/nginx/conf/conf.d/npmplus.conf
+    sed -i "s| multipath||g" /usr/local/nginx/conf/conf.d/npmpro.conf
 fi
 
 if [ "$GOA" = "true" ]; then
@@ -461,7 +461,7 @@ fi
 
 find /data/tls \
      /data/access \
-     /data/npmplus \
+     /data/npmpro \
      /data/nginx/logs \
      -type d \
      -not -perm 700 \
@@ -469,7 +469,7 @@ find /data/tls \
 
 find /data/tls \
      /data/access \
-     /data/npmplus \
+     /data/npmpro \
      /data/nginx/logs \
      -type f \
      -not -perm 600 \
@@ -481,18 +481,18 @@ rm -vf /run/*.sock
 if [ "$PUID" != "0" ]; then
     if [ -n "$(getent group "$PGID" 2>/dev/null)" ]; then
         :
-    elif [ -n "$(getent group npmplus 2>/dev/null)" ]; then
-        groupmod -g "$PGID" npmplus
+    elif [ -n "$(getent group npmpro 2>/dev/null)" ]; then
+        groupmod -g "$PGID" npmpro
     else
-        groupadd -g "$PGID" npmplus
+        groupadd -g "$PGID" npmpro
     fi
 
     if [ -n "$(getent passwd "$PUID" 2>/dev/null)" ]; then
         :
-    elif [ -n "$(getent passwd npmplus 2>/dev/null)" ]; then
-        usermod -u "$PUID" -g "$PGID" -G "" -d /tmp npmplus
+    elif [ -n "$(getent passwd npmpro 2>/dev/null)" ]; then
+        usermod -u "$PUID" -g "$PGID" -G "" -d /tmp npmpro
     else
-        useradd -u "$PUID" -g "$PGID" -M -d /tmp -s /sbin/nologin npmplus
+        useradd -u "$PUID" -g "$PGID" -M -d /tmp -s /sbin/nologin npmpro
     fi
 
     find /usr/local \

@@ -47,7 +47,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const [schemeResetNotice, setSchemeResetNotice] = useState(false);
 	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
 		...location,
-		npmplusAccessListIds: accessLists.map((accessList) => accessList.id),
+		npmproAccessListIds: accessLists.map((accessList) => accessList.id),
 	}));
 
 	const onSubmit = (values, { resetForm, setSubmitting }) => {
@@ -56,8 +56,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 		setErrorMsg(null);
 
 		// Set the unrestricted acls here (remove any data in their acl lists)
-		const globalType = values.npmplusAccessListType;
-		let globalAclIds = values.npmplusAccessListIds;
+		const globalType = values.npmproAccessListType;
+		let globalAclIds = values.npmproAccessListIds;
 		if (globalType === "public") {
 			globalAclIds = [];
 		}
@@ -65,7 +65,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 		const payload = {
 			id: savedId ?? (id === "new" || isClone ? undefined : id),
 			...values,
-			npmplusAccessListIds: globalAclIds,
+			npmproAccessListIds: globalAclIds,
 			forwardPort: values.forwardPort || 0,
 			locations: values.locations.map((location) => ({ ...location, forwardPort: location.forwardPort || 0 })),
 		};
@@ -110,32 +110,32 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 						forwardScheme: data?.forwardScheme,
 						forwardHost: data?.forwardHost,
 						forwardPort: data?.forwardPort || "",
-						npmplusAccessListIds: data?.accessLists.map((accessList) => accessList.id),
-						npmplusAccessListType: data?.npmplusAccessListType,
+						npmproAccessListIds: data?.accessLists.map((accessList) => accessList.id),
+						npmproAccessListType: data?.npmproAccessListType,
 						// Locations tab
 						locations: initialLocations,
 						// SSL tab
 						certificateId: data?.certificateId,
 						sslForced: data?.sslForced,
-						npmplusHttp3Support: data?.npmplusHttp3Support,
+						npmproHttp3Support: data?.npmproHttp3Support,
 						hstsEnabled: data?.hstsEnabled,
 						hstsSubdomains: data?.hstsSubdomains,
 						// Advanced tab
 						advancedConfig: data?.advancedConfig,
-						npmplusLocationConfig: data?.npmplusLocationConfig,
-						npmplusDirectory: data?.npmplusDirectory,
-						npmplusMtlsCertificateId: data?.npmplusMtlsCertificateId,
-						npmplusMtlsVerifyClientOptional: data?.npmplusMtlsVerifyClientOptional,
-						npmplusMtlsBypassAuthRequest: data?.npmplusMtlsBypassAuthRequest,
-						npmplusNoindex: data?.npmplusNoindex,
-						npmplusCrowdsecAppsec: data?.npmplusCrowdsecAppsec,
-						npmplusProxyResponseBuffering: data?.npmplusProxyResponseBuffering,
-						npmplusProxyRequestBuffering: data?.npmplusProxyRequestBuffering,
-						npmplusUpstreamCompression: data?.npmplusUpstreamCompression,
-						npmplusFancyindex: data?.npmplusFancyindex,
-						npmplusXFrameOptions: data?.npmplusXFrameOptions,
-						npmplusAuthRequest: data?.npmplusAuthRequest,
-						npmplusAuthRequestUpstream: data?.npmplusAuthRequestUpstream,
+						npmproLocationConfig: data?.npmproLocationConfig,
+						npmproDirectory: data?.npmproDirectory,
+						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
+						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
+						npmproMtlsBypassAuthRequest: data?.npmproMtlsBypassAuthRequest,
+						npmproNoindex: data?.npmproNoindex,
+						npmproCrowdsecAppsec: data?.npmproCrowdsecAppsec,
+						npmproProxyResponseBuffering: data?.npmproProxyResponseBuffering,
+						npmproProxyRequestBuffering: data?.npmproProxyRequestBuffering,
+						npmproUpstreamCompression: data?.npmproUpstreamCompression,
+						npmproFancyindex: data?.npmproFancyindex,
+						npmproXFrameOptions: data?.npmproXFrameOptions,
+						npmproAuthRequest: data?.npmproAuthRequest,
+						npmproAuthRequestUpstream: data?.npmproAuthRequestUpstream,
 					}}
 					onSubmit={onSubmit}
 				>
@@ -210,7 +210,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 											<div className="tab-pane active show" id="tab-details" role="tabpanel">
 												<DomainNamesField
 													isWildcardPermitted={
-														values.certificateId !== "new" || values.npmplusDnsChallenge
+														values.certificateId !== "new" || values.npmproDnsChallenge
 													}
 													dnsProviderWildcardSupported
 													forCertificate={values.certificateId === "new"}
@@ -243,22 +243,22 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																			if (scheme === "empty") return;
 																			if (!["http", "https"].includes(scheme)) {
 																				form.setFieldValue(
-																					"npmplusProxyRequestBuffering",
+																					"npmproProxyRequestBuffering",
 																					false,
 																				);
 																				form.setFieldValue(
-																					"npmplusProxyResponseBuffering",
+																					"npmproProxyResponseBuffering",
 																					false,
 																				);
 																			}
 																			if (scheme === "path") {
 																				form.setFieldValue(
-																					"npmplusUpstreamCompression",
+																					"npmproUpstreamCompression",
 																					false,
 																				);
 																			} else {
 																				form.setFieldValue(
-																					"npmplusFancyindex",
+																					"npmproFancyindex",
 																					false,
 																				);
 																			}
@@ -355,7 +355,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																onClick={() => setAdvVisible((prev) => !prev)}
 															>
 																<IconSettings size={20} />
-																{values?.npmplusLocationConfig?.trim() ? "*" : ""}
+																{values?.npmproLocationConfig?.trim() ? "*" : ""}
 															</button>
 														</div>
 													</div>
@@ -368,18 +368,18 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusNoindex"
+																htmlFor="npmproNoindex"
 															>
 																<span className="col">
 																	<T id="host.flags.send-noindex" />
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusNoindex" type="checkbox">
+																	<Field name="npmproNoindex" type="checkbox">
 																		{({ field }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusNoindex"
+																					id="npmproNoindex"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -394,23 +394,23 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusCrowdsecAppsec"
+																htmlFor="npmproCrowdsecAppsec"
 															>
 																<span className="col">
 																	<T id="host.flags.disable-crowdsec-appsec" />
-																	{values.npmplusProxyRequestBuffering && (
+																	{values.npmproProxyRequestBuffering && (
 																		<small className="form-hint">
 																			<T id="host.flags.hint.appsec-request-buffering" />
 																		</small>
 																	)}
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusCrowdsecAppsec" type="checkbox">
+																	<Field name="npmproCrowdsecAppsec" type="checkbox">
 																		{({ field, form }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusCrowdsecAppsec"
+																					id="npmproCrowdsecAppsec"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -419,7 +419,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																						field.onChange(e);
 																						if (!e.target.checked) {
 																							form.setFieldValue(
-																								"npmplusProxyRequestBuffering",
+																								"npmproProxyRequestBuffering",
 																								false,
 																							);
 																						}
@@ -434,7 +434,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusProxyRequestBuffering"
+																htmlFor="npmproProxyRequestBuffering"
 															>
 																<span className="col">
 																	<T id="host.flags.disable-request-buffering" />
@@ -442,13 +442,13 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																		<T id="host.flags.hint.request-buffering-appsec" />
 																	</small>
 																	{getOptionHintId(
-																		"npmplusProxyRequestBuffering",
+																		"npmproProxyRequestBuffering",
 																		values.forwardScheme,
 																	) && (
 																		<small className="form-hint">
 																			<T
 																				id={getOptionHintId(
-																					"npmplusProxyRequestBuffering",
+																					"npmproProxyRequestBuffering",
 																					values.forwardScheme,
 																				)}
 																			/>
@@ -457,14 +457,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																</span>
 																<span className="col-auto">
 																	<Field
-																		name="npmplusProxyRequestBuffering"
+																		name="npmproProxyRequestBuffering"
 																		type="checkbox"
 																	>
 																		{({ field, form }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusProxyRequestBuffering"
+																					id="npmproProxyRequestBuffering"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -473,7 +473,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																						field.onChange(e);
 																						if (e.target.checked) {
 																							form.setFieldValue(
-																								"npmplusCrowdsecAppsec",
+																								"npmproCrowdsecAppsec",
 																								true,
 																							);
 																						}
@@ -494,18 +494,18 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusProxyResponseBuffering"
+																htmlFor="npmproProxyResponseBuffering"
 															>
 																<span className="col">
 																	<T id="host.flags.disable-response-buffering" />
 																	{getOptionHintId(
-																		"npmplusProxyResponseBuffering",
+																		"npmproProxyResponseBuffering",
 																		values.forwardScheme,
 																	) && (
 																		<small className="form-hint">
 																			<T
 																				id={getOptionHintId(
-																					"npmplusProxyResponseBuffering",
+																					"npmproProxyResponseBuffering",
 																					values.forwardScheme,
 																				)}
 																			/>
@@ -514,14 +514,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																</span>
 																<span className="col-auto">
 																	<Field
-																		name="npmplusProxyResponseBuffering"
+																		name="npmproProxyResponseBuffering"
 																		type="checkbox"
 																	>
 																		{({ field, form }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusProxyResponseBuffering"
+																					id="npmproProxyResponseBuffering"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -542,18 +542,18 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusUpstreamCompression"
+																htmlFor="npmproUpstreamCompression"
 															>
 																<span className="col">
 																	<T id="host.flags.upstream-compression" />
 																	{getOptionHintId(
-																		"npmplusUpstreamCompression",
+																		"npmproUpstreamCompression",
 																		values.forwardScheme,
 																	) && (
 																		<small className="form-hint">
 																			<T
 																				id={getOptionHintId(
-																					"npmplusUpstreamCompression",
+																					"npmproUpstreamCompression",
 																					values.forwardScheme,
 																				)}
 																			/>
@@ -562,14 +562,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																</span>
 																<span className="col-auto">
 																	<Field
-																		name="npmplusUpstreamCompression"
+																		name="npmproUpstreamCompression"
 																		type="checkbox"
 																	>
 																		{({ field, form }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusUpstreamCompression"
+																					id="npmproUpstreamCompression"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -590,18 +590,18 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusFancyindex"
+																htmlFor="npmproFancyindex"
 															>
 																<span className="col">
 																	<T id="host.flags.fancyindex" />
 																	{getOptionHintId(
-																		"npmplusFancyindex",
+																		"npmproFancyindex",
 																		values.forwardScheme,
 																	) && (
 																		<small className="form-hint">
 																			<T
 																				id={getOptionHintId(
-																					"npmplusFancyindex",
+																					"npmproFancyindex",
 																					values.forwardScheme,
 																				)}
 																			/>
@@ -609,12 +609,12 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	)}
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusFancyindex" type="checkbox">
+																	<Field name="npmproFancyindex" type="checkbox">
 																		{({ field, form }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
 																					{...field}
-																					id="npmplusFancyindex"
+																					id="npmproFancyindex"
 																					className={cn("form-check-input", {
 																						"bg-lime": field.checked,
 																					})}
@@ -633,14 +633,14 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusXFrameOptions"
+																htmlFor="npmproXFrameOptions"
 															>
 																<span className="col">X-Frame-Options</span>
 																<span className="col-auto">
-																	<Field name="npmplusXFrameOptions">
+																	<Field name="npmproXFrameOptions">
 																		{({ field }) => (
 																			<select
-																				id="npmplusXFrameOptions"
+																				id="npmproXFrameOptions"
 																				className="form-select"
 																				required
 																				{...field}
@@ -662,16 +662,16 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusAuthRequest"
+																htmlFor="npmproAuthRequest"
 															>
 																<span className="col">
 																	<T id="host.auth-request" />
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusAuthRequest">
+																	<Field name="npmproAuthRequest">
 																		{({ field, form }) => (
 																			<select
-																				id="npmplusAuthRequest"
+																				id="npmproAuthRequest"
 																				className="form-select"
 																				required
 																				{...field}
@@ -679,7 +679,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																					field.onChange(e);
 																					if (e.target.value === "none") {
 																						form.setFieldValue(
-																							"npmplusAuthRequestUpstream",
+																							"npmproAuthRequestUpstream",
 																							"",
 																						);
 																					}
@@ -711,26 +711,26 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																</span>
 															</label>
 														</div>
-														{values.npmplusAuthRequest !== "none" && (
+														{values.npmproAuthRequest !== "none" && (
 															<div>
 																<label
 																	className="row cursor-pointer"
-																	htmlFor="npmplusAuthRequestUpstream"
+																	htmlFor="npmproAuthRequestUpstream"
 																>
 																	<span className="col">
 																		<T id="host.auth-request-upstream" />
 																	</span>
 																	<span className="col-auto">
 																		<Field
-																			name="npmplusAuthRequestUpstream"
+																			name="npmproAuthRequestUpstream"
 																			validate={validateUpstreamUrl()}
 																		>
 																			{({ field, form }) => (
 																				<>
 																					<input
-																						id="npmplusAuthRequestUpstream"
+																						id="npmproAuthRequestUpstream"
 																						type="text"
-																						className={`form-control ${form.errors.npmplusAuthRequestUpstream && form.touched.npmplusAuthRequestUpstream ? "is-invalid" : ""}`}
+																						className={`form-control ${form.errors.npmproAuthRequestUpstream && form.touched.npmproAuthRequestUpstream ? "is-invalid" : ""}`}
 																						placeholder={intl.formatMessage(
 																							{
 																								id: "host.auth-request-upstream.placeholder",
@@ -742,12 +742,12 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																					/>
 
 																					{form.errors
-																						.npmplusAuthRequestUpstream ? (
+																						.npmproAuthRequestUpstream ? (
 																						<div className="invalid-feedback">
 																							{form.touched
-																								.npmplusAuthRequestUpstream
+																								.npmproAuthRequestUpstream
 																								? form.errors
-																										.npmplusAuthRequestUpstream
+																										.npmproAuthRequestUpstream
 																								: null}
 																						</div>
 																					) : null}
@@ -765,28 +765,28 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 														<T id="proxy-host.global-access-lists" />
 													</h4>
 													<AccessFields
-														initialAccessListType={data?.npmplusAccessListType}
+														initialAccessListType={data?.npmproAccessListType}
 														initialAccessListIds={data?.accessLists.map(
 															(accessList) => accessList.id,
 														)}
-														name="npmplusAccessListIds"
-														typeFieldName="npmplusAccessListType"
-														authRequest={values.npmplusAuthRequest}
+														name="npmproAccessListIds"
+														typeFieldName="npmproAccessListType"
+														authRequest={values.npmproAuthRequest}
 													/>
 												</div>
-												<Field name="npmplusLocationConfig">
+												<Field name="npmproLocationConfig">
 													{({ field }) => (
 														<>
 															{advVisible && (
 																<div className="">
 																	<label
 																		className="form-label"
-																		htmlFor="npmplusLocationConfig"
+																		htmlFor="npmproLocationConfig"
 																	>
 																		<T id="host.location-config.label" />
 																	</label>
 																	<textarea
-																		id="npmplusLocationConfig"
+																		id="npmproLocationConfig"
 																		className="form-control font-monospace"
 																		spellCheck={false}
 																		placeholder={intl.formatMessage({
@@ -831,7 +831,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 							</Modal.Body>
 							<RequestProgress
 								running={isSubmitting && values.certificateId === "new"}
-								propagationSeconds={values.npmplusPropagationSeconds}
+								propagationSeconds={values.npmproPropagationSeconds}
 							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>

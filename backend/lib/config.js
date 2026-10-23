@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
 
-const keysFile = "/data/npmplus/keys-ec.json";
+const keysFile = "/data/npmpro/keys-ec.json";
 const sqliteEngine = "better-sqlite3";
 const mysqlEngine = "mysql2";
 const postgresEngine = "pg";
@@ -69,7 +69,7 @@ const configure = () => {
 		};
 	}
 
-	const envSqliteFile = "/data/npmplus/database.sqlite";
+	const envSqliteFile = "/data/npmpro/database.sqlite";
 
 	logger.info(`Using Sqlite: ${envSqliteFile}`);
 	return {

@@ -55,7 +55,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 			id: savedId ?? (id === "new" ? undefined : id),
 			...values,
 			domainNames: values.certificateId === "new" ? values.domainNames : undefined,
-			npmplusProxyTls: values.npmplusProxyTls && isProxyTlsPossible(values),
+			npmproProxyTls: values.npmproProxyTls && isProxyTlsPossible(values),
 		};
 
 		setStream(payload, {
@@ -98,14 +98,14 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 						forwardingPort: data?.forwardingPort,
 						tcpForwarding: data?.tcpForwarding,
 						udpForwarding: data?.udpForwarding,
-						npmplusProxyProtocolForwarding: data?.npmplusProxyProtocolForwarding,
-						npmplusProxyTls: data?.npmplusProxyTls,
+						npmproProxyProtocolForwarding: data?.npmproProxyProtocolForwarding,
+						npmproProxyTls: data?.npmproProxyTls,
 						certificateId: data?.certificateId,
-						npmplusAdvancedConfig: data?.npmplusAdvancedConfig,
-						npmplusDirectory: data?.npmplusDirectory,
-						npmplusMtlsCertificateId: data?.npmplusMtlsCertificateId,
-						npmplusMtlsVerifyClientOptional: data?.npmplusMtlsVerifyClientOptional,
-						npmplusDescription: data?.npmplusDescription,
+						npmproAdvancedConfig: data?.npmproAdvancedConfig,
+						npmproDirectory: data?.npmproDirectory,
+						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
+						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
+						npmproDescription: data?.npmproDescription,
 					}}
 					onSubmit={onSubmit}
 				>
@@ -160,7 +160,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 													role="tab"
 												>
 													<T id="domains.advanced" />
-													{values?.npmplusAdvancedConfig?.trim() ? "*" : ""}
+													{values?.npmproAdvancedConfig?.trim() ? "*" : ""}
 												</a>
 											</li>
 										</ul>
@@ -199,27 +199,27 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 														</div>
 													)}
 												</Field>
-												<Field name="npmplusDescription" validate={validateString(0, 255)}>
+												<Field name="npmproDescription" validate={validateString(0, 255)}>
 													{({ field, form }) => (
 														<div className="mb-3">
-															<label className="form-label" htmlFor="npmplusDescription">
+															<label className="form-label" htmlFor="npmproDescription">
 																<T id="stream.description" />
 															</label>
 															<input
-																id="npmplusDescription"
+																id="npmproDescription"
 																type="text"
 																maxLength={255}
-																className={`form-control ${form.errors.npmplusDescription && form.touched.npmplusDescription ? "is-invalid" : ""}`}
+																className={`form-control ${form.errors.npmproDescription && form.touched.npmproDescription ? "is-invalid" : ""}`}
 																placeholder={intl.formatMessage({
 																	id: "stream.description.placeholder",
 																})}
 																{...field}
 															/>
 
-															{form.errors.npmplusDescription ? (
+															{form.errors.npmproDescription ? (
 																<div className="invalid-feedback">
-																	{form.touched.npmplusDescription
-																		? form.errors.npmplusDescription
+																	{form.touched.npmproDescription
+																		? form.errors.npmproDescription
 																		: null}
 																</div>
 															) : null}
@@ -329,16 +329,16 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																								true,
 																							);
 																							if (
-																								values.npmplusProxyProtocolForwarding ===
+																								values.npmproProxyProtocolForwarding ===
 																								1
 																							) {
 																								setFieldValue(
-																									"npmplusProxyProtocolForwarding",
+																									"npmproProxyProtocolForwarding",
 																									0,
 																								);
 																							}
 																							setFieldValue(
-																								"npmplusProxyTls",
+																								"npmproProxyTls",
 																								false,
 																							);
 																							setFieldValue(
@@ -346,11 +346,11 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																								0,
 																							);
 																							setFieldValue(
-																								"npmplusMtlsCertificateId",
+																								"npmproMtlsCertificateId",
 																								0,
 																							);
 																							setFieldValue(
-																								"npmplusMtlsVerifyClientOptional",
+																								"npmproMtlsVerifyClientOptional",
 																								false,
 																							);
 																						}
@@ -388,16 +388,16 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 
 																						if (e.target.checked) {
 																							if (
-																								values.npmplusProxyProtocolForwarding ===
+																								values.npmproProxyProtocolForwarding ===
 																								1
 																							) {
 																								setFieldValue(
-																									"npmplusProxyProtocolForwarding",
+																									"npmproProxyProtocolForwarding",
 																									0,
 																								);
 																							}
 																							setFieldValue(
-																								"npmplusProxyTls",
+																								"npmproProxyTls",
 																								false,
 																							);
 																							setFieldValue(
@@ -405,11 +405,11 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																								0,
 																							);
 																							setFieldValue(
-																								"npmplusMtlsCertificateId",
+																								"npmproMtlsCertificateId",
 																								0,
 																							);
 																							setFieldValue(
-																								"npmplusMtlsVerifyClientOptional",
+																								"npmproMtlsVerifyClientOptional",
 																								false,
 																							);
 																						}
@@ -431,7 +431,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusProxyTls"
+																htmlFor="npmproProxyTls"
 															>
 																<span className="col">
 																	<T id="streams.tls" />
@@ -443,11 +443,11 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																		)}
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusProxyTls" type="checkbox">
+																	<Field name="npmproProxyTls" type="checkbox">
 																		{({ field }) => (
 																			<span className="form-check form-check-single form-switch">
 																				<input
-																					id="npmplusProxyTls"
+																					id="npmproProxyTls"
 																					className="form-check-input"
 																					type="checkbox"
 																					name={field.name}
@@ -474,16 +474,16 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 														<div>
 															<label
 																className="row cursor-pointer"
-																htmlFor="npmplusProxyProtocolForwarding"
+																htmlFor="npmproProxyProtocolForwarding"
 															>
 																<span className="col">
 																	<T id="streams.pp" />
 																</span>
 																<span className="col-auto">
-																	<Field name="npmplusProxyProtocolForwarding">
+																	<Field name="npmproProxyProtocolForwarding">
 																		{({ field }) => (
 																			<select
-																				id="npmplusProxyProtocolForwarding"
+																				id="npmproProxyProtocolForwarding"
 																				className="form-select w-auto"
 																				required
 																				{...field}
@@ -533,8 +533,8 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 											</div>
 											<div className="tab-pane" id="tab-advanced" role="tabpanel">
 												<NginxConfigField
-													name="npmplusAdvancedConfig"
-													id="npmplusAdvancedConfig"
+													name="npmproAdvancedConfig"
+													id="npmproAdvancedConfig"
 												/>
 
 												<div className="row mt-3">
@@ -553,7 +553,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 							</Modal.Body>
 							<RequestProgress
 								running={isSubmitting && values.certificateId === "new"}
-								propagationSeconds={values.npmplusPropagationSeconds}
+								propagationSeconds={values.npmproPropagationSeconds}
 							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>

@@ -112,7 +112,7 @@ RUN git-clone-commit.sh https://github.com/nginx/nginx "$NGINX_VER" /src/nginx &
 
 RUN cd /src/nginx && \
     /src/nginx/auto/configure \
-    --build=NPMplus \
+    --build=NPMpro \
     --user=root \
     --group=root \
     --with-debug \

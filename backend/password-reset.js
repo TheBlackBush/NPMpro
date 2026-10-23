@@ -12,7 +12,7 @@ import { hash } from "./lib/argon2.js";
 function usage() {
 	console.log(`usage: ${process.argv[1]} USER_EMAIL [--disable-mfa]
 
-	Set or reset the password and/or disable MFA of a NPMplus user.
+	Set or reset the password and/or disable MFA of a NPMpro user.
 	The new password is read from stdin, leave it empty to keep the current one.
 
 	Arguments:
@@ -41,7 +41,7 @@ if (!EMAIL || rest.length > 0) {
 	usage();
 }
 
-if (!existsSync("/data/npmplus/database.sqlite")) {
+if (!existsSync("/data/npmpro/database.sqlite")) {
 	console.error("ERROR: Cannot connect to the sqlite database.");
 	process.exit(1);
 }
@@ -68,7 +68,7 @@ if (PASSWORD && (PASSWORD.length < 8 || PASSWORD.length > 255)) {
 }
 
 try {
-	using db = new DatabaseSync("/data/npmplus/database.sqlite");
+	using db = new DatabaseSync("/data/npmpro/database.sqlite");
 
 	const user = db.prepare("SELECT id FROM user WHERE email = ?").get(EMAIL);
 
@@ -85,7 +85,7 @@ try {
 					"INSERT INTO auth (created_on, modified_on, user_id, type, secret, meta) VALUES (datetime('now','localtime'), datetime('now','localtime'), ?, 'password', ?, '{}')",
 				).run(user.id, secret);
 			}
-			db.prepare("UPDATE user SET npmplus_token_valid_after = ? WHERE id = ?").run(
+			db.prepare("UPDATE user SET npmpro_token_valid_after = ? WHERE id = ?").run(
 				Math.floor(Date.now() / 1000),
 				user.id,
 			);

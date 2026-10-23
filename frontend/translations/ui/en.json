@@ -138,7 +138,7 @@
 	"dns-credentials": "DNS credentials",
 	"dns-credentials.add": "Add DNS credential",
 	"dns-credentials.change": "Change DNS credential",
-	"dns-credentials.decrypt-error": "This credential cannot be decrypted, probably because the encryption key in /data/npmplus changed. Enter its values again.",
+	"dns-credentials.decrypt-error": "This credential cannot be decrypted, probably because the encryption key in /data/npmpro changed. Enter its values again.",
 	"dns-credentials.decrypt-error-short": "Cannot be decrypted",
 	"dns-credentials.empty": "No DNS credentials saved yet",
 	"dns-credentials.enter-as-fields": "Enter as fields",

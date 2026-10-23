@@ -41,7 +41,7 @@ for code in en $(git ls-tree --full-tree --name-only "$NEW:$UP" | sed -n 's/\.js
 		| reduce ($theirs | to_entries[] | select($base[.key] != .value)) as {key: $k, value: $v} ({file: ., notes: []};
 			if $code != "en" and ($en[$k] == null or $upen[$k] != $en[$k]) then .notes += ["\($k): missing in or reworded by en.json, translate manually: \($v)"]
 			elif .file[$k] | IN(null, $base[$k], $v) then .file[$k] = $v
-			else .notes += ["\($k): changed by NPMplus and upstream, merge manually: \($v)"] end)
+			else .notes += ["\($k): changed by NPMpro and upstream, merge manually: \($v)"] end)
 		| reduce ($base | keys[] | select(in($theirs) | not)) as $k (.; if .file | has($k) then .notes += ["\($k): removed upstream"] end)
 	' "$ui" > "$TMP/out.json" || exit 1
 	jq --tab --sort-keys .file "$TMP/out.json" > "$ui"
@@ -53,7 +53,7 @@ for code in en $(git ls-tree --full-tree --name-only "$NEW:$UP" | sed -n 's/\.js
 		cmp -s "$TMP/base.md" "$TMP/theirs.md" && continue
 		if [ ! -e "$SRC/help/$code/$doc" ]; then
 			cp "$TMP/theirs.md" "$SRC/help/$code/$doc"
-		elif ! git merge-file -L NPMplus -L "$OLD" -L "$NEW" "$SRC/help/$code/$doc" "$TMP/base.md" "$TMP/theirs.md"; then
+		elif ! git merge-file -L NPMpro -L "$OLD" -L "$NEW" "$SRC/help/$code/$doc" "$TMP/base.md" "$TMP/theirs.md"; then
 			echo "help/$code/$doc: conflicts, merge manually"
 		fi
 	done

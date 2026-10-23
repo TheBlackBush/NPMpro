@@ -21,19 +21,19 @@
 						{
 							"if": {
 								"properties": {
-									"npmplus_dns_challenge": {
+									"npmpro_dns_challenge": {
 										"type": "boolean",
 										"const": true
 									}
 								},
 								"required": [
-									"npmplus_dns_challenge"
+									"npmpro_dns_challenge"
 								]
 							},
 							"then": {
 								"required": [
-									"npmplus_dns_provider",
-									"npmplus_dns_credential_id"
+									"npmpro_dns_provider",
+									"npmpro_dns_credential_id"
 								]
 							}
 						},
@@ -51,13 +51,13 @@
 							"then": {
 								"if": {
 									"properties": {
-										"npmplus_dns_challenge": {
+										"npmpro_dns_challenge": {
 											"type": "boolean",
 											"const": true
 										}
 									},
 									"required": [
-										"npmplus_dns_challenge"
+										"npmpro_dns_challenge"
 									]
 								},
 								"then": {
@@ -79,17 +79,17 @@
 						{
 							"if": {
 								"properties": {
-									"npmplus_mtls_certificate_id": {
+									"npmpro_mtls_certificate_id": {
 										"type": "integer",
 										"minimum": 1
 									},
-									"npmplus_mtls_verify_client_optional": {
+									"npmpro_mtls_verify_client_optional": {
 										"type": "boolean",
 										"const": false
 									}
 								},
 								"required": [
-									"npmplus_mtls_certificate_id"
+									"npmpro_mtls_certificate_id"
 								]
 							},
 							"then": {
@@ -134,35 +134,35 @@
 						"hsts_subdomains": {
 							"$ref": "../../../components/redirection-host-object.json#/properties/hsts_subdomains"
 						},
-						"npmplus_http3_support": {
-							"$ref": "../../../components/redirection-host-object.json#/properties/npmplus_http3_support"
+						"npmpro_http3_support": {
+							"$ref": "../../../components/redirection-host-object.json#/properties/npmpro_http3_support"
 						},
 						"advanced_config": {
 							"$ref": "../../../components/redirection-host-object.json#/properties/advanced_config"
 						},
-						"npmplus_directory": {
-							"$ref": "../../../components/redirection-host-object.json#/properties/npmplus_directory"
+						"npmpro_directory": {
+							"$ref": "../../../components/redirection-host-object.json#/properties/npmpro_directory"
 						},
-						"npmplus_mtls_certificate_id": {
-							"$ref": "../../../components/redirection-host-object.json#/properties/npmplus_mtls_certificate_id"
+						"npmpro_mtls_certificate_id": {
+							"$ref": "../../../components/redirection-host-object.json#/properties/npmpro_mtls_certificate_id"
 						},
-						"npmplus_mtls_verify_client_optional": {
-							"$ref": "../../../components/redirection-host-object.json#/properties/npmplus_mtls_verify_client_optional"
+						"npmpro_mtls_verify_client_optional": {
+							"$ref": "../../../components/redirection-host-object.json#/properties/npmpro_mtls_verify_client_optional"
 						},
-						"npmplus_reuse_key": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_reuse_key"
+						"npmpro_reuse_key": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_reuse_key"
 						},
-						"npmplus_dns_challenge": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_challenge"
+						"npmpro_dns_challenge": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_challenge"
 						},
-						"npmplus_dns_provider": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_provider"
+						"npmpro_dns_provider": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_provider"
 						},
-						"npmplus_dns_credential_id": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_dns_credential_id"
+						"npmpro_dns_credential_id": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_dns_credential_id"
 						},
-						"npmplus_propagation_seconds": {
-							"$ref": "../../../components/certificate-object.json#/properties/npmplus_propagation_seconds"
+						"npmpro_propagation_seconds": {
+							"$ref": "../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
 						}
 					}
 				},
@@ -176,7 +176,7 @@
 					"preserve_path": false,
 					"certificate_id": 0,
 					"ssl_forced": false,
-					"npmplus_http3_support": false,
+					"npmpro_http3_support": false,
 					"hsts_enabled": false,
 					"hsts_subdomains": false,
 					"advanced_config": ""
@@ -204,12 +204,12 @@
 								"certificate_id": 0,
 								"ssl_forced": false,
 								"advanced_config": "",
-								"npmplus_nginx_online": false,
-								"npmplus_nginx_err": "",
-								"npmplus_directory": "",
-								"npmplus_mtls_certificate_id": 0,
-								"npmplus_mtls_verify_client_optional": false,
-								"npmplus_http3_support": false,
+								"npmpro_nginx_online": false,
+								"npmpro_nginx_err": "",
+								"npmpro_directory": "",
+								"npmpro_mtls_certificate_id": 0,
+								"npmpro_mtls_verify_client_optional": false,
+								"npmpro_http3_support": false,
 								"enabled": true,
 								"hsts_enabled": false,
 								"hsts_subdomains": false,

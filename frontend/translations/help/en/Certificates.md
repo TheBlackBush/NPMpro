@@ -34,7 +34,7 @@ saved credentials, so several certificates can share them.
 
 Secrets are stored encrypted and are never shown again. When you edit a credential, leave
 a secret empty to keep the saved value. The key used for the encryption is the file
-`/data/npmplus/dns-credentials.key`, back it up together with the database, otherwise
+`/data/npmpro/dns-credentials.key`, back it up together with the database, otherwise
 the saved credentials cannot be read after a restore.
 
 Providers without a form use the INI text box, where you paste the content of the

@@ -13,7 +13,7 @@ import userModel from "./user.js";
 
 Model.knex(db());
 
-const boolFields = ["npmplus_reuse_key", "npmplus_dns_challenge"];
+const boolFields = ["npmpro_reuse_key", "npmpro_dns_challenge"];
 
 class Certificate extends Model {
 	$beforeInsert() {
@@ -95,7 +95,7 @@ class Certificate extends Model {
 				modelClass: proxyHostModel,
 				join: {
 					from: "certificate.id",
-					to: "proxy_host.npmplus_mtls_certificate_id",
+					to: "proxy_host.npmpro_mtls_certificate_id",
 				},
 			},
 			mtls_dead_hosts: {
@@ -103,7 +103,7 @@ class Certificate extends Model {
 				modelClass: deadHostModel,
 				join: {
 					from: "certificate.id",
-					to: "dead_host.npmplus_mtls_certificate_id",
+					to: "dead_host.npmpro_mtls_certificate_id",
 				},
 			},
 			mtls_redirection_hosts: {
@@ -111,7 +111,7 @@ class Certificate extends Model {
 				modelClass: redirectionHostModel,
 				join: {
 					from: "certificate.id",
-					to: "redirection_host.npmplus_mtls_certificate_id",
+					to: "redirection_host.npmpro_mtls_certificate_id",
 				},
 			},
 			mtls_streams: {
@@ -119,7 +119,7 @@ class Certificate extends Model {
 				modelClass: streamModel,
 				join: {
 					from: "certificate.id",
-					to: "stream.npmplus_mtls_certificate_id",
+					to: "stream.npmpro_mtls_certificate_id",
 				},
 			},
 		};

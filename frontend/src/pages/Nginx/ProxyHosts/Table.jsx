@@ -99,7 +99,7 @@ export default function Table({
 				(row) => {
 					const { accessLists } = row;
 					const triggerLabel = intl.formatMessage({
-						id: row.npmplusAccessListType === "custom" ? "access-list.custom" : "access-list.public",
+						id: row.npmproAccessListType === "custom" ? "access-list.custom" : "access-list.public",
 					});
 					if (accessLists.length === 1) {
 						return accessLists[0].name;
@@ -114,7 +114,7 @@ export default function Table({
 							proxyHostId={info.row.original.id}
 							locations={info.row.original.locations}
 							access={info.row.original.accessLists}
-							type={info.row.original.npmplusAccessListType}
+							type={info.row.original.npmproAccessListType}
 						/>
 					),
 				},
@@ -122,7 +122,7 @@ export default function Table({
 			columnHelper.accessor(
 				(row) => {
 					if (!row.enabled) return "3disabled";
-					if (row.npmplusNginxOnline) return "2online";
+					if (row.npmproNginxOnline) return "2online";
 					return "1offline";
 				},
 				{
@@ -133,8 +133,8 @@ export default function Table({
 						return (
 							<StatusFormatter
 								enabled={value.enabled}
-								nginxOnline={value.npmplusNginxOnline}
-								nginxErr={value.npmplusNginxErr}
+								nginxOnline={value.npmproNginxOnline}
+								nginxErr={value.npmproNginxErr}
 							/>
 						);
 					},

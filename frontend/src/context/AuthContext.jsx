@@ -10,7 +10,7 @@ const AuthContext = createContext(null);
 function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 	const queryClient = useQueryClient();
 	const [authenticated, setAuthenticated] = useState(AuthStore.hasActiveToken());
-	const [totpChallenge, setTotpChallenge] = useState(() => getCookie("__Host-npmplus_oidc_totp_required") === "true");
+	const [totpChallenge, setTotpChallenge] = useState(() => getCookie("__Host-npmpro_oidc_totp_required") === "true");
 
 	const handleTokenUpdate = (response) => {
 		AuthStore.set(response);
@@ -65,7 +65,7 @@ function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 	useEffect(() => {
 		if (!authenticated) {
 			if (totpChallenge) {
-				window.cookieStore.delete("__Host-npmplus_oidc_totp_required");
+				window.cookieStore.delete("__Host-npmpro_oidc_totp_required");
 				return;
 			}
 			void refresh(false);

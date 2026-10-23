@@ -13,17 +13,17 @@ const cleanStreamData = (data, existingData) => {
 	}
 
 	if (combinedData.udp_forwarding) {
-		combinedData.npmplus_proxy_tls = false;
-		if (combinedData.npmplus_proxy_protocol_forwarding === 1) combinedData.npmplus_proxy_protocol_forwarding = 0;
+		combinedData.npmpro_proxy_tls = false;
+		if (combinedData.npmpro_proxy_protocol_forwarding === 1) combinedData.npmpro_proxy_protocol_forwarding = 0;
 		combinedData.certificate_id = 0;
 	}
 
 	if (combinedData.certificate_id !== "new" && !(combinedData.certificate_id > 0)) {
-		combinedData.npmplus_mtls_certificate_id = 0;
+		combinedData.npmpro_mtls_certificate_id = 0;
 	}
 
-	if (!(combinedData.npmplus_mtls_certificate_id > 0)) {
-		combinedData.npmplus_mtls_verify_client_optional = false;
+	if (!(combinedData.npmpro_mtls_certificate_id > 0)) {
+		combinedData.npmpro_mtls_verify_client_optional = false;
 	}
 
 	return combinedData;
@@ -44,8 +44,8 @@ const internalStream = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("streams:manage");
@@ -99,8 +99,8 @@ const internalStream = {
 		} else if (thisData.certificate_id > 0) {
 			await internalCertificate.get(access, { id: thisData.certificate_id });
 		}
-		if (thisData.npmplus_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmplus_mtls_certificate_id });
+		if (thisData.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
 		}
 
 		access.can("streams:manage");
@@ -304,7 +304,7 @@ const internalStream = {
 				this.where(castJsonIfNeed("incoming_port"), "like", `%${searchQuery}%`)
 					.orWhere(castJsonIfNeed("forwarding_port"), "like", `%${searchQuery}%`)
 					.orWhere("forwarding_host", "like", `%${searchQuery}%`)
-					.orWhere("npmplus_description", "like", `%${searchQuery}%`);
+					.orWhere("npmpro_description", "like", `%${searchQuery}%`);
 			});
 		}
 
@@ -338,7 +338,7 @@ const internalStream = {
 	 * @returns {Promise}
 	 */
 	getErrorCount: (user_id, visibility) => {
-		const query = streamModel.query().where("enabled", 1).andWhere("npmplus_nginx_online", 0);
+		const query = streamModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
 
 		if (visibility !== "all") {
 			query.andWhere("owner_user_id", user_id);

@@ -90,7 +90,7 @@ const internalUser = {
 	},
 
 	fetchGravatar: async (id, email, name) => {
-		for (const e of avatarExts) await rm(`/data/npmplus/gravatar/${id}.${e}`, { force: true });
+		for (const e of avatarExts) await rm(`/data/npmpro/gravatar/${id}.${e}`, { force: true });
 		if (process.env.DISABLE_GRAVATAR === "true") return "/images/default-avatar.jpg";
 		try {
 			const response = await fetch(
@@ -113,7 +113,7 @@ const internalUser = {
 			const ext = avatarExt(buffer);
 			if (!ext) throw new Error("Unsupported image format");
 
-			await writeFile(`/data/npmplus/gravatar/${id}.${ext}`, buffer);
+			await writeFile(`/data/npmpro/gravatar/${id}.${ext}`, buffer);
 
 			return `/images/gravatar/${id}.${ext}?v=${Date.now()}`;
 		} catch (err) {
@@ -124,8 +124,8 @@ const internalUser = {
 
 	deleteAvatarFiles: async (id) => {
 		for (const e of avatarExts) {
-			await rm(`/data/npmplus/avatar/${id}.${e}`, { force: true });
-			await rm(`/data/npmplus/gravatar/${id}.${e}`, { force: true });
+			await rm(`/data/npmpro/avatar/${id}.${e}`, { force: true });
+			await rm(`/data/npmpro/gravatar/${id}.${e}`, { force: true });
 		}
 	},
 
@@ -135,7 +135,7 @@ const internalUser = {
 		if (!ext) throw new errs.ValidationError("Invalid avatar file type");
 		const user = await internalUser.get(access, { id });
 		await internalUser.deleteAvatarFiles(user.id);
-		await writeFile(`/data/npmplus/avatar/${user.id}.${ext}`, file.buffer);
+		await writeFile(`/data/npmpro/avatar/${user.id}.${ext}`, file.buffer);
 		await userModel
 			.query()
 			.findById(user.id)
@@ -155,7 +155,7 @@ const internalUser = {
 	deleteAvatar: async (access, id) => {
 		access.canUser(id);
 		const user = await internalUser.get(access, { id });
-		for (const e of avatarExts) await rm(`/data/npmplus/avatar/${user.id}.${e}`, { force: true });
+		for (const e of avatarExts) await rm(`/data/npmpro/avatar/${user.id}.${e}`, { force: true });
 		await userModel.query().findById(user.id).patch({ avatar: "" });
 		return internalUser.update(access, { id: user.id });
 	},
@@ -194,7 +194,7 @@ const internalUser = {
 			);
 		}
 
-		if (data.is_disabled) data.npmplus_token_valid_after = Math.floor(Date.now() / 1000);
+		if (data.is_disabled) data.npmpro_token_valid_after = Math.floor(Date.now() / 1000);
 
 		await userModel.query().findById(existingUser.id).patch(data);
 		const user = await internalUser.get(access, { id: data.id });
@@ -355,7 +355,7 @@ const internalUser = {
 			await userModel
 				.query(trx)
 				.where("id", user.id)
-				.patch({ npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 		});
 
 		await internalAuditLog.add(access, {
@@ -434,7 +434,7 @@ const internalUser = {
 		access.canUser(userId);
 		const user = await userModel
 			.query()
-			.patchAndFetchById(userId, { npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+			.patchAndFetchById(userId, { npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 		if (!user) throw new errs.ItemNotFoundError(userId);
 
 		await internalAuditLog.add(access, {

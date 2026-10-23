@@ -3,9 +3,9 @@ import { it } from "node:test";
 import { activeFilterCount, filterCertificates, filterHosts, hostStatus, parseFilters } from "./ListFilters.js";
 
 const rows = [
-	{ id: 1, enabled: true, npmplusNginxOnline: true, certificate: { id: 9 }, dir: "Prod", name: "alpha.example.com" },
-	{ id: 2, enabled: true, npmplusNginxOnline: false, certificate: null, dir: "", name: "beta.example.com" },
-	{ id: 3, enabled: false, npmplusNginxOnline: false, certificate: null, dir: "Prod", name: "gamma.example.com" },
+	{ id: 1, enabled: true, npmproNginxOnline: true, certificate: { id: 9 }, dir: "Prod", name: "alpha.example.com" },
+	{ id: 2, enabled: true, npmproNginxOnline: false, certificate: null, dir: "", name: "beta.example.com" },
+	{ id: 3, enabled: false, npmproNginxOnline: false, certificate: null, dir: "Prod", name: "gamma.example.com" },
 ];
 const opts = { searchText: (r) => r.name, getGroup: (r) => r.dir };
 const ids = (list) => list.map((r) => r.id);

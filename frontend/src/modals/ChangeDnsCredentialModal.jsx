@@ -25,7 +25,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 		setIsSubmitting(true);
 		setErrorMsg(null);
 		try {
-			await setCertificateDnsCredential(certificate.id, values.npmplusDnsCredentialId);
+			await setCertificateDnsCredential(certificate.id, values.npmproDnsCredentialId);
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["certificates"] }),
 				queryClient.invalidateQueries({ queryKey: ["dns-credentials"] }),
@@ -43,7 +43,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 	return (
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
-				initialValues={{ npmplusDnsCredentialId: certificate.npmplusDnsCredentialId ?? undefined }}
+				initialValues={{ npmproDnsCredentialId: certificate.npmproDnsCredentialId ?? undefined }}
 				onSubmit={onSubmit}
 			>
 				{({ values }) => (
@@ -64,8 +64,8 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 								{errorMsg}
 							</Alert>
 							<DnsCredentialSelect
-								name="npmplusDnsCredentialId"
-								provider={certificate.npmplusDnsProvider}
+								name="npmproDnsCredentialId"
+								provider={certificate.npmproDnsProvider}
 							/>
 						</Modal.Body>
 						<Modal.Footer>
@@ -77,7 +77,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 								color="pink"
 								className="ms-auto"
 								isLoading={isSubmitting}
-								disabled={isSubmitting || !values.npmplusDnsCredentialId}
+								disabled={isSubmitting || !values.npmproDnsCredentialId}
 							>
 								<T id="save" />
 							</Button>

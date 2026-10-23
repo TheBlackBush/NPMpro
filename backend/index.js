@@ -27,8 +27,8 @@ async function appStart() {
 		internalCertificate.initTimer();
 		await internalNginx.reload();
 
-		await rm("/run/npmplus.sock", { force: true });
-		const server = app.listen("/run/npmplus.sock", (err) => {
+		await rm("/run/npmpro.sock", { force: true });
+		const server = app.listen("/run/npmpro.sock", (err) => {
 			if (err) throw err;
 			logger.info(`Backend PID ${process.pid} listening on unix socket...`);
 

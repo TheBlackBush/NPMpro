@@ -71,6 +71,6 @@ const createSecretBox = (keyFile) => {
 	};
 };
 
-const defaultSecretBox = createSecretBox(process.env.NPMPRO_SECRET_KEY_FILE ?? "/data/npmplus/dns-credentials.key");
+const defaultSecretBox = createSecretBox(process.env.NPMPRO_SECRET_KEY_FILE ?? "/data/npmpro/dns-credentials.key");
 
 export { createSecretBox, defaultSecretBox, SecretBoxError };

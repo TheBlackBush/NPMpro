@@ -6,7 +6,7 @@ import userModel from "../models/user.js";
 import internalAuditLog from "./audit-log.js";
 import internalUser from "./user.js";
 
-const APP_NAME = "NPMplus";
+const APP_NAME = "NPMpro";
 
 const usedSteps = new Map();
 const startStep = Math.floor(Date.now() / 30000);
@@ -106,7 +106,7 @@ const internalTotp = {
 			await userModel
 				.query(trx)
 				.where("id", userId)
-				.patch({ npmplus_token_valid_after: Math.floor(Date.now() / 1000) });
+				.patch({ npmpro_token_valid_after: Math.floor(Date.now() / 1000) });
 
 			await onEnable?.(trx);
 		});

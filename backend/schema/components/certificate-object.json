@@ -10,11 +10,11 @@
 		"nice_name",
 		"domain_names",
 		"expires_on",
-		"npmplus_reuse_key",
-		"npmplus_dns_challenge",
-		"npmplus_dns_provider",
-		"npmplus_dns_credential_id",
-		"npmplus_propagation_seconds"
+		"npmpro_reuse_key",
+		"npmpro_dns_challenge",
+		"npmpro_dns_provider",
+		"npmpro_dns_credential_id",
+		"npmpro_propagation_seconds"
 	],
 	"additionalProperties": false,
 	"properties": {
@@ -97,32 +97,32 @@
 		"owner": {
 			"$ref": "./user-object.json"
 		},
-		"npmplus_reuse_key": {
+		"npmpro_reuse_key": {
 			"description": "Reuse the private key on renewal",
 			"type": "boolean",
 			"default": false,
 			"example": false
 		},
-		"npmplus_dns_challenge": {
+		"npmpro_dns_challenge": {
 			"description": "Use the DNS challenge",
 			"type": "boolean",
 			"default": false,
 			"example": false
 		},
-		"npmplus_dns_provider": {
+		"npmpro_dns_provider": {
 			"description": "DNS provider",
 			"type": "string",
 			"maxLength": 255,
 			"default": "",
 			"example": "cloudflare"
 		},
-		"npmplus_dns_credential_id": {
+		"npmpro_dns_credential_id": {
 			"description": "Saved DNS credential used for the DNS challenge",
 			"type": ["integer", "null"],
 			"minimum": 1,
 			"example": 1
 		},
-		"npmplus_propagation_seconds": {
+		"npmpro_propagation_seconds": {
 			"description": "DNS propagation seconds, 0 uses the default of the DNS plugin",
 			"type": "integer",
 			"minimum": 0,

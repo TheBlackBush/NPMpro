@@ -38,16 +38,6 @@ export function SiteFooter() {
 								</a>
 							</li>
 							<li className="list-inline-item">
-								<a
-									href="https://github.com/ZoeyVid/NPMplus"
-									rel="noreferrer"
-									target="_blank"
-									className="link-secondary"
-								>
-									NPMplus by ZoeyVid
-								</a>
-							</li>
-							<li className="list-inline-item">
 								Theme by{" "}
 								<a href="https://tabler.io" rel="noreferrer" target="_blank" className="link-secondary">
 									Tabler

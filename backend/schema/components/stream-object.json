@@ -11,17 +11,17 @@
 		"forwarding_port",
 		"tcp_forwarding",
 		"udp_forwarding",
-		"npmplus_proxy_protocol_forwarding",
-		"npmplus_proxy_tls",
+		"npmpro_proxy_protocol_forwarding",
+		"npmpro_proxy_tls",
 		"enabled",
-		"npmplus_advanced_config",
-		"npmplus_description",
+		"npmpro_advanced_config",
+		"npmpro_description",
 		"certificate_id",
-		"npmplus_nginx_online",
-		"npmplus_nginx_err",
-		"npmplus_directory",
-		"npmplus_mtls_certificate_id",
-		"npmplus_mtls_verify_client_optional"
+		"npmpro_nginx_online",
+		"npmpro_nginx_err",
+		"npmpro_directory",
+		"npmpro_mtls_certificate_id",
+		"npmpro_mtls_verify_client_optional"
 	],
 	"additionalProperties": false,
 	"properties": {
@@ -67,13 +67,13 @@
 			"default": false,
 			"example": false
 		},
-		"npmplus_proxy_protocol_forwarding": {
+		"npmpro_proxy_protocol_forwarding": {
 			"type": "integer",
 			"enum": [0, 1, 2],
 			"default": 0,
 			"example": 0
 		},
-		"npmplus_proxy_tls": {
+		"npmpro_proxy_tls": {
 			"type": "boolean",
 			"default": false,
 			"example": false
@@ -84,27 +84,27 @@
 		"certificate_id": {
 			"$ref": "../common.json#/properties/certificate_id"
 		},
-		"npmplus_advanced_config": {
+		"npmpro_advanced_config": {
 			"type": "string",
 			"default": "",
 			"example": ""
 		},
-		"npmplus_nginx_online": {
-			"$ref": "../common.json#/properties/npmplus_nginx_online"
+		"npmpro_nginx_online": {
+			"$ref": "../common.json#/properties/npmpro_nginx_online"
 		},
-		"npmplus_nginx_err": {
-			"$ref": "../common.json#/properties/npmplus_nginx_err"
+		"npmpro_nginx_err": {
+			"$ref": "../common.json#/properties/npmpro_nginx_err"
 		},
-		"npmplus_directory": {
-			"$ref": "../common.json#/properties/npmplus_directory"
+		"npmpro_directory": {
+			"$ref": "../common.json#/properties/npmpro_directory"
 		},
-		"npmplus_mtls_certificate_id": {
-			"$ref": "../common.json#/properties/npmplus_mtls_certificate_id"
+		"npmpro_mtls_certificate_id": {
+			"$ref": "../common.json#/properties/npmpro_mtls_certificate_id"
 		},
-		"npmplus_mtls_verify_client_optional": {
-			"$ref": "../common.json#/properties/npmplus_mtls_verify_client_optional"
+		"npmpro_mtls_verify_client_optional": {
+			"$ref": "../common.json#/properties/npmpro_mtls_verify_client_optional"
 		},
-		"npmplus_description": {
+		"npmpro_description": {
 			"type": "string",
 			"maxLength": 255,
 			"default": "",

@@ -11,14 +11,14 @@
 		"ssl_forced",
 		"hsts_enabled",
 		"hsts_subdomains",
-		"npmplus_http3_support",
+		"npmpro_http3_support",
 		"advanced_config",
 		"enabled",
-		"npmplus_nginx_online",
-		"npmplus_nginx_err",
-		"npmplus_directory",
-		"npmplus_mtls_certificate_id",
-		"npmplus_mtls_verify_client_optional"
+		"npmpro_nginx_online",
+		"npmpro_nginx_err",
+		"npmpro_directory",
+		"npmpro_mtls_certificate_id",
+		"npmpro_mtls_verify_client_optional"
 	],
 	"additionalProperties": false,
 	"properties": {
@@ -49,8 +49,8 @@
 		"hsts_subdomains": {
 			"$ref": "../common.json#/properties/hsts_subdomains"
 		},
-		"npmplus_http3_support": {
-			"$ref": "../common.json#/properties/npmplus_http3_support"
+		"npmpro_http3_support": {
+			"$ref": "../common.json#/properties/npmpro_http3_support"
 		},
 		"advanced_config": {
 			"type": "string",
@@ -60,20 +60,20 @@
 		"enabled": {
 			"$ref": "../common.json#/properties/enabled"
 		},
-		"npmplus_nginx_online": {
-			"$ref": "../common.json#/properties/npmplus_nginx_online"
+		"npmpro_nginx_online": {
+			"$ref": "../common.json#/properties/npmpro_nginx_online"
 		},
-		"npmplus_nginx_err": {
-			"$ref": "../common.json#/properties/npmplus_nginx_err"
+		"npmpro_nginx_err": {
+			"$ref": "../common.json#/properties/npmpro_nginx_err"
 		},
-		"npmplus_directory": {
-			"$ref": "../common.json#/properties/npmplus_directory"
+		"npmpro_directory": {
+			"$ref": "../common.json#/properties/npmpro_directory"
 		},
-		"npmplus_mtls_certificate_id": {
-			"$ref": "../common.json#/properties/npmplus_mtls_certificate_id"
+		"npmpro_mtls_certificate_id": {
+			"$ref": "../common.json#/properties/npmpro_mtls_certificate_id"
 		},
-		"npmplus_mtls_verify_client_optional": {
-			"$ref": "../common.json#/properties/npmplus_mtls_verify_client_optional"
+		"npmpro_mtls_verify_client_optional": {
+			"$ref": "../common.json#/properties/npmpro_mtls_verify_client_optional"
 		},
 		"certificate": {
 			"oneOf": [

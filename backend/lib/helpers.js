@@ -47,11 +47,11 @@ const convertBoolFieldsToInt = (obj, fields) => {
 };
 
 const certificateFields = [
-	"npmplus_reuse_key",
-	"npmplus_dns_challenge",
-	"npmplus_dns_provider",
-	"npmplus_dns_credential_id",
-	"npmplus_propagation_seconds",
+	"npmpro_reuse_key",
+	"npmpro_dns_challenge",
+	"npmpro_dns_provider",
+	"npmpro_dns_credential_id",
+	"npmpro_propagation_seconds",
 ];
 
 const pickCertificateFields = (obj) =>
@@ -68,7 +68,7 @@ const jsonReplacer = (key, value) => {
 			"certificate",
 			"certificate_key",
 			"dns_provider_credentials",
-			"npmplus_dns_provider_credentials",
+			"npmpro_dns_provider_credentials",
 			"hint",
 		].includes(key)
 	) {

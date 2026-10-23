@@ -117,7 +117,7 @@ const internalDnsCredential = {
 		return toPublic(row);
 	},
 
-	countCertificates: (id) => certificateModel.query().where("npmplus_dns_credential_id", id).resultSize(),
+	countCertificates: (id) => certificateModel.query().where("npmpro_dns_credential_id", id).resultSize(),
 
 	assertNameFree: async (ownerUserId, name) => {
 		const taken = await dnsCredentialModel.query().where({ owner_user_id: ownerUserId, name }).resultSize();
@@ -151,7 +151,7 @@ const internalDnsCredential = {
 		await mkdir(credentialsDir, { recursive: true, mode: 0o700 });
 		await writeFile(
 			`${credentialsDir}/credentials-${certificate.id}`,
-			await internalDnsCredential.getIni(certificate.npmplus_dns_credential_id),
+			await internalDnsCredential.getIni(certificate.npmpro_dns_credential_id),
 			{ mode: 0o600 },
 		);
 	},
@@ -159,8 +159,8 @@ const internalDnsCredential = {
 	writeFilesFor: async (credentialId) => {
 		const certificates = await certificateModel
 			.query()
-			.where("npmplus_dns_credential_id", credentialId)
-			.andWhere("npmplus_dns_challenge", 1);
+			.where("npmpro_dns_credential_id", credentialId)
+			.andWhere("npmpro_dns_challenge", 1);
 		for (const certificate of certificates) await internalDnsCredential.writeCertificateFile(certificate);
 	},
 };

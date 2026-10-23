@@ -4,12 +4,12 @@
  */
 const getOptionHintId = (option, scheme) => {
 	switch (option) {
-		case "npmplusProxyRequestBuffering":
-		case "npmplusProxyResponseBuffering":
+		case "npmproProxyRequestBuffering":
+		case "npmproProxyResponseBuffering":
 			return ["http", "https"].includes(scheme) ? null : "host.flags.hint.http-only";
-		case "npmplusUpstreamCompression":
+		case "npmproUpstreamCompression":
 			return ["path", "empty"].includes(scheme) ? "host.flags.hint.not-path" : null;
-		case "npmplusFancyindex":
+		case "npmproFancyindex":
 			return scheme === "path" ? null : "host.flags.hint.path-only";
 		default:
 			return null;
@@ -17,10 +17,10 @@ const getOptionHintId = (option, scheme) => {
 };
 
 const schemeDependentOptions = [
-	"npmplusProxyRequestBuffering",
-	"npmplusProxyResponseBuffering",
-	"npmplusUpstreamCompression",
-	"npmplusFancyindex",
+	"npmproProxyRequestBuffering",
+	"npmproProxyResponseBuffering",
+	"npmproUpstreamCompression",
+	"npmproFancyindex",
 ];
 
 /**

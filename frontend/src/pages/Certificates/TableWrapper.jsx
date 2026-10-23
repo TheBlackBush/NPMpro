@@ -176,7 +176,7 @@ export default function TableWrapper() {
 									) : null}
 									<div>
 										<T id={certificateProviderTranslation(certificate.provider)} />
-										{certificate.npmplusDnsProvider ? ` – ${certificate.npmplusDnsProvider}` : null}
+										{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
 									</div>
 									<div>
 										<T

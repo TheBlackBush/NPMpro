@@ -15,8 +15,8 @@ const migrateName = "recache_gravatars";
 const up = async (knex) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 
-	await rm("/data/npmplus/gravatar", { recursive: true, force: true });
-	await mkdir("/data/npmplus/gravatar");
+	await rm("/data/npmpro/gravatar", { recursive: true, force: true });
+	await mkdir("/data/npmpro/gravatar", { recursive: true });
 
 	const users = await knex("user").select("id", "email", "name", "avatar").where("is_deleted", 0);
 	for (const user of users) {

@@ -16,9 +16,9 @@ const boolFields = [
 	"ssl_forced",
 	"hsts_enabled",
 	"hsts_subdomains",
-	"npmplus_http3_support",
-	"npmplus_nginx_online",
-	"npmplus_mtls_verify_client_optional",
+	"npmpro_http3_support",
+	"npmpro_nginx_online",
+	"npmpro_mtls_verify_client_optional",
 ];
 
 class RedirectionHost extends Model {
@@ -32,7 +32,7 @@ class RedirectionHost extends Model {
 		// Default for meta
 		this.meta ??= {};
 		this.advanced_config ??= "";
-		this.npmplus_nginx_err ??= "";
+		this.npmpro_nginx_err ??= "";
 	}
 
 	$beforeUpdate() {

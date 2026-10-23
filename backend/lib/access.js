@@ -45,7 +45,7 @@ export default function (tokenString) {
 				.first();
 
 			if (user) {
-				if (tokenData.iat <= user.npmplus_token_valid_after) {
+				if (tokenData.iat <= user.npmpro_token_valid_after) {
 					throw new errs.PermissionError("Token has been revoked");
 				}
 
