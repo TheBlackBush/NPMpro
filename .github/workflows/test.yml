@@ -32,6 +32,8 @@ jobs:
         run: node validate-schema.js
       - name: unit tests
         run: node --test 'test/*.test.js' # a directory argument is not supported by node --test before Node 23
+      - name: data folder move
+        run: sh test/migrate-data-folder.test.sh
 
   frontend:
     runs-on: ubuntu-slim
