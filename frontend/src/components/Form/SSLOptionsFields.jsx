@@ -47,7 +47,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 	};
 
 	const getHttpOptions = () => (
-		<div className="divide-y">
+		<>
 			<Field name="sslForced">
 				{({ field }) => (
 					<SwitchField
@@ -92,7 +92,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 					/>
 				)}
 			</Field>
-		</div>
+		</>
 	);
 
 	return (
@@ -122,11 +122,9 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 						)}
 					</Field>
 				) : null}
-			</div>
-			{forHttp ? getHttpOptions() : null}
-			{newCertificate ? (
-				<div>
-					<div className="divide-y">
+				{forHttp ? getHttpOptions() : null}
+				{newCertificate ? (
+					<>
 						<Field name="npmproReuseKey">
 							{({ field }) => (
 								<SwitchField
@@ -148,13 +146,13 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 								/>
 							)}
 						</Field>
-					</div>
-					{forHttp ? null : (
-						<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
-					)}
-					{dnsChallenge ? <DNSProviderFields showBoundaryBox /> : null}
-				</div>
+					</>
+				) : null}
+			</div>
+			{newCertificate && !forHttp ? (
+				<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 			) : null}
+			{newCertificate && dnsChallenge ? <DNSProviderFields showBoundaryBox /> : null}
 		</div>
 	);
 }
