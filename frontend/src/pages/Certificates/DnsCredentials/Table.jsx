@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconDotsVertical, IconEdit, IconKey, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -172,6 +172,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconKey}
 					object="dns-credential"
 					objects="dns-credentials"
 					tableInstance={tableInstance}

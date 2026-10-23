@@ -5,6 +5,7 @@ import {
 	IconFlask,
 	IconKey,
 	IconRefresh,
+	IconShield,
 	IconTrash,
 } from "@tabler/icons-react";
 import {
@@ -337,6 +338,7 @@ export default function Table({
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconShield}
 					object="certificate"
 					objects="certificates"
 					tableInstance={tableInstance}

@@ -7,6 +7,7 @@ import {
 	IconShield,
 	IconShieldOff,
 	IconTrash,
+	IconUsers,
 } from "@tabler/icons-react";
 import {
 	createColumnHelper,
@@ -239,6 +240,7 @@ export default function Table({
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconUsers}
 					object="user"
 					objects="users"
 					tableInstance={tableInstance}

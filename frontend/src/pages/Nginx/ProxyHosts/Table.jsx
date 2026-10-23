@@ -1,4 +1,4 @@
-import { IconCopy, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconBolt, IconCopy, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -245,6 +245,7 @@ export default function Table({
 			renderGroupLabel={renderGroupLabel}
 			emptyState={
 				<EmptyData
+					icon={IconBolt}
 					object="proxy-host"
 					objects="proxy-hosts"
 					tableInstance={tableInstance}

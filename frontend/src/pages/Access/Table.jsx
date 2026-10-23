@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconEdit, IconTrash } from "@tabler/icons-react";
+import { IconDotsVertical, IconEdit, IconLock, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -151,6 +151,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
+					icon={IconLock}
 					object="access-list"
 					objects="access-lists"
 					tableInstance={tableInstance}

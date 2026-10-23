@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconDisc, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -259,6 +259,7 @@ export default function Table({
 			renderGroupLabel={renderGroupLabel}
 			emptyState={
 				<EmptyData
+					icon={IconDisc}
 					object="stream"
 					objects="streams"
 					tableInstance={tableInstance}
