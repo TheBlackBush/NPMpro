@@ -474,97 +474,72 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											disabled={item.forwardScheme !== "path"}
 										/>
 									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproXFrameOptions-${item.uiKey}`}
-										>
-											<span className="col">X-Frame-Options</span>
-											<span className="col-auto">
-												<select
-													id={`npmproXFrameOptions-${item.uiKey}`}
-													className="form-select"
-													value={item.npmproXFrameOptions}
-													onChange={(e) =>
-														handleChange(idx, "npmproXFrameOptions", e.target.value)
-													}
-												>
-													<option value="SAMEORIGIN">SAMEORIGIN</option>
-													<option value="DENY">DENY</option>
-													<option value="none">none</option>
-													<option value="upstream">upstream</option>
-												</select>
-											</span>
+								</div>
+								<div className="mt-3">
+									<div className="mb-3">
+										<label className="form-label" htmlFor={`npmproXFrameOptions-${item.uiKey}`}>
+											X-Frame-Options
 										</label>
+										<select
+											id={`npmproXFrameOptions-${item.uiKey}`}
+											className="form-select"
+											value={item.npmproXFrameOptions}
+											onChange={(e) => handleChange(idx, "npmproXFrameOptions", e.target.value)}
+										>
+											<option value="SAMEORIGIN">SAMEORIGIN</option>
+											<option value="DENY">DENY</option>
+											<option value="none">none</option>
+											<option value="upstream">upstream</option>
+										</select>
 									</div>
-									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproAuthRequest-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.auth-request" />
-											</span>
-											<span className="col-auto">
-												<select
-													id={`npmproAuthRequest-${item.uiKey}`}
-													className="form-select"
-													value={item.npmproAuthRequest}
-													onChange={(e) =>
-														handleChange(idx, "npmproAuthRequest", e.target.value)
-													}
-												>
-													<option value="none">none</option>
-													<option value="anubis">anubis</option>
-													<option value="tinyauth">tinyauth</option>
-													<option value="oauth2proxy">oauth2proxy</option>
-													<option value="voidauth">voidauth</option>
-													<option value="authelia">authelia (modern)</option>
-													<option value="authentik">authentik</option>
-													<option value="authentik-send-basic-auth">
-														authentik-send-basic-auth
-													</option>
-												</select>
-											</span>
+									<div className="mb-3">
+										<label className="form-label" htmlFor={`npmproAuthRequest-${item.uiKey}`}>
+											<T id="host.auth-request" />
 										</label>
+										<select
+											id={`npmproAuthRequest-${item.uiKey}`}
+											className="form-select"
+											value={item.npmproAuthRequest}
+											onChange={(e) => handleChange(idx, "npmproAuthRequest", e.target.value)}
+										>
+											<option value="none">none</option>
+											<option value="anubis">anubis</option>
+											<option value="tinyauth">tinyauth</option>
+											<option value="oauth2proxy">oauth2proxy</option>
+											<option value="voidauth">voidauth</option>
+											<option value="authelia">authelia (modern)</option>
+											<option value="authentik">authentik</option>
+											<option value="authentik-send-basic-auth">authentik-send-basic-auth</option>
+										</select>
 									</div>
 									{item?.npmproAuthRequest?.length > 0 && item.npmproAuthRequest !== "none" && (
-										<div>
+										<div className="mb-3">
 											<label
-												className="row cursor-pointer"
+												className="form-label"
 												htmlFor={`npmproAuthRequestUpstream-${item.uiKey}`}
 											>
-												<span className="col">
-													<T id="host.auth-request-upstream" />
-												</span>
-												<span className="col-auto">
-													<input
-														id={`npmproAuthRequestUpstream-${item.uiKey}`}
-														type="text"
-														className={`form-control ${item.npmproAuthRequestUpstream && !upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? "is-invalid" : ""}`}
-														placeholder={intl.formatMessage({
-															id: "host.auth-request-upstream.placeholder",
-														})}
-														maxLength={255}
-														pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
-														value={item.npmproAuthRequestUpstream}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproAuthRequestUpstream",
-																e.target.value,
-															)
-														}
-													/>
-
-													{item.npmproAuthRequestUpstream &&
-													!upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? (
-														<div className="invalid-feedback">
-															<T id="error.invalid-upstream-url" />
-														</div>
-													) : null}
-												</span>
+												<T id="host.auth-request-upstream" />
 											</label>
+											<input
+												id={`npmproAuthRequestUpstream-${item.uiKey}`}
+												type="text"
+												className={`form-control ${item.npmproAuthRequestUpstream && !upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? "is-invalid" : ""}`}
+												placeholder={intl.formatMessage({
+													id: "host.auth-request-upstream.placeholder",
+												})}
+												maxLength={255}
+												pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
+												value={item.npmproAuthRequestUpstream}
+												onChange={(e) =>
+													handleChange(idx, "npmproAuthRequestUpstream", e.target.value)
+												}
+											/>
+											{item.npmproAuthRequestUpstream &&
+											!upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? (
+												<div className="invalid-feedback">
+													<T id="error.invalid-upstream-url" />
+												</div>
+											) : null}
 										</div>
 									)}
 								</div>

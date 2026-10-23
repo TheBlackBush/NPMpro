@@ -168,7 +168,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 													forCertificate={values.certificateId === "new"}
 												/>
 												<div className="row">
-													<div className="col-md-4">
+													<div className="col-md-6">
 														<Field name="forwardScheme">
 															{({ field }) => (
 																<div className="mb-3">
@@ -196,7 +196,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 															)}
 														</Field>
 													</div>
-													<div className="col-md-8">
+													<div className="col-md-6">
 														<Field
 															name="forwardDomainName"
 															validate={validateString(1, 253)}

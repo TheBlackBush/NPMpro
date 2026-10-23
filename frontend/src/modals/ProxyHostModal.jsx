@@ -539,132 +539,102 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																)}
 															</Field>
 														</div>
-														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproXFrameOptions"
-															>
-																<span className="col">X-Frame-Options</span>
-																<span className="col-auto">
-																	<Field name="npmproXFrameOptions">
-																		{({ field }) => (
-																			<select
-																				id="npmproXFrameOptions"
-																				className="form-select"
-																				required
-																				{...field}
-																			>
-																				<option value="SAMEORIGIN">
-																					SAMEORIGIN
-																				</option>
-																				<option value="DENY">DENY</option>
-																				<option value="none">none</option>
-																				<option value="upstream">
-																					upstream
-																				</option>
-																			</select>
-																		)}
-																	</Field>
-																</span>
+													</div>
+													<div className="mt-3">
+														<div className="mb-3">
+															<label className="form-label" htmlFor="npmproXFrameOptions">
+																X-Frame-Options
 															</label>
+															<Field name="npmproXFrameOptions">
+																{({ field }) => (
+																	<select
+																		id="npmproXFrameOptions"
+																		className="form-select"
+																		required
+																		{...field}
+																	>
+																		<option value="SAMEORIGIN">SAMEORIGIN</option>
+																		<option value="DENY">DENY</option>
+																		<option value="none">none</option>
+																		<option value="upstream">upstream</option>
+																	</select>
+																)}
+															</Field>
 														</div>
-														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproAuthRequest"
-															>
-																<span className="col">
-																	<T id="host.auth-request" />
-																</span>
-																<span className="col-auto">
-																	<Field name="npmproAuthRequest">
-																		{({ field, form }) => (
-																			<select
-																				id="npmproAuthRequest"
-																				className="form-select"
-																				required
-																				{...field}
-																				onChange={(e) => {
-																					field.onChange(e);
-																					if (e.target.value === "none") {
-																						form.setFieldValue(
-																							"npmproAuthRequestUpstream",
-																							"",
-																						);
-																					}
-																				}}
-																			>
-																				<option value="none">none</option>
-																				<option value="anubis">anubis</option>
-																				<option value="tinyauth">
-																					tinyauth
-																				</option>
-																				<option value="oauth2proxy">
-																					oauth2proxy
-																				</option>
-																				<option value="voidauth">
-																					voidauth
-																				</option>
-																				<option value="authelia">
-																					authelia (modern)
-																				</option>
-																				<option value="authentik">
-																					authentik
-																				</option>
-																				<option value="authentik-send-basic-auth">
-																					authentik-send-basic-auth
-																				</option>
-																			</select>
-																		)}
-																	</Field>
-																</span>
+														<div className="mb-3">
+															<label className="form-label" htmlFor="npmproAuthRequest">
+																<T id="host.auth-request" />
 															</label>
+															<Field name="npmproAuthRequest">
+																{({ field, form }) => (
+																	<select
+																		id="npmproAuthRequest"
+																		className="form-select"
+																		required
+																		{...field}
+																		onChange={(e) => {
+																			field.onChange(e);
+																			if (e.target.value === "none") {
+																				form.setFieldValue(
+																					"npmproAuthRequestUpstream",
+																					"",
+																				);
+																			}
+																		}}
+																	>
+																		<option value="none">none</option>
+																		<option value="anubis">anubis</option>
+																		<option value="tinyauth">tinyauth</option>
+																		<option value="oauth2proxy">oauth2proxy</option>
+																		<option value="voidauth">voidauth</option>
+																		<option value="authelia">
+																			authelia (modern)
+																		</option>
+																		<option value="authentik">authentik</option>
+																		<option value="authentik-send-basic-auth">
+																			authentik-send-basic-auth
+																		</option>
+																	</select>
+																)}
+															</Field>
 														</div>
 														{values.npmproAuthRequest !== "none" && (
-															<div>
+															<div className="mb-3">
 																<label
-																	className="row cursor-pointer"
+																	className="form-label"
 																	htmlFor="npmproAuthRequestUpstream"
 																>
-																	<span className="col">
-																		<T id="host.auth-request-upstream" />
-																	</span>
-																	<span className="col-auto">
-																		<Field
-																			name="npmproAuthRequestUpstream"
-																			validate={validateUpstreamUrl()}
-																		>
-																			{({ field, form }) => (
-																				<>
-																					<input
-																						id="npmproAuthRequestUpstream"
-																						type="text"
-																						className={`form-control ${form.errors.npmproAuthRequestUpstream && form.touched.npmproAuthRequestUpstream ? "is-invalid" : ""}`}
-																						placeholder={intl.formatMessage(
-																							{
-																								id: "host.auth-request-upstream.placeholder",
-																							},
-																						)}
-																						maxLength={255}
-																						pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
-																						{...field}
-																					/>
-
-																					{form.errors
-																						.npmproAuthRequestUpstream ? (
-																						<div className="invalid-feedback">
-																							{form.touched
-																								.npmproAuthRequestUpstream
-																								? form.errors
-																										.npmproAuthRequestUpstream
-																								: null}
-																						</div>
-																					) : null}
-																				</>
-																			)}
-																		</Field>
-																	</span>
+																	<T id="host.auth-request-upstream" />
 																</label>
+																<Field
+																	name="npmproAuthRequestUpstream"
+																	validate={validateUpstreamUrl()}
+																>
+																	{({ field, form }) => (
+																		<>
+																			<input
+																				id="npmproAuthRequestUpstream"
+																				type="text"
+																				className={`form-control ${form.errors.npmproAuthRequestUpstream && form.touched.npmproAuthRequestUpstream ? "is-invalid" : ""}`}
+																				placeholder={intl.formatMessage({
+																					id: "host.auth-request-upstream.placeholder",
+																				})}
+																				maxLength={255}
+																				pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
+																				{...field}
+																			/>
+																			{form.errors.npmproAuthRequestUpstream ? (
+																				<div className="invalid-feedback">
+																					{form.touched
+																						.npmproAuthRequestUpstream
+																						? form.errors
+																								.npmproAuthRequestUpstream
+																						: null}
+																				</div>
+																			) : null}
+																		</>
+																	)}
+																</Field>
 															</div>
 														)}
 													</div>

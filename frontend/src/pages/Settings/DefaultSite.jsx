@@ -6,6 +6,8 @@ import { intl, T } from "src/locale";
 import { validateString } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
+const OPTIONS = ["congratulations", "404", "444", "redirect", "html"];
+
 export default function DefaultSite() {
 	const { data, isPending, error } = useSetting("default-site");
 	const { mutate: setSetting } = useSetSetting();
@@ -79,102 +81,34 @@ export default function DefaultSite() {
 									<div className="form-label">
 										<T id="settings.default-site.description" />
 									</div>
-									<div className="form-selectgroup form-selectgroup-boxes d-flex flex-column">
-										<label className="form-selectgroup-item flex-fill">
-											<input
-												type="radio"
-												name={field.name}
-												value="congratulations"
-												className="form-selectgroup-input"
-												checked={field.value === "congratulations"}
-												onChange={(e) => form.setFieldValue(field.name, e.target.value)}
-											/>
-
-											<div className="form-selectgroup-label d-flex align-items-center p-3">
-												<div className="me-3">
-													<span className="form-selectgroup-check" />
-												</div>
-												<div>
-													<T id="settings.default-site.congratulations" />
-												</div>
+									<div className="form-selectgroup-boxes row">
+										{OPTIONS.map((option) => (
+											<div className="col-12" key={option}>
+												<label className="form-selectgroup-item mb-2">
+													<input
+														type="radio"
+														name={field.name}
+														value={option}
+														className="form-selectgroup-input"
+														checked={field.value === option}
+														onChange={(e) => form.setFieldValue(field.name, e.target.value)}
+													/>
+													<span className="form-selectgroup-label d-flex align-items-center p-3">
+														<span className="me-3">
+															<span className="form-selectgroup-check" />
+														</span>
+														<span className="form-selectgroup-label-content">
+															<span className="form-selectgroup-title strong mb-1">
+																<T id={`settings.default-site.${option}`} />
+															</span>
+															<span className="d-block text-secondary">
+																<T id={`settings.default-site.${option}.description`} />
+															</span>
+														</span>
+													</span>
+												</label>
 											</div>
-										</label>
-										<label className="form-selectgroup-item flex-fill">
-											<input
-												type="radio"
-												name={field.name}
-												value="404"
-												className="form-selectgroup-input"
-												checked={field.value === "404"}
-												onChange={(e) => form.setFieldValue(field.name, e.target.value)}
-											/>
-
-											<div className="form-selectgroup-label d-flex align-items-center p-3">
-												<div className="me-3">
-													<span className="form-selectgroup-check" />
-												</div>
-												<div>
-													<T id="settings.default-site.404" />
-												</div>
-											</div>
-										</label>
-										<label className="form-selectgroup-item flex-fill">
-											<input
-												type="radio"
-												name={field.name}
-												value="444"
-												className="form-selectgroup-input"
-												checked={field.value === "444"}
-												onChange={(e) => form.setFieldValue(field.name, e.target.value)}
-											/>
-
-											<div className="form-selectgroup-label d-flex align-items-center p-3">
-												<div className="me-3">
-													<span className="form-selectgroup-check" />
-												</div>
-												<div>
-													<T id="settings.default-site.444" />
-												</div>
-											</div>
-										</label>
-										<label className="form-selectgroup-item flex-fill">
-											<input
-												type="radio"
-												name={field.name}
-												value="redirect"
-												className="form-selectgroup-input"
-												checked={field.value === "redirect"}
-												onChange={(e) => form.setFieldValue(field.name, e.target.value)}
-											/>
-
-											<div className="form-selectgroup-label d-flex align-items-center p-3">
-												<div className="me-3">
-													<span className="form-selectgroup-check" />
-												</div>
-												<div>
-													<T id="settings.default-site.redirect" />
-												</div>
-											</div>
-										</label>
-										<label className="form-selectgroup-item flex-fill">
-											<input
-												type="radio"
-												name={field.name}
-												value="html"
-												className="form-selectgroup-input"
-												checked={field.value === "html"}
-												onChange={(e) => form.setFieldValue(field.name, e.target.value)}
-											/>
-
-											<div className="form-selectgroup-label d-flex align-items-center p-3">
-												<div className="me-3">
-													<span className="form-selectgroup-check" />
-												</div>
-												<div>
-													<T id="settings.default-site.html" />
-												</div>
-											</div>
-										</label>
+										))}
 									</div>
 								</div>
 							)}
