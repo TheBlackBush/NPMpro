@@ -177,7 +177,7 @@ export default function Table({
 									onEdit?.(info.row.original.id);
 								}}
 							>
-								<IconEdit size={16} />
+								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
 								<T id="action.edit" />
 							</button>
 							<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
@@ -188,7 +188,7 @@ export default function Table({
 										onClone?.(info.row.original.id);
 									}}
 								>
-									<IconCopy size={16} />
+									<IconCopy className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="action.clone" />
 								</button>
 								<button
@@ -198,18 +198,18 @@ export default function Table({
 										onDisableToggle?.(info.row.original.id, !info.row.original.enabled);
 									}}
 								>
-									<IconPower size={16} />
+									<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id={info.row.original.enabled ? "action.disable" : "action.enable"} />
 								</button>
 								<div className="dropdown-divider" />
 								<button
 									type="button"
-									className="dropdown-item"
+									className="dropdown-item text-danger"
 									onClick={() => {
 										onDelete?.(info.row.original.id);
 									}}
 								>
-									<IconTrash size={16} />
+									<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
 									<T id="action.delete" />
 								</button>
 							</HasPermission>

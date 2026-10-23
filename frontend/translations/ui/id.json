@@ -53,6 +53,7 @@
 	"certificates.http.reachability-wrong-data": "Ada server yang ditemukan pada domain ini tetapi mengembalikan data yang tidak terduga. Apakah itu server NPMpro? Pastikan domain Anda mengarah ke IP tempat instance NPMpro berjalan.",
 	"certificates.http.test-results": "Hasil Uji",
 	"certificates.http.warning": "Domain ini harus sudah dikonfigurasi agar mengarah ke instalasi ini.",
+	"certificates.mtls": "Sertifikat mTLS",
 	"certificates.request.subtitle": "dengan Certbot",
 	"certificates.request.title": "Minta Sertifikat Baru",
 	"column.access": "Akses",

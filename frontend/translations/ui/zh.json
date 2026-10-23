@@ -72,6 +72,7 @@
 	"certificates.key-type-description": "RSA 兼容性更好，ECDSA 更快更安全但旧系统可能不支持",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS 证书",
 	"certificates.request.subtitle": "使用 Certbot",
 	"certificates.request.title": "申请新证书",
 	"column.access": "访问",

@@ -52,6 +52,7 @@
 	"certificates.key-type-description": "RSAは広く互換性があり、ECDSAはより高速で安全ですが、古いシステムではサポートされていない場合があります",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS 証明書",
 	"certificates.request.subtitle": "Certbotを使用する",
 	"certificates.request.title": "新しい証明書を作成",
 	"column.access": "アクセス",

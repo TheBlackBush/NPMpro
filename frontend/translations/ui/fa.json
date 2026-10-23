@@ -58,6 +58,7 @@
 	"certificates.key-type-description": "RSA سازگاری گسترده‌تری دارد؛ ECDSA سریع‌تر و امن‌تر است، اما ممکن است در سیستم‌های قدیمی پشتیبانی نشود.",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "گواهی mTLS",
 	"certificates.request.subtitle": "از طریق Certbot",
 	"certificates.request.title": "درخواست گواهی جدید",
 	"column.access": "دسترسی",

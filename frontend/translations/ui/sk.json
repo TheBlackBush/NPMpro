@@ -57,6 +57,7 @@
 	"certificates.key-type-description": "RSA je široko kompatibilný, ECDSA je rýchlejší a bezpečnejší, ale nemusí byť podporovaný staršími systémami",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "Certifikát mTLS",
 	"certificates.request.subtitle": "pomocou Certbot",
 	"certificates.request.title": "Vyžiadať nový certifikát",
 	"column.access": "Prístup",

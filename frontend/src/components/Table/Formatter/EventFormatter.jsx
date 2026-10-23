@@ -85,7 +85,7 @@ const getIcon = (row) => {
 export function EventFormatter({ row }) {
 	return (
 		<div className="flex-fill">
-			<div className="font-weight-medium">
+			<div className="fw-medium">
 				{getIcon(row)}
 				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />
 				&nbsp; &mdash; <span className="badge">{getEventValue(row)}</span>

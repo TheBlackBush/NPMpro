@@ -61,6 +61,7 @@
 	"certificates.key-type-description": "RSA est largement répandu, ECDSA est plus rapide et plus sécurisé, mais peut ne pas être supporté par les systèmes plus anciens",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "Certificat mTLS",
 	"certificates.request.subtitle": "avec Certbot",
 	"certificates.request.title": "Demander un nouveau certificat",
 	"column.access": "Accès",

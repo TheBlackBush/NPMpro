@@ -10,7 +10,7 @@ import { NoticeAlert } from "../NoticeAlert";
 
 const OptionContent = (label, subLabel, icon) => (
 	<div className="flex-fill">
-		<div className="font-weight-medium">
+		<div className="fw-medium">
 			{icon}
 			<strong className="ms-1">{label}</strong>
 		</div>

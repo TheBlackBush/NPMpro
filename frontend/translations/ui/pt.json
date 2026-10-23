@@ -53,6 +53,7 @@
 	"certificates.http.reachability-wrong-data": "Foi encontrado um servidor neste domínio, mas devolveu dados inesperados. Será o servidor NPMpro? Confirme que o domínio aponta para o IP correto.",
 	"certificates.http.test-results": "Resultados do Teste",
 	"certificates.http.warning": "Estes domínios devem já estar configurados para apontar para esta instalação.",
+	"certificates.mtls": "Certificado mTLS",
 	"certificates.request.subtitle": "com o Certbot",
 	"certificates.request.title": "Pedir Novo Certificado",
 	"column.access": "Acesso",

@@ -11,7 +11,7 @@ import { selectClassNames } from "src/modules/Select";
 const Option = (props) => (
 	<components.Option {...props}>
 		<div className="flex-fill">
-			<div className="font-weight-medium">
+			<div className="fw-medium">
 				{props.data.icon} <strong>{props.data.label}</strong>
 			</div>
 			<div className="text-secondary mt-1 ps-3">{props.data.subLabel}</div>

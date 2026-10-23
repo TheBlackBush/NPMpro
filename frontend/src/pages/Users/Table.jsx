@@ -135,7 +135,7 @@ export default function Table({
 									onEditUser?.(info.row.original.id);
 								}}
 							>
-								<IconEdit size={16} />
+								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
 								<T id="action.edit" />
 							</button>
 							{currentUserId !== info.row.original.id ? (
@@ -147,7 +147,7 @@ export default function Table({
 											onEditPermissions?.(info.row.original.id);
 										}}
 									>
-										<IconShield size={16} />
+										<IconShield className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="action.permissions" />
 									</button>
 									<button
@@ -157,7 +157,7 @@ export default function Table({
 											onSetPassword?.(info.row.original.id);
 										}}
 									>
-										<IconLock size={16} />
+										<IconLock className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="user.set-password" />
 									</button>
 									<button
@@ -167,7 +167,7 @@ export default function Table({
 											onResetMfa?.(info.row.original.id);
 										}}
 									>
-										<IconShieldOff size={16} />
+										<IconShieldOff className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="user.reset-mfa" />
 									</button>
 									<button
@@ -177,7 +177,7 @@ export default function Table({
 											onRevokeSessions?.(info.row.original.id);
 										}}
 									>
-										<IconDevicesX size={16} />
+										<IconDevicesX className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="user.revoke-sessions" />
 									</button>
 									<button
@@ -187,18 +187,18 @@ export default function Table({
 											onDisableToggle?.(info.row.original.id, info.row.original.isDisabled);
 										}}
 									>
-										<IconPower size={16} />
+										<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id={info.row.original.isDisabled ? "action.enable" : "action.disable"} />
 									</button>
 									<div className="dropdown-divider" />
 									<button
 										type="button"
-										className="dropdown-item"
+										className="dropdown-item text-danger"
 										onClick={() => {
 											onDeleteUser?.(info.row.original.id);
 										}}
 									>
-										<IconTrash size={16} />
+										<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
 										<T id="action.delete" />
 									</button>
 								</>

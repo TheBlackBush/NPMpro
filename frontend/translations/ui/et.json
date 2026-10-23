@@ -61,6 +61,7 @@
 	"certificates.key-type-description": "RSA klapib peaaegu kõikjale, ECDSA on kiirem ja turvalisem, aga vanemad süsteemid ei pruugi seda tunda",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS-sertifikaat",
 	"certificates.request.subtitle": "Certbotiga",
 	"certificates.request.title": "Taotle uut sertifikaati",
 	"column.access": "Juurdepääs",

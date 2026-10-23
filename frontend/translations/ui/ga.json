@@ -53,6 +53,7 @@
 	"certificates.http.reachability-wrong-data": "Tá freastalaí aimsithe ag an bhfearann seo ach thug sé sonraí gan choinne ar ais. An é an freastalaí NPMpro atá ann? Déan cinnte go bhfuil do fhearann ag pointeáil chuig an seoladh IP ina bhfuil d'eispéireas NPMpro ag rith.",
 	"certificates.http.test-results": "Torthaí Tástála",
 	"certificates.http.warning": "Ní mór na fearainn seo a bheith cumraithe cheana féin chun pointeáil chuig an suiteáil seo.",
+	"certificates.mtls": "Teastas mTLS",
 	"certificates.request.subtitle": "le Certbot",
 	"certificates.request.title": "Iarr Teastas nua",
 	"column.access": "Rochtain",

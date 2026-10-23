@@ -1,4 +1,4 @@
-import { IconHelp } from "@tabler/icons-react";
+import { IconCloud, IconHelp, IconShieldLock, IconUpload, IconWorld } from "@tabler/icons-react";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
 import {
 	Button,
@@ -97,6 +97,7 @@ export default function TableWrapper() {
 												showHTTPCertificateModal();
 											}}
 										>
+											<IconWorld className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="lets-encrypt-via-http" />
 										</button>
 										<button
@@ -106,6 +107,7 @@ export default function TableWrapper() {
 												showDNSCertificateModal();
 											}}
 										>
+											<IconCloud className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="lets-encrypt-via-dns" />
 										</button>
 										<div className="dropdown-divider" />
@@ -116,6 +118,7 @@ export default function TableWrapper() {
 												showCustomCertificateModal();
 											}}
 										>
+											<IconUpload className="icon dropdown-item-icon" aria-hidden="true" />
 											<T id="certificates.custom" />
 										</button>
 										<div className="dropdown-divider" />
@@ -126,7 +129,8 @@ export default function TableWrapper() {
 												showCustomCertificateModal(undefined, "mtls");
 											}}
 										>
-											mTLS
+											<IconShieldLock className="icon dropdown-item-icon" aria-hidden="true" />
+											<T id="certificates.mtls" />
 										</button>
 									</div>
 								</div>

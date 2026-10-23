@@ -58,6 +58,7 @@
 	"certificates.key-type-description": "RSA yaygın olarak uyumludur; ECDSA daha hızlı ve daha güvenlidir ancak eski sistemler tarafından desteklenmeyebilir",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS Sertifikası",
 	"certificates.request.subtitle": "Certbot ile",
 	"certificates.request.title": "Yeni Sertifika İste",
 	"column.access": "Erişim",

@@ -57,6 +57,7 @@
 	"certificates.key-type-description": "Az RSA széles körben kompatibilis, az ECDSA gyorsabb és biztonságosabb, de nem biztos, hogy régebbi rendszerek támogatják",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS tanúsítvány",
 	"certificates.request.subtitle": "Certbot-tel",
 	"certificates.request.title": "Új tanúsítvány kérelmezése",
 	"column.access": "Hozzáférés",

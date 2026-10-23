@@ -57,6 +57,7 @@
 	"certificates.key-type-description": "RSA широко совместим, ECDSA быстрее и безопаснее, но может не поддерживаться старыми системами",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "Сертификат mTLS",
 	"certificates.request.subtitle": "через Certbot",
 	"certificates.request.title": "Получить новый сертификат",
 	"column.access": "Доступ",

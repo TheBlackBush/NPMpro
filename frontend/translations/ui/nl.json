@@ -72,6 +72,7 @@
 	"certificates.key-type-description": "RSA is algemeen toepasbaar, ECDSA is sneller en veiliger maar wordt mogelijk niet ondersteund door oudere systemen",
 	"certificates.key-type-ecdsa": "ECDSA-256",
 	"certificates.key-type-rsa": "RSA-2048",
+	"certificates.mtls": "mTLS-certificaat",
 	"certificates.request.subtitle": "met Certbot",
 	"certificates.request.title": "Vraag een nieuw certificaat aan",
 	"column.access": "Toegang",

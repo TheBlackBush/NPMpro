@@ -48,13 +48,13 @@ export default function TableWrapper() {
 						<div className="col-md-auto col-sm-12">
 							<div className="ms-auto d-flex flex-wrap btn-list">
 								{data?.length ? (
-									<div className="input-group input-group-flat w-auto">
-										<span className="input-group-text input-group-text-sm">
+									<div className="input-group input-group-flat input-group-sm w-auto">
+										<span className="input-group-text">
 											<IconSearch size={16} />
 										</span>
 										<input
 											type="text"
-											className="form-control form-control-sm"
+											className="form-control"
 											placeholder={intl.formatMessage({ id: "search" })}
 											aria-label={intl.formatMessage({ id: "search" })}
 											autoComplete="off"

@@ -57,6 +57,7 @@
 	"certificates.key-type-description": "RSA er bredt kompatibel, ECDSA er raskere og mer sikker, men støttes kanskje ikke av eldre systemer",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.mtls": "mTLS-sertifikat",
 	"certificates.request.subtitle": "med Certbot",
 	"certificates.request.title": "Be om et nytt sertifikat",
 	"column.access": "Tilgang",

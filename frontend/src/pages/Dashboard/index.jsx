@@ -77,7 +77,7 @@ const Dashboard = () => {
 												</span>
 											</div>
 											<div className="col">
-												<div className="font-weight-medium">
+												<div className="fw-medium">
 													<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />
 												</div>
 											</div>
@@ -103,7 +103,7 @@ const Dashboard = () => {
 													<IconArrowsCross />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												<T
 													id="redirection-hosts.count"
 													data={{ count: hostReport?.redirection }}
@@ -131,7 +131,7 @@ const Dashboard = () => {
 													<IconBoltOff />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												<T id="dead-hosts.count" data={{ count: hostReport?.dead }} />
 											</div>
 										</div>
@@ -156,7 +156,7 @@ const Dashboard = () => {
 													<IconDisc />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												<T id="streams.count" data={{ count: hostReport?.stream }} />
 											</div>
 										</div>
@@ -181,7 +181,7 @@ const Dashboard = () => {
 													<IconShield />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												<T id="certificates.count" data={{ count: hostReport?.certificate }} />
 											</div>
 										</div>
@@ -206,7 +206,7 @@ const Dashboard = () => {
 													<IconLock />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												<T id="access-lists.count" data={{ count: hostReport?.accessList }} />
 											</div>
 										</div>
@@ -232,7 +232,7 @@ const Dashboard = () => {
 													<IconAlertTriangle />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												{errorTotal === null ? (
 													"-"
 												) : (
@@ -260,7 +260,7 @@ const Dashboard = () => {
 													<IconShield />
 												</span>
 											</div>
-											<div className="col">
+											<div className="col fw-medium">
 												{expiring === undefined || expired === undefined ? (
 													"-"
 												) : (
