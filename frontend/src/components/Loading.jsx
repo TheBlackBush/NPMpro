@@ -13,8 +13,9 @@ export function Loading({ label, noLogo }) {
 	}
 	return (
 		<div className="empty">
-			<div className="mb-3">
-				<img src="/images/logo-no-text.svg" height="100" alt="" />
+			<div className="empty-img">
+				{/* Tabler sets img { height: auto }, so the width keeps the logo at 100px tall */}
+				<img src="/images/logo-no-text.svg" width={87} height={100} alt="" />
 			</div>
 			<div className="text-secondary mb-3">{label || <T id="loading" />}</div>
 			<div className="progress progress-sm" role="progressbar" aria-label={intl.formatMessage({ id: "loading" })}>
