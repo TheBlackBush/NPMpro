@@ -15,7 +15,7 @@ If you don't need the web GUI of NPMpro, you may also have a look at caddy: http
 **Note: by running NPMpro you agree to the ToS of Let's Encrypt/your custom CA.** <br>
 **Note: remember to expose udp/quic for the https port (443/udp).** <br>
 **Note: remember to add your domain to the [hsts preload list](https://hstspreload.org) if you enabled hsts for your domain.** <br>
-**Note: please report issues first to this fork before reporting them to the upstream repository.** <br>
+**Note: please report issues at https://github.com/TheBlackBush/NPMpro/issues.** <br>
 
 ## List of some changes
 
@@ -47,12 +47,12 @@ If you don't need the web GUI of NPMpro, you may also have a look at caddy: http
 
 ## Compatibility (to Upstream)
 - Supported architectures: x86_64-v2/amd64v2 (check with `/lib/ld-linux-x86-64.so.2 --help`, plain x86-64 is not supported only v2 and up) and aarch64/arm64 (other archs (including 64-bit ones) and any 32-bit arch (like armhf/armv7 (dropped), armel/armv6) are not supported, because of the duration to compile).
-- I test NPMpro with docker, but podman should also work (I disrecommend you to run the NPMpro container inside an LXC container, it will work, but please don't do it, it will work better without, install docker/podman on the host or in a KVM and run NPMpro with this)
+- NPMpro is built for docker (CI builds the image and checks that it starts healthy), but podman should also work (running the NPMpro container inside an LXC container is discouraged, it will work, but it works better without, install docker/podman on the host or in a KVM and run NPMpro with this)
 - MariaDB(/MySQL)/PostgreSQL may work as Databases for NPMpro (configuration like in upstream), but are unsupported, have no advantage over SQLite (at least with NPMpro) and are not recommended. Please note that you can't migrate from any of these to SQLite without making a fresh install and/or copying everything yourself.
 - NPMpro uses https instead of http for the admin interface
 - NPMpro won't trust cloudflare until you set the env TRUST_CLOUDFLARE to true, but please read [this](#notes-on-cloudflare) first before setting the env to true.
 - route53 is not supported as dns-challenge provider and Amazon CloudFront IPs can't be automatically trusted in NPMpro, even if you set TRUST_CLOUDFLARE env to true.
-- The following certbot dns plugins have been replaced, which means that certs using one of these proivder will not renew and need to be recreated (not renewed): `certbot-dns-he`, `certbot-dns-dnspod`, `certbot-dns-online`, `certbot-dns-powerdns` and `certbot-dns-do` (`certbot-dns-do` was replaced in upstream with v2.12.4 and then merged into NPMpro)
+- The following certbot dns plugins have been replaced, which means that certs using one of these proivder will not renew and need to be recreated (not renewed): `certbot-dns-he`, `certbot-dns-dnspod`, `certbot-dns-online`, `certbot-dns-powerdns` and `certbot-dns-do` (`certbot-dns-do` was replaced in upstream with v2.12.4, this change is included in NPMpro)
 - There are many changed and improvements to the nginx config, so please don't follow guides in the internet about custom/advanced config, they are either redundant or should not be used at all with NPMpro
 - Many forms have changed behavior, see [Comments on some buttons](#comments-on-some-buttons)
 
@@ -91,7 +91,7 @@ To go back to NPMplus: stop the container, move `/data/npmpro` away, rename `/da
 7. deploy the NPMpro compose.yaml
 8. You should now remove the `/etc/letsencrypt` mount, since it was moved to `/data` while migration, then redeploy the compose file
 9. Since many forms have changed, please check if they are still correct for every host you have.
-10. If you proxy NPM(plus) through NPM(plus) make sure to change the scheme from http to https
+10. If you proxy NPMpro (or NPM) through another NPMpro (or NPM) instance make sure to change the scheme from http to https
 11. Maybe setup crowdsec (see below)
 12. Please report all (migration) issues you may have
 
@@ -171,10 +171,10 @@ location ~* [^/]\.php(?:$|/) {
 - Disable Crowdsec Appsec: this will disable crowdsec appsec only for one host/one location, this will only do something if appsec is configured
 - Disable Response Buffering: Most time you want keep buffering enabled, you may want to disable this if you for example want to stream videos and you have a fast and stable connection to the upstream server, this effects the connection from the upstream server to NPMpro
 - Disable Request Buffering: Most time you want keep buffering enabled, request buffering will always be enabled if crowdsec appsec is enabled, you may want to disable this if you for example want to upload huge files and have a fast and stable connection to the upstream server, this effects the connection from the NPMpro to the upstream server
-- Enable compression by upstream: this will allow the backend to compress files, I recommend you to keep this disabled unless your backend provides precompressed assets, there may be cases where this is needed since otherwise the upstream missbehaves for some reason (like collabora in nextcloud all-in-one)
+- Enable compression by upstream: this will allow the backend to compress files, it is recommended to keep this disabled unless your backend provides precompressed assets, there may be cases where this is needed since otherwise the upstream missbehaves for some reason (like collabora in nextcloud all-in-one)
 - Enable fancyindex: this will enabled fancyindex, which shows a index of all files in the folder if there is no index file, only enable this if you know what you are doing and you need the index
 - Websockets: this button was removed, websockets are now always enabled
-- Reuse Key: this will make the new cert always keep its key unless you force renew it, I recommend you to keep this disabled (not to keep the key), a reason to keep the key would be TLSA/pubkey pinning
+- Reuse Key: this will make the new cert always keep its key unless you force renew it, it is recommended to keep this disabled (not to keep the key), a reason to keep the key would be TLSA/pubkey pinning
 - TLS to upstream (for Streams): This can be used if your stream target already uses tls but you want to override it with a NPMpro cert, do not enable if you don't set a new cert, since this will downgrade the connecting to be unencrypted
 - X-Frame-Options: will control the X-Frame-Options header, none will remove the header, SAMEORIGIN/DENY will set it to these values and upstream will keep what upstream sends
 
@@ -234,8 +234,8 @@ upstream cu_mybackend {
 - Because ECH requires advertising your public key via an HTTPS DNS record, your `cron.sh` must push the newly generated config to your DNS provider. 
 - There is an example cron.sh script for Cloudflare in the repository: [`ech-cron-cloudflare-example.sh`](ech-cron-cloudflare-example.sh). You can adapt this script, add your API tokens, define your zones/records, and place its contents into `/opt/npmpro/tls/ech/cron.sh`.
 - By default, the container will run your `cron.sh` script and reload nginx on container start and then every hour after container start. You can change this interval by setting the `ECH_ROTATION_INTERVAL` environment variable in your `compose.yaml`.
-- I recommend you to use your servers hostname/PTR record as public name, make sure a (dead) host with a valid cert for your public name exists. The "identifier" is only used as part of the filename.
-- I recommend you to only use one ECH key shared for all your hosts. If you configure multiple ECH keys then only the one with the alphabetically first "identifier" will be used in the retry_configs response.
+- It is recommended to use your servers hostname/PTR record as public name, make sure a (dead) host with a valid cert for your public name exists. The "identifier" is only used as part of the filename.
+- It is recommended to only use one ECH key shared for all your hosts. If you configure multiple ECH keys then only the one with the alphabetically first "identifier" will be used in the retry_configs response.
 - Do not set HTTPS records for FQDNs which use a CNAME record, but set them for the CNAME target, as only the HTTPS record of the CNAME target will be used by chromium.
 - Deleting/clearing the cron.sh will disable ECH, but you still need to remove ECH from the HTTPS records yourself
 
@@ -330,12 +330,12 @@ if ($geoip2_country_rule = no) {
 If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/prerun/*.sh` (please add `#!/usr/bin/env sh` / `#!/usr/bin/env bash` to the top of the script) you need to create this folder yourself, also set the `ENABLE_PRERUN` env to `true`
 
 ## Notes on Cloudflare
-- I strongly advise against using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`)
+- Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
 - Why?
   - cloudflare acts like a "man in the middle" (if you want you can also call it a "wanted man-in-the-middle attack"), this means all traffic going from your users to you/from you to your users will be decrypted by cloudflare before being encrypted again and being forwarded to you/your users, if you want this is your decision (security, privacy, etc.)
   - many optimizations done by NPMpro will because of this only be used between cloudflare and NPMpro, so your users won't notice them
   - cloudflare overrides many things done/configured by NPMpro (like headers (including HSTS), HTTP/3 (QUIC), TLS settings and more), so you might need to configure them again in Cloudflare, but this is not always possible
-  - cloudflare has a limit of 100MB per connection, so uploading/downloading big files my cause problems, if no chunking is used
+  - cloudflare has a limit of 100MB per connection, so uploading/downloading big files may cause problems, if no chunking is used
   - because all data does not take direct way between your users and you, the connection time will increase
   - cloudflare only forwards/protects http(s) traffic on port 80/443 to you, services running on other ports/different protocols are not forwarded/protected (STUN/TURN/SSH)
   - cloudflare can't protect you if the attacker knows your real ip, as cloudflare only rewrites your dns entries to itself and then acts as a reverse proxy, direct ip connectings to you are not protected (use a firewall like ufw, make sure to allow 80/tcp and 443/tcp+udp for NPMpro, if possible don't open SSH and NPMpro GUI to the internet, but secure them behind a VPN like Wireguard)
@@ -364,8 +364,8 @@ If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/p
 9. If use use anubis, see here: https://anubis.techaro.lol/docs/admin/configuration/impressum
 10. If you do any extra custom/advanced configuration/modification, which is in someway related to the users data, then yes, keep in mind to also mention this.
 11. Anything else you do with the users data, should also be mentioned. (Like what your backend does or any other proxies in front of NPMpro (like cloudflare, still not recommended), how data is stored, duration, ads, analytic tools, how data is handled if they contact you, by who/which provider, etc.)
-12. I don't think this needs to be mentioned, but you can include it if you want to be thorough (note: this does not apply if you're using Let's Encrypt, as they no longer support OCSP): Some clients (like Firefox) send OCSP requests to the certificate authority (CA) by default if the CA includes OCSP URLs in the certificate. This behavior can be disabled by users in Firefox. In my opinion, it doesn't need to be mentioned, as no data is sent to you, the client communicates directly with the CA. The check is initiated by the client itself; it's neither requested nor required by you. Your certificate simply indicates that the client can perform this check if it chooses to.
-13. Also optional and, in my opinion, not required: Some information about the data stored by the nameservers running your domain. I don't think this should be required, since in most cases there's a provider between the users and your nameserver acting as a proxy. This means the DNS requests of your users are hidden behind their provider. It’s the provider who should explain to their users how they handle data in their role as a "DNS proxy."
+12. This probably does not need to be mentioned, but you can include it if you want to be thorough (note: this does not apply if you're using Let's Encrypt, as they no longer support OCSP): Some clients (like Firefox) send OCSP requests to the certificate authority (CA) by default if the CA includes OCSP URLs in the certificate. This behavior can be disabled by users in Firefox. It likely does not need to be mentioned, as no data is sent to you, the client communicates directly with the CA. The check is initiated by the client itself; it's neither requested nor required by you. Your certificate simply indicates that the client can perform this check if it chooses to.
+13. Also optional and likely not required: Some information about the data stored by the nameservers running your domain. This should not be required, since in most cases there's a provider between the users and your nameserver acting as a proxy. This means the DNS requests of your users are hidden behind their provider. It’s the provider who should explain to their users how they handle data in their role as a "DNS proxy."
 
 ## What connections can be expected from the NPMpro container?
 - to your clients
