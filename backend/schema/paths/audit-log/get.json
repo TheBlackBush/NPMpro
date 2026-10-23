@@ -20,6 +20,78 @@
 					"user"
 				]
 			}
+		},
+		{
+			"in": "query",
+			"name": "query",
+			"description": "Search text matched against the entry meta",
+			"schema": {
+				"type": "string"
+			}
+		},
+		{
+			"in": "query",
+			"name": "limit",
+			"description": "Page size",
+			"schema": {
+				"type": "integer",
+				"minimum": 1,
+				"maximum": 200,
+				"default": 50
+			}
+		},
+		{
+			"in": "query",
+			"name": "offset",
+			"description": "Number of entries to skip",
+			"schema": {
+				"type": "integer",
+				"minimum": 0,
+				"default": 0
+			}
+		},
+		{
+			"in": "query",
+			"name": "object_type",
+			"description": "Filter by object type",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"proxy-host",
+					"redirection-host",
+					"dead-host",
+					"stream",
+					"access-list",
+					"certificate",
+					"dns-credential",
+					"user",
+					"setting"
+				]
+			}
+		},
+		{
+			"in": "query",
+			"name": "action",
+			"description": "Filter by action",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"created",
+					"updated",
+					"deleted",
+					"enabled",
+					"disabled"
+				]
+			}
+		},
+		{
+			"in": "query",
+			"name": "user_id",
+			"description": "Filter by user ID",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			}
 		}
 	],
 	"responses": {
@@ -60,6 +132,14 @@
 					},
 					"schema": {
 						"$ref": "../../components/audit-log-list.json"
+					}
+				}
+			},
+			"headers": {
+				"X-Total-Count": {
+					"description": "Total number of entries matching the filter",
+					"schema": {
+						"type": "integer"
 					}
 				}
 			}
