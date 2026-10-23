@@ -338,6 +338,19 @@
 				"$ref": "./paths/settings/get.json"
 			}
 		},
+		"/settings/oidc": {
+			"get": {
+				"$ref": "./paths/settings/oidc/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/oidc/put.json"
+			}
+		},
+		"/settings/oidc/test": {
+			"post": {
+				"$ref": "./paths/settings/oidc/test/post.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

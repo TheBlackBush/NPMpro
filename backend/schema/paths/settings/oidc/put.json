@@ -1,0 +1,218 @@
+{
+	"operationId": "updateOidcSettings",
+	"summary": "Update the OIDC settings",
+	"description": "Fields set by environment variables are ignored. An empty or omitted client_secret keeps the saved one. disable_password can only be set to true from a session that signed in with OIDC.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "OIDC settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"enabled": {
+							"type": "boolean",
+							"description": "OIDC login enabled"
+						},
+						"issuer_url": {
+							"type": "string",
+							"maxLength": 2048,
+							"pattern": "^$|^https://[^\\s/$.?#].[^\\s]*$",
+							"description": "Issuer URL (https), empty to clear",
+							"example": "https://id.example.com/application/o/npmpro/"
+						},
+						"client_id": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Client ID",
+							"example": "npmpro"
+						},
+						"client_secret": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "Client secret, empty keeps the saved one",
+							"example": "s3cr3t"
+						},
+						"redirect_domain": {
+							"type": "string",
+							"maxLength": 260,
+							"pattern": "^$|^[^/\\s:]+(:[0-9]{1,5})?$",
+							"description": "Domain (and port) this instance is reached on, without scheme or path",
+							"example": "npm.example.com"
+						},
+						"scopes": {
+							"type": "string",
+							"maxLength": 255,
+							"pattern": "^(?=[\\x21-\\x7e ]*$)(.* )?openid( .*)?$",
+							"description": "Space separated scopes, must include openid",
+							"example": "openid email profile"
+						},
+						"require_verified_email": {
+							"type": "boolean",
+							"description": "Require a verified email claim"
+						},
+						"skip_mfa": {
+							"type": "boolean",
+							"description": "Skip the MFA challenge after OIDC login"
+						},
+						"disable_password": {
+							"type": "boolean",
+							"description": "Disable password login"
+						},
+						"auto_create": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"enabled": {
+									"type": "boolean",
+									"description": "Create unknown users on their first OIDC login"
+								},
+								"allowed_domains": {
+									"type": "array",
+									"maxItems": 100,
+									"items": {
+										"type": "string",
+										"pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$",
+										"example": "example.com"
+									},
+									"description": "Email domains allowed to be created, empty allows any"
+								},
+								"permissions": {
+									"$ref": "../../../components/permission-object.json"
+								}
+							}
+						},
+						"button": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"label": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 40,
+									"description": "Login button text",
+									"example": "OIDC"
+								},
+								"color": {
+									"type": "string",
+									"pattern": "^#[0-9a-fA-F]{6}$",
+									"description": "Login button colour",
+									"example": "#206bc4"
+								},
+								"icon": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"type",
+										"name"
+									],
+									"properties": {
+										"type": {
+											"type": "string",
+											"enum": [
+												"builtin"
+											]
+										},
+										"name": {
+											"type": "string",
+											"enum": [
+												"key",
+												"lock",
+												"login",
+												"shield-lock",
+												"user-circle",
+												"brand-google",
+												"brand-github",
+												"brand-gitlab",
+												"brand-windows",
+												"cloud"
+											]
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"example": {
+					"enabled": true,
+					"issuer_url": "https://id.example.com/application/o/npmpro/",
+					"client_id": "npmpro",
+					"client_secret": "s3cr3t",
+					"redirect_domain": "npm.example.com",
+					"button": {
+						"label": "Sign in with SSO",
+						"color": "#206bc4",
+						"icon": {
+							"type": "builtin",
+							"name": "key"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"enabled": true,
+								"issuer_url": "https://id.example.com/application/o/npmpro/",
+								"client_id": "npmpro",
+								"client_secret_set": true,
+								"redirect_domain": "npm.example.com",
+								"scopes": "openid email profile",
+								"require_verified_email": true,
+								"skip_mfa": false,
+								"disable_password": false,
+								"auto_create": {
+									"enabled": false,
+									"allowed_domains": [],
+									"permissions": {
+										"visibility": "user",
+										"proxy_hosts": "view",
+										"redirection_hosts": "view",
+										"dead_hosts": "view",
+										"streams": "view",
+										"access_lists": "view",
+										"certificates": "view"
+									}
+								},
+								"button": {
+									"label": "OIDC",
+									"color": "#206bc4",
+									"icon": {
+										"type": "builtin",
+										"name": "key"
+									}
+								},
+								"locked": [],
+								"active": true,
+								"secret_error": false,
+								"callback_url": "https://npm.example.com/api/oidc/callback",
+								"session_auth_method": "oidc"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/oidc-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

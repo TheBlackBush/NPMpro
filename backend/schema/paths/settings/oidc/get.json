@@ -1,0 +1,65 @@
+{
+	"operationId": "getOidcSettings",
+	"summary": "Get the OIDC settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"enabled": true,
+								"issuer_url": "https://id.example.com/application/o/npmpro/",
+								"client_id": "npmpro",
+								"client_secret_set": true,
+								"redirect_domain": "npm.example.com",
+								"scopes": "openid email profile",
+								"require_verified_email": true,
+								"skip_mfa": false,
+								"disable_password": false,
+								"auto_create": {
+									"enabled": false,
+									"allowed_domains": [],
+									"permissions": {
+										"visibility": "user",
+										"proxy_hosts": "view",
+										"redirection_hosts": "view",
+										"dead_hosts": "view",
+										"streams": "view",
+										"access_lists": "view",
+										"certificates": "view"
+									}
+								},
+								"button": {
+									"label": "OIDC",
+									"color": "#206bc4",
+									"icon": {
+										"type": "builtin",
+										"name": "key"
+									}
+								},
+								"locked": [],
+								"active": true,
+								"secret_error": false,
+								"callback_url": "https://npm.example.com/api/oidc/callback",
+								"session_auth_method": "oidc"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/oidc-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
