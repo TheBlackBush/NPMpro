@@ -116,197 +116,179 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 									/>
 								</AppModal.Title>
 							</AppModal.Header>
-							<AppModal.Body className="p-0">
-								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-								<div className="card m-0 border-0">
-									<div className="card-header">
-										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-details"
-													className="nav-link active"
-													data-bs-toggle="tab"
-													aria-selected="true"
-													role="tab"
-												>
-													<T id="column.details" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-ssl"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="column.ssl" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-advanced"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="domains.advanced" />
-													{values?.advancedConfig?.trim() ? "*" : ""}
-												</a>
-											</li>
-										</ul>
-									</div>
-									<div className="card-body">
-										<div className="tab-content">
-											<div className="tab-pane active show" id="tab-details" role="tabpanel">
-												<DomainNamesField
-													isWildcardPermitted={
-														values.certificateId !== "new" || values.npmproDnsChallenge
-													}
-													dnsProviderWildcardSupported
-													forCertificate={values.certificateId === "new"}
-												/>
-												<div className="row">
-													<div className="col-md-6">
-														<Field name="forwardScheme">
-															{({ field }) => (
-																<div className="mb-3">
-																	<label
-																		className="form-label"
-																		htmlFor="forwardScheme"
-																	>
-																		<T id="host.forward-scheme" />
-																	</label>
-																	<select
-																		id="forwardScheme"
-																		className="form-select"
-																		required
-																		{...field}
-																	>
-																		<option value="$scheme">
-																			{intl.formatMessage({
-																				id: "redirection.scheme.keep",
-																			})}
-																		</option>
-																		<option value="http">http</option>
-																		<option value="https">https</option>
-																	</select>
-																</div>
-															)}
-														</Field>
-													</div>
-													<div className="col-md-6">
-														<Field
-															name="forwardDomainName"
-															validate={validateString(1, 253)}
-														>
-															{({ field, form }) => (
-																<div className="mb-3">
-																	<label
-																		className="form-label"
-																		htmlFor="forwardDomainName"
-																	>
-																		<T id="redirection-host.forward-domain" />
-																	</label>
-																	<input
-																		id="forwardDomainName"
-																		type="text"
-																		className={`form-control ${form.errors.forwardDomainName && form.touched.forwardDomainName ? "is-invalid" : ""}`}
-																		required
-																		pattern="\S+"
-																		placeholder="example.com"
-																		{...field}
-																	/>
-
-																	{form.errors.forwardDomainName ? (
-																		<div className="invalid-feedback">
-																			{form.touched.forwardDomainName
-																				? form.errors.forwardDomainName
-																				: null}
-																		</div>
-																	) : null}
-																</div>
-															)}
-														</Field>
-													</div>
-												</div>
-												<Field name="forwardHttpCode">
+							<AppModal.Body>
+								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+									{errorMsg}
+								</ErrorAlert>
+								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-details"
+											className="nav-link active"
+											data-bs-toggle="tab"
+											aria-selected="true"
+											role="tab"
+										>
+											<T id="column.details" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-ssl"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="column.ssl" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-advanced"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="domains.advanced" />
+											{values?.advancedConfig?.trim() ? "*" : ""}
+										</a>
+									</li>
+								</ul>
+								<div className="tab-content">
+									<div className="tab-pane active show" id="tab-details" role="tabpanel">
+										<DomainNamesField
+											isWildcardPermitted={
+												values.certificateId !== "new" || values.npmproDnsChallenge
+											}
+											dnsProviderWildcardSupported
+											forCertificate={values.certificateId === "new"}
+										/>
+										<div className="row">
+											<div className="col-md-6">
+												<Field name="forwardScheme">
 													{({ field }) => (
 														<div className="mb-3">
-															<label className="form-label" htmlFor="forwardHttpCode">
-																<T id="redirection-host.forward-http-code" />
+															<label className="form-label" htmlFor="forwardScheme">
+																<T id="host.forward-scheme" />
 															</label>
 															<select
-																id="forwardHttpCode"
+																id="forwardScheme"
 																className="form-select"
 																required
 																{...field}
 															>
-																<option value="301">
-																	<T id="redirection-hosts.http-code.301" />
+																<option value="$scheme">
+																	{intl.formatMessage({
+																		id: "redirection.scheme.keep",
+																	})}
 																</option>
-																<option value="302">
-																	<T id="redirection-hosts.http-code.302" />
-																</option>
-																<option value="303">
-																	<T id="redirection-hosts.http-code.303" />
-																</option>
-																<option value="307">
-																	<T id="redirection-hosts.http-code.307" />
-																</option>
-																<option value="308">
-																	<T id="redirection-hosts.http-code.308" />
-																</option>
+																<option value="http">http</option>
+																<option value="https">https</option>
 															</select>
 														</div>
 													)}
 												</Field>
-												<div className="my-3">
-													<h4 className="py-2">
-														<T id="options" />
-													</h4>
-													<div className="divide-y">
-														<div>
-															<Field name="preservePath" type="checkbox">
-																{({ field }) => (
-																	<SwitchField
-																		id="preservePath"
-																		label={<T id="host.flags.preserve-path" />}
-																		{...field}
-																	/>
-																)}
-															</Field>
-														</div>
-													</div>
-												</div>
 											</div>
-											<div className="tab-pane" id="tab-ssl" role="tabpanel">
-												<SSLCertificateField
-													name="certificateId"
-													label="ssl-certificate"
-													allowNew
-												/>
+											<div className="col-md-6">
+												<Field name="forwardDomainName" validate={validateString(1, 253)}>
+													{({ field, form }) => (
+														<div className="mb-3">
+															<label className="form-label" htmlFor="forwardDomainName">
+																<T id="redirection-host.forward-domain" />
+															</label>
+															<input
+																id="forwardDomainName"
+																type="text"
+																className={`form-control ${form.errors.forwardDomainName && form.touched.forwardDomainName ? "is-invalid" : ""}`}
+																required
+																pattern="\S+"
+																placeholder="example.com"
+																{...field}
+															/>
 
-												<SSLOptionsFields />
+															{form.errors.forwardDomainName ? (
+																<div className="invalid-feedback">
+																	{form.touched.forwardDomainName
+																		? form.errors.forwardDomainName
+																		: null}
+																</div>
+															) : null}
+														</div>
+													)}
+												</Field>
 											</div>
-											<div className="tab-pane" id="tab-advanced" role="tabpanel">
-												<NginxConfigField />
-												<div className="row mt-3">
-													<div className="col-md-12 mb-3">
-														<DirectoryField
-															labelId="redirection-host.directory"
-															datalistId="directory-suggestions-redirection"
-															suggestions={suggestions}
-														/>
-													</div>
+										</div>
+										<Field name="forwardHttpCode">
+											{({ field }) => (
+												<div className="mb-3">
+													<label className="form-label" htmlFor="forwardHttpCode">
+														<T id="redirection-host.forward-http-code" />
+													</label>
+													<select
+														id="forwardHttpCode"
+														className="form-select"
+														required
+														{...field}
+													>
+														<option value="301">
+															<T id="redirection-hosts.http-code.301" />
+														</option>
+														<option value="302">
+															<T id="redirection-hosts.http-code.302" />
+														</option>
+														<option value="303">
+															<T id="redirection-hosts.http-code.303" />
+														</option>
+														<option value="307">
+															<T id="redirection-hosts.http-code.307" />
+														</option>
+														<option value="308">
+															<T id="redirection-hosts.http-code.308" />
+														</option>
+													</select>
 												</div>
+											)}
+										</Field>
+										<div className="my-3">
+											<h4 className="py-2">
+												<T id="options" />
+											</h4>
+											<div className="divide-y">
+												<div>
+													<Field name="preservePath" type="checkbox">
+														{({ field }) => (
+															<SwitchField
+																id="preservePath"
+																label={<T id="host.flags.preserve-path" />}
+																{...field}
+															/>
+														)}
+													</Field>
+												</div>
+											</div>
+										</div>
+									</div>
+									<div className="tab-pane" id="tab-ssl" role="tabpanel">
+										<SSLCertificateField name="certificateId" label="ssl-certificate" allowNew />
+
+										<SSLOptionsFields />
+									</div>
+									<div className="tab-pane" id="tab-advanced" role="tabpanel">
+										<NginxConfigField />
+										<div className="row mt-3">
+											<div className="col-md-12 mb-3">
+												<DirectoryField
+													labelId="redirection-host.directory"
+													datalistId="directory-suggestions-redirection"
+													suggestions={suggestions}
+												/>
 											</div>
 										</div>
 									</div>
 								</div>
 								<RequestProgress
-									className="px-3 pb-3"
 									running={isSubmitting && values.certificateId === "new"}
 									propagationSeconds={values.npmproPropagationSeconds}
 								/>

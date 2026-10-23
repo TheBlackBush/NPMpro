@@ -108,84 +108,75 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 									/>
 								</AppModal.Title>
 							</AppModal.Header>
-							<AppModal.Body className="p-0">
-								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-								<div className="card m-0 border-0">
-									<div className="card-header">
-										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-details"
-													className="nav-link active"
-													data-bs-toggle="tab"
-													aria-selected="true"
-													role="tab"
-												>
-													<T id="column.details" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-ssl"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="column.ssl" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-advanced"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="domains.advanced" />
-													{values?.advancedConfig?.trim() ? "*" : ""}
-												</a>
-											</li>
-										</ul>
+							<AppModal.Body>
+								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+									{errorMsg}
+								</ErrorAlert>
+								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-details"
+											className="nav-link active"
+											data-bs-toggle="tab"
+											aria-selected="true"
+											role="tab"
+										>
+											<T id="column.details" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-ssl"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="column.ssl" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-advanced"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="domains.advanced" />
+											{values?.advancedConfig?.trim() ? "*" : ""}
+										</a>
+									</li>
+								</ul>
+								<div className="tab-content">
+									<div className="tab-pane active show" id="tab-details" role="tabpanel">
+										<DomainNamesField
+											isWildcardPermitted={
+												values.certificateId !== "new" || values.npmproDnsChallenge
+											}
+											dnsProviderWildcardSupported
+											forCertificate={values.certificateId === "new"}
+										/>
 									</div>
-									<div className="card-body">
-										<div className="tab-content">
-											<div className="tab-pane active show" id="tab-details" role="tabpanel">
-												<DomainNamesField
-													isWildcardPermitted={
-														values.certificateId !== "new" || values.npmproDnsChallenge
-													}
-													dnsProviderWildcardSupported
-													forCertificate={values.certificateId === "new"}
-												/>
-											</div>
-											<div className="tab-pane" id="tab-ssl" role="tabpanel">
-												<SSLCertificateField
-													name="certificateId"
-													label="ssl-certificate"
-													allowNew
-												/>
+									<div className="tab-pane" id="tab-ssl" role="tabpanel">
+										<SSLCertificateField name="certificateId" label="ssl-certificate" allowNew />
 
-												<SSLOptionsFields />
-											</div>
-											<div className="tab-pane" id="tab-advanced" role="tabpanel">
-												<NginxConfigField />
-												<div className="row mt-3">
-													<div className="col-md-12 mb-3">
-														<DirectoryField
-															labelId="dead-host.directory"
-															datalistId="directory-suggestions-dead"
-															suggestions={suggestions}
-														/>
-													</div>
-												</div>
+										<SSLOptionsFields />
+									</div>
+									<div className="tab-pane" id="tab-advanced" role="tabpanel">
+										<NginxConfigField />
+										<div className="row mt-3">
+											<div className="col-md-12 mb-3">
+												<DirectoryField
+													labelId="dead-host.directory"
+													datalistId="directory-suggestions-dead"
+													suggestions={suggestions}
+												/>
 											</div>
 										</div>
 									</div>
 								</div>
 								<RequestProgress
-									className="px-3 pb-3"
 									running={isSubmitting && values.certificateId === "new"}
 									propagationSeconds={values.npmproPropagationSeconds}
 								/>

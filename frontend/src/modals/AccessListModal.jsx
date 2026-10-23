@@ -179,36 +179,32 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="options" />
 											</h3>
 											<div className="divide-y">
-												<div>
-													<Field name="satisfyAny" type="checkbox">
-														{({ field }) => (
-															<SwitchField
-																id="satisfyAny"
-																label={<T id="access-list.satisfy-any" />}
-																name={field.name}
-																checked={field.value}
-																onChange={(e) => {
-																	setFieldValue(field.name, e.target.checked);
-																}}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="passAuth" type="checkbox">
-														{({ field }) => (
-															<SwitchField
-																id="passAuth"
-																label={<T id="access-list.pass-auth" />}
-																name={field.name}
-																checked={field.value}
-																onChange={(e) => {
-																	setFieldValue(field.name, e.target.checked);
-																}}
-															/>
-														)}
-													</Field>
-												</div>
+												<Field name="satisfyAny" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="satisfyAny"
+															label={<T id="access-list.satisfy-any" />}
+															name={field.name}
+															checked={field.value}
+															onChange={(e) => {
+																setFieldValue(field.name, e.target.checked);
+															}}
+														/>
+													)}
+												</Field>
+												<Field name="passAuth" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="passAuth"
+															label={<T id="access-list.pass-auth" />}
+															name={field.name}
+															checked={field.value}
+															onChange={(e) => {
+																setFieldValue(field.name, e.target.checked);
+															}}
+														/>
+													)}
+												</Field>
 											</div>
 										</div>
 									</div>
