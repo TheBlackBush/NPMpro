@@ -27,7 +27,15 @@ function ApiErrorContent({ error }) {
 						</button>
 					</div>
 					{showDetails ? (
-						<pre className="mt-2 mb-0" style={{ maxHeight: "20em", overflow: "auto" }}>
+						<pre
+							className="mt-2 mb-0"
+							style={{
+								maxHeight: "20em",
+								overflow: "auto",
+								whiteSpace: "pre-wrap",
+								wordBreak: "break-word",
+							}}
+						>
 							{output}
 						</pre>
 					) : null}
