@@ -27,18 +27,18 @@ export function SiteHeader() {
 				>
 					<span className="navbar-toggler-icon" />
 				</button>
-				<div className="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
+				<h1 className="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
 					<NavLink to="/">
 						<img
 							src="/images/logo-no-text.svg"
 							width={40}
 							height={40}
 							className="navbar-brand-image me-3"
-							alt="Logo"
+							alt=""
 						/>
 						NPMpro
 					</NavLink>
-				</div>
+				</h1>
 				<div className="navbar-nav flex-row order-md-last">
 					<div className="d-none d-md-flex">
 						<div className="nav-item">

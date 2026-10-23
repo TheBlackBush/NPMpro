@@ -12,6 +12,7 @@ export * from "./LocalePicker";
 export * from "./NavLink";
 export * from "./NoticeAlert";
 export * from "./Page";
+export * from "./PageHeader";
 export * from "./RequestProgress";
 export * from "./SiteContainer";
 export * from "./SiteFooter";

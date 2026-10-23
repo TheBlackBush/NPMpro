@@ -1,3 +1,9 @@
 export function SiteContainer({ children }) {
-	return <div className="container-xl flex-fill py-3 overflow-x-auto">{children}</div>;
+	return (
+		<div className="page-wrapper">
+			<main className="page-body">
+				<div className="container-xl">{children}</div>
+			</main>
+		</div>
+	);
 }
