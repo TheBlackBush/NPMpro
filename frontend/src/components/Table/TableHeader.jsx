@@ -1,24 +1,32 @@
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import cn from "clsx";
+import { ariaSort } from "src/modules/TableSort";
 
-function TableHeader(props) {
-	const { tableInstance } = props;
-	const headerGroups = tableInstance.getHeaderGroups();
-
+function TableHeader({ tableInstance }) {
 	return (
 		<thead>
-			{headerGroups.map((headerGroup) => (
+			{tableInstance.getHeaderGroups().map((headerGroup) => (
 				<tr key={headerGroup.id}>
 					{headerGroup.headers.map((header) => {
 						const { column } = header;
 						const { className } = column.columnDef.meta ?? {};
+						const label = typeof column.columnDef.header === "string" ? column.columnDef.header : null;
+						if (!label || !column.getCanSort()) {
+							return (
+								<th key={header.id} className={className}>
+									{label}
+								</th>
+							);
+						}
 						const sorted = column.getIsSorted();
 						return (
-							<th key={header.id} className={className} onClick={column.getToggleSortingHandler()}>
-								<span className="d-inline-flex align-items-center gap-1">
-									{typeof column.columnDef.header === "string" ? `${column.columnDef.header}` : null}
-									{sorted === "asc" ? <IconChevronUp size={14} /> : null}
-									{sorted === "desc" ? <IconChevronDown size={14} /> : null}
-								</span>
+							<th key={header.id} className={className} aria-sort={ariaSort(sorted)}>
+								<button
+									type="button"
+									className={cn("table-sort", sorted)}
+									onClick={column.getToggleSortingHandler()}
+								>
+									{label}
+								</button>
 							</th>
 						);
 					})}
