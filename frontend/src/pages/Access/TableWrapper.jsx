@@ -1,8 +1,7 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { deleteAccessList } from "src/api/backend";
-import { Button, HasPermission, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, LoadingPage } from "src/components";
 import { useAccessLists } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showAccessListModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
@@ -26,7 +25,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	let filtered = null;

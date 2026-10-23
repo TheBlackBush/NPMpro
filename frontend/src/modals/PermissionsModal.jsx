@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { setPermissions } from "src/api/backend";
-import { Button, Loading } from "src/components";
+import { ApiErrorContent, Button, Loading } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -36,7 +36,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 				queryClient.invalidateQueries({ queryKey: ["user"] }),
 			]);
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 		setSubmitting(false);
 		setIsSubmitting(false);
@@ -139,7 +139,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
-					{error?.message}
+					<ApiErrorContent error={error} />
 				</Alert>
 			)}
 			{isPending && <Loading noLogo />}

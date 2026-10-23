@@ -7,6 +7,7 @@ function EmptyData({
 	tableInstance,
 	onNew,
 	isFiltered,
+	onClearFilters,
 	object,
 	objects,
 	color,
@@ -19,9 +20,16 @@ function EmptyData({
 			<td colSpan={tableInstance.getAllFlatColumns().length}>
 				<div className="text-center my-4">
 					{isFiltered ? (
-						<h2>
-							<T id="empty-search" />
-						</h2>
+						<>
+							<h2>
+								<T id={onClearFilters ? "list.no-match" : "empty-search"} />
+							</h2>
+							{onClearFilters ? (
+								<Button className="my-3" onClick={onClearFilters}>
+									<T id="list.clear-filters" />
+								</Button>
+							) : null}
+						</>
 					) : (
 						<>
 							<h2>

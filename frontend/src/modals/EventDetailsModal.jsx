@@ -1,7 +1,7 @@
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { decamelizeKeys } from "src/api/backend/caseConvert";
-import { Button, EventFormatter, GravatarFormatter, Loading } from "src/components";
+import { ApiErrorContent, Button, EventFormatter, GravatarFormatter, Loading } from "src/components";
 import { useAuditLog } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -17,7 +17,7 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 		<Modal show={visible} onHide={remove}>
 			{error && (
 				<Alert variant="danger" className="m-3">
-					{error?.message}
+					<ApiErrorContent error={error} />
 				</Alert>
 			)}
 			{isPending && <Loading noLogo />}

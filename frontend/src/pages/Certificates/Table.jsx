@@ -21,9 +21,9 @@ import { useMemo } from "react";
 import {
 	CertificateInUseFormatter,
 	certificateProviderTranslation,
-	DateFormatter,
 	DomainsFormatter,
 	EmptyData,
+	ExpiryFormatter,
 	GravatarFormatter,
 	HasPermission,
 } from "src/components";
@@ -64,6 +64,7 @@ export default function Table({
 	onEdit,
 	onChangeDnsCredential,
 	isFiltered,
+	onClearFilters,
 }) {
 	const columnHelper = createColumnHelper();
 	const columns = useMemo(
@@ -122,7 +123,7 @@ export default function Table({
 			columnHelper.accessor((row) => row.expiresOn, {
 				id: "expiresOn",
 				header: intl.formatMessage({ id: "column.expires" }),
-				cell: (info) => <DateFormatter value={info.getValue()} />,
+				cell: (info) => <ExpiryFormatter value={info.getValue()} provider={info.row.original.provider} />,
 			}),
 			columnHelper.accessor(isInUse, {
 				id: "inUse",
@@ -275,6 +276,7 @@ export default function Table({
 			isFetching,
 		},
 		enableSortingRemoval: false,
+		initialState: { sorting: [{ id: "expiresOn", desc: false }] },
 	});
 
 	const customAddBtn = (
@@ -339,6 +341,7 @@ export default function Table({
 					objects="certificates"
 					tableInstance={tableInstance}
 					isFiltered={isFiltered}
+					onClearFilters={onClearFilters}
 					color="pink"
 					customAddBtn={customAddBtn}
 					permissionSection={CERTIFICATES}

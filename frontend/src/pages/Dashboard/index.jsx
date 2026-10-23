@@ -1,21 +1,55 @@
-import { IconArrowsCross, IconBolt, IconBoltOff, IconDisc, IconLock, IconShield } from "@tabler/icons-react";
+import {
+	IconAlertTriangle,
+	IconArrowsCross,
+	IconBolt,
+	IconBoltOff,
+	IconDisc,
+	IconHistory,
+	IconLock,
+	IconShield,
+} from "@tabler/icons-react";
 import { useNavigate } from "react-router";
-import { HasPermission } from "src/components";
-import { useHostReport } from "src/hooks";
+import { EventFormatter, HasPermission } from "src/components";
+import { useHostReport, useRecentAuditLogs, useUser } from "src/hooks";
 import { T } from "src/locale";
+import { EXPIRY_WARNING_DAYS } from "src/modules/Expiry";
 import {
 	ACCESS_LISTS,
 	CERTIFICATES,
 	DEAD_HOSTS,
+	hasPermission,
 	PROXY_HOSTS,
 	REDIRECTION_HOSTS,
 	STREAMS,
 	VIEW,
 } from "src/modules/Permissions";
 
+// Host types in the order the error tile links to them
+const ERROR_SECTIONS = [
+	{ section: PROXY_HOSTS, key: "proxy", path: "/nginx/proxy" },
+	{ section: REDIRECTION_HOSTS, key: "redirection", path: "/nginx/redirection" },
+	{ section: DEAD_HOSTS, key: "dead", path: "/nginx/404" },
+	{ section: STREAMS, key: "stream", path: "/nginx/stream" },
+];
+
 const Dashboard = () => {
 	const { data: hostReport } = useHostReport();
+	const { data: user } = useUser("me");
 	const navigate = useNavigate();
+	const isAdmin = Boolean(user?.roles?.includes("admin"));
+	const { data: recentLogs, isError: recentError } = useRecentAuditLogs(isAdmin);
+
+	const viewable = ERROR_SECTIONS.filter((e) => hasPermission(e.section, VIEW, user?.permissions, user?.roles));
+	const errorCounts = hostReport?.errors;
+	const errorTotal = errorCounts ? viewable.reduce((sum, e) => sum + (errorCounts[e.key] ?? 0), 0) : null;
+	const firstWithErrors = errorCounts ? viewable.find((e) => (errorCounts[e.key] ?? 0) > 0) : null;
+	const errorsPath = firstWithErrors ? `${firstWithErrors.path}?status=error` : (viewable[0]?.path ?? "/nginx/proxy");
+	const expiring = hostReport?.certificatesExpiring;
+	const expired = hostReport?.certificatesExpired;
+	const go = (path) => (e) => {
+		e.preventDefault();
+		void navigate(path);
+	};
 
 	return (
 		<div>
@@ -180,6 +214,102 @@ const Dashboard = () => {
 								</a>
 							</div>
 						</HasPermission>
+					</div>
+				</div>
+				<div className="col-12 mb-4">
+					<div className="row row-cards">
+						{viewable.length > 0 ? (
+							<div className="col-sm-6 col-lg-4">
+								<a
+									href={errorsPath}
+									className="card card-sm card-link card-link-pop"
+									onClick={go(errorsPath)}
+								>
+									<div className="card-body">
+										<div className="row align-items-center">
+											<div className="col-auto">
+												<span className="bg-orange text-white avatar avatar-square">
+													<IconAlertTriangle />
+												</span>
+											</div>
+											<div className="col">
+												{errorTotal === null ? (
+													"-"
+												) : (
+													<span className={errorTotal > 0 ? "text-danger" : undefined}>
+														<T id="dashboard.config-errors" data={{ count: errorTotal }} />
+													</span>
+												)}
+											</div>
+										</div>
+									</div>
+								</a>
+							</div>
+						) : null}
+						<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
+							<div className="col-sm-6 col-lg-4">
+								<a
+									href="/certificates?expiry=soon"
+									className="card card-sm card-link card-link-pop"
+									onClick={go("/certificates?expiry=soon")}
+								>
+									<div className="card-body">
+										<div className="row align-items-center">
+											<div className="col-auto">
+												<span className="bg-teal text-white avatar avatar-square">
+													<IconShield />
+												</span>
+											</div>
+											<div className="col">
+												{expiring === undefined || expired === undefined ? (
+													"-"
+												) : (
+													<>
+														<div className={expiring > 0 ? "text-warning" : undefined}>
+															<T
+																id="dashboard.expiring"
+																data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
+															/>
+														</div>
+														<div className={expired > 0 ? "text-danger" : undefined}>
+															<T id="dashboard.expired" data={{ count: expired }} />
+														</div>
+													</>
+												)}
+											</div>
+										</div>
+									</div>
+								</a>
+							</div>
+						</HasPermission>
+						{isAdmin ? (
+							<div className="col-12 col-lg-4">
+								<div className="card">
+									<div className="card-header">
+										<h3 className="card-title">
+											<IconHistory size={18} className="me-1" />
+											<T id="dashboard.recent-changes" />
+										</h3>
+									</div>
+									<div className="list-group list-group-flush">
+										{recentError ? (
+											<div className="list-group-item">-</div>
+										) : (
+											recentLogs?.map((row) => (
+												<div key={row.id} className="list-group-item">
+													<EventFormatter row={row} />
+												</div>
+											))
+										)}
+									</div>
+									<div className="card-footer">
+										<a href="/audit-log" onClick={go("/audit-log")}>
+											<T id="dashboard.view-all" />
+										</a>
+									</div>
+								</div>
+							</div>
+						) : null}
 					</div>
 				</div>
 			</div>

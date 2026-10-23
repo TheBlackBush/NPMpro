@@ -43,6 +43,7 @@ export default function Table({
 	onDisableToggle,
 	onNew,
 	isFiltered,
+	onClearFilters,
 	sorting,
 	onSortingChange,
 	showHeader,
@@ -249,6 +250,7 @@ export default function Table({
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
+					onClearFilters={onClearFilters}
 					color="lime"
 					permissionSection={PROXY_HOSTS}
 				/>

@@ -1,35 +1,29 @@
-import { IconHelp, IconSearch } from "@tabler/icons-react";
+import { IconHelp } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
+import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
-import { Button, HasPermission, LoadingPage } from "src/components";
-import { getDirectory, useStreams } from "src/hooks";
+import { Button, ErrorAlert, HasPermission, ListToolbar, LoadingPage } from "src/components";
+import { getDirectory, useDirectorySuggestions, useListFilters, useStreams } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
+import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { getNginxConfigError, showError, showNginxConfigError, showObjectSuccess } from "src/notifications";
+import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
 	const queryClient = useQueryClient();
-	const [search, setSearch] = useState("");
 	const [sorting, setSorting] = useState([{ id: "enabled", desc: false }]);
 	const { isFetching, isPending, isError, error, data } = useStreams(["owner", "certificate"]);
-
-	useEffect(() => {
-		// this can happen if someone deletes the last item while searching
-		if (search !== "" && !data?.length) {
-			setSearch("");
-		}
-	});
+	const groups = useDirectorySuggestions(data);
+	const { filters, setFilter, clear } = useListFilters(groups);
 
 	if (isPending) {
 		return <LoadingPage />;
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDisableToggle = async (id, enabled) => {
@@ -46,28 +40,21 @@ export default function TableWrapper() {
 				showNginxConfigError("stream", nginxErr);
 			}
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 
-	let filtered = null;
-	if (search) {
-		filtered = data?.filter((item) => {
-			const directory = getDirectory(item).toLowerCase();
-			return (
-				`${item.incomingPort}`.includes(search) ||
-				`${item.forwardingHost}:${item.forwardingPort}`.toLowerCase().includes(search) ||
-				item.npmplusDescription?.toLowerCase().includes(search) ||
-				directory.includes(search)
-			);
-		});
-	}
-
-	const displayedStreams = filtered ?? data ?? [];
+	const displayedStreams = filterHosts(data ?? [], filters, {
+		searchText: (item) =>
+			`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${item.npmplusDescription ?? ""} ${getDirectory(item) ?? ""}`,
+		getGroup: (item) => getDirectory(item) ?? "",
+	});
+	const isFiltered = activeFilterCount(filters, ["status", "tls", "group"]) > 0 && Boolean(data?.length);
 	const groupingActive = displayedStreams.some(getDirectory);
 
 	const sharedTableProps = {
-		isFiltered: search,
+		isFiltered,
+		onClearFilters: clear,
 		isFetching,
 		sorting,
 		onSortingChange: setSorting,
@@ -104,22 +91,15 @@ export default function TableWrapper() {
 							</h2>
 						</div>
 						<div className="col-md-auto col-sm-12">
-							<div className="ms-auto d-flex flex-wrap btn-list">
-								{data?.length ? (
-									<div className="input-group input-group-flat w-auto">
-										<span className="input-group-text input-group-text-sm">
-											<IconSearch size={16} />
-										</span>
-										<input
-											type="text"
-											className="form-control form-control-sm"
-											placeholder={intl.formatMessage({ id: "search" })}
-											aria-label={intl.formatMessage({ id: "search" })}
-											autoComplete="off"
-											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
-										/>
-									</div>
-								) : null}
+							<ListToolbar
+								filters={filters}
+								setFilter={setFilter}
+								clear={clear}
+								total={data?.length ?? 0}
+								shown={displayedStreams.length}
+								kinds={["status", "tls", "group"]}
+								groups={groups}
+							>
 								<Button
 									size="sm"
 									aria-label={intl.formatMessage({ id: "help" })}
@@ -135,7 +115,7 @@ export default function TableWrapper() {
 										</Button>
 									) : null}
 								</HasPermission>
-							</div>
+							</ListToolbar>
 						</div>
 					</div>
 				</div>

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
-import { Button } from "src/components";
+import { ApiErrorContent, Button } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -59,7 +59,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 			showObjectSuccess("certificate", "saved");
 			remove();
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 
 		await queryClient.invalidateQueries({ queryKey: ["certificates"] });
