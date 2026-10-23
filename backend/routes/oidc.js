@@ -13,7 +13,14 @@ import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
 import { getDiscovery, getOidcConfig, readStoredOidc } from "../lib/oidc-config.js";
 import { ICON_MIME, readIconFile } from "../lib/oidc-icon.js";
-import { claimsErrorCode, oidcErrorCode, oidcErrorUrl } from "../lib/oidc-login.js";
+import {
+	claimsErrorCode,
+	FLOW_COOKIE_NAMES,
+	hasFlowCookies,
+	logValue,
+	oidcErrorCode,
+	oidcErrorUrl,
+} from "../lib/oidc-login.js";
 import { callbackUrl } from "../lib/oidc-rules.js";
 import { oidc as logger } from "../logger.js";
 
@@ -57,11 +64,6 @@ router.get("/icon", async (_, res) => {
 
 router.use(limiter);
 
-const FLOW_COOKIES = [
-	"__Host-Http-npmpro_oidc_state",
-	"__Host-Http-npmpro_oidc_nonce",
-	"__Host-Http-npmpro_oidc_code_verifier",
-];
 const FLOW_COOKIE_OPTIONS = { httpOnly: true, secure: true, sameSite: "Lax" };
 
 const setNoRedirect = (res) => {
@@ -77,7 +79,7 @@ const setFlowCookie = (res, name, value) => {
 };
 
 const clearFlowCookies = (res) => {
-	for (const name of FLOW_COOKIES) res.clearCookie(name, FLOW_COOKIE_OPTIONS);
+	for (const name of FLOW_COOKIE_NAMES) res.clearCookie(name, FLOW_COOKIE_OPTIONS);
 };
 
 /**
@@ -121,7 +123,7 @@ router
 
 			res.redirect(buildAuthorizationUrl(config, parameters).toString());
 		} catch (err) {
-			logger.error(`Init error: ${err.message}`);
+			logger.error(`Init error: ${logValue(err.message)}`);
 			fail(res, "provider_error");
 		}
 	});
@@ -160,15 +162,19 @@ router
 		try {
 			cfg = await getOidcConfig();
 			if (!cfg.active) return fail(res, "not_configured");
+			if (!hasFlowCookies(req.signedCookies)) {
+				logger.error("Callback without a started login");
+				return fail(res, "provider_error");
+			}
 			claims = await exchangeCode(req, cfg.values);
 		} catch (err) {
-			logger.error(`Callback error: ${err.message}`);
+			logger.error(`Callback error: ${logValue(err.message)}`);
 			return fail(res, "provider_error");
 		}
 
 		const claimsError = claimsErrorCode(claims, cfg.values);
 		if (claimsError) {
-			logger.error(`Callback refused (${claimsError}) for subject ${claims?.sub}`);
+			logger.error(`Callback refused (${claimsError}) for subject ${logValue(claims?.sub)}`);
 			return fail(res, claimsError);
 		}
 
@@ -178,11 +184,11 @@ router
 			data = await internalToken.getTokenFromOAuthClaim({ identity: email, claims, config: cfg.values });
 		} catch (err) {
 			const code = oidcErrorCode(err);
-			logger.error(`Login refused (${code}) for email ${email}: ${err.message}`);
+			logger.error(`Login refused (${code}) for email ${logValue(email)}: ${logValue(err.message)}`);
 			return fail(res, code);
 		}
 
-		logger.info(`Successful authentication for email: ${email}`);
+		logger.info(`Successful authentication for email: ${logValue(email)}`);
 		clearFlowCookies(res);
 
 		if (data.requiresTotp) {

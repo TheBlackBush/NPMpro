@@ -70,6 +70,10 @@ it("matches email domains case-insensitively and exactly", () => {
 	assert.equal(emailDomainAllowed("a@evil-example.com", ["example.com"]), false);
 	assert.equal(emailDomainAllowed("a@anything.org", []), true);
 	assert.equal(emailDomainAllowed("not-an-email", []), false);
+	assert.equal(emailDomainAllowed("a@example.com", undefined), false);
+	assert.equal(emailDomainAllowed("a@example.com", null), false);
+	assert.equal(emailDomainAllowed("a@example.com", "example.com"), false);
+	assert.equal(emailDomainAllowed("a@example.com", { 0: "example.com", length: 1 }), false);
 });
 
 it("refuses default permissions that break the permission rules", () => {
@@ -91,6 +95,12 @@ it("derives a user name from claims", () => {
 	assert.equal(userNameFromClaims({ name: "Ada L", email: "ada@example.com" }), "Ada L");
 	assert.equal(userNameFromClaims({ preferred_username: "ada", email: "ada@example.com" }), "ada");
 	assert.equal(userNameFromClaims({ email: "ada.l@example.com" }), "ada.l");
+	assert.equal(userNameFromClaims({ name: "  Ada L  ", email: "ada@example.com" }), "Ada L");
+	assert.equal(
+		userNameFromClaims({ name: { first: "Ada" }, preferred_username: ["x"], email: "ada@example.com" }),
+		"ada",
+	);
+	assert.equal(userNameFromClaims({ name: "   ", preferred_username: " ada_l ", email: "ada@example.com" }), "ada_l");
 });
 
 it("partial stored permissions and button keep the other defaults", () => {

@@ -1,4 +1,4 @@
-import { newUserPermissions, OidcLoginError } from "../lib/oidc-login.js";
+import { logValue, newUserPermissions, OidcLoginError } from "../lib/oidc-login.js";
 import { userNameFromClaims } from "../lib/oidc-rules.js";
 import { oidc as logger } from "../logger.js";
 import auditLogModel from "../models/audit-log.js";
@@ -25,24 +25,27 @@ const insertUser = async (email, name, permissions) => {
 			is_disabled: false,
 		});
 		await userPermissionModel.query(trx).insert({ user_id: user.id, ...permissions });
+		await auditLogModel.query(trx).insert({
+			user_id: user.id,
+			action: "created",
+			object_type: "user",
+			object_id: user.id,
+			meta: { name: user.name, email: user.email, via: "oidc" },
+		});
 		return { user, isNew: true };
 	});
 	if (!created.isNew) return created.user;
 
 	const { user } = created;
-	await userModel
-		.query()
-		.findById(user.id)
-		.patch({ avatar: await internalUser.fetchGravatar(user.id, user.email, user.name) });
-
-	await auditLogModel.query().insert({
-		user_id: user.id,
-		action: "created",
-		object_type: "user",
-		object_id: user.id,
-		meta: { name: user.name, email: user.email, via: "oidc" },
-	});
-	logger.info(`Created user ${user.id} for ${user.email}`);
+	logger.info(`Created user ${user.id} for ${logValue(user.email)}`);
+	try {
+		await userModel
+			.query()
+			.findById(user.id)
+			.patch({ avatar: await internalUser.fetchGravatar(user.id, user.email, user.name) });
+	} catch (err) {
+		logger.error(`Avatar for the new user ${user.id} could not be set: ${logValue(err.message)}`);
+	}
 
 	return userModel.query().findById(user.id);
 };

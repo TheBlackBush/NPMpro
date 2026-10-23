@@ -83,7 +83,8 @@ const emailDomainAllowed = (email, allowedDomains) => {
 	if (at < 1) return false;
 	const domain = email.slice(at + 1).toLowerCase();
 	if (!domain) return false;
-	if (!allowedDomains?.length) return true;
+	if (!Array.isArray(allowedDomains)) return false;
+	if (allowedDomains.length === 0) return true;
 	return allowedDomains.some(
 		(allowed) => typeof allowed === "string" && allowed.trim() !== "" && allowed.trim().toLowerCase() === domain,
 	);
@@ -107,7 +108,10 @@ const validateDefaultPermissions = (p) => {
 	return null;
 };
 
-const userNameFromClaims = (claims) => claims.name || claims.preferred_username || String(claims.email).split("@")[0];
+const stringClaim = (value) => (typeof value === "string" ? value.trim() : "");
+
+const userNameFromClaims = (claims) =>
+	stringClaim(claims.name) || stringClaim(claims.preferred_username) || String(claims.email).trim().split("@")[0];
 
 export {
 	callbackUrl,

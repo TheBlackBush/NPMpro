@@ -48,6 +48,33 @@ const claimsErrorCode = (claims, values) => {
 	return null;
 };
 
+const FLOW_COOKIE_NAMES = [
+	"__Host-Http-npmpro_oidc_code_verifier",
+	"__Host-Http-npmpro_oidc_state",
+	"__Host-Http-npmpro_oidc_nonce",
+];
+
+/**
+ * Whether the callback belongs to a login this browser started: all three signed flow cookies
+ * must be present, otherwise openid-client would expect no state, nonce or PKCE at all
+ *
+ * @param   {Object}  signedCookies  req.signedCookies (invalid signatures are false)
+ * @returns {boolean}
+ */
+const hasFlowCookies = (signedCookies) =>
+	FLOW_COOKIE_NAMES.every((name) => {
+		const value = signedCookies?.[name];
+		return typeof value === "string" && value !== "";
+	});
+
+/**
+ * Quotes a provider supplied value for a log line, so it cannot add lines or control characters
+ *
+ * @param   {*}       value
+ * @returns {string}
+ */
+const logValue = (value) => JSON.stringify(String(value));
+
 const PERMISSION_VALUES = {
 	visibility: ["all", "user"],
 	proxy_hosts: ["hidden", "view", "manage"],
@@ -75,4 +102,14 @@ const newUserPermissions = (permissions) => {
 	return error ? { permissions: null, error } : { permissions: result, error: null };
 };
 
-export { claimsErrorCode, newUserPermissions, OIDC_ERROR_CODES, OidcLoginError, oidcErrorCode, oidcErrorUrl };
+export {
+	claimsErrorCode,
+	FLOW_COOKIE_NAMES,
+	hasFlowCookies,
+	logValue,
+	newUserPermissions,
+	OIDC_ERROR_CODES,
+	OidcLoginError,
+	oidcErrorCode,
+	oidcErrorUrl,
+};

@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	claimsErrorCode,
+	FLOW_COOKIE_NAMES,
+	hasFlowCookies,
+	logValue,
 	newUserPermissions,
 	OIDC_ERROR_CODES,
 	OidcLoginError,
@@ -79,4 +82,23 @@ it("default permissions that break the business rules are refused", () => {
 	const result = newUserPermissions({ ...VALID, certificates: "hidden" });
 	assert.equal(result.permissions, null);
 	assert.match(result.error, CERTIFICATES);
+});
+
+const allCookies = () => Object.fromEntries(FLOW_COOKIE_NAMES.map((name) => [name, "value"]));
+
+it("the callback needs all three signed flow cookies as non-empty strings", () => {
+	assert.equal(hasFlowCookies(allCookies()), true);
+	assert.equal(hasFlowCookies(undefined), false);
+	assert.equal(hasFlowCookies({}), false);
+	for (const name of FLOW_COOKIE_NAMES) {
+		for (const bad of [undefined, "", false, 1, ["x"]]) {
+			assert.equal(hasFlowCookies({ ...allCookies(), [name]: bad }), false);
+		}
+	}
+});
+
+it("log values are quoted and cannot start new lines", () => {
+	assert.equal(logValue("a@b.c"), '"a@b.c"');
+	assert.equal(logValue("x\nERROR forged"), '"x\\nERROR forged"');
+	assert.equal(logValue(undefined), '"undefined"');
 });
