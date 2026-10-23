@@ -12,5 +12,10 @@ export function formatApiError(err, hasMessage, formatMessage) {
 	if (apiError?.message_i18n && hasMessage(apiError.message_i18n)) {
 		return { message: formatMessage(apiError.message_i18n), output };
 	}
-	return { message: apiError?.message ?? err?.message ?? "", output };
+	if (apiError?.message) {
+		return { message: apiError.message, output };
+	}
+	// errors raised by the client itself (no payload) carry a translation id as message
+	const own = err?.message ?? "";
+	return { message: own && hasMessage(own) ? formatMessage(own) : own, output };
 }
