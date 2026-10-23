@@ -84,7 +84,7 @@ const redirectToOIDC = () => {
 	window.location.href = "/api/oidc";
 };
 
-function PasswordForm({ oidcError }) {
+function PasswordForm({ oidcError, noRedirect }) {
 	const emailRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
 	const { login } = useAuthState();
@@ -105,7 +105,6 @@ function PasswordForm({ oidcError }) {
 	const passwordAllowed = health.data?.password;
 	const oidc = health.data?.oidc;
 	const oidcActive = oidc?.active === true;
-	const noRedirect = oidcError !== null || getCookie("__Host-npmpro_oidc_no_redirect") === "true";
 	const startedRef = useRef(false);
 	useEffect(() => {
 		if (passwordAllowed === undefined || startedRef.current) return;
@@ -197,13 +196,6 @@ function PasswordForm({ oidcError }) {
 					)}
 				</Formik>
 			)}
-			{oidcActive && passwordAllowed === false && noRedirect && (
-				<div className="form-footer">
-					<Button type="button" fullWidth color="azure" onClick={redirectToOIDC}>
-						<T id="login.oidc-try-again" />
-					</Button>
-				</div>
-			)}
 		</>
 	);
 }
@@ -212,6 +204,8 @@ export default function Login() {
 	const { totpChallenge } = useAuthState();
 	// Read once: this removes the parameter from the address bar, and the message must survive re-renders
 	const [oidcError] = useState(takeOidcError);
+	// Latched per page load: the form deletes the cookie after the first health answer
+	const [noRedirect] = useState(() => oidcError !== null || getCookie("__Host-npmpro_oidc_no_redirect") === "true");
 
 	return (
 		<Page className="page-center">
@@ -236,7 +230,7 @@ export default function Login() {
 				</div>
 				<div className="card card-md">
 					<div className="card-body">
-						{totpChallenge ? <TotpForm /> : <PasswordForm oidcError={oidcError} />}
+						{totpChallenge ? <TotpForm /> : <PasswordForm oidcError={oidcError} noRedirect={noRedirect} />}
 					</div>
 				</div>
 			</div>

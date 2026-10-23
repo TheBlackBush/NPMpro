@@ -63,6 +63,22 @@ const contrastText = (hex) => {
 	return 1.05 / (l + 0.05) > (l + 0.05) / 0.05 ? "#ffffff" : "#000000";
 };
 
+const DEFAULT_OIDC_COLOR = "#206bc4";
+
+const validOidcColor = (hex) => (/^#[0-9a-fA-F]{6}$/u.test(hex ?? "") ? hex : DEFAULT_OIDC_COLOR);
+
+/**
+ * Hex colour darkened by amount (0 to 1)
+ */
+const shade = (hex, amount) =>
+	`#${[1, 3, 5]
+		.map((i) =>
+			Math.round(Number.parseInt(hex.slice(i, i + 2), 16) * (1 - amount))
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
+
 const oidcErrorKey = (code) => `login.oidc-error.${OIDC_ERROR_CODES.includes(code) ? code : "provider_error"}`;
 
 /**
@@ -79,9 +95,13 @@ const readOidcError = (href) => {
 /**
  * Reads ?oidc_error= from the current location and removes it from the address bar
  */
+let takenOidcError;
 const takeOidcError = () => {
+	// Cached so that a second call in the same page load (React StrictMode) gets the same code
+	if (takenOidcError !== undefined) return takenOidcError;
 	const { code, url } = readOidcError(window.location.href);
 	if (code !== null) window.history.replaceState(null, "", url);
+	takenOidcError = code;
 	return code;
 };
 
@@ -106,5 +126,7 @@ export {
 	oidcErrorKey,
 	oidcSettingsPayload,
 	readOidcError,
+	shade,
 	takeOidcError,
+	validOidcColor,
 };

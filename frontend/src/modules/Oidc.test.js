@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { contrastText, oidcErrorKey, oidcSettingsPayload, readOidcError } from "./Oidc.js";
+import { contrastText, oidcErrorKey, oidcSettingsPayload, readOidcError, shade, validOidcColor } from "./Oidc.js";
 
 it("picks the text colour with the higher contrast", () => {
 	assert.equal(contrastText("#ffffff"), "#000000");
@@ -52,4 +52,16 @@ it("keeps only the editable settings, drops locked keys and an empty secret", ()
 		"skipMfa",
 	]);
 	assert.equal(oidcSettingsPayload({ ...values, clientSecret: "s3" }).clientSecret, "s3");
+});
+
+it("darkens a hex colour", () => {
+	assert.equal(shade("#ffffff", 0.1), "#e6e6e6");
+	assert.equal(shade("#000000", 0.5), "#000000");
+	assert.equal(shade("#206bc4", 0), "#206bc4");
+});
+
+it("falls back to the default colour for invalid values", () => {
+	assert.equal(validOidcColor("#AbCdEf"), "#AbCdEf");
+	assert.equal(validOidcColor("red"), "#206bc4");
+	assert.equal(validOidcColor(undefined), "#206bc4");
 });

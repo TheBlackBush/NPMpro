@@ -264,7 +264,6 @@
 	"login.oidc-error.provider_error": "The sign-in provider could not be reached or refused the sign-in. Try again or ask your administrator.",
 	"login.oidc-error.user_disabled": "This account is disabled.",
 	"login.oidc-sign-in": "Sign in with {label}",
-	"login.oidc-try-again": "Try again",
 	"login.title": "Login to your account",
 	"login.totp-code": "Verification Code",
 	"login.totp-code-placeholder": "Enter code",
