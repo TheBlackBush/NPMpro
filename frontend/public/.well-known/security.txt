@@ -1,4 +1,5 @@
 Contact: https://github.com/TheBlackBush/NPMpro/security
+Expires: 2027-10-23T00:00:00.000Z
 Preferred-Languages: en
 Canonical: https://raw.githubusercontent.com/TheBlackBush/NPMpro/refs/heads/develop/frontend/public/.well-known/security.txt
 Canonical: https://github.com/TheBlackBush/NPMpro/security
