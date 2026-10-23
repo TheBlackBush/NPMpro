@@ -56,6 +56,14 @@ router
 		res.status(200).send(await internalOidcSetting.test(res.locals.access, payload));
 	});
 
+/**
+ * Admin check before multer reads the upload
+ */
+const requireAdmin = (_, res, next) => {
+	res.locals.access.canAdmin();
+	next();
+};
+
 const iconUpload = multer({
 	storage: multer.memoryStorage(),
 	limits: { fileSize: ICON_MAX_BYTES, files: 1, fields: 0 },
@@ -80,6 +88,7 @@ const uploadIcon = (req, res, next) => {
 router
 	.route("/icon")
 	.all(jwtdecode())
+	.all(requireAdmin)
 
 	/**
 	 * POST /api/settings/oidc/icon
@@ -105,6 +114,7 @@ router
 router
 	.route("/icon/url")
 	.all(jwtdecode())
+	.all(requireAdmin)
 
 	/**
 	 * POST /api/settings/oidc/icon/url

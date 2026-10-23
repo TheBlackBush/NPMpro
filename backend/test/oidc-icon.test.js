@@ -27,6 +27,22 @@ const UNSAFE_SVG = [
 	"<svg><SCRIPT>alert(1)</SCRIPT></svg>",
 	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
 	"<svg\nonclick='x()'></svg>",
+	'<svg xmlns:s="http://www.w3.org/2000/svg"><s:script>x()</s:script></svg>',
+	'<svg><a href="&#106;avascript:x()"/></svg>',
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	'<svg><a href="java&#x9;script:x()"/></svg>',
+	'<svg><a href="java\tscript:x()"/></svg>',
+	"<svg/onload=x()>",
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	'<svg a="1"onload="x()"></svg>',
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	"<svg><title>&custom;</title></svg>",
+	'<?xml-stylesheet href="x.xsl" type="text/xsl"?><svg/>',
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	"<svg><foreignObject><div/></foreignObject></svg>",
+	'<svg><set attributeName="onmouseover" to="x()"/></svg>',
+	'<svg><animate attributeName="onclick" values="x()"/></svg>',
+	'<!DOCTYPE svg><!ENTITY a "b"><svg/>',
 ];
 
 let server;
@@ -99,6 +115,18 @@ it("detects svg after a bom, comments and a doctype", () => {
 it("refuses scripted svg", () => {
 	for (const unsafe of UNSAFE_SVG) assert.equal(svgIsSafe(unsafe), false, unsafe);
 	assert.equal(svgIsSafe('<svg><path d="M0 0"/></svg>'), true);
+	assert.equal(
+		svgIsSafe(
+			'<svg><title>Tom &amp; Jerry &lt;3 &quot;&apos;&gt;</title><set attributeName="fill" to="red"/></svg>',
+		),
+		true,
+	);
+});
+
+it("only accepts a real xml declaration before the svg", () => {
+	assert.equal(detectIconType(Buffer.from('<?xml-stylesheet href="x.xsl"?><svg/>')), null);
+	assert.equal(detectIconType(Buffer.from("<?xmlfoo ?><svg/>")), null);
+	assert.equal(detectIconType(Buffer.from('<?xml version="1.0"?><svg/>')), "svg");
 });
 
 it("refuses large files and unsafe svg with a reason", () => {

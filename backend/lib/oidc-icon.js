@@ -20,9 +20,27 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 const PNG_MAGIC = Buffer.from("89504e470d0a1a0a", "hex");
 const JPEG_MAGIC = Buffer.from("ffd8ff", "hex");
-const SVG_PREAMBLE = /^\s*(?:<\?xml[^>]*\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>[]*>)/iu;
+const SVG_PREAMBLE = /^\s*(?:<\?xml\s[^>]*\?>|<!--[\s\S]*?-->|<!DOCTYPE[^>[]*>)/iu;
 const SVG_START = /^\s*<svg[\s>/]/u;
-const SVG_UNSAFE = [/<script/iu, /\son[a-z]+\s*=/iu, /javascript:/iu];
+const SVG_UNSAFE = [
+	// script elements, also with a namespace prefix
+	/<(?:[\w.-]+:)?script[\s>/]/iu,
+	// event handler attributes after any separator
+	/[\s/"']on[a-z]+\s*=/iu,
+	// numeric character references
+	/&#/u,
+	// named entity references other than the five predefined by XML
+	/&(?!(?:amp|lt|gt|quot|apos);)[A-Za-z_][\w.-]*;/u,
+	/<!ENTITY/iu,
+	/<(?:[\w.-]+:)?foreignObject/iu,
+	// animations that set an event handler attribute
+	/<(?:[\w.-]+:)?(?:set|animate|animateTransform|animateMotion)\b[^>]*\battributeName\s*=\s*["']?\s*on/iu,
+	// processing instructions other than the xml declaration (xml-stylesheet and others)
+	/<\?(?!xml\s)/iu,
+];
+const JS_URL = /javascript:/iu;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are stripped on purpose
+const STRIPPED = /[\s\u0000-\u001f]/gu;
 
 const tooLarge = () => new errs.ValidationError("Icon is too large (max 256 KB)");
 
@@ -69,9 +87,12 @@ const detectIconType = (buffer) => {
 
 /**
  * @param   {string}  text
- * @returns {boolean}  false for scripts, event handler attributes and javascript: URLs
+ * @returns {boolean}  false for scripts, event handlers, javascript: URLs, entity and character
+ *                     references (except the five XML ones), foreignObject, handler animations
+ *                     and processing instructions other than the xml declaration
  */
-const svgIsSafe = (text) => !SVG_UNSAFE.some((pattern) => pattern.test(text));
+const svgIsSafe = (text) =>
+	!(SVG_UNSAFE.some((pattern) => pattern.test(text)) || JS_URL.test(text.replace(STRIPPED, "")));
 
 /**
  * @param   {Buffer}  buffer
@@ -172,12 +193,19 @@ const downloadIcon = async (value, timeout = DOWNLOAD_TIMEOUT_MS) => {
  */
 const iconPath = (ext) => (Object.hasOwn(ICON_MIME, ext) ? `${ICON_DIR}/oidc-icon.${ext}` : null);
 
-const removeIconFiles = async () => {
-	for (const ext of Object.keys(ICON_MIME)) await rm(iconPath(ext), { force: true });
+/**
+ * Removes the stored icon files
+ *
+ * @param   {string}  [keep]  extension to keep (the file the row now points at)
+ */
+const removeIconFiles = async (keep) => {
+	for (const ext of Object.keys(ICON_MIME)) {
+		if (ext !== keep) await rm(iconPath(ext), { force: true });
+	}
 };
 
 /**
- * Replaces any stored icon file with this one
+ * Writes the icon file; the caller removes the other extensions once the row is saved
  *
  * @param   {Buffer}  buffer  already checked with checkIcon
  * @param   {string}  ext     from checkIcon
@@ -185,7 +213,6 @@ const removeIconFiles = async () => {
 const writeIconFile = async (buffer, ext) => {
 	const path = iconPath(ext);
 	if (!path) throw new errs.ValidationError("Unsupported icon type, use PNG, JPEG, WebP or SVG");
-	await removeIconFiles();
 	await writeFile(path, buffer);
 };
 

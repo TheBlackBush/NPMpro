@@ -123,6 +123,7 @@ const internalOidcSetting = {
 		const ext = checkIcon(buffer);
 		await writeIconFile(buffer, ext);
 		await saveIcon(access, { type: "file", ext, updated_on: Date.now() }, change);
+		await removeIconFiles(ext);
 		return internalOidcSetting.get(access);
 	},
 
@@ -146,8 +147,8 @@ const internalOidcSetting = {
 	 */
 	deleteIcon: async (access) => {
 		access.canAdmin();
-		await removeIconFiles();
 		await saveIcon(access, { ...OIDC_DEFAULTS.button.icon }, "removed");
+		await removeIconFiles();
 		return internalOidcSetting.get(access);
 	},
 
