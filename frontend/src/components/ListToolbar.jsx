@@ -1,5 +1,5 @@
 import { IconSearch } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
 
@@ -40,9 +40,12 @@ function FilterSelect({ label, value, onChange, options }) {
 function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [], children }) {
 	const active = activeFilterCount(filters, kinds) > 0;
 	const [text, setText] = useState(filters.q);
+	const inputRef = useRef(null);
 
 	useEffect(() => {
-		// resync on external changes (clear, back navigation) without clobbering typing
+		// router updates arrive as transitions, so while the box has focus an older q can land after newer
+		// keystrokes; only resync on external changes (back navigation) when the user is not typing
+		if (document.activeElement === inputRef.current) return;
 		setText((current) => (current.trim() === filters.q.trim() ? current : filters.q));
 	}, [filters.q]);
 	return (
@@ -59,6 +62,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 							placeholder={intl.formatMessage({ id: "search" })}
 							aria-label={intl.formatMessage({ id: "search" })}
 							autoComplete="off"
+							ref={inputRef}
 							value={text}
 							onChange={(e) => {
 								setText(e.target.value);
@@ -109,7 +113,14 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 							<span className="text-secondary small">
 								<T id="list.shown" data={{ shown, total }} />
 							</span>
-							<button type="button" className="btn btn-link btn-sm p-0" onClick={clear}>
+							<button
+								type="button"
+								className="btn btn-link btn-sm p-0"
+								onClick={() => {
+									setText("");
+									clear();
+								}}
+							>
 								<T id="list.clear-filters" />
 							</button>
 						</>
