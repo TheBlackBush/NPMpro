@@ -8,6 +8,20 @@ const repoUrl = "https://github.com/TheBlackBush/NPMpro";
 const releaseBuildPattern = /^(?<release>\d+\.\d+\.\d+)-[0-9a-f]+$/u;
 const commitPattern = /-(?<commit>[0-9a-f]+)$/u;
 
+// One item per line on phones, a dot separated row from sm up (Tabler's own dots would start wrapped lines).
+function Item({ first = false, children }) {
+	return (
+		<li className="list-inline-item d-block d-sm-inline-block">
+			{first ? null : (
+				<span className="d-none d-sm-inline me-2" aria-hidden="true">
+					·
+				</span>
+			)}
+			{children}
+		</li>
+	);
+}
+
 export function SiteFooter() {
 	const { data: versionData } = useCheckVersion();
 
@@ -21,19 +35,18 @@ export function SiteFooter() {
 			<div className="container-xl">
 				<div className="row text-center align-items-center flex-row-reverse">
 					<div className="col-lg-auto ms-lg-auto">
-						<ul className="list-inline list-inline-dots mb-0">
+						<ul className="list-inline mb-0">
 							<li className="list-inline-item">
 								<a href={repoUrl} target="_blank" className="link-secondary" rel="noopener">
+									<IconBrandGithub className="icon icon-inline me-1" aria-hidden="true" />
 									<T id="footer.github" />
-									<IconBrandGithub className="icon icon-inline me-1" />
 								</a>
 							</li>
 						</ul>
 					</div>
-					<div className="col-12 col-lg-auto mt-3 mt-lg-0">
-						<ul className="list-inline list-inline-dots mb-0">
-							<li className="list-inline-item">© {new Date().getFullYear()} AGPL-3.0 (and MIT)</li>
-							<li className="list-inline-item">
+					<div className="col-12 col-lg-auto mt-3 mt-lg-0 d-lg-flex gap-lg-3">
+						<ul className="list-inline mb-0">
+							<Item first>
 								<a
 									href="https://github.com/TheBlackBush"
 									rel="noreferrer"
@@ -42,8 +55,8 @@ export function SiteFooter() {
 								>
 									NPMpro by TheBlackBush
 								</a>
-							</li>
-							<li className="list-inline-item">
+							</Item>
+							<Item>
 								<a
 									href="https://github.com/ZoeyVid/NPMplus"
 									rel="noreferrer"
@@ -52,27 +65,29 @@ export function SiteFooter() {
 								>
 									NPMplus by ZoeyVid
 								</a>
-							</li>
-							<li className="list-inline-item">
+							</Item>
+							<Item>
 								<a href="https://jc21.com" rel="noreferrer" target="_blank" className="link-secondary">
 									jc21.com
 								</a>
-							</li>
-							<li className="list-inline-item">
+							</Item>
+							<Item>
 								Theme by{" "}
 								<a href="https://tabler.io" rel="noreferrer" target="_blank" className="link-secondary">
 									Tabler
 								</a>{" "}
 								({tablerVersion})
-							</li>
-							<li className="list-inline-item">
+							</Item>
+						</ul>
+						<ul className="list-inline mb-0 mt-2 mt-lg-0">
+							<Item first>© {new Date().getFullYear()} AGPL-3.0 (and MIT)</Item>
+							<Item>
 								<a href={versionUrl} className="link-secondary" target="_blank" rel="noopener">
-									{" "}
-									{version}{" "}
+									{version}
 								</a>
-							</li>
+							</Item>
 							{versionData?.updateAvailable && (
-								<li className="list-inline-item">
+								<Item>
 									<a
 										href={`${repoUrl}/releases/tag/${versionData.latest}`}
 										className="link-warning fw-bold"
@@ -82,7 +97,7 @@ export function SiteFooter() {
 									>
 										<T id="update-available" data={{ latestVersion: versionData.latest }} />
 									</a>
-								</li>
+								</Item>
 							)}
 						</ul>
 					</div>
