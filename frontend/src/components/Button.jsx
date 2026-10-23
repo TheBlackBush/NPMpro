@@ -1,37 +1,14 @@
-import cn from "clsx";
+import { buttonClassName } from "src/modules/ButtonClasses";
 
-function Button({
-	children,
-	className,
-	onClick,
-	type,
-	actionType,
-	variant,
-	size,
-	color,
-	fullWidth,
-	isLoading,
-	disabled,
-	...rest
-}) {
-	const cns = cn(
-		"btn",
-		className,
-		actionType && `btn-${actionType}`,
-		variant && `btn-${variant}`,
-		size && `btn-${size}`,
-		color && `btn-${color}`,
-		fullWidth && "w-100",
-		isLoading && "btn-loading",
-	);
-
+function Button({ children, className, onClick, type, color, outline, size, fullWidth, isLoading, disabled, ...rest }) {
 	return (
 		<button
 			{...rest}
 			type={type || "button"}
-			className={cns}
-			onClick={() => !isLoading && onClick?.()}
+			className={buttonClassName({ color, outline, size, fullWidth, isLoading, className })}
+			onClick={(e) => !isLoading && onClick?.(e)}
 			disabled={disabled}
+			aria-busy={isLoading || undefined}
 		>
 			{children}
 		</button>

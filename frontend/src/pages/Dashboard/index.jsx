@@ -9,7 +9,7 @@ import {
 	IconShield,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router";
-import { EventFormatter, HasPermission } from "src/components";
+import { EventFormatter, HasPermission, PageHeader } from "src/components";
 import { useHostReport, useRecentAuditLogs, useUser } from "src/hooks";
 import { T } from "src/locale";
 import { EXPIRY_WARNING_DAYS } from "src/modules/Expiry";
@@ -53,9 +53,7 @@ const Dashboard = () => {
 
 	return (
 		<div>
-			<h2>
-				<T id="dashboard" />
-			</h2>
+			<PageHeader title={<T id="dashboard" />} />
 			<div className="row row-deck row-cards">
 				<div className="col-12 my-4">
 					<div className="row row-cards">

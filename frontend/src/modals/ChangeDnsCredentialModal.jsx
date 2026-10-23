@@ -1,9 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { setCertificateDnsCredential } from "src/api/backend";
-import { ApiErrorContent, Button, DnsCredentialSelect, ErrorAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, DnsCredentialSelect, ErrorAlert } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -40,7 +39,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{ npmproDnsCredentialId: certificate.npmproDnsCredentialId ?? undefined }}
 				onSubmit={onSubmit}
@@ -48,36 +47,36 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
-						<Modal.Header closeButton={!isSubmitting}>
-							<Modal.Title>
+						<AppModal.Header closeButton={!isSubmitting}>
+							<AppModal.Title>
 								<T id="dns-credentials.change" />
-							</Modal.Title>
-						</Modal.Header>
-						<Modal.Body>
+							</AppModal.Title>
+						</AppModal.Header>
+						<AppModal.Body>
 							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<DnsCredentialSelect
 								name="npmproDnsCredentialId"
 								provider={certificate.npmproDnsProvider}
 							/>
-						</Modal.Body>
-						<Modal.Footer>
-							<Button onClick={close} disabled={isSubmitting}>
+						</AppModal.Body>
+						<AppModal.Footer>
+							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
 							<Button
 								type="submit"
-								color="pink"
+								color="primary"
 								className="ms-auto"
 								isLoading={isSubmitting}
 								disabled={isSubmitting || !values.npmproDnsCredentialId}
 							>
 								<T id="save" />
 							</Button>
-						</Modal.Footer>
+						</AppModal.Footer>
 					</Form>
 				)}
 			</Formik>
-		</Modal>
+		</AppModal>
 	);
 });
 

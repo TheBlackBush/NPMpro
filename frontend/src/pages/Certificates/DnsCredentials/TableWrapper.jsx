@@ -54,7 +54,7 @@ export default function TableWrapper() {
 						</Button>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" className="btn-pink" onClick={() => showDnsCredentialModal("new")}>
+								<Button size="sm" color="pink" onClick={() => showDnsCredentialModal("new")}>
 									<T id="dns-credentials.add" />
 								</Button>
 							) : null}

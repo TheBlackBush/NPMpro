@@ -1,6 +1,6 @@
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { ErrorAlert, LoadingPage } from "src/components";
+import { Button, ErrorAlert, LoadingPage } from "src/components";
 import { useAuditLogs, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
@@ -149,22 +149,16 @@ export default function TableWrapper() {
 				)}
 				{isFetchNextPageError ? <ErrorAlert error={error} className="m-3" /> : null}
 				{rows.length && (hasNextPage || filtered || total !== null) ? (
-					<div className="card-footer d-flex align-items-center gap-3">
-						{hasNextPage ? (
-							<button
-								type="button"
-								className="btn btn-sm"
-								disabled={isFetchingNextPage}
-								onClick={() => fetchNextPage()}
-							>
-								{isFetchingNextPage ? <span className="spinner-border spinner-border-sm me-2" /> : null}
-								<T id="audit-log.load-more" />
-							</button>
-						) : null}
+					<div className="card-footer d-flex align-items-center">
 						{total !== null ? (
-							<span className="text-secondary">
+							<p className="m-0 text-secondary">
 								<T id="audit-log.loaded" data={{ loaded: rows.length, total }} />
-							</span>
+							</p>
+						) : null}
+						{hasNextPage ? (
+							<Button className="ms-auto" isLoading={isFetchingNextPage} onClick={() => fetchNextPage()}>
+								<T id="audit-log.load-more" />
+							</Button>
 						) : null}
 					</div>
 				) : null}

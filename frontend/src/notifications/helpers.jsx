@@ -15,7 +15,7 @@ const showSuccess = (message) => {
 };
 
 const showError = (message) => {
-	toast(<Msg />, {
+	toast(Msg, {
 		className: "bg-transparent shadow-none border-0",
 		data: {
 			type: "error",
@@ -50,7 +50,12 @@ const getNginxConfigError = (row) =>
 const NginxConfigErrorMsg = ({ obj, nginxErr }) => (
 	<>
 		{intl.formatMessage({ id: "notification.object-nginx-error" }, { object: intl.formatMessage({ id: obj }) })}
-		{nginxErr && <pre className="mt-2 mb-0 text-wrap">{nginxErr}</pre>}
+		{nginxErr && (
+			// Tabler's .text-wrap is white-space: normal, which would collapse the nginx output
+			<pre className="mt-2 mb-0" style={{ whiteSpace: "pre-wrap" }}>
+				{nginxErr}
+			</pre>
+		)}
 	</>
 );
 

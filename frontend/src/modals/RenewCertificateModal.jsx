@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { renewCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, ErrorAlert, Loading, RequestProgress } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, RequestProgress } from "src/components";
 import { useCertificate } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -39,25 +38,24 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 	}, [id, data, isFresh, remove, queryClient]);
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : remove}>
-			<Modal.Header closeButton={!isSubmitting}>
-				<Modal.Title>
+		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
+			<AppModal.Header closeButton={!isSubmitting}>
+				<AppModal.Title>
 					<T id="certificate.renew" />
-				</Modal.Title>
-			</Modal.Header>
-			<Modal.Body>
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
 				<ErrorAlert>{errorMsg}</ErrorAlert>
 				{isPending && <Loading noLogo />}
 				{error && <ErrorAlert error={error} className="m-3" />}
-				{isSubmitting ? <p className="text-center mt-3">Please wait ...</p> : null}
-			</Modal.Body>
-			<RequestProgress running={isSubmitting} />
-			<Modal.Footer>
-				<Button onClick={remove} disabled={isSubmitting}>
+				<RequestProgress running={isSubmitting} />
+			</AppModal.Body>
+			<AppModal.Footer>
+				<Button className="ms-auto" onClick={remove} disabled={isSubmitting}>
 					<T id="action.close" />
 				</Button>
-			</Modal.Footer>
-		</Modal>
+			</AppModal.Footer>
+		</AppModal>
 	);
 });
 

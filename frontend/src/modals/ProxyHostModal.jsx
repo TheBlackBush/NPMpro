@@ -2,10 +2,10 @@ import { IconSettings } from "@tabler/icons-react";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	AccessFields,
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DirectoryField,
 	DomainNamesField,
@@ -95,7 +95,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -138,15 +138,15 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T
 										id={savedId || (data?.id && !isClone) ? "object.edit" : "object.add"}
 										tData={{ object: "proxy-host" }}
 									/>
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body className="p-0">
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="card m-0 border-0">
 									<div className="card-header">
@@ -185,7 +185,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 													<T id="column.ssl" />
 												</a>
 											</li>
-											<li className="nav-item ms-auto" role="presentation">
+											<li className="nav-item" role="presentation">
 												<a
 													href="#tab-advanced"
 													className="nav-link"
@@ -302,56 +302,60 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															)}
 														</Field>
 													</div>
-													<div className="col-md-3">
+													<div className="col-md-4">
 														<Field name="forwardPort" validate={validateNumber(-1, 65535)}>
 															{({ field, form }) => (
 																<div className="mb-3">
 																	<label className="form-label" htmlFor="forwardPort">
 																		<T id="host.forward-port" />
 																	</label>
-																	<input
-																		id="forwardPort"
-																		type="text"
-																		inputMode="numeric"
-																		pattern="[1-9][0-9]*"
-																		className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
-																		placeholder={intl.formatMessage(
-																			{ id: "form.example" },
-																			{ example: "8081" },
-																		)}
-																		{...field}
-																	/>
+																	<div className="input-group has-validation">
+																		<input
+																			id="forwardPort"
+																			type="text"
+																			inputMode="numeric"
+																			pattern="[1-9][0-9]*"
+																			className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
+																			placeholder={intl.formatMessage(
+																				{ id: "form.example" },
+																				{ example: "8081" },
+																			)}
+																			{...field}
+																		/>
+																		<button
+																			type="button"
+																			className="btn btn-icon"
+																			title={intl.formatMessage({
+																				id: "host.location-config.toggle",
+																			})}
+																			aria-label={intl.formatMessage({
+																				id: "host.location-config.toggle",
+																			})}
+																			aria-expanded={advVisible}
+																			onClick={() =>
+																				setAdvVisible((prev) => !prev)
+																			}
+																		>
+																			<IconSettings
+																				size={20}
+																				aria-hidden="true"
+																			/>
+																			{values?.npmproLocationConfig?.trim()
+																				? "*"
+																				: ""}
+																		</button>
 
-																	{form.errors.forwardPort ? (
-																		<div className="invalid-feedback">
-																			{form.touched.forwardPort
-																				? form.errors.forwardPort
-																				: null}
-																		</div>
-																	) : null}
+																		{form.errors.forwardPort ? (
+																			<div className="invalid-feedback">
+																				{form.touched.forwardPort
+																					? form.errors.forwardPort
+																					: null}
+																			</div>
+																		) : null}
+																	</div>
 																</div>
 															)}
 														</Field>
-													</div>
-													<div className="col-md-1 text-end">
-														<div className="mb-3">
-															<div className="form-label invisible">​</div>
-															<button
-																type="button"
-																className="btn p-0"
-																title={intl.formatMessage({
-																	id: "host.location-config.toggle",
-																})}
-																aria-label={intl.formatMessage({
-																	id: "host.location-config.toggle",
-																})}
-																aria-expanded={advVisible}
-																onClick={() => setAdvVisible((prev) => !prev)}
-															>
-																<IconSettings size={20} />
-																{values?.npmproLocationConfig?.trim() ? "*" : ""}
-															</button>
-														</div>
 													</div>
 												</div>
 												<div className="my-3">
@@ -822,19 +826,20 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-							</Modal.Body>
-							<RequestProgress
-								running={isSubmitting && values.certificateId === "new"}
-								propagationSeconds={values.npmproPropagationSeconds}
-							/>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+								<RequestProgress
+									className="px-3 pb-3"
+									running={isSubmitting && values.certificateId === "new"}
+									propagationSeconds={values.npmproPropagationSeconds}
+								/>
+							</AppModal.Body>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										color="lime"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
@@ -842,12 +847,12 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

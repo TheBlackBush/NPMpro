@@ -1,3 +1,4 @@
+export * from "./AppModal";
 export * from "./Button";
 export * from "./EmptyData";
 export * from "./ErrorAlert";
@@ -12,6 +13,7 @@ export * from "./LocalePicker";
 export * from "./NavLink";
 export * from "./NoticeAlert";
 export * from "./Page";
+export * from "./PageHeader";
 export * from "./RequestProgress";
 export * from "./SiteContainer";
 export * from "./SiteFooter";

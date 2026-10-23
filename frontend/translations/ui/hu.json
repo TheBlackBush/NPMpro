@@ -24,6 +24,8 @@
 	"action.permissions": "Engedélyek",
 	"action.renew": "Megújítás",
 	"action.view-details": "Részletek megtekintése",
+	"aria.main-navigation": "Főmenü",
+	"aria.select-language": "Nyelv kiválasztása",
 	"auditlogs": "Audit naplók",
 	"auto": "Automatikus",
 	"cancel": "Mégse",

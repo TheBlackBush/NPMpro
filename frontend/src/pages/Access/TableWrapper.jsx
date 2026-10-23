@@ -52,7 +52,7 @@ export default function TableWrapper() {
 						</Button>
 						<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" className="btn-cyan" onClick={() => showAccessListModal("new")}>
+								<Button size="sm" color="cyan" onClick={() => showAccessListModal("new")}>
 									<T id="object.add" tData={{ object: "access-list" }} />
 								</Button>
 							) : null}

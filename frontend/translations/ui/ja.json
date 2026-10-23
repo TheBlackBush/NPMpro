@@ -21,6 +21,8 @@
 	"action.permissions": "権限",
 	"action.renew": "更新",
 	"action.view-details": "詳細",
+	"aria.main-navigation": "メインナビゲーション",
+	"aria.select-language": "言語を選択",
 	"auditlogs": "監査ログ",
 	"cancel": "キャンセル",
 	"certificate": "証明書",

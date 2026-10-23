@@ -1,10 +1,10 @@
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	AccessClientFields,
 	ApiErrorContent,
+	AppModal,
 	BasicAuthFields,
 	Button,
 	ErrorAlert,
@@ -91,7 +91,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -108,167 +108,163 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 					{({ setFieldValue }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "access-list" }} />
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
-								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-								<div className="card m-0 border-0">
-									<div className="card-header">
-										<ul className="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-details"
-													className="nav-link active"
-													data-bs-toggle="tab"
-													aria-selected="true"
-													role="tab"
-												>
-													<T id="column.details" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-auth"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="column.authorizations" />
-												</a>
-											</li>
-											<li className="nav-item" role="presentation">
-												<a
-													href="#tab-rules"
-													className="nav-link"
-													data-bs-toggle="tab"
-													aria-selected="false"
-													role="tab"
-												>
-													<T id="column.rules" />
-												</a>
-											</li>
-										</ul>
-									</div>
-									<div className="card-body">
-										<div className="tab-content">
-											<div className="tab-pane active show" id="tab-details" role="tabpanel">
-												<Field name="name" validate={validateString(1, 255)}>
-													{({ field, form }) => (
-														<div>
-															<label htmlFor="name" className="form-label">
-																<T id="column.name" />
-															</label>
-															<input
-																id="name"
-																type="text"
-																required
-																autoComplete="off"
-																className={`form-control ${form.errors.name && form.touched.name ? "is-invalid" : ""}`}
-																{...field}
-															/>
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body>
+								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+									{errorMsg}
+								</ErrorAlert>
+								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-details"
+											className="nav-link active"
+											data-bs-toggle="tab"
+											aria-selected="true"
+											role="tab"
+										>
+											<T id="column.details" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-auth"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="column.authorizations" />
+										</a>
+									</li>
+									<li className="nav-item" role="presentation">
+										<a
+											href="#tab-rules"
+											className="nav-link"
+											data-bs-toggle="tab"
+											aria-selected="false"
+											role="tab"
+										>
+											<T id="column.rules" />
+										</a>
+									</li>
+								</ul>
+								<div className="tab-content">
+									<div className="tab-pane active show" id="tab-details" role="tabpanel">
+										<Field name="name" validate={validateString(1, 255)}>
+											{({ field, form }) => (
+												<div>
+													<label htmlFor="name" className="form-label">
+														<T id="column.name" />
+													</label>
+													<input
+														id="name"
+														type="text"
+														required
+														autoComplete="off"
+														className={`form-control ${form.errors.name && form.touched.name ? "is-invalid" : ""}`}
+														{...field}
+													/>
 
-															{form.errors.name ? (
-																<div className="invalid-feedback">
-																	{form.touched.name ? form.errors.name : null}
-																</div>
-															) : null}
+													{form.errors.name ? (
+														<div className="invalid-feedback">
+															{form.touched.name ? form.errors.name : null}
 														</div>
-													)}
-												</Field>
-												<div className="my-3">
-													<h3 className="py-2">
-														<T id="options" />
-													</h3>
-													<div className="divide-y">
-														<div>
-															<label className="row cursor-pointer" htmlFor="satisfyAny">
-																<span className="col">
-																	<T id="access-list.satisfy-any" />
-																</span>
-																<span className="col-auto">
-																	<Field name="satisfyAny" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					id="satisfyAny"
-																					className={
-																						field.value
-																							? toggleEnabled
-																							: toggleClasses
-																					}
-																					type="checkbox"
-																					name={field.name}
-																					checked={field.value}
-																					onChange={(e) => {
-																						setFieldValue(
-																							field.name,
-																							e.target.checked,
-																						);
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
-														</div>
-														<div>
-															<label className="row cursor-pointer" htmlFor="passAuth">
-																<span className="col">
-																	<T id="access-list.pass-auth" />
-																</span>
-																<span className="col-auto">
-																	<Field name="passAuth" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					id="passAuth"
-																					className={
-																						field.value
-																							? toggleEnabled
-																							: toggleClasses
-																					}
-																					type="checkbox"
-																					name={field.name}
-																					checked={field.value}
-																					onChange={(e) => {
-																						setFieldValue(
-																							field.name,
-																							e.target.checked,
-																						);
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
-														</div>
-													</div>
+													) : null}
 												</div>
-											</div>
-											<div className="tab-pane" id="tab-auth" role="tabpanel">
-												<BasicAuthFields initialValues={data?.items} />
-											</div>
-											<div className="tab-pane" id="tab-rules" role="tabpanel">
-												<AccessClientFields initialValues={data?.clients} />
+											)}
+										</Field>
+										<div className="my-3">
+											<h3 className="py-2">
+												<T id="options" />
+											</h3>
+											<div className="divide-y">
+												<div>
+													<label className="row cursor-pointer" htmlFor="satisfyAny">
+														<span className="col">
+															<T id="access-list.satisfy-any" />
+														</span>
+														<span className="col-auto">
+															<Field name="satisfyAny" type="checkbox">
+																{({ field }) => (
+																	<span className="form-check form-check-single form-switch">
+																		<input
+																			id="satisfyAny"
+																			className={
+																				field.value
+																					? toggleEnabled
+																					: toggleClasses
+																			}
+																			type="checkbox"
+																			name={field.name}
+																			checked={field.value}
+																			onChange={(e) => {
+																				setFieldValue(
+																					field.name,
+																					e.target.checked,
+																				);
+																			}}
+																		/>
+																	</span>
+																)}
+															</Field>
+														</span>
+													</label>
+												</div>
+												<div>
+													<label className="row cursor-pointer" htmlFor="passAuth">
+														<span className="col">
+															<T id="access-list.pass-auth" />
+														</span>
+														<span className="col-auto">
+															<Field name="passAuth" type="checkbox">
+																{({ field }) => (
+																	<span className="form-check form-check-single form-switch">
+																		<input
+																			id="passAuth"
+																			className={
+																				field.value
+																					? toggleEnabled
+																					: toggleClasses
+																			}
+																			type="checkbox"
+																			name={field.name}
+																			checked={field.value}
+																			onChange={(e) => {
+																				setFieldValue(
+																					field.name,
+																					e.target.checked,
+																				);
+																			}}
+																		/>
+																	</span>
+																)}
+															</Field>
+														</span>
+													</label>
+												</div>
 											</div>
 										</div>
 									</div>
+									<div className="tab-pane" id="tab-auth" role="tabpanel">
+										<BasicAuthFields initialValues={data?.items} />
+									</div>
+									<div className="tab-pane" id="tab-rules" role="tabpanel">
+										<AccessClientFields initialValues={data?.clients} />
+									</div>
 								</div>
-							</Modal.Body>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+							</AppModal.Body>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										color="cyan"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
@@ -276,12 +272,12 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

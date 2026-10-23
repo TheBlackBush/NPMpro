@@ -25,6 +25,8 @@
 	"action.permissions": "دسترسی‌ها",
 	"action.renew": "تمدید",
 	"action.view-details": "مشاهده جزئیات",
+	"aria.main-navigation": "پیمایش اصلی",
+	"aria.select-language": "انتخاب زبان",
 	"auditlogs": "گزارش‌های ممیزی (Audit Logs)",
 	"auto": "خودکار",
 	"cancel": "لغو",

@@ -24,6 +24,8 @@
 	"action.permissions": "권한",
 	"action.renew": "갱신",
 	"action.view-details": "자세히 보기",
+	"aria.main-navigation": "기본 탐색",
+	"aria.select-language": "언어 선택",
 	"auditlogs": "감사 로그",
 	"auto": "자동",
 	"cancel": "취소",

@@ -97,7 +97,7 @@ export default function TableWrapper() {
 						</Button>
 						<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" className="btn-lime" onClick={() => showProxyHostModal("new")}>
+								<Button size="sm" color="lime" onClick={() => showProxyHostModal("new")}>
 									<T id="object.add" tData={{ object: "proxy-host" }} />
 								</Button>
 							) : null}

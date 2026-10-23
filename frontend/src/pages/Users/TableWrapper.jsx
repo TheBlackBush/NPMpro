@@ -58,7 +58,7 @@ export default function TableWrapper() {
 					</h2>
 					<div className="card-actions btn-list">
 						{data?.length ? (
-							<Button size="sm" className="btn-orange" onClick={() => showUserModal("new")}>
+							<Button size="sm" color="orange" onClick={() => showUserModal("new")}>
 								<T id="object.add" tData={{ object: "user" }} />
 							</Button>
 						) : null}

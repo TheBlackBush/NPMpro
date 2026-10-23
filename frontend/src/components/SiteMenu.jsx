@@ -17,7 +17,7 @@ import React from "react";
 import { useLocation } from "react-router";
 import { NavLink } from "src/components";
 import { useUser } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import {
 	ACCESS_LISTS,
 	ADMIN,
@@ -124,11 +124,13 @@ const getMenuItem = (item, onClick, pathname) => {
 
 	return (
 		<li key={`item-${item.label}`} className={`nav-item${isActivePath(item.to, pathname) ? " active" : ""}`}>
-			<NavLink to={item.to} href={item.href} onClick={onClick}>
-				<span className="nav-link-icon">{React.createElement(item.icon, { height: 24, width: 24 })}</span>
+			<NavLink to={item.to} href={item.href} active={isActivePath(item.to, pathname)} onClick={onClick}>
+				<span className="nav-link-icon">
+					{React.createElement(item.icon, { className: "icon", "aria-hidden": "true" })}
+				</span>
 				<span className="nav-link-title d-flex align-items-center gap-1">
 					{item.href ? item.label : <T id={item.label} />}
-					{item.href && <IconExternalLink height={16} width={16} />}
+					{item.href && <IconExternalLink height={16} width={16} aria-hidden="true" />}
 				</span>
 			</NavLink>
 		</li>
@@ -141,7 +143,9 @@ const getMenuDropown = (item, onClick, pathname) => (
 		className={`nav-item dropdown${item.items.some((subitem) => pathname.startsWith(subitem.to)) ? " active" : ""}`}
 	>
 		<button type="button" className="nav-link dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-			<span className="nav-link-icon">{React.createElement(item.icon, { height: 24, width: 24 })}</span>
+			<span className="nav-link-icon">
+				{React.createElement(item.icon, { className: "icon", "aria-hidden": "true" })}
+			</span>
 			<span className="nav-link-title">
 				<T id={item.label} />
 			</span>
@@ -155,7 +159,7 @@ const getMenuDropown = (item, onClick, pathname) => (
 					active={pathname.startsWith(subitem.to)}
 					onClick={onClick}
 				>
-					{React.createElement(subitem.icon, { width: 18 })}
+					{React.createElement(subitem.icon, { className: "icon dropdown-item-icon", "aria-hidden": "true" })}
 					<T id={subitem.label} />
 				</NavLink>
 			))}
@@ -183,33 +187,35 @@ export function SiteMenu() {
 					<div className="container-xl">
 						<div className="row flex-column flex-md-row flex-fill align-items-center">
 							<div className="col">
-								<ul className="navbar-nav">
-									{menuGroups
-										.map((group) =>
-											group.filter((item) => {
-												if (item.goaccess) {
-													return user?.goaccess;
-												}
-												return hasPermission(
-													item.permissionSection,
-													item.permission,
-													user?.permissions,
-													user?.roles,
-												);
-											}),
-										)
-										.filter((group) => group.length)
-										.map((group, idx) => (
-											<React.Fragment key={group[0].label}>
-												{idx > 0 && (
-													<li className="d-none d-lg-flex">
-														<div className="vr h-50 my-auto" />
-													</li>
-												)}
-												{group.map((item) => getMenuItem(item, closeMenu, pathname))}
-											</React.Fragment>
-										))}
-								</ul>
+								<nav aria-label={intl.formatMessage({ id: "aria.main-navigation" })}>
+									<ul className="navbar-nav">
+										{menuGroups
+											.map((group) =>
+												group.filter((item) => {
+													if (item.goaccess) {
+														return user?.goaccess;
+													}
+													return hasPermission(
+														item.permissionSection,
+														item.permission,
+														user?.permissions,
+														user?.roles,
+													);
+												}),
+											)
+											.filter((group) => group.length)
+											.map((group, idx) => (
+												<React.Fragment key={group[0].label}>
+													{idx > 0 && (
+														<li className="d-none d-lg-flex">
+															<div className="vr h-50 my-auto" />
+														</li>
+													)}
+													{group.map((item) => getMenuItem(item, closeMenu, pathname))}
+												</React.Fragment>
+											))}
+									</ul>
+								</nav>
 							</div>
 						</div>
 					</div>

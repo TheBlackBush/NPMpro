@@ -1,6 +1,6 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useId, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 import { ApiErrorContent, Button, ErrorAlert } from "src/components";
 import { intl, T } from "src/locale";
@@ -15,6 +15,7 @@ const DeleteConfirmModal = EasyModal.create(
 		const queryClient = useQueryClient();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
+		const titleId = useId();
 
 		const onSubmit = async () => {
 			if (isSubmitting) return;
@@ -32,7 +33,13 @@ const DeleteConfirmModal = EasyModal.create(
 		};
 
 		return (
-			<Modal show={visible} onHide={isSubmitting ? undefined : remove} size="sm" centered>
+			<Modal
+				aria-labelledby={titleId}
+				show={visible}
+				onHide={isSubmitting ? undefined : remove}
+				size="sm"
+				centered
+			>
 				<button
 					type="button"
 					className="btn-close"
@@ -43,7 +50,7 @@ const DeleteConfirmModal = EasyModal.create(
 				<div className="modal-status bg-danger" />
 				<Modal.Body className="text-center py-4">
 					<IconAlertTriangle className="icon mb-2 text-danger icon-lg" aria-hidden="true" />
-					<h3>{tTitle ? <T id={tTitle} /> : title}</h3>
+					<h3 id={titleId}>{tTitle ? <T id={tTitle} /> : title}</h3>
 					<div className="text-secondary">
 						{children}
 						{subject ? <div className="mt-2 fw-bold text-break">{subject}</div> : null}
@@ -57,14 +64,15 @@ const DeleteConfirmModal = EasyModal.create(
 					<div className="w-100">
 						<div className="row">
 							<div className="col">
-								<Button className="w-100" onClick={remove} disabled={isSubmitting}>
+								<Button fullWidth onClick={remove} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 							</div>
 							<div className="col">
 								<Button
 									type="submit"
-									className="btn-danger w-100"
+									color="danger"
+									fullWidth
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 									onClick={onSubmit}

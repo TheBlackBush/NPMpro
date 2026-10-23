@@ -2,9 +2,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, DomainNamesField, ErrorAlert, NoticeAlert, RequestProgress } from "src/components";
+import {
+	ApiErrorContent,
+	AppModal,
+	Button,
+	DomainNamesField,
+	ErrorAlert,
+	NoticeAlert,
+	RequestProgress,
+} from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -95,7 +102,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 	);
 
 	return (
-		<Modal show={visible} onHide={isSubmitting || isTesting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting || isTesting ? undefined : close} backdrop="static">
 			<Formik
 				initialValues={{
 					domainNames: [],
@@ -107,66 +114,71 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
-						<Modal.Header closeButton={!(isSubmitting || isTesting)}>
-							<Modal.Title>
+						<AppModal.Header closeButton={!(isSubmitting || isTesting)}>
+							<AppModal.Title>
 								<T id="object.add" tData={{ object: "lets-encrypt-via-http" }} />
-							</Modal.Title>
-						</Modal.Header>
-						<Modal.Body className="p-0">
-							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-							<div className="card m-0 border-0">
-								<div className="card-body">
-									<NoticeAlert>
-										<T id="certificates.http.warning" />
-									</NoticeAlert>
-									<DomainNamesField
-										forCertificate
-										onChange={(doms) => {
-											setDomains(doms);
-											setTestResults(null);
-										}}
-									/>
+							</AppModal.Title>
+						</AppModal.Header>
+						<AppModal.Body>
+							<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+								{errorMsg}
+							</ErrorAlert>
+							<NoticeAlert>
+								<T id="certificates.http.warning" />
+							</NoticeAlert>
+							<DomainNamesField
+								forCertificate
+								onChange={(doms) => {
+									setDomains(doms);
+									setTestResults(null);
+								}}
+							/>
 
-									<div className="row">
-										<div className="col-6">
-											<Field name="npmproReuseKey">
-												{({ field }) => (
-													<label className="form-check form-switch mt-1">
-														<input
-															{...field}
-															className={field.value ? toggleEnabled : toggleClasses}
-															type="checkbox"
-															checked={field.value}
-														/>
+							<div className="row">
+								<div className="col-6">
+									<Field name="npmproReuseKey">
+										{({ field }) => (
+											<label className="form-check form-switch mt-1">
+												<input
+													{...field}
+													className={field.value ? toggleEnabled : toggleClasses}
+													type="checkbox"
+													checked={field.value}
+												/>
 
-														<span className="form-check-label">
-															<T id="domains.reuse-key" />
-														</span>
-													</label>
-												)}
-											</Field>
-										</div>
-									</div>
+												<span className="form-check-label">
+													<T id="domains.reuse-key" />
+												</span>
+											</label>
+										)}
+									</Field>
 								</div>
-								{testResults ? (
-									<div className="card-footer">
-										<h5>
-											<T id="certificates.http.test-results" />
-										</h5>
-										{parseTestResults()}
-									</div>
-								) : null}
 							</div>
-						</Modal.Body>
-						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
-						<Modal.Footer>
-							<Button onClick={close} disabled={isSubmitting || isTesting}>
+							{testResults ? (
+								<div className="border rounded p-3 mt-3">
+									<h5>
+										<T id="certificates.http.test-results" />
+									</h5>
+									{parseTestResults()}
+								</div>
+							) : null}
+							<RequestProgress
+								running={isSubmitting}
+								propagationSeconds={values.npmproPropagationSeconds}
+							/>
+						</AppModal.Body>
+						<AppModal.Footer>
+							<Button
+								className="btn-link link-secondary"
+								onClick={close}
+								disabled={isSubmitting || isTesting}
+							>
 								<T id="cancel" />
 							</Button>
 							<div className="ms-auto">
 								<Button
 									type="button"
-									actionType="secondary"
+									color="secondary"
 									className="me-3"
 									isLoading={isTesting}
 									disabled={isSubmitting || domains.length === 0}
@@ -176,18 +188,18 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								</Button>
 								<Button
 									type="submit"
-									color="pink"
+									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting || isTesting}
 								>
 									<T id="save" />
 								</Button>
 							</div>
-						</Modal.Footer>
+						</AppModal.Footer>
 					</Form>
 				)}
 			</Formik>
-		</Modal>
+		</AppModal>
 	);
 });
 

@@ -1,8 +1,8 @@
 import { Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import {
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DirectoryField,
 	DomainNamesField,
@@ -78,7 +78,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (
@@ -100,15 +100,15 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 					{({ values }) => (
 						<Form onInvalid={showTabOfInvalid}>
 							<DirtyTracker dirtyRef={dirtyRef} />
-							<Modal.Header closeButton={!isSubmitting}>
-								<Modal.Title>
+							<AppModal.Header closeButton={!isSubmitting}>
+								<AppModal.Title>
 									<T
 										id={savedId || data?.id ? "object.edit" : "object.add"}
 										tData={{ object: "dead-host" }}
 									/>
-								</Modal.Title>
-							</Modal.Header>
-							<Modal.Body className="p-0">
+								</AppModal.Title>
+							</AppModal.Header>
+							<AppModal.Body className="p-0">
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								<div className="card m-0 border-0">
 									<div className="card-header">
@@ -135,7 +135,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 													<T id="column.ssl" />
 												</a>
 											</li>
-											<li className="nav-item ms-auto" role="presentation">
+											<li className="nav-item" role="presentation">
 												<a
 													href="#tab-advanced"
 													className="nav-link"
@@ -184,19 +184,20 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-							</Modal.Body>
-							<RequestProgress
-								running={isSubmitting && values.certificateId === "new"}
-								propagationSeconds={values.npmproPropagationSeconds}
-							/>
-							<Modal.Footer>
-								<Button onClick={close} disabled={isSubmitting}>
+								<RequestProgress
+									className="px-3 pb-3"
+									running={isSubmitting && values.certificateId === "new"}
+									propagationSeconds={values.npmproPropagationSeconds}
+								/>
+							</AppModal.Body>
+							<AppModal.Footer>
+								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
-										color="red"
+										color="primary"
 										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
@@ -204,12 +205,12 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="save" />
 									</Button>
 								</HasPermission>
-							</Modal.Footer>
+							</AppModal.Footer>
 						</Form>
 					)}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

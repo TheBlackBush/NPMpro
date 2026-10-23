@@ -1,9 +1,9 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import Modal from "react-bootstrap/Modal";
 import Select from "react-select";
 import {
 	ApiErrorContent,
+	AppModal,
 	Button,
 	DnsCredentialValuesFields,
 	ErrorAlert,
@@ -101,7 +101,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 	const ready = data && providers;
 
 	return (
-		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending || providersPending) && <Loading noLogo />}
 			{ready && (
@@ -112,15 +112,15 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 						return (
 							<Form>
 								<DirtyTracker dirtyRef={dirtyRef} />
-								<Modal.Header closeButton={!isSubmitting}>
-									<Modal.Title>
+								<AppModal.Header closeButton={!isSubmitting}>
+									<AppModal.Title>
 										<T
 											id={isNew ? "object.add" : "object.edit"}
 											tData={{ object: "dns-credential" }}
 										/>
-									</Modal.Title>
-								</Modal.Header>
-								<Modal.Body>
+									</AppModal.Title>
+								</AppModal.Header>
+								<AppModal.Body>
 									<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 									{data.decryptError ? (
 										<NoticeAlert>
@@ -186,15 +186,15 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 										provider={provider}
 										credential={data.provider === values.provider ? data : null}
 									/>
-								</Modal.Body>
-								<Modal.Footer>
-									<Button onClick={close} disabled={isSubmitting}>
+								</AppModal.Body>
+								<AppModal.Footer>
+									<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 										<T id="cancel" />
 									</Button>
 									<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 										<Button
 											type="submit"
-											color="pink"
+											color="primary"
 											className="ms-auto"
 											isLoading={isSubmitting}
 											disabled={isSubmitting}
@@ -202,13 +202,13 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 											<T id="save" />
 										</Button>
 									</HasPermission>
-								</Modal.Footer>
+								</AppModal.Footer>
 							</Form>
 						);
 					}}
 				</Formik>
 			)}
-		</Modal>
+		</AppModal>
 	);
 });
 

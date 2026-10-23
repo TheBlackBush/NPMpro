@@ -185,7 +185,7 @@ export default function Setup() {
 								<div className="text-center my-3 mx-3">
 									<Button
 										type="submit"
-										actionType="primary"
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 										className="w-100"
