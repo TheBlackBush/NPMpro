@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
-import { Button, Loading } from "src/components";
+import { ApiErrorContent, Button, Loading } from "src/components";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -35,7 +35,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 				queryClient.invalidateQueries({ queryKey: ["users"] }),
 			]);
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 	};
 
@@ -62,7 +62,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 		delete payload.isAdmin;
 
 		setUser(payload, {
-			onError: (err) => setErrorMsg(<T id={err.message} />),
+			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: () => {
 				showObjectSuccess("user", "saved");
 				remove();
@@ -78,7 +78,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
-					{error?.message}
+					<ApiErrorContent error={error} />
 				</Alert>
 			)}
 			{(isPending || currentIsPending) && <Loading noLogo />}

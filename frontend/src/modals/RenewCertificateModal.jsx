@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { renewCertificate } from "src/api/backend";
-import { Button, Loading } from "src/components";
+import { ApiErrorContent, Button, Loading } from "src/components";
 import { useCertificate } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -32,17 +32,7 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				await queryClient.invalidateQueries({ queryKey: ["certificates"] });
 				remove();
 			} catch (err) {
-				if (err.payload?.error?.output) {
-					setErrorMsg(
-						<div className="w-100">
-							<pre>
-								<code>{err.payload.error.output}</code>
-							</pre>
-						</div>,
-					);
-				} else {
-					setErrorMsg(<T id={err.message} />);
-				}
+				setErrorMsg(<ApiErrorContent error={err} />);
 			} finally {
 				setIsSubmitting(false);
 			}
@@ -63,7 +53,7 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				{isPending && <Loading noLogo />}
 				{error && (
 					<Alert variant="danger" className="m-3">
-						{error?.message}
+						<ApiErrorContent error={error} />
 					</Alert>
 				)}
 				{isSubmitting ? <p className="text-center mt-3">Please wait ...</p> : null}

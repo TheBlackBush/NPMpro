@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { updateAuth } from "src/api/backend";
-import { Button } from "src/components";
+import { ApiErrorContent, Button } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -28,7 +28,7 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 			showObjectSuccess("user", "updated");
 			remove();
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 		}
 		setIsSubmitting(false);
 		setSubmitting(false);

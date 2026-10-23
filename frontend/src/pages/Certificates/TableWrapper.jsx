@@ -1,8 +1,7 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
-import { Button, certificateProviderTranslation, HasPermission, LoadingPage } from "src/components";
+import { Button, certificateProviderTranslation, ErrorAlert, HasPermission, LoadingPage } from "src/components";
 import { useCertificates } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import {
@@ -16,7 +15,7 @@ import {
 	showRenewCertificateModal,
 } from "src/modals";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { showError, showObjectSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 import { Tabs } from "./Tabs";
 
@@ -46,14 +45,14 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDownload = async (id) => {
 		try {
 			await downloadCertificate(id);
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 

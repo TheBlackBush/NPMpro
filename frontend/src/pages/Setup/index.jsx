@@ -4,7 +4,7 @@ import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import { createSetupUser } from "src/api/backend";
-import { Button, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { ApiErrorContent, Button, LocalePicker, Page, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -40,10 +40,10 @@ export default function Setup() {
 				await queryClient.refetchQueries({ queryKey: ["health"] });
 				// window.location.reload();
 			} catch (err) {
-				setErrorMsg(<T id={err.message} />);
+				setErrorMsg(<ApiErrorContent error={err} />);
 			}
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 		setSubmitting(false);
 	};

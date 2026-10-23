@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import {
+	ApiErrorContent,
 	Button,
 	DirectoryField,
 	DomainNamesField,
@@ -54,17 +55,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 
 		setRedirectionHost(payload, {
 			onError: (err) => {
-				if (err.payload?.error?.output) {
-					setErrorMsg(
-						<div className="w-100">
-							<pre>
-								<code>{err.payload.error.output}</code>
-							</pre>
-						</div>,
-					);
-				} else {
-					setErrorMsg(<T id={err.message} />);
-				}
+				setErrorMsg(<ApiErrorContent error={err} />);
 			},
 			onSuccess: (row) => {
 				const nginxErr = getNginxConfigError(row);
@@ -90,7 +81,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && (
 				<Alert variant="danger" className="m-3">
-					{error?.message}
+					<ApiErrorContent error={error} />
 				</Alert>
 			)}
 			{isPending && <Loading noLogo />}

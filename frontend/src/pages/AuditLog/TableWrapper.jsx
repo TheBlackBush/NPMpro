@@ -1,7 +1,6 @@
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
-import { LoadingPage } from "src/components";
+import { ErrorAlert, LoadingPage } from "src/components";
 import { useAuditLogs } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
@@ -23,7 +22,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	let filtered = null;

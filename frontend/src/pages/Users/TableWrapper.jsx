@@ -1,13 +1,12 @@
 import { IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import Alert from "react-bootstrap/Alert";
 import { adminDisableMfa, deleteUser, revokeSessions, toggleUser } from "src/api/backend";
-import { Button, LoadingPage } from "src/components";
+import { Button, ErrorAlert, LoadingPage } from "src/components";
 import { useUser, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
-import { showError, showObjectSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess } from "src/notifications";
 import Table from "./Table";
 
 export default function TableWrapper() {
@@ -28,7 +27,7 @@ export default function TableWrapper() {
 	}
 
 	if (isError) {
-		return <Alert variant="danger">{error?.message}</Alert>;
+		return <ErrorAlert error={error} />;
 	}
 
 	const handleDisableToggle = async (id, enabled) => {
@@ -40,7 +39,7 @@ export default function TableWrapper() {
 			]);
 			showObjectSuccess("user", enabled ? "enabled" : "disabled");
 		} catch (err) {
-			showError(<T id={err.message} />);
+			showApiError(err);
 		}
 	};
 
