@@ -46,7 +46,7 @@ export default function TableWrapper() {
 
 	const displayedStreams = filterHosts(data ?? [], filters, {
 		searchText: (item) =>
-			`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${item.npmplusDescription ?? ""} ${getDirectory(item) ?? ""}`,
+			`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${item.npmproDescription ?? ""} ${getDirectory(item) ?? ""}`,
 		getGroup: (item) => getDirectory(item) ?? "",
 	});
 	const isFiltered = activeFilterCount(filters, ["status", "tls", "group"]) > 0 && Boolean(data?.length);
@@ -72,7 +72,7 @@ export default function TableWrapper() {
 				subject: stream
 					? `${stream.incomingPort} → ${stream.forwardingHost}${stream.forwardingPort ? `:${stream.forwardingPort}` : ""}`
 					: null,
-				details: stream?.npmplusDescription,
+				details: stream?.npmproDescription,
 			});
 		},
 		onDisableToggle: handleDisableToggle,

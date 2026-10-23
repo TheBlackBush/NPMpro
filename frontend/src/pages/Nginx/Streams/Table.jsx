@@ -73,11 +73,11 @@ export default function Table({
 					return <ValueWithDateFormatter value={value.incomingPort} createdOn={value.createdOn} />;
 				},
 			}),
-			columnHelper.accessor((row) => row.npmplusDescription, {
-				id: "npmplusDescription",
+			columnHelper.accessor((row) => row.npmproDescription, {
+				id: "npmproDescription",
 				header: intl.formatMessage({ id: "column.description" }),
 				cell: (info) => {
-					const value = info.row.original.npmplusDescription;
+					const value = info.row.original.npmproDescription;
 					return value || <span className="text-secondary">—</span>;
 				},
 			}),
@@ -93,10 +93,10 @@ export default function Table({
 				(row) => {
 					const protocols = [];
 					if (row.tcpForwarding) protocols.push("TCP");
-					if (row.npmplusProxyProtocolForwarding) {
-						protocols.push(row.npmplusProxyProtocolForwarding === 1 ? "PPv1" : "PPv2");
+					if (row.npmproProxyProtocolForwarding) {
+						protocols.push(row.npmproProxyProtocolForwarding === 1 ? "PPv1" : "PPv2");
 					}
-					if (row.npmplusProxyTls) protocols.push("TLS");
+					if (row.npmproProxyTls) protocols.push("TLS");
 					if (row.udpForwarding) protocols.push("UDP");
 					return protocols.join(" ");
 				},
@@ -112,18 +112,18 @@ export default function Table({
 										<T id="streams.tcp" />
 									</span>
 								) : null}
-								{value.npmplusProxyProtocolForwarding ? (
+								{value.npmproProxyProtocolForwarding ? (
 									<span className="badge badge-lg font-monospace">
 										<T
 											id={
-												value.npmplusProxyProtocolForwarding === 1
+												value.npmproProxyProtocolForwarding === 1
 													? "streams.pp.v1"
 													: "streams.pp.v2"
 											}
 										/>
 									</span>
 								) : null}
-								{value.npmplusProxyTls ? (
+								{value.npmproProxyTls ? (
 									<span className="badge badge-lg font-monospace">
 										<T id="streams.tls" />
 									</span>
@@ -146,7 +146,7 @@ export default function Table({
 			columnHelper.accessor(
 				(row) => {
 					if (!row.enabled) return "3disabled";
-					if (row.npmplusNginxOnline) return "2online";
+					if (row.npmproNginxOnline) return "2online";
 					return "1offline";
 				},
 				{
@@ -157,8 +157,8 @@ export default function Table({
 						return (
 							<StatusFormatter
 								enabled={value.enabled}
-								nginxOnline={value.npmplusNginxOnline}
-								nginxErr={value.npmplusNginxErr}
+								nginxOnline={value.npmproNginxOnline}
+								nginxErr={value.npmproNginxErr}
 							/>
 						);
 					},

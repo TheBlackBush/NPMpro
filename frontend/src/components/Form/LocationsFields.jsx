@@ -21,24 +21,24 @@ import { upstreamUrlPattern } from "src/modules/Validations";
 export function LocationsFields({ initialValues, name = "locations" }) {
 	const nextUiKey = useRef(0);
 	const createUiLocation = (item) => ({
-		npmplusEnabled: true,
+		npmproEnabled: true,
 		path: "",
 		locationType: "",
 		advancedConfig: "",
 		forwardScheme: "http",
 		forwardHost: "",
 		forwardPort: "",
-		npmplusAccessListIds: [],
-		npmplusNoindex: false,
-		npmplusCrowdsecAppsec: false,
-		npmplusProxyResponseBuffering: false,
-		npmplusProxyRequestBuffering: false,
-		npmplusUpstreamCompression: false,
-		npmplusFancyindex: false,
-		npmplusXFrameOptions: "SAMEORIGIN",
-		npmplusAuthRequest: "none",
-		npmplusAuthRequestUpstream: "",
-		npmplusAccessListType: "global",
+		npmproAccessListIds: [],
+		npmproNoindex: false,
+		npmproCrowdsecAppsec: false,
+		npmproProxyResponseBuffering: false,
+		npmproProxyRequestBuffering: false,
+		npmproUpstreamCompression: false,
+		npmproFancyindex: false,
+		npmproXFrameOptions: "SAMEORIGIN",
+		npmproAuthRequest: "none",
+		npmproAuthRequestUpstream: "",
+		npmproAccessListType: "global",
 		...item,
 		uiKey: nextUiKey.current++,
 	});
@@ -73,24 +73,24 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 
 			const updatedLocation = { ...v, [field]: fieldValue };
 
-			if (field === "npmplusCrowdsecAppsec" && fieldValue === false) {
-				updatedLocation.npmplusProxyRequestBuffering = false;
+			if (field === "npmproCrowdsecAppsec" && fieldValue === false) {
+				updatedLocation.npmproProxyRequestBuffering = false;
 			}
-			if (field === "npmplusProxyRequestBuffering" && fieldValue === true) {
-				updatedLocation.npmplusCrowdsecAppsec = true;
+			if (field === "npmproProxyRequestBuffering" && fieldValue === true) {
+				updatedLocation.npmproCrowdsecAppsec = true;
 			}
-			if (field === "npmplusAuthRequest" && fieldValue === "none") {
-				updatedLocation.npmplusAuthRequestUpstream = "";
+			if (field === "npmproAuthRequest" && fieldValue === "none") {
+				updatedLocation.npmproAuthRequestUpstream = "";
 			}
 			if (field === "forwardScheme" && fieldValue !== "empty") {
 				if (!["http", "https"].includes(fieldValue)) {
-					updatedLocation.npmplusProxyRequestBuffering = false;
-					updatedLocation.npmplusProxyResponseBuffering = false;
+					updatedLocation.npmproProxyRequestBuffering = false;
+					updatedLocation.npmproProxyResponseBuffering = false;
 				}
 				if (fieldValue === "path") {
-					updatedLocation.npmplusUpstreamCompression = false;
+					updatedLocation.npmproUpstreamCompression = false;
 				} else {
-					updatedLocation.npmplusFancyindex = false;
+					updatedLocation.npmproFancyindex = false;
 				}
 			}
 			return updatedLocation;
@@ -229,20 +229,20 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 						}
 					>
 						<div className="row mb-3">
-							<label className="row cursor-pointer" htmlFor={`npmplusEnabled-${item.uiKey}`}>
+							<label className="row cursor-pointer" htmlFor={`npmproEnabled-${item.uiKey}`}>
 								<span className="col">
 									<T id="enabled" />
 								</span>
 								<span className="col-auto">
 									<span className="form-check form-check-single form-switch">
 										<input
-											id={`npmplusEnabled-${item.uiKey}`}
+											id={`npmproEnabled-${item.uiKey}`}
 											className={cn("form-check-input", {
-												"bg-lime": item.npmplusEnabled,
+												"bg-lime": item.npmproEnabled,
 											})}
 											type="checkbox"
-											checked={item.npmplusEnabled}
-											onChange={(e) => handleChange(idx, "npmplusEnabled", e.target.checked)}
+											checked={item.npmproEnabled}
+											onChange={(e) => handleChange(idx, "npmproEnabled", e.target.checked)}
 										/>
 									</span>
 								</span>
@@ -368,21 +368,21 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 								</h4>
 								<div className="divide-y">
 									<div>
-										<label className="row cursor-pointer" htmlFor={`npmplusNoindex-${item.uiKey}`}>
+										<label className="row cursor-pointer" htmlFor={`npmproNoindex-${item.uiKey}`}>
 											<span className="col">
 												<T id="host.flags.send-noindex" />
 											</span>
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusNoindex-${item.uiKey}`}
+														id={`npmproNoindex-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusNoindex,
+															"bg-lime": item.npmproNoindex,
 														})}
 														type="checkbox"
-														checked={item.npmplusNoindex}
+														checked={item.npmproNoindex}
 														onChange={(e) =>
-															handleChange(idx, "npmplusNoindex", e.target.checked)
+															handleChange(idx, "npmproNoindex", e.target.checked)
 														}
 													/>
 												</span>
@@ -392,11 +392,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusCrowdsecAppsec-${item.uiKey}`}
+											htmlFor={`npmproCrowdsecAppsec-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.flags.disable-crowdsec-appsec" />
-												{item.npmplusProxyRequestBuffering && (
+												{item.npmproProxyRequestBuffering && (
 													<small className="form-hint">
 														<T id="host.flags.hint.appsec-request-buffering" />
 													</small>
@@ -405,14 +405,14 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusCrowdsecAppsec-${item.uiKey}`}
+														id={`npmproCrowdsecAppsec-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusCrowdsecAppsec,
+															"bg-lime": item.npmproCrowdsecAppsec,
 														})}
 														type="checkbox"
-														checked={item.npmplusCrowdsecAppsec}
+														checked={item.npmproCrowdsecAppsec}
 														onChange={(e) =>
-															handleChange(idx, "npmplusCrowdsecAppsec", e.target.checked)
+															handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)
 														}
 													/>
 												</span>
@@ -422,21 +422,18 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusProxyRequestBuffering-${item.uiKey}`}
+											htmlFor={`npmproProxyRequestBuffering-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.flags.disable-request-buffering" />
 												<small className="form-hint">
 													<T id="host.flags.hint.request-buffering-appsec" />
 												</small>
-												{getOptionHintId(
-													"npmplusProxyRequestBuffering",
-													item.forwardScheme,
-												) && (
+												{getOptionHintId("npmproProxyRequestBuffering", item.forwardScheme) && (
 													<small className="form-hint">
 														<T
 															id={getOptionHintId(
-																"npmplusProxyRequestBuffering",
+																"npmproProxyRequestBuffering",
 																item.forwardScheme,
 															)}
 														/>
@@ -446,16 +443,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusProxyRequestBuffering-${item.uiKey}`}
+														id={`npmproProxyRequestBuffering-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusProxyRequestBuffering,
+															"bg-lime": item.npmproProxyRequestBuffering,
 														})}
 														type="checkbox"
-														checked={item.npmplusProxyRequestBuffering}
+														checked={item.npmproProxyRequestBuffering}
 														onChange={(e) =>
 															handleChange(
 																idx,
-																"npmplusProxyRequestBuffering",
+																"npmproProxyRequestBuffering",
 																e.target.checked,
 															)
 														}
@@ -468,18 +465,18 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusProxyResponseBuffering-${item.uiKey}`}
+											htmlFor={`npmproProxyResponseBuffering-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.flags.disable-response-buffering" />
 												{getOptionHintId(
-													"npmplusProxyResponseBuffering",
+													"npmproProxyResponseBuffering",
 													item.forwardScheme,
 												) && (
 													<small className="form-hint">
 														<T
 															id={getOptionHintId(
-																"npmplusProxyResponseBuffering",
+																"npmproProxyResponseBuffering",
 																item.forwardScheme,
 															)}
 														/>
@@ -489,16 +486,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusProxyResponseBuffering-${item.uiKey}`}
+														id={`npmproProxyResponseBuffering-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusProxyResponseBuffering,
+															"bg-lime": item.npmproProxyResponseBuffering,
 														})}
 														type="checkbox"
-														checked={item.npmplusProxyResponseBuffering}
+														checked={item.npmproProxyResponseBuffering}
 														onChange={(e) =>
 															handleChange(
 																idx,
-																"npmplusProxyResponseBuffering",
+																"npmproProxyResponseBuffering",
 																e.target.checked,
 															)
 														}
@@ -511,15 +508,15 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusUpstreamCompression-${item.uiKey}`}
+											htmlFor={`npmproUpstreamCompression-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.flags.upstream-compression" />
-												{getOptionHintId("npmplusUpstreamCompression", item.forwardScheme) && (
+												{getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
 													<small className="form-hint">
 														<T
 															id={getOptionHintId(
-																"npmplusUpstreamCompression",
+																"npmproUpstreamCompression",
 																item.forwardScheme,
 															)}
 														/>
@@ -529,16 +526,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusUpstreamCompression-${item.uiKey}`}
+														id={`npmproUpstreamCompression-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusUpstreamCompression,
+															"bg-lime": item.npmproUpstreamCompression,
 														})}
 														type="checkbox"
-														checked={item.npmplusUpstreamCompression}
+														checked={item.npmproUpstreamCompression}
 														onChange={(e) =>
 															handleChange(
 																idx,
-																"npmplusUpstreamCompression",
+																"npmproUpstreamCompression",
 																e.target.checked,
 															)
 														}
@@ -551,17 +548,14 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusFancyindex-${item.uiKey}`}
+											htmlFor={`npmproFancyindex-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.flags.fancyindex" />
-												{getOptionHintId("npmplusFancyindex", item.forwardScheme) && (
+												{getOptionHintId("npmproFancyindex", item.forwardScheme) && (
 													<small className="form-hint">
 														<T
-															id={getOptionHintId(
-																"npmplusFancyindex",
-																item.forwardScheme,
-															)}
+															id={getOptionHintId("npmproFancyindex", item.forwardScheme)}
 														/>
 													</small>
 												)}
@@ -569,14 +563,14 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											<span className="col-auto">
 												<span className="form-check form-check-single form-switch">
 													<input
-														id={`npmplusFancyindex-${item.uiKey}`}
+														id={`npmproFancyindex-${item.uiKey}`}
 														className={cn("form-check-input", {
-															"bg-lime": item.npmplusFancyindex,
+															"bg-lime": item.npmproFancyindex,
 														})}
 														type="checkbox"
-														checked={item.npmplusFancyindex}
+														checked={item.npmproFancyindex}
 														onChange={(e) =>
-															handleChange(idx, "npmplusFancyindex", e.target.checked)
+															handleChange(idx, "npmproFancyindex", e.target.checked)
 														}
 														disabled={item.forwardScheme !== "path"}
 													/>
@@ -587,16 +581,16 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusXFrameOptions-${item.uiKey}`}
+											htmlFor={`npmproXFrameOptions-${item.uiKey}`}
 										>
 											<span className="col">X-Frame-Options</span>
 											<span className="col-auto">
 												<select
-													id={`npmplusXFrameOptions-${item.uiKey}`}
+													id={`npmproXFrameOptions-${item.uiKey}`}
 													className="form-select"
-													value={item.npmplusXFrameOptions}
+													value={item.npmproXFrameOptions}
 													onChange={(e) =>
-														handleChange(idx, "npmplusXFrameOptions", e.target.value)
+														handleChange(idx, "npmproXFrameOptions", e.target.value)
 													}
 												>
 													<option value="SAMEORIGIN">SAMEORIGIN</option>
@@ -610,18 +604,18 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<div>
 										<label
 											className="row cursor-pointer"
-											htmlFor={`npmplusAuthRequest-${item.uiKey}`}
+											htmlFor={`npmproAuthRequest-${item.uiKey}`}
 										>
 											<span className="col">
 												<T id="host.auth-request" />
 											</span>
 											<span className="col-auto">
 												<select
-													id={`npmplusAuthRequest-${item.uiKey}`}
+													id={`npmproAuthRequest-${item.uiKey}`}
 													className="form-select"
-													value={item.npmplusAuthRequest}
+													value={item.npmproAuthRequest}
 													onChange={(e) =>
-														handleChange(idx, "npmplusAuthRequest", e.target.value)
+														handleChange(idx, "npmproAuthRequest", e.target.value)
 													}
 												>
 													<option value="none">none</option>
@@ -638,37 +632,37 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 											</span>
 										</label>
 									</div>
-									{item?.npmplusAuthRequest?.length > 0 && item.npmplusAuthRequest !== "none" && (
+									{item?.npmproAuthRequest?.length > 0 && item.npmproAuthRequest !== "none" && (
 										<div>
 											<label
 												className="row cursor-pointer"
-												htmlFor={`npmplusAuthRequestUpstream-${item.uiKey}`}
+												htmlFor={`npmproAuthRequestUpstream-${item.uiKey}`}
 											>
 												<span className="col">
 													<T id="host.auth-request-upstream" />
 												</span>
 												<span className="col-auto">
 													<input
-														id={`npmplusAuthRequestUpstream-${item.uiKey}`}
+														id={`npmproAuthRequestUpstream-${item.uiKey}`}
 														type="text"
-														className={`form-control ${item.npmplusAuthRequestUpstream && !upstreamUrlPattern.test(item.npmplusAuthRequestUpstream) ? "is-invalid" : ""}`}
+														className={`form-control ${item.npmproAuthRequestUpstream && !upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? "is-invalid" : ""}`}
 														placeholder={intl.formatMessage({
 															id: "host.auth-request-upstream.placeholder",
 														})}
 														maxLength={255}
 														pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
-														value={item.npmplusAuthRequestUpstream}
+														value={item.npmproAuthRequestUpstream}
 														onChange={(e) =>
 															handleChange(
 																idx,
-																"npmplusAuthRequestUpstream",
+																"npmproAuthRequestUpstream",
 																e.target.value,
 															)
 														}
 													/>
 
-													{item.npmplusAuthRequestUpstream &&
-													!upstreamUrlPattern.test(item.npmplusAuthRequestUpstream) ? (
+													{item.npmproAuthRequestUpstream &&
+													!upstreamUrlPattern.test(item.npmproAuthRequestUpstream) ? (
 														<div className="invalid-feedback">
 															<T id="error.invalid-upstream-url" />
 														</div>
@@ -684,11 +678,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<T id="proxy-host.access-lists" />
 								</h4>
 								<AccessFields
-									initialAccessListType={item?.npmplusAccessListType}
+									initialAccessListType={item?.npmproAccessListType}
 									location={item.path}
-									initialAccessListIds={item?.npmplusAccessListIds}
+									initialAccessListIds={item?.npmproAccessListIds}
 									onChange={(changes) => handleAccessFieldsChange(idx, changes)}
-									authRequest={item.npmplusAuthRequest}
+									authRequest={item.npmproAuthRequest}
 								/>
 							</div>
 						</div>

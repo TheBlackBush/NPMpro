@@ -107,7 +107,7 @@ export function AccessFields({
 	const applyUpdatedValues = (newValues) => {
 		setValues(newValues);
 		if (onChange) {
-			onChange({ npmplusAccessListIds: newValues });
+			onChange({ npmproAccessListIds: newValues });
 		} else {
 			void setFieldValue(name, newValues);
 		}
@@ -154,7 +154,7 @@ export function AccessFields({
 	const acls = (
 		{
 			custom: values,
-			global: formValues.npmplusAccessListType === "custom" ? formValues.npmplusAccessListIds : [],
+			global: formValues.npmproAccessListType === "custom" ? formValues.npmproAccessListIds : [],
 		}[aclValue] ?? []
 	)
 		.map((id) => data?.find((acl) => acl.id === id))
@@ -190,7 +190,7 @@ export function AccessFields({
 								const value = e.type;
 								setAclValue(value);
 								if (onChange) {
-									onChange({ npmplusAccessListType: value });
+									onChange({ npmproAccessListType: value });
 								} else {
 									void setFieldValue(typeFieldName, value);
 								}

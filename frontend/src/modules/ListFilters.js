@@ -24,7 +24,7 @@ export function parseFilters(searchParams, allowed = {}) {
 
 export function hostStatus(row) {
 	if (!row.enabled) return "disabled";
-	if (row.npmplusNginxOnline === false) return "error";
+	if (row.npmproNginxOnline === false) return "error";
 	return "online";
 }
 

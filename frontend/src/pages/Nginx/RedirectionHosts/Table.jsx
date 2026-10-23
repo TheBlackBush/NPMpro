@@ -96,7 +96,7 @@ export default function Table({
 			columnHelper.accessor(
 				(row) => {
 					if (!row.enabled) return "3disabled";
-					if (row.npmplusNginxOnline) return "2online";
+					if (row.npmproNginxOnline) return "2online";
 					return "1offline";
 				},
 				{
@@ -107,8 +107,8 @@ export default function Table({
 						return (
 							<StatusFormatter
 								enabled={value.enabled}
-								nginxOnline={value.npmplusNginxOnline}
-								nginxErr={value.npmplusNginxErr}
+								nginxOnline={value.npmproNginxOnline}
+								nginxErr={value.npmproNginxErr}
 							/>
 						);
 					},

@@ -11,32 +11,32 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 	const hasCertificate = newCertificate || v?.certificateId > 0;
 	const {
 		sslForced,
-		npmplusHttp3Support,
+		npmproHttp3Support,
 		hstsEnabled,
 		hstsSubdomains,
-		npmplusDnsChallenge: dnsChallenge,
-		npmplusReuseKey: reuseKey,
-		npmplusMtlsCertificateId,
-		npmplusMtlsVerifyClientOptional,
-		npmplusMtlsBypassAuthRequest,
+		npmproDnsChallenge: dnsChallenge,
+		npmproReuseKey: reuseKey,
+		npmproMtlsCertificateId,
+		npmproMtlsVerifyClientOptional,
+		npmproMtlsBypassAuthRequest,
 	} = v;
 
 	const mtlsBypassAuthRequestPossible =
-		npmplusMtlsVerifyClientOptional &&
-		[v, ...(v.locations ?? [])].some(({ npmplusAuthRequest = "none" }) => npmplusAuthRequest !== "none");
-	const mtlsRequired = npmplusMtlsCertificateId > 0 && !npmplusMtlsVerifyClientOptional;
+		npmproMtlsVerifyClientOptional &&
+		[v, ...(v.locations ?? [])].some(({ npmproAuthRequest = "none" }) => npmproAuthRequest !== "none");
+	const mtlsRequired = npmproMtlsCertificateId > 0 && !npmproMtlsVerifyClientOptional;
 
 	useEffect(() => {
-		if (!forHttp && newCertificate && !dnsChallenge) void setFieldValue("npmplusDnsChallenge", true);
+		if (!forHttp && newCertificate && !dnsChallenge) void setFieldValue("npmproDnsChallenge", true);
 		if (forHttp && mtlsRequired && !sslForced) void setFieldValue("sslForced", true);
 	});
 
 	const handleToggleChange = (e, fieldName) => {
 		void setFieldValue(fieldName, e.target.checked);
-		if (fieldName === "npmplusDnsChallenge" && !e.target.checked) {
-			void setFieldValue("npmplusDnsProvider", undefined);
-			void setFieldValue("npmplusDnsCredentialId", undefined);
-			void setFieldValue("npmplusPropagationSeconds", undefined);
+		if (fieldName === "npmproDnsChallenge" && !e.target.checked) {
+			void setFieldValue("npmproDnsProvider", undefined);
+			void setFieldValue("npmproDnsCredentialId", undefined);
+			void setFieldValue("npmproPropagationSeconds", undefined);
 		}
 		if (fieldName === "sslForced" && !e.target.checked) {
 			void setFieldValue("hstsEnabled", false);
@@ -73,13 +73,13 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 					</Field>
 				</div>
 				<div className="col-6">
-					<Field name="npmplusHttp3Support">
+					<Field name="npmproHttp3Support">
 						{({ field }) => (
 							<label className="form-check form-switch mt-1">
 								<input
-									className={npmplusHttp3Support ? toggleEnabled : toggleClasses}
+									className={npmproHttp3Support ? toggleEnabled : toggleClasses}
 									type="checkbox"
-									checked={npmplusHttp3Support}
+									checked={npmproHttp3Support}
 									onChange={(e) => handleToggleChange(e, field.name)}
 									disabled={!hasCertificate}
 								/>
@@ -139,15 +139,15 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 		<div>
 			<div className="row">
 				<div className="col-6">
-					<Field name="npmplusMtlsVerifyClientOptional">
+					<Field name="npmproMtlsVerifyClientOptional">
 						{({ field }) => (
 							<label className="form-check form-switch mt-1">
 								<input
-									className={npmplusMtlsVerifyClientOptional ? toggleEnabled : toggleClasses}
+									className={npmproMtlsVerifyClientOptional ? toggleEnabled : toggleClasses}
 									type="checkbox"
-									checked={npmplusMtlsVerifyClientOptional}
+									checked={npmproMtlsVerifyClientOptional}
 									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!(v?.certificateId > 0 && npmplusMtlsCertificateId > 0)}
+									disabled={!(v?.certificateId > 0 && npmproMtlsCertificateId > 0)}
 								/>
 
 								<span className="form-check-label">
@@ -159,17 +159,17 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 				</div>
 				{forProxyHost ? (
 					<div className="col-6">
-						<Field name="npmplusMtlsBypassAuthRequest">
+						<Field name="npmproMtlsBypassAuthRequest">
 							{({ field }) => (
 								<label className="form-check form-switch mt-1">
 									<input
 										className={
-											npmplusMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible
+											npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible
 												? toggleEnabled
 												: toggleClasses
 										}
 										type="checkbox"
-										checked={npmplusMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible}
+										checked={npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible}
 										onChange={(e) => handleToggleChange(e, field.name)}
 										disabled={!mtlsBypassAuthRequestPossible}
 									/>
@@ -187,7 +187,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 			{newCertificate ? (
 				<div className="row">
 					<div className="col-6">
-						<Field name="npmplusReuseKey">
+						<Field name="npmproReuseKey">
 							{({ field }) => (
 								<label className="form-check form-switch mt-1">
 									<input
@@ -205,7 +205,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 						</Field>
 					</div>
 					<div className="col-6">
-						<Field name="npmplusDnsChallenge">
+						<Field name="npmproDnsChallenge">
 							{({ field }) => (
 								<label className="form-check form-switch mt-1">
 									<input
