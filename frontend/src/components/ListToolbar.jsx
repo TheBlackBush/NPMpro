@@ -1,4 +1,5 @@
 import { IconSearch } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
 
@@ -37,7 +38,13 @@ function FilterSelect({ label, value, onChange, options }) {
  * @param {import("react").ReactNode} [props.children] help and add buttons
  */
 function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [], children }) {
-	const active = activeFilterCount(filters) > 0;
+	const active = activeFilterCount(filters, kinds) > 0;
+	const [text, setText] = useState(filters.q);
+
+	useEffect(() => {
+		// resync on external changes (clear, back navigation) without clobbering typing
+		setText((current) => (current.trim() === filters.q.trim() ? current : filters.q));
+	}, [filters.q]);
 	return (
 		<div className="ms-auto d-flex flex-wrap align-items-center gap-2">
 			{total ? (
@@ -52,8 +59,11 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 							placeholder={intl.formatMessage({ id: "search" })}
 							aria-label={intl.formatMessage({ id: "search" })}
 							autoComplete="off"
-							value={filters.q}
-							onChange={(e) => setFilter("q", e.target.value)}
+							value={text}
+							onChange={(e) => {
+								setText(e.target.value);
+								setFilter("q", e.target.value);
+							}}
 						/>
 					</div>
 					{kinds.includes("status") ? (

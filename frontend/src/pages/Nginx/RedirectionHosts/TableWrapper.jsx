@@ -48,7 +48,7 @@ export default function TableWrapper() {
 		searchText: (item) => `${item.domainNames.join(" ")} ${item.forwardDomainName} ${getDirectory(item) ?? ""}`,
 		getGroup: (item) => getDirectory(item) ?? "",
 	});
-	const isFiltered = activeFilterCount(filters) > 0 && Boolean(data?.length);
+	const isFiltered = activeFilterCount(filters, ["status", "tls", "group"]) > 0 && Boolean(data?.length);
 	const groupingActive = displayedHosts.some(getDirectory);
 
 	const sharedTableProps = {

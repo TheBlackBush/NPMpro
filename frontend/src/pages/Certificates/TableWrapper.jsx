@@ -59,7 +59,7 @@ export default function TableWrapper() {
 	const displayed = filterCertificates(data ?? [], filters, {
 		searchText: (item) => `${item.domainNames.join(" ")} ${item.niceName}`,
 	});
-	const isFiltered = activeFilterCount(filters) > 0 && Boolean(data?.length);
+	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 
 	return (
 		<div className="card mt-4">

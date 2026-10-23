@@ -49,7 +49,7 @@ export default function TableWrapper() {
 			`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${item.npmplusDescription ?? ""} ${getDirectory(item) ?? ""}`,
 		getGroup: (item) => getDirectory(item) ?? "",
 	});
-	const isFiltered = activeFilterCount(filters) > 0 && Boolean(data?.length);
+	const isFiltered = activeFilterCount(filters, ["status", "tls", "group"]) > 0 && Boolean(data?.length);
 	const groupingActive = displayedStreams.some(getDirectory);
 
 	const sharedTableProps = {
