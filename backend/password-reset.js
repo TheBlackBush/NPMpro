@@ -12,7 +12,7 @@ import { hash } from "./lib/argon2.js";
 function usage() {
 	console.log(`usage: ${process.argv[1]} USER_EMAIL [--disable-mfa]
 
-	Set or reset the password and/or disable MFA of a NPMplus user.
+	Set or reset the password and/or disable MFA of a NPMpro user.
 	The new password is read from stdin, leave it empty to keep the current one.
 
 	Arguments:

@@ -35,7 +35,7 @@ set -a
 . /data/.env
 set +a
 if [ -s /tmp/env.sha512sum ] && [ "$(cat /tmp/env.sha512sum)" != "$(sha512sum < /data/.env)" ]; then
-    echo "You need to recreate the NPMplus container after changing the .env file, restarting the container after changing the .env file is not supported"
+    echo "You need to recreate the NPMpro container after changing the .env file, restarting the container after changing the .env file is not supported"
     sleep inf
 fi
 sha512sum < /data/.env > /tmp/env.sha512sum
@@ -144,28 +144,28 @@ fi
 
 #tmp
 if [ -n "$NPM_DISABLE_IPV6" ]; then
-    echo "NPM_DISABLE_IPV6 env is not supported. DISABLE_IPV6 now also disables IPv6 for the NPMplus web UI."
+    echo "NPM_DISABLE_IPV6 env is not supported. DISABLE_IPV6 now also disables IPv6 for the NPMpro web UI."
     sleep inf
 fi
 #tmp
 if [ -n "$GOA_DISABLE_IPV6" ] || [ -n "$GOA_PORT" ] || [ -n "$GOA_IPV4_BINDING" ] || [ -n "$GOA_IPV6_BINDING" ] || [ -n "$GOA_LISTEN_LOCALHOST" ]; then
-    echo "GOA_DISABLE_IPV6, GOA_PORT, GOA_IPV4_BINDING, GOA_IPV6_BINDING and GOA_LISTEN_LOCALHOST envs are not supported. goaccess is now served under /goaccess of the NPMplus web UI."
+    echo "GOA_DISABLE_IPV6, GOA_PORT, GOA_IPV4_BINDING, GOA_IPV6_BINDING and GOA_LISTEN_LOCALHOST envs are not supported. goaccess is now served under /goaccess of the NPMpro web UI."
     sleep inf
 fi
 #tmp
 if [ -n "$NIBEP" ]; then
-    echo "NIBEP env is not supported. NPMplus now uses a unix socket instead."
+    echo "NIBEP env is not supported. NPMpro now uses a unix socket instead."
     sleep inf
 fi
 #tmp
 if [ -n "$GOAIWSP" ]; then
-    echo "GOAIWSP env is not supported. NPMplus now uses a unix socket instead."
+    echo "GOAIWSP env is not supported. NPMpro now uses a unix socket instead."
     sleep inf
 fi
 
 #tmp
 if [ -n "$IPRT" ]; then
-    echo "IPRT env is not supported. NPMplus now only updates and reloads if needed."
+    echo "IPRT env is not supported. NPMpro now only updates and reloads if needed."
     sleep inf
 fi
 

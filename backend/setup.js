@@ -182,7 +182,7 @@ const setupAio = async () => {
 		});
 		logger.info("AIO proxy host created");
 	} catch (err) {
-		logger.error(`AIO proxy host setup failed, create it manually in the NPMplus UI: ${err.message}`);
+		logger.error(`AIO proxy host setup failed, create it manually in the NPMpro UI: ${err.message}`);
 	}
 };
 

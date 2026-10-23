@@ -1,9 +1,9 @@
 {
 	"openapi": "3.1.0",
 	"info": {
-		"title": "NPMplus API",
+		"title": "NPMpro API",
 		"version": "2.x.x",
-		"description": "This is the official API documentation for NPMplus.\n\nMost endpoints require authentication via a token cookie. You can generate a token by logging in via the `POST /tokens` endpoint."
+		"description": "This is the official API documentation for NPMpro.\n\nMost endpoints require authentication via a token cookie. You can generate a token by logging in via the `POST /tokens` endpoint."
 	},
 	"servers": [
 		{
