@@ -91,6 +91,17 @@ const renameSqliteIndexes = async (knex) => {
 	return indexes.length;
 };
 
+// cosmetic only: a failed rename is logged and skipped, so it cannot leave a half-migrated install
+const tryRename = async (knex, label, sql, bindings) => {
+	try {
+		await knex.raw(sql, bindings);
+		return 1;
+	} catch (err) {
+		logger.warn(`[${migrateName}] Could not rename ${label}, keeping the old name: ${err.message}`);
+		return 0;
+	}
+};
+
 // renaming an index that backs a constraint renames the constraint too
 const renamePgObjects = async (knex) => {
 	const indexes = rowsOf(
@@ -100,8 +111,9 @@ const renamePgObjects = async (knex) => {
 			[`%${oldName}%`],
 		),
 	);
+	let count = 0;
 	for (const { name } of indexes) {
-		await knex.raw("ALTER INDEX ?? RENAME TO ??", [name, renamed(name)]);
+		count += await tryRename(knex, `index ${name}`, "ALTER INDEX ?? RENAME TO ??", [name, renamed(name)]);
 	}
 	const sequences = rowsOf(
 		"pg",
@@ -111,9 +123,9 @@ const renamePgObjects = async (knex) => {
 		),
 	);
 	for (const { name } of sequences) {
-		await knex.raw("ALTER SEQUENCE ?? RENAME TO ??", [name, renamed(name)]);
+		count += await tryRename(knex, `sequence ${name}`, "ALTER SEQUENCE ?? RENAME TO ??", [name, renamed(name)]);
 	}
-	return indexes.length + sequences.length;
+	return count;
 };
 
 // primary keys are always named PRIMARY in MySQL
@@ -125,10 +137,15 @@ const renameMysqlIndexes = async (knex) => {
 			[`%${oldName}%`],
 		),
 	);
+	let count = 0;
 	for (const { name, tbl } of indexes) {
-		await knex.raw("ALTER TABLE ?? RENAME INDEX ?? TO ??", [tbl, name, renamed(name)]);
+		count += await tryRename(knex, `index ${tbl}.${name}`, "ALTER TABLE ?? RENAME INDEX ?? TO ??", [
+			tbl,
+			name,
+			renamed(name),
+		]);
 	}
-	return indexes.length;
+	return count;
 };
 
 /**
