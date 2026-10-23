@@ -91,6 +91,8 @@
 	"certificates.key-type-description": "RSA is widely compatible, ECDSA is faster and more secure but may not be supported by older systems",
 	"certificates.key-type-ecdsa": "ECDSA 256",
 	"certificates.key-type-rsa": "RSA 2048",
+	"certificates.request.progress": "Requesting certificate, {elapsed} elapsed",
+	"certificates.request.propagation": "(includes {seconds} s DNS propagation wait)",
 	"certificates.request.subtitle": "with Certbot",
 	"certificates.request.title": "Request a new Certificate",
 	"column.access": "Access",

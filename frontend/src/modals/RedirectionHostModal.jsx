@@ -11,6 +11,7 @@ import {
 	HasPermission,
 	Loading,
 	NginxConfigField,
+	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
@@ -326,6 +327,10 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 									</div>
 								</div>
 							</Modal.Body>
+							<RequestProgress
+								running={isSubmitting && values.certificateId === "new"}
+								propagationSeconds={values.npmplusPropagationSeconds}
+							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />

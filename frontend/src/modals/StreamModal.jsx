@@ -9,6 +9,7 @@ import {
 	HasPermission,
 	Loading,
 	NginxConfigField,
+	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 } from "src/components";
@@ -550,6 +551,10 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 									</div>
 								</div>
 							</Modal.Body>
+							<RequestProgress
+								running={isSubmitting && values.certificateId === "new"}
+								propagationSeconds={values.npmplusPropagationSeconds}
+							/>
 							<Modal.Footer>
 								<Button onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
