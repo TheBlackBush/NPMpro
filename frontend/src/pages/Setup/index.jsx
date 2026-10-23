@@ -49,11 +49,20 @@ export default function Setup() {
 	return (
 		<Page className="page-center">
 			<div className="container container-tight py-4">
-				<div className="d-flex justify-content-between align-items-center mb-4 ps-4 pe-3">
-					<img width={200} src="/images/logo-text-horizontal-grey.png" alt="NPMpro" />
-					<div className="d-flex align-items-center gap-1">
-						<LocalePicker />
-						<ThemeSwitcher />
+				<div className="d-flex justify-content-end gap-2 mb-3">
+					<LocalePicker />
+					<ThemeSwitcher />
+				</div>
+				<div className="text-center mb-4">
+					<div className="navbar-brand navbar-brand-autodark">
+						<img
+							src="/images/logo-no-text.svg"
+							width={40}
+							height={40}
+							className="navbar-brand-image me-3"
+							alt=""
+						/>
+						NPMpro
 					</div>
 				</div>
 				<div className="card card-md">

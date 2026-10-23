@@ -185,7 +185,7 @@ function PasswordForm() {
 			)}
 			{health.data?.oidc && (
 				<div className="form-footer my-0">
-					<Button type="button" fullWidth color="azure" onClick={redirectToOIDC}>
+					<Button type="button" fullWidth outline color="azure" onClick={redirectToOIDC}>
 						<T id="sign-in-with-oidc" />
 					</Button>
 				</div>
@@ -200,12 +200,21 @@ export default function Login() {
 	return (
 		<Page className="page-center">
 			<div className="container container-tight py-4">
-				<div className="d-flex justify-content-between align-items-center mb-4 ps-4 pe-3">
-					<img width={200} src="/images/logo-text-horizontal-grey.png" alt="NPMpro" />
-					<div className="d-flex align-items-center gap-1">
-						<LocalePicker />
-						<ThemeSwitcher />
-					</div>
+				<div className="d-flex justify-content-end gap-2 mb-3">
+					<LocalePicker />
+					<ThemeSwitcher />
+				</div>
+				<div className="text-center mb-4">
+					<h1 className="navbar-brand navbar-brand-autodark">
+						<img
+							src="/images/logo-no-text.svg"
+							width={40}
+							height={40}
+							className="navbar-brand-image me-3"
+							alt=""
+						/>
+						NPMpro
+					</h1>
 				</div>
 				<div className="card card-md">
 					<div className="card-body">{totpChallenge ? <TotpForm /> : <PasswordForm />}</div>
