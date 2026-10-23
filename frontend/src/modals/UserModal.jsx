@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useRef, useState } from "react";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, SwitchField } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, GravatarFormatter, Loading, SwitchField } from "src/components";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -98,12 +98,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								{id !== "new" && (
 									<div className="d-flex align-items-center mb-3">
-										<span
-											className="avatar avatar-square avatar-lg me-3"
-											style={{
-												backgroundImage: `url(${data?.avatar})`,
-											}}
-										/>
+										<GravatarFormatter url={data?.avatar} name={data?.name} size="lg" />
 
 										<input
 											ref={fileInput}

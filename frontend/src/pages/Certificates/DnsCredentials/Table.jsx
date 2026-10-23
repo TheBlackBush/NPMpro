@@ -44,7 +44,9 @@ function UsedBy({ certificates }) {
 	);
 	return (
 		<OverlayTrigger trigger={["hover", "click", "focus"]} placement="bottom" overlay={popover}>
-			<div>{certificates.length}</div>
+			<button type="button" className="btn btn-link p-0 text-reset text-decoration-none">
+				{certificates.length}
+			</button>
 		</OverlayTrigger>
 	);
 }

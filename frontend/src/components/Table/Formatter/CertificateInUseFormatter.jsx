@@ -46,7 +46,7 @@ const getSectionStream = (items) => {
 export function CertificateInUseFormatter({ proxyHosts, redirectionHosts, deadHosts, streams }) {
 	const totalCount = proxyHosts.length + redirectionHosts.length + deadHosts.length + streams.length;
 	if (totalCount === 0) {
-		return <TrueFalseFormatter value={false} falseLabel="certificate.not-in-use" />;
+		return <TrueFalseFormatter value={false} falseLabel="certificate.not-in-use" falseColor="secondary" />;
 	}
 
 	const popover = (
@@ -62,9 +62,9 @@ export function CertificateInUseFormatter({ proxyHosts, redirectionHosts, deadHo
 
 	return (
 		<OverlayTrigger trigger={["hover", "click", "focus"]} placement="bottom" overlay={popover}>
-			<div>
+			<button type="button" className="btn btn-link p-0 text-reset text-decoration-none">
 				<TrueFalseFormatter value trueLabel="certificate.in-use" />
-			</div>
+			</button>
 		</OverlayTrigger>
 	);
 }

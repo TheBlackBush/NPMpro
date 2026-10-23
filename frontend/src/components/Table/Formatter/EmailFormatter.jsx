@@ -1,6 +1,6 @@
 export function EmailFormatter({ email }) {
 	return (
-		<a href={`mailto:${email}`} className="badge bg-yellow-lt">
+		<a href={`mailto:${email}`} className="text-secondary">
 			{email}
 		</a>
 	);

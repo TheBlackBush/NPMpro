@@ -10,7 +10,7 @@ export function TrueFalseFormatter({
 }) {
 	return (
 		<span className={cn("status", `status-${value ? trueColor : falseColor}`)}>
-			<span className="status-dot status-dot-animated" />
+			<span className="status-dot" />
 			<T id={value ? trueLabel : falseLabel} />
 		</span>
 	);
