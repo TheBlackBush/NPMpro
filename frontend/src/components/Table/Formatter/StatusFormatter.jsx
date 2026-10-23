@@ -22,7 +22,7 @@ export function StatusFormatter({ enabled, nginxOnline, nginxErr }) {
 		return (
 			<OverlayTrigger trigger="click" placement="bottom" overlay={popover} rootClose>
 				<button type="button" className="status status-red border-0">
-					<span className="status-dot status-dot-animated" />
+					<span className="status-dot" />
 					<T id="status.config-error" />
 				</button>
 			</OverlayTrigger>
@@ -31,7 +31,7 @@ export function StatusFormatter({ enabled, nginxOnline, nginxErr }) {
 
 	return (
 		<span className={cn("status", enabled ? "status-lime" : "status-orange")}>
-			<span className="status-dot status-dot-animated" />
+			<span className={cn("status-dot", enabled && "status-dot-animated")} />
 			<T id={enabled ? "online" : "disabled"} />
 		</span>
 	);
