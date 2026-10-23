@@ -8,8 +8,8 @@ import {
 	IconLock,
 	IconShield,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router";
-import { EventFormatter, HasPermission, PageHeader } from "src/components";
+import { Link } from "react-router";
+import { ErrorAlert, EventFormatter, HasPermission, Loading, PageHeader } from "src/components";
 import { useHostReport, useRecentAuditLogs, useUser } from "src/hooks";
 import { T } from "src/locale";
 import { EXPIRY_WARNING_DAYS } from "src/modules/Expiry";
@@ -23,6 +23,7 @@ import {
 	STREAMS,
 	VIEW,
 } from "src/modules/Permissions";
+import { DashboardTile } from "./DashboardTile";
 
 // Host types in the order the error tile links to them
 const ERROR_SECTIONS = [
@@ -35,9 +36,8 @@ const ERROR_SECTIONS = [
 const Dashboard = () => {
 	const { data: hostReport } = useHostReport();
 	const { data: user } = useUser("me");
-	const navigate = useNavigate();
 	const isAdmin = Boolean(user?.roles?.includes("admin"));
-	const { data: recentLogs, isError: recentError } = useRecentAuditLogs(isAdmin);
+	const { data: recentLogs, error: recentError, isPending: recentPending } = useRecentAuditLogs(isAdmin);
 
 	const viewable = ERROR_SECTIONS.filter((e) => hasPermission(e.section, VIEW, user?.permissions, user?.roles));
 	const errorCounts = hostReport?.errors;
@@ -46,270 +46,114 @@ const Dashboard = () => {
 	const errorsPath = firstWithErrors ? `${firstWithErrors.path}?status=error` : (viewable[0]?.path ?? "/nginx/proxy");
 	const expiring = hostReport?.certificatesExpiring;
 	const expired = hostReport?.certificatesExpired;
-	const go = (path) => (e) => {
-		e.preventDefault();
-		void navigate(path);
-	};
-
 	return (
 		<div>
 			<PageHeader title={<T id="dashboard" />} />
 			<div className="row row-deck row-cards">
-				<div className="col-12 my-4">
-					<div className="row row-cards">
-						<HasPermission section={PROXY_HOSTS} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/nginx/proxy"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/nginx/proxy");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-green text-white avatar avatar-square">
-													<IconBolt />
-												</span>
-											</div>
-											<div className="col">
-												<div className="fw-medium">
-													<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />
-												</div>
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						<HasPermission section={REDIRECTION_HOSTS} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/nginx/redirection"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/nginx/redirection");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-yellow text-white avatar avatar-square">
-													<IconArrowsCross />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												<T
-													id="redirection-hosts.count"
-													data={{ count: hostReport?.redirection }}
-												/>
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						<HasPermission section={DEAD_HOSTS} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/nginx/404"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/nginx/404");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-red text-white avatar avatar-square">
-													<IconBoltOff />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												<T id="dead-hosts.count" data={{ count: hostReport?.dead }} />
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						<HasPermission section={STREAMS} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/nginx/stream"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/nginx/stream");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-blue text-white avatar avatar-square">
-													<IconDisc />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												<T id="streams.count" data={{ count: hostReport?.stream }} />
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/certificates"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/certificates");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-teal text-white avatar avatar-square">
-													<IconShield />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												<T id="certificates.count" data={{ count: hostReport?.certificate }} />
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						<HasPermission section={ACCESS_LISTS} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/access"
-									className="card card-sm card-link card-link-pop"
-									onClick={(e) => {
-										e.preventDefault();
-										void navigate("/access");
-									}}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-purple text-white avatar avatar-square">
-													<IconLock />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												<T id="access-lists.count" data={{ count: hostReport?.accessList }} />
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-					</div>
-				</div>
-				<div className="col-12 mb-4">
-					<div className="row row-cards">
-						{viewable.length > 0 ? (
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href={errorsPath}
-									className="card card-sm card-link card-link-pop"
-									onClick={go(errorsPath)}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-orange text-white avatar avatar-square">
-													<IconAlertTriangle />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												{errorTotal === null ? (
-													"-"
-												) : (
-													<span className={errorTotal > 0 ? "text-danger" : undefined}>
-														<T id="dashboard.config-errors" data={{ count: errorTotal }} />
-													</span>
-												)}
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						) : null}
-						<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
-							<div className="col-sm-6 col-lg-4">
-								<a
-									href="/certificates?expiry=soon"
-									className="card card-sm card-link card-link-pop"
-									onClick={go("/certificates?expiry=soon")}
-								>
-									<div className="card-body">
-										<div className="row align-items-center">
-											<div className="col-auto">
-												<span className="bg-teal text-white avatar avatar-square">
-													<IconShield />
-												</span>
-											</div>
-											<div className="col fw-medium">
-												{expiring === undefined || expired === undefined ? (
-													"-"
-												) : (
-													<>
-														<div className={expiring > 0 ? "text-warning" : undefined}>
-															<T
-																id="dashboard.expiring"
-																data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
-															/>
-														</div>
-														<div className={expired > 0 ? "text-danger" : undefined}>
-															<T id="dashboard.expired" data={{ count: expired }} />
-														</div>
-													</>
-												)}
-											</div>
-										</div>
-									</div>
-								</a>
-							</div>
-						</HasPermission>
-						{isAdmin ? (
-							<div className="col-12 col-lg-4">
-								<div className="card">
-									<div className="card-header">
-										<h3 className="card-title">
-											<IconHistory size={18} className="me-1" />
-											<T id="dashboard.recent-changes" />
-										</h3>
-									</div>
-									<div className="list-group list-group-flush">
-										{recentError ? (
-											<div className="list-group-item">-</div>
-										) : (
-											recentLogs?.map((row) => (
-												<div key={row.id} className="list-group-item">
-													<EventFormatter row={row} />
-												</div>
-											))
-										)}
-									</div>
-									<div className="card-footer">
-										<a href="/audit-log" onClick={go("/audit-log")}>
-											<T id="dashboard.view-all" />
-										</a>
-									</div>
+				<HasPermission section={PROXY_HOSTS} permission={VIEW} hideError>
+					<DashboardTile to="/nginx/proxy" icon={IconBolt} color="green">
+						<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />
+					</DashboardTile>
+				</HasPermission>
+				<HasPermission section={REDIRECTION_HOSTS} permission={VIEW} hideError>
+					<DashboardTile to="/nginx/redirection" icon={IconArrowsCross} color="yellow">
+						<T id="redirection-hosts.count" data={{ count: hostReport?.redirection }} />
+					</DashboardTile>
+				</HasPermission>
+				<HasPermission section={DEAD_HOSTS} permission={VIEW} hideError>
+					<DashboardTile to="/nginx/404" icon={IconBoltOff} color="red">
+						<T id="dead-hosts.count" data={{ count: hostReport?.dead }} />
+					</DashboardTile>
+				</HasPermission>
+				<HasPermission section={STREAMS} permission={VIEW} hideError>
+					<DashboardTile to="/nginx/stream" icon={IconDisc} color="blue">
+						<T id="streams.count" data={{ count: hostReport?.stream }} />
+					</DashboardTile>
+				</HasPermission>
+				<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
+					<DashboardTile to="/certificates" icon={IconShield} color="teal">
+						<T id="certificates.count" data={{ count: hostReport?.certificate }} />
+					</DashboardTile>
+				</HasPermission>
+				<HasPermission section={ACCESS_LISTS} permission={VIEW} hideError>
+					<DashboardTile to="/access" icon={IconLock} color="purple">
+						<T id="access-lists.count" data={{ count: hostReport?.accessList }} />
+					</DashboardTile>
+				</HasPermission>
+				{viewable.length > 0 ? (
+					<DashboardTile to={errorsPath} icon={IconAlertTriangle} color="orange">
+						{errorTotal === null ? (
+							<span className="text-secondary">-</span>
+						) : (
+							<span className={errorTotal > 0 ? "badge bg-red-lt text-wrap text-start" : undefined}>
+								<T id="dashboard.config-errors" data={{ count: errorTotal }} />
+							</span>
+						)}
+					</DashboardTile>
+				) : null}
+				<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
+					<DashboardTile to="/certificates?expiry=soon" icon={IconShield} color="teal">
+						{expiring === undefined || expired === undefined ? (
+							<span className="text-secondary">-</span>
+						) : (
+							<>
+								<div className="mb-1">
+									<span
+										className={expiring > 0 ? "badge bg-orange-lt text-wrap text-start" : undefined}
+									>
+										<T
+											id="dashboard.expiring"
+											data={{ count: expiring, days: EXPIRY_WARNING_DAYS }}
+										/>
+									</span>
 								</div>
+								<div>
+									<span className={expired > 0 ? "badge bg-red-lt text-wrap text-start" : undefined}>
+										<T id="dashboard.expired" data={{ count: expired }} />
+									</span>
+								</div>
+							</>
+						)}
+					</DashboardTile>
+				</HasPermission>
+				{isAdmin ? (
+					<div className="col-12">
+						<div className="card">
+							<div className="card-header">
+								<h3 className="card-title">
+									<IconHistory className="icon me-2" aria-hidden="true" />
+									<T id="dashboard.recent-changes" />
+								</h3>
 							</div>
-						) : null}
+							{recentError ? (
+								<div className="card-body">
+									<ErrorAlert error={recentError} />
+								</div>
+							) : recentPending ? (
+								<div className="card-body">
+									<Loading noLogo />
+								</div>
+							) : recentLogs?.length ? (
+								<div className="list-group list-group-flush">
+									{recentLogs.map((row) => (
+										<div key={row.id} className="list-group-item">
+											<EventFormatter row={row} />
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="card-body text-secondary">
+									<T id="dashboard.recent-changes.empty" />
+								</div>
+							)}
+							<div className="card-footer">
+								<Link to="/audit-log" className="link-primary">
+									<T id="dashboard.view-all" />
+								</Link>
+							</div>
+						</div>
 					</div>
-				</div>
+				) : null}
 			</div>
 		</div>
 	);

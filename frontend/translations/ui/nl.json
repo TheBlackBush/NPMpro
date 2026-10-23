@@ -104,6 +104,7 @@
 	"column.status": "Status",
 	"created-on": "Aangemaakt: {date}",
 	"dashboard": "Dashboard",
+	"dashboard.recent-changes.empty": "Nog geen wijzigingen",
 	"dead-host": "404-Host",
 	"dead-host.directory": "Groep",
 	"dead-host.no-directory": "Geen groep",

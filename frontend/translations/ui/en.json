@@ -130,6 +130,7 @@
 	"dashboard.expired": "{count} expired",
 	"dashboard.expiring": "{count, plural, one {# certificate expires} other {# certificates expire}} within {days} days",
 	"dashboard.recent-changes": "Recent changes",
+	"dashboard.recent-changes.empty": "No changes yet",
 	"dashboard.view-all": "View all",
 	"dead-host": "404 Host",
 	"dead-host.directory": "Group",

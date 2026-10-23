@@ -104,6 +104,7 @@
 	"column.status": "状态",
 	"created-on": "创建时间: {date}",
 	"dashboard": "仪表板",
+	"dashboard.recent-changes.empty": "暂无更改",
 	"dead-host": "错误页面",
 	"dead-host.directory": "分组",
 	"dead-host.no-directory": "未分组",

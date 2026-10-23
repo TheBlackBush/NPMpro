@@ -12,41 +12,33 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data, isPending, error } = useAuditLog(id);
 
 	return (
-		<AppModal show={visible} onHide={remove}>
-			{error && <ErrorAlert error={error} className="m-3" />}
-			{isPending && <Loading noLogo />}
-			{data && (
-				<>
-					<AppModal.Header closeButton>
-						<AppModal.Title>
-							<T id="action.view-details" />
-						</AppModal.Title>
-					</AppModal.Header>
-					<AppModal.Body>
-						<div className="row">
-							<div className="col-md-2">
-								<GravatarFormatter url={data.user?.avatar} />
-							</div>
-							<div className="col-md-10">
-								<EventFormatter row={data} />
-							</div>
-							<hr className="mt-4 mb-3" />
-							<textarea
-								className="form-control font-monospace"
-								spellCheck={false}
-								rows={9}
-								readOnly
-								value={JSON.stringify(decamelizeKeys(data.meta), null, 2)}
-							/>
+		<AppModal show={visible} onHide={remove} size="lg" scrollable>
+			<AppModal.Header closeButton>
+				<AppModal.Title>
+					<T id="action.view-details" />
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
+				{error ? <ErrorAlert error={error} /> : null}
+				{isPending ? <Loading noLogo /> : null}
+				{data ? (
+					<>
+						<div className="d-flex align-items-center gap-3 mb-3">
+							<GravatarFormatter url={data.user?.avatar} name={data.user?.name} />
+							<EventFormatter row={data} />
 						</div>
-					</AppModal.Body>
-					<AppModal.Footer>
-						<Button className="ms-auto" onClick={remove}>
-							<T id="action.close" />
-						</Button>
-					</AppModal.Footer>
-				</>
-			)}
+						{/* pre-wrap wraps long values instead of scrolling sideways */}
+						<pre className="form-control font-monospace mb-0" style={{ whiteSpace: "pre-wrap" }}>
+							{JSON.stringify(decamelizeKeys(data.meta), null, 2)}
+						</pre>
+					</>
+				) : null}
+			</AppModal.Body>
+			<AppModal.Footer>
+				<Button className="ms-auto" onClick={remove}>
+					<T id="action.close" />
+				</Button>
+			</AppModal.Footer>
 		</AppModal>
 	);
 });

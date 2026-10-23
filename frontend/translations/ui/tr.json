@@ -88,6 +88,7 @@
 	"column.status": "Durum",
 	"created-on": "Oluşturuldu: {date}",
 	"dashboard": "Kontrol Paneli",
+	"dashboard.recent-changes.empty": "Henüz değişiklik yok",
 	"dead-host": "404 Host",
 	"dead-hosts": "404 Host'lar",
 	"dead-hosts.count": "{count} {count, plural, one {404 Host} other {404 Host}}",

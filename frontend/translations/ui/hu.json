@@ -87,6 +87,7 @@
 	"column.status": "Állapot",
 	"created-on": "Létrehozva: {date}",
 	"dashboard": "Vezérlőpult",
+	"dashboard.recent-changes.empty": "Még nincsenek módosítások",
 	"dead-host": "404-es Kiszolgáló",
 	"dead-hosts": "404-es Kiszolgálók",
 	"dead-hosts.count": "{count} {count, plural, one {404-es Kiszolgáló} other {404-es Kiszolgálók}}",

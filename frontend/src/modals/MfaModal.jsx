@@ -1,9 +1,11 @@
-import { IconCopy, IconEye, IconEyeOff } from "@tabler/icons-react";
-import { ErrorMessage, Field, Form, Formik } from "formik";
+import { IconCopy } from "@tabler/icons-react";
+import cn from "clsx";
+import { Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { PasswordInput } from "src/components/Form";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -20,7 +22,6 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 	const [setupData, setSetupData] = useState(null);
 	const [backupCodes, setBackupCodes] = useState([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [showCode, setShowCode] = useState(false);
 
 	const loadStatus = useCallback(async () => {
 		try {
@@ -102,13 +103,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 
 	const renderContent = () => {
 		if (step === "loading") {
-			return (
-				<div className="text-center py-4">
-					<div className="spinner-border" role="status">
-						<span className="visually-hidden">Loading...</span>
-					</div>
-				</div>
-			);
+			return <Loading noLogo />;
 		}
 
 		if (step === "status") {
@@ -119,7 +114,8 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<span className="fw-bold">
 								<T id="totp.status" />
 							</span>
-							<span className={`badge text-white ${isEnabled ? "bg-success" : "bg-secondary"}`}>
+							<span className={cn("status", isEnabled ? "status-green" : "status-secondary")}>
+								<span className="status-dot" />
 								{isEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
 							</span>
 						</div>
@@ -171,14 +167,14 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 								readOnly
 								onClick={(e) => e.target.select()}
 							/>
-							<span className="input-group-text">
+							<span className="input-group-text py-0">
 								<button
 									type="button"
 									aria-label={intl.formatMessage({ id: "aria.copy" })}
-									className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
+									className="btn btn-icon btn-ghost btn-sm"
 									onClick={() => navigator.clipboard.writeText(setupData.secret)}
 								>
-									<IconCopy size={18} />
+									<IconCopy className="icon" aria-hidden="true" />
 								</button>
 							</span>
 						</div>
@@ -188,42 +184,21 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<Form>
 								<Field name="code" validate={validateString(6, 6)}>
 									{({ field, form }) => (
-										<label className="mb-3 d-block">
-											<span className="form-label">
-												<T id="totp.enter-code" />
-											</span>
-											<div className="input-group input-group-flat">
-												<input
-													{...field}
-													type={showCode || !field.value ? "text" : "password"}
-													inputMode="numeric"
-													autoComplete="one-time-code"
-													required
-													className={`form-control ${form.errors.code && form.touched.code ? "is-invalid" : ""}`}
-													placeholder="000000"
-													maxLength={6}
-												/>
-
-												<span className="input-group-text">
-													<button
-														type="button"
-														tabIndex={-1}
-														aria-label={intl.formatMessage({
-															id: "password.toggle-visibility",
-														})}
-														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-														onClick={() => setShowCode((v) => !v)}
-													>
-														{showCode ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-													</button>
-												</span>
-											</div>
-											<ErrorMessage
-												name="code"
-												component="div"
-												className="invalid-feedback d-block"
+										<div className="mb-3">
+											<PasswordInput
+												{...field}
+												id="mfa-code"
+												label={<T id="totp.enter-code" />}
+												textWhenEmpty
+												inputMode="numeric"
+												autoComplete="one-time-code"
+												required
+												className="text-center font-monospace"
+												placeholder="000000"
+												maxLength={6}
+												error={form.errors.code && form.touched.code ? form.errors.code : null}
 											/>
-										</label>
+										</div>
 									)}
 								</Field>
 								<div className="d-flex gap-2">
@@ -285,41 +260,20 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<Form>
 								<Field name="code" validate={validateString(6, 8)}>
 									{({ field, form }) => (
-										<label className="mb-3 d-block">
-											<span className="form-label">
-												<T id="totp.enter-code-disable" />
-											</span>
-											<div className="input-group input-group-flat">
-												<input
-													{...field}
-													type={showCode || !field.value ? "text" : "password"}
-													autoComplete="one-time-code"
-													required
-													className={`form-control ${form.errors.code && form.touched.code ? "is-invalid" : ""}`}
-													placeholder="000000"
-													maxLength={8}
-												/>
-
-												<span className="input-group-text">
-													<button
-														type="button"
-														tabIndex={-1}
-														aria-label={intl.formatMessage({
-															id: "password.toggle-visibility",
-														})}
-														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-														onClick={() => setShowCode((v) => !v)}
-													>
-														{showCode ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-													</button>
-												</span>
-											</div>
-											<ErrorMessage
-												name="code"
-												component="div"
-												className="invalid-feedback d-block"
+										<div className="mb-3">
+											<PasswordInput
+												{...field}
+												id="mfa-code"
+												label={<T id="totp.enter-code-disable" />}
+												textWhenEmpty
+												autoComplete="one-time-code"
+												required
+												className="text-center font-monospace"
+												placeholder="000000"
+												maxLength={8}
+												error={form.errors.code && form.touched.code ? form.errors.code : null}
 											/>
-										</label>
+										</div>
 									)}
 								</Field>
 								<div className="d-flex gap-2">
@@ -362,41 +316,21 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<Form>
 								<Field name="code" validate={validateString(6, 6)}>
 									{({ field, form }) => (
-										<label className="mb-3 d-block">
-											<span className="form-label">
-												<T id="totp.enter-code" />
-											</span>
-											<div className="input-group input-group-flat">
-												<input
-													{...field}
-													type={showCode || !field.value ? "text" : "password"}
-													autoComplete="one-time-code"
-													required
-													className={`form-control ${form.errors.code && form.touched.code ? "is-invalid" : ""}`}
-													placeholder="000000"
-													maxLength={6}
-												/>
-
-												<span className="input-group-text">
-													<button
-														type="button"
-														tabIndex={-1}
-														aria-label={intl.formatMessage({
-															id: "password.toggle-visibility",
-														})}
-														className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-														onClick={() => setShowCode((v) => !v)}
-													>
-														{showCode ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-													</button>
-												</span>
-											</div>
-											<ErrorMessage
-												name="code"
-												component="div"
-												className="invalid-feedback d-block"
+										<div className="mb-3">
+											<PasswordInput
+												{...field}
+												id="mfa-code"
+												label={<T id="totp.enter-code" />}
+												textWhenEmpty
+												inputMode="numeric"
+												autoComplete="one-time-code"
+												required
+												className="text-center font-monospace"
+												placeholder="000000"
+												maxLength={6}
+												error={form.errors.code && form.touched.code ? form.errors.code : null}
 											/>
-										</label>
+										</div>
 									)}
 								</Field>
 								<div className="d-flex gap-2">

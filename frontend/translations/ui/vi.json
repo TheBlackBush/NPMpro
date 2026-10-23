@@ -82,6 +82,7 @@
 	"column.status": "Trạng thái",
 	"created-on": "Đã tạo: {date}",
 	"dashboard": "Bảng điều khiển",
+	"dashboard.recent-changes.empty": "Chưa có thay đổi nào",
 	"dead-host": "Máy chủ 404",
 	"dead-hosts": "Máy chủ 404",
 	"dead-hosts.count": "Số trang lỗi {count}",

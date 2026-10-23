@@ -87,6 +87,7 @@
 	"column.status": "Status",
 	"created-on": "Opprettet: {date}",
 	"dashboard": "Dashboard",
+	"dashboard.recent-changes.empty": "Ingen endringer ennå",
 	"dead-host": "404 Tjener ikke funnet",
 	"dead-hosts": "404 Tjenere ikke funnet",
 	"dead-hosts.count": "{count} {count, plural, one {404 Tjener} other {404 Tjenere}}",

@@ -88,6 +88,7 @@
 	"column.status": "Vəziyyət",
 	"created-on": "Yaradılıb: {date}",
 	"dashboard": "İdarə paneli",
+	"dashboard.recent-changes.empty": "Hələ dəyişiklik yoxdur",
 	"dead-host": "404 Host",
 	"dead-hosts": "404 Hostlar",
 	"dead-hosts.count": "{count} {count, plural, one {404 host} other {404 host}}",

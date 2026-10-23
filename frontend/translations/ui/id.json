@@ -83,6 +83,7 @@
 	"column.status": "Status",
 	"created-on": "Dibuat: {date}",
 	"dashboard": "Dasbor",
+	"dashboard.recent-changes.empty": "Belum ada perubahan",
 	"dead-host": "Host 404",
 	"dead-hosts": "Host 404",
 	"dead-hosts.count": "{count} {count, plural, one {Host 404} other {Host 404}}",

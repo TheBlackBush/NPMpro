@@ -104,6 +104,7 @@
 	"column.status": "Status",
 	"created-on": "Erstelldatum: {date}",
 	"dashboard": "Dashboard",
+	"dashboard.recent-changes.empty": "Noch keine Änderungen",
 	"dead-host": "404 Host",
 	"dead-host.directory": "Gruppe",
 	"dead-host.no-directory": "Keine Gruppe",

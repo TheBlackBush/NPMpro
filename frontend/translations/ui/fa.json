@@ -88,6 +88,7 @@
 	"column.status": "وضعیت",
 	"created-on": "ایجاد: {date}",
 	"dashboard": "داشبورد",
+	"dashboard.recent-changes.empty": "هنوز تغییری وجود ندارد",
 	"dead-host": "میزبان 404",
 	"dead-hosts": "میزبان‌های 404",
 	"dead-hosts.count": "{count} {count, plural, one {میزبان 404} other {میزبان 404}}",

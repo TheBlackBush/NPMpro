@@ -105,7 +105,7 @@ export default function Table({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "w-1 text-nowrap",
 				},
 			}),
 			columnHelper.display({

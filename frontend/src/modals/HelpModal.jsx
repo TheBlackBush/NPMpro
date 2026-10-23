@@ -11,14 +11,16 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 	const markdownText = getHelpFile(section);
 
 	return (
-		<AppModal show={visible} onHide={remove}>
+		<AppModal show={visible} onHide={remove} size="lg" scrollable>
 			<AppModal.Header closeButton>
 				<AppModal.Title>
 					<T id="help" />
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
-				<Markdown options={{ disableParsingRawHTML: true }}>{markdownText}</Markdown>
+				<div className="prose">
+					<Markdown options={{ disableParsingRawHTML: true }}>{markdownText}</Markdown>
+				</div>
 			</AppModal.Body>
 		</AppModal>
 	);

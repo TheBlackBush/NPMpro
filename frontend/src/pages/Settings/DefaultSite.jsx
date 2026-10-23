@@ -188,18 +188,10 @@ export default function DefaultSite() {
 							</>
 						)}
 					</div>
-					<div className="card-footer bg-transparent mt-auto">
-						<div className="btn-list justify-content-end">
-							<Button
-								type="submit"
-								color="teal"
-								className="ms-auto"
-								isLoading={isSubmitting}
-								disabled={isSubmitting}
-							>
-								<T id="save" />
-							</Button>
-						</div>
+					<div className="card-footer text-end">
+						<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
+							<T id="save" />
+						</Button>
 					</div>
 				</Form>
 			)}

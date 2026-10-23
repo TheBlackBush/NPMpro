@@ -1,9 +1,9 @@
-import { IconEye, IconEyeOff } from "@tabler/icons-react";
-import { ErrorMessage, Field, Form, Formik } from "formik";
+import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, NoticeAlert } from "src/components";
-import { intl, T } from "src/locale";
+import { PasswordInput } from "src/components/Form";
+import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
@@ -15,9 +15,6 @@ const showChangePasswordModal = (id) => {
 const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	const [error, setError] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [showCurrent, setShowCurrent] = useState(false);
-	const [showNew, setShowNew] = useState(false);
-	const [showConfirm, setShowConfirm] = useState(false);
 
 	const onSubmit = async (values, { setSubmitting }) => {
 		if (values.new !== values.confirm) {
@@ -66,119 +63,48 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 							<div className="mb-3">
 								<Field name="current" validate={validateString(1, 255, false)}>
 									{({ field, form }) => (
-										<div className="input-group input-group-flat">
-											<div className="form-floating">
-												<input
-													id="current"
-													type={showCurrent ? "text" : "password"}
-													autoComplete="current-password"
-													required
-													className={`form-control ${form.errors.current && form.touched.current ? "is-invalid" : ""}`}
-													placeholder={intl.formatMessage({
-														id: "user.current-password",
-													})}
-													{...field}
-												/>
-
-												<label htmlFor="current">
-													<T id="user.current-password" />
-												</label>
-											</div>
-											<span className="input-group-text">
-												<button
-													type="button"
-													tabIndex={-1}
-													aria-label={intl.formatMessage({
-														id: "password.toggle-visibility",
-													})}
-													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-													onClick={() => setShowCurrent((v) => !v)}
-												>
-													{showCurrent ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-												</button>
-											</span>
-										</div>
+										<PasswordInput
+											{...field}
+											id="current"
+											label={<T id="user.current-password" />}
+											autoComplete="current-password"
+											required
+											error={
+												form.errors.current && form.touched.current ? form.errors.current : null
+											}
+										/>
 									)}
 								</Field>
-								<ErrorMessage name="current" component="div" className="invalid-feedback d-block" />
 							</div>
 							<div className="mb-3">
 								<Field name="new" validate={validateString(8, 255, false)}>
 									{({ field, form }) => (
-										<div className="input-group input-group-flat">
-											<div className="form-floating">
-												<input
-													id="new"
-													type={showNew ? "text" : "password"}
-													autoComplete="new-password"
-													required
-													className={`form-control ${form.errors.new && form.touched.new ? "is-invalid" : ""}`}
-													placeholder={intl.formatMessage({
-														id: "user.new-password",
-													})}
-													{...field}
-												/>
-
-												<label htmlFor="new">
-													<T id="user.new-password" />
-												</label>
-											</div>
-											<span className="input-group-text">
-												<button
-													type="button"
-													tabIndex={-1}
-													aria-label={intl.formatMessage({
-														id: "password.toggle-visibility",
-													})}
-													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-													onClick={() => setShowNew((v) => !v)}
-												>
-													{showNew ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-												</button>
-											</span>
-										</div>
+										<PasswordInput
+											{...field}
+											id="new"
+											label={<T id="user.new-password" />}
+											autoComplete="new-password"
+											required
+											error={form.errors.new && form.touched.new ? form.errors.new : null}
+										/>
 									)}
 								</Field>
-								<ErrorMessage name="new" component="div" className="invalid-feedback d-block" />
 							</div>
 							<div className="mb-3">
 								<Field name="confirm" validate={validateString(8, 255, false)}>
 									{({ field, form }) => (
-										<div className="input-group input-group-flat">
-											<div className="form-floating">
-												<input
-													id="confirm"
-													type={showConfirm ? "text" : "password"}
-													autoComplete="new-password"
-													required
-													className={`form-control ${form.errors.confirm && form.touched.confirm ? "is-invalid" : ""}`}
-													placeholder={intl.formatMessage({
-														id: "user.confirm-password",
-													})}
-													{...field}
-												/>
-
-												<label htmlFor="confirm">
-													<T id="user.confirm-password" />
-												</label>
-											</div>
-											<span className="input-group-text">
-												<button
-													type="button"
-													tabIndex={-1}
-													aria-label={intl.formatMessage({
-														id: "password.toggle-visibility",
-													})}
-													className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-													onClick={() => setShowConfirm((v) => !v)}
-												>
-													{showConfirm ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-												</button>
-											</span>
-										</div>
+										<PasswordInput
+											{...field}
+											id="confirm"
+											label={<T id="user.confirm-password" />}
+											autoComplete="new-password"
+											required
+											error={
+												form.errors.confirm && form.touched.confirm ? form.errors.confirm : null
+											}
+										/>
 									)}
 								</Field>
-								<ErrorMessage name="confirm" component="div" className="invalid-feedback d-block" />
 							</div>
 						</AppModal.Body>
 						<AppModal.Footer>
