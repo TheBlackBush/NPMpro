@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
-import { Button, DomainNamesField } from "src/components";
+import { ApiErrorContent, Button, DomainNamesField, RequestProgress } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -35,17 +35,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 			showObjectSuccess("certificate", "saved");
 			remove();
 		} catch (err) {
-			if (err.payload?.error?.output) {
-				setErrorMsg(
-					<div className="w-100">
-						<pre>
-							<code>{err.payload.error.output}</code>
-						</pre>
-					</div>,
-				);
-			} else {
-				setErrorMsg(<T id={err.message} />);
-			}
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 		await queryClient.invalidateQueries({ queryKey: ["certificates"] });
 		setIsSubmitting(false);
@@ -60,7 +50,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 			const result = await testHttpCertificate(domains);
 			setTestResults(result);
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 		setIsTesting(false);
 	};
@@ -116,7 +106,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 				}}
 				onSubmit={onSubmit}
 			>
-				{() => (
+				{({ values }) => (
 					<Form>
 						<DirtyTracker dirtyRef={dirtyRef} />
 						<Modal.Header closeButton={!(isSubmitting || isTesting)}>
@@ -173,6 +163,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								) : null}
 							</div>
 						</Modal.Body>
+						<RequestProgress running={isSubmitting} propagationSeconds={values.npmplusPropagationSeconds} />
 						<Modal.Footer>
 							<Button onClick={close} disabled={isSubmitting || isTesting}>
 								<T id="cancel" />

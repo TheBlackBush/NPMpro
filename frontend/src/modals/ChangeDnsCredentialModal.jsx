@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { setCertificateDnsCredential } from "src/api/backend";
-import { Button, DnsCredentialSelect } from "src/components";
+import { ApiErrorContent, Button, DnsCredentialSelect } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -33,7 +33,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 			showObjectSuccess("certificate", "updated");
 			remove();
 		} catch (err) {
-			setErrorMsg(<T id={err.message} />);
+			setErrorMsg(<ApiErrorContent error={err} />);
 		} finally {
 			setIsSubmitting(false);
 			setSubmitting(false);

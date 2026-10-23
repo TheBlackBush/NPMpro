@@ -55,6 +55,8 @@ jobs:
           git diff --exit-code -- translations
       - name: translation keys exist
         run: ./translations/check-keys.sh
+      - name: unit tests
+        run: node --test 'src/**/*.test.js'
       - name: build
         run: pnpm vite build
 

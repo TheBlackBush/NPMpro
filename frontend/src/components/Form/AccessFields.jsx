@@ -10,6 +10,7 @@ import {
 import { useFormikContext } from "formik";
 import { useState } from "react";
 import Select, { components } from "react-select";
+import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
@@ -164,7 +165,7 @@ export function AccessFields({
 			{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
 			{isError ? (
 				<div className="invalid-feedback d-block">
-					<T id={error.message} />
+					<ApiErrorContent error={error} />
 				</div>
 			) : null}
 			<div className="row">

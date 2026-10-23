@@ -2,6 +2,7 @@ import { IconShield } from "@tabler/icons-react";
 import { Field, useFormikContext } from "formik";
 import Select, { components } from "react-select";
 import { certificateProviderTranslation } from "src/components";
+import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useCertificates, useUser } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { CERTIFICATES, hasPermission, MANAGE } from "src/modules/Permissions";
@@ -123,7 +124,7 @@ export function SSLCertificateField({
 						{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
 						{isError ? (
 							<div className="invalid-feedback d-block">
-								<T id={error.message} />
+								<ApiErrorContent error={error} />
 							</div>
 						) : null}
 						{!isPending && !isError ? (
@@ -159,7 +160,7 @@ export function SSLCertificateField({
 						{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
 						{isError ? (
 							<div className="invalid-feedback d-block">
-								<T id={error.message} />
+								<ApiErrorContent error={error} />
 							</div>
 						) : null}
 						{!isPending && !isError ? (

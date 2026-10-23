@@ -36,6 +36,7 @@ export default function Table({
 	data,
 	isFetching,
 	isFiltered,
+	onClearFilters,
 	onEdit,
 	onDelete,
 	onDisableToggle,
@@ -263,6 +264,7 @@ export default function Table({
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
+					onClearFilters={onClearFilters}
 					color="blue"
 					permissionSection={STREAMS}
 				/>

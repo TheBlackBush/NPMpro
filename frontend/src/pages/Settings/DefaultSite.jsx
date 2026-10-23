@@ -1,7 +1,7 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { Alert } from "react-bootstrap";
-import { Button, Loading } from "src/components";
+import { ApiErrorContent, Button, Loading } from "src/components";
 import { useSetSetting, useSetting } from "src/hooks";
 import { intl, T } from "src/locale";
 import { validateString } from "src/modules/Validations";
@@ -29,7 +29,7 @@ export default function DefaultSite() {
 		};
 
 		setSetting(payload, {
-			onError: (err) => setErrorMsg(<T id={err.message} />),
+			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: () => {
 				showObjectSuccess("setting", "saved");
 			},
@@ -45,7 +45,7 @@ export default function DefaultSite() {
 			<div className="card-body">
 				<div className="mb-3">
 					<Alert variant="danger" show>
-						{error.message}
+						<ApiErrorContent error={error} />
 					</Alert>
 				</div>
 			</div>

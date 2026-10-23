@@ -1,8 +1,7 @@
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { ErrorMessage, Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import Alert from "react-bootstrap/Alert";
-import { Button, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -12,15 +11,15 @@ import { validateEmail, validateString } from "src/modules/Validations";
 function TotpForm() {
 	const codeRef = useRef(null);
 	const [showCode, setShowCode] = useState(false);
-	const [formErr, setFormErr] = useState("");
+	const [formErr, setFormErr] = useState(null);
 	const { submitTotp, cancelTotp } = useAuthState();
 
 	const onSubmit = async (values, { setSubmitting, resetForm }) => {
-		setFormErr("");
+		setFormErr(null);
 		try {
 			await submitTotp(values);
 		} catch (err) {
-			setFormErr(err.message);
+			setFormErr(err);
 			resetForm();
 		}
 		setSubmitting(false);
@@ -38,7 +37,7 @@ function TotpForm() {
 			<p className="text-secondary text-center mb-4">
 				<T id="login.totp-description" />
 			</p>
-			{formErr !== "" && <Alert variant="danger">{intl.formatMessage({ id: formErr })}</Alert>}
+			{formErr && <ErrorAlert error={formErr} />}
 			<Formik initialValues={{ code: "" }} onSubmit={onSubmit}>
 				{({ isSubmitting }) => (
 					<Form>
@@ -108,7 +107,7 @@ function TotpForm() {
 function PasswordForm() {
 	const emailRef = useRef(null);
 	const [showPassword, setShowPassword] = useState(false);
-	const [formErr, setFormErr] = useState("");
+	const [formErr, setFormErr] = useState(null);
 	const { login } = useAuthState();
 	const health = useHealth();
 
@@ -117,11 +116,11 @@ function PasswordForm() {
 	};
 
 	const onSubmit = async (values, { setSubmitting }) => {
-		setFormErr("");
+		setFormErr(null);
 		try {
 			await login(values.email, values.password);
 		} catch (err) {
-			setFormErr(err.message);
+			setFormErr(err);
 		}
 		setSubmitting(false);
 	};
@@ -142,7 +141,7 @@ function PasswordForm() {
 			<h2 className="h2 text-center mb-4">
 				<T id="login.title" />
 			</h2>
-			{formErr !== "" && <Alert variant="danger">{intl.formatMessage({ id: formErr })}</Alert>}
+			{formErr && <ErrorAlert error={formErr} />}
 			{health.data?.password && (
 				<Formik
 					initialValues={{

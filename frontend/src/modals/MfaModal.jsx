@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { Button } from "src/components";
+import { ApiErrorContent, Button } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { validateString } from "src/modules/Validations";
@@ -31,7 +31,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 			setBackupCodesRemaining(status.backupCodesRemaining);
 			setStep("status");
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 			setStep("error");
 		}
 	}, [id]);
@@ -48,7 +48,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 			setSetupData(data);
 			setStep("setup");
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 		}
 		setIsSubmitting(false);
 	};
@@ -65,7 +65,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 				await loadStatus();
 			}
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 		}
 		setIsSubmitting(false);
 	};
@@ -78,7 +78,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 			setIsEnabled(false);
 			setStep("status");
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 		}
 		setIsSubmitting(false);
 	};
@@ -91,7 +91,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 			setBackupCodes(result.backupCodes);
 			setStep("backup");
 		} catch (err) {
-			setError(<T id={err.message} />);
+			setError(<ApiErrorContent error={err} />);
 		}
 		setIsSubmitting(false);
 	};

@@ -1,4 +1,5 @@
 import { toast } from "react-toastify";
+import { ApiErrorContent } from "src/components/ErrorAlert";
 import { intl } from "src/locale";
 import { Msg } from "./Msg";
 
@@ -22,6 +23,10 @@ const showError = (message) => {
 			message,
 		},
 	});
+};
+
+const showApiError = (err) => {
+	showError(<ApiErrorContent error={err} />);
 };
 
 const showObjectSuccess = (obj, action) => {
@@ -61,4 +66,4 @@ const showNginxConfigError = (obj, nginxErr) => {
 	});
 };
 
-export { getNginxConfigError, NginxConfigErrorMsg, showError, showNginxConfigError, showObjectSuccess };
+export { getNginxConfigError, NginxConfigErrorMsg, showApiError, showError, showNginxConfigError, showObjectSuccess };
