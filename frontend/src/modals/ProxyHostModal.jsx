@@ -309,7 +309,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	<label className="form-label" htmlFor="forwardPort">
 																		<T id="host.forward-port" />
 																	</label>
-																	<div className="input-group">
+																	<div className="input-group has-validation">
 																		<input
 																			id="forwardPort"
 																			type="text"
