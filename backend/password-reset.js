@@ -41,7 +41,7 @@ if (!EMAIL || rest.length > 0) {
 	usage();
 }
 
-if (!existsSync("/data/npmplus/database.sqlite")) {
+if (!existsSync("/data/npmpro/database.sqlite")) {
 	console.error("ERROR: Cannot connect to the sqlite database.");
 	process.exit(1);
 }
@@ -68,7 +68,7 @@ if (PASSWORD && (PASSWORD.length < 8 || PASSWORD.length > 255)) {
 }
 
 try {
-	using db = new DatabaseSync("/data/npmplus/database.sqlite");
+	using db = new DatabaseSync("/data/npmpro/database.sqlite");
 
 	const user = db.prepare("SELECT id FROM user WHERE email = ?").get(EMAIL);
 

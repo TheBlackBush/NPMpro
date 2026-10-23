@@ -144,7 +144,7 @@ const regenerateHosts = async () => {
 	}
 
 	if (regenerateAll) {
-		await writeFile("/data/npmplus/env.sha512sum", process.env.ENV_SHA512SUM);
+		await writeFile("/data/npmpro/env.sha512sum", process.env.ENV_SHA512SUM);
 	} else if (regenerated > 0) {
 		logger.warn(`Regenerated ${regenerated} host config(s) that were missing`);
 	}
