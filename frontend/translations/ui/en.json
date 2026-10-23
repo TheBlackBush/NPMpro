@@ -172,6 +172,8 @@
 	"error.passwords-must-match": "Passwords must match",
 	"error.required": "This is required",
 	"expires.on": "Expires: {date}",
+	"expiry.expired": "Expired",
+	"expiry.in-days": "Expires in {days, plural, =0 {less than a day} one {# day} other {# days}}",
 	"footer.github": "Repository on Github",
 	"footer.github-fork": "Fork me on Github",
 	"form.example": "e.g. {example}",
