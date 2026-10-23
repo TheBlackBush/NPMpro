@@ -77,7 +77,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "w-1 text-nowrap",
 				},
 			}),
 			columnHelper.display({
