@@ -409,6 +409,23 @@ const internalProxyHost = {
 
 		return query.resultSize();
 	},
+
+	/**
+	 * Report use: enabled hosts whose nginx config was rejected
+	 *
+	 * @param   {Number}  user_id
+	 * @param   {String}  visibility
+	 * @returns {Promise}
+	 */
+	getErrorCount: (user_id, visibility) => {
+		const query = proxyHostModel.query().where("enabled", 1).andWhere("npmplus_nginx_online", 0);
+
+		if (visibility !== "all") {
+			query.andWhere("owner_user_id", user_id);
+		}
+
+		return query.resultSize();
+	},
 };
 
 export default internalProxyHost;

@@ -22,7 +22,15 @@
 								"stream": 0,
 								"dead": 1,
 								"access_list": 2,
-								"certificate": 15
+								"certificate": 15,
+								"errors": {
+									"proxy": 1,
+									"redirection": 0,
+									"dead": 0,
+									"stream": 0
+								},
+								"certificates_expiring": 2,
+								"certificates_expired": 1
 							}
 						}
 					},
@@ -59,8 +67,56 @@
 								"type": "integer",
 								"description": "Certificates Count",
 								"example": 15
+							},
+							"errors": {
+								"type": "object",
+								"description": "Enabled hosts whose nginx configuration was rejected",
+								"additionalProperties": false,
+								"properties": {
+									"proxy": {
+										"type": "integer",
+										"description": "Proxy Hosts With Config Error",
+										"example": 1
+									},
+									"redirection": {
+										"type": "integer",
+										"description": "Redirection Hosts With Config Error",
+										"example": 0
+									},
+									"dead": {
+										"type": "integer",
+										"description": "404 Hosts With Config Error",
+										"example": 0
+									},
+									"stream": {
+										"type": "integer",
+										"description": "Streams With Config Error",
+										"example": 0
+									}
+								},
+								"required": [
+									"proxy",
+									"redirection",
+									"dead",
+									"stream"
+								]
+							},
+							"certificates_expiring": {
+								"type": "integer",
+								"description": "Certificates (Let's Encrypt or other providers) expiring within 14 days",
+								"example": 2
+							},
+							"certificates_expired": {
+								"type": "integer",
+								"description": "Certificates (Let's Encrypt or other providers) already expired",
+								"example": 1
 							}
-						}
+						},
+						"required": [
+							"errors",
+							"certificates_expiring",
+							"certificates_expired"
+						]
 					}
 				}
 			}
