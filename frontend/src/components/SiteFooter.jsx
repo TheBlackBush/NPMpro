@@ -33,6 +33,26 @@ export function SiteFooter() {
 						<ul className="list-inline list-inline-dots mb-0">
 							<li className="list-inline-item">© {new Date().getFullYear()} AGPL-3.0 (and MIT)</li>
 							<li className="list-inline-item">
+								<a
+									href="https://github.com/TheBlackBush"
+									rel="noreferrer"
+									target="_blank"
+									className="link-secondary"
+								>
+									NPMpro by TheBlackBush
+								</a>
+							</li>
+							<li className="list-inline-item">
+								<a
+									href="https://github.com/ZoeyVid/NPMplus"
+									rel="noreferrer"
+									target="_blank"
+									className="link-secondary"
+								>
+									NPMplus by ZoeyVid
+								</a>
+							</li>
+							<li className="list-inline-item">
 								<a href="https://jc21.com" rel="noreferrer" target="_blank" className="link-secondary">
 									jc21.com
 								</a>
