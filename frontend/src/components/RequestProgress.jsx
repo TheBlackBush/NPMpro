@@ -8,9 +8,12 @@ function RequestProgress({ running, propagationSeconds }) {
 	const wait = Number(propagationSeconds);
 
 	return (
-		<div className="text-secondary px-3 pb-3 d-flex align-items-center" role="status">
+		<div className="text-secondary px-3 pb-3 d-flex align-items-center">
 			<span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-			<span>
+			<span role="status">
+				<T id="certificates.request.status" />
+			</span>
+			<span className="ms-1" aria-hidden="true">
 				<T id="certificates.request.progress" data={{ elapsed: formatElapsed(elapsed) }} />
 				{wait > 0 ? (
 					<>
