@@ -4,7 +4,7 @@ import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
 
 const hasMessage = (id) => Boolean(intl.messages[id]);
-const formatMessage = (id) => intl.formatMessage({ id });
+const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 // Message of an API error with its command output (if any) behind a toggle, without an alert around it
 function ApiErrorContent({ error }) {

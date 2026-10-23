@@ -38,3 +38,8 @@ it("translates client side errors that carry a translation id", () => {
 	assert.equal(formatApiError(new Error("error.known"), has, fmt).message, "Translated text");
 	assert.equal(formatApiError(new Error("Network down"), has, fmt).message, "Network down");
 });
+
+it("formats a bare HTTP status fallback as a generic request failure", () => {
+	const msgs = (id, values) => (id === "error.request-failed" ? `Request failed (HTTP ${values.status})` : id);
+	assert.equal(formatApiError(new Error("HTTP 502"), () => false, msgs).message, "Request failed (HTTP 502)");
+});
