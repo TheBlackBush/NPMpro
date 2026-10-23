@@ -4,33 +4,44 @@ import auditLogModel from "../models/audit-log.js";
 
 const internalAuditLog = {
 	/**
-	 * All logs
+	 * All logs, paged and filtered
 	 *
 	 * @param   {Access}  access
-	 * @param   {Array}   [expand]
-	 * @param   {String}  [searchQuery]
-	 * @returns {Promise}
+	 * @param   {Object}  [options]
+	 * @param   {Array}   [options.expand]
+	 * @param   {String}  [options.query]
+	 * @param   {Number}  [options.limit]
+	 * @param   {Number}  [options.offset]
+	 * @param   {String}  [options.objectType]
+	 * @param   {String}  [options.action]
+	 * @param   {Number}  [options.userId]
+	 * @returns {Promise<{rows: Array, total: Number}>}
 	 */
-	getAll: (access, expand, searchQuery) => {
+	getAll: async (access, { expand, query: searchQuery, limit = 50, offset = 0, objectType, action, userId } = {}) => {
 		access.canAdmin();
 
-		const query = auditLogModel
-			.query()
+		const applyFilters = (query) => {
+			if (typeof searchQuery === "string" && searchQuery.length > 0) {
+				query.where(function () {
+					this.where(castJsonIfNeed("meta"), "like", `%${searchQuery}%`);
+				});
+			}
+			if (objectType) query.andWhere("object_type", objectType);
+			if (action) query.andWhere("action", action);
+			if (userId) query.andWhere("user_id", userId);
+			return query;
+		};
+
+		const rowsQuery = applyFilters(auditLogModel.query())
 			.orderBy("created_on", "DESC")
 			.orderBy("id", "DESC")
-			.limit(100)
+			.limit(limit)
+			.offset(offset)
 			.allowGraph("[user]");
+		if (expand) rowsQuery.withGraphFetched(`[${expand.join(", ")}]`);
 
-		// Query is used for searching
-		if (typeof searchQuery === "string" && searchQuery.length > 0) {
-			query.where(function () {
-				this.where(castJsonIfNeed("meta"), "like", `%${searchQuery}%`);
-			});
-		}
-
-		if (expand) query.withGraphFetched(`[${expand.join(", ")}]`);
-
-		return query;
+		const [rows, total] = await Promise.all([rowsQuery, applyFilters(auditLogModel.query()).resultSize()]);
+		return { rows, total };
 	},
 
 	/**
