@@ -55,12 +55,12 @@ export function filterCertificates(rows, filters, { searchText, now = new Date()
 	});
 }
 
-export function activeFilterCount(filters) {
+export function activeFilterCount(filters, kinds = ["status", "tls", "group", "expiry"]) {
 	let count = 0;
 	if (filters.q.trim() !== "") count++;
-	if (filters.status !== "all") count++;
-	if (filters.tls !== "all") count++;
-	if (filters.group !== null) count++;
-	if (filters.expiry !== "all") count++;
+	if (kinds.includes("status") && filters.status !== "all") count++;
+	if (kinds.includes("tls") && filters.tls !== "all") count++;
+	if (kinds.includes("group") && filters.group !== null) count++;
+	if (kinds.includes("expiry") && filters.expiry !== "all") count++;
 	return count;
 }

@@ -49,6 +49,12 @@ it("filters certificates by expiry", () => {
 });
 
 it("counts active filters", () => {
-	assert.equal(activeFilterCount(parse("")), 0);
-	assert.equal(activeFilterCount(parse("status=error&q=x&group=Prod")), 3);
+	const hostKinds = ["status", "tls", "group"];
+	assert.equal(activeFilterCount(parse(""), hostKinds), 0);
+	assert.equal(activeFilterCount(parse("status=error&q=x&group=Prod"), hostKinds), 3);
+});
+
+it("ignores filters the page does not use", () => {
+	assert.equal(activeFilterCount(parse("status=error&q=x"), ["expiry"]), 1);
+	assert.equal(activeFilterCount(parse("expiry=soon"), ["status", "tls", "group"]), 0);
 });
