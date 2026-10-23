@@ -79,15 +79,15 @@ function TotpForm() {
 	);
 }
 
+const redirectToOIDC = () => {
+	window.location.href = "/api/oidc";
+};
+
 function PasswordForm() {
 	const emailRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
 	const { login } = useAuthState();
 	const health = useHealth();
-
-	const redirectToOIDC = () => {
-		window.location.href = "/api/oidc";
-	};
 
 	const onSubmit = async (values, { setSubmitting }) => {
 		setFormErr(null);
@@ -99,16 +99,22 @@ function PasswordForm() {
 		setSubmitting(false);
 	};
 
+	// Once, when the health check first answers: the check repeats every 15 seconds, and refocusing on each
+	// answer would move the cursor out of the password field while someone types
+	const passwordAllowed = health.data?.password;
+	const startedRef = useRef(false);
 	useEffect(() => {
-		if (health.data?.password === false) {
+		if (passwordAllowed === undefined || startedRef.current) return;
+		startedRef.current = true;
+		if (passwordAllowed === false) {
 			if (getCookie("__Host-npmpro_oidc_no_redirect") !== "true") {
 				redirectToOIDC();
 			}
-		} else {
+		} else if (!emailRef.current?.form?.contains(document.activeElement)) {
 			emailRef.current?.focus();
 		}
 		window.cookieStore.delete("__Host-npmpro_oidc_no_redirect");
-	});
+	}, [passwordAllowed]);
 
 	return (
 		<>
