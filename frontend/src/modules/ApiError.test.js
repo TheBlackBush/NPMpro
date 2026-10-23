@@ -33,3 +33,8 @@ it("handles non API errors", () => {
 	assert.equal(formatApiError(new Error("Network down"), has, fmt).message, "Network down");
 	assert.equal(formatApiError(null, has, fmt).message, "");
 });
+
+it("translates client side errors that carry a translation id", () => {
+	assert.equal(formatApiError(new Error("error.known"), has, fmt).message, "Translated text");
+	assert.equal(formatApiError(new Error("Network down"), has, fmt).message, "Network down");
+});
