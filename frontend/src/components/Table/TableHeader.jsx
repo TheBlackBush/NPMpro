@@ -20,9 +20,10 @@ function TableHeader({ tableInstance }) {
 						const sorted = column.getIsSorted();
 						return (
 							<th key={header.id} className={className} aria-sort={ariaSort(sorted)}>
+								{/* bg-transparent: the header background is translucent and .table-sort inherits it, which would paint it twice */}
 								<button
 									type="button"
-									className={cn("table-sort", sorted)}
+									className={cn("table-sort bg-transparent", sorted)}
 									onClick={column.getToggleSortingHandler()}
 								>
 									{label}

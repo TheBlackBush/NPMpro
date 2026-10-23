@@ -52,6 +52,7 @@ export default function Table({
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
+				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original.owner;
 					return (
