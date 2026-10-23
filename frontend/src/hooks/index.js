@@ -16,6 +16,7 @@ export * from "./useHostReport";
 export * from "./useListFilters";
 export * from "./useProxyHost";
 export * from "./useProxyHosts";
+export * from "./useRecentAuditLogs";
 export * from "./useRedirectionHost";
 export * from "./useRedirectionHosts";
 export * from "./useSetting";

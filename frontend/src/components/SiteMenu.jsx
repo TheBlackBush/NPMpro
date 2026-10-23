@@ -7,6 +7,7 @@ import {
 	IconDisc,
 	IconExternalLink,
 	IconHistory,
+	IconLayoutDashboard,
 	IconLock,
 	IconSettings,
 	IconShield,
@@ -31,6 +32,11 @@ import {
 
 const menuGroups = [
 	[
+		{
+			to: "/",
+			icon: IconLayoutDashboard,
+			label: "dashboard",
+		},
 		{
 			to: "/nginx/proxy",
 			icon: IconBolt,
@@ -108,16 +114,16 @@ const menuGroups = [
 	],
 ];
 
+// "/" matches only exactly, otherwise it would be active on every page
+const isActivePath = (to, pathname) => Boolean(to) && (to === "/" ? pathname === "/" : pathname.startsWith(to));
+
 const getMenuItem = (item, onClick, pathname) => {
 	if (item.items) {
 		return getMenuDropown(item, onClick, pathname);
 	}
 
 	return (
-		<li
-			key={`item-${item.label}`}
-			className={`nav-item${item.to && pathname.startsWith(item.to) ? " active" : ""}`}
-		>
+		<li key={`item-${item.label}`} className={`nav-item${isActivePath(item.to, pathname) ? " active" : ""}`}>
 			<NavLink to={item.to} href={item.href} onClick={onClick}>
 				<span className="nav-link-icon">{React.createElement(item.icon, { height: 24, width: 24 })}</span>
 				<span className="nav-link-title d-flex align-items-center gap-1">
