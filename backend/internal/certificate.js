@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { installPlugin } from "../lib/certbot.js";
 import error from "../lib/error.js";
+import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import utils from "../lib/utils.js";
 import apiValidator from "../lib/validator/api.js";
@@ -404,6 +405,32 @@ const internalCertificate = {
 		}
 
 		return query.resultSize();
+	},
+
+	/**
+	 * Report use: certificates that expire within the warning window or already expired
+	 *
+	 * @param   {Number}  userId
+	 * @param   {String}  visibility
+	 * @returns {Promise<{expiring: Number, expired: Number}>}
+	 */
+	getExpiryCounts: async (userId, visibility) => {
+		const { now, soon } = expiryBounds();
+		const format = (date) => dayjs(date).format("YYYY-MM-DD HH:mm:ss");
+		const base = () => {
+			const query = certificateModel.query().whereIn("provider", ["letsencrypt", "other"]);
+			if (visibility !== "all") {
+				query.andWhere("owner_user_id", userId);
+			}
+			return query;
+		};
+
+		const [expired, expiring] = await Promise.all([
+			base().where("expires_on", "<", format(now)).resultSize(),
+			base().where("expires_on", ">=", format(now)).andWhere("expires_on", "<", format(soon)).resultSize(),
+		]);
+
+		return { expiring, expired };
 	},
 
 	/**
