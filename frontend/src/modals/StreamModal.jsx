@@ -145,7 +145,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 													<T id="column.ssl" />
 												</a>
 											</li>
-											<li className="nav-item ms-auto" role="presentation">
+											<li className="nav-item" role="presentation">
 												<a
 													href="#tab-advanced"
 													className="nav-link"

@@ -66,32 +66,30 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 								<T id="object.add" tData={{ object: "lets-encrypt-via-dns" }} />
 							</AppModal.Title>
 						</AppModal.Header>
-						<AppModal.Body className="p-0">
-							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-							<div className="card m-0 border-0">
-								<div className="card-body">
-									<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
-									<DNSProviderFields />
-									<div className="row">
-										<div className="col-6">
-											<Field name="npmproReuseKey">
-												{({ field }) => (
-													<label className="form-check form-switch mt-1">
-														<input
-															{...field}
-															className={field.value ? toggleEnabled : toggleClasses}
-															type="checkbox"
-															checked={field.value}
-														/>
+						<AppModal.Body>
+							<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+								{errorMsg}
+							</ErrorAlert>
+							<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
+							<DNSProviderFields />
+							<div className="row">
+								<div className="col-6">
+									<Field name="npmproReuseKey">
+										{({ field }) => (
+											<label className="form-check form-switch mt-1">
+												<input
+													{...field}
+													className={field.value ? toggleEnabled : toggleClasses}
+													type="checkbox"
+													checked={field.value}
+												/>
 
-														<span className="form-check-label">
-															<T id="domains.reuse-key" />
-														</span>
-													</label>
-												)}
-											</Field>
-										</div>
-									</div>
+												<span className="form-check-label">
+													<T id="domains.reuse-key" />
+												</span>
+											</label>
+										)}
+									</Field>
 								</div>
 							</div>
 						</AppModal.Body>

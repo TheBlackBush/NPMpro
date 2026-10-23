@@ -119,51 +119,49 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								<T id="object.add" tData={{ object: "lets-encrypt-via-http" }} />
 							</AppModal.Title>
 						</AppModal.Header>
-						<AppModal.Body className="p-0">
-							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-							<div className="card m-0 border-0">
-								<div className="card-body">
-									<NoticeAlert>
-										<T id="certificates.http.warning" />
-									</NoticeAlert>
-									<DomainNamesField
-										forCertificate
-										onChange={(doms) => {
-											setDomains(doms);
-											setTestResults(null);
-										}}
-									/>
+						<AppModal.Body>
+							<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+								{errorMsg}
+							</ErrorAlert>
+							<NoticeAlert>
+								<T id="certificates.http.warning" />
+							</NoticeAlert>
+							<DomainNamesField
+								forCertificate
+								onChange={(doms) => {
+									setDomains(doms);
+									setTestResults(null);
+								}}
+							/>
 
-									<div className="row">
-										<div className="col-6">
-											<Field name="npmproReuseKey">
-												{({ field }) => (
-													<label className="form-check form-switch mt-1">
-														<input
-															{...field}
-															className={field.value ? toggleEnabled : toggleClasses}
-															type="checkbox"
-															checked={field.value}
-														/>
+							<div className="row">
+								<div className="col-6">
+									<Field name="npmproReuseKey">
+										{({ field }) => (
+											<label className="form-check form-switch mt-1">
+												<input
+													{...field}
+													className={field.value ? toggleEnabled : toggleClasses}
+													type="checkbox"
+													checked={field.value}
+												/>
 
-														<span className="form-check-label">
-															<T id="domains.reuse-key" />
-														</span>
-													</label>
-												)}
-											</Field>
-										</div>
-									</div>
+												<span className="form-check-label">
+													<T id="domains.reuse-key" />
+												</span>
+											</label>
+										)}
+									</Field>
 								</div>
-								{testResults ? (
-									<div className="card-footer">
-										<h5>
-											<T id="certificates.http.test-results" />
-										</h5>
-										{parseTestResults()}
-									</div>
-								) : null}
 							</div>
+							{testResults ? (
+								<div className="border rounded p-3 mt-3">
+									<h5>
+										<T id="certificates.http.test-results" />
+									</h5>
+									{parseTestResults()}
+								</div>
+							) : null}
 						</AppModal.Body>
 						<RequestProgress running={isSubmitting} propagationSeconds={values.npmproPropagationSeconds} />
 						<AppModal.Footer>

@@ -185,7 +185,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 													<T id="column.ssl" />
 												</a>
 											</li>
-											<li className="nav-item ms-auto" role="presentation">
+											<li className="nav-item" role="presentation">
 												<a
 													href="#tab-advanced"
 													className="nav-link"
@@ -302,56 +302,60 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															)}
 														</Field>
 													</div>
-													<div className="col-md-3">
+													<div className="col-md-4">
 														<Field name="forwardPort" validate={validateNumber(-1, 65535)}>
 															{({ field, form }) => (
 																<div className="mb-3">
 																	<label className="form-label" htmlFor="forwardPort">
 																		<T id="host.forward-port" />
 																	</label>
-																	<input
-																		id="forwardPort"
-																		type="text"
-																		inputMode="numeric"
-																		pattern="[1-9][0-9]*"
-																		className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
-																		placeholder={intl.formatMessage(
-																			{ id: "form.example" },
-																			{ example: "8081" },
-																		)}
-																		{...field}
-																	/>
+																	<div className="input-group">
+																		<input
+																			id="forwardPort"
+																			type="text"
+																			inputMode="numeric"
+																			pattern="[1-9][0-9]*"
+																			className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
+																			placeholder={intl.formatMessage(
+																				{ id: "form.example" },
+																				{ example: "8081" },
+																			)}
+																			{...field}
+																		/>
+																		<button
+																			type="button"
+																			className="btn btn-icon"
+																			title={intl.formatMessage({
+																				id: "host.location-config.toggle",
+																			})}
+																			aria-label={intl.formatMessage({
+																				id: "host.location-config.toggle",
+																			})}
+																			aria-expanded={advVisible}
+																			onClick={() =>
+																				setAdvVisible((prev) => !prev)
+																			}
+																		>
+																			<IconSettings
+																				size={20}
+																				aria-hidden="true"
+																			/>
+																			{values?.npmproLocationConfig?.trim()
+																				? "*"
+																				: ""}
+																		</button>
 
-																	{form.errors.forwardPort ? (
-																		<div className="invalid-feedback">
-																			{form.touched.forwardPort
-																				? form.errors.forwardPort
-																				: null}
-																		</div>
-																	) : null}
+																		{form.errors.forwardPort ? (
+																			<div className="invalid-feedback">
+																				{form.touched.forwardPort
+																					? form.errors.forwardPort
+																					: null}
+																			</div>
+																		) : null}
+																	</div>
 																</div>
 															)}
 														</Field>
-													</div>
-													<div className="col-md-1 text-end">
-														<div className="mb-3">
-															<div className="form-label invisible">​</div>
-															<button
-																type="button"
-																className="btn p-0"
-																title={intl.formatMessage({
-																	id: "host.location-config.toggle",
-																})}
-																aria-label={intl.formatMessage({
-																	id: "host.location-config.toggle",
-																})}
-																aria-expanded={advVisible}
-																onClick={() => setAdvVisible((prev) => !prev)}
-															>
-																<IconSettings size={20} />
-																{values?.npmproLocationConfig?.trim() ? "*" : ""}
-															</button>
-														</div>
 													</div>
 												</div>
 												<div className="my-3">

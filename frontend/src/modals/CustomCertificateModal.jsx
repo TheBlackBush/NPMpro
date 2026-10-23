@@ -86,83 +86,78 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 								/>
 							</AppModal.Title>
 						</AppModal.Header>
-						<AppModal.Body className="p-0">
-							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-							<div className="card m-0 border-0">
-								<div className="card-body">
-									<NoticeAlert>
-										<T id="certificates.custom.warning" />
-									</NoticeAlert>
-									<Field name="niceName" validate={isEdit ? undefined : validateString(1, 255)}>
-										{({ field, form }) => (
-											<div className="mb-3">
-												<label htmlFor="niceName" className="form-label">
-													<T id="column.name" />
-												</label>
-												<input
-													id="niceName"
-													type="text"
-													required
-													autoComplete="off"
-													// Disable name editing in edit mode as we only update files
-													disabled={isEdit}
-													className={`form-control ${form.errors.niceName && form.touched.niceName ? "is-invalid" : ""}`}
-													{...field}
-												/>
+						<AppModal.Body>
+							<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
+								{errorMsg}
+							</ErrorAlert>
+							<NoticeAlert>
+								<T id="certificates.custom.warning" />
+							</NoticeAlert>
+							<Field name="niceName" validate={isEdit ? undefined : validateString(1, 255)}>
+								{({ field, form }) => (
+									<div className="mb-3">
+										<label htmlFor="niceName" className="form-label">
+											<T id="column.name" />
+										</label>
+										<input
+											id="niceName"
+											type="text"
+											required
+											autoComplete="off"
+											// Disable name editing in edit mode as we only update files
+											disabled={isEdit}
+											className={`form-control ${form.errors.niceName && form.touched.niceName ? "is-invalid" : ""}`}
+											{...field}
+										/>
 
-												{form.errors.niceName ? (
-													<div className="invalid-feedback">
-														{form.touched.niceName ? form.errors.niceName : null}
-													</div>
-												) : null}
+										{form.errors.niceName ? (
+											<div className="invalid-feedback">
+												{form.touched.niceName ? form.errors.niceName : null}
 											</div>
-										)}
-									</Field>
-									<Field name="certificate">
-										{({ field, form }) => (
-											<div className="mb-3">
-												<label htmlFor="certificate" className="form-label">
-													<T id="certificate.custom-certificate" />
-												</label>
-												<input
-													id="certificate"
-													type="file"
-													required
-													autoComplete="off"
-													className="form-control"
-													onChange={(event) => {
-														form.setFieldValue(field.name, event.currentTarget.files[0]);
-													}}
-												/>
-											</div>
-										)}
-									</Field>
-									{!isMtls && (
-										<Field name="certificateKey">
-											{({ field, form }) => (
-												<div className="mb-3">
-													<label htmlFor="certificateKey" className="form-label">
-														<T id="certificate.custom-certificate-key" />
-													</label>
-													<input
-														id="certificateKey"
-														type="file"
-														required
-														autoComplete="off"
-														className="form-control"
-														onChange={(event) => {
-															form.setFieldValue(
-																field.name,
-																event.currentTarget.files[0],
-															);
-														}}
-													/>
-												</div>
-											)}
-										</Field>
+										) : null}
+									</div>
+								)}
+							</Field>
+							<Field name="certificate">
+								{({ field, form }) => (
+									<div className="mb-3">
+										<label htmlFor="certificate" className="form-label">
+											<T id="certificate.custom-certificate" />
+										</label>
+										<input
+											id="certificate"
+											type="file"
+											required
+											autoComplete="off"
+											className="form-control"
+											onChange={(event) => {
+												form.setFieldValue(field.name, event.currentTarget.files[0]);
+											}}
+										/>
+									</div>
+								)}
+							</Field>
+							{!isMtls && (
+								<Field name="certificateKey">
+									{({ field, form }) => (
+										<div className="mb-3">
+											<label htmlFor="certificateKey" className="form-label">
+												<T id="certificate.custom-certificate-key" />
+											</label>
+											<input
+												id="certificateKey"
+												type="file"
+												required
+												autoComplete="off"
+												className="form-control"
+												onChange={(event) => {
+													form.setFieldValue(field.name, event.currentTarget.files[0]);
+												}}
+											/>
+										</div>
 									)}
-								</div>
-							</div>
+								</Field>
+							)}
 						</AppModal.Body>
 						<AppModal.Footer>
 							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
