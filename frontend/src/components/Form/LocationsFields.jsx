@@ -354,126 +354,107 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									<T id="options" />
 								</h4>
 								<div className="divide-y">
-									<div>
-										<SwitchField
-											id={`npmproNoindex-${item.uiKey}`}
-											label={<T id="host.flags.send-noindex" />}
-											checked={item.npmproNoindex}
-											onChange={(e) => handleChange(idx, "npmproNoindex", e.target.checked)}
-										/>
-									</div>
-									<div>
-										<SwitchField
-											id={`npmproCrowdsecAppsec-${item.uiKey}`}
-											label={<T id="host.flags.disable-crowdsec-appsec" />}
-											hint={
-												item.npmproProxyRequestBuffering && (
-													<span className="d-block">
-														<T id="host.flags.hint.appsec-request-buffering" />
-													</span>
-												)
-											}
-											checked={item.npmproCrowdsecAppsec}
-											onChange={(e) =>
-												handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)
-											}
-										/>
-									</div>
-									<div>
-										<SwitchField
-											id={`npmproProxyRequestBuffering-${item.uiKey}`}
-											label={<T id="host.flags.disable-request-buffering" />}
-											hint={
-												<>
-													<span className="d-block">
-														<T id="host.flags.hint.request-buffering-appsec" />
-													</span>
-													{getOptionHintId(
-														"npmproProxyRequestBuffering",
-														item.forwardScheme,
-													) && (
-														<span className="d-block">
-															<T
-																id={getOptionHintId(
-																	"npmproProxyRequestBuffering",
-																	item.forwardScheme,
-																)}
-															/>
-														</span>
-													)}
-												</>
-											}
-											checked={item.npmproProxyRequestBuffering}
-											onChange={(e) =>
-												handleChange(idx, "npmproProxyRequestBuffering", e.target.checked)
-											}
-											disabled={!["http", "https"].includes(item.forwardScheme)}
-										/>
-									</div>
-									<div>
-										<SwitchField
-											id={`npmproProxyResponseBuffering-${item.uiKey}`}
-											label={<T id="host.flags.disable-response-buffering" />}
-											hint={
-												getOptionHintId("npmproProxyResponseBuffering", item.forwardScheme) && (
+									<SwitchField
+										id={`npmproNoindex-${item.uiKey}`}
+										label={<T id="host.flags.send-noindex" />}
+										checked={item.npmproNoindex}
+										onChange={(e) => handleChange(idx, "npmproNoindex", e.target.checked)}
+									/>
+									<SwitchField
+										id={`npmproCrowdsecAppsec-${item.uiKey}`}
+										label={<T id="host.flags.disable-crowdsec-appsec" />}
+										hint={
+											item.npmproProxyRequestBuffering && (
+												<span className="d-block">
+													<T id="host.flags.hint.appsec-request-buffering" />
+												</span>
+											)
+										}
+										checked={item.npmproCrowdsecAppsec}
+										onChange={(e) => handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)}
+									/>
+									<SwitchField
+										id={`npmproProxyRequestBuffering-${item.uiKey}`}
+										label={<T id="host.flags.disable-request-buffering" />}
+										hint={
+											<>
+												<span className="d-block">
+													<T id="host.flags.hint.request-buffering-appsec" />
+												</span>
+												{getOptionHintId("npmproProxyRequestBuffering", item.forwardScheme) && (
 													<span className="d-block">
 														<T
 															id={getOptionHintId(
-																"npmproProxyResponseBuffering",
+																"npmproProxyRequestBuffering",
 																item.forwardScheme,
 															)}
 														/>
 													</span>
-												)
-											}
-											checked={item.npmproProxyResponseBuffering}
-											onChange={(e) =>
-												handleChange(idx, "npmproProxyResponseBuffering", e.target.checked)
-											}
-											disabled={!["http", "https"].includes(item.forwardScheme)}
-										/>
-									</div>
-									<div>
-										<SwitchField
-											id={`npmproUpstreamCompression-${item.uiKey}`}
-											label={<T id="host.flags.upstream-compression" />}
-											hint={
-												getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
-													<span className="d-block">
-														<T
-															id={getOptionHintId(
-																"npmproUpstreamCompression",
-																item.forwardScheme,
-															)}
-														/>
-													</span>
-												)
-											}
-											checked={item.npmproUpstreamCompression}
-											onChange={(e) =>
-												handleChange(idx, "npmproUpstreamCompression", e.target.checked)
-											}
-											disabled={["path", "empty"].includes(item.forwardScheme)}
-										/>
-									</div>
-									<div>
-										<SwitchField
-											id={`npmproFancyindex-${item.uiKey}`}
-											label={<T id="host.flags.fancyindex" />}
-											hint={
-												getOptionHintId("npmproFancyindex", item.forwardScheme) && (
-													<span className="d-block">
-														<T
-															id={getOptionHintId("npmproFancyindex", item.forwardScheme)}
-														/>
-													</span>
-												)
-											}
-											checked={item.npmproFancyindex}
-											onChange={(e) => handleChange(idx, "npmproFancyindex", e.target.checked)}
-											disabled={item.forwardScheme !== "path"}
-										/>
-									</div>
+												)}
+											</>
+										}
+										checked={item.npmproProxyRequestBuffering}
+										onChange={(e) =>
+											handleChange(idx, "npmproProxyRequestBuffering", e.target.checked)
+										}
+										disabled={!["http", "https"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproProxyResponseBuffering-${item.uiKey}`}
+										label={<T id="host.flags.disable-response-buffering" />}
+										hint={
+											getOptionHintId("npmproProxyResponseBuffering", item.forwardScheme) && (
+												<span className="d-block">
+													<T
+														id={getOptionHintId(
+															"npmproProxyResponseBuffering",
+															item.forwardScheme,
+														)}
+													/>
+												</span>
+											)
+										}
+										checked={item.npmproProxyResponseBuffering}
+										onChange={(e) =>
+											handleChange(idx, "npmproProxyResponseBuffering", e.target.checked)
+										}
+										disabled={!["http", "https"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproUpstreamCompression-${item.uiKey}`}
+										label={<T id="host.flags.upstream-compression" />}
+										hint={
+											getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
+												<span className="d-block">
+													<T
+														id={getOptionHintId(
+															"npmproUpstreamCompression",
+															item.forwardScheme,
+														)}
+													/>
+												</span>
+											)
+										}
+										checked={item.npmproUpstreamCompression}
+										onChange={(e) =>
+											handleChange(idx, "npmproUpstreamCompression", e.target.checked)
+										}
+										disabled={["path", "empty"].includes(item.forwardScheme)}
+									/>
+									<SwitchField
+										id={`npmproFancyindex-${item.uiKey}`}
+										label={<T id="host.flags.fancyindex" />}
+										hint={
+											getOptionHintId("npmproFancyindex", item.forwardScheme) && (
+												<span className="d-block">
+													<T id={getOptionHintId("npmproFancyindex", item.forwardScheme)} />
+												</span>
+											)
+										}
+										checked={item.npmproFancyindex}
+										onChange={(e) => handleChange(idx, "npmproFancyindex", e.target.checked)}
+										disabled={item.forwardScheme !== "path"}
+									/>
 								</div>
 								<div className="mt-3">
 									<div className="mb-3">

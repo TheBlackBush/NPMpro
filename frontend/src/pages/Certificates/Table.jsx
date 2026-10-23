@@ -76,6 +76,7 @@ export default function Table({
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
+				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original.owner;
 					return (
@@ -137,6 +138,7 @@ export default function Table({
 					const r = info.row.original;
 					return (
 						<CertificateInUseFormatter
+							id={r.id}
 							proxyHosts={[...r.proxyHosts, ...r.mtlsProxyHosts]}
 							redirectionHosts={[...r.redirectionHosts, ...r.mtlsRedirectionHosts]}
 							deadHosts={[...r.deadHosts, ...r.mtlsDeadHosts]}

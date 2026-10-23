@@ -302,7 +302,9 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 															</label>
 															<div
 																className={cn("input-group", {
-																	"has-validation": form.errors.forwardPort,
+																	"has-validation":
+																		form.errors.forwardPort &&
+																		form.touched.forwardPort,
 																})}
 															>
 																<input
@@ -333,11 +335,9 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	{values?.npmproLocationConfig?.trim() ? "*" : ""}
 																</button>
 
-																{form.errors.forwardPort ? (
+																{form.errors.forwardPort && form.touched.forwardPort ? (
 																	<div className="invalid-feedback">
-																		{form.touched.forwardPort
-																			? form.errors.forwardPort
-																			: null}
+																		{form.errors.forwardPort}
 																	</div>
 																) : null}
 															</div>
@@ -351,174 +351,159 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 												<T id="options" />
 											</h4>
 											<div className="divide-y">
-												<div>
-													<Field name="npmproNoindex" type="checkbox">
-														{({ field }) => (
-															<SwitchField
-																id="npmproNoindex"
-																label={<T id="host.flags.send-noindex" />}
-																{...field}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="npmproCrowdsecAppsec" type="checkbox">
-														{({ field, form }) => (
-															<SwitchField
-																id="npmproCrowdsecAppsec"
-																label={<T id="host.flags.disable-crowdsec-appsec" />}
-																hint={
-																	values.npmproProxyRequestBuffering && (
-																		<span className="d-block">
-																			<T id="host.flags.hint.appsec-request-buffering" />
-																		</span>
-																	)
+												<Field name="npmproNoindex" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="npmproNoindex"
+															label={<T id="host.flags.send-noindex" />}
+															{...field}
+														/>
+													)}
+												</Field>
+												<Field name="npmproCrowdsecAppsec" type="checkbox">
+													{({ field, form }) => (
+														<SwitchField
+															id="npmproCrowdsecAppsec"
+															label={<T id="host.flags.disable-crowdsec-appsec" />}
+															hint={
+																values.npmproProxyRequestBuffering && (
+																	<span className="d-block">
+																		<T id="host.flags.hint.appsec-request-buffering" />
+																	</span>
+																)
+															}
+															{...field}
+															onChange={(e) => {
+																field.onChange(e);
+																if (!e.target.checked) {
+																	form.setFieldValue(
+																		"npmproProxyRequestBuffering",
+																		false,
+																	);
 																}
-																{...field}
-																onChange={(e) => {
-																	field.onChange(e);
-																	if (!e.target.checked) {
-																		form.setFieldValue(
-																			"npmproProxyRequestBuffering",
-																			false,
-																		);
-																	}
-																}}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="npmproProxyRequestBuffering" type="checkbox">
-														{({ field, form }) => (
-															<SwitchField
-																id="npmproProxyRequestBuffering"
-																label={<T id="host.flags.disable-request-buffering" />}
-																hint={
-																	<>
-																		<span className="d-block">
-																			<T id="host.flags.hint.request-buffering-appsec" />
-																		</span>
-																		{getOptionHintId(
-																			"npmproProxyRequestBuffering",
-																			values.forwardScheme,
-																		) && (
-																			<span className="d-block">
-																				<T
-																					id={getOptionHintId(
-																						"npmproProxyRequestBuffering",
-																						values.forwardScheme,
-																					)}
-																				/>
-																			</span>
-																		)}
-																	</>
-																}
-																{...field}
-																onChange={(e) => {
-																	field.onChange(e);
-																	if (e.target.checked) {
-																		form.setFieldValue(
-																			"npmproCrowdsecAppsec",
-																			true,
-																		);
-																	}
-																}}
-																disabled={
-																	form.values.forwardScheme !== "http" &&
-																	form.values.forwardScheme !== "https"
-																}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="npmproProxyResponseBuffering" type="checkbox">
-														{({ field, form }) => (
-															<SwitchField
-																id="npmproProxyResponseBuffering"
-																label={<T id="host.flags.disable-response-buffering" />}
-																hint={
-																	getOptionHintId(
-																		"npmproProxyResponseBuffering",
+															}}
+														/>
+													)}
+												</Field>
+												<Field name="npmproProxyRequestBuffering" type="checkbox">
+													{({ field, form }) => (
+														<SwitchField
+															id="npmproProxyRequestBuffering"
+															label={<T id="host.flags.disable-request-buffering" />}
+															hint={
+																<>
+																	<span className="d-block">
+																		<T id="host.flags.hint.request-buffering-appsec" />
+																	</span>
+																	{getOptionHintId(
+																		"npmproProxyRequestBuffering",
 																		values.forwardScheme,
 																	) && (
 																		<span className="d-block">
 																			<T
 																				id={getOptionHintId(
-																					"npmproProxyResponseBuffering",
+																					"npmproProxyRequestBuffering",
 																					values.forwardScheme,
 																				)}
 																			/>
 																		</span>
-																	)
+																	)}
+																</>
+															}
+															{...field}
+															onChange={(e) => {
+																field.onChange(e);
+																if (e.target.checked) {
+																	form.setFieldValue("npmproCrowdsecAppsec", true);
 																}
-																{...field}
-																disabled={
-																	form.values.forwardScheme !== "http" &&
-																	form.values.forwardScheme !== "https"
-																}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="npmproUpstreamCompression" type="checkbox">
-														{({ field, form }) => (
-															<SwitchField
-																id="npmproUpstreamCompression"
-																label={<T id="host.flags.upstream-compression" />}
-																hint={
-																	getOptionHintId(
-																		"npmproUpstreamCompression",
-																		values.forwardScheme,
-																	) && (
-																		<span className="d-block">
-																			<T
-																				id={getOptionHintId(
-																					"npmproUpstreamCompression",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</span>
-																	)
-																}
-																{...field}
-																disabled={["path", "empty"].includes(
-																	form.values.forwardScheme,
-																)}
-															/>
-														)}
-													</Field>
-												</div>
-												<div>
-													<Field name="npmproFancyindex" type="checkbox">
-														{({ field, form }) => (
-															<SwitchField
-																id="npmproFancyindex"
-																label={<T id="host.flags.fancyindex" />}
-																hint={
-																	getOptionHintId(
-																		"npmproFancyindex",
-																		values.forwardScheme,
-																	) && (
-																		<span className="d-block">
-																			<T
-																				id={getOptionHintId(
-																					"npmproFancyindex",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</span>
-																	)
-																}
-																{...field}
-																disabled={form.values.forwardScheme !== "path"}
-															/>
-														)}
-													</Field>
-												</div>
+															}}
+															disabled={
+																form.values.forwardScheme !== "http" &&
+																form.values.forwardScheme !== "https"
+															}
+														/>
+													)}
+												</Field>
+												<Field name="npmproProxyResponseBuffering" type="checkbox">
+													{({ field, form }) => (
+														<SwitchField
+															id="npmproProxyResponseBuffering"
+															label={<T id="host.flags.disable-response-buffering" />}
+															hint={
+																getOptionHintId(
+																	"npmproProxyResponseBuffering",
+																	values.forwardScheme,
+																) && (
+																	<span className="d-block">
+																		<T
+																			id={getOptionHintId(
+																				"npmproProxyResponseBuffering",
+																				values.forwardScheme,
+																			)}
+																		/>
+																	</span>
+																)
+															}
+															{...field}
+															disabled={
+																form.values.forwardScheme !== "http" &&
+																form.values.forwardScheme !== "https"
+															}
+														/>
+													)}
+												</Field>
+												<Field name="npmproUpstreamCompression" type="checkbox">
+													{({ field, form }) => (
+														<SwitchField
+															id="npmproUpstreamCompression"
+															label={<T id="host.flags.upstream-compression" />}
+															hint={
+																getOptionHintId(
+																	"npmproUpstreamCompression",
+																	values.forwardScheme,
+																) && (
+																	<span className="d-block">
+																		<T
+																			id={getOptionHintId(
+																				"npmproUpstreamCompression",
+																				values.forwardScheme,
+																			)}
+																		/>
+																	</span>
+																)
+															}
+															{...field}
+															disabled={["path", "empty"].includes(
+																form.values.forwardScheme,
+															)}
+														/>
+													)}
+												</Field>
+												<Field name="npmproFancyindex" type="checkbox">
+													{({ field, form }) => (
+														<SwitchField
+															id="npmproFancyindex"
+															label={<T id="host.flags.fancyindex" />}
+															hint={
+																getOptionHintId(
+																	"npmproFancyindex",
+																	values.forwardScheme,
+																) && (
+																	<span className="d-block">
+																		<T
+																			id={getOptionHintId(
+																				"npmproFancyindex",
+																				values.forwardScheme,
+																			)}
+																		/>
+																	</span>
+																)
+															}
+															{...field}
+															disabled={form.values.forwardScheme !== "path"}
+														/>
+													)}
+												</Field>
 											</div>
 											<div className="mt-3">
 												<div className="mb-3">

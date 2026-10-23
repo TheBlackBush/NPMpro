@@ -256,17 +256,15 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="options" />
 											</h4>
 											<div className="divide-y">
-												<div>
-													<Field name="preservePath" type="checkbox">
-														{({ field }) => (
-															<SwitchField
-																id="preservePath"
-																label={<T id="host.flags.preserve-path" />}
-																{...field}
-															/>
-														)}
-													</Field>
-												</div>
+												<Field name="preservePath" type="checkbox">
+													{({ field }) => (
+														<SwitchField
+															id="preservePath"
+															label={<T id="host.flags.preserve-path" />}
+															{...field}
+														/>
+													)}
+												</Field>
 											</div>
 										</div>
 									</div>

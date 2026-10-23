@@ -29,12 +29,12 @@ const features = tableFeatures({
 	},
 });
 
-function UsedBy({ certificates }) {
+function UsedBy({ id, certificates }) {
 	if (certificates.length === 0) {
 		return <span className="text-secondary">0</span>;
 	}
 	const popover = (
-		<Popover id="popover-dns-credential-used-by">
+		<Popover id={`popover-dns-credential-used-by-${id}`}>
 			<Popover.Body>
 				{certificates.map((cert) => (
 					<div key={cert.id}>{cert.niceName}</div>
@@ -44,7 +44,12 @@ function UsedBy({ certificates }) {
 	);
 	return (
 		<OverlayTrigger trigger={["hover", "click", "focus"]} placement="bottom" overlay={popover}>
-			<button type="button" className="btn btn-link p-0 text-reset text-decoration-none">
+			<button
+				type="button"
+				className="btn btn-link d-inline-block p-0 text-reset text-decoration-none text-start align-baseline"
+				// Tabler .btn sets a minimum size, which would centre and pad the text like a button
+				style={{ minWidth: 0, minHeight: 0 }}
+			>
 				{certificates.length}
 			</button>
 		</OverlayTrigger>
@@ -58,6 +63,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
+				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original.owner;
 					return (
@@ -96,7 +102,9 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			columnHelper.accessor((row) => row.certificates?.length ?? 0, {
 				id: "usedBy",
 				header: intl.formatMessage({ id: "dns-credentials.used-by" }),
-				cell: (info) => <UsedBy certificates={info.row.original.certificates ?? []} />,
+				cell: (info) => (
+					<UsedBy id={info.row.original.id} certificates={info.row.original.certificates ?? []} />
+				),
 			}),
 			columnHelper.display({
 				id: "actions",

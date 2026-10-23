@@ -5,7 +5,7 @@ import { intl } from "src/locale";
 
 function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputProps }) {
 	const [visible, setVisible] = useState(false);
-	const asText = visible || (textWhenEmpty && !inputProps.value);
+	const asText = Boolean(visible || (textWhenEmpty && !inputProps.value));
 	return (
 		<>
 			{label ? (
@@ -17,6 +17,8 @@ function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputPro
 				<input
 					{...inputProps}
 					id={id}
+					aria-invalid={error ? "true" : undefined}
+					aria-describedby={error ? `${id}-error` : undefined}
 					type={asText ? "text" : "password"}
 					className={cn("form-control", error && "is-invalid", className)}
 				/>
@@ -25,17 +27,21 @@ function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputPro
 						type="button"
 						className="btn btn-icon btn-ghost btn-sm"
 						aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
-						aria-pressed={visible}
+						aria-pressed={asText}
 						onClick={() => setVisible((v) => !v)}
 					>
-						{visible ? (
+						{asText ? (
 							<IconEyeOff className="icon" aria-hidden="true" />
 						) : (
 							<IconEye className="icon" aria-hidden="true" />
 						)}
 					</button>
 				</span>
-				{error ? <div className="invalid-feedback">{error}</div> : null}
+				{error ? (
+					<div className="invalid-feedback" id={`${id}-error`}>
+						{error}
+					</div>
+				) : null}
 			</div>
 		</>
 	);

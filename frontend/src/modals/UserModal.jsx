@@ -187,28 +187,24 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 											<T id="options" />
 										</h4>
 										<div className="divide-y">
-											<div>
-												<Field name="isAdmin" type="checkbox">
-													{({ field }) => (
-														<SwitchField
-															id="isAdmin"
-															label={<T id="role.admin" />}
-															{...field}
-														/>
-													)}
-												</Field>
-											</div>
-											<div>
-												<Field name="isDisabled" type="checkbox">
-													{({ field }) => (
-														<SwitchField
-															id="isDisabled"
-															label={<T id="disabled" />}
-															{...field}
-														/>
-													)}
-												</Field>
-											</div>
+											<Field name="isAdmin" type="checkbox">
+												{({ field }) => (
+													<SwitchField
+														id="isAdmin"
+														label={<T id="role.admin" />}
+														{...field}
+													/>
+												)}
+											</Field>
+											<Field name="isDisabled" type="checkbox">
+												{({ field }) => (
+													<SwitchField
+														id="isDisabled"
+														label={<T id="disabled" />}
+														{...field}
+													/>
+												)}
+											</Field>
 										</div>
 									</div>
 								) : null}
