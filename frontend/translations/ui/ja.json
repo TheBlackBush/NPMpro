@@ -82,6 +82,7 @@
 	"column.status": "ステータス",
 	"created-on": "作成日時: {date}",
 	"dashboard": "ダッシュボード",
+	"dashboard.recent-changes.empty": "変更はまだありません",
 	"dead-host": "404 ホスト",
 	"dead-hosts": "404 ホスト",
 	"dead-hosts.count": "{count} 404 ホスト",

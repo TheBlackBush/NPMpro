@@ -83,6 +83,7 @@
 	"column.status": "Stádas",
 	"created-on": "Cruthaithe: {date}",
 	"dashboard": "Painéal Rialaithe",
+	"dashboard.recent-changes.empty": "Gan aon athruithe go fóill",
 	"dead-host": "Óstach 404",
 	"dead-hosts": "404 Óstaigh",
 	"dead-hosts.count": "{count} {count, plural, one {Óstach 404} other {Óstaigh 404}}",

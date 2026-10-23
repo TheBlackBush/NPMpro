@@ -87,6 +87,7 @@
 	"column.status": "Статус",
 	"created-on": "Создан: {date}",
 	"dashboard": "Обзор",
+	"dashboard.recent-changes.empty": "Изменений пока нет",
 	"dead-host": "404-хост",
 	"dead-hosts": "404-хосты",
 	"dead-hosts.count": "{count} {count, plural, one {404-хост} few {404-хоста} many {404-хостов} other {404-хоста}}",

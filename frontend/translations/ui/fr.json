@@ -92,6 +92,7 @@
 	"column.status": "Statut",
 	"created-on": "Création : {date}",
 	"dashboard": "Tableau de bord",
+	"dashboard.recent-changes.empty": "Aucune modification pour le moment",
 	"dead-host": "Hôte 404",
 	"dead-hosts": "Hôtes 404",
 	"dead-hosts.count": "{count} {count, plural, one {Hôte 404} other {Hôtes 404}}",

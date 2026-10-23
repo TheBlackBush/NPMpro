@@ -87,6 +87,7 @@
 	"column.status": "Stav",
 	"created-on": "Vytvořeno: {date}",
 	"dashboard": "Panel",
+	"dashboard.recent-changes.empty": "Zatím žádné změny",
 	"dead-host": "404 hostitel",
 	"dead-hosts": "404 Hostitelé",
 	"dead-hosts.count": "{count} {count, plural, one {404 hostitel} few {404 hostitelé} other {404 hostitelů}}",

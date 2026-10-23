@@ -92,6 +92,7 @@
 	"column.status": "Olek",
 	"created-on": "Loodud: {date}",
 	"dashboard": "Töölaud",
+	"dashboard.recent-changes.empty": "Muudatusi pole veel",
 	"dead-host": "404-host",
 	"dead-hosts": "404-hostid",
 	"dead-hosts.count": "{count} {count, plural, one {404-host} other {404-hosti}}",
