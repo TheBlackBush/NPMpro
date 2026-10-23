@@ -1,6 +1,8 @@
 import express from "express";
 import errs from "../lib/error.js";
 import requireLogin from "../lib/express/require-login.js";
+import { getOidcConfig } from "../lib/oidc-config.js";
+import { OIDC_DEFAULTS } from "../lib/oidc-rules.js";
 import { isSetup } from "../setup.js";
 import auditLogRoutes from "./audit-log.js";
 import docsRoutes from "./docs.js";
@@ -25,23 +27,33 @@ const router = express.Router({
 	mergeParams: true,
 });
 
-const isOIDCenabled = Boolean(
-	process.env.OIDC_REDIRECT_DOMAIN &&
-		process.env.OIDC_ISSUER_URL &&
-		process.env.OIDC_CLIENT_ID &&
-		process.env.OIDC_CLIENT_SECRET,
-);
+/**
+ * Public description of the OIDC login button
+ */
+const oidcHealth = ({ active, values }) => {
+	const { label, color, icon } = values.button;
+	return {
+		active,
+		label,
+		color,
+		icon:
+			icon?.type === "file"
+				? { type: "file", url: `/api/oidc/icon?v=${encodeURIComponent(icon.updated_on ?? 0)}` }
+				: { type: "builtin", name: icon?.name ?? OIDC_DEFAULTS.button.icon.name },
+	};
+};
 
 /**
  * Health Check
  * GET /api
  */
 router.get(["/api", "/api/"], async (_, res /*, next*/) => {
+	const cfg = await getOidcConfig();
 	res.status(200).send({
 		status: "OK",
 		setup: await isSetup(),
-		password: process.env.OIDC_DISABLE_PASSWORD === "false",
-		oidc: isOIDCenabled,
+		password: !(cfg.active && cfg.values.disable_password),
+		oidc: oidcHealth(cfg),
 	});
 });
 
@@ -65,7 +77,7 @@ router.get("/api/auth/admin", requireLogin(), (_, res) => {
 router.use("/api/docs", docsRoutes);
 router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
-if (isOIDCenabled) router.use("/api/oidc", oidcRoutes);
+router.use("/api/oidc", oidcRoutes);
 router.use("/api/users", usersRoutes);
 router.use("/api/audit-log", auditLogRoutes);
 router.use("/api/reports", reportsRoutes);

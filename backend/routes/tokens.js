@@ -3,6 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import { getOidcConfig } from "../lib/oidc-config.js";
 import apiValidator from "../lib/validator/api.js";
 import { getValidationSchema } from "../schema/index.js";
 
@@ -52,7 +53,8 @@ router
 	 * Create a new Token
 	 */
 	.post(limiter, async (req, res) => {
-		if (process.env.OIDC_DISABLE_PASSWORD === "true") {
+		const cfg = await getOidcConfig();
+		if (cfg.active && cfg.values.disable_password) {
 			throw new errs.PermissionError("Non OIDC login is disabled");
 		}
 
