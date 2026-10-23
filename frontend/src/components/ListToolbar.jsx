@@ -73,7 +73,6 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 				</div>
 				{kinds.includes("status") ? (
 					<div className="col-6 col-md-auto">
-						{" "}
 						<FilterSelect
 							label="list.filter.status"
 							value={filters.status}
@@ -87,7 +86,6 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 				) : null}
 				{kinds.includes("tls") ? (
 					<div className="col-6 col-md-auto">
-						{" "}
 						<FilterSelect
 							label="list.filter.tls"
 							value={filters.tls}
@@ -101,7 +99,6 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 				) : null}
 				{kinds.includes("group") && groups.length > 0 ? (
 					<div className="col-6 col-md-auto">
-						{" "}
 						<FilterSelect
 							label="list.filter.group"
 							value={filters.group ?? "all"}
@@ -112,7 +109,6 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 				) : null}
 				{kinds.includes("expiry") ? (
 					<div className="col-6 col-md-auto">
-						{" "}
 						<FilterSelect
 							label="list.filter.expiry"
 							value={filters.expiry}
