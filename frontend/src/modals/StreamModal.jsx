@@ -544,12 +544,11 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									</div>
 								</div>
-								<div className="px-3 pb-3">
-									<RequestProgress
-										running={isSubmitting && values.certificateId === "new"}
-										propagationSeconds={values.npmproPropagationSeconds}
-									/>
-								</div>
+								<RequestProgress
+									className="px-3 pb-3"
+									running={isSubmitting && values.certificateId === "new"}
+									propagationSeconds={values.npmproPropagationSeconds}
+								/>
 							</AppModal.Body>
 							<AppModal.Footer>
 								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>

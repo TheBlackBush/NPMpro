@@ -1,14 +1,15 @@
+import cn from "clsx";
 import { useElapsed } from "src/hooks/useElapsed";
 import { intl, T } from "src/locale";
 import { formatElapsed } from "src/modules/Duration";
 
-function RequestProgress({ running, propagationSeconds }) {
+function RequestProgress({ running, propagationSeconds, className }) {
 	const elapsed = useElapsed(running);
 	if (!running) return null;
 	const wait = Number(propagationSeconds);
 
 	return (
-		<div className="mt-3">
+		<div className={cn("mt-3", className)}>
 			<div className="text-secondary mb-2">
 				<span role="status">
 					<T id="certificates.request.status" />
