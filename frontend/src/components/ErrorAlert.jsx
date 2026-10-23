@@ -29,6 +29,7 @@ function ApiErrorContent({ error }) {
 							<T id={showDetails ? "error.details.hide" : "error.details.show"} />
 						</button>
 					</div>
+					{/* white-space: pre-wrap is inline because Tabler's .text-wrap is white-space: normal and would flatten command output; no utility gives a 20em max height */}
 					{showDetails ? (
 						<pre
 							className="mt-2 mb-0 overflow-auto text-break"

@@ -9,6 +9,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import cn from "clsx";
 import { useMemo } from "react";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
@@ -103,7 +104,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 						<span className="dropdown">
 							<button
 								type="button"
-								className="btn dropdown-toggle btn-action btn-sm px-1"
+								className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
 								aria-label={intl.formatMessage({ id: "actions" })}
 								data-bs-boundary="viewport"
 								data-bs-toggle="dropdown"
@@ -133,7 +134,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 									<div className="dropdown-divider" />
 									<button
 										type="button"
-										className="dropdown-item text-danger"
+										className={cn("dropdown-item", !inUse && "text-danger")}
 										disabled={inUse}
 										title={inUse ? intl.formatMessage({ id: "dns-credentials.in-use" }) : undefined}
 										onClick={() => {

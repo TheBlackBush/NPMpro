@@ -294,7 +294,7 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 							</div>
 						</div>
 						{!item.path?.endsWith("/") && (item.locationType === "" || item.locationType === "^~ ") && (
-							<NoticeAlert>
+							<NoticeAlert role="status">
 								<T id="proxy-host.location-no-trailing-slash-warning" />
 							</NoticeAlert>
 						)}

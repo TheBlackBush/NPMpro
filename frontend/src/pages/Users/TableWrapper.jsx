@@ -53,37 +53,38 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-orange" />
 			<div className="card-table">
 				<div className="card-header">
-					<div className="row w-full">
-						<div className="col">
-							<h2 className="mt-1 mb-0">
-								<T id="users" />
-							</h2>
-						</div>
+					<h2 className="card-title">
+						<T id="users" />
+					</h2>
+					<div className="card-actions btn-list">
 						{data?.length ? (
-							<div className="col-md-auto col-sm-12">
-								<div className="ms-auto d-flex flex-wrap btn-list">
-									<div className="input-group input-group-flat input-group-sm w-auto">
-										<span className="input-group-text">
-											<IconSearch size={16} />
-										</span>
-										<input
-											type="text"
-											className="form-control"
-											placeholder={intl.formatMessage({ id: "search" })}
-											aria-label={intl.formatMessage({ id: "search" })}
-											autoComplete="off"
-											onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
-										/>
-									</div>
-
-									<Button size="sm" className="btn-orange" onClick={() => showUserModal("new")}>
-										<T id="object.add" tData={{ object: "user" }} />
-									</Button>
-								</div>
-							</div>
+							<Button size="sm" className="btn-orange" onClick={() => showUserModal("new")}>
+								<T id="object.add" tData={{ object: "user" }} />
+							</Button>
 						) : null}
 					</div>
 				</div>
+				{data?.length ? (
+					<div className="card-body border-bottom py-3">
+						<div className="row g-2 align-items-center">
+							<div className="col-12 col-md">
+								<div className="input-group input-group-flat input-group-sm">
+									<span className="input-group-text">
+										<IconSearch className="icon" aria-hidden="true" />
+									</span>
+									<input
+										type="text"
+										className="form-control"
+										placeholder={intl.formatMessage({ id: "search" })}
+										aria-label={intl.formatMessage({ id: "search" })}
+										autoComplete="off"
+										onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+				) : null}
 				<Table
 					data={filtered ?? data ?? []}
 					isFiltered={search}
