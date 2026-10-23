@@ -70,15 +70,16 @@ docker compose up -d
 
 ## Upgrading from NPMplus
 
-NPMpro can take over an existing NPMplus data volume.
+NPMpro can take over an existing NPMplus data volume. Paths like `/data/...` are paths inside the container; on the host, `/data` is the folder you mounted to it (for example `/opt/npmplus`).
 
 - On the first start, NPMpro copies `/data/npmplus` to `/data/npmpro`, checks the copy (number of files, size and, for SQLite, a database integrity check) and renames the old folder to `/data/npmplus.backup-<date>`, with a `MOVED-TO-NPMPRO.txt` note inside. If a check fails, the container stops and `/data/npmplus` stays unchanged.
 - The database is then migrated: tables and columns named `npmplus_*` become `npmpro_*`. NPMplus images cannot use the migrated database.
 - The host path of the volume does not matter to NPMpro. You can keep `/opt/npmplus` or rename it to `/opt/npmpro` while the container is stopped.
 - Users stay logged in. An OIDC login that is in progress during the upgrade has to be started again.
+- External databases (MySQL/MariaDB via `DB_MYSQL_*`, Postgres via `DB_POSTGRES_*`) are renamed in place and are not part of the data folder backup. Dump the database before upgrading. External databases need MySQL 5.7 or later or MariaDB 10.5.2 or later (any supported Postgres version works).
 - Once everything works, you can delete `/data/npmplus.backup-<date>`.
 
-To go back to NPMplus: stop the container, move `/data/npmpro` away, rename `/data/npmplus.backup-<date>` back to `/data/npmplus` and start the NPMplus image.
+To go back to NPMplus: stop the container, move `/data/npmpro` away, rename `/data/npmplus.backup-<date>` back to `/data/npmplus` and start the NPMplus image. This only restores SQLite installs, because their database lives in that folder. With an external database, also restore the dump you made before upgrading.
 
 ## Migration from upstream/vanilla nginx-proxy-manager
 - **NOTE: Migrating back to the original version is not possible.** Please make a **backup** before migrating, so you have the option to revert if needed
@@ -392,7 +393,7 @@ The `Satisfy Any` or `Pass Auth to Upstream` only get applied if they are set on
 All are welcome to create pull requests for this project, but this does not mean that they will be merged, so better ask if your PR would be merged before creating one (via an issue), typos and translations are excluded from this.
 
 ## Getting Help
-1. [Support/Questions and bugs](https://github.com/TheBlackBush/NPMpro/issues) (bugs only for feature requests and reproducible bugs)
+1. [Support, questions and bug reports](https://github.com/TheBlackBush/NPMpro/issues): please open an issue only for questions, feature requests and reproducible bugs
 
 ## Credits
 

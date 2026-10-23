@@ -45,6 +45,7 @@ This folder is the data as it was before the upgrade. NPMpro does not use it.
 
 To go back to the previous image: stop the container, move $NEW away,
 rename this folder back to $OLD and start the previous image.
+With MySQL/MariaDB or Postgres, also restore the database dump you made before upgrading.
 
 You can delete this folder once the upgrade works for you.
 EOT
