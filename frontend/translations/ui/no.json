@@ -62,7 +62,6 @@
 	"certificates.mtls": "mTLS-sertifikat",
 	"certificates.request.subtitle": "med Certbot",
 	"certificates.request.title": "Be om et nytt sertifikat",
-	"close": "Lukk",
 	"column.access": "Tilgang",
 	"column.authorization": "Autorisasjon",
 	"column.authorizations": "Autorisasjoner",

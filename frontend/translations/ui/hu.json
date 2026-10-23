@@ -62,7 +62,6 @@
 	"certificates.mtls": "mTLS tanúsítvány",
 	"certificates.request.subtitle": "Certbot-tel",
 	"certificates.request.title": "Új tanúsítvány kérelmezése",
-	"close": "Bezárás",
 	"column.access": "Hozzáférés",
 	"column.authorization": "Jogosultság",
 	"column.authorizations": "Jogosultságok",

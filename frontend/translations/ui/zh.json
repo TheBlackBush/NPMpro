@@ -77,7 +77,6 @@
 	"certificates.mtls": "mTLS 证书",
 	"certificates.request.subtitle": "使用 Certbot",
 	"certificates.request.title": "申请新证书",
-	"close": "关闭",
 	"column.access": "访问",
 	"column.authorization": "授权",
 	"column.authorizations": "授权列表",

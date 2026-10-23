@@ -77,7 +77,6 @@
 	"certificates.mtls": "mTLS-certificaat",
 	"certificates.request.subtitle": "met Certbot",
 	"certificates.request.title": "Vraag een nieuw certificaat aan",
-	"close": "Sluiten",
 	"column.access": "Toegang",
 	"column.authorization": "Authorisatie",
 	"column.authorizations": "Authorisaties",

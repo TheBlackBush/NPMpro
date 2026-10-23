@@ -62,7 +62,6 @@
 	"certificates.mtls": "mTLS сертификат",
 	"certificates.request.subtitle": "с Certbot",
 	"certificates.request.title": "Заявка за нов сертификат",
-	"close": "Затваряне",
 	"column.access": "Достъп",
 	"column.authorization": "Автентикация",
 	"column.authorizations": "Автентикации",

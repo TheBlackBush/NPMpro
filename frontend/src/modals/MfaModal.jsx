@@ -130,7 +130,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 						)}
 					</div>
 					{!isEnabled ? (
-						<Button fullWidth color="azure" onClick={handleStartSetup} isLoading={isSubmitting}>
+						<Button fullWidth color="primary" onClick={handleStartSetup} isLoading={isSubmitting}>
 							<T id="totp.enable" />
 						</Button>
 					) : (
@@ -238,7 +238,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									<Button
 										type="submit"
 										fullWidth
-										color="azure"
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
@@ -267,7 +267,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							))}
 						</div>
 					</div>
-					<Button fullWidth color="azure" onClick={handleBackupDone}>
+					<Button fullWidth color="primary" onClick={handleBackupDone}>
 						<T id="totp.done" />
 					</Button>
 				</div>
@@ -334,7 +334,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									<Button
 										type="submit"
 										fullWidth
-										color="primary"
+										color="danger"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
@@ -411,7 +411,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									<Button
 										type="submit"
 										fullWidth
-										color="azure"
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>

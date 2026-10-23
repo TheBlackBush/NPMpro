@@ -57,7 +57,6 @@
 	"certificates.mtls": "Chứng chỉ mTLS",
 	"certificates.request.subtitle": "bằng Certbot",
 	"certificates.request.title": "Yêu cầu chứng chỉ mới",
-	"close": "Đóng",
 	"column.access": "Truy cập",
 	"column.authorization": "Ủy quyền",
 	"column.authorizations": "Danh sách ủy quyền",

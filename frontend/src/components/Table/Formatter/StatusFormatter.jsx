@@ -11,7 +11,10 @@ export function StatusFormatter({ enabled, nginxOnline, nginxErr }) {
 					<T id="notification.nginx-config-error" />
 				</Popover.Header>
 				<Popover.Body>
-					<pre className="mb-0 text-wrap">{nginxErr || <T id="status.config-error.unknown" />}</pre>
+					{/* Tabler's .text-wrap is white-space: normal, which would collapse the nginx output */}
+					<pre className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+						{nginxErr || <T id="status.config-error.unknown" />}
+					</pre>
 				</Popover.Body>
 			</Popover>
 		);

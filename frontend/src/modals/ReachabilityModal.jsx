@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Spinner } from "react-bootstrap";
 import { testHttpCertificate } from "src/api/backend";
-import { ApiErrorContent, AppModal, ErrorAlert } from "src/components";
+import { ApiErrorContent, AppModal, ErrorAlert, Loading } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -73,19 +72,9 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 					<T id="certificates.http.test-results" />
 				</AppModal.Title>
 			</AppModal.Header>
-			<AppModal.Body className="p-0">
+			<AppModal.Body>
 				<ErrorAlert>{errorMsg}</ErrorAlert>
-				<div className="card m-0 border-0">
-					{testResults ? (
-						<div className="card-footer">{parseTestResults()}</div>
-					) : (
-						!errorMsg && (
-							<div className="card-footer">
-								<Spinner animation="border" role="status" />
-							</div>
-						)
-					)}
-				</div>
+				{testResults ? parseTestResults() : !errorMsg && <Loading noLogo />}
 			</AppModal.Body>
 		</AppModal>
 	);

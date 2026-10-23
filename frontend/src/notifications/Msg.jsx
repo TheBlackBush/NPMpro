@@ -18,7 +18,7 @@ function Msg({ data, closeToast }) {
 				<button
 					type="button"
 					className="btn-close ms-2"
-					aria-label={intl.formatMessage({ id: "close" })}
+					aria-label={intl.formatMessage({ id: "action.close" })}
 					onClick={closeToast}
 				/>
 			</div>

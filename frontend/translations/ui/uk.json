@@ -63,7 +63,6 @@
 	"certificates.mtls": "Сертифікат mTLS",
 	"certificates.request.subtitle": "через Certbot",
 	"certificates.request.title": "Отримати новий сертифікат",
-	"close": "Закрити",
 	"column.access": "Доступ",
 	"column.authorization": "Авторизація",
 	"column.authorizations": "Авторизації",

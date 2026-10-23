@@ -4,12 +4,10 @@ export function Loading({ label, noLogo }) {
 	if (noLogo) {
 		return (
 			<div className="empty">
-				<div
-					className="spinner-border text-secondary"
-					role="status"
-					aria-label={intl.formatMessage({ id: "loading" })}
-				/>
-				<p className="empty-subtitle text-secondary mt-3">{label || <T id="loading" />}</p>
+				<div className="spinner-border text-secondary" aria-hidden="true" />
+				<p className="empty-subtitle text-secondary mt-3" role="status">
+					{label || <T id="loading" />}
+				</p>
 			</div>
 		);
 	}

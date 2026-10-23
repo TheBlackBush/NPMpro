@@ -1,23 +1,29 @@
-import { createContext, useContext, useId } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 
-const TitleIdContext = createContext(undefined);
+const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
 function AppModal({ children, centered = true, ...props }) {
-	const titleId = useId();
+	const id = useId();
+	const [hasTitle, setHasTitle] = useState(false);
+	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
 	return (
-		<TitleIdContext.Provider value={titleId}>
-			<Modal centered={centered} aria-labelledby={titleId} {...props}>
+		<TitleContext.Provider value={value}>
+			<Modal centered={centered} aria-labelledby={hasTitle ? id : undefined} {...props}>
 				{children}
 			</Modal>
-		</TitleIdContext.Provider>
+		</TitleContext.Provider>
 	);
 }
 
 function AppModalTitle({ children, ...props }) {
-	const titleId = useContext(TitleIdContext);
+	const { id, setMounted } = useContext(TitleContext);
+	useEffect(() => {
+		setMounted(true);
+		return () => setMounted(false);
+	}, [setMounted]);
 	return (
-		<Modal.Title id={titleId} {...props}>
+		<Modal.Title id={id} {...props}>
 			{children}
 		</Modal.Title>
 	);
