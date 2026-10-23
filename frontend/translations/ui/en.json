@@ -369,6 +369,7 @@
 	"search": "Search",
 	"setting": "Setting",
 	"settings": "Settings",
+	"settings.authentication": "Authentication",
 	"settings.default-site": "Default Site",
 	"settings.default-site.404": "404 Page",
 	"settings.default-site.404.description": "Answer with a 404 Not Found page.",
