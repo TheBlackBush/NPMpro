@@ -1,3 +1,4 @@
+import { version as tablerVersion } from "@tabler/core/package.json";
 import { IconBrandGithub } from "@tabler/icons-react";
 import { useCheckVersion } from "src/hooks";
 import { T } from "src/locale";
@@ -61,7 +62,8 @@ export function SiteFooter() {
 								Theme by{" "}
 								<a href="https://tabler.io" rel="noreferrer" target="_blank" className="link-secondary">
 									Tabler
-								</a>
+								</a>{" "}
+								({tablerVersion})
 							</li>
 							<li className="list-inline-item">
 								<a href={versionUrl} className="link-secondary" target="_blank" rel="noopener">
