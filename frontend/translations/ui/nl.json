@@ -283,6 +283,7 @@
 	"settings.default-site.html.placeholder": "<!-- Voer hier je aangepaste HTML in -->",
 	"settings.default-site.redirect": "Omleiden",
 	"settings.default-site.status": "HTTP-statuscode (leeg laten voor 200)",
+	"setup.create-account": "Account aanmaken",
 	"setup.preamble": "Begin met het aanmaken van jouw beheerderaccount.",
 	"setup.title": "Welkom!",
 	"sign-in": "Inloggen",

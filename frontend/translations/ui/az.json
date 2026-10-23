@@ -216,6 +216,7 @@
 	"settings.default-site.html": "Fərdi HTML",
 	"settings.default-site.html.placeholder": "<!-- Fərdi HTML məzmununuzu bura daxil edin -->",
 	"settings.default-site.redirect": "Yönləndirmə",
+	"setup.create-account": "Hesab yarat",
 	"setup.preamble": "Administrator hesabınızı yaradaraq başlayın.",
 	"setup.title": "Xoş gəlmisiniz!",
 	"sign-in": "Daxil ol",

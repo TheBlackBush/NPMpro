@@ -1,9 +1,9 @@
-import { IconEye, IconEyeOff } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ErrorMessage, Field, Form, Formik } from "formik";
+import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { createSetupUser } from "src/api/backend";
 import { ApiErrorContent, Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -14,7 +14,6 @@ export default function Setup() {
 	const { login } = useAuthState();
 	const health = useHealth();
 	const [errorMsg, setErrorMsg] = useState(null);
-	const [showPassword, setShowPassword] = useState(false);
 
 	const onSubmit = async (values, { setSubmitting }) => {
 		setErrorMsg(null);
@@ -82,104 +81,70 @@ export default function Setup() {
 									<div className="mb-3">
 										<Field name="name" validate={validateString(1, 255)}>
 											{({ field, form }) => (
-												<div className="form-floating mb-3">
+												<>
+													<label className="form-label" htmlFor="name">
+														<T id="user.full-name" />
+													</label>
 													<input
+														{...field}
 														id="name"
 														autoComplete="name"
 														required
 														className={`form-control ${form.errors.name && form.touched.name ? "is-invalid" : ""}`}
-														placeholder={intl.formatMessage({
-															id: "user.full-name",
-														})}
-														{...field}
+														placeholder={intl.formatMessage({ id: "user.full-name" })}
 													/>
-
-													<label htmlFor="name">
-														<T id="user.full-name" />
-													</label>
 													{form.errors.name ? (
 														<div className="invalid-feedback">
 															{form.touched.name ? form.errors.name : null}
 														</div>
 													) : null}
-												</div>
+												</>
 											)}
 										</Field>
 									</div>
 									<div className="mb-3">
 										<Field name="email" validate={validateEmail()}>
 											{({ field, form }) => (
-												<div className="form-floating mb-3">
+												<>
+													<label className="form-label" htmlFor="email">
+														<T id="email-address" />
+													</label>
 													<input
+														{...field}
 														id="email"
 														type="email"
 														autoComplete="username"
 														required
 														className={`form-control ${form.errors.email && form.touched.email ? "is-invalid" : ""}`}
-														placeholder={intl.formatMessage({
-															id: "email-address",
-														})}
-														{...field}
+														placeholder={intl.formatMessage({ id: "email-address" })}
 													/>
-
-													<label htmlFor="email">
-														<T id="email-address" />
-													</label>
 													{form.errors.email ? (
 														<div className="invalid-feedback">
 															{form.touched.email ? form.errors.email : null}
 														</div>
 													) : null}
-												</div>
+												</>
 											)}
 										</Field>
 									</div>
 									<div className="mb-3">
 										<Field name="password" validate={validateString(8, 255, false)}>
 											{({ field, form }) => (
-												<div className="input-group input-group-flat">
-													<div className="form-floating">
-														<input
-															id="password"
-															type={showPassword ? "text" : "password"}
-															autoComplete="new-password"
-															required
-															className={`form-control ${form.errors.password && form.touched.password ? "is-invalid" : ""}`}
-															placeholder={intl.formatMessage({
-																id: "user.new-password",
-															})}
-															{...field}
-														/>
-
-														<label htmlFor="password">
-															<T id="user.new-password" />
-														</label>
-													</div>
-													<span className="input-group-text">
-														<button
-															type="button"
-															tabIndex={-1}
-															aria-label={intl.formatMessage({
-																id: "password.toggle-visibility",
-															})}
-															className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
-															onClick={() => setShowPassword((v) => !v)}
-														>
-															{showPassword ? (
-																<IconEyeOff size={18} />
-															) : (
-																<IconEye size={18} />
-															)}
-														</button>
-													</span>
-												</div>
+												<PasswordInput
+													{...field}
+													id="password"
+													label={<T id="user.new-password" />}
+													autoComplete="new-password"
+													required
+													error={
+														form.errors.password && form.touched.password
+															? form.errors.password
+															: null
+													}
+													placeholder={intl.formatMessage({ id: "user.new-password" })}
+												/>
 											)}
 										</Field>
-										<ErrorMessage
-											name="password"
-											component="div"
-											className="invalid-feedback d-block"
-										/>
 									</div>
 								</div>
 								<div className="text-center my-3 mx-3">
@@ -190,7 +155,7 @@ export default function Setup() {
 										disabled={isSubmitting}
 										className="w-100"
 									>
-										<T id="save" />
+										<T id="setup.create-account" />
 									</Button>
 								</div>
 							</Form>

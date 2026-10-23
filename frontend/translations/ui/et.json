@@ -235,6 +235,7 @@
 	"settings.default-site.html": "Kohandatud HTML",
 	"settings.default-site.html.placeholder": "<!-- Sisesta siia oma HTML -->",
 	"settings.default-site.redirect": "Ümbersuunamine",
+	"setup.create-account": "Loo konto",
 	"setup.preamble": "Alustuseks loo endale administraatori konto.",
 	"setup.title": "Tere tulemast!",
 	"sign-in": "Logi sisse",

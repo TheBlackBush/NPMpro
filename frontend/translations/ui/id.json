@@ -196,6 +196,7 @@
 	"settings.default-site.html": "HTML Kustom",
 	"settings.default-site.html.placeholder": "<!-- Masukkan konten HTML kustom Anda di sini -->",
 	"settings.default-site.redirect": "Alihkan",
+	"setup.create-account": "Buat akun",
 	"setup.preamble": "Mulai dengan membuat akun admin Anda.",
 	"setup.title": "Selamat datang!",
 	"sign-in": "Masuk",

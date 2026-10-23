@@ -200,6 +200,7 @@
 	"settings.default-site.html": "Персонализиран HTML",
 	"settings.default-site.html.placeholder": "<!-- Въведете вашето персонализирано HTML съдържание тук -->",
 	"settings.default-site.redirect": "Пренасочване",
+	"setup.create-account": "Създаване на акаунт",
 	"setup.preamble": "Започнете, като създадете администраторски акаунт.",
 	"setup.title": "Добре дошли!",
 	"sign-in": "Вход",

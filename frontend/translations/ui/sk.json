@@ -211,6 +211,7 @@
 	"settings.default-site.html": "Vlastné HTML",
 	"settings.default-site.html.placeholder": "<!-- Sem zadajte vlastný HTML obsah -->",
 	"settings.default-site.redirect": "Presmerovať",
+	"setup.create-account": "Vytvoriť účet",
 	"setup.preamble": "Začnite vytvorením administrátorského účtu.",
 	"setup.title": "Vitajte!",
 	"sign-in": "Prihlásiť sa",

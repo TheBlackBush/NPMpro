@@ -188,6 +188,7 @@
 	"settings.default-site.html": "カスタムHTML",
 	"settings.default-site.html.placeholder": "<!-- Enter your custom HTML content here -->",
 	"settings.default-site.redirect": "リダイレクト",
+	"setup.create-account": "アカウントを作成",
 	"setup.preamble": "管理者アカウントを作成して始めましょう",
 	"setup.title": "ようこそ!",
 	"sign-in": "サインイン",

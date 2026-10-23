@@ -235,6 +235,7 @@
 	"settings.default-site.html": "HTML personnalisé",
 	"settings.default-site.html.placeholder": "<!-- Mettez votre contenu HTML personnalisé ici -->",
 	"settings.default-site.redirect": "Redirection",
+	"setup.create-account": "Créer un compte",
 	"setup.preamble": "Commencez par créer votre compte administrateur.",
 	"setup.title": "Bienvenue !",
 	"sign-in": "Se connecter",

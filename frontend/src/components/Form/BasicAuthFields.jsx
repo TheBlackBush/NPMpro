@@ -91,12 +91,16 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 							<span className="input-group-text">
 								<button
 									type="button"
-									tabIndex={-1}
 									aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
-									className="p-0 border-0 bg-transparent text-secondary d-flex align-items-center cursor-pointer"
+									aria-pressed={Boolean(revealed[idx])}
+									className="btn btn-icon btn-ghost btn-sm"
 									onClick={() => setRevealed((r) => Object.assign([...r], { [idx]: !r[idx] }))}
 								>
-									{revealed[idx] ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+									{revealed[idx] ? (
+										<IconEyeOff className="icon" aria-hidden="true" />
+									) : (
+										<IconEye className="icon" aria-hidden="true" />
+									)}
 								</button>
 							</span>
 						</div>

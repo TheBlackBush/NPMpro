@@ -283,6 +283,7 @@
 	"settings.default-site.html.placeholder": "<!-- 在此输入您的自定义 HTML 内容 -->",
 	"settings.default-site.redirect": "重定向",
 	"settings.default-site.status": "HTTP 状态码（留空则为 200）",
+	"setup.create-account": "创建账户",
 	"setup.preamble": "通过创建您的管理员账户开始使用。",
 	"setup.title": "欢迎！",
 	"sign-in": "登录",

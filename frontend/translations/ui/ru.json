@@ -213,6 +213,7 @@
 	"settings.default-site.html": "Свой HTML",
 	"settings.default-site.html.placeholder": "<!-- Введите здесь свой HTML-контент -->",
 	"settings.default-site.redirect": "Перенаправление",
+	"setup.create-account": "Создать аккаунт",
 	"setup.preamble": "Начните с создания учётной записи администратора.",
 	"setup.title": "Добро пожаловать!",
 	"sign-in": "Войти",

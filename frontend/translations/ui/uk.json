@@ -216,6 +216,7 @@
 	"settings.default-site.html": "Власний HTML",
 	"settings.default-site.html.placeholder": "",
 	"settings.default-site.redirect": "Перенаправлення",
+	"setup.create-account": "Створити обліковий запис",
 	"setup.preamble": "Почніть із створення облікового запису адміністратора.",
 	"setup.title": "Ласкаво просимо!",
 	"sign-in": "Увійти",

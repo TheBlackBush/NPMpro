@@ -366,6 +366,7 @@
 	"settings.default-site.html.placeholder": "<!-- Enter your custom HTML content here -->",
 	"settings.default-site.redirect": "Redirect",
 	"settings.default-site.status": "HTTP Status Code (leave empty for 200)",
+	"setup.create-account": "Create account",
 	"setup.preamble": "Get started by creating your admin account.",
 	"setup.title": "Welcome!",
 	"sign-in": "Sign in",

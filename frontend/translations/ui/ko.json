@@ -200,6 +200,7 @@
 	"settings.default-site.html": "사용자 지정 HTML",
 	"settings.default-site.html.placeholder": "<!-- 여기에 사용자 정의 HTML 내용을 입력하세요. -->",
 	"settings.default-site.redirect": "리다이렉트",
+	"setup.create-account": "계정 만들기",
 	"setup.preamble": "관리자 계정을 만들어 시작하세요.",
 	"setup.title": "환영합니다!",
 	"sign-in": "로그인",

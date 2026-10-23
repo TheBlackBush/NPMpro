@@ -211,6 +211,7 @@
 	"settings.default-site.html": "Egyéni HTML",
 	"settings.default-site.html.placeholder": "<!-- Adja meg az egyéni HTML tartalmát itt -->",
 	"settings.default-site.redirect": "Átirányítás",
+	"setup.create-account": "Fiók létrehozása",
 	"setup.preamble": "Kezdje az admin fiók létrehozásával.",
 	"setup.title": "Üdvözöljük!",
 	"sign-in": "Bejelentkezés",

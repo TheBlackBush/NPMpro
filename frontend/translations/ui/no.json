@@ -213,6 +213,7 @@
 	"settings.default-site.html": "Egendefinert HTML",
 	"settings.default-site.html.placeholder": "<!-- Skriv inn ditt egendefinerte HTML-innhold her -->",
 	"settings.default-site.redirect": "Omdiriger",
+	"setup.create-account": "Opprett konto",
 	"setup.preamble": "Kom i gang ved å opprette din administratorkonto.",
 	"setup.title": "Velkommen!",
 	"sign-in": "Logg inn",

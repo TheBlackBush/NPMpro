@@ -216,6 +216,7 @@
 	"settings.default-site.html": "Özel HTML",
 	"settings.default-site.html.placeholder": "<!-- Özel HTML içeriğinizi buraya girin -->",
 	"settings.default-site.redirect": "Yönlendir",
+	"setup.create-account": "Hesap oluştur",
 	"setup.preamble": "Yönetici hesabınızı oluşturarak başlayın.",
 	"setup.title": "Hoş Geldiniz!",
 	"sign-in": "Giriş yap",

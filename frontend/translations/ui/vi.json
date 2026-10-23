@@ -189,6 +189,7 @@
 	"settings.default-site.html": "HTML tùy chỉnh",
 	"settings.default-site.html.placeholder": "<!-- Nhập nội dung HTML tùy chỉnh tại đây -->",
 	"settings.default-site.redirect": "Chuyển hướng",
+	"setup.create-account": "Tạo tài khoản",
 	"setup.preamble": "Bắt đầu bằng cách tạo tài khoản quản trị viên.",
 	"setup.title": "Chào mừng!",
 	"sign-in": "Đăng nhập",
