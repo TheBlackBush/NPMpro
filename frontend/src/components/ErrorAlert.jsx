@@ -1,3 +1,4 @@
+import { IconAlertCircle } from "@tabler/icons-react";
 import { useState } from "react";
 import { Alert } from "react-bootstrap";
 import { intl, T } from "src/locale";
@@ -9,7 +10,9 @@ const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 // Message of an API error with its command output (if any) behind a toggle, without an alert around it
 function ApiErrorContent({ error }) {
 	const [showDetails, setShowDetails] = useState(false);
-	const { message, output } = formatApiError(error, hasMessage, formatMessage);
+	const formatted = formatApiError(error, hasMessage, formatMessage);
+	const message = typeof error === "string" ? error : formatted.message;
+	const { output } = formatted;
 
 	return (
 		<>
@@ -27,15 +30,7 @@ function ApiErrorContent({ error }) {
 						</button>
 					</div>
 					{showDetails ? (
-						<pre
-							className="mt-2 mb-0"
-							style={{
-								maxHeight: "20em",
-								overflow: "auto",
-								whiteSpace: "pre-wrap",
-								wordBreak: "break-word",
-							}}
-						>
+						<pre className="mt-2 mb-0 overflow-auto text-wrap text-break" style={{ maxHeight: "20em" }}>
 							{output}
 						</pre>
 					) : null}
@@ -45,10 +40,14 @@ function ApiErrorContent({ error }) {
 	);
 }
 
-function ErrorAlert({ error, onClose, className }) {
+function ErrorAlert({ error, children, onClose, className }) {
+	if (!children && !error) return null;
 	return (
 		<Alert variant="danger" className={className} onClose={onClose} dismissible={Boolean(onClose)}>
-			<ApiErrorContent error={error} />
+			<div className="alert-icon">
+				<IconAlertCircle className="icon" aria-hidden="true" />
+			</div>
+			<div className="text-break">{children ?? <ApiErrorContent error={error} />}</div>
 		</Alert>
 	);
 }

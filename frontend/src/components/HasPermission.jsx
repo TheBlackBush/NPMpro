@@ -1,8 +1,8 @@
-import Alert from "react-bootstrap/Alert";
 import { Loading, LoadingPage } from "src/components";
 import { useUser } from "src/hooks";
 import { T } from "src/locale";
 import { hasPermission } from "src/modules/Permissions";
+import { ErrorAlert } from "./ErrorAlert";
 
 function HasPermission({ section, permission, children, hideError, pageLoading, loadingNoLogo }) {
 	const { data, isPending } = useUser("me");
@@ -27,9 +27,9 @@ function HasPermission({ section, permission, children, hideError, pageLoading, 
 	}
 
 	return !hideError ? (
-		<Alert variant="danger">
+		<ErrorAlert>
 			<T id="no-permission-error" />
-		</Alert>
+		</ErrorAlert>
 	) : null;
 }
 

@@ -1,12 +1,4 @@
-import {
-	IconAlertTriangle,
-	IconArrowDown,
-	IconArrowUp,
-	IconLock,
-	IconLockOpen2,
-	IconWorld,
-	IconX,
-} from "@tabler/icons-react";
+import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
 import { useFormikContext } from "formik";
 import { useState } from "react";
 import Select, { components } from "react-select";
@@ -14,6 +6,7 @@ import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
+import { NoticeAlert } from "../NoticeAlert";
 
 const OptionContent = (label, subLabel, icon) => (
 	<div className="flex-fill">
@@ -282,10 +275,9 @@ export function AccessFields({
 					(acl) =>
 						acl.items?.length > 0 || acl.clients?.some((client) => client.address?.toLowerCase() !== "all"),
 				) && (
-					<p className="text-warning">
-						<IconAlertTriangle size={16} className="me-1" />
+					<NoticeAlert>
 						<T id="access-list.satisfy-any-warning" data={{ name: acls[0].name }} />
-					</p>
+					</NoticeAlert>
 				)}
 		</div>
 	);

@@ -1,10 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useRef, useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
-import { ApiErrorContent, Button, Loading } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -76,11 +75,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 
 	return (
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
-			{error && (
-				<Alert variant="danger" className="m-3">
-					<ApiErrorContent error={error} />
-				</Alert>
-			)}
+			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending || currentIsPending) && <Loading noLogo />}
 			{data && currentUser && (
 				<Formik
@@ -101,9 +96,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 								</Modal.Title>
 							</Modal.Header>
 							<Modal.Body>
-								<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-									{errorMsg}
-								</Alert>
+								<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 								{id !== "new" && (
 									<div className="d-flex align-items-center mb-3">
 										<span

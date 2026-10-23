@@ -1,9 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { renewCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, Loading, RequestProgress } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, Loading, RequestProgress } from "src/components";
 import { useCertificate } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -47,15 +46,9 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				</Modal.Title>
 			</Modal.Header>
 			<Modal.Body>
-				<Alert variant="danger" show={errorMsg}>
-					{errorMsg}
-				</Alert>
+				<ErrorAlert>{errorMsg}</ErrorAlert>
 				{isPending && <Loading noLogo />}
-				{error && (
-					<Alert variant="danger" className="m-3">
-						<ApiErrorContent error={error} />
-					</Alert>
-				)}
+				{error && <ErrorAlert error={error} className="m-3" />}
 				{isSubmitting ? <p className="text-center mt-3">Please wait ...</p> : null}
 			</Modal.Body>
 			<RequestProgress running={isSubmitting} />

@@ -10,6 +10,7 @@ export * from "./Loading";
 export * from "./LoadingPage";
 export * from "./LocalePicker";
 export * from "./NavLink";
+export * from "./NoticeAlert";
 export * from "./Page";
 export * from "./RequestProgress";
 export * from "./SiteContainer";

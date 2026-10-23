@@ -1,7 +1,6 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
-import { ApiErrorContent, Button, Loading } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { useSetSetting, useSetting } from "src/hooks";
 import { intl, T } from "src/locale";
 import { validateString } from "src/modules/Validations";
@@ -44,9 +43,7 @@ export default function DefaultSite() {
 		return (
 			<div className="card-body">
 				<div className="mb-3">
-					<Alert variant="danger" show>
-						<ApiErrorContent error={error} />
-					</Alert>
+					<ErrorAlert error={error} />
 				</div>
 			</div>
 		);
@@ -75,9 +72,7 @@ export default function DefaultSite() {
 			{({ values }) => (
 				<Form>
 					<div className="card-body">
-						<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-							{errorMsg}
-						</Alert>
+						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						<Field name="value">
 							{({ field, form }) => (
 								<div className="mb-3">

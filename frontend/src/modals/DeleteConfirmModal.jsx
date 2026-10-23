@@ -1,8 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
-import { ApiErrorContent, Button } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -37,9 +36,7 @@ const DeleteConfirmModal = EasyModal.create(
 					<Modal.Title>{tTitle ? <T id={tTitle} /> : title}</Modal.Title>
 				</Modal.Header>
 				<Modal.Body>
-					<Alert variant="danger" show={error} onClose={() => setError(null)} dismissible>
-						{error}
-					</Alert>
+					<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 					<div className="text-center mb-3">
 						<svg
 							role="img"

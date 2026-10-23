@@ -2,10 +2,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { createCertificate } from "src/api/backend";
-import { ApiErrorContent, Button, DNSProviderFields, DomainNamesField, RequestProgress } from "src/components";
+import {
+	ApiErrorContent,
+	Button,
+	DNSProviderFields,
+	DomainNamesField,
+	ErrorAlert,
+	RequestProgress,
+} from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -61,9 +67,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 							</Modal.Title>
 						</Modal.Header>
 						<Modal.Body className="p-0">
-							<Alert variant="danger" show={errorMsg} onClose={() => setErrorMsg(null)} dismissible>
-								{errorMsg}
-							</Alert>
+							<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 							<div className="card m-0 border-0">
 								<div className="card-body">
 									<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />

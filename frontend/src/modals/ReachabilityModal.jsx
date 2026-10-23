@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Alert, Spinner } from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import { testHttpCertificate } from "src/api/backend";
-import { ApiErrorContent } from "src/components";
+import { ApiErrorContent, ErrorAlert } from "src/components";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -75,9 +75,7 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 				</Modal.Title>
 			</Modal.Header>
 			<Modal.Body className="p-0">
-				<Alert variant="danger" show={errorMsg}>
-					{errorMsg}
-				</Alert>
+				<ErrorAlert>{errorMsg}</ErrorAlert>
 				<div className="card m-0 border-0">
 					{testResults ? (
 						<div className="card-footer">{parseTestResults()}</div>

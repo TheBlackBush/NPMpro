@@ -57,12 +57,12 @@ export function DomainNamesField({
 					/>
 
 					{form.errors[field.name] && form.touched[field.name] ? (
-						<small className="text-danger">{form.errors[field.name]}</small>
+						<div className="invalid-feedback d-block">{form.errors[field.name]}</div>
 					) : helperTexts.length ? (
 						helperTexts.map((i, idx) => (
-							<small key={idx} className="text-info">
+							<div key={idx} className="form-hint">
 								{i}
-							</small>
+							</div>
 						))
 					) : null}
 				</div>

@@ -1,5 +1,4 @@
 import {
-	IconAlertTriangle,
 	IconChevronDown,
 	IconChevronRight,
 	IconPlus,
@@ -17,6 +16,7 @@ import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
 import { upstreamUrlPattern } from "src/modules/Validations";
+import { NoticeAlert } from "../NoticeAlert";
 
 export function LocationsFields({ initialValues, name = "locations" }) {
 	const nextUiKey = useRef(0);
@@ -294,10 +294,9 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 							</div>
 						</div>
 						{!item.path?.endsWith("/") && (item.locationType === "" || item.locationType === "^~ ") && (
-							<p className="text-warning">
-								<IconAlertTriangle size={16} className="me-1" />
+							<NoticeAlert>
 								<T id="proxy-host.location-no-trailing-slash-warning" />
-							</p>
+							</NoticeAlert>
 						)}
 						<div className="row">
 							<div className="col-md-3">

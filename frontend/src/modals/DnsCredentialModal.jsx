@@ -1,9 +1,16 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { Alert } from "react-bootstrap";
 import Modal from "react-bootstrap/Modal";
 import Select from "react-select";
-import { ApiErrorContent, Button, DnsCredentialValuesFields, HasPermission, Loading } from "src/components";
+import {
+	ApiErrorContent,
+	Button,
+	DnsCredentialValuesFields,
+	ErrorAlert,
+	HasPermission,
+	Loading,
+	NoticeAlert,
+} from "src/components";
 import {
 	DirtyTracker,
 	useDnsCredential,
@@ -95,11 +102,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 
 	return (
 		<Modal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
-			{error && (
-				<Alert variant="danger" className="m-3">
-					<ApiErrorContent error={error} />
-				</Alert>
-			)}
+			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending || providersPending) && <Loading noLogo />}
 			{ready && (
 				<Formik initialValues={initialValuesFor(data)} onSubmit={onSubmit}>
@@ -118,18 +121,11 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 									</Modal.Title>
 								</Modal.Header>
 								<Modal.Body>
-									<Alert
-										variant="danger"
-										show={Boolean(errorMsg)}
-										onClose={() => setErrorMsg(null)}
-										dismissible
-									>
-										{errorMsg}
-									</Alert>
+									<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 									{data.decryptError ? (
-										<Alert variant="warning">
+										<NoticeAlert>
 											<T id="dns-credentials.decrypt-error" />
-										</Alert>
+										</NoticeAlert>
 									) : null}
 									<Field name="name" validate={validateString(1, 255)}>
 										{({ field, form }) => (

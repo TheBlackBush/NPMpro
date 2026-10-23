@@ -1,9 +1,9 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
 import { Field, useFormikContext } from "formik";
 import Select from "react-select";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
+import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
 
 export function DNSProviderFields({ showBoundaryBox }) {
@@ -22,10 +22,9 @@ export function DNSProviderFields({ showBoundaryBox }) {
 
 	return (
 		<div className={showBoundaryBox ? "py-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined}>
-			<p className="text-warning">
-				<IconAlertTriangle size={16} className="me-1" />
+			<NoticeAlert>
 				<T id="certificates.dns.warning" />
-			</p>
+			</NoticeAlert>
 
 			<Field name="npmproDnsProvider">
 				{({ field }) => (
