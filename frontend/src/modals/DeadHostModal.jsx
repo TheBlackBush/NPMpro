@@ -167,7 +167,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 													allowNew
 												/>
 
-												<SSLOptionsFields color="bg-red" />
+												<SSLOptionsFields />
 											</div>
 											<div className="tab-pane" id="tab-advanced" role="tabpanel">
 												<NginxConfigField />

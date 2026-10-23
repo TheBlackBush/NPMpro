@@ -1,10 +1,9 @@
-import cn from "clsx";
 import { Field, useFormikContext } from "formik";
 import { useEffect } from "react";
-import { DNSProviderFields, DomainNamesField } from "src/components";
+import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components";
 import { T } from "src/locale";
 
-export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
+export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 	const { values: v, setFieldValue } = useFormikContext();
 
 	const newCertificate = v?.certificateId === "new";
@@ -47,179 +46,106 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost, color }) {
 		}
 	};
 
-	const toggleClasses = "form-check-input";
-	const toggleEnabled = cn(toggleClasses, color);
-
 	const getHttpOptions = () => (
-		<div>
-			<div className="row">
-				<div className="col-6">
-					<Field name="sslForced">
-						{({ field }) => (
-							<label className="form-check form-switch mt-1">
-								<input
-									className={sslForced ? toggleEnabled : toggleClasses}
-									type="checkbox"
-									checked={sslForced}
-									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!hasCertificate || mtlsRequired}
-								/>
-
-								<span className="form-check-label">
-									<T id="domains.force-ssl" />
-								</span>
-							</label>
-						)}
-					</Field>
-				</div>
-				<div className="col-6">
-					<Field name="npmproHttp3Support">
-						{({ field }) => (
-							<label className="form-check form-switch mt-1">
-								<input
-									className={npmproHttp3Support ? toggleEnabled : toggleClasses}
-									type="checkbox"
-									checked={npmproHttp3Support}
-									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!hasCertificate}
-								/>
-
-								<span className="form-check-label">
-									<T id="domains.http3-support" />
-								</span>
-							</label>
-						)}
-					</Field>
-				</div>
-			</div>
-			<div className="row">
-				<div className="col-6">
-					<Field name="hstsEnabled">
-						{({ field }) => (
-							<label className="form-check form-switch mt-1">
-								<input
-									className={hstsEnabled ? toggleEnabled : toggleClasses}
-									type="checkbox"
-									checked={hstsEnabled}
-									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!hasCertificate || !sslForced}
-								/>
-
-								<span className="form-check-label">
-									<T id="host.flags.hsts-enabled" />
-								</span>
-							</label>
-						)}
-					</Field>
-				</div>
-				<div className="col-6">
-					<Field name="hstsSubdomains">
-						{({ field }) => (
-							<label className="form-check form-switch mt-1">
-								<input
-									className={hstsSubdomains ? toggleEnabled : toggleClasses}
-									type="checkbox"
-									checked={hstsSubdomains}
-									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!hasCertificate || !hstsEnabled}
-								/>
-
-								<span className="form-check-label">
-									<T id="host.flags.hsts-subdomains" />
-								</span>
-							</label>
-						)}
-					</Field>
-				</div>
-			</div>
+		<div className="divide-y">
+			<Field name="sslForced">
+				{({ field }) => (
+					<SwitchField
+						id="sslForced"
+						label={<T id="domains.force-ssl" />}
+						checked={sslForced}
+						onChange={(e) => handleToggleChange(e, field.name)}
+						disabled={!hasCertificate || mtlsRequired}
+					/>
+				)}
+			</Field>
+			<Field name="npmproHttp3Support">
+				{({ field }) => (
+					<SwitchField
+						id="npmproHttp3Support"
+						label={<T id="domains.http3-support" />}
+						checked={npmproHttp3Support}
+						onChange={(e) => handleToggleChange(e, field.name)}
+						disabled={!hasCertificate}
+					/>
+				)}
+			</Field>
+			<Field name="hstsEnabled">
+				{({ field }) => (
+					<SwitchField
+						id="hstsEnabled"
+						label={<T id="host.flags.hsts-enabled" />}
+						checked={hstsEnabled}
+						onChange={(e) => handleToggleChange(e, field.name)}
+						disabled={!hasCertificate || !sslForced}
+					/>
+				)}
+			</Field>
+			<Field name="hstsSubdomains">
+				{({ field }) => (
+					<SwitchField
+						id="hstsSubdomains"
+						label={<T id="host.flags.hsts-subdomains" />}
+						checked={hstsSubdomains}
+						onChange={(e) => handleToggleChange(e, field.name)}
+						disabled={!hasCertificate || !hstsEnabled}
+					/>
+				)}
+			</Field>
 		</div>
 	);
 
 	return (
 		<div>
-			<div className="row">
-				<div className="col-6">
-					<Field name="npmproMtlsVerifyClientOptional">
+			<div className="divide-y">
+				<Field name="npmproMtlsVerifyClientOptional">
+					{({ field }) => (
+						<SwitchField
+							id="npmproMtlsVerifyClientOptional"
+							label={<T id="domains.mtls-verify-client-optional" />}
+							checked={npmproMtlsVerifyClientOptional}
+							onChange={(e) => handleToggleChange(e, field.name)}
+							disabled={!(v?.certificateId > 0 && npmproMtlsCertificateId > 0)}
+						/>
+					)}
+				</Field>
+				{forProxyHost ? (
+					<Field name="npmproMtlsBypassAuthRequest">
 						{({ field }) => (
-							<label className="form-check form-switch mt-1">
-								<input
-									className={npmproMtlsVerifyClientOptional ? toggleEnabled : toggleClasses}
-									type="checkbox"
-									checked={npmproMtlsVerifyClientOptional}
-									onChange={(e) => handleToggleChange(e, field.name)}
-									disabled={!(v?.certificateId > 0 && npmproMtlsCertificateId > 0)}
-								/>
-
-								<span className="form-check-label">
-									<T id="domains.mtls-verify-client-optional" />
-								</span>
-							</label>
+							<SwitchField
+								id="npmproMtlsBypassAuthRequest"
+								label={<T id="domains.mtls-bypass-auth-request" />}
+								checked={npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible}
+								onChange={(e) => handleToggleChange(e, field.name)}
+								disabled={!mtlsBypassAuthRequestPossible}
+							/>
 						)}
 					</Field>
-				</div>
-				{forProxyHost ? (
-					<div className="col-6">
-						<Field name="npmproMtlsBypassAuthRequest">
-							{({ field }) => (
-								<label className="form-check form-switch mt-1">
-									<input
-										className={
-											npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible
-												? toggleEnabled
-												: toggleClasses
-										}
-										type="checkbox"
-										checked={npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible}
-										onChange={(e) => handleToggleChange(e, field.name)}
-										disabled={!mtlsBypassAuthRequestPossible}
-									/>
-
-									<span className="form-check-label">
-										<T id="domains.mtls-bypass-auth-request" />
-									</span>
-								</label>
-							)}
-						</Field>
-					</div>
 				) : null}
 			</div>
 			{forHttp ? getHttpOptions() : null}
 			{newCertificate ? (
-				<div className="row">
-					<div className="col-6">
+				<div>
+					<div className="divide-y">
 						<Field name="npmproReuseKey">
 							{({ field }) => (
-								<label className="form-check form-switch mt-1">
-									<input
-										className={reuseKey ? toggleEnabled : toggleClasses}
-										type="checkbox"
-										checked={Boolean(reuseKey)}
-										onChange={(e) => handleToggleChange(e, field.name)}
-									/>
-
-									<span className="form-check-label">
-										<T id="domains.reuse-key" />
-									</span>
-								</label>
+								<SwitchField
+									id="npmproReuseKey"
+									label={<T id="domains.reuse-key" />}
+									checked={Boolean(reuseKey)}
+									onChange={(e) => handleToggleChange(e, field.name)}
+								/>
 							)}
 						</Field>
-					</div>
-					<div className="col-6">
 						<Field name="npmproDnsChallenge">
 							{({ field }) => (
-								<label className="form-check form-switch mt-1">
-									<input
-										className={dnsChallenge ? toggleEnabled : toggleClasses}
-										type="checkbox"
-										checked={!forHttp || Boolean(dnsChallenge)}
-										onChange={(e) => handleToggleChange(e, field.name)}
-										disabled={!forHttp}
-									/>
-
-									<span className="form-check-label">
-										<T id="domains.use-dns" />
-									</span>
-								</label>
+								<SwitchField
+									id="npmproDnsChallenge"
+									label={<T id="domains.use-dns" />}
+									checked={!forHttp || Boolean(dnsChallenge)}
+									onChange={(e) => handleToggleChange(e, field.name)}
+									disabled={!forHttp}
+								/>
 							)}
 						</Field>
 					</div>

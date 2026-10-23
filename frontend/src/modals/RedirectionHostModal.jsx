@@ -1,4 +1,3 @@
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import {
@@ -14,6 +13,7 @@ import {
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
+	SwitchField,
 } from "src/components";
 import {
 	DirtyTracker,
@@ -268,30 +268,15 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 													</h4>
 													<div className="divide-y">
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="preservePath"
-															>
-																<span className="col">
-																	<T id="host.flags.preserve-path" />
-																</span>
-																<span className="col-auto">
-																	<Field name="preservePath" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="preservePath"
-																					className={cn("form-check-input", {
-																						"bg-yellow": field.checked,
-																					})}
-																					type="checkbox"
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="preservePath" type="checkbox">
+																{({ field }) => (
+																	<SwitchField
+																		id="preservePath"
+																		label={<T id="host.flags.preserve-path" />}
+																		{...field}
+																	/>
+																)}
+															</Field>
 														</div>
 													</div>
 												</div>
@@ -303,7 +288,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 													allowNew
 												/>
 
-												<SSLOptionsFields color="bg-yellow" />
+												<SSLOptionsFields />
 											</div>
 											<div className="tab-pane" id="tab-advanced" role="tabpanel">
 												<NginxConfigField />

@@ -11,7 +11,7 @@ import cn from "clsx";
 import { useFormikContext } from "formik";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { AccessFields } from "src/components";
+import { AccessFields, SwitchField } from "src/components";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
@@ -229,24 +229,12 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 						}
 					>
 						<div className="row mb-3">
-							<label className="row cursor-pointer" htmlFor={`npmproEnabled-${item.uiKey}`}>
-								<span className="col">
-									<T id="enabled" />
-								</span>
-								<span className="col-auto">
-									<span className="form-check form-check-single form-switch">
-										<input
-											id={`npmproEnabled-${item.uiKey}`}
-											className={cn("form-check-input", {
-												"bg-lime": item.npmproEnabled,
-											})}
-											type="checkbox"
-											checked={item.npmproEnabled}
-											onChange={(e) => handleChange(idx, "npmproEnabled", e.target.checked)}
-										/>
-									</span>
-								</span>
-							</label>
+							<SwitchField
+								id={`npmproEnabled-${item.uiKey}`}
+								label={<T id="enabled" />}
+								checked={item.npmproEnabled}
+								onChange={(e) => handleChange(idx, "npmproEnabled", e.target.checked)}
+							/>
 						</div>
 						<div className="row">
 							<div className="col-md-10">
@@ -367,215 +355,124 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 								</h4>
 								<div className="divide-y">
 									<div>
-										<label className="row cursor-pointer" htmlFor={`npmproNoindex-${item.uiKey}`}>
-											<span className="col">
-												<T id="host.flags.send-noindex" />
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproNoindex-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproNoindex,
-														})}
-														type="checkbox"
-														checked={item.npmproNoindex}
-														onChange={(e) =>
-															handleChange(idx, "npmproNoindex", e.target.checked)
-														}
-													/>
-												</span>
-											</span>
-										</label>
+										<SwitchField
+											id={`npmproNoindex-${item.uiKey}`}
+											label={<T id="host.flags.send-noindex" />}
+											checked={item.npmproNoindex}
+											onChange={(e) => handleChange(idx, "npmproNoindex", e.target.checked)}
+										/>
 									</div>
 									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproCrowdsecAppsec-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-crowdsec-appsec" />
-												{item.npmproProxyRequestBuffering && (
-													<small className="form-hint">
+										<SwitchField
+											id={`npmproCrowdsecAppsec-${item.uiKey}`}
+											label={<T id="host.flags.disable-crowdsec-appsec" />}
+											hint={
+												item.npmproProxyRequestBuffering && (
+													<span className="d-block">
 														<T id="host.flags.hint.appsec-request-buffering" />
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproCrowdsecAppsec-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproCrowdsecAppsec,
-														})}
-														type="checkbox"
-														checked={item.npmproCrowdsecAppsec}
-														onChange={(e) =>
-															handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)
-														}
-													/>
-												</span>
-											</span>
-										</label>
+													</span>
+												)
+											}
+											checked={item.npmproCrowdsecAppsec}
+											onChange={(e) =>
+												handleChange(idx, "npmproCrowdsecAppsec", e.target.checked)
+											}
+										/>
 									</div>
 									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproProxyRequestBuffering-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-request-buffering" />
-												<small className="form-hint">
-													<T id="host.flags.hint.request-buffering-appsec" />
-												</small>
-												{getOptionHintId("npmproProxyRequestBuffering", item.forwardScheme) && (
-													<small className="form-hint">
-														<T
-															id={getOptionHintId(
-																"npmproProxyRequestBuffering",
-																item.forwardScheme,
-															)}
-														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproProxyRequestBuffering-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproProxyRequestBuffering,
-														})}
-														type="checkbox"
-														checked={item.npmproProxyRequestBuffering}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproProxyRequestBuffering",
-																e.target.checked,
-															)
-														}
-														disabled={!["http", "https"].includes(item.forwardScheme)}
-													/>
-												</span>
-											</span>
-										</label>
+										<SwitchField
+											id={`npmproProxyRequestBuffering-${item.uiKey}`}
+											label={<T id="host.flags.disable-request-buffering" />}
+											hint={
+												<>
+													<span className="d-block">
+														<T id="host.flags.hint.request-buffering-appsec" />
+													</span>
+													{getOptionHintId(
+														"npmproProxyRequestBuffering",
+														item.forwardScheme,
+													) && (
+														<span className="d-block">
+															<T
+																id={getOptionHintId(
+																	"npmproProxyRequestBuffering",
+																	item.forwardScheme,
+																)}
+															/>
+														</span>
+													)}
+												</>
+											}
+											checked={item.npmproProxyRequestBuffering}
+											onChange={(e) =>
+												handleChange(idx, "npmproProxyRequestBuffering", e.target.checked)
+											}
+											disabled={!["http", "https"].includes(item.forwardScheme)}
+										/>
 									</div>
 									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproProxyResponseBuffering-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.disable-response-buffering" />
-												{getOptionHintId(
-													"npmproProxyResponseBuffering",
-													item.forwardScheme,
-												) && (
-													<small className="form-hint">
+										<SwitchField
+											id={`npmproProxyResponseBuffering-${item.uiKey}`}
+											label={<T id="host.flags.disable-response-buffering" />}
+											hint={
+												getOptionHintId("npmproProxyResponseBuffering", item.forwardScheme) && (
+													<span className="d-block">
 														<T
 															id={getOptionHintId(
 																"npmproProxyResponseBuffering",
 																item.forwardScheme,
 															)}
 														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproProxyResponseBuffering-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproProxyResponseBuffering,
-														})}
-														type="checkbox"
-														checked={item.npmproProxyResponseBuffering}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproProxyResponseBuffering",
-																e.target.checked,
-															)
-														}
-														disabled={!["http", "https"].includes(item.forwardScheme)}
-													/>
-												</span>
-											</span>
-										</label>
+													</span>
+												)
+											}
+											checked={item.npmproProxyResponseBuffering}
+											onChange={(e) =>
+												handleChange(idx, "npmproProxyResponseBuffering", e.target.checked)
+											}
+											disabled={!["http", "https"].includes(item.forwardScheme)}
+										/>
 									</div>
 									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproUpstreamCompression-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.upstream-compression" />
-												{getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
-													<small className="form-hint">
+										<SwitchField
+											id={`npmproUpstreamCompression-${item.uiKey}`}
+											label={<T id="host.flags.upstream-compression" />}
+											hint={
+												getOptionHintId("npmproUpstreamCompression", item.forwardScheme) && (
+													<span className="d-block">
 														<T
 															id={getOptionHintId(
 																"npmproUpstreamCompression",
 																item.forwardScheme,
 															)}
 														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproUpstreamCompression-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproUpstreamCompression,
-														})}
-														type="checkbox"
-														checked={item.npmproUpstreamCompression}
-														onChange={(e) =>
-															handleChange(
-																idx,
-																"npmproUpstreamCompression",
-																e.target.checked,
-															)
-														}
-														disabled={["path", "empty"].includes(item.forwardScheme)}
-													/>
-												</span>
-											</span>
-										</label>
+													</span>
+												)
+											}
+											checked={item.npmproUpstreamCompression}
+											onChange={(e) =>
+												handleChange(idx, "npmproUpstreamCompression", e.target.checked)
+											}
+											disabled={["path", "empty"].includes(item.forwardScheme)}
+										/>
 									</div>
 									<div>
-										<label
-											className="row cursor-pointer"
-											htmlFor={`npmproFancyindex-${item.uiKey}`}
-										>
-											<span className="col">
-												<T id="host.flags.fancyindex" />
-												{getOptionHintId("npmproFancyindex", item.forwardScheme) && (
-													<small className="form-hint">
+										<SwitchField
+											id={`npmproFancyindex-${item.uiKey}`}
+											label={<T id="host.flags.fancyindex" />}
+											hint={
+												getOptionHintId("npmproFancyindex", item.forwardScheme) && (
+													<span className="d-block">
 														<T
 															id={getOptionHintId("npmproFancyindex", item.forwardScheme)}
 														/>
-													</small>
-												)}
-											</span>
-											<span className="col-auto">
-												<span className="form-check form-check-single form-switch">
-													<input
-														id={`npmproFancyindex-${item.uiKey}`}
-														className={cn("form-check-input", {
-															"bg-lime": item.npmproFancyindex,
-														})}
-														type="checkbox"
-														checked={item.npmproFancyindex}
-														onChange={(e) =>
-															handleChange(idx, "npmproFancyindex", e.target.checked)
-														}
-														disabled={item.forwardScheme !== "path"}
-													/>
-												</span>
-											</span>
-										</label>
+													</span>
+												)
+											}
+											checked={item.npmproFancyindex}
+											onChange={(e) => handleChange(idx, "npmproFancyindex", e.target.checked)}
+											disabled={item.forwardScheme !== "path"}
+										/>
 									</div>
 									<div>
 										<label

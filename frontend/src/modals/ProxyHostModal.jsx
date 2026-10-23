@@ -1,5 +1,4 @@
 import { IconSettings } from "@tabler/icons-react";
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import {
@@ -17,6 +16,7 @@ import {
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
+	SwitchField,
 } from "src/components";
 import {
 	DirtyTracker,
@@ -364,269 +364,180 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 													</h4>
 													<div className="divide-y">
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproNoindex"
-															>
-																<span className="col">
-																	<T id="host.flags.send-noindex" />
-																</span>
-																<span className="col-auto">
-																	<Field name="npmproNoindex" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproNoindex"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="npmproNoindex" type="checkbox">
+																{({ field }) => (
+																	<SwitchField
+																		id="npmproNoindex"
+																		label={<T id="host.flags.send-noindex" />}
+																		{...field}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproCrowdsecAppsec"
-															>
-																<span className="col">
-																	<T id="host.flags.disable-crowdsec-appsec" />
-																	{values.npmproProxyRequestBuffering && (
-																		<small className="form-hint">
-																			<T id="host.flags.hint.appsec-request-buffering" />
-																		</small>
-																	)}
-																</span>
-																<span className="col-auto">
-																	<Field name="npmproCrowdsecAppsec" type="checkbox">
-																		{({ field, form }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproCrowdsecAppsec"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																					onChange={(e) => {
-																						field.onChange(e);
-																						if (!e.target.checked) {
-																							form.setFieldValue(
-																								"npmproProxyRequestBuffering",
-																								false,
-																							);
-																						}
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="npmproCrowdsecAppsec" type="checkbox">
+																{({ field, form }) => (
+																	<SwitchField
+																		id="npmproCrowdsecAppsec"
+																		label={
+																			<T id="host.flags.disable-crowdsec-appsec" />
+																		}
+																		hint={
+																			values.npmproProxyRequestBuffering && (
+																				<span className="d-block">
+																					<T id="host.flags.hint.appsec-request-buffering" />
+																				</span>
+																			)
+																		}
+																		{...field}
+																		onChange={(e) => {
+																			field.onChange(e);
+																			if (!e.target.checked) {
+																				form.setFieldValue(
+																					"npmproProxyRequestBuffering",
+																					false,
+																				);
+																			}
+																		}}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproProxyRequestBuffering"
-															>
-																<span className="col">
-																	<T id="host.flags.disable-request-buffering" />
-																	<small className="form-hint">
-																		<T id="host.flags.hint.request-buffering-appsec" />
-																	</small>
-																	{getOptionHintId(
-																		"npmproProxyRequestBuffering",
-																		values.forwardScheme,
-																	) && (
-																		<small className="form-hint">
-																			<T
-																				id={getOptionHintId(
+															<Field name="npmproProxyRequestBuffering" type="checkbox">
+																{({ field, form }) => (
+																	<SwitchField
+																		id="npmproProxyRequestBuffering"
+																		label={
+																			<T id="host.flags.disable-request-buffering" />
+																		}
+																		hint={
+																			<>
+																				<span className="d-block">
+																					<T id="host.flags.hint.request-buffering-appsec" />
+																				</span>
+																				{getOptionHintId(
 																					"npmproProxyRequestBuffering",
 																					values.forwardScheme,
+																				) && (
+																					<span className="d-block">
+																						<T
+																							id={getOptionHintId(
+																								"npmproProxyRequestBuffering",
+																								values.forwardScheme,
+																							)}
+																						/>
+																					</span>
 																				)}
-																			/>
-																		</small>
-																	)}
-																</span>
-																<span className="col-auto">
-																	<Field
-																		name="npmproProxyRequestBuffering"
-																		type="checkbox"
-																	>
-																		{({ field, form }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproProxyRequestBuffering"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																					onChange={(e) => {
-																						field.onChange(e);
-																						if (e.target.checked) {
-																							form.setFieldValue(
-																								"npmproCrowdsecAppsec",
-																								true,
-																							);
-																						}
-																					}}
-																					disabled={
-																						form.values.forwardScheme !==
-																							"http" &&
-																						form.values.forwardScheme !==
-																							"https"
-																					}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+																			</>
+																		}
+																		{...field}
+																		onChange={(e) => {
+																			field.onChange(e);
+																			if (e.target.checked) {
+																				form.setFieldValue(
+																					"npmproCrowdsecAppsec",
+																					true,
+																				);
+																			}
+																		}}
+																		disabled={
+																			form.values.forwardScheme !== "http" &&
+																			form.values.forwardScheme !== "https"
+																		}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproProxyResponseBuffering"
-															>
-																<span className="col">
-																	<T id="host.flags.disable-response-buffering" />
-																	{getOptionHintId(
-																		"npmproProxyResponseBuffering",
-																		values.forwardScheme,
-																	) && (
-																		<small className="form-hint">
-																			<T
-																				id={getOptionHintId(
-																					"npmproProxyResponseBuffering",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</small>
-																	)}
-																</span>
-																<span className="col-auto">
-																	<Field
-																		name="npmproProxyResponseBuffering"
-																		type="checkbox"
-																	>
-																		{({ field, form }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproProxyResponseBuffering"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																					disabled={
-																						form.values.forwardScheme !==
-																							"http" &&
-																						form.values.forwardScheme !==
-																							"https"
-																					}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="npmproProxyResponseBuffering" type="checkbox">
+																{({ field, form }) => (
+																	<SwitchField
+																		id="npmproProxyResponseBuffering"
+																		label={
+																			<T id="host.flags.disable-response-buffering" />
+																		}
+																		hint={
+																			getOptionHintId(
+																				"npmproProxyResponseBuffering",
+																				values.forwardScheme,
+																			) && (
+																				<span className="d-block">
+																					<T
+																						id={getOptionHintId(
+																							"npmproProxyResponseBuffering",
+																							values.forwardScheme,
+																						)}
+																					/>
+																				</span>
+																			)
+																		}
+																		{...field}
+																		disabled={
+																			form.values.forwardScheme !== "http" &&
+																			form.values.forwardScheme !== "https"
+																		}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproUpstreamCompression"
-															>
-																<span className="col">
-																	<T id="host.flags.upstream-compression" />
-																	{getOptionHintId(
-																		"npmproUpstreamCompression",
-																		values.forwardScheme,
-																	) && (
-																		<small className="form-hint">
-																			<T
-																				id={getOptionHintId(
-																					"npmproUpstreamCompression",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</small>
-																	)}
-																</span>
-																<span className="col-auto">
-																	<Field
-																		name="npmproUpstreamCompression"
-																		type="checkbox"
-																	>
-																		{({ field, form }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproUpstreamCompression"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																					disabled={[
-																						"path",
-																						"empty",
-																					].includes(
-																						form.values.forwardScheme,
-																					)}
-																				/>
-																			</span>
+															<Field name="npmproUpstreamCompression" type="checkbox">
+																{({ field, form }) => (
+																	<SwitchField
+																		id="npmproUpstreamCompression"
+																		label={
+																			<T id="host.flags.upstream-compression" />
+																		}
+																		hint={
+																			getOptionHintId(
+																				"npmproUpstreamCompression",
+																				values.forwardScheme,
+																			) && (
+																				<span className="d-block">
+																					<T
+																						id={getOptionHintId(
+																							"npmproUpstreamCompression",
+																							values.forwardScheme,
+																						)}
+																					/>
+																				</span>
+																			)
+																		}
+																		{...field}
+																		disabled={["path", "empty"].includes(
+																			form.values.forwardScheme,
 																		)}
-																	</Field>
-																</span>
-															</label>
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproFancyindex"
-															>
-																<span className="col">
-																	<T id="host.flags.fancyindex" />
-																	{getOptionHintId(
-																		"npmproFancyindex",
-																		values.forwardScheme,
-																	) && (
-																		<small className="form-hint">
-																			<T
-																				id={getOptionHintId(
-																					"npmproFancyindex",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</small>
-																	)}
-																</span>
-																<span className="col-auto">
-																	<Field name="npmproFancyindex" type="checkbox">
-																		{({ field, form }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					{...field}
-																					id="npmproFancyindex"
-																					className={cn("form-check-input", {
-																						"bg-lime": field.checked,
-																					})}
-																					type="checkbox"
-																					disabled={
-																						form.values.forwardScheme !==
-																						"path"
-																					}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="npmproFancyindex" type="checkbox">
+																{({ field, form }) => (
+																	<SwitchField
+																		id="npmproFancyindex"
+																		label={<T id="host.flags.fancyindex" />}
+																		hint={
+																			getOptionHintId(
+																				"npmproFancyindex",
+																				values.forwardScheme,
+																			) && (
+																				<span className="d-block">
+																					<T
+																						id={getOptionHintId(
+																							"npmproFancyindex",
+																							values.forwardScheme,
+																						)}
+																					/>
+																				</span>
+																			)
+																		}
+																		{...field}
+																		disabled={form.values.forwardScheme !== "path"}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
 															<label
@@ -809,7 +720,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 													allowNew
 												/>
 
-												<SSLOptionsFields color="bg-lime" forProxyHost />
+												<SSLOptionsFields forProxyHost />
 											</div>
 											<div className="tab-pane" id="tab-advanced" role="tabpanel">
 												<NginxConfigField />

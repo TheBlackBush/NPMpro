@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { createCertificate, testHttpCertificate } from "src/api/backend";
@@ -11,6 +10,7 @@ import {
 	ErrorAlert,
 	NoticeAlert,
 	RequestProgress,
+	SwitchField,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
@@ -59,9 +59,6 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 		}
 		setIsTesting(false);
 	};
-
-	const toggleClasses = "form-check-input";
-	const toggleEnabled = cn(toggleClasses, "bg-cyan");
 
 	const parseTestResults = () => (
 		<>
@@ -134,25 +131,16 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								}}
 							/>
 
-							<div className="row">
-								<div className="col-6">
-									<Field name="npmproReuseKey">
-										{({ field }) => (
-											<label className="form-check form-switch mt-1">
-												<input
-													{...field}
-													className={field.value ? toggleEnabled : toggleClasses}
-													type="checkbox"
-													checked={field.value}
-												/>
-
-												<span className="form-check-label">
-													<T id="domains.reuse-key" />
-												</span>
-											</label>
-										)}
-									</Field>
-								</div>
+							<div className="divide-y">
+								<Field name="npmproReuseKey" type="checkbox">
+									{({ field }) => (
+										<SwitchField
+											id="npmproReuseKey"
+											label={<T id="domains.reuse-key" />}
+											{...field}
+										/>
+									)}
+								</Field>
 							</div>
 							{testResults ? (
 								<div className="border rounded p-3 mt-3">

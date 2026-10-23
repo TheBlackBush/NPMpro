@@ -12,6 +12,7 @@ import {
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
+	SwitchField,
 } from "src/components";
 import {
 	DirtyTracker,
@@ -295,175 +296,108 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 													</h3>
 													<div className="divide-y">
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="tcpForwarding"
-															>
-																<span className="col">
-																	<T id="streams.tcp" />
-																</span>
-																<span className="col-auto">
-																	<Field name="tcpForwarding" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					id="tcpForwarding"
-																					className="form-check-input"
-																					type="checkbox"
-																					name={field.name}
-																					checked={field.value}
-																					onChange={(e) => {
-																						setFieldValue(
-																							field.name,
-																							e.target.checked,
-																						);
-																						if (!e.target.checked) {
-																							setFieldValue(
-																								"udpForwarding",
-																								true,
-																							);
-																							if (
-																								values.npmproProxyProtocolForwarding ===
-																								1
-																							) {
-																								setFieldValue(
-																									"npmproProxyProtocolForwarding",
-																									0,
-																								);
-																							}
-																							setFieldValue(
-																								"npmproProxyTls",
-																								false,
-																							);
-																							setFieldValue(
-																								"certificateId",
-																								0,
-																							);
-																							setFieldValue(
-																								"npmproMtlsCertificateId",
-																								0,
-																							);
-																							setFieldValue(
-																								"npmproMtlsVerifyClientOptional",
-																								false,
-																							);
-																						}
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="tcpForwarding" type="checkbox">
+																{({ field }) => (
+																	<SwitchField
+																		id="tcpForwarding"
+																		label={<T id="streams.tcp" />}
+																		name={field.name}
+																		checked={field.value}
+																		onChange={(e) => {
+																			setFieldValue(field.name, e.target.checked);
+																			if (!e.target.checked) {
+																				setFieldValue("udpForwarding", true);
+																				if (
+																					values.npmproProxyProtocolForwarding ===
+																					1
+																				) {
+																					setFieldValue(
+																						"npmproProxyProtocolForwarding",
+																						0,
+																					);
+																				}
+																				setFieldValue("npmproProxyTls", false);
+																				setFieldValue("certificateId", 0);
+																				setFieldValue(
+																					"npmproMtlsCertificateId",
+																					0,
+																				);
+																				setFieldValue(
+																					"npmproMtlsVerifyClientOptional",
+																					false,
+																				);
+																			}
+																		}}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="udpForwarding"
-															>
-																<span className="col">
-																	<T id="streams.udp" />
-																</span>
-																<span className="col-auto">
-																	<Field name="udpForwarding" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					id="udpForwarding"
-																					className="form-check-input"
-																					type="checkbox"
-																					name={field.name}
-																					checked={field.value}
-																					onChange={(e) => {
-																						setFieldValue(
-																							field.name,
-																							e.target.checked,
-																						);
+															<Field name="udpForwarding" type="checkbox">
+																{({ field }) => (
+																	<SwitchField
+																		id="udpForwarding"
+																		label={<T id="streams.udp" />}
+																		name={field.name}
+																		checked={field.value}
+																		onChange={(e) => {
+																			setFieldValue(field.name, e.target.checked);
 
-																						if (e.target.checked) {
-																							if (
-																								values.npmproProxyProtocolForwarding ===
-																								1
-																							) {
-																								setFieldValue(
-																									"npmproProxyProtocolForwarding",
-																									0,
-																								);
-																							}
-																							setFieldValue(
-																								"npmproProxyTls",
-																								false,
-																							);
-																							setFieldValue(
-																								"certificateId",
-																								0,
-																							);
-																							setFieldValue(
-																								"npmproMtlsCertificateId",
-																								0,
-																							);
-																							setFieldValue(
-																								"npmproMtlsVerifyClientOptional",
-																								false,
-																							);
-																						}
+																			if (e.target.checked) {
+																				if (
+																					values.npmproProxyProtocolForwarding ===
+																					1
+																				) {
+																					setFieldValue(
+																						"npmproProxyProtocolForwarding",
+																						0,
+																					);
+																				}
+																				setFieldValue("npmproProxyTls", false);
+																				setFieldValue("certificateId", 0);
+																				setFieldValue(
+																					"npmproMtlsCertificateId",
+																					0,
+																				);
+																				setFieldValue(
+																					"npmproMtlsVerifyClientOptional",
+																					false,
+																				);
+																			}
 
-																						if (!e.target.checked) {
-																							setFieldValue(
-																								"tcpForwarding",
-																								true,
-																							);
-																						}
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+																			if (!e.target.checked) {
+																				setFieldValue("tcpForwarding", true);
+																			}
+																		}}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
-															<label
-																className="row cursor-pointer"
-																htmlFor="npmproProxyTls"
-															>
-																<span className="col">
-																	<T id="streams.tls" />
-																	{!values.udpForwarding &&
-																		!isProxyTlsPossible(values) && (
-																			<small className="form-hint">
-																				<T id="streams.tls.requires-certificate" />
-																			</small>
-																		)}
-																</span>
-																<span className="col-auto">
-																	<Field name="npmproProxyTls" type="checkbox">
-																		{({ field }) => (
-																			<span className="form-check form-check-single form-switch">
-																				<input
-																					id="npmproProxyTls"
-																					className="form-check-input"
-																					type="checkbox"
-																					name={field.name}
-																					checked={
-																						field.value &&
-																						isProxyTlsPossible(values)
-																					}
-																					disabled={
-																						!isProxyTlsPossible(values)
-																					}
-																					onChange={(e) => {
-																						setFieldValue(
-																							field.name,
-																							e.target.checked,
-																						);
-																					}}
-																				/>
-																			</span>
-																		)}
-																	</Field>
-																</span>
-															</label>
+															<Field name="npmproProxyTls" type="checkbox">
+																{({ field }) => (
+																	<SwitchField
+																		id="npmproProxyTls"
+																		label={<T id="streams.tls" />}
+																		hint={
+																			!values.udpForwarding &&
+																			!isProxyTlsPossible(values) && (
+																				<span className="d-block">
+																					<T id="streams.tls.requires-certificate" />
+																				</span>
+																			)
+																		}
+																		name={field.name}
+																		checked={
+																			field.value && isProxyTlsPossible(values)
+																		}
+																		disabled={!isProxyTlsPossible(values)}
+																		onChange={(e) => {
+																			setFieldValue(field.name, e.target.checked);
+																		}}
+																	/>
+																)}
+															</Field>
 														</div>
 														<div>
 															<label
@@ -523,7 +457,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 													forHttp={false}
 												/>
 
-												<SSLOptionsFields color="bg-blue" forHttp={false} />
+												<SSLOptionsFields forHttp={false} />
 											</div>
 											<div className="tab-pane" id="tab-advanced" role="tabpanel">
 												<NginxConfigField
