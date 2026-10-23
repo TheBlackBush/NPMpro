@@ -20,7 +20,7 @@ function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputPro
 					type={asText ? "text" : "password"}
 					className={cn("form-control", error && "is-invalid", className)}
 				/>
-				<span className="input-group-text">
+				<span className="input-group-text py-0">
 					<button
 						type="button"
 						className="btn btn-icon btn-ghost btn-sm"
