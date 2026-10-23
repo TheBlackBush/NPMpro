@@ -51,6 +51,17 @@ export async function get({ url, params, reload }, abortController) {
 	return processResponse(response, reload);
 }
 
+export async function getWithTotal({ url, params, reload }, abortController) {
+	const apiUrl = buildUrl({ url, params });
+	const method = "GET";
+	const signal = abortController?.signal;
+	const response = await fetch(apiUrl, { method, signal });
+	const header = response.headers.get("X-Total-Count");
+	const parsed = header === null ? Number.NaN : Number.parseInt(header, 10);
+	const total = Number.isNaN(parsed) ? null : parsed;
+	return { data: await processResponse(response, reload), total };
+}
+
 export async function download({ url, params }, filename) {
 	const res = await fetch(buildUrl({ url, params }));
 	if (!res.ok) await processResponse(res);
