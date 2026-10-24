@@ -43,6 +43,27 @@ const UNSAFE_SVG = [
 	'<svg><set attributeName="onmouseover" to="x()"/></svg>',
 	'<svg><animate attributeName="onclick" values="x()"/></svg>',
 	'<!DOCTYPE svg><!ENTITY a "b"><svg/>',
+	'<svg xmlns:h="http://www.w3.org/1999/xhtml"><h:iframe/></svg>',
+	"<svg><embed/></svg>",
+	"<svg><OBJECT></OBJECT></svg>",
+	'<svg><use href="https://x.example/a.svg#i"/></svg>',
+	'<svg><use xlink:href="other.svg#i"/></svg>',
+	"<svg><image href='//x.example/a.png'/></svg>",
+	"<svg><image href=a.png/></svg>",
+	'<svg><image href="data:image/svg+xml;base64,PHN2Zy8+"/></svg>',
+	'<svg><a href="data:text/html,x"/></svg>',
+	'<svg><image href="data:image/png;base64,AA" src="x"/></svg>',
+	"<svg><style>@import 'x.css';</style></svg>",
+	"<svg><style>@IMPORT url(#a);</style></svg>",
+	'<svg><rect style="fill:url(https://x.example/a.svg#g)"/></svg>',
+	"<svg><rect fill=\"url('x.svg#g')\"/></svg>",
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	"<svg><style>rect{background:url(data:image/png;base64,AA)}</style></svg>",
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	"<svg><style>rect{fill:u\\72l(x.svg#g)}</style></svg>",
+	// biome-ignore lint/security/noSecrets: unsafe SVG sample, not a secret
+	"<svg><style>rect{background:image-set('x.png' 1x)}</style></svg>",
+	'<svg><text style="font-family:x">data:text/plain,x</text></svg>',
 ];
 
 let server;
@@ -121,6 +142,57 @@ it("refuses scripted svg", () => {
 		),
 		true,
 	);
+});
+
+// biome-ignore-start lint/security/noSecrets: sample SVG, not a secret
+const INKSCAPE_SVG = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   width="64" height="64" viewBox="0 0 64 64" version="1.1" id="svg1"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   sodipodi:docname="icon.svg"
+   inkscape:export-filename="C:\\Users\\me\\icon.png"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" inkscape:zoom="8" />
+  <defs id="defs1">
+    <linearGradient id="linearGradient1" inkscape:collect="always">
+      <stop style="stop-color:#066fd1;stop-opacity:1" offset="0" id="stop1" />
+      <stop style="stop-color:#4299e1;stop-opacity:1" offset="1" id="stop2" />
+    </linearGradient>
+    <linearGradient xlink:href="#linearGradient1" id="linearGradient2" x1="0" y1="0" x2="64" y2="64"
+       gradientUnits="userSpaceOnUse" />
+    <style id="style1">.a { fill: url(#linearGradient2); } .b { fill: url( "#linearGradient1" ); }</style>
+  </defs>
+  <metadata id="metadata1">
+    <rdf:RDF>
+      <cc:Work rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>Tom &amp; Jerry</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <circle style="fill:url(#linearGradient2);stroke:none" cx="32" cy="32" r="30" id="path1" />
+    <path class="a" d="M 16,32 H 48" mask="url(#mask1)" />
+    <use href="#path1" x="2" />
+    <image width="8" height="8" xlink:href="data:image/png;base64,iVBORw0KGgo=" id="image1" />
+  </g>
+</svg>
+`;
+// biome-ignore-end lint/security/noSecrets: sample SVG, not a secret
+
+it("accepts a normal Inkscape icon", () => {
+	assert.equal(detectIconType(Buffer.from(INKSCAPE_SVG)), "svg");
+	assert.equal(svgIsSafe(INKSCAPE_SVG), true);
+	assert.equal(checkIcon(Buffer.from(INKSCAPE_SVG)), "svg");
 });
 
 it("only accepts a real xml declaration before the svg", () => {

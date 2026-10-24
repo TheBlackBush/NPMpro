@@ -37,7 +37,23 @@ const SVG_UNSAFE = [
 	/<(?:[\w.-]+:)?(?:set|animate|animateTransform|animateMotion)\b[^>]*\battributeName\s*=\s*["']?\s*on/iu,
 	// processing instructions other than the xml declaration (xml-stylesheet and others)
 	/<\?(?!xml\s)/iu,
+	// embedded documents
+	/<(?:[\w.-]+:)?(?:iframe|embed|object)[\s>/]/iu,
+	// src attributes (html elements in another namespace)
+	/[\s/"'](?:[\w.-]+:)?src\s*=/iu,
+	// data: URLs other than raster images
+	/data:(?!image\/(?:png|jpeg|webp)[;,])/iu,
+	// CSS imports and url() pointing anywhere but a fragment in this file
+	/@import/iu,
+	/url\((?!\s*["']?\s*#)/iu,
+	/(?:image-set|src)\(/iu,
 ];
+// href and xlink:href with the quote that opens the value
+const HREF_ATTRIBUTE = /[\s/"'](?:[\w.-]+:)?href\s*=\s*(?<quote>["']?)/giu;
+const LOCAL_HREF = /^\s*(?:#|data:image\/(?:png|jpeg|webp)[;,])/iu;
+// editor metadata attributes (Inkscape stores Windows paths there), removed before the backslash check.
+// Backslashes are refused elsewhere because CSS escapes could spell url( or @import.
+const EDITOR_ATTRIBUTE = /\s(?:inkscape|sodipodi):[\w.-]+\s*=\s*(?:"[^"]*"|'[^']*')/giu;
 const JS_URL = /javascript:/iu;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are stripped on purpose
 const STRIPPED = /[\s\u0000-\u001f]/gu;
@@ -86,13 +102,36 @@ const detectIconType = (buffer) => {
 };
 
 /**
+ * True when every href points at a fragment in this file or is an inline raster image
+ *
+ * @param   {string}  text
+ * @returns {boolean}
+ */
+const hrefsAreLocal = (text) => {
+	for (const match of text.matchAll(HREF_ATTRIBUTE)) {
+		const { quote } = match.groups;
+		if (!quote) return false;
+		const start = match.index + match[0].length;
+		const end = text.indexOf(quote, start);
+		if (end === -1 || !LOCAL_HREF.test(text.slice(start, end))) return false;
+	}
+	return true;
+};
+
+/**
  * @param   {string}  text
  * @returns {boolean}  false for scripts, event handlers, javascript: URLs, entity and character
- *                     references (except the five XML ones), foreignObject, handler animations
- *                     and processing instructions other than the xml declaration
+ *                     references (except the five XML ones), foreignObject, handler animations,
+ *                     processing instructions other than the xml declaration, iframe/embed/object,
+ *                     src attributes, href values that are not a fragment or a raster data: URL,
+ *                     other data: URLs, CSS @import, url() outside the file and CSS escapes
  */
 const svgIsSafe = (text) =>
-	!(SVG_UNSAFE.some((pattern) => pattern.test(text)) || JS_URL.test(text.replace(STRIPPED, "")));
+	!(
+		SVG_UNSAFE.some((pattern) => pattern.test(text)) ||
+		JS_URL.test(text.replace(STRIPPED, "")) ||
+		text.replace(EDITOR_ATTRIBUTE, "").includes("\\")
+	) && hrefsAreLocal(text);
 
 /**
  * @param   {Buffer}  buffer
@@ -104,7 +143,7 @@ const checkIcon = (buffer) => {
 	const ext = detectIconType(buffer);
 	if (!ext) throw new errs.ValidationError("Unsupported icon type, use PNG, JPEG, WebP or SVG");
 	if (ext === "svg" && !svgIsSafe(buffer.toString("utf8"))) {
-		throw new errs.ValidationError("SVG with scripts or event handlers is not allowed");
+		throw new errs.ValidationError("SVG with scripts, event handlers or external references is not allowed");
 	}
 	return ext;
 };
