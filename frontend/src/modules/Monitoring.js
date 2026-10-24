@@ -159,30 +159,58 @@ const HOST_TYPES = ["proxy", "redirection", "dead"];
 const HOST_GROUP_KEYS = { proxy: "proxy-hosts", redirection: "redirection-hosts", dead: "dead-hosts" };
 const HOST_VALUE = /^(?<type>proxy|redirection|dead):(?<id>[1-9][0-9]*)$/u;
 
+const isHostId = (id) => Number.isSafeInteger(id) && id > 0;
+
 /**
- * Host filter from the URL: `?host=proxy:12` gives { hostType: "proxy", hostId: 12 }, `?host=_other` gives
- * { host: "_other" }, anything else gives {}.
+ * Host filter from the URL: `?host_type=proxy&host_id=12` gives { hostType: "proxy", hostId: 12 } (both must be
+ * valid), `?host=_other` gives { host: "_other" }. The old form `?host=proxy:12` is still read, any other `host`
+ * value is a single stored host key: { host: value }. Anything else gives {}.
  */
 const hostFilterFromSearch = (searchParams) => {
+	const type = (searchParams?.get("host_type") ?? "").trim();
+	const idText = (searchParams?.get("host_id") ?? "").trim();
+	if (HOST_TYPES.includes(type) && /^[1-9][0-9]*$/u.test(idText) && isHostId(Number(idText))) {
+		return { hostType: type, hostId: Number(idText) };
+	}
 	const value = (searchParams?.get("host") ?? "").trim();
-	if (value === OTHER_HOST) return { host: OTHER_HOST };
+	if (value === "") return {};
 	const match = HOST_VALUE.exec(value);
-	if (!match) return {};
-	const hostId = Number(match.groups.id);
-	return Number.isSafeInteger(hostId) ? { hostType: match.groups.type, hostId } : {};
+	if (match && isHostId(Number(match.groups.id)))
+		return { hostType: match.groups.type, hostId: Number(match.groups.id) };
+	return { host: value };
 };
 
 /**
- * Host filter to URL parameters, on top of a copy of `base` (so range and other parameters stay). An empty or
- * invalid filter removes the host parameter.
+ * Host filter to URL parameters, on top of a copy of `base` (so range and other parameters stay): `host_type` +
+ * `host_id` for a host, `host` for Other hosts or a stored key, none of them for all hosts.
  */
 const hostFilterToSearch = (filter, base = new URLSearchParams()) => {
 	const params = new URLSearchParams(base);
 	params.delete("host");
-	if (filter?.host === OTHER_HOST) {
-		params.set("host", OTHER_HOST);
-	} else if (HOST_TYPES.includes(filter?.hostType) && Number.isSafeInteger(filter?.hostId) && filter.hostId > 0) {
-		params.set("host", `${filter.hostType}:${filter.hostId}`);
+	params.delete("host_type");
+	params.delete("host_id");
+	if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) {
+		params.set("host_type", filter.hostType);
+		params.set("host_id", String(filter.hostId));
+	} else if (typeof filter?.host === "string" && filter.host !== "") {
+		params.set("host", filter.host);
+	}
+	return params;
+};
+
+/**
+ * Query parameters of the traffic request for a filter (or a plain host key). host_type and host_id are only sent
+ * together and for a valid type; they never come with `host`.
+ */
+const trafficParams = (range, filter) => {
+	const params = { range };
+	if (typeof filter === "string") {
+		if (filter !== "") params.host = filter;
+	} else if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) {
+		params.host_type = filter.hostType;
+		params.host_id = filter.hostId;
+	} else if (filter?.host) {
+		params.host = filter.host;
 	}
 	return params;
 };
@@ -205,6 +233,7 @@ const hostGroups = ({ proxy, redirection, dead } = {}) => {
 				hostId: host.id,
 				label: host.domainNames[0],
 				extra: host.domainNames.length - 1,
+				domainNames: host.domainNames,
 			})),
 	}));
 };
@@ -217,7 +246,8 @@ const hostEntryLabel = (entry) => {
 	if (type === "other") return { name: OTHER_HOST, extra: 0, badge: null };
 	const names = Array.isArray(entry?.domainNames) ? entry.domainNames : [];
 	const badge = [...HOST_TYPES, "deleted"].includes(type) ? type : null;
-	return { name: entry?.name || names[0] || "", extra: Math.max(0, names.length - 1), badge };
+	const fallback = badge && badge !== "deleted" && entry?.hostId ? `#${entry.hostId}` : "";
+	return { name: entry?.name || names[0] || fallback, extra: Math.max(0, names.length - 1), badge };
 };
 
 /**
@@ -368,4 +398,5 @@ export {
 	shareBar,
 	sparklinePoints,
 	timeLeftParts,
+	trafficParams,
 };

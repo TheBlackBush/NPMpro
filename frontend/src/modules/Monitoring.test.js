@@ -22,6 +22,7 @@ import {
 	shareBar,
 	sparklinePoints,
 	timeLeftParts,
+	trafficParams,
 } from "./Monitoring.js";
 
 it("formats bytes with one decimal above 1 KB", () => {
@@ -281,33 +282,58 @@ it("labels the time axis, naming each day once on the daily ranges", () => {
 
 it("reads and writes the host filter in the URL", () => {
 	const from = (q) => hostFilterFromSearch(new URLSearchParams(q));
-	assert.deepEqual(from("host=proxy:12"), { hostType: "proxy", hostId: 12 });
-	assert.deepEqual(from("host=dead:3&range=7d"), { hostType: "dead", hostId: 3 });
+	assert.deepEqual(from("host_type=proxy&host_id=12"), { hostType: "proxy", hostId: 12 });
+	assert.deepEqual(from("host_type=dead&host_id=3&range=7d"), { hostType: "dead", hostId: 3 });
 	assert.deepEqual(from("host=_other"), { host: "_other" });
+	// old single form, read only
+	assert.deepEqual(from("host=proxy:12"), { hostType: "proxy", hostId: 12 });
+	// old plain key
+	assert.deepEqual(from("host=a.example.com"), { host: "a.example.com" });
+	assert.deepEqual(from("host=*.example.com"), { host: "*.example.com" });
 	for (const bad of [
 		"",
 		"host=",
-		"host=proxy:0",
-		"host=proxy:-1",
-		"host=proxy:x",
-		"host=stream:1",
-		"host=proxy:1.5",
-		"host=a.example.com",
+		"host_type=proxy",
+		"host_id=3",
+		"host_type=stream&host_id=1",
+		"host_type=proxy&host_id=0",
+		"host_type=proxy&host_id=x",
+		"host_type=proxy&host_id=1.5",
 	]) {
 		assert.deepEqual(from(bad), {});
 	}
-	const base = new URLSearchParams("range=7d&host=proxy:1");
-	assert.equal(
-		hostFilterToSearch({ hostType: "redirection", hostId: 4 }, base).toString(),
-		"range=7d&host=redirection%3A4",
-	);
+	const base = new URLSearchParams("range=7d&host=proxy:1&host_type=dead&host_id=2");
+	const written = hostFilterToSearch({ hostType: "redirection", hostId: 4 }, base);
+	assert.equal(written.get("range"), "7d");
+	assert.equal(written.get("host_type"), "redirection");
+	assert.equal(written.get("host_id"), "4");
+	assert.equal(written.has("host"), false);
 	assert.equal(hostFilterToSearch({ host: "_other" }, base).toString(), "range=7d&host=_other");
 	assert.equal(hostFilterToSearch({}, base).toString(), "range=7d");
 	assert.equal(hostFilterToSearch({ hostType: "proxy", hostId: "x" }).toString(), "");
-	assert.equal(base.toString(), "range=7d&host=proxy%3A1");
+	assert.equal(hostFilterToSearch({ hostType: "stream", hostId: 1 }).toString(), "");
 	const filter = { hostType: "dead", hostId: 9 };
 	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch(filter)), filter);
 	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch({ host: "_other" })), { host: "_other" });
+});
+
+it("builds the traffic query without mixing host and host_id", () => {
+	assert.deepEqual(trafficParams("24h", {}), { range: "24h" });
+	assert.deepEqual(trafficParams("7d", { host: "_other" }), { range: "7d", host: "_other" });
+	assert.deepEqual(trafficParams("7d", "*.example.com"), { range: "7d", host: "*.example.com" });
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy", hostId: 12 }), {
+		range: "1h",
+		host_type: "proxy",
+		host_id: 12,
+	});
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy", hostId: 12, host: "x" }), {
+		range: "1h",
+		host_type: "proxy",
+		host_id: 12,
+	});
+	assert.deepEqual(trafficParams("1h", { hostType: "stream", hostId: 12 }), { range: "1h" });
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy" }), { range: "1h" });
+	assert.deepEqual(trafficParams("1h", { hostId: 3, host: "x" }), { range: "1h", host: "x" });
 });
 
 it("groups hosts for the host filter", () => {
@@ -333,6 +359,7 @@ it("groups hosts for the host filter", () => {
 		hostId: 12,
 		label: "a.example.com",
 		extra: 2,
+		domainNames: ["a.example.com", "b.example.com", "c.example.com"],
 	});
 	assert.equal(groups[2].options[0].value, "dead:2");
 	assert.equal(groups[2].options[0].extra, 0);
@@ -365,4 +392,9 @@ it("labels Top hosts entries", () => {
 		extra: 0,
 		badge: null,
 	});
+});
+
+it("falls back to the host id for an unnamed real host", () => {
+	assert.equal(hostEntryLabel({ hostType: "proxy", hostId: 7, name: "", domainNames: [] }).name, "#7");
+	assert.equal(hostEntryLabel({ hostType: "other", name: "", domainNames: [] }).name, "_other");
 });
