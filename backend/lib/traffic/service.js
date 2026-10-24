@@ -3,6 +3,7 @@ import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
 import { createLogReader } from "./log-reader.js";
 import { isOwnRequest, parseAlogLine } from "./parse.js";
+import { createVisitorHasher } from "./visitor-hash.js";
 
 const ACCESS_LOG = "/data/nginx/logs/access.log";
 const OTHER_HOST = "_other";
@@ -18,6 +19,8 @@ const YIELD_EVERY = 5000;
 const PENDING_MAX_MS = 10 * 60000;
 // after "show visitor IPs" was switched off, a stale stored true is ignored this long (the hook runs before the save)
 const IPS_OFF_PIN_MS = 5 * 60000;
+// the same for "count unique visitors"
+const VISITORS_OFF_PIN_MS = 5 * 60000;
 
 const defaultTimers = {
 	setInterval: (fn, ms) => setInterval(fn, ms),
@@ -78,13 +81,46 @@ const createQueue = () => {
 const sumRequests = (rows) => rows.reduce((n, r) => n + r.requests, 0);
 
 const hasRows = (data) =>
-	data.minutes.length > 0 || data.countries.length > 0 || data.asns.length > 0 || data.ips.length > 0;
+	data.minutes.length > 0 ||
+	data.countries.length > 0 ||
+	data.asns.length > 0 ||
+	data.ips.length > 0 ||
+	data.visitors.length > 0;
 
 const mergeBatches = (batches) => ({
 	minutes: batches.flatMap((b) => b.minutes),
 	countries: batches.flatMap((b) => b.countries),
 	asns: batches.flatMap((b) => b.asns),
 	ips: batches.flatMap((b) => b.ips),
+	visitors: batches.flatMap((b) => b.visitors),
+});
+
+/**
+ * Reader position and visitor key share the meta of the `traffic-state` settings row. Each write reads the
+ * current meta first and only replaces its own fields, so neither overwrites the other.
+ *
+ * @param   {Object}    deps
+ * @param   {Function}  deps.read   () => Promise<Object|undefined>  the stored meta
+ * @param   {Function}  deps.write  (meta) => Promise  stores the whole meta (insert or update)
+ * @returns {{loadState: Function, saveState: Function, readMeta: Function, writeMeta: Function}}
+ */
+const createStateMeta = ({ read, write }) => ({
+	loadState: async () => {
+		const meta = await read();
+		return Number.isFinite(meta?.inode) && Number.isFinite(meta?.offset)
+			? { inode: meta.inode, offset: meta.offset }
+			: null;
+	},
+	saveState: async ({ inode, offset }) => {
+		const meta = (await read()) ?? {};
+		await write({ ...meta, inode, offset });
+	},
+	readMeta: read,
+	/** For loadVisitorKey(): only `visitor_key` is taken from the given meta. */
+	writeMeta: async ({ visitor_key }) => {
+		const meta = (await read()) ?? {};
+		await write({ ...meta, visitor_key });
+	},
 });
 
 /**
@@ -93,16 +129,19 @@ const mergeBatches = (batches) => ({
  * rolls up and prunes hourly. Failures never throw out of the timers: they are logged and exposed by status().
  *
  * @param   {Object}    deps
- * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps } (lib/traffic/store.js)
+ * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors } (lib/traffic/store.js)
  * @param   {Object}    deps.geo          { lookup(ip), available() } (lib/geoip/lookup.js)
- * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips } }>
+ * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips, unique_visitors } }>
  * @param   {Function}  deps.loadState    () => Promise<{ inode, offset } | null>
  * @param   {Function}  deps.saveState    (state) => Promise
  * @param   {Function}  deps.loadHosts    () => Promise<string[]>  domain names of the managed hosts
+ * @param   {Function}  [deps.loadVisitorKey]  () => Promise<{ key: Buffer, created: boolean }>, called once in start();
+ *                                             without it (or when it fails) unique visitors are not counted
  * @param   {Function}  [deps.createReader]  (state) => { read() }
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
+ * @param   {number}    [deps.maxVisitors]  distinct visitors per host and day
  * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
  * @param   {string[]}  [deps.bindAddresses]  NPM_IPV4_BINDING: the health check may come from it as well as loopback
  * @returns {Object}
@@ -114,16 +153,18 @@ const createTrafficService = ({
 	loadState,
 	saveState,
 	loadHosts,
+	loadVisitorKey = null,
 	createReader = (state) => createLogReader({ path: ACCESS_LOG, state, maxChunk: READ_MAX_CHUNK }),
 	now = Date.now,
 	timers = defaultTimers,
 	maxPerKey = 1000,
+	maxVisitors = 100000,
 	adminPort = process.env.NPM_PORT || "81",
 	bindAddresses = [process.env.NPM_IPV4_BINDING].filter((address) => address && address !== "0.0.0.0"),
 	log = logger,
 }) => {
 	const queue = createQueue();
-	const counter = createCounter({ maxPerKey });
+	const counter = createCounter({ maxPerKey, maxVisitors });
 	let mapHost = createHostMapper([]);
 
 	let started = false;
@@ -134,6 +175,10 @@ const createTrafficService = ({
 	let startupPending = false;
 	let showIps = false;
 	let ipsOffUntil = 0;
+	let uniqueVisitors = false;
+	let visitorsOffUntil = 0;
+	// set from the visitor key in start(); null while no key could be loaded
+	let hashVisitor = null;
 	let retentionDays = 30;
 
 	let reader = null;
@@ -161,6 +206,10 @@ const createTrafficService = ({
 
 	const applyConfig = (values) => {
 		retentionDays = values.retention_days;
+		if (!(values.unique_visitors && now() < visitorsOffUntil)) {
+			if (!values.unique_visitors) visitorsOffUntil = 0;
+			uniqueVisitors = Boolean(values.unique_visitors);
+		}
 		if (values.show_ips && now() < ipsOffUntil) return;
 		if (!values.show_ips) ipsOffUntil = 0;
 		showIps = Boolean(values.show_ips);
@@ -211,6 +260,9 @@ const createTrafficService = ({
 				startReading();
 			}
 			if (!showIps) await store.deleteIps().catch(logError("could not delete the stored IPs"));
+			if (!uniqueVisitors) {
+				await store.deleteVisitors().catch(logError("could not delete the stored visitor hashes"));
+			}
 		}
 		// the host list is only needed while lines are counted
 		if (enabled) await refreshHosts();
@@ -228,7 +280,9 @@ const createTrafficService = ({
 		if (showIps) entry.ip = ip;
 		const available = geo.available();
 		const found = available.country || available.asn ? geo.lookup(ip) : null;
-		counter.add(entry, found, { showIps });
+		// parseAlogLine() only returns lines with a valid client IP
+		const visitorHash = uniqueVisitors && hashVisitor ? hashVisitor(ip) : undefined;
+		counter.add(entry, found, { showIps, visitorHash });
 	};
 
 	const readOnce = async () => {
@@ -270,6 +324,7 @@ const createTrafficService = ({
 		if (readInFlight) await readInFlight;
 		const data = counter.drain();
 		if (!showIps) data.ips = [];
+		if (!uniqueVisitors) data.visitors = [];
 		if (hasRows(data)) pending.push({ at: now(), data });
 		const state = lastState;
 		if (pending.length === 0) {
@@ -320,6 +375,22 @@ const createTrafficService = ({
 			if (started) return;
 			started = true;
 			const values = await loadConfig();
+			// once per start and inside the queue: two concurrent first loads would each create a key
+			const keyCreated = await queue(async () => {
+				if (!loadVisitorKey) return false;
+				try {
+					const { key, created } = await loadVisitorKey();
+					hashVisitor = createVisitorHasher(key);
+					return created;
+				} catch (err) {
+					logError("could not load the visitor key, unique visitors are not counted")(err);
+					return false;
+				}
+			});
+			// a new key cannot match the stored hashes; with the setting known to be off they are removed too
+			if (keyCreated || (values !== null && !uniqueVisitors)) {
+				await queue(() => store.deleteVisitors()).catch(logError("could not delete the stored visitor hashes"));
+			}
 			if (values === null) {
 				startupPending = true;
 			} else if (!showIps) {
@@ -390,6 +461,21 @@ const createTrafficService = ({
 			showIps = true;
 		},
 
+		/** Stops counting visitors at once, drops the undrained hashes and deletes the stored ones after a running flush. */
+		uniqueVisitorsOff: async () => {
+			uniqueVisitors = false;
+			visitorsOffUntil = now() + VISITORS_OFF_PIN_MS;
+			counter.forgetVisitors();
+			for (const p of pending) p.data.visitors = [];
+			await queue(() => store.deleteVisitors());
+		},
+
+		/** Counts visitors again from the next line: the user switched them on and the setting is saved. */
+		uniqueVisitorsOn: () => {
+			visitorsOffUntil = 0;
+			uniqueVisitors = true;
+		},
+
 		status: () => ({
 			enabled,
 			skipped_lines: skipped,
@@ -411,7 +497,8 @@ const createTrafficService = ({
  * @param   {Object}    deps
  * @param   {Function}  deps.applyAccessLog  (enabled) => Promise, writes the include, tests and reloads nginx
  * @param   {Object}    deps.traffic         createTrafficService() instance
- * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function, onShowIpsOn: Function}}
+ * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function, onShowIpsOn: Function,
+ *            onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function}}
  */
 const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
 	onTrafficEnabledChange: async (enabled) => {
@@ -420,6 +507,8 @@ const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
 	},
 	onShowIpsOff: () => traffic.showIpsOff(),
 	onShowIpsOn: () => traffic.showIpsOn(),
+	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),
+	onUniqueVisitorsOn: () => traffic.uniqueVisitorsOn(),
 });
 
-export { ACCESS_LOG, createHostMapper, createTrafficHooks, createTrafficService, OTHER_HOST };
+export { ACCESS_LOG, createHostMapper, createStateMeta, createTrafficHooks, createTrafficService, OTHER_HOST };

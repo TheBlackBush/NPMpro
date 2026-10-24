@@ -90,3 +90,69 @@ it("gives a new hour a fresh allowance", () => {
 	c.add(e("a", "10.0.0.1"), null, { showIps: true });
 	assert.equal(c.drain().ips[0].ip, "10.0.0.1");
 });
+
+const DAY = 86400000;
+const day = Math.floor(t / DAY);
+const v = (c, host, hash, time = t) =>
+	c.add(e(host, "1.1.1.1", 200, 10, time), null, { showIps: false, visitorHash: hash });
+
+it("queues each visitor hash once per day and host", () => {
+	const c = createCounter({});
+	v(c, "a", "h1");
+	v(c, "a", "h1");
+	v(c, "b", "h1");
+	v(c, "a", "h2");
+	assert.deepEqual(c.drain().visitors, [
+		{ day, host: "a", hash: "h1" },
+		{ day, host: "b", hash: "h1" },
+		{ day, host: "a", hash: "h2" },
+	]);
+	v(c, "a", "h1");
+	assert.deepEqual(c.drain().visitors, [], "already sent today");
+	v(c, "a", "h1", t + DAY);
+	assert.deepEqual(c.drain().visitors, [{ day: day + 1, host: "a", hash: "h1" }], "a new day queues it again");
+});
+
+it("queues no visitor rows without a hash", () => {
+	const c = createCounter({});
+	c.add(e("a", "1.1.1.1"), null, { showIps: false });
+	assert.deepEqual(c.drain().visitors, []);
+});
+
+it("queues exactly one cap marker and no further hashes past maxVisitors", () => {
+	const c = createCounter({ maxVisitors: 2 });
+	for (const hash of ["h1", "h2", "h3", "h4"]) v(c, "a", hash);
+	v(c, "b", "h9");
+	assert.deepEqual(c.drain().visitors, [
+		{ day, host: "a", hash: "h1" },
+		{ day, host: "a", hash: "h2" },
+		{ day, host: "a", hash: "" },
+		{ day, host: "b", hash: "h9" },
+	]);
+	v(c, "a", "h5");
+	v(c, "a", "h1");
+	assert.deepEqual(c.drain().visitors, [], "the marker is not queued twice and known hashes stay known");
+});
+
+it("forgetVisitors empties the sets and the queued rows", () => {
+	const c = createCounter({ maxVisitors: 1 });
+	v(c, "a", "h1");
+	v(c, "a", "h2");
+	c.forgetVisitors();
+	assert.deepEqual(c.drain().visitors, []);
+	v(c, "a", "h1");
+	assert.deepEqual(c.drain().visitors, [{ day, host: "a", hash: "h1" }]);
+});
+
+it("drain prunes visitor sets older than yesterday", () => {
+	const c = createCounter({});
+	v(c, "a", "h1");
+	v(c, "a", "h2", t + DAY);
+	c.drain();
+	v(c, "a", "h1");
+	assert.deepEqual(c.drain().visitors, [], "yesterday's set is kept");
+	v(c, "a", "h3", t + 2 * DAY);
+	c.drain();
+	v(c, "a", "h1");
+	assert.deepEqual(c.drain().visitors, [{ day, host: "a", hash: "h1" }], "the set two days back was pruned");
+});

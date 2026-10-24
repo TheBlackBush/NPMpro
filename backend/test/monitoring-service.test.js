@@ -6,7 +6,8 @@ import { createMonitoring } from "../internal/monitoring.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { createCounter } from "../lib/traffic/counter.js";
-import { createHostMapper, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
+import { createHostMapper, createStateMeta, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
+import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
 
 const MINUTE = 60000;
 const KEY = "bouncer-key";
@@ -50,10 +51,18 @@ const fakeStore = () => {
 		calls,
 		failing: false,
 		flushed: [],
-		flush(batch) {
+		// a promise that holds the next flush until it resolves
+		gate: null,
+		async flush(batch) {
 			calls.push("flush");
-			if (this.failing) return Promise.reject(new Error("database is locked"));
-			this.flushed.push(structuredClone(batch));
+			const copy = structuredClone(batch);
+			if (this.gate) await this.gate;
+			calls.push("flushed");
+			if (this.failing) throw new Error("database is locked");
+			this.flushed.push(copy);
+		},
+		deleteVisitors() {
+			calls.push("deleteVisitors");
 			return Promise.resolve();
 		},
 		rollUpAndPrune(args) {
@@ -95,6 +104,7 @@ const setup = ({
 	state = null,
 	configFails = 0,
 	adminPort = "81",
+	visitorKey = { key: Buffer.alloc(32, 7), created: false },
 } = {}) => {
 	let failures = configFails;
 	let hostLoads = 0;
@@ -103,7 +113,9 @@ const setup = ({
 	const reader = fakeReader(results);
 	const timers = fakeTimers();
 	const saved = [];
-	const values = { traffic_enabled: true, retention_days: 30, show_ips: false, ...config };
+	const errors = [];
+	let keyLoads = 0;
+	const values = { traffic_enabled: true, retention_days: 30, show_ips: false, unique_visitors: false, ...config };
 	const service = createTrafficService({
 		store,
 		geo,
@@ -123,11 +135,15 @@ const setup = ({
 			hostLoads++;
 			return Promise.resolve(hosts);
 		},
+		loadVisitorKey: () => {
+			keyLoads++;
+			return visitorKey instanceof Error ? Promise.reject(visitorKey) : Promise.resolve(visitorKey);
+		},
 		createReader: reader.create,
 		now: () => time,
 		timers,
 		adminPort,
-		log: silent,
+		log: { ...silent, error: (message) => errors.push(message) },
 	});
 	return {
 		service,
@@ -136,6 +152,8 @@ const setup = ({
 		timers,
 		saved,
 		values,
+		errors,
+		keyLoads: () => keyLoads,
 		hostLoads: () => hostLoads,
 		advance: (ms) => {
 			time += ms;
@@ -460,6 +478,212 @@ describe("traffic service", () => {
 		assert.equal(map("y.b.test"), ".b.test");
 		assert.equal(map(""), "_other");
 		assert.equal(map("evil-a.test"), "_other");
+	});
+});
+
+describe("traffic service: unique visitors", () => {
+	const HASH = /^[0-9a-f]{32}$/u;
+	const on = { unique_visitors: true };
+	const tick = () => new Promise((r) => setImmediate(r));
+
+	it("two lines from the same IP on one host give one visitor row, never the raw IP", async () => {
+		const t = setup({
+			config: on,
+			results: [read([line("example.com"), line("example.com"), line("example.com", "::ffff:203.0.113.7")])],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		const { visitors } = t.store.flushed[0];
+		assert.equal(visitors.length, 1, "the IPv4-mapped form is the same visitor");
+		assert.equal(visitors[0].host, "example.com");
+		assert.equal(visitors[0].day, Math.floor(Date.UTC(2026, 9, 24, 8, 15, 30) / 86400000));
+		assert.match(visitors[0].hash, HASH);
+		assert.ok(!JSON.stringify(t.store.flushed).includes("203.0.113"), "no raw IP in any flushed row");
+		assert.equal(t.keyLoads(), 1);
+	});
+
+	it("counts no visitors while the switch is off", async () => {
+		const off = setup({ results: [read([line("example.com")])] });
+		await off.service.start();
+		await off.service.read();
+		await off.service.flush();
+		assert.deepEqual(off.store.flushed[0].visitors, []);
+	});
+
+	it("uniqueVisitorsOff during a running flush deletes after it and writes no visitor rows afterwards", async () => {
+		const t = setup({
+			config: on,
+			results: [read([line("example.com")]), read([line("example.com", "198.51.100.1")])],
+		});
+		await t.service.start();
+		await t.service.read();
+		let release;
+		t.store.gate = new Promise((r) => {
+			release = r;
+		});
+		const flushing = t.service.flush();
+		await tick();
+		const off = createTrafficHooks({
+			applyAccessLog: () => Promise.resolve(),
+			traffic: t.service,
+		}).onUniqueVisitorsOff();
+		await t.service.read();
+		release();
+		t.store.gate = null;
+		await Promise.all([flushing, off]);
+		const startCalls = t.store.calls.indexOf("flush");
+		assert.deepEqual(
+			t.store.calls.slice(startCalls).filter((c) => typeof c === "string"),
+			["flush", "flushed", "deleteVisitors"],
+		);
+		// the stored setting still says true until the save finishes: it must not switch counting back on
+		await t.service.flush();
+		await t.service.read();
+		await t.service.flush();
+		for (const batch of t.store.flushed.slice(1)) assert.deepEqual(batch.visitors, []);
+		assert.equal(
+			t.store.flushed.reduce((n, b) => n + b.minutes.reduce((m, r) => m + r.requests, 0), 0),
+			2,
+		);
+	});
+
+	it("uniqueVisitorsOff clears visitor rows kept in pending batches", async () => {
+		const t = setup({ config: on, results: [read([line("example.com")])] });
+		await t.service.start();
+		t.store.failing = true;
+		await t.service.read();
+		await t.service.flush();
+		await t.service.uniqueVisitorsOff();
+		t.store.failing = false;
+		await t.service.flush();
+		assert.deepEqual(t.store.flushed[0].visitors, []);
+		assert.equal(t.store.flushed[0].minutes[0].requests, 1);
+	});
+
+	it("uniqueVisitorsOn counts from the next line", async () => {
+		const t = setup({ results: [read([line("example.com")]), read([line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		createTrafficHooks({ applyAccessLog: () => Promise.resolve(), traffic: t.service }).onUniqueVisitorsOn();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed[0].visitors.length, 1);
+	});
+
+	it("a created key deletes the stored hashes once at start, a loaded key does not", async () => {
+		const created = setup({ config: on, visitorKey: { key: Buffer.alloc(32, 1), created: true } });
+		await created.service.start();
+		assert.equal(created.store.calls.filter((c) => c === "deleteVisitors").length, 1);
+		const loaded = setup({ config: on });
+		await loaded.service.start();
+		assert.ok(!loaded.store.calls.includes("deleteVisitors"));
+		await loaded.service.start();
+		assert.equal(loaded.keyLoads(), 1, "the key is loaded once per start");
+	});
+
+	it("deletes stored hashes once at start when the setting is off, late when the settings could not be read", async () => {
+		const off = setup({ visitorKey: { key: Buffer.alloc(32, 1), created: true } });
+		await off.service.start();
+		assert.equal(off.store.calls.filter((c) => c === "deleteVisitors").length, 1);
+		const late = setup({ configFails: 1 });
+		await late.service.start();
+		assert.ok(!late.store.calls.includes("deleteVisitors"));
+		await late.service.flush();
+		assert.equal(late.store.calls.filter((c) => c === "deleteVisitors").length, 1);
+		const lateOn = setup({ configFails: 1, config: on });
+		await lateOn.service.start();
+		await lateOn.service.flush();
+		assert.ok(!lateOn.store.calls.includes("deleteVisitors"));
+	});
+
+	it("a failing key load leaves unique visitors off, logs once and still counts traffic", async () => {
+		const t = setup({
+			config: on,
+			visitorKey: new Error("database is locked"),
+			results: [read([line("example.com")]), read([line("example.com")])],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.errors.filter((m) => m.includes("visitor key")).length, 1);
+		assert.deepEqual(
+			t.store.flushed.map((b) => [b.visitors.length, b.minutes[0].requests]),
+			[
+				[0, 1],
+				[0, 1],
+			],
+		);
+	});
+
+	it("a failing flush keeps the visitor rows and writes them with the next successful one", async () => {
+		const t = setup({ config: on, results: [read([line("example.com")])] });
+		await t.service.start();
+		t.store.failing = true;
+		await t.service.read();
+		await t.service.flush();
+		t.store.failing = false;
+		t.advance(MINUTE);
+		await t.service.flush();
+		assert.equal(t.store.flushed.length, 1);
+		assert.equal(t.store.flushed[0].visitors.length, 1);
+	});
+
+	it("visitor rows of a batch older than 10 minutes are dropped with it", async () => {
+		const t = setup({ config: on, results: [read([line("example.com")])] });
+		await t.service.start();
+		t.store.failing = true;
+		await t.service.read();
+		await t.service.flush();
+		t.advance(10 * MINUTE);
+		await t.service.flush();
+		t.store.failing = false;
+		await t.service.flush();
+		assert.equal(t.store.flushed.length, 0, "nothing left to write");
+		assert.equal(t.service.status().dropped_requests, 1);
+	});
+});
+
+describe("traffic state meta", () => {
+	const fakeRow = (initial) => {
+		let meta = initial;
+		return {
+			read: () => Promise.resolve(meta === undefined ? undefined : structuredClone(meta)),
+			write: (next) => {
+				meta = structuredClone(next);
+				return Promise.resolve();
+			},
+			get: () => meta,
+		};
+	};
+	const box = { encrypt: (v) => `enc:${v}`, decrypt: (v) => v.slice(4) };
+
+	it("saving the reader position keeps the visitor key, writing the key keeps the position", async () => {
+		const row = fakeRow(undefined);
+		const meta = createStateMeta(row);
+		assert.equal(await meta.loadState(), null);
+		await meta.saveState({ inode: 3, offset: 10 });
+		const first = await loadVisitorKey({ readMeta: meta.readMeta, writeMeta: meta.writeMeta, box });
+		assert.equal(first.created, true);
+		assert.equal(row.get().inode, 3);
+		assert.equal(row.get().offset, 10);
+		const stored = row.get().visitor_key;
+		assert.equal(typeof stored, "string");
+		await meta.saveState({ inode: 3, offset: 20 });
+		assert.deepEqual(row.get(), { inode: 3, offset: 20, visitor_key: stored });
+		assert.deepEqual(await meta.loadState(), { inode: 3, offset: 20 });
+		const again = await loadVisitorKey({ readMeta: meta.readMeta, writeMeta: meta.writeMeta, box });
+		assert.equal(again.created, false);
+		assert.ok(again.key.equals(first.key));
+	});
+
+	it("the key write only takes visitor_key and reads the current meta first", async () => {
+		const row = fakeRow({ inode: 1, offset: 5 });
+		const meta = createStateMeta(row);
+		await meta.writeMeta({ inode: 0, offset: 0, visitor_key: "k" });
+		assert.deepEqual(row.get(), { inode: 1, offset: 5, visitor_key: "k" });
 	});
 });
 
