@@ -4,8 +4,11 @@ import https from "node:https";
 const MAX_BODY = 64 * 1024 * 1024;
 const NEWEST_LIMIT = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const TRAILING_SLASHES = /\/+$/u;
+const LEADING_PLUS = /^\+/u;
+const DURATION_PART = /^(?<num>\d+(?:\.\d+)?|\.\d+)(?<unit>ns|us|µs|ms|h|m|s)/u;
 
-const decisionsUrl = (apiUrl) => `${String(apiUrl).replace(/\/+$/u, "")}/v1/decisions`;
+const decisionsUrl = (apiUrl) => `${String(apiUrl).replace(TRAILING_SLASHES, "")}/v1/decisions`;
 
 const parseBody = (text) => {
 	let data;
@@ -23,20 +26,96 @@ const parseBody = (text) => {
 	return data;
 };
 
-const fetchPlain = async (conf, fetchFn, timeoutMs) => {
-	let res;
+const failure = (err) => {
+	if (err?.tooLarge) {
+		return new Error("CrowdSec response is too large");
+	}
+	if (err?.name === "TimeoutError" || err?.name === "AbortError" || err?.message === "timed out") {
+		return new Error("CrowdSec request failed: timed out");
+	}
+	return new Error(`CrowdSec request failed: ${err?.cause?.code ?? err?.code ?? err?.name ?? "error"}`);
+};
+
+const deadline = (ms) => {
+	const controller = new AbortController();
+	const timer = setTimeout(
+		() => controller.abort(Object.assign(new Error("timed out"), { name: "TimeoutError" })),
+		ms,
+	);
+	return { signal: controller.signal, clear: () => clearTimeout(timer) };
+};
+
+const tooLarge = () => Object.assign(new Error("too large"), { tooLarge: true });
+
+/**
+ * Collects an async iterable of chunks into a string, failing past maxBytes or when the signal aborts.
+ * @param {AsyncIterable<Uint8Array | Buffer | string>} body
+ * @param {{ maxBytes?: number, signal?: AbortSignal }} [opts]
+ * @returns {Promise<string>}
+ */
+export const readLimited = async (body, { maxBytes = MAX_BODY, signal } = {}) => {
+	const iterator = body[Symbol.asyncIterator]();
+	let onAbort;
+	const aborted = new Promise((_, reject) => {
+		onAbort = () => reject(signal.reason ?? Object.assign(new Error("timed out"), { name: "TimeoutError" }));
+		if (signal?.aborted) {
+			onAbort();
+		} else {
+			signal?.addEventListener("abort", onAbort, { once: true });
+		}
+	});
+	aborted.catch(() => undefined);
+	const chunks = [];
+	let size = 0;
 	try {
-		res = await fetchFn(decisionsUrl(conf.apiUrl), {
-			headers: { "X-Api-Key": conf.apiKey, Accept: "application/json" },
-			signal: AbortSignal.timeout(timeoutMs),
-		});
+		for (;;) {
+			const next = await (signal ? Promise.race([iterator.next(), aborted]) : iterator.next());
+			if (next.done) {
+				break;
+			}
+			const chunk = typeof next.value === "string" ? Buffer.from(next.value) : next.value;
+			size += chunk.length;
+			if (size > maxBytes) {
+				throw tooLarge();
+			}
+			chunks.push(chunk);
+		}
 	} catch (err) {
-		throw new Error(`CrowdSec request failed: ${err?.cause?.code ?? err?.name ?? "error"}`);
+		iterator.return?.()?.catch?.(() => undefined);
+		throw err;
+	} finally {
+		signal?.removeEventListener("abort", onAbort);
 	}
-	if (!res.ok) {
-		throw new Error(`CrowdSec answered with status ${res.status}`);
+	return Buffer.concat(chunks).toString("utf8");
+};
+
+const fetchPlain = async (conf, fetchFn, timeoutMs) => {
+	const { signal, clear } = deadline(timeoutMs);
+	let text;
+	try {
+		const res = await fetchFn(decisionsUrl(conf.apiUrl), {
+			headers: { "X-Api-Key": conf.apiKey, Accept: "application/json" },
+			signal,
+		});
+		if (!res.ok) {
+			res.body?.cancel?.()?.catch?.(() => undefined);
+			throw Object.assign(new Error("status"), { status: res.status });
+		}
+		const length = Number(res.headers?.get?.("content-length"));
+		if (length > MAX_BODY) {
+			res.body?.cancel?.()?.catch?.(() => undefined);
+			throw tooLarge();
+		}
+		text = res.body ? await readLimited(res.body, { signal }) : await res.text();
+	} catch (err) {
+		if (err.status) {
+			throw new Error(`CrowdSec answered with status ${err.status}`);
+		}
+		throw failure(err);
+	} finally {
+		clear();
 	}
-	return parseBody(await res.text());
+	return parseBody(text);
 };
 
 const readCredentialFile = async (path, label) => {
@@ -57,40 +136,29 @@ const fetchTls = async (conf, timeoutMs) => {
 	if (url.protocol !== "https:") {
 		throw new Error("CrowdSec TLS authentication needs an https API URL");
 	}
+	const { signal, clear } = deadline(timeoutMs);
 	return new Promise((resolve, reject) => {
 		const req = https.request(
 			url,
-			{ method: "GET", cert, key, headers: { Accept: "application/json" }, timeout: timeoutMs },
+			{ method: "GET", cert, key, headers: { Accept: "application/json" }, timeout: timeoutMs, signal },
 			(res) => {
 				if (res.statusCode < 200 || res.statusCode > 299) {
 					res.resume();
 					reject(new Error(`CrowdSec answered with status ${res.statusCode}`));
 					return;
 				}
-				const chunks = [];
-				let size = 0;
-				res.on("data", (chunk) => {
-					size += chunk.length;
-					if (size > MAX_BODY) {
-						req.destroy(new Error("CrowdSec response is too large"));
-						return;
-					}
-					chunks.push(chunk);
-				});
-				res.on("end", () => {
-					try {
-						resolve(parseBody(Buffer.concat(chunks).toString("utf8")));
-					} catch (err) {
-						reject(err);
-					}
-				});
-				res.on("error", () => reject(new Error("CrowdSec response failed")));
+				readLimited(res, { signal })
+					.then((text) => resolve(parseBody(text)))
+					.catch((err) => {
+						req.destroy();
+						reject(err?.message?.startsWith("CrowdSec") ? err : failure(err));
+					});
 			},
 		);
-		req.on("timeout", () => req.destroy(new Error("CrowdSec request timed out")));
-		req.on("error", (err) => reject(new Error(`CrowdSec request failed: ${err.code ?? err.message}`)));
+		req.on("timeout", () => req.destroy(new Error("timed out")));
+		req.on("error", (err) => reject(failure(err)));
 		req.end();
-	});
+	}).finally(clear);
 };
 
 /**
@@ -116,16 +184,16 @@ export const parseGoDuration = (text) => {
 		return 0;
 	}
 	let total = 0;
-	let rest = str.replace(/^\+/u, "");
+	let rest = str.replace(LEADING_PLUS, "");
 	while (rest !== "") {
-		const m = /^(\d+(?:\.\d+)?|\.\d+)(ns|us|µs|ms|h|m|s)/u.exec(rest);
+		const m = DURATION_PART.exec(rest);
 		if (!m) {
 			return 0;
 		}
-		total += Number(m[1]) * UNITS[m[2]];
+		total += Number(m.groups.num) * UNITS[m.groups.unit];
 		rest = rest.slice(m[0].length);
 	}
-	return Math.floor(total);
+	return Number.isFinite(total) ? Math.min(Math.floor(total), Number.MAX_SAFE_INTEGER) : 0;
 };
 
 const countBy = (list, pick, label) => {
@@ -150,7 +218,7 @@ const countBy = (list, pick, label) => {
  * @param {Map<number, number>} firstSeen
  */
 export const summariseDecisions = (list, now, geoLookup, firstSeen) => {
-	const items = Array.isArray(list) ? list : [];
+	const items = Array.isArray(list) ? list.filter((d) => d && typeof d === "object") : [];
 	let added = 0;
 	for (const d of items) {
 		const seen = firstSeen?.get(d.id);
@@ -158,7 +226,16 @@ export const summariseDecisions = (list, now, geoLookup, firstSeen) => {
 			added++;
 		}
 	}
-	const country = (d) => (d.scope?.toLowerCase() === "ip" ? (geoLookup?.(d.value) ?? null) : null);
+	const cache = new Map();
+	const country = (d) => {
+		if (d.scope?.toLowerCase() !== "ip") {
+			return null;
+		}
+		if (!cache.has(d.value)) {
+			cache.set(d.value, geoLookup?.(d.value) ?? null);
+		}
+		return cache.get(d.value);
+	};
 	const newest = items
 		.toSorted((a, b) => (b.id ?? 0) - (a.id ?? 0))
 		.slice(0, NEWEST_LIMIT)
@@ -175,11 +252,9 @@ export const summariseDecisions = (list, now, geoLookup, firstSeen) => {
 		}));
 	const countryCounts = new Map();
 	for (const d of items) {
-		if (d.scope?.toLowerCase() === "ip") {
-			const c = geoLookup?.(d.value) ?? null;
-			if (c) {
-				countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
-			}
+		const c = country(d);
+		if (c) {
+			countryCounts.set(c, (countryCounts.get(c) ?? 0) + 1);
 		}
 	}
 	return {

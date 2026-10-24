@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { isCrowdsecConfigured, parseCrowdsecConf } from "../lib/crowdsec/config.js";
-import { fetchDecisions, parseGoDuration, summariseDecisions } from "../lib/crowdsec/decisions.js";
+import { fetchDecisions, parseGoDuration, readLimited, summariseDecisions } from "../lib/crowdsec/decisions.js";
 
 const example = readFileSync(new URL("../../rootfs/etc/crowdsec.conf.example", import.meta.url), "utf8");
 
@@ -262,5 +262,101 @@ describe("fetchDecisions (TLS client certificate)", () => {
 		} finally {
 			server.close();
 		}
+	});
+});
+
+describe("body handling", () => {
+	const conf = { apiUrl: "http://lapi:8080", apiKey: "SECRETKEY", useTls: false };
+	const respond =
+		(body, headers = {}) =>
+		async () => ({
+			ok: true,
+			status: 200,
+			headers: new Headers(headers),
+			body,
+		});
+
+	it("turns a stalled body into a timed out error", async () => {
+		const stalled = (async function* () {
+			yield Buffer.from("[");
+			await new Promise(() => undefined);
+		})();
+		await assert.rejects(fetchDecisions(conf, { fetch: respond(stalled), timeoutMs: 50 }), (err) => {
+			assert.equal(err.message, "CrowdSec request failed: timed out");
+			return true;
+		});
+	});
+
+	it("rejects an oversize content-length", async () => {
+		const fetchFn = respond(
+			(async function* () {
+				yield Buffer.from("[]");
+			})(),
+			{ "content-length": String(65 * 1024 * 1024) },
+		);
+		await assert.rejects(fetchDecisions(conf, { fetch: fetchFn }), /CrowdSec response is too large/u);
+	});
+
+	it("rejects an oversize streamed body", async () => {
+		const chunk = Buffer.alloc(8 * 1024 * 1024, 32);
+		const big = (async function* () {
+			for (let i = 0; i < 9; i++) {
+				yield chunk;
+			}
+		})();
+		await assert.rejects(fetchDecisions(conf, { fetch: respond(big) }), /CrowdSec response is too large/u);
+	});
+
+	it("readLimited enforces the limit and the signal", async () => {
+		const parts = (async function* () {
+			yield Buffer.from("abc");
+			yield Buffer.from("def");
+		})();
+		await assert.rejects(readLimited(parts, { maxBytes: 5 }), (err) => err.tooLarge === true);
+		const ok = (async function* () {
+			yield "ab";
+			yield Buffer.from("cd");
+		})();
+		assert.equal(await readLimited(ok, { maxBytes: 4 }), "abcd");
+		const stalled = (async function* () {
+			await new Promise(() => undefined);
+		})();
+		const controller = new AbortController();
+		setTimeout(() => controller.abort(Object.assign(new Error("x"), { name: "TimeoutError" })), 30);
+		await assert.rejects(readLimited(stalled, { signal: controller.signal }), (err) => err.name === "TimeoutError");
+	});
+});
+
+describe("hardening", () => {
+	it("strips inline comments, export, single quotes and CRLF", () => {
+		const conf = parseCrowdsecConf(
+			"export ENABLED=true # on\r\nAPI_URL=http://x:8080 # lapi\r\nAPI_KEY='a #b'\r\nTLS_CLIENT_CERT=/c.crt\r\n",
+		);
+		assert.equal(conf.enabled, true);
+		assert.equal(conf.apiUrl, "http://x:8080");
+		assert.equal(conf.apiKey, "a #b");
+		assert.equal(conf.certFile, "/c.crt");
+	});
+
+	it("caps absurd durations", () => {
+		assert.equal(parseGoDuration("9".repeat(400) + "h"), 0);
+		assert.ok(parseGoDuration("99999999999999999999h") <= Number.MAX_SAFE_INTEGER);
+	});
+
+	it("looks each IP up once and skips null entries", () => {
+		let calls = 0;
+		const geo = () => {
+			calls++;
+			return "US";
+		};
+		const s = summariseDecisions(
+			[null, { id: 1, scope: "Ip", value: "1.1.1.1", scenario: "a" }],
+			Date.now(),
+			geo,
+			new Map(),
+		);
+		assert.equal(calls, 1);
+		assert.equal(s.total, 1);
+		assert.deepEqual(s.countries, [{ country: "US", count: 1 }]);
 	});
 });

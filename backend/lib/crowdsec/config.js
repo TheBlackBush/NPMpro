@@ -1,11 +1,16 @@
 /** Default location of the bouncer config inside the container (copied from crowdsec.conf.example by start.sh). */
 export const CROWDSEC_CONF_PATH = "/data/crowdsec/crowdsec.conf";
 
-const unquote = (value) => {
-	if (value.length >= 2 && (value[0] === '"' || value[0] === "'") && value.at(-1) === value[0]) {
-		return value.slice(1, -1);
+const INLINE_COMMENT = /\s+#.*$/u;
+const LINE_BREAK = /\r?\n/u;
+const EXPORT_PREFIX = /^export\s+/u;
+
+const parseValue = (raw) => {
+	if (raw[0] === '"' || raw[0] === "'") {
+		const end = raw.indexOf(raw[0], 1);
+		return end > 0 ? raw.slice(1, end) : raw;
 	}
-	return value;
+	return raw.replace(INLINE_COMMENT, "").trim();
 };
 
 /**
@@ -15,8 +20,8 @@ const unquote = (value) => {
  */
 export const parseCrowdsecConf = (text) => {
 	const values = {};
-	for (const raw of String(text ?? "").split(/\r?\n/u)) {
-		const line = raw.trim();
+	for (const raw of String(text ?? "").split(LINE_BREAK)) {
+		const line = raw.trim().replace(EXPORT_PREFIX, "");
 		if (line === "" || line.startsWith("#")) {
 			continue;
 		}
@@ -24,7 +29,7 @@ export const parseCrowdsecConf = (text) => {
 		if (eq < 1) {
 			continue;
 		}
-		values[line.slice(0, eq).trim().toUpperCase()] = unquote(line.slice(eq + 1).trim());
+		values[line.slice(0, eq).trim().toUpperCase()] = parseValue(line.slice(eq + 1).trim());
 	}
 	const isTrue = (key) => (values[key] ?? "").toLowerCase() === "true";
 	return {
