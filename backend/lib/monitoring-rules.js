@@ -1,0 +1,101 @@
+const MONITORING_DEFAULTS = { traffic_enabled: false, retention_days: 30, show_ips: false };
+const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
+const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
+const RETENTION_MIN = 7;
+const RETENTION_MAX = 365;
+
+const withoutNulls = (stored) =>
+	Object.fromEntries(Object.entries(stored ?? {}).filter(([, value]) => value !== null && value !== undefined));
+
+const isSet = (raw) => raw !== undefined && raw !== "";
+
+/**
+ * Stored monitoring settings with env vars layered on top (env wins per field)
+ *
+ * @param   {Object}  stored  settings meta
+ * @param   {Object}  env     process.env or a test object
+ * @returns {{values: Object, locked: string[]}}
+ */
+const mergeMonitoringConfig = (stored, env) => {
+	const values = { ...MONITORING_DEFAULTS, ...withoutNulls(stored) };
+	const locked = [];
+	if (env.LOGROTATE === "true") {
+		values.traffic_enabled = true;
+		locked.push("traffic_enabled");
+	} else if (isSet(env.TRAFFIC_STATS)) {
+		values.traffic_enabled = env.TRAFFIC_STATS === "true";
+		locked.push("traffic_enabled");
+	}
+	if (isSet(env.TRAFFIC_RETENTION_DAYS) && /^\d+$/u.test(env.TRAFFIC_RETENTION_DAYS.trim())) {
+		const days = Number.parseInt(env.TRAFFIC_RETENTION_DAYS, 10);
+		values.retention_days = Math.min(RETENTION_MAX, Math.max(RETENTION_MIN, days));
+		locked.push("retention_days");
+	}
+	if (isSet(env.TRAFFIC_SHOW_IPS)) {
+		values.show_ips = env.TRAFFIC_SHOW_IPS === "true";
+		locked.push("show_ips");
+	}
+	return { values, locked };
+};
+
+/**
+ * Space separated edition names, unknown ones dropped, duplicates removed
+ *
+ * @param   {string}  raw
+ * @returns {string[]}
+ */
+const parseEditions = (raw) => [
+	...new Set(
+		String(raw)
+			.split(/\s+/u)
+			.filter((name) => GEOIP_EDITIONS.includes(name)),
+	),
+];
+
+/**
+ * Stored GeoIP settings with env vars layered on top (env wins per field)
+ *
+ * @param   {Object}  stored  settings meta, license_key decrypted or absent
+ * @param   {Object}  env     process.env or a test object
+ * @returns {{values: Object, locked: string[]}}
+ */
+const mergeGeoipConfig = (stored, env) => {
+	const values = { ...GEOIP_DEFAULTS, ...withoutNulls(stored) };
+	const locked = [];
+	if (isSet(env.GEOIP_ACCOUNT_ID)) {
+		values.account_id = env.GEOIP_ACCOUNT_ID.trim();
+		locked.push("account_id");
+	}
+	if (isSet(env.GEOIP_LICENSE_KEY)) {
+		values.license_key = env.GEOIP_LICENSE_KEY.trim();
+		locked.push("license_key");
+	}
+	if (isSet(env.GEOIP_EDITIONS)) {
+		const editions = parseEditions(env.GEOIP_EDITIONS);
+		if (editions.length > 0) {
+			values.editions = editions;
+			locked.push("editions");
+		}
+	}
+	return { values, locked };
+};
+
+/**
+ * Stored GeoIP meta without the license key in any form
+ *
+ * @param   {Object}  [meta]
+ * @returns {Object}  meta without license_key, plus license_key_set
+ */
+const sanitizeGeoipMeta = (meta) => {
+	const { license_key: key, ...rest } = meta ?? {};
+	return { ...rest, license_key_set: Boolean(key) };
+};
+
+export {
+	GEOIP_DEFAULTS,
+	GEOIP_EDITIONS,
+	MONITORING_DEFAULTS,
+	mergeGeoipConfig,
+	mergeMonitoringConfig,
+	sanitizeGeoipMeta,
+};

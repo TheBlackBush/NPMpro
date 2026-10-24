@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import { it } from "node:test";
+import { mergeGeoipConfig, mergeMonitoringConfig } from "../lib/monitoring-rules.js";
+
+it("monitoring defaults and env locks", () => {
+	assert.deepEqual(mergeMonitoringConfig({}, {}).values, {
+		traffic_enabled: false,
+		retention_days: 30,
+		show_ips: false,
+	});
+	const a = mergeMonitoringConfig({ traffic_enabled: false }, { LOGROTATE: "true" });
+	assert.equal(a.values.traffic_enabled, true);
+	assert.deepEqual(a.locked, ["traffic_enabled"]);
+	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "400" }).values.retention_days, 365);
+	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "3" }).values.retention_days, 7);
+	assert.deepEqual(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "x", TRAFFIC_SHOW_IPS: "" }).locked, []);
+});
+
+it("monitoring env switches lock on and off", () => {
+	const on = mergeMonitoringConfig({}, { TRAFFIC_STATS: "true", TRAFFIC_SHOW_IPS: "true" });
+	assert.equal(on.values.traffic_enabled, true);
+	assert.equal(on.values.show_ips, true);
+	assert.deepEqual(on.locked, ["traffic_enabled", "show_ips"]);
+	const off = mergeMonitoringConfig({ traffic_enabled: true }, { TRAFFIC_STATS: "false" });
+	assert.equal(off.values.traffic_enabled, false);
+	assert.deepEqual(off.locked, ["traffic_enabled"]);
+	assert.equal(
+		mergeMonitoringConfig({ traffic_enabled: true }, { TRAFFIC_STATS: "false", LOGROTATE: "true" }).values
+			.traffic_enabled,
+		true,
+	);
+	assert.equal(mergeMonitoringConfig({ retention_days: 90, show_ips: null }, {}).values.retention_days, 90);
+});
+
+it("geoip editions from env, unknown ones dropped", () => {
+	const g = mergeGeoipConfig({}, { GEOIP_EDITIONS: "GeoLite2-Country GeoLite2-City Bogus" });
+	assert.deepEqual(g.values.editions, ["GeoLite2-Country", "GeoLite2-City"]);
+	assert.deepEqual(g.locked, ["editions"]);
+	assert.deepEqual(mergeGeoipConfig({}, {}).values.editions, ["GeoLite2-Country", "GeoLite2-ASN"]);
+	assert.deepEqual(mergeGeoipConfig({}, { GEOIP_EDITIONS: "Bogus" }).locked, []);
+});
+
+it("geoip credentials from env lock and override", () => {
+	const g = mergeGeoipConfig(
+		{ account_id: "1", license_key: "stored" },
+		{ GEOIP_ACCOUNT_ID: "42", GEOIP_LICENSE_KEY: "envkey", GEOIP_ACCOUNT_ID_X: "" },
+	);
+	assert.equal(g.values.account_id, "42");
+	assert.equal(g.values.license_key, "envkey");
+	assert.deepEqual(g.locked, ["account_id", "license_key"]);
+	assert.equal(mergeGeoipConfig({}, { GEOIP_LICENSE_KEY: "" }).values.license_key, undefined);
+});

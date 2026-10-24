@@ -369,6 +369,27 @@
 				"$ref": "./paths/settings/oidc/test/post.json"
 			}
 		},
+		"/settings/monitoring": {
+			"get": {
+				"$ref": "./paths/settings/monitoring/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/monitoring/put.json"
+			}
+		},
+		"/settings/geoip": {
+			"get": {
+				"$ref": "./paths/settings/geoip/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/geoip/put.json"
+			}
+		},
+		"/settings/geoip/update": {
+			"post": {
+				"$ref": "./paths/settings/geoip/update/post.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"
