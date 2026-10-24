@@ -143,8 +143,8 @@ const fetchTls = async (conf, timeoutMs) => {
 			{ method: "GET", cert, key, headers: { Accept: "application/json" }, timeout: timeoutMs, signal },
 			(res) => {
 				if (res.statusCode < 200 || res.statusCode > 299) {
-					res.resume();
 					reject(new Error(`CrowdSec answered with status ${res.statusCode}`));
+					req.destroy();
 					return;
 				}
 				readLimited(res, { signal })
