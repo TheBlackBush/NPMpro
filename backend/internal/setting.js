@@ -6,6 +6,7 @@ import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
 import { sanitizeOidcRow } from "./oidc-setting-rules.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 // The oidc and geoip rows hold encrypted secrets, which no API returns
 const sanitizeRow = (row) => {
@@ -51,19 +52,22 @@ const internalSetting = {
 				await writeFile("/data/html/index.html", row.meta.html, { encoding: "utf8" });
 			}
 
-			try {
-				await internalNginx.deleteConfig("default");
-				await internalNginx.generateConfig("default", row);
-				await internalNginx.test();
-				await internalNginx.reload();
-			} catch (err) {
-				await internalNginx.deleteConfig("default");
-				await internalNginx.test();
-				await internalNginx.reload();
-				throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, {
-					cause: err,
-				});
-			}
+			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written
+			await runtimeExclusive(async () => {
+				try {
+					await internalNginx.deleteConfig("default");
+					await internalNginx.generateConfig("default", row);
+					await internalNginx.test();
+					await internalNginx.reload();
+				} catch (err) {
+					await internalNginx.deleteConfig("default");
+					await internalNginx.test();
+					await internalNginx.reload();
+					throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, {
+						cause: err,
+					});
+				}
+			});
 		}
 		return row;
 	},

@@ -14,7 +14,8 @@ import {
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
-import { runtimeExclusive, setRuntimeApply } from "./internal/runtime-setting.js";
+import { runtimeExclusive } from "./internal/runtime-queue.js";
+import { setRuntimeApply } from "./internal/runtime-setting.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";

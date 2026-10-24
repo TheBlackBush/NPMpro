@@ -10,6 +10,7 @@ import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
 
@@ -23,16 +24,25 @@ const internalNginx = {
 	 * - IF BAD: save the offline status and rename the config
 	 * - then reload nginx
 	 *
+	 * Runs in the runtime settings queue: a runtime save cannot test or restore host configs meanwhile, and the
+	 * render reads the values of the last finished save.
+	 *
 	 * @param   {Object|String}  model
 	 * @param   {String}         host_type
 	 * @param   {Object}         host
 	 * @returns {Promise}
 	 */
-	configure: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
-		let status = {};
-
+	configure: async (model, host_type, host, options = {}) => {
 		// skip disabled hosts
-		if (!host.enabled) return status;
+		if (!host.enabled) return {};
+		return await runtimeExclusive(() => internalNginx.configureNow(model, host_type, host, options));
+	},
+
+	/**
+	 * configure without the queue; only for code that runs in the runtime settings queue already
+	 */
+	configureNow: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
+		let status = {};
 
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
@@ -327,6 +337,23 @@ const internalNginx = {
 		logger.debug("Wrote config:", filename);
 		return true;
 	},
+
+	/**
+	 * Deletes a host's config (disable, delete) and reloads nginx, in the runtime settings queue (a runtime save
+	 * cannot put the config back meanwhile)
+	 *
+	 * @param   {String}    host_type
+	 * @param   {Object}    host
+	 * @param   {Object}    [options]
+	 * @param   {Function}  [options.also]  runs after the delete, before the reload (access list files)
+	 * @returns {Promise}
+	 */
+	removeConfig: (host_type, host, { also } = {}) =>
+		runtimeExclusive(async () => {
+			await internalNginx.deleteConfig(host_type, host);
+			await also?.();
+			await internalNginx.reload();
+		}),
 
 	/**
 	 * @param   {String}  host_type

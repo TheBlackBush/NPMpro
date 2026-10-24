@@ -31,6 +31,7 @@ const runtimeView = (group, cfg) => ({
  * @param   {Function}  [deps.findCertificate]   (id) => { id, provider } | undefined
  * @param   {Function}  [deps.onSaved]           (group, { values, locked }) => void, after the save with the merged
  *                                               values (cache refresh)
+ * @param   {Function}  [deps.serialize]         (fn) => Promise, the queue the updates run in (default: its own)
  * @param   {Object}    [deps.env]
  * @param   {Object}    [deps.opts]              passed to mergeRuntimeConfig
  * @param   {Object}    [deps.log]
@@ -42,11 +43,11 @@ const createRuntimeUpdater = ({
 	getApply,
 	findCertificate = async (id) => ({ id, provider: "letsencrypt" }),
 	onSaved = () => {},
+	serialize = createSerializer(),
 	env,
 	opts,
 	log = logger,
 }) => {
-	const serialize = createSerializer();
 	const envOf = () => env ?? process.env;
 
 	const update = async (group, body) => {

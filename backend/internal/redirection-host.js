@@ -186,8 +186,7 @@ const internalRedirectionHost = {
 
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("redirection_host", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("redirection_host", row);
 		} finally {
 			// Add to audit log
 			await internalAuditLog.add(access, {
@@ -274,8 +273,7 @@ const internalRedirectionHost = {
 		let savedRow;
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("redirection_host", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("redirection_host", row);
 		} finally {
 			savedRow = await internalRedirectionHost.get(access, { id: row.id });
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import Ajv from "ajv/dist/2020.js";
+import { runtimeExclusive, runtimeQueue } from "../internal/runtime-queue.js";
 import { createRuntimeUpdater, runtimeView } from "../internal/runtime-update.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig, RUNTIME_GROUPS } from "../lib/runtime-rules.js";
@@ -304,4 +305,53 @@ it("passes the merged previous values (env-locked keys included) to apply inside
 		seen.map((entry) => entry.overlap),
 		[false, false],
 	);
+});
+
+it("a host config write during a runtime save waits for it and renders with the values the save left", async () => {
+	for (const saveFails of [false, true]) {
+		const env = BOOT_ENV;
+		const store = fakeStore();
+		const config = createRuntimeConfig({ env, readStored: store.readStored });
+		await config.loadRuntimeConfig();
+		const order = [];
+		// the host config file: the save renders it (stapling), the host edit (configure) renders it too
+		let hostConf = "initial";
+		let releaseApply;
+		let applyStarted;
+		const started = new Promise((resolve) => {
+			applyStarted = resolve;
+		});
+		const apply = async (_group, next, _prev, options) => {
+			order.push(options?.revert ? "revert" : "apply");
+			hostConf = `save stapling ${next.ocsp_stapling}`;
+			if (options?.revert) return;
+			applyStarted();
+			await new Promise((resolve) => {
+				releaseApply = resolve;
+			});
+		};
+		const update = updater(
+			{
+				...store,
+				saveStored: saveFails ? () => Promise.reject(new Error("db down")) : store.saveStored,
+			},
+			{ apply, env, serialize: runtimeQueue, onSaved: (group, cfg) => config.prime(group, cfg) },
+		);
+		const saved = update("certificates", { ocsp_stapling: true }).catch((err) => err);
+		await started;
+		// what internalNginx.configure does: runs in the queue, renders with effectiveEnv()
+		const edited = runtimeExclusive(async () => {
+			order.push("configure");
+			hostConf = `host edit stapling ${config.effectiveEnv().ACME_OCSP_STAPLING}`;
+		});
+		await sleep(10);
+		assert.deepEqual(order, ["apply"]);
+		releaseApply();
+		const result = await saved;
+		await edited;
+		assert.deepEqual(order, saveFails ? ["apply", "revert", "configure"] : ["apply", "configure"]);
+		if (saveFails) assert.equal(result.message, "db down");
+		// the host edit is the last write and follows the values in effect after the save
+		assert.equal(hostConf, `host edit stapling ${saveFails ? "false" : "true"}`);
+	}
 });

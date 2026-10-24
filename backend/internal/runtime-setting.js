@@ -4,6 +4,7 @@ import { isRuntimeGroup } from "../lib/runtime-rules.js";
 import certificateModel from "../models/certificate.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
+import { runtimeQueue } from "./runtime-queue.js";
 import { createRuntimeUpdater, runtimeView } from "./runtime-update.js";
 
 const NAMES = {
@@ -49,19 +50,12 @@ const updateRuntimeStored = createRuntimeUpdater({
 	getApply: () => applyHook,
 	findCertificate,
 	onSaved: (group, cfg) => prime(group, cfg),
+	serialize: runtimeQueue,
 });
 
 const assertGroup = (group) => {
 	if (!isRuntimeGroup(group)) throw new errs.ItemNotFoundError(group);
 };
-
-/**
- * Runs fn in the runtime settings queue (no save runs at the same time)
- *
- * @param   {Function}  fn
- * @returns {Promise<*>}
- */
-const runtimeExclusive = (fn) => updateRuntimeStored.exclusive(fn);
 
 const internalRuntimeSetting = {
 	/**
@@ -94,5 +88,5 @@ const internalRuntimeSetting = {
 	},
 };
 
-export { runtimeExclusive, setRuntimeApply };
+export { setRuntimeApply };
 export default internalRuntimeSetting;

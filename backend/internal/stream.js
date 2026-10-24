@@ -180,8 +180,7 @@ const internalStream = {
 
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("stream", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("stream", row);
 		} finally {
 			// Add to audit log
 			await internalAuditLog.add(access, {
@@ -260,8 +259,7 @@ const internalStream = {
 		let savedRow;
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("stream", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("stream", row);
 		} finally {
 			savedRow = await internalStream.get(access, { id: row.id });
 

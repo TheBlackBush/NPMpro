@@ -27,7 +27,7 @@ import { getValidationSchema } from "../schema/index.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
-import { runtimeExclusive } from "./runtime-setting.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 const cnPattern = /\bCN=(?<cn>[^\n]+)/iu;
 const renewalServerPattern = /^server = (?<server>.+)$/mu;
