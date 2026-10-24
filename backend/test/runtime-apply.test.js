@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import nodeFs, { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,8 +12,8 @@ import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
 import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
-import { createHostRenderer } from "../lib/runtime-hosts.js";
-import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
+import { createHostRenderer, describeHosts } from "../lib/runtime-hosts.js";
+import { mergeRuntimeConfig, rulesOf, UPSTREAM } from "../lib/runtime-rules.js";
 import utils from "../lib/utils.js";
 
 const LE = "https://acme-v02.api.letsencrypt.org/directory";
@@ -27,7 +28,7 @@ const EACCES = /EACCES/u;
 const quietLog = () => {
 	const lines = [];
 	const add = (line) => lines.push(line);
-	return { lines, warn: add, error: add, info: add };
+	return { lines, warn: add, error: add, info: add, debug: (line) => add(`debug: ${line}`) };
 };
 
 const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
@@ -678,7 +679,7 @@ const fakeClock = () => {
 	};
 };
 
-const networkSetup = async ({ fetchError, nginx, stored = {} } = {}) => {
+const networkSetup = async ({ fetchError, nginx, cfNginxFake, stored = {} } = {}) => {
 	const { dir, paths } = await setup();
 	paths.ipRangesConf = path.join(dir, "ip_ranges.conf");
 	await writeFile(paths.ipRangesConf, "old ranges\n");
@@ -686,7 +687,8 @@ const networkSetup = async ({ fetchError, nginx, stored = {} } = {}) => {
 	await config.loadRuntimeConfig();
 	const clock = fakeClock();
 	const fetches = [];
-	const cfNginx = nginxFake();
+	const cfNginx = cfNginxFake ?? nginxFake();
+	const cfLog = quietLog();
 	const ipRanges = createIpRanges({
 		nginx: cfNginx,
 		fetchText: (url) => {
@@ -695,12 +697,12 @@ const networkSetup = async ({ fetchError, nginx, stored = {} } = {}) => {
 			return Promise.resolve(url.endsWith("v4") ? CF_V4 : CF_V6);
 		},
 		effectiveEnv: config.effectiveEnv,
-		log: quietLog(),
+		log: cfLog,
 		path: paths.ipRangesConf,
 		clock,
 	});
 	const a = applier(paths, { ipRanges, effectiveEnv: config.effectiveEnv, ...(nginx ? { nginx } : {}) });
-	return { ...a, paths, config, clock, fetches, ipRanges, cfNginx };
+	return { ...a, paths, config, clock, fetches, ipRanges, cfNginx, cfLog };
 };
 
 const lines = async (file) => (await readFile(file, "utf8")).split("\n").filter(Boolean);
@@ -1030,4 +1032,174 @@ it("Gravatar off gives the default avatar at the next profile update without con
 
 	const source = await readFile(path.join(import.meta.dirname, "../internal/user.js"), "utf8");
 	assert.equal(source.includes("process.env.DISABLE_GRAVATAR"), false);
+});
+
+// fix round 1
+
+const FRONTEND_UPSTREAM = /const upstreamUrlPattern = \/(?<source>.+)\/u;/u;
+const INJECTIONS = [
+	"http://cu_a;} location ~ x {",
+	"http://a\nb:1",
+	"http://a:1\n",
+	"http://a#b:1",
+	"http://$host:1",
+	"http://cu_$x",
+	"http://a b:1",
+	"http://a'b:1",
+	'http://a"b:1',
+	"http://a\\b:1",
+	"http://cu_x}",
+	"http://cu_x{",
+	"http://a\tb:1",
+];
+const VALID_UPSTREAMS = ["http://a:1", "https://[::1]:8443", "http://cu_name", "https://auth.example:443"];
+
+it("upstream values with whitespace or nginx syntax characters are refused everywhere", async () => {
+	const validate = rulesOf("forward-auth").find((rule) => rule.key === "anubis_upstream").validate;
+	const schema = JSON.parse(
+		await readFile(path.join(import.meta.dirname, "../schema/components/proxy-host-object.json"), "utf8"),
+	);
+	const schemaPattern = new RegExp(schema.properties.npmpro_auth_request_upstream.pattern, "u");
+	const frontend = await readFile(
+		path.join(import.meta.dirname, "../../frontend/src/modules/Validations.jsx"),
+		"utf8",
+	);
+	const frontendSource = frontend.match(FRONTEND_UPSTREAM).groups.source;
+	// the frontend uses the same expression as the backend
+	assert.equal(frontendSource, UPSTREAM.source);
+	const envsSh = await readFile(path.join(import.meta.dirname, "../../rootfs/usr/local/bin/envs.sh"), "utf8");
+	const block = envsSh.slice(
+		envsSh.indexOf("AUTH_REQUEST_UPSTREAM_REGEX="),
+		envsSh.indexOf("unset name value") + "unset name value".length,
+	);
+	const envsAccepts = (value) =>
+		spawnSync("sh", ["-c", block.replace("sleep inf", "exit 3")], {
+			env: { PATH: process.env.PATH, AUTH_REQUEST_ANUBIS_UPSTREAM: value },
+		}).status === 0;
+
+	for (const value of INJECTIONS) {
+		assert.notEqual(validate(value), null, value);
+		assert.equal(UPSTREAM.test(value), false, value);
+		assert.equal(schemaPattern.test(value), false, value);
+		assert.equal(envsAccepts(value), false, value);
+	}
+	for (const value of VALID_UPSTREAMS) {
+		assert.equal(validate(value), null, value);
+		assert.equal(schemaPattern.test(value), true, value);
+		assert.equal(envsAccepts(value), true, value);
+	}
+	assert.equal(schemaPattern.test(""), true);
+	// an env value that is refused is not used (not locked, the stored value or default applies)
+	const merged = mergeRuntimeConfig("forward-auth", {}, { AUTH_REQUEST_ANUBIS_UPSTREAM: INJECTIONS[0] });
+	assert.equal(merged.values.anubis_upstream, "");
+});
+
+it("clearing a forward-auth default refuses the save while proxy hosts still rely on it, before any render", async () => {
+	const { paths } = await setup();
+	const rows = [
+		{ id: 1, enabled: 1, domain_names: ["a.example"], npmpro_auth_request: "anubis", locations: [] },
+		{ id: 2, enabled: 0, domain_names: ["b.example"], npmpro_auth_request: "anubis", locations: [] },
+		{
+			id: 3,
+			enabled: 1,
+			domain_names: ["c.example"],
+			npmpro_auth_request: "anubis",
+			npmpro_auth_request_upstream: "http://own:1",
+			locations: [],
+		},
+		{ id: 4, enabled: 1, domain_names: ["d.example"], npmpro_auth_request: "tinyauth", locations: [] },
+	];
+	const queried = [];
+	const proxyModel = {
+		query: () => ({
+			withGraphFetched: (graph) => {
+				queried.push(graph);
+				return Promise.resolve(rows);
+			},
+		}),
+	};
+	const renders = [];
+	const renderer = createHostRenderer({
+		hostTypes: [
+			[proxyModel, "proxy_host", "locations"],
+			[proxyModel, "redirection_host", "certificate"],
+		],
+		getConfigName: () => "/x",
+		renderConfig: () => {
+			renders.push(1);
+			return Promise.resolve("");
+		},
+	});
+	const a = applier(paths, {
+		proxyHostsUsingDefault: renderer.proxyHostsUsingDefault,
+		renderHosts: () => {
+			renders.push("hosts");
+			return Promise.resolve([]);
+		},
+	});
+	const prev = { ...mergeRuntimeConfig("forward-auth", {}, {}).values, anubis_upstream: "http://anubis:8923" };
+	await assert.rejects(a.applyGroup("forward-auth", { ...prev, anubis_upstream: "" }, prev), {
+		name: "ValidationError",
+		message: "anubis_upstream: still used by proxy hosts without their own upstream: a.example, b.example",
+	});
+	assert.deepEqual(renders, []);
+	assert.deepEqual(queried, ["locations"]);
+	assert.deepEqual(a.nginx.calls, []);
+	// changing it to another value, or clearing one nobody relies on, is fine
+	await a.applyGroup("forward-auth", { ...prev, anubis_upstream: "http://other:1" }, prev);
+	const tiny = { ...prev, tinyauth_upstream: "http://t:1" };
+	await assert.rejects(a.applyGroup("forward-auth", { ...tiny, tinyauth_upstream: "" }, tiny), {
+		message: "tinyauth_upstream: still used by proxy hosts without their own upstream: d.example",
+	});
+	const authelia = { ...prev, authelia_upstream: "http://au:1" };
+	await a.applyGroup("forward-auth", { ...authelia, authelia_upstream: "" }, authelia);
+	assert.equal(
+		describeHosts([1, 2, 3, 4, 5, 6, 7].map((id) => ({ id, domain_names: [`h${id}.example`] }))),
+		"h1.example, h2.example, h3.example, h4.example, h5.example and 2 more",
+	);
+	assert.equal(describeHosts([{ id: 9, domain_names: [] }]), "#9");
+});
+
+it("startup: a failing nginx -t keeps the previous ip_ranges.conf, logs it and still starts the Cloudflare timer", async () => {
+	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored, nginx: nginxFake({ testError: "nginx: [emerg] unrelated host" }) });
+	await assert.rejects(n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values), {
+		message: "nginx: [emerg] unrelated host",
+	});
+	assert.equal(await readFile(n.paths.ipRangesConf, "utf8"), "old ranges\n");
+	assert.equal(n.ipRanges.running(), true);
+	assert.ok(
+		n.log.lines.some(
+			(line) =>
+				line.startsWith(`Could not write ${n.paths.ipRangesConf} at startup`) &&
+				line.endsWith("the previous trusted IP ranges stay in use: nginx: [emerg] unrelated host"),
+		),
+	);
+	// the next tick writes the file again on its own
+	const [{ fn }] = [...n.clock.timers.values()];
+	await fn();
+	assert.ok((await lines(n.paths.ipRangesConf)).includes(CF_LINES[0]));
+});
+
+it("a refresh tick logs only a written file and restores ip_ranges.conf when nginx -t fails", async () => {
+	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored });
+	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
+	await n.ipRanges.refresh();
+	assert.deepEqual(n.cfNginx.calls, []);
+	assert.ok(n.cfLog.lines.includes("debug: Trusted IP ranges unchanged"));
+	assert.equal(n.cfLog.lines.includes("Updated trusted IP ranges"), false);
+
+	const failing = await networkSetup({ stored, cfNginxFake: nginxFake({ testError: "nginx: [emerg] bad" }) });
+	await failing.applyGroup("network", (await failing.config.getRuntimeConfig("network")).values);
+	await writeFile(failing.paths.ipRangesConf, "previous\n");
+	await failing.ipRanges.refresh();
+	assert.equal(await readFile(failing.paths.ipRangesConf, "utf8"), "previous\n");
+	assert.deepEqual(failing.cfNginx.calls, ["test"]);
+	assert.ok(
+		failing.cfLog.lines.some((line) =>
+			line.includes("Could not update the Cloudflare IP ranges: nginx: [emerg] bad"),
+		),
+	);
+	assert.equal(failing.cfLog.lines.includes("Updated trusted IP ranges"), false);
 });

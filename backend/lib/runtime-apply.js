@@ -6,7 +6,9 @@ import { global as logger } from "../logger.js";
 import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
+import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
+import { describeHosts } from "./runtime-hosts.js";
 import { acmeServerOf, appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
 
 const PATHS = {
@@ -181,6 +183,8 @@ const changedKeys = (next, prev) =>
  * @param   {Object}    [deps.ocsp]           { fetch(kind) } fetches the OCSP responses of "acme" or "custom" certificates
  * @param   {Object}    [deps.ipRanges]       lib/ip-ranges instance: { render(env, ranges), ranges(), fetchCloudflare(),
  *                                            start(), stop() }; without it the network settings are only stored
+ * @param   {Function}  [deps.proxyHostsUsingDefault] (provider) => proxy hosts (enabled or not) that use the
+ *                                            provider without their own upstream
  */
 const createRuntimeApplier = ({
 	fs = nodeFs,
@@ -196,6 +200,7 @@ const createRuntimeApplier = ({
 	listCertificates = async () => [],
 	ocsp = { fetch: async () => {} },
 	ipRanges = null,
+	proxyHostsUsingDefault = async () => [],
 } = {}) => {
 	const logged = new Set();
 	const logOnce = (id, message) => {
@@ -323,13 +328,39 @@ const createRuntimeApplier = ({
 		}
 	};
 
+	/**
+	 * Refuses clearing a provider's default upstream while proxy hosts use the provider without their own upstream
+	 * (their configs would get an empty upstream)
+	 */
+	const checkClearedUpstreams = async ({ next, prev, changed }) => {
+		for (const provider of AUTH_REQUEST_PROVIDERS) {
+			const key = `${provider}_upstream`;
+			if (!changed.includes(key) || next[key] || !prev[key]) continue;
+			const hosts = await proxyHostsUsingDefault(provider);
+			if (hosts.length > 0) {
+				throw new errs.ValidationError(
+					`${key}: still used by proxy hosts without their own upstream: ${describeHosts(hosts)}`,
+				);
+			}
+		}
+	};
+
 	const planners = {
+		"forward-auth": (ctx) => (ctx.startup ? {} : { check: () => checkClearedUpstreams(ctx) }),
 		network: async (ctx) => {
 			if (!ipRanges) return {};
 			const { next, changed } = ctx;
 			const ranges = await cloudflareRanges(ctx);
 			const content = await ipRanges.render(effectiveEnv({ network: next }), ranges);
-			const plan = { files: [{ path: paths.ipRangesConf, content, nginx: true }], after: [] };
+			// at startup its own transaction after the timer started: a failing nginx -t keeps the previous file only
+			const file = {
+				path: paths.ipRangesConf,
+				content,
+				nginx: true,
+				startupOwn: true,
+				startupFailure: `Could not write ${paths.ipRangesConf} at startup (nginx -t failed or the file could not be written), the previous trusted IP ranges stay in use`,
+			};
+			const plan = { files: [file], after: [] };
 			if (changed.includes("trust_cloudflare")) {
 				plan.after.push(() => (next.trust_cloudflare ? ipRanges.start() : ipRanges.stop()));
 			}
@@ -405,7 +436,12 @@ const createRuntimeApplier = ({
 			await withFiles(shared, testIfNginx(shared), { fs, log });
 			for (const step of plan.after ?? []) await step();
 			for (const file of files.filter((entry) => entry.startupOwn)) {
-				await withFiles([file], testIfNginx([file]), { fs, log });
+				try {
+					await withFiles([file], testIfNginx([file]), { fs, log });
+				} catch (err) {
+					if (file.startupFailure) log.error(`${file.startupFailure}: ${err.message}`);
+					throw err;
+				}
 			}
 			return { changed, reloaded };
 		}

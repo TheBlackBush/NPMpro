@@ -6,7 +6,8 @@ const certificateHttpDomainPattern =
 	/^(?:(?:[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+\.)+[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+|\[[0-9a-fA-F:]+\])$/u;
 const certificateDnsDomainPattern =
 	/^(?![0-9.]+$)(?:\*\.)?(?:[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+\.)+[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+$/u;
-const upstreamUrlPattern = /^https?:\/\/(?:(?:[^\s/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s/:]+)$/u;
+// the same rule as the backend (no whitespace or nginx syntax characters)
+const upstreamUrlPattern = /^https?:\/\/(?:(?:[^\s/:;{}#"'$\\]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s/:;{}#"'$\\]+)$/u;
 
 const validateString =
 	(minLength = 0, maxLength = 0, trim = true) =>

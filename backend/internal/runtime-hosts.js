@@ -13,10 +13,10 @@ const HOST_TYPES = [
 	[streamModel, "stream", "certificate"],
 ];
 
-const { renderMatchingHosts, renderRuntimeHosts } = createHostRenderer({
+const { proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts } = createHostRenderer({
 	hostTypes: HOST_TYPES,
 	getConfigName: internalNginx.getConfigName,
 	renderConfig: internalNginx.renderConfig,
 });
 
-export { renderMatchingHosts, renderRuntimeHosts };
+export { proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts };

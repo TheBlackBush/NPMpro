@@ -771,35 +771,16 @@ if ! echo "$AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES" | grep -q "^true$\|^false$"; 
     sleep inf
 fi
 
-if [ -n "$AUTH_REQUEST_ANUBIS_UPSTREAM" ] && ! echo "$AUTH_REQUEST_ANUBIS_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_ANUBIS_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_TINYAUTH_UPSTREAM" ] && ! echo "$AUTH_REQUEST_TINYAUTH_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_TINYAUTH_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_OAUTH2PROXY_UPSTREAM" ] && ! echo "$AUTH_REQUEST_OAUTH2PROXY_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_VOIDAUTH_UPSTREAM" ] && ! echo "$AUTH_REQUEST_VOIDAUTH_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_VOIDAUTH_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_AUTHELIA_UPSTREAM" ] && ! echo "$AUTH_REQUEST_AUTHELIA_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_AUTHELIA_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_AUTHENTIK_UPSTREAM" ] && ! echo "$AUTH_REQUEST_AUTHENTIK_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_AUTHENTIK_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
+# the same rule as the backend (UPSTREAM in lib/runtime-rules.js): no whitespace and no nginx syntax characters
+AUTH_REQUEST_UPSTREAM_REGEX='^https\?://\(\([^/:;{}#"$\[:space:]'"'"']\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:;{}#"$\[:space:]'"'"']\+\)$'
+for name in ANUBIS TINYAUTH OAUTH2PROXY VOIDAUTH AUTHELIA AUTHENTIK; do
+    eval "value=\${AUTH_REQUEST_${name}_UPSTREAM:-}"
+    if [ -n "$value" ] && { [ "$(printf '%s\n' "$value" | wc -l)" -ne 1 ] || ! printf '%s\n' "$value" | grep -q "$AUTH_REQUEST_UPSTREAM_REGEX"; }; then
+        echo "AUTH_REQUEST_${name}_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path, whitespace or any of ; { } # \" ' \$ \\."
+        sleep inf
+    fi
+done
+unset name value
 
 
 if [ "$ACME_MUST_STAPLE" = "true" ] && [ "$ACME_OCSP_STAPLING" = "false" ]; then

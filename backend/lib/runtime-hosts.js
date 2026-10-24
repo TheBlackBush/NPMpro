@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { stapledHost } from "./default-cert.js";
-import { forwardAuthHost } from "./forward-auth.js";
+import { forwardAuthHost, proxyHostsForProvider } from "./forward-auth.js";
 
 /**
  * The host config re-render of the runtime apply
@@ -11,6 +11,18 @@ import { forwardAuthHost } from "./forward-auth.js";
  * @param   {Function}  deps.renderConfig   (hostType, host, { env, fetchMissingOcsp }) => config text
  * @param   {Function}  [deps.exists]       (path) => boolean
  */
+/**
+ * "a.example, b.example and 3 more": the first domain of up to five hosts (#id without one)
+ *
+ * @param   {Object[]}  hosts
+ * @returns {string}
+ */
+const describeHosts = (hosts) => {
+	const names = hosts.slice(0, 5).map((host) => host.domain_names?.[0] ?? `#${host.id}`);
+	const more = hosts.length - names.length;
+	return more > 0 ? `${names.join(", ")} and ${more} more` : names.join(", ");
+};
+
 const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = existsSync }) => {
 	/**
 	 * Renders the configs of the enabled hosts that match, as files for the runtime apply transaction. A host
@@ -57,7 +69,22 @@ const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = e
 		return Promise.resolve([]);
 	};
 
-	return { renderMatchingHosts, renderRuntimeHosts };
+	/**
+	 * The proxy hosts (enabled or not) that use the provider without their own upstream, so they need its default
+	 *
+	 * @param   {string}  provider
+	 * @returns {Promise<Object[]>}
+	 */
+	const proxyHostsUsingDefault = async (provider) => {
+		const hosts = [];
+		for (const [model, hostType, graph] of hostTypes) {
+			if (hostType !== "proxy_host") continue;
+			hosts.push(...proxyHostsForProvider(await model.query().withGraphFetched(graph), provider));
+		}
+		return hosts;
+	};
+
+	return { proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts };
 };
 
-export { createHostRenderer };
+export { createHostRenderer, describeHosts };

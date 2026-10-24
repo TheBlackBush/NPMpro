@@ -108,14 +108,16 @@ const createIpRanges = ({
 				const env = effectiveEnv();
 				if (timer === null || env.TRUST_CLOUDFLARE !== "true") return;
 				const content = await render(env, ranges);
-				await withFiles(
+				const written = await withFiles(
 					[{ path, content }],
-					async (written) => {
-						if (written.length > 0) await testAndReload(nginx);
+					async (paths) => {
+						if (paths.length > 0) await testAndReload(nginx);
+						return paths.length > 0;
 					},
 					{ fs, log },
 				);
-				log.info("Updated trusted IP ranges");
+				if (written) log.info("Updated trusted IP ranges");
+				else log.debug("Trusted IP ranges unchanged");
 			});
 		} catch (err) {
 			log.error(`Could not update the Cloudflare IP ranges: ${err.message}`);

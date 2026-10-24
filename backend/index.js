@@ -13,7 +13,7 @@ import {
 } from "./internal/monitoring-services.js";
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
-import { renderRuntimeHosts } from "./internal/runtime-hosts.js";
+import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { setRuntimeApply } from "./internal/runtime-setting.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
@@ -40,6 +40,8 @@ async function appStart() {
 			ocsp: { fetch: internalNginx.fetchOcsp },
 			// ip_ranges.conf and the Cloudflare refresh timer (network settings, also at startup)
 			ipRanges: internalIpRanges,
+			// a forward-auth default cannot be cleared while proxy hosts rely on it
+			proxyHostsUsingDefault,
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
 		// a failed startup apply keeps the files from start.sh, the backend still starts
