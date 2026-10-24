@@ -73,6 +73,7 @@ function Router() {
 							<Route path="/nginx/redirection" element={<RedirectionHosts />} />
 							<Route path="/nginx/404" element={<DeadHosts />} />
 							<Route path="/nginx/stream" element={<Streams />} />
+							<Route path="/login" element={<Navigate to="/" replace />} />
 							<Route path="/" element={<Dashboard />} />
 						</Routes>
 					</Suspense>
