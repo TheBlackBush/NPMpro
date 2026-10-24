@@ -28,11 +28,33 @@
 		{
 			"in": "query",
 			"name": "host",
-			"description": "Host key to filter by (empty for all hosts)",
+			"description": "Stored host key to filter by: a domain name, a wildcard name or _other (empty for all hosts). Ignored when host_id and host_type are given",
 			"schema": {
 				"type": "string",
 				"maxLength": 255,
 				"default": ""
+			}
+		},
+		{
+			"in": "query",
+			"name": "host_id",
+			"description": "Id of the NPMpro host to filter by, together with host_type: all its domain names. 404 when the host does not exist",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			}
+		},
+		{
+			"in": "query",
+			"name": "host_type",
+			"description": "Type of the host given by host_id",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"proxy",
+					"redirection",
+					"dead"
+				]
 			}
 		}
 	],
@@ -47,7 +69,9 @@
 								"totals": {
 									"requests": 1520,
 									"bytes": 48211337,
-									"error_rate": 0.042
+									"error_rate": 0.042,
+									"visitors": 410,
+									"visitors_capped": false
 								},
 								"series": [
 									{
@@ -62,14 +86,27 @@
 								],
 								"top_hosts": [
 									{
-										"host": "example.com",
+										"host_id": 3,
+										"host_type": "proxy",
+										"name": "example.com",
+										"domain_names": [
+											"example.com",
+											"www.example.com"
+										],
 										"requests": 1200,
-										"bytes": 40000000
+										"bytes": 40000000,
+										"visitors": 350,
+										"visitors_capped": false
 									},
 									{
-										"host": "_other",
+										"host_id": null,
+										"host_type": "other",
+										"name": "_other",
+										"domain_names": [],
 										"requests": 320,
-										"bytes": 8211337
+										"bytes": 8211337,
+										"visitors": 60,
+										"visitors_capped": false
 									}
 								],
 								"top_countries": [
@@ -109,7 +146,9 @@
 									"skipped_lines": 0,
 									"dropped_requests": 0,
 									"last_read": "2026-10-24T10:00:05.000Z",
-									"error": null
+									"error": null,
+									"unique_visitors": true,
+									"visitors_error": null
 								}
 							}
 						}

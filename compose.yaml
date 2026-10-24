@@ -111,6 +111,8 @@ services:
 #      - "TRAFFIC_STATS=true" # turns the traffic statistics (Monitoring page) on or off, also turns the nginx access log on, default false (off), LOGROTATE=true also turns it on and locks it
 #      - "TRAFFIC_RETENTION_DAYS=30" # days the hourly traffic statistics are kept, 7 to 365, default 30 (per-minute counts are kept for 24 hours)
 #      - "TRAFFIC_SHOW_IPS=true" # also stores the top visitor IPs, turning it off deletes the stored IPs, default false
+#      - "TRAFFIC_UNIQUE_VISITORS=true" # counts unique visitors per host and day by storing a keyed hash of the visitor IP (not the IP), turning it off deletes the hashes, default false
+#      - "TRAFFIC_VISITORS_CAP=100000" # visitors counted per host and day, 1000 to 1000000, default 100000
 #      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id, NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed
 #      - "GEOIP_LICENSE_KEY=<your-license-key>" # MaxMind license key
 #      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated, GeoLite2-Country, GeoLite2-ASN and GeoLite2-City, default GeoLite2-Country GeoLite2-ASN

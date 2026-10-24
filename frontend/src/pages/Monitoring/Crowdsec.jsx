@@ -21,6 +21,9 @@ import { useListFilters, useMonitoringCrowdsec } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { filterBans, formatCount, secondsLeftNow, timeLeftParts } from "src/modules/Monitoring";
 
+// Top lists show at most this many rows; the share bars use the overall total
+const TOP_LIST = 10;
+
 const README_CROWDSEC = "https://github.com/TheBlackBush/NPMpro#crowdsec";
 
 // newest first, as the API sends them; no column sorting, since only the first rows are shown until "Show all"
@@ -260,7 +263,7 @@ function CrowdsecData({ data }) {
 							total={data.total}
 							color="red"
 							empty={noBans}
-							items={data.byScenario.map((s) => ({
+							items={data.byScenario.slice(0, TOP_LIST).map((s) => ({
 								key: s.scenario,
 								label: <Scenario name={s.scenario} />,
 								title: s.scenario,
@@ -273,7 +276,7 @@ function CrowdsecData({ data }) {
 							total={data.total}
 							color="red"
 							empty={noBans}
-							items={data.byOrigin.map((o) => ({
+							items={data.byOrigin.slice(0, TOP_LIST).map((o) => ({
 								key: o.origin,
 								label: o.origin,
 								title: o.origin,
@@ -286,7 +289,7 @@ function CrowdsecData({ data }) {
 							total={data.total}
 							color="red"
 							empty={noBans}
-							items={data.countries.slice(0, 10).map((c) => ({
+							items={data.countries.slice(0, TOP_LIST).map((c) => ({
 								key: c.country,
 								label: <CountryName code={c.country} />,
 								title: countryLabel(c.country),

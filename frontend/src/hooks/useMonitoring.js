@@ -18,10 +18,10 @@ const POLL = {
 	retry: 1,
 };
 
-const useMonitoringTraffic = (range = "24h", host = "") =>
+const useMonitoringTraffic = (range = "24h", filter = {}) =>
 	useQuery({
-		queryKey: ["monitoring-traffic", range, host],
-		queryFn: () => getMonitoringTraffic(range, host),
+		queryKey: ["monitoring-traffic", range, filter],
+		queryFn: () => getMonitoringTraffic(range, filter),
 		...POLL,
 		// keep showing the last range or host while the next one loads, so the chart and map stay mounted
 		placeholderData: keepPreviousData,

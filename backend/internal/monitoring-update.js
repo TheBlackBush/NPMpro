@@ -2,7 +2,7 @@ import errs from "../lib/error.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { global as logger } from "../logger.js";
 
-const EDITABLE = ["traffic_enabled", "retention_days", "show_ips"];
+const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
 
 /**
  * Copies the editable keys of a validated body that are not locked
@@ -33,7 +33,9 @@ const createSerializer = () => {
  * @param   {Function} deps.saveStored  (meta) => void
  * @param   {Function} deps.deleteIps   () => void
  * @param   {Object}   deps.hooks       read on every update: onTrafficEnabledChange(enabled), onShowIpsOff(),
- *                                      onShowIpsOn() (optional, after the save; a failure is only logged)
+ *                                      onShowIpsOn() (optional, after the save; a failure is only logged),
+ *                                      onUniqueVisitorsOff() (before the save, deletes the stored visitor hashes),
+ *                                      onUniqueVisitorsOn() (optional, after the save; a failure is only logged)
  * @param   {Object}   [deps.env]
  * @returns {(body: Object) => Promise<Object>}  resolves to the saved meta
  */
@@ -82,6 +84,19 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 			}
 		}
 
+		if (before.unique_visitors && !after.unique_visitors) {
+			try {
+				await hooks.onUniqueVisitorsOff();
+			} catch (err) {
+				await revertTraffic();
+				throw new errs.ValidationError(
+					`Could not delete the stored visitor hashes, the setting was not changed: ${err.message}`,
+					undefined,
+					{ cause: err },
+				);
+			}
+		}
+
 		try {
 			await saveStored(next);
 		} catch (err) {
@@ -93,6 +108,13 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 				await hooks.onShowIpsOn();
 			} catch (err) {
 				logger.error(`Could not switch visitor IPs back on in the traffic reader: ${err.message}`);
+			}
+		}
+		if (!before.unique_visitors && after.unique_visitors && hooks.onUniqueVisitorsOn) {
+			try {
+				await hooks.onUniqueVisitorsOn();
+			} catch (err) {
+				logger.error(`Could not switch unique visitors on in the traffic reader: ${err.message}`);
 			}
 		}
 		return next;

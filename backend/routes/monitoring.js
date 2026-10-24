@@ -1,17 +1,7 @@
 import express from "express";
+import { parseTrafficQuery } from "../internal/monitoring.js";
 import { internalMonitoring } from "../internal/monitoring-services.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
-import validator from "../lib/validator/index.js";
-
-const trafficQuerySchema = {
-	type: "object",
-	additionalProperties: false,
-	required: ["range", "host"],
-	properties: {
-		range: { type: "string", enum: ["1h", "24h", "7d", "30d"] },
-		host: { type: "string", maxLength: 255 },
-	},
-};
 
 const router = express.Router({
 	caseSensitive: true,
@@ -21,15 +11,13 @@ const router = express.Router({
 
 /**
  * GET /api/monitoring/traffic?range=24h&host=example.com
+ * GET /api/monitoring/traffic?range=24h&host_type=proxy&host_id=3
  */
 router
 	.route("/traffic")
 	.all(jwtdecode())
 	.get(async (req, res) => {
-		const query = validator(trafficQuerySchema, {
-			range: typeof req.query.range === "string" && req.query.range !== "" ? req.query.range : "24h",
-			host: typeof req.query.host === "string" ? req.query.host.trim().toLowerCase() : "",
-		});
+		const query = parseTrafficQuery(req.query);
 		res.status(200).send(await internalMonitoring.getTraffic(res.locals.access, query));
 	});
 

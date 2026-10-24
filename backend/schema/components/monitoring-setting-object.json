@@ -6,6 +6,8 @@
 		"traffic_enabled",
 		"retention_days",
 		"show_ips",
+		"unique_visitors",
+		"visitors_cap",
 		"locked"
 	],
 	"properties": {
@@ -22,6 +24,16 @@
 		"show_ips": {
 			"type": "boolean",
 			"description": "Store and show client IP addresses"
+		},
+		"unique_visitors": {
+			"type": "boolean",
+			"description": "Count unique visitors with keyed IP hashes; turning it off deletes them"
+		},
+		"visitors_cap": {
+			"type": "integer",
+			"minimum": 1000,
+			"maximum": 1000000,
+			"description": "Distinct visitors counted per host and day; beyond it new visitors are not counted and the day is marked as capped"
 		},
 		"locked": {
 			"type": "array",

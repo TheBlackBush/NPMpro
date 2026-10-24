@@ -136,23 +136,127 @@ const axisLabels = (times, format, daily = false) => {
 
 const OTHER_HOST = "_other";
 
+const HOST_TYPES = ["proxy", "redirection", "dead"];
+const HOST_GROUP_KEYS = { proxy: "proxy-hosts", redirection: "redirection-hosts", dead: "dead-hosts" };
+const HOST_VALUE = /^(?<type>proxy|redirection|dead):(?<id>[1-9][0-9]*)$/u;
+const HOST_ID_TEXT = /^[1-9][0-9]*$/u;
+const HOST_KEY_PREFIX = "key:";
+
+const isHostId = (id) => Number.isSafeInteger(id) && id > 0;
+
 /**
- * Host filter options from the host lists (proxy, redirection, 404): every domain name once, lower case, sorted,
- * then the "_other" key. A current value that is not in the lists is kept, so a filter from the URL stays selectable.
+ * Host filter from the URL: `?host_type=proxy&host_id=12` gives { hostType: "proxy", hostId: 12 } (both must be
+ * valid), `?host=_other` gives { host: "_other" }. The old form `?host=proxy:12` is still read, any other `host`
+ * value is a single stored host key: { host: value }. Anything else gives {}.
  */
-const hostOptions = (lists, current = "") => {
-	const names = new Set();
-	for (const list of lists) {
-		for (const host of list ?? []) {
-			for (const name of host?.domainNames ?? []) {
-				const value = String(name).trim().toLowerCase();
-				if (value !== "") names.add(value);
-			}
-		}
+const hostFilterFromSearch = (searchParams) => {
+	const type = (searchParams?.get("host_type") ?? "").trim();
+	const idText = (searchParams?.get("host_id") ?? "").trim();
+	if (HOST_TYPES.includes(type) && HOST_ID_TEXT.test(idText) && isHostId(Number(idText))) {
+		return { hostType: type, hostId: Number(idText) };
 	}
-	if (current && current !== OTHER_HOST) names.add(current);
-	names.delete(OTHER_HOST);
-	return [...[...names].sort((a, b) => a.localeCompare(b)), OTHER_HOST];
+	const value = (searchParams?.get("host") ?? "").trim();
+	if (value === "") return {};
+	const match = HOST_VALUE.exec(value);
+	if (match && isHostId(Number(match.groups.id)))
+		return { hostType: match.groups.type, hostId: Number(match.groups.id) };
+	return { host: value };
+};
+
+/**
+ * Host filter to URL parameters, on top of a copy of `base` (so range and other parameters stay): `host_type` +
+ * `host_id` for a host, `host` for Other hosts or a stored key, none of them for all hosts.
+ */
+const hostFilterToSearch = (filter, base = new URLSearchParams()) => {
+	const params = new URLSearchParams(base);
+	params.delete("host");
+	params.delete("host_type");
+	params.delete("host_id");
+	if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) {
+		params.set("host_type", filter.hostType);
+		params.set("host_id", String(filter.hostId));
+	} else if (typeof filter?.host === "string" && filter.host !== "") {
+		params.set("host", filter.host);
+	}
+	return params;
+};
+
+/**
+ * Value of the host filter select for a filter: "" for all hosts, "_other", "proxy:12" for a host, "key:<name>"
+ * for a single stored host key from an old URL.
+ */
+const hostSelectValue = (filter) => {
+	if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) return `${filter.hostType}:${filter.hostId}`;
+	if (filter?.host === OTHER_HOST) return OTHER_HOST;
+	if (typeof filter?.host === "string" && filter.host !== "") return `${HOST_KEY_PREFIX}${filter.host}`;
+	return "";
+};
+
+/**
+ * Filter for a host filter select value (the reverse of hostSelectValue); anything unknown gives {} (all hosts).
+ */
+const hostFilterFromSelect = (value) => {
+	const text = String(value ?? "");
+	if (text === OTHER_HOST) return { host: OTHER_HOST };
+	if (text.startsWith(HOST_KEY_PREFIX) && text.length > HOST_KEY_PREFIX.length) {
+		return { host: text.slice(HOST_KEY_PREFIX.length) };
+	}
+	const match = HOST_VALUE.exec(text);
+	if (match && isHostId(Number(match.groups.id)))
+		return { hostType: match.groups.type, hostId: Number(match.groups.id) };
+	return {};
+};
+
+/**
+ * Query parameters of the traffic request for a filter (or a plain host key). host_type and host_id are only sent
+ * together and for a valid type; they never come with `host`.
+ */
+const trafficParams = (range, filter) => {
+	const params = { range };
+	if (typeof filter === "string") {
+		if (filter !== "") params.host = filter;
+	} else if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) {
+		params.host_type = filter.hostType;
+		params.host_id = filter.hostId;
+	} else if (filter?.host) {
+		params.host = filter.host;
+	}
+	return params;
+};
+
+/**
+ * Host filter selection groups: proxy, redirection and 404 hosts, in that order. `labelKey` is the translation id
+ * of the group title. `label` of an option is the first domain name, `extra` the number of other names.
+ * Hosts without domain names are skipped.
+ */
+const hostGroups = ({ proxy, redirection, dead } = {}) => {
+	const lists = { proxy, redirection, dead };
+	return HOST_TYPES.map((type) => ({
+		type,
+		labelKey: HOST_GROUP_KEYS[type],
+		options: (lists[type] ?? [])
+			.filter((host) => Array.isArray(host?.domainNames) && host.domainNames.length > 0)
+			.map((host) => ({
+				value: `${type}:${host.id}`,
+				hostType: type,
+				hostId: host.id,
+				label: host.domainNames[0],
+				extra: host.domainNames.length - 1,
+				domainNames: host.domainNames,
+			})),
+	}));
+};
+
+/**
+ * Name, number of other names and badge type for a Top hosts row. The badge is null for "other".
+ */
+const hostEntryLabel = (entry) => {
+	const type = entry?.hostType;
+	if (type === "other") return { name: OTHER_HOST, extra: 0, badge: null };
+	const names = Array.isArray(entry?.domainNames) ? entry.domainNames : [];
+	const badge = [...HOST_TYPES, "deleted"].includes(type) ? type : null;
+	const fallback = badge && badge !== "deleted" && entry?.hostId ? `#${entry.hostId}` : "";
+	return { name: entry?.name || names[0] || fallback, extra: Math.max(0, names.length - 1), badge };
 };
 
 /**
@@ -219,6 +323,42 @@ const filterBans = (rows, q, nameOf = () => "") => {
 	);
 };
 
+/**
+ * Recent requests whose host, method and path ("GET /login" matches too), status, country code or name or IP contain
+ * the search text (case-insensitive).
+ * `hostOf(row)` gives the shown host name, `nameOf(code)` the shown country name; an empty search keeps every row.
+ */
+const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () => "" } = {}) => {
+	const needle = String(q ?? "")
+		.trim()
+		.toLowerCase();
+	if (needle === "") return rows ?? [];
+	return (rows ?? []).filter((row) =>
+		[
+			hostOf(row),
+			row.method === "-" ? null : row.method,
+			row.path,
+			row.status,
+			row.country,
+			row.country ? nameOf(row.country) : "",
+			row.ip,
+		]
+			.filter((part) => part !== null && part !== undefined)
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+};
+
+// Tabler colour per status class, the same as the chart (2xx green, 3xx blue, 4xx orange, 5xx red)
+const STATUS_COLORS = { 2: "green", 3: "blue", 4: "orange", 5: "red" };
+
+/** Tabler colour name of the status badge of a response status. */
+const statusColor = (status) => {
+	const n = Number(status);
+	return (n >= 200 && n < 600 && STATUS_COLORS[Math.floor(n / 100)]) || "secondary";
+};
+
 const rangeOptions = [
 	{ value: "1h", labelKey: "monitoring.range.1h" },
 	{ value: "24h", labelKey: "monitoring.range.24h" },
@@ -228,7 +368,7 @@ const rangeOptions = [
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
-const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps"];
+const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
 const GEOIP_KEYS = ["accountId", "licenseKey", "editions"];
 
 const pickEditable = (values, keys) => {
@@ -242,9 +382,14 @@ const pickEditable = (values, keys) => {
 };
 
 /**
- * Only the editable keys of the traffic statistics settings, without locked ones.
+ * Only the editable keys of the traffic statistics settings, without locked ones and without the visitor limit while unique visitors are off.
  */
-const monitoringSettingsPayload = (values) => pickEditable(values, MONITORING_KEYS);
+const monitoringSettingsPayload = (values) => {
+	const payload = pickEditable(values, MONITORING_KEYS);
+	// the visitor limit is only sent while unique visitors are on (it is only validated then)
+	if (!values.uniqueVisitors) delete payload.visitorsCap;
+	return payload;
+};
 
 /**
  * Only the editable keys of the GeoIP settings, without locked ones and without an empty license key.
@@ -286,10 +431,16 @@ export {
 	countryName,
 	errorRateColor,
 	filterBans,
+	filterRecent,
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
-	hostOptions,
+	hostEntryLabel,
+	hostFilterFromSearch,
+	hostFilterFromSelect,
+	hostFilterToSearch,
+	hostGroups,
+	hostSelectValue,
 	isCountryCode,
 	mapScale,
 	monitoringSettingsPayload,
@@ -298,5 +449,7 @@ export {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	statusColor,
 	timeLeftParts,
+	trafficParams,
 };

@@ -14,7 +14,7 @@ const RANGES = {
 };
 
 const TOP = 10;
-const TOP_IPS = 20;
+const TOP_IPS = 10;
 
 const num = (v) => Number(v);
 
@@ -100,15 +100,25 @@ const top = (rows, limit) => rows.slice(0, limit);
  * @returns {Object}  store functions
  */
 export const createStore = (knex) => {
-	const hostFilter = (query, host) => (host ? query.where("host", host) : query);
+	// host: one key (empty = all) or a list of keys (empty list matches nothing)
+	const hostFilter = (query, host) => {
+		if (Array.isArray(host)) {
+			return query.whereIn("host", host);
+		}
+		return host ? query.where("host", host) : query;
+	};
 
 	/** Adds the drained counters to the stored rows in one transaction. */
-	const flush = ({ minutes, countries, asns, ips }) =>
+	const flush = ({ minutes, countries, asns, ips, visitors = [] }) =>
 		knex.transaction(async (trx) => {
 			await addRows(trx, "minutes", minutes);
 			await addRows(trx, "countries", countries);
 			await addRows(trx, "asns", asns);
 			await addRows(trx, "ips", ips);
+			// duplicates (re-sent after a restart) are ignored by the unique index
+			for (const part of chunks(visitors, CHUNK_INSERT)) {
+				await trx("traffic_visitor").insert(part).onConflict(["day", "host", "hash"]).ignore();
+			}
 		});
 
 	/** Rolls minute rows older than 24 hours into traffic_hour, then deletes hour rows past the retention. */
@@ -121,10 +131,66 @@ export const createStore = (knex) => {
 			for (const table of ["traffic_hour", "traffic_country_hour", "traffic_asn_hour", "traffic_ip_hour"]) {
 				await trx(table).where("bucket", "<", hourBefore).del();
 			}
+			await trx("traffic_visitor")
+				.where("day", "<", Math.floor(now / DAY) - retentionDays)
+				.del();
 		});
 	};
 
 	const deleteIps = () => knex("traffic_ip_hour").del();
+
+	const deleteVisitors = async () => {
+		await knex("traffic_visitor").del();
+	};
+
+	/**
+	 * Distinct visitor hashes from startDay (UTC day number) on. The empty hash is the cap marker: it is not
+	 * counted and sets `capped` when it matches the same filter. A marker stays when the cap is raised later, so a
+	 * day that reached the old cap still reports `capped` while it counts more visitors.
+	 *
+	 * @param   {Object}         args
+	 * @param   {Number}         args.startDay
+	 * @param   {String[]|null}  args.hosts     host keys, null for all hosts
+	 * @returns {Promise<{visitors: Number, capped: Boolean}>}
+	 */
+	const countVisitors = async ({ startDay, hosts = null }) => {
+		const base = () => {
+			const query = knex("traffic_visitor").where("day", ">=", startDay);
+			return hosts === null ? query : query.whereIn("host", hosts);
+		};
+		const [counted] = await base().where("hash", "<>", "").countDistinct({ visitors: "hash" });
+		const marker = await base().where("hash", "").first("id");
+		return { visitors: num(counted?.visitors ?? 0), capped: Boolean(marker) };
+	};
+
+	/**
+	 * Stored visitor hashes (without the empty marker) and the cap marker per (day, host) for the given days, so
+	 * the counter can keep the per day cap across restarts without counting returning visitors twice.
+	 *
+	 * @param   {Object}    args
+	 * @param   {Number[]}  args.days  UTC day numbers
+	 * @returns {Promise<Array<{day: Number, host: String, hashes: String[], capped: Boolean}>>}
+	 */
+	const visitorDayHashes = async ({ days }) => {
+		const out = new Map();
+		const entry = (day, host) => {
+			const key = `${day}|${host}`;
+			let row = out.get(key);
+			if (!row) {
+				row = { day: num(day), host, hashes: [], capped: false };
+				out.set(key, row);
+			}
+			return row;
+		};
+		const stored = await knex("traffic_visitor")
+			.whereIn("day", days)
+			.where("hash", "<>", "")
+			.select("day", "host", "hash");
+		for (const row of stored) entry(row.day, row.host).hashes.push(row.hash);
+		const markers = await knex("traffic_visitor").whereIn("day", days).where("hash", "").distinct("day", "host");
+		for (const row of markers) entry(row.day, row.host).capped = true;
+		return [...out.values()];
+	};
 
 	/** Hourly rows (stored plus not yet rolled minutes) from startHour on. */
 	const hourRows = async (startHour, host) => {
@@ -209,13 +275,11 @@ export const createStore = (knex) => {
 		return {
 			totals,
 			series: fillSeries(rows, start, spec.count),
-			top_hosts: top(
-				sumBy(
-					rows,
-					(r) => r.host,
-					(r) => ({ host: r.host, requests: 0, bytes: 0 }),
-				),
-				TOP,
+			// every host key of the range, sorted by requests: the API groups them per NPMpro host before trimming
+			hosts: sumBy(
+				rows,
+				(r) => r.host,
+				(r) => ({ host: r.host, requests: 0, bytes: 0 }),
 			),
 			top_countries: top(byCountry, TOP),
 			top_asns: top(byAsn, TOP),
@@ -261,7 +325,16 @@ export const createStore = (knex) => {
 		};
 	};
 
-	return { flush, rollUpAndPrune, deleteIps, queryTraffic, summary };
+	return {
+		flush,
+		rollUpAndPrune,
+		deleteIps,
+		deleteVisitors,
+		countVisitors,
+		visitorDayHashes,
+		queryTraffic,
+		summary,
+	};
 };
 
 // Bound to the application database on first use, so importing this file does not open it.
@@ -276,5 +349,8 @@ const lazy =
 export const flush = lazy("flush");
 export const rollUpAndPrune = lazy("rollUpAndPrune");
 export const deleteIps = lazy("deleteIps");
+export const deleteVisitors = lazy("deleteVisitors");
+export const countVisitors = lazy("countVisitors");
+export const visitorDayHashes = lazy("visitorDayHashes");
 export const queryTraffic = lazy("queryTraffic");
 export const summary = lazy("summary");

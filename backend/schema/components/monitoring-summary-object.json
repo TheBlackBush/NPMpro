@@ -7,7 +7,8 @@
 		"series_24h",
 		"error_rate_today",
 		"active_bans",
-		"top_country_today"
+		"top_country_today",
+		"visitors_today"
 	],
 	"properties": {
 		"requests_today": {
@@ -62,6 +63,14 @@
 				"string",
 				"null"
 			]
+		},
+		"visitors_today": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"description": "Unique visitors today over all hosts, null when unique visitors or traffic statistics are off"
 		}
 	}
 }

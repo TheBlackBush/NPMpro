@@ -1,8 +1,16 @@
-const MONITORING_DEFAULTS = { traffic_enabled: false, retention_days: 30, show_ips: false };
+const MONITORING_DEFAULTS = {
+	traffic_enabled: false,
+	retention_days: 30,
+	show_ips: false,
+	unique_visitors: false,
+	visitors_cap: 100000,
+};
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
+const VISITORS_CAP_MIN = 1000;
+const VISITORS_CAP_MAX = 1000000;
 const DIGITS = /^\d+$/u;
 const WHITESPACE = /\s+/u;
 
@@ -37,6 +45,18 @@ const mergeMonitoringConfig = (stored, env) => {
 		values.show_ips = env.TRAFFIC_SHOW_IPS === "true";
 		locked.push("show_ips");
 	}
+	if (isSet(env.TRAFFIC_UNIQUE_VISITORS)) {
+		values.unique_visitors = env.TRAFFIC_UNIQUE_VISITORS === "true";
+		locked.push("unique_visitors");
+	}
+	if (isSet(env.TRAFFIC_VISITORS_CAP) && DIGITS.test(env.TRAFFIC_VISITORS_CAP.trim())) {
+		values.visitors_cap = Number.parseInt(env.TRAFFIC_VISITORS_CAP, 10);
+		locked.push("visitors_cap");
+	}
+	// also keeps a stored value that is out of range usable
+	values.visitors_cap = Number.isInteger(values.visitors_cap)
+		? Math.min(VISITORS_CAP_MAX, Math.max(VISITORS_CAP_MIN, values.visitors_cap))
+		: MONITORING_DEFAULTS.visitors_cap;
 	return { values, locked };
 };
 

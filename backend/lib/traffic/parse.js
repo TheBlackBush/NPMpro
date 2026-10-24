@@ -6,9 +6,15 @@ const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7,
 // The format ends with $server_port since it was added; older lines end with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
 const LINE =
-	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "(?:[^"\\]|\\.)*" (\d{3}) (\d+)(?: |$)/u;
+	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "((?:[^"\\]|\\.)*)" (\d{3}) (\d+)(?: |$)/u;
 
 const HOST_PORT = /:\d*$/u;
+// "METHOD target" with an optional protocol; anything else (for example "-" or binary garbage) has no method and path
+const REQUEST = /^(?<method>[A-Za-z]{1,32}) (?<target>\S+)(?: \S+)?$/u;
+const PATH_END = /[;?#]/u;
+// absolute-form target ("GET http://user:pass@host/path"): scheme and authority, the userinfo is removed
+const ABSOLUTE = /^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:\/\/)(?<authority>[^/?#]*)/u;
+const MAX_PATH = 200;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
 const DEFAULT_PORTS = new Set(["80", "443"]);
@@ -35,6 +41,33 @@ const cleanHost = (raw) => {
 	return host.replace(HOST_PORT, "");
 };
 
+/** Removes `user:pass@` from an absolute-form target, so credentials sent in the request line are not shown. */
+const withoutUserinfo = (target) => {
+	const m = ABSOLUTE.exec(target);
+	if (!m) {
+		return target;
+	}
+	const { scheme, authority } = m.groups;
+	const at = authority.lastIndexOf("@");
+	return at === -1 ? target : `${scheme}${authority.slice(at + 1)}${target.slice(m[0].length)}`;
+};
+
+/**
+ * Method and path of the quoted request field: userinfo of an absolute-form target is removed, path parameters
+ * (`;jsessionid=...`), the query string and fragment are cut off, the path is at most 200 characters.
+ * Method "-" and path "" when the field is not a request line.
+ */
+const parseRequest = (request) => {
+	const m = REQUEST.exec(request);
+	if (!m) {
+		return { method: "-", path: "" };
+	}
+	const { method } = m.groups;
+	const target = withoutUserinfo(m.groups.target);
+	const end = target.search(PATH_END);
+	return { method, path: (end === -1 ? target : target.slice(0, end)).slice(0, MAX_PATH) };
+};
+
 export const parseAlogLine = (line) => {
 	const m = LINE.exec(line);
 	if (!m) {
@@ -46,7 +79,8 @@ export const parseAlogLine = (line) => {
 	}
 	const offset = (m[7] === "-" ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9])) * 60000;
 	const time = Date.UTC(Number(m[3]), month, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])) - offset;
-	return { time, host: cleanHost(m[10]), ip: m[11], status: Number(m[12]), bytes: Number(m[13]) };
+	const { method, path } = parseRequest(m[12]);
+	return { time, host: cleanHost(m[10]), ip: m[11], status: Number(m[13]), bytes: Number(m[14]), method, path };
 };
 
 export const statusClass = (status) => {

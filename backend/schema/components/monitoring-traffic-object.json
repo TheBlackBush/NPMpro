@@ -9,6 +9,7 @@
 		"top_countries",
 		"top_asns",
 		"countries",
+		"recent",
 		"status"
 	],
 	"properties": {
@@ -34,6 +35,15 @@
 					"minimum": 0,
 					"maximum": 1,
 					"description": "Share of 4xx and 5xx responses (0 without requests)"
+				},
+				"visitors": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Unique visitors (distinct visitor hashes per host and day). Only present when unique visitors are counted. For range 1h the count is for the current UTC day, for the other ranges from the UTC day the range starts on"
+				},
+				"visitors_capped": {
+					"type": "boolean",
+					"description": "The per host and day visitor limit was reached in the selection, so visitors is a lower bound (at least). Stays true for a day whose limit was raised later. Only present when unique visitors are counted"
 				}
 			}
 		},
@@ -65,18 +75,46 @@
 		"top_hosts": {
 			"type": "array",
 			"maxItems": 10,
-			"description": "Host keys are managed domain names, the matching wildcard name, or _other for requests to unmanaged names",
+			"description": "Requests per NPMpro host (all its domain names together), sorted by requests. host_type deleted: a stored domain name no host lists any more (removed name or deleted host), one entry per name. host_type other: requests to names no host lists (default site, IPs)",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
 				"required": [
-					"host",
+					"host_id",
+					"host_type",
+					"name",
+					"domain_names",
 					"requests",
 					"bytes"
 				],
 				"properties": {
-					"host": {
-						"type": "string"
+					"host_id": {
+						"type": [
+							"integer",
+							"null"
+						],
+						"description": "Id of the proxy, redirection or 404 host, null for deleted and other"
+					},
+					"host_type": {
+						"type": "string",
+						"enum": [
+							"proxy",
+							"redirection",
+							"dead",
+							"deleted",
+							"other"
+						]
+					},
+					"name": {
+						"type": "string",
+						"description": "First domain name of the host, the stored name for deleted, _other for other"
+					},
+					"domain_names": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "All domain names of the host (lower-cased), the stored name for deleted, empty for other"
 					},
 					"requests": {
 						"type": "integer",
@@ -85,6 +123,15 @@
 					"bytes": {
 						"type": "integer",
 						"minimum": 0
+					},
+					"visitors": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "Unique visitors of this entry, only present when unique visitors are counted. For range 1h the count is for the current UTC day, for the other ranges from the UTC day the range starts on"
+					},
+					"visitors_capped": {
+						"type": "boolean",
+						"description": "The visitor limit was reached, so visitors is a lower bound (at least). Only present when unique visitors are counted"
 					}
 				}
 			}
@@ -181,6 +228,82 @@
 				}
 			}
 		},
+		"recent": {
+			"type": "array",
+			"maxItems": 100,
+			"description": "The newest requests, newest first, kept in memory only (empty after a restart, cleared when traffic statistics are switched off; NPMpro's own requests are not recorded). For a host filter the requests of that host, otherwise of all hosts; independent of the range",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"time",
+					"host_id",
+					"host_type",
+					"name",
+					"method",
+					"path",
+					"status",
+					"bytes",
+					"country"
+				],
+				"properties": {
+					"time": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"host_id": {
+						"type": [
+							"integer",
+							"null"
+						],
+						"description": "Id of the proxy, redirection or 404 host, null for deleted and other"
+					},
+					"host_type": {
+						"type": "string",
+						"enum": [
+							"proxy",
+							"redirection",
+							"dead",
+							"deleted",
+							"other"
+						]
+					},
+					"name": {
+						"type": "string",
+						"description": "First domain name of the host, the stored name for deleted, _other for other"
+					},
+					"method": {
+						"type": "string",
+						"description": "Request method as logged, - when the request line is malformed"
+					},
+					"path": {
+						"type": "string",
+						"maxLength": 200,
+						"description": "Request path without query string and fragment, at most 200 characters, empty when the request line is malformed"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 999
+					},
+					"bytes": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"country": {
+						"type": [
+							"string",
+							"null"
+						],
+						"description": "ISO 3166-1 alpha-2 code, null when unknown or without a GeoIP database"
+					},
+					"ip": {
+						"type": "string",
+						"description": "Client IP, only present when visitor IPs are shown"
+					}
+				}
+			}
+		},
 		"status": {
 			"type": "object",
 			"additionalProperties": false,
@@ -190,7 +313,9 @@
 				"skipped_lines",
 				"dropped_requests",
 				"last_read",
-				"error"
+				"error",
+				"unique_visitors",
+				"visitors_error"
 			],
 			"properties": {
 				"enabled": {
@@ -223,6 +348,17 @@
 						"string",
 						"null"
 					]
+				},
+				"unique_visitors": {
+					"type": "boolean",
+					"description": "Unique visitors are counted (setting unique_visitors)"
+				},
+				"visitors_error": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Why visitors cannot be counted right now (the visitor key could not be loaded), null otherwise"
 				}
 			}
 		}

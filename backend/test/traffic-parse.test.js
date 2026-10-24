@@ -12,6 +12,8 @@ it("parses a normal line", () => {
 		ip: "203.0.113.7",
 		status: 200,
 		bytes: 512,
+		method: "GET",
+		path: "/a",
 	});
 });
 
@@ -38,6 +40,52 @@ it("handles an escaped quote inside the request", () => {
 	const r = parseAlogLine(line("example.com", "203.0.113.7", 301, 7, String.raw`GET /a\"b 200 5 HTTP/1.1`));
 	assert.equal(r.status, 301);
 	assert.equal(r.bytes, 7);
+});
+
+it("returns method and path with the query string and fragment cut off", () => {
+	const parse = (request) => {
+		const { method, path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, request));
+		return { method, path };
+	};
+	assert.deepEqual(parse("POST /login?token=secret HTTP/1.1"), { method: "POST", path: "/login" });
+	assert.deepEqual(parse("GET /page#top HTTP/2.0"), { method: "GET", path: "/page" });
+	assert.deepEqual(parse("GET /p#frag?x=1 HTTP/2.0"), { method: "GET", path: "/p" });
+	assert.deepEqual(parse("get /lower HTTP/1.1"), { method: "get", path: "/lower" });
+	assert.deepEqual(parse("GET /old"), { method: "GET", path: "/old" });
+	assert.deepEqual(parse(String.raw`GET /a\"b HTTP/1.1`), { method: "GET", path: String.raw`/a\"b` });
+});
+
+it("cuts path parameters and removes userinfo from absolute-form targets", () => {
+	const path = (request) => parseAlogLine(line("example.com", "203.0.113.7", 200, 1, request)).path;
+	assert.equal(path("GET /app;jsessionid=abc?x=1 HTTP/1.1"), "/app");
+	assert.equal(path("GET /a;b HTTP/1.1"), "/a");
+	assert.equal(path("GET http://user:pass@example.com/x?y=1 HTTP/1.1"), "http://example.com/x");
+	assert.equal(path("GET https://a:b@c@example.com:8443/p;s=1 HTTP/1.1"), "https://example.com:8443/p");
+	assert.equal(path("GET http://u;x:secret@example.com/ HTTP/1.1"), "http://example.com/");
+	assert.equal(path("GET http://example.com/a@b HTTP/1.1"), "http://example.com/a@b", "an @ in the path stays");
+	assert.equal(path("GET /a@b HTTP/1.1"), "/a@b");
+	assert.equal(path("CONNECT example.com:443 HTTP/1.1"), "example.com:443");
+});
+
+it("cuts a long path at 200 characters", () => {
+	const { path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, `GET /${"a".repeat(300)}?q=1 HTTP/1.1`));
+	assert.equal(path, `/${"a".repeat(199)}`);
+});
+
+it("returns method - and an empty path for a malformed request field", () => {
+	for (const request of [
+		"-",
+		"",
+		String.raw`\x16\x03\x01\x02\x00\x01`,
+		"GET",
+		"GET  HTTP/1.1",
+		"G3T / HTTP/1.1",
+		"GET / HTTP/1.1 extra",
+	]) {
+		const r = parseAlogLine(line("example.com", "203.0.113.7", 400, 0, request));
+		assert.equal(r.status, 400, request);
+		assert.deepEqual({ method: r.method, path: r.path }, { method: "-", path: "" }, request);
+	}
 });
 
 it("returns null for non-IP client addresses such as unix sockets", () => {
@@ -86,6 +134,8 @@ it("parses lines that end with the server port", () => {
 		ip: "203.0.113.7",
 		status: 404,
 		bytes: 1200,
+		method: "GET",
+		path: "/a",
 	});
 });
 

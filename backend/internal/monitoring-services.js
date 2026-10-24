@@ -4,15 +4,30 @@ import { GEOIP_DIR, geoip } from "../lib/geoip/instance.js";
 import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
-import { createTrafficService } from "../lib/traffic/service.js";
-import { deleteIps, flush, queryTraffic, rollUpAndPrune, summary } from "../lib/traffic/store.js";
+import { defaultSecretBox } from "../lib/secret-box.js";
+import { createStateMeta, createTrafficService } from "../lib/traffic/service.js";
+import {
+	countVisitors,
+	deleteIps,
+	deleteVisitors,
+	flush,
+	queryTraffic,
+	rollUpAndPrune,
+	summary,
+	visitorDayHashes,
+} from "../lib/traffic/store.js";
+import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import { createMonitoring } from "./monitoring.js";
 import internalMonitoringSetting from "./monitoring-setting.js";
 
 const STATE_ID = "traffic-state";
-const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host"];
+const HOST_TABLES = [
+	["proxy", "proxy_host"],
+	["redirection", "redirection_host"],
+	["dead", "dead_host"],
+];
 
 const parseNames = (raw) => {
 	if (Array.isArray(raw)) return raw;
@@ -24,38 +39,36 @@ const parseNames = (raw) => {
 	}
 };
 
-/** Domain names of all proxy, redirection and 404 hosts (streams have no HTTP access log). */
+/** All proxy, redirection and 404 hosts with their domain names (streams have no HTTP access log). */
 const loadHosts = async () => {
 	const knex = db();
-	const names = [];
-	for (const table of HOST_TABLES) {
-		for (const row of await knex(table).select("domain_names")) names.push(...parseNames(row.domain_names));
+	const hosts = [];
+	for (const [type, table] of HOST_TABLES) {
+		for (const row of await knex(table).select("id", "domain_names").orderBy("id")) {
+			hosts.push({ id: Number(row.id), type, domain_names: parseNames(row.domain_names) });
+		}
 	}
-	return names;
+	return hosts;
 };
 
-const loadState = async () => {
-	const meta = (await settingModel.query().where("id", STATE_ID).first())?.meta;
-	return Number.isFinite(meta?.inode) && Number.isFinite(meta?.offset)
-		? { inode: meta.inode, offset: meta.offset }
-		: null;
-};
-
-const saveState = async ({ inode, offset }) => {
-	const meta = { inode, offset };
-	const existing = await settingModel.query().where("id", STATE_ID).first();
-	if (existing) {
-		await settingModel.query().where("id", STATE_ID).patch({ meta });
-	} else {
-		await settingModel.query().insert({
-			id: STATE_ID,
-			name: "Traffic state",
-			description: "Access log reader position",
-			value: STATE_ID,
-			meta,
-		});
-	}
-};
+/** Reader position and the encrypted visitor key, in the meta of one settings row. */
+const stateMeta = createStateMeta({
+	read: async () => (await settingModel.query().where("id", STATE_ID).first())?.meta,
+	write: async (meta) => {
+		const existing = await settingModel.query().where("id", STATE_ID).first();
+		if (existing) {
+			await settingModel.query().where("id", STATE_ID).patch({ meta });
+		} else {
+			await settingModel.query().insert({
+				id: STATE_ID,
+				name: "Traffic state",
+				description: "Access log reader position and visitor key",
+				value: STATE_ID,
+				meta,
+			});
+		}
+	},
+});
 
 /** Runs the GeoIP update with the configured credentials and stores the outcome in the settings row. */
 const runGeoipUpdate = () =>
@@ -66,15 +79,26 @@ const runGeoipUpdate = () =>
 		recordResult: (result) => internalMonitoringSetting.recordGeoipResult(result),
 	});
 
-const store = { flush, rollUpAndPrune, deleteIps, queryTraffic, summary };
+const store = {
+	flush,
+	rollUpAndPrune,
+	deleteIps,
+	deleteVisitors,
+	visitorDayHashes,
+	countVisitors,
+	queryTraffic,
+	summary,
+};
 
 const traffic = createTrafficService({
 	store,
 	geo: geoip,
 	getConfig: getMonitoringConfig,
-	loadState,
-	saveState,
+	loadState: stateMeta.loadState,
+	saveState: stateMeta.saveState,
 	loadHosts,
+	loadVisitorKey: () =>
+		loadVisitorKey({ readMeta: stateMeta.readMeta, writeMeta: stateMeta.writeMeta, box: defaultSecretBox }),
 });
 
 const crowdsec = createCrowdsecService({ geoLookup: (ip) => geoip.lookup(ip)?.country ?? null });

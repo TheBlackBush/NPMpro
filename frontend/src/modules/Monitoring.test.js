@@ -7,17 +7,25 @@ import {
 	countryName,
 	errorRateColor,
 	filterBans,
+	filterRecent,
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
-	hostOptions,
+	hostEntryLabel,
+	hostFilterFromSearch,
+	hostFilterFromSelect,
+	hostFilterToSearch,
+	hostGroups,
+	hostSelectValue,
 	mapScale,
 	monitoringSettingsPayload,
 	rangeOptions,
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	statusColor,
 	timeLeftParts,
+	trafficParams,
 } from "./Monitoring.js";
 
 it("formats bytes with one decimal above 1 KB", () => {
@@ -144,18 +152,23 @@ it("turns API buckets into one chart series per status class", () => {
 	assert.deepEqual(chartSeries(undefined, "1h")[0].data, []);
 });
 
-it("lists every managed domain name once, sorted, with _other last", () => {
-	const proxy = [{ domainNames: ["B.example.com", "*.example.com"] }, { domainNames: ["a.example.com"] }];
-	const redirection = [{ domainNames: ["a.example.com", " c.example.com "] }];
-	assert.deepEqual(hostOptions([proxy, redirection, undefined]), [
-		"*.example.com",
-		"a.example.com",
-		"b.example.com",
-		"c.example.com",
-		"_other",
-	]);
-	assert.deepEqual(hostOptions([[]], "gone.example.com"), ["gone.example.com", "_other"]);
-	assert.deepEqual(hostOptions([[]], "_other"), ["_other"]);
+it("maps the host filter to the select value and back", () => {
+	const cases = [
+		[{}, ""],
+		[{ host: "_other" }, "_other"],
+		[{ hostType: "proxy", hostId: 12 }, "proxy:12"],
+		[{ hostType: "dead", hostId: 3 }, "dead:3"],
+		[{ host: "a.example.com" }, "key:a.example.com"],
+	];
+	for (const [filter, value] of cases) {
+		assert.equal(hostSelectValue(filter), value);
+		assert.deepEqual(hostFilterFromSelect(value), filter);
+	}
+	assert.equal(hostSelectValue({ hostType: "stream", hostId: 1 }), "");
+	assert.equal(hostSelectValue(undefined), "");
+	for (const bad of ["key:", "proxy:0", "proxy:x", "stream:1", undefined]) {
+		assert.deepEqual(hostFilterFromSelect(bad), {});
+	}
 });
 
 it("names countries in the locale and keeps unknown codes", () => {
@@ -273,4 +286,177 @@ it("labels the time axis, naming each day once on the daily ranges", () => {
 	assert.deepEqual(axisLabels([hour, 2 * hour], day, true), ["d0", null]);
 	assert.deepEqual(axisLabels([], day, true), []);
 	assert.deepEqual(axisLabels(undefined, day), []);
+});
+
+it("reads and writes the host filter in the URL", () => {
+	const from = (q) => hostFilterFromSearch(new URLSearchParams(q));
+	assert.deepEqual(from("host_type=proxy&host_id=12"), { hostType: "proxy", hostId: 12 });
+	assert.deepEqual(from("host_type=dead&host_id=3&range=7d"), { hostType: "dead", hostId: 3 });
+	assert.deepEqual(from("host=_other"), { host: "_other" });
+	// old single form, read only
+	assert.deepEqual(from("host=proxy:12"), { hostType: "proxy", hostId: 12 });
+	// old plain key
+	assert.deepEqual(from("host=a.example.com"), { host: "a.example.com" });
+	assert.deepEqual(from("host=*.example.com"), { host: "*.example.com" });
+	for (const bad of [
+		"",
+		"host=",
+		"host_type=proxy",
+		"host_id=3",
+		"host_type=stream&host_id=1",
+		"host_type=proxy&host_id=0",
+		"host_type=proxy&host_id=x",
+		"host_type=proxy&host_id=1.5",
+	]) {
+		assert.deepEqual(from(bad), {});
+	}
+	const base = new URLSearchParams("range=7d&host=proxy:1&host_type=dead&host_id=2");
+	const written = hostFilterToSearch({ hostType: "redirection", hostId: 4 }, base);
+	assert.equal(written.get("range"), "7d");
+	assert.equal(written.get("host_type"), "redirection");
+	assert.equal(written.get("host_id"), "4");
+	assert.equal(written.has("host"), false);
+	assert.equal(hostFilterToSearch({ host: "_other" }, base).toString(), "range=7d&host=_other");
+	assert.equal(hostFilterToSearch({}, base).toString(), "range=7d");
+	assert.equal(hostFilterToSearch({ hostType: "proxy", hostId: "x" }).toString(), "");
+	assert.equal(hostFilterToSearch({ hostType: "stream", hostId: 1 }).toString(), "");
+	const filter = { hostType: "dead", hostId: 9 };
+	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch(filter)), filter);
+	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch({ host: "_other" })), { host: "_other" });
+});
+
+it("builds the traffic query without mixing host and host_id", () => {
+	assert.deepEqual(trafficParams("24h", {}), { range: "24h" });
+	assert.deepEqual(trafficParams("7d", { host: "_other" }), { range: "7d", host: "_other" });
+	assert.deepEqual(trafficParams("7d", "*.example.com"), { range: "7d", host: "*.example.com" });
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy", hostId: 12 }), {
+		range: "1h",
+		host_type: "proxy",
+		host_id: 12,
+	});
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy", hostId: 12, host: "x" }), {
+		range: "1h",
+		host_type: "proxy",
+		host_id: 12,
+	});
+	assert.deepEqual(trafficParams("1h", { hostType: "stream", hostId: 12 }), { range: "1h" });
+	assert.deepEqual(trafficParams("1h", { hostType: "proxy" }), { range: "1h" });
+	assert.deepEqual(trafficParams("1h", { hostId: 3, host: "x" }), { range: "1h", host: "x" });
+});
+
+it("groups hosts for the host filter", () => {
+	const groups = hostGroups({
+		proxy: [
+			{ id: 12, domainNames: ["a.example.com", "b.example.com", "c.example.com"] },
+			{ id: 13, domainNames: [] },
+		],
+		redirection: undefined,
+		dead: [{ id: 2, domainNames: ["x.example.com"] }],
+	});
+	assert.deepEqual(
+		groups.map((g) => [g.type, g.labelKey, g.options.length]),
+		[
+			["proxy", "proxy-hosts", 1],
+			["redirection", "redirection-hosts", 0],
+			["dead", "dead-hosts", 1],
+		],
+	);
+	assert.deepEqual(groups[0].options[0], {
+		value: "proxy:12",
+		hostType: "proxy",
+		hostId: 12,
+		label: "a.example.com",
+		extra: 2,
+		domainNames: ["a.example.com", "b.example.com", "c.example.com"],
+	});
+	assert.equal(groups[2].options[0].value, "dead:2");
+	assert.equal(groups[2].options[0].extra, 0);
+});
+
+it("labels Top hosts entries", () => {
+	assert.deepEqual(
+		hostEntryLabel({ hostType: "proxy", name: "a.example.com", domainNames: ["a.example.com", "b.example.com"] }),
+		{
+			name: "a.example.com",
+			extra: 1,
+			badge: "proxy",
+		},
+	);
+	assert.equal(
+		hostEntryLabel({ hostType: "redirection", name: "r.example.com", domainNames: ["r.example.com"] }).badge,
+		"redirection",
+	);
+	assert.equal(
+		hostEntryLabel({ hostType: "dead", name: "d.example.com", domainNames: ["d.example.com"] }).badge,
+		"dead",
+	);
+	assert.deepEqual(hostEntryLabel({ hostType: "deleted", name: "*.gone.com", domainNames: ["*.gone.com"] }), {
+		name: "*.gone.com",
+		extra: 0,
+		badge: "deleted",
+	});
+	assert.deepEqual(hostEntryLabel({ hostType: "other", name: "_other", domainNames: [] }), {
+		name: "_other",
+		extra: 0,
+		badge: null,
+	});
+});
+
+it("falls back to the host id for an unnamed real host", () => {
+	assert.equal(hostEntryLabel({ hostType: "proxy", hostId: 7, name: "", domainNames: [] }).name, "#7");
+	assert.equal(hostEntryLabel({ hostType: "other", name: "", domainNames: [] }).name, "_other");
+});
+
+it("keeps the unique visitor keys in the monitoring settings payload and drops them when locked", () => {
+	const values = { trafficEnabled: true, uniqueVisitors: true, visitorsCap: 5000, locked: [] };
+	assert.deepEqual(monitoringSettingsPayload(values), {
+		trafficEnabled: true,
+		uniqueVisitors: true,
+		visitorsCap: 5000,
+	});
+	assert.deepEqual(monitoringSettingsPayload({ ...values, locked: ["unique_visitors", "visitors_cap"] }), {
+		trafficEnabled: true,
+	});
+});
+
+it("never sends the visitor limit while unique visitors are off", () => {
+	const values = { trafficEnabled: true, uniqueVisitors: false, visitorsCap: "", locked: [] };
+	assert.deepEqual(monitoringSettingsPayload(values), { trafficEnabled: true, uniqueVisitors: false });
+	assert.deepEqual(monitoringSettingsPayload({ ...values, uniqueVisitors: true, visitorsCap: 2000 }), {
+		trafficEnabled: true,
+		uniqueVisitors: true,
+		visitorsCap: 2000,
+	});
+});
+
+it("filterRecent searches host, method, path, status, country and IP", () => {
+	const rows = [
+		{ name: "app.example.com", method: "GET", path: "/login", status: 404, country: "DE", ip: "203.0.113.7" },
+		{ name: "_other", method: "-", path: "", status: 400, country: null },
+	];
+	const options = {
+		hostOf: (row) => (row.name === "_other" ? "Other hosts" : row.name),
+		nameOf: (code) => countryName(code, "en"),
+	};
+	assert.equal(filterRecent(rows, "", options).length, 2);
+	assert.deepEqual(filterRecent(rows, "APP.example", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "/log", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "get", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "GET /login", options), [rows[0]]);
+	assert.deepEqual(filterRecent([rows[1]], "-", options), [], "the placeholder method is not searchable");
+	assert.deepEqual(filterRecent(rows, "404", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "germany", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "203.0.113", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "other hosts", options), [rows[1]]);
+	assert.deepEqual(filterRecent(rows, "null", options), [], "a missing country or IP is not searchable text");
+	assert.deepEqual(filterRecent(undefined, "x"), []);
+});
+
+it("statusColor follows the chart colours per status class", () => {
+	assert.equal(statusColor(200), "green");
+	assert.equal(statusColor(304), "blue");
+	assert.equal(statusColor(499), "orange");
+	assert.equal(statusColor(502), "red");
+	assert.equal(statusColor(101), "secondary");
+	assert.equal(statusColor(0), "secondary");
 });

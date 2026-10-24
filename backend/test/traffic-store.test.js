@@ -3,6 +3,7 @@ import { it } from "node:test";
 import knexFactory from "knex";
 import { createStore } from "../lib/traffic/store.js";
 import { up } from "../migrations/20261024120000_monitoring.js";
+import { up as upVisitors } from "../migrations/20261024200000_monitoring_visitors.js";
 
 const NOW = Date.UTC(2026, 9, 24, 12, 30, 0);
 const MIN = Math.floor(NOW / 60000);
@@ -14,6 +15,7 @@ const setup = async () => {
 		useNullAsDefault: true,
 	});
 	await up(knex);
+	await upVisitors(knex);
 	return { knex, store: createStore(knex) };
 };
 
@@ -133,7 +135,7 @@ it("filters by host and hides ips unless showIps", async () => {
 	const a = await store.queryTraffic({ range: "24h", host: "a", showIps: false, now: NOW });
 	assert.equal(a.totals.requests, 2);
 	assert.deepEqual(
-		a.top_hosts.map((h) => h.host),
+		a.hosts.map((h) => h.host),
 		["a"],
 	);
 	assert.deepEqual(a.top_ips, []);
@@ -152,6 +154,98 @@ it("summary counts only the UTC day so far across midnight", async () => {
 	assert.equal(
 		s.series_24h.reduce((n, p) => n + p.requests, 0),
 		5,
+	);
+	await knex.destroy();
+});
+
+const DAYN = Math.floor(NOW / 86400000);
+const v = (day, host, hash) => ({ day, host, hash });
+
+it("creates the visitor table with its indexes", async () => {
+	const { knex } = await setup();
+	const names = (await knex.raw("PRAGMA index_list(traffic_visitor)")).map((r) => r.name);
+	assert.ok(names.includes("tv_uq"));
+	assert.ok(names.includes("tv_day"));
+	await knex.destroy();
+});
+
+it("ignores duplicate visitor rows, also across flushes", async () => {
+	const { knex, store } = await setup();
+	await store.flush({ visitors: [v(DAYN, "a", "h1"), v(DAYN, "a", "h1"), v(DAYN, "a", "")] });
+	await store.flush({ visitors: [v(DAYN, "a", "h1"), v(DAYN, "a", "h2"), v(DAYN, "a", "")] });
+	assert.equal((await knex("traffic_visitor")).length, 3);
+	await knex.destroy();
+});
+
+it("counts distinct visitors over days and hosts and reports the cap marker", async () => {
+	const { knex, store } = await setup();
+	await store.flush({
+		visitors: [
+			v(DAYN, "a", "h1"),
+			v(DAYN, "b", "h1"),
+			v(DAYN - 1, "a", "h2"),
+			v(DAYN - 5, "a", "h3"),
+			v(DAYN, "b", ""),
+		],
+	});
+	assert.deepEqual(await store.countVisitors({ startDay: DAYN - 1, hosts: ["a", "b"] }), {
+		visitors: 2,
+		capped: true,
+	});
+	assert.deepEqual(await store.countVisitors({ startDay: DAYN - 1, hosts: ["a"] }), { visitors: 2, capped: false });
+	assert.deepEqual(await store.countVisitors({ startDay: DAYN, hosts: null }), { visitors: 1, capped: true });
+	assert.deepEqual(await store.countVisitors({ startDay: DAYN - 9, hosts: null }), { visitors: 3, capped: true });
+	assert.deepEqual(await store.countVisitors({ startDay: DAYN, hosts: [] }), { visitors: 0, capped: false });
+	await knex.destroy();
+});
+
+it("prunes old visitor days and deleteVisitors empties the table", async () => {
+	const { knex, store } = await setup();
+	await store.flush({ visitors: [v(DAYN - 31, "a", "old"), v(DAYN - 30, "a", "edge"), v(DAYN, "a", "new")] });
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	assert.deepEqual(
+		(await knex("traffic_visitor").orderBy("day")).map((r) => r.hash),
+		["edge", "new"],
+	);
+	await store.deleteVisitors();
+	assert.equal((await knex("traffic_visitor")).length, 0);
+	await knex.destroy();
+});
+
+it("filters traffic by a list of host keys", async () => {
+	const { knex, store } = await setup();
+	await store.flush({ minutes: [m(MIN, "2xx", 2, 10, "a"), m(MIN, "2xx", 3, 10, "b"), m(MIN, "2xx", 4, 10, "c")] });
+	assert.equal((await store.queryTraffic({ range: "1h", host: ["a", "b"], now: NOW })).totals.requests, 5);
+	assert.equal((await store.queryTraffic({ range: "1h", host: [], now: NOW })).totals.requests, 0);
+	assert.equal((await store.queryTraffic({ range: "1h", host: "c", now: NOW })).totals.requests, 4);
+	await knex.destroy();
+});
+
+it("visitorDayHashes gives the stored hashes and the marker per day and host for the given days", async () => {
+	const { knex, store } = await setup();
+	const day = Math.floor(NOW / 86400000);
+	const hx = (n) => n.toString(16).padStart(32, "0");
+	await store.flush({
+		minutes: [],
+		visitors: [
+			{ day, host: "a", hash: hx(1) },
+			{ day, host: "a", hash: hx(2) },
+			{ day, host: "a", hash: "" },
+			{ day, host: "b", hash: hx(1) },
+			{ day: day - 1, host: "a", hash: hx(1) },
+			{ day: day - 2, host: "a", hash: hx(1) },
+		],
+	});
+	const rows = await store.visitorDayHashes({ days: [day - 1, day] });
+	assert.deepEqual(
+		rows
+			.sort((x, y) => x.day - y.day || x.host.localeCompare(y.host))
+			.map((r) => ({ ...r, hashes: r.hashes.sort((x, y) => x.localeCompare(y)) })),
+		[
+			{ day: day - 1, host: "a", hashes: [hx(1)], capped: false },
+			{ day, host: "a", hashes: [hx(1), hx(2)], capped: true },
+			{ day, host: "b", hashes: [hx(1)], capped: false },
+		],
 	);
 	await knex.destroy();
 });
