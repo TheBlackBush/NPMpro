@@ -173,6 +173,21 @@ OIDC is set up under Settings, Authentication in the web UI (administrators only
 - Button icon: choose a built-in icon, upload a file or download one from a URL. PNG, JPEG, WebP and SVG are accepted, up to 256 KB. SVG files that contain scripts, event handlers, embedded documents or references to other files (anything but `#` fragments and inline PNG, JPEG or WebP images) are refused.
 - Sign-in errors are shown on the sign-in page by code: `not_configured`, `provider_error`, `no_email`, `email_not_verified`, `no_user` (no account and auto-create is off), `domain_not_allowed` (email domain not in the allowed list) and `user_disabled`.
 
+## Monitoring
+Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitoring/traffic`) and a CrowdSec tab (`/monitoring/crowdsec`), plus a short monitoring row on the dashboard. It is read-only.
+- Traffic statistics are off by default. Turn them on under Settings, Monitoring (`/settings/monitoring`). NPMpro then reads the nginx access log itself and counts requests, bytes sent and status classes per host. Switching the setting in the UI turns the access log on or off without a restart. With `LOGROTATE=true` or `TRAFFIC_STATS=true` the access log is already on when the container starts.
+- Counts are kept per minute for 24 hours and per hour afterwards. The hourly counts are kept for 30 days by default, adjustable from 7 to 365 days.
+- Requests for names that are not one of your hosts (the default site, requests by IP, random names) are grouped as "Other hosts".
+- Countries and networks (ASN) are always counted when GeoIP databases exist. Show visitor IPs (off by default) additionally stores the top visitor IPs. Turning it off deletes all stored IPs.
+- GeoIP is set up under Settings, GeoIP (`/settings/geoip`): enter your MaxMind account ID and license key ([create them here](https://www.maxmind.com/en/geolite2/signup)) and choose the editions (`GeoLite2-Country` and `GeoLite2-ASN` by default, `GeoLite2-City` is optional). NPMpro downloads the databases itself, checks every 3 days whether they need an update, and "Update now" updates them immediately. A separate geoipupdate container is not needed anymore, but the old container still works. The files are stored in `/data/goaccess/geoip`, the same place GoAccess and the [geoblocking example](#geoblocking-example-mainly-community-support) read them from. Without databases the map and the country and network lists are hidden, the rest works.
+- CrowdSec bans: the CrowdSec tab shows the currently active bans (total, added in the last 24 hours, by reason, origin and type, a map and the newest bans). NPMpro reads them with the bouncer settings of the [Crowdsec](#crowdsec) section (`/data/crowdsec/crowdsec.conf`, the existing bouncer key or client certificate), read-only, and polls the LAPI every 60 seconds. It needs no additional key. Only active bans are shown, no alerts.
+- For alerts, decision management and CrowdSec metrics I recommend the companion project [CrowdSec Web UI](https://github.com/TheDuffman85/crowdsec-web-ui).
+- Environment variables win over the saved value and lock their field in the UI ("Set by environment"):
+  - `TRAFFIC_STATS` (`true` or `false`), `LOGROTATE=true` also turns traffic statistics on and locks the setting
+  - `TRAFFIC_RETENTION_DAYS` (7 to 365, default 30)
+  - `TRAFFIC_SHOW_IPS` (`true` or `false`, default false)
+  - `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY` and `GEOIP_EDITIONS` (space separated, for example `GeoLite2-Country GeoLite2-ASN`)
+
 ## Comments on some buttons
 - Forward Hostname / IP / Path: if the scheme is set to path you can just put here a path in and nginx works as a file server, otherwise you need to input ip/domain, you can also append a path to the ip/domain like `127.0.0.1/path` to proxy to a subpath.
   - For custom locations with a set path, the path of the location will be stripped. So a request `GET /cdf/abc` to a custom location `/cdf` which proxies to `127.0.0.1/abc` will proxy to `127.0.0.1/abc/abc`, a custom location `/cdf/` which proxies to `127.0.0.1/` will proxy to `127.0.0.1/abc`  and a custom location `/cdf` which proxies to `127.0.0.1` will proxy to `127.0.0.1/cdf/abc`
@@ -252,7 +267,7 @@ upstream cu_mybackend {
 
 ## Geoblocking example (mainly community support) 
 
-1. deploy a geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup))
+1. get the GeoLite2 databases: either enter your MaxMind credentials under Settings, GeoIP (see [Monitoring](#monitoring)), or deploy an optional geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup))
 2. open and edit this file: `/opt/npmpro/custom_nginx/http_top.conf`, if you changed /opt/npmpro to a different path make sure to change the path to fit, the database is only reread when nginx reloads
 ```yaml
 geoip_country /data/goaccess/geoip/GeoLite2-Country.mmdb;
@@ -369,14 +384,15 @@ If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/p
 3. If you use crowdsec, and you do **not** [disable sharing in crowdsec](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing), you need to mention that [this](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data) is sent to crowdsec in your privacy policy.
 4. If you're blocking IPs, for example, using access lists, GeoIP filtering, or CrowdSec block lists, make sure to mention this as well.
 5. If GoAccess is enabled, it processes access logs to generate statistics, which are saved on disk for a time you can configure. These statistics include user information (like IPs), so make sure to also mention this.
-6. If you use the PHP-FPM option, error logs from PHP-FPM will also be written to Docker logs. These include user information (like IPs), so make sure to also mention this.
-7. If you collect any user information (like through other custom nginx modules, modules you can load via env, lua scripts, etc.), also mention it.
-8. If you use the caddy http to https redirect container, you should also mention the data collected by it, since it will also collect (error) logs.
-9. If use use anubis, see here: https://anubis.techaro.lol/docs/admin/configuration/impressum
-10. If you do any extra custom/advanced configuration/modification, which is in someway related to the users data, then yes, keep in mind to also mention this.
-11. Anything else you do with the users data, should also be mentioned. (Like what your backend does or any other proxies in front of NPMpro (like cloudflare, still not recommended), how data is stored, duration, ads, analytic tools, how data is handled if they contact you, by who/which provider, etc.)
-12. This probably does not need to be mentioned, but you can include it if you want to be thorough (note: this does not apply if you're using Let's Encrypt, as they no longer support OCSP): Some clients (like Firefox) send OCSP requests to the certificate authority (CA) by default if the CA includes OCSP URLs in the certificate. This behavior can be disabled by users in Firefox. It likely does not need to be mentioned, as no data is sent to you, the client communicates directly with the CA. The check is initiated by the client itself; it's neither requested nor required by you. Your certificate simply indicates that the client can perform this check if it chooses to.
-13. Also optional and likely not required: Some information about the data stored by the nameservers running your domain. This should not be required, since in most cases there's a provider between the users and your nameserver acting as a proxy. This means the DNS requests of your users are hidden behind their provider. It’s the provider who should explain to their users how they handle data in their role as a "DNS proxy."
+6. If you enable traffic statistics (Settings, Monitoring, or `TRAFFIC_STATS`), NPMpro reads the access log and stores counts per host, status class, country and network (and the bytes sent) for the set retention time. Visitor IPs are only stored if you also enable "Show visitor IPs". The access log itself is written to disk while statistics are on and rotated like with `LOGROTATE`. GeoIP lookups happen locally from the MaxMind database files on disk, no visitor IP is sent to MaxMind.
+7. If you use the PHP-FPM option, error logs from PHP-FPM will also be written to Docker logs. These include user information (like IPs), so make sure to also mention this.
+8. If you collect any user information (like through other custom nginx modules, modules you can load via env, lua scripts, etc.), also mention it.
+9. If you use the caddy http to https redirect container, you should also mention the data collected by it, since it will also collect (error) logs.
+10. If use use anubis, see here: https://anubis.techaro.lol/docs/admin/configuration/impressum
+11. If you do any extra custom/advanced configuration/modification, which is in someway related to the users data, then yes, keep in mind to also mention this.
+12. Anything else you do with the users data, should also be mentioned. (Like what your backend does or any other proxies in front of NPMpro (like cloudflare, still not recommended), how data is stored, duration, ads, analytic tools, how data is handled if they contact you, by who/which provider, etc.)
+13. This probably does not need to be mentioned, but you can include it if you want to be thorough (note: this does not apply if you're using Let's Encrypt, as they no longer support OCSP): Some clients (like Firefox) send OCSP requests to the certificate authority (CA) by default if the CA includes OCSP URLs in the certificate. This behavior can be disabled by users in Firefox. It likely does not need to be mentioned, as no data is sent to you, the client communicates directly with the CA. The check is initiated by the client itself; it's neither requested nor required by you. Your certificate simply indicates that the client can perform this check if it chooses to.
+14. Also optional and likely not required: Some information about the data stored by the nameservers running your domain. This should not be required, since in most cases there's a provider between the users and your nameserver acting as a proxy. This means the DNS requests of your users are hidden behind their provider. It’s the provider who should explain to their users how they handle data in their role as a "DNS proxy."
 
 ## What connections can be expected from the NPMpro container?
 - to your clients
@@ -391,7 +407,8 @@ If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/p
 - if used to www.site24x7.com for the reachability check
 - if enabled to the alpine package repositories to install the inbuilt php-fpm and its extensions
 - if enabled to cloudflare to download their IPs
-- if enabled to the crowdsec (container) lapi
+- if enabled to the crowdsec (container) lapi (also for the CrowdSec tab of the Monitoring page, the URL is the `API_URL` of the bouncer config)
+- if GeoIP credentials are set to download.maxmind.com (and the storage location it redirects to) to download the GeoLite2 databases, at most every 3 days
 - if enabled to your captcha provider for the crowdsec captcha remediation
 - if you see more/others please report them
 
