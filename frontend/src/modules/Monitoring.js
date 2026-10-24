@@ -106,27 +106,32 @@ const chartSeries = (series, range) => {
 };
 
 /**
- * chartSeries output to the uPlot data shape for a stacked chart: [timestamps, cumulative series...], highest class
- * first, so uPlot draws the lower lines last and they stay visible where an upper class adds nothing. Series j
- * (1-based) is the sum of the classes up to class n - j; bands fill each series down to the next one. values and
- * totals keep the per-class numbers in class order for the legend and the tooltip.
+ * chartSeries output to the shape of the stacked chart: the bucket times, the per-class values (class order, the chart
+ * stacks them) and the per-class totals for the legend and the summary.
  */
-const stackedChartData = (series) => {
+const chartData = (series) => {
 	const list = series ?? [];
-	const xs = list[0]?.data.map((point) => point[0]) ?? [];
-	const sums = xs.map(() => 0);
-	const stacked = list.map((s) =>
-		s.data.map((point, i) => {
-			sums[i] += point[1];
-			return sums[i];
-		}),
-	);
 	return {
-		data: [xs, ...stacked.reverse()],
-		bands: list.slice(1).map((_s, i) => ({ series: [i + 1, i + 2] })),
+		times: list[0]?.data.map((point) => point[0]) ?? [],
 		values: list.map((s) => s.data.map((point) => point[1])),
 		totals: list.map((s) => s.data.reduce((sum, point) => sum + point[1], 0)),
 	};
+};
+
+const HALF_DAY_MS = 43_200_000;
+
+/**
+ * Time axis labels, one per bucket; null means no tick there. With `daily` (7d, 30d) only the first bucket of each
+ * day gets its label, so a day is named once; the partial first day only when it has at least half a day before the
+ * next one. `format(ms)` gives the label text.
+ */
+const axisLabels = (times, format, daily = false) => {
+	const labels = (times ?? []).map((ms) => format(ms));
+	if (!daily) return labels;
+	const ticks = labels.map((label, i) => (i > 0 && label !== labels[i - 1] ? label : null));
+	const next = ticks.findIndex((label) => label !== null);
+	if (labels.length > 0 && (next === -1 || times[next] - times[0] >= HALF_DAY_MS)) ticks[0] = labels[0];
+	return ticks;
 };
 
 const OTHER_HOST = "_other";
@@ -275,6 +280,8 @@ const sparklinePoints = (values, width, height, pad = 2) => {
 };
 
 export {
+	axisLabels,
+	chartData,
 	chartSeries,
 	countryName,
 	errorRateColor,
@@ -291,6 +298,5 @@ export {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
-	stackedChartData,
 	timeLeftParts,
 };

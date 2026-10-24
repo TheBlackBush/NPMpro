@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	axisLabels,
+	chartData,
 	chartSeries,
 	countryName,
 	errorRateColor,
@@ -15,7 +17,6 @@ import {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
-	stackedChartData,
 	timeLeftParts,
 } from "./Monitoring.js";
 
@@ -235,29 +236,41 @@ it("errorRateColor follows the 1 % and 5 % thresholds", () => {
 	assert.equal(errorRateColor(0.05), "red");
 });
 
-it("stacks the chart series for uPlot, highest class first, keeping the per-class values", () => {
+it("splits the chart series into times, per-class values and totals", () => {
 	const series = [
 		{ bucket: 10, byClass: { "2xx": 5, "3xx": 1, "4xx": 2, "5xx": 0 } },
 		{ bucket: 11, byClass: { "2xx": 2, "3xx": 1, "4xx": 0, "5xx": 3 } },
 	];
-	const stacked = stackedChartData(chartSeries(series, "24h"));
-	assert.deepEqual(stacked.data, [
-		[600_000, 660_000],
-		[8, 6],
-		[8, 3],
-		[6, 3],
-		[5, 2],
-	]);
-	assert.deepEqual(stacked.bands, [{ series: [1, 2] }, { series: [2, 3] }, { series: [3, 4] }]);
-	assert.deepEqual(stacked.values, [
+	const data = chartData(chartSeries(series, "24h"));
+	assert.deepEqual(data.times, [600_000, 660_000]);
+	assert.deepEqual(data.values, [
 		[5, 2],
 		[1, 1],
 		[2, 0],
 		[0, 3],
 	]);
-	assert.deepEqual(stacked.totals, [7, 2, 2, 3]);
-	const empty = stackedChartData(chartSeries([], "1h"));
-	assert.deepEqual(empty.data, [[], [], [], [], []]);
+	assert.deepEqual(data.totals, [7, 2, 2, 3]);
+	const empty = chartData(chartSeries([], "1h"));
+	assert.deepEqual(empty.times, []);
+	assert.deepEqual(empty.values, [[], [], [], []]);
 	assert.deepEqual(empty.totals, [0, 0, 0, 0]);
-	assert.deepEqual(stackedChartData(undefined).data, [[]]);
+	assert.deepEqual(chartData(undefined), { times: [], values: [], totals: [] });
+});
+
+it("labels the time axis, naming each day once on the daily ranges", () => {
+	const hour = 3_600_000;
+	const day = (ms) => `d${Math.floor(ms / (24 * hour))}`;
+	assert.deepEqual(
+		axisLabels([0, 60_000], (ms) => `m${ms / 60_000}`),
+		["m0", "m1"],
+	);
+	// starts 20:00: the partial first day has 4 hours, so it stays unnamed
+	const late = [20, 21, 22, 23, 24, 25, 47, 48].map((h) => h * hour);
+	assert.deepEqual(axisLabels(late, day, true), [null, null, null, null, "d1", null, null, "d2"]);
+	// starts 06:00: 18 hours before the next day, so the first day is named
+	const early = [6, 12, 24, 30].map((h) => h * hour);
+	assert.deepEqual(axisLabels(early, day, true), ["d0", null, "d1", null]);
+	assert.deepEqual(axisLabels([hour, 2 * hour], day, true), ["d0", null]);
+	assert.deepEqual(axisLabels([], day, true), []);
+	assert.deepEqual(axisLabels(undefined, day), []);
 });
