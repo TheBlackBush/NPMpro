@@ -192,7 +192,13 @@ function TrafficChart({ series, range }) {
 	// one instance for the life of the component
 	useEffect(() => {
 		if (!(Chart && canvas.current)) return;
-		chart.current = new Chart(canvas.current, { type: "line", data: { labels: [], datasets: [] } });
+		try {
+			chart.current = new Chart(canvas.current, { type: "line", data: { labels: [], datasets: [] } });
+		} catch {
+			// e.g. no 2D canvas context: show the load error instead of breaking the tab
+			setFailed(true);
+			return;
+		}
 		return () => {
 			chart.current?.destroy();
 			chart.current = null;
