@@ -3,13 +3,21 @@ import {
 	IconArrowsTransferDown,
 	IconChartBar,
 	IconChartLine,
+	IconListDetails,
 	IconUsers,
 	IconWorld,
 	IconWorldOff,
 } from "@tabler/icons-react";
-import { Fragment } from "react";
+import {
+	createColumnHelper,
+	createSortedRowModel,
+	rowSortingFeature,
+	tableFeatures,
+	useTable,
+} from "@tanstack/react-table";
+import { Fragment, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import {
 	CountryName,
 	countryLabel,
@@ -19,8 +27,10 @@ import {
 	TrafficChart,
 	WorldMap,
 } from "src/components/Monitoring";
+import { TableLayout } from "src/components/Table/TableLayout";
 import {
 	useDeadHosts,
+	useListFilters,
 	useMonitoringSettings,
 	useMonitoringTraffic,
 	useProxyHosts,
@@ -29,6 +39,7 @@ import {
 import { currentLocale, formatDateTime, intl, T } from "src/locale";
 import {
 	errorRateColor,
+	filterRecent,
 	formatBytes,
 	formatCount,
 	hostEntryLabel,
@@ -40,6 +51,7 @@ import {
 	isCountryCode,
 	OTHER_HOST,
 	rangeOptions,
+	statusColor,
 } from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
@@ -51,6 +63,17 @@ const BADGES = {
 	dead: { color: "red", labelKey: "monitoring.host.badge.dead" },
 	deleted: { color: "secondary", labelKey: "monitoring.host.badge.deleted" },
 };
+
+// recent requests shown before "Show all" (the API sends up to 100)
+const FIRST_ROWS = 25;
+
+// newest first, as the API sends them; no column sorting, like the newest bans table
+const features = tableFeatures({
+	rowSortingFeature,
+	sortedRowModel: createSortedRowModel(),
+});
+
+const columnHelper = createColumnHelper();
 
 /**
  * The exact number as a hint under a short value ("5.9k" over "5,948"), nothing when both read the same.
@@ -231,6 +254,150 @@ const topHostItem = (entry, { uniqueVisitors, params }) => {
 	};
 };
 
+function HostBadge({ badge }) {
+	if (!badge) return null;
+	return (
+		<span className={`badge bg-${BADGES[badge].color}-lt`}>
+			<T id={BADGES[badge].labelKey} />
+		</span>
+	);
+}
+
+/** Shown host of a recent request: "Other hosts" for _other, otherwise the first domain name. */
+const recentHostName = (row) =>
+	row.hostType === "other" ? intl.formatMessage({ id: "monitoring.host.other" }) : hostEntryLabel(row).name;
+
+/**
+ * The newest requests the backend keeps in memory (the selected host's or all), like "Newest bans": search, the
+ * first 25 rows with "Show all", the IP column only when the API sends IPs.
+ */
+function RecentTable({ rows }) {
+	const { filters, setFilter, clear } = useListFilters();
+	const [showAll, setShowAll] = useState(false);
+	const withIps = rows.some((row) => row.ip !== undefined);
+	const displayed = filterRecent(rows, filters.q, { hostOf: recentHostName, nameOf: countryLabel });
+	const visible = showAll ? displayed : displayed.slice(0, FIRST_ROWS);
+
+	const columns = useMemo(
+		() => [
+			columnHelper.accessor("time", {
+				header: intl.formatMessage({ id: "monitoring.recent.column.time" }),
+				enableSorting: false,
+				cell: (info) => <span className="text-nowrap">{formatDateTime(info.getValue())}</span>,
+			}),
+			columnHelper.accessor(recentHostName, {
+				id: "host",
+				header: intl.formatMessage({ id: "monitoring.recent.column.host" }),
+				enableSorting: false,
+				cell: (info) => (
+					<span className="d-inline-flex flex-wrap align-items-center gap-2">
+						<span className="text-break">{info.getValue()}</span>
+						<HostBadge badge={hostEntryLabel(info.row.original).badge} />
+					</span>
+				),
+			}),
+			columnHelper.accessor("path", {
+				header: intl.formatMessage({ id: "monitoring.recent.column.request" }),
+				enableSorting: false,
+				cell: (info) => {
+					const { method, path } = info.row.original;
+					if (method === "-" && path === "") return <span className="text-secondary">-</span>;
+					return (
+						<span className="font-monospace text-break">
+							<span className="text-secondary me-2">{method}</span>
+							{path}
+						</span>
+					);
+				},
+			}),
+			columnHelper.accessor("status", {
+				header: intl.formatMessage({ id: "monitoring.recent.column.status" }),
+				enableSorting: false,
+				cell: (info) => (
+					<span className={`badge bg-${statusColor(info.getValue())}-lt`}>{info.getValue()}</span>
+				),
+			}),
+			columnHelper.accessor("bytes", {
+				header: intl.formatMessage({ id: "monitoring.recent.column.size" }),
+				enableSorting: false,
+				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
+			}),
+			columnHelper.accessor((row) => (row.country ? countryLabel(row.country) : ""), {
+				id: "country",
+				header: intl.formatMessage({ id: "monitoring.recent.column.country" }),
+				enableSorting: false,
+				cell: (info) =>
+					info.row.original.country ? (
+						<CountryName code={info.row.original.country} />
+					) : (
+						<span className="text-secondary">-</span>
+					),
+			}),
+			...(withIps
+				? [
+						columnHelper.accessor("ip", {
+							header: intl.formatMessage({ id: "monitoring.recent.column.ip" }),
+							enableSorting: false,
+							cell: (info) => <span className="font-monospace text-break">{info.getValue() ?? "-"}</span>,
+						}),
+					]
+				: []),
+		],
+		[withIps],
+	);
+
+	const tableInstance = useTable({
+		features,
+		columns: columnHelper.columns(columns),
+		data: visible,
+		// time, host and path can repeat within a second: the position in the newest first list is the id
+		getRowId: (_row, index) => String(index),
+	});
+
+	return (
+		<div className="col-12">
+			<div className="card">
+				<div className="card-table">
+					<div className="card-header">
+						<div>
+							<h3 className="card-title">
+								<T id="monitoring.recent" />
+							</h3>
+							<p className="card-subtitle">
+								<T id="monitoring.recent.subtitle" />
+							</p>
+						</div>
+					</div>
+					{rows.length === 0 ? (
+						<div className="card-body">
+							<EmptyState icon={IconListDetails} title={<T id="monitoring.recent.empty" />} />
+						</div>
+					) : (
+						<>
+							<ListToolbar
+								filters={filters}
+								setFilter={setFilter}
+								clear={clear}
+								total={rows.length}
+								shown={displayed.length}
+								kinds={[]}
+							/>
+							<TableLayout tableInstance={tableInstance} />
+						</>
+					)}
+				</div>
+				{visible.length < displayed.length ? (
+					<div className="card-footer text-center">
+						<button type="button" className="btn btn-link" onClick={() => setShowAll(true)}>
+							<T id="monitoring.recent.show-all" data={{ count: displayed.length }} />
+						</button>
+					</div>
+				) : null}
+			</div>
+		</div>
+	);
+}
+
 function TrafficData({ data, range, params }) {
 	const { status, totals } = data;
 	const geoip = status.geoip;
@@ -392,6 +559,7 @@ function TrafficData({ data, range, params }) {
 						})}
 					/>
 				) : null}
+				<RecentTable rows={data.recent ?? []} />
 			</div>
 			<StatusLine status={status} />
 		</>

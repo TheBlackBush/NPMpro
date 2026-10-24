@@ -323,6 +323,33 @@ const filterBans = (rows, q, nameOf = () => "") => {
 	);
 };
 
+/**
+ * Recent requests whose host, path, status, country code or name or IP contain the search text (case-insensitive).
+ * `hostOf(row)` gives the shown host name, `nameOf(code)` the shown country name; an empty search keeps every row.
+ */
+const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () => "" } = {}) => {
+	const needle = String(q ?? "")
+		.trim()
+		.toLowerCase();
+	if (needle === "") return rows ?? [];
+	return (rows ?? []).filter((row) =>
+		[hostOf(row), row.path, row.status, row.country, row.country ? nameOf(row.country) : "", row.ip]
+			.filter((part) => part !== null && part !== undefined)
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+};
+
+// Tabler colour per status class, the same as the chart (2xx green, 3xx blue, 4xx orange, 5xx red)
+const STATUS_COLORS = { 2: "green", 3: "blue", 4: "orange", 5: "red" };
+
+/** Tabler colour name of the status badge of a response status. */
+const statusColor = (status) => {
+	const n = Number(status);
+	return (n >= 200 && n < 600 && STATUS_COLORS[Math.floor(n / 100)]) || "secondary";
+};
+
 const rangeOptions = [
 	{ value: "1h", labelKey: "monitoring.range.1h" },
 	{ value: "24h", labelKey: "monitoring.range.24h" },
@@ -395,6 +422,7 @@ export {
 	countryName,
 	errorRateColor,
 	filterBans,
+	filterRecent,
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
@@ -412,6 +440,7 @@ export {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	statusColor,
 	timeLeftParts,
 	trafficParams,
 };

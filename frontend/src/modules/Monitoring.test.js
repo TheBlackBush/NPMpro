@@ -7,6 +7,7 @@ import {
 	countryName,
 	errorRateColor,
 	filterBans,
+	filterRecent,
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
@@ -22,6 +23,7 @@ import {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	statusColor,
 	timeLeftParts,
 	trafficParams,
 } from "./Monitoring.js";
@@ -425,4 +427,33 @@ it("never sends the visitor limit while unique visitors are off", () => {
 		uniqueVisitors: true,
 		visitorsCap: 2000,
 	});
+});
+
+it("filterRecent searches host, path, status, country and IP", () => {
+	const rows = [
+		{ name: "app.example.com", method: "GET", path: "/login", status: 404, country: "DE", ip: "203.0.113.7" },
+		{ name: "_other", method: "-", path: "", status: 400, country: null },
+	];
+	const options = {
+		hostOf: (row) => (row.name === "_other" ? "Other hosts" : row.name),
+		nameOf: (code) => countryName(code, "en"),
+	};
+	assert.equal(filterRecent(rows, "", options).length, 2);
+	assert.deepEqual(filterRecent(rows, "APP.example", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "/log", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "404", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "germany", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "203.0.113", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "other hosts", options), [rows[1]]);
+	assert.deepEqual(filterRecent(rows, "null", options), [], "a missing country or IP is not searchable text");
+	assert.deepEqual(filterRecent(undefined, "x"), []);
+});
+
+it("statusColor follows the chart colours per status class", () => {
+	assert.equal(statusColor(200), "green");
+	assert.equal(statusColor(304), "blue");
+	assert.equal(statusColor(499), "orange");
+	assert.equal(statusColor(502), "red");
+	assert.equal(statusColor(101), "secondary");
+	assert.equal(statusColor(0), "secondary");
 });
