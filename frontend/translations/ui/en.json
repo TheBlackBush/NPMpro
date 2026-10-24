@@ -403,6 +403,7 @@
 	"settings.authentication.button.icon.remove": "Remove icon",
 	"settings.authentication.button.icon.removed": "Icon removed, the built-in icon is used again",
 	"settings.authentication.button.icon.shield-lock": "Shield",
+	"settings.authentication.button.icon.source": "Icon source",
 	"settings.authentication.button.icon.source.builtin": "Built-in",
 	"settings.authentication.button.icon.source.upload": "Upload",
 	"settings.authentication.button.icon.source.url": "From URL",

@@ -91,7 +91,6 @@ function IconFields({ storedIcon }) {
 	const { values, setFieldValue } = useFormikContext();
 	const [source, setSource] = useState(storedIcon?.type === "file" ? "upload" : "builtin");
 	const [url, setUrl] = useState("");
-	const [fileKey, setFileKey] = useState(0);
 	const [result, setResult] = useState(null);
 	const upload = useUploadOidcIcon();
 	const download = useDownloadOidcIcon();
@@ -112,7 +111,8 @@ function IconFields({ storedIcon }) {
 		if (!file) return;
 		setResult(null);
 		upload.mutate(file, callbacks("settings.authentication.button.icon.uploaded"));
-		setFileKey((k) => k + 1);
+		// reset so that the same file can be picked again, without remounting (keeps the focus)
+		e.target.value = "";
 	};
 
 	const onDownload = () => {
@@ -140,7 +140,11 @@ function IconFields({ storedIcon }) {
 				<T id="settings.authentication.button.icon" />
 			</div>
 			<div className="mb-3">
-				<div className="form-selectgroup" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+				<div
+					className="form-selectgroup"
+					role="radiogroup"
+					aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source" })}
+				>
 					{SOURCES.map((s) => (
 						<label className="form-selectgroup-item" key={s}>
 							<input
@@ -149,7 +153,10 @@ function IconFields({ storedIcon }) {
 								value={s}
 								className="form-selectgroup-input"
 								checked={source === s}
-								onChange={() => setSource(s)}
+								onChange={() => {
+									setSource(s);
+									setResult(null);
+								}}
 							/>
 							<span className="form-selectgroup-label">
 								<T id={`settings.authentication.button.icon.source.${s}`} />
@@ -173,7 +180,10 @@ function IconFields({ storedIcon }) {
 										id: `settings.authentication.button.icon.${name}`,
 									})}
 									checked={selected === name}
-									onChange={() => setFieldValue("buttonIcon", name)}
+									onChange={() => {
+										void setFieldValue("buttonIcon", name);
+										setResult(null);
+									}}
 								/>
 								<span className="form-selectgroup-label">
 									<Icon className="icon" aria-hidden="true" />
@@ -186,7 +196,6 @@ function IconFields({ storedIcon }) {
 			{source === "upload" ? (
 				<>
 					<input
-						key={fileKey}
 						type="file"
 						className="form-control"
 						accept={ICON_ACCEPT}

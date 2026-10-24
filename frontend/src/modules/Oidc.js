@@ -21,7 +21,8 @@ const OIDC_BUILTIN_ICONS = [
 	"cloud",
 ];
 
-// Light theme root values of --tblr-<name> in tabler.css (converted from oklch)
+// Light theme root values of --tblr-<name> in tabler.css (converted from oklch). "dark" is a slate grey
+// instead of --tblr-dark, so that the button still stands out on the dark theme's card background.
 const OIDC_COLOR_PRESETS = [
 	{ name: "blue", value: "#066fd1" },
 	{ name: "azure", value: "#4299e1" },
@@ -30,7 +31,7 @@ const OIDC_COLOR_PRESETS = [
 	{ name: "red", value: "#d63939" },
 	{ name: "orange", value: "#f76707" },
 	{ name: "green", value: "#2fb344" },
-	{ name: "dark", value: "#262626" },
+	{ name: "dark", value: "#3d4757" },
 ];
 
 const OIDC_ICON_MAX_BYTES = 256 * 1024;
@@ -163,6 +164,7 @@ export {
 	camel,
 	clearOidcError,
 	contrastText,
+	DEFAULT_OIDC_COLOR,
 	isOidcColor,
 	isOidcDomain,
 	OIDC_BUILTIN_ICONS,

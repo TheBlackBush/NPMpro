@@ -6,6 +6,7 @@ import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
 	camel,
+	DEFAULT_OIDC_COLOR,
 	isOidcColor,
 	isOidcDomain,
 	OIDC_MAX_DOMAINS,
@@ -163,7 +164,7 @@ export default function Authentication() {
 					certificates: data.autoCreate?.permissions?.certificates ?? "view",
 				},
 				buttonLabel: data.button?.label ?? "",
-				buttonColor: data.button?.color ?? "",
+				buttonColor: data.button?.color || DEFAULT_OIDC_COLOR,
 				// a built-in icon picked but not saved yet; null keeps the stored icon (uploads save on their own)
 				buttonIcon: null,
 			}}
