@@ -5,6 +5,7 @@
 
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
+import { carryAuthMethod } from "../lib/auth-method.js";
 import { getPrivateKey, getPublicKey } from "../lib/config.js";
 import errs from "../lib/error.js";
 import { global as logger } from "../logger.js";
@@ -68,5 +69,10 @@ export default () => {
 		 * @returns {Integer}
 		 */
 		getUserId: (defaultValue) => tokenData.attrs?.id || defaultValue || 0,
+
+		/**
+		 * @returns {"oidc"|"password"}
+		 */
+		getAuthMethod: () => carryAuthMethod(tokenData.attrs),
 	};
 };

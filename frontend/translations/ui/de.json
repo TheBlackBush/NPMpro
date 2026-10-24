@@ -293,7 +293,6 @@
 	"setup.preamble": "Beginnen Sie mit der Erstellung Ihres Administratorkontos.",
 	"setup.title": "Willkommen!",
 	"sign-in": "Anmelden",
-	"sign-in-with-oidc": "Mit OIDC anmelden",
 	"ssl-certificate": "TLS-Zertifikate",
 	"stream": "Stream",
 	"stream.description": "Beschreibung",

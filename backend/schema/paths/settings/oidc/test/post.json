@@ -1,0 +1,97 @@
+{
+	"operationId": "testOidcSettings",
+	"summary": "Test the OIDC connection",
+	"description": "Runs discovery with the effective configuration, or with the submitted (unsaved) issuer, client ID and secret. Fields set by environment variables always use the environment value.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Optional unsaved connection values",
+		"required": false,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"issuer_url": {
+							"type": "string",
+							"maxLength": 2048,
+							"pattern": "^$|^https://[^\\s/$.?#].[^\\s]*$",
+							"description": "Issuer URL (https), empty uses the saved value",
+							"example": "https://id.example.com/application/o/npmpro/"
+						},
+						"client_id": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Client ID, empty uses the saved value",
+							"example": "npmpro"
+						},
+						"client_secret": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "Client secret, empty uses the saved value",
+							"example": "s3cr3t"
+						}
+					}
+				},
+				"example": {
+					"issuer_url": "https://id.example.com/application/o/npmpro/",
+					"client_id": "npmpro"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"ok": true,
+								"issuer": "https://id.example.com/application/o/npmpro/",
+								"authorization_endpoint": "https://id.example.com/application/o/authorize/"
+							}
+						},
+						"failed": {
+							"value": {
+								"ok": false,
+								"message": "unexpected HTTP response status code"
+							}
+						}
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"ok"
+						],
+						"properties": {
+							"ok": {
+								"type": "boolean",
+								"description": "Discovery succeeded"
+							},
+							"issuer": {
+								"type": "string"
+							},
+							"authorization_endpoint": {
+								"type": "string"
+							},
+							"message": {
+								"type": "string",
+								"description": "Error message when ok is false"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

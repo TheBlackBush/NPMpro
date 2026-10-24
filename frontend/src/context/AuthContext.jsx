@@ -4,6 +4,7 @@ import { useIntervalWhen } from "rooks";
 import { deleteToken, getToken, refreshToken, revokeSessions, verifyTotp } from "src/api/backend";
 import AuthStore from "src/modules/AuthStore";
 import { getCookie } from "src/modules/Cookies";
+import { clearOidcError } from "src/modules/Oidc";
 
 const AuthContext = createContext(null);
 
@@ -13,6 +14,7 @@ function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 	const [totpChallenge, setTotpChallenge] = useState(() => getCookie("__Host-npmpro_oidc_totp_required") === "true");
 
 	const handleTokenUpdate = (response) => {
+		clearOidcError();
 		AuthStore.set(response);
 		setAuthenticated(true);
 		setTotpChallenge(false);
@@ -41,6 +43,7 @@ function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 
 	const logout = async () => {
 		await deleteToken();
+		clearOidcError();
 		AuthStore.clear();
 		setAuthenticated(false);
 		queryClient.clear();
@@ -48,6 +51,7 @@ function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 
 	const logoutEverywhere = async () => {
 		await revokeSessions("me");
+		clearOidcError();
 		AuthStore.clear();
 		setAuthenticated(false);
 		queryClient.clear();

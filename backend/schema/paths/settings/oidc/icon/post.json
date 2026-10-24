@@ -1,0 +1,46 @@
+{
+	"operationId": "uploadOidcIcon",
+	"summary": "Upload the OIDC login button icon",
+	"description": "PNG, JPEG, WebP or SVG detected from the content, at most 256 KB. SVG with scripts, event handlers or javascript: URLs is refused.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Icon image, at most 256 KB",
+		"required": true,
+		"content": {
+			"multipart/form-data": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"file"
+					],
+					"properties": {
+						"file": {
+							"type": "string",
+							"format": "binary"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response, the OIDC settings",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/oidc-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

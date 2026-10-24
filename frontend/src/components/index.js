@@ -12,6 +12,7 @@ export * from "./LoadingPage";
 export * from "./LocalePicker";
 export * from "./NavLink";
 export * from "./NoticeAlert";
+export * from "./OidcButton";
 export * from "./Page";
 export * from "./PageHeader";
 export * from "./RequestProgress";

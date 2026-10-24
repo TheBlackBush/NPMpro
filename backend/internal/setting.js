@@ -3,6 +3,10 @@ import errs from "../lib/error.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
+import { sanitizeOidcRow } from "./oidc-setting-rules.js";
+
+// The oidc row holds the encrypted client secret, which no API returns
+const sanitizeRow = (row) => (row?.id === "oidc" ? { ...row, meta: sanitizeOidcRow(row.meta) } : row);
 
 const internalSetting = {
 	/**
@@ -13,8 +17,11 @@ const internalSetting = {
 	 */
 	update: async (access, data) => {
 		access.canAdmin();
+		const oidcRefused = () => new errs.ValidationError("Use /api/settings/oidc to change the OIDC settings");
+		if (String(data.id).trim().toLowerCase() === "oidc") throw oidcRefused();
 
 		const existingRow = await internalSetting.get(access, { id: data.id });
+		if (existingRow.id === "oidc") throw oidcRefused();
 
 		const merged = { ...existingRow, ...data };
 		if (["html", "redirect"].includes(merged.value) && !merged.meta?.[merged.value]) {
@@ -69,7 +76,7 @@ const internalSetting = {
 			throw new errs.ItemNotFoundError(data.id);
 		}
 
-		return row;
+		return sanitizeRow(row);
 	},
 
 	/**
@@ -78,9 +85,10 @@ const internalSetting = {
 	 * @param   {Access}  access
 	 * @returns {Promise}
 	 */
-	getAll: (access) => {
+	getAll: async (access) => {
 		access.canAdmin();
-		return settingModel.query().orderBy("description", "ASC");
+		const rows = await settingModel.query().orderBy("description", "ASC");
+		return rows.map(sanitizeRow);
 	},
 };
 

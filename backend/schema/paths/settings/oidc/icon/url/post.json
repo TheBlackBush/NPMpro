@@ -1,0 +1,52 @@
+{
+	"operationId": "downloadOidcIcon",
+	"summary": "Download the OIDC login button icon from a URL",
+	"description": "http or https only, at most 3 redirects, 10 s timeout and 256 KB. The same type checks as an upload apply.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Icon URL",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"url"
+					],
+					"properties": {
+						"url": {
+							"type": "string",
+							"maxLength": 2048,
+							"pattern": "^https?://[^\\s/$.?#].[^\\s]*$",
+							"description": "http or https URL of the icon",
+							"example": "https://example.com/logo.svg"
+						}
+					}
+				},
+				"example": {
+					"url": "https://example.com/logo.svg"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response, the OIDC settings",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/oidc-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

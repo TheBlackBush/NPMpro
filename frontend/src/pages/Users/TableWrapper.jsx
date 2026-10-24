@@ -1,6 +1,7 @@
 import { IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { adminDisableMfa, deleteUser, revokeSessions, toggleUser } from "src/api/backend";
 import { Button, ErrorAlert, LoadingPage } from "src/components";
 import { useUser, useUsers } from "src/hooks";
@@ -63,6 +64,12 @@ export default function TableWrapper() {
 							</Button>
 						) : null}
 					</div>
+				</div>
+				<div className="card-body border-bottom text-secondary">
+					<T id="users.oidc-hint" />{" "}
+					<Link to="/settings/authentication">
+						<T id="users.oidc-hint.link" />
+					</Link>
 				</div>
 				{data?.length ? (
 					<div className="card-body border-bottom py-3">

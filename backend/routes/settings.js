@@ -4,6 +4,7 @@ import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
+import settingsOidcRoutes from "./settings-oidc.js";
 
 const settingSchema = {
 	type: "object",
@@ -39,6 +40,11 @@ router
 		const rows = await internalSetting.getAll(res.locals.access);
 		res.status(200).send(rows);
 	});
+
+/**
+ * /api/settings/oidc has its own router (mounted before /:setting_id)
+ */
+router.use("/oidc", settingsOidcRoutes);
 
 /**
  * Specific setting

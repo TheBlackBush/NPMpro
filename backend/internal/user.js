@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { rm, writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
+import { validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { gravatar as logger } from "../logger.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
@@ -398,14 +399,9 @@ const internalUser = {
 			...existing_auth,
 			...permissionData,
 		};
-		if (merged.proxy_hosts !== "hidden" && merged.access_lists === "hidden") {
-			throw new errs.ValidationError("Access lists can not be hidden while proxy hosts are visible");
-		}
-		if (
-			merged.certificates === "hidden" &&
-			["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"].some((type) => merged[type] !== "hidden")
-		) {
-			throw new errs.ValidationError("Certificates can not be hidden while hosts are visible");
+		const permissionError = validateDefaultPermissions(merged);
+		if (permissionError) {
+			throw new errs.ValidationError(permissionError);
 		}
 
 		if (existing_auth) {

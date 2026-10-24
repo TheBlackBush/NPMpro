@@ -293,7 +293,6 @@
 	"setup.preamble": "通过创建您的管理员账户开始使用。",
 	"setup.title": "欢迎！",
 	"sign-in": "登录",
-	"sign-in-with-oidc": "使用 OIDC 登录",
 	"ssl-certificate": "TLS 证书",
 	"stream": "端口转发",
 	"stream.description": "描述",

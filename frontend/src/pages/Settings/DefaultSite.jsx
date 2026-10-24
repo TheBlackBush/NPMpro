@@ -44,6 +44,9 @@ export default function DefaultSite() {
 	if (error) {
 		return (
 			<div className="card-body">
+				<h2 className="mb-3">
+					<T id="settings.default-site" />
+				</h2>
 				<div className="mb-3">
 					<ErrorAlert error={error} />
 				</div>
@@ -54,6 +57,9 @@ export default function DefaultSite() {
 	if (isPending) {
 		return (
 			<div className="card-body">
+				<h2 className="mb-3">
+					<T id="settings.default-site" />
+				</h2>
 				<div className="mb-3">
 					<Loading noLogo />
 				</div>
@@ -72,8 +78,11 @@ export default function DefaultSite() {
 			onSubmit={onSubmit}
 		>
 			{({ values }) => (
-				<Form>
-					<div className="card-body">
+				<Form className="d-flex flex-column flex-fill">
+					<div className="card-body flex-fill">
+						<h2 className="mb-3">
+							<T id="settings.default-site" />
+						</h2>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						<Field name="value">
 							{({ field, form }) => (

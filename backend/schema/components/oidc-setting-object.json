@@ -1,0 +1,205 @@
+{
+	"type": "object",
+	"description": "Effective OIDC settings (the client secret is never returned)",
+	"additionalProperties": false,
+	"required": [
+		"enabled",
+		"issuer_url",
+		"client_id",
+		"client_secret_set",
+		"redirect_domain",
+		"scopes",
+		"require_verified_email",
+		"skip_mfa",
+		"disable_password",
+		"auto_create",
+		"button",
+		"locked",
+		"active",
+		"secret_error",
+		"callback_url",
+		"session_auth_method"
+	],
+	"properties": {
+		"enabled": {
+			"type": "boolean",
+			"description": "OIDC login enabled"
+		},
+		"issuer_url": {
+			"type": "string",
+			"description": "Issuer URL"
+		},
+		"client_id": {
+			"type": "string",
+			"description": "Client ID"
+		},
+		"client_secret_set": {
+			"type": "boolean",
+			"description": "A client secret is saved or set by the environment"
+		},
+		"redirect_domain": {
+			"type": "string",
+			"description": "Redirect domain"
+		},
+		"scopes": {
+			"type": "string",
+			"description": "Scopes"
+		},
+		"require_verified_email": {
+			"type": "boolean",
+			"description": "Require a verified email claim"
+		},
+		"skip_mfa": {
+			"type": "boolean",
+			"description": "Skip the MFA challenge after OIDC login"
+		},
+		"disable_password": {
+			"type": "boolean",
+			"description": "Disable password login"
+		},
+		"auto_create": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"description": "Create unknown users on their first OIDC login"
+				},
+				"allowed_domains": {
+					"type": "array",
+					"maxItems": 100,
+					"items": {
+						"type": "string",
+						"pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$",
+						"example": "example.com"
+					},
+					"description": "Email domains allowed to be created, empty allows any"
+				},
+				"permissions": {
+					"$ref": "./permission-object.json"
+				}
+			},
+			"required": [
+				"enabled",
+				"allowed_domains",
+				"permissions"
+			]
+		},
+		"button": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"label": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 40,
+					"description": "Login button text",
+					"example": "OIDC"
+				},
+				"color": {
+					"type": "string",
+					"pattern": "^#[0-9a-fA-F]{6}$",
+					"description": "Login button colour",
+					"example": "#206bc4"
+				},
+				"icon": {
+					"oneOf": [
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"type",
+								"name"
+							],
+							"properties": {
+								"type": {
+									"type": "string",
+									"enum": [
+										"builtin"
+									]
+								},
+								"name": {
+									"type": "string",
+									"enum": [
+										"key",
+										"lock",
+										"login",
+										"shield-lock",
+										"user-circle",
+										"brand-google",
+										"brand-github",
+										"brand-gitlab",
+										"brand-windows",
+										"cloud"
+									]
+								}
+							}
+						},
+						{
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"type",
+								"ext",
+								"updated_on"
+							],
+							"properties": {
+								"type": {
+									"type": "string",
+									"enum": [
+										"file"
+									]
+								},
+								"ext": {
+									"type": "string",
+									"enum": [
+										"png",
+										"jpg",
+										"webp",
+										"svg"
+									]
+								},
+								"updated_on": {
+									"type": "integer"
+								}
+							}
+						}
+					]
+				}
+			},
+			"required": [
+				"label",
+				"color",
+				"icon"
+			]
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"active": {
+			"type": "boolean",
+			"description": "OIDC login is usable with the effective configuration"
+		},
+		"secret_error": {
+			"type": "boolean",
+			"description": "The saved client secret cannot be decrypted"
+		},
+		"callback_url": {
+			"type": "string",
+			"description": "Redirect URI to register at the provider",
+			"example": "https://npm.example.com/api/oidc/callback"
+		},
+		"session_auth_method": {
+			"type": "string",
+			"enum": [
+				"oidc",
+				"password"
+			],
+			"description": "How the current session signed in"
+		}
+	}
+}

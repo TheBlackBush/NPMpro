@@ -1,9 +1,13 @@
+import { carryAuthMethod } from "../lib/auth-method.js";
 import errs from "../lib/error.js";
 import { parseDatePeriod } from "../lib/helpers.js";
+import { OidcLoginError } from "../lib/oidc-login.js";
+import { emailDomainAllowed } from "../lib/oidc-rules.js";
 import authModel from "../models/auth.js";
 import TokenModel from "../models/token.js";
 import userModel from "../models/user.js";
 import mfa from "./mfa.js";
+import oidcProvision from "./oidc-provision.js";
 import totp from "./totp.js";
 
 const ERROR_MESSAGE_INVALID_AUTH = "Invalid email or password";
@@ -59,6 +63,7 @@ export default {
 					iss: "api",
 					attrs: {
 						id: user.id,
+						auth_method: "password",
 					},
 					scope: ["mfa-challenge"],
 					expiresIn: "3m",
@@ -76,6 +81,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: user.id,
+				auth_method: "password",
 			},
 			scope: ["user"],
 			expiresIn: "1h",
@@ -88,27 +94,39 @@ export default {
 	},
 
 	/**
+	 * Logs in the user that owns the provider's email, creating it when auto-create allows
+	 *
 	 * @param   {Object} data
-	 * @param   {String} data.identity
+	 * @param   {String} data.identity  lower-cased, trimmed email
+	 * @param   {Object} data.claims    provider claims
+	 * @param   {Object} data.config    effective OIDC settings (getOidcConfig().values)
 	 * @returns {Promise}
 	 */
-	getTokenFromOAuthClaim: async (data) => {
+	getTokenFromOAuthClaim: async ({ identity: rawIdentity, claims, config }) => {
 		const Token = TokenModel();
+		const identity = String(rawIdentity).toLowerCase().trim();
 
-		const user = await userModel.query().where("email", data.identity).andWhere("is_disabled", 0).first();
+		let user = await userModel.query().where("email", identity).orderBy("is_disabled").orderBy("id").first();
 
 		if (!user) {
-			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_AUTH);
+			if (!config.auto_create?.enabled) throw new OidcLoginError("no_user", `No user for ${identity}`);
+			if (!emailDomainAllowed(identity, config.auto_create.allowed_domains)) {
+				throw new OidcLoginError("domain_not_allowed", `Domain of ${identity} is not allowed`);
+			}
+			user = await oidcProvision.createUser({ ...claims, email: identity }, config.auto_create.permissions);
 		}
+
+		if (user.is_disabled) throw new OidcLoginError("user_disabled", `User for ${identity} is disabled`);
 
 		// Check if MFA is enabled
 		const hasMfa = await mfa.isAnyEnabled(user.id);
-		if (hasMfa && process.env.OIDC_SKIP_MFA !== "true") {
+		if (hasMfa && !config.skip_mfa) {
 			// Return challenge token instead of full token
 			const challengeToken = Token.create({
 				iss: "api",
 				attrs: {
 					id: user.id,
+					auth_method: "oidc",
 				},
 				scope: ["mfa-challenge"],
 				expiresIn: "3m",
@@ -125,6 +143,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: user.id,
+				auth_method: "oidc",
 			},
 			scope: ["user"],
 			expiresIn: "1h",
@@ -149,6 +168,7 @@ export default {
 				scope: ["user"],
 				attrs: {
 					id: access.token.getUserId(0),
+					auth_method: access.token.getAuthMethod(),
 				},
 				expiresIn: "1h",
 				iat: Math.floor(Date.now() / 1000) + (afterRevoke ? 1 : 0),
@@ -213,6 +233,7 @@ export default {
 			iss: "api",
 			attrs: {
 				id: userId,
+				auth_method: carryAuthMethod(tokenData.attrs),
 			},
 			scope: ["user"],
 			expiresIn: "1h",

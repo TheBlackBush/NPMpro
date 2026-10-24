@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import {
 	ErrorNotFound,
 	LoadingPage,
@@ -66,12 +66,14 @@ function Router() {
 							<Route path="/certificates/dns-credentials" element={<DnsCredentials />} />
 							<Route path="/access" element={<Access />} />
 							<Route path="/audit-log" element={<AuditLog />} />
-							<Route path="/settings" element={<Settings />} />
+							<Route path="/settings" element={<Navigate to="/settings/default-site" replace />} />
+							<Route path="/settings/:section" element={<Settings />} />
 							<Route path="/users" element={<Users />} />
 							<Route path="/nginx/proxy" element={<ProxyHosts />} />
 							<Route path="/nginx/redirection" element={<RedirectionHosts />} />
 							<Route path="/nginx/404" element={<DeadHosts />} />
 							<Route path="/nginx/stream" element={<Streams />} />
+							<Route path="/login" element={<Navigate to="/" replace />} />
 							<Route path="/" element={<Dashboard />} />
 						</Routes>
 					</Suspense>

@@ -103,6 +103,11 @@
 				"$ref": "./paths/oidc/get.json"
 			}
 		},
+		"/oidc/icon": {
+			"get": {
+				"$ref": "./paths/oidc/icon/get.json"
+			}
+		},
 		"/oidc/callback": {
 			"get": {
 				"$ref": "./paths/oidc/callback/get.json"
@@ -336,6 +341,32 @@
 		"/settings": {
 			"get": {
 				"$ref": "./paths/settings/get.json"
+			}
+		},
+		"/settings/oidc": {
+			"get": {
+				"$ref": "./paths/settings/oidc/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/oidc/put.json"
+			}
+		},
+		"/settings/oidc/icon": {
+			"post": {
+				"$ref": "./paths/settings/oidc/icon/post.json"
+			},
+			"delete": {
+				"$ref": "./paths/settings/oidc/icon/delete.json"
+			}
+		},
+		"/settings/oidc/icon/url": {
+			"post": {
+				"$ref": "./paths/settings/oidc/icon/url/post.json"
+			}
+		},
+		"/settings/oidc/test": {
+			"post": {
+				"$ref": "./paths/settings/oidc/test/post.json"
 			}
 		},
 		"/settings/{settingID}": {

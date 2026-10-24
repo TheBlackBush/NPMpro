@@ -1,6 +1,6 @@
 {
 	"operationId": "oidcAuthorize",
-	"summary": "Start the OIDC authorization code flow, only available when OIDC is configured",
+	"summary": "Start the OIDC authorization code flow (redirects to /login?oidc_error=not_configured when OIDC is not active)",
 	"tags": [
 		"public"
 	],

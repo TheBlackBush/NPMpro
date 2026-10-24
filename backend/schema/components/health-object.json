@@ -22,9 +22,60 @@
 			"example": true
 		},
 		"oidc": {
-			"type": "boolean",
-			"description": "Whether the OIDC login is enabled",
-			"example": false
+			"type": "object",
+			"description": "OIDC login state and button",
+			"additionalProperties": false,
+			"required": [
+				"active",
+				"label",
+				"color",
+				"icon"
+			],
+			"properties": {
+				"active": {
+					"type": "boolean",
+					"description": "Whether the OIDC login is active",
+					"example": false
+				},
+				"label": {
+					"type": "string",
+					"description": "Login button text",
+					"example": "OIDC"
+				},
+				"color": {
+					"type": "string",
+					"description": "Login button colour",
+					"example": "#206bc4"
+				},
+				"icon": {
+					"type": "object",
+					"description": "Login button icon: a builtin icon name or the url of the uploaded file",
+					"additionalProperties": false,
+					"required": [
+						"type"
+					],
+					"properties": {
+						"type": {
+							"type": "string",
+							"enum": [
+								"builtin",
+								"file"
+							],
+							"example": "builtin"
+						},
+						"name": {
+							"type": "string",
+							"description": "Builtin icon name",
+							"example": "key"
+						},
+						"url": {
+							"type": "string",
+							"description": "Icon file url",
+							"example": "/api/oidc/icon?v=1761300000000"
+						}
+					}
+				}
+			}
 		}
 	}
 }
