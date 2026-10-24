@@ -21,7 +21,7 @@ const secretItem = (group, name) => item(group, name, null, true);
  * The startup (container) variables shown on the read-only Environment page. Variables that are also runtime
  * settings are not listed here (they are shown in their settings section). A variable is secret when its value is a
  * credential, personal data, or when it was not clear that it is safe to show: its value is then never returned.
- * The names must be listed in NPMPRO_USER_ENV in rootfs/usr/local/bin/envs.sh (checked by a test), so that values
+ * The names must be listed in NPMPRO_STARTUP_ENVS in rootfs/usr/local/bin/envs.sh (checked by a test), so that values
  * filled in by its defaults do not look user-set.
  */
 const ENVIRONMENT_ITEMS = [

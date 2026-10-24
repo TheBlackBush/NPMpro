@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, environmentInfo } from "../lib/environment-info.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
-const TRACKED_LINE = /^NPMPRO_TRACKED_ENVS="(?<names>[^"]*)"$/mu;
+const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
+const STARTUP_LINE = /^NPMPRO_STARTUP_ENVS="(?<names>[^"]*)"$/mu;
+const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const SECRET_NAMES = ["DB_MYSQL_PASSWORD", "DB_POSTGRES_PASSWORD", "INITIAL_ADMIN_PASSWORD", "ACME_EAB_HMAC_KEY"];
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
 const itemOf = (info, name) => info.groups.flatMap((group) => group.items).find((entry) => entry.name === name);
@@ -102,10 +105,38 @@ it("names the variable that actually locks a runtime setting (locked_by)", () =>
 });
 
 it("lists the runtime and environment names once in envs.sh", () => {
-	const text = readFileSync(new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url), "utf8");
-	const names = TRACKED_LINE.exec(text)?.groups.names.split(" ") ?? [];
+	const text = readFileSync(ENVS_SH, "utf8");
+	const runtime = RUNTIME_LINE.exec(text)?.groups.names.split(" ") ?? [];
+	const startup = STARTUP_LINE.exec(text)?.groups.names.split(" ") ?? [];
+	const names = [...runtime, ...startup];
 	assert.equal(new Set(names).size, names.length);
-	assert.deepEqual(sorted(names), sorted([...RUNTIME_ENV_NAMES, ...ENVIRONMENT_ITEMS.map((entry) => entry.name)]));
+	assert.deepEqual(sorted(runtime), sorted(RUNTIME_ENV_NAMES));
+	assert.deepEqual(sorted(startup), sorted(ENVIRONMENT_ITEMS.map((entry) => entry.name)));
+});
+
+it("envs.sh hashes only the runtime vars the env sets: startup vars like TZ or PUID do not regenerate hosts", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const block = text.slice(
+		text.indexOf("NPMPRO_RUNTIME_ENVS="),
+		text.indexOf("export NPMPRO_USER_ENV") + "export NPMPRO_USER_ENV".length,
+	);
+	const run = (env) => {
+		const out = spawnSync("sh", ["-c", `${block}\nprintf '%s|%s' "$NPMPRO_USER_ENV" "$NPMPRO_USER_RUNTIME_ENV"`], {
+			env: { PATH: process.env.PATH, ...env },
+			encoding: "utf8",
+		});
+		assert.equal(out.status, 0, out.stderr);
+		return out.stdout.split("|");
+	};
+	assert.deepEqual(run({ ACME_KEY_TYPE: "rsa", TZ: "UTC", PUID: "99", ACME_KEY_SIZE: "" }), [
+		"ACME_KEY_TYPE PUID TZ",
+		"ACME_KEY_TYPE",
+	]);
+	assert.deepEqual(run({ ACME_KEY_TYPE: "rsa" }), ["ACME_KEY_TYPE", "ACME_KEY_TYPE"]);
+	assert.deepEqual(run({ TZ: "UTC" }), ["TZ", ""]);
+	const hashLine = text.split("\n").find((line) => line.startsWith("ENV_SHA512SUM="));
+	assert.ok(hashLine.includes('echo "$NPMPRO_USER_RUNTIME_ENV"'));
+	assert.equal(hashLine.includes('"$NPMPRO_USER_ENV"'), false);
 });
 
 it("keeps userSetEnvNames to the runtime names", () => {

@@ -243,7 +243,7 @@ it("host templates staple only when the OCSP response file exists", async () => 
 it("regenerates all hosts when the runtime vars the env sets change, and the template version is 22", async () => {
 	const envsSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/envs.sh"), "utf8");
 	const hashLine = envsSh.split("\n").find((line) => line.startsWith("ENV_SHA512SUM="));
-	assert.ok(hashLine.includes('echo "$NPMPRO_USER_ENV"'));
+	assert.ok(hashLine.includes('echo "$NPMPRO_USER_RUNTIME_ENV"'));
 	assert.ok(envsSh.split("\n").includes('TV="22"'));
 	assert.ok(envsSh.indexOf("export NPMPRO_USER_ENV") < envsSh.indexOf("ENV_SHA512SUM="));
 });
