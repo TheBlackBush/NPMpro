@@ -277,13 +277,11 @@ export const createStore = (knex) => {
 		return {
 			totals,
 			series: fillSeries(rows, start, spec.count),
-			top_hosts: top(
-				sumBy(
-					rows,
-					(r) => r.host,
-					(r) => ({ host: r.host, requests: 0, bytes: 0 }),
-				),
-				TOP,
+			// every host key of the range, sorted by requests: the API groups them per NPMpro host before trimming
+			hosts: sumBy(
+				rows,
+				(r) => r.host,
+				(r) => ({ host: r.host, requests: 0, bytes: 0 }),
 			),
 			top_countries: top(byCountry, TOP),
 			top_asns: top(byAsn, TOP),

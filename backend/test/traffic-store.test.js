@@ -135,7 +135,7 @@ it("filters by host and hides ips unless showIps", async () => {
 	const a = await store.queryTraffic({ range: "24h", host: "a", showIps: false, now: NOW });
 	assert.equal(a.totals.requests, 2);
 	assert.deepEqual(
-		a.top_hosts.map((h) => h.host),
+		a.hosts.map((h) => h.host),
 		["a"],
 	);
 	assert.deepEqual(a.top_ips, []);

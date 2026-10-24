@@ -5,8 +5,10 @@ import Ajv from "ajv/dist/2020.js";
 import knexFactory from "knex";
 import { createMonitoring } from "../internal/monitoring.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
+import errs from "../lib/error.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { createCounter } from "../lib/traffic/counter.js";
+import { createHostResolver } from "../lib/traffic/host-resolver.js";
 import { createHostMapper, createStateMeta, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
 import { createStore } from "../lib/traffic/store.js";
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
@@ -117,6 +119,7 @@ const setup = ({
 	visitorKey = { key: Buffer.alloc(32, 7), created: false },
 	store: givenStore = null,
 } = {}) => {
+	let hostList = hosts;
 	let failures = configFails;
 	let hostLoads = 0;
 	let time = Date.UTC(2026, 9, 24, 8, 16, 0);
@@ -144,7 +147,11 @@ const setup = ({
 		},
 		loadHosts: () => {
 			hostLoads++;
-			return Promise.resolve(hosts);
+			if (hostList instanceof Error) return Promise.reject(hostList);
+			// plain names become one proxy host each
+			return Promise.resolve(
+				hostList.map((h, i) => (typeof h === "string" ? { id: i + 1, type: "proxy", domain_names: [h] } : h)),
+			);
 		},
 		loadVisitorKey: () => {
 			keyLoads++;
@@ -166,6 +173,9 @@ const setup = ({
 		errors,
 		keyLoads: () => keyLoads,
 		hostLoads: () => hostLoads,
+		setHosts: (next) => {
+			hostList = next;
+		},
 		advance: (ms) => {
 			time += ms;
 		},
@@ -815,6 +825,81 @@ describe("traffic service: unique visitors", () => {
 	});
 });
 
+describe("traffic service: host resolver", () => {
+	it("builds the resolver from the host list with id and type, still maps hosts for counting", async () => {
+		const t = setup({
+			hosts: [{ id: 5, type: "redirection", domain_names: ["example.com", "www.example.com"] }],
+			results: [read([line("www.example.com"), line("unknown.test")])],
+		});
+		await t.service.start();
+		const resolver = await t.service.hostResolver();
+		assert.deepEqual(resolver.keysFor("redirection", 5), ["example.com", "www.example.com"]);
+		assert.equal(t.hostLoads(), 1, "the list loaded at start is reused");
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(t.store.flushed[0].minutes.map((m) => m.host).sort(), ["_other", "www.example.com"]);
+	});
+
+	it("reloads the host list for the API when it is older than a minute, also while traffic is off", async () => {
+		const t = setup({ config: { traffic_enabled: false } });
+		await t.service.start();
+		assert.equal(t.hostLoads(), 0);
+		assert.deepEqual((await t.service.hostResolver()).keysFor("proxy", 1), ["example.com"]);
+		await t.service.hostResolver();
+		assert.equal(t.hostLoads(), 1);
+		t.advance(60000);
+		t.setHosts(["example.org"]);
+		assert.deepEqual((await t.service.hostResolver()).keysFor("proxy", 1), ["example.org"]);
+		assert.equal(t.hostLoads(), 2);
+	});
+
+	it("a failed refresh keeps the previous resolver and logs the error", async () => {
+		const t = setup();
+		await t.service.start();
+		t.setHosts(new Error("no such table: proxy_host"));
+		await t.service.flush();
+		assert.equal(t.errors.filter((e) => e.includes("could not read the host list")).length, 1);
+		assert.equal((await t.service.hostResolver()).ownerOf("example.com").host_id, 1);
+	});
+
+	it("without any loaded host list every key resolves as its own deleted entry", async () => {
+		const t = setup({ hosts: new Error("no such table: proxy_host") });
+		await t.service.start();
+		const resolver = await t.service.hostResolver();
+		assert.deepEqual(resolver.ownerOf("example.com"), {
+			host_id: null,
+			host_type: "deleted",
+			name: "example.com",
+			domain_names: ["example.com"],
+		});
+		assert.ok(t.errors.some((e) => e.includes("could not read the host list")));
+	});
+
+	it("a late settings read that deletes the visitor hashes also forgets the counts seeded at start", async () => {
+		const store = fakeStore();
+		const today = Math.floor(Date.UTC(2026, 9, 24, 8, 16, 0) / 86400000);
+		store.dayCounts = [{ day: today, host: "example.com", visitors: 1, capped: true }];
+		const t = setup({
+			store,
+			configFails: 1,
+			config: { unique_visitors: false, visitors_cap: 1 },
+			results: [read([line("example.com")])],
+		});
+		await t.service.start();
+		await t.service.flush();
+		assert.ok(store.calls.includes("deleteVisitors"));
+		t.values.unique_visitors = true;
+		t.service.uniqueVisitorsOn();
+		await t.service.read();
+		await t.service.flush();
+		const rows = store.flushed.flatMap((b) => b.visitors);
+		assert.ok(
+			rows.some((r) => r.host === "example.com" && r.hash !== ""),
+			"the deleted day does not count against the cap",
+		);
+	});
+});
+
 describe("traffic state meta", () => {
 	const fakeRow = (initial) => {
 		let meta = initial;
@@ -1065,7 +1150,7 @@ describe("monitoring API", () => {
 	const trafficData = {
 		totals: { requests: 3, bytes: 300, error_rate: 0 },
 		series: [{ bucket: 1, by_class: { "2xx": 3, "3xx": 0, "4xx": 0, "5xx": 0 } }],
-		top_hosts: [{ host: "example.com", requests: 3, bytes: 300 }],
+		hosts: [{ host: "example.com", requests: 3, bytes: 300 }],
 		top_countries: [{ country: "DE", requests: 3 }],
 		top_asns: [{ asn: 3320, asn_name: "DTAG", requests: 3 }],
 		top_ips: [{ ip: "203.0.113.7", requests: 3 }],
@@ -1079,12 +1164,24 @@ describe("monitoring API", () => {
 		now = () => 0,
 		crowdsecResult = null,
 		failSummary = false,
+		data = trafficData,
+		resolver = createHostResolver([{ id: 1, type: "proxy", domain_names: ["example.com"] }]),
+		visitorsError = null,
 	} = {}) => {
 		const queries = [];
 		const summaries = [];
+		const visitorQueries = [];
 		const api = createMonitoring({
 			traffic: {
-				status: () => ({ enabled: true, skipped_lines: 0, dropped_requests: 0, last_read: null, error: null }),
+				status: () => ({
+					enabled: true,
+					skipped_lines: 0,
+					dropped_requests: 0,
+					last_read: null,
+					error: null,
+					visitors_error: visitorsError,
+				}),
+				hostResolver: () => Promise.resolve(resolver),
 			},
 			crowdsec: {
 				result: () =>
@@ -1107,9 +1204,12 @@ describe("monitoring API", () => {
 			store: {
 				queryTraffic: (args) => {
 					queries.push(args);
-					return Promise.resolve(
-						structuredClone(args.showIps ? trafficData : { ...trafficData, top_ips: [] }),
-					);
+					return Promise.resolve(structuredClone(args.showIps ? data : { ...data, top_ips: [] }));
+				},
+				countVisitors: (args) => {
+					visitorQueries.push(args);
+					const hosts = args.hosts ?? ["*"];
+					return Promise.resolve({ visitors: hosts.length * 10, capped: hosts.includes("capped.test") });
 				},
 				summary: (args) => {
 					summaries.push(args);
@@ -1125,8 +1225,180 @@ describe("monitoring API", () => {
 			getConfig: () => Promise.resolve({ values: { traffic_enabled: true, show_ips: false, ...values } }),
 			now,
 		});
-		return { api, queries, summaries };
+		return { api, queries, summaries, visitorQueries };
 	};
+
+	const groupedData = {
+		...trafficData,
+		hosts: [
+			{ host: "example.com", requests: 5, bytes: 50 },
+			{ host: "_other", requests: 4, bytes: 40 },
+			{ host: "www.example.com", requests: 3, bytes: 30 },
+			{ host: "removed.test", requests: 2, bytes: 20 },
+			{ host: "moved.test", requests: 1, bytes: 10 },
+		],
+	};
+	const groupedResolver = createHostResolver([
+		{ id: 1, type: "proxy", domain_names: ["example.com", "www.example.com"] },
+		{ id: 2, type: "dead", domain_names: ["moved.test"] },
+	]);
+
+	it("groups top_hosts per NPMpro host and omits visitor fields while unique visitors are off", async () => {
+		const { api, visitorQueries } = make({ data: groupedData, resolver: groupedResolver });
+		const out = await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
+		assert.deepEqual(out.top_hosts, [
+			{
+				host_id: 1,
+				host_type: "proxy",
+				name: "example.com",
+				domain_names: ["example.com", "www.example.com"],
+				requests: 8,
+				bytes: 80,
+			},
+			{ host_id: null, host_type: "other", name: "_other", domain_names: [], requests: 4, bytes: 40 },
+			{
+				host_id: null,
+				host_type: "deleted",
+				name: "removed.test",
+				domain_names: ["removed.test"],
+				requests: 2,
+				bytes: 20,
+			},
+			{ host_id: 2, host_type: "dead", name: "moved.test", domain_names: ["moved.test"], requests: 1, bytes: 10 },
+		]);
+		assert.equal("visitors" in out.totals, false);
+		assert.equal(out.status.unique_visitors, false);
+		assert.equal(visitorQueries.length, 0);
+	});
+
+	it("a moved name counts once, under its new owner", async () => {
+		const moved = createHostResolver([
+			{ id: 1, type: "proxy", domain_names: ["example.com", "www.example.com"] },
+			{ id: 4, type: "redirection", domain_names: ["moved.test"] },
+		]);
+		const { api } = make({ data: groupedData, resolver: moved });
+		const out = await api.getTraffic(admin, { range: "24h", host: "" });
+		const owners = out.top_hosts.filter((h) => h.domain_names.includes("moved.test"));
+		assert.deepEqual(
+			owners.map((h) => [h.host_type, h.host_id, h.requests]),
+			[["redirection", 4, 1]],
+		);
+	});
+
+	it("keeps the ten hosts with the most requests after grouping", async () => {
+		const hosts = Array.from({ length: 12 }, (_, i) => ({ host: `h${i}.test`, requests: 20 - i, bytes: 1 }));
+		hosts.push(
+			{ host: "www.example.com", requests: 15, bytes: 1 },
+			{ host: "example.com", requests: 15, bytes: 1 },
+		);
+		const { api } = make({ data: { ...trafficData, hosts }, resolver: groupedResolver });
+		const out = await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(out.top_hosts.length, 10);
+		assert.deepEqual(out.top_hosts[0], {
+			host_id: 1,
+			host_type: "proxy",
+			name: "example.com",
+			domain_names: ["example.com", "www.example.com"],
+			requests: 30,
+			bytes: 2,
+		});
+		assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
+	});
+
+	it("adds visitor counts per entry and in the totals while unique visitors are on", async () => {
+		const now = Date.UTC(2026, 9, 24, 10, 0, 0);
+		const today = Math.floor(now / 86400000);
+		const data = { ...groupedData, hosts: [...groupedData.hosts, { host: "capped.test", requests: 1, bytes: 1 }] };
+		const { api, visitorQueries } = make({
+			data,
+			resolver: groupedResolver,
+			values: { unique_visitors: true },
+			now: () => now,
+		});
+		const out = await api.getTraffic(admin, { range: "7d", host: "" });
+		assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
+		assert.equal(out.status.unique_visitors, true);
+		assert.deepEqual(visitorQueries[0], { startDay: today - 7, hosts: null });
+		assert.deepEqual(out.totals.visitors, 10);
+		assert.equal(out.totals.visitors_capped, false);
+		const byName = Object.fromEntries(out.top_hosts.map((h) => [h.name, h]));
+		assert.equal(byName["example.com"].visitors, 20, "both keys of the host are counted together");
+		assert.deepEqual(
+			visitorQueries.find((q) => q.hosts?.includes("www.example.com")),
+			{ startDay: today - 7, hosts: ["example.com", "www.example.com"] },
+		);
+		assert.equal(byName._other.visitors, 10);
+		assert.equal(byName["capped.test"].visitors_capped, true);
+		assert.equal(byName["example.com"].visitors_capped, false);
+
+		const hour = make({ resolver: groupedResolver, values: { unique_visitors: true }, now: () => now });
+		await hour.api.getTraffic(admin, { range: "1h", host: "" });
+		await hour.api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(hour.visitorQueries[0].startDay, today, "1h counts the current UTC day");
+		assert.equal(hour.visitorQueries.at(-1).startDay, today - 1, "24h starts on the day the range starts");
+	});
+
+	it("host_id and host_type select the keys of that host, an unknown host is not found", async () => {
+		const { api, queries, visitorQueries } = make({
+			data: groupedData,
+			resolver: groupedResolver,
+			values: { unique_visitors: true },
+		});
+		const out = await api.getTraffic(admin, { range: "24h", host: "ignored.test", host_id: 1, host_type: "proxy" });
+		assert.deepEqual(queries[0].host, ["example.com", "www.example.com"]);
+		assert.deepEqual(visitorQueries[0].hosts, ["example.com", "www.example.com"]);
+		assert.equal(out.totals.visitors, 20);
+		await api.getTraffic(admin, { range: "24h", host: "", host_id: 2, host_type: "dead" });
+		assert.deepEqual(queries[1].host, ["moved.test"]);
+		const before = visitorQueries.length;
+		await api.getTraffic(admin, { range: "24h", host: "_other" });
+		assert.equal(queries[2].host, "_other");
+		assert.deepEqual(visitorQueries[before].hosts, ["_other"], "the totals count the selected key");
+		await assert.rejects(
+			api.getTraffic(admin, { range: "24h", host: "", host_id: 9, host_type: "proxy" }),
+			(err) => err instanceof errs.ItemNotFoundError,
+		);
+		await assert.rejects(
+			api.getTraffic(admin, { range: "24h", host: "", host_id: 1, host_type: "dead" }),
+			(err) => err instanceof errs.ItemNotFoundError,
+		);
+		assert.equal(queries.length, 3);
+	});
+
+	it("caches per host filter and per unique visitors switch", async () => {
+		const values = { unique_visitors: false };
+		const { api, queries } = make({ data: groupedData, resolver: groupedResolver, values });
+		await api.getTraffic(admin, { range: "24h", host: "", host_id: 1, host_type: "proxy" });
+		await api.getTraffic(admin, { range: "24h", host: "", host_id: 1, host_type: "proxy" });
+		assert.equal(queries.length, 1);
+		await api.getTraffic(admin, { range: "24h", host: "", host_id: 2, host_type: "dead" });
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(queries.length, 3);
+		values.unique_visitors = true;
+		const out = await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(queries.length, 4);
+		assert.equal(typeof out.totals.visitors, "number");
+	});
+
+	it("passes visitors_error through in the status", async () => {
+		const error = "Visitor counting is unavailable: the key could not be loaded";
+		const { api } = make({ values: { unique_visitors: true }, visitorsError: error });
+		const out = await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(out.status.visitors_error, error);
+		assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
+	});
+
+	it("summary has visitors_today while unique visitors are on", async () => {
+		const now = Date.UTC(2026, 9, 24, 10, 0, 0);
+		const { api, visitorQueries } = make({ values: { unique_visitors: true }, now: () => now });
+		const out = await api.getSummary(admin);
+		assert.equal(out.visitors_today, 10);
+		assert.deepEqual(visitorQueries, [{ startDay: Math.floor(now / 86400000), hosts: null }]);
+		assert.ok(validSummary(out), JSON.stringify(validSummary.errors));
+		const off = await make({ values: { unique_visitors: true, traffic_enabled: false } }).api.getSummary(admin);
+		assert.equal(off.visitors_today, null);
+	});
 
 	it("caches the traffic query per range and host for 30 s", async () => {
 		let time = 0;
@@ -1198,6 +1470,8 @@ describe("monitoring API", () => {
 			dropped_requests: 0,
 			last_read: null,
 			error: null,
+			visitors_error: null,
+			unique_visitors: false,
 		});
 	});
 
@@ -1221,6 +1495,7 @@ describe("monitoring API", () => {
 			error_rate_today: 0,
 			active_bans: 4,
 			top_country_today: "DE",
+			visitors_today: null,
 		});
 		assert.ok(validSummary(full), JSON.stringify(validSummary.errors));
 
@@ -1234,6 +1509,7 @@ describe("monitoring API", () => {
 			error_rate_today: null,
 			active_bans: null,
 			top_country_today: null,
+			visitors_today: null,
 		});
 		assert.ok(validSummary(off), JSON.stringify(validSummary.errors));
 

@@ -7,6 +7,7 @@ import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { createStateMeta, createTrafficService } from "../lib/traffic/service.js";
 import {
+	countVisitors,
 	deleteIps,
 	deleteVisitors,
 	flush,
@@ -22,7 +23,11 @@ import { createMonitoring } from "./monitoring.js";
 import internalMonitoringSetting from "./monitoring-setting.js";
 
 const STATE_ID = "traffic-state";
-const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host"];
+const HOST_TABLES = [
+	["proxy", "proxy_host"],
+	["redirection", "redirection_host"],
+	["dead", "dead_host"],
+];
 
 const parseNames = (raw) => {
 	if (Array.isArray(raw)) return raw;
@@ -34,14 +39,16 @@ const parseNames = (raw) => {
 	}
 };
 
-/** Domain names of all proxy, redirection and 404 hosts (streams have no HTTP access log). */
+/** All proxy, redirection and 404 hosts with their domain names (streams have no HTTP access log). */
 const loadHosts = async () => {
 	const knex = db();
-	const names = [];
-	for (const table of HOST_TABLES) {
-		for (const row of await knex(table).select("domain_names")) names.push(...parseNames(row.domain_names));
+	const hosts = [];
+	for (const [type, table] of HOST_TABLES) {
+		for (const row of await knex(table).select("id", "domain_names").orderBy("id")) {
+			hosts.push({ id: Number(row.id), type, domain_names: parseNames(row.domain_names) });
+		}
 	}
-	return names;
+	return hosts;
 };
 
 /** Reader position and the encrypted visitor key, in the meta of one settings row. */
@@ -72,7 +79,16 @@ const runGeoipUpdate = () =>
 		recordResult: (result) => internalMonitoringSetting.recordGeoipResult(result),
 	});
 
-const store = { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayCounts, queryTraffic, summary };
+const store = {
+	flush,
+	rollUpAndPrune,
+	deleteIps,
+	deleteVisitors,
+	visitorDayCounts,
+	countVisitors,
+	queryTraffic,
+	summary,
+};
 
 const traffic = createTrafficService({
 	store,

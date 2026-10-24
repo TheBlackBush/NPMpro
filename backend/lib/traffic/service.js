@@ -1,6 +1,7 @@
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
+import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
 import { isOwnRequest, parseAlogLine } from "./parse.js";
 import { createVisitorHasher } from "./visitor-hash.js";
@@ -22,6 +23,8 @@ const IPS_OFF_PIN_MS = 5 * 60000;
 // the same for "count unique visitors"
 const VISITORS_OFF_PIN_MS = 5 * 60000;
 const DAY = 86400000;
+// the API reloads the host list when it is older than this (the flush reloads it every minute while counting)
+const HOSTS_MAX_AGE_MS = 60000;
 const VISITORS_KEY_ERROR = "Visitor counting is unavailable: the key could not be loaded";
 
 const defaultTimers = {
@@ -138,7 +141,8 @@ const createStateMeta = ({ read, write }) => ({
  *                                        unique_visitors, visitors_cap } }>
  * @param   {Function}  deps.loadState    () => Promise<{ inode, offset } | null>
  * @param   {Function}  deps.saveState    (state) => Promise
- * @param   {Function}  deps.loadHosts    () => Promise<string[]>  domain names of the managed hosts
+ * @param   {Function}  deps.loadHosts    () => Promise<Array<{id, type, domain_names}>>  the managed hosts
+ *                                        (proxy, redirection and dead hosts)
  * @param   {Function}  [deps.loadVisitorKey]  () => Promise<{ key: Buffer, created: boolean }>, called once in start();
  *                                             without it (or when it fails) unique visitors are not counted
  * @param   {Function}  [deps.createReader]  (state) => { read() }
@@ -170,6 +174,10 @@ const createTrafficService = ({
 	const queue = createQueue();
 	const counter = createCounter({ maxPerKey, maxVisitors });
 	let mapHost = createHostMapper([]);
+	// null until the host list was loaded once; a failed reload keeps the previous one
+	let resolver = null;
+	let hostsAt = null;
+	let hostsInFlight = null;
 
 	let started = false;
 	let enabled = false;
@@ -235,12 +243,23 @@ const createTrafficService = ({
 		}
 	};
 
-	const refreshHosts = async () => {
+	const loadHostsOnce = async () => {
+		hostsAt = now();
 		try {
-			mapHost = createHostMapper(await loadHosts());
+			const hosts = await loadHosts();
+			mapHost = createHostMapper(hosts.flatMap((host) => host.domain_names ?? []));
+			resolver = createHostResolver(hosts);
 		} catch (err) {
 			logError("could not read the host list")(err);
 		}
+	};
+
+	/** Reloads the managed hosts; a reload still running is shared. */
+	const refreshHosts = () => {
+		hostsInFlight ??= loadHostsOnce().finally(() => {
+			hostsInFlight = null;
+		});
+		return hostsInFlight;
 	};
 
 	const startReading = () => {
@@ -267,6 +286,8 @@ const createTrafficService = ({
 			}
 			if (!showIps) await store.deleteIps().catch(logError("could not delete the stored IPs"));
 			if (!uniqueVisitors) {
+				// also the per day counts seeded at start, they describe the hashes deleted here
+				counter.forgetVisitors();
 				await store.deleteVisitors().catch(logError("could not delete the stored visitor hashes"));
 			}
 		}
@@ -489,6 +510,17 @@ const createTrafficService = ({
 		uniqueVisitorsOn: () => {
 			visitorsOffUntil = 0;
 			uniqueVisitors = true;
+		},
+
+		/**
+		 * The host resolver of the last host list. Reloaded first when it is older than a minute (also while
+		 * traffic statistics are off); before the first successful load every key resolves as a deleted host.
+		 *
+		 * @returns {Promise<ReturnType<typeof createHostResolver>>}
+		 */
+		hostResolver: async () => {
+			if (hostsAt === null || now() - hostsAt >= HOSTS_MAX_AGE_MS) await refreshHosts();
+			return resolver ?? createHostResolver([]);
 		},
 
 		status: () => ({
