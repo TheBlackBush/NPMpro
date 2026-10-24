@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { c as createArchive } from "tar";
 import { createGeoip } from "../lib/geoip/lookup.js";
 import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
-import { updateGeoip } from "../lib/geoip/update.js";
+import { archiveFilter, updateGeoip } from "../lib/geoip/update.js";
 
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const COUNTRY = "GeoLite2-Country.mmdb";
@@ -185,6 +185,36 @@ describe("updateGeoip", () => {
 			fetch: stubFetch("this is not a tar.gz"),
 		});
 		assert.equal(result.error, "GeoLite2-ASN: The downloaded archive could not be read");
+	});
+
+	it("extracts only directories and regular .mmdb/.txt files", () => {
+		assert.equal(archiveFilter("x/", { type: "Directory", size: 0 }), true);
+		assert.equal(archiveFilter("x/GeoLite2-Country.mmdb", { type: "File", size: 10 }), true);
+		assert.equal(archiveFilter("x/LICENSE.txt", { type: "File", size: 10 }), true);
+		assert.equal(archiveFilter("x/run.sh", { type: "File", size: 10 }), false);
+		assert.equal(archiveFilter("x/x.mmdb", { type: "SymbolicLink", size: 0 }), false);
+		assert.equal(archiveFilter("x/x.mmdb", { type: "Link", size: 0 }), false);
+		assert.equal(archiveFilter("x/x.mmdb", { type: "File", size: 301 * 1024 * 1024 }), false);
+	});
+
+	it("rejects a symlink entry named like the database", async () => {
+		const root = await tempDir();
+		const folder = path.join(root, "GeoLite2-Country_20261020");
+		await mkdir(folder);
+		await copyFile(fixture, path.join(folder, "real.bin"));
+		await symlink("real.bin", path.join(folder, COUNTRY));
+		const file = path.join(root, "out.tar.gz");
+		await createArchive({ gzip: true, cwd: root, file }, ["GeoLite2-Country_20261020"]);
+		const dir = await tempDir();
+		const result = await updateGeoip({
+			accountId: "42",
+			licenseKey: KEY,
+			editions: ["GeoLite2-Country"],
+			dir,
+			fetch: stubFetch(await readFile(file)),
+		});
+		assert.equal(result.error, `GeoLite2-Country: The archive does not contain ${COUNTRY}`);
+		assert.deepEqual(await readdir(dir), []);
 	});
 
 	it("rejects a database of the wrong edition", async () => {

@@ -16,6 +16,17 @@ const TIMEOUT_NAMES = new Set(["TimeoutError", "AbortError"]);
 class UpdateError extends Error {}
 
 /**
+ * Archive entries that are extracted: directories and regular files named *.mmdb or *.txt up to MAX_BYTES.
+ * Links and other entry types are skipped, also when their name matches.
+ *
+ * @param   {string}  entryPath
+ * @param   {{type: string, size: number}}  entry
+ * @returns {boolean}
+ */
+const archiveFilter = (entryPath, entry) =>
+	entry.type === "Directory" || (entry.type === "File" && WANTED_ENTRY.test(entryPath) && entry.size <= MAX_BYTES);
+
+/**
  * Finds `${edition}.mmdb` anywhere below dir
  *
  * @param   {string}  dir
@@ -90,8 +101,7 @@ const updateEdition = async ({ edition, authorization, dir, fetch }) => {
 				file: archive,
 				cwd: extracted,
 				strict: true,
-				filter: (entryPath, entry) =>
-					entry.type === "Directory" || (WANTED_ENTRY.test(entryPath) && entry.size <= MAX_BYTES),
+				filter: archiveFilter,
 			});
 		} catch {
 			throw new UpdateError("The downloaded archive could not be read");
@@ -153,4 +163,4 @@ const updateGeoip = async ({ accountId, licenseKey, editions, dir, fetch = globa
 	return { ok: true, updated };
 };
 
-export { updateGeoip };
+export { archiveFilter, updateGeoip };
