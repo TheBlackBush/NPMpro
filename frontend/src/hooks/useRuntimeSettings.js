@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnvironment, getRuntimeSettings, updateRuntimeSettings } from "src/api/backend";
+import { isEmptyPayload } from "src/modules/RuntimeSettings";
 
 const useRuntimeSettings = (group) =>
 	useQuery({
@@ -14,7 +15,11 @@ const useRuntimeSettings = (group) =>
 const useSaveRuntimeSettings = (group) => {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (payload) => updateRuntimeSettings(group, payload),
+		// nothing changed: the API refuses an empty body, so no request is sent
+		mutationFn: async (payload) =>
+			isEmptyPayload(payload)
+				? queryClient.getQueryData(["runtime-settings", group])
+				: await updateRuntimeSettings(group, payload),
 		onSuccess: () => {
 			const keys = [["runtime-settings", group], ["environment"], ["audit-logs"]];
 			// Write log files lives next to the traffic statistics: its lock state feeds the monitoring settings

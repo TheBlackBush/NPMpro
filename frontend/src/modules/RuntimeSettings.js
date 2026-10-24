@@ -137,4 +137,9 @@ const runtimeSettingsPayload = (group, values, locked = [], initial) => {
 	return payload;
 };
 
-export { defaultKeySize, keySizeOptions, parseTrustedIps, runtimeSettingsPayload };
+/**
+ * True when there is nothing to save. The API refuses an empty body, so callers skip the request.
+ */
+const isEmptyPayload = (payload) => !payload || Object.keys(payload).length === 0;
+
+export { defaultKeySize, GROUP_KEYS, isEmptyPayload, keySizeOptions, parseTrustedIps, runtimeSettingsPayload };

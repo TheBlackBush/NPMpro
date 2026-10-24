@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { defaultKeySize, keySizeOptions, parseTrustedIps, runtimeSettingsPayload } from "./RuntimeSettings.js";
+import {
+	defaultKeySize,
+	GROUP_KEYS,
+	isEmptyPayload,
+	keySizeOptions,
+	parseTrustedIps,
+	runtimeSettingsPayload,
+} from "./RuntimeSettings.js";
 
 it("keySizeOptions follows the key type", () => {
 	assert.deepEqual(keySizeOptions("ecdsa"), ["secp256r1", "secp384r1", "secp521r1"]);
@@ -64,4 +72,41 @@ it("parseTrustedIps reports the 1-based line of each bad entry", () => {
 		lines.map(([, line]) => line),
 	);
 	assert.ok(errors.every((e) => e.message.startsWith("settings.")));
+});
+
+it("isEmptyPayload", () => {
+	assert.equal(isEmptyPayload({}), true);
+	assert.equal(isEmptyPayload(undefined), true);
+	assert.equal(isEmptyPayload({ gravatar: false }), false);
+});
+
+it("runtimeSettingsPayload for logs and advanced", () => {
+	const logs = { writeLogFiles: true, logRotations: 5 };
+	assert.deepEqual(runtimeSettingsPayload("logs", logs, [], { writeLogFiles: false, logRotations: 5 }), {
+		writeLogFiles: true,
+	});
+	assert.deepEqual(runtimeSettingsPayload("logs", logs, ["write_log_files"]), { logRotations: 5 });
+	const advanced = { configBeautifier: false, gravatar: true };
+	assert.deepEqual(runtimeSettingsPayload("advanced", advanced, ["gravatar"], { configBeautifier: true }), {
+		configBeautifier: false,
+	});
+	assert.deepEqual(runtimeSettingsPayload("advanced", advanced, [], advanced), {});
+});
+
+it("runtimeSettingsPayload treats a missing or null initial value as changed", () => {
+	assert.deepEqual(runtimeSettingsPayload("certificates", { profile: "" }, [], { profile: null }), { profile: "" });
+	assert.deepEqual(runtimeSettingsPayload("certificates", { profile: "" }, [], {}), { profile: "" });
+	assert.deepEqual(runtimeSettingsPayload("certificates", { profile: undefined }, [], {}), {});
+});
+
+it("GROUP_KEYS match the backend response schemas", () => {
+	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
+	for (const group of Object.keys(GROUP_KEYS)) {
+		const url = new URL(`../../../backend/schema/components/runtime-${group}-setting-object.json`, import.meta.url);
+		const props = Object.keys(JSON.parse(readFileSync(url, "utf8")).properties).filter(
+			(key) => key !== "locked" && key !== "applies",
+		);
+		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
+	}
+	assert.equal(Object.keys(GROUP_KEYS).length, 5);
 });
