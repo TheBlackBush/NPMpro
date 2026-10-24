@@ -534,6 +534,19 @@ describe("CrowdSec service", () => {
 		assert.ok(!JSON.stringify(r).includes(KEY));
 	});
 
+	it("reports why the bouncer config could not be read", async () => {
+		const svc = createCrowdsecService({
+			readConf: () => Promise.reject(Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" })),
+			fetch: () => Promise.reject(new Error("must not fetch")),
+			log: silent,
+		});
+		await svc.poll();
+		const r = svc.result();
+		assert.equal(r.configured, false);
+		assert.equal(r.reachable, false);
+		assert.equal(r.error, "Could not read the CrowdSec config: EACCES: permission denied");
+	});
+
 	it("polls every minute and stops", () => {
 		const timers = fakeTimers();
 		const svc = createCrowdsecService({ readConf: () => Promise.resolve(""), timers, log: silent });

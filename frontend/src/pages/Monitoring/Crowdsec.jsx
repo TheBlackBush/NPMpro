@@ -314,6 +314,20 @@ const Crowdsec = () => {
 
 	if (isPending) return <Loading noLogo delay={300} />;
 	if (error && !data) return <ErrorAlert error={error} />;
+	// the bouncer config exists but could not be read (for example no permission): show why
+	if (!data.configured && data.error) {
+		return (
+			<EmptyCard>
+				<EmptyState
+					icon={IconPlugConnectedX}
+					title={<T id="monitoring.crowdsec.conf-error" />}
+					subtitle={<T id="monitoring.crowdsec.unreachable.subtitle" data={{ error: data.error }} />}
+					href={README_CROWDSEC}
+					action={<T id="monitoring.crowdsec.readme" />}
+				/>
+			</EmptyCard>
+		);
+	}
 	if (!data.configured) {
 		return (
 			<EmptyCard>

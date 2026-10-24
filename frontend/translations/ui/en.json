@@ -309,6 +309,7 @@
 	"monitoring.crowdsec.column.time-left": "Time left",
 	"monitoring.crowdsec.column.type": "Type",
 	"monitoring.crowdsec.column.value": "IP or range",
+	"monitoring.crowdsec.conf-error": "The CrowdSec bouncer config could not be read",
 	"monitoring.crowdsec.connected": "Connected",
 	"monitoring.crowdsec.connection": "Connection",
 	"monitoring.crowdsec.fetched": "Last read {time}",
