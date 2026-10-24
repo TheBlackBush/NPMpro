@@ -19,7 +19,7 @@ const NEWLINE = 0x0a;
  * cannot be told apart from old content cheaply, so the bytes before the old offset are missed and the read
  * continues at a mid-file position (a broken first line is then skipped by the parser).
  */
-export const createLogReader = ({ path, state, maxChunk = 64 * 1024 * 1024 }) => {
+export const createLogReader = ({ path, state, maxChunk = 8 * 1024 * 1024 }) => {
 	let current = state ? { inode: state.inode, offset: state.offset } : null;
 	let skipping = false;
 

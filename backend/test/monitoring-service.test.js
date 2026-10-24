@@ -5,6 +5,7 @@ import Ajv from "ajv/dist/2020.js";
 import { createMonitoring } from "../internal/monitoring.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { createGeoipService } from "../lib/geoip/service.js";
+import { createCounter } from "../lib/traffic/counter.js";
 import { createHostMapper, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
 
 const MINUTE = 60000;
@@ -87,7 +88,9 @@ const geo = {
 	lookup: () => ({ country: "DE", asn: 3320, asnName: "DTAG" }),
 };
 
-const setup = ({ results = [], config = {}, hosts = ["example.com"], state = null } = {}) => {
+const setup = ({ results = [], config = {}, hosts = ["example.com"], state = null, configFails = 0 } = {}) => {
+	let failures = configFails;
+	let hostLoads = 0;
 	let time = Date.UTC(2026, 9, 24, 8, 16, 0);
 	const store = fakeStore();
 	const reader = fakeReader(results);
@@ -97,13 +100,22 @@ const setup = ({ results = [], config = {}, hosts = ["example.com"], state = nul
 	const service = createTrafficService({
 		store,
 		geo,
-		getConfig: () => Promise.resolve({ values }),
+		getConfig: () => {
+			if (failures > 0) {
+				failures--;
+				return Promise.reject(new Error("settings table missing"));
+			}
+			return Promise.resolve({ values });
+		},
 		loadState: () => Promise.resolve(state),
 		saveState: (s) => {
 			saved.push(s);
 			return Promise.resolve();
 		},
-		loadHosts: () => Promise.resolve(hosts),
+		loadHosts: () => {
+			hostLoads++;
+			return Promise.resolve(hosts);
+		},
 		createReader: reader.create,
 		now: () => time,
 		timers,
@@ -116,6 +128,7 @@ const setup = ({ results = [], config = {}, hosts = ["example.com"], state = nul
 		timers,
 		saved,
 		values,
+		hostLoads: () => hostLoads,
 		advance: (ms) => {
 			time += ms;
 		},
@@ -334,6 +347,50 @@ describe("traffic service", () => {
 		assert.equal(t.service.status().enabled, false);
 	});
 
+	it("does not delete IPs when the settings cannot be read at start, but after they are read as off", async () => {
+		const t = setup({ configFails: 1, results: [read([line("example.com")])] });
+		await t.service.start();
+		assert.ok(!t.store.calls.includes("deleteIps"));
+		assert.equal(t.service.status().enabled, false);
+		await t.service.flush();
+		assert.ok(t.store.calls.includes("deleteIps"));
+		assert.equal(t.service.status().enabled, true, "the enabled state from the settings is applied late");
+		assert.ok(t.timers.has(5000));
+	});
+
+	it("does not delete IPs after a late settings read that says show_ips is on", async () => {
+		const t = setup({ configFails: 1, config: { show_ips: true } });
+		await t.service.start();
+		await t.service.flush();
+		assert.ok(!t.store.calls.includes("deleteIps"));
+	});
+
+	it("yields while parsing many lines and a flush waits for the running read", async () => {
+		const lines = Array.from({ length: 12001 }, () => line("example.com"));
+		const t = setup({ results: [read(lines, 999)] });
+		await t.service.start();
+		const reading = t.service.read();
+		const flushed = t.service.flush();
+		await Promise.all([reading, flushed]);
+		assert.equal(
+			t.store.flushed[0].minutes.reduce((n, r) => n + r.requests, 0),
+			12001,
+		);
+		assert.deepEqual(t.saved, [{ inode: 1, offset: 999 }]);
+	});
+
+	it("skips the host list refresh while traffic statistics are off", async () => {
+		const t = setup({ config: { traffic_enabled: false } });
+		await t.service.start();
+		await t.service.flush();
+		await t.service.flush();
+		assert.equal(t.hostLoads(), 0);
+		await t.service.setEnabled(true);
+		assert.equal(t.hostLoads(), 1);
+		await t.service.flush();
+		assert.equal(t.hostLoads(), 2);
+	});
+
 	it("maps hosts by exact name, wildcard and dot prefix", () => {
 		const map = createHostMapper(["Example.com", "*.a.test", ".b.test"]);
 		assert.equal(map("example.com"), "example.com");
@@ -343,6 +400,23 @@ describe("traffic service", () => {
 		assert.equal(map("y.b.test"), ".b.test");
 		assert.equal(map(""), "_other");
 		assert.equal(map("evil-a.test"), "_other");
+	});
+});
+
+describe("counter", () => {
+	it("forgetIps drops undrained IPs and the per hour admission sets", () => {
+		const counter = createCounter({ maxPerKey: 1 });
+		const entry = (ip) => ({ time: 0, host: "a", ip, status: 200, bytes: 1 });
+		counter.add(entry("192.0.2.1"), null, { showIps: true });
+		counter.forgetIps();
+		counter.add(entry("192.0.2.2"), null, { showIps: true });
+		const out = counter.drain();
+		assert.deepEqual(
+			out.ips.map((r) => r.ip),
+			["192.0.2.2"],
+			"the cap starts again instead of counting the new IP as other",
+		);
+		assert.equal(out.minutes[0].requests, 2);
 	});
 });
 
@@ -532,27 +606,34 @@ describe("monitoring API", () => {
 		countries: { DE: 3, "--": 1, US: 5 },
 	};
 
-	const make = ({ values = {}, crowdsec = {}, available = { country: true, asn: true } } = {}) => {
+	const make = ({
+		values = {},
+		crowdsec = {},
+		available = { country: true, asn: true },
+		now = () => 0,
+		crowdsecResult = null,
+	} = {}) => {
 		const queries = [];
 		const api = createMonitoring({
 			traffic: {
 				status: () => ({ enabled: true, skipped_lines: 0, dropped_requests: 0, last_read: null, error: null }),
 			},
 			crowdsec: {
-				result: () => ({
-					configured: true,
-					reachable: true,
-					error: null,
-					fetched_at: "2026-10-24T10:00:00.000Z",
-					total: 4,
-					added_24h: 1,
-					by_scenario: [],
-					by_origin: [],
-					by_type: [],
-					newest: [],
-					countries: [],
-					...crowdsec,
-				}),
+				result: () =>
+					crowdsecResult ?? {
+						configured: true,
+						reachable: true,
+						error: null,
+						fetched_at: "2026-10-24T10:00:00.000Z",
+						total: 4,
+						added_24h: 1,
+						by_scenario: [],
+						by_origin: [],
+						by_type: [],
+						newest: [],
+						countries: [],
+						...crowdsec,
+					},
 			},
 			geoip: { available: () => available },
 			store: {
@@ -571,10 +652,38 @@ describe("monitoring API", () => {
 					}),
 			},
 			getConfig: () => Promise.resolve({ values: { traffic_enabled: true, show_ips: false, ...values } }),
-			now: () => 0,
+			now,
 		});
 		return { api, queries };
 	};
+
+	it("caches the traffic query per range and host for 30 s", async () => {
+		let time = 0;
+		const { api, queries } = make({ now: () => time });
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(queries.length, 1);
+		await api.getTraffic(admin, { range: "7d", host: "" });
+		await api.getTraffic(admin, { range: "24h", host: "example.com" });
+		assert.equal(queries.length, 3);
+		time += 30000;
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(queries.length, 4);
+	});
+
+	it("fills every newest field of a CrowdSec decision that lacks some", async () => {
+		const svc = createCrowdsecService({
+			readConf: () =>
+				Promise.resolve(["ENABLED=true", "API_URL=http://crowdsec:8080", `API_KEY=${KEY}`].join("\n")),
+			fetch: () => Promise.resolve([{ id: 5, value: "192.0.2.5", scope: "Ip", type: "ban" }]),
+			log: silent,
+		});
+		await svc.poll();
+		const { api } = make({ crowdsecResult: svc.result() });
+		const out = api.getCrowdsec(admin);
+		assert.equal(out.newest[0].scenario, "");
+		assert.ok(validCrowdsec(out), JSON.stringify(validCrowdsec.errors));
+	});
 
 	it("requires an administrator on every endpoint", async () => {
 		const { api } = make();

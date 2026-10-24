@@ -80,6 +80,12 @@ export const createCounter = ({ maxPerKey = 1000 }) => {
 			skipped++;
 		},
 
+		/** Drops the undrained IP rows and the per hour IP admission sets ("show visitor IPs" was switched off). */
+		forgetIps() {
+			ips = new Map();
+			seenIps.clear();
+		},
+
 		drain() {
 			const out = {
 				minutes: [...minutes.values()],

@@ -149,7 +149,19 @@
 							"null"
 						]
 					}
-				}
+				},
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"value",
+					"scope",
+					"scenario",
+					"origin",
+					"type",
+					"duration",
+					"seconds_left",
+					"country"
+				]
 			}
 		},
 		"countries": {

@@ -11,7 +11,31 @@
  * @param   {Function}  [deps.now]
  * @returns {Object}
  */
+const TRAFFIC_CACHE_MS = 30000;
+
 const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Date.now }) => {
+	// queryTraffic results per (range, host, show_ips) for 30 s: the page refreshes every minute per open tab,
+	// the counts change once a minute (flush)
+	const trafficCache = new Map();
+
+	const cachedTraffic = (range, host, showIps) => {
+		const time = now();
+		for (const [key, hit] of trafficCache) {
+			if (time - hit.at >= TRAFFIC_CACHE_MS) trafficCache.delete(key);
+		}
+		const key = JSON.stringify([range, host, showIps]);
+		let hit = trafficCache.get(key);
+		if (!hit) {
+			hit = { at: time, result: store.queryTraffic({ range, host, showIps, now: time }) };
+			trafficCache.set(key, hit);
+			// a failed query is not cached
+			hit.result.catch(() => {
+				if (trafficCache.get(key) === hit) trafficCache.delete(key);
+			});
+		}
+		return hit.result;
+	};
+
 	const geoipAvailable = () => {
 		const available = geoip.available();
 		return Boolean(available.country || available.asn);
@@ -26,16 +50,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			access.canAdmin();
 			const { values } = await getConfig();
 			const showIps = Boolean(values.show_ips);
-			const {
-				top_ips: topIps,
-				countries,
-				...data
-			} = await store.queryTraffic({
-				range,
-				host,
-				showIps,
-				now: now(),
-			});
+			const { top_ips: topIps, countries, ...data } = structuredClone(await cachedTraffic(range, host, showIps));
 			const { enabled: _running, ...status } = traffic.status();
 			return {
 				...data,

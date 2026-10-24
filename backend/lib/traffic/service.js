@@ -1,3 +1,4 @@
+import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
 import { createLogReader } from "./log-reader.js";
@@ -10,6 +11,9 @@ const READ_MS = 5000;
 const FLUSH_MS = 60000;
 const MAINTAIN_MS = 3600000;
 const MISSING_RETRY_MS = 60000;
+// bytes per read and lines between event loop yields, so a catch-up after downtime does not block the backend
+const READ_MAX_CHUNK = 8 * 1024 * 1024;
+const YIELD_EVERY = 5000;
 // how long counts are kept in memory while the database flush keeps failing
 const PENDING_MAX_MS = 10 * 60000;
 // after "show visitor IPs" was switched off, a stale stored true is ignored this long (the hook runs before the save)
@@ -24,6 +28,8 @@ const defaultTimers = {
  * Maps a request host to the host key that is stored: a managed domain name, the managed wildcard name it
  * matches (`*.example.com`, `.example.com`) or `_other` for everything else (default site, IPs, random names).
  * Storing the wildcard name instead of the real sub domain keeps the tables bounded.
+ * Trailing wildcards (`www.example.*`) and regex names are not matched: their requests fall back to `_other`.
+ * Every configured host counts as managed, also a disabled one (its requests reach the default site anyway).
  *
  * @param   {Iterable<string>}  domains  domain names of the managed hosts
  * @returns {(host: string) => string}
@@ -106,7 +112,7 @@ const createTrafficService = ({
 	loadState,
 	saveState,
 	loadHosts,
-	createReader = (state) => createLogReader({ path: ACCESS_LOG, state }),
+	createReader = (state) => createLogReader({ path: ACCESS_LOG, state, maxChunk: READ_MAX_CHUNK }),
 	now = Date.now,
 	timers = defaultTimers,
 	maxPerKey = 1000,
@@ -120,12 +126,14 @@ const createTrafficService = ({
 	let enabled = false;
 	// set by setEnabled() when the hook runs before start() finished
 	let enabledBySwitch = null;
+	// the settings could not be read in start(): the enabled state and the IP cleanup wait for the next refresh
+	let startupPending = false;
 	let showIps = false;
 	let ipsOffUntil = 0;
 	let retentionDays = 30;
 
 	let reader = null;
-	let reading = false;
+	let readInFlight = null;
 	let retryAt = 0;
 	let lastState = null;
 	let savedState = null;
@@ -154,17 +162,54 @@ const createTrafficService = ({
 		showIps = Boolean(values.show_ips);
 	};
 
-	const refresh = async () => {
+	const logError = (what) => (err) => log.error(`Traffic statistics: ${what}: ${err?.message ?? err}`);
+
+	/** The effective settings, or null when they cannot be read. */
+	const loadConfig = async () => {
 		try {
-			applyConfig((await getConfig()).values);
+			const { values } = await getConfig();
+			applyConfig(values);
+			return values;
 		} catch (err) {
-			log.error(`Traffic statistics: could not read the settings: ${err.message}`);
+			logError("could not read the settings")(err);
+			return null;
 		}
+	};
+
+	const refreshHosts = async () => {
 		try {
 			mapHost = createHostMapper(await loadHosts());
 		} catch (err) {
-			log.error(`Traffic statistics: could not read the host list: ${err.message}`);
+			logError("could not read the host list")(err);
 		}
+	};
+
+	const startReading = () => {
+		if (readTimer) return;
+		readTimer = timers.setInterval(() => {
+			read().catch(logError("read failed"));
+		}, READ_MS);
+		readTimer?.unref?.();
+	};
+
+	const stopReading = () => {
+		if (readTimer) timers.clearInterval(readTimer);
+		readTimer = null;
+	};
+
+	/** Runs inside the queue after each flush: settings, the work start() could not do, and the host list. */
+	const refresh = async () => {
+		const values = await loadConfig();
+		if (values && startupPending) {
+			startupPending = false;
+			if (enabledBySwitch === null && values.traffic_enabled) {
+				enabled = true;
+				startReading();
+			}
+			if (!showIps) await store.deleteIps().catch(logError("could not delete the stored IPs"));
+		}
+		// the host list is only needed while lines are counted
+		if (enabled) await refreshHosts();
 	};
 
 	const addLine = (line) => {
@@ -182,10 +227,7 @@ const createTrafficService = ({
 		counter.add(entry, found, { showIps });
 	};
 
-	/** One read of the access log (every 5 s while enabled). */
-	const read = async () => {
-		if (!enabled || reading || now() < retryAt) return;
-		reading = true;
+	const readOnce = async () => {
 		try {
 			reader ??= createReader(lastState);
 			const result = await reader.read();
@@ -197,19 +239,31 @@ const createTrafficService = ({
 			readError = null;
 			lastRead = now();
 			skipped += result.dropped ?? 0;
-			for (const line of result.lines) addLine(line);
+			for (let i = 0; i < result.lines.length; i++) {
+				if (i > 0 && i % YIELD_EVERY === 0) await yieldToLoop();
+				addLine(result.lines[i]);
+			}
 			lastState = result.state;
 		} catch (err) {
 			readError = `Could not read the access log: ${err.message}`;
 			retryAt = now() + MISSING_RETRY_MS;
 			logOnce(readError);
-		} finally {
-			reading = false;
 		}
+	};
+
+	/** One read of the access log (every 5 s while enabled); a read still running is shared. */
+	const read = () => {
+		if (readInFlight || !enabled || now() < retryAt) return readInFlight ?? Promise.resolve();
+		readInFlight = readOnce().finally(() => {
+			readInFlight = null;
+		});
+		return readInFlight;
 	};
 
 	/** Moves the counter into the pending batches and writes them; on failure keeps them up to 10 minutes. */
 	const flushNow = async () => {
+		// a read that yields to the event loop must finish first, so the saved position matches the counts
+		if (readInFlight) await readInFlight;
 		const data = counter.drain();
 		if (!showIps) data.ips = [];
 		if (hasRows(data)) pending.push({ at: now(), data });
@@ -256,34 +310,17 @@ const createTrafficService = ({
 			}
 		});
 
-	const startReading = () => {
-		if (readTimer) return;
-		readTimer = timers.setInterval(() => void read(), READ_MS);
-		readTimer?.unref?.();
-	};
-
-	const stopReading = () => {
-		if (readTimer) timers.clearInterval(readTimer);
-		readTimer = null;
-	};
-
 	return {
 		/** Loads the settings, reader position and hosts, removes stored IPs when they are off, starts the timers. */
 		start: async () => {
 			if (started) return;
 			started = true;
-			let values = { traffic_enabled: false, retention_days: 30, show_ips: false };
-			try {
-				values = (await getConfig()).values;
-			} catch (err) {
-				log.error(`Traffic statistics: could not read the settings: ${err.message}`);
-			}
-			applyConfig(values);
-			if (!showIps) {
-				// covers TRAFFIC_SHOW_IPS=false set while IPs were stored
-				await queue(() => store.deleteIps()).catch((err) =>
-					log.error(`Traffic statistics: could not delete the stored IPs: ${err.message}`),
-				);
+			const values = await loadConfig();
+			if (values === null) {
+				startupPending = true;
+			} else if (!showIps) {
+				// covers TRAFFIC_SHOW_IPS=false set while IPs were stored; only when the setting is known to be off
+				await queue(() => store.deleteIps()).catch(logError("could not delete the stored IPs"));
 			}
 			try {
 				lastState = (await loadState()) ?? null;
@@ -291,15 +328,21 @@ const createTrafficService = ({
 			} catch (err) {
 				log.error(`Traffic statistics: could not load the reader position: ${err.message}`);
 			}
-			await refresh();
 			if (!started) return;
-			enabled = enabledBySwitch ?? Boolean(values.traffic_enabled);
-			if (enabled) startReading();
-			flushTimer = timers.setInterval(() => void flush(), FLUSH_MS);
+			enabled = enabledBySwitch ?? Boolean(values?.traffic_enabled);
+			if (enabled) {
+				await refreshHosts();
+				startReading();
+			}
+			flushTimer = timers.setInterval(() => {
+				flush().catch(logError("flush failed"));
+			}, FLUSH_MS);
 			flushTimer?.unref?.();
-			maintainTimer = timers.setInterval(() => void maintain(), MAINTAIN_MS);
+			maintainTimer = timers.setInterval(() => {
+				maintain().catch(logError("roll-up failed"));
+			}, MAINTAIN_MS);
 			maintainTimer?.unref?.();
-			void maintain();
+			maintain().catch(logError("roll-up failed"));
 		},
 
 		/** Clears the timers and writes what is still counted. */
@@ -319,6 +362,7 @@ const createTrafficService = ({
 			if (!started) return;
 			if (enabled) {
 				retryAt = 0;
+				await queue(refreshHosts);
 				startReading();
 			} else {
 				stopReading();
@@ -331,9 +375,7 @@ const createTrafficService = ({
 		showIpsOff: async () => {
 			showIps = false;
 			ipsOffUntil = now() + IPS_OFF_PIN_MS;
-			const data = counter.drain();
-			data.ips = [];
-			if (hasRows(data)) pending.push({ at: now(), data });
+			counter.forgetIps();
 			for (const p of pending) p.data.ips = [];
 			await queue(() => store.deleteIps());
 		},

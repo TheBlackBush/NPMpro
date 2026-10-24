@@ -57,9 +57,15 @@ const createGeoipService = ({ geoip, runUpdate, getConfig, now = Date.now, timer
 	return {
 		start: () => {
 			if (reloadTimer) return;
-			reloadTimer = timers.setInterval(() => void reload(), RELOAD_MS);
-			checkTimer = timers.setInterval(() => void check(), CHECK_MS);
-			firstTimer = timers.setTimeout(() => void check(), FIRST_CHECK_MS);
+			const onError = (err) => log.error(`GeoIP: ${err?.message ?? err}`);
+			const runCheck = () => {
+				check().catch(onError);
+			};
+			reloadTimer = timers.setInterval(() => {
+				reload().catch(onError);
+			}, RELOAD_MS);
+			checkTimer = timers.setInterval(runCheck, CHECK_MS);
+			firstTimer = timers.setTimeout(runCheck, FIRST_CHECK_MS);
 			for (const t of [reloadTimer, checkTimer, firstTimer]) t?.unref?.();
 		},
 		stop: () => {

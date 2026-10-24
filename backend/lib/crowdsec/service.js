@@ -16,6 +16,24 @@ const readConfFile = async () => {
 	}
 };
 
+const text = (v) => (typeof v === "string" ? v : String(v ?? ""));
+
+/** Every newest item with all fields, also when the LAPI left one out (the schema requires them). */
+const withCompleteNewest = (summary) => ({
+	...summary,
+	newest: summary.newest.map((d) => ({
+		id: Number.isFinite(d.id) ? d.id : 0,
+		value: text(d.value),
+		scope: text(d.scope),
+		scenario: text(d.scenario),
+		origin: text(d.origin),
+		type: text(d.type),
+		duration: text(d.duration),
+		seconds_left: d.seconds_left,
+		country: d.country ?? null,
+	})),
+});
+
 const emptySummary = () => summariseDecisions([], 0, null, new Map());
 
 const defaultTimers = {
@@ -93,7 +111,7 @@ const createCrowdsecService = ({
 				reachable: true,
 				error: null,
 				fetched_at: new Date(time).toISOString(),
-				...summariseDecisions(list, time, geoLookup, firstSeen),
+				...withCompleteNewest(summariseDecisions(list, time, geoLookup, firstSeen)),
 			};
 			loggedError = null;
 		} catch (err) {
@@ -118,9 +136,12 @@ const createCrowdsecService = ({
 	return {
 		start: () => {
 			if (timer) return;
-			timer = timers.setInterval(() => void poll(), POLL_MS);
+			const run = () => {
+				poll().catch((err) => log.error(`CrowdSec decisions: ${err?.message ?? err}`));
+			};
+			timer = timers.setInterval(run, POLL_MS);
 			timer?.unref?.();
-			void poll();
+			run();
 		},
 		stop: () => {
 			if (timer) timers.clearInterval(timer);
