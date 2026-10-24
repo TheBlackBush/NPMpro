@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
@@ -8,9 +9,11 @@ import {
 	RUNTIME_GROUPS,
 	RUNTIME_RULES,
 	userSetEnvNames,
+	userSetNames,
 } from "../lib/runtime-rules.js";
 
 const NOPE = /"nope"/u;
+const RUNTIME_ENVS_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
 const rule = (key) => RUNTIME_RULES.find((entry) => entry.key === key);
 const noImages = { fileExists: () => false };
@@ -367,4 +370,66 @@ it("never overrides an env var the user set, whatever the configs hold", () => {
 	assert.equal(out.TRUST_IP, " 10.0.0.1   10.0.0.2");
 	assert.equal(out.LOGROTATIONS, "007");
 	assert.equal(out.ACME_KEY_SIZE, "secp384r1");
+});
+
+it("locks must-staple off when OCSP stapling is switched off by env", () => {
+	const env = userEnv({ ACME_OCSP_STAPLING: "false" });
+	const merged = mergeRuntimeConfig("certificates", { must_staple: true }, env);
+	assert.equal(merged.values.must_staple, false);
+	assert.equal(merged.values.ocsp_stapling, false);
+	assert.deepEqual(sorted(merged.locked), ["must_staple", "ocsp_stapling"]);
+	const out = buildEffectiveEnv(env, { certificates: merged });
+	assert.equal(out.ACME_MUST_STAPLE, String(merged.values.must_staple));
+	assert.equal(out.ACME_OCSP_STAPLING, String(merged.values.ocsp_stapling));
+	// OCSP stapling on by env leaves must-staple editable
+	const on = mergeRuntimeConfig("certificates", { must_staple: true }, userEnv({ ACME_OCSP_STAPLING: "true" }));
+	assert.equal(on.values.must_staple, true);
+	assert.deepEqual(on.locked, ["ocsp_stapling"]);
+});
+
+it("does not count a whitespace-only env value as set", () => {
+	const env = { ...userEnv({ TRUST_IP: "   " }) };
+	assert.equal(userSetEnvNames(env).has("TRUST_IP"), false);
+	const network = mergeRuntimeConfig("network", { trusted_ips: ["10.0.0.0/8"] }, env);
+	assert.deepEqual(network.values.trusted_ips, ["10.0.0.0/8"]);
+	assert.deepEqual(network.locked, []);
+	assert.equal(buildEffectiveEnv(env, { network }).TRUST_IP, "10.0.0.0/8");
+});
+
+it("returns the set names of any list with userSetNames", () => {
+	const env = { NPMPRO_USER_ENV: "A B", A: "1", B: "", C: "3" };
+	assert.deepEqual([...userSetNames(env, ["A", "B", "C"])], ["A"]);
+	assert.deepEqual([...userSetNames({ A: "1", C: " " }, ["A", "C"])], ["A"]);
+});
+
+it("lists the same runtime env vars in envs.sh as in the rules", () => {
+	const text = readFileSync(new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url), "utf8");
+	const names = RUNTIME_ENVS_LINE.exec(text)?.groups.names.split(" ");
+	assert.deepEqual(sorted(names ?? []), sorted(RUNTIME_RULES.map((entry) => entry.env)));
+});
+
+it("does not cache a read that a save overtook", async () => {
+	let stored = { log_rotations: 4 };
+	let release;
+	let slow = true;
+	const config = createRuntimeConfig({
+		readStored: () => {
+			const snapshot = stored;
+			if (!slow) return Promise.resolve(snapshot);
+			return new Promise((resolve) => {
+				release = () => resolve(snapshot);
+			});
+		},
+		env: BOOT_ENV,
+		opts: noImages,
+	});
+	const pending = config.getRuntimeConfig("logs");
+	// the save: new row, then the cache refresh
+	stored = { log_rotations: 8 };
+	config.invalidate("logs");
+	slow = false;
+	release();
+	assert.equal((await pending).values.log_rotations, 4);
+	assert.equal((await config.getRuntimeConfig("logs")).values.log_rotations, 8);
+	assert.equal(config.effectiveEnv().LOGROTATIONS, "8");
 });

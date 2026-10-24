@@ -40,9 +40,16 @@ if [ -s /tmp/env.sha512sum ] && [ "$(cat /tmp/env.sha512sum)" != "$(sha512sum < 
 fi
 sha512sum < /data/.env > /tmp/env.sha512sum
 
-# Names of the env vars set (non-empty) before the defaults below: the backend treats only these as set by the user,
-# settings stored in the UI apply to the others
-NPMPRO_USER_ENV="$(env | sed -n "s|^\([A-Za-z_][A-Za-z0-9_]*\)=..*|\1|p" | tr "\n" " ")"
+# Env vars that are also settings in the UI (backend/lib/runtime-rules.js, checked by test/runtime-rules.test.js).
+# NPMPRO_USER_ENV lists those set (non-empty) before the defaults below: the backend treats only these as set by the
+# user and applies the stored settings to the others.
+NPMPRO_RUNTIME_ENVS="ACME_KEY_TYPE ACME_KEY_SIZE ACME_PROFILE ACME_MUST_STAPLE ACME_SERVER_TLS_VERIFY CERTBOT_RUN_INTERVAL ACME_OCSP_STAPLING CUSTOM_OCSP_STAPLING DEFAULT_CERT_ID ECH_ROTATION_INTERVAL TRUST_IP TRUST_CLOUDFLARE AUTH_REQUEST_ANUBIS_UPSTREAM AUTH_REQUEST_TINYAUTH_UPSTREAM AUTH_REQUEST_OAUTH2PROXY_UPSTREAM AUTH_REQUEST_VOIDAUTH_UPSTREAM AUTH_REQUEST_AUTHELIA_UPSTREAM AUTH_REQUEST_AUTHENTIK_UPSTREAM AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES LOGROTATE LOGROTATIONS DISABLE_NGINX_BEAUTIFIER DISABLE_GRAVATAR"
+NPMPRO_USER_ENV=""
+for name in $NPMPRO_RUNTIME_ENVS; do
+    if [ -n "$(printenv "$name")" ]; then
+        NPMPRO_USER_ENV="${NPMPRO_USER_ENV:+$NPMPRO_USER_ENV }$name"
+    fi
+done
 export NPMPRO_USER_ENV
 
 

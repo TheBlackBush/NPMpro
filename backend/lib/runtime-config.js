@@ -19,6 +19,7 @@ const readSettingRow = async (group) => {
 const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, opts } = {}) => {
 	const envOf = () => env ?? process.env;
 	const cache = new Map();
+	const generations = new Map();
 	const warned = new Set();
 
 	const warnInvalid = (group, invalid) => {
@@ -39,12 +40,13 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 	 * @returns {Promise<{values: Object, locked: string[]}>}
 	 */
 	const getRuntimeConfig = async (group) => {
-		if (!cache.has(group)) {
-			const { values, locked, invalid } = mergeRuntimeConfig(group, await readStored(group), envOf(), opts);
-			warnInvalid(group, invalid);
-			cache.set(group, { values, locked });
-		}
-		return structuredClone(cache.get(group));
+		if (cache.has(group)) return structuredClone(cache.get(group));
+		const generation = generations.get(group) ?? 0;
+		const { values, locked, invalid } = mergeRuntimeConfig(group, await readStored(group), envOf(), opts);
+		warnInvalid(group, invalid);
+		// a save (invalidate) while this read ran makes it stale: return it, but do not cache it
+		if ((generations.get(group) ?? 0) === generation) cache.set(group, { values, locked });
+		return structuredClone({ values, locked });
 	};
 
 	/**
@@ -53,10 +55,9 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 	 * @param {string} [group]
 	 */
 	const invalidate = (group) => {
-		if (group === undefined) {
-			cache.clear();
-		} else {
-			cache.delete(group);
+		for (const name of group === undefined ? RUNTIME_GROUPS : [group]) {
+			cache.delete(name);
+			generations.set(name, (generations.get(name) ?? 0) + 1);
 		}
 	};
 

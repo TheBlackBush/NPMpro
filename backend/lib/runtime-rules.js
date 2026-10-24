@@ -286,17 +286,27 @@ const rulesOf = (group) => RUNTIME_RULES.filter((rule) => rule.group === group);
 const isRuntimeGroup = (group) => RUNTIME_GROUPS.includes(group);
 
 /**
- * Names of the runtime env vars the user set. envs.sh exports a default for most of them, so it records the names
- * set before its defaults in NPMPRO_USER_ENV; without that list every non-empty value counts as set.
+ * The given env var names the user set (non-empty after trimming). envs.sh exports a default for most runtime env
+ * vars, so it records the runtime names set before its defaults in NPMPRO_USER_ENV; without that list every non-empty
+ * value counts as set.
  *
- * @param   {Object}  env
+ * @param   {Object}    env
+ * @param   {string[]}  names
  * @returns {Set<string>}
  */
-const userSetEnvNames = (env) => {
+const userSetNames = (env, names) => {
 	const listed =
 		typeof env.NPMPRO_USER_ENV === "string" ? new Set(env.NPMPRO_USER_ENV.split(WHITESPACE).filter(Boolean)) : null;
-	return new Set(RUNTIME_ENV_NAMES.filter((name) => isSet(env[name]) && (listed === null || listed.has(name))));
+	return new Set(
+		names.filter((name) => isSet(env[name]) && env[name].trim() !== "" && (listed === null || listed.has(name))),
+	);
 };
+
+/**
+ * @param   {Object}  env
+ * @returns {Set<string>}  the runtime env vars the user set
+ */
+const userSetEnvNames = (env) => userSetNames(env, RUNTIME_ENV_NAMES);
 
 const defaultOf = (rule, env, values, opts) =>
 	typeof rule.default === "function" ? rule.default(env, values, opts) : rule.default;
@@ -341,13 +351,18 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	}
 
 	if (group === "certificates") {
-		// envs.sh: a key size alone implies its key type
+		// A key size set alone runs with the envs.sh key type default (ecdsa), so only a curve passes envs.sh there;
+		// the key type is locked to match the size (an rsa size alone, refused by envs.sh, locks rsa)
 		if (locked.includes("key_size") && !locked.includes("key_type")) {
 			values.key_type = KEY_SIZES.rsa.includes(values.key_size) ? "rsa" : "ecdsa";
 			locked.push("key_type");
 		}
-		// envs.sh:793 must-staple forces OCSP stapling on
-		if (values.must_staple && !values.ocsp_stapling) {
+		if (locked.includes("ocsp_stapling") && !values.ocsp_stapling && !locked.includes("must_staple")) {
+			// OCSP stapling switched off by env: must-staple certificates would fail without it
+			values.must_staple = false;
+			locked.push("must_staple");
+		} else if (values.must_staple && !values.ocsp_stapling) {
+			// envs.sh:793 must-staple forces OCSP stapling on
 			values.ocsp_stapling = true;
 			if (locked.includes("must_staple") && !locked.includes("ocsp_stapling")) locked.push("ocsp_stapling");
 		}
@@ -404,4 +419,5 @@ export {
 	RUNTIME_RULES,
 	rulesOf,
 	userSetEnvNames,
+	userSetNames,
 };

@@ -199,3 +199,12 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 		assert.deepEqual(sortedKeys(body.properties), sortedKeys(values));
 	}
 });
+
+it("drops must_staple when OCSP stapling is switched off by env", async () => {
+	const store = fakeStore();
+	const env = { ...BOOT_ENV, ACME_OCSP_STAPLING: "false", NPMPRO_USER_ENV: "ACME_OCSP_STAPLING" };
+	const out = await updater(store, { env })("certificates", { must_staple: true, renewal_interval: 6 });
+	assert.deepEqual(store.rows.certificates, { renewal_interval: 6 });
+	assert.equal(out.values.must_staple, false);
+	assert.ok(out.locked.includes("must_staple"));
+});
