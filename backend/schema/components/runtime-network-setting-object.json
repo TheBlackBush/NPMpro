@@ -6,6 +6,7 @@
 		"trusted_ips",
 		"trust_cloudflare",
 		"locked",
+		"locked_by",
 		"applies"
 	],
 	"properties": {
@@ -33,6 +34,21 @@
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"trusted_ips": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"trust_cloudflare": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
 		},
 		"applies": {
 			"type": "object",

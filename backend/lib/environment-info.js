@@ -97,19 +97,21 @@ const ENV_OF_RUNTIME = new Map(RUNTIME_RULES.map((rule) => [`${rule.group}/${rul
 /**
  * The runtime settings an env var locks, for the Environment page: one entry per locked key
  *
- * @param   {{group: string, key: string}[]}  runtimeLocked
+ * @param   {{group: string, key: string, env?: string}[]}  runtimeLocked  env: the variable that locks it (locked_by),
+ *          else the key's own env var
  * @returns {{group: string, key: string, env: string}[]}
  */
 const lockedRuntimeOf = (runtimeLocked) =>
 	(runtimeLocked ?? [])
-		.map(({ group, key }) => ({ group, key, env: ENV_OF_RUNTIME.get(`${group}/${key}`) }))
+		.map(({ group, key, env }) => ({ group, key, env: env ?? ENV_OF_RUNTIME.get(`${group}/${key}`) }))
 		.filter((entry) => entry.env !== undefined);
 
 /**
  * The Environment page data. A secret item has no `value` key, whether it is set or not.
  *
  * @param   {Object}  env            process.env or a test object
- * @param   {{group: string, key: string}[]}  runtimeLocked  runtime settings locked by their env var
+ * @param   {{group: string, key: string, env?: string}[]}  runtimeLocked  runtime settings locked by env, with the
+ *          variable that locks each
  * @returns {{groups: {id: string, items: Object[]}[], locked_runtime: {group: string, key: string, env: string}[]}}
  */
 const environmentInfo = (env, runtimeLocked) => {

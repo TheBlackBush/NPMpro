@@ -321,7 +321,9 @@ const defaultOf = (rule, env, values, opts) =>
  * @param   {Object}  env               process.env or a test object
  * @param   {Object}  [opts]
  * @param   {Function} [opts.fileExists] (path) => boolean, for the Anubis images default
- * @returns {{values: Object, locked: string[], invalid: {key: string, source: "env"|"stored"|"server"}[]}}
+ * @returns {{values: Object, locked: string[], locked_by: Object, invalid: {key: string, source: "env"|"stored"|"server"}[]}}
+ *          locked_by names the env var that locks each locked key (the key's own one, or the one that forces it:
+ *          ACME_KEY_SIZE for key_type, ACME_OCSP_STAPLING / ACME_MUST_STAPLE for each other, GOA for write_log_files);
  *          invalid lists the values that could not be used (the caller logs them once); "server": a stored profile
  *          whose profile_server (the ACME server it was checked against) is not the current ACME_SERVER
  */
@@ -330,14 +332,19 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	const meta = stored ?? {};
 	const values = {};
 	const locked = [];
+	const lockedBy = {};
 	const invalid = [];
+	const lock = (key, name) => {
+		if (!locked.includes(key)) locked.push(key);
+		lockedBy[key] = name;
+	};
 
 	for (const rule of rulesOf(group)) {
 		if (userSet.has(rule.env)) {
 			const value = rule.parseEnv(env[rule.env]);
 			if (value !== undefined) {
 				values[rule.key] = value;
-				locked.push(rule.key);
+				lock(rule.key, rule.env);
 				continue;
 			}
 			invalid.push({ key: rule.key, source: "env" });
@@ -364,25 +371,28 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 		// the key type is locked to match the size (an rsa size alone, refused by envs.sh, locks rsa)
 		if (locked.includes("key_size") && !locked.includes("key_type")) {
 			values.key_type = KEY_SIZES.rsa.includes(values.key_size) ? "rsa" : "ecdsa";
-			locked.push("key_type");
+			lock("key_type", "ACME_KEY_SIZE");
 		}
 		if (locked.includes("ocsp_stapling") && !values.ocsp_stapling && !locked.includes("must_staple")) {
 			// OCSP stapling switched off by env: must-staple certificates would fail without it
 			values.must_staple = false;
-			locked.push("must_staple");
+			lock("must_staple", "ACME_OCSP_STAPLING");
 		} else if (values.must_staple && !values.ocsp_stapling) {
 			// envs.sh:793 must-staple forces OCSP stapling on
 			values.ocsp_stapling = true;
-			if (locked.includes("must_staple") && !locked.includes("ocsp_stapling")) locked.push("ocsp_stapling");
+			if (locked.includes("must_staple") && !locked.includes("ocsp_stapling")) {
+				lock("ocsp_stapling", lockedBy.must_staple);
+			}
 		}
 	}
 	// envs.sh:827 GoAccess needs the log files
 	if (group === "logs" && env.GOA === "true") {
 		values.write_log_files = true;
-		if (!locked.includes("write_log_files")) locked.push("write_log_files");
+		// GOA is what keeps it on, also when LOGROTATE is set
+		lock("write_log_files", "GOA");
 	}
 
-	return { values, locked, invalid };
+	return { values, locked, locked_by: lockedBy, invalid };
 };
 
 /**

@@ -11,6 +11,7 @@
 		"authentik_upstream",
 		"anubis_custom_images",
 		"locked",
+		"locked_by",
 		"applies"
 	],
 	"properties": {
@@ -63,6 +64,41 @@
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"anubis_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"tinyauth_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"oauth2proxy_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"voidauth_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"authelia_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"authentik_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"anubis_custom_images": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
 		},
 		"applies": {
 			"type": "object",

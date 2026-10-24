@@ -242,13 +242,21 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 		const view = runtimeView(group, mergeRuntimeConfig(group, {}, BOOT_ENV, noImages));
 		const response = path.get.responses["200"].content["application/json"].schema;
 		assert.equal(ajv.validate(response, view), true, `${group}: ${ajv.errorsText()}`);
-		const { locked: _locked, applies: _applies, ...values } = view;
+		const { locked: _locked, locked_by: _lockedBy, applies: _applies, ...values } = view;
 		const body = path.put.requestBody.content["application/json"].schema;
 		assert.equal(ajv.validate(body, values), true, `${group}: ${ajv.errorsText()}`);
 		assert.equal(ajv.validate(body, {}), false, `${group} accepts an empty body`);
 		assert.equal(ajv.validate(body, { locked: [] }), false, `${group} accepts unknown keys`);
 		assert.deepEqual(sortedKeys(body.properties), sortedKeys(values));
 	}
+	// a view with locks: locked_by names the variables
+	const lockedEnv = { ...BOOT_ENV, ACME_KEY_SIZE: "4096", NPMPRO_USER_ENV: "ACME_KEY_SIZE" };
+	const lockedView = runtimeView("certificates", mergeRuntimeConfig("certificates", {}, lockedEnv, noImages));
+	assert.deepEqual(lockedView.locked_by, { key_size: "ACME_KEY_SIZE", key_type: "ACME_KEY_SIZE" });
+	const certificates =
+		schema.paths["/settings/runtime/certificates"].get.responses["200"].content["application/json"];
+	assert.equal(ajv.validate(certificates.schema, lockedView), true, ajv.errorsText());
+	assert.equal(ajv.validate(certificates.schema, { ...lockedView, locked_by: { nope: "X" } }), false);
 });
 
 it("drops must_staple when OCSP stapling is switched off by env", async () => {

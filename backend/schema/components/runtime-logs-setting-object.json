@@ -6,6 +6,7 @@
 		"write_log_files",
 		"log_rotations",
 		"locked",
+		"locked_by",
 		"applies"
 	],
 	"properties": {
@@ -29,6 +30,21 @@
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"write_log_files": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"log_rotations": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
 		},
 		"applies": {
 			"type": "object",

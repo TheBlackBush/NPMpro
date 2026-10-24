@@ -85,6 +85,22 @@ it("lists the locked runtime settings with their env var", () => {
 	assert.deepEqual(environmentInfo({}, undefined).locked_runtime, []);
 });
 
+it("names the variable that actually locks a runtime setting (locked_by)", () => {
+	const info = environmentInfo({}, [
+		{ group: "certificates", key: "key_type", env: "ACME_KEY_SIZE" },
+		{ group: "certificates", key: "must_staple", env: "ACME_OCSP_STAPLING" },
+		{ group: "logs", key: "write_log_files", env: "GOA" },
+	]);
+	assert.deepEqual(
+		info.locked_runtime.map(({ key, env }) => [key, env]),
+		[
+			["key_type", "ACME_KEY_SIZE"],
+			["must_staple", "ACME_OCSP_STAPLING"],
+			["write_log_files", "GOA"],
+		],
+	);
+});
+
 it("lists the runtime and environment names once in envs.sh", () => {
 	const text = readFileSync(new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url), "utf8");
 	const names = TRACKED_LINE.exec(text)?.groups.names.split(" ") ?? [];

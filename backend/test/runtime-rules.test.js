@@ -462,3 +462,44 @@ it("logs a stale stored profile once through the accessor", async () => {
 	assert.equal(warnings.length, 1);
 	assert.match(warnings[0], STALE_PROFILE);
 });
+
+it("names the env var that locks each key in locked_by, also for the cross-locks", () => {
+	const own = mergeRuntimeConfig("forward-auth", {}, userEnv({ AUTH_REQUEST_ANUBIS_UPSTREAM: "http://a:1" }));
+	assert.deepEqual(own.locked_by, { anubis_upstream: "AUTH_REQUEST_ANUBIS_UPSTREAM" });
+	assert.deepEqual(mergeRuntimeConfig("network", {}, BOOT_ENV).locked_by, {});
+
+	const size = mergeRuntimeConfig("certificates", {}, userEnv({ ACME_KEY_SIZE: "4096" }));
+	assert.deepEqual(size.locked_by, { key_size: "ACME_KEY_SIZE", key_type: "ACME_KEY_SIZE" });
+	const both = mergeRuntimeConfig("certificates", {}, userEnv({ ACME_KEY_TYPE: "rsa", ACME_KEY_SIZE: "4096" }));
+	assert.deepEqual(both.locked_by, { key_type: "ACME_KEY_TYPE", key_size: "ACME_KEY_SIZE" });
+
+	const ocspOff = mergeRuntimeConfig("certificates", {}, userEnv({ ACME_OCSP_STAPLING: "false" }));
+	assert.deepEqual(ocspOff.locked_by, { ocsp_stapling: "ACME_OCSP_STAPLING", must_staple: "ACME_OCSP_STAPLING" });
+	const staple = mergeRuntimeConfig("certificates", {}, userEnv({ ACME_MUST_STAPLE: "true" }));
+	assert.deepEqual(staple.locked_by, { must_staple: "ACME_MUST_STAPLE", ocsp_stapling: "ACME_MUST_STAPLE" });
+
+	const goa = mergeRuntimeConfig("logs", {}, { ...BOOT_ENV, GOA: "true" });
+	assert.deepEqual(goa.locked_by, { write_log_files: "GOA" });
+	const goaAndLogrotate = mergeRuntimeConfig("logs", {}, { ...userEnv({ LOGROTATE: "true" }), GOA: "true" });
+	assert.deepEqual(goaAndLogrotate.locked_by, { write_log_files: "GOA" });
+	assert.deepEqual(goaAndLogrotate.locked, ["write_log_files"]);
+	const logrotate = mergeRuntimeConfig("logs", {}, userEnv({ LOGROTATE: "true" }));
+	assert.deepEqual(logrotate.locked_by, { write_log_files: "LOGROTATE" });
+
+	// every locked key is named, and only those
+	for (const merged of [own, size, both, ocspOff, staple, goa, logrotate]) {
+		assert.deepEqual(sorted(Object.keys(merged.locked_by)), sorted(merged.locked));
+	}
+});
+
+it("keeps locked_by in the cache and after prime", async () => {
+	const env = userEnv({ ACME_KEY_SIZE: "4096" });
+	const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
+	const first = await config.getRuntimeConfig("certificates");
+	assert.equal(first.locked_by.key_type, "ACME_KEY_SIZE");
+	assert.equal((await config.getRuntimeConfig("certificates")).locked_by.key_type, "ACME_KEY_SIZE");
+	config.prime("certificates", first);
+	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_by, first.locked_by);
+	config.prime("logs", { values: {}, locked: [] });
+	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_by, {});
+});

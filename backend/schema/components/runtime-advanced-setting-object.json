@@ -6,6 +6,7 @@
 		"config_beautifier",
 		"gravatar",
 		"locked",
+		"locked_by",
 		"applies"
 	],
 	"properties": {
@@ -27,6 +28,21 @@
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"config_beautifier": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"gravatar": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
 		},
 		"applies": {
 			"type": "object",

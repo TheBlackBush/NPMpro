@@ -38,16 +38,21 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 
 	/**
 	 * @param   {string}  group
-	 * @returns {Promise<{values: Object, locked: string[]}>}
+	 * @returns {Promise<{values: Object, locked: string[], locked_by: Object}>}
 	 */
 	const getRuntimeConfig = async (group) => {
 		if (cache.has(group)) return structuredClone(cache.get(group));
 		const generation = generations.get(group) ?? 0;
-		const { values, locked, invalid } = mergeRuntimeConfig(group, await readStored(group), envOf(), opts);
+		const { values, locked, locked_by, invalid } = mergeRuntimeConfig(
+			group,
+			await readStored(group),
+			envOf(),
+			opts,
+		);
 		warnInvalid(group, invalid);
 		// a save (invalidate) while this read ran makes it stale: return it, but do not cache it
-		if ((generations.get(group) ?? 0) === generation) cache.set(group, { values, locked });
-		return structuredClone({ values, locked });
+		if ((generations.get(group) ?? 0) === generation) cache.set(group, { values, locked, locked_by });
+		return structuredClone({ values, locked, locked_by });
 	};
 
 	/**
@@ -67,17 +72,17 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 	 * read that started before it is not cached (generation)
 	 *
 	 * @param {string}  group
-	 * @param {{values: Object, locked: string[]}}  cfg
+	 * @param {{values: Object, locked: string[], locked_by?: Object}}  cfg
 	 */
-	const prime = (group, { values, locked }) => {
+	const prime = (group, { values, locked, locked_by = {} }) => {
 		generations.set(group, (generations.get(group) ?? 0) + 1);
-		cache.set(group, structuredClone({ values, locked }));
+		cache.set(group, structuredClone({ values, locked, locked_by }));
 	};
 
 	/**
 	 * Reads every group again (startup and tests)
 	 *
-	 * @returns {Promise<Object>}  { [group]: { values, locked } }
+	 * @returns {Promise<Object>}  { [group]: { values, locked, locked_by } }
 	 */
 	const loadRuntimeConfig = async () => {
 		invalidate();

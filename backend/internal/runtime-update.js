@@ -7,10 +7,15 @@ import { createSerializer, pickEditable } from "./monitoring-update.js";
  * GET/PUT response of a runtime settings group
  *
  * @param   {string}  group
- * @param   {{values: Object, locked: string[]}}  cfg
+ * @param   {{values: Object, locked: string[], locked_by?: Object}}  cfg
  * @returns {Object}
  */
-const runtimeView = (group, cfg) => ({ ...cfg.values, locked: cfg.locked, applies: appliesOf(group) });
+const runtimeView = (group, cfg) => ({
+	...cfg.values,
+	locked: cfg.locked,
+	locked_by: cfg.locked_by ?? {},
+	applies: appliesOf(group),
+});
 
 /**
  * Builds the runtime settings update. All groups share one queue: each update (read stored, validate, apply, save)
@@ -54,7 +59,9 @@ const createRuntimeUpdater = ({
 			prev.locked,
 			rules.map((rule) => rule.key),
 		);
-		if (Object.keys(changes).length === 0) return { meta: stored, values: prev.values, locked: prev.locked };
+		if (Object.keys(changes).length === 0) {
+			return { meta: stored, values: prev.values, locked: prev.locked, locked_by: prev.locked_by };
+		}
 
 		// validated against the values the group will have, so key_size is checked against the new key_type
 		const draft = mergeRuntimeConfig(group, { ...stored, ...changes }, envOf(), opts).values;
@@ -104,8 +111,8 @@ const createRuntimeUpdater = ({
 			}
 			throw err;
 		}
-		onSaved(group, { values: next.values, locked: next.locked });
-		return { meta, values: next.values, locked: next.locked };
+		onSaved(group, { values: next.values, locked: next.locked, locked_by: next.locked_by });
+		return { meta, values: next.values, locked: next.locked, locked_by: next.locked_by };
 	};
 
 	const run = (group, body) => serialize(() => update(group, body));

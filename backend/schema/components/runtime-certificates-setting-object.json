@@ -14,6 +14,7 @@
 		"default_certificate_id",
 		"ech_rotation_interval",
 		"locked",
+		"locked_by",
 		"applies"
 	],
 	"properties": {
@@ -94,6 +95,53 @@
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"key_type": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"key_size": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"profile": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"must_staple": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"server_tls_verify": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"renewal_interval": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"ocsp_stapling": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"custom_ocsp_stapling": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"default_certificate_id": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"ech_rotation_interval": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
 		},
 		"applies": {
 			"type": "object",
