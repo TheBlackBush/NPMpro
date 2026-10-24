@@ -3,13 +3,16 @@ import { it } from "node:test";
 import {
 	chartSeries,
 	countryName,
+	filterBans,
 	formatBytes,
 	formatCount,
+	formatTimeLeft,
 	geoipSettingsPayload,
 	hostOptions,
 	mapScale,
 	monitoringSettingsPayload,
 	rangeOptions,
+	secondsLeftNow,
 	shareBar,
 } from "./Monitoring.js";
 
@@ -155,4 +158,49 @@ it("names countries in the locale and keeps unknown codes", () => {
 	assert.equal(countryName("de", "en"), "Germany");
 	assert.equal(countryName("DE", "de"), "Deutschland");
 	assert.equal(countryName("--", "en"), "--");
+});
+
+it("formats the time left of a ban in two units at most", () => {
+	assert.equal(formatTimeLeft(0), "< 1m");
+	assert.equal(formatTimeLeft(59), "< 1m");
+	assert.equal(formatTimeLeft(-5), "< 1m");
+	assert.equal(formatTimeLeft(null), "< 1m");
+	assert.equal(formatTimeLeft(60), "1m");
+	assert.equal(formatTimeLeft(3599), "59m");
+	assert.equal(formatTimeLeft(3600), "1h");
+	assert.equal(formatTimeLeft(14_342), "3h 59m");
+	assert.equal(formatTimeLeft(86_400), "1d");
+	assert.equal(formatTimeLeft(90_000), "1d 1h");
+	assert.equal(formatTimeLeft(604_799), "6d 23h");
+	assert.equal(formatTimeLeft(400 * 86_400), "400d");
+});
+
+it("counts the time left down from the fetch time", () => {
+	const fetchedAt = "2026-10-24T12:00:00.000Z";
+	const at = (s) => Date.parse(fetchedAt) + s * 1000;
+	assert.equal(secondsLeftNow(600, fetchedAt, at(0)), 600);
+	assert.equal(secondsLeftNow(600, fetchedAt, at(90.5)), 510);
+	assert.equal(secondsLeftNow(600, fetchedAt, at(900)), 0);
+	// a clock behind the server does not add time
+	assert.equal(secondsLeftNow(600, fetchedAt, at(-30)), 600);
+	assert.equal(secondsLeftNow(600, null, at(90)), 600);
+	assert.equal(secondsLeftNow(undefined, fetchedAt, at(0)), 0);
+});
+
+it("filters bans by value, scenario, origin, type and country", () => {
+	const rows = [
+		{ value: "1.2.3.4", scenario: "crowdsecurity/ssh-bf", origin: "crowdsec", type: "ban", country: "DE" },
+		{ value: "10.0.0.0/8", scenario: "manual", origin: "cscli", type: "captcha", country: null },
+	];
+	const nameOf = (code) => countryName(code, "en");
+	assert.equal(filterBans(rows, "", nameOf).length, 2);
+	assert.equal(filterBans(rows, "  ", nameOf).length, 2);
+	assert.deepEqual(filterBans(rows, "1.2.3", nameOf), [rows[0]]);
+	assert.deepEqual(filterBans(rows, "SSH", nameOf), [rows[0]]);
+	assert.deepEqual(filterBans(rows, "cscli", nameOf), [rows[1]]);
+	assert.deepEqual(filterBans(rows, "captcha", nameOf), [rows[1]]);
+	assert.deepEqual(filterBans(rows, "germany", nameOf), [rows[0]]);
+	assert.deepEqual(filterBans(rows, "de", nameOf), [rows[0]]);
+	assert.deepEqual(filterBans(rows, "nothing", nameOf), []);
+	assert.deepEqual(filterBans(undefined, "x"), []);
 });

@@ -1,12 +1,16 @@
-import { IconChartBar } from "@tabler/icons-react";
+import { IconChartBar, IconShield } from "@tabler/icons-react";
 import { NavLink, useParams } from "react-router";
 import { ErrorNotFound, HasPermission, PageHeader } from "src/components";
 import { intl, T } from "src/locale";
 import { ADMIN, VIEW } from "src/modules/Permissions";
+import Crowdsec from "./Crowdsec";
 import Traffic from "./Traffic";
 
 // one entry per tab, in the URL as /monitoring/<id>
-const TABS = [{ id: "traffic", labelKey: "monitoring.tab.traffic", icon: IconChartBar, element: Traffic }];
+const TABS = [
+	{ id: "traffic", labelKey: "monitoring.tab.traffic", icon: IconChartBar, element: Traffic },
+	{ id: "crowdsec", labelKey: "monitoring.tab.crowdsec", icon: IconShield, element: Crowdsec },
+];
 
 const Monitoring = () => {
 	const { tab } = useParams();

@@ -136,6 +136,51 @@ const countryName = (code, locale) => {
 	}
 };
 
+/**
+ * Short time left of a CrowdSec decision: 30 -> "< 1m", 300 -> "5m", 14342 -> "3h 59m", 604799 -> "6d 23h".
+ * Two units at most, a zero second unit is left out ("2h", "1d"). Anything below a minute (or not a number) is "< 1m".
+ */
+const formatTimeLeft = (seconds) => {
+	const s = Math.floor(Number(seconds));
+	if (!Number.isFinite(s) || s < 60) return "< 1m";
+	const days = Math.floor(s / 86_400);
+	const hours = Math.floor((s % 86_400) / 3600);
+	const minutes = Math.floor((s % 3600) / 60);
+	const pair = (big, bigUnit, small, smallUnit) =>
+		small > 0 ? `${big}${bigUnit} ${small}${smallUnit}` : `${big}${bigUnit}`;
+	if (days > 0) return pair(days, "d", hours, "h");
+	if (hours > 0) return pair(hours, "h", minutes, "m");
+	return `${minutes}m`;
+};
+
+/**
+ * Seconds left now for a decision that had `secondsLeft` at `fetchedAt` (ISO time), never below 0.
+ * Without a usable fetchedAt the reported value is returned unchanged.
+ */
+const secondsLeftNow = (secondsLeft, fetchedAt, now = Date.now()) => {
+	const left = Math.max(0, Number(secondsLeft) || 0);
+	const fetched = Date.parse(fetchedAt ?? "");
+	if (!Number.isFinite(fetched)) return left;
+	return Math.max(0, left - Math.max(0, Math.floor((now - fetched) / 1000)));
+};
+
+/**
+ * Bans whose value, scenario, origin, type, country code or country name contain the search text (case-insensitive).
+ * `nameOf(code)` gives the shown country name; an empty search keeps every row.
+ */
+const filterBans = (rows, q, nameOf = () => "") => {
+	const needle = String(q ?? "")
+		.trim()
+		.toLowerCase();
+	if (needle === "") return rows ?? [];
+	return (rows ?? []).filter((row) =>
+		[row.value, row.scenario, row.origin, row.type, row.country, row.country ? nameOf(row.country) : ""]
+			.join(" ")
+			.toLowerCase()
+			.includes(needle),
+	);
+};
+
 const rangeOptions = [
 	{ value: "1h", labelKey: "monitoring.range.1h" },
 	{ value: "24h", labelKey: "monitoring.range.24h" },
@@ -171,8 +216,10 @@ const geoipSettingsPayload = (values) => pickEditable(values, GEOIP_KEYS);
 export {
 	chartSeries,
 	countryName,
+	filterBans,
 	formatBytes,
 	formatCount,
+	formatTimeLeft,
 	geoipSettingsPayload,
 	hostOptions,
 	isCountryCode,
@@ -180,5 +227,6 @@ export {
 	monitoringSettingsPayload,
 	OTHER_HOST,
 	rangeOptions,
+	secondsLeftNow,
 	shareBar,
 };

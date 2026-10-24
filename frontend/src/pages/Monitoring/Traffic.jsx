@@ -8,19 +8,19 @@ import {
 } from "@tabler/icons-react";
 import { Fragment } from "react";
 import { useSearchParams } from "react-router";
-import { ErrorAlert, Flag, Loading, NoticeAlert } from "src/components";
-import { EmptyState, StatCard, TopList, TrafficChart, WorldMap } from "src/components/Monitoring";
+import { ErrorAlert, Loading, NoticeAlert } from "src/components";
+import {
+	CountryName,
+	countryLabel,
+	EmptyState,
+	StatCard,
+	TopList,
+	TrafficChart,
+	WorldMap,
+} from "src/components/Monitoring";
 import { useDeadHosts, useMonitoringTraffic, useProxyHosts, useRedirectionHosts } from "src/hooks";
 import { currentLocale, formatDateTime, intl, T } from "src/locale";
-import {
-	countryName,
-	formatBytes,
-	formatCount,
-	hostOptions,
-	isCountryCode,
-	OTHER_HOST,
-	rangeOptions,
-} from "src/modules/Monitoring";
+import { formatBytes, formatCount, hostOptions, isCountryCode, OTHER_HOST, rangeOptions } from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
@@ -33,22 +33,6 @@ const errorRateColor = (rate) => {
 };
 
 const hostLabel = (host) => (host === OTHER_HOST ? intl.formatMessage({ id: "monitoring.host.other" }) : host);
-
-const countryLabel = (code) =>
-	isCountryCode(code) ? countryName(code, currentLocale) : intl.formatMessage({ id: "unknown" });
-
-function CountryName({ code }) {
-	return (
-		<span className="d-inline-flex align-items-center gap-2 text-truncate">
-			{isCountryCode(code) ? (
-				<Flag countryCode={code.toUpperCase()} className="flex-shrink-0" />
-			) : (
-				<IconWorld className="icon text-secondary flex-shrink-0" width={20} aria-hidden="true" />
-			)}
-			<span className="text-truncate">{countryLabel(code)}</span>
-		</span>
-	);
-}
 
 function Toolbar({ range, host, onChange }) {
 	const { data: proxy } = useProxyHosts();
