@@ -81,6 +81,13 @@ const menuGroups = [
 			permissionSection: ACCESS_LISTS,
 			permission: VIEW,
 		},
+		{
+			to: "/monitoring",
+			icon: IconChartBar,
+			label: "monitoring",
+			permissionSection: ADMIN,
+			permission: VIEW,
+		},
 	],
 	[
 		{

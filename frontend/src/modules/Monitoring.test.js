@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	chartSeries,
+	countryName,
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
+	hostOptions,
 	mapScale,
 	monitoringSettingsPayload,
 	rangeOptions,
@@ -100,4 +103,56 @@ it("drops locked keys and an empty license key from the GeoIP payload", () => {
 		accountId: "123",
 		editions: ["GeoLite2-Country"],
 	});
+});
+
+it("turns API buckets into one chart series per status class", () => {
+	const series = [
+		{ bucket: 10, byClass: { "2xx": 5, "3xx": 0, "4xx": 1, "5xx": 0 } },
+		{ bucket: 11, byClass: { "2xx": 2, "3xx": 1, "4xx": 0, "5xx": 3 } },
+	];
+	const minutes = chartSeries(series, "24h");
+	assert.deepEqual(
+		minutes.map((s) => s.key),
+		["2xx", "3xx", "4xx", "5xx"],
+	);
+	assert.deepEqual(minutes[0].data, [
+		[600_000, 5],
+		[660_000, 2],
+	]);
+	assert.deepEqual(chartSeries(series, "7d")[3].data, [
+		[36_000_000, 0],
+		[39_600_000, 3],
+	]);
+	const withOther = chartSeries([{ bucket: 1, byClass: { "2xx": 1, other: 4 } }], "1h");
+	assert.deepEqual(
+		withOther.map((s) => [s.key, s.data[0][1]]),
+		[
+			["2xx", 1],
+			["3xx", 0],
+			["4xx", 0],
+			["5xx", 0],
+			["other", 4],
+		],
+	);
+	assert.deepEqual(chartSeries(undefined, "1h")[0].data, []);
+});
+
+it("lists every managed domain name once, sorted, with _other last", () => {
+	const proxy = [{ domainNames: ["B.example.com", "*.example.com"] }, { domainNames: ["a.example.com"] }];
+	const redirection = [{ domainNames: ["a.example.com", " c.example.com "] }];
+	assert.deepEqual(hostOptions([proxy, redirection, undefined]), [
+		"*.example.com",
+		"a.example.com",
+		"b.example.com",
+		"c.example.com",
+		"_other",
+	]);
+	assert.deepEqual(hostOptions([[]], "gone.example.com"), ["gone.example.com", "_other"]);
+	assert.deepEqual(hostOptions([[]], "_other"), ["_other"]);
+});
+
+it("names countries in the locale and keeps unknown codes", () => {
+	assert.equal(countryName("de", "en"), "Germany");
+	assert.equal(countryName("DE", "de"), "Deutschland");
+	assert.equal(countryName("--", "en"), "--");
 });

@@ -83,6 +83,59 @@ const mapScale = (countries) => {
 	return scale;
 };
 
+const STATUS_CLASSES = ["2xx", "3xx", "4xx", "5xx"];
+const BUCKET_MS = { "1h": 60_000, "24h": 60_000, "7d": 3_600_000, "30d": 3_600_000 };
+
+/**
+ * API series ([{ bucket, byClass }]) to one chart series per status class, as [timestamp in ms, requests] points.
+ * 2xx to 5xx always, "other" only when a bucket has it. Buckets are unix minutes for 1h and 24h, unix hours otherwise.
+ */
+const chartSeries = (series, range) => {
+	const size = BUCKET_MS[range] ?? BUCKET_MS["24h"];
+	const rows = series ?? [];
+	const classes = rows.some((row) => row?.byClass?.other !== undefined)
+		? [...STATUS_CLASSES, "other"]
+		: STATUS_CLASSES;
+	return classes.map((key) => ({
+		key,
+		data: rows.map((row) => [Number(row.bucket) * size, Number(row?.byClass?.[key] ?? 0)]),
+	}));
+};
+
+const OTHER_HOST = "_other";
+
+/**
+ * Host filter options from the host lists (proxy, redirection, 404): every domain name once, lower case, sorted,
+ * then the "_other" key. A current value that is not in the lists is kept, so a filter from the URL stays selectable.
+ */
+const hostOptions = (lists, current = "") => {
+	const names = new Set();
+	for (const list of lists) {
+		for (const host of list ?? []) {
+			for (const name of host?.domainNames ?? []) {
+				const value = String(name).trim().toLowerCase();
+				if (value !== "") names.add(value);
+			}
+		}
+	}
+	if (current && current !== OTHER_HOST) names.add(current);
+	names.delete(OTHER_HOST);
+	return [...[...names].sort((a, b) => a.localeCompare(b)), OTHER_HOST];
+};
+
+/**
+ * Country name in the given locale, the code itself when the runtime does not know it.
+ */
+const countryName = (code, locale) => {
+	if (!isCountryCode(code)) return String(code ?? "");
+	const upper = code.toUpperCase();
+	try {
+		return new Intl.DisplayNames([locale, "en"], { type: "region" }).of(upper) ?? upper;
+	} catch {
+		return upper;
+	}
+};
+
 const rangeOptions = [
 	{ value: "1h", labelKey: "monitoring.range.1h" },
 	{ value: "24h", labelKey: "monitoring.range.24h" },
@@ -115,4 +168,17 @@ const monitoringSettingsPayload = (values) => pickEditable(values, MONITORING_KE
  */
 const geoipSettingsPayload = (values) => pickEditable(values, GEOIP_KEYS);
 
-export { formatBytes, formatCount, geoipSettingsPayload, mapScale, monitoringSettingsPayload, rangeOptions, shareBar };
+export {
+	chartSeries,
+	countryName,
+	formatBytes,
+	formatCount,
+	geoipSettingsPayload,
+	hostOptions,
+	isCountryCode,
+	mapScale,
+	monitoringSettingsPayload,
+	OTHER_HOST,
+	rangeOptions,
+	shareBar,
+};
