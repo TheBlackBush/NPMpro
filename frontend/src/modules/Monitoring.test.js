@@ -3,6 +3,7 @@ import { it } from "node:test";
 import {
 	chartSeries,
 	countryName,
+	errorRateColor,
 	filterBans,
 	formatBytes,
 	formatCount,
@@ -13,6 +14,7 @@ import {
 	rangeOptions,
 	secondsLeftNow,
 	shareBar,
+	sparklinePoints,
 	timeLeftParts,
 } from "./Monitoring.js";
 
@@ -213,4 +215,21 @@ it("filters bans by value, scenario, origin, type and country", () => {
 	assert.deepEqual(filterBans(rows, "de", nameOf), [rows[0]]);
 	assert.deepEqual(filterBans(rows, "nothing", nameOf), []);
 	assert.deepEqual(filterBans(undefined, "x"), []);
+});
+
+it("sparklinePoints scales values into the box", () => {
+	const { line, area } = sparklinePoints([0, 5, 10], 100, 20, 2);
+	assert.equal(line, "0,18 50,10 100,2");
+	assert.equal(area, "0,20 0,18 50,10 100,2 100,20");
+});
+
+it("sparklinePoints draws a flat line for zeros and nothing for no data", () => {
+	assert.equal(sparklinePoints([0, 0], 10, 10, 1).line, "0,9 10,9");
+	assert.deepEqual(sparklinePoints([], 10, 10), { line: "", area: "" });
+});
+
+it("errorRateColor follows the 1 % and 5 % thresholds", () => {
+	assert.equal(errorRateColor(0.0099), "secondary");
+	assert.equal(errorRateColor(0.01), "orange");
+	assert.equal(errorRateColor(0.05), "red");
 });

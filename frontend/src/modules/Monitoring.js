@@ -219,9 +219,38 @@ const monitoringSettingsPayload = (values) => pickEditable(values, MONITORING_KE
  */
 const geoipSettingsPayload = (values) => pickEditable(values, GEOIP_KEYS);
 
+/**
+ * Tabler colour for an error rate (0..1): secondary below 1 %, orange from 1 %, red from 5 %.
+ */
+const errorRateColor = (rate) => {
+	if (rate >= 0.05) return "red";
+	if (rate >= 0.01) return "orange";
+	return "secondary";
+};
+
+/**
+ * Points for an SVG polyline: one point per value spread over width, scaled to height with `pad` room at the
+ * top and bottom. Returns { line, area } point strings; all-zero or empty input gives a flat line at the bottom.
+ */
+const sparklinePoints = (values, width, height, pad = 2) => {
+	const list = (values ?? []).map((v) => (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : 0));
+	if (list.length === 0) return { line: "", area: "" };
+	const max = Math.max(...list);
+	const step = list.length > 1 ? width / (list.length - 1) : 0;
+	const coords = list.map((v, i) => {
+		const x = Math.round(i * step * 100) / 100;
+		const y = max > 0 ? height - pad - (v / max) * (height - 2 * pad) : height - pad;
+		return [x, Math.round(y * 100) / 100];
+	});
+	const line = coords.map(([x, y]) => `${x},${y}`).join(" ");
+	const last = coords[coords.length - 1][0];
+	return { line, area: `0,${height} ${line} ${last},${height}` };
+};
+
 export {
 	chartSeries,
 	countryName,
+	errorRateColor,
 	filterBans,
 	formatBytes,
 	formatCount,
@@ -234,5 +263,6 @@ export {
 	rangeOptions,
 	secondsLeftNow,
 	shareBar,
+	sparklinePoints,
 	timeLeftParts,
 };

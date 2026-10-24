@@ -10,10 +10,20 @@ import { Link } from "react-router";
  * @param {import("react").ReactNode} [props.hint]    small line under the value
  * @param {import("react").ElementType} [props.icon]  Tabler icon shown next to the subheader
  * @param {string} [props.color]                      Tabler colour name for the icon, default "secondary"
+ * @param {import("react").ReactNode} [props.children]          extra content under the hint (e.g. a sparkline)
  * @param {string} [props.to]                         route to link to
  * @param {string} [props.className]                  classes for the column wrapper
  */
-function StatCard({ label, value, hint, icon: Icon, color = "secondary", to, className = "col-sm-6 col-lg-3" }) {
+function StatCard({
+	label,
+	value,
+	hint,
+	icon: Icon,
+	color = "secondary",
+	to,
+	children,
+	className = "col-sm-6 col-lg-3",
+}) {
 	const body = (
 		<div className="card-body">
 			<div className="d-flex align-items-center">
@@ -26,6 +36,7 @@ function StatCard({ label, value, hint, icon: Icon, color = "secondary", to, cla
 			</div>
 			<div className="h1 mt-2 mb-0 text-truncate">{value}</div>
 			{hint ? <div className="text-secondary small mt-1 text-truncate">{hint}</div> : null}
+			{children}
 		</div>
 	);
 	return (

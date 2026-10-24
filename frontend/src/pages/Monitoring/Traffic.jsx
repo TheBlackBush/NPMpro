@@ -20,17 +20,18 @@ import {
 } from "src/components/Monitoring";
 import { useDeadHosts, useMonitoringTraffic, useProxyHosts, useRedirectionHosts } from "src/hooks";
 import { currentLocale, formatDateTime, intl, T } from "src/locale";
-import { formatBytes, formatCount, hostOptions, isCountryCode, OTHER_HOST, rangeOptions } from "src/modules/Monitoring";
+import {
+	errorRateColor,
+	formatBytes,
+	formatCount,
+	hostOptions,
+	isCountryCode,
+	OTHER_HOST,
+	rangeOptions,
+} from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
-
-// secondary below 1 %, orange from 1 %, red from 5 %
-const errorRateColor = (rate) => {
-	if (rate >= 0.05) return "red";
-	if (rate >= 0.01) return "orange";
-	return "secondary";
-};
 
 const hostLabel = (host) => (host === OTHER_HOST ? intl.formatMessage({ id: "monitoring.host.other" }) : host);
 
