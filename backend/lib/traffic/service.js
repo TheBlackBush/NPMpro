@@ -4,6 +4,7 @@ import { createCounter } from "./counter.js";
 import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
 import { isOwnRequest, parseAlogLine } from "./parse.js";
+import { createRecent } from "./recent.js";
 import { createVisitorHasher } from "./visitor-hash.js";
 
 const ACCESS_LOG = "/data/nginx/logs/access.log";
@@ -173,6 +174,8 @@ const createTrafficService = ({
 }) => {
 	const queue = createQueue();
 	const counter = createCounter({ maxPerKey, maxVisitors });
+	// the newest requests for the API, in memory only; IPs only while show_ips is on
+	const recent = createRecent();
 	let mapHost = createHostMapper([]);
 	// null until the host list was loaded once; a failed reload keeps the previous one
 	let resolver = null;
@@ -226,6 +229,7 @@ const createTrafficService = ({
 		}
 		if (values.show_ips && now() < ipsOffUntil) return;
 		if (!values.show_ips) ipsOffUntil = 0;
+		if (showIps && !values.show_ips) recent.forgetIps();
 		showIps = Boolean(values.show_ips);
 	};
 
@@ -302,11 +306,21 @@ const createTrafficService = ({
 			skipped++;
 			return;
 		}
-		const { ip, ...rest } = parsed;
+		const { ip, method, path, ...rest } = parsed;
 		const entry = { ...rest, host: mapHost(parsed.host) };
 		if (showIps) entry.ip = ip;
 		const available = geo.available();
 		const found = available.country || available.asn ? geo.lookup(ip) : null;
+		recent.add({
+			time: entry.time,
+			host: entry.host,
+			method,
+			path,
+			status: entry.status,
+			bytes: entry.bytes,
+			country: found?.country ?? null,
+			...(showIps ? { ip } : {}),
+		});
 		// parseAlogLine() only returns lines with a valid client IP
 		const visitorHash = uniqueVisitors && hashVisitor ? hashVisitor(ip) : undefined;
 		counter.add(entry, found, { showIps, visitorHash });
@@ -478,7 +492,10 @@ const createTrafficService = ({
 			} else {
 				stopReading();
 				readError = null;
+				recent.clear();
 				await queue(flushNow);
+				// lines of a read that was still running when the switch went off
+				recent.clear();
 			}
 		},
 
@@ -487,6 +504,7 @@ const createTrafficService = ({
 			showIps = false;
 			ipsOffUntil = now() + IPS_OFF_PIN_MS;
 			counter.forgetIps();
+			recent.forgetIps();
 			for (const p of pending) p.data.ips = [];
 			await queue(() => store.deleteIps());
 		},
@@ -524,6 +542,17 @@ const createTrafficService = ({
 			else if (hostsAt === null || now() - hostsAt >= HOSTS_MAX_AGE_MS) await refreshHosts();
 			return resolver ?? createHostResolver([]);
 		},
+
+		/**
+		 * The newest requests (in memory, NPMpro's own requests are not recorded), newest first.
+		 *
+		 * @param   {Object}         [options]
+		 * @param   {string[]|null}  [options.keys]   stored host keys; null for all hosts
+		 * @param   {number}         [options.limit]
+		 * @returns {Array<{time: number, host: string, method: string, path: string, status: number, bytes: number,
+		 *          country: string|null, ip?: string}>}
+		 */
+		recent: ({ keys = null, limit = 100 } = {}) => recent.list({ keys, limit }),
 
 		status: () => ({
 			enabled,

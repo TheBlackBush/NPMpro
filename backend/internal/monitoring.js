@@ -4,6 +4,7 @@ import { global as logger } from "../logger.js";
 
 const TRAFFIC_CACHE_MS = 30000;
 const TOP_HOSTS = 10;
+const RECENT_LIMIT = 100;
 const DAY = 86400000;
 const RANGE_MS = { "1h": 3600000, "24h": DAY, "7d": 7 * DAY, "30d": 30 * DAY };
 
@@ -44,6 +45,31 @@ const parseTrafficQuery = (query) =>
 const visitorStartDay = (range, time) => Math.floor((range === "1h" ? time : time - RANGE_MS[range]) / DAY);
 
 /**
+ * The in-memory recent requests for the API: names from the host resolver, ISO times, no IP while IPs are off.
+ *
+ * @param   {Object[]}  entries  traffic.recent() entries
+ * @param   {Object}    resolver  createHostResolver() instance
+ * @param   {boolean}   showIps
+ * @returns {Object[]}
+ */
+const recentRequests = (entries, resolver, showIps) =>
+	entries.map((entry) => {
+		const owner = resolver.ownerOf(entry.host);
+		return {
+			time: new Date(entry.time).toISOString(),
+			host_id: owner.host_id,
+			host_type: owner.host_type,
+			name: owner.name,
+			method: entry.method,
+			path: entry.path,
+			status: entry.status,
+			bytes: entry.bytes,
+			country: entry.country,
+			...(showIps && entry.ip !== undefined ? { ip: entry.ip } : {}),
+		};
+	});
+
+/**
  * Sums the per key rows of the store per NPMpro host (or deleted key, or _other), sorted by requests.
  *
  * @param   {Array<{host: string, requests: number, bytes: number}>}  rows
@@ -78,7 +104,7 @@ const groupHosts = (rows, resolver) => {
  * creates the instance the routes use.
  *
  * @param   {Object}    deps
- * @param   {Object}    deps.traffic    traffic service: status(), hostResolver()
+ * @param   {Object}    deps.traffic    traffic service: status(), hostResolver(), recent()
  * @param   {Object}    deps.crowdsec   CrowdSec service: result()
  * @param   {Object}    deps.geoip      createGeoip() instance: available()
  * @param   {Object}    deps.store      { queryTraffic, summary, countVisitors } (lib/traffic/store.js)
@@ -186,6 +212,10 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				),
 			);
 			const { enabled: _running, ...status } = traffic.status();
+			// not cached: the newest requests of the selected host (all its keys) or of all hosts, for any range
+			let recentKeys = null;
+			if (byHost) recentKeys = keys;
+			else if (host) recentKeys = [host];
 			return {
 				...data,
 				// an array, not an object keyed by code: the UI converts object keys and "--" is not a valid key there
@@ -193,6 +223,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 					.map(([country, requests]) => ({ country, requests }))
 					.sort((a, b) => b.requests - a.requests),
 				...(showIps ? { top_ips: topIps } : {}),
+				recent: recentRequests(traffic.recent({ keys: recentKeys, limit: RECENT_LIMIT }), resolver, showIps),
 				status: {
 					...status,
 					enabled: Boolean(values.traffic_enabled),

@@ -825,6 +825,103 @@ describe("traffic service: unique visitors", () => {
 	});
 });
 
+describe("traffic service: recent requests", () => {
+	const request = (host, ip, path) => line(host, ip).replace('"GET / HTTP/2.0"', `"POST ${path} HTTP/2.0"`);
+
+	it("records parsed requests newest first with method, path without query, host key and country", async () => {
+		const t = setup({
+			hosts: ["example.com"],
+			results: [read([request("example.com", "203.0.113.7", "/a?token=secret"), line("random.test")])],
+		});
+		await t.service.start();
+		await t.service.read();
+		const list = t.service.recent();
+		assert.deepEqual(list, [
+			{
+				time: Date.UTC(2026, 9, 24, 8, 15, 30),
+				host: "_other",
+				method: "GET",
+				path: "/",
+				status: 200,
+				bytes: 100,
+				country: "DE",
+			},
+			{
+				time: Date.UTC(2026, 9, 24, 8, 15, 30),
+				host: "example.com",
+				method: "POST",
+				path: "/a",
+				status: 200,
+				bytes: 100,
+				country: "DE",
+			},
+		]);
+		assert.equal(JSON.stringify(list).includes("secret"), false);
+		assert.deepEqual(
+			t.service.recent({ keys: ["example.com"] }).map((e) => e.path),
+			["/a"],
+		);
+	});
+
+	it("does not record NPMpro's own requests", async () => {
+		const health = line("127.0.0.1:81").replace('"curl/8"', '"NPMpro/healthcheck"');
+		const t = setup({ results: [read([health, line("192.168.1.10:81"), line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		assert.deepEqual(
+			t.service.recent().map((e) => e.host),
+			["example.com"],
+		);
+	});
+
+	it("keeps no IP while show_ips is off, and the IP while it is on", async () => {
+		const off = setup({ results: [read([line("example.com")])] });
+		await off.service.start();
+		await off.service.read();
+		assert.equal("ip" in off.service.recent()[0], false);
+
+		const on = setup({ config: { show_ips: true }, results: [read([line("example.com")])] });
+		await on.service.start();
+		await on.service.read();
+		assert.equal(on.service.recent()[0].ip, "203.0.113.7");
+	});
+
+	it("showIpsOff removes the kept IPs at once and keeps none within the pin", async () => {
+		const t = setup({
+			config: { show_ips: true },
+			results: [read([line("example.com")]), read([line("example.com", "203.0.113.9")])],
+		});
+		await t.service.start();
+		await t.service.read();
+		const off = t.service.showIpsOff();
+		// synchronous: before the stored IPs are deleted
+		assert.equal("ip" in t.service.recent()[0], false);
+		await off;
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.service.recent().length, 2);
+		assert.equal(JSON.stringify(t.service.recent()).includes("203.0.113"), false);
+	});
+
+	it("drops the kept IPs when a settings read says show_ips is off", async () => {
+		const t = setup({ config: { show_ips: true }, results: [read([line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		t.values.show_ips = false;
+		await t.service.flush();
+		assert.equal("ip" in t.service.recent()[0], false);
+	});
+
+	it("switching traffic statistics off clears the list", async () => {
+		const t = setup({ results: [read([line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		assert.equal(t.service.recent().length, 1);
+		await t.service.setEnabled(false);
+		assert.deepEqual(t.service.recent(), []);
+	});
+});
+
 describe("traffic service: host resolver", () => {
 	it("builds the resolver from the host list with id and type, still maps hosts for counting", async () => {
 		const t = setup({
@@ -1169,8 +1266,10 @@ describe("monitoring API", () => {
 		visitorsError = null,
 		failVisitors = false,
 		traffic = null,
+		recent = [],
 	} = {}) => {
 		const queries = [];
+		const recentQueries = [];
 		const summaries = [];
 		const visitorQueries = [];
 		const errors = [];
@@ -1185,6 +1284,10 @@ describe("monitoring API", () => {
 					visitors_error: visitorsError,
 				}),
 				hostResolver: () => (traffic ? traffic.hostResolver() : Promise.resolve(resolver)),
+				recent: (args) => {
+					recentQueries.push(args);
+					return structuredClone(recent);
+				},
 			},
 			crowdsec: {
 				result: () =>
@@ -1230,7 +1333,7 @@ describe("monitoring API", () => {
 			now,
 			log: { ...silent, error: (message) => errors.push(message) },
 		});
-		return { api, queries, summaries, visitorQueries, errors };
+		return { api, queries, summaries, visitorQueries, recentQueries, errors };
 	};
 
 	const groupedData = {
@@ -1515,6 +1618,83 @@ describe("monitoring API", () => {
 		const out = api.getCrowdsec(admin);
 		assert.equal(out.newest[0].scenario, "");
 		assert.ok(validCrowdsec(out), JSON.stringify(validCrowdsec.errors));
+	});
+
+	const recentEntries = [
+		{
+			time: Date.UTC(2026, 9, 24, 8, 15, 30),
+			host: "www.example.com",
+			method: "GET",
+			path: "/a",
+			status: 404,
+			bytes: 12,
+			country: "DE",
+			ip: "203.0.113.7",
+		},
+		{ time: 0, host: "_other", method: "-", path: "", status: 400, bytes: 0, country: null },
+		{ time: 0, host: "removed.test", method: "POST", path: "/b", status: 502, bytes: 3, country: null },
+	];
+
+	it("returns recent requests with host names, uncached, and the IP only while IPs are shown", async () => {
+		for (const showIps of [false, true]) {
+			const { api, recentQueries } = make({
+				values: { show_ips: showIps },
+				resolver: groupedResolver,
+				recent: recentEntries,
+			});
+			const out = await api.getTraffic(admin, { range: "24h", host: "" });
+			assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
+			assert.deepEqual(recentQueries, [{ keys: null, limit: 100 }]);
+			assert.deepEqual(out.recent, [
+				{
+					time: "2026-10-24T08:15:30.000Z",
+					host_id: 1,
+					host_type: "proxy",
+					name: "example.com",
+					method: "GET",
+					path: "/a",
+					status: 404,
+					bytes: 12,
+					country: "DE",
+					...(showIps ? { ip: "203.0.113.7" } : {}),
+				},
+				{
+					time: "1970-01-01T00:00:00.000Z",
+					host_id: null,
+					host_type: "other",
+					name: "_other",
+					method: "-",
+					path: "",
+					status: 400,
+					bytes: 0,
+					country: null,
+				},
+				{
+					time: "1970-01-01T00:00:00.000Z",
+					host_id: null,
+					host_type: "deleted",
+					name: "removed.test",
+					method: "POST",
+					path: "/b",
+					status: 502,
+					bytes: 3,
+					country: null,
+				},
+			]);
+			// the traffic numbers are cached, the recent requests are read on every call
+			await api.getTraffic(admin, { range: "24h", host: "" });
+			assert.equal(recentQueries.length, 2);
+		}
+	});
+
+	it("selects the recent requests of the filtered host's keys", async () => {
+		const { api, recentQueries } = make({ data: groupedData, resolver: groupedResolver });
+		await api.getTraffic(admin, { range: "7d", host: "", host_id: 1, host_type: "proxy" });
+		await api.getTraffic(admin, { range: "1h", host: "_other" });
+		assert.deepEqual(recentQueries, [
+			{ keys: ["example.com", "www.example.com"], limit: 100 },
+			{ keys: ["_other"], limit: 100 },
+		]);
 	});
 
 	it("requires an administrator on every endpoint", async () => {

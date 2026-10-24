@@ -9,6 +9,7 @@
 		"top_countries",
 		"top_asns",
 		"countries",
+		"recent",
 		"status"
 	],
 	"properties": {
@@ -223,6 +224,82 @@
 					"requests": {
 						"type": "integer",
 						"minimum": 0
+					}
+				}
+			}
+		},
+		"recent": {
+			"type": "array",
+			"maxItems": 100,
+			"description": "The newest requests, newest first, kept in memory only (empty after a restart, cleared when traffic statistics are switched off; NPMpro's own requests are not recorded). For a host filter the requests of that host, otherwise of all hosts; independent of the range",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"time",
+					"host_id",
+					"host_type",
+					"name",
+					"method",
+					"path",
+					"status",
+					"bytes",
+					"country"
+				],
+				"properties": {
+					"time": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"host_id": {
+						"type": [
+							"integer",
+							"null"
+						],
+						"description": "Id of the proxy, redirection or 404 host, null for deleted and other"
+					},
+					"host_type": {
+						"type": "string",
+						"enum": [
+							"proxy",
+							"redirection",
+							"dead",
+							"deleted",
+							"other"
+						]
+					},
+					"name": {
+						"type": "string",
+						"description": "First domain name of the host, the stored name for deleted, _other for other"
+					},
+					"method": {
+						"type": "string",
+						"description": "Request method as logged, - when the request line is malformed"
+					},
+					"path": {
+						"type": "string",
+						"maxLength": 200,
+						"description": "Request path without query string and fragment, at most 200 characters, empty when the request line is malformed"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 999
+					},
+					"bytes": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"country": {
+						"type": [
+							"string",
+							"null"
+						],
+						"description": "ISO 3166-1 alpha-2 code, null when unknown or without a GeoIP database"
+					},
+					"ip": {
+						"type": "string",
+						"description": "Client IP, only present when visitor IPs are shown"
 					}
 				}
 			}
