@@ -98,14 +98,15 @@ services:
 #      - "NGINX_LOAD_LDAP_MODULE=true" # loads the ldap module, requires manual configuration, default false
 #      - "NGINX_LOAD_NTLM_MODULE=true" # loads the ntlm module, requires manual configuration, default false
 #      - "NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE=true" # loads the virtual host traffic status module, requires manual configuration, default false
+#      # OIDC can also be configured in the web UI under Settings, Authentication. A variable set here wins over the saved value and locks its field in the UI; with the four connection variables (issuer url, client id, client secret, redirect domain) set, OIDC is active without enabling it in the UI.
 #      - "OIDC_REDIRECT_DOMAIN=<domain-ip>[:<port>]" # redirect domain/ip (+ port) for oidc, without scheme and without path, redirect url will be https://$OIDC_REDIRECT_DOMAIN/api/oidc/callback
 #      - "OIDC_ISSUER_URL=https://..." # issuer url for oidc
 #      - "NODE_TLS_REJECT_UNAUTHORIZED=0" # if your issuer uses a self signed cert you may need to set this, but please note that this will disable cert verification for all requests done by the backend (not nginx), like to github for version checks, gravatar, reachability checks or cloudflare for IP updates
 #      - "OIDC_CLIENT_ID=..." # client id for oidc
 #      - "OIDC_CLIENT_SECRET=..." # client secret for oidc
-#      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # requires the email sent by the OIDC Provider to be marked as verified, default true
-#      - "OIDC_DISABLE_PASSWORD=true" # disables plain email/password login, default false
-#      - "OIDC_SKIP_MFA=true" # skips the second factor after a successful OIDC login, default false
+#      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # requires the email sent by the OIDC Provider to be marked as verified, when unset the value from the UI is used (default true)
+#      - "OIDC_DISABLE_PASSWORD=true" # disables plain email/password login, when unset the value from the UI is used (default false)
+#      - "OIDC_SKIP_MFA=true" # skips the second factor after a successful OIDC login, when unset the value from the UI is used (default false)
 #      - "AUTH_REQUEST_ANUBIS_UPSTREAM=http://127.0.0.1:8923" # scheme + ip/hostname/domain (+ port) to internal anubis, without path, this is unrelated to OIDC
 #      - "AUTH_REQUEST_TINYAUTH_UPSTREAM=http://127.0.0.1:3000" # scheme + ip/hostname/domain (+ port) to internal tinyauth, without path, this is unrelated to OIDC
 #      - "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM=http://127.0.0.1:4180" # scheme + ip/hostname/domain (+ port) to internal oauth2proxy, without path, this is unrelated to OIDC
