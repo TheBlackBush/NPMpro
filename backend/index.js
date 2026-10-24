@@ -4,9 +4,11 @@ import { rm } from "node:fs/promises";
 import app from "./app.js";
 import internalCertificate from "./internal/certificate.js";
 import internalIpRanges from "./internal/ip_ranges.js";
-import { setMonitoringHooks } from "./internal/monitoring-setting.js";
+import internalMonitoringSetting, { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
-import { getMonitoringConfig } from "./lib/monitoring-config.js";
+import { GEOIP_DIR, geoip } from "./lib/geoip/instance.js";
+import { runConfiguredGeoipUpdate } from "./lib/geoip/run.js";
+import { getGeoipConfig, getMonitoringConfig } from "./lib/monitoring-config.js";
 import { applyAccessLog } from "./lib/traffic/access-log.js";
 import { global as logger } from "./logger.js";
 import { migrateUp } from "./migrate.js";
@@ -29,10 +31,20 @@ async function appStart() {
 		}
 		internalCertificate.initTimer();
 
+		const runGeoipUpdate = () =>
+			runConfiguredGeoipUpdate({
+				geoip,
+				dir: GEOIP_DIR,
+				getConfig: getGeoipConfig,
+				recordResult: (result) => internalMonitoringSetting.recordGeoipResult(result),
+			});
 		setMonitoringHooks({
+			runGeoipUpdate,
+			onGeoipCredentialsChange: runGeoipUpdate,
 			onTrafficEnabledChange: (enabled) =>
 				applyAccessLog(enabled, { test: internalNginx.test, reload: internalNginx.reload }),
 		});
+		await geoip.reload();
 		// start.sh writes the include from env only (LOGROTATE or TRAFFIC_STATS), the reload below picks up the stored setting
 		const { values: monitoring } = await getMonitoringConfig();
 		await applyAccessLog(monitoring.traffic_enabled, { writeOnly: true });
