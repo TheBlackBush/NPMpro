@@ -1,0 +1,67 @@
+{
+	"type": "object",
+	"description": "Dashboard numbers. Today is the UTC day so far. A field is null when its source is off or unavailable",
+	"additionalProperties": false,
+	"required": [
+		"requests_today",
+		"series_24h",
+		"error_rate_today",
+		"active_bans",
+		"top_country_today"
+	],
+	"properties": {
+		"requests_today": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0
+		},
+		"series_24h": {
+			"type": [
+				"array",
+				"null"
+			],
+			"description": "Requests per hour for the last 24 hours (unix hour buckets, oldest first)",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"bucket",
+					"requests"
+				],
+				"properties": {
+					"bucket": {
+						"type": "integer"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"error_rate_today": {
+			"type": [
+				"number",
+				"null"
+			],
+			"minimum": 0,
+			"maximum": 1
+		},
+		"active_bans": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"description": "Null when CrowdSec is not configured or the last poll failed"
+		},
+		"top_country_today": {
+			"type": [
+				"string",
+				"null"
+			]
+		}
+	}
+}

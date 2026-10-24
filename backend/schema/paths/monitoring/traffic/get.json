@@ -1,0 +1,115 @@
+{
+	"operationId": "getMonitoringTraffic",
+	"summary": "Get the traffic statistics",
+	"tags": [
+		"monitoring"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "range",
+			"description": "Time range: minute buckets for 1h and 24h, hour buckets for 7d and 30d",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"1h",
+					"24h",
+					"7d",
+					"30d"
+				],
+				"default": "24h"
+			}
+		},
+		{
+			"in": "query",
+			"name": "host",
+			"description": "Host key to filter by (empty for all hosts)",
+			"schema": {
+				"type": "string",
+				"maxLength": 255,
+				"default": ""
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"totals": {
+									"requests": 1520,
+									"bytes": 48211337,
+									"error_rate": 0.042
+								},
+								"series": [
+									{
+										"bucket": 29401000,
+										"by_class": {
+											"2xx": 20,
+											"3xx": 2,
+											"4xx": 1,
+											"5xx": 0
+										}
+									}
+								],
+								"top_hosts": [
+									{
+										"host": "example.com",
+										"requests": 1200,
+										"bytes": 40000000
+									},
+									{
+										"host": "_other",
+										"requests": 320,
+										"bytes": 8211337
+									}
+								],
+								"top_countries": [
+									{
+										"country": "DE",
+										"requests": 900
+									},
+									{
+										"country": "US",
+										"requests": 400
+									}
+								],
+								"top_asns": [
+									{
+										"asn": 3320,
+										"asn_name": "Deutsche Telekom AG",
+										"requests": 700
+									}
+								],
+								"countries": {
+									"DE": 900,
+									"US": 400,
+									"--": 20
+								},
+								"status": {
+									"enabled": true,
+									"geoip": true,
+									"skipped_lines": 0,
+									"dropped_requests": 0,
+									"last_read": "2026-10-24T10:00:05.000Z",
+									"error": null
+								}
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/monitoring-traffic-object.json"
+					}
+				}
+			}
+		}
+	}
+}

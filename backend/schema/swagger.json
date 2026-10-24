@@ -53,6 +53,10 @@
 			"description": "Endpoints related to Streams"
 		},
 		{
+			"name": "monitoring",
+			"description": "Traffic statistics and CrowdSec decisions (administrators only)"
+		},
+		{
 			"name": "reports",
 			"description": "Endpoints for viewing reports"
 		},
@@ -367,6 +371,21 @@
 		"/settings/oidc/test": {
 			"post": {
 				"$ref": "./paths/settings/oidc/test/post.json"
+			}
+		},
+		"/monitoring/traffic": {
+			"get": {
+				"$ref": "./paths/monitoring/traffic/get.json"
+			}
+		},
+		"/monitoring/crowdsec": {
+			"get": {
+				"$ref": "./paths/monitoring/crowdsec/get.json"
+			}
+		},
+		"/monitoring/summary": {
+			"get": {
+				"$ref": "./paths/monitoring/summary/get.json"
 			}
 		},
 		"/settings/monitoring": {
