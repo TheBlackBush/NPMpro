@@ -88,7 +88,14 @@ const geo = {
 	lookup: () => ({ country: "DE", asn: 3320, asnName: "DTAG" }),
 };
 
-const setup = ({ results = [], config = {}, hosts = ["example.com"], state = null, configFails = 0 } = {}) => {
+const setup = ({
+	results = [],
+	config = {},
+	hosts = ["example.com"],
+	state = null,
+	configFails = 0,
+	adminPort = "81",
+} = {}) => {
 	let failures = configFails;
 	let hostLoads = 0;
 	let time = Date.UTC(2026, 9, 24, 8, 16, 0);
@@ -119,6 +126,7 @@ const setup = ({ results = [], config = {}, hosts = ["example.com"], state = nul
 		createReader: reader.create,
 		now: () => time,
 		timers,
+		adminPort,
 		log: silent,
 	});
 	return {
@@ -243,6 +251,39 @@ describe("traffic service", () => {
 		assert.deepEqual(
 			t.store.flushed[1].minutes.map((r) => r.host),
 			["new.test"],
+		);
+	});
+
+	it("does not count the health check and admin UI requests, and does not report them as skipped", async () => {
+		const health = line("127.0.0.1:81").replace('"curl/8"', '"NPMpro/healthcheck"');
+		const t = setup({
+			results: [
+				read([
+					health,
+					line("192.168.1.10:81"),
+					line("[::1]:81"),
+					line("example.com"),
+					line("example.com:8443"),
+					line("10.0.0.5:181"),
+				]),
+			],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		const total = t.store.flushed[0].minutes.reduce((n, r) => n + r.requests, 0);
+		assert.equal(total, 3);
+		assert.equal(t.service.status().skipped_lines, 0);
+	});
+
+	it("still counts host ports when the admin port is 443", async () => {
+		const t = setup({ results: [read([line("example.com:443"), line("example.com")])], adminPort: "443" });
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(
+			t.store.flushed[0].minutes.reduce((n, r) => n + r.requests, 0),
+			2,
 		);
 	});
 

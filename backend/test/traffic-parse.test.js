@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { parseAlogLine, statusClass } from "../lib/traffic/parse.js";
+import { isOwnRequest, parseAlogLine, statusClass } from "../lib/traffic/parse.js";
 
 const line = (host, ip, status = 200, bytes = 512, request = "GET /a?b=1 HTTP/2.0", ua = "curl/8") =>
 	`[24/Oct/2026:10:15:30 +0200] ${host} ${ip} 0.012 "${request}" ${status} ${bytes} "-" "${ua}" "-" "text/html" TLSv1.3 TLS_AES_128_GCM_SHA256 X25519 -`;
@@ -57,4 +57,21 @@ it("maps status classes", () => {
 	assert.equal(statusClass(499), "4xx");
 	assert.equal(statusClass(503), "5xx");
 	assert.equal(statusClass(101), "other");
+});
+
+it("recognises NPMpro's own requests", () => {
+	const health = line("127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
+	assert.equal(isOwnRequest(health, "81"), true);
+	assert.equal(isOwnRequest(health, "443"), true);
+	assert.equal(isOwnRequest(line("npm.lan:81", "192.168.1.10"), "81"), true);
+	assert.equal(isOwnRequest(line("[fd00::1]:81", "fd00::2"), "81"), true);
+	assert.equal(isOwnRequest(line("npm.lan:8181", "192.168.1.10"), "81"), false);
+	assert.equal(isOwnRequest(line("example.com", "203.0.113.7"), "81"), false);
+	assert.equal(isOwnRequest(line("example.com:443", "203.0.113.7"), "443"), false);
+	assert.equal(isOwnRequest(line("example.com", "203.0.113.7", 200, 1, "GET /:81 HTTP/1.1"), "81"), false);
+	assert.equal(
+		isOwnRequest(line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/1.1", "NPMpro/healthcheck2"), "81"),
+		false,
+	);
+	assert.equal(isOwnRequest("garbage", "81"), false);
 });

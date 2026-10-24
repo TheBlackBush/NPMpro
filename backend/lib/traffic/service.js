@@ -2,7 +2,7 @@ import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
 import { createLogReader } from "./log-reader.js";
-import { parseAlogLine } from "./parse.js";
+import { isOwnRequest, parseAlogLine } from "./parse.js";
 
 const ACCESS_LOG = "/data/nginx/logs/access.log";
 const OTHER_HOST = "_other";
@@ -103,6 +103,7 @@ const mergeBatches = (batches) => ({
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
+ * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
  * @returns {Object}
  */
 const createTrafficService = ({
@@ -116,6 +117,7 @@ const createTrafficService = ({
 	now = Date.now,
 	timers = defaultTimers,
 	maxPerKey = 1000,
+	adminPort = process.env.NPM_PORT || "81",
 	log = logger,
 }) => {
 	const queue = createQueue();
@@ -213,7 +215,7 @@ const createTrafficService = ({
 	};
 
 	const addLine = (line) => {
-		if (line === "") return;
+		if (line === "" || isOwnRequest(line, adminPort)) return;
 		const parsed = parseAlogLine(line);
 		if (!parsed) {
 			skipped++;
