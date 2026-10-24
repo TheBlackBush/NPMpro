@@ -23,10 +23,6 @@ function Placeholder({ labelKey }) {
 	);
 }
 
-const Certificates = () => <Placeholder labelKey="settings.certificates" />;
-const Network = () => <Placeholder labelKey="settings.network" />;
-const ForwardAuth = () => <Placeholder labelKey="settings.forward-auth" />;
-const Advanced = () => <Placeholder labelKey="settings.advanced" />;
 const Environment = () => <Placeholder labelKey="settings.environment" />;
 
-export { Advanced, Certificates, Environment, ForwardAuth, Network };
+export { Environment };

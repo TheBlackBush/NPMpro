@@ -1,0 +1,203 @@
+import cn from "clsx";
+import { Field, useFormikContext } from "formik";
+import { SwitchField } from "src/components";
+import { T } from "src/locale";
+import { LockedBadge } from "../Authentication/LockedBadge";
+import { useRuntimeSection } from "./RuntimeSection";
+
+const idOf = (name) => `runtime-${name}`;
+
+/**
+ * Label text with the "Set by <ENV>" badge when the key is locked
+ */
+function FieldLabel({ name, children }) {
+	const { isLocked, envOf } = useRuntimeSection();
+	return (
+		<>
+			{children}
+			{isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
+		</>
+	);
+}
+
+/**
+ * The field hint followed by when a change takes effect
+ */
+function FieldHint({ name, hint }) {
+	const { appliesId } = useRuntimeSection();
+	const applies = appliesId(name);
+	return (
+		<>
+			{hint}
+			{applies ? (
+				<span className="d-block">
+					<T id={applies} />
+				</span>
+			) : null}
+		</>
+	);
+}
+
+/**
+ * A boolean setting as a Tabler settings switch row. `forced` shows it on and read-only (another setting needs it).
+ */
+function RuntimeSwitch({ name, label, hint, forced = false, className = "mb-3" }) {
+	const { values, setFieldValue } = useFormikContext();
+	const { isLocked } = useRuntimeSection();
+	return (
+		<SwitchField
+			className={className}
+			id={idOf(name)}
+			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			hint={<FieldHint name={name} hint={hint} />}
+			disabled={isLocked(name) || forced}
+			checked={forced || Boolean(values[name])}
+			onChange={(e) => setFieldValue(name, e.target.checked)}
+		/>
+	);
+}
+
+/**
+ * Label, control, validation message and hint for one setting. `control(field, meta, props)` renders the input;
+ * props carry id, disabled, the invalid class and the aria attributes.
+ */
+function RuntimeControl({ name, label, hint, control, validate, narrow = false, className = "mb-3" }) {
+	const { isLocked } = useRuntimeSection();
+	const id = idOf(name);
+	const hintId = `${id}-hint`;
+	return (
+		<Field name={name} validate={validate}>
+			{({ field, meta }) => {
+				const invalid = Boolean(meta.error);
+				const props = {
+					id,
+					disabled: isLocked(name),
+					invalid,
+					"aria-invalid": invalid ? "true" : undefined,
+					"aria-describedby": hintId,
+				};
+				return (
+					<div className={className}>
+						<label className="form-label" htmlFor={id}>
+							<FieldLabel name={name}>{label}</FieldLabel>
+						</label>
+						<div className="row">
+							<div className={narrow ? "col-12 col-sm-6 col-lg-4" : "col-12"}>
+								{control(field, meta, props)}
+							</div>
+						</div>
+						<div className="form-hint" id={hintId}>
+							<FieldHint name={name} hint={hint} />
+						</div>
+					</div>
+				);
+			}}
+		</Field>
+	);
+}
+
+const inputProps = ({ invalid, ...props }, extra) => ({
+	...props,
+	className: cn(extra, invalid && "is-invalid"),
+});
+
+/**
+ * Whole number with an optional unit (input group)
+ */
+function RuntimeNumber({ name, label, hint, min, max, unit }) {
+	return (
+		<RuntimeControl
+			name={name}
+			label={label}
+			hint={hint}
+			narrow
+			control={(field, meta, props) => (
+				<div className={cn("input-group", meta.error && "has-validation")}>
+					<input
+						{...field}
+						{...inputProps(props, "form-control")}
+						type="number"
+						inputMode="numeric"
+						min={min}
+						max={max}
+						step={1}
+					/>
+					{unit ? <span className="input-group-text">{unit}</span> : null}
+					{meta.error ? <div className="invalid-feedback">{meta.error}</div> : null}
+				</div>
+			)}
+		/>
+	);
+}
+
+/**
+ * Text input, or a textarea with rows
+ */
+function RuntimeText({ name, label, hint, placeholder, rows, validate, type = "text" }) {
+	return (
+		<RuntimeControl
+			name={name}
+			label={label}
+			hint={hint}
+			validate={validate}
+			control={(field, meta, props) => (
+				<>
+					{rows ? (
+						<textarea
+							{...field}
+							{...inputProps(props, "form-control font-monospace")}
+							rows={rows}
+							placeholder={placeholder}
+							spellCheck={false}
+							value={field.value ?? ""}
+						/>
+					) : (
+						<input
+							{...field}
+							{...inputProps(props, "form-control")}
+							type={type}
+							autoComplete="off"
+							spellCheck={false}
+							placeholder={placeholder}
+							value={field.value ?? ""}
+						/>
+					)}
+					{meta.error ? <div className="invalid-feedback">{meta.error}</div> : null}
+				</>
+			)}
+		/>
+	);
+}
+
+/**
+ * Select of { value, label } options; onChange(value) replaces the default setter
+ */
+function RuntimeSelect({ name, label, hint, options, onChange, narrow = true }) {
+	const { setFieldValue } = useFormikContext();
+	return (
+		<RuntimeControl
+			name={name}
+			label={label}
+			hint={hint}
+			narrow={narrow}
+			control={(field, meta, props) => (
+				<>
+					<select
+						{...field}
+						{...inputProps(props, "form-select")}
+						onChange={(e) => (onChange ? onChange(e.target.value) : setFieldValue(name, e.target.value))}
+					>
+						{options.map((option) => (
+							<option key={option.value} value={option.value}>
+								{option.label}
+							</option>
+						))}
+					</select>
+					{meta.error ? <div className="invalid-feedback">{meta.error}</div> : null}
+				</>
+			)}
+		/>
+	);
+}
+
+export { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText };

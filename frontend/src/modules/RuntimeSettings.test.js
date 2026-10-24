@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import { RUNTIME_RULES } from "../../../backend/lib/runtime-rules.js";
 import {
+	appliesMessageId,
 	defaultKeySize,
+	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
 	keySizeOptions,
 	parseTrustedIps,
+	RUNTIME_ENV,
 	runtimeSettingsPayload,
 } from "./RuntimeSettings.js";
 
@@ -109,4 +113,39 @@ it("GROUP_KEYS match the backend response schemas", () => {
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
 	assert.equal(Object.keys(GROUP_KEYS).length, 5);
+});
+
+const byName = (a, b) => a.localeCompare(b);
+
+it("RUNTIME_ENV names the env var of every key like the backend rules", () => {
+	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
+	const expected = Object.fromEntries(RUNTIME_RULES.map((rule) => [camel(rule.key), rule.env]));
+	assert.deepEqual(RUNTIME_ENV, expected);
+	assert.deepEqual(Object.keys(RUNTIME_ENV).sort(byName), Object.values(GROUP_KEYS).flat().sort(byName));
+});
+
+it("appliesMessageId maps the applies values to their translation ids", () => {
+	const applies = { keyType: "next-certificate", ocspStapling: "reload", renewalInterval: "immediately", x: "later" };
+	assert.equal(appliesMessageId(applies, "keyType"), "settings.runtime.applies.next-certificate");
+	assert.equal(appliesMessageId(applies, "ocspStapling"), "settings.runtime.applies.reload");
+	assert.equal(appliesMessageId(applies, "renewalInterval"), "settings.runtime.applies.immediately");
+	assert.equal(appliesMessageId(applies, "x"), null);
+	assert.equal(appliesMessageId(applies, "missing"), null);
+	assert.equal(appliesMessageId(undefined, "keyType"), null);
+});
+
+it("fieldOfError finds the field of a prefixed backend error of the group", () => {
+	assert.deepEqual(fieldOfError("forward-auth", "anubis_upstream: still used by proxy hosts: a.example"), {
+		key: "anubisUpstream",
+		message: "still used by proxy hosts: a.example",
+	});
+	assert.deepEqual(fieldOfError("certificates", "default_certificate_id: Certificate not found"), {
+		key: "defaultCertificateId",
+		message: "Certificate not found",
+	});
+	// another group's key, no prefix, nginx output
+	assert.equal(fieldOfError("network", "anubis_upstream: x"), null);
+	assert.equal(fieldOfError("network", "The ACME server does not offer this profile"), null);
+	assert.equal(fieldOfError("logs", 'nginx: [emerg] unknown directive "x" in /a.conf:1'), null);
+	assert.equal(fieldOfError("logs", undefined), null);
 });

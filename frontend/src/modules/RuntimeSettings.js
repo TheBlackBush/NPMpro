@@ -26,6 +26,35 @@ const GROUP_KEYS = {
 	advanced: ["configBeautifier", "gravatar"],
 };
 
+// The env var that sets (and locks) each key, as in backend/lib/runtime-rules.js
+const RUNTIME_ENV = {
+	keyType: "ACME_KEY_TYPE",
+	keySize: "ACME_KEY_SIZE",
+	profile: "ACME_PROFILE",
+	mustStaple: "ACME_MUST_STAPLE",
+	serverTlsVerify: "ACME_SERVER_TLS_VERIFY",
+	renewalInterval: "CERTBOT_RUN_INTERVAL",
+	ocspStapling: "ACME_OCSP_STAPLING",
+	customOcspStapling: "CUSTOM_OCSP_STAPLING",
+	defaultCertificateId: "DEFAULT_CERT_ID",
+	echRotationInterval: "ECH_ROTATION_INTERVAL",
+	trustedIps: "TRUST_IP",
+	trustCloudflare: "TRUST_CLOUDFLARE",
+	anubisUpstream: "AUTH_REQUEST_ANUBIS_UPSTREAM",
+	tinyauthUpstream: "AUTH_REQUEST_TINYAUTH_UPSTREAM",
+	oauth2proxyUpstream: "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM",
+	voidauthUpstream: "AUTH_REQUEST_VOIDAUTH_UPSTREAM",
+	autheliaUpstream: "AUTH_REQUEST_AUTHELIA_UPSTREAM",
+	authentikUpstream: "AUTH_REQUEST_AUTHENTIK_UPSTREAM",
+	anubisCustomImages: "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES",
+	writeLogFiles: "LOGROTATE",
+	logRotations: "LOGROTATIONS",
+	configBeautifier: "DISABLE_NGINX_BEAUTIFIER",
+	gravatar: "DISABLE_GRAVATAR",
+};
+
+const APPLIES = new Set(["next-certificate", "reload", "immediately"]);
+
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
 
@@ -35,6 +64,9 @@ const DIGITS = /^\d+$/u;
 const IPV4_PART = /^(?:0|[1-9]\d{0,2})$/u;
 const IPV6_GROUP = /^[0-9a-fA-F]{1,4}$/u;
 const NEWLINE = /\r?\n/u;
+
+// "key_name: message" (backend runtime-update.js / runtime-apply.js validation errors)
+const FIELD_ERROR = /^(?<key>[a-z0-9_]+): (?<message>[\s\S]+)$/u;
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
@@ -142,4 +174,37 @@ const runtimeSettingsPayload = (group, values, locked = [], initial) => {
  */
 const isEmptyPayload = (payload) => !payload || Object.keys(payload).length === 0;
 
-export { defaultKeySize, GROUP_KEYS, isEmptyPayload, keySizeOptions, parseTrustedIps, runtimeSettingsPayload };
+/**
+ * The translation id of when a change of the key takes effect, from the API applies map (camelCase keys), or null
+ */
+const appliesMessageId = (applies, key) => {
+	const value = applies?.[key];
+	return APPLIES.has(value) ? `settings.runtime.applies.${value}` : null;
+};
+
+/**
+ * The form field a save error belongs to: the backend prefixes validation errors with the snake_case key. Returns
+ * { key (camelCase), message } for a key of the group, else null.
+ *
+ * @param   {string}  group
+ * @param   {string}  text  the API error message
+ * @returns {{ key: string, message: string } | null}
+ */
+const fieldOfError = (group, text) => {
+	const match = FIELD_ERROR.exec(String(text ?? ""));
+	if (!match) return null;
+	const key = camel(match.groups.key);
+	return (GROUP_KEYS[group] ?? []).includes(key) ? { key, message: match.groups.message } : null;
+};
+
+export {
+	appliesMessageId,
+	defaultKeySize,
+	fieldOfError,
+	GROUP_KEYS,
+	isEmptyPayload,
+	keySizeOptions,
+	parseTrustedIps,
+	RUNTIME_ENV,
+	runtimeSettingsPayload,
+};
