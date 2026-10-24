@@ -36,6 +36,22 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 		return hit.result;
 	};
 
+	// store.summary() for 30 s: the dashboard polls it every minute per open tab and it reads 24 h of minute rows
+	let summaryHit = null;
+
+	const cachedSummary = () => {
+		const time = now();
+		if (!summaryHit || time - summaryHit.at >= TRAFFIC_CACHE_MS) {
+			const hit = { at: time, result: store.summary({ now: time }) };
+			summaryHit = hit;
+			// a failed query is not cached
+			hit.result.catch(() => {
+				if (summaryHit === hit) summaryHit = null;
+			});
+		}
+		return summaryHit.result;
+	};
+
 	const geoipAvailable = () => {
 		const available = geoip.available();
 		return Boolean(available.country || available.asn);
@@ -88,7 +104,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				top_country_today: null,
 			};
 			if (values.traffic_enabled) {
-				const today = await store.summary({ now: now() });
+				const today = structuredClone(await cachedSummary());
 				out.requests_today = today.requests_today;
 				out.series_24h = today.series_24h;
 				out.error_rate_today = today.error_rate_today;

@@ -653,8 +653,10 @@ describe("monitoring API", () => {
 		available = { country: true, asn: true },
 		now = () => 0,
 		crowdsecResult = null,
+		failSummary = false,
 	} = {}) => {
 		const queries = [];
+		const summaries = [];
 		const api = createMonitoring({
 			traffic: {
 				status: () => ({ enabled: true, skipped_lines: 0, dropped_requests: 0, last_read: null, error: null }),
@@ -684,18 +686,21 @@ describe("monitoring API", () => {
 						structuredClone(args.showIps ? trafficData : { ...trafficData, top_ips: [] }),
 					);
 				},
-				summary: () =>
-					Promise.resolve({
+				summary: (args) => {
+					summaries.push(args);
+					if (failSummary) return Promise.reject(new Error("database is locked"));
+					return Promise.resolve({
 						requests_today: 3,
 						series_24h: [{ bucket: 1, requests: 3 }],
 						error_rate_today: 0,
 						top_country_today: "DE",
-					}),
+					});
+				},
 			},
 			getConfig: () => Promise.resolve({ values: { traffic_enabled: true, show_ips: false, ...values } }),
 			now,
 		});
-		return { api, queries };
+		return { api, queries, summaries };
 	};
 
 	it("caches the traffic query per range and host for 30 s", async () => {
@@ -710,6 +715,23 @@ describe("monitoring API", () => {
 		time += 30000;
 		await api.getTraffic(admin, { range: "24h", host: "" });
 		assert.equal(queries.length, 4);
+	});
+
+	it("caches the dashboard summary for 30 s and does not cache a failure", async () => {
+		let time = 0;
+		const { api, summaries } = make({ now: () => time });
+		await api.getSummary(admin);
+		time += 29999;
+		await api.getSummary(admin);
+		assert.equal(summaries.length, 1);
+		time += 1;
+		await api.getSummary(admin);
+		assert.equal(summaries.length, 2);
+
+		const failing = make({ failSummary: true });
+		await assert.rejects(failing.api.getSummary(admin), DB_LOCKED);
+		await assert.rejects(failing.api.getSummary(admin), DB_LOCKED);
+		assert.equal(failing.summaries.length, 2);
 	});
 
 	it("fills every newest field of a CrowdSec decision that lacks some", async () => {
