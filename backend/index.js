@@ -16,6 +16,7 @@ import internalNginx from "./internal/nginx.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { runtimeExclusive } from "./internal/runtime-queue.js";
 import { setRuntimeApply } from "./internal/runtime-setting.js";
+import { recoverStapling, watchOcspResponses } from "./internal/stapling-recovery.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";
@@ -63,6 +64,9 @@ async function appStart() {
 		}
 
 		await setup();
+		// configs written while their OCSP response was missing staple once it arrives (also later fetches)
+		watchOcspResponses();
+		await recoverStapling();
 		await getCompiledSchema();
 
 		internalCertificate.initTimer();

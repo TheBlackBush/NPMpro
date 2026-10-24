@@ -78,7 +78,8 @@ const internalNginx = {
 	 * certificates. Bounded per kind (lib/ocsp-fetch.js): concurrent calls share one run, a call within 10 minutes of
 	 * the last attempt is skipped unless force is set (stapling switched on), a run is stopped after 60 s (with its
 	 * child processes); a failure is logged with the kind. Hosts and the default include staple only when their .der
-	 * file exists, so a missing response leaves stapling off for that certificate until its next render.
+	 * file exists; a fetch that brings new .der files (onNewResponses) starts the stapling recovery
+	 * (internal/stapling-recovery.js), which re-renders the configs written without them.
 	 *
 	 * @param   {"acme"|"custom"} kind
 	 * @param   {Object}  [options]  { force }

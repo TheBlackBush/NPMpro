@@ -28,6 +28,7 @@ import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
+import { recoverStapling } from "./stapling-recovery.js";
 
 const cnPattern = /\bCN=(?<cn>[^\n]+)/iu;
 const renewalServerPattern = /^server = (?<server>.+)$/mu;
@@ -100,6 +101,8 @@ const internalCertificate = {
 			} catch (err) {
 				logger.error(err);
 			}
+			// renewed certificates whose configs were written before their OCSP response existed
+			await recoverStapling();
 
 			const certificates = await certificateModel.query().where("provider", "letsencrypt");
 

@@ -19,4 +19,4 @@ const { proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts } = crea
 	renderConfig: internalNginx.renderConfig,
 });
 
-export { proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts };
+export { HOST_TYPES, proxyHostsUsingDefault, renderMatchingHosts, renderRuntimeHosts };
