@@ -8,6 +8,7 @@ import {
 import { mergeGeoipConfig, mergeMonitoringConfig, sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { deleteIps } from "../lib/traffic/store.js";
+import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 
@@ -108,11 +109,19 @@ const internalMonitoringSetting = {
 				});
 			}
 		}
-		await saveStored("monitoring", "Monitoring", next);
 		if (before.show_ips && !after.show_ips) {
-			await deleteIps();
-			await hooks.onShowIpsOff();
+			try {
+				await deleteIps();
+				await hooks.onShowIpsOff();
+			} catch (err) {
+				throw new errs.ValidationError(
+					`Could not delete the stored IP addresses, the setting was not changed: ${err.message}`,
+					undefined,
+					{ cause: err },
+				);
+			}
 		}
+		await saveStored("monitoring", "Monitoring", next);
 
 		await internalAuditLog.add(access, {
 			action: "updated",
@@ -146,8 +155,9 @@ const internalMonitoringSetting = {
 		const { locked } = mergeGeoipConfig(storedPlain, process.env);
 		const next = { ...stored, ...pickEditable(body ?? {}, locked, ["account_id", "editions"]) };
 		if (next.editions) next.editions = [...new Set(next.editions)];
-		if (typeof body?.license_key === "string" && body.license_key !== "" && !locked.includes("license_key")) {
-			next.license_key = defaultSecretBox.encrypt(body.license_key);
+		const newKey = typeof body?.license_key === "string" ? body.license_key.trim() : "";
+		if (newKey !== "" && !locked.includes("license_key")) {
+			next.license_key = defaultSecretBox.encrypt(newKey);
 		}
 		await saveStored("geoip", "GeoIP", next);
 
@@ -163,7 +173,11 @@ const internalMonitoringSetting = {
 			before.values.license_key !== after.values.license_key ||
 			!sameList(before.values.editions, after.values.editions)
 		) {
-			await hooks.onGeoipCredentialsChange();
+			try {
+				await hooks.onGeoipCredentialsChange();
+			} catch (err) {
+				logger.error(`GeoIP update after saving the settings failed: ${err.message}`);
+			}
 		}
 		return geoipView(after);
 	},
