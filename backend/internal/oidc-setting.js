@@ -6,7 +6,12 @@ import { callbackUrl, mergeOidcConfig, OIDC_DEFAULTS, validateDefaultPermissions
 import { defaultSecretBox } from "../lib/secret-box.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
-import { applyOidcUpdate, disablePasswordRefused, sanitizeOidcRow } from "./oidc-setting-rules.js";
+import {
+	applyOidcUpdate,
+	disablePasswordRefused,
+	passwordLoginDisabled,
+	sanitizeOidcRow,
+} from "./oidc-setting-rules.js";
 
 const TEST_KEYS = ["issuer_url", "client_id", "client_secret"];
 
@@ -79,15 +84,22 @@ const internalOidcSetting = {
 		const stored = await readStoredOidc();
 		const { client_secret: _secret, ...storedPlain } = stored;
 		const { values: current, locked } = mergeOidcConfig(storedPlain, process.env);
+		const before = await getOidcConfig();
+		const next = applyOidcUpdate(stored, body, locked, (secret) => defaultSecretBox.encrypt(secret));
+		const newSecret =
+			typeof body.client_secret === "string" && body.client_secret !== "" && !locked.includes("client_secret");
+		const state = {
+			current: current.disable_password,
+			before: before.active && before.values.disable_password === true,
+			after: passwordLoginDisabled(next, process.env, newSecret || !before.secretError),
+		};
 
-		if (disablePasswordRefused(body, locked, access.token.getAuthMethod(), current.disable_password)) {
+		if (disablePasswordRefused(body, locked, access.token.getAuthMethod(), state)) {
 			throw new errs.ValidationError(
 				"Password login can only be disabled from a session that signed in with OIDC",
 				"error.oidc-disable-password-session",
 			);
 		}
-
-		const next = applyOidcUpdate(stored, body, locked, (secret) => defaultSecretBox.encrypt(secret));
 
 		const permissionError = validateDefaultPermissions({
 			...OIDC_DEFAULTS.auto_create.permissions,

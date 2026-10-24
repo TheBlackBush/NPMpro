@@ -2,6 +2,8 @@
  * Pure rules for the OIDC settings API (no database access, so they can be unit tested)
  */
 
+import { mergeOidcConfig } from "../lib/oidc-rules.js";
+
 /**
  * Stored or effective OIDC values without the client secret in any form
  *
@@ -58,19 +60,38 @@ const applyOidcUpdate = (stored, body, locked, encrypt) => {
 };
 
 /**
- * Password login may only be turned on as disabled from a session that signed in with OIDC.
- * Re-sending an already disabled value is allowed, and a locked disable_password is ignored in the body.
+ * Whether password login ends up disabled for this stored meta: OIDC active and disable_password on
+ *
+ * @param   {Object}   meta          stored meta (client_secret in any form, only its presence counts)
+ * @param   {Object}   env           process.env or a test object
+ * @param   {boolean}  secretUsable  false when the stored secret cannot be decrypted
+ * @returns {boolean}
+ */
+const passwordLoginDisabled = (meta, env, secretUsable = true) => {
+	const { client_secret: secret, ...rest } = meta ?? {};
+	const { values, active } = mergeOidcConfig(secretUsable && secret ? { ...rest, client_secret: secret } : rest, env);
+	return active && values.disable_password === true;
+};
+
+/**
+ * Password login may only be disabled from a session that signed in with OIDC. Refused from any other session:
+ * turning disable_password on, and any save that makes password login disabled in effect (for example enabling
+ * OIDC while a stored disable_password is on). Re-sending an already disabled value is allowed, and a
+ * disable_password locked by env is the admin's choice, so it is never refused.
  *
  * @param   {Object}    body
  * @param   {string[]}  locked
  * @param   {string}    authMethod  "oidc" or "password"
- * @param   {boolean}   current     effective disable_password before this save
+ * @param   {Object}    state
+ * @param   {boolean}   state.current   disable_password value before this save
+ * @param   {boolean}   [state.before]  password login disabled in effect before this save
+ * @param   {boolean}   [state.after]   password login disabled in effect after this save
  * @returns {boolean}
  */
-const disablePasswordRefused = (body, locked, authMethod, current) =>
-	body?.disable_password === true &&
-	current !== true &&
-	!locked.includes("disable_password") &&
-	authMethod !== "oidc";
+const disablePasswordRefused = (body, locked, authMethod, { current, before = false, after = false }) => {
+	if (authMethod === "oidc" || locked.includes("disable_password")) return false;
+	const turningOn = body?.disable_password === true && current !== true;
+	return turningOn || (!before && after);
+};
 
-export { applyOidcUpdate, disablePasswordRefused, normalizeDomains, sanitizeOidcRow };
+export { applyOidcUpdate, disablePasswordRefused, normalizeDomains, passwordLoginDisabled, sanitizeOidcRow };

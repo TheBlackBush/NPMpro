@@ -4,6 +4,7 @@ import {
 	applyOidcUpdate,
 	disablePasswordRefused,
 	normalizeDomains,
+	passwordLoginDisabled,
 	sanitizeOidcRow,
 } from "../internal/oidc-setting-rules.js";
 
@@ -90,10 +91,62 @@ it("normalises allowed domains", () => {
 });
 
 it("refuses turning password login off only from a non-OIDC session", () => {
-	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", false), true);
-	assert.equal(disablePasswordRefused({ disable_password: true }, [], "oidc", false), false);
-	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", true), false);
-	assert.equal(disablePasswordRefused({ disable_password: false }, [], "password", false), false);
-	assert.equal(disablePasswordRefused({}, [], "password", false), false);
-	assert.equal(disablePasswordRefused({ disable_password: true }, ["disable_password"], "password", false), false);
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", { current: false }), true);
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "oidc", { current: false }), false);
+	assert.equal(disablePasswordRefused({ disable_password: true }, [], "password", { current: true }), false);
+	assert.equal(disablePasswordRefused({ disable_password: false }, [], "password", { current: false }), false);
+	assert.equal(disablePasswordRefused({}, [], "password", { current: false }), false);
+	assert.equal(
+		disablePasswordRefused({ disable_password: true }, ["disable_password"], "password", { current: false }),
+		false,
+	);
+});
+
+const connection = {
+	issuer_url: "https://idp.example.com",
+	client_id: "npmpro",
+	client_secret: "encrypted",
+	redirect_domain: "npm.example.com",
+};
+
+it("computes whether password login is disabled in effect", () => {
+	assert.equal(passwordLoginDisabled({ ...connection, enabled: true, disable_password: true }, {}), true);
+	assert.equal(passwordLoginDisabled({ ...connection, enabled: false, disable_password: true }, {}), false);
+	assert.equal(passwordLoginDisabled({ ...connection, enabled: true, disable_password: false }, {}), false);
+	assert.equal(passwordLoginDisabled({ ...connection, enabled: true, disable_password: true }, {}, false), false);
+	const { client_secret: _secret, ...noSecret } = connection;
+	assert.equal(passwordLoginDisabled({ ...noSecret, enabled: true, disable_password: true }, {}), false);
+	assert.equal(
+		passwordLoginDisabled({ ...noSecret, disable_password: true }, { OIDC_CLIENT_SECRET: "s" }),
+		false,
+		"env secret alone does not activate a disabled row",
+	);
+	assert.equal(passwordLoginDisabled({ enabled: true }, { OIDC_DISABLE_PASSWORD: "true" }), false);
+});
+
+it("refuses a non-OIDC save that disables password login in effect", () => {
+	const effective = { before: false, after: true };
+	assert.equal(disablePasswordRefused({ enabled: true }, [], "password", { current: true, ...effective }), true);
+	assert.equal(
+		disablePasswordRefused({ redirect_domain: "a.example.com" }, [], "password", { current: true, ...effective }),
+		true,
+	);
+	assert.equal(disablePasswordRefused({ enabled: true }, [], "oidc", { current: true, ...effective }), false);
+	assert.equal(
+		disablePasswordRefused({ enabled: true }, ["disable_password"], "password", { current: true, ...effective }),
+		false,
+	);
+	assert.equal(
+		disablePasswordRefused({ scopes: "openid" }, [], "password", { current: true, before: true, after: true }),
+		false,
+	);
+	assert.equal(
+		disablePasswordRefused({ enabled: true }, [], "password", { current: true, before: false, after: false }),
+		false,
+	);
+	assert.equal(
+		disablePasswordRefused({ enabled: false }, [], "password", { current: true, before: true, after: false }),
+		false,
+		"giving password login back is always allowed",
+	);
 });
