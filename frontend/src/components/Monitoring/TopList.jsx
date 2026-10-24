@@ -57,7 +57,7 @@ function TopList({
 								>
 									<div className="row g-2 align-items-center">
 										<div className="col-auto">
-											{/* fixed width so ranks 1 to 20 line up; no utility gives a 2em width */}
+											{/* fixed width so one and two digit ranks line up; no utility gives a 2em width */}
 											<span className="badge bg-secondary-lt" style={{ minWidth: "2em" }}>
 												{idx + 1}
 											</span>

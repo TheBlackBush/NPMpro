@@ -324,7 +324,8 @@ const filterBans = (rows, q, nameOf = () => "") => {
 };
 
 /**
- * Recent requests whose host, path, status, country code or name or IP contain the search text (case-insensitive).
+ * Recent requests whose host, method and path ("GET /login" matches too), status, country code or name or IP contain
+ * the search text (case-insensitive).
  * `hostOf(row)` gives the shown host name, `nameOf(code)` the shown country name; an empty search keeps every row.
  */
 const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () => "" } = {}) => {
@@ -333,7 +334,15 @@ const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () =
 		.toLowerCase();
 	if (needle === "") return rows ?? [];
 	return (rows ?? []).filter((row) =>
-		[hostOf(row), row.path, row.status, row.country, row.country ? nameOf(row.country) : "", row.ip]
+		[
+			hostOf(row),
+			row.method === "-" ? null : row.method,
+			row.path,
+			row.status,
+			row.country,
+			row.country ? nameOf(row.country) : "",
+			row.ip,
+		]
 			.filter((part) => part !== null && part !== undefined)
 			.join(" ")
 			.toLowerCase()

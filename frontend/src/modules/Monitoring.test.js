@@ -429,7 +429,7 @@ it("never sends the visitor limit while unique visitors are off", () => {
 	});
 });
 
-it("filterRecent searches host, path, status, country and IP", () => {
+it("filterRecent searches host, method, path, status, country and IP", () => {
 	const rows = [
 		{ name: "app.example.com", method: "GET", path: "/login", status: 404, country: "DE", ip: "203.0.113.7" },
 		{ name: "_other", method: "-", path: "", status: 400, country: null },
@@ -441,6 +441,9 @@ it("filterRecent searches host, path, status, country and IP", () => {
 	assert.equal(filterRecent(rows, "", options).length, 2);
 	assert.deepEqual(filterRecent(rows, "APP.example", options), [rows[0]]);
 	assert.deepEqual(filterRecent(rows, "/log", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "get", options), [rows[0]]);
+	assert.deepEqual(filterRecent(rows, "GET /login", options), [rows[0]]);
+	assert.deepEqual(filterRecent([rows[1]], "-", options), [], "the placeholder method is not searchable");
 	assert.deepEqual(filterRecent(rows, "404", options), [rows[0]]);
 	assert.deepEqual(filterRecent(rows, "germany", options), [rows[0]]);
 	assert.deepEqual(filterRecent(rows, "203.0.113", options), [rows[0]]);

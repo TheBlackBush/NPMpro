@@ -15,7 +15,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router";
 import { ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import {
@@ -64,8 +64,18 @@ const BADGES = {
 	deleted: { color: "secondary", labelKey: "monitoring.host.badge.deleted" },
 };
 
-// recent requests shown before "Show all" (the API sends up to 100)
+// recent requests shown before "Show all" (the API sends up to 100); fewer on phones, where rows are stacked
 const FIRST_ROWS = 25;
+const FIRST_ROWS_SMALL = 10;
+// Tabler's md breakpoint
+const MD_UP = "(min-width: 768px)";
+
+const subscribeMdUp = (onChange) => {
+	const query = window.matchMedia(MD_UP);
+	query.addEventListener("change", onChange);
+	return () => query.removeEventListener("change", onChange);
+};
+const isMdUp = () => window.matchMedia(MD_UP).matches;
 
 // newest first, as the API sends them; no column sorting, like the newest bans table
 const features = tableFeatures({
@@ -207,6 +217,15 @@ function VisitorsCard({ status, totals, range }) {
 	);
 }
 
+function HostBadge({ badge }) {
+	if (!badge) return null;
+	return (
+		<span className={`badge bg-${BADGES[badge].color}-lt`}>
+			<T id={BADGES[badge].labelKey} />
+		</span>
+	);
+}
+
 /**
  * Top hosts row: first domain name, "+N" for more names (all in the tooltip), a type badge, the visitors when they
  * are counted, and a link to the filtered view for a host that still exists.
@@ -236,11 +255,7 @@ const topHostItem = (entry, { uniqueVisitors, params }) => {
 		label,
 		title: names,
 		extra: extraText(extra),
-		badge: badge ? (
-			<span className={`badge bg-${BADGES[badge].color}-lt`}>
-				<T id={BADGES[badge].labelKey} />
-			</span>
-		) : null,
+		badge: badge ? <HostBadge badge={badge} /> : null,
 		detail,
 		value: entry.requests,
 		ariaLabel: linkable
@@ -254,29 +269,21 @@ const topHostItem = (entry, { uniqueVisitors, params }) => {
 	};
 };
 
-function HostBadge({ badge }) {
-	if (!badge) return null;
-	return (
-		<span className={`badge bg-${BADGES[badge].color}-lt`}>
-			<T id={BADGES[badge].labelKey} />
-		</span>
-	);
-}
-
 /** Shown host of a recent request: "Other hosts" for _other, otherwise the first domain name. */
 const recentHostName = (row) =>
 	row.hostType === "other" ? intl.formatMessage({ id: "monitoring.host.other" }) : hostEntryLabel(row).name;
 
 /**
  * The newest requests the backend keeps in memory (the selected host's or all), like "Newest bans": search, the
- * first 25 rows with "Show all", the IP column only when the API sends IPs.
+ * first 25 rows (10 below the md breakpoint) with "Show all", the IP column only when the API sends IPs.
  */
 function RecentTable({ rows }) {
 	const { filters, setFilter, clear } = useListFilters();
 	const [showAll, setShowAll] = useState(false);
+	const mdUp = useSyncExternalStore(subscribeMdUp, isMdUp);
 	const withIps = rows.some((row) => row.ip !== undefined);
 	const displayed = filterRecent(rows, filters.q, { hostOf: recentHostName, nameOf: countryLabel });
-	const visible = showAll ? displayed : displayed.slice(0, FIRST_ROWS);
+	const visible = showAll ? displayed : displayed.slice(0, mdUp ? FIRST_ROWS : FIRST_ROWS_SMALL);
 
 	const columns = useMemo(
 		() => [
