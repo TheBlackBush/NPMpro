@@ -7,6 +7,7 @@ import { intl, T } from "src/locale";
 import { camel, isOidcColor, oidcSettingsPayload } from "src/modules/Oidc";
 import { showObjectSuccess } from "src/notifications";
 import { ButtonFields } from "./Authentication/ButtonFields";
+import { NewUsersFields } from "./Authentication/NewUsersFields";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 
@@ -39,6 +40,12 @@ function Heading() {
 		</h3>
 	);
 }
+
+const parseDomains = (text) =>
+	text
+		.split(",")
+		.map((domain) => domain.trim().toLowerCase())
+		.filter(Boolean);
 
 const validate = (values) => {
 	const errors = {};
@@ -86,13 +93,26 @@ export default function Authentication() {
 
 	const onSubmit = (values, { setSubmitting, setFieldValue }) => {
 		setErrorMsg(null);
-		const { buttonLabel, buttonColor, buttonIcon, ...rest } = values;
+		const {
+			buttonLabel,
+			buttonColor,
+			buttonIcon,
+			autoCreateEnabled,
+			autoCreateDomains,
+			autoCreatePermissions,
+			...rest
+		} = values;
 		const button = {
 			label: buttonLabel.trim(),
 			color: buttonColor,
 			icon: buttonIcon ? { type: "builtin", name: buttonIcon } : data.button?.icon,
 		};
-		save(oidcSettingsPayload({ ...data, ...rest, button }), {
+		const autoCreate = {
+			enabled: autoCreateEnabled,
+			allowedDomains: parseDomains(autoCreateDomains),
+			permissions: autoCreatePermissions,
+		};
+		save(oidcSettingsPayload({ ...data, ...rest, autoCreate, button }), {
 			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: () => {
 				setFieldValue("clientSecret", "");
@@ -117,6 +137,17 @@ export default function Authentication() {
 				requireVerifiedEmail: data.requireVerifiedEmail,
 				skipMfa: data.skipMfa,
 				disablePassword: data.disablePassword,
+				autoCreateEnabled: Boolean(data.autoCreate?.enabled),
+				autoCreateDomains: (data.autoCreate?.allowedDomains ?? []).join(", "),
+				autoCreatePermissions: {
+					visibility: data.autoCreate?.permissions?.visibility ?? "user",
+					proxyHosts: data.autoCreate?.permissions?.proxyHosts ?? "view",
+					redirectionHosts: data.autoCreate?.permissions?.redirectionHosts ?? "view",
+					deadHosts: data.autoCreate?.permissions?.deadHosts ?? "view",
+					streams: data.autoCreate?.permissions?.streams ?? "view",
+					accessLists: data.autoCreate?.permissions?.accessLists ?? "view",
+					certificates: data.autoCreate?.permissions?.certificates ?? "view",
+				},
 				buttonLabel: data.button?.label ?? "",
 				buttonColor: data.button?.color ?? "",
 				// a built-in icon picked but not saved yet; null keeps the stored icon (uploads save on their own)
@@ -157,7 +188,7 @@ export default function Authentication() {
 					<ProviderFields data={data} isLocked={isLocked} />
 					<ButtonFields data={data} />
 					<SignInRules data={data} isLocked={isLocked} />
-					{/* New users section (Task 11) goes here */}
+					<NewUsersFields />
 				</div>
 				<div className="card-footer text-end">
 					<SaveButton />

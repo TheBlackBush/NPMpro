@@ -369,6 +369,11 @@
 	"setting": "Setting",
 	"settings": "Settings",
 	"settings.authentication": "Authentication",
+	"settings.authentication.allowed-domains": "Allowed email domains",
+	"settings.authentication.allowed-domains.hint": "Comma separated. Empty allows any domain.",
+	"settings.authentication.allowed-domains.placeholder": "example.com, example.org",
+	"settings.authentication.auto-create": "Create users on their first sign-in",
+	"settings.authentication.auto-create.hint": "A person who signs in with OIDC and has no account gets one with the permissions below.",
 	"settings.authentication.button": "Login button",
 	"settings.authentication.button.color": "Colour",
 	"settings.authentication.button.color.azure": "Azure",
@@ -414,6 +419,7 @@
 	"settings.authentication.client-secret": "Client secret",
 	"settings.authentication.client-secret.empty": "Client secret",
 	"settings.authentication.client-secret.saved": "Saved, leave empty to keep",
+	"settings.authentication.default-permissions": "Default permissions",
 	"settings.authentication.disable-password": "Disable password login",
 	"settings.authentication.disable-password.env-locked": "Set by the OIDC_DISABLE_PASSWORD environment variable, change it there.",
 	"settings.authentication.disable-password.hint": "Only OIDC can be used to sign in. To restore password login, set OIDC_DISABLE_PASSWORD=false.",
@@ -422,6 +428,8 @@
 	"settings.authentication.issuer-url": "Issuer URL",
 	"settings.authentication.issuer-url.hint": "The provider's discovery base address, for example https://accounts.example.com",
 	"settings.authentication.locked": "Set by environment",
+	"settings.authentication.new-users": "New users",
+	"settings.authentication.new-users.never-admin": "New users are never administrators.",
 	"settings.authentication.provider": "Provider",
 	"settings.authentication.redirect-domain": "Redirect domain",
 	"settings.authentication.redirect-domain.hint": "Domain people use to open NPMpro, with the port if it is not 443, for example npm.example.com. Required: it builds the callback URL.",
@@ -518,5 +526,7 @@
 	"user.switch-dark": "Switch to Dark mode",
 	"user.switch-light": "Switch to Light mode",
 	"username": "Username",
-	"users": "Users"
+	"users": "Users",
+	"users.oidc-hint": "Users can also sign in with OIDC.",
+	"users.oidc-hint.link": "Settings, Authentication"
 }

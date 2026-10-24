@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { setPermissions } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading } from "src/components";
+import { PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -40,99 +40,6 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 		setIsSubmitting(false);
 	};
 
-	const getClasses = (active) =>
-		cn("btn", {
-			active,
-			"bg-orange-lt": active,
-			"border-orange": active,
-		});
-
-	// given the field and clicked permission, intelligently set the value, and
-	// other values that depends on it.
-	const handleChange = (form, field, perm) => {
-		if (field.name === "proxyHosts" && perm !== "hidden" && form.values.accessLists === "hidden") {
-			form.setFieldValue("accessLists", "view");
-		}
-		// certs are required for proxy and redirection hosts, and streams
-		if (
-			["proxyHosts", "redirectionHosts", "deadHosts", "streams"].includes(field.name) &&
-			perm !== "hidden" &&
-			form.values.certificates === "hidden"
-		) {
-			form.setFieldValue("certificates", "view");
-		}
-
-		form.setFieldValue(field.name, perm);
-	};
-
-	const getPermissionButtons = (field, form) => {
-		const isManage = field.value === "manage";
-		const isView = field.value === "view";
-		const isHidden = field.value === "hidden";
-
-		let hiddenDisabled = false;
-		if (field.name === "accessLists") {
-			hiddenDisabled = form.values.proxyHosts !== "hidden";
-		}
-		if (field.name === "certificates") {
-			hiddenDisabled =
-				form.values.proxyHosts !== "hidden" ||
-				form.values.redirectionHosts !== "hidden" ||
-				form.values.deadHosts !== "hidden" ||
-				form.values.streams !== "hidden";
-		}
-
-		return (
-			<div>
-				<fieldset className="btn-group w-100">
-					<input
-						type="radio"
-						className="btn-check"
-						name={field.name}
-						id={`${field.name}-manage`}
-						autoComplete="off"
-						value="manage"
-						checked={field.value === "manage"}
-						onChange={() => handleChange(form, field, "manage")}
-					/>
-
-					<label htmlFor={`${field.name}-manage`} className={getClasses(isManage)}>
-						<T id="permissions.manage" />
-					</label>
-					<input
-						type="radio"
-						className="btn-check"
-						name={field.name}
-						id={`${field.name}-view`}
-						autoComplete="off"
-						value="view"
-						checked={field.value === "view"}
-						onChange={() => handleChange(form, field, "view")}
-					/>
-
-					<label htmlFor={`${field.name}-view`} className={getClasses(isView)}>
-						<T id="permissions.view" />
-					</label>
-					<input
-						type="radio"
-						className="btn-check"
-						name={field.name}
-						id={`${field.name}-hidden`}
-						autoComplete="off"
-						value="hidden"
-						checked={field.value === "hidden"}
-						disabled={hiddenDisabled}
-						onChange={() => handleChange(form, field, "hidden")}
-					/>
-
-					<label htmlFor={`${field.name}-hidden`} className={getClasses(isHidden)}>
-						<T id="permissions.hidden" />
-					</label>
-				</fieldset>
-			</div>
-		);
-	};
-
 	return (
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
@@ -165,44 +72,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="permissions.visibility.title" />
 									</div>
 									<Field name="visibility">
-										{({ field, form }) => (
-											<fieldset className="btn-group w-100">
-												<input
-													type="radio"
-													className="btn-check"
-													name={field.name}
-													id={`${field.name}-user`}
-													autoComplete="off"
-													value="user"
-													checked={field.value === "user"}
-													onChange={() => form.setFieldValue(field.name, "user")}
-												/>
-
-												<label
-													htmlFor={`${field.name}-user`}
-													className={getClasses(field.value === "user")}
-												>
-													<T id="permissions.visibility.user" />
-												</label>
-												<input
-													type="radio"
-													className="btn-check"
-													name={field.name}
-													id={`${field.name}-all`}
-													autoComplete="off"
-													value="all"
-													checked={field.value === "all"}
-													onChange={() => form.setFieldValue(field.name, "all")}
-												/>
-
-												<label
-													htmlFor={`${field.name}-all`}
-													className={getClasses(field.value === "all")}
-												>
-													<T id="permissions.visibility.all" />
-												</label>
-											</fieldset>
-										)}
+										{({ field, form }) => <VisibilityButtons field={field} form={form} />}
 									</Field>
 								</div>
 								{!isAdmin(data?.roles) && (
@@ -212,7 +82,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="proxy-hosts" />
 											</div>
 											<Field name="proxyHosts">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 										<div className="mb-3">
@@ -220,7 +90,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="redirection-hosts" />
 											</div>
 											<Field name="redirectionHosts">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 										<div className="mb-3">
@@ -228,7 +98,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="dead-hosts" />
 											</div>
 											<Field name="deadHosts">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 										<div className="mb-3">
@@ -236,7 +106,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="streams" />
 											</div>
 											<Field name="streams">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 										<div className="mb-3">
@@ -244,7 +114,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="access-lists" />
 											</div>
 											<Field name="accessLists">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 										<div className="mb-3">
@@ -252,7 +122,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 												<T id="certificates" />
 											</div>
 											<Field name="certificates">
-												{({ field, form }) => getPermissionButtons(field, form)}
+												{({ field, form }) => <PermissionButtons field={field} form={form} />}
 											</Field>
 										</div>
 									</>
