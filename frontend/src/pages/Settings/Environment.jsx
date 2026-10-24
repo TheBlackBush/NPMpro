@@ -1,0 +1,207 @@
+import { IconInfoCircle, IconLock } from "@tabler/icons-react";
+import { Link } from "react-router";
+import { ErrorAlert, Loading } from "src/components";
+import { useEnvironment } from "src/hooks";
+import { intl, T } from "src/locale";
+import { StatusAlert } from "./StatusAlert";
+
+// provider names are product names, shown as they are
+const PROVIDERS = {
+	anubis: "Anubis",
+	tinyauth: "Tinyauth",
+	oauth2proxy: "OAuth2 Proxy",
+	voidauth: "VoidAuth",
+	authelia: "Authelia",
+	authentik: "Authentik",
+};
+
+// where each runtime settings group lives (the logs group is shown in Logs & monitoring)
+const SECTION_OF_GROUP = {
+	certificates: "certificates",
+	network: "network",
+	"forward-auth": "forward-auth",
+	logs: "monitoring",
+	advanced: "advanced",
+};
+
+// the label of each runtime setting, the same text as in its settings section
+const LABELS = {
+	"certificates/key_type": "settings.certificates.key-type",
+	"certificates/key_size": "settings.certificates.key-size",
+	"certificates/profile": "settings.certificates.profile",
+	"certificates/must_staple": "settings.certificates.must-staple",
+	"certificates/server_tls_verify": "settings.certificates.server-tls-verify",
+	"certificates/renewal_interval": "settings.certificates.renewal-interval",
+	"certificates/ocsp_stapling": "settings.certificates.ocsp-stapling",
+	"certificates/custom_ocsp_stapling": "settings.certificates.custom-ocsp-stapling",
+	"certificates/default_certificate_id": "settings.certificates.default-certificate",
+	"certificates/ech_rotation_interval": "settings.certificates.ech-interval",
+	"network/trusted_ips": "settings.network.trusted-ips",
+	"network/trust_cloudflare": "settings.network.trust-cloudflare",
+	"forward-auth/anubis_custom_images": "settings.forward-auth.anubis-images",
+	"logs/write_log_files": "settings.logs.write",
+	"logs/log_rotations": "settings.logs.rotations",
+	"advanced/config_beautifier": "settings.advanced.beautifier",
+	"advanced/gravatar": "settings.advanced.gravatar",
+};
+
+const UPSTREAM_NAME = /^(?<provider>[a-z0-9]+)_upstream$/u;
+
+const label = (id) => intl.formatMessage({ id });
+
+function SettingLabel({ group, name }) {
+	const upstream = group === "forward-auth" ? UPSTREAM_NAME.exec(name) : null;
+	if (upstream) {
+		const provider = PROVIDERS[upstream.groups.provider] ?? upstream.groups.provider;
+		return <T id="settings.forward-auth.upstream" data={{ provider }} />;
+	}
+	const id = LABELS[`${group}/${name}`];
+	return id ? <T id={id} /> : name;
+}
+
+function LockedSettings({ locked }) {
+	if (locked.length === 0) {
+		return (
+			<p className="text-secondary">
+				<T id="settings.environment.locked.none" />
+			</p>
+		);
+	}
+	return (
+		<div className="table-responsive mb-4">
+			<table className="table table-vcenter card-table table-mobile-md">
+				<thead>
+					<tr>
+						<th>
+							<T id="settings.environment.setting" />
+						</th>
+						<th>
+							<T id="settings.environment.variable" />
+						</th>
+						<th>
+							<T id="settings.environment.section" />
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					{locked.map(({ group, key, env }) => (
+						<tr key={`${group}/${key}`}>
+							<td data-label={label("settings.environment.setting")}>
+								<SettingLabel group={group} name={key} />
+							</td>
+							<td data-label={label("settings.environment.variable")}>
+								<code className="text-break">{env}</code>
+							</td>
+							<td data-label={label("settings.environment.section")}>
+								<Link to={`/settings/${SECTION_OF_GROUP[group]}`}>
+									<T id={`settings.environment.group.${group}`} />
+								</Link>
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+function Value({ item }) {
+	if (item.secret) {
+		return (
+			<span className="text-secondary">
+				<T id={item.set ? "settings.environment.secret.set" : "settings.environment.secret.unset"} />
+			</span>
+		);
+	}
+	if (item.value === "") {
+		return (
+			<span className="text-secondary">
+				<T id="settings.environment.empty" />
+			</span>
+		);
+	}
+	return <code className={item.value.length > 24 ? "text-break" : "text-nowrap"}>{item.value}</code>;
+}
+
+function GroupRows({ group }) {
+	return (
+		<tbody>
+			<tr className="bg-body-tertiary">
+				<th colSpan={4} className="text-body">
+					<T id={`settings.environment.group.${group.id}`} />
+				</th>
+			</tr>
+			{group.items.map((item) => (
+				<tr key={item.name}>
+					<td data-label={label("settings.environment.variable")}>
+						<code className="text-nowrap">{item.name}</code>
+					</td>
+					<td data-label={label("settings.environment.value")}>
+						<Value item={item} />
+					</td>
+					<td data-label={label("settings.environment.status")}>
+						<span className={`badge ${item.set ? "bg-green-lt" : "bg-secondary-lt"}`}>
+							<T id={item.set ? "settings.environment.set" : "settings.environment.default"} />
+						</span>
+					</td>
+					<td className="text-secondary" data-label={label("settings.environment.description")}>
+						<T id={`environment.${group.id}.${item.name}`} />
+					</td>
+				</tr>
+			))}
+		</tbody>
+	);
+}
+
+function GroupTable({ groups }) {
+	return (
+		<div className="table-responsive">
+			<table className="table table-vcenter card-table table-mobile-md">
+				<thead>
+					<tr>
+						<th>
+							<T id="settings.environment.variable" />
+						</th>
+						<th>
+							<T id="settings.environment.value" />
+						</th>
+						<th>
+							<T id="settings.environment.status" />
+						</th>
+						<th>
+							<T id="settings.environment.description" />
+						</th>
+					</tr>
+				</thead>
+				{groups.map((group) => (
+					<GroupRows key={group.id} group={group} />
+				))}
+			</table>
+		</div>
+	);
+}
+
+export default function Environment() {
+	const { isPending, error, data } = useEnvironment();
+
+	return (
+		<div className="card-body">
+			<h2 className="mb-3">
+				<T id="settings.environment" />
+			</h2>
+			{error ? <ErrorAlert error={error} /> : null}
+			{isPending ? <Loading noLogo /> : null}
+			{data ? (
+				<>
+					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.environment.note" />
+					<h3 className="mb-2">
+						<IconLock className="icon me-2" aria-hidden="true" />
+						<T id="settings.environment.locked" />
+					</h3>
+					<LockedSettings locked={data.lockedRuntime ?? []} />
+					<GroupTable groups={data.groups} />
+				</>
+			) : null}
+		</div>
+	);
+}

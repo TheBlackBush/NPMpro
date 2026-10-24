@@ -13,11 +13,11 @@ import Advanced from "./Advanced";
 import Authentication from "./Authentication";
 import Certificates from "./Certificates";
 import DefaultSite from "./DefaultSite";
+import Environment from "./Environment";
 import ForwardAuth from "./ForwardAuth";
 import Geoip from "./Geoip";
 import Monitoring from "./Monitoring";
 import Network from "./Network";
-import { Environment } from "./Placeholders";
 
 export const SECTIONS = [
 	{ id: "default-site", labelKey: "settings.default-site", icon: IconWorld, element: DefaultSite },
