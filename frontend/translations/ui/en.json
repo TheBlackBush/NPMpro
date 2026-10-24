@@ -191,7 +191,7 @@
 	"error.maximum": "Maximum is {max}",
 	"error.min-character-length": "Minimum length is {min} character{min, plural, one {} other {s}}",
 	"error.minimum": "Minimum is {min}",
-	"error.oidc-disable-password-session": "Password login can only be disabled while signed in with OIDC",
+	"error.oidc-disable-password-session": "Password login can only be disabled while signed in with OIDC. Untick Disable password login to save these settings now.",
 	"error.oidc-icon-too-large": "The icon is larger than 256 KB",
 	"error.passwords-must-match": "Passwords must match",
 	"error.request-failed": "Request failed (HTTP {status})",

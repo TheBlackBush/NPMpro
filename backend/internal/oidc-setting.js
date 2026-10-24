@@ -96,7 +96,7 @@ const internalOidcSetting = {
 
 		if (disablePasswordRefused(body, locked, access.token.getAuthMethod(), state)) {
 			throw new errs.ValidationError(
-				"Password login can only be disabled from a session that signed in with OIDC",
+				"Password login can only be disabled while signed in with OIDC. Untick Disable password login to save these settings now.",
 				"error.oidc-disable-password-session",
 			);
 		}
