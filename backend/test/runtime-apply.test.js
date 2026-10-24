@@ -1527,3 +1527,65 @@ it("switching log files on creates the missing log files (0600) and compatibilit
 	await b.applyGroup("logs", prev, { ...prev, write_log_files: true });
 	assert.equal(await readFile(path.join(logs, "access.log"), "utf8"), "kept\n");
 });
+
+// revert and startup failure paths
+
+it("a revert puts a default certificate back that was deleted meanwhile (built-in), without refusing", async () => {
+	const { paths } = await setup();
+	await certTree(paths);
+	const stored = certValues({ default_certificate_id: 5 });
+	const failedSave = certValues();
+	const a = certApplier(paths, { listCertificates: async () => [] });
+	await a.applyGroup("certificates", stored, failedSave, { revert: true });
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), renderDefaultCertConf(null, paths.tlsDir));
+	assert.equal(a.log.lines.filter((line) => line.includes("#5 does not exist")).length, 1);
+	// the same change as a save is refused
+	await assert.rejects(a.applyGroup("certificates", stored, failedSave), {
+		message: "default_certificate_id: Certificate not found",
+	});
+});
+
+it("a revert to Cloudflare on uses the cached ranges and does not fetch them", async () => {
+	const n = await networkSetup();
+	const on = netValues({ trusted_ips: ["10.0.0.1"], trust_cloudflare: true });
+	const off = { ...on, trust_cloudflare: false };
+	await n.applyGroup("network", on, netValues());
+	await n.applyGroup("network", off, on);
+	assert.equal(n.fetches.length, 2);
+	await n.applyGroup("network", on, off, { revert: true });
+	assert.equal(n.fetches.length, 2);
+	assert.ok((await lines(n.paths.ipRangesConf)).includes(CF_LINES[0]));
+	assert.equal(n.ipRanges.running(), true);
+});
+
+it("a revert to Cloudflare on without cached ranges keeps ip_ranges.conf and does not fetch", async () => {
+	const n = await networkSetup();
+	const on = netValues({ trusted_ips: ["10.0.0.1"], trust_cloudflare: true });
+	await n.applyGroup("network", on, { ...on, trust_cloudflare: false }, { revert: true });
+	assert.deepEqual(n.fetches, []);
+	assert.equal(await readFile(n.paths.ipRangesConf, "utf8"), "old ranges\n");
+	assert.ok(n.log.lines.some((line) => line.startsWith("No Cloudflare IP ranges known to put back")));
+});
+
+it("startup: a failing shared write (crontab) still runs the timers and the own files, then throws", async () => {
+	const { paths } = await setup();
+	const live = await certTree(paths);
+	const crontab = path.join(paths.crontabDir, "npmpro");
+	const failing = {
+		...nodeFs,
+		rename: (from, to) => (to === crontab ? Promise.reject(new Error("EACCES")) : nodeFs.rename(from, to)),
+	};
+	const a = certApplier(paths, { fs: failing });
+	const values = certValues({ default_certificate_id: 5, renewal_interval: 9, ech_rotation_interval: 3 });
+	await assert.rejects(a.applyGroup("certificates", values), { message: `Could not write ${crontab}` });
+	// the shared batch is undone
+	assert.equal(await readFile(crontab, "utf8"), CRONTAB);
+	assert.equal(await readFile(paths.certbotIni, "utf8"), "old ini\n");
+	// the timer and the default certificate include still applied
+	assert.deepEqual(a.restarts, [9]);
+	assert.equal(
+		await readFile(paths.defaultCertConf, "utf8"),
+		`ssl_certificate ${live}/fullchain.pem;\nssl_certificate_key ${live}/privkey.pem;\n`,
+	);
+	assert.deepEqual(a.nginx.calls, ["test"]);
+});

@@ -318,12 +318,14 @@ const createRuntimeApplier = ({
 
 	/**
 	 * The Cloudflare ranges for ip_ranges.conf: fetched when Cloudflare is turned on by a save (a failure refuses the
-	 * save) or none are known yet (a failure is logged, the timer tries again), else the last fetched ones
+	 * save) or none are known yet (a failure is logged, the timer tries again), else the last fetched ones. A revert
+	 * never fetches: the last fetched ones, or null (none known: keep the file) when there are none.
 	 */
-	const cloudflareRanges = async ({ next, changed, startup }) => {
+	const cloudflareRanges = async ({ next, changed, startup, revert }) => {
 		if (!next.trust_cloudflare) return [];
-		const turnedOn = !startup && changed.includes("trust_cloudflare");
 		const known = ipRanges.ranges();
+		if (revert) return known.length > 0 ? known : null;
+		const turnedOn = !startup && changed.includes("trust_cloudflare");
 		if (!turnedOn && known.length > 0) return known;
 		try {
 			return await ipRanges.fetchCloudflare();
@@ -440,22 +442,25 @@ const createRuntimeApplier = ({
 			if (!ipRanges) return {};
 			const { next, changed } = ctx;
 			const ranges = await cloudflareRanges(ctx);
-			const content = await ipRanges.render(effectiveEnv({ network: next }), ranges);
-			// at startup its own transaction after the timer started: a failing nginx -t keeps the previous file only
-			const file = {
-				path: paths.ipRangesConf,
-				content,
-				nginx: true,
-				startupOwn: true,
-				startupFailure: `Could not write ${paths.ipRangesConf} at startup (nginx -t failed or the file could not be written), the previous trusted IP ranges stay in use`,
-			};
-			const plan = { files: [file], after: [] };
+			const plan = { files: [], after: [] };
+			if (ranges === null) {
+				log.warn(`No Cloudflare IP ranges known to put back, ${paths.ipRangesConf} is kept as it is`);
+			} else {
+				// at startup its own transaction after the timer started: a failing nginx -t keeps the previous file only
+				plan.files.push({
+					path: paths.ipRangesConf,
+					content: await ipRanges.render(effectiveEnv({ network: next }), ranges),
+					nginx: true,
+					startupOwn: true,
+					startupFailure: `Could not write ${paths.ipRangesConf} at startup (nginx -t failed or the file could not be written), the previous trusted IP ranges stay in use`,
+				});
+			}
 			if (changed.includes("trust_cloudflare")) {
 				plan.after.push(() => (next.trust_cloudflare ? ipRanges.start() : ipRanges.stop()));
 			}
 			return plan;
 		},
-		certificates: async ({ next, prev, changed, startup }) => {
+		certificates: async ({ next, prev, changed, startup, revert }) => {
 			const plan = { files: [], after: [] };
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
@@ -471,7 +476,8 @@ const createRuntimeApplier = ({
 			}
 			if (DEFAULT_CERT_KEYS.some((key) => changed.includes(key))) {
 				await fetchStapling({ next, prev, startup });
-				const strict = !startup && changed.includes("default_certificate_id");
+				// a revert puts the stored certificate back even when it was deleted meanwhile (built-in fallback)
+				const strict = !startup && !revert && changed.includes("default_certificate_id");
 				// default.conf and npmpro.conf include it, so they need no re-render; at startup its own transaction, so a
 				// failing nginx -t only puts start.sh's include back
 				plan.files.push({
@@ -497,7 +503,8 @@ const createRuntimeApplier = ({
 	 * @param   {Object}  next   the merged values to apply (env-locked keys hold the env value)
 	 * @param   {Object}  [prev] the values in effect
 	 * @param   {Object}  [options]
-	 * @param   {boolean} [options.revert]  putting the stored values back after a failed save: no checks
+	 * @param   {boolean} [options.revert]  putting the stored values back after a failed save: no checks, no strict
+	 *                                      default certificate check, no Cloudflare fetch
 	 * @returns {Promise<{changed: string[], reloaded: boolean}>}
 	 */
 	const applyGroup = async (group, next, prev, { revert = false } = {}) => {
@@ -505,7 +512,7 @@ const createRuntimeApplier = ({
 		const changed = changedKeys(next, prev);
 		if (changed.length === 0) return { changed, reloaded: false };
 
-		const plan = (await planners[group]?.({ next, prev, changed, startup })) ?? {};
+		const plan = (await planners[group]?.({ next, prev, changed, startup, revert })) ?? {};
 		if (plan.check && !revert) await plan.check();
 
 		const applies = appliesOf(group);
@@ -523,11 +530,25 @@ const createRuntimeApplier = ({
 				const nginxFiles = new Set(batch.filter((file) => file.nginx).map((file) => file.path));
 				if (written.some((file) => nginxFiles.has(file))) await testAndReload(nginx, { reload: false });
 			};
-			const shared = files.filter((file) => !file.startupOwn);
-			await withFiles(shared, testIfNginx(shared), { fs, log });
-			for (const step of plan.after ?? []) await step();
-			// a failing one does not stop the next ones; the first error fails the group
+			// a failing shared batch (a crontab write) does not stop the timers and the own files; the first error
+			// fails the group at the end
 			let failure;
+			const shared = files.filter((file) => !file.startupOwn);
+			try {
+				await withFiles(shared, testIfNginx(shared), { fs, log });
+			} catch (err) {
+				failure = err;
+			}
+			for (const step of plan.after ?? []) {
+				try {
+					await step();
+				} catch (err) {
+					// the first error is logged by the caller
+					if (failure) log.error(`Could not run a ${group} startup step: ${err.message}`);
+					failure ??= err;
+				}
+			}
+			// a failing one does not stop the next ones
 			for (const file of files.filter((entry) => entry.startupOwn)) {
 				try {
 					await withFiles([file], testIfNginx([file]), { fs, log });
