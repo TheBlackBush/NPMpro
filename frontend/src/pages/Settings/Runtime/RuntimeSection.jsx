@@ -5,13 +5,7 @@ import { Button, ErrorAlert, Loading } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
-import {
-	appliesMessageId,
-	fieldOfError,
-	isEmptyPayload,
-	RUNTIME_ENV,
-	runtimeSettingsPayload,
-} from "src/modules/RuntimeSettings";
+import { appliesMessageId, fieldOfError, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
 import { showError, showObjectSuccess } from "src/notifications";
 import { StatusAlert } from "../StatusAlert";
 
@@ -22,7 +16,8 @@ const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 const RuntimeContext = createContext(null);
 
 /**
- * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) and appliesId(key) (camelCase keys)
+ * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it) and
+ * appliesId(key) (camelCase keys)
  */
 const useRuntimeSection = () => useContext(RuntimeContext);
 
@@ -36,7 +31,8 @@ const runtimeContextOf = (group, data) => {
 		data,
 		anyLocked: locked.size > 0,
 		isLocked: (key) => locked.has(key),
-		envOf: (key) => RUNTIME_ENV[key],
+		// locked_by: the env var that locks each key (its keys camelized by base.js, the values are env names)
+		envOf: (key) => data.lockedBy?.[key],
 		appliesId: (key) => appliesMessageId(data.applies, key),
 	};
 };

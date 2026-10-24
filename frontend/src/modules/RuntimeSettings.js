@@ -26,33 +26,6 @@ const GROUP_KEYS = {
 	advanced: ["configBeautifier", "gravatar"],
 };
 
-// The env var that sets (and locks) each key, as in backend/lib/runtime-rules.js
-const RUNTIME_ENV = {
-	keyType: "ACME_KEY_TYPE",
-	keySize: "ACME_KEY_SIZE",
-	profile: "ACME_PROFILE",
-	mustStaple: "ACME_MUST_STAPLE",
-	serverTlsVerify: "ACME_SERVER_TLS_VERIFY",
-	renewalInterval: "CERTBOT_RUN_INTERVAL",
-	ocspStapling: "ACME_OCSP_STAPLING",
-	customOcspStapling: "CUSTOM_OCSP_STAPLING",
-	defaultCertificateId: "DEFAULT_CERT_ID",
-	echRotationInterval: "ECH_ROTATION_INTERVAL",
-	trustedIps: "TRUST_IP",
-	trustCloudflare: "TRUST_CLOUDFLARE",
-	anubisUpstream: "AUTH_REQUEST_ANUBIS_UPSTREAM",
-	tinyauthUpstream: "AUTH_REQUEST_TINYAUTH_UPSTREAM",
-	oauth2proxyUpstream: "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM",
-	voidauthUpstream: "AUTH_REQUEST_VOIDAUTH_UPSTREAM",
-	autheliaUpstream: "AUTH_REQUEST_AUTHELIA_UPSTREAM",
-	authentikUpstream: "AUTH_REQUEST_AUTHENTIK_UPSTREAM",
-	anubisCustomImages: "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES",
-	writeLogFiles: "LOGROTATE",
-	logRotations: "LOGROTATIONS",
-	configBeautifier: "DISABLE_NGINX_BEAUTIFIER",
-	gravatar: "DISABLE_GRAVATAR",
-};
-
 const APPLIES = new Set(["next-certificate", "reload", "immediately"]);
 
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
@@ -205,6 +178,5 @@ export {
 	isEmptyPayload,
 	keySizeOptions,
 	parseTrustedIps,
-	RUNTIME_ENV,
 	runtimeSettingsPayload,
 };

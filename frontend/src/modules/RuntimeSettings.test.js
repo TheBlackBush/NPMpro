@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { RUNTIME_RULES } from "../../../backend/lib/runtime-rules.js";
 import {
 	appliesMessageId,
 	defaultKeySize,
@@ -10,7 +9,6 @@ import {
 	isEmptyPayload,
 	keySizeOptions,
 	parseTrustedIps,
-	RUNTIME_ENV,
 	runtimeSettingsPayload,
 } from "./RuntimeSettings.js";
 
@@ -108,20 +106,11 @@ it("GROUP_KEYS match the backend response schemas", () => {
 	for (const group of Object.keys(GROUP_KEYS)) {
 		const url = new URL(`../../../backend/schema/components/runtime-${group}-setting-object.json`, import.meta.url);
 		const props = Object.keys(JSON.parse(readFileSync(url, "utf8")).properties).filter(
-			(key) => key !== "locked" && key !== "applies",
+			(key) => !["locked", "locked_by", "applies"].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
 	assert.equal(Object.keys(GROUP_KEYS).length, 5);
-});
-
-const byName = (a, b) => a.localeCompare(b);
-
-it("RUNTIME_ENV names the env var of every key like the backend rules", () => {
-	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
-	const expected = Object.fromEntries(RUNTIME_RULES.map((rule) => [camel(rule.key), rule.env]));
-	assert.deepEqual(RUNTIME_ENV, expected);
-	assert.deepEqual(Object.keys(RUNTIME_ENV).sort(byName), Object.values(GROUP_KEYS).flat().sort(byName));
 });
 
 it("appliesMessageId maps the applies values to their translation ids", () => {
@@ -148,4 +137,14 @@ it("fieldOfError finds the field of a prefixed backend error of the group", () =
 	assert.equal(fieldOfError("network", "The ACME server does not offer this profile"), null);
 	assert.equal(fieldOfError("logs", 'nginx: [emerg] unknown directive "x" in /a.conf:1'), null);
 	assert.equal(fieldOfError("logs", undefined), null);
+});
+
+it("camelizes the keys of locked_by and keeps the env names", async () => {
+	const { camelizeKeys } = await import("../api/backend/caseConvert.js");
+	const data = camelizeKeys({
+		locked: ["key_type"],
+		locked_by: { key_type: "ACME_KEY_SIZE", write_log_files: "GOA" },
+	});
+	assert.deepEqual(data.lockedBy, { keyType: "ACME_KEY_SIZE", writeLogFiles: "GOA" });
+	assert.deepEqual(data.locked, ["key_type"]);
 });
