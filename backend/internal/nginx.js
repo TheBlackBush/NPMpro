@@ -4,14 +4,14 @@ import path from "node:path";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
+import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
-import { effectiveEnv } from "../lib/runtime-config.js";
+import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
-const authRequestProviders = ["anubis", "tinyauth", "oauth2proxy", "voidauth", "authelia", "authentik"];
 
 const internalNginx = {
 	/**
@@ -293,43 +293,15 @@ const internalNginx = {
 				if (htpasswdFileName.length > 0) {
 					location.filename = htpasswdFileName;
 				}
-				if (location.npmpro_enabled === false) continue;
-				const provider =
-					location.npmpro_auth_request === "authentik-send-basic-auth"
-						? "authentik"
-						: location.npmpro_auth_request;
-				if (authRequestProviders.includes(provider)) host[`create_${provider}_locations`] = true;
 			}
 
-			const originalLocations = [...host.locations];
+			// the host's or a location's own upstream; empty: the template uses the Forward authentication default
+			for (const provider of AUTH_REQUEST_PROVIDERS) {
+				if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
+				host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
+			}
+
 			host.locations = await internalNginx.renderLocations(host);
-
-			for (const provider of authRequestProviders) {
-				let effectiveUpstream = "";
-
-				if (
-					(host.npmpro_auth_request === provider ||
-						(provider === "authentik" && host.npmpro_auth_request === "authentik-send-basic-auth")) &&
-					host.npmpro_auth_request_upstream
-				) {
-					effectiveUpstream = host.npmpro_auth_request_upstream;
-				} else {
-					for (const location of originalLocations) {
-						if (
-							location.npmpro_enabled !== false &&
-							(location.npmpro_auth_request === provider ||
-								(provider === "authentik" &&
-									location.npmpro_auth_request === "authentik-send-basic-auth")) &&
-							location.npmpro_auth_request_upstream
-						) {
-							effectiveUpstream = location.npmpro_auth_request_upstream;
-							break;
-						}
-					}
-				}
-
-				host[`auth_request_${provider}_upstream_resolved`] = effectiveUpstream;
-			}
 		}
 
 		const config_text = await renderEngine.parseAndRender(
@@ -337,7 +309,8 @@ const internalNginx = {
 			host,
 		);
 
-		return process.env.DISABLE_NGINX_BEAUTIFIER === "false" ? internalNginx.beautify(config_text) : config_text;
+		// the beautifier switch of the render's env (advanced.config_beautifier, also inside a runtime save)
+		return beautifierOn(host.env) ? internalNginx.beautify(config_text) : config_text;
 	},
 
 	/**

@@ -104,4 +104,29 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 const defaultRuntimeConfig = createRuntimeConfig();
 const { effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig, prime } = defaultRuntimeConfig;
 
-export { createRuntimeConfig, effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig, prime };
+/**
+ * Whether nginx configs are beautified (advanced.config_beautifier) in the env a config is rendered with
+ *
+ * @param   {Object}  [env]  default effectiveEnv()
+ * @returns {boolean}
+ */
+const beautifierOn = (env = effectiveEnv()) => env.DISABLE_NGINX_BEAUTIFIER === "false";
+
+/**
+ * Whether profile pictures are fetched from Gravatar (advanced.gravatar), read per call
+ *
+ * @param   {Object}  [env]  default effectiveEnv()
+ * @returns {boolean}
+ */
+const gravatarOn = (env = effectiveEnv()) => env.DISABLE_GRAVATAR !== "true";
+
+export {
+	beautifierOn,
+	createRuntimeConfig,
+	effectiveEnv,
+	getRuntimeConfig,
+	gravatarOn,
+	invalidate,
+	loadRuntimeConfig,
+	prime,
+};

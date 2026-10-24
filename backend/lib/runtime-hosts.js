@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { stapledHost } from "./default-cert.js";
+import { forwardAuthHost } from "./forward-auth.js";
 
 /**
  * The host config re-render of the runtime apply
@@ -16,7 +17,7 @@ const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = e
 	 * without a config file (disabled, or kept as .err after nginx rejected it) is left alone, so a broken host
 	 * cannot block the save.
 	 *
-	 * @param   {Function}  match  (host) => boolean
+	 * @param   {Function}  match  (host, hostType) => boolean
 	 * @param   {Object}    env    the env the templates read
 	 * @returns {Promise<Array<{path: string, content: string, nginx: true}>>}
 	 */
@@ -24,7 +25,7 @@ const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = e
 		const files = [];
 		for (const [model, hostType, graph] of hostTypes) {
 			for (const host of await model.query().where("enabled", 1).withGraphFetched(graph)) {
-				if (!match(host)) continue;
+				if (!match(host, hostType)) continue;
 				const file = getConfigName(hostType, host.id);
 				if (!exists(file)) continue;
 				// the apply fetched the OCSP responses already
@@ -49,6 +50,10 @@ const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = e
 	const renderRuntimeHosts = (group, { changed, startup, env }) => {
 		if (startup) return Promise.resolve([]);
 		if (group === "certificates") return renderMatchingHosts((host) => stapledHost(host, changed), env);
+		// proxy hosts using a provider whose default changed (and no own upstream for it), or Anubis for its images
+		if (group === "forward-auth") {
+			return renderMatchingHosts((host, type) => type === "proxy_host" && forwardAuthHost(host, changed), env);
+		}
 		return Promise.resolve([]);
 	};
 

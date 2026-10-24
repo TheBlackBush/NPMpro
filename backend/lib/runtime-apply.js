@@ -15,6 +15,7 @@ const PATHS = {
 	crontabDir: "/tmp/crontabs",
 	defaultCertConf: DEFAULT_CERT_CONF,
 	tlsDir: TLS_DIR,
+	ipRangesConf: "/usr/local/nginx/conf/conf.d/ip_ranges.conf",
 };
 
 const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
@@ -178,6 +179,8 @@ const changedKeys = (next, prev) =>
  * @param   {Function}  [deps.fetchDirectory] (server) => { directory, profiles }
  * @param   {Function}  [deps.listCertificates] () => [{ id }], the certificates that exist (default certificate)
  * @param   {Object}    [deps.ocsp]           { fetch(kind) } fetches the OCSP responses of "acme" or "custom" certificates
+ * @param   {Object}    [deps.ipRanges]       lib/ip-ranges instance: { render(env, ranges), ranges(), fetchCloudflare(),
+ *                                            start(), stop() }; without it the network settings are only stored
  */
 const createRuntimeApplier = ({
 	fs = nodeFs,
@@ -192,6 +195,7 @@ const createRuntimeApplier = ({
 	fetchDirectory = fetchAcmeDirectory,
 	listCertificates = async () => [],
 	ocsp = { fetch: async () => {} },
+	ipRanges = null,
 } = {}) => {
 	const logged = new Set();
 	const logOnce = (id, message) => {
@@ -293,7 +297,44 @@ const createRuntimeApplier = ({
 		return renderDefaultCertConf(files, paths.tlsDir);
 	};
 
+	/**
+	 * The Cloudflare ranges for ip_ranges.conf: fetched when Cloudflare is turned on by a save (a failure refuses the
+	 * save) or none are known yet (a failure is logged, the timer tries again), else the last fetched ones
+	 */
+	const cloudflareRanges = async ({ next, changed, startup }) => {
+		if (!next.trust_cloudflare) return [];
+		const turnedOn = !startup && changed.includes("trust_cloudflare");
+		const known = ipRanges.ranges();
+		if (!turnedOn && known.length > 0) return known;
+		try {
+			return await ipRanges.fetchCloudflare();
+		} catch (err) {
+			log.warn(`Could not fetch the Cloudflare IP ranges: ${err.message}`);
+			if (turnedOn) {
+				throw new errs.ValidationError(
+					"trust_cloudflare: Could not fetch the Cloudflare IP ranges",
+					undefined,
+					{
+						cause: err,
+					},
+				);
+			}
+			return known;
+		}
+	};
+
 	const planners = {
+		network: async (ctx) => {
+			if (!ipRanges) return {};
+			const { next, changed } = ctx;
+			const ranges = await cloudflareRanges(ctx);
+			const content = await ipRanges.render(effectiveEnv({ network: next }), ranges);
+			const plan = { files: [{ path: paths.ipRangesConf, content, nginx: true }], after: [] };
+			if (changed.includes("trust_cloudflare")) {
+				plan.after.push(() => (next.trust_cloudflare ? ipRanges.start() : ipRanges.stop()));
+			}
+			return plan;
+		},
 		certificates: async ({ next, prev, changed, startup }) => {
 			const plan = { files: [], after: [] };
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {

@@ -38,6 +38,8 @@ async function appStart() {
 			// an mTLS CA certificate cannot serve as the default certificate
 			listCertificates: () => certificateModel.query().select("id").whereNot("provider", "mtls"),
 			ocsp: { fetch: internalNginx.fetchOcsp },
+			// ip_ranges.conf and the Cloudflare refresh timer (network settings, also at startup)
+			ipRanges: internalIpRanges,
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
 		// a failed startup apply keeps the files from start.sh, the backend still starts
@@ -51,14 +53,6 @@ async function appStart() {
 		await setup();
 		await getCompiledSchema();
 
-		await internalIpRanges.generateConfig([]);
-		if (process.env.TRUST_CLOUDFLARE !== "true") {
-			logger.info("Cloudflares IPs are NOT trusted");
-		} else {
-			logger.info("Cloudflares IPs are trusted");
-			internalIpRanges.initTimer();
-			await internalIpRanges.fetch();
-		}
 		internalCertificate.initTimer();
 
 		setMonitoringHooks({

@@ -6,9 +6,14 @@ import { it } from "node:test";
 import { createRuntimeUpdater } from "../internal/runtime-update.js";
 import { renderCertbotIni } from "../lib/certbot-ini.js";
 import { renderDefaultCertConf } from "../lib/default-cert.js";
+import { ownUpstream, proxyHostsForProvider } from "../lib/forward-auth.js";
+import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
+import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
-import { createRuntimeConfig } from "../lib/runtime-config.js";
+import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
+import { createHostRenderer } from "../lib/runtime-hosts.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
+import utils from "../lib/utils.js";
 
 const LE = "https://acme-v02.api.letsencrypt.org/directory";
 const BOOT_ENV = { ACME_SERVER: LE };
@@ -649,4 +654,380 @@ it("startup with a stored default certificate rewrites the include and tests ngi
 	});
 	assert.deepEqual(Object.keys(await failing.applyAll()), ["certificates"]);
 	assert.equal(await readFile(paths.defaultCertConf, "utf8"), before);
+});
+
+// network: trusted IPs and Cloudflare
+
+const CF_V4 = "173.245.48.0/20\n103.21.244.0/22\nnot a range\n";
+const CF_V6 = "2400:cb00::/32\n";
+const CF_LINES = ["  set_real_ip_from 173.245.48.0/20;", "  set_real_ip_from 103.21.244.0/22;"];
+const quietConfig = (stored = {}, env = {}) =>
+	createRuntimeConfig({ env, readStored: async (group) => stored[group] ?? {}, log: quietLog() });
+const netValues = (overrides = {}) => ({ ...mergeRuntimeConfig("network", {}, {}).values, ...overrides });
+
+const fakeClock = () => {
+	const timers = new Map();
+	let next = 1;
+	return {
+		timers,
+		setInterval: (fn, ms) => {
+			timers.set(next, { fn, ms });
+			return next++;
+		},
+		clearInterval: (id) => timers.delete(id),
+	};
+};
+
+const networkSetup = async ({ fetchError, nginx, stored = {} } = {}) => {
+	const { dir, paths } = await setup();
+	paths.ipRangesConf = path.join(dir, "ip_ranges.conf");
+	await writeFile(paths.ipRangesConf, "old ranges\n");
+	const config = quietConfig(stored);
+	await config.loadRuntimeConfig();
+	const clock = fakeClock();
+	const fetches = [];
+	const cfNginx = nginxFake();
+	const ipRanges = createIpRanges({
+		nginx: cfNginx,
+		fetchText: (url) => {
+			fetches.push(url);
+			if (fetchError) return Promise.reject(new Error(fetchError));
+			return Promise.resolve(url.endsWith("v4") ? CF_V4 : CF_V6);
+		},
+		effectiveEnv: config.effectiveEnv,
+		log: quietLog(),
+		path: paths.ipRangesConf,
+		clock,
+	});
+	const a = applier(paths, { ipRanges, effectiveEnv: config.effectiveEnv, ...(nginx ? { nginx } : {}) });
+	return { ...a, paths, config, clock, fetches, ipRanges, cfNginx };
+};
+
+const lines = async (file) => (await readFile(file, "utf8")).split("\n").filter(Boolean);
+
+it("renders the trusted IPs (IPv4, IPv6, CIDR) into ip_ranges.conf, then tests and reloads", async () => {
+	const n = await networkSetup();
+	const trusted = ["10.0.0.1", "fd00::1", "192.168.0.0/16", "2001:db8::/32"];
+	const result = await n.applyGroup("network", netValues({ trusted_ips: trusted }), netValues());
+	assert.deepEqual(result, { changed: ["trusted_ips"], reloaded: true });
+	assert.deepEqual(
+		await lines(n.paths.ipRangesConf),
+		trusted.map((ip) => `  set_real_ip_from ${ip};`),
+	);
+	assert.deepEqual(n.nginx.calls, ["test", "reload"]);
+	assert.deepEqual(n.fetches, []);
+	assert.equal(n.ipRanges.running(), false);
+});
+
+it("Cloudflare on fetches the ranges and starts the timer, off stops it and removes the ranges", async () => {
+	const n = await networkSetup();
+	const on = netValues({ trusted_ips: ["10.0.0.1"], trust_cloudflare: true });
+	await n.applyGroup("network", on, netValues({ trusted_ips: ["10.0.0.1"] }));
+	assert.equal(n.fetches.length, 2);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), [
+		"  set_real_ip_from 10.0.0.1;",
+		...CF_LINES,
+		"  set_real_ip_from 2400:cb00::/32;",
+	]);
+	assert.equal(n.ipRanges.running(), true);
+	assert.deepEqual(
+		[...n.clock.timers.values()].map(({ ms }) => ms),
+		[3_600_000],
+	);
+
+	// a trusted IP change keeps the fetched ranges without fetching again
+	const more = { ...on, trusted_ips: ["10.0.0.1", "10.0.0.2"] };
+	await n.applyGroup("network", more, on);
+	assert.equal(n.fetches.length, 2);
+	assert.ok((await lines(n.paths.ipRangesConf)).includes(CF_LINES[0]));
+
+	await n.applyGroup("network", { ...more, trust_cloudflare: false }, more);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), [
+		"  set_real_ip_from 10.0.0.1;",
+		"  set_real_ip_from 10.0.0.2;",
+	]);
+	assert.equal(n.ipRanges.running(), false);
+	assert.equal(n.clock.timers.size, 0);
+	assert.deepEqual(n.nginx.calls, ["test", "reload", "test", "reload", "test", "reload"]);
+});
+
+it("Cloudflare on refuses the save when the ranges cannot be fetched, nothing written", async () => {
+	const n = await networkSetup({ fetchError: "offline" });
+	await assert.rejects(n.applyGroup("network", netValues({ trust_cloudflare: true }), netValues()), {
+		name: "ValidationError",
+		message: "trust_cloudflare: Could not fetch the Cloudflare IP ranges",
+	});
+	assert.equal(await readFile(n.paths.ipRangesConf, "utf8"), "old ranges\n");
+	assert.deepEqual(n.nginx.calls, []);
+	assert.equal(n.ipRanges.running(), false);
+});
+
+it("a failing nginx -t restores ip_ranges.conf and does not start the timer", async () => {
+	const n = await networkSetup({ nginx: nginxFake({ testError: "nginx: [emerg] invalid parameter" }) });
+	await assert.rejects(
+		n.applyGroup("network", netValues({ trusted_ips: ["10.0.0.1"], trust_cloudflare: true }), netValues()),
+		{ name: "ValidationError", message: "nginx: [emerg] invalid parameter" },
+	);
+	assert.equal(await readFile(n.paths.ipRangesConf, "utf8"), "old ranges\n");
+	assert.equal(n.ipRanges.running(), false);
+});
+
+it("startup renders ip_ranges.conf with the stored values, fetches Cloudflare and starts the timer, no reload", async () => {
+	const stored = { network: { trusted_ips: ["fd00::/8"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored });
+	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), [
+		"  set_real_ip_from fd00::/8;",
+		...CF_LINES,
+		"  set_real_ip_from 2400:cb00::/32;",
+	]);
+	assert.deepEqual(n.nginx.calls, ["test"]);
+	assert.equal(n.ipRanges.running(), true);
+});
+
+it("startup with Cloudflare unreachable still writes the trusted IPs and starts the timer", async () => {
+	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored, fetchError: "offline" });
+	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), ["  set_real_ip_from 10.0.0.1;"]);
+	assert.equal(n.ipRanges.running(), true);
+});
+
+it("the refresh timer writes new Cloudflare ranges with the saved trusted IPs, and stops writing once off", async () => {
+	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored });
+	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
+	await writeFile(n.paths.ipRangesConf, "stale\n");
+	const [{ fn }] = [...n.clock.timers.values()];
+	await fn();
+	assert.deepEqual(await lines(n.paths.ipRangesConf), [
+		"  set_real_ip_from 10.0.0.1;",
+		...CF_LINES,
+		"  set_real_ip_from 2400:cb00::/32;",
+	]);
+	assert.deepEqual(n.cfNginx.calls, ["test", "reload"]);
+
+	// turned off (saved): a tick that was already running does not write
+	n.config.prime("network", { values: { trusted_ips: ["10.0.0.1"], trust_cloudflare: false }, locked: [] });
+	n.ipRanges.stop();
+	await writeFile(n.paths.ipRangesConf, "after off\n");
+	await n.ipRanges.refresh();
+	assert.equal(await readFile(n.paths.ipRangesConf, "utf8"), "after off\n");
+});
+
+it("the refresh writes inside the runtime settings queue, an empty Cloudflare list writes nothing", async () => {
+	const dir = await mkdtemp(path.join(tmpdir(), "ip-ranges-"));
+	const file = path.join(dir, "ip_ranges.conf");
+	const order = [];
+	let body = { v4: CF_V4, v6: CF_V6 };
+	const nginx = nginxFake();
+	const ipRanges = createIpRanges({
+		nginx,
+		fetchText: (url) => Promise.resolve(url.endsWith("v4") ? body.v4 : body.v6),
+		exclusive: async (fn) => {
+			order.push("queue start");
+			await fn();
+			order.push("queue end");
+		},
+		effectiveEnv: () => ({ TRUST_CLOUDFLARE: "true", TRUST_IP: "10.0.0.1" }),
+		log: quietLog(),
+		path: file,
+		clock: fakeClock(),
+	});
+	ipRanges.start();
+	await ipRanges.refresh();
+	assert.deepEqual(order, ["queue start", "queue end"]);
+	assert.deepEqual(nginx.calls, ["test", "reload"]);
+	assert.equal((await lines(file)).length, 4);
+
+	body = { v4: "", v6: "" };
+	await writeFile(file, "kept\n");
+	await ipRanges.refresh();
+	assert.equal(await readFile(file, "utf8"), "kept\n");
+	assert.deepEqual(order, ["queue start", "queue end"]);
+	assert.deepEqual(parseCloudflareRanges(CF_V4, CF_V6), ["173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32"]);
+});
+
+// forward authentication
+
+const proxyHost = (id, auth = {}, locations = []) => ({ id, enabled: 1, ...auth, locations });
+
+it("proxyHostsForProvider: hosts using the provider (host or enabled location) without an own upstream", () => {
+	const hosts = [
+		proxyHost(1, { npmpro_auth_request: "anubis" }),
+		proxyHost(2, { npmpro_auth_request: "anubis", npmpro_auth_request_upstream: "http://own:8923" }),
+		proxyHost(3, {}, [{ npmpro_auth_request: "anubis" }]),
+		proxyHost(4, {}, [{ npmpro_auth_request: "anubis", npmpro_enabled: false }]),
+		proxyHost(5, {}, [{ npmpro_auth_request: "anubis", npmpro_auth_request_upstream: "http://loc:1" }]),
+		proxyHost(6, { npmpro_auth_request: "tinyauth" }),
+		proxyHost(7, { npmpro_auth_request: "authentik-send-basic-auth" }),
+		// the host's upstream is for tinyauth, its location uses anubis without one
+		proxyHost(8, { npmpro_auth_request: "tinyauth", npmpro_auth_request_upstream: "http://t:1" }, [
+			{ npmpro_auth_request: "anubis" },
+		]),
+	];
+	assert.deepEqual(
+		proxyHostsForProvider(hosts, "anubis").map((host) => host.id),
+		[1, 3, 8],
+	);
+	assert.deepEqual(
+		proxyHostsForProvider(hosts, "authentik").map((host) => host.id),
+		[7],
+	);
+	assert.equal(ownUpstream(hosts[4], "anubis"), "http://loc:1");
+});
+
+const forwardAuthRenderer = (rows, files) => {
+	const renders = [];
+	const modelOf = (list) => ({
+		query: () => ({ where: (c, v) => ({ withGraphFetched: async () => list.filter((row) => row[c] === v) }) }),
+	});
+	const instance = createHostRenderer({
+		hostTypes: [
+			[modelOf(rows), "proxy_host", "locations"],
+			[modelOf([{ id: 1, enabled: 1, npmpro_auth_request: "anubis" }]), "redirection_host", "certificate"],
+		],
+		getConfigName: (type, id) => files[`${type}/${id}`] ?? `/missing/${type}/${id}.conf`,
+		renderConfig: (type, host, options) => {
+			renders.push({ type, id: host.id, env: options.env });
+			return Promise.resolve(`rendered ${type} ${host.id} ${options.env.AUTH_REQUEST_ANUBIS_UPSTREAM}\n`);
+		},
+		exists: (file) => Object.values(files).includes(file),
+	});
+	return { ...instance, renders };
+};
+
+it("a forward-auth default re-renders only the proxy hosts that use it without an own upstream", async () => {
+	const rows = [
+		proxyHost(1, { npmpro_auth_request: "anubis" }),
+		proxyHost(2, { npmpro_auth_request: "anubis", npmpro_auth_request_upstream: "http://own:8923" }),
+		proxyHost(3, { npmpro_auth_request: "tinyauth" }),
+		proxyHost(4, {}, [{ npmpro_auth_request: "anubis" }]),
+	];
+	const files = Object.fromEntries(rows.map((row) => [`proxy_host/${row.id}`, `/c/${row.id}.conf`]));
+	files["redirection_host/1"] = "/c/r1.conf";
+	const r = forwardAuthRenderer(rows, files);
+	const env = { AUTH_REQUEST_ANUBIS_UPSTREAM: "http://anubis:8923" };
+	const out = await r.renderRuntimeHosts("forward-auth", { changed: ["anubis_upstream"], startup: false, env });
+	assert.deepEqual(
+		out.map((file) => file.path),
+		["/c/1.conf", "/c/4.conf"],
+	);
+	assert.equal(out[0].content, "rendered proxy_host 1 http://anubis:8923\n");
+	// the custom images switch follows every host using Anubis
+	const images = await r.renderRuntimeHosts("forward-auth", { changed: ["anubis_custom_images"], env });
+	assert.deepEqual(
+		images.map((file) => file.path),
+		["/c/1.conf", "/c/2.conf", "/c/4.conf"],
+	);
+	assert.deepEqual(await r.renderRuntimeHosts("forward-auth", { changed: ["anubis_upstream"], startup: true }), []);
+});
+
+it("the proxy host template uses the host's own upstream over the forward-auth default", async () => {
+	const template = await readFile(path.join(import.meta.dirname, "../templates/proxy_host.conf"), "utf8");
+	const env = { AUTH_REQUEST_ANUBIS_UPSTREAM: "http://default-anubis:8923" };
+	const render = (host) =>
+		utils.getRenderEngine().parseAndRender(template, {
+			id: 7,
+			domain_names: ["a.example"],
+			server_names: ["a.example"],
+			forward_scheme: "http",
+			forward_host: "backend",
+			forward_port: 80,
+			...host,
+			auth_request_anubis_upstream_resolved: ownUpstream(host, "anubis"),
+			env,
+		});
+	const own = await render({ npmpro_auth_request: "anubis", npmpro_auth_request_upstream: "http://own:8923" });
+	assert.ok(own.includes("server own:8923 resolve;"));
+	assert.equal(own.includes("default-anubis"), false);
+	const byDefault = await render({ npmpro_auth_request: "anubis" });
+	assert.ok(byDefault.includes("server default-anubis:8923 resolve;"));
+});
+
+it("a forward-auth save that fails nginx -t restores the host configs and stores nothing", async () => {
+	const { dir, paths } = await setup();
+	const conf = path.join(dir, "1.conf");
+	await writeFile(conf, "old host\n");
+	const rows = [proxyHost(1, { npmpro_auth_request: "anubis" })];
+	const r = forwardAuthRenderer(rows, { "proxy_host/1": conf });
+	const config = quietConfig();
+	await config.loadRuntimeConfig();
+	const a = applier(paths, {
+		nginx: nginxFake({ testError: "nginx: [emerg] host not found in upstream" }),
+		renderHosts: r.renderRuntimeHosts,
+		effectiveEnv: config.effectiveEnv,
+	});
+	const saved = [];
+	const update = createRuntimeUpdater({
+		readStored: async () => ({}),
+		saveStored: async (_group, meta) => saved.push(meta),
+		getApply: () => a.applyGroup,
+		env: {},
+	});
+	await assert.rejects(update("forward-auth", { anubis_upstream: "http://bad:1" }), {
+		name: "ValidationError",
+		message: "nginx: [emerg] host not found in upstream",
+	});
+	assert.deepEqual(saved, []);
+	assert.equal(await readFile(conf, "utf8"), "old host\n");
+	// rendered with the values being saved
+	assert.equal(r.renders[0].env.AUTH_REQUEST_ANUBIS_UPSTREAM, "http://bad:1");
+});
+
+// advanced: beautifier and Gravatar
+
+it("advanced settings apply without files or a reload", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = mergeRuntimeConfig("advanced", {}, {}).values;
+	const result = await a.applyGroup("advanced", { ...prev, config_beautifier: false, gravatar: false }, prev);
+	assert.deepEqual(result, { changed: ["config_beautifier", "gravatar"], reloaded: false });
+	assert.deepEqual(a.nginx.calls, []);
+});
+
+it("beautifier off skips the beautifier on the next render, also with the values of a save", async () => {
+	const boot = { DISABLE_NGINX_BEAUTIFIER: "false", NPMPRO_USER_ENV: "" };
+	const config = quietConfig({}, boot);
+	await config.loadRuntimeConfig();
+	assert.equal(beautifierOn(config.effectiveEnv()), true);
+	config.prime("advanced", { values: { config_beautifier: false, gravatar: true }, locked: [] });
+	assert.equal(beautifierOn(config.effectiveEnv()), false);
+	// a forward-auth save renders with effectiveEnv({ "forward-auth": next }): the saved beautifier value applies
+	assert.equal(beautifierOn(config.effectiveEnv({ "forward-auth": { anubis_upstream: "" } })), false);
+	assert.equal(beautifierOn(config.effectiveEnv({ advanced: { config_beautifier: true } })), true);
+
+	const source = await readFile(path.join(import.meta.dirname, "../internal/nginx.js"), "utf8");
+	assert.ok(source.includes("beautifierOn(host.env)"));
+	assert.equal(source.includes("process.env.DISABLE_NGINX_BEAUTIFIER"), false);
+});
+
+it("Gravatar off gives the default avatar at the next profile update without contacting Gravatar", async () => {
+	const dir = await mkdtemp(path.join(tmpdir(), "gravatar-"));
+	const config = quietConfig({}, { DISABLE_GRAVATAR: "false", NPMPRO_USER_ENV: "" });
+	await config.loadRuntimeConfig();
+	const requests = [];
+	const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+	const deps = {
+		enabled: () => gravatarOn(config.effectiveEnv()),
+		fetch: (url) => {
+			requests.push(url);
+			return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(png) });
+		},
+		fs: nodeFs,
+		dir,
+		log: quietLog(),
+	};
+	const on = await fetchGravatar(1, "a@example.com", "Ann Bee", deps);
+	assert.ok(on.startsWith("/images/gravatar/1.png?v="));
+	assert.deepEqual(await readdir(dir), ["1.png"]);
+
+	config.prime("advanced", { values: { config_beautifier: true, gravatar: false }, locked: [] });
+	assert.equal(await fetchGravatar(1, "a@example.com", "Ann Bee", deps), DEFAULT_AVATAR);
+	assert.equal(requests.length, 1);
+	// the fetched picture is removed
+	assert.deepEqual(await readdir(dir), []);
+
+	const source = await readFile(path.join(import.meta.dirname, "../internal/user.js"), "utf8");
+	assert.equal(source.includes("process.env.DISABLE_GRAVATAR"), false);
 });
