@@ -1,16 +1,16 @@
-import errs from "../lib/error.js";
 import {
 	getGeoipConfig,
 	getMonitoringConfig,
 	readStoredGeoip,
 	readStoredMonitoring,
 } from "../lib/monitoring-config.js";
-import { mergeGeoipConfig, mergeMonitoringConfig, sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
+import { mergeGeoipConfig, sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { deleteIps } from "../lib/traffic/store.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
+import { createMonitoringUpdater, pickEditable } from "./monitoring-update.js";
 
 const noop = async () => {};
 
@@ -25,7 +25,8 @@ const hooks = {
 /**
  * Replaces the given hooks, unknown names are ignored
  *
- * onTrafficEnabledChange(enabled) runs before the new value is saved: when it throws, nothing is saved.
+ * onTrafficEnabledChange(enabled) runs before the new value is saved: when it throws, nothing is saved;
+ * when the save fails afterwards, it runs again with the previous value.
  * onShowIpsOff() runs after the saved IPs were deleted. onGeoipCredentialsChange() runs after saving.
  * runGeoipUpdate() returns { ok, updated, error }.
  *
@@ -53,12 +54,6 @@ const saveStored = async (id, name, meta) => {
 	}
 };
 
-/**
- * Copies the editable keys of a validated body that are not locked
- */
-const pickEditable = (body, locked, keys) =>
-	Object.fromEntries(keys.filter((key) => key in body && !locked.includes(key)).map((key) => [key, body[key]]));
-
 const geoipView = (cfg) => {
 	const { license_key: key, ...values } = cfg.values;
 	return {
@@ -71,6 +66,13 @@ const geoipView = (cfg) => {
 		last_error: values.last_error ?? null,
 	};
 };
+
+const updateMonitoringStored = createMonitoringUpdater({
+	readStored: readStoredMonitoring,
+	saveStored: (meta) => saveStored("monitoring", "Monitoring", meta),
+	deleteIps,
+	hooks,
+});
 
 const sameList = (a, b) => a.length === b.length && a.every((item, index) => item === b[index]);
 
@@ -92,36 +94,7 @@ const internalMonitoringSetting = {
 	 */
 	updateMonitoring: async (access, body) => {
 		access.canAdmin();
-		const stored = await readStoredMonitoring();
-		const { values: before, locked } = mergeMonitoringConfig(stored, process.env);
-		const next = {
-			...stored,
-			...pickEditable(body ?? {}, locked, ["traffic_enabled", "retention_days", "show_ips"]),
-		};
-		const after = mergeMonitoringConfig(next, process.env).values;
-
-		if (after.traffic_enabled !== before.traffic_enabled) {
-			try {
-				await hooks.onTrafficEnabledChange(after.traffic_enabled);
-			} catch (err) {
-				throw new errs.ValidationError(`Could not switch the access log: ${err.message}`, undefined, {
-					cause: err,
-				});
-			}
-		}
-		if (before.show_ips && !after.show_ips) {
-			try {
-				await deleteIps();
-				await hooks.onShowIpsOff();
-			} catch (err) {
-				throw new errs.ValidationError(
-					`Could not delete the stored IP addresses, the setting was not changed: ${err.message}`,
-					undefined,
-					{ cause: err },
-				);
-			}
-		}
-		await saveStored("monitoring", "Monitoring", next);
+		const next = await updateMonitoringStored(body);
 
 		await internalAuditLog.add(access, {
 			action: "updated",

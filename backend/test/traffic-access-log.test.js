@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -51,20 +51,58 @@ it("restores the previous include on a failed nginx test", async () => {
 	assert.equal(reloaded, false);
 });
 
-it("writes the file when it does not exist yet and removes it again on a failed test", async () => {
+it("creates a missing include, and writes the opposite directive on a failure without a previous file", async () => {
 	const file = await tmpConf();
 	await applyAccessLog(false, { file, test: ok, reload: ok });
 	assert.equal(await readFile(file, "utf8"), "access_log off;\n");
 
 	const other = await tmpConf();
+	let reloaded = false;
 	await assert.rejects(
 		applyAccessLog(true, {
 			file: other,
 			test: fail("bad"),
+			reload: () => {
+				reloaded = true;
+				return Promise.resolve();
+			},
+		}),
+		{ name: "ValidationError", message: "bad" },
+	);
+	assert.equal(reloaded, false);
+	assert.equal(await readFile(other, "utf8"), "access_log off;\n");
+});
+
+it("throws a failed write as a ValidationError", async () => {
+	const file = path.join(await mkdtemp(path.join(tmpdir(), "alc-")), "missing", "access-log.conf");
+	await assert.rejects(applyAccessLog(true, { file, test: ok, reload: ok }), (err) => {
+		assert.equal(err.name, "ValidationError");
+		assert.equal(err.cause.code, "ENOENT");
+		return true;
+	});
+});
+
+it("keeps the nginx error when the restore fails too", async () => {
+	const dir = await mkdtemp(path.join(tmpdir(), "alc-"));
+	const file = path.join(dir, "access-log.conf");
+	await writeFile(file, "access_log off;\n");
+	await assert.rejects(
+		applyAccessLog(true, {
+			file,
+			test: async () => {
+				await rm(dir, { recursive: true });
+				throw new Error("nginx: [emerg] test");
+			},
 			reload: ok,
 		}),
+		{ name: "ValidationError", message: "nginx: [emerg] test" },
 	);
-	await assert.rejects(readFile(other, "utf8"), { code: "ENOENT" });
+});
+
+it("leaves no temp file behind", async () => {
+	const file = await tmpConf();
+	await applyAccessLog(true, { file, test: ok, reload: ok });
+	await assert.rejects(readFile(`${file}.tmp`, "utf8"), { code: "ENOENT" });
 });
 
 it("skips the reload when asked to only write the file", async () => {
