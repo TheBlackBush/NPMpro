@@ -1,11 +1,13 @@
 import { updateGeoip } from "./update.js";
 
 let inFlight = null;
+let queued = null;
 
 /**
  * Updates the databases with the configured credentials, records the outcome and reloads the readers
  * when any file was replaced (`ok` means every requested edition succeeded, `updated` can be non-empty without it).
- * Concurrent calls share the run that is already in progress.
+ * A call while a run is in progress queues one follow-up run (shared by all such calls), so newly saved
+ * credentials are always used.
  *
  * @param   {Object}    options
  * @param   {Object}    options.geoip           createGeoip() instance
@@ -16,11 +18,21 @@ let inFlight = null;
  * @returns {Promise<{ok: boolean, updated: string[], error?: string}>}
  */
 const runConfiguredGeoipUpdate = (options) => {
-	if (inFlight) return inFlight;
-	inFlight = runOnce(options).finally(() => {
-		inFlight = null;
-	});
-	return inFlight;
+	if (!inFlight) {
+		inFlight = runOnce(options).finally(() => {
+			inFlight = null;
+		});
+		return inFlight;
+	}
+	if (!queued) {
+		queued = inFlight
+			.catch(() => {})
+			.then(() => {
+				queued = null;
+				return runConfiguredGeoipUpdate(options);
+			});
+	}
+	return queued;
 };
 
 const runOnce = async ({ geoip, dir, recordResult, getConfig, update = updateGeoip }) => {

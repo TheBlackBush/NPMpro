@@ -278,25 +278,33 @@ describe("runConfiguredGeoipUpdate", () => {
 		assert.deepEqual(events.slice(1), ["reload"]);
 	});
 
-	it("shares one run between concurrent callers and starts a new one afterwards", async () => {
+	it("queues one follow-up run for calls made while a run is in progress", async () => {
 		const { args, events } = make({ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] }, null);
 		let release;
 		const gate = new Promise((resolve) => {
 			release = resolve;
 		});
-		args.update = async () => {
-			events.push("fetch");
+		let config = { account_id: "1", license_key: "old", editions: ["GeoLite2-ASN"] };
+		args.getConfig = () => Promise.resolve({ values: config });
+		args.update = async (opts) => {
+			events.push(["fetch", opts.licenseKey]);
 			await gate;
 			return { ok: true, updated: [] };
 		};
 		const first = runConfiguredGeoipUpdate(args);
+		config = { ...config, license_key: "new" };
 		const second = runConfiguredGeoipUpdate(args);
+		const third = runConfiguredGeoipUpdate(args);
+		assert.equal(second, third);
 		release();
-		const [a, b] = await Promise.all([first, second]);
-		assert.equal(a, b);
-		assert.equal(events.filter((e) => e === "fetch").length, 1);
-		await runConfiguredGeoipUpdate(args);
-		assert.equal(events.filter((e) => e === "fetch").length, 2);
+		await Promise.all([first, second, third]);
+		assert.deepEqual(
+			events.filter((e) => e[0] === "fetch"),
+			[
+				["fetch", "old"],
+				["fetch", "new"],
+			],
+		);
 	});
 
 	it("records a failure without reloading", async () => {
