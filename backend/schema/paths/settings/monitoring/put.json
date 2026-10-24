@@ -38,6 +38,13 @@
 						"unique_visitors": {
 							"type": "boolean",
 							"description": "Count unique visitors with keyed IP hashes; turning it off deletes them"
+						},
+						"visitors_cap": {
+							"type": "integer",
+							"minimum": 1000,
+							"maximum": 10000000,
+							"description": "Distinct visitors counted per host and day; beyond it new visitors are not counted and the day is marked as capped",
+							"example": 100000
 						}
 					}
 				},
@@ -60,6 +67,7 @@
 								"retention_days": 30,
 								"show_ips": false,
 								"unique_visitors": false,
+								"visitors_cap": 100000,
 								"locked": []
 							}
 						}

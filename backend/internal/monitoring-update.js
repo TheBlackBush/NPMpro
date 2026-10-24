@@ -2,7 +2,7 @@ import errs from "../lib/error.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { global as logger } from "../logger.js";
 
-const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors"];
+const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
 
 /**
  * Copies the editable keys of a validated body that are not locked

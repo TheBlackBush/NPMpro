@@ -8,6 +8,7 @@ it("monitoring defaults and env locks", () => {
 		retention_days: 30,
 		show_ips: false,
 		unique_visitors: false,
+		visitors_cap: 100000,
 	});
 	const a = mergeMonitoringConfig({ traffic_enabled: false }, { LOGROTATE: "true" });
 	assert.equal(a.values.traffic_enabled, true);
@@ -63,4 +64,17 @@ it("geoip credentials from env lock and override", () => {
 	assert.equal(g.values.license_key, "envkey");
 	assert.deepEqual(g.locked, ["account_id", "license_key"]);
 	assert.equal(mergeGeoipConfig({}, { GEOIP_LICENSE_KEY: "" }).values.license_key, undefined);
+});
+
+it("visitors_cap env lock and range", () => {
+	const set = mergeMonitoringConfig({ visitors_cap: 5000 }, { TRAFFIC_VISITORS_CAP: "20000" });
+	assert.equal(set.values.visitors_cap, 20000);
+	assert.ok(set.locked.includes("visitors_cap"));
+	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_VISITORS_CAP: "10" }).values.visitors_cap, 1000);
+	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_VISITORS_CAP: "99999999" }).values.visitors_cap, 10000000);
+	const ignored = mergeMonitoringConfig({ visitors_cap: 5000 }, { TRAFFIC_VISITORS_CAP: "1e5" });
+	assert.equal(ignored.values.visitors_cap, 5000);
+	assert.deepEqual(ignored.locked, []);
+	assert.equal(mergeMonitoringConfig({ visitors_cap: 12 }, {}).values.visitors_cap, 1000, "stored value clamped");
+	assert.equal(mergeMonitoringConfig({ visitors_cap: "x" }, {}).values.visitors_cap, 100000);
 });

@@ -314,3 +314,15 @@ it("runs both off hooks before one save", async () => {
 	await update({ show_ips: false, unique_visitors: false });
 	assert.deepEqual(events, ["ips", "visitors", "save"]);
 });
+
+it("saves visitors_cap unless the env locks it", async () => {
+	const hooks = { onTrafficEnabledChange: ok, onShowIpsOff: ok, onUniqueVisitorsOff: ok, onUniqueVisitorsOn: ok };
+	const store = fakeStore({});
+	await createMonitoringUpdater({ ...store, deleteIps: ok, env: {}, hooks })({ visitors_cap: 50000 });
+	assert.deepEqual(store.get(), { visitors_cap: 50000 });
+	const locked = fakeStore({ visitors_cap: 2000 });
+	await createMonitoringUpdater({ ...locked, deleteIps: ok, env: { TRAFFIC_VISITORS_CAP: "3000" }, hooks })({
+		visitors_cap: 50000,
+	});
+	assert.deepEqual(locked.get(), { visitors_cap: 2000 });
+});

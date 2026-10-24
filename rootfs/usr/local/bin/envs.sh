@@ -573,6 +573,11 @@ if [ -n "$TRAFFIC_UNIQUE_VISITORS" ] && ! echo "$TRAFFIC_UNIQUE_VISITORS" | grep
     sleep inf
 fi
 
+if [ -n "$TRAFFIC_VISITORS_CAP" ] && { ! echo "$TRAFFIC_VISITORS_CAP" | grep -Eq "^[0-9]{4,8}$" || [ "$TRAFFIC_VISITORS_CAP" -lt 1000 ] || [ "$TRAFFIC_VISITORS_CAP" -gt 10000000 ]; }; then
+    echo "TRAFFIC_VISITORS_CAP needs to be a number between 1000 and 10000000."
+    sleep inf
+fi
+
 if [ -n "$TRAFFIC_RETENTION_DAYS" ] && { ! echo "$TRAFFIC_RETENTION_DAYS" | grep -Eq "^[0-9]{1,3}$" || [ "$TRAFFIC_RETENTION_DAYS" -lt 7 ] || [ "$TRAFFIC_RETENTION_DAYS" -gt 365 ]; }; then
     echo "TRAFFIC_RETENTION_DAYS needs to be a number between 7 and 365."
     sleep inf
