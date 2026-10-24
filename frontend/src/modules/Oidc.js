@@ -65,7 +65,16 @@ const contrastText = (hex) => {
 
 const DEFAULT_OIDC_COLOR = "#206bc4";
 
-const validOidcColor = (hex) => (/^#[0-9a-fA-F]{6}$/u.test(hex ?? "") ? hex : DEFAULT_OIDC_COLOR);
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/u;
+
+const isOidcColor = (hex) => HEX_COLOR.test(hex ?? "");
+
+const validOidcColor = (hex) => (isOidcColor(hex) ? hex : DEFAULT_OIDC_COLOR);
+
+/**
+ * Public url of the uploaded icon; the version busts the cache when the file changes
+ */
+const oidcIconUrl = (updatedOn) => `/api/oidc/icon?v=${encodeURIComponent(updatedOn ?? "")}`;
 
 /**
  * Hex colour darkened by amount (0 to 1)
@@ -105,15 +114,22 @@ const takeOidcError = () => {
 	return code;
 };
 
+const withoutFileIcon = (button) => {
+	if (button?.icon?.type !== "file") return button;
+	const { icon: _icon, ...rest } = button;
+	return rest;
+};
+
 /**
- * Only the editable keys, without locked ones and without an empty client secret
+ * Only the editable keys, without locked ones and without an empty client secret.
+ * An uploaded file icon is never sent (the API only accepts built-in icons in a save, files have their own endpoints).
  */
 const oidcSettingsPayload = (values) => {
 	const locked = new Set((values.locked ?? []).map(camel));
 	const payload = {};
 	for (const key of EDITABLE_KEYS) {
 		const skip = locked.has(key) || values[key] === undefined || (key === "clientSecret" && !values[key]);
-		if (!skip) payload[key] = values[key];
+		if (!skip) payload[key] = key === "button" ? withoutFileIcon(values.button) : values[key];
 	}
 	return payload;
 };
@@ -121,10 +137,12 @@ const oidcSettingsPayload = (values) => {
 export {
 	camel,
 	contrastText,
+	isOidcColor,
 	OIDC_BUILTIN_ICONS,
 	OIDC_COLOR_PRESETS,
 	OIDC_ICON_MAX_BYTES,
 	oidcErrorKey,
+	oidcIconUrl,
 	oidcSettingsPayload,
 	readOidcError,
 	shade,

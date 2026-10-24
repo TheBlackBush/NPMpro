@@ -3,9 +3,10 @@ import { Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
 import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
-import { T } from "src/locale";
-import { camel, oidcSettingsPayload } from "src/modules/Oidc";
+import { intl, T } from "src/locale";
+import { camel, isOidcColor, oidcSettingsPayload } from "src/modules/Oidc";
 import { showObjectSuccess } from "src/notifications";
+import { ButtonFields } from "./Authentication/ButtonFields";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 
@@ -38,6 +39,17 @@ function Heading() {
 		</h3>
 	);
 }
+
+const validate = (values) => {
+	const errors = {};
+	if (!isOidcColor(values.buttonColor)) {
+		errors.buttonColor = intl.formatMessage({ id: "settings.authentication.button.color.invalid" });
+	}
+	if (!values.buttonLabel.trim()) {
+		errors.buttonLabel = intl.formatMessage({ id: "settings.authentication.button.label.required" });
+	}
+	return errors;
+};
 
 export default function Authentication() {
 	const { data, isPending, error } = useOidcSettings();
@@ -74,7 +86,13 @@ export default function Authentication() {
 
 	const onSubmit = (values, { setSubmitting, setFieldValue }) => {
 		setErrorMsg(null);
-		save(oidcSettingsPayload({ ...data, ...values }), {
+		const { buttonLabel, buttonColor, buttonIcon, ...rest } = values;
+		const button = {
+			label: buttonLabel.trim(),
+			color: buttonColor,
+			icon: buttonIcon ? { type: "builtin", name: buttonIcon } : data.button?.icon,
+		};
+		save(oidcSettingsPayload({ ...data, ...rest, button }), {
 			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: () => {
 				setFieldValue("clientSecret", "");
@@ -99,7 +117,12 @@ export default function Authentication() {
 				requireVerifiedEmail: data.requireVerifiedEmail,
 				skipMfa: data.skipMfa,
 				disablePassword: data.disablePassword,
+				buttonLabel: data.button?.label ?? "",
+				buttonColor: data.button?.color ?? "",
+				// a built-in icon picked but not saved yet; null keeps the stored icon (uploads save on their own)
+				buttonIcon: null,
 			}}
+			validate={validate}
 			onSubmit={onSubmit}
 		>
 			<Form className="d-flex flex-column flex-fill">
@@ -132,7 +155,7 @@ export default function Authentication() {
 						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
 					) : null}
 					<ProviderFields data={data} isLocked={isLocked} />
-					{/* Login button section (Task 10) goes here */}
+					<ButtonFields data={data} />
 					<SignInRules data={data} isLocked={isLocked} />
 					{/* New users section (Task 11) goes here */}
 				</div>

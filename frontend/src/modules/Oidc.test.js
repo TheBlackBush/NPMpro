@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { contrastText, oidcErrorKey, oidcSettingsPayload, readOidcError, shade, validOidcColor } from "./Oidc.js";
+import {
+	contrastText,
+	isOidcColor,
+	oidcErrorKey,
+	oidcIconUrl,
+	oidcSettingsPayload,
+	readOidcError,
+	shade,
+	validOidcColor,
+} from "./Oidc.js";
 
 it("picks the text colour with the higher contrast", () => {
 	assert.equal(contrastText("#ffffff"), "#000000");
@@ -64,4 +73,22 @@ it("falls back to the default colour for invalid values", () => {
 	assert.equal(validOidcColor("#AbCdEf"), "#AbCdEf");
 	assert.equal(validOidcColor("red"), "#206bc4");
 	assert.equal(validOidcColor(undefined), "#206bc4");
+});
+
+it("never sends a file icon in a save but keeps label and colour", () => {
+	const file = { type: "file", ext: "png", updatedOn: "2026-10-24" };
+	const withFile = oidcSettingsPayload({ button: { label: "SSO", color: "#112233", icon: file } });
+	assert.deepEqual(withFile.button, { label: "SSO", color: "#112233" });
+	const builtin = { type: "builtin", name: "lock" };
+	assert.deepEqual(
+		oidcSettingsPayload({ button: { label: "SSO", color: "#112233", icon: builtin } }).button.icon,
+		builtin,
+	);
+});
+
+it("validates hex colours and builds the icon url with a version", () => {
+	assert.equal(isOidcColor("#a1B2c3"), true);
+	assert.equal(isOidcColor("#abc"), false);
+	assert.equal(isOidcColor("206bc4"), false);
+	assert.equal(oidcIconUrl("2026-10-24T10:00:00Z"), "/api/oidc/icon?v=2026-10-24T10%3A00%3A00Z");
 });
