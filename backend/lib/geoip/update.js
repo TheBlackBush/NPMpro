@@ -9,7 +9,7 @@ import { x as extractArchive } from "tar";
 const DOWNLOAD_URL = "https://download.maxmind.com/geoip/databases";
 const TIMEOUT_MS = 60000;
 const MAX_BYTES = 300 * 1024 * 1024;
-const WANTED_ENTRY = /\.(mmdb|txt)$/u;
+const WANTED_ENTRY = /\.(?:mmdb|txt)$/u;
 const TIMEOUT_NAMES = new Set(["TimeoutError", "AbortError"]);
 
 /** Failure with a fixed, safe message (no response bodies, no credentials) */
@@ -34,7 +34,10 @@ const findFile = async (dir, name) => {
  */
 const saveBody = async (response, file) => {
 	const declared = Number(response.headers.get("content-length"));
-	if (declared > MAX_BYTES) throw new UpdateError("The download is too large");
+	if (declared > MAX_BYTES) {
+		await response.body?.cancel();
+		throw new UpdateError("The download is too large");
+	}
 	let seen = 0;
 	const counter = new Transform({
 		transform(chunk, _encoding, callback) {
@@ -87,7 +90,8 @@ const updateEdition = async ({ edition, authorization, dir, fetch }) => {
 				file: archive,
 				cwd: extracted,
 				strict: true,
-				filter: (entryPath, entry) => entry.type === "Directory" || WANTED_ENTRY.test(entryPath),
+				filter: (entryPath, entry) =>
+					entry.type === "Directory" || (WANTED_ENTRY.test(entryPath) && entry.size <= MAX_BYTES),
 			});
 		} catch {
 			throw new UpdateError("The downloaded archive could not be read");

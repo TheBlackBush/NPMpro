@@ -235,11 +235,14 @@ describe("runConfiguredGeoipUpdate", () => {
 			args: {
 				geoip: { reload: async () => events.push("reload") },
 				dir: "/x",
-				recordResult: async (r) => events.push(["record", r.ok]),
+				recordResult: (r) => {
+					events.push(["record", r.ok]);
+					return Promise.resolve();
+				},
 				getConfig: async () => ({ values }),
-				update: async (opts) => {
+				update: (opts) => {
 					events.push(["update", opts.accountId, opts.licenseKey, opts.editions, opts.dir]);
-					return result;
+					return Promise.resolve(result);
 				},
 			},
 		};
