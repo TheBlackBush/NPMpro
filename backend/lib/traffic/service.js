@@ -519,7 +519,9 @@ const createTrafficService = ({
 		 * @returns {Promise<ReturnType<typeof createHostResolver>>}
 		 */
 		hostResolver: async () => {
-			if (hostsAt === null || now() - hostsAt >= HOSTS_MAX_AGE_MS) await refreshHosts();
+			// a reload in flight is awaited (also the first one, so a concurrent call does not get an empty resolver)
+			if (hostsInFlight) await hostsInFlight;
+			else if (hostsAt === null || now() - hostsAt >= HOSTS_MAX_AGE_MS) await refreshHosts();
 			return resolver ?? createHostResolver([]);
 		},
 

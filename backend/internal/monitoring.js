@@ -1,9 +1,41 @@
 import errs from "../lib/error.js";
+import validator from "../lib/validator/index.js";
+import { global as logger } from "../logger.js";
 
 const TRAFFIC_CACHE_MS = 30000;
 const TOP_HOSTS = 10;
 const DAY = 86400000;
 const RANGE_MS = { "1h": 3600000, "24h": DAY, "7d": 7 * DAY, "30d": 30 * DAY };
+
+const trafficQuerySchema = {
+	type: "object",
+	additionalProperties: false,
+	required: ["range", "host"],
+	properties: {
+		range: { type: "string", enum: ["1h", "24h", "7d", "30d"] },
+		host: { type: "string", maxLength: 255 },
+		host_id: { type: "integer", minimum: 1 },
+		host_type: { type: "string", enum: ["proxy", "redirection", "dead"] },
+	},
+	dependentRequired: { host_id: ["host_type"], host_type: ["host_id"] },
+};
+
+const present = (value) => typeof value === "string" && value !== "";
+
+/**
+ * Validates the query string of GET /api/monitoring/traffic; host_id is coerced to an integer and must come with
+ * host_type (ValidationError otherwise).
+ *
+ * @param   {Object}  query  req.query
+ * @returns {{range: string, host: string, host_id?: number, host_type?: string}}
+ */
+const parseTrafficQuery = (query) =>
+	validator(trafficQuerySchema, {
+		range: present(query.range) ? query.range : "24h",
+		host: typeof query.host === "string" ? query.host.trim().toLowerCase() : "",
+		...(present(query.host_id) ? { host_id: query.host_id.trim() } : {}),
+		...(present(query.host_type) ? { host_type: query.host_type } : {}),
+	});
 
 /**
  * First UTC day number of the visitor counts: the current day for 1h (visitors are stored per day), otherwise
@@ -16,7 +48,7 @@ const visitorStartDay = (range, time) => Math.floor((range === "1h" ? time : tim
  *
  * @param   {Array<{host: string, requests: number, bytes: number}>}  rows
  * @param   {Object}  resolver  createHostResolver() instance
- * @returns {Array<Object>}  entries with the stored keys they cover in `keys`
+ * @returns {Array<Object>}  entries with the stored keys to count visitors over in `keys`
  */
 const groupHosts = (rows, resolver) => {
 	const groups = new Map();
@@ -32,6 +64,12 @@ const groupHosts = (rows, resolver) => {
 		entry.bytes += row.bytes;
 		entry.keys.push(row.host);
 	}
+	// visitors of a real host count over all its names, also those without requests in the range
+	for (const entry of groups.values()) {
+		if (entry.host_id === null) continue;
+		const owned = resolver.keysFor(entry.host_type, entry.host_id) ?? [];
+		entry.keys = [...new Set([...owned, ...entry.keys])];
+	}
 	return [...groups.values()].sort((a, b) => b.requests - a.requests);
 };
 
@@ -46,9 +84,10 @@ const groupHosts = (rows, resolver) => {
  * @param   {Object}    deps.store      { queryTraffic, summary, countVisitors } (lib/traffic/store.js)
  * @param   {Function}  deps.getConfig  () => Promise<{ values: { traffic_enabled, show_ips, unique_visitors } }>
  * @param   {Function}  [deps.now]
+ * @param   {Object}    [deps.log]
  * @returns {Object}
  */
-const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Date.now }) => {
+const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Date.now, log = logger }) => {
 	// results per (range, filter, show_ips, unique_visitors) for 30 s: the page refreshes every minute per open tab,
 	// the counts change once a minute (flush)
 	const trafficCache = new Map();
@@ -100,9 +139,15 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 
 	const computeSummary = async (uniqueVisitors, time) => {
 		const today = await store.summary({ now: time });
-		const visitors = uniqueVisitors
-			? (await store.countVisitors({ startDay: Math.floor(time / DAY), hosts: null })).visitors
-			: null;
+		let visitors = null;
+		if (uniqueVisitors) {
+			try {
+				visitors = (await store.countVisitors({ startDay: Math.floor(time / DAY), hosts: null })).visitors;
+			} catch (err) {
+				// the other dashboard numbers stay available; retried when the cached summary expires
+				log.error(`Monitoring: could not count the visitors of today: ${err.message}`);
+			}
+		}
 		return { ...today, visitors_today: visitors };
 	};
 
@@ -124,11 +169,13 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			const uniqueVisitors = Boolean(values.unique_visitors);
 			const resolver = await traffic.hostResolver();
 			let keys = host;
-			if (hostId !== null && hostType !== null) {
+			const byHost = hostId !== null && hostType !== null;
+			if (byHost) {
 				keys = resolver.keysFor(hostType, hostId);
 				if (keys === null) throw new errs.ItemNotFoundError(hostId);
 			}
-			const key = JSON.stringify([range, host, hostType, hostId, keys, showIps, uniqueVisitors]);
+			// host is ignored when host_id and host_type select the host
+			const key = JSON.stringify([range, byHost ? null : host, hostType, hostId, keys, showIps, uniqueVisitors]);
 			const {
 				top_ips: topIps,
 				countries,
@@ -198,4 +245,4 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 	};
 };
 
-export { createMonitoring };
+export { createMonitoring, parseTrafficQuery };

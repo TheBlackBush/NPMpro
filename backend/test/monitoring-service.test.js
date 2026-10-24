@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import Ajv from "ajv/dist/2020.js";
 import knexFactory from "knex";
-import { createMonitoring } from "../internal/monitoring.js";
+import { createMonitoring, parseTrafficQuery } from "../internal/monitoring.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import errs from "../lib/error.js";
 import { createGeoipService } from "../lib/geoip/service.js";
@@ -1167,10 +1167,13 @@ describe("monitoring API", () => {
 		data = trafficData,
 		resolver = createHostResolver([{ id: 1, type: "proxy", domain_names: ["example.com"] }]),
 		visitorsError = null,
+		failVisitors = false,
+		traffic = null,
 	} = {}) => {
 		const queries = [];
 		const summaries = [];
 		const visitorQueries = [];
+		const errors = [];
 		const api = createMonitoring({
 			traffic: {
 				status: () => ({
@@ -1181,7 +1184,7 @@ describe("monitoring API", () => {
 					error: null,
 					visitors_error: visitorsError,
 				}),
-				hostResolver: () => Promise.resolve(resolver),
+				hostResolver: () => (traffic ? traffic.hostResolver() : Promise.resolve(resolver)),
 			},
 			crowdsec: {
 				result: () =>
@@ -1208,6 +1211,7 @@ describe("monitoring API", () => {
 				},
 				countVisitors: (args) => {
 					visitorQueries.push(args);
+					if (failVisitors) return Promise.reject(new Error("database is locked"));
 					const hosts = args.hosts ?? ["*"];
 					return Promise.resolve({ visitors: hosts.length * 10, capped: hosts.includes("capped.test") });
 				},
@@ -1224,8 +1228,9 @@ describe("monitoring API", () => {
 			},
 			getConfig: () => Promise.resolve({ values: { traffic_enabled: true, show_ips: false, ...values } }),
 			now,
+			log: { ...silent, error: (message) => errors.push(message) },
 		});
-		return { api, queries, summaries, visitorQueries };
+		return { api, queries, summaries, visitorQueries, errors };
 	};
 
 	const groupedData = {
@@ -1398,6 +1403,73 @@ describe("monitoring API", () => {
 		assert.ok(validSummary(out), JSON.stringify(validSummary.errors));
 		const off = await make({ values: { unique_visitors: true, traffic_enabled: false } }).api.getSummary(admin);
 		assert.equal(off.visitors_today, null);
+	});
+
+	it("concurrent first calls wait for the first host list load, so a valid host_id is found", async () => {
+		const t = setup({ config: { traffic_enabled: false } });
+		await t.service.start();
+		const [a, b] = await Promise.all([t.service.hostResolver(), t.service.hostResolver()]);
+		assert.deepEqual(a.keysFor("proxy", 1), ["example.com"]);
+		assert.deepEqual(b.keysFor("proxy", 1), ["example.com"]);
+		assert.equal(t.hostLoads(), 1);
+
+		const fresh = setup({ config: { traffic_enabled: false } });
+		await fresh.service.start();
+		const { api } = make({ traffic: fresh.service });
+		const outs = await Promise.all([
+			api.getTraffic(admin, { range: "24h", host: "", host_id: 1, host_type: "proxy" }),
+			api.getTraffic(admin, { range: "1h", host: "", host_id: 1, host_type: "proxy" }),
+		]);
+		assert.equal(outs.length, 2);
+	});
+
+	it("counts the visitors of a host over all its names, also those without requests in the range", async () => {
+		const now = Date.UTC(2026, 9, 24, 10, 0, 0);
+		const resolver = createHostResolver([
+			{ id: 1, type: "proxy", domain_names: ["example.com", "www.example.com"] },
+		]);
+		// only example.com had requests in the last hour, www.example.com had visitors earlier today
+		const data = { ...trafficData, hosts: [{ host: "example.com", requests: 3, bytes: 30 }] };
+		const all = make({ data, resolver, values: { unique_visitors: true }, now: () => now });
+		const out = await all.api.getTraffic(admin, { range: "1h", host: "" });
+		assert.deepEqual(all.visitorQueries[1].hosts, ["example.com", "www.example.com"]);
+		const filtered = await all.api.getTraffic(admin, { range: "1h", host: "", host_id: 1, host_type: "proxy" });
+		assert.equal(out.top_hosts[0].visitors, 20);
+		assert.equal(out.top_hosts[0].visitors, filtered.totals.visitors);
+		assert.equal(filtered.top_hosts[0].visitors, filtered.totals.visitors);
+	});
+
+	it("ignores host in the cache key when host_id and host_type select the host", async () => {
+		const { api, queries } = make({ data: groupedData, resolver: groupedResolver });
+		await api.getTraffic(admin, { range: "24h", host: "a.test", host_id: 1, host_type: "proxy" });
+		await api.getTraffic(admin, { range: "24h", host: "b.test", host_id: 1, host_type: "proxy" });
+		assert.equal(queries.length, 1);
+	});
+
+	it("summary returns visitors_today null and logs when the visitor count fails", async () => {
+		const { api, errors } = make({ values: { unique_visitors: true }, failVisitors: true });
+		const out = await api.getSummary(admin);
+		assert.equal(out.visitors_today, null);
+		assert.equal(out.requests_today, 3);
+		assert.ok(validSummary(out), JSON.stringify(validSummary.errors));
+		assert.equal(errors.length, 1);
+		assert.ok(errors[0].includes("database is locked"));
+	});
+
+	it("parses the traffic query: host_id is coerced, host_id and host_type only together", () => {
+		assert.deepEqual(parseTrafficQuery({ range: "7d", host_id: " 3 ", host_type: "proxy" }), {
+			range: "7d",
+			host: "",
+			host_id: 3,
+			host_type: "proxy",
+		});
+		assert.deepEqual(parseTrafficQuery({ host: " Example.COM " }), { range: "24h", host: "example.com" });
+		const invalid = () => (err) => err instanceof errs.ValidationError && err.status === 400;
+		assert.throws(() => parseTrafficQuery({ host_id: "3" }), invalid());
+		assert.throws(() => parseTrafficQuery({ host_type: "proxy" }), invalid());
+		assert.throws(() => parseTrafficQuery({ host_id: "x", host_type: "proxy" }), invalid());
+		assert.throws(() => parseTrafficQuery({ host_id: "0", host_type: "proxy" }), invalid());
+		assert.throws(() => parseTrafficQuery({ host_id: "3", host_type: "stream" }), invalid());
 	});
 
 	it("caches the traffic query per range and host for 30 s", async () => {
