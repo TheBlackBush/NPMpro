@@ -6,7 +6,6 @@ import {
 	filterBans,
 	formatBytes,
 	formatCount,
-	formatTimeLeft,
 	geoipSettingsPayload,
 	hostOptions,
 	mapScale,
@@ -14,6 +13,7 @@ import {
 	rangeOptions,
 	secondsLeftNow,
 	shareBar,
+	timeLeftParts,
 } from "./Monitoring.js";
 
 it("formats bytes with one decimal above 1 KB", () => {
@@ -160,19 +160,29 @@ it("names countries in the locale and keeps unknown codes", () => {
 	assert.equal(countryName("--", "en"), "--");
 });
 
-it("formats the time left of a ban in two units at most", () => {
-	assert.equal(formatTimeLeft(0), "< 1m");
-	assert.equal(formatTimeLeft(59), "< 1m");
-	assert.equal(formatTimeLeft(-5), "< 1m");
-	assert.equal(formatTimeLeft(null), "< 1m");
-	assert.equal(formatTimeLeft(60), "1m");
-	assert.equal(formatTimeLeft(3599), "59m");
-	assert.equal(formatTimeLeft(3600), "1h");
-	assert.equal(formatTimeLeft(14_342), "3h 59m");
-	assert.equal(formatTimeLeft(86_400), "1d");
-	assert.equal(formatTimeLeft(90_000), "1d 1h");
-	assert.equal(formatTimeLeft(604_799), "6d 23h");
-	assert.equal(formatTimeLeft(400 * 86_400), "400d");
+it("splits the time left of a ban into two units at most", () => {
+	// short English rendering, as the en.json strings do it
+	const short = (seconds) => {
+		const parts = timeLeftParts(seconds);
+		if (parts.length === 0) return "< 1m";
+		return parts.map((p) => `${p.count}${p.unit[0]}`).join(" ");
+	};
+	assert.deepEqual(timeLeftParts(0), []);
+	assert.deepEqual(timeLeftParts(59), []);
+	assert.deepEqual(timeLeftParts(-5), []);
+	assert.deepEqual(timeLeftParts(null), []);
+	assert.deepEqual(timeLeftParts(14_342), [
+		{ unit: "hours", count: 3 },
+		{ unit: "minutes", count: 59 },
+	]);
+	assert.equal(short(60), "1m");
+	assert.equal(short(3599), "59m");
+	assert.equal(short(3600), "1h");
+	assert.equal(short(14_342), "3h 59m");
+	assert.equal(short(86_400), "1d");
+	assert.equal(short(90_000), "1d 1h");
+	assert.equal(short(604_799), "6d 23h");
+	assert.equal(short(400 * 86_400), "400d");
 });
 
 it("counts the time left down from the fetch time", () => {

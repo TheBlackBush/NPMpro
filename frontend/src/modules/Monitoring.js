@@ -137,20 +137,26 @@ const countryName = (code, locale) => {
 };
 
 /**
- * Short time left of a CrowdSec decision: 30 -> "< 1m", 300 -> "5m", 14342 -> "3h 59m", 604799 -> "6d 23h".
- * Two units at most, a zero second unit is left out ("2h", "1d"). Anything below a minute (or not a number) is "< 1m".
+ * Time left of a CrowdSec decision as up to two units, for the UI to translate:
+ * 14342 -> [{ unit: "hours", count: 3 }, { unit: "minutes", count: 59 }], 604799 -> days 6, hours 23.
+ * A zero second unit is left out (7200 -> hours 2 only). Below a minute (or not a number) gives [].
  */
-const formatTimeLeft = (seconds) => {
+const timeLeftParts = (seconds) => {
 	const s = Math.floor(Number(seconds));
-	if (!Number.isFinite(s) || s < 60) return "< 1m";
+	if (!Number.isFinite(s) || s < 60) return [];
 	const days = Math.floor(s / 86_400);
 	const hours = Math.floor((s % 86_400) / 3600);
 	const minutes = Math.floor((s % 3600) / 60);
-	const pair = (big, bigUnit, small, smallUnit) =>
-		small > 0 ? `${big}${bigUnit} ${small}${smallUnit}` : `${big}${bigUnit}`;
-	if (days > 0) return pair(days, "d", hours, "h");
-	if (hours > 0) return pair(hours, "h", minutes, "m");
-	return `${minutes}m`;
+	const pair = (bigUnit, big, smallUnit, small) =>
+		small > 0
+			? [
+					{ unit: bigUnit, count: big },
+					{ unit: smallUnit, count: small },
+				]
+			: [{ unit: bigUnit, count: big }];
+	if (days > 0) return pair("days", days, "hours", hours);
+	if (hours > 0) return pair("hours", hours, "minutes", minutes);
+	return [{ unit: "minutes", count: minutes }];
 };
 
 /**
@@ -219,7 +225,6 @@ export {
 	filterBans,
 	formatBytes,
 	formatCount,
-	formatTimeLeft,
 	geoipSettingsPayload,
 	hostOptions,
 	isCountryCode,
@@ -229,4 +234,5 @@ export {
 	rangeOptions,
 	secondsLeftNow,
 	shareBar,
+	timeLeftParts,
 };

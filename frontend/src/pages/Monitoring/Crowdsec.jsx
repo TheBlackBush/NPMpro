@@ -13,13 +13,13 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import { CountryName, countryLabel, EmptyState, StatCard, TopList, WorldMap } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useListFilters, useMonitoringCrowdsec } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
-import { filterBans, formatCount, formatTimeLeft, secondsLeftNow } from "src/modules/Monitoring";
+import { filterBans, formatCount, secondsLeftNow, timeLeftParts } from "src/modules/Monitoring";
 
 const README_CROWDSEC = "https://github.com/TheBlackBush/NPMpro#crowdsec";
 
@@ -31,6 +31,20 @@ const features = tableFeatures({
 
 // rows shown before "Show all"; 100 stacked rows make a very long page on a phone
 const FIRST_ROWS = 25;
+
+// the time left counts down between polls; a ban list kept after a failed poll keeps counting too
+const TICK_MS = 30 * 1000;
+
+const columnHelper = createColumnHelper();
+
+// "3h 59m" in English; the unit strings come from the translations
+const formatTimeLeft = (seconds) => {
+	const parts = timeLeftParts(seconds);
+	if (parts.length === 0) return intl.formatMessage({ id: "monitoring.crowdsec.time-left.less-than-minute" });
+	return parts
+		.map((p) => intl.formatMessage({ id: `monitoring.crowdsec.time-left.${p.unit}` }, { count: p.count }))
+		.join(" ");
+};
 
 const TYPE_BADGE = { ban: "bg-red-lt", captcha: "bg-orange-lt" };
 
@@ -69,15 +83,19 @@ function Connection({ data }) {
 
 function BansTable({ data }) {
 	const { filters, setFilter, clear } = useListFilters();
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), TICK_MS);
+		return () => clearInterval(timer);
+	}, []);
 	const rows = useMemo(
-		() => data.newest.map((row) => ({ ...row, left: secondsLeftNow(row.secondsLeft, data.fetchedAt) })),
-		[data.newest, data.fetchedAt],
+		() => data.newest.map((row) => ({ ...row, left: secondsLeftNow(row.secondsLeft, data.fetchedAt, now) })),
+		[data.newest, data.fetchedAt, now],
 	);
 	const [showAll, setShowAll] = useState(false);
 	const displayed = filterBans(rows, filters.q, countryLabel);
 	const visible = showAll ? displayed : displayed.slice(0, FIRST_ROWS);
 
-	const columnHelper = createColumnHelper();
 	const columns = useMemo(
 		() => [
 			columnHelper.accessor("value", {
@@ -116,7 +134,7 @@ function BansTable({ data }) {
 				cell: (info) => <CountryName code={info.row.original.country} />,
 			}),
 		],
-		[columnHelper],
+		[],
 	);
 
 	const tableInstance = useTable({
@@ -202,13 +220,8 @@ function CrowdsecData({ data }) {
 					className="col-md-4"
 					label={<T id="monitoring.crowdsec.connection" />}
 					value={<Connection data={data} />}
-					hint={
-						data.reachable ? (
-							<T id="monitoring.crowdsec.fetched" data={{ time: formatDateTime(data.fetchedAt) }} />
-						) : (
-							<span title={data.error ?? undefined}>{data.error}</span>
-						)
-					}
+					// the reason is in the alert above the cards, so the card only says when the data was read
+					hint={<T id="monitoring.crowdsec.fetched" data={{ time: formatDateTime(data.fetchedAt) }} />}
 					icon={data.reachable ? IconPlugConnected : IconPlugConnectedX}
 					color={data.reachable ? "green" : "red"}
 				/>
