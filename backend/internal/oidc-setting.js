@@ -1,6 +1,6 @@
 import { discovery } from "openid-client";
 import errs from "../lib/error.js";
-import { clearDiscoveryCache, getOidcConfig, readStoredOidc } from "../lib/oidc-config.js";
+import { clearDiscoveryCache, DISCOVERY_TIMEOUT_SECONDS, getOidcConfig, readStoredOidc } from "../lib/oidc-config.js";
 import { checkIcon, downloadIcon, removeIconFiles, writeIconFile } from "../lib/oidc-icon.js";
 import { callbackUrl, mergeOidcConfig, OIDC_DEFAULTS, validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
@@ -8,7 +8,6 @@ import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import { applyOidcUpdate, disablePasswordRefused, sanitizeOidcRow } from "./oidc-setting-rules.js";
 
-const DISCOVERY_TIMEOUT_SECONDS = 10;
 const TEST_KEYS = ["issuer_url", "client_id", "client_secret"];
 
 /**

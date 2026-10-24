@@ -5,6 +5,8 @@ import settingModel from "../models/setting.js";
 import { ENV_KEYS, mergeOidcConfig } from "./oidc-rules.js";
 import { defaultSecretBox } from "./secret-box.js";
 
+// Seconds, for every discovery request (login and the test endpoint)
+const DISCOVERY_TIMEOUT_SECONDS = 10;
 const discoveryCache = new Map();
 let warnedSecret = false;
 
@@ -38,7 +40,9 @@ const getDiscovery = (values) => {
 	const key = `${values.issuer_url}\n${values.client_id}\n${secretHash}`;
 	if (!discoveryCache.has(key)) {
 		const pending = Promise.resolve().then(() =>
-			discovery(new URL(values.issuer_url), values.client_id, values.client_secret),
+			discovery(new URL(values.issuer_url), values.client_id, values.client_secret, undefined, {
+				timeout: DISCOVERY_TIMEOUT_SECONDS,
+			}),
 		);
 		pending.catch(() => {
 			if (discoveryCache.get(key) === pending) discoveryCache.delete(key);
@@ -53,4 +57,4 @@ const clearDiscoveryCache = () => {
 	warnedSecret = false;
 };
 
-export { clearDiscoveryCache, getDiscovery, getOidcConfig, readStoredOidc };
+export { clearDiscoveryCache, DISCOVERY_TIMEOUT_SECONDS, getDiscovery, getOidcConfig, readStoredOidc };
