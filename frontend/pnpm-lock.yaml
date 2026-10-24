@@ -23,6 +23,9 @@ importers:
       '@tanstack/react-table':
         specifier: 9.3.1
         version: 9.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      apexcharts:
+        specifier: 7.9.1
+        version: 7.9.1
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -35,6 +38,9 @@ importers:
       formik:
         specifier: 2.4.9
         version: 2.4.9(@types/react@19.3.0)(react@19.3.1)
+      jsvectormap:
+        specifier: 1.7.0
+        version: 1.7.0
       markdown-to-jsx:
         specifier: 9.10.3
         version: 9.10.3(react@19.3.1)
@@ -514,6 +520,13 @@ packages:
       oxc-transform-react:
         optional: true
 
+  apex-commons@0.8.3:
+    resolution: {integrity: sha512-WdU5lblyL1ByI/nkFOJkSgJYenCsHmay0P3UIcnSeUiCyF1b30SvPSZLbyxOCUOry8IlL7M0/3GvsGbZTMm8FA==}
+
+  apexcharts@7.9.1:
+    resolution: {integrity: sha512-sZkeiES5fCFzkQ7bkyxXhX/nRF1a0mYie5+NTQUMap9ePsW6pWjGjNSFYMnvVeeWzp/bXVI4d1OKy2vOE1M/PQ==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
+
   aria-hidden@1.2.6:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
@@ -656,6 +669,9 @@ packages:
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
+
+  jsvectormap@1.7.0:
+    resolution: {integrity: sha512-8VmL3Uuen08Es9xb2N6Wdc32TrQDGPXYCIdTB126jAhTJsYd/4r4Mc63VQA3qHxG0p4zeCI8sFO5XRsdjljMJg==}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -1418,6 +1434,12 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.3.5
 
+  apex-commons@0.8.3: {}
+
+  apexcharts@7.9.1:
+    dependencies:
+      apex-commons: 0.8.3
+
   aria-hidden@1.2.6:
     dependencies:
       tslib: 2.8.1
@@ -1540,6 +1562,8 @@ snapshots:
   jsesc@3.1.0: {}
 
   json-parse-even-better-errors@2.3.1: {}
+
+  jsvectormap@1.7.0: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true
