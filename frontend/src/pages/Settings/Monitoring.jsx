@@ -160,6 +160,7 @@ export default function Monitoring() {
 			showDeleteConfirmModal({
 				title: <T id="settings.monitoring.show-ips.confirm" />,
 				children: <T id="settings.monitoring.show-ips.confirm.body" />,
+				confirmLabel: <T id="settings.monitoring.show-ips.confirm.button" />,
 				onConfirm: run,
 				invalidations: [],
 			});
@@ -178,7 +179,7 @@ export default function Monitoring() {
 			enableReinitialize
 			initialValues={{
 				trafficEnabled: Boolean(data.trafficEnabled),
-				retentionDays: data.retentionDays,
+				retentionDays: String(data.retentionDays),
 				showIps: Boolean(data.showIps),
 			}}
 			validate={validate}

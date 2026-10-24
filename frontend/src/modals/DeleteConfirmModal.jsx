@@ -11,7 +11,7 @@ const showDeleteConfirmModal = (props) => {
 };
 
 const DeleteConfirmModal = EasyModal.create(
-	({ title, tTitle, children, subject, details, onConfirm, invalidations, visible, remove }) => {
+	({ title, tTitle, confirmLabel, children, subject, details, onConfirm, invalidations, visible, remove }) => {
 		const queryClient = useQueryClient();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +77,7 @@ const DeleteConfirmModal = EasyModal.create(
 									disabled={isSubmitting}
 									onClick={onSubmit}
 								>
-									<T id={tTitle ?? "action.delete"} />
+									{confirmLabel ?? <T id={tTitle ?? "action.delete"} />}
 								</Button>
 							</div>
 						</div>

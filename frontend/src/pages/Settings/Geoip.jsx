@@ -195,24 +195,30 @@ function UpdateStatus({ data }) {
 			<div className="form-hint">
 				<T id={canUpdate ? "settings.geoip.update-now.hint" : "settings.geoip.update-now.needs-account"} />
 			</div>
-			<div role="status">
-				{result?.updated?.length > 0 ? (
-					<StatusAlert
-						className="mt-3 mb-0"
-						variant="success"
-						icon={IconCircleCheck}
-						id="settings.geoip.update.ok"
-						data={{ editions: result.updated.join(", ") }}
-					/>
-				) : null}
-				{result && !result.ok ? (
-					<ErrorAlert className="mt-3 mb-0" error={result.requestError}>
-						{result.requestError ? null : (
-							<T id="settings.geoip.update.failed" data={{ error: result.error }} />
-						)}
-					</ErrorAlert>
-				) : null}
-			</div>
+			{result?.updated?.length > 0 ? (
+				<StatusAlert
+					className="mt-3 mb-0"
+					variant="success"
+					icon={IconCircleCheck}
+					id="settings.geoip.update.ok"
+					data={{ editions: result.updated.join(", ") }}
+				/>
+			) : null}
+			{result?.ok && !(result.updated?.length > 0) ? (
+				<StatusAlert
+					className="mt-3 mb-0"
+					variant="secondary"
+					icon={IconInfoCircle}
+					id="settings.geoip.update.unchanged"
+				/>
+			) : null}
+			{result && !result.ok ? (
+				<ErrorAlert className="mt-3 mb-0" error={result.requestError}>
+					{result.requestError ? null : (
+						<T id="settings.geoip.update.failed" data={{ error: result.error }} />
+					)}
+				</ErrorAlert>
+			) : null}
 		</div>
 	);
 }
