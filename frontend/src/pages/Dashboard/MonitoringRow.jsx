@@ -55,6 +55,7 @@ function MonitoringRow() {
 	const cards = [
 		requestsToday != null ? (
 			<StatCard
+				className="col-6 col-lg-3"
 				key="requests"
 				to="/monitoring/traffic"
 				icon={IconGauge}
@@ -67,6 +68,7 @@ function MonitoringRow() {
 		) : null,
 		errorRateToday != null ? (
 			<StatCard
+				className="col-6 col-lg-3"
 				key="errors"
 				to="/monitoring/traffic"
 				icon={IconAlertTriangle}
@@ -78,6 +80,7 @@ function MonitoringRow() {
 		) : null,
 		activeBans != null ? (
 			<StatCard
+				className="col-6 col-lg-3"
 				key="bans"
 				to="/monitoring/crowdsec"
 				icon={IconShieldLock}
@@ -88,6 +91,7 @@ function MonitoringRow() {
 		) : null,
 		hasCountry ? (
 			<StatCard
+				className="col-6 col-lg-3"
 				key="country"
 				to="/monitoring/traffic"
 				icon={IconFlag}
