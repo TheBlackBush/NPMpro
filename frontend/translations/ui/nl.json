@@ -293,7 +293,6 @@
 	"setup.preamble": "Begin met het aanmaken van jouw beheerderaccount.",
 	"setup.title": "Welkom!",
 	"sign-in": "Inloggen",
-	"sign-in-with-oidc": "Inloggen met OIDC",
 	"ssl-certificate": "TLS-certificaat",
 	"stream": "Stream",
 	"stream.description": "Beschrijving",
