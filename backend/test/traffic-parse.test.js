@@ -59,7 +59,7 @@ it("maps status classes", () => {
 	assert.equal(statusClass(101), "other");
 });
 
-it("recognises NPMpro's own requests", () => {
+it("recognises NPMpro's own requests in lines without the server port", () => {
 	const health = line("127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
 	assert.equal(isOwnRequest(health, "81"), true);
 	assert.equal(isOwnRequest(health, "443"), true);
@@ -74,4 +74,46 @@ it("recognises NPMpro's own requests", () => {
 		false,
 	);
 	assert.equal(isOwnRequest("garbage", "81"), false);
+});
+
+// Lines written since the alog format ends with $server_port: the port nginx received the request on
+const withPort = (serverPort, ...args) => `${line(...args)} ${serverPort}`;
+
+it("parses lines that end with the server port", () => {
+	assert.deepEqual(parseAlogLine(withPort(443, "example.com", "203.0.113.7", 404, 1200)), {
+		time: Date.UTC(2026, 9, 24, 8, 15, 30),
+		host: "example.com",
+		ip: "203.0.113.7",
+		status: 404,
+		bytes: 1200,
+	});
+});
+
+it("uses the server port, not the Host header, for NPMpro's own requests", () => {
+	// admin UI behind a remapped Docker port: the browser sends 8181, nginx received it on 81
+	assert.equal(isOwnRequest(withPort(81, "npm.lan:8181", "172.17.0.1"), "81"), true);
+	// a visitor cannot hide from the stats with a chosen Host port or the health check user agent
+	assert.equal(isOwnRequest(withPort(443, "example.com:81", "203.0.113.7"), "81"), false);
+	assert.equal(
+		isOwnRequest(withPort(443, "example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck"), "81"),
+		false,
+	);
+	// the health check calls the admin port
+	assert.equal(
+		isOwnRequest(
+			withPort(81, "127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck"),
+			"81",
+		),
+		true,
+	);
+	// real traffic on 80/443 is never dropped
+	assert.equal(isOwnRequest(withPort(80, "example.com", "203.0.113.7"), "81"), false);
+});
+
+it("skips only a local health check when the admin port is 80 or 443", () => {
+	const health = (ip) => withPort(443, "127.0.0.1", ip, 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
+	assert.equal(isOwnRequest(health("127.0.0.1"), "443"), true);
+	assert.equal(isOwnRequest(health("::1"), "443"), true);
+	assert.equal(isOwnRequest(health("203.0.113.7"), "443"), false);
+	assert.equal(isOwnRequest(withPort(443, "example.com", "203.0.113.7"), "443"), false);
 });

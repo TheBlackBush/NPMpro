@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
 
 // Anchored on the start of the "alog" format up to $bytes_sent; later fields (referrer, user agent, ...) are ignored.
+// The format ends with $server_port since it was added; older lines end with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
 const LINE =
 	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "(?:[^"\\]|\\.)*" (\d{3}) (\d+)(?: |$)/u;
@@ -11,6 +12,18 @@ const HOST_PORT = /:\d*$/u;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
 const DEFAULT_PORTS = new Set(["80", "443"]);
+const SERVER_PORT = / (?<port>\d{1,5})$/u;
+const LOOPBACK = new Set(["127.0.0.1", "::1"]);
+
+// The raw host field ($host$is_request_port$request_port) and $remote_addr, the first two fields after the time
+const hostAndClient = (line) => {
+	const start = line.indexOf("] ");
+	if (start === -1) {
+		return [null, null];
+	}
+	const [host = null, client = null] = line.slice(start + 2).split(" ", 2);
+	return [host, client];
+};
 
 const cleanHost = (raw) => {
 	const host = raw.toLowerCase();
@@ -43,28 +56,28 @@ export const statusClass = (status) => {
 };
 
 /**
- * True for NPMpro's own requests, which are not visitor traffic: the container health check (user agent
- * "NPMpro/healthcheck") and requests to the admin UI port, seen as the port in the raw host field
- * ($host$is_request_port$request_port). The port check is skipped when the admin port is 80 or 443, because
- * proxy hosts are served there; with a remapped Docker port the browser sends the outside port, so those admin
- * UI requests are still counted.
+ * True for NPMpro's own requests, which are not visitor traffic: requests nginx received on the admin UI port
+ * ($server_port at the end of the line), which includes the container health check. When the admin port is 80 or
+ * 443, proxy hosts share it, so only a health check (user agent "NPMpro/healthcheck") from a loopback address is
+ * skipped. Lines written before $server_port was added fall back to the port in the raw host field, which is the
+ * port the browser sent (a remapped Docker port is not recognised there).
  * @param {string} line a raw alog line
  * @param {string | number | null | undefined} adminPort NPM_PORT
  * @returns {boolean}
  */
 export const isOwnRequest = (line, adminPort) => {
+	const port = String(adminPort ?? "");
+	const adminOnOwnPort = port !== "" && !DEFAULT_PORTS.has(port);
+	const serverPort = SERVER_PORT.exec(line)?.groups.port;
+	const [host, client] = hostAndClient(line);
+	if (serverPort !== undefined) {
+		if (adminOnOwnPort) {
+			return serverPort === port;
+		}
+		return line.includes(HEALTHCHECK_UA) && LOOPBACK.has(client);
+	}
 	if (line.includes(HEALTHCHECK_UA)) {
 		return true;
 	}
-	const port = String(adminPort ?? "");
-	if (port === "" || DEFAULT_PORTS.has(port)) {
-		return false;
-	}
-	const start = line.indexOf("] ");
-	if (start === -1) {
-		return false;
-	}
-	const end = line.indexOf(" ", start + 2);
-	const host = line.slice(start + 2, end === -1 ? undefined : end);
-	return RAW_PORT.exec(host)?.[1] === port;
+	return adminOnOwnPort && host !== null && RAW_PORT.exec(host)?.[1] === port;
 };
