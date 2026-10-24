@@ -24,7 +24,11 @@ const PATHS = {
 	streamLogConf: STREAM_LOG_CONF,
 	accessLogConf: ACCESS_LOG_CONF,
 	logrotateConf: LOGROTATE_CONF,
+	nginxDir: "/data/nginx",
 };
+
+// the log files Write log files turns on, created like start.sh does (mode 0600, /data/nginx/<name> symlinks)
+const LOG_FILES = ["access.log", "error.log", "stream.log"];
 
 const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
 const DEFAULT_CERT_KEYS = ["default_certificate_id", "ocsp_stapling", "custom_ocsp_stapling"];
@@ -370,10 +374,43 @@ const createRuntimeApplier = ({
 		return { path: paths.logrotateConf, content: renderRotations(content, rotations) };
 	};
 
+	/**
+	 * Creates the missing log files (mode 0600, existing ones are kept as they are) and the missing compatibility
+	 * symlinks /data/nginx/<name> -> logs/<name>, like start.sh with LOGROTATE=true; failures are logged, nginx still
+	 * opens (and creates) the files itself
+	 */
+	const prepareLogFiles = async () => {
+		const logsDir = path.join(paths.nginxDir, "logs");
+		for (const name of LOG_FILES) {
+			const file = path.join(logsDir, name);
+			try {
+				await fs.writeFile(file, "", { flag: "wx", mode: 0o600 });
+			} catch (err) {
+				if (err.code !== "EEXIST") log.warn(`Could not create ${file}: ${err.message}`);
+			}
+			const link = path.join(paths.nginxDir, name);
+			try {
+				await fs.lstat(link);
+			} catch (err) {
+				if (err.code !== "ENOENT") {
+					log.warn(`Could not check ${link}: ${err.message}`);
+					continue;
+				}
+				try {
+					await fs.symlink(path.join("logs", name), link);
+				} catch (linkErr) {
+					log.warn(`Could not create the symlink ${link}: ${linkErr.message}`);
+				}
+			}
+		}
+	};
+
 	const planners = {
 		logs: async ({ next, changed }) => {
 			const plan = { files: [] };
 			if (changed.includes("write_log_files")) {
+				// before the includes are written and tested
+				if (next.write_log_files) await prepareLogFiles();
 				const includes = logIncludes(next.write_log_files);
 				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files));
 				// at startup each in its own transaction, like the default certificate include: a failing nginx -t
@@ -459,15 +496,17 @@ const createRuntimeApplier = ({
 	 * @param   {string}  group
 	 * @param   {Object}  next   the merged values to apply (env-locked keys hold the env value)
 	 * @param   {Object}  [prev] the values in effect
+	 * @param   {Object}  [options]
+	 * @param   {boolean} [options.revert]  putting the stored values back after a failed save: no checks
 	 * @returns {Promise<{changed: string[], reloaded: boolean}>}
 	 */
-	const applyGroup = async (group, next, prev) => {
+	const applyGroup = async (group, next, prev, { revert = false } = {}) => {
 		const startup = prev === undefined;
 		const changed = changedKeys(next, prev);
 		if (changed.length === 0) return { changed, reloaded: false };
 
 		const plan = (await planners[group]?.({ next, prev, changed, startup })) ?? {};
-		if (plan.check) await plan.check();
+		if (plan.check && !revert) await plan.check();
 
 		const applies = appliesOf(group);
 		const reloadKeys = changed.some((key) => applies[key] === "reload");

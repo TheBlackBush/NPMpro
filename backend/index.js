@@ -72,9 +72,6 @@ async function appStart() {
 			...createTrafficHooks({ applyAccessLog: accessLog.onTrafficEnabledChange, traffic }),
 		});
 		await geoip.reload();
-		// start.sh writes the include from env only (LOGROTATE or TRAFFIC_STATS), the reload below picks up the stored
-		// settings (also when the logs startup apply failed)
-		await applyAccessLog(await accessLog.enabledNow(), { writeOnly: true });
 		await internalNginx.reload();
 		startMonitoringServices();
 

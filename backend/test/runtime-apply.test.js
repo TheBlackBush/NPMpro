@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import nodeFs, { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import nodeFs, { lstat, mkdir, mkdtemp, readdir, readFile, readlink, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
+import { createMonitoringUpdater } from "../internal/monitoring-update.js";
 import { createRuntimeUpdater } from "../internal/runtime-update.js";
 import { renderCertbotIni } from "../lib/certbot-ini.js";
 import { renderDefaultCertConf } from "../lib/default-cert.js";
@@ -47,7 +48,9 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		streamLogConf: path.join(dir, "stream-log.conf"),
 		accessLogConf: path.join(dir, "access-log.conf"),
 		logrotateConf: path.join(dir, "logrotate"),
+		nginxDir: path.join(dir, "nginx"),
 	};
+	await mkdir(path.join(paths.nginxDir, "logs"), { recursive: true });
 	await writeFile(paths.certbotIni, "old ini\n");
 	// what start.sh writes without LOGROTATE and TRAFFIC_STATS
 	await writeFile(paths.errorLogConf, logIncludes(false).error);
@@ -1253,6 +1256,13 @@ it("start.sh writes the same include lines as logIncludes", async () => {
 	assert.equal(PATHS.logrotateConf, "/run/npmpro/logrotate");
 });
 
+it("renderRotations does not match across lines", () => {
+	assert.equal(
+		renderRotations("a {\n  rotate\n\n  3\n\n  rotate 4\n}\n", 8),
+		"a {\n  rotate\n\n  3\n\n  rotate 8\n}\n",
+	);
+});
+
 it("renderRotations sets every rotate count", () => {
 	assert.equal(
 		renderRotations("a {\n  rotate 3\n}\nb {\n\trotate 12\n}\n", 7),
@@ -1320,12 +1330,10 @@ it("the access log switch uses the traffic value the hook applied before it is s
 		},
 	});
 	assert.equal(await accessLog.enabled(false), false);
-	assert.equal(await accessLog.enabledNow(), false);
 	await accessLog.onTrafficEnabledChange(true);
 	assert.deepEqual(order, ["enter", "apply", "leave"]);
 	// the monitoring row still holds false: the applied value counts
 	assert.equal(await accessLog.enabled(false), true);
-	assert.equal(await accessLog.enabledNow(), true);
 });
 
 it("a failing hook apply keeps the previous traffic value", async () => {
@@ -1420,4 +1428,102 @@ it("at startup a failing include keeps start.sh's file and does not undo the oth
 	});
 	assert.equal(tests, 3);
 	assert.ok(a.log.lines.some((line) => line.startsWith(`Could not write ${paths.errorLogConf} at startup`)));
+});
+
+it("when the step after the include throws, the hook switches the include back and keeps the old traffic value", async () => {
+	const applied = [];
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => false,
+		readWriteLogFiles: async () => false,
+		apply: (enabled) => {
+			applied.push(enabled);
+			return Promise.resolve(true);
+		},
+	});
+	await assert.rejects(
+		accessLog.onTrafficEnabledChange(true, () => Promise.reject(new Error("boom"))),
+		BOOM,
+	);
+	assert.deepEqual(applied, [true, false]);
+	assert.equal(await accessLog.enabled(false), false);
+});
+
+it("a failed monitoring save switches the access log back and the traffic value is the old one again", async () => {
+	const { paths } = await setup();
+	const files = [];
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => false,
+		readWriteLogFiles: async () => false,
+		apply: async (enabled) => {
+			files.push(accessLogDirective(enabled));
+			await writeFile(paths.accessLogConf, accessLogDirective(enabled));
+			return true;
+		},
+	});
+	let fail = true;
+	const update = createMonitoringUpdater({
+		readStored: async () => ({ traffic_enabled: false }),
+		saveStored: () => (fail ? Promise.reject(new Error("boom")) : Promise.resolve()),
+		deleteIps: async () => {},
+		hooks: { onTrafficEnabledChange: (enabled) => accessLog.onTrafficEnabledChange(enabled) },
+		env: {},
+	});
+	await assert.rejects(update({ traffic_enabled: true }), BOOM);
+	assert.equal(await readFile(paths.accessLogConf, "utf8"), accessLogDirective(false));
+	assert.equal(await accessLog.enabled(false), false);
+	// a logs save now computes the access log from the old traffic value
+	const a = applier(paths, { accessLogOn: accessLog.enabled });
+	const prev = logValues({ write_log_files: true });
+	await a.applyGroup("logs", { ...prev, write_log_files: false }, prev);
+	assert.equal(await readFile(paths.accessLogConf, "utf8"), accessLogDirective(false));
+	fail = false;
+	await update({ traffic_enabled: true });
+	assert.equal(await accessLog.enabled(false), true);
+});
+
+it("a failed logs save puts the include files back", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const update = createRuntimeUpdater({
+		readStored: async () => ({}),
+		saveStored: () => Promise.reject(new Error("boom")),
+		getApply: () => a.applyGroup,
+		env: BOOT_ENV,
+		log: quietLog(),
+	});
+	await assert.rejects(update("logs", { write_log_files: true, log_rotations: 5 }), BOOM);
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+	assert.equal(await readFile(paths.logrotateConf, "utf8"), LOGROTATE);
+	assert.deepEqual(a.nginx.calls, ["test", "reload", "test", "reload"]);
+});
+
+it("switching log files on creates the missing log files (0600) and compatibility symlinks like start.sh", async () => {
+	const { paths } = await setup();
+	const logs = path.join(paths.nginxDir, "logs");
+	await writeFile(path.join(logs, "access.log"), "kept\n", { mode: 0o644 });
+	// a legacy regular file is left for start.sh
+	await writeFile(path.join(paths.nginxDir, "stream.log"), "legacy\n");
+	const failingLink = {
+		...nodeFs,
+		symlink: (target, link) =>
+			link.endsWith("error.log") ? Promise.reject(new Error("EPERM")) : nodeFs.symlink(target, link),
+	};
+	const a = applier(paths, { fs: failingLink });
+	const prev = logValues();
+	await a.applyGroup("logs", { ...prev, write_log_files: true }, prev);
+	assert.equal(await readFile(path.join(logs, "access.log"), "utf8"), "kept\n");
+	assert.equal((await stat(path.join(logs, "access.log"))).mode % 0o1000, 0o644);
+	for (const name of ["error.log", "stream.log"]) {
+		assert.equal((await stat(path.join(logs, name))).mode % 0o1000, 0o600, name);
+	}
+	assert.equal(await readlink(path.join(paths.nginxDir, "access.log")), "logs/access.log");
+	assert.ok((await lstat(path.join(paths.nginxDir, "stream.log"))).isFile());
+	await assert.rejects(lstat(path.join(paths.nginxDir, "error.log")), { code: "ENOENT" });
+	assert.ok(a.log.lines.some((line) => line.startsWith("Could not create the symlink") && line.includes("EPERM")));
+	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+
+	// switching off touches no log file
+	const b = applier(paths);
+	await b.applyGroup("logs", prev, { ...prev, write_log_files: true });
+	assert.equal(await readFile(path.join(logs, "access.log"), "utf8"), "kept\n");
 });

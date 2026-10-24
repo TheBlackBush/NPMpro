@@ -602,16 +602,15 @@ const createTrafficService = ({
  * Settings hooks for the traffic switches: the access log include plus the reader.
  *
  * @param   {Object}    deps
- * @param   {Function}  deps.applyAccessLog  (enabled) => Promise, writes the include, tests and reloads nginx
+ * @param   {Function}  deps.applyAccessLog  (enabled, after) => Promise, writes the include, tests and reloads nginx,
+ *                                           then runs after() (starts or stops the reader) and switches the include
+ *                                           back when after() throws
  * @param   {Object}    deps.traffic         createTrafficService() instance
  * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function, onShowIpsOn: Function,
  *            onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function}}
  */
 const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
-	onTrafficEnabledChange: async (enabled) => {
-		await applyAccessLog(enabled);
-		await traffic.setEnabled(enabled);
-	},
+	onTrafficEnabledChange: (enabled) => applyAccessLog(enabled, () => traffic.setEnabled(enabled)),
 	onShowIpsOff: () => traffic.showIpsOff(),
 	onShowIpsOn: () => traffic.showIpsOn(),
 	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),

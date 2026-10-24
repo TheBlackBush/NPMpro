@@ -420,9 +420,9 @@ describe("traffic service", () => {
 		assert.ok(!t.timers.has(5000));
 		const applied = [];
 		const hooks = createTrafficHooks({
-			applyAccessLog: (enabled) => {
+			applyAccessLog: async (enabled, after) => {
 				applied.push(enabled);
-				return Promise.resolve();
+				await after();
 			},
 			traffic: t.service,
 		});

@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { acmeServerOf, appliesOf, isRuntimeGroup, mergeRuntimeConfig, rulesOf } from "../lib/runtime-rules.js";
+import { global as logger } from "../logger.js";
 import { createSerializer, pickEditable } from "./monitoring-update.js";
 
 /**
@@ -18,13 +19,16 @@ const runtimeView = (group, cfg) => ({ ...cfg.values, locked: cfg.locked, applie
  * @param   {Object}    deps
  * @param   {Function}  deps.readStored          (group) => stored meta
  * @param   {Function}  deps.saveStored          (group, meta) => void
- * @param   {Function}  deps.getApply            () => apply(group, nextValues, prevValues), read on every update;
- *                                               runs before the save, a throw saves nothing and is rethrown
+ * @param   {Function}  deps.getApply            () => apply(group, nextValues, prevValues, options), read on every
+ *                                               update; runs before the save, a throw saves nothing and is
+ *                                               rethrown; when the save fails it runs again with the values swapped
+ *                                               and { revert: true }, so the files match the stored values
  * @param   {Function}  [deps.findCertificate]   (id) => { id, provider } | undefined
  * @param   {Function}  [deps.onSaved]           (group, { values, locked }) => void, after the save with the merged
  *                                               values (cache refresh)
  * @param   {Object}    [deps.env]
  * @param   {Object}    [deps.opts]              passed to mergeRuntimeConfig
+ * @param   {Object}    [deps.log]
  * @returns {(group: string, body: Object) => Promise<{meta: Object, values: Object, locked: string[]}>}
  */
 const createRuntimeUpdater = ({
@@ -35,6 +39,7 @@ const createRuntimeUpdater = ({
 	onSaved = () => {},
 	env,
 	opts,
+	log = logger,
 }) => {
 	const serialize = createSerializer();
 	const envOf = () => env ?? process.env;
@@ -85,8 +90,20 @@ const createRuntimeUpdater = ({
 		}
 		const next = mergeRuntimeConfig(group, meta, envOf(), opts);
 
-		await getApply()(group, next.values, prev.values);
-		await saveStored(group, meta);
+		const apply = getApply();
+		await apply(group, next.values, prev.values);
+		try {
+			await saveStored(group, meta);
+		} catch (err) {
+			try {
+				await apply(group, prev.values, next.values, { revert: true });
+			} catch (revertErr) {
+				log.error(
+					`Could not apply the ${group} runtime settings back after a failed save: ${revertErr.message}`,
+				);
+			}
+			throw err;
+		}
 		onSaved(group, { values: next.values, locked: next.locked });
 		return { meta, values: next.values, locked: next.locked };
 	};

@@ -27,6 +27,6 @@ const logIncludes = (writeLogFiles) =>
  * @returns {string}
  */
 const renderRotations = (content, rotations) =>
-	content.replaceAll(/^(?<head>\s*rotate\s+)\d+/gmu, `$<head>${rotations}`);
+	content.replaceAll(/^(?<head>[ \t]*rotate[ \t]+)\d+/gmu, `$<head>${rotations}`);
 
 export { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF };
