@@ -63,6 +63,18 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 	};
 
 	/**
+	 * Caches the values a save stored, so effectiveEnv() never falls back to process.env for the group after a save; a
+	 * read that started before it is not cached (generation)
+	 *
+	 * @param {string}  group
+	 * @param {{values: Object, locked: string[]}}  cfg
+	 */
+	const prime = (group, { values, locked }) => {
+		generations.set(group, (generations.get(group) ?? 0) + 1);
+		cache.set(group, structuredClone({ values, locked }));
+	};
+
+	/**
 	 * Reads every group again (startup and tests)
 	 *
 	 * @returns {Promise<Object>}  { [group]: { values, locked } }
@@ -86,10 +98,10 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 		return buildEffectiveEnv(envOf(), configs);
 	};
 
-	return { effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig };
+	return { effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig, prime };
 };
 
 const defaultRuntimeConfig = createRuntimeConfig();
-const { effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig } = defaultRuntimeConfig;
+const { effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig, prime } = defaultRuntimeConfig;
 
-export { createRuntimeConfig, effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig };
+export { createRuntimeConfig, effectiveEnv, getRuntimeConfig, invalidate, loadRuntimeConfig, prime };

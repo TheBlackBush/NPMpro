@@ -1,5 +1,5 @@
 import errs from "../lib/error.js";
-import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
+import { getRuntimeConfig, prime } from "../lib/runtime-config.js";
 import { isRuntimeGroup } from "../lib/runtime-rules.js";
 import certificateModel from "../models/certificate.js";
 import settingModel from "../models/setting.js";
@@ -41,19 +41,27 @@ const saveStored = async (group, meta) => {
 	}
 };
 
-const certificateExists = async (id) => (await certificateModel.query().findById(id)) !== undefined;
+const findCertificate = (id) => certificateModel.query().findById(id).select("id", "provider");
 
 const updateRuntimeStored = createRuntimeUpdater({
 	readStored,
 	saveStored,
 	getApply: () => applyHook,
-	certificateExists,
-	onSaved: (group) => invalidate(group),
+	findCertificate,
+	onSaved: (group, cfg) => prime(group, cfg),
 });
 
 const assertGroup = (group) => {
 	if (!isRuntimeGroup(group)) throw new errs.ItemNotFoundError(group);
 };
+
+/**
+ * Runs fn in the runtime settings queue (no save runs at the same time)
+ *
+ * @param   {Function}  fn
+ * @returns {Promise<*>}
+ */
+const runtimeExclusive = (fn) => updateRuntimeStored.exclusive(fn);
 
 const internalRuntimeSetting = {
 	/**
@@ -86,5 +94,5 @@ const internalRuntimeSetting = {
 	},
 };
 
-export { setRuntimeApply };
+export { runtimeExclusive, setRuntimeApply };
 export default internalRuntimeSetting;

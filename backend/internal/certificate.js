@@ -27,6 +27,7 @@ import { getValidationSchema } from "../schema/index.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
+import { runtimeExclusive } from "./runtime-setting.js";
 
 const cnPattern = /\bCN=(?<cn>[^\n]+)/iu;
 const renewalServerPattern = /^server = (?<server>.+)$/mu;
@@ -328,25 +329,28 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		const row = await internalCertificate.get(access, { id: data.id });
 
-		// the effective default certificate (env DEFAULT_CERT_ID or the Certificates & TLS setting)
-		const { values: tls } = await getRuntimeConfig("certificates");
-		if (row.id === tls.default_certificate_id) {
-			throw new error.ValidationError("Certificate is still in use by the default host");
-		}
-
-		for (const hostModel of [proxyHostModel, redirectionHostModel, deadHostModel, streamModel]) {
-			if (
-				(await hostModel
-					.query()
-					.where("certificate_id", row.id)
-					.orWhere("npmpro_mtls_certificate_id", row.id)
-					.resultSize()) > 0
-			) {
-				throw new error.ValidationError("Certificate is still in use");
+		// in the runtime settings queue: a save of the default certificate cannot pass its check at the same time
+		await runtimeExclusive(async () => {
+			// the effective default certificate (env DEFAULT_CERT_ID or the Certificates & TLS setting)
+			const { values: tls } = await getRuntimeConfig("certificates");
+			if (row.id === tls.default_certificate_id) {
+				throw new error.ValidationError("Certificate is still in use by the default host");
 			}
-		}
 
-		await certificateModel.query().deleteById(row.id);
+			for (const hostModel of [proxyHostModel, redirectionHostModel, deadHostModel, streamModel]) {
+				if (
+					(await hostModel
+						.query()
+						.where("certificate_id", row.id)
+						.orWhere("npmpro_mtls_certificate_id", row.id)
+						.resultSize()) > 0
+				) {
+					throw new error.ValidationError("Certificate is still in use");
+				}
+			}
+
+			await certificateModel.query().deleteById(row.id);
+		});
 
 		// Add to audit log
 		await internalAuditLog.add(access, {

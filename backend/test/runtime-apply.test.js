@@ -483,17 +483,52 @@ it("a default certificate that was deleted renders the built-in certificate and 
 	const { paths } = await setup();
 	await certTree(paths);
 	const a = certApplier(paths, { listCertificates: async () => [] });
-	const prev = certValues();
-	const next = { ...prev, default_certificate_id: 5 };
-	await a.applyGroup("certificates", next, prev);
-	await a.applyGroup("certificates", { ...next, ocsp_stapling: !next.ocsp_stapling }, next);
+	const stored = certValues({ default_certificate_id: 5, ocsp_stapling: false });
+	// stapling saves while the stored default certificate is gone: built-in, logged once
+	await a.applyGroup("certificates", { ...stored, ocsp_stapling: true }, stored);
+	await a.applyGroup("certificates", stored, { ...stored, ocsp_stapling: true });
 	assert.equal(await readFile(paths.defaultCertConf, "utf8"), renderDefaultCertConf(null, paths.tlsDir));
 	assert.equal(a.log.lines.filter((line) => line.includes("#5 does not exist")).length, 1);
 	// startup with the stored id: same fallback, the start.sh include is kept, nginx is not tested
 	const b = certApplier(paths, { listCertificates: async () => [] });
-	await b.applyGroup("certificates", next);
+	await b.applyGroup("certificates", stored);
 	assert.deepEqual(b.nginx.calls, []);
 	assert.equal(b.log.lines.filter((line) => line.includes("#5 does not exist")).length, 1);
+});
+
+it("saving a default certificate whose files are missing, or that is gone, is refused and writes nothing", async () => {
+	const { paths } = await setup();
+	const before = await readFile(paths.defaultCertConf, "utf8");
+	const prev = certValues();
+	const missingFiles = certApplier(paths);
+	await assert.rejects(missingFiles.applyGroup("certificates", { ...prev, default_certificate_id: 5 }, prev), {
+		name: "ValidationError",
+		message: "default_certificate_id: the certificate files are missing",
+	});
+	const gone = certApplier(paths, { listCertificates: async () => [] });
+	await assert.rejects(gone.applyGroup("certificates", { ...prev, default_certificate_id: 5 }, prev), {
+		name: "ValidationError",
+		message: "default_certificate_id: Certificate not found",
+	});
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), before);
+	assert.deepEqual([...missingFiles.nginx.calls, ...gone.nginx.calls], []);
+	// at startup the same id falls back quietly
+	const startup = certApplier(paths);
+	await startup.applyGroup("certificates", { ...prev, default_certificate_id: 5 });
+	assert.equal(startup.log.lines.filter((line) => line.includes("#5 are missing")).length, 1);
+});
+
+it("a startup nginx -t failure restores only the include, the other certificate settings still apply", async () => {
+	const { paths } = await setup();
+	await certTree(paths);
+	const before = await readFile(paths.defaultCertConf, "utf8");
+	const a = certApplier(paths, { nginx: nginxFake({ testError: "nginx: [emerg] x" }) });
+	const values = certValues({ default_certificate_id: 5, key_size: "secp256r1", renewal_interval: 9 });
+	await assert.rejects(a.applyGroup("certificates", values), { message: "nginx: [emerg] x" });
+	assert.equal(await readFile(paths.certbotIni, "utf8"), renderCertbotIni(values));
+	assert.deepEqual(a.restarts, [9]);
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), before);
+	assert.deepEqual(a.nginx.calls, ["test"]);
 });
 
 it("turning stapling on fetches the OCSP responses, staples the default certificate and re-renders hosts", async () => {
@@ -558,7 +593,7 @@ it("an nginx -t failure restores the include and the hosts and stores nothing", 
 		readStored: async () => ({}),
 		saveStored: async (_group, meta) => saved.push(meta),
 		getApply: () => a.applyGroup,
-		certificateExists: async (id) => id === 5,
+		findCertificate: async (id) => (id === 5 ? { id, provider: "letsencrypt" } : undefined),
 		env: BOOT_ENV,
 	});
 	await assert.rejects(update("certificates", { default_certificate_id: 5, ocsp_stapling: true }), {

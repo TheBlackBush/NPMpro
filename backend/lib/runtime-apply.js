@@ -264,7 +264,7 @@ const createRuntimeApplier = ({
 	 * The default certificate include for the values; a certificate that no longer exists (or whose files are
 	 * missing) gives the built-in certificate, logged once
 	 */
-	const defaultCertConf = async (next) => {
+	const defaultCertConf = async (next, { strict }) => {
 		const id = next.default_certificate_id;
 		const certificates = id === 0 ? [] : await listCertificates();
 		const files = await defaultCertificatePaths(id, certificates, {
@@ -274,6 +274,14 @@ const createRuntimeApplier = ({
 		});
 		if (id !== 0 && files === null) {
 			const known = certificates.some((certificate) => certificate.id === id);
+			// on save a new default certificate must be usable, at startup the built-in one is the fallback
+			if (strict) {
+				throw new errs.ValidationError(
+					known
+						? "default_certificate_id: the certificate files are missing"
+						: "default_certificate_id: Certificate not found",
+				);
+			}
 			logOnce(
 				`default-cert-${id}-${known}`,
 				known
@@ -301,8 +309,15 @@ const createRuntimeApplier = ({
 			}
 			if (DEFAULT_CERT_KEYS.some((key) => changed.includes(key))) {
 				await fetchStapling({ next, prev, startup });
-				// default.conf and npmpro.conf include it, so they need no re-render
-				plan.files.push({ path: paths.defaultCertConf, content: await defaultCertConf(next), nginx: true });
+				const strict = !startup && changed.includes("default_certificate_id");
+				// default.conf and npmpro.conf include it, so they need no re-render; at startup its own transaction, so a
+				// failing nginx -t only puts start.sh's include back
+				plan.files.push({
+					path: paths.defaultCertConf,
+					content: await defaultCertConf(next, { strict }),
+					nginx: true,
+					startupOwn: true,
+				});
 			}
 			if (changed.includes("renewal_interval") && timers.restartRenewal) {
 				plan.after.push(() => timers.restartRenewal(next.renewal_interval));
@@ -336,15 +351,27 @@ const createRuntimeApplier = ({
 			const hostEnv = effectiveEnv({ [group]: next });
 			files.push(...((await renderHosts(group, { next, prev, changed, startup, env: hostEnv })) ?? []));
 		}
-		const nginxFiles = new Set(files.filter((file) => file.nginx).map((file) => file.path));
-
 		let reloaded = false;
+		if (startup) {
+			// a file marked startupOwn is applied after the others (and the timers), alone: its nginx -t failure
+			// restores only that file
+			const testIfNginx = (batch) => async (written) => {
+				const nginxFiles = new Set(batch.filter((file) => file.nginx).map((file) => file.path));
+				if (written.some((file) => nginxFiles.has(file))) await testAndReload(nginx, { reload: false });
+			};
+			const shared = files.filter((file) => !file.startupOwn);
+			await withFiles(shared, testIfNginx(shared), { fs, log });
+			for (const step of plan.after ?? []) await step();
+			for (const file of files.filter((entry) => entry.startupOwn)) {
+				await withFiles([file], testIfNginx([file]), { fs, log });
+			}
+			return { changed, reloaded };
+		}
+
 		await withFiles(
 			files,
-			async (written) => {
-				if (startup) {
-					if (written.some((file) => nginxFiles.has(file))) await testAndReload(nginx, { reload: false });
-				} else if (reloadKeys) {
+			async () => {
+				if (reloadKeys) {
 					await testAndReload(nginx);
 					reloaded = true;
 				}

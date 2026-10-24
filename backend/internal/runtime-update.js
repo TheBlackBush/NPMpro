@@ -20,8 +20,9 @@ const runtimeView = (group, cfg) => ({ ...cfg.values, locked: cfg.locked, applie
  * @param   {Function}  deps.saveStored          (group, meta) => void
  * @param   {Function}  deps.getApply            () => apply(group, nextValues, prevValues), read on every update;
  *                                               runs before the save, a throw saves nothing and is rethrown
- * @param   {Function}  [deps.certificateExists] (id) => boolean
- * @param   {Function}  [deps.onSaved]           (group) => void, after the save (cache refresh)
+ * @param   {Function}  [deps.findCertificate]   (id) => { id, provider } | undefined
+ * @param   {Function}  [deps.onSaved]           (group, { values, locked }) => void, after the save with the merged
+ *                                               values (cache refresh)
  * @param   {Object}    [deps.env]
  * @param   {Object}    [deps.opts]              passed to mergeRuntimeConfig
  * @returns {(group: string, body: Object) => Promise<{meta: Object, values: Object, locked: string[]}>}
@@ -30,7 +31,7 @@ const createRuntimeUpdater = ({
 	readStored,
 	saveStored,
 	getApply,
-	certificateExists = async () => true,
+	findCertificate = async (id) => ({ id, provider: "letsencrypt" }),
 	onSaved = () => {},
 	env,
 	opts,
@@ -59,8 +60,15 @@ const createRuntimeUpdater = ({
 			if (message !== null) throw new errs.ValidationError(`${rule.key}: ${message}`);
 		}
 		const certId = changes.default_certificate_id;
-		if (Number.isInteger(certId) && certId !== 0 && !(await certificateExists(certId))) {
-			throw new errs.ValidationError("default_certificate_id: Certificate not found");
+		if (Number.isInteger(certId) && certId !== 0) {
+			const certificate = await findCertificate(certId);
+			if (!certificate) throw new errs.ValidationError("default_certificate_id: Certificate not found");
+			// an mTLS CA certificate verifies clients, it has no key to serve
+			if (certificate.provider === "mtls") {
+				throw new errs.ValidationError(
+					"default_certificate_id: an mTLS CA certificate cannot be the default certificate",
+				);
+			}
 		}
 
 		const meta = { ...stored, ...changes };
@@ -79,11 +87,14 @@ const createRuntimeUpdater = ({
 
 		await getApply()(group, next.values, prev.values);
 		await saveStored(group, meta);
-		onSaved(group);
+		onSaved(group, { values: next.values, locked: next.locked });
 		return { meta, values: next.values, locked: next.locked };
 	};
 
-	return (group, body) => serialize(() => update(group, body));
+	const run = (group, body) => serialize(() => update(group, body));
+	// runs fn in the same queue, so a check (certificate delete guard) cannot interleave with a save
+	run.exclusive = (fn) => serialize(fn);
+	return run;
 };
 
 export { createRuntimeUpdater, runtimeView };

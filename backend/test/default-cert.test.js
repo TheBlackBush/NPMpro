@@ -4,7 +4,13 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { defaultCertificatePaths, renderDefaultCertConf, stapledHost } from "../lib/default-cert.js";
+import {
+	defaultCertificatePaths,
+	hasStaplingFile,
+	renderDefaultCertConf,
+	stapledHost,
+	staplingFileOf,
+} from "../lib/default-cert.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
 import utils from "../lib/utils.js";
@@ -155,6 +161,7 @@ it("renders host stapling from the effective values, an env value wins", async (
 		forward_scheme: "http",
 		forward_host: "backend",
 		forward_port: 80,
+		npmpro_stapling_file_exists: true,
 		env,
 	});
 	const render = async (env) => utils.getRenderEngine().parseAndRender(template, host(env));
@@ -175,4 +182,68 @@ it("renders host stapling from the effective values, an env value wins", async (
 	const envWins = createRuntimeConfig({ env: locked, readStored: async () => ({ ocsp_stapling: true }), log: quiet });
 	await envWins.loadRuntimeConfig();
 	assert.equal((await render(envWins.effectiveEnv())).includes(staplingLine), false);
+});
+
+it("finds the OCSP response file of a host's certificate", async () => {
+	const { tls } = await tlsTree();
+	const le = { certificate_id: 5, certificate: { provider: "letsencrypt" } };
+	const custom = { certificate_id: 6, certificate: { provider: "other" } };
+	assert.deepEqual(staplingFileOf(le, tls), {
+		file: `${tls}/certbot/live/npm-5.der`,
+		kind: "acme",
+		env: "ACME_OCSP_STAPLING",
+	});
+	assert.equal(staplingFileOf(custom, tls).kind, "custom");
+	assert.equal(staplingFileOf({ certificate_id: 0, certificate: null }), null);
+	assert.equal(await hasStaplingFile(le, { tlsDir: tls }), true);
+	assert.equal(await hasStaplingFile(custom, { tlsDir: tls }), false);
+});
+
+it("host templates staple only when the OCSP response file exists", async () => {
+	const render = async (name, host) =>
+		utils
+			.getRenderEngine()
+			.parseAndRender(await readFile(path.join(import.meta.dirname, `../templates/${name}.conf`), "utf8"), host);
+	const env = { ACME_OCSP_STAPLING: "true", CUSTOM_OCSP_STAPLING: "true" };
+	const cases = [
+		["proxy_host", "letsencrypt", "ssl_stapling_file /data/tls/certbot/live/npm-5.der;"],
+		["proxy_host", "other", "ssl_stapling_file /data/tls/custom/npm-5.der;"],
+		["redirection_host", "letsencrypt", "ssl_stapling_file /data/tls/certbot/live/npm-5.der;"],
+		["dead_host", "other", "ssl_stapling_file /data/tls/custom/npm-5.der;"],
+		["stream", "letsencrypt", "ssl_stapling_file /data/tls/certbot/live/npm-5.der;"],
+		["stream", "other", "ssl_stapling_file /data/tls/custom/npm-5.der;"],
+	];
+	for (const [name, provider, line] of cases) {
+		const host = (exists) => ({
+			id: 3,
+			enabled: true,
+			certificate_id: 5,
+			certificate: { provider },
+			domain_names: ["a.example"],
+			server_names: ["a.example"],
+			forward_scheme: "http",
+			forward_host: "backend",
+			forward_port: 80,
+			incoming_port: 99,
+			tcp_forwarding: true,
+			forwarding_host: "backend",
+			forwarding_port: 1,
+			npmpro_stapling_file_exists: exists,
+			env,
+		});
+		const withFile = await render(name, host(true));
+		assert.ok(withFile.includes(line), `${name} ${provider}`);
+		assert.ok(withFile.includes("ssl_certificate_compression off;"), `${name} ${provider}`);
+		const without = await render(name, host(false));
+		assert.equal(without.includes("ssl_stapling"), false, `${name} ${provider}`);
+		assert.ok(without.includes("ssl_certificate "), `${name} ${provider}`);
+	}
+});
+
+it("regenerates all hosts when the runtime vars the env sets change, and the template version is 22", async () => {
+	const envsSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/envs.sh"), "utf8");
+	const hashLine = envsSh.split("\n").find((line) => line.startsWith("ENV_SHA512SUM="));
+	assert.ok(hashLine.includes('echo "$NPMPRO_USER_ENV"'));
+	assert.ok(envsSh.split("\n").includes('TV="22"'));
+	assert.ok(envsSh.indexOf("export NPMPRO_USER_ENV") < envsSh.indexOf("ENV_SHA512SUM="));
 });

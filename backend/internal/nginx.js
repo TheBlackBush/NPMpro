@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
+import { hasStaplingFile, staplingFileOf } from "../lib/default-cert.js";
 import errs from "../lib/error.js";
 import { effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
@@ -240,15 +241,25 @@ const internalNginx = {
 	 * @param   {Object}  [options]
 	 * @param   {Object}  [options.env]  env the template reads as env.*, default effectiveEnv() (an apply passes the
 	 *                                   values it is about to save)
+	 * @param   {boolean} [options.fetchMissingOcsp]  stapling on and no OCSP response yet (a new certificate): fetch
+	 *                                   them first; false when the caller already fetched (runtime apply)
 	 * @returns {Promise<String>}
 	 */
-	renderConfig: async (host_type, host_row, { env } = {}) => {
+	renderConfig: async (host_type, host_row, { env, fetchMissingOcsp = true } = {}) => {
 		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
 
 		const renderEngine = utils.getRenderEngine();
 
 		host.env = env ?? effectiveEnv();
+
+		// the templates staple only when the OCSP response file exists (not every CA runs an OCSP responder)
+		host.npmpro_stapling_file_exists = await hasStaplingFile(host);
+		const stapling = staplingFileOf(host);
+		if (fetchMissingOcsp && stapling && !host.npmpro_stapling_file_exists && host.env[stapling.env] === "true") {
+			await internalNginx.fetchOcsp(stapling.kind);
+			host.npmpro_stapling_file_exists = await hasStaplingFile(host);
+		}
 
 		if (
 			host.forward_host?.includes("/") &&

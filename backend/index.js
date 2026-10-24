@@ -35,7 +35,8 @@ async function appStart() {
 			nginx: { test: internalNginx.test, reload: internalNginx.reload },
 			renderHosts: renderRuntimeHosts,
 			timers: { restartRenewal: internalCertificate.restartTimer },
-			listCertificates: () => certificateModel.query().select("id"),
+			// an mTLS CA certificate cannot serve as the default certificate
+			listCertificates: () => certificateModel.query().select("id").whereNot("provider", "mtls"),
 			ocsp: { fetch: internalNginx.fetchOcsp },
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);

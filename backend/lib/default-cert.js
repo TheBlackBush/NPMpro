@@ -82,6 +82,35 @@ const renderDefaultCertConf = (paths, tlsDir = TLS_DIR) => {
 };
 
 /**
+ * The OCSP response file nginx staples for a host's certificate and the stapling kind it follows
+ *
+ * @param   {Object}  host    with certificate_id and the certificate relation
+ * @param   {string}  [tlsDir]
+ * @returns {{file: string, kind: "acme"|"custom", env: string}|null}  null without a certificate
+ */
+const staplingFileOf = (host, tlsDir = TLS_DIR) => {
+	if (!(host.certificate_id > 0) || !host.certificate) return null;
+	return host.certificate.provider === "letsencrypt"
+		? { file: `${tlsDir}/certbot/live/npm-${host.certificate_id}.der`, kind: "acme", env: "ACME_OCSP_STAPLING" }
+		: { file: `${tlsDir}/custom/npm-${host.certificate_id}.der`, kind: "custom", env: "CUSTOM_OCSP_STAPLING" };
+};
+
+/**
+ * Whether the host's OCSP response file exists and is not empty (start.sh's test -s); a host staples only then, so
+ * certificates without an OCSP responder do not break nginx -t when stapling is on
+ *
+ * @param   {Object}  host
+ * @param   {Object}  [options]
+ * @param   {Object}  [options.fs]
+ * @param   {string}  [options.tlsDir]
+ * @returns {Promise<boolean>}
+ */
+const hasStaplingFile = async (host, { fs = nodeFs, tlsDir = TLS_DIR } = {}) => {
+	const stapling = staplingFileOf(host, tlsDir);
+	return stapling !== null && (await hasContent(fs, stapling.file));
+};
+
+/**
  * Whether a host's config depends on the changed stapling keys: certbot certificates follow ocsp_stapling, custom
  * ones custom_ocsp_stapling
  *
@@ -90,8 +119,17 @@ const renderDefaultCertConf = (paths, tlsDir = TLS_DIR) => {
  * @returns {boolean}
  */
 const stapledHost = (host, changed) => {
-	if (!(host.certificate_id > 0) || !host.certificate) return false;
-	return changed.includes(host.certificate.provider === "letsencrypt" ? "ocsp_stapling" : "custom_ocsp_stapling");
+	const stapling = staplingFileOf(host);
+	return stapling !== null && changed.includes(stapling.kind === "acme" ? "ocsp_stapling" : "custom_ocsp_stapling");
 };
 
-export { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, STAPLING_KEYS, stapledHost, TLS_DIR };
+export {
+	DEFAULT_CERT_CONF,
+	defaultCertificatePaths,
+	hasStaplingFile,
+	renderDefaultCertConf,
+	STAPLING_KEYS,
+	stapledHost,
+	staplingFileOf,
+	TLS_DIR,
+};

@@ -3,6 +3,7 @@ import { it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import Ajv from "ajv/dist/2020.js";
 import { createRuntimeUpdater, runtimeView } from "../internal/runtime-update.js";
+import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig, RUNTIME_GROUPS } from "../lib/runtime-rules.js";
 import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
 import { getCompiledSchema } from "../schema/index.js";
@@ -157,14 +158,64 @@ it("checks the key size against the new key type and drops a stored size the cha
 
 it("refuses a default certificate that does not exist", async () => {
 	const store = fakeStore();
-	const update = updater(store, { certificateExists: async (id) => id === 4 });
+	const update = updater(store, {
+		findCertificate: async (id) => ({ 4: { id, provider: "other" }, 8: { id, provider: "mtls" } })[id],
+	});
 	await assert.rejects(update("certificates", { default_certificate_id: 7 }), {
 		name: "ValidationError",
 		message: "default_certificate_id: Certificate not found",
 	});
+	await assert.rejects(update("certificates", { default_certificate_id: 8 }), {
+		name: "ValidationError",
+		message: "default_certificate_id: an mTLS CA certificate cannot be the default certificate",
+	});
 	await update("certificates", { default_certificate_id: 4 });
 	await update("certificates", { default_certificate_id: 0 });
 	assert.deepEqual(store.rows.certificates, { default_certificate_id: 0 });
+});
+
+it("runs an exclusive check in the save queue, not between a save's apply and store", async () => {
+	const store = fakeStore();
+	const order = [];
+	const update = updater(store, {
+		apply: async () => {
+			order.push("apply");
+			await sleep(20);
+		},
+	});
+	const saving = update("certificates", { default_certificate_id: 4 });
+	const check = update.exclusive(() => {
+		order.push(`check ${store.rows.certificates?.default_certificate_id}`);
+		return Promise.resolve();
+	});
+	await Promise.all([saving, check]);
+	assert.deepEqual(order, ["apply", "check 4"]);
+});
+
+it("primes the runtime config with the saved values, effectiveEnv has them before any read", async () => {
+	const store = fakeStore();
+	const env = { ...BOOT_ENV, NPMPRO_USER_ENV: "" };
+	let configReads = 0;
+	const config = createRuntimeConfig({
+		env,
+		readStored: (group) => {
+			configReads++;
+			return store.readStored(group);
+		},
+	});
+	await config.loadRuntimeConfig();
+	assert.equal(config.effectiveEnv().ACME_OCSP_STAPLING, "false");
+	configReads = 0;
+	const update = updater(store, { env, onSaved: (group, cfg) => config.prime(group, cfg) });
+	// what updateRuntime does: the audit insert after the save may throw, the cache is already primed
+	const audited = update("certificates", { ocsp_stapling: true }).then(() => {
+		throw new Error("audit insert failed");
+	});
+	await assert.rejects(audited, { message: "audit insert failed" });
+	assert.equal(configReads, 0);
+	assert.equal(config.effectiveEnv().ACME_OCSP_STAPLING, "true");
+	assert.equal((await config.getRuntimeConfig("certificates")).values.ocsp_stapling, true);
+	assert.equal(configReads, 0);
 });
 
 it("answers 404 for an unknown group", async () => {
