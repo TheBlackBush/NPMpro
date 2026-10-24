@@ -1,19 +1,17 @@
 import { IconAlertCircle, IconCircleCheck, IconCircleDashed, IconInfoCircle } from "@tabler/icons-react";
-import { Form, Formik } from "formik";
-import { useState } from "react";
+import { Form, Formik, useFormikContext } from "formik";
+import { useEffect, useRef, useState } from "react";
 import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { T } from "src/locale";
-import { oidcSettingsPayload } from "src/modules/Oidc";
+import { camel, oidcSettingsPayload } from "src/modules/Oidc";
 import { showObjectSuccess } from "src/notifications";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 
-const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
-
 function StatusAlert({ variant, icon: Icon, id }) {
 	return (
-		<div className={`alert alert-${variant}`}>
+		<div className={`alert alert-${variant}`} role="status">
 			<div className="alert-icon">
 				<Icon className="icon" aria-hidden="true" />
 			</div>
@@ -21,6 +19,15 @@ function StatusAlert({ variant, icon: Icon, id }) {
 				<T id={id} />
 			</div>
 		</div>
+	);
+}
+
+function SaveButton() {
+	const { isSubmitting } = useFormikContext();
+	return (
+		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
+			<T id="save" />
+		</Button>
 	);
 }
 
@@ -36,7 +43,13 @@ export default function Authentication() {
 	const { data, isPending, error } = useOidcSettings();
 	const { mutate: save } = useSaveOidcSettings();
 	const [errorMsg, setErrorMsg] = useState(null);
-	const [isSubmitting, setIsSubmitting] = useState(false);
+	const errorRef = useRef(null);
+
+	useEffect(() => {
+		if (!errorMsg) return;
+		errorRef.current?.scrollIntoView({ block: "nearest" });
+		errorRef.current?.focus();
+	}, [errorMsg]);
 
 	if (error) {
 		return (
@@ -60,8 +73,6 @@ export default function Authentication() {
 	const isLocked = (key) => locked.has(key);
 
 	const onSubmit = (values, { setSubmitting, setFieldValue }) => {
-		if (isSubmitting) return;
-		setIsSubmitting(true);
 		setErrorMsg(null);
 		save(oidcSettingsPayload({ ...data, ...values }), {
 			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
@@ -70,7 +81,6 @@ export default function Authentication() {
 				showObjectSuccess("setting", "saved");
 			},
 			onSettled: () => {
-				setIsSubmitting(false);
 				setSubmitting(false);
 			},
 		});
@@ -95,7 +105,9 @@ export default function Authentication() {
 			<Form className="d-flex flex-column flex-fill">
 				<div className="card-body flex-fill">
 					<Heading />
-					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+					<div ref={errorRef} tabIndex={-1}>
+						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+					</div>
 					{data.active ? (
 						<StatusAlert
 							variant="success"
@@ -125,9 +137,7 @@ export default function Authentication() {
 					{/* New users section (Task 11) goes here */}
 				</div>
 				<div className="card-footer text-end">
-					<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
-						<T id="save" />
-					</Button>
+					<SaveButton />
 				</div>
 			</Form>
 		</Formik>

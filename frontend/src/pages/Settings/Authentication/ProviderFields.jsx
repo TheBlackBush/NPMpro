@@ -1,6 +1,6 @@
-import { IconCircleCheck, IconCopy } from "@tabler/icons-react";
+import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
 import { Field, useFormikContext } from "formik";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, ErrorAlert, PasswordInput, SwitchField } from "src/components";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -8,6 +8,7 @@ import { LockedBadge } from "./LockedBadge";
 
 function TextField({ name, label, hint, locked, type = "text", placeholder, ...rest }) {
 	const id = `oidc-${name}`;
+	const hintId = `${id}-hint`;
 	return (
 		<Field name={name}>
 			{({ field }) => (
@@ -24,10 +25,15 @@ function TextField({ name, label, hint, locked, type = "text", placeholder, ...r
 						autoComplete="off"
 						placeholder={placeholder}
 						disabled={locked}
+						aria-describedby={hint ? hintId : undefined}
 						value={field.value ?? ""}
 						{...rest}
 					/>
-					{hint ? <div className="form-hint">{hint}</div> : null}
+					{hint ? (
+						<div className="form-hint" id={hintId}>
+							{hint}
+						</div>
+					) : null}
 				</div>
 			)}
 		</Field>
@@ -39,6 +45,28 @@ function ProviderFields({ data, isLocked }) {
 	const { mutate: testConnection, isPending: isTesting, reset } = useTestOidcSettings();
 	const [result, setResult] = useState(null);
 
+	const [copied, setCopied] = useState(false);
+	const copyTimer = useRef(null);
+	useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+	// A stale result must not outlive the values it was produced for
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the values are the trigger, not read in the effect
+	useEffect(() => {
+		setResult(null);
+	}, [values.issuerUrl, values.clientId, values.clientSecret]);
+
+	const callbackUrl = data.callbackUrl ?? "";
+	const onCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(callbackUrl);
+		} catch {
+			return;
+		}
+		setCopied(true);
+		clearTimeout(copyTimer.current);
+		copyTimer.current = setTimeout(() => setCopied(false), 2000);
+	};
+
 	const onTest = () => {
 		setResult(null);
 		reset();
@@ -46,18 +74,17 @@ function ProviderFields({ data, isLocked }) {
 		if (values.clientSecret) payload.clientSecret = values.clientSecret;
 		testConnection(payload, {
 			onSuccess: (res) => setResult(res),
-			onError: (err) => setResult({ ok: false, message: err?.message ?? String(err) }),
+			onError: (err) => setResult({ ok: false, error: err }),
 		});
 	};
 
 	const secretLocked = isLocked("clientSecret");
-	const secretPlaceholder = intl.formatMessage({
-		id: secretLocked
-			? "settings.authentication.locked"
-			: data.clientSecretSet
-				? "settings.authentication.client-secret.saved"
-				: "settings.authentication.client-secret.empty",
-	});
+	const secretKey = () => {
+		if (secretLocked) return "settings.authentication.locked";
+		if (data.clientSecretSet && !data.secretError) return "settings.authentication.client-secret.saved";
+		return "settings.authentication.client-secret.empty";
+	};
+	const secretPlaceholder = data.secretError && !secretLocked ? "" : intl.formatMessage({ id: secretKey() });
 
 	return (
 		<div className="mb-4">
@@ -126,19 +153,28 @@ function ProviderFields({ data, isLocked }) {
 						type="text"
 						className="form-control"
 						readOnly
-						value={data.callbackUrl ?? ""}
+						aria-describedby="oidc-callbackUrl-hint"
+						value={callbackUrl}
 					/>
 					<button
 						type="button"
 						className="btn btn-icon"
-						aria-label={intl.formatMessage({ id: "aria.copy" })}
-						onClick={() => navigator.clipboard.writeText(data.callbackUrl ?? "")}
+						aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+						disabled={!callbackUrl}
+						onClick={onCopy}
 					>
-						<IconCopy className="icon" aria-hidden="true" />
+						{copied ? (
+							<IconCheck className="icon" aria-hidden="true" />
+						) : (
+							<IconCopy className="icon" aria-hidden="true" />
+						)}
 					</button>
 				</div>
-				<div className="form-hint">
+				<div className="form-hint" id="oidc-callbackUrl-hint">
 					<T id="settings.authentication.callback-url.hint" />
+				</div>
+				<div className="visually-hidden" aria-live="polite">
+					{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
 				</div>
 			</div>
 			<TextField name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
@@ -151,7 +187,7 @@ function ProviderFields({ data, isLocked }) {
 			>
 				<T id="settings.authentication.test" />
 			</Button>
-			<div aria-live="polite">
+			<div role="status">
 				{result?.ok ? (
 					<div className="alert alert-success mt-3 mb-0">
 						<div className="alert-icon">
@@ -162,7 +198,11 @@ function ProviderFields({ data, isLocked }) {
 						</div>
 					</div>
 				) : null}
-				{result && !result.ok ? <ErrorAlert className="mt-3 mb-0">{result.message}</ErrorAlert> : null}
+				{result && !result.ok ? (
+					<ErrorAlert className="mt-3 mb-0" error={result.error}>
+						{result.message}
+					</ErrorAlert>
+				) : null}
 			</div>
 		</div>
 	);

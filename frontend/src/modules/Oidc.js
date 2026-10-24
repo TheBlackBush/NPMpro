@@ -119,6 +119,7 @@ const oidcSettingsPayload = (values) => {
 };
 
 export {
+	camel,
 	contrastText,
 	OIDC_BUILTIN_ICONS,
 	OIDC_COLOR_PRESETS,
