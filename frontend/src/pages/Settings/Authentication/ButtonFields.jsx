@@ -108,11 +108,11 @@ function IconFields({ storedIcon }) {
 
 	const onFile = (e) => {
 		const file = e.target.files?.[0];
-		if (!file) return;
+		// reset so that the same file can be picked again, without remounting or disabling (keeps the focus)
+		e.target.value = "";
+		if (!file || busy) return;
 		setResult(null);
 		upload.mutate(file, callbacks("settings.authentication.button.icon.uploaded"));
-		// reset so that the same file can be picked again, without remounting (keeps the focus)
-		e.target.value = "";
 	};
 
 	const onDownload = () => {
@@ -201,7 +201,7 @@ function IconFields({ storedIcon }) {
 						accept={ICON_ACCEPT}
 						aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.upload" })}
 						aria-describedby={`${groupId}-upload-hint`}
-						disabled={busy}
+						aria-disabled={busy}
 						onChange={onFile}
 					/>
 					<div className="form-hint" id={`${groupId}-upload-hint`}>
