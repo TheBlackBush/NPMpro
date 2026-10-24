@@ -203,3 +203,114 @@ it("does not run onShowIpsOn when the env locks show_ips off", async () => {
 	await update({ show_ips: true });
 	assert.equal(calls, 0);
 });
+
+it("runs onUniqueVisitorsOff before the save", async () => {
+	const store = fakeStore({ unique_visitors: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onUniqueVisitorsOff: async () => {
+				events.push("off");
+			},
+		},
+	});
+	await update({ unique_visitors: false });
+	assert.deepEqual(events, ["off", "save"]);
+	assert.deepEqual(store.get(), { unique_visitors: false });
+});
+
+it("saves nothing when onUniqueVisitorsOff rejects", async () => {
+	const store = fakeStore({ unique_visitors: true });
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onUniqueVisitorsOff: () => Promise.reject(new Error("disk full")),
+		},
+	});
+	await assert.rejects(update({ unique_visitors: false }), {
+		message: "Could not delete the stored visitor hashes, the setting was not changed: disk full",
+	});
+	assert.deepEqual(store.get(), { unique_visitors: true });
+});
+
+it("runs onUniqueVisitorsOn after saving, and only on false to true", async () => {
+	const store = fakeStore({ unique_visitors: false });
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onUniqueVisitorsOff: ok,
+			onUniqueVisitorsOn: () => {
+				events.push("on");
+				return Promise.reject(new Error("only logged"));
+			},
+		},
+	});
+	await update({ unique_visitors: true });
+	await update({ unique_visitors: true });
+	assert.deepEqual(events, ["save", "on", "save"]);
+});
+
+it("ignores unique_visitors when the env locks it", async () => {
+	const store = fakeStore({ unique_visitors: true });
+	let calls = 0;
+	const count = () => {
+		calls++;
+		return ok();
+	};
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: ok,
+		env: { TRAFFIC_UNIQUE_VISITORS: "true" },
+		hooks: { onTrafficEnabledChange: ok, onShowIpsOff: ok, onUniqueVisitorsOff: count, onUniqueVisitorsOn: count },
+	});
+	await update({ unique_visitors: false });
+	assert.equal(calls, 0);
+	assert.deepEqual(store.get(), { unique_visitors: true });
+});
+
+it("runs both off hooks before one save", async () => {
+	const store = fakeStore({ show_ips: true, unique_visitors: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: async () => {
+				events.push("ips");
+			},
+			onUniqueVisitorsOff: async () => {
+				events.push("visitors");
+			},
+		},
+	});
+	await update({ show_ips: false, unique_visitors: false });
+	assert.deepEqual(events, ["ips", "visitors", "save"]);
+});

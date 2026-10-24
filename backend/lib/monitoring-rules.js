@@ -1,4 +1,4 @@
-const MONITORING_DEFAULTS = { traffic_enabled: false, retention_days: 30, show_ips: false };
+const MONITORING_DEFAULTS = { traffic_enabled: false, retention_days: 30, show_ips: false, unique_visitors: false };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
 const RETENTION_MIN = 7;
@@ -36,6 +36,10 @@ const mergeMonitoringConfig = (stored, env) => {
 	if (isSet(env.TRAFFIC_SHOW_IPS)) {
 		values.show_ips = env.TRAFFIC_SHOW_IPS === "true";
 		locked.push("show_ips");
+	}
+	if (isSet(env.TRAFFIC_UNIQUE_VISITORS)) {
+		values.unique_visitors = env.TRAFFIC_UNIQUE_VISITORS === "true";
+		locked.push("unique_visitors");
 	}
 	return { values, locked };
 };

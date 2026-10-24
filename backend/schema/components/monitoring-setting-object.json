@@ -6,6 +6,7 @@
 		"traffic_enabled",
 		"retention_days",
 		"show_ips",
+		"unique_visitors",
 		"locked"
 	],
 	"properties": {
@@ -22,6 +23,10 @@
 		"show_ips": {
 			"type": "boolean",
 			"description": "Store and show client IP addresses"
+		},
+		"unique_visitors": {
+			"type": "boolean",
+			"description": "Count unique visitors with keyed IP hashes; turning it off deletes them"
 		},
 		"locked": {
 			"type": "array",

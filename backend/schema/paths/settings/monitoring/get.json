@@ -20,6 +20,7 @@
 								"traffic_enabled": true,
 								"retention_days": 30,
 								"show_ips": false,
+								"unique_visitors": false,
 								"locked": []
 							}
 						}

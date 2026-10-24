@@ -7,6 +7,7 @@ it("monitoring defaults and env locks", () => {
 		traffic_enabled: false,
 		retention_days: 30,
 		show_ips: false,
+		unique_visitors: false,
 	});
 	const a = mergeMonitoringConfig({ traffic_enabled: false }, { LOGROTATE: "true" });
 	assert.equal(a.values.traffic_enabled, true);
@@ -30,6 +31,19 @@ it("monitoring env switches lock on and off", () => {
 		true,
 	);
 	assert.equal(mergeMonitoringConfig({ retention_days: 90, show_ips: null }, {}).values.retention_days, 90);
+});
+
+it("unique_visitors env lock", () => {
+	assert.equal(mergeMonitoringConfig({}, {}).values.unique_visitors, false);
+	const on = mergeMonitoringConfig({}, { TRAFFIC_UNIQUE_VISITORS: "true" });
+	assert.equal(on.values.unique_visitors, true);
+	assert.ok(on.locked.includes("unique_visitors"));
+	const off = mergeMonitoringConfig({ unique_visitors: true }, { TRAFFIC_UNIQUE_VISITORS: "false" });
+	assert.equal(off.values.unique_visitors, false);
+	assert.ok(off.locked.includes("unique_visitors"));
+	const empty = mergeMonitoringConfig({ unique_visitors: true }, { TRAFFIC_UNIQUE_VISITORS: "" });
+	assert.equal(empty.values.unique_visitors, true);
+	assert.deepEqual(empty.locked, []);
 });
 
 it("geoip editions from env, unknown ones dropped", () => {

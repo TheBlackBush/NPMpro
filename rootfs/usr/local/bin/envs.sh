@@ -568,6 +568,11 @@ if [ -n "$TRAFFIC_SHOW_IPS" ] && ! echo "$TRAFFIC_SHOW_IPS" | grep -q "^true$\|^
     sleep inf
 fi
 
+if [ -n "$TRAFFIC_UNIQUE_VISITORS" ] && ! echo "$TRAFFIC_UNIQUE_VISITORS" | grep -q "^true$\|^false$"; then
+    echo "TRAFFIC_UNIQUE_VISITORS needs to be true or false."
+    sleep inf
+fi
+
 if [ -n "$TRAFFIC_RETENTION_DAYS" ] && { ! echo "$TRAFFIC_RETENTION_DAYS" | grep -Eq "^[0-9]{1,3}$" || [ "$TRAFFIC_RETENTION_DAYS" -lt 7 ] || [ "$TRAFFIC_RETENTION_DAYS" -gt 365 ]; }; then
     echo "TRAFFIC_RETENTION_DAYS needs to be a number between 7 and 365."
     sleep inf

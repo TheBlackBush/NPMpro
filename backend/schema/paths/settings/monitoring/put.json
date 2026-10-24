@@ -34,6 +34,10 @@
 						"show_ips": {
 							"type": "boolean",
 							"description": "Store and show client IP addresses"
+						},
+						"unique_visitors": {
+							"type": "boolean",
+							"description": "Count unique visitors with keyed IP hashes; turning it off deletes them"
 						}
 					}
 				},
@@ -55,6 +59,7 @@
 								"traffic_enabled": true,
 								"retention_days": 30,
 								"show_ips": false,
+								"unique_visitors": false,
 								"locked": []
 							}
 						}
