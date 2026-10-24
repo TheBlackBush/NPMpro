@@ -6,6 +6,8 @@ import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { LockedBadge } from "./LockedBadge";
 
+const CONNECTION_KEYS = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
+
 function TextField({ name, label, hint, locked, type = "text", placeholder, ...rest }) {
 	const id = `oidc-${name}`;
 	const hintId = `${id}-hint`;
@@ -79,6 +81,9 @@ function ProviderFields({ data, isLocked }) {
 	};
 
 	const secretLocked = isLocked("clientSecret");
+	// With every connection value from env vars OIDC is active whatever the stored switch says
+	const envOnly = CONNECTION_KEYS.every((key) => isLocked(key));
+	const enabledLocked = envOnly || isLocked("enabled");
 	const secretKey = () => {
 		if (secretLocked) return "settings.authentication.locked";
 		if (data.clientSecretSet && !data.secretError) return "settings.authentication.client-secret.saved";
@@ -97,11 +102,11 @@ function ProviderFields({ data, isLocked }) {
 				label={
 					<>
 						<T id="settings.authentication.enabled" />
-						{isLocked("enabled") ? <LockedBadge /> : null}
+						{enabledLocked ? <LockedBadge /> : null}
 					</>
 				}
-				disabled={isLocked("enabled")}
-				checked={Boolean(values.enabled)}
+				disabled={enabledLocked}
+				checked={envOnly || Boolean(values.enabled)}
 				onChange={(e) => setFieldValue("enabled", e.target.checked)}
 			/>
 			<TextField
