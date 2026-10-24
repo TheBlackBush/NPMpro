@@ -37,8 +37,8 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 	let ips = new Map();
 	const seenAsns = new Map();
 	const seenIps = new Map();
-	// per `${day}|${host}`: seen = packed hashes queued in this run, stored = visitors stored before the start
-	// (seedVisitorCounts), marked = a cap marker is stored or queued
+	// per `${day}|${host}`: seen = packed hashes queued in this run or stored before the start (seedVisitors),
+	// marked = a cap marker is stored or queued
 	const dayVisitors = new Map();
 	let visitors = [];
 	let visitorsCap = maxVisitors;
@@ -51,7 +51,7 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		const key = `${day}|${host}`;
 		let entry = dayVisitors.get(key);
 		if (!entry) {
-			entry = { seen: new Set(), stored: 0, marked: false };
+			entry = { seen: new Set(), marked: false };
 			dayVisitors.set(key, entry);
 		}
 		return entry;
@@ -62,7 +62,7 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		const entry = visitorEntry(day, host);
 		const packed = packHash(hash);
 		if (entry.seen.has(packed)) return;
-		if (entry.stored + entry.seen.size >= visitorsCap) {
+		if (entry.seen.size >= visitorsCap) {
 			if (!entry.marked) {
 				entry.marked = true;
 				visitors.push({ day, host, hash: "" });
@@ -145,16 +145,17 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		},
 
 		/**
-		 * Starts from the stored counts after a restart, so the cap holds for the whole day. A pair is full only
-		 * when its stored count reaches the current cap (a marker from a lower cap does not block a raised one);
+		 * Starts from the stored hashes after a restart, so the cap holds for the whole day and a returning visitor
+		 * is not counted against it twice (the sets hold the same hashes as without a restart). A pair is full only
+		 * when its stored visitors reach the current cap (a marker from a lower cap does not block a raised one);
 		 * a stored marker is never queued again.
 		 *
-		 * @param {Array<{day: number, host: string, visitors: number, capped: boolean}>} rows
+		 * @param {Array<{day: number, host: string, hashes: string[], capped: boolean}>} rows  hex hashes, no marker
 		 */
-		seedVisitorCounts(rows) {
-			for (const { day, host, visitors: stored, capped } of rows) {
+		seedVisitors(rows) {
+			for (const { day, host, hashes, capped } of rows) {
 				const entry = visitorEntry(day, host);
-				entry.stored = stored;
+				for (const hash of hashes) entry.seen.add(packHash(hash));
 				entry.marked = entry.marked || capped;
 			}
 		},

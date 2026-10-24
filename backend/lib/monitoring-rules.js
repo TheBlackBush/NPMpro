@@ -120,6 +120,4 @@ export {
 	mergeGeoipConfig,
 	mergeMonitoringConfig,
 	sanitizeGeoipMeta,
-	VISITORS_CAP_MAX,
-	VISITORS_CAP_MIN,
 };

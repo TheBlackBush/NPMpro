@@ -60,11 +60,13 @@ it("creates and stores an encrypted key, then reuses it", async () => {
 	const s = store(undefined);
 	const first = await loadVisitorKey({ ...s, box });
 	assert.equal(first.created, true);
+	assert.equal(first.replaced, false, "nothing was stored before");
 	assert.equal(first.key.length, 32);
 	assert.ok(s.get().visitor_key.startsWith("enc:"));
 	assert.ok(!s.get().visitor_key.includes(first.key.toString("hex")));
 	const second = await loadVisitorKey({ ...s, box });
 	assert.equal(second.created, false);
+	assert.equal(second.replaced, false);
 	assert.deepEqual(second.key, first.key);
 });
 
@@ -84,6 +86,7 @@ it("creates a new key when decryption throws", async () => {
 	};
 	const r = await loadVisitorKey({ ...s, box: bad });
 	assert.equal(r.created, true);
+	assert.equal(r.replaced, true);
 	assert.notEqual(s.get().visitor_key, "garbage");
 });
 
@@ -91,5 +94,6 @@ it("creates a new key when the decrypted length is wrong", async () => {
 	const s = store({ visitor_key: `enc:${Buffer.alloc(16).toString("base64")}` });
 	const r = await loadVisitorKey({ ...s, box });
 	assert.equal(r.created, true);
+	assert.equal(r.replaced, true);
 	assert.equal(r.key.length, 32);
 });

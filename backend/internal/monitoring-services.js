@@ -14,7 +14,7 @@ import {
 	queryTraffic,
 	rollUpAndPrune,
 	summary,
-	visitorDayCounts,
+	visitorDayHashes,
 } from "../lib/traffic/store.js";
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
 import { global as logger } from "../logger.js";
@@ -84,7 +84,7 @@ const store = {
 	rollUpAndPrune,
 	deleteIps,
 	deleteVisitors,
-	visitorDayCounts,
+	visitorDayHashes,
 	countVisitors,
 	queryTraffic,
 	summary,

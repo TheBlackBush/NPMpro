@@ -91,6 +91,18 @@ describe("recent requests", () => {
 		assert.equal(JSON.stringify(recent.list({ keys: ["quiet.test", "busy.test"] })).includes("203.0.113"), false);
 	});
 
+	it("keepHosts drops the per host lists of keys no longer in use, the overall list stays", () => {
+		const recent = createRecent();
+		recent.add(entry("gone.test", 1));
+		recent.add(entry("kept.test", 2));
+		recent.keepHosts(new Set(["kept.test", "_other"]));
+		assert.deepEqual(recent.list({ keys: ["gone.test"] }), []);
+		assert.equal(recent.list({ keys: ["kept.test"] }).length, 1);
+		assert.equal(recent.list().length, 2);
+		recent.add(entry("gone.test", 3));
+		assert.equal(recent.list({ keys: ["gone.test"] }).length, 1, "a key in use again gets a new list");
+	});
+
 	it("clear empties every list", () => {
 		const recent = createRecent();
 		recent.add(entry("a.test", 1));

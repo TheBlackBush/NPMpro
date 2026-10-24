@@ -72,10 +72,10 @@ const fakeStore = () => {
 			calls.push("deleteVisitors");
 			return Promise.resolve();
 		},
-		dayCounts: [],
-		visitorDayCounts(args) {
-			calls.push(["visitorDayCounts", args]);
-			return Promise.resolve(this.dayCounts);
+		dayHashes: [],
+		visitorDayHashes(args) {
+			calls.push(["visitorDayHashes", args]);
+			return Promise.resolve(this.dayHashes);
 		},
 		rollUpAndPrune(args) {
 			calls.push(["rollUp", args]);
@@ -665,7 +665,37 @@ describe("traffic service: unique visitors", () => {
 		assert.equal(t.service.status().dropped_requests, 1);
 	});
 
-	it("seeds the stored counts at start: after a restart the same IP counts once and a capped day stays capped", async () => {
+	it("returning visitors after a restart do not fill the cap: 800 stored, 300 back and 100 new under cap 1000", async () => {
+		const knex = knexFactory({
+			client: "better-sqlite3",
+			connection: { filename: ":memory:" },
+			useNullAsDefault: true,
+		});
+		await upMonitoring(knex);
+		await upVisitors(knex);
+		const store = createStore(knex);
+		const ip = (n) => `198.51.${Math.floor(n / 256)}.${n % 256}`;
+		const lines = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => line("example.com", ip(from + i)));
+		const config = { ...on, visitors_cap: 1000 };
+		try {
+			const first = setup({ store, config, results: [read(lines(1, 800))] });
+			await first.service.start();
+			await first.service.read();
+			await first.service.stop();
+			const second = setup({ store, config, results: [read(lines(501, 900))] });
+			await second.service.start();
+			await second.service.read();
+			await second.service.stop();
+			assert.deepEqual(await store.countVisitors({ startDay: 0, hosts: ["example.com"] }), {
+				visitors: 900,
+				capped: false,
+			});
+		} finally {
+			await knex.destroy();
+		}
+	});
+
+	it("seeds the stored hashes at start: after a restart the same IP counts once and a capped day stays capped", async () => {
 		const knex = knexFactory({
 			client: "better-sqlite3",
 			connection: { filename: ":memory:" },
@@ -676,7 +706,6 @@ describe("traffic service: unique visitors", () => {
 		const store = createStore(knex);
 		const visitorRows = () => knex("traffic_visitor").orderBy("id").select("host", "hash");
 		try {
-			// a hash re-sent after the restart counts against the cap once (conservative), so cap 3 leaves room
 			const config = { ...on, visitors_cap: 3 };
 			const first = setup({
 				store,
@@ -746,17 +775,17 @@ describe("traffic service: unique visitors", () => {
 		}
 	});
 
-	it("reads the stored counts for today and yesterday once at start", async () => {
+	it("reads the stored hashes for today and yesterday once at start", async () => {
 		const t = setup({ config: on });
 		await t.service.start();
 		const today = Math.floor(Date.UTC(2026, 9, 24, 8, 16, 0) / 86400000);
 		assert.deepEqual(
-			t.store.calls.filter((c) => Array.isArray(c) && c[0] === "visitorDayCounts"),
-			[["visitorDayCounts", { days: [today - 1, today] }]],
+			t.store.calls.filter((c) => Array.isArray(c) && c[0] === "visitorDayHashes"),
+			[["visitorDayHashes", { days: [today - 1, today] }]],
 		);
 		const created = setup({ config: on, visitorKey: { key: Buffer.alloc(32, 1), created: true } });
 		await created.service.start();
-		assert.ok(!created.store.calls.some((c) => Array.isArray(c) && c[0] === "visitorDayCounts"), "all deleted");
+		assert.ok(!created.store.calls.some((c) => Array.isArray(c) && c[0] === "visitorDayHashes"), "all deleted");
 	});
 
 	it("applies visitors_cap from the settings at each refresh", async () => {
@@ -807,6 +836,19 @@ describe("traffic service: unique visitors", () => {
 		const ok = setup({ config: on });
 		await ok.service.start();
 		assert.equal(ok.service.status().visitors_error, null);
+	});
+
+	it("logs once that an unreadable key was replaced, without the key", async () => {
+		const key = Buffer.alloc(32, 9);
+		const t = setup({ config: on, visitorKey: { key, created: true, replaced: true } });
+		await t.service.start();
+		assert.deepEqual(t.errors, [
+			"Traffic statistics: The visitor key could not be read; a new key was created and stored visitor hashes were deleted",
+		]);
+		assert.ok(t.store.calls.includes("deleteVisitors"));
+		const first = setup({ config: on, visitorKey: { key, created: true, replaced: false } });
+		await first.service.start();
+		assert.deepEqual(first.errors, [], "a first key is not reported");
 	});
 
 	it("off and then on again within the 5-minute pin counts from the next line", async () => {
@@ -950,6 +992,78 @@ describe("traffic service: host resolver", () => {
 		assert.equal(t.hostLoads(), 2);
 	});
 
+	it("a host saved shortly before its first request is counted under its own key, not _other", async () => {
+		const t = setup({
+			results: [read([line("example.com")]), read([line("new.test")]), read([line("newer.test")])],
+		});
+		await t.service.start();
+		t.advance(4000);
+		t.setHosts(["example.com", "new.test"]);
+		t.advance(1000);
+		await t.service.read();
+		await t.service.read();
+		// a flush reloads the list, then a host is saved 1 s later and requested 1 s after that
+		await t.service.flush();
+		t.advance(1000);
+		t.setHosts(["example.com", "new.test", "newer.test"]);
+		t.advance(1000);
+		await t.service.read();
+		await t.service.flush();
+		const keys = t.store.flushed.flatMap((b) => b.minutes.map((m) => m.host));
+		assert.deepEqual(keys, ["example.com", "new.test", "newer.test"]);
+	});
+
+	it("reloads the host list at most once per read and not for a read without lines", async () => {
+		const t = setup({ results: [read([]), read([line("example.com")]), read([line("example.com")])] });
+		await t.service.start();
+		assert.equal(t.hostLoads(), 1);
+		t.advance(5000);
+		await t.service.read();
+		assert.equal(t.hostLoads(), 1, "no lines, no reload");
+		t.advance(5000);
+		await t.service.read();
+		assert.equal(t.hostLoads(), 2);
+		await t.service.read();
+		assert.equal(t.hostLoads(), 2, "loaded at the time of this read already");
+	});
+
+	it("a failed host load is retried by the next read and the API, and logged once", async () => {
+		const t = setup({ results: [read([line("example.com")]), read([line("example.com")])] });
+		await t.service.start();
+		t.setHosts(new Error("no such table: proxy_host"));
+		t.advance(5000);
+		await t.service.read();
+		t.setHosts(["example.com"]);
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.errors.filter((e) => e.includes("could not read the host list")).length, 1);
+		assert.deepEqual(
+			t.store.flushed[0].minutes.map((m) => [m.host, m.requests]),
+			[["example.com", 2]],
+		);
+		t.setHosts(new Error("no such table: proxy_host"));
+		await t.service.flush();
+		t.setHosts([{ id: 7, type: "proxy", domain_names: ["example.org"] }]);
+		const loads = t.hostLoads();
+		assert.equal(
+			(await t.service.hostResolver()).ownerOf("example.org").host_id,
+			7,
+			"no 60 s wait after a failure",
+		);
+		assert.equal(t.hostLoads(), loads + 1);
+	});
+
+	it("a host reload drops the recent per host lists of keys that are gone", async () => {
+		const t = setup({ hosts: ["example.com", "old.test"], results: [read([line("old.test")])] });
+		await t.service.start();
+		await t.service.read();
+		assert.equal(t.service.recent({ keys: ["old.test"] }).length, 1);
+		t.setHosts(["example.com"]);
+		await t.service.flush();
+		assert.deepEqual(t.service.recent({ keys: ["old.test"] }), []);
+		assert.equal(t.service.recent().length, 1, "the overall list keeps it");
+	});
+
 	it("a failed refresh keeps the previous resolver and logs the error", async () => {
 		const t = setup();
 		await t.service.start();
@@ -975,7 +1089,7 @@ describe("traffic service: host resolver", () => {
 	it("a late settings read that deletes the visitor hashes also forgets the counts seeded at start", async () => {
 		const store = fakeStore();
 		const today = Math.floor(Date.UTC(2026, 9, 24, 8, 16, 0) / 86400000);
-		store.dayCounts = [{ day: today, host: "example.com", visitors: 1, capped: true }];
+		store.dayHashes = [{ day: today, host: "example.com", hashes: ["1".padStart(32, "0")], capped: true }];
 		const t = setup({
 			store,
 			configFails: 1,

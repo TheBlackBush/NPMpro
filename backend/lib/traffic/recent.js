@@ -6,7 +6,7 @@
  * @param   {Object}  [options]
  * @param   {number}  [options.overall]
  * @param   {number}  [options.perHost]
- * @returns {{add: Function, list: Function, forgetIps: Function, clear: Function}}
+ * @returns {{add: Function, list: Function, forgetIps: Function, keepHosts: Function, clear: Function}}
  */
 const createRecent = ({ overall = 200, perHost = 50 } = {}) => {
 	// oldest first; seq orders entries with the same time by arrival
@@ -51,6 +51,16 @@ const createRecent = ({ overall = 200, perHost = 50 } = {}) => {
 		forgetIps: () => {
 			for (const item of all) delete item.ip;
 			for (const list of byHost.values()) for (const item of list) delete item.ip;
+		},
+
+		/**
+		 * Drops the per host lists of keys that are no longer counted (the host was removed or renamed); their
+		 * entries stay in the overall list until newer ones push them out.
+		 *
+		 * @param {Set<string>} keys  the host keys still in use
+		 */
+		keepHosts: (keys) => {
+			for (const key of byHost.keys()) if (!keys.has(key)) byHost.delete(key);
 		},
 
 		clear: () => {

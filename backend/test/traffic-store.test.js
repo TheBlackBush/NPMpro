@@ -221,7 +221,7 @@ it("filters traffic by a list of host keys", async () => {
 	await knex.destroy();
 });
 
-it("visitorDayCounts gives distinct visitors and the marker per day and host for the given days", async () => {
+it("visitorDayHashes gives the stored hashes and the marker per day and host for the given days", async () => {
 	const { knex, store } = await setup();
 	const day = Math.floor(NOW / 86400000);
 	const hx = (n) => n.toString(16).padStart(32, "0");
@@ -236,13 +236,15 @@ it("visitorDayCounts gives distinct visitors and the marker per day and host for
 			{ day: day - 2, host: "a", hash: hx(1) },
 		],
 	});
-	const rows = await store.visitorDayCounts({ days: [day - 1, day] });
+	const rows = await store.visitorDayHashes({ days: [day - 1, day] });
 	assert.deepEqual(
-		rows.sort((x, y) => x.day - y.day || x.host.localeCompare(y.host)),
+		rows
+			.sort((x, y) => x.day - y.day || x.host.localeCompare(y.host))
+			.map((r) => ({ ...r, hashes: r.hashes.sort((x, y) => x.localeCompare(y)) })),
 		[
-			{ day: day - 1, host: "a", visitors: 1, capped: false },
-			{ day, host: "a", visitors: 2, capped: true },
-			{ day, host: "b", visitors: 1, capped: false },
+			{ day: day - 1, host: "a", hashes: [hx(1)], capped: false },
+			{ day, host: "a", hashes: [hx(1), hx(2)], capped: true },
+			{ day, host: "b", hashes: [hx(1)], capped: false },
 		],
 	);
 	await knex.destroy();

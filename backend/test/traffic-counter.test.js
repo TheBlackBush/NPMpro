@@ -158,12 +158,14 @@ it("drain prunes visitor sets older than yesterday", () => {
 	assert.deepEqual(c.drain().visitors, [{ day, host: "a", hash: h(1) }], "the set two days back was pruned");
 });
 
-it("seeded counts keep the cap across a restart", () => {
+const hashes = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => h(from + i));
+
+it("seeded hashes keep the cap across a restart", () => {
 	const c = createCounter({ maxVisitors: 3 });
-	c.seedVisitorCounts([
-		{ day, host: "a", visitors: 2, capped: false },
-		{ day, host: "b", visitors: 3, capped: false },
-		{ day, host: "c", visitors: 3, capped: true },
+	c.seedVisitors([
+		{ day, host: "a", hashes: hashes(10, 11), capped: false },
+		{ day, host: "b", hashes: hashes(10, 12), capped: false },
+		{ day, host: "c", hashes: hashes(10, 12), capped: true },
 	]);
 	for (const host of ["a", "b", "c"]) for (const n of [1, 2]) v(c, host, h(n));
 	assert.deepEqual(c.drain().visitors, [
@@ -171,6 +173,23 @@ it("seeded counts keep the cap across a restart", () => {
 		{ day, host: "a", hash: "" },
 		{ day, host: "b", hash: "" },
 	]);
+});
+
+it("returning visitors after a restart are not counted against the cap twice", () => {
+	const c = createCounter({ maxVisitors: 1000 });
+	c.seedVisitors([{ day, host: "a", hashes: hashes(1, 800), capped: false }]);
+	// 400 lines: 300 returning visitors and 100 new ones
+	for (let n = 501; n <= 900; n++) v(c, "a", h(n));
+	const queued = c.drain().visitors;
+	assert.equal(queued.length, 100, "only the new visitors are queued");
+	assert.ok(
+		queued.every((r) => r.hash !== ""),
+		"no marker: 900 stored is below the cap",
+	);
+	assert.deepEqual(
+		queued.map((r) => r.hash),
+		hashes(801, 900),
+	);
 });
 
 it("setVisitorsCap: raising admits new visitors again, lowering stops adding", () => {
@@ -206,7 +225,7 @@ it("dropVisitors lets dropped hashes and markers be queued again", () => {
 
 it("a stored marker from a lower cap does not block a raised cap after a restart", () => {
 	const c = createCounter({ maxVisitors: 4 });
-	c.seedVisitorCounts([{ day, host: "a", visitors: 2, capped: true }]);
+	c.seedVisitors([{ day, host: "a", hashes: hashes(10, 11), capped: true }]);
 	for (const n of [1, 2, 3, 4]) v(c, "a", h(n));
 	assert.deepEqual(
 		c.drain().visitors,

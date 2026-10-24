@@ -63,21 +63,21 @@ const readKey = (meta, box) => {
 
 /**
  * Loads the visitor key from the traffic meta, or creates and stores a new one.
- * `created` is true when a new key replaced a missing or unusable one.
+ * `created` is true when a new key was created, `replaced` when it replaced a stored key that could not be read.
  *
  * @param   {Object}  options
  * @param   {() => Promise<Object|undefined>}  options.readMeta
  * @param   {(meta: Object) => Promise<void>}  options.writeMeta
  * @param   {{encrypt: Function, decrypt: Function}}  options.box
- * @returns {Promise<{key: Buffer, created: Boolean}>}
+ * @returns {Promise<{key: Buffer, created: Boolean, replaced: Boolean}>}
  */
 const loadVisitorKey = async ({ readMeta, writeMeta, box }) => {
 	const meta = await readMeta();
 	const existing = readKey(meta, box);
-	if (existing) return { key: existing, created: false };
+	if (existing) return { key: existing, created: false, replaced: false };
 	const key = randomBytes(keyLength);
 	await writeMeta({ ...meta, visitor_key: box.encrypt(key.toString("base64")) });
-	return { key, created: true };
+	return { key, created: true, replaced: meta?.visitor_key !== undefined && meta?.visitor_key !== null };
 };
 
 export { createVisitorHasher, loadVisitorKey, normaliseIp };

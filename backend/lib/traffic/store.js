@@ -164,31 +164,29 @@ export const createStore = (knex) => {
 	};
 
 	/**
-	 * Stored distinct visitors and cap marker per (day, host) for the given days, so the counter can keep the
-	 * per day cap across restarts.
+	 * Stored visitor hashes (without the empty marker) and the cap marker per (day, host) for the given days, so
+	 * the counter can keep the per day cap across restarts without counting returning visitors twice.
 	 *
 	 * @param   {Object}    args
 	 * @param   {Number[]}  args.days  UTC day numbers
-	 * @returns {Promise<Array<{day: Number, host: String, visitors: Number, capped: Boolean}>>}
+	 * @returns {Promise<Array<{day: Number, host: String, hashes: String[], capped: Boolean}>>}
 	 */
-	const visitorDayCounts = async ({ days }) => {
+	const visitorDayHashes = async ({ days }) => {
 		const out = new Map();
 		const entry = (day, host) => {
 			const key = `${day}|${host}`;
 			let row = out.get(key);
 			if (!row) {
-				row = { day: num(day), host, visitors: 0, capped: false };
+				row = { day: num(day), host, hashes: [], capped: false };
 				out.set(key, row);
 			}
 			return row;
 		};
-		const counted = await knex("traffic_visitor")
+		const stored = await knex("traffic_visitor")
 			.whereIn("day", days)
 			.where("hash", "<>", "")
-			.groupBy("day", "host")
-			.select("day", "host")
-			.countDistinct({ visitors: "hash" });
-		for (const row of counted) entry(row.day, row.host).visitors = num(row.visitors);
+			.select("day", "host", "hash");
+		for (const row of stored) entry(row.day, row.host).hashes.push(row.hash);
 		const markers = await knex("traffic_visitor").whereIn("day", days).where("hash", "").distinct("day", "host");
 		for (const row of markers) entry(row.day, row.host).capped = true;
 		return [...out.values()];
@@ -333,7 +331,7 @@ export const createStore = (knex) => {
 		deleteIps,
 		deleteVisitors,
 		countVisitors,
-		visitorDayCounts,
+		visitorDayHashes,
 		queryTraffic,
 		summary,
 	};
@@ -353,6 +351,6 @@ export const rollUpAndPrune = lazy("rollUpAndPrune");
 export const deleteIps = lazy("deleteIps");
 export const deleteVisitors = lazy("deleteVisitors");
 export const countVisitors = lazy("countVisitors");
-export const visitorDayCounts = lazy("visitorDayCounts");
+export const visitorDayHashes = lazy("visitorDayHashes");
 export const queryTraffic = lazy("queryTraffic");
 export const summary = lazy("summary");

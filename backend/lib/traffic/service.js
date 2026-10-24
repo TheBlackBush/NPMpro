@@ -27,6 +27,8 @@ const DAY = 86400000;
 // the API reloads the host list when it is older than this (the flush reloads it every minute while counting)
 const HOSTS_MAX_AGE_MS = 60000;
 const VISITORS_KEY_ERROR = "Visitor counting is unavailable: the key could not be loaded";
+const VISITORS_KEY_REPLACED =
+	"The visitor key could not be read; a new key was created and stored visitor hashes were deleted";
 
 const defaultTimers = {
 	setInterval: (fn, ms) => setInterval(fn, ms),
@@ -41,7 +43,7 @@ const defaultTimers = {
  * Every configured host counts as managed, also a disabled one (its requests reach the default site anyway).
  *
  * @param   {Iterable<string>}  domains  domain names of the managed hosts
- * @returns {(host: string) => string}
+ * @returns {((host: string) => string) & {keys: Set<string>}}  `keys` holds every key it can return
  */
 const createHostMapper = (domains) => {
 	const exact = new Set();
@@ -61,7 +63,7 @@ const createHostMapper = (domains) => {
 	}
 	// longest suffix first, like nginx picks the longest matching wildcard
 	wildcards.sort((a, b) => b.suffix.length - a.suffix.length);
-	return (host) => {
+	const map = (host) => {
 		if (host && exact.has(host)) return host;
 		if (host) {
 			for (const w of wildcards) {
@@ -70,6 +72,9 @@ const createHostMapper = (domains) => {
 		}
 		return OTHER_HOST;
 	};
+	// every key the mapper can return
+	map.keys = new Set([...exact, ...wildcards.map((w) => w.name), OTHER_HOST]);
+	return map;
 };
 
 /**
@@ -135,7 +140,7 @@ const createStateMeta = ({ read, write }) => ({
  * rolls up and prunes hourly. Failures never throw out of the timers: they are logged and exposed by status().
  *
  * @param   {Object}    deps
- * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayCounts }
+ * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayHashes }
  *                                        (lib/traffic/store.js)
  * @param   {Object}    deps.geo          { lookup(ip), available() } (lib/geoip/lookup.js)
  * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips,
@@ -144,7 +149,8 @@ const createStateMeta = ({ read, write }) => ({
  * @param   {Function}  deps.saveState    (state) => Promise
  * @param   {Function}  deps.loadHosts    () => Promise<Array<{id, type, domain_names}>>  the managed hosts
  *                                        (proxy, redirection and dead hosts)
- * @param   {Function}  [deps.loadVisitorKey]  () => Promise<{ key: Buffer, created: boolean }>, called once in start();
+ * @param   {Function}  [deps.loadVisitorKey]  () => Promise<{ key: Buffer, created: boolean, replaced: boolean }>,
+ *                                             called once in start();
  *                                             without it (or when it fails) unique visitors are not counted
  * @param   {Function}  [deps.createReader]  (state) => { read() }
  * @param   {Function}  [deps.now]
@@ -179,8 +185,11 @@ const createTrafficService = ({
 	let mapHost = createHostMapper([]);
 	// null until the host list was loaded once; a failed reload keeps the previous one
 	let resolver = null;
+	// start time of the last successful load, null before it and after a failed one (the next read or API call
+	// retries)
 	let hostsAt = null;
 	let hostsInFlight = null;
+	let hostsError = null;
 
 	let started = false;
 	let enabled = false;
@@ -248,13 +257,20 @@ const createTrafficService = ({
 	};
 
 	const loadHostsOnce = async () => {
-		hostsAt = now();
+		const at = now();
 		try {
 			const hosts = await loadHosts();
 			mapHost = createHostMapper(hosts.flatMap((host) => host.domain_names ?? []));
 			resolver = createHostResolver(hosts);
+			// per host lists of keys that are no longer counted (host removed or renamed)
+			recent.keepHosts(mapHost.keys);
+			hostsAt = at;
+			hostsError = null;
 		} catch (err) {
-			logError("could not read the host list")(err);
+			hostsAt = null;
+			// retried on every read while it fails: logged once until a load succeeds
+			if (hostsError !== err?.message) logError("could not read the host list")(err);
+			hostsError = err?.message ?? String(err);
 		}
 	};
 
@@ -264,6 +280,13 @@ const createTrafficService = ({
 			hostsInFlight = null;
 		});
 		return hostsInFlight;
+	};
+
+	/** Waits for a host list whose load started at or after `time` (a reload in flight is awaited first). */
+	const hostsLoadedSince = async (time) => {
+		if (hostsAt !== null && hostsAt >= time) return;
+		if (hostsInFlight) await hostsInFlight;
+		if (hostsAt === null || hostsAt < time) await refreshHosts();
 	};
 
 	const startReading = () => {
@@ -290,7 +313,7 @@ const createTrafficService = ({
 			}
 			if (!showIps) await store.deleteIps().catch(logError("could not delete the stored IPs"));
 			if (!uniqueVisitors) {
-				// also the per day counts seeded at start, they describe the hashes deleted here
+				// also the per day hashes seeded at start, they are the ones deleted here
 				counter.forgetVisitors();
 				await store.deleteVisitors().catch(logError("could not delete the stored visitor hashes"));
 			}
@@ -338,6 +361,10 @@ const createTrafficService = ({
 			readError = null;
 			lastRead = now();
 			skipped += result.dropped ?? 0;
+			// The lines are mapped with a host list loaded after they were read: a host row is saved before nginx
+			// serves the host, so the first requests to a new host get its own key instead of _other (stored for
+			// good). Like this the list is reloaded at most once per read (every 5 s) while lines come in.
+			if (result.lines.length > 0) await hostsLoadedSince(lastRead);
 			for (let i = 0; i < result.lines.length; i++) {
 				if (i > 0 && i % YIELD_EVERY === 0) await yieldToLoop();
 				addLine(result.lines[i]);
@@ -422,8 +449,9 @@ const createTrafficService = ({
 			const keyCreated = await queue(async () => {
 				if (!loadVisitorKey) return false;
 				try {
-					const { key, created } = await loadVisitorKey();
+					const { key, created, replaced } = await loadVisitorKey();
 					hashVisitor = createVisitorHasher(key);
+					if (replaced) log.error(`Traffic statistics: ${VISITORS_KEY_REPLACED}`);
 					return created;
 				} catch (err) {
 					visitorKeyFailed = true;
@@ -435,11 +463,11 @@ const createTrafficService = ({
 			if (keyCreated || (values !== null && !uniqueVisitors)) {
 				await queue(() => store.deleteVisitors()).catch(logError("could not delete the stored visitor hashes"));
 			} else if (hashVisitor) {
-				// the per day cap counts the visitors stored before this start
+				// the per day cap counts the visitors stored before this start, returning ones only once
 				await queue(async () => {
 					const today = Math.floor(now() / DAY);
-					counter.seedVisitorCounts(await store.visitorDayCounts({ days: [today - 1, today] }));
-				}).catch(logError("could not read the stored visitor counts"));
+					counter.seedVisitors(await store.visitorDayHashes({ days: [today - 1, today] }));
+				}).catch(logError("could not read the stored visitor hashes"));
 			}
 			if (values === null) {
 				startupPending = true;
