@@ -41,6 +41,8 @@ const ENVIRONMENT_ITEMS = [
 	flag("network", "LISTEN_PROXY_PROTOCOL_HTTPS"),
 	flag("network", "ENABLE_MPTCP"),
 	flag("network", "NGINX_QUIC_BPF"),
+	flag("network", "NC_AIO"),
+	item("network", "NC_DOMAIN"),
 
 	item("users", "PUID", "0"),
 	item("users", "PGID", "0"),

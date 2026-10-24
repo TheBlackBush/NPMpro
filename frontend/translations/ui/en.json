@@ -221,6 +221,8 @@
 	"environment.network.LISTEN_PROXY_PROTOCOL": "Expects the PROXY protocol on both the HTTP and HTTPS listeners.",
 	"environment.network.LISTEN_PROXY_PROTOCOL_HTTP": "Expects the PROXY protocol on the HTTP listener.",
 	"environment.network.LISTEN_PROXY_PROTOCOL_HTTPS": "Expects the PROXY protocol on the HTTPS listener. This turns HTTP/3 off.",
+	"environment.network.NC_AIO": "Nextcloud All-in-One mode: at start, creates a proxy host for the Nextcloud domain to 127.0.0.1:11000 with a new certificate (unless the domain is already used), and turns HTTP off unless DISABLE_HTTP is set.",
+	"environment.network.NC_DOMAIN": "Domain of the Nextcloud All-in-One proxy host. Required while Nextcloud All-in-One mode is on, it must contain a dot.",
 	"environment.network.NGINX_QUIC_BPF": "Turns on the nginx QUIC eBPF routing (quic_bpf) for HTTP/3.",
 	"environment.network.NPM_IPV4_BINDING": "IPv4 address the web UI listens on.",
 	"environment.network.NPM_IPV6_BINDING": "IPv6 address, in square brackets, the web UI listens on.",
