@@ -1,0 +1,110 @@
+{
+	"type": "object",
+	"description": "Startup environment variables (read only) and the runtime settings locked by environment variables. Secret values are never returned.",
+	"additionalProperties": false,
+	"required": [
+		"groups",
+		"locked_runtime"
+	],
+	"properties": {
+		"groups": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"items"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"enum": [
+							"network",
+							"users",
+							"nginx",
+							"modules",
+							"goaccess",
+							"database",
+							"certificates-account"
+						]
+					},
+					"items": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"name",
+								"default",
+								"is_default",
+								"secret",
+								"set"
+							],
+							"properties": {
+								"name": {
+									"type": "string",
+									"description": "Environment variable name"
+								},
+								"value": {
+									"type": "string",
+									"description": "Effective value, omitted for secrets"
+								},
+								"default": {
+									"type": [
+										"string",
+										"null"
+									],
+									"description": "Default value, null for secrets"
+								},
+								"is_default": {
+									"type": "boolean",
+									"description": "True when the variable is not set or equals the default"
+								},
+								"secret": {
+									"type": "boolean",
+									"description": "Secret items never carry a value"
+								},
+								"set": {
+									"type": "boolean",
+									"description": "True when the user set the variable"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"locked_runtime": {
+			"type": "array",
+			"description": "Runtime settings whose environment variable is set (the setting is read only in the UI)",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"group",
+					"key",
+					"env"
+				],
+				"properties": {
+					"group": {
+						"type": "string",
+						"enum": [
+							"certificates",
+							"network",
+							"forward-auth",
+							"logs",
+							"advanced"
+						]
+					},
+					"key": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	}
+}

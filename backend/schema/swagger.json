@@ -449,6 +449,11 @@
 				"$ref": "./paths/settings/runtime/advanced/put.json"
 			}
 		},
+		"/settings/environment": {
+			"get": {
+				"$ref": "./paths/settings/environment/get.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

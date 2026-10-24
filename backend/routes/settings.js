@@ -4,6 +4,7 @@ import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
+import environmentRouter from "./settings-environment.js";
 import { geoipRouter, monitoringRouter } from "./settings-monitoring.js";
 import settingsOidcRoutes from "./settings-oidc.js";
 import runtimeRouter from "./settings-runtime.js";
@@ -50,6 +51,7 @@ router.use("/oidc", settingsOidcRoutes);
 router.use("/monitoring", monitoringRouter);
 router.use("/geoip", geoipRouter);
 router.use("/runtime", runtimeRouter);
+router.use("/environment", environmentRouter);
 
 /**
  * Specific setting

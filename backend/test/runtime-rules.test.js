@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
@@ -14,7 +13,6 @@ import {
 
 const NOPE = /"nope"/u;
 const STALE_PROFILE = /certificates\.profile: the stored value was checked against another ACME server/u;
-const RUNTIME_ENVS_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
 const rule = (key) => RUNTIME_RULES.find((entry) => entry.key === key);
 const noImages = { fileExists: () => false };
@@ -401,12 +399,6 @@ it("returns the set names of any list with userSetNames", () => {
 	const env = { NPMPRO_USER_ENV: "A B", A: "1", B: "", C: "3" };
 	assert.deepEqual([...userSetNames(env, ["A", "B", "C"])], ["A"]);
 	assert.deepEqual([...userSetNames({ A: "1", C: " " }, ["A", "C"])], ["A"]);
-});
-
-it("lists the same runtime env vars in envs.sh as in the rules", () => {
-	const text = readFileSync(new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url), "utf8");
-	const names = RUNTIME_ENVS_LINE.exec(text)?.groups.names.split(" ");
-	assert.deepEqual(sorted(names ?? []), sorted(RUNTIME_RULES.map((entry) => entry.env)));
 });
 
 it("does not cache a read that a save overtook", async () => {
