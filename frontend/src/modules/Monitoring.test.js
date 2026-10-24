@@ -404,3 +404,15 @@ it("falls back to the host id for an unnamed real host", () => {
 	assert.equal(hostEntryLabel({ hostType: "proxy", hostId: 7, name: "", domainNames: [] }).name, "#7");
 	assert.equal(hostEntryLabel({ hostType: "other", name: "", domainNames: [] }).name, "_other");
 });
+
+it("keeps the unique visitor keys in the monitoring settings payload and drops them when locked", () => {
+	const values = { trafficEnabled: true, uniqueVisitors: true, visitorsCap: 5000, locked: [] };
+	assert.deepEqual(monitoringSettingsPayload(values), {
+		trafficEnabled: true,
+		uniqueVisitors: true,
+		visitorsCap: 5000,
+	});
+	assert.deepEqual(monitoringSettingsPayload({ ...values, locked: ["unique_visitors", "visitors_cap"] }), {
+		trafficEnabled: true,
+	});
+});

@@ -332,7 +332,7 @@ const rangeOptions = [
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
-const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps"];
+const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
 const GEOIP_KEYS = ["accountId", "licenseKey", "editions"];
 
 const pickEditable = (values, keys) => {
