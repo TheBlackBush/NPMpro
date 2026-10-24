@@ -3,15 +3,6 @@ import { stapledHost } from "./default-cert.js";
 import { forwardAuthHost, proxyHostsForProvider } from "./forward-auth.js";
 
 /**
- * The host config re-render of the runtime apply
- *
- * @param   {Object}    deps
- * @param   {Array}     deps.hostTypes      [[model, hostType, graph]] (graph: the relations renderConfig needs)
- * @param   {Function}  deps.getConfigName  (hostType, id) => config file path
- * @param   {Function}  deps.renderConfig   (hostType, host, { env, fetchMissingOcsp }) => config text
- * @param   {Function}  [deps.exists]       (path) => boolean
- */
-/**
  * "a.example, b.example and 3 more": the first domain of up to five hosts (#id without one)
  *
  * @param   {Object[]}  hosts
@@ -23,6 +14,15 @@ const describeHosts = (hosts) => {
 	return more > 0 ? `${names.join(", ")} and ${more} more` : names.join(", ");
 };
 
+/**
+ * The host config re-render of the runtime apply
+ *
+ * @param   {Object}    deps
+ * @param   {Array}     deps.hostTypes      [[model, hostType, graph]] (graph: the relations renderConfig needs)
+ * @param   {Function}  deps.getConfigName  (hostType, id) => config file path
+ * @param   {Function}  deps.renderConfig   (hostType, host, { env, fetchMissingOcsp }) => config text
+ * @param   {Function}  [deps.exists]       (path) => boolean
+ */
 const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = existsSync }) => {
 	/**
 	 * Renders the configs of the enabled hosts that match, as files for the runtime apply transaction. A host
