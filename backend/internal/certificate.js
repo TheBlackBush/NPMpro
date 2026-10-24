@@ -39,11 +39,34 @@ const getNiceName = (domainNames) => {
 	return [...shown, "..."].join(", ");
 };
 
+const hoursToMs = (hours) => 1000 * 60 * 60 * hours;
+// the startup apply sets the runtime setting (restartTimer) before initTimer runs; env (envs.sh default 3) until then
+const envRenewalHours = () => {
+	const hours = Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10);
+	return Number.isInteger(hours) && hours > 0 ? hours : 3;
+};
+
 const internalCertificate = {
 	allowedSslFiles: ["certificate", "certificate_key"],
-	intervalTimeout: 1000 * 60 * 60 * Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
+	intervalTimeout: hoursToMs(envRenewalHours()),
 	interval: null,
 	intervalProcessing: false,
+
+	/**
+	 * Sets the renewal interval and restarts a running timer with it (a timer not started yet uses it in initTimer)
+	 *
+	 * @param {number} [hours]  keeps the current interval when omitted
+	 */
+	restartTimer: (hours) => {
+		if (Number.isInteger(hours) && hours > 0) internalCertificate.intervalTimeout = hoursToMs(hours);
+		if (!internalCertificate.interval) return;
+		clearInterval(internalCertificate.interval);
+		internalCertificate.interval = setInterval(
+			internalCertificate.processExpiringHosts,
+			internalCertificate.intervalTimeout,
+		);
+		logger.info(`Certbot Renewal Timer restarted (every ${internalCertificate.intervalTimeout / 3_600_000} hours)`);
+	},
 
 	initTimer: () => {
 		if (internalCertificate.interval) return;

@@ -13,8 +13,11 @@ import {
 } from "./internal/monitoring-services.js";
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
+import { setRuntimeApply } from "./internal/runtime-setting.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
+import { createRuntimeApplier } from "./lib/runtime-apply.js";
+import { loadRuntimeConfig } from "./lib/runtime-config.js";
 import { applyAccessLog } from "./lib/traffic/access-log.js";
 import { createTrafficHooks } from "./lib/traffic/service.js";
 import { global as logger } from "./logger.js";
@@ -25,6 +28,20 @@ import setup from "./setup.js";
 async function appStart() {
 	try {
 		await migrateUp();
+
+		const runtimeApplier = createRuntimeApplier({
+			nginx: { test: internalNginx.test, reload: internalNginx.reload },
+			timers: { restartRenewal: internalCertificate.restartTimer },
+		});
+		setRuntimeApply(runtimeApplier.applyGroup);
+		// a failed startup apply keeps the files from start.sh, the backend still starts
+		try {
+			await loadRuntimeConfig();
+			await runtimeApplier.applyAll();
+		} catch (err) {
+			logger.error(`Could not apply the runtime settings at startup: ${err.message}`);
+		}
+
 		await setup();
 		await getCompiledSchema();
 

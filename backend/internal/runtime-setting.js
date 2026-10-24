@@ -24,6 +24,7 @@ let applyHook = noApply;
  * @param {Function} [apply]  without one, changes are only saved
  */
 const setRuntimeApply = (apply) => {
+	// Inside apply, getRuntimeConfig() still returns the old values: use nextValues or effectiveEnv({ [group]: nextValues })
 	applyHook = typeof apply === "function" ? apply : noApply;
 };
 
