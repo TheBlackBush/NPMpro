@@ -3,9 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
-import { hasStaplingFile, staplingFileOf } from "../lib/default-cert.js";
 import errs from "../lib/error.js";
-import { createOcspFetcher } from "../lib/ocsp-fetch.js";
+import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
@@ -13,16 +12,6 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
 const authRequestProviders = ["anubis", "tinyauth", "oauth2proxy", "voidauth", "authelia", "authentik"];
-const ocspDirs = { acme: "/data/tls/certbot/live", custom: "/data/tls/custom" };
-const OCSP_TIMEOUT = 60_000;
-const fetchOcspBounded = createOcspFetcher({
-	run: (kind) =>
-		utils.execFile(
-			"certbot-ocsp-fetcher.sh",
-			["-c", ocspDirs[kind], "-o", ocspDirs[kind], "--no-reload-webserver", "--quiet"],
-			{ timeout: OCSP_TIMEOUT },
-		),
-});
 
 const internalNginx = {
 	/**
@@ -77,13 +66,15 @@ const internalNginx = {
 	/**
 	 * Fetches the missing or outdated OCSP responses (.der stapling files) of the certbot ("acme") or custom
 	 * certificates. Bounded per kind (lib/ocsp-fetch.js): concurrent calls share one run, a call within 10 minutes of
-	 * the last attempt is skipped, a run is killed after 60 s; a failure is ignored. Hosts and the default include
-	 * staple only when their .der file exists, so a missing response leaves stapling off for that certificate.
+	 * the last attempt is skipped unless force is set (stapling switched on), a run is stopped after 60 s (with its
+	 * child processes); a failure is logged with the kind. Hosts and the default include staple only when their .der
+	 * file exists, so a missing response leaves stapling off for that certificate until its next render.
 	 *
 	 * @param   {"acme"|"custom"} kind
+	 * @param   {Object}  [options]  { force }
 	 * @returns {Promise<void>}
 	 */
-	fetchOcsp: (kind) => fetchOcspBounded(kind),
+	fetchOcsp,
 
 	/**
 	 * @returns {Promise}
@@ -256,12 +247,10 @@ const internalNginx = {
 		host.env = env ?? effectiveEnv();
 
 		// the templates staple only when the OCSP response file exists (not every CA runs an OCSP responder)
-		host.npmpro_stapling_file_exists = await hasStaplingFile(host);
-		const stapling = staplingFileOf(host);
-		if (fetchMissingOcsp && stapling && !host.npmpro_stapling_file_exists && host.env[stapling.env] === "true") {
-			await internalNginx.fetchOcsp(stapling.kind);
-			host.npmpro_stapling_file_exists = await hasStaplingFile(host);
-		}
+		host.npmpro_stapling_file_exists = await staplingFileReady(host, host.env, {
+			fetchMissingOcsp,
+			fetch: internalNginx.fetchOcsp,
+		});
 
 		if (
 			host.forward_host?.includes("/") &&

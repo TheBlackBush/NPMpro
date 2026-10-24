@@ -458,7 +458,7 @@ const certApplier = (paths, overrides = {}) => {
 	const fetches = [];
 	const a = applier(paths, {
 		listCertificates: async () => [{ id: 5 }],
-		ocsp: { fetch: async (kind) => fetches.push(kind) },
+		ocsp: { fetch: async (kind, options) => fetches.push(options?.force ? kind : `${kind} unforced`) },
 		...overrides,
 	});
 	return { ...a, fetches };

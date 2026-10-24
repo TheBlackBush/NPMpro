@@ -256,7 +256,8 @@ const createRuntimeApplier = ({
 		for (const { key, kind, env: name } of OCSP_KINDS) {
 			if (next[key] !== true) continue;
 			if (startup ? env()[name] === "true" : prev[key] === true) continue;
-			await ocsp.fetch(kind);
+			// forced: an attempt in the last 10 minutes (stapling on, off and on again, a host render) must not skip it
+			await ocsp.fetch(kind, { force: true });
 		}
 	};
 
