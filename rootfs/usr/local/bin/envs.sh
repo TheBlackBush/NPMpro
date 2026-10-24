@@ -558,6 +558,21 @@ if [ -n "$LOGROTATIONS" ] && ! echo "$LOGROTATIONS" | grep -q "^[0-9]\+$"; then
     sleep inf
 fi
 
+if [ -n "$TRAFFIC_STATS" ] && ! echo "$TRAFFIC_STATS" | grep -q "^true$\|^false$"; then
+    echo "TRAFFIC_STATS needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$TRAFFIC_SHOW_IPS" ] && ! echo "$TRAFFIC_SHOW_IPS" | grep -q "^true$\|^false$"; then
+    echo "TRAFFIC_SHOW_IPS needs to be true or false."
+    sleep inf
+fi
+
+if [ -n "$TRAFFIC_RETENTION_DAYS" ] && { ! echo "$TRAFFIC_RETENTION_DAYS" | grep -q "^[0-9]\+$" || [ "$TRAFFIC_RETENTION_DAYS" -lt 7 ] || [ "$TRAFFIC_RETENTION_DAYS" -gt 365 ]; }; then
+    echo "TRAFFIC_RETENTION_DAYS needs to be a number between 7 and 365."
+    sleep inf
+fi
+
 if ! echo "$CERTBOT_RUN_INTERVAL" | grep -q "^[0-9]\+$" || [ "$CERTBOT_RUN_INTERVAL" -lt 1 ] || [ "$CERTBOT_RUN_INTERVAL" -ge 500 ]; then
     echo "CERTBOT_RUN_INTERVAL must be a number below 500."
     sleep inf

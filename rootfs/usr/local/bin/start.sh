@@ -438,25 +438,33 @@ if [ "$REGENERATE_ALL" = "true" ]; then
     find /data/nginx -name "*.conf" -delete
 fi
 
+sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /etc/logrotate
+if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
+rm -f /data/logrotate.state
+
+# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics setting changes
+mkdir -p /data/npmpro/nginx
+if [ "$LOGROTATE" = "true" ] || [ "$TRAFFIC_STATS" = "true" ]; then
+    echo "access_log /data/nginx/logs/access.log alog;" > /data/npmpro/nginx/access-log.conf
+    if [ ! -L /data/nginx/access.log ] && [ ! -f /data/nginx/logs/access.log ]; then mv -vn /data/nginx/access.log* /data/nginx/logs; fi
+    touch /data/nginx/logs/access.log
+    if [ ! -L /data/nginx/access.log ]; then rm -f /data/nginx/access.log; ln -rs /data/nginx/logs/access.log /data/nginx/access.log; fi
+else
+    echo "access_log off;" > /data/npmpro/nginx/access-log.conf
+fi
+
 if [ "$LOGROTATE" = "true" ]; then
-    sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /etc/logrotate
-    sed -i "s|access_log off; # http|access_log /data/nginx/logs/access.log alog;|g" /usr/local/nginx/conf/nginx.conf
     sed -i "s|access_log off; # stream|access_log /data/nginx/logs/stream.log slog;|g" /usr/local/nginx/conf/nginx.conf
     sed -i "s|#error_log|error_log|g" /usr/local/nginx/conf/nginx.conf
 
-    if [ ! -L /data/nginx/access.log ] && [ ! -f /data/nginx/logs/access.log ]; then mv -vn /data/nginx/access.log* /data/nginx/logs; fi
     if [ ! -L /data/nginx/stream.log ] && [ ! -f /data/nginx/logs/stream.log ]; then mv -vn /data/nginx/stream.log* /data/nginx/logs; fi
     if [ ! -L /data/nginx/error.log ] && [ ! -f /data/nginx/logs/error.log ]; then mv -vn /data/nginx/error.log* /data/nginx/logs; fi
-    if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 
-    touch /data/nginx/logs/access.log \
-          /data/nginx/logs/stream.log \
+    touch /data/nginx/logs/stream.log \
           /data/nginx/logs/error.log
 
-    if [ ! -L /data/nginx/access.log ]; then rm -f /data/nginx/access.log; ln -rs /data/nginx/logs/access.log /data/nginx/access.log; fi
     if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
     if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
-    rm -f /data/logrotate.state
 fi
 
 find /data/tls \
