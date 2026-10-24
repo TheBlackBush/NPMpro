@@ -52,6 +52,14 @@ const BADGES = {
 	deleted: { color: "secondary", labelKey: "monitoring.host.badge.deleted" },
 };
 
+/**
+ * The exact number as a hint under a short value ("5.9k" over "5,948"), nothing when both read the same.
+ */
+const exactHint = (n) => {
+	const exact = intl.formatNumber(Number(n) || 0);
+	return exact === formatCount(n) ? undefined : exact;
+};
+
 const extraText = (count) => (count > 0 ? intl.formatMessage({ id: "monitoring.host.extra" }, { count }) : "");
 
 const optionText = (option) => [option.label, extraText(option.extra)].filter(Boolean).join(" ");
@@ -156,7 +164,7 @@ function VisitorsCard({ status, totals, range }) {
 		);
 	}
 	const visitors = Number(totals.visitors) || 0;
-	let hint = range === "1h" ? <T id="monitoring.stat.visitors.today" /> : intl.formatNumber(visitors);
+	let hint = range === "1h" ? <T id="monitoring.stat.visitors.today" /> : exactHint(visitors);
 	if (totals.visitorsCapped) {
 		hint = settings?.visitorsCap ? (
 			<T id="monitoring.stat.visitors.capped" data={{ cap: formatCount(settings.visitorsCap) }} />
@@ -187,7 +195,12 @@ const topHostItem = (entry, { uniqueVisitors, params }) => {
 	const names = entry.domainNames?.length ? entry.domainNames.join(", ") : label;
 	const linkable = badge && badge !== "deleted" && entry.hostId;
 	let detail = null;
+	let visitorsText = "";
 	if (uniqueVisitors && entry.visitors !== undefined) {
+		visitorsText = intl.formatMessage(
+			{ id: entry.visitorsCapped ? "monitoring.visitors.capped" : "monitoring.visitors" },
+			{ count: entry.visitors },
+		);
 		detail = (
 			<T
 				id={entry.visitorsCapped ? "monitoring.visitors.capped" : "monitoring.visitors"}
@@ -207,6 +220,11 @@ const topHostItem = (entry, { uniqueVisitors, params }) => {
 		) : null,
 		detail,
 		value: entry.requests,
+		ariaLabel: linkable
+			? [label, intl.formatMessage({ id: "monitoring.requests" }, { count: entry.requests }), visitorsText]
+					.filter(Boolean)
+					.join(", ")
+			: undefined,
 		to: linkable
 			? `/monitoring/traffic?${hostFilterToSearch({ hostType: entry.hostType, hostId: entry.hostId }, params)}`
 			: undefined,
@@ -236,7 +254,7 @@ function TrafficData({ data, range, params }) {
 					className="col-6 col-lg"
 					label={<T id="monitoring.stat.requests" />}
 					value={formatCount(totals.requests)}
-					hint={intl.formatNumber(totals.requests)}
+					hint={exactHint(totals.requests)}
 					icon={IconChartBar}
 					color="primary"
 				/>
@@ -258,7 +276,16 @@ function TrafficData({ data, range, params }) {
 				<StatCard
 					className="col-6 col-lg"
 					label={<T id="monitoring.stat.top-country" />}
-					value={topCountry ? <CountryName code={topCountry.country} /> : "-"}
+					value={
+						topCountry ? (
+							// smaller than the other values so a country name fits one of five cards
+							<span className="fs-3" title={countryLabel(topCountry.country)}>
+								<CountryName code={topCountry.country} />
+							</span>
+						) : (
+							"-"
+						)
+					}
 					hint={
 						topCountry ? (
 							<T id="monitoring.requests" data={{ count: topCountry.requests }} />

@@ -11,10 +11,12 @@ const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", m
  * @param {object} props
  * @param {import("react").ReactNode} props.title
  * @param {{ key: string, label: import("react").ReactNode, title?: string, value: number,
- *          extra?: string, badge?: import("react").ReactNode, detail?: import("react").ReactNode, to?: string }[]} props.items
+ *          extra?: string, badge?: import("react").ReactNode, detail?: import("react").ReactNode, to?: string,
+ *          ariaLabel?: string }[]} props.items
  *        rows in display order; `title` is the plain text for the native tooltip of a truncated name, `extra` a short
  *        marker after the name (such as "+2"), `badge` a Tabler badge after it, `detail` a small line under the name
- *        and `to` a route the whole row links to (https://docs.tabler.io/ui/components/list-group.md, actionable items)
+ *        and `to` a route the whole row links to (`ariaLabel` names that link; its share bar is then hidden from
+ *        assistive technology) (https://docs.tabler.io/ui/components/list-group.md, actionable items)
  * @param {number} [props.total]        the 100 % for the share bar and percentage, default the sum of the values
  * @param {(n: number) => string} [props.formatValue]  count text, default formatCount
  * @param {string} [props.color]        Tabler colour name of the share bar, default "primary" (CrowdSec uses "red")
@@ -48,7 +50,10 @@ function TopList({
 								<Row
 									key={item.key}
 									to={linked ? item.to : undefined}
-									className={linked ? "list-group-item list-group-item-action" : "list-group-item"}
+									aria-label={linked ? item.ariaLabel : undefined}
+									className={
+										linked ? "list-group-item list-group-item-action focus-ring" : "list-group-item"
+									}
 								>
 									<div className="row g-2 align-items-center">
 										<div className="col-auto">
@@ -84,6 +89,8 @@ function TopList({
 												aria-valuenow={Math.round(width)}
 												aria-valuemin={0}
 												aria-valuemax={100}
+												// inside a link the row's aria-label already names it; the bar would repeat it
+												aria-hidden={linked ? "true" : undefined}
 												aria-label={intl.formatMessage(
 													{ id: "monitoring.share" },
 													{ share, name: item.title ?? item.key },
