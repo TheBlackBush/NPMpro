@@ -416,3 +416,13 @@ it("keeps the unique visitor keys in the monitoring settings payload and drops t
 		trafficEnabled: true,
 	});
 });
+
+it("never sends the visitor limit while unique visitors are off", () => {
+	const values = { trafficEnabled: true, uniqueVisitors: false, visitorsCap: "", locked: [] };
+	assert.deepEqual(monitoringSettingsPayload(values), { trafficEnabled: true, uniqueVisitors: false });
+	assert.deepEqual(monitoringSettingsPayload({ ...values, uniqueVisitors: true, visitorsCap: 2000 }), {
+		trafficEnabled: true,
+		uniqueVisitors: true,
+		visitorsCap: 2000,
+	});
+});

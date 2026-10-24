@@ -346,9 +346,14 @@ const pickEditable = (values, keys) => {
 };
 
 /**
- * Only the editable keys of the traffic statistics settings, without locked ones.
+ * Only the editable keys of the traffic statistics settings, without locked ones and without the visitor limit while unique visitors are off.
  */
-const monitoringSettingsPayload = (values) => pickEditable(values, MONITORING_KEYS);
+const monitoringSettingsPayload = (values) => {
+	const payload = pickEditable(values, MONITORING_KEYS);
+	// the visitor limit is only sent while unique visitors are on (it is only validated then)
+	if (!values.uniqueVisitors) delete payload.visitorsCap;
+	return payload;
+};
 
 /**
  * Only the editable keys of the GeoIP settings, without locked ones and without an empty license key.

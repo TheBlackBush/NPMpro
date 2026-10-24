@@ -118,7 +118,7 @@ function Fields({ isLocked }) {
 				onChange={(e) => setFieldValue("showIps", e.target.checked)}
 			/>
 			<SwitchField
-				className="py-3"
+				className={values.uniqueVisitors ? "py-3" : "pt-3"}
 				id="monitoring-unique-visitors"
 				label={label("uniqueVisitors", "settings.monitoring.unique-visitors")}
 				hint={<T id="settings.monitoring.unique-visitors.hint" />}
@@ -211,6 +211,7 @@ export default function Monitoring() {
 			visitorsCap: Number(values.visitorsCap),
 			locked: lockedKeys,
 		};
+		if (!values.uniqueVisitors) delete payload.visitorsCap;
 		const run = async () => {
 			await save(payload);
 			showObjectSuccess("setting", "saved");
@@ -227,7 +228,7 @@ export default function Monitoring() {
 					ipsOff && visitorsOff ? (
 						<>
 							<T id="settings.monitoring.both-off.confirm.body" />
-							<ul className="mt-2 mb-0">
+							<ul className="mt-2 mb-0 text-start">
 								<li>
 									<T id="settings.monitoring.show-ips.confirm.item" />
 								</li>
