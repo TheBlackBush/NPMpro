@@ -136,28 +136,11 @@ const axisLabels = (times, format, daily = false) => {
 
 const OTHER_HOST = "_other";
 
-/**
- * Host filter options from the host lists (proxy, redirection, 404): every domain name once, lower case, sorted,
- * then the "_other" key. A current value that is not in the lists is kept, so a filter from the URL stays selectable.
- */
-const hostOptions = (lists, current = "") => {
-	const names = new Set();
-	for (const list of lists) {
-		for (const host of list ?? []) {
-			for (const name of host?.domainNames ?? []) {
-				const value = String(name).trim().toLowerCase();
-				if (value !== "") names.add(value);
-			}
-		}
-	}
-	if (current && current !== OTHER_HOST) names.add(current);
-	names.delete(OTHER_HOST);
-	return [...[...names].sort((a, b) => a.localeCompare(b)), OTHER_HOST];
-};
-
 const HOST_TYPES = ["proxy", "redirection", "dead"];
 const HOST_GROUP_KEYS = { proxy: "proxy-hosts", redirection: "redirection-hosts", dead: "dead-hosts" };
 const HOST_VALUE = /^(?<type>proxy|redirection|dead):(?<id>[1-9][0-9]*)$/u;
+const HOST_ID_TEXT = /^[1-9][0-9]*$/u;
+const HOST_KEY_PREFIX = "key:";
 
 const isHostId = (id) => Number.isSafeInteger(id) && id > 0;
 
@@ -169,7 +152,7 @@ const isHostId = (id) => Number.isSafeInteger(id) && id > 0;
 const hostFilterFromSearch = (searchParams) => {
 	const type = (searchParams?.get("host_type") ?? "").trim();
 	const idText = (searchParams?.get("host_id") ?? "").trim();
-	if (HOST_TYPES.includes(type) && /^[1-9][0-9]*$/u.test(idText) && isHostId(Number(idText))) {
+	if (HOST_TYPES.includes(type) && HOST_ID_TEXT.test(idText) && isHostId(Number(idText))) {
 		return { hostType: type, hostId: Number(idText) };
 	}
 	const value = (searchParams?.get("host") ?? "").trim();
@@ -196,6 +179,32 @@ const hostFilterToSearch = (filter, base = new URLSearchParams()) => {
 		params.set("host", filter.host);
 	}
 	return params;
+};
+
+/**
+ * Value of the host filter select for a filter: "" for all hosts, "_other", "proxy:12" for a host, "key:<name>"
+ * for a single stored host key from an old URL.
+ */
+const hostSelectValue = (filter) => {
+	if (HOST_TYPES.includes(filter?.hostType) && isHostId(filter?.hostId)) return `${filter.hostType}:${filter.hostId}`;
+	if (filter?.host === OTHER_HOST) return OTHER_HOST;
+	if (typeof filter?.host === "string" && filter.host !== "") return `${HOST_KEY_PREFIX}${filter.host}`;
+	return "";
+};
+
+/**
+ * Filter for a host filter select value (the reverse of hostSelectValue); anything unknown gives {} (all hosts).
+ */
+const hostFilterFromSelect = (value) => {
+	const text = String(value ?? "");
+	if (text === OTHER_HOST) return { host: OTHER_HOST };
+	if (text.startsWith(HOST_KEY_PREFIX) && text.length > HOST_KEY_PREFIX.length) {
+		return { host: text.slice(HOST_KEY_PREFIX.length) };
+	}
+	const match = HOST_VALUE.exec(text);
+	if (match && isHostId(Number(match.groups.id)))
+		return { hostType: match.groups.type, hostId: Number(match.groups.id) };
+	return {};
 };
 
 /**
@@ -386,9 +395,10 @@ export {
 	geoipSettingsPayload,
 	hostEntryLabel,
 	hostFilterFromSearch,
+	hostFilterFromSelect,
 	hostFilterToSearch,
 	hostGroups,
-	hostOptions,
+	hostSelectValue,
 	isCountryCode,
 	mapScale,
 	monitoringSettingsPayload,

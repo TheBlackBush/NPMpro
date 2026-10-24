@@ -12,9 +12,10 @@ import {
 	geoipSettingsPayload,
 	hostEntryLabel,
 	hostFilterFromSearch,
+	hostFilterFromSelect,
 	hostFilterToSearch,
 	hostGroups,
-	hostOptions,
+	hostSelectValue,
 	mapScale,
 	monitoringSettingsPayload,
 	rangeOptions,
@@ -149,18 +150,23 @@ it("turns API buckets into one chart series per status class", () => {
 	assert.deepEqual(chartSeries(undefined, "1h")[0].data, []);
 });
 
-it("lists every managed domain name once, sorted, with _other last", () => {
-	const proxy = [{ domainNames: ["B.example.com", "*.example.com"] }, { domainNames: ["a.example.com"] }];
-	const redirection = [{ domainNames: ["a.example.com", " c.example.com "] }];
-	assert.deepEqual(hostOptions([proxy, redirection, undefined]), [
-		"*.example.com",
-		"a.example.com",
-		"b.example.com",
-		"c.example.com",
-		"_other",
-	]);
-	assert.deepEqual(hostOptions([[]], "gone.example.com"), ["gone.example.com", "_other"]);
-	assert.deepEqual(hostOptions([[]], "_other"), ["_other"]);
+it("maps the host filter to the select value and back", () => {
+	const cases = [
+		[{}, ""],
+		[{ host: "_other" }, "_other"],
+		[{ hostType: "proxy", hostId: 12 }, "proxy:12"],
+		[{ hostType: "dead", hostId: 3 }, "dead:3"],
+		[{ host: "a.example.com" }, "key:a.example.com"],
+	];
+	for (const [filter, value] of cases) {
+		assert.equal(hostSelectValue(filter), value);
+		assert.deepEqual(hostFilterFromSelect(value), filter);
+	}
+	assert.equal(hostSelectValue({ hostType: "stream", hostId: 1 }), "");
+	assert.equal(hostSelectValue(undefined), "");
+	for (const bad of ["key:", "proxy:0", "proxy:x", "stream:1", undefined]) {
+		assert.deepEqual(hostFilterFromSelect(bad), {});
+	}
 });
 
 it("names countries in the locale and keeps unknown codes", () => {

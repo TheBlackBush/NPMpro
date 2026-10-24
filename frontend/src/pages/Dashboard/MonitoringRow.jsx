@@ -48,7 +48,7 @@ function MonitoringRow() {
 	const { data } = useMonitoringSummary();
 	if (!data) return null;
 
-	const { requestsToday, series24h, errorRateToday, activeBans, topCountryToday } = data;
+	const { requestsToday, series24h, errorRateToday, activeBans, topCountryToday, visitorsToday } = data;
 	const hasCountry = isCountryCode(topCountryToday);
 	const cards = [
 		requestsToday !== null && requestsToday !== undefined ? (
@@ -60,6 +60,11 @@ function MonitoringRow() {
 				color="blue"
 				label={<T id="dashboard.monitoring.requests" />}
 				value={formatCount(requestsToday)}
+				hint={
+					typeof visitorsToday === "number" ? (
+						<T id="monitoring.visitors" data={{ count: visitorsToday }} />
+					) : undefined
+				}
 			>
 				{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}
 			</StatCard>
