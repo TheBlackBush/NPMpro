@@ -155,6 +155,71 @@ const hostOptions = (lists, current = "") => {
 	return [...[...names].sort((a, b) => a.localeCompare(b)), OTHER_HOST];
 };
 
+const HOST_TYPES = ["proxy", "redirection", "dead"];
+const HOST_GROUP_KEYS = { proxy: "proxy-hosts", redirection: "redirection-hosts", dead: "dead-hosts" };
+const HOST_VALUE = /^(?<type>proxy|redirection|dead):(?<id>[1-9][0-9]*)$/u;
+
+/**
+ * Host filter from the URL: `?host=proxy:12` gives { hostType: "proxy", hostId: 12 }, `?host=_other` gives
+ * { host: "_other" }, anything else gives {}.
+ */
+const hostFilterFromSearch = (searchParams) => {
+	const value = (searchParams?.get("host") ?? "").trim();
+	if (value === OTHER_HOST) return { host: OTHER_HOST };
+	const match = HOST_VALUE.exec(value);
+	if (!match) return {};
+	const hostId = Number(match.groups.id);
+	return Number.isSafeInteger(hostId) ? { hostType: match.groups.type, hostId } : {};
+};
+
+/**
+ * Host filter to URL parameters, on top of a copy of `base` (so range and other parameters stay). An empty or
+ * invalid filter removes the host parameter.
+ */
+const hostFilterToSearch = (filter, base = new URLSearchParams()) => {
+	const params = new URLSearchParams(base);
+	params.delete("host");
+	if (filter?.host === OTHER_HOST) {
+		params.set("host", OTHER_HOST);
+	} else if (HOST_TYPES.includes(filter?.hostType) && Number.isSafeInteger(filter?.hostId) && filter.hostId > 0) {
+		params.set("host", `${filter.hostType}:${filter.hostId}`);
+	}
+	return params;
+};
+
+/**
+ * Host filter selection groups: proxy, redirection and 404 hosts, in that order. `labelKey` is the translation id
+ * of the group title. `label` of an option is the first domain name, `extra` the number of other names.
+ * Hosts without domain names are skipped.
+ */
+const hostGroups = ({ proxy, redirection, dead } = {}) => {
+	const lists = { proxy, redirection, dead };
+	return HOST_TYPES.map((type) => ({
+		type,
+		labelKey: HOST_GROUP_KEYS[type],
+		options: (lists[type] ?? [])
+			.filter((host) => Array.isArray(host?.domainNames) && host.domainNames.length > 0)
+			.map((host) => ({
+				value: `${type}:${host.id}`,
+				hostType: type,
+				hostId: host.id,
+				label: host.domainNames[0],
+				extra: host.domainNames.length - 1,
+			})),
+	}));
+};
+
+/**
+ * Name, number of other names and badge type for a Top hosts row. The badge is null for "other".
+ */
+const hostEntryLabel = (entry) => {
+	const type = entry?.hostType;
+	if (type === "other") return { name: OTHER_HOST, extra: 0, badge: null };
+	const names = Array.isArray(entry?.domainNames) ? entry.domainNames : [];
+	const badge = [...HOST_TYPES, "deleted"].includes(type) ? type : null;
+	return { name: entry?.name || names[0] || "", extra: Math.max(0, names.length - 1), badge };
+};
+
 /**
  * Country name in the given locale, the code itself when the runtime does not know it.
  */
@@ -289,6 +354,10 @@ export {
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
+	hostEntryLabel,
+	hostFilterFromSearch,
+	hostFilterToSearch,
+	hostGroups,
 	hostOptions,
 	isCountryCode,
 	mapScale,

@@ -10,6 +10,10 @@ import {
 	formatBytes,
 	formatCount,
 	geoipSettingsPayload,
+	hostEntryLabel,
+	hostFilterFromSearch,
+	hostFilterToSearch,
+	hostGroups,
 	hostOptions,
 	mapScale,
 	monitoringSettingsPayload,
@@ -273,4 +277,92 @@ it("labels the time axis, naming each day once on the daily ranges", () => {
 	assert.deepEqual(axisLabels([hour, 2 * hour], day, true), ["d0", null]);
 	assert.deepEqual(axisLabels([], day, true), []);
 	assert.deepEqual(axisLabels(undefined, day), []);
+});
+
+it("reads and writes the host filter in the URL", () => {
+	const from = (q) => hostFilterFromSearch(new URLSearchParams(q));
+	assert.deepEqual(from("host=proxy:12"), { hostType: "proxy", hostId: 12 });
+	assert.deepEqual(from("host=dead:3&range=7d"), { hostType: "dead", hostId: 3 });
+	assert.deepEqual(from("host=_other"), { host: "_other" });
+	for (const bad of [
+		"",
+		"host=",
+		"host=proxy:0",
+		"host=proxy:-1",
+		"host=proxy:x",
+		"host=stream:1",
+		"host=proxy:1.5",
+		"host=a.example.com",
+	]) {
+		assert.deepEqual(from(bad), {});
+	}
+	const base = new URLSearchParams("range=7d&host=proxy:1");
+	assert.equal(
+		hostFilterToSearch({ hostType: "redirection", hostId: 4 }, base).toString(),
+		"range=7d&host=redirection%3A4",
+	);
+	assert.equal(hostFilterToSearch({ host: "_other" }, base).toString(), "range=7d&host=_other");
+	assert.equal(hostFilterToSearch({}, base).toString(), "range=7d");
+	assert.equal(hostFilterToSearch({ hostType: "proxy", hostId: "x" }).toString(), "");
+	assert.equal(base.toString(), "range=7d&host=proxy%3A1");
+	const filter = { hostType: "dead", hostId: 9 };
+	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch(filter)), filter);
+	assert.deepEqual(hostFilterFromSearch(hostFilterToSearch({ host: "_other" })), { host: "_other" });
+});
+
+it("groups hosts for the host filter", () => {
+	const groups = hostGroups({
+		proxy: [
+			{ id: 12, domainNames: ["a.example.com", "b.example.com", "c.example.com"] },
+			{ id: 13, domainNames: [] },
+		],
+		redirection: undefined,
+		dead: [{ id: 2, domainNames: ["x.example.com"] }],
+	});
+	assert.deepEqual(
+		groups.map((g) => [g.type, g.labelKey, g.options.length]),
+		[
+			["proxy", "proxy-hosts", 1],
+			["redirection", "redirection-hosts", 0],
+			["dead", "dead-hosts", 1],
+		],
+	);
+	assert.deepEqual(groups[0].options[0], {
+		value: "proxy:12",
+		hostType: "proxy",
+		hostId: 12,
+		label: "a.example.com",
+		extra: 2,
+	});
+	assert.equal(groups[2].options[0].value, "dead:2");
+	assert.equal(groups[2].options[0].extra, 0);
+});
+
+it("labels Top hosts entries", () => {
+	assert.deepEqual(
+		hostEntryLabel({ hostType: "proxy", name: "a.example.com", domainNames: ["a.example.com", "b.example.com"] }),
+		{
+			name: "a.example.com",
+			extra: 1,
+			badge: "proxy",
+		},
+	);
+	assert.equal(
+		hostEntryLabel({ hostType: "redirection", name: "r.example.com", domainNames: ["r.example.com"] }).badge,
+		"redirection",
+	);
+	assert.equal(
+		hostEntryLabel({ hostType: "dead", name: "d.example.com", domainNames: ["d.example.com"] }).badge,
+		"dead",
+	);
+	assert.deepEqual(hostEntryLabel({ hostType: "deleted", name: "*.gone.com", domainNames: ["*.gone.com"] }), {
+		name: "*.gone.com",
+		extra: 0,
+		badge: "deleted",
+	});
+	assert.deepEqual(hostEntryLabel({ hostType: "other", name: "_other", domainNames: [] }), {
+		name: "_other",
+		extra: 0,
+		badge: null,
+	});
 });
