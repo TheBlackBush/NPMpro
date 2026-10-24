@@ -138,7 +138,8 @@ const regenerateHosts = async () => {
 			const configFile = internalNginx.getConfigName(hostType, host.id);
 			// a config nginx rejected is kept as .err, regenerating it on every start would only fail again
 			if (!regenerateAll && (existsSync(configFile) || existsSync(`${configFile}.err`))) continue;
-			await internalNginx.configure(model, hostType, host, { skipReload: true });
+			// launch.sh and the startup apply fetched the OCSP responses, the reload below fetches the rest once
+			await internalNginx.configure(model, hostType, host, { skipReload: true, fetchMissingOcsp: false });
 			regenerated++;
 		}
 	}

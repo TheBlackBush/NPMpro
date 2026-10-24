@@ -5,6 +5,7 @@ import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import { hasStaplingFile, staplingFileOf } from "../lib/default-cert.js";
 import errs from "../lib/error.js";
+import { createOcspFetcher } from "../lib/ocsp-fetch.js";
 import { effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
@@ -13,6 +14,15 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
 const authRequestProviders = ["anubis", "tinyauth", "oauth2proxy", "voidauth", "authelia", "authentik"];
 const ocspDirs = { acme: "/data/tls/certbot/live", custom: "/data/tls/custom" };
+const OCSP_TIMEOUT = 60_000;
+const fetchOcspBounded = createOcspFetcher({
+	run: (kind) =>
+		utils.execFile(
+			"certbot-ocsp-fetcher.sh",
+			["-c", ocspDirs[kind], "-o", ocspDirs[kind], "--no-reload-webserver", "--quiet"],
+			{ timeout: OCSP_TIMEOUT },
+		),
+});
 
 const internalNginx = {
 	/**
@@ -29,7 +39,7 @@ const internalNginx = {
 	 * @param   {Object}         host
 	 * @returns {Promise}
 	 */
-	configure: async (model, host_type, host, { skipReload = false } = {}) => {
+	configure: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
 		let status = {};
 
 		// skip disabled hosts
@@ -37,7 +47,7 @@ const internalNginx = {
 
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
-		await internalNginx.generateConfig(host_type, host);
+		await internalNginx.generateConfig(host_type, host, { fetchMissingOcsp });
 
 		try {
 			await (skipReload ? internalNginx.test() : internalNginx.reload());
@@ -66,22 +76,14 @@ const internalNginx = {
 
 	/**
 	 * Fetches the missing or outdated OCSP responses (.der stapling files) of the certbot ("acme") or custom
-	 * certificates; a failure is ignored (nginx -t then reports a missing stapling file)
+	 * certificates. Bounded per kind (lib/ocsp-fetch.js): concurrent calls share one run, a call within 10 minutes of
+	 * the last attempt is skipped, a run is killed after 60 s; a failure is ignored. Hosts and the default include
+	 * staple only when their .der file exists, so a missing response leaves stapling off for that certificate.
 	 *
-	 * @param {"acme"|"custom"} kind
+	 * @param   {"acme"|"custom"} kind
+	 * @returns {Promise<void>}
 	 */
-	fetchOcsp: async (kind) => {
-		try {
-			await utils.execFile("certbot-ocsp-fetcher.sh", [
-				"-c",
-				ocspDirs[kind],
-				"-o",
-				ocspDirs[kind],
-				"--no-reload-webserver",
-				"--quiet",
-			]);
-		} catch {}
-	},
+	fetchOcsp: (kind) => fetchOcspBounded(kind),
 
 	/**
 	 * @returns {Promise}
@@ -351,12 +353,15 @@ const internalNginx = {
 
 	/**
 	 * @param   {String}  host_type
-	 * @param   {Object}  host
+	 * @param   {Object}  host_row
+	 * @param   {Object}  [options]
+	 * @param   {boolean} [options.fetchMissingOcsp]  see renderConfig
 	 * @returns {Promise}
 	 */
-	generateConfig: async (host_type, host_row) => {
+	generateConfig: async (host_type, host_row, { fetchMissingOcsp = true } = {}) => {
 		const filename = internalNginx.getConfigName(host_type, host_row.id);
-		await writeFile(filename, await internalNginx.renderConfig(host_type, host_row), { encoding: "utf8" });
+		const text = await internalNginx.renderConfig(host_type, host_row, { fetchMissingOcsp });
+		await writeFile(filename, text, { encoding: "utf8" });
 		logger.debug("Wrote config:", filename);
 		return true;
 	},

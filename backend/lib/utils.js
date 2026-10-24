@@ -9,13 +9,15 @@ const nodeExecFilePromises = promisify(nodeExecFile);
 /**
  * @param   {String} cmd
  * @param   {Array}  args
+ * @param   {Object} [options]          node:child_process execFile options
+ * @param   {number} [options.timeout]  ms, the process is killed (SIGTERM) after it
  * @returns {Promise}
  */
-const execFile = async (cmd, args) => {
+const execFile = async (cmd, args, options = {}) => {
 	logger.debug(`CMD: ${cmd} ${args ? args.join(" ") : ""}`);
 
 	try {
-		const { stdout, stderr } = await nodeExecFilePromises(cmd, args);
+		const { stdout, stderr } = await nodeExecFilePromises(cmd, args, options);
 		return `${stdout || ""}${stderr || ""}`.trim();
 	} catch (err) {
 		throw new errs.CommandError(`${err.stdout || ""}${err.stderr || ""}`.trim(), { cause: err });
