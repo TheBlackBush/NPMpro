@@ -93,9 +93,9 @@ function ProviderFields({ data, isLocked }) {
 
 	return (
 		<div className="mb-4">
-			<h4 className="mb-3">
+			<h3 className="card-title">
 				<T id="settings.authentication.provider" />
-			</h4>
+			</h3>
 			<SwitchField
 				className="mb-3"
 				id="oidc-enabled"

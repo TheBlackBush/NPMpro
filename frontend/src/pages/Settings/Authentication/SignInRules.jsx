@@ -32,21 +32,16 @@ function SignInRules({ data, isLocked }) {
 	);
 
 	return (
-		<div className="mb-4">
-			<h4 className="mb-3">
-				<T id="settings.authentication.rules" />
-			</h4>
-			<div className="divide-y">
-				{rule(
-					"requireVerifiedEmail",
-					"settings.authentication.require-verified-email",
-					"settings.authentication.require-verified-email.hint",
-				)}
-				{rule("skipMfa", "settings.authentication.skip-mfa", "settings.authentication.skip-mfa.hint")}
-				{rule("disablePassword", "settings.authentication.disable-password", disablePasswordHint, {
-					disabled: passwordLockedOut,
-				})}
-			</div>
+		<div className="divide-y">
+			{rule(
+				"requireVerifiedEmail",
+				"settings.authentication.require-verified-email",
+				"settings.authentication.require-verified-email.hint",
+			)}
+			{rule("skipMfa", "settings.authentication.skip-mfa", "settings.authentication.skip-mfa.hint")}
+			{rule("disablePassword", "settings.authentication.disable-password", disablePasswordHint, {
+				disabled: passwordLockedOut,
+			})}
 		</div>
 	);
 }

@@ -277,9 +277,9 @@ function ButtonFields({ data }) {
 	const icon = effectiveIcon(values.buttonIcon, data.button?.icon);
 	return (
 		<div className="mb-4">
-			<h4 className="mb-3">
+			<h3 className="card-title">
 				<T id="settings.authentication.button" />
-			</h4>
+			</h3>
 			<div className="mb-3">
 				<label className="form-label" htmlFor={labelId}>
 					<T id="settings.authentication.button.label" />

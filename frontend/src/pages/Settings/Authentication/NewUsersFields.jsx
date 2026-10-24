@@ -17,10 +17,7 @@ function NewUsersFields() {
 	const domainsError = errors.autoCreateDomains;
 
 	return (
-		<div className="mb-4">
-			<h4 className="mb-3">
-				<T id="settings.authentication.new-users" />
-			</h4>
+		<>
 			<SwitchField
 				className="py-3"
 				id="oidc-autoCreateEnabled"
@@ -60,9 +57,13 @@ function NewUsersFields() {
 					<T id="settings.authentication.allowed-domains.hint" />
 				</small>
 			</div>
-			<h5 className="mb-3">
-				<T id="settings.authentication.default-permissions" />
-			</h5>
+		</>
+	);
+}
+
+function DefaultPermissionsFields() {
+	return (
+		<>
 			<div className="mb-3">
 				<div className="form-label">
 					<T id="permissions.visibility.title" />
@@ -84,8 +85,8 @@ function NewUsersFields() {
 			<NoticeAlert variant="info" className="mb-0">
 				<T id="settings.authentication.new-users.never-admin" />
 			</NoticeAlert>
-		</div>
+		</>
 	);
 }
 
-export { NewUsersFields };
+export { DefaultPermissionsFields, NewUsersFields };

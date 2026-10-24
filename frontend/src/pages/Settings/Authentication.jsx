@@ -1,6 +1,7 @@
 import { IconAlertCircle, IconCircleCheck, IconCircleDashed, IconInfoCircle } from "@tabler/icons-react";
 import { Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
+import { Accordion } from "react-bootstrap";
 import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -15,7 +16,7 @@ import {
 } from "src/modules/Oidc";
 import { showObjectSuccess } from "src/notifications";
 import { ButtonFields } from "./Authentication/ButtonFields";
-import { NewUsersFields } from "./Authentication/NewUsersFields";
+import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUsersFields";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 
@@ -43,9 +44,75 @@ function SaveButton() {
 
 function Heading() {
 	return (
-		<h3 className="card-title mb-3">
+		<h2 className="mb-3">
 			<T id="settings.authentication" />
-		</h3>
+		</h2>
+	);
+}
+
+function Summary({ color = "secondary", id, values }) {
+	return (
+		<span className={`badge bg-${color}-lt fw-normal`}>
+			<T id={id} data={values} />
+		</span>
+	);
+}
+
+// Collapsible groups below the always visible provider and button settings. A group holding a validation error is
+// opened after a submit, so an error is never hidden.
+function AuthAccordion({ data, isLocked }) {
+	const { values, errors, submitCount } = useFormikContext();
+	const [openKeys, setOpenKeys] = useState([]);
+	const hasDomainsError = Boolean(errors.autoCreateDomains);
+
+	useEffect(() => {
+		if (submitCount > 0 && hasDomainsError) {
+			setOpenKeys((keys) => (keys.includes("new-users") ? keys : [...keys, "new-users"]));
+		}
+	}, [submitCount, hasDomainsError]);
+
+	const rulesOn = ["requireVerifiedEmail", "skipMfa", "disablePassword"].filter((name) => values[name]).length;
+	let rulesSummary = <Summary id="settings.authentication.summary.off" />;
+	if (isLocked("disablePassword")) {
+		rulesSummary = <Summary color="azure" id="settings.authentication.summary.password-locked" />;
+	} else if (rulesOn > 0) {
+		rulesSummary = (
+			<Summary color="green" id="settings.authentication.summary.rules-on" values={{ count: rulesOn }} />
+		);
+	}
+
+	const domainCount = parseDomains(values.autoCreateDomains).length;
+	const newUsersSummary = values.autoCreateEnabled ? (
+		<Summary color="green" id="settings.authentication.summary.new-users-on" values={{ count: domainCount }} />
+	) : (
+		<Summary id="settings.authentication.summary.off" />
+	);
+
+	const item = (eventKey, titleId, summary, children) => (
+		<Accordion.Item eventKey={eventKey}>
+			<Accordion.Header className="fs-3">
+				<span className="d-flex flex-fill flex-wrap align-items-center justify-content-between gap-2 me-2">
+					<span>
+						<T id={titleId} />
+					</span>
+					{summary}
+				</span>
+			</Accordion.Header>
+			<Accordion.Body>{children}</Accordion.Body>
+		</Accordion.Item>
+	);
+
+	return (
+		<Accordion alwaysOpen activeKey={openKeys} onSelect={(keys) => setOpenKeys(keys ?? [])}>
+			{item(
+				"rules",
+				"settings.authentication.rules",
+				rulesSummary,
+				<SignInRules data={data} isLocked={isLocked} />,
+			)}
+			{item("new-users", "settings.authentication.new-users", newUsersSummary, <NewUsersFields />)}
+			{item("permissions", "settings.authentication.default-permissions", null, <DefaultPermissionsFields />)}
+		</Accordion>
 	);
 }
 
@@ -202,8 +269,7 @@ export default function Authentication() {
 					) : null}
 					<ProviderFields data={data} isLocked={isLocked} />
 					<ButtonFields data={data} />
-					<SignInRules data={data} isLocked={isLocked} />
-					<NewUsersFields />
+					<AuthAccordion data={data} isLocked={isLocked} />
 				</div>
 				<div className="card-footer text-end">
 					<SaveButton />
