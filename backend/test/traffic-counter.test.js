@@ -68,3 +68,25 @@ it("drain empties the counter and reports skipped lines", () => {
 	const again = c.drain();
 	assert.deepEqual([again.minutes.length, again.skipped], [0, 0]);
 });
+
+it("keeps the distinct IP cap across drains within an hour", () => {
+	const c = createCounter({ maxPerKey: 3 });
+	for (let i = 0; i < 3; i++) c.add(e("a", `10.0.0.${i}`), null, { showIps: true });
+	c.drain();
+	for (let i = 3; i < 5; i++) c.add(e("a", `10.0.0.${i}`), null, { showIps: true });
+	const { ips } = c.drain();
+	assert.deepEqual(ips, [{ bucket: Math.floor(t / 3600000), host: "a", ip: "other", requests: 2 }]);
+});
+
+it("gives a new hour a fresh allowance", () => {
+	const c = createCounter({ maxPerKey: 1 });
+	c.add(e("a", "10.0.0.1"), null, { showIps: true });
+	c.drain();
+	c.add(e("a", "10.0.0.2", 200, 10, t + 3600000), null, { showIps: true });
+	const { ips } = c.drain();
+	assert.equal(ips[0].ip, "10.0.0.2");
+	c.add(e("a", "10.0.0.3", 200, 10, t + 3 * 3600000), null, { showIps: true });
+	c.drain();
+	c.add(e("a", "10.0.0.1"), null, { showIps: true });
+	assert.equal(c.drain().ips[0].ip, "10.0.0.1");
+});

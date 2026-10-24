@@ -20,12 +20,15 @@ export const createCounter = ({ maxPerKey = 1000 }) => {
 	let countries = new Map();
 	let asns = new Map();
 	let ips = new Map();
-	let seenAsns = new Map();
-	let seenIps = new Map();
+	const seenAsns = new Map();
+	const seenIps = new Map();
 	let skipped = 0;
+	let newestHour = 0;
 
 	// Adds a value for (hour, host) unless that pair already holds maxPerKey distinct values.
+	// The sets outlive drain() so the cap holds for the whole hour; drain() prunes old hours.
 	const admit = (seen, hour, host, value) => {
+		newestHour = Math.max(newestHour, hour);
 		const key = `${hour}|${host}`;
 		let set = seen.get(key);
 		if (!set) {
@@ -89,8 +92,14 @@ export const createCounter = ({ maxPerKey = 1000 }) => {
 			countries = new Map();
 			asns = new Map();
 			ips = new Map();
-			seenAsns = new Map();
-			seenIps = new Map();
+			// Keep the previous hour too: lines can arrive slightly late around the hour boundary.
+			for (const seen of [seenAsns, seenIps]) {
+				for (const key of seen.keys()) {
+					if (Number(key.slice(0, key.indexOf("|"))) < newestHour - 1) {
+						seen.delete(key);
+					}
+				}
+			}
 			skipped = 0;
 			return out;
 		},
