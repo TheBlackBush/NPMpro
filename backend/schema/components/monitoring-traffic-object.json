@@ -161,11 +161,24 @@
 			}
 		},
 		"countries": {
-			"type": "object",
-			"description": "Requests per country code, for the map",
-			"additionalProperties": {
-				"type": "integer",
-				"minimum": 0
+			"type": "array",
+			"description": "Requests per country code (-- when unknown), all countries of the range, sorted by requests descending, for the map",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country",
+					"requests"
+				],
+				"properties": {
+					"country": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
 			}
 		},
 		"status": {

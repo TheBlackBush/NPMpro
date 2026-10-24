@@ -26,10 +26,23 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			access.canAdmin();
 			const { values } = await getConfig();
 			const showIps = Boolean(values.show_ips);
-			const { top_ips: topIps, ...data } = await store.queryTraffic({ range, host, showIps, now: now() });
+			const {
+				top_ips: topIps,
+				countries,
+				...data
+			} = await store.queryTraffic({
+				range,
+				host,
+				showIps,
+				now: now(),
+			});
 			const { enabled: _running, ...status } = traffic.status();
 			return {
 				...data,
+				// an array, not an object keyed by code: the UI converts object keys and "--" is not a valid key there
+				countries: Object.entries(countries)
+					.map(([country, requests]) => ({ country, requests }))
+					.sort((a, b) => b.requests - a.requests),
 				...(showIps ? { top_ips: topIps } : {}),
 				status: { ...status, enabled: Boolean(values.traffic_enabled), geoip: geoipAvailable() },
 			};

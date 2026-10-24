@@ -89,11 +89,20 @@
 										"requests": 700
 									}
 								],
-								"countries": {
-									"DE": 900,
-									"US": 400,
-									"--": 20
-								},
+								"countries": [
+									{
+										"country": "DE",
+										"requests": 900
+									},
+									{
+										"country": "US",
+										"requests": 400
+									},
+									{
+										"country": "--",
+										"requests": 20
+									}
+								],
 								"status": {
 									"enabled": true,
 									"geoip": true,

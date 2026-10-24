@@ -529,7 +529,7 @@ describe("monitoring API", () => {
 		top_countries: [{ country: "DE", requests: 3 }],
 		top_asns: [{ asn: 3320, asn_name: "DTAG", requests: 3 }],
 		top_ips: [{ ip: "203.0.113.7", requests: 3 }],
-		countries: { DE: 3 },
+		countries: { DE: 3, "--": 1, US: 5 },
 	};
 
 	const make = ({ values = {}, crowdsec = {}, available = { country: true, asn: true } } = {}) => {
@@ -588,6 +588,11 @@ describe("monitoring API", () => {
 		const out = await api.getTraffic(admin, { range: "24h", host: "" });
 		assert.equal("top_ips" in out, false);
 		assert.equal(queries[0].showIps, false);
+		assert.deepEqual(out.countries, [
+			{ country: "US", requests: 5 },
+			{ country: "DE", requests: 3 },
+			{ country: "--", requests: 1 },
+		]);
 		assert.ok(validTraffic(out), JSON.stringify(validTraffic.errors));
 		assert.deepEqual(out.status, {
 			enabled: true,
