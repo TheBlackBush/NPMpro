@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import { useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
-import { defaultKeySize, keySizeOptions } from "src/modules/RuntimeSettings";
+import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
 
@@ -141,8 +141,8 @@ function DefaultCertificateField() {
 		{ value: "0", label: intl.formatMessage({ id: "settings.certificates.default-certificate.builtin" }) },
 	];
 	for (const cert of data ?? []) {
-		// an mTLS CA certificate verifies clients, it cannot be served
-		if (cert.provider !== "mtls") options.push({ value: String(cert.id), label: cert.niceName });
+		// only certificates the backend accepts as default (no mTLS CA, files present)
+		if (isServableCertificate(cert)) options.push({ value: String(cert.id), label: cert.niceName });
 	}
 	// the stored certificate while the list loads, failed to load or no longer lists it
 	if (!options.some((option) => option.value === values.defaultCertificateId)) {

@@ -46,13 +46,13 @@ function Heading({ titleId }) {
 }
 
 /**
- * The message of a failed save; nginx -t output keeps its line breaks
+ * The message of a failed save, after an optional lead line; nginx -t output keeps its line breaks
  */
-function SaveErrorContent({ error }) {
-	const { message } = formatApiError(error, hasMessage, formatMessage);
+function SaveErrorContent({ message, lead }) {
 	const [first, ...rest] = String(message).split("\n");
 	return (
 		<>
+			{lead ? <span className="d-block">{lead}</span> : null}
 			<span className="text-break">{first}</span>
 			{rest.length > 0 ? (
 				// Tabler's .text-wrap is white-space: normal, which would collapse the nginx output
@@ -94,12 +94,22 @@ function useSaveError() {
 }
 
 /**
- * Shows a failed save: inline (with nginx -t output), as a toast, and on the field the backend names
+ * Shows a failed save: inline (with nginx -t output), as a toast, and on the field the backend names (then without
+ * the backend's "key_name: " prefix)
+ *
+ * @param {string}    group
+ * @param {unknown}   err
+ * @param {Object}    show
+ * @param {Function}  show.setErrorMsg      the inline alert setter (useSaveError)
+ * @param {Function}  [show.setFieldError]  Formik's
+ * @param {*}         [show.lead]           shown above the message
  */
-const reportSaveError = (group, err, setErrorMsg, setFieldError) => {
-	setErrorMsg(<SaveErrorContent error={err} />);
-	showError(<SaveErrorContent error={err} />);
-	const field = fieldOfError(group, formatApiError(err, hasMessage, formatMessage).message);
+const reportSaveError = (group, err, { setErrorMsg, setFieldError, lead }) => {
+	const { message } = formatApiError(err, hasMessage, formatMessage);
+	const field = fieldOfError(group, message);
+	const text = field ? field.message : message;
+	setErrorMsg(<SaveErrorContent message={text} lead={lead} />);
+	showError(<SaveErrorContent message={text} lead={lead} />);
 	if (field && setFieldError) setFieldError(field.key, field.message);
 };
 
@@ -140,7 +150,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 				showObjectSuccess("setting", "saved");
 			}
 		} catch (err) {
-			reportSaveError(group, err, setErrorMsg, setFieldError);
+			reportSaveError(group, err, { setErrorMsg, setFieldError });
 		}
 		setSubmitting(false);
 	};

@@ -1,20 +1,14 @@
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
-import { useEffect, useRef, useState } from "react";
 import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
-import {
-	useMonitoringSettings,
-	useRuntimeSettings,
-	useSaveMonitoringSettings,
-	useSaveRuntimeSettings,
-} from "src/hooks";
+import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
 import { GROUP_KEYS, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { RuntimeNumber, RuntimeSwitch } from "./Runtime/fields";
-import { Part, RuntimeContext, reportSaveError, runtimeContextOf } from "./Runtime/RuntimeSection";
+import { Part, RuntimeContext, reportSaveError, runtimeContextOf, useSaveError } from "./Runtime/RuntimeSection";
 import { StatusAlert } from "./StatusAlert";
 
 const RETENTION_MIN = 7;
@@ -206,17 +200,9 @@ function Fields({ isLocked }) {
 
 export default function Monitoring() {
 	const { data, isPending, error } = useMonitoringSettings();
-	const { mutateAsync: save } = useSaveMonitoringSettings();
 	const logsQuery = useRuntimeSettings("logs");
-	const { mutateAsync: saveLogs } = useSaveRuntimeSettings("logs");
-	const [errorMsg, setErrorMsg] = useState(null);
-	const errorRef = useRef(null);
-
-	useEffect(() => {
-		if (!errorMsg) return;
-		errorRef.current?.scrollIntoView({ block: "nearest" });
-		errorRef.current?.focus();
-	}, [errorMsg]);
+	const { mutateAsync: save } = useSaveLogsAndMonitoring();
+	const { alert, setErrorMsg } = useSaveError();
 
 	if (error || logsQuery.error) {
 		return (
@@ -269,9 +255,22 @@ export default function Monitoring() {
 			locked: lockedKeys,
 		};
 		if (!values.uniqueVisitors) delete payload.visitorsCap;
+		const logsBody = isEmptyPayload(logsPayload) ? null : logsPayload;
+		const monitoringBody = monitoringChanged ? payload : null;
+		// nothing to send: no request and no success message
+		if (!(logsBody || monitoringBody)) {
+			setSubmitting(false);
+			return;
+		}
+		const report = (err) =>
+			reportSaveError("logs", err, {
+				setErrorMsg,
+				setFieldError,
+				lead: err?.logsSaved ? <T id="settings.logs.saved-monitoring-failed" /> : null,
+			});
+		// the caches (and with them the form) are refreshed only after both parts are saved
 		const run = async () => {
-			if (!isEmptyPayload(logsPayload)) await saveLogs(logsPayload);
-			if (monitoringChanged) await save(payload);
+			await save({ logs: logsBody, monitoring: monitoringBody });
 			showObjectSuccess("setting", "saved");
 		};
 		// switching visitor IPs or unique visitors off deletes the stored data: ask first, once for both
@@ -300,7 +299,15 @@ export default function Monitoring() {
 						<T id={`${key}.confirm.body`} />
 					),
 				confirmLabel: <T id="settings.monitoring.show-ips.confirm.button" />,
-				onConfirm: run,
+				// a failure shows in the modal and, like a direct save, inline and on the field
+				onConfirm: async () => {
+					try {
+						await run();
+					} catch (err) {
+						report(err);
+						throw err;
+					}
+				},
 				invalidations: [],
 			});
 			return;
@@ -308,19 +315,17 @@ export default function Monitoring() {
 		try {
 			await run();
 		} catch (err) {
-			reportSaveError("logs", err, setErrorMsg, setFieldError);
+			report(err);
 		}
 		setSubmitting(false);
 	};
 
 	return (
 		<Formik enableReinitialize initialValues={initialValues} validate={validate} onSubmit={onSubmit}>
-			<Form className="d-flex flex-column flex-fill">
+			<Form className="d-flex flex-column flex-fill" noValidate>
 				<div className="card-body flex-fill">
 					<Heading />
-					<div ref={errorRef} tabIndex={-1}>
-						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-					</div>
+					{alert}
 					{locked.size > 0 || logsCtx.anyLocked ? (
 						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
 					) : null}

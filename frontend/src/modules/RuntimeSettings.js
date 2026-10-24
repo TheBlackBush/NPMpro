@@ -170,12 +170,24 @@ const fieldOfError = (group, text) => {
 	return (GROUP_KEYS[group] ?? []).includes(key) ? { key, message: match.groups.message } : null;
 };
 
+/**
+ * Whether a certificate can be the default certificate, as the backend checks on save (lib/default-cert.js): not an
+ * mTLS CA (no key to serve) and with certificate files. A custom certificate gets its domain names with its upload,
+ * so one without domain names has no files yet; certbot certificates always have domain names.
+ *
+ * @param   {Object}  cert  certificate from the API (camelCase)
+ * @returns {boolean}
+ */
+const isServableCertificate = (cert) =>
+	cert?.provider !== "mtls" && Array.isArray(cert?.domainNames) && cert.domainNames.length > 0;
+
 export {
 	appliesMessageId,
 	defaultKeySize,
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
 	runtimeSettingsPayload,

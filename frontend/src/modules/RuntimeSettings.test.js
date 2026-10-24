@@ -7,6 +7,7 @@ import {
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
 	runtimeSettingsPayload,
@@ -147,4 +148,14 @@ it("camelizes the keys of locked_by and keeps the env names", async () => {
 	});
 	assert.deepEqual(data.lockedBy, { keyType: "ACME_KEY_SIZE", writeLogFiles: "GOA" });
 	assert.deepEqual(data.locked, ["key_type"]);
+});
+
+it("isServableCertificate keeps certificates with files, without mTLS CAs", () => {
+	assert.equal(isServableCertificate({ provider: "letsencrypt", domainNames: ["a.example"] }), true);
+	assert.equal(isServableCertificate({ provider: "other", domainNames: ["a.example"] }), true);
+	// a custom certificate before its upload
+	assert.equal(isServableCertificate({ provider: "other", domainNames: [] }), false);
+	assert.equal(isServableCertificate({ provider: "mtls", domainNames: ["ca"] }), false);
+	assert.equal(isServableCertificate({ provider: "other" }), false);
+	assert.equal(isServableCertificate(undefined), false);
 });
