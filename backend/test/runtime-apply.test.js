@@ -10,16 +10,20 @@ import { renderDefaultCertConf } from "../lib/default-cert.js";
 import { ownUpstream, proxyHostsForProvider } from "../lib/forward-auth.js";
 import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
 import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
+import { logIncludes, renderRotations } from "../lib/log-files.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
 import { createHostRenderer, describeHosts } from "../lib/runtime-hosts.js";
 import { mergeRuntimeConfig, rulesOf, UPSTREAM } from "../lib/runtime-rules.js";
+import { accessLogDirective, createAccessLogSwitch } from "../lib/traffic/access-log.js";
 import utils from "../lib/utils.js";
 
 const LE = "https://acme-v02.api.letsencrypt.org/directory";
 const BOOT_ENV = { ACME_SERVER: LE };
 const CRONTAB =
-	"0 */1 * * * cron-ech.sh\n0 * * * * logrotate --state /data/nginx/logs/logrotate.state /etc/logrotate\n";
+	"0 */1 * * * cron-ech.sh\n0 * * * * logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate\n";
+
+const LOGROTATE = "/data/nginx/logs/*.log {\n        daily\n        rotate 3\n        missingok\n}\n";
 
 const hasLine = (text, line) => text.split("\n").includes(line);
 const BOOM = /boom/u;
@@ -39,8 +43,17 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		crontabDir: path.join(dir, "crontabs"),
 		defaultCertConf: path.join(dir, "default-cert.conf"),
 		tlsDir: path.join(dir, "tls"),
+		errorLogConf: path.join(dir, "error-log.conf"),
+		streamLogConf: path.join(dir, "stream-log.conf"),
+		accessLogConf: path.join(dir, "access-log.conf"),
+		logrotateConf: path.join(dir, "logrotate"),
 	};
 	await writeFile(paths.certbotIni, "old ini\n");
+	// what start.sh writes without LOGROTATE and TRAFFIC_STATS
+	await writeFile(paths.errorLogConf, logIncludes(false).error);
+	await writeFile(paths.streamLogConf, logIncludes(false).stream);
+	await writeFile(paths.accessLogConf, accessLogDirective(false));
+	await writeFile(paths.logrotateConf, LOGROTATE);
 	// what start.sh writes without DEFAULT_CERT_ID
 	await writeFile(paths.defaultCertConf, renderDefaultCertConf(null, paths.tlsDir));
 	await mkdir(paths.renewalDir);
@@ -198,7 +211,7 @@ it("rewrites the ECH crontab line and keeps the other lines", async () => {
 	await a.applyGroup("certificates", { ...prev, ech_rotation_interval: 6 }, prev);
 	assert.equal(
 		await readFile(path.join(paths.crontabDir, "npmpro"), "utf8"),
-		"0 */6 * * * cron-ech.sh\n0 * * * * logrotate --state /data/nginx/logs/logrotate.state /etc/logrotate\n",
+		"0 */6 * * * cron-ech.sh\n0 * * * * logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate\n",
 	);
 });
 
@@ -1202,4 +1215,209 @@ it("a refresh tick logs only a written file and restores ip_ranges.conf when ngi
 		),
 	);
 	assert.equal(failing.cfLog.lines.includes("Updated trusted IP ranges"), false);
+});
+
+// logs: Write log files and rotations
+
+const logValues = (overrides = {}) => ({ ...mergeRuntimeConfig("logs", {}, BOOT_ENV).values, ...overrides });
+
+const logFiles = async (paths) => ({
+	error: await readFile(paths.errorLogConf, "utf8"),
+	stream: await readFile(paths.streamLogConf, "utf8"),
+	access: await readFile(paths.accessLogConf, "utf8"),
+});
+
+it("logIncludes gives the error and stream log lines, off: start.sh's defaults", () => {
+	assert.deepEqual(logIncludes(true), {
+		error: "error_log /data/nginx/logs/error.log warn;\n",
+		stream: "access_log /data/nginx/logs/stream.log slog;\n",
+	});
+	assert.deepEqual(logIncludes(false), {
+		error: "# no error log file, errors go to stderr\n",
+		stream: "access_log off;\n",
+	});
+});
+
+it("start.sh writes the same include lines as logIncludes", async () => {
+	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/start.sh", import.meta.url), "utf8");
+	for (const on of [true, false]) {
+		const { error, stream } = logIncludes(on);
+		assert.ok(startSh.includes(`echo "${error.trim()}" > /data/npmpro/nginx/error-log.conf`), error);
+		assert.ok(startSh.includes(`echo "${stream.trim()}" > /data/npmpro/nginx/stream-log.conf`), stream);
+	}
+	const nginxConf = await readFile(new URL("../../rootfs/usr/local/nginx/conf/nginx.conf", import.meta.url), "utf8");
+	assert.ok(hasLine(nginxConf, "include /data/npmpro/nginx/error-log.conf;"));
+	assert.ok(hasLine(nginxConf, "  include /data/npmpro/nginx/stream-log.conf;"));
+	assert.equal(PATHS.errorLogConf, "/data/npmpro/nginx/error-log.conf");
+	assert.equal(PATHS.streamLogConf, "/data/npmpro/nginx/stream-log.conf");
+	assert.equal(PATHS.logrotateConf, "/run/npmpro/logrotate");
+});
+
+it("renderRotations sets every rotate count", () => {
+	assert.equal(
+		renderRotations("a {\n  rotate 3\n}\nb {\n\trotate 12\n}\n", 7),
+		"a {\n  rotate 7\n}\nb {\n\trotate 7\n}\n",
+	);
+});
+
+it("switching Write log files on writes the three includes, tests and reloads", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = logValues();
+	const result = await a.applyGroup("logs", { ...prev, write_log_files: true }, prev);
+	assert.deepEqual(result, { changed: ["write_log_files"], reloaded: true });
+	assert.deepEqual(await logFiles(paths), {
+		...logIncludes(true),
+		access: accessLogDirective(true),
+	});
+	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+	assert.equal(await readFile(paths.logrotateConf, "utf8"), LOGROTATE);
+
+	await a.applyGroup("logs", prev, { ...prev, write_log_files: true });
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+});
+
+it("switching Write log files off keeps the access log while traffic statistics are on", async () => {
+	const { paths } = await setup();
+	await writeFile(paths.accessLogConf, accessLogDirective(true));
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => true,
+		readWriteLogFiles: async () => true,
+		apply: async () => true,
+	});
+	const a = applier(paths, { accessLogOn: accessLog.enabled });
+	const on = logValues({ write_log_files: true });
+	await a.applyGroup("logs", { ...on, write_log_files: false }, on);
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(true) });
+});
+
+it("switching traffic statistics off keeps the access log while Write log files is on, and the reverse", async () => {
+	const applied = [];
+	let writeLogFiles = true;
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => true,
+		readWriteLogFiles: async () => writeLogFiles,
+		apply: async (enabled) => applied.push(enabled),
+	});
+	await accessLog.onTrafficEnabledChange(false);
+	writeLogFiles = false;
+	await accessLog.onTrafficEnabledChange(false);
+	await accessLog.onTrafficEnabledChange(true);
+	assert.deepEqual(applied, [true, false, true]);
+});
+
+it("the access log switch uses the traffic value the hook applied before it is stored, in the runtime queue", async () => {
+	const order = [];
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => false,
+		readWriteLogFiles: async () => false,
+		apply: async () => order.push("apply"),
+		exclusive: async (fn) => {
+			order.push("enter");
+			const result = await fn();
+			order.push("leave");
+			return result;
+		},
+	});
+	assert.equal(await accessLog.enabled(false), false);
+	assert.equal(await accessLog.enabledNow(), false);
+	await accessLog.onTrafficEnabledChange(true);
+	assert.deepEqual(order, ["enter", "apply", "leave"]);
+	// the monitoring row still holds false: the applied value counts
+	assert.equal(await accessLog.enabled(false), true);
+	assert.equal(await accessLog.enabledNow(), true);
+});
+
+it("a failing hook apply keeps the previous traffic value", async () => {
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => false,
+		readWriteLogFiles: async () => false,
+		apply: () => Promise.reject(new Error("boom")),
+	});
+	await assert.rejects(accessLog.onTrafficEnabledChange(true), BOOM);
+	assert.equal(await accessLog.enabled(false), false);
+});
+
+it("a failing nginx -t restores all three includes and refuses the save", async () => {
+	const { paths } = await setup();
+	const a = applier(paths, { nginx: nginxFake({ testError: "nginx: [emerg] open() error.log failed" }) });
+	const prev = logValues();
+	await assert.rejects(a.applyGroup("logs", { ...prev, write_log_files: true }, prev), {
+		name: "ValidationError",
+		message: "nginx: [emerg] open() error.log failed",
+	});
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+	assert.deepEqual(a.nginx.calls, ["test"]);
+});
+
+it("changing the rotations rewrites the live logrotate config without nginx", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = logValues();
+	const result = await a.applyGroup("logs", { ...prev, log_rotations: 14 }, prev);
+	assert.deepEqual(result, { changed: ["log_rotations"], reloaded: false });
+	assert.ok(hasLine(await readFile(paths.logrotateConf, "utf8"), "        rotate 14"));
+	assert.deepEqual(a.nginx.calls, []);
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+});
+
+it("a missing live logrotate config is skipped and logged once", async () => {
+	const { paths } = await setup();
+	await nodeFs.rm(paths.logrotateConf);
+	const a = applier(paths);
+	const prev = logValues();
+	await a.applyGroup("logs", { ...prev, log_rotations: 5 }, prev);
+	await a.applyGroup("logs", { ...prev, log_rotations: 6 }, { ...prev, log_rotations: 5 });
+	await assert.rejects(readFile(paths.logrotateConf, "utf8"), { code: "ENOENT" });
+	assert.equal(a.log.lines.filter((line) => line.includes("log rotations applies at the next")).length, 1);
+});
+
+it("startup applies stored log settings the env did not set; GOA forces the log files on", async () => {
+	const { paths } = await setup();
+	const config = createRuntimeConfig({
+		env: { ...BOOT_ENV, NPMPRO_USER_ENV: "" },
+		readStored: async (group) => (group === "logs" ? { log_rotations: 9 } : {}),
+		log: quietLog(),
+	});
+	const a = applier(paths, { getConfig: config.getRuntimeConfig });
+	assert.deepEqual(await a.applyAll(), {});
+	assert.ok(hasLine(await readFile(paths.logrotateConf, "utf8"), "        rotate 9"));
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+	assert.deepEqual(a.nginx.calls, []);
+
+	const goa = createRuntimeConfig({
+		env: { ...BOOT_ENV, NPMPRO_USER_ENV: "", GOA: "true" },
+		readStored: async (group) => (group === "logs" ? { write_log_files: false } : {}),
+		log: quietLog(),
+	});
+	const b = applier(paths, { getConfig: goa.getRuntimeConfig });
+	assert.deepEqual(await b.applyAll(), {});
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(true), access: accessLogDirective(true) });
+	// tested, not reloaded (the startup reload follows)
+	assert.deepEqual(b.nginx.calls, ["test", "test", "test"]);
+});
+
+it("at startup a failing include keeps start.sh's file and does not undo the other includes", async () => {
+	const { paths } = await setup();
+	const config = createRuntimeConfig({
+		env: { ...BOOT_ENV, NPMPRO_USER_ENV: "" },
+		readStored: async (group) => (group === "logs" ? { write_log_files: true } : {}),
+		log: quietLog(),
+	});
+	let tests = 0;
+	const nginx = {
+		calls: [],
+		// the error log include fails, the stream and access log includes pass
+		test: () => (++tests === 1 ? Promise.reject(new Error("nginx: [emerg] x")) : Promise.resolve()),
+		reload: () => Promise.resolve(),
+	};
+	const a = applier(paths, { getConfig: config.getRuntimeConfig, nginx });
+	assert.deepEqual(Object.keys(await a.applyAll()), ["logs"]);
+	assert.deepEqual(await logFiles(paths), {
+		error: logIncludes(false).error,
+		stream: logIncludes(true).stream,
+		access: accessLogDirective(true),
+	});
+	assert.equal(tests, 3);
+	assert.ok(a.log.lines.some((line) => line.startsWith(`Could not write ${paths.errorLogConf} at startup`)));
 });

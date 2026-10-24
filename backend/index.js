@@ -14,12 +14,12 @@ import {
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
-import { setRuntimeApply } from "./internal/runtime-setting.js";
+import { runtimeExclusive, setRuntimeApply } from "./internal/runtime-setting.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";
-import { loadRuntimeConfig } from "./lib/runtime-config.js";
-import { applyAccessLog } from "./lib/traffic/access-log.js";
+import { getRuntimeConfig, loadRuntimeConfig } from "./lib/runtime-config.js";
+import { applyAccessLog, createAccessLogSwitch } from "./lib/traffic/access-log.js";
 import { createTrafficHooks } from "./lib/traffic/service.js";
 import { global as logger } from "./logger.js";
 import { migrateUp } from "./migrate.js";
@@ -31,6 +31,13 @@ async function appStart() {
 	try {
 		await migrateUp();
 
+		// the http access log is on while traffic statistics or Write log files is on
+		const accessLog = createAccessLogSwitch({
+			readTrafficEnabled: async () => (await getMonitoringConfig()).values.traffic_enabled,
+			readWriteLogFiles: async () => (await getRuntimeConfig("logs")).values.write_log_files,
+			apply: (enabled) => applyAccessLog(enabled, { test: internalNginx.test, reload: internalNginx.reload }),
+			exclusive: runtimeExclusive,
+		});
 		const runtimeApplier = createRuntimeApplier({
 			nginx: { test: internalNginx.test, reload: internalNginx.reload },
 			renderHosts: renderRuntimeHosts,
@@ -42,6 +49,8 @@ async function appStart() {
 			ipRanges: internalIpRanges,
 			// a forward-auth default cannot be cleared while proxy hosts rely on it
 			proxyHostsUsingDefault,
+			// the logs settings write the access log include too
+			accessLogOn: accessLog.enabled,
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
 		// a failed startup apply keeps the files from start.sh, the backend still starts
@@ -60,16 +69,12 @@ async function appStart() {
 		setMonitoringHooks({
 			runGeoipUpdate,
 			onGeoipCredentialsChange: runGeoipUpdate,
-			...createTrafficHooks({
-				applyAccessLog: (enabled) =>
-					applyAccessLog(enabled, { test: internalNginx.test, reload: internalNginx.reload }),
-				traffic,
-			}),
+			...createTrafficHooks({ applyAccessLog: accessLog.onTrafficEnabledChange, traffic }),
 		});
 		await geoip.reload();
-		// start.sh writes the include from env only (LOGROTATE or TRAFFIC_STATS), the reload below picks up the stored setting
-		const { values: monitoring } = await getMonitoringConfig();
-		await applyAccessLog(monitoring.traffic_enabled, { writeOnly: true });
+		// start.sh writes the include from env only (LOGROTATE or TRAFFIC_STATS), the reload below picks up the stored
+		// settings (also when the logs startup apply failed)
+		await applyAccessLog(await accessLog.enabledNow(), { writeOnly: true });
 		await internalNginx.reload();
 		startMonitoringServices();
 

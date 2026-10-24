@@ -74,4 +74,48 @@ const applyAccessLog = async (enabled, { file = ACCESS_LOG_CONF, test, reload, w
 	return true;
 };
 
-export { ACCESS_LOG_CONF, accessLogDirective, applyAccessLog };
+/**
+ * Whether nginx writes the http access log: traffic statistics read it, Write log files keeps it on disk
+ *
+ * @param   {boolean}  trafficEnabled  monitoring traffic_enabled
+ * @param   {boolean}  writeLogFiles   runtime logs write_log_files
+ * @returns {boolean}
+ */
+const accessLogEnabled = (trafficEnabled, writeLogFiles) => trafficEnabled === true || writeLogFiles === true;
+
+/**
+ * The access log switch shared by the traffic statistics hook and the logs runtime settings: both compute the include
+ * from accessLogEnabled() with the other setting's current value.
+ *
+ * The traffic hook runs before the monitoring setting is stored, so the value it applied is remembered and used by
+ * enabled() (a logs save right after it must not read the old stored value); the hook runs in the runtime settings
+ * queue, so it never writes the include at the same time as a logs save.
+ *
+ * @param   {Object}    deps
+ * @param   {Function}  deps.readTrafficEnabled  () => stored monitoring traffic_enabled
+ * @param   {Function}  deps.readWriteLogFiles   () => effective logs write_log_files
+ * @param   {Function}  deps.apply               (enabled) => Promise, writes the include, tests and reloads nginx
+ * @param   {Function}  [deps.exclusive]         (fn) => runs fn in the runtime settings queue
+ * @returns {{enabled: Function, enabledNow: Function, onTrafficEnabledChange: Function}}
+ */
+const createAccessLogSwitch = ({ readTrafficEnabled, readWriteLogFiles, apply, exclusive = (fn) => fn() }) => {
+	// the traffic_enabled value the hook applied last (undefined: none yet, the stored value counts)
+	let applied;
+	const trafficEnabled = async () => applied ?? (await readTrafficEnabled());
+
+	return {
+		/** For the logs settings: the access log state with these write_log_files and the current traffic setting */
+		enabled: async (writeLogFiles) => accessLogEnabled(await trafficEnabled(), writeLogFiles),
+		/** Both settings as they are now (startup) */
+		enabledNow: async () => accessLogEnabled(await trafficEnabled(), await readWriteLogFiles()),
+		/** The traffic statistics hook: the include for the new traffic value and the current write_log_files */
+		onTrafficEnabledChange: (enabled) =>
+			exclusive(async () => {
+				const changed = await apply(accessLogEnabled(enabled, await readWriteLogFiles()));
+				applied = enabled;
+				return changed;
+			}),
+	};
+};
+
+export { ACCESS_LOG_CONF, accessLogDirective, accessLogEnabled, applyAccessLog, createAccessLogSwitch };

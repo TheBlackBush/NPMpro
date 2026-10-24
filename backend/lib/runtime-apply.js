@@ -7,9 +7,11 @@ import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from 
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
+import { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF } from "./log-files.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { describeHosts } from "./runtime-hosts.js";
 import { acmeServerOf, appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
+import { ACCESS_LOG_CONF, accessLogDirective } from "./traffic/access-log.js";
 
 const PATHS = {
 	certbotIni: CERTBOT_INI,
@@ -18,6 +20,10 @@ const PATHS = {
 	defaultCertConf: DEFAULT_CERT_CONF,
 	tlsDir: TLS_DIR,
 	ipRangesConf: "/usr/local/nginx/conf/conf.d/ip_ranges.conf",
+	errorLogConf: ERROR_LOG_CONF,
+	streamLogConf: STREAM_LOG_CONF,
+	accessLogConf: ACCESS_LOG_CONF,
+	logrotateConf: LOGROTATE_CONF,
 };
 
 const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
@@ -185,6 +191,9 @@ const changedKeys = (next, prev) =>
  *                                            start(), stop() }; without it the network settings are only stored
  * @param   {Function}  [deps.proxyHostsUsingDefault] (provider) => proxy hosts (enabled or not) that use the
  *                                            provider without their own upstream
+ * @param   {Function}  [deps.accessLogOn]    (writeLogFiles) => whether the http access log is on with these
+ *                                            write_log_files and the current traffic statistics setting
+ *                                            (lib/traffic/access-log createAccessLogSwitch().enabled)
  */
 const createRuntimeApplier = ({
 	fs = nodeFs,
@@ -201,6 +210,7 @@ const createRuntimeApplier = ({
 	ocsp = { fetch: async () => {} },
 	ipRanges = null,
 	proxyHostsUsingDefault = async () => [],
+	accessLogOn = async (writeLogFiles) => writeLogFiles === true,
 } = {}) => {
 	const logged = new Set();
 	const logOnce = (id, message) => {
@@ -345,7 +355,49 @@ const createRuntimeApplier = ({
 		}
 	};
 
+	/**
+	 * The live logrotate config with the rotations; null when start.sh did not create it (logged once)
+	 */
+	const logrotateFile = async (rotations) => {
+		const content = await readOrNull(fs, paths.logrotateConf);
+		if (content === null) {
+			logOnce(
+				"logrotate",
+				`No ${paths.logrotateConf}, the number of log rotations applies at the next container start`,
+			);
+			return null;
+		}
+		return { path: paths.logrotateConf, content: renderRotations(content, rotations) };
+	};
+
 	const planners = {
+		logs: async ({ next, changed }) => {
+			const plan = { files: [] };
+			if (changed.includes("write_log_files")) {
+				const includes = logIncludes(next.write_log_files);
+				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files));
+				// at startup each in its own transaction, like the default certificate include: a failing nginx -t
+				// keeps start.sh's file and does not undo the others
+				for (const [file, content] of [
+					[paths.errorLogConf, includes.error],
+					[paths.streamLogConf, includes.stream],
+					[paths.accessLogConf, accessLog],
+				]) {
+					plan.files.push({
+						path: file,
+						content,
+						nginx: true,
+						startupOwn: true,
+						startupFailure: `Could not write ${file} at startup (nginx -t failed or the file could not be written), the file from the container start stays in use`,
+					});
+				}
+			}
+			if (changed.includes("log_rotations")) {
+				const file = await logrotateFile(next.log_rotations);
+				if (file) plan.files.push(file);
+			}
+			return plan;
+		},
 		"forward-auth": (ctx) => (ctx.startup ? {} : { check: () => checkClearedUpstreams(ctx) }),
 		network: async (ctx) => {
 			if (!ipRanges) return {};
@@ -435,14 +487,17 @@ const createRuntimeApplier = ({
 			const shared = files.filter((file) => !file.startupOwn);
 			await withFiles(shared, testIfNginx(shared), { fs, log });
 			for (const step of plan.after ?? []) await step();
+			// a failing one does not stop the next ones; the first error fails the group
+			let failure;
 			for (const file of files.filter((entry) => entry.startupOwn)) {
 				try {
 					await withFiles([file], testIfNginx([file]), { fs, log });
 				} catch (err) {
 					if (file.startupFailure) log.error(`${file.startupFailure}: ${err.message}`);
-					throw err;
+					failure ??= err;
 				}
 			}
+			if (failure) throw failure;
 			return { changed, reloaded };
 		}
 

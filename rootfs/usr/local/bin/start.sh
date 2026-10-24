@@ -25,6 +25,10 @@ else
     find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "/required_profile/d" {} \;
 fi
 
+# the live logrotate config, written again by the backend when the log rotations setting changes
+cp /etc/logrotate /run/npmpro/logrotate
+sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /run/npmpro/logrotate
+
 
 if [ "$PHP83" = "true" ]; then
     apk add --no-cache php83-fpm
@@ -437,11 +441,11 @@ if [ "$REGENERATE_ALL" = "true" ]; then
     find /data/nginx -name "*.conf" -delete
 fi
 
-sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /etc/logrotate
 if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 rm -f /data/logrotate.state
 
-# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics setting changes
+# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
+# setting changes
 mkdir -p /data/npmpro/nginx
 if [ "$LOGROTATE" = "true" ] || [ "$TRAFFIC_STATS" = "true" ]; then
     echo "access_log /data/nginx/logs/access.log alog;" > /data/npmpro/nginx/access-log.conf
@@ -452,9 +456,11 @@ else
     echo "access_log off;" > /data/npmpro/nginx/access-log.conf
 fi
 
+# error log and stream access log: included by nginx.conf, the backend rewrites them when Write log files changes
+# (the same lines as lib/log-files.js logIncludes)
 if [ "$LOGROTATE" = "true" ]; then
-    sed -i "s|access_log off; # stream|access_log /data/nginx/logs/stream.log slog;|g" /usr/local/nginx/conf/nginx.conf
-    sed -i "s|#error_log|error_log|g" /usr/local/nginx/conf/nginx.conf
+    echo "error_log /data/nginx/logs/error.log warn;" > /data/npmpro/nginx/error-log.conf
+    echo "access_log /data/nginx/logs/stream.log slog;" > /data/npmpro/nginx/stream-log.conf
 
     if [ ! -L /data/nginx/stream.log ] && [ ! -f /data/nginx/logs/stream.log ]; then mv -vn /data/nginx/stream.log* /data/nginx/logs; fi
     if [ ! -L /data/nginx/error.log ] && [ ! -f /data/nginx/logs/error.log ]; then mv -vn /data/nginx/error.log* /data/nginx/logs; fi
@@ -464,6 +470,9 @@ if [ "$LOGROTATE" = "true" ]; then
 
     if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
     if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
+else
+    echo "# no error log file, errors go to stderr" > /data/npmpro/nginx/error-log.conf
+    echo "access_log off;" > /data/npmpro/nginx/stream-log.conf
 fi
 
 find /data/tls \

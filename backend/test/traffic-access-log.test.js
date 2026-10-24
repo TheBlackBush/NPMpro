@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { accessLogDirective, applyAccessLog } from "../lib/traffic/access-log.js";
+import { accessLogDirective, accessLogEnabled, applyAccessLog } from "../lib/traffic/access-log.js";
 
 const EMERG = /nginx: \[emerg\] test/u;
 const ok = () => Promise.resolve();
@@ -14,6 +14,14 @@ const tmpConf = async () => path.join(await mkdtemp(path.join(tmpdir(), "alc-"))
 it("builds the directive", () => {
 	assert.equal(accessLogDirective(true), "access_log /data/nginx/logs/access.log alog;\n");
 	assert.equal(accessLogDirective(false), "access_log off;\n");
+});
+
+it("the access log is on while traffic statistics or Write log files is on", () => {
+	assert.equal(accessLogEnabled(false, false), false);
+	assert.equal(accessLogEnabled(true, false), true);
+	assert.equal(accessLogEnabled(false, true), true);
+	assert.equal(accessLogEnabled(true, true), true);
+	assert.equal(accessLogEnabled(undefined, undefined), false);
 });
 
 it("writes, tests and reloads", async () => {
