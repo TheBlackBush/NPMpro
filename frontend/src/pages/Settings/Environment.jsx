@@ -144,7 +144,7 @@ function GroupRows({ group }) {
 							<T id={item.set ? "settings.environment.set" : "settings.environment.default"} />
 						</span>
 					</td>
-					<td className="text-secondary" data-label={label("settings.environment.description")}>
+					<td data-label={label("settings.environment.description")}>
 						<T id={`environment.${group.id}.${item.name}`} />
 					</td>
 				</tr>
