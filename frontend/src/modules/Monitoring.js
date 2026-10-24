@@ -19,13 +19,16 @@ const formatBytes = (n) => {
 	return `${value.toFixed(1)} ${BYTE_UNITS[unit]}`;
 };
 
+const TRAILING_ZERO = /\.0$/u;
+const COUNTRY_CODE = /^[A-Za-z]{2}$/u;
+
 const COUNT_UNITS = [
 	{ size: 1e9, suffix: "B" },
 	{ size: 1e6, suffix: "M" },
 	{ size: 1e3, suffix: "k" },
 ];
 
-const shortNumber = (value, size, suffix) => `${(value / size).toFixed(1).replace(/\.0$/u, "")}${suffix}`;
+const shortNumber = (value, size, suffix) => `${(value / size).toFixed(1).replace(TRAILING_ZERO, "")}${suffix}`;
 
 /**
  * 999 -> "999", 1200 -> "1.2k", 3.4M -> "3.4M". A trailing ".0" is dropped.
@@ -59,7 +62,7 @@ const shareBar = (value, max) => {
 	return Math.min(100, (v / m) * 100);
 };
 
-const isCountryCode = (code) => typeof code === "string" && /^[A-Za-z]{2}$/u.test(code);
+const isCountryCode = (code) => typeof code === "string" && COUNTRY_CODE.test(code);
 
 /**
  * Log scale colour intensity per country, for the map.

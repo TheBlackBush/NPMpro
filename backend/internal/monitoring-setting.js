@@ -163,7 +163,8 @@ const internalMonitoringSetting = {
 	 */
 	updateGeoipNow: async (access) => {
 		access.canAdmin();
-		return hooks.runGeoipUpdate();
+		const result = await hooks.runGeoipUpdate();
+		return result;
 	},
 
 	/**

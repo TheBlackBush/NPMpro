@@ -3,6 +3,8 @@ const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
+const DIGITS = /^\d+$/u;
+const WHITESPACE = /\s+/u;
 
 const withoutNulls = (stored) =>
 	Object.fromEntries(Object.entries(stored ?? {}).filter(([, value]) => value !== null && value !== undefined));
@@ -26,7 +28,7 @@ const mergeMonitoringConfig = (stored, env) => {
 		values.traffic_enabled = env.TRAFFIC_STATS === "true";
 		locked.push("traffic_enabled");
 	}
-	if (isSet(env.TRAFFIC_RETENTION_DAYS) && /^\d+$/u.test(env.TRAFFIC_RETENTION_DAYS.trim())) {
+	if (isSet(env.TRAFFIC_RETENTION_DAYS) && DIGITS.test(env.TRAFFIC_RETENTION_DAYS.trim())) {
 		const days = Number.parseInt(env.TRAFFIC_RETENTION_DAYS, 10);
 		values.retention_days = Math.min(RETENTION_MAX, Math.max(RETENTION_MIN, days));
 		locked.push("retention_days");
@@ -47,7 +49,7 @@ const mergeMonitoringConfig = (stored, env) => {
 const parseEditions = (raw) => [
 	...new Set(
 		String(raw)
-			.split(/\s+/u)
+			.split(WHITESPACE)
 			.filter((name) => GEOIP_EDITIONS.includes(name)),
 	),
 ];

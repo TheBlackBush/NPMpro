@@ -7,13 +7,14 @@ const migrateName = "monitoring";
  * Index names are explicit and short (MySQL limits them to 64 characters).
  *
  * @param   {Object}    knex
- * @param   {String}    name
- * @param   {String}    short     prefix for the index names
- * @param   {Function}  columns   adds the table specific columns
- * @param   {String[]}  unique    columns of the unique index
+ * @param   {Object}    table
+ * @param   {String}    table.name
+ * @param   {String}    table.short     prefix for the index names
+ * @param   {Function}  table.columns   adds the table specific columns
+ * @param   {String[]}  table.unique    columns of the unique index
  * @returns {Promise}
  */
-const createTraffic = async (knex, name, short, columns, unique) => {
+const createTraffic = async (knex, { name, short, columns, unique }) => {
 	if (await knex.schema.hasTable(name)) {
 		return;
 	}
@@ -46,49 +47,45 @@ const up = async (knex) => {
 		["traffic_minute", "tm"],
 		["traffic_hour", "th"],
 	]) {
-		await createTraffic(
-			knex,
+		await createTraffic(knex, {
 			name,
 			short,
-			(table) => {
+			columns: (table) => {
 				table.string("status_class", 8).notNull();
 				counts(table);
 				table.bigInteger("bytes").notNull().defaultTo(0);
 			},
-			["bucket", "host", "status_class"],
-		);
+			unique: ["bucket", "host", "status_class"],
+		});
 	}
-	await createTraffic(
-		knex,
-		"traffic_country_hour",
-		"tch",
-		(table) => {
+	await createTraffic(knex, {
+		name: "traffic_country_hour",
+		short: "tch",
+		columns: (table) => {
 			table.string("country", 2).notNull();
 			counts(table);
 		},
-		["bucket", "host", "country"],
-	);
-	await createTraffic(
-		knex,
-		"traffic_asn_hour",
-		"tah",
-		(table) => {
+		unique: ["bucket", "host", "country"],
+	});
+	await createTraffic(knex, {
+		name: "traffic_asn_hour",
+		short: "tah",
+		columns: (table) => {
 			table.bigInteger("asn").notNull();
 			table.string("asn_name", 255).notNull().defaultTo("");
 			counts(table);
 		},
-		["bucket", "host", "asn"],
-	);
-	await createTraffic(
-		knex,
-		"traffic_ip_hour",
-		"tih",
-		(table) => {
+		unique: ["bucket", "host", "asn"],
+	});
+	await createTraffic(knex, {
+		name: "traffic_ip_hour",
+		short: "tih",
+		columns: (table) => {
 			table.string("ip", 45).notNull();
 			counts(table);
 		},
-		["bucket", "host", "ip"],
-	);
+		unique: ["bucket", "host", "ip"],
+	});
 
 	logger.info(`[${migrateName}] traffic tables created`);
 };

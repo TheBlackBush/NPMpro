@@ -51,7 +51,7 @@ function MonitoringRow() {
 	const { requestsToday, series24h, errorRateToday, activeBans, topCountryToday } = data;
 	const hasCountry = isCountryCode(topCountryToday);
 	const cards = [
-		requestsToday != null ? (
+		requestsToday !== null && requestsToday !== undefined ? (
 			<StatCard
 				className="col-6 col-lg-3"
 				key="requests"
@@ -64,7 +64,7 @@ function MonitoringRow() {
 				{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}
 			</StatCard>
 		) : null,
-		errorRateToday != null ? (
+		errorRateToday !== null && errorRateToday !== undefined ? (
 			<StatCard
 				className="col-6 col-lg-3"
 				key="errors"
@@ -76,7 +76,7 @@ function MonitoringRow() {
 				hint={<T id="monitoring.stat.error-rate.hint" />}
 			/>
 		) : null,
-		activeBans != null ? (
+		activeBans !== null && activeBans !== undefined ? (
 			<StatCard
 				className="col-6 col-lg-3"
 				key="bans"
