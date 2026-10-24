@@ -3,9 +3,11 @@ import { it } from "node:test";
 import {
 	contrastText,
 	isOidcColor,
+	isOidcDomain,
 	oidcErrorKey,
 	oidcIconUrl,
 	oidcSettingsPayload,
+	parseDomains,
 	readOidcError,
 	shade,
 	validOidcColor,
@@ -91,4 +93,22 @@ it("validates hex colours and builds the icon url with a version", () => {
 	assert.equal(isOidcColor("#abc"), false);
 	assert.equal(isOidcColor("206bc4"), false);
 	assert.equal(oidcIconUrl("2026-10-24T10:00:00Z"), "/api/oidc/icon?v=2026-10-24T10%3A00%3A00Z");
+});
+
+it("parses allowed domains into trimmed, lower-case, unique entries", () => {
+	assert.deepEqual(parseDomains("example.com, Example.org , EXAMPLE.com,,"), ["example.com", "example.org"]);
+	assert.deepEqual(parseDomains("   "), []);
+	assert.deepEqual(parseDomains(undefined), []);
+});
+
+it("accepts only dotted ascii host names as allowed domains", () => {
+	assert.equal(isOidcDomain("example.com"), true);
+	assert.equal(isOidcDomain("Example.ORG"), true);
+	assert.equal(isOidcDomain("a-b.sub.example.co"), true);
+	assert.equal(isOidcDomain("localhost"), false);
+	assert.equal(isOidcDomain("not a domain"), false);
+	assert.equal(isOidcDomain("bücher.de"), false);
+	assert.equal(isOidcDomain("example.com."), false);
+	assert.equal(isOidcDomain("-a.example.com"), false);
+	assert.equal(isOidcDomain("example.c"), false);
 });

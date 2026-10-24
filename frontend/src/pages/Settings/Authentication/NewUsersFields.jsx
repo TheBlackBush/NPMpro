@@ -13,7 +13,8 @@ const PERMISSION_ROWS = [
 ];
 
 function NewUsersFields() {
-	const { values, setFieldValue } = useFormikContext();
+	const { values, setFieldValue, errors } = useFormikContext();
+	const domainsError = errors.autoCreateDomains;
 
 	return (
 		<div className="mb-4">
@@ -38,15 +39,23 @@ function NewUsersFields() {
 							{...field}
 							id="oidc-autoCreateDomains"
 							type="text"
-							className="form-control"
+							className={`form-control${domainsError ? " is-invalid" : ""}`}
 							autoComplete="off"
 							placeholder={intl.formatMessage({
 								id: "settings.authentication.allowed-domains.placeholder",
 							})}
-							aria-describedby="oidc-autoCreateDomains-hint"
+							aria-invalid={domainsError ? "true" : undefined}
+							aria-describedby={
+								domainsError ? "oidc-autoCreateDomains-error" : "oidc-autoCreateDomains-hint"
+							}
 						/>
 					)}
 				</Field>
+				{domainsError ? (
+					<div className="invalid-feedback" id="oidc-autoCreateDomains-error">
+						{domainsError}
+					</div>
+				) : null}
 				<small id="oidc-autoCreateDomains-hint" className="form-hint">
 					<T id="settings.authentication.allowed-domains.hint" />
 				</small>

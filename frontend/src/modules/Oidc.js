@@ -134,16 +134,37 @@ const oidcSettingsPayload = (values) => {
 	return payload;
 };
 
+const OIDC_MAX_DOMAINS = 100;
+
+const DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/u;
+
+/**
+ * Comma separated text to trimmed, lower-case, de-duplicated entries
+ */
+const parseDomains = (text) => [
+	...new Set(
+		(text ?? "")
+			.split(",")
+			.map((domain) => domain.trim().toLowerCase())
+			.filter(Boolean),
+	),
+];
+
+const isOidcDomain = (domain) => DOMAIN_PATTERN.test(domain);
+
 export {
 	camel,
 	contrastText,
 	isOidcColor,
+	isOidcDomain,
 	OIDC_BUILTIN_ICONS,
 	OIDC_COLOR_PRESETS,
 	OIDC_ICON_MAX_BYTES,
+	OIDC_MAX_DOMAINS,
 	oidcErrorKey,
 	oidcIconUrl,
 	oidcSettingsPayload,
+	parseDomains,
 	readOidcError,
 	shade,
 	takeOidcError,

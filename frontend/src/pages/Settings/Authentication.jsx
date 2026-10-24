@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
-import { camel, isOidcColor, oidcSettingsPayload } from "src/modules/Oidc";
+import {
+	camel,
+	isOidcColor,
+	isOidcDomain,
+	OIDC_MAX_DOMAINS,
+	oidcSettingsPayload,
+	parseDomains,
+} from "src/modules/Oidc";
 import { showObjectSuccess } from "src/notifications";
 import { ButtonFields } from "./Authentication/ButtonFields";
 import { NewUsersFields } from "./Authentication/NewUsersFields";
@@ -41,12 +48,6 @@ function Heading() {
 	);
 }
 
-const parseDomains = (text) =>
-	text
-		.split(",")
-		.map((domain) => domain.trim().toLowerCase())
-		.filter(Boolean);
-
 const validate = (values) => {
 	const errors = {};
 	if (!isOidcColor(values.buttonColor)) {
@@ -54,6 +55,19 @@ const validate = (values) => {
 	}
 	if (!values.buttonLabel.trim()) {
 		errors.buttonLabel = intl.formatMessage({ id: "settings.authentication.button.label.required" });
+	}
+	const domains = parseDomains(values.autoCreateDomains);
+	const invalid = domains.filter((domain) => !isOidcDomain(domain));
+	if (invalid.length > 0) {
+		errors.autoCreateDomains = intl.formatMessage(
+			{ id: "settings.authentication.allowed-domains.invalid" },
+			{ domains: invalid.join(", ") },
+		);
+	} else if (domains.length > OIDC_MAX_DOMAINS) {
+		errors.autoCreateDomains = intl.formatMessage(
+			{ id: "settings.authentication.allowed-domains.too-many" },
+			{ max: OIDC_MAX_DOMAINS },
+		);
 	}
 	return errors;
 };
