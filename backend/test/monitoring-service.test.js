@@ -717,6 +717,20 @@ describe("traffic service: unique visitors", () => {
 				visitors: 3,
 				capped: true,
 			});
+			// the cap is raised above the stored count: after the next restart new visitors are admitted again
+			const third = setup({
+				store,
+				config: { ...on, visitors_cap: 5 },
+				results: [read([line("example.com", "198.51.100.20"), line("example.com", "198.51.100.21")])],
+			});
+			await third.service.start();
+			await third.service.read();
+			await third.service.stop();
+			assert.deepEqual(await store.countVisitors({ startDay: 0, hosts: ["example.com"] }), {
+				visitors: 5,
+				capped: true,
+			});
+			assert.equal((await visitorRows()).filter((r) => r.hash === "").length, 1, "no second marker");
 		} finally {
 			await knex.destroy();
 		}

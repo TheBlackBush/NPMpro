@@ -23,8 +23,8 @@ const packHash = (hex) => Buffer.from(hex, "hex").toString("latin1");
  * In-memory counts between two flushes, plus the admission sets that bound the stored keys.
  *
  * Visitor memory: each (day, host) set keeps one packed hash per visitor, about 60 to 70 bytes with the Set
- * overhead. Today and yesterday are kept, so at the highest cap (10,000,000) one busy host can take up to
- * about 1.3 GB; at the default cap (100,000) about 13 MB per host.
+ * overhead. Today and yesterday are kept, so at the highest cap (1,000,000) one busy host can take up to
+ * about 130 MB; at the default cap (100,000) about 13 MB per host.
  *
  * @param   {Object}  options
  * @param   {number}  [options.maxPerKey]    distinct ASNs and IPs per host and hour
@@ -145,15 +145,16 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		},
 
 		/**
-		 * Starts from the stored counts after a restart, so the cap holds for the whole day. A pair with a stored
-		 * marker counts as full at the current cap: it admits new visitors only after the cap is raised.
+		 * Starts from the stored counts after a restart, so the cap holds for the whole day. A pair is full only
+		 * when its stored count reaches the current cap (a marker from a lower cap does not block a raised one);
+		 * a stored marker is never queued again.
 		 *
 		 * @param {Array<{day: number, host: string, visitors: number, capped: boolean}>} rows
 		 */
 		seedVisitorCounts(rows) {
 			for (const { day, host, visitors: stored, capped } of rows) {
 				const entry = visitorEntry(day, host);
-				entry.stored = capped ? Math.max(stored, visitorsCap) : stored;
+				entry.stored = stored;
 				entry.marked = entry.marked || capped;
 			}
 		},

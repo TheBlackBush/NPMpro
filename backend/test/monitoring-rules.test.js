@@ -71,7 +71,7 @@ it("visitors_cap env lock and range", () => {
 	assert.equal(set.values.visitors_cap, 20000);
 	assert.ok(set.locked.includes("visitors_cap"));
 	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_VISITORS_CAP: "10" }).values.visitors_cap, 1000);
-	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_VISITORS_CAP: "99999999" }).values.visitors_cap, 10000000);
+	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_VISITORS_CAP: "99999999" }).values.visitors_cap, 1000000);
 	const ignored = mergeMonitoringConfig({ visitors_cap: 5000 }, { TRAFFIC_VISITORS_CAP: "1e5" });
 	assert.equal(ignored.values.visitors_cap, 5000);
 	assert.deepEqual(ignored.locked, []);

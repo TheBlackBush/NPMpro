@@ -163,7 +163,7 @@ it("seeded counts keep the cap across a restart", () => {
 	c.seedVisitorCounts([
 		{ day, host: "a", visitors: 2, capped: false },
 		{ day, host: "b", visitors: 3, capped: false },
-		{ day, host: "c", visitors: 1, capped: true },
+		{ day, host: "c", visitors: 3, capped: true },
 	]);
 	for (const host of ["a", "b", "c"]) for (const n of [1, 2]) v(c, host, h(n));
 	assert.deepEqual(c.drain().visitors, [
@@ -202,4 +202,18 @@ it("dropVisitors lets dropped hashes and markers be queued again", () => {
 	v(c, "a", h(2));
 	assert.deepEqual(c.drain().visitors, dropped);
 	c.dropVisitors([{ day: day + 5, host: "x", hash: h(1) }]);
+});
+
+it("a stored marker from a lower cap does not block a raised cap after a restart", () => {
+	const c = createCounter({ maxVisitors: 4 });
+	c.seedVisitorCounts([{ day, host: "a", visitors: 2, capped: true }]);
+	for (const n of [1, 2, 3, 4]) v(c, "a", h(n));
+	assert.deepEqual(
+		c.drain().visitors,
+		[
+			{ day, host: "a", hash: h(1) },
+			{ day, host: "a", hash: h(2) },
+		],
+		"admitted until stored + new reaches the cap, and no second marker",
+	);
 });

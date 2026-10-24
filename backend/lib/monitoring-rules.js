@@ -10,7 +10,7 @@ const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
 const VISITORS_CAP_MIN = 1000;
-const VISITORS_CAP_MAX = 10000000;
+const VISITORS_CAP_MAX = 1000000;
 const DIGITS = /^\d+$/u;
 const WHITESPACE = /\s+/u;
 
