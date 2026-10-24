@@ -104,6 +104,7 @@ const mergeBatches = (batches) => ({
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
  * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
+ * @param   {string[]}  [deps.bindAddresses]  NPM_IPV4_BINDING: the health check may come from it as well as loopback
  * @returns {Object}
  */
 const createTrafficService = ({
@@ -118,6 +119,7 @@ const createTrafficService = ({
 	timers = defaultTimers,
 	maxPerKey = 1000,
 	adminPort = process.env.NPM_PORT || "81",
+	bindAddresses = [process.env.NPM_IPV4_BINDING].filter((address) => address && address !== "0.0.0.0"),
 	log = logger,
 }) => {
 	const queue = createQueue();
@@ -215,7 +217,7 @@ const createTrafficService = ({
 	};
 
 	const addLine = (line) => {
-		if (line === "" || isOwnRequest(line, adminPort)) return;
+		if (line === "" || isOwnRequest(line, adminPort, bindAddresses)) return;
 		const parsed = parseAlogLine(line);
 		if (!parsed) {
 			skipped++;

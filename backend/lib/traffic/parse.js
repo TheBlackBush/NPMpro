@@ -12,7 +12,8 @@ const HOST_PORT = /:\d*$/u;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
 const DEFAULT_PORTS = new Set(["80", "443"]);
-const SERVER_PORT = / (?<port>\d{1,5})$/u;
+// Empty for requests over a unix socket listener (the line then ends with a space)
+const SERVER_PORT = / (?<port>\d{0,5})$/u;
 const LOOPBACK = new Set(["127.0.0.1", "::1"]);
 
 // The raw host field ($host$is_request_port$request_port) and $remote_addr, the first two fields after the time
@@ -58,23 +59,25 @@ export const statusClass = (status) => {
 /**
  * True for NPMpro's own requests, which are not visitor traffic: requests nginx received on the admin UI port
  * ($server_port at the end of the line), which includes the container health check. When the admin port is 80 or
- * 443, proxy hosts share it, so only a health check (user agent "NPMpro/healthcheck") from a loopback address is
- * skipped. Lines written before $server_port was added fall back to the port in the raw host field, which is the
+ * 443, proxy hosts share it, and for requests over a unix socket (empty $server_port), only a health check (user
+ * agent "NPMpro/healthcheck") from a loopback address or the configured binding address is skipped. Lines written before $server_port was added fall back to the port in the raw host field, which is the
  * port the browser sent (a remapped Docker port is not recognised there).
  * @param {string} line a raw alog line
  * @param {string | number | null | undefined} adminPort NPM_PORT
+ * @param {string[]} [bindAddresses] addresses the health check may come from besides loopback (NPM_IPV4_BINDING)
  * @returns {boolean}
  */
-export const isOwnRequest = (line, adminPort) => {
+export const isOwnRequest = (line, adminPort, bindAddresses = []) => {
 	const port = String(adminPort ?? "");
 	const adminOnOwnPort = port !== "" && !DEFAULT_PORTS.has(port);
 	const serverPort = SERVER_PORT.exec(line)?.groups.port;
 	const [host, client] = hostAndClient(line);
 	if (serverPort !== undefined) {
-		if (adminOnOwnPort) {
+		if (serverPort !== "" && adminOnOwnPort) {
 			return serverPort === port;
 		}
-		return line.includes(HEALTHCHECK_UA) && LOOPBACK.has(client);
+		const local = LOOPBACK.has(client) || (client !== null && bindAddresses.includes(client));
+		return line.includes(HEALTHCHECK_UA) && local;
 	}
 	if (line.includes(HEALTHCHECK_UA)) {
 		return true;

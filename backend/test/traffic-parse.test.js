@@ -117,3 +117,23 @@ it("skips only a local health check when the admin port is 80 or 443", () => {
 	assert.equal(isOwnRequest(health("203.0.113.7"), "443"), false);
 	assert.equal(isOwnRequest(withPort(443, "example.com", "203.0.113.7"), "443"), false);
 });
+
+it("treats an empty server port (unix socket listener) as the new format with no admin port", () => {
+	// $server_port is empty for requests over /run/nginx.sock, so the line ends with a space
+	assert.equal(isOwnRequest(`${line("example.com:81", "203.0.113.7")} `, "81"), false);
+	assert.equal(
+		isOwnRequest(`${line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
+		false,
+	);
+	assert.equal(
+		isOwnRequest(`${line("127.0.0.1", "127.0.0.1", 200, 1, "GET /api HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
+		true,
+	);
+});
+
+it("skips the health check from the configured IPv4 binding when the admin port is 80 or 443", () => {
+	const health = withPort(443, "10.0.0.5", "10.0.0.5", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
+	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
+	assert.equal(isOwnRequest(health, "443"), false);
+	assert.equal(isOwnRequest(health, "443", ["0.0.0.0"]), false);
+});
