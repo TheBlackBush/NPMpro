@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	clearOidcError,
 	contrastText,
 	isOidcColor,
 	isOidcDomain,
@@ -10,6 +11,7 @@ import {
 	parseDomains,
 	readOidcError,
 	shade,
+	takeOidcError,
 	validOidcColor,
 } from "./Oidc.js";
 
@@ -111,4 +113,23 @@ it("accepts only dotted ascii host names as allowed domains", () => {
 	assert.equal(isOidcDomain("example.com."), false);
 	assert.equal(isOidcDomain("-a.example.com"), false);
 	assert.equal(isOidcDomain("example.c"), false);
+});
+
+it("caches the taken error for the page load until it is cleared", () => {
+	const replaced = [];
+	globalThis.window = {
+		location: { href: "https://npm.example.com/login?oidc_error=no_user" },
+		history: { replaceState: (_state, _title, url) => replaced.push(url) },
+	};
+	try {
+		assert.equal(takeOidcError(), "no_user");
+		assert.deepEqual(replaced, ["https://npm.example.com/login"]);
+		globalThis.window.location.href = "https://npm.example.com/login";
+		assert.equal(takeOidcError(), "no_user", "a second call in the same load gets the same code");
+		clearOidcError();
+		assert.equal(takeOidcError(), null);
+	} finally {
+		clearOidcError();
+		delete globalThis.window;
+	}
 });

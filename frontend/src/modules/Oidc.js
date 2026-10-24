@@ -114,6 +114,13 @@ const takeOidcError = () => {
 	return code;
 };
 
+/**
+ * Forgets the cached error, so that a later login page (after a sign-in and a logout) starts clean
+ */
+const clearOidcError = () => {
+	takenOidcError = undefined;
+};
+
 const withoutFileIcon = (button) => {
 	if (button?.icon?.type !== "file") return button;
 	const { icon: _icon, ...rest } = button;
@@ -154,6 +161,7 @@ const isOidcDomain = (domain) => DOMAIN_PATTERN.test(domain);
 
 export {
 	camel,
+	clearOidcError,
 	contrastText,
 	isOidcColor,
 	isOidcDomain,
