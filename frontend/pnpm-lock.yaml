@@ -23,9 +23,6 @@ importers:
       '@tanstack/react-table':
         specifier: 9.3.1
         version: 9.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      apexcharts:
-        specifier: 7.9.1
-        version: 7.9.1
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -71,6 +68,9 @@ importers:
       rooks:
         specifier: 9.9.0
         version: 9.9.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      uplot:
+        specifier: 1.6.32
+        version: 1.6.32
     devDependencies:
       '@biomejs/biome':
         specifier: 2.6.2
@@ -516,13 +516,6 @@ packages:
         optional: true
       oxc-transform-react:
         optional: true
-
-  apex-commons@0.8.3:
-    resolution: {integrity: sha512-WdU5lblyL1ByI/nkFOJkSgJYenCsHmay0P3UIcnSeUiCyF1b30SvPSZLbyxOCUOry8IlL7M0/3GvsGbZTMm8FA==}
-
-  apexcharts@7.9.1:
-    resolution: {integrity: sha512-sZkeiES5fCFzkQ7bkyxXhX/nRF1a0mYie5+NTQUMap9ePsW6pWjGjNSFYMnvVeeWzp/bXVI4d1OKy2vOE1M/PQ==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   aria-hidden@1.2.6:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
@@ -981,6 +974,9 @@ packages:
     peerDependencies:
       react: '>=16.14.0'
 
+  uplot@1.6.32:
+    resolution: {integrity: sha512-KIMVnG68zvu5XXUbC4LQEPnhwOxBuLyW1AHtpm6IKTXImkbLgkMy+jabjLgSLMasNuGGzQm/ep3tOkyTxpiQIw==}
+
   use-isomorphic-layout-effect@1.2.1:
     resolution: {integrity: sha512-tpZZ+EX0gaghDAiFR37hj5MgY6ZN55kLiPkJsKxBMZ6GZdOSPJXiOzPM984oPYZ5AnehYx5WQp1+ME8I/P/pRA==}
     peerDependencies:
@@ -1428,12 +1424,6 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.3.5
 
-  apex-commons@0.8.3: {}
-
-  apexcharts@7.9.1:
-    dependencies:
-      apex-commons: 0.8.3
-
   aria-hidden@1.2.6:
     dependencies:
       tslib: 2.8.1
@@ -1861,6 +1851,8 @@ snapshots:
   uncontrollable@8.0.4(react@19.3.1):
     dependencies:
       react: 19.3.1
+
+  uplot@1.6.32: {}
 
   use-isomorphic-layout-effect@1.2.1(@types/react@19.3.0)(react@19.3.1):
     dependencies:

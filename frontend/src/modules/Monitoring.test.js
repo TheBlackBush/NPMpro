@@ -15,6 +15,7 @@ import {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	stackedChartData,
 	timeLeftParts,
 } from "./Monitoring.js";
 
@@ -232,4 +233,31 @@ it("errorRateColor follows the 1 % and 5 % thresholds", () => {
 	assert.equal(errorRateColor(0.0099), "secondary");
 	assert.equal(errorRateColor(0.01), "orange");
 	assert.equal(errorRateColor(0.05), "red");
+});
+
+it("stacks the chart series for uPlot, highest class first, keeping the per-class values", () => {
+	const series = [
+		{ bucket: 10, byClass: { "2xx": 5, "3xx": 1, "4xx": 2, "5xx": 0 } },
+		{ bucket: 11, byClass: { "2xx": 2, "3xx": 1, "4xx": 0, "5xx": 3 } },
+	];
+	const stacked = stackedChartData(chartSeries(series, "24h"));
+	assert.deepEqual(stacked.data, [
+		[600_000, 660_000],
+		[8, 6],
+		[8, 3],
+		[6, 3],
+		[5, 2],
+	]);
+	assert.deepEqual(stacked.bands, [{ series: [1, 2] }, { series: [2, 3] }, { series: [3, 4] }]);
+	assert.deepEqual(stacked.values, [
+		[5, 2],
+		[1, 1],
+		[2, 0],
+		[0, 3],
+	]);
+	assert.deepEqual(stacked.totals, [7, 2, 2, 3]);
+	const empty = stackedChartData(chartSeries([], "1h"));
+	assert.deepEqual(empty.data, [[], [], [], [], []]);
+	assert.deepEqual(empty.totals, [0, 0, 0, 0]);
+	assert.deepEqual(stackedChartData(undefined).data, [[]]);
 });

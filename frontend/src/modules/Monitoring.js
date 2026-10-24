@@ -105,6 +105,30 @@ const chartSeries = (series, range) => {
 	}));
 };
 
+/**
+ * chartSeries output to the uPlot data shape for a stacked chart: [timestamps, cumulative series...], highest class
+ * first, so uPlot draws the lower lines last and they stay visible where an upper class adds nothing. Series j
+ * (1-based) is the sum of the classes up to class n - j; bands fill each series down to the next one. values and
+ * totals keep the per-class numbers in class order for the legend and the tooltip.
+ */
+const stackedChartData = (series) => {
+	const list = series ?? [];
+	const xs = list[0]?.data.map((point) => point[0]) ?? [];
+	const sums = xs.map(() => 0);
+	const stacked = list.map((s) =>
+		s.data.map((point, i) => {
+			sums[i] += point[1];
+			return sums[i];
+		}),
+	);
+	return {
+		data: [xs, ...stacked.reverse()],
+		bands: list.slice(1).map((_s, i) => ({ series: [i + 1, i + 2] })),
+		values: list.map((s) => s.data.map((point) => point[1])),
+		totals: list.map((s) => s.data.reduce((sum, point) => sum + point[1], 0)),
+	};
+};
+
 const OTHER_HOST = "_other";
 
 /**
@@ -267,5 +291,6 @@ export {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
+	stackedChartData,
 	timeLeftParts,
 };
