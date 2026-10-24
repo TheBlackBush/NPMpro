@@ -67,7 +67,8 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			const { values } = await getConfig();
 			const showIps = Boolean(values.show_ips);
 			const { top_ips: topIps, countries, ...data } = structuredClone(await cachedTraffic(range, host, showIps));
-			const { enabled: _running, ...status } = traffic.status();
+			// visitors_error is not part of the API yet
+			const { enabled: _running, visitors_error: _visitorsError, ...status } = traffic.status();
 			return {
 				...data,
 				// an array, not an object keyed by code: the UI converts object keys and "--" is not a valid key there

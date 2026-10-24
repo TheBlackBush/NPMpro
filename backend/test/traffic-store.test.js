@@ -220,3 +220,30 @@ it("filters traffic by a list of host keys", async () => {
 	assert.equal((await store.queryTraffic({ range: "1h", host: "c", now: NOW })).totals.requests, 4);
 	await knex.destroy();
 });
+
+it("visitorDayCounts gives distinct visitors and the marker per day and host for the given days", async () => {
+	const { knex, store } = await setup();
+	const day = Math.floor(NOW / 86400000);
+	const hx = (n) => n.toString(16).padStart(32, "0");
+	await store.flush({
+		minutes: [],
+		visitors: [
+			{ day, host: "a", hash: hx(1) },
+			{ day, host: "a", hash: hx(2) },
+			{ day, host: "a", hash: "" },
+			{ day, host: "b", hash: hx(1) },
+			{ day: day - 1, host: "a", hash: hx(1) },
+			{ day: day - 2, host: "a", hash: hx(1) },
+		],
+	});
+	const rows = await store.visitorDayCounts({ days: [day - 1, day] });
+	assert.deepEqual(
+		rows.sort((x, y) => x.day - y.day || x.host.localeCompare(y.host)),
+		[
+			{ day: day - 1, host: "a", visitors: 1, capped: false },
+			{ day, host: "a", visitors: 2, capped: true },
+			{ day, host: "b", visitors: 1, capped: false },
+		],
+	);
+	await knex.destroy();
+});

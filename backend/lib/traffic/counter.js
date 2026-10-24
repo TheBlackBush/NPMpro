@@ -16,6 +16,20 @@ const bump = (map, key, make, requests = 1) => {
 	return created;
 };
 
+/** Set members are the 16 hash bytes as a latin1 string (16 one byte chars) instead of 32 hex chars. */
+const packHash = (hex) => Buffer.from(hex, "hex").toString("latin1");
+
+/**
+ * In-memory counts between two flushes, plus the admission sets that bound the stored keys.
+ *
+ * Visitor memory: each (day, host) set keeps one packed hash per visitor, about 60 to 70 bytes with the Set
+ * overhead. Today and yesterday are kept, so at the highest cap (10,000,000) one busy host can take up to
+ * about 1.3 GB; at the default cap (100,000) about 13 MB per host.
+ *
+ * @param   {Object}  options
+ * @param   {number}  [options.maxPerKey]    distinct ASNs and IPs per host and hour
+ * @param   {number}  [options.maxVisitors]  distinct visitors per host and day (changed by setVisitorsCap)
+ */
 export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 	let minutes = new Map();
 	let countries = new Map();
@@ -23,32 +37,39 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 	let ips = new Map();
 	const seenAsns = new Map();
 	const seenIps = new Map();
-	// visitor hashes per `${day}|${host}`, (day, host) pairs that hit maxVisitors, and the rows not drained yet
-	const seenVisitors = new Map();
-	const cappedVisitors = new Set();
+	// per `${day}|${host}`: seen = packed hashes queued in this run, stored = visitors stored before the start
+	// (seedVisitorCounts), marked = a cap marker is stored or queued
+	const dayVisitors = new Map();
 	let visitors = [];
+	let visitorsCap = maxVisitors;
 	let skipped = 0;
 	let newestHour = 0;
 	let newestDay = 0;
 
-	/** Queues a hash once per (day, host); past maxVisitors only one cap marker (empty hash) is queued. */
-	const addVisitor = (day, host, hash) => {
+	const visitorEntry = (day, host) => {
 		newestDay = Math.max(newestDay, day);
 		const key = `${day}|${host}`;
-		let set = seenVisitors.get(key);
-		if (!set) {
-			set = new Set();
-			seenVisitors.set(key, set);
+		let entry = dayVisitors.get(key);
+		if (!entry) {
+			entry = { seen: new Set(), stored: 0, marked: false };
+			dayVisitors.set(key, entry);
 		}
-		if (set.has(hash)) return;
-		if (set.size >= maxVisitors) {
-			if (!cappedVisitors.has(key)) {
-				cappedVisitors.add(key);
+		return entry;
+	};
+
+	/** Queues a hash once per (day, host); at the cap only one marker (empty hash) is queued. */
+	const addVisitor = (day, host, hash) => {
+		const entry = visitorEntry(day, host);
+		const packed = packHash(hash);
+		if (entry.seen.has(packed)) return;
+		if (entry.stored + entry.seen.size >= visitorsCap) {
+			if (!entry.marked) {
+				entry.marked = true;
 				visitors.push({ day, host, hash: "" });
 			}
 			return;
 		}
-		set.add(hash);
+		entry.seen.add(packed);
 		visitors.push({ day, host, hash });
 	};
 
@@ -120,8 +141,41 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		/** Drops the undrained visitor rows and the per day visitor sets ("count unique visitors" was switched off). */
 		forgetVisitors() {
 			visitors = [];
-			seenVisitors.clear();
-			cappedVisitors.clear();
+			dayVisitors.clear();
+		},
+
+		/**
+		 * Starts from the stored counts after a restart, so the cap holds for the whole day. A pair with a stored
+		 * marker counts as full at the current cap: it admits new visitors only after the cap is raised.
+		 *
+		 * @param {Array<{day: number, host: string, visitors: number, capped: boolean}>} rows
+		 */
+		seedVisitorCounts(rows) {
+			for (const { day, host, visitors: stored, capped } of rows) {
+				const entry = visitorEntry(day, host);
+				entry.stored = capped ? Math.max(stored, visitorsCap) : stored;
+				entry.marked = entry.marked || capped;
+			}
+		},
+
+		/** Applies a changed visitors_cap from the next line on. */
+		setVisitorsCap(cap) {
+			visitorsCap = cap;
+		},
+
+		/**
+		 * Forgets drained visitor rows that were dropped unsaved (the 10-minute rule), so those visitors and the cap
+		 * marker can be queued again the same day.
+		 *
+		 * @param {Array<{day: number, host: string, hash: string}>} rows
+		 */
+		dropVisitors(rows) {
+			for (const { day, host, hash } of rows) {
+				const entry = dayVisitors.get(`${day}|${host}`);
+				if (!entry) continue;
+				if (hash === "") entry.marked = false;
+				else entry.seen.delete(packHash(hash));
+			}
 		},
 
 		drain() {
@@ -147,10 +201,9 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 				}
 			}
 			// Keep yesterday too, for lines that arrive late around midnight (UTC).
-			for (const key of seenVisitors.keys()) {
+			for (const key of dayVisitors.keys()) {
 				if (Number(key.slice(0, key.indexOf("|"))) < newestDay - 1) {
-					seenVisitors.delete(key);
-					cappedVisitors.delete(key);
+					dayVisitors.delete(key);
 				}
 			}
 			skipped = 0;

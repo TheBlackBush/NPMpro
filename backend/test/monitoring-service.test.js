@@ -2,16 +2,21 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import Ajv from "ajv/dist/2020.js";
+import knexFactory from "knex";
 import { createMonitoring } from "../internal/monitoring.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { createCounter } from "../lib/traffic/counter.js";
 import { createHostMapper, createStateMeta, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
+import { createStore } from "../lib/traffic/store.js";
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
+import { up as upMonitoring } from "../migrations/20261024120000_monitoring.js";
+import { up as upVisitors } from "../migrations/20261024200000_monitoring_visitors.js";
 
 const MINUTE = 60000;
 const KEY = "bouncer-key";
 const DB_LOCKED = /database is locked/u;
+const HASH = /^[0-9a-f]{32}$/u;
 const NOT_FOUND = /not found/u;
 const NGINX_FAILED = /nginx -t failed/u;
 const REFUSED = /ECONNREFUSED/u;
@@ -65,6 +70,11 @@ const fakeStore = () => {
 			calls.push("deleteVisitors");
 			return Promise.resolve();
 		},
+		dayCounts: [],
+		visitorDayCounts(args) {
+			calls.push(["visitorDayCounts", args]);
+			return Promise.resolve(this.dayCounts);
+		},
 		rollUpAndPrune(args) {
 			calls.push(["rollUp", args]);
 			return Promise.resolve();
@@ -105,11 +115,12 @@ const setup = ({
 	configFails = 0,
 	adminPort = "81",
 	visitorKey = { key: Buffer.alloc(32, 7), created: false },
+	store: givenStore = null,
 } = {}) => {
 	let failures = configFails;
 	let hostLoads = 0;
 	let time = Date.UTC(2026, 9, 24, 8, 16, 0);
-	const store = fakeStore();
+	const store = givenStore ?? fakeStore();
 	const reader = fakeReader(results);
 	const timers = fakeTimers();
 	const saved = [];
@@ -482,7 +493,6 @@ describe("traffic service", () => {
 });
 
 describe("traffic service: unique visitors", () => {
-	const HASH = /^[0-9a-f]{32}$/u;
 	const on = { unique_visitors: true };
 	const tick = () => new Promise((r) => setImmediate(r));
 
@@ -643,6 +653,151 @@ describe("traffic service: unique visitors", () => {
 		await t.service.flush();
 		assert.equal(t.store.flushed.length, 0, "nothing left to write");
 		assert.equal(t.service.status().dropped_requests, 1);
+	});
+
+	it("seeds the stored counts at start: after a restart the same IP counts once and a capped day stays capped", async () => {
+		const knex = knexFactory({
+			client: "better-sqlite3",
+			connection: { filename: ":memory:" },
+			useNullAsDefault: true,
+		});
+		await upMonitoring(knex);
+		await upVisitors(knex);
+		const store = createStore(knex);
+		const visitorRows = () => knex("traffic_visitor").orderBy("id").select("host", "hash");
+		try {
+			// a hash re-sent after the restart counts against the cap once (conservative), so cap 3 leaves room
+			const config = { ...on, visitors_cap: 3 };
+			const first = setup({
+				store,
+				config,
+				results: [
+					read([
+						line("example.com"),
+						line("example.com", "198.51.100.1"),
+						line("example.com", "198.51.100.2"),
+						line("example.com", "198.51.100.3"),
+						line("other.test"),
+					]),
+				],
+				hosts: ["example.com", "other.test"],
+			});
+			await first.service.start();
+			await first.service.read();
+			await first.service.stop();
+			const before = await visitorRows();
+			assert.deepEqual(
+				before.map((r) => r.hash === ""),
+				[false, false, false, true, false],
+				"three visitors and the marker, one visitor of other.test",
+			);
+			const second = setup({
+				store,
+				config,
+				results: [
+					read([
+						line("example.com"),
+						line("example.com", "198.51.100.9"),
+						line("other.test"),
+						line("other.test", "198.51.100.9"),
+					]),
+				],
+				hosts: ["example.com", "other.test"],
+			});
+			await second.service.start();
+			await second.service.read();
+			await second.service.stop();
+			const after = await visitorRows();
+			assert.equal(after.length, 6, "only the new visitor of other.test is added");
+			assert.deepEqual(await store.countVisitors({ startDay: 0, hosts: ["other.test"] }), {
+				visitors: 2,
+				capped: false,
+			});
+			assert.deepEqual(await store.countVisitors({ startDay: 0, hosts: ["example.com"] }), {
+				visitors: 3,
+				capped: true,
+			});
+		} finally {
+			await knex.destroy();
+		}
+	});
+
+	it("reads the stored counts for today and yesterday once at start", async () => {
+		const t = setup({ config: on });
+		await t.service.start();
+		const today = Math.floor(Date.UTC(2026, 9, 24, 8, 16, 0) / 86400000);
+		assert.deepEqual(
+			t.store.calls.filter((c) => Array.isArray(c) && c[0] === "visitorDayCounts"),
+			[["visitorDayCounts", { days: [today - 1, today] }]],
+		);
+		const created = setup({ config: on, visitorKey: { key: Buffer.alloc(32, 1), created: true } });
+		await created.service.start();
+		assert.ok(!created.store.calls.some((c) => Array.isArray(c) && c[0] === "visitorDayCounts"), "all deleted");
+	});
+
+	it("applies visitors_cap from the settings at each refresh", async () => {
+		const t = setup({
+			config: { ...on, visitors_cap: 1 },
+			results: [
+				read([line("example.com"), line("example.com", "198.51.100.1")]),
+				read([line("example.com", "198.51.100.1")]),
+			],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(
+			t.store.flushed[0].visitors.map((r) => r.hash === ""),
+			[false, true],
+		);
+		t.values.visitors_cap = 2;
+		await t.service.flush();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed.at(-1).visitors.length, 1, "a raised cap counts new visitors again");
+	});
+
+	it("visitors dropped by the 10-minute rule are counted again the same day", async () => {
+		const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
+		await t.service.start();
+		t.store.failing = true;
+		await t.service.read();
+		await t.service.flush();
+		t.advance(10 * MINUTE);
+		await t.service.flush();
+		t.store.failing = false;
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed.length, 1);
+		assert.equal(t.store.flushed[0].visitors.length, 1);
+	});
+
+	it("reports a failed key load in the status only while the setting is on", async () => {
+		const t = setup({ config: on, visitorKey: new Error("database is locked") });
+		await t.service.start();
+		assert.equal(t.service.status().visitors_error, "Visitor counting is unavailable: the key could not be loaded");
+		assert.ok(!t.service.status().visitors_error.includes("locked"));
+		const off = setup({ visitorKey: new Error("database is locked") });
+		await off.service.start();
+		assert.equal(off.service.status().visitors_error, null);
+		const ok = setup({ config: on });
+		await ok.service.start();
+		assert.equal(ok.service.status().visitors_error, null);
+	});
+
+	it("off and then on again within the 5-minute pin counts from the next line", async () => {
+		const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
+		await t.service.start();
+		const hooks = createTrafficHooks({ applyAccessLog: () => Promise.resolve(), traffic: t.service });
+		await hooks.onUniqueVisitorsOff();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(t.store.flushed[0].visitors, []);
+		t.advance(MINUTE);
+		hooks.onUniqueVisitorsOn();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed[1].visitors.length, 1);
 	});
 });
 

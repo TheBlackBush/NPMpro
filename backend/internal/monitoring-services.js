@@ -6,7 +6,15 @@ import { createGeoipService } from "../lib/geoip/service.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { createStateMeta, createTrafficService } from "../lib/traffic/service.js";
-import { deleteIps, deleteVisitors, flush, queryTraffic, rollUpAndPrune, summary } from "../lib/traffic/store.js";
+import {
+	deleteIps,
+	deleteVisitors,
+	flush,
+	queryTraffic,
+	rollUpAndPrune,
+	summary,
+	visitorDayCounts,
+} from "../lib/traffic/store.js";
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
 import { global as logger } from "../logger.js";
 import settingModel from "../models/setting.js";
@@ -64,7 +72,7 @@ const runGeoipUpdate = () =>
 		recordResult: (result) => internalMonitoringSetting.recordGeoipResult(result),
 	});
 
-const store = { flush, rollUpAndPrune, deleteIps, deleteVisitors, queryTraffic, summary };
+const store = { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayCounts, queryTraffic, summary };
 
 const traffic = createTrafficService({
 	store,

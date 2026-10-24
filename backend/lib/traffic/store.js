@@ -145,7 +145,8 @@ export const createStore = (knex) => {
 
 	/**
 	 * Distinct visitor hashes from startDay (UTC day number) on. The empty hash is the cap marker: it is not
-	 * counted and sets `capped` when it matches the same filter.
+	 * counted and sets `capped` when it matches the same filter. A marker stays when the cap is raised later, so a
+	 * day that reached the old cap still reports `capped` while it counts more visitors.
 	 *
 	 * @param   {Object}         args
 	 * @param   {Number}         args.startDay
@@ -160,6 +161,37 @@ export const createStore = (knex) => {
 		const [counted] = await base().where("hash", "<>", "").countDistinct({ visitors: "hash" });
 		const marker = await base().where("hash", "").first("id");
 		return { visitors: num(counted?.visitors ?? 0), capped: Boolean(marker) };
+	};
+
+	/**
+	 * Stored distinct visitors and cap marker per (day, host) for the given days, so the counter can keep the
+	 * per day cap across restarts.
+	 *
+	 * @param   {Object}    args
+	 * @param   {Number[]}  args.days  UTC day numbers
+	 * @returns {Promise<Array<{day: Number, host: String, visitors: Number, capped: Boolean}>>}
+	 */
+	const visitorDayCounts = async ({ days }) => {
+		const out = new Map();
+		const entry = (day, host) => {
+			const key = `${day}|${host}`;
+			let row = out.get(key);
+			if (!row) {
+				row = { day: num(day), host, visitors: 0, capped: false };
+				out.set(key, row);
+			}
+			return row;
+		};
+		const counted = await knex("traffic_visitor")
+			.whereIn("day", days)
+			.where("hash", "<>", "")
+			.groupBy("day", "host")
+			.select("day", "host")
+			.countDistinct({ visitors: "hash" });
+		for (const row of counted) entry(row.day, row.host).visitors = num(row.visitors);
+		const markers = await knex("traffic_visitor").whereIn("day", days).where("hash", "").distinct("day", "host");
+		for (const row of markers) entry(row.day, row.host).capped = true;
+		return [...out.values()];
 	};
 
 	/** Hourly rows (stored plus not yet rolled minutes) from startHour on. */
@@ -297,7 +329,16 @@ export const createStore = (knex) => {
 		};
 	};
 
-	return { flush, rollUpAndPrune, deleteIps, deleteVisitors, countVisitors, queryTraffic, summary };
+	return {
+		flush,
+		rollUpAndPrune,
+		deleteIps,
+		deleteVisitors,
+		countVisitors,
+		visitorDayCounts,
+		queryTraffic,
+		summary,
+	};
 };
 
 // Bound to the application database on first use, so importing this file does not open it.
@@ -314,5 +355,6 @@ export const rollUpAndPrune = lazy("rollUpAndPrune");
 export const deleteIps = lazy("deleteIps");
 export const deleteVisitors = lazy("deleteVisitors");
 export const countVisitors = lazy("countVisitors");
+export const visitorDayCounts = lazy("visitorDayCounts");
 export const queryTraffic = lazy("queryTraffic");
 export const summary = lazy("summary");

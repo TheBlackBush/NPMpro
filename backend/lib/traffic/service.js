@@ -21,6 +21,8 @@ const PENDING_MAX_MS = 10 * 60000;
 const IPS_OFF_PIN_MS = 5 * 60000;
 // the same for "count unique visitors"
 const VISITORS_OFF_PIN_MS = 5 * 60000;
+const DAY = 86400000;
+const VISITORS_KEY_ERROR = "Visitor counting is unavailable: the key could not be loaded";
 
 const defaultTimers = {
 	setInterval: (fn, ms) => setInterval(fn, ms),
@@ -129,9 +131,11 @@ const createStateMeta = ({ read, write }) => ({
  * rolls up and prunes hourly. Failures never throw out of the timers: they are logged and exposed by status().
  *
  * @param   {Object}    deps
- * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors } (lib/traffic/store.js)
+ * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayCounts }
+ *                                        (lib/traffic/store.js)
  * @param   {Object}    deps.geo          { lookup(ip), available() } (lib/geoip/lookup.js)
- * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips, unique_visitors } }>
+ * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips,
+ *                                        unique_visitors, visitors_cap } }>
  * @param   {Function}  deps.loadState    () => Promise<{ inode, offset } | null>
  * @param   {Function}  deps.saveState    (state) => Promise
  * @param   {Function}  deps.loadHosts    () => Promise<string[]>  domain names of the managed hosts
@@ -141,7 +145,7 @@ const createStateMeta = ({ read, write }) => ({
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
- * @param   {number}    [deps.maxVisitors]  distinct visitors per host and day
+ * @param   {number}    [deps.maxVisitors]  distinct visitors per host and day until the settings give visitors_cap
  * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
  * @param   {string[]}  [deps.bindAddresses]  NPM_IPV4_BINDING: the health check may come from it as well as loopback
  * @returns {Object}
@@ -179,6 +183,7 @@ const createTrafficService = ({
 	let visitorsOffUntil = 0;
 	// set from the visitor key in start(); null while no key could be loaded
 	let hashVisitor = null;
+	let visitorKeyFailed = false;
 	let retentionDays = 30;
 
 	let reader = null;
@@ -206,6 +211,7 @@ const createTrafficService = ({
 
 	const applyConfig = (values) => {
 		retentionDays = values.retention_days;
+		counter.setVisitorsCap(values.visitors_cap ?? maxVisitors);
 		if (!(values.unique_visitors && now() < visitorsOffUntil)) {
 			if (!values.unique_visitors) visitorsOffUntil = 0;
 			uniqueVisitors = Boolean(values.unique_visitors);
@@ -341,6 +347,8 @@ const createTrafficService = ({
 				const old = pending.filter((p) => p.at <= cutoff);
 				pending = pending.filter((p) => p.at > cutoff);
 				droppedRequests += old.reduce((n, p) => n + sumRequests(p.data.minutes), 0);
+				// those visitors were never stored: let them be counted again today
+				counter.dropVisitors(old.flatMap((p) => p.data.visitors));
 				return;
 			}
 		}
@@ -383,6 +391,7 @@ const createTrafficService = ({
 					hashVisitor = createVisitorHasher(key);
 					return created;
 				} catch (err) {
+					visitorKeyFailed = true;
 					logError("could not load the visitor key, unique visitors are not counted")(err);
 					return false;
 				}
@@ -390,6 +399,12 @@ const createTrafficService = ({
 			// a new key cannot match the stored hashes; with the setting known to be off they are removed too
 			if (keyCreated || (values !== null && !uniqueVisitors)) {
 				await queue(() => store.deleteVisitors()).catch(logError("could not delete the stored visitor hashes"));
+			} else if (hashVisitor) {
+				// the per day cap counts the visitors stored before this start
+				await queue(async () => {
+					const today = Math.floor(now() / DAY);
+					counter.seedVisitorCounts(await store.visitorDayCounts({ days: [today - 1, today] }));
+				}).catch(logError("could not read the stored visitor counts"));
 			}
 			if (values === null) {
 				startupPending = true;
@@ -482,6 +497,7 @@ const createTrafficService = ({
 			dropped_requests: droppedRequests,
 			last_read: lastRead === null ? null : new Date(lastRead).toISOString(),
 			error: readError ?? flushError ?? null,
+			visitors_error: visitorKeyFailed && uniqueVisitors ? VISITORS_KEY_ERROR : null,
 		}),
 
 		// exposed for tests
