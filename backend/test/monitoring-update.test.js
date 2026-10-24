@@ -77,6 +77,29 @@ it("switches the access log back when the save fails", async () => {
 	assert.deepEqual(switched, [true, false]);
 });
 
+it("switches the access log back when deleting the IPs fails", async () => {
+	const store = fakeStore({ traffic_enabled: false, show_ips: true });
+	const switched = [];
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: () => Promise.reject(new Error("db locked")),
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: (enabled) => {
+				switched.push(enabled);
+				return Promise.resolve();
+			},
+			onShowIpsOff: ok,
+		},
+	});
+	await assert.rejects(update({ traffic_enabled: true, show_ips: false }), {
+		name: "ValidationError",
+		message: "Could not delete the stored IP addresses, the setting was not changed: db locked",
+	});
+	assert.deepEqual(switched, [true, false]);
+	assert.deepEqual(store.get(), { traffic_enabled: false, show_ips: true });
+});
+
 it("rethrows the save error when switching back fails too", async () => {
 	let calls = 0;
 	const update = createMonitoringUpdater({

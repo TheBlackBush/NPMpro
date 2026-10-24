@@ -55,11 +55,24 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 				});
 			}
 		}
+		// Switches the access log back when a later step fails, so nginx keeps matching the stored setting
+		const revertTraffic = async () => {
+			if (!trafficChanged) {
+				return;
+			}
+			try {
+				await hooks.onTrafficEnabledChange(before.traffic_enabled);
+			} catch (revertErr) {
+				logger.error(`Could not switch the access log back after a failed update: ${revertErr.message}`);
+			}
+		};
+
 		if (before.show_ips && !after.show_ips) {
 			try {
 				await deleteIps();
 				await hooks.onShowIpsOff();
 			} catch (err) {
+				await revertTraffic();
 				throw new errs.ValidationError(
 					`Could not delete the stored IP addresses, the setting was not changed: ${err.message}`,
 					undefined,
@@ -71,13 +84,7 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 		try {
 			await saveStored(next);
 		} catch (err) {
-			if (trafficChanged) {
-				try {
-					await hooks.onTrafficEnabledChange(before.traffic_enabled);
-				} catch (revertErr) {
-					logger.error(`Could not switch the access log back after a failed save: ${revertErr.message}`);
-				}
-			}
+			await revertTraffic();
 			throw err;
 		}
 		return next;
