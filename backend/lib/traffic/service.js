@@ -382,6 +382,12 @@ const createTrafficService = ({
 			await queue(() => store.deleteIps());
 		},
 
+		/** Records IPs again at once: the user switched them back on and the setting is saved. */
+		showIpsOn: () => {
+			ipsOffUntil = 0;
+			showIps = true;
+		},
+
 		status: () => ({
 			enabled,
 			skipped_lines: skipped,
@@ -403,7 +409,7 @@ const createTrafficService = ({
  * @param   {Object}    deps
  * @param   {Function}  deps.applyAccessLog  (enabled) => Promise, writes the include, tests and reloads nginx
  * @param   {Object}    deps.traffic         createTrafficService() instance
- * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function}}
+ * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function, onShowIpsOn: Function}}
  */
 const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
 	onTrafficEnabledChange: async (enabled) => {
@@ -411,6 +417,7 @@ const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
 		await traffic.setEnabled(enabled);
 	},
 	onShowIpsOff: () => traffic.showIpsOff(),
+	onShowIpsOn: () => traffic.showIpsOn(),
 });
 
 export { ACCESS_LOG, createHostMapper, createTrafficHooks, createTrafficService, OTHER_HOST };

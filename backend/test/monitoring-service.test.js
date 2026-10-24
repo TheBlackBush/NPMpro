@@ -341,6 +341,25 @@ describe("traffic service", () => {
 		);
 	});
 
+	it("showIpsOn clears the pin, so IPs switched back on are recorded at the next read", async () => {
+		const t = setup({
+			config: { show_ips: true },
+			results: [read([line("example.com")]), read([line("example.com", "203.0.113.9")])],
+		});
+		await t.service.start();
+		await t.service.showIpsOff();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(t.store.flushed[0].ips, [], "pinned off within 5 minutes");
+		createTrafficHooks({ applyAccessLog: () => Promise.resolve(), traffic: t.service }).onShowIpsOn();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(
+			t.store.flushed[1].ips.map((r) => r.ip),
+			["203.0.113.9"],
+		);
+	});
+
 	it("records IPs when show_ips is on", async () => {
 		const t = setup({ config: { show_ips: true }, results: [read([line("example.com")])] });
 		await t.service.start();

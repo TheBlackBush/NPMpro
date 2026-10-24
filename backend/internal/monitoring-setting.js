@@ -18,6 +18,7 @@ const noop = async () => {};
 const hooks = {
 	onTrafficEnabledChange: noop,
 	onShowIpsOff: noop,
+	onShowIpsOn: noop,
 	onGeoipCredentialsChange: noop,
 	runGeoipUpdate: async () => ({ ok: false, error: "GeoIP updater not available" }),
 };
@@ -27,7 +28,7 @@ const hooks = {
  *
  * onTrafficEnabledChange(enabled) runs before the new value is saved: when it throws, nothing is saved;
  * when the save fails afterwards, it runs again with the previous value.
- * onShowIpsOff() runs after the saved IPs were deleted. onGeoipCredentialsChange() runs after saving.
+ * onShowIpsOff() runs after the saved IPs were deleted. onShowIpsOn() runs after show_ips was saved as on. onGeoipCredentialsChange() runs after saving.
  * runGeoipUpdate() returns { ok, updated, error }.
  *
  * @param {Object} next

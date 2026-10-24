@@ -32,7 +32,8 @@ const createSerializer = () => {
  * @param   {Function} deps.readStored  () => stored meta
  * @param   {Function} deps.saveStored  (meta) => void
  * @param   {Function} deps.deleteIps   () => void
- * @param   {Object}   deps.hooks       read on every update: onTrafficEnabledChange(enabled), onShowIpsOff()
+ * @param   {Object}   deps.hooks       read on every update: onTrafficEnabledChange(enabled), onShowIpsOff(),
+ *                                      onShowIpsOn() (optional, after the save; a failure is only logged)
  * @param   {Object}   [deps.env]
  * @returns {(body: Object) => Promise<Object>}  resolves to the saved meta
  */
@@ -86,6 +87,13 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 		} catch (err) {
 			await revertTraffic();
 			throw err;
+		}
+		if (!before.show_ips && after.show_ips && hooks.onShowIpsOn) {
+			try {
+				await hooks.onShowIpsOn();
+			} catch (err) {
+				logger.error(`Could not switch visitor IPs back on in the traffic reader: ${err.message}`);
+			}
 		}
 		return next;
 	};

@@ -155,3 +155,51 @@ it("runs serialized functions in order, also after a failure", async () => {
 	assert.equal(await b, "b");
 	assert.deepEqual(order, ["a", "b"]);
 });
+
+it("runs onShowIpsOn after saving show_ips as on, and only then", async () => {
+	const store = fakeStore({ show_ips: false });
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onShowIpsOn: () => {
+				events.push("on");
+				return Promise.reject(new Error("only logged"));
+			},
+		},
+	});
+	await update({ show_ips: true });
+	assert.deepEqual(events, ["save", "on"]);
+	await update({ show_ips: true });
+	await update({ retention_days: 60 });
+	assert.deepEqual(events, ["save", "on", "save", "save"]);
+	assert.deepEqual(store.get(), { show_ips: true, retention_days: 60 });
+});
+
+it("does not run onShowIpsOn when the env locks show_ips off", async () => {
+	const store = fakeStore({ show_ips: false });
+	let calls = 0;
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: ok,
+		env: { TRAFFIC_SHOW_IPS: "false" },
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onShowIpsOn: () => {
+				calls++;
+				return ok();
+			},
+		},
+	});
+	await update({ show_ips: true });
+	assert.equal(calls, 0);
+});
