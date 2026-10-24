@@ -14,7 +14,7 @@ const RANGES = {
 };
 
 const TOP = 10;
-const TOP_IPS = 20;
+const TOP_IPS = 10;
 
 const num = (v) => Number(v);
 
