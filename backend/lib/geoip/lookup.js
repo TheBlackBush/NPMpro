@@ -34,6 +34,8 @@ const refreshSlot = async (file, slot, cacheSize) => {
 /**
  * GeoLite2 country and ASN lookups from the files in dir
  *
+ * country is country.iso_code of the record (null when absent, registered_country is not used).
+ *
  * reload() opens new or changed files (compared by mtime) and keeps the previous reader when a new file is invalid.
  * Call it once after creation, after an update and periodically.
  *

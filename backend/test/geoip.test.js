@@ -3,7 +3,7 @@ import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import * as tar from "tar";
+import { c as createArchive } from "tar";
 import { createGeoip } from "../lib/geoip/lookup.js";
 import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { updateGeoip } from "../lib/geoip/update.js";
@@ -11,6 +11,7 @@ import { updateGeoip } from "../lib/geoip/update.js";
 const fixtures = path.join(import.meta.dirname, "fixtures");
 const COUNTRY = "GeoLite2-Country.mmdb";
 const ASN = "GeoLite2-ASN.mmdb";
+const HTTP_401 = /HTTP 401/u;
 const KEY = "secret-license-key-123";
 
 const tempDir = () => mkdtemp(path.join(tmpdir(), "geoip-"));
@@ -29,15 +30,15 @@ const buildArchive = async (content) => {
 	await mkdir(folder);
 	await writeFile(path.join(folder, COUNTRY), content);
 	const file = path.join(root, "out.tar.gz");
-	await tar.c({ gzip: true, cwd: root, file }, ["GeoLite2-Country_20261020"]);
+	await createArchive({ gzip: true, cwd: root, file }, ["GeoLite2-Country_20261020"]);
 	return readFile(file);
 };
 
 const stubFetch = (body, status = 200) => {
 	const calls = [];
-	const fn = async (url, init) => {
+	const fn = (url, init) => {
 		calls.push({ url, init });
-		return new Response(status === 200 ? body : "denied", { status });
+		return Promise.resolve(new Response(status === 200 ? body : "denied", { status }));
 	};
 	fn.calls = calls;
 	return fn;
@@ -49,6 +50,7 @@ describe("createGeoip", () => {
 		await geoip.reload();
 		assert.deepEqual(geoip.available(), { country: true, asn: true });
 		assert.equal(geoip.lookup("2.125.160.216").country, "GB");
+		assert.equal(geoip.lookup("2001:218::").country, "JP");
 		assert.deepEqual(geoip.lookup("1.0.0.1"), { country: null, asn: 15169, asnName: "Google Inc." });
 	});
 
@@ -117,7 +119,7 @@ describe("updateGeoip", () => {
 			fetch: stubFetch("", 401),
 		});
 		assert.equal(result.ok, false);
-		assert.match(result.error, /401/u);
+		assert.match(result.error, HTTP_401);
 		assert.ok(!JSON.stringify(result).includes(KEY));
 		assert.ok(!JSON.stringify(result).includes(Buffer.from(`42:${KEY}`).toString("base64")));
 		assert.equal(await readFile(path.join(dir, COUNTRY), "utf8"), "old");
@@ -140,12 +142,88 @@ describe("updateGeoip", () => {
 
 	it("scrubs the key from network errors", async () => {
 		const dir = await tempDir();
-		const fetch = async () => {
-			throw new Error(`boom ${KEY}`);
-		};
+		const fetch = () => Promise.reject(new Error(`boom ${KEY}`));
 		const result = await updateGeoip({ accountId: "42", licenseKey: KEY, editions: ["GeoLite2-ASN"], dir, fetch });
 		assert.equal(result.ok, false);
 		assert.ok(!result.error.includes(KEY));
+		assert.equal(result.error, "GeoLite2-ASN: Download failed (network error)");
+	});
+
+	it("reports a timeout with a fixed message", async () => {
+		const fetch = () => Promise.reject(new DOMException("x", "TimeoutError"));
+		const result = await updateGeoip({
+			accountId: "42",
+			licenseKey: KEY,
+			editions: ["GeoLite2-ASN"],
+			dir: await tempDir(),
+			fetch,
+		});
+		assert.equal(result.error, "GeoLite2-ASN: Download timed out");
+	});
+
+	it("rejects an oversized download by content-length", async () => {
+		const fetch = () =>
+			Promise.resolve(
+				new Response("x", { status: 200, headers: { "content-length": String(400 * 1024 * 1024) } }),
+			);
+		const result = await updateGeoip({
+			accountId: "42",
+			licenseKey: KEY,
+			editions: ["GeoLite2-ASN"],
+			dir: await tempDir(),
+			fetch,
+		});
+		assert.equal(result.error, "GeoLite2-ASN: The download is too large");
+	});
+
+	it("reports an unreadable archive", async () => {
+		const result = await updateGeoip({
+			accountId: "42",
+			licenseKey: KEY,
+			editions: ["GeoLite2-ASN"],
+			dir: await tempDir(),
+			fetch: stubFetch("this is not a tar.gz"),
+		});
+		assert.equal(result.error, "GeoLite2-ASN: The downloaded archive could not be read");
+	});
+
+	it("rejects a database of the wrong edition", async () => {
+		const dir = await tempDir();
+		// an ASN database delivered as the Country edition
+		const result = await updateGeoip({
+			accountId: "42",
+			licenseKey: KEY,
+			editions: ["GeoLite2-Country"],
+			dir,
+			fetch: stubFetch(await buildArchive(await readFile(path.join(fixtures, "GeoLite2-ASN-Test.mmdb")))),
+		});
+		assert.equal(result.error, "GeoLite2-Country: The downloaded database is invalid");
+		assert.deepEqual(await readdir(dir), []);
+	});
+
+	it("removes leftover work dirs from interrupted updates", async () => {
+		const dir = await tempDir();
+		await mkdir(path.join(dir, ".update-old"));
+		await writeFile(path.join(dir, ".update-old", "x"), "x");
+		await updateGeoip({ accountId: "1", licenseKey: KEY, editions: [], dir, fetch: stubFetch("") });
+		assert.deepEqual(await readdir(dir), []);
+	});
+
+	it("replaces what succeeded and reports the failed edition", async () => {
+		const dir = await tempDir();
+		const archive = await buildArchive(await readFile(fixture));
+		let n = 0;
+		const fetch = () => Promise.resolve(n++ === 0 ? new Response(archive) : new Response("no", { status: 401 }));
+		const result = await updateGeoip({
+			accountId: "1",
+			licenseKey: KEY,
+			editions: ["GeoLite2-Country", "GeoLite2-ASN"],
+			dir,
+			fetch,
+		});
+		assert.equal(result.ok, false);
+		assert.deepEqual(result.updated, ["GeoLite2-Country"]);
+		assert.equal(result.error, "GeoLite2-ASN: MaxMind returned HTTP 401");
 	});
 });
 
@@ -182,6 +260,43 @@ describe("runConfiguredGeoipUpdate", () => {
 		const result = await runConfiguredGeoipUpdate(args);
 		assert.equal(result.ok, true);
 		assert.deepEqual(events, [["update", "1", "k", ["GeoLite2-ASN"], "/x"], ["record", true], "reload"]);
+	});
+
+	it("reloads and records last_update when only some editions were replaced", async () => {
+		const { args, events } = make(
+			{ account_id: "1", license_key: "k", editions: ["GeoLite2-Country", "GeoLite2-ASN"] },
+			{ ok: false, updated: ["GeoLite2-Country"], error: "GeoLite2-ASN: MaxMind returned HTTP 401" },
+		);
+		let recorded;
+		args.recordResult = (r) => {
+			recorded = r;
+			return Promise.resolve();
+		};
+		const result = await runConfiguredGeoipUpdate(args);
+		assert.equal(result.ok, false);
+		assert.deepEqual(recorded.updated, ["GeoLite2-Country"]);
+		assert.deepEqual(events.slice(1), ["reload"]);
+	});
+
+	it("shares one run between concurrent callers and starts a new one afterwards", async () => {
+		const { args, events } = make({ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] }, null);
+		let release;
+		const gate = new Promise((resolve) => {
+			release = resolve;
+		});
+		args.update = async () => {
+			events.push("fetch");
+			await gate;
+			return { ok: true, updated: [] };
+		};
+		const first = runConfiguredGeoipUpdate(args);
+		const second = runConfiguredGeoipUpdate(args);
+		release();
+		const [a, b] = await Promise.all([first, second]);
+		assert.equal(a, b);
+		assert.equal(events.filter((e) => e === "fetch").length, 1);
+		await runConfiguredGeoipUpdate(args);
+		assert.equal(events.filter((e) => e === "fetch").length, 2);
 	});
 
 	it("records a failure without reloading", async () => {

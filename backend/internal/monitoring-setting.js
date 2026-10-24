@@ -146,11 +146,10 @@ const internalMonitoringSetting = {
 			before.values.license_key !== after.values.license_key ||
 			!sameList(before.values.editions, after.values.editions)
 		) {
-			try {
-				await hooks.onGeoipCredentialsChange();
-			} catch (err) {
-				logger.error(`GeoIP update after saving the settings failed: ${err.message}`);
-			}
+			// the download can take minutes: run it in the background, the outcome is stored by recordGeoipResult
+			void Promise.resolve()
+				.then(() => hooks.onGeoipCredentialsChange())
+				.catch((err) => logger.error(`GeoIP update after saving the settings failed: ${err.message}`));
 		}
 		return geoipView(after);
 	},
@@ -159,7 +158,7 @@ const internalMonitoringSetting = {
 	 * Runs the GeoIP database update now
 	 *
 	 * @param   {Access}  access
-	 * @returns {Promise<{ok: boolean, updated?: boolean, error?: string}>}
+	 * @returns {Promise<{ok: boolean, updated?: string[], error?: string}>}  updated lists the replaced editions
 	 */
 	updateGeoipNow: async (access) => {
 		access.canAdmin();
@@ -169,12 +168,12 @@ const internalMonitoringSetting = {
 	/**
 	 * Stores the outcome of a GeoIP update (internal use by the updater, no access check)
 	 *
-	 * @param {{ok: boolean, error?: string}} result
+	 * @param {{ok: boolean, error?: string, updated?: string[]}} result
 	 */
-	recordGeoipResult: async ({ ok, error }) => {
+	recordGeoipResult: async ({ ok, error, updated }) => {
 		const stored = await readStoredGeoip();
 		const next = { ...stored, last_error: ok ? null : String(error ?? "Unknown error") };
-		if (ok) next.last_update = new Date().toISOString();
+		if (ok || updated?.length > 0) next.last_update = new Date().toISOString();
 		await saveStored("geoip", "GeoIP", next);
 	},
 };

@@ -18,7 +18,10 @@
 						"default": {
 							"value": {
 								"ok": true,
-								"updated": true
+								"updated": [
+									"GeoLite2-Country",
+									"GeoLite2-ASN"
+								]
 							}
 						}
 					},
@@ -33,8 +36,16 @@
 								"type": "boolean"
 							},
 							"updated": {
-								"type": "boolean",
-								"description": "At least one database file was replaced"
+								"type": "array",
+								"description": "Editions whose database file was replaced (can be non-empty when ok is false)",
+								"items": {
+									"type": "string",
+									"enum": [
+										"GeoLite2-Country",
+										"GeoLite2-ASN",
+										"GeoLite2-City"
+									]
+								}
 							},
 							"error": {
 								"type": "string",
