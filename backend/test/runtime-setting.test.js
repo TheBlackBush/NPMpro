@@ -340,7 +340,7 @@ it("a host config write during a runtime save waits for it and renders with the 
 		const saved = update("certificates", { ocsp_stapling: true }).catch((err) => err);
 		await started;
 		// what internalNginx.configure does: runs in the queue, renders with effectiveEnv()
-		const edited = runtimeExclusive(async () => {
+		const edited = runtimeExclusive(() => {
 			order.push("configure");
 			hostConf = `host edit stapling ${config.effectiveEnv().ACME_OCSP_STAPLING}`;
 		});
@@ -350,7 +350,7 @@ it("a host config write during a runtime save waits for it and renders with the 
 		const result = await saved;
 		await edited;
 		assert.deepEqual(order, saveFails ? ["apply", "revert", "configure"] : ["apply", "configure"]);
-		if (saveFails) assert.equal(result.message, "db down");
+		assert.equal(result instanceof Error ? result.message : "saved", saveFails ? "db down" : "saved");
 		// the host edit is the last write and follows the values in effect after the save
 		assert.equal(hostConf, `host edit stapling ${saveFails ? "false" : "true"}`);
 	}
