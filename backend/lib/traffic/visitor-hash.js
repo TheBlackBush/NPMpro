@@ -1,17 +1,47 @@
 import { createHmac, randomBytes } from "node:crypto";
+import { isIP } from "node:net";
 
 const keyLength = 32;
-const mappedPrefix = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i;
+
+const groupsOf = (part) => (part === "" ? [] : part.split(":"));
+
+/** The eight 16 bit groups of a valid IPv6 address (an IPv4 tail becomes the last two groups). */
+const expandIpv6 = (ip) => {
+	let text = ip;
+	const lastColon = text.lastIndexOf(":");
+	const tail = text.slice(lastColon + 1);
+	if (tail.includes(".")) {
+		const [a, b, c, d] = tail.split(".").map(Number);
+		text = `${text.slice(0, lastColon + 1)}${(a * 256 + b).toString(16)}:${(c * 256 + d).toString(16)}`;
+	}
+	const [head, rest] = text.split("::");
+	const left = groupsOf(head);
+	const right = rest === undefined ? [] : groupsOf(rest);
+	const zeros = new Array(8 - left.length - right.length).fill("0");
+	return [...left, ...(rest === undefined ? [] : zeros), ...right].map((g) => Number.parseInt(g, 16));
+};
 
 /**
- * Turns an IPv4-mapped IPv6 address into plain IPv4, leaves everything else unchanged.
+ * The value a visitor is counted by: IPv4 as is, IPv4-mapped IPv6 (also `::ffff:cb00:7107`) as plain IPv4,
+ * other IPv6 as its /64 network in a fixed form (`2001:db8:1:2::/64`: lower case, no leading zeros, zone id
+ * dropped), since one device often changes its address within the /64 during a day.
+ * Anything that is not an IP address is returned unchanged.
  *
  * @param   {String}  ip
  * @returns {String}
  */
 const normaliseIp = (ip) => {
-	const match = mappedPrefix.exec(ip);
-	return match ? match[1] : ip;
+	const plain = String(ip).split("%")[0];
+	if (isIP(plain) === 4) return plain;
+	if (isIP(plain) !== 6) return ip;
+	const g = expandIpv6(plain.toLowerCase());
+	if (g.slice(0, 5).every((n) => n === 0) && g[5] === 0xffff) {
+		return [Math.floor(g[6] / 256), g[6] % 256, Math.floor(g[7] / 256), g[7] % 256].join(".");
+	}
+	return `${g
+		.slice(0, 4)
+		.map((n) => n.toString(16))
+		.join(":")}::/64`;
 };
 
 /**
