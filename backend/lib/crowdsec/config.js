@@ -16,7 +16,8 @@ const parseValue = (raw) => {
 /**
  * Parses the nginx lua bouncer config (KEY=value lines, # comments).
  * @param {string} text
- * @returns {{ enabled: boolean, apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string }}
+ * SSL_VERIFY defaults to true like the bouncer; only an explicit "false" turns certificate checks off.
+ * @returns {{ enabled: boolean, apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify: boolean }}
  */
 export const parseCrowdsecConf = (text) => {
 	const values = {};
@@ -39,6 +40,7 @@ export const parseCrowdsecConf = (text) => {
 		useTls: isTrue("USE_TLS_AUTH"),
 		certFile: values.TLS_CLIENT_CERT ?? "",
 		keyFile: values.TLS_CLIENT_KEY ?? "",
+		sslVerify: (values.SSL_VERIFY ?? "").toLowerCase() !== "false",
 	};
 };
 

@@ -129,21 +129,29 @@ const readCredentialFile = async (path, label) => {
 	}
 };
 
-const fetchTls = async (conf, timeoutMs) => {
-	const cert = await readCredentialFile(conf.certFile, "client certificate");
-	const key = await readCredentialFile(conf.keyFile, "client key");
-	const url = new URL(decisionsUrl(conf.apiUrl));
-	if (url.protocol !== "https:") {
-		throw new Error("CrowdSec TLS authentication needs an https API URL");
-	}
+/** GET over node:https, used for TLS client auth and whenever SSL_VERIFY=false (fetch cannot skip verification). */
+const getHttps = (url, { headers, cert, key, rejectUnauthorized }, timeoutMs) => {
 	const { signal, clear } = deadline(timeoutMs);
 	return new Promise((resolve, reject) => {
 		const req = https.request(
 			url,
-			{ method: "GET", cert, key, headers: { Accept: "application/json" }, timeout: timeoutMs, signal },
+			{
+				method: "GET",
+				cert,
+				key,
+				rejectUnauthorized,
+				headers: { ...headers, Accept: "application/json" },
+				timeout: timeoutMs,
+				signal,
+			},
 			(res) => {
 				if (res.statusCode < 200 || res.statusCode > 299) {
 					reject(new Error(`CrowdSec answered with status ${res.statusCode}`));
+					req.destroy();
+					return;
+				}
+				if (Number(res.headers?.["content-length"]) > MAX_BODY) {
+					reject(failure(tooLarge()));
 					req.destroy();
 					return;
 				}
@@ -161,15 +169,45 @@ const fetchTls = async (conf, timeoutMs) => {
 	}).finally(clear);
 };
 
+const fetchTls = async (conf, timeoutMs) => {
+	const cert = await readCredentialFile(conf.certFile, "client certificate");
+	const key = await readCredentialFile(conf.keyFile, "client key");
+	const url = new URL(decisionsUrl(conf.apiUrl));
+	if (url.protocol !== "https:") {
+		throw new Error("CrowdSec TLS authentication needs an https API URL");
+	}
+	return getHttps(url, { cert, key, rejectUnauthorized: conf.sslVerify !== false }, timeoutMs);
+};
+
+const isHttps = (apiUrl) => {
+	try {
+		return new URL(decisionsUrl(apiUrl)).protocol === "https:";
+	} catch {
+		return false;
+	}
+};
+
 /**
  * Reads the active decisions from the LAPI (`GET /v1/decisions`) with the bouncer credentials.
- * Errors never contain the API key.
- * @param {{ apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string }} conf
- * @param {{ fetch?: typeof fetch, timeoutMs?: number }} [opts] fetch is used for the API key path only
+ * Errors never contain the API key. With sslVerify false an https LAPI is reached over node:https without
+ * certificate checks (like the bouncer's SSL_VERIFY=false); otherwise the API key path uses fetch.
+ * @param {{ apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify?: boolean }} conf
+ * @param {{ fetch?: typeof fetch, timeoutMs?: number }} [opts] fetch is used for the verified API key path only
  * @returns {Promise<object[]>} the decisions (an empty list when the LAPI answers null)
  */
-export const fetchDecisions = (conf, { fetch: fetchFn = globalThis.fetch, timeoutMs = 10000 } = {}) =>
-	conf.useTls ? fetchTls(conf, timeoutMs) : fetchPlain(conf, fetchFn, timeoutMs);
+export const fetchDecisions = (conf, { fetch: fetchFn = globalThis.fetch, timeoutMs = 10000 } = {}) => {
+	if (conf.useTls) {
+		return fetchTls(conf, timeoutMs);
+	}
+	if (conf.sslVerify === false && isHttps(conf.apiUrl)) {
+		return getHttps(
+			new URL(decisionsUrl(conf.apiUrl)),
+			{ headers: { "X-Api-Key": conf.apiKey }, rejectUnauthorized: false },
+			timeoutMs,
+		);
+	}
+	return fetchPlain(conf, fetchFn, timeoutMs);
+};
 
 const UNITS = { h: 3600, m: 60, s: 1, ms: 0.001, us: 1e-6, µs: 1e-6, ns: 1e-9 };
 

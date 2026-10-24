@@ -8,6 +8,9 @@ import { describe, it } from "node:test";
 import { isCrowdsecConfigured, parseCrowdsecConf } from "../lib/crowdsec/config.js";
 import { fetchDecisions, parseGoDuration, readLimited, summariseDecisions } from "../lib/crowdsec/decisions.js";
 
+const REQUEST_FAILED = /CrowdSec request failed/u;
+const TOO_LARGE = /CrowdSec response is too large/u;
+
 const example = readFileSync(new URL("../../rootfs/etc/crowdsec.conf.example", import.meta.url), "utf8");
 
 const sample = [
@@ -41,6 +44,7 @@ describe("parseCrowdsecConf", () => {
 			useTls: false,
 			certFile: "/path/to/client.crt",
 			keyFile: "/path/to/client.key",
+			sslVerify: true,
 		});
 	});
 
@@ -358,5 +362,143 @@ describe("hardening", () => {
 		assert.equal(calls, 1);
 		assert.equal(s.total, 1);
 		assert.deepEqual(s.countries, [{ country: "US", count: 1 }]);
+	});
+});
+
+describe("SSL_VERIFY", () => {
+	it("defaults to true and only an explicit false turns it off", () => {
+		assert.equal(parseCrowdsecConf("ENABLED=true").sslVerify, true);
+		assert.equal(parseCrowdsecConf("SSL_VERIFY=true").sslVerify, true);
+		assert.equal(parseCrowdsecConf("SSL_VERIFY=FALSE").sslVerify, false);
+		assert.equal(parseCrowdsecConf('SSL_VERIFY="false" # off').sslVerify, false);
+		assert.equal(parseCrowdsecConf("SSL_VERIFY=no").sslVerify, true);
+	});
+
+	const selfSigned = () => {
+		const dir = mkdtempSync(join(tmpdir(), "cs-"));
+		const crt = join(dir, "c.crt");
+		const key = join(dir, "c.key");
+		try {
+			execFileSync(
+				"openssl",
+				[
+					"req",
+					"-x509",
+					"-newkey",
+					"rsa:2048",
+					"-nodes",
+					"-keyout",
+					key,
+					"-out",
+					crt,
+					"-days",
+					"1",
+					"-subj",
+					"/CN=127.0.0.1",
+				],
+				{ stdio: "ignore" },
+			);
+		} catch {
+			return null;
+		}
+		return { crt, key };
+	};
+
+	const noOpenssl = selfSigned() === null;
+
+	const serve = async (files, handler) => {
+		const server = https.createServer(
+			{
+				cert: readFileSync(files.crt),
+				key: readFileSync(files.key),
+				requestCert: true,
+				rejectUnauthorized: false,
+			},
+			handler,
+		);
+		await new Promise((r) => server.listen(0, "127.0.0.1", r));
+		return { server, apiUrl: `https://127.0.0.1:${server.address().port}` };
+	};
+
+	it("accepts a self-signed LAPI with an API key only when SSL_VERIFY is false", {
+		skip: noOpenssl && "openssl not available",
+	}, async () => {
+		const files = selfSigned();
+		let seenKey = null;
+		const { server, apiUrl } = await serve(files, (req, res) => {
+			seenKey = req.headers["x-api-key"];
+			res.end(JSON.stringify([sample[0]]));
+		});
+		try {
+			const conf = { apiUrl, apiKey: "SECRETKEY", useTls: false, certFile: "", keyFile: "" };
+			await assert.rejects(fetchDecisions({ ...conf, sslVerify: true }), REQUEST_FAILED);
+			assert.equal(seenKey, null);
+			const list = await fetchDecisions({ ...conf, sslVerify: false });
+			assert.equal(list.length, 1);
+			assert.equal(seenKey, "SECRETKEY");
+		} finally {
+			server.close();
+		}
+	});
+
+	it("accepts a self-signed LAPI with a TLS client cert when SSL_VERIFY is false", {
+		skip: noOpenssl && "openssl not available",
+	}, async () => {
+		const files = selfSigned();
+		let clientCertSeen = false;
+		const { server, apiUrl } = await serve(files, (req, res) => {
+			clientCertSeen = Boolean(req.socket.getPeerCertificate()?.subject);
+			res.end("null");
+		});
+		try {
+			const conf = { apiUrl, apiKey: "", useTls: true, certFile: files.crt, keyFile: files.key };
+			await assert.rejects(fetchDecisions({ ...conf, sslVerify: true }), REQUEST_FAILED);
+			assert.deepEqual(await fetchDecisions({ ...conf, sslVerify: false }), []);
+			assert.equal(clientCertSeen, true);
+		} finally {
+			server.close();
+		}
+	});
+
+	it("times out a stalled https response and refuses oversize bodies", {
+		skip: noOpenssl && "openssl not available",
+	}, async () => {
+		const files = selfSigned();
+		const { server, apiUrl } = await serve(files, (req, res) => {
+			if (req.headers["x-api-key"] === "stall") {
+				res.write("[");
+				return;
+			}
+			if (req.headers["x-api-key"] === "length") {
+				res.writeHead(200, { "content-length": String(65 * 1024 * 1024) });
+				res.write("[");
+				return;
+			}
+			const chunk = Buffer.alloc(8 * 1024 * 1024, 32);
+			let sent = 0;
+			const push = () => {
+				while (sent < 9) {
+					sent++;
+					if (!res.write(chunk)) {
+						res.once("drain", push);
+						return;
+					}
+				}
+				res.end();
+			};
+			push();
+		});
+		const conf = (apiKey) => ({ apiUrl, apiKey, useTls: false, sslVerify: false });
+		try {
+			await assert.rejects(fetchDecisions(conf("stall"), { timeoutMs: 100 }), (err) => {
+				assert.equal(err.message, "CrowdSec request failed: timed out");
+				return true;
+			});
+			await assert.rejects(fetchDecisions(conf("length")), TOO_LARGE);
+			await assert.rejects(fetchDecisions(conf("big")), TOO_LARGE);
+		} finally {
+			server.closeAllConnections();
+			server.close();
+		}
 	});
 });
