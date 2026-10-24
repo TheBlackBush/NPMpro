@@ -447,8 +447,10 @@ function TrafficData({ data, range, params }) {
 					icon={IconAlertTriangle}
 					color={errorRateColor(totals.errorRate)}
 				/>
+				<VisitorsCard status={status} totals={totals} range={range} />
 				<StatCard
-					className="col-6 col-lg"
+					// full width on phones so the country name fits; one of five equal cards from lg
+					className="col-12 col-lg"
 					label={<T id="monitoring.stat.top-country" />}
 					value={
 						topCountry ? (
@@ -470,7 +472,6 @@ function TrafficData({ data, range, params }) {
 					icon={IconWorld}
 					color="green"
 				/>
-				<VisitorsCard status={status} totals={totals} range={range} />
 				<div className="col-12">
 					<div className="card">
 						<div className="card-header">
