@@ -11,7 +11,9 @@ const LINE =
 const HOST_PORT = /:\d*$/u;
 // "METHOD target" with an optional protocol; anything else (for example "-" or binary garbage) has no method and path
 const REQUEST = /^(?<method>[A-Za-z]{1,32}) (?<target>\S+)(?: \S+)?$/u;
-const PATH_END = /[?#]/u;
+const PATH_END = /[;?#]/u;
+// absolute-form target ("GET http://user:pass@host/path"): scheme and authority, the userinfo is removed
+const ABSOLUTE = /^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:\/\/)(?<authority>[^/?#]*)/u;
 const MAX_PATH = 200;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
@@ -39,16 +41,29 @@ const cleanHost = (raw) => {
 	return host.replace(HOST_PORT, "");
 };
 
+/** Removes `user:pass@` from an absolute-form target, so credentials sent in the request line are not shown. */
+const withoutUserinfo = (target) => {
+	const m = ABSOLUTE.exec(target);
+	if (!m) {
+		return target;
+	}
+	const { scheme, authority } = m.groups;
+	const at = authority.lastIndexOf("@");
+	return at === -1 ? target : `${scheme}${authority.slice(at + 1)}${target.slice(m[0].length)}`;
+};
+
 /**
- * Method and path of the quoted request field: the query string and fragment are cut off, the path is at most
- * 200 characters. Method "-" and path "" when the field is not a request line.
+ * Method and path of the quoted request field: userinfo of an absolute-form target is removed, path parameters
+ * (`;jsessionid=...`), the query string and fragment are cut off, the path is at most 200 characters.
+ * Method "-" and path "" when the field is not a request line.
  */
 const parseRequest = (request) => {
 	const m = REQUEST.exec(request);
 	if (!m) {
 		return { method: "-", path: "" };
 	}
-	const { method, target } = m.groups;
+	const { method } = m.groups;
+	const target = withoutUserinfo(m.groups.target);
 	const end = target.search(PATH_END);
 	return { method, path: (end === -1 ? target : target.slice(0, end)).slice(0, MAX_PATH) };
 };

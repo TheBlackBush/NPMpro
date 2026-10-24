@@ -55,6 +55,18 @@ it("returns method and path with the query string and fragment cut off", () => {
 	assert.deepEqual(parse(String.raw`GET /a\"b HTTP/1.1`), { method: "GET", path: String.raw`/a\"b` });
 });
 
+it("cuts path parameters and removes userinfo from absolute-form targets", () => {
+	const path = (request) => parseAlogLine(line("example.com", "203.0.113.7", 200, 1, request)).path;
+	assert.equal(path("GET /app;jsessionid=abc?x=1 HTTP/1.1"), "/app");
+	assert.equal(path("GET /a;b HTTP/1.1"), "/a");
+	assert.equal(path("GET http://user:pass@example.com/x?y=1 HTTP/1.1"), "http://example.com/x");
+	assert.equal(path("GET https://a:b@c@example.com:8443/p;s=1 HTTP/1.1"), "https://example.com:8443/p");
+	assert.equal(path("GET http://u;x:secret@example.com/ HTTP/1.1"), "http://example.com/");
+	assert.equal(path("GET http://example.com/a@b HTTP/1.1"), "http://example.com/a@b", "an @ in the path stays");
+	assert.equal(path("GET /a@b HTTP/1.1"), "/a@b");
+	assert.equal(path("CONNECT example.com:443 HTTP/1.1"), "example.com:443");
+});
+
 it("cuts a long path at 200 characters", () => {
 	const { path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, `GET /${"a".repeat(300)}?q=1 HTTP/1.1`));
 	assert.equal(path, `/${"a".repeat(199)}`);
