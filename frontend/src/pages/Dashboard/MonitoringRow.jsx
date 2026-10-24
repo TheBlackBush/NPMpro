@@ -13,12 +13,10 @@ const HEIGHT = 32;
 /**
  * 24 hourly request counts as a small area chart; colour follows the text colour of the parent.
  */
-function Sparkline({ series, total }) {
-	const { line, area } = sparklinePoints(
-		series.map((s) => s.requests),
-		WIDTH,
-		HEIGHT,
-	);
+function Sparkline({ series }) {
+	const values = series.map((s) => s.requests);
+	const total = values.reduce((sum, n) => sum + (Number(n) || 0), 0);
+	const { line, area } = sparklinePoints(values, WIDTH, HEIGHT);
 	return (
 		<svg
 			className="text-primary mt-2 d-block w-100"
@@ -63,7 +61,7 @@ function MonitoringRow() {
 				label={<T id="dashboard.monitoring.requests" />}
 				value={formatCount(requestsToday)}
 			>
-				{series24h?.length > 1 ? <Sparkline series={series24h} total={requestsToday} /> : null}
+				{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}
 			</StatCard>
 		) : null,
 		errorRateToday != null ? (

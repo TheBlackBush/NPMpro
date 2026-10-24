@@ -27,7 +27,7 @@ function StatCard({
 	const body = (
 		<div className="card-body">
 			<div className="d-flex align-items-center">
-				<div className="subheader">{label}</div>
+				<div className="subheader me-2">{label}</div>
 				{Icon ? (
 					<div className="ms-auto lh-1">
 						<Icon className={`icon text-${color}`} aria-hidden="true" />
