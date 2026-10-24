@@ -1,15 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
 import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
+import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
 import { sanitizeOidcRow } from "./oidc-setting-rules.js";
-
-// Rows with their own API and endpoints: the generic API must not change them
-const DEDICATED_IDS = ["oidc", "monitoring", "geoip", "traffic-state"];
-// The reader position is internal and not exposed
-const HIDDEN_IDS = ["traffic-state"];
 
 // The oidc and geoip rows hold encrypted secrets, which no API returns
 const sanitizeRow = (row) => {
@@ -28,7 +24,7 @@ const internalSetting = {
 	update: async (access, data) => {
 		access.canAdmin();
 		const refused = () => new errs.ValidationError("This setting has its own endpoint under /api/settings");
-		if (DEDICATED_IDS.includes(String(data.id).trim().toLowerCase())) throw refused();
+		if (isDedicatedSettingId(data.id)) throw refused();
 
 		const existingRow = await internalSetting.get(access, { id: data.id });
 		if (DEDICATED_IDS.includes(existingRow.id)) throw refused();

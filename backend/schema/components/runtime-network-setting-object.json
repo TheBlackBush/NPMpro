@@ -1,0 +1,65 @@
+{
+	"type": "object",
+	"description": "Effective network runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"trusted_ips",
+		"trust_cloudflare",
+		"locked",
+		"applies"
+	],
+	"properties": {
+		"trusted_ips": {
+			"type": "array",
+			"maxItems": 1000,
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 64
+			},
+			"description": "IPv4/IPv6 addresses or CIDR ranges whose X-Forwarded-For / PROXY protocol address is trusted (env TRUST_IP)"
+		},
+		"trust_cloudflare": {
+			"type": "boolean",
+			"description": "Trust the Cloudflare IP ranges (env TRUST_CLOUDFLARE)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"trusted_ips",
+					"trust_cloudflare"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"trusted_ips",
+				"trust_cloudflare"
+			],
+			"properties": {
+				"trusted_ips": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"trust_cloudflare": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		}
+	}
+}

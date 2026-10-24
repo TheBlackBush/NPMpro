@@ -1,0 +1,198 @@
+{
+	"type": "object",
+	"description": "Effective certificates and TLS runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"key_type",
+		"key_size",
+		"profile",
+		"must_staple",
+		"server_tls_verify",
+		"renewal_interval",
+		"ocsp_stapling",
+		"custom_ocsp_stapling",
+		"default_certificate_id",
+		"ech_rotation_interval",
+		"locked",
+		"applies"
+	],
+	"properties": {
+		"key_type": {
+			"type": "string",
+			"enum": [
+				"ecdsa",
+				"rsa"
+			],
+			"description": "Key type of new certificates (env ACME_KEY_TYPE)"
+		},
+		"key_size": {
+			"type": "string",
+			"enum": [
+				"secp256r1",
+				"secp384r1",
+				"secp521r1",
+				"2048",
+				"3072",
+				"4096"
+			],
+			"description": "Curve (ecdsa) or key size (rsa) of new certificates (env ACME_KEY_SIZE)"
+		},
+		"profile": {
+			"type": "string",
+			"maxLength": 64,
+			"pattern": "^[A-Za-z0-9._-]*$",
+			"description": "ACME profile of new certificates, empty = none; must be offered by the ACME server (env ACME_PROFILE)"
+		},
+		"must_staple": {
+			"type": "boolean",
+			"description": "Request certificates with the OCSP must-staple extension, forces OCSP stapling on (env ACME_MUST_STAPLE)"
+		},
+		"server_tls_verify": {
+			"type": "boolean",
+			"description": "Verify the TLS certificate of the ACME server (env ACME_SERVER_TLS_VERIFY)"
+		},
+		"renewal_interval": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 499,
+			"description": "Hours between certificate renewal runs (env CERTBOT_RUN_INTERVAL)"
+		},
+		"ocsp_stapling": {
+			"type": "boolean",
+			"description": "OCSP stapling for ACME certificates (env ACME_OCSP_STAPLING)"
+		},
+		"custom_ocsp_stapling": {
+			"type": "boolean",
+			"description": "OCSP stapling for custom certificates (env CUSTOM_OCSP_STAPLING)"
+		},
+		"default_certificate_id": {
+			"type": "integer",
+			"minimum": 0,
+			"description": "Certificate of the default host, 0 = built-in (env DEFAULT_CERT_ID)"
+		},
+		"ech_rotation_interval": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 24,
+			"description": "Hours between ECH key rotations (env ECH_ROTATION_INTERVAL)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"key_type",
+					"key_size",
+					"profile",
+					"must_staple",
+					"server_tls_verify",
+					"renewal_interval",
+					"ocsp_stapling",
+					"custom_ocsp_stapling",
+					"default_certificate_id",
+					"ech_rotation_interval"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"key_type",
+				"key_size",
+				"profile",
+				"must_staple",
+				"server_tls_verify",
+				"renewal_interval",
+				"ocsp_stapling",
+				"custom_ocsp_stapling",
+				"default_certificate_id",
+				"ech_rotation_interval"
+			],
+			"properties": {
+				"key_type": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"key_size": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"profile": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"must_staple": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"server_tls_verify": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"renewal_interval": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"ocsp_stapling": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"custom_ocsp_stapling": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"default_certificate_id": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"ech_rotation_interval": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,61 @@
+{
+	"type": "object",
+	"description": "Effective log files runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"write_log_files",
+		"log_rotations",
+		"locked",
+		"applies"
+	],
+	"properties": {
+		"write_log_files": {
+			"type": "boolean",
+			"description": "Write the error and stream log files; forced on by GOA (env LOGROTATE)"
+		},
+		"log_rotations": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 1000,
+			"description": "Rotated log files kept (env LOGROTATIONS)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"write_log_files",
+					"log_rotations"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"write_log_files",
+				"log_rotations"
+			],
+			"properties": {
+				"write_log_files": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"log_rotations": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		}
+	}
+}

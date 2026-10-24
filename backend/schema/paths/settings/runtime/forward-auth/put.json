@@ -1,0 +1,106 @@
+{
+	"operationId": "updateRuntimeForwardAuthSettings",
+	"summary": "Update the forward authentication settings",
+	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"anubis_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default Anubis upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"tinyauth_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default Tinyauth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"oauth2proxy_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default OAuth2 Proxy upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"voidauth_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default VoidAuth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"authelia_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default Authelia upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"authentik_upstream": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "Default Authentik upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)",
+							"example": "http://127.0.0.1:8080"
+						},
+						"anubis_custom_images": {
+							"type": "boolean",
+							"description": "Use the custom Anubis images from /data/anubis (env AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES)"
+						}
+					}
+				},
+				"example": {
+					"anubis_upstream": ""
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"anubis_upstream": "",
+								"tinyauth_upstream": "",
+								"oauth2proxy_upstream": "",
+								"voidauth_upstream": "",
+								"authelia_upstream": "",
+								"authentik_upstream": "",
+								"anubis_custom_images": false,
+								"locked": [],
+								"applies": {
+									"anubis_upstream": "reload",
+									"tinyauth_upstream": "reload",
+									"oauth2proxy_upstream": "reload",
+									"voidauth_upstream": "reload",
+									"authelia_upstream": "reload",
+									"authentik_upstream": "reload",
+									"anubis_custom_images": "reload"
+								}
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-forward-auth-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

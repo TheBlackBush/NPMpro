@@ -6,6 +6,7 @@ import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
 import { geoipRouter, monitoringRouter } from "./settings-monitoring.js";
 import settingsOidcRoutes from "./settings-oidc.js";
+import runtimeRouter from "./settings-runtime.js";
 
 const settingSchema = {
 	type: "object",
@@ -48,6 +49,7 @@ router
 router.use("/oidc", settingsOidcRoutes);
 router.use("/monitoring", monitoringRouter);
 router.use("/geoip", geoipRouter);
+router.use("/runtime", runtimeRouter);
 
 /**
  * Specific setting

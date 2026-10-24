@@ -1,0 +1,66 @@
+{
+	"operationId": "updateRuntimeLogsSettings",
+	"summary": "Update the log files settings",
+	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"write_log_files": {
+							"type": "boolean",
+							"description": "Write the error and stream log files; forced on by GOA (env LOGROTATE)"
+						},
+						"log_rotations": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 1000,
+							"description": "Rotated log files kept (env LOGROTATIONS)"
+						}
+					}
+				},
+				"example": {
+					"write_log_files": false
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"write_log_files": false,
+								"log_rotations": 3,
+								"locked": [],
+								"applies": {
+									"write_log_files": "reload",
+									"log_rotations": "immediately"
+								}
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-logs-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

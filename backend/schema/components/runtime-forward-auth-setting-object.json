@@ -1,0 +1,140 @@
+{
+	"type": "object",
+	"description": "Effective forward authentication runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"anubis_upstream",
+		"tinyauth_upstream",
+		"oauth2proxy_upstream",
+		"voidauth_upstream",
+		"authelia_upstream",
+		"authentik_upstream",
+		"anubis_custom_images",
+		"locked",
+		"applies"
+	],
+	"properties": {
+		"anubis_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Anubis upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"tinyauth_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Tinyauth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"oauth2proxy_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default OAuth2 Proxy upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"voidauth_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default VoidAuth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"authelia_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Authelia upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"authentik_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Authentik upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"anubis_custom_images": {
+			"type": "boolean",
+			"description": "Use the custom Anubis images from /data/anubis (env AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"anubis_upstream",
+					"tinyauth_upstream",
+					"oauth2proxy_upstream",
+					"voidauth_upstream",
+					"authelia_upstream",
+					"authentik_upstream",
+					"anubis_custom_images"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"anubis_upstream",
+				"tinyauth_upstream",
+				"oauth2proxy_upstream",
+				"voidauth_upstream",
+				"authelia_upstream",
+				"authentik_upstream",
+				"anubis_custom_images"
+			],
+			"properties": {
+				"anubis_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"tinyauth_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"oauth2proxy_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"voidauth_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"authelia_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"authentik_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"anubis_custom_images": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		}
+	}
+}

@@ -40,6 +40,11 @@ if [ -s /tmp/env.sha512sum ] && [ "$(cat /tmp/env.sha512sum)" != "$(sha512sum < 
 fi
 sha512sum < /data/.env > /tmp/env.sha512sum
 
+# Names of the env vars set (non-empty) before the defaults below: the backend treats only these as set by the user,
+# settings stored in the UI apply to the others
+NPMPRO_USER_ENV="$(env | sed -n "s|^\([A-Za-z_][A-Za-z0-9_]*\)=..*|\1|p" | tr "\n" " ")"
+export NPMPRO_USER_ENV
+
 
 if [ -n "$NC_AIO" ] && ! echo "$NC_AIO" | grep -q "^true$\|^false$"; then
     echo "NC_AIO needs to be true or false."

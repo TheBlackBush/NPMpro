@@ -1,0 +1,59 @@
+{
+	"type": "object",
+	"description": "Effective advanced runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"config_beautifier",
+		"gravatar",
+		"locked",
+		"applies"
+	],
+	"properties": {
+		"config_beautifier": {
+			"type": "boolean",
+			"description": "Format the generated nginx configs (env DISABLE_NGINX_BEAUTIFIER, inverted)"
+		},
+		"gravatar": {
+			"type": "boolean",
+			"description": "Fetch Gravatar profile pictures, sends a hash of the email address to Gravatar (env DISABLE_GRAVATAR, inverted)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"config_beautifier",
+					"gravatar"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"config_beautifier",
+				"gravatar"
+			],
+			"properties": {
+				"config_beautifier": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"gravatar": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		}
+	}
+}
