@@ -16,6 +16,7 @@ export * from "./useElapsed";
 export * from "./useHealth";
 export * from "./useHostReport";
 export * from "./useListFilters";
+export * from "./useMonitoring";
 export * from "./useOidcSettings";
 export * from "./useProxyHost";
 export * from "./useProxyHosts";

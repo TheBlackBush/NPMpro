@@ -11,5 +11,5 @@ const mapKeys = (fn) => {
 	};
 	return walk;
 };
-export const camelizeKeys = mapKeys((s) => s.replace(separatorPattern, (_, c) => c.toUpperCase()));
+export const camelizeKeys = mapKeys((s) => s.replace(separatorPattern, (_, c) => (c ? c.toUpperCase() : "")));
 export const decamelizeKeys = mapKeys((s) => s.split(upperBoundaryPattern).join("_").toLowerCase());

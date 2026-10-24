@@ -22,6 +22,7 @@ const DnsCredentials = lazy(() => import("src/pages/Certificates/DnsCredentials"
 const Access = lazy(() => import("src/pages/Access"));
 const AuditLog = lazy(() => import("src/pages/AuditLog"));
 const Users = lazy(() => import("src/pages/Users"));
+const Monitoring = lazy(() => import("src/pages/Monitoring"));
 const ProxyHosts = lazy(() => import("src/pages/Nginx/ProxyHosts"));
 const RedirectionHosts = lazy(() => import("src/pages/Nginx/RedirectionHosts"));
 const DeadHosts = lazy(() => import("src/pages/Nginx/DeadHosts"));
@@ -69,6 +70,8 @@ function Router() {
 							<Route path="/settings" element={<Navigate to="/settings/default-site" replace />} />
 							<Route path="/settings/:section" element={<Settings />} />
 							<Route path="/users" element={<Users />} />
+							<Route path="/monitoring" element={<Navigate to="/monitoring/traffic" replace />} />
+							<Route path="/monitoring/:tab" element={<Monitoring />} />
 							<Route path="/nginx/proxy" element={<ProxyHosts />} />
 							<Route path="/nginx/redirection" element={<RedirectionHosts />} />
 							<Route path="/nginx/404" element={<DeadHosts />} />

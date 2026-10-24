@@ -4,6 +4,7 @@ import jwtdecode from "../lib/express/jwt-decode.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { getValidationSchema } from "../schema/index.js";
+import { geoipRouter, monitoringRouter } from "./settings-monitoring.js";
 import settingsOidcRoutes from "./settings-oidc.js";
 
 const settingSchema = {
@@ -45,6 +46,8 @@ router
  * /api/settings/oidc has its own router (mounted before /:setting_id)
  */
 router.use("/oidc", settingsOidcRoutes);
+router.use("/monitoring", monitoringRouter);
+router.use("/geoip", geoipRouter);
 
 /**
  * Specific setting

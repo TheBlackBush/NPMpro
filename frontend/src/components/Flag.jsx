@@ -8,6 +8,10 @@ function Flag({ className, countryCode }) {
 	}
 
 	const FlagElement = Flags[countryCode];
+	// codes without a flag (unknown or reserved ones such as XK) render nothing instead of throwing
+	if (!FlagElement) {
+		return null;
+	}
 	return <FlagElement title={countryCode} className={className} width={20} />;
 }
 

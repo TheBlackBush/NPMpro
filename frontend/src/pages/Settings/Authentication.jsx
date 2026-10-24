@@ -19,19 +19,7 @@ import { ButtonFields } from "./Authentication/ButtonFields";
 import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUsersFields";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
-
-function StatusAlert({ variant, icon: Icon, id }) {
-	return (
-		<div className={`alert alert-${variant}`} role="status">
-			<div className="alert-icon">
-				<Icon className="icon" aria-hidden="true" />
-			</div>
-			<div>
-				<T id={id} />
-			</div>
-		</div>
-	);
-}
+import { StatusAlert } from "./StatusAlert";
 
 function SaveButton() {
 	const { isSubmitting } = useFormikContext();

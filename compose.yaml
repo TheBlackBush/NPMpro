@@ -107,6 +107,13 @@ services:
 #      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # requires the email sent by the OIDC Provider to be marked as verified, when unset the value from the UI is used (default true)
 #      - "OIDC_DISABLE_PASSWORD=true" # disables plain email/password login, when unset the value from the UI is used (default false)
 #      - "OIDC_SKIP_MFA=true" # skips the second factor after a successful OIDC login, when unset the value from the UI is used (default false)
+#      # Monitoring can also be configured in the web UI under Settings, Monitoring and GeoIP. A variable set here wins over the saved value and locks its field in the UI.
+#      - "TRAFFIC_STATS=true" # turns the traffic statistics (Monitoring page) on or off, also turns the nginx access log on, default false (off), LOGROTATE=true also turns it on and locks it
+#      - "TRAFFIC_RETENTION_DAYS=30" # days the hourly traffic statistics are kept, 7 to 365, default 30 (per-minute counts are kept for 24 hours)
+#      - "TRAFFIC_SHOW_IPS=true" # also stores the top visitor IPs, turning it off deletes the stored IPs, default false
+#      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id, NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed
+#      - "GEOIP_LICENSE_KEY=<your-license-key>" # MaxMind license key
+#      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated, GeoLite2-Country, GeoLite2-ASN and GeoLite2-City, default GeoLite2-Country GeoLite2-ASN
 #      - "AUTH_REQUEST_ANUBIS_UPSTREAM=http://127.0.0.1:8923" # scheme + ip/hostname/domain (+ port) to internal anubis, without path, this is unrelated to OIDC
 #      - "AUTH_REQUEST_TINYAUTH_UPSTREAM=http://127.0.0.1:3000" # scheme + ip/hostname/domain (+ port) to internal tinyauth, without path, this is unrelated to OIDC
 #      - "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM=http://127.0.0.1:4180" # scheme + ip/hostname/domain (+ port) to internal oauth2proxy, without path, this is unrelated to OIDC
@@ -149,7 +156,7 @@ services:
 #    volumes:
 #      - "/opt/anubis.yaml:/etc/botPolicies.yaml:ro" # since a file is mounted here, you first need to create it before deploying this container, you can download the default file matching your anubis version from here: https://raw.githubusercontent.com/TecharoHQ/anubis/refs/tags/<version>/data/botPolicies.yaml
 
-# This can be used with GOA=true to keep the geoip database updated, environment variables must be configured
+# Optional: NPMpro can download the GeoLite2 databases itself (Settings > GeoIP or the GEOIP_* variables above). This container can still be used with GOA=true to keep the geoip database updated, environment variables must be configured
 #  geoipupdate:
 #    container_name: npmpro-geoipupdate
 #    restart: unless-stopped

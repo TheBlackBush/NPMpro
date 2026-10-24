@@ -1,0 +1,188 @@
+{
+	"type": "object",
+	"description": "Active CrowdSec decisions read with the bouncer API key. After a failed poll the last list is kept with its fetched_at",
+	"additionalProperties": false,
+	"required": [
+		"configured",
+		"reachable",
+		"error",
+		"fetched_at",
+		"total",
+		"added_24h",
+		"by_scenario",
+		"by_origin",
+		"by_type",
+		"newest",
+		"countries"
+	],
+	"properties": {
+		"configured": {
+			"type": "boolean",
+			"description": "The bouncer is enabled and has an API key or TLS client certificate"
+		},
+		"reachable": {
+			"type": "boolean",
+			"description": "The last poll succeeded"
+		},
+		"error": {
+			"type": [
+				"string",
+				"null"
+			]
+		},
+		"fetched_at": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"total": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"added_24h": {
+			"type": "integer",
+			"minimum": 0,
+			"description": "Decisions first seen within the last 24 hours (restarts with the backend)"
+		},
+		"by_scenario": {
+			"type": "array",
+			"description": "Sorted by count, descending",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"scenario",
+					"count"
+				],
+				"properties": {
+					"scenario": {
+						"type": "string"
+					},
+					"count": {
+						"type": "integer",
+						"minimum": 1
+					}
+				}
+			}
+		},
+		"by_origin": {
+			"type": "array",
+			"description": "Sorted by count, descending",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"origin",
+					"count"
+				],
+				"properties": {
+					"origin": {
+						"type": "string"
+					},
+					"count": {
+						"type": "integer",
+						"minimum": 1
+					}
+				}
+			}
+		},
+		"by_type": {
+			"type": "array",
+			"description": "Sorted by count, descending",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"type",
+					"count"
+				],
+				"properties": {
+					"type": {
+						"type": "string"
+					},
+					"count": {
+						"type": "integer",
+						"minimum": 1
+					}
+				}
+			}
+		},
+		"newest": {
+			"type": "array",
+			"maxItems": 100,
+			"description": "Highest id first",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer"
+					},
+					"value": {
+						"type": "string",
+						"description": "IP or range"
+					},
+					"scope": {
+						"type": "string"
+					},
+					"scenario": {
+						"type": "string"
+					},
+					"origin": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"duration": {
+						"type": "string",
+						"description": "Time left as reported by CrowdSec (Go duration)"
+					},
+					"seconds_left": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"country": {
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"value",
+					"scope",
+					"scenario",
+					"origin",
+					"type",
+					"duration",
+					"seconds_left",
+					"country"
+				]
+			}
+		},
+		"countries": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country",
+					"count"
+				],
+				"properties": {
+					"country": {
+						"type": "string"
+					},
+					"count": {
+						"type": "integer",
+						"minimum": 1
+					}
+				}
+			}
+		}
+	}
+}

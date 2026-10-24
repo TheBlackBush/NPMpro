@@ -1,0 +1,34 @@
+{
+	"type": "object",
+	"description": "Effective traffic statistics settings",
+	"additionalProperties": false,
+	"required": [
+		"traffic_enabled",
+		"retention_days",
+		"show_ips",
+		"locked"
+	],
+	"properties": {
+		"traffic_enabled": {
+			"type": "boolean",
+			"description": "Traffic statistics enabled (the nginx access log is written)"
+		},
+		"retention_days": {
+			"type": "integer",
+			"minimum": 7,
+			"maximum": 365,
+			"description": "Days the hourly statistics are kept"
+		},
+		"show_ips": {
+			"type": "boolean",
+			"description": "Store and show client IP addresses"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables (read only)"
+		}
+	}
+}

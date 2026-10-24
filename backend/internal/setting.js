@@ -1,12 +1,22 @@
 import { writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
+import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
 import { sanitizeOidcRow } from "./oidc-setting-rules.js";
 
-// The oidc row holds the encrypted client secret, which no API returns
-const sanitizeRow = (row) => (row?.id === "oidc" ? { ...row, meta: sanitizeOidcRow(row.meta) } : row);
+// Rows with their own API and endpoints: the generic API must not change them
+const DEDICATED_IDS = ["oidc", "monitoring", "geoip", "traffic-state"];
+// The reader position is internal and not exposed
+const HIDDEN_IDS = ["traffic-state"];
+
+// The oidc and geoip rows hold encrypted secrets, which no API returns
+const sanitizeRow = (row) => {
+	if (row?.id === "oidc") return { ...row, meta: sanitizeOidcRow(row.meta) };
+	if (row?.id === "geoip") return { ...row, meta: sanitizeGeoipMeta(row.meta) };
+	return row;
+};
 
 const internalSetting = {
 	/**
@@ -17,11 +27,11 @@ const internalSetting = {
 	 */
 	update: async (access, data) => {
 		access.canAdmin();
-		const oidcRefused = () => new errs.ValidationError("Use /api/settings/oidc to change the OIDC settings");
-		if (String(data.id).trim().toLowerCase() === "oidc") throw oidcRefused();
+		const refused = () => new errs.ValidationError("This setting has its own endpoint under /api/settings");
+		if (DEDICATED_IDS.includes(String(data.id).trim().toLowerCase())) throw refused();
 
 		const existingRow = await internalSetting.get(access, { id: data.id });
-		if (existingRow.id === "oidc") throw oidcRefused();
+		if (DEDICATED_IDS.includes(existingRow.id)) throw refused();
 
 		const merged = { ...existingRow, ...data };
 		if (["html", "redirect"].includes(merged.value) && !merged.meta?.[merged.value]) {
@@ -72,7 +82,7 @@ const internalSetting = {
 		access.canAdmin();
 
 		const row = await settingModel.query().where("id", data.id).first();
-		if (!row?.id) {
+		if (!row?.id || HIDDEN_IDS.includes(row.id)) {
 			throw new errs.ItemNotFoundError(data.id);
 		}
 
@@ -88,7 +98,7 @@ const internalSetting = {
 	getAll: async (access) => {
 		access.canAdmin();
 		const rows = await settingModel.query().orderBy("description", "ASC");
-		return rows.map(sanitizeRow);
+		return rows.filter((row) => !HIDDEN_IDS.includes(row.id)).map(sanitizeRow);
 	},
 };
 

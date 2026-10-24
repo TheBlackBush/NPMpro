@@ -1,0 +1,40 @@
+{
+	"operationId": "getMonitoringSummary",
+	"summary": "Get the dashboard monitoring summary",
+	"tags": [
+		"monitoring"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"requests_today": 1520,
+								"series_24h": [
+									{
+										"bucket": 490016,
+										"requests": 64
+									}
+								],
+								"error_rate_today": 0.042,
+								"active_bans": 2,
+								"top_country_today": "DE"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/monitoring-summary-object.json"
+					}
+				}
+			}
+		}
+	}
+}

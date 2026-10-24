@@ -1,0 +1,61 @@
+{
+	"type": "object",
+	"description": "Effective GeoIP (MaxMind GeoLite2) settings (the license key is never returned)",
+	"additionalProperties": false,
+	"required": [
+		"account_id",
+		"editions",
+		"license_key_set",
+		"locked",
+		"secret_error",
+		"last_update",
+		"last_error"
+	],
+	"properties": {
+		"account_id": {
+			"type": "string",
+			"description": "MaxMind account ID"
+		},
+		"editions": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"GeoLite2-Country",
+					"GeoLite2-ASN",
+					"GeoLite2-City"
+				]
+			},
+			"description": "Databases to download"
+		},
+		"license_key_set": {
+			"type": "boolean",
+			"description": "A license key is saved or set by the environment"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"secret_error": {
+			"type": "boolean",
+			"description": "The saved license key cannot be decrypted"
+		},
+		"last_update": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "Time of the last successful update (ISO 8601)"
+		},
+		"last_error": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "Error of the last update, null after a success"
+		}
+	}
+}

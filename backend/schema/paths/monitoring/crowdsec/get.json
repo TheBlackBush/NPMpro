@@ -1,0 +1,73 @@
+{
+	"operationId": "getMonitoringCrowdsec",
+	"summary": "Get the active CrowdSec decisions",
+	"tags": [
+		"monitoring"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"configured": true,
+								"reachable": true,
+								"error": null,
+								"fetched_at": "2026-10-24T10:00:00.000Z",
+								"total": 2,
+								"added_24h": 1,
+								"by_scenario": [
+									{
+										"scenario": "crowdsecurity/ssh-bf",
+										"count": 2
+									}
+								],
+								"by_origin": [
+									{
+										"origin": "crowdsec",
+										"count": 2
+									}
+								],
+								"by_type": [
+									{
+										"type": "ban",
+										"count": 2
+									}
+								],
+								"newest": [
+									{
+										"id": 42,
+										"value": "192.0.2.1",
+										"scope": "Ip",
+										"scenario": "crowdsecurity/ssh-bf",
+										"origin": "crowdsec",
+										"type": "ban",
+										"duration": "3h59m2s",
+										"seconds_left": 14342,
+										"country": "DE"
+									}
+								],
+								"countries": [
+									{
+										"country": "DE",
+										"count": 2
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/monitoring-crowdsec-object.json"
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,230 @@
+{
+	"type": "object",
+	"description": "Traffic statistics for a time range. Buckets are unix minutes for 1h and 24h, unix hours for 7d and 30d",
+	"additionalProperties": false,
+	"required": [
+		"totals",
+		"series",
+		"top_hosts",
+		"top_countries",
+		"top_asns",
+		"countries",
+		"status"
+	],
+	"properties": {
+		"totals": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"requests",
+				"bytes",
+				"error_rate"
+			],
+			"properties": {
+				"requests": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"bytes": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"error_rate": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 1,
+					"description": "Share of 4xx and 5xx responses (0 without requests)"
+				}
+			}
+		},
+		"series": {
+			"type": "array",
+			"description": "Every bucket of the range, oldest first, missing buckets are zero",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"bucket",
+					"by_class"
+				],
+				"properties": {
+					"bucket": {
+						"type": "integer"
+					},
+					"by_class": {
+						"type": "object",
+						"description": "Requests per status class: 2xx, 3xx, 4xx, 5xx always, other when present",
+						"additionalProperties": {
+							"type": "integer",
+							"minimum": 0
+						}
+					}
+				}
+			}
+		},
+		"top_hosts": {
+			"type": "array",
+			"maxItems": 10,
+			"description": "Host keys are managed domain names, the matching wildcard name, or _other for requests to unmanaged names",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"host",
+					"requests",
+					"bytes"
+				],
+				"properties": {
+					"host": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"bytes": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"top_countries": {
+			"type": "array",
+			"maxItems": 10,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country",
+					"requests"
+				],
+				"properties": {
+					"country": {
+						"type": "string",
+						"description": "ISO 3166-1 alpha-2 code, -- when unknown"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"top_asns": {
+			"type": "array",
+			"maxItems": 10,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"asn",
+					"asn_name",
+					"requests"
+				],
+				"properties": {
+					"asn": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "AS number, 0 for networks over the per host and hour limit"
+					},
+					"asn_name": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"top_ips": {
+			"type": "array",
+			"maxItems": 20,
+			"description": "Only present when visitor IPs are shown; \"other\" collects IPs over the per host and hour limit",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"ip",
+					"requests"
+				],
+				"properties": {
+					"ip": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"countries": {
+			"type": "array",
+			"description": "Requests per country code (-- when unknown), all countries of the range, sorted by requests descending, for the map",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country",
+					"requests"
+				],
+				"properties": {
+					"country": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
+		},
+		"status": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled",
+				"geoip",
+				"skipped_lines",
+				"dropped_requests",
+				"last_read",
+				"error"
+			],
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"description": "Traffic statistics are switched on"
+				},
+				"geoip": {
+					"type": "boolean",
+					"description": "A GeoLite2 Country or ASN database is loaded"
+				},
+				"skipped_lines": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Access log lines that could not be parsed since the backend started"
+				},
+				"dropped_requests": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "Requests dropped because the database could not be written for 10 minutes, since the backend started"
+				},
+				"last_read": {
+					"type": [
+						"string",
+						"null"
+					],
+					"format": "date-time"
+				},
+				"error": {
+					"type": [
+						"string",
+						"null"
+					]
+				}
+			}
+		}
+	}
+}

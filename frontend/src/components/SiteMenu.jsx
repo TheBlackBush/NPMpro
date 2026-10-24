@@ -1,4 +1,5 @@
 import {
+	IconActivity,
 	IconAdjustments,
 	IconArrowsCross,
 	IconBolt,
@@ -79,6 +80,13 @@ const menuGroups = [
 			icon: IconLock,
 			label: "access-lists",
 			permissionSection: ACCESS_LISTS,
+			permission: VIEW,
+		},
+		{
+			to: "/monitoring",
+			icon: IconActivity,
+			label: "monitoring",
+			permissionSection: ADMIN,
 			permission: VIEW,
 		},
 	],

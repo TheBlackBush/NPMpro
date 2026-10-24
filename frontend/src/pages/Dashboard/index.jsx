@@ -15,6 +15,7 @@ import { T } from "src/locale";
 import { EXPIRY_WARNING_DAYS } from "src/modules/Expiry";
 import {
 	ACCESS_LISTS,
+	ADMIN,
 	CERTIFICATES,
 	DEAD_HOSTS,
 	hasPermission,
@@ -24,6 +25,7 @@ import {
 	VIEW,
 } from "src/modules/Permissions";
 import { DashboardTile } from "./DashboardTile";
+import { MonitoringRow } from "./MonitoringRow";
 
 // Host types in the order the error tile links to them
 const ERROR_SECTIONS = [
@@ -50,6 +52,9 @@ const Dashboard = () => {
 		<div>
 			<PageHeader title={<T id="dashboard" />} />
 			<div className="row row-deck row-cards">
+				<HasPermission section={ADMIN} permission={VIEW} hideError>
+					<MonitoringRow />
+				</HasPermission>
 				<HasPermission section={PROXY_HOSTS} permission={VIEW} hideError>
 					<DashboardTile to="/nginx/proxy" icon={IconBolt} color="green">
 						<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />

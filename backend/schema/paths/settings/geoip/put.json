@@ -1,0 +1,87 @@
+{
+	"operationId": "updateGeoipSettings",
+	"summary": "Update the GeoIP settings",
+	"description": "Fields set by environment variables are ignored. An empty or omitted license_key keeps the saved one.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"account_id": {
+							"type": "string",
+							"pattern": "^$|^[0-9]{1,10}$",
+							"description": "MaxMind account ID, empty to clear",
+							"example": "123456"
+						},
+						"license_key": {
+							"type": "string",
+							"maxLength": 255,
+							"description": "MaxMind license key, empty keeps the saved one",
+							"example": "abcdef"
+						},
+						"editions": {
+							"type": "array",
+							"minItems": 1,
+							"maxItems": 3,
+							"uniqueItems": true,
+							"items": {
+								"type": "string",
+								"enum": [
+									"GeoLite2-Country",
+									"GeoLite2-ASN",
+									"GeoLite2-City"
+								]
+							},
+							"description": "Databases to download"
+						}
+					}
+				},
+				"example": {
+					"account_id": "123456",
+					"license_key": "abcdef"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"account_id": "123456",
+								"editions": [
+									"GeoLite2-Country",
+									"GeoLite2-ASN"
+								],
+								"license_key_set": true,
+								"locked": [],
+								"secret_error": false,
+								"last_update": "2026-10-24T10:00:00.000Z",
+								"last_error": null
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/geoip-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

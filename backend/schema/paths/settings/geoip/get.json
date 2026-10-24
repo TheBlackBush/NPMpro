@@ -1,0 +1,40 @@
+{
+	"operationId": "getGeoipSettings",
+	"summary": "Get the GeoIP settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"account_id": "123456",
+								"editions": [
+									"GeoLite2-Country",
+									"GeoLite2-ASN"
+								],
+								"license_key_set": true,
+								"locked": [],
+								"secret_error": false,
+								"last_update": "2026-10-24T10:00:00.000Z",
+								"last_error": null
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/geoip-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
