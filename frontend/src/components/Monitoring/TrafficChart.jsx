@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useThemeState } from "src/context";
 import { currentLocale, intl } from "src/locale";
 import { chartSeries, formatCount } from "src/modules/Monitoring";
 
@@ -11,18 +12,7 @@ const loadApexCharts = () => {
 	return loader;
 };
 
-const readTheme = () => (document.documentElement.getAttribute("data-bs-theme") === "dark" ? "dark" : "light");
-
-/** The theme of <html>, updated when the theme switcher changes it. */
-const useDocumentTheme = () => {
-	const [theme, setTheme] = useState(readTheme);
-	useEffect(() => {
-		const observer = new MutationObserver(() => setTheme(readTheme()));
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-bs-theme"] });
-		return () => observer.disconnect();
-	}, []);
-	return theme;
-};
+const seriesName = (key) => (key === "other" ? intl.formatMessage({ id: "monitoring.traffic.class-other" }) : key);
 
 const cssVar = (style, name) => style.getPropertyValue(`--tblr-${name}`).trim();
 
@@ -56,7 +46,7 @@ const buildOptions = (series, range, theme) => {
 		},
 		theme: { mode: theme },
 		series: series.map((s) => ({
-			name: s.key === "other" ? intl.formatMessage({ id: "monitoring.traffic.class-other" }) : s.key,
+			name: seriesName(s.key),
 			data: s.data,
 		})),
 		colors: series.map((s) => cssVar(style, CLASS_COLORS[s.key])),
@@ -117,24 +107,34 @@ function TrafficChart({ series, range }) {
 	const element = useRef(null);
 	const chart = useRef(null);
 	const [failed, setFailed] = useState(false);
-	const theme = useDocumentTheme();
+	// ThemeContext sets data-bs-theme on <html> while rendering, so the CSS variables match this value
+	const { theme } = useThemeState();
 	const data = useMemo(() => chartSeries(series, range), [series, range]);
 	const latest = useRef(null);
 	latest.current = { data, range, theme };
 
 	useEffect(() => {
 		let disposed = false;
+		let instance = null;
 		loadApexCharts()
 			.then((ApexCharts) => {
 				if (disposed || !element.current) return;
-				const { data: current, range: currentRange, theme: currentTheme } = latest.current;
-				chart.current = new ApexCharts(element.current, buildOptions(current, currentRange, currentTheme));
-				return chart.current.render();
+				const { data: first, range: firstRange, theme: firstTheme } = latest.current;
+				instance = new ApexCharts(element.current, buildOptions(first, firstRange, firstTheme));
+				return instance.render().then(() => {
+					if (disposed) return;
+					// updates go to the chart only once it is drawn; catch up with data that came in meanwhile
+					chart.current = instance;
+					const { data: current, range: currentRange, theme: currentTheme } = latest.current;
+					if (current !== first || currentRange !== firstRange || currentTheme !== firstTheme) {
+						instance.updateOptions(buildOptions(current, currentRange, currentTheme), true, false);
+					}
+				});
 			})
 			.catch(() => setFailed(true));
 		return () => {
 			disposed = true;
-			chart.current?.destroy();
+			instance?.destroy();
 			chart.current = null;
 		};
 	}, []);
@@ -148,12 +148,26 @@ function TrafficChart({ series, range }) {
 	}
 
 	return (
-		<div
-			ref={element}
-			className="chart-lg"
-			role="img"
-			aria-label={intl.formatMessage({ id: "monitoring.traffic.chart-label" })}
-		/>
+		<>
+			<div
+				ref={element}
+				className="chart-lg"
+				role="img"
+				aria-label={intl.formatMessage({ id: "monitoring.traffic.chart-label" })}
+			/>
+			{/* the numbers behind the chart for screen readers */}
+			<ul className="visually-hidden">
+				{data.map((s) => (
+					<li key={s.key}>
+						{seriesName(s.key)}:{" "}
+						{intl.formatMessage(
+							{ id: "monitoring.requests" },
+							{ count: s.data.reduce((sum, point) => sum + point[1], 0) },
+						)}
+					</li>
+				))}
+			</ul>
+		</>
 	);
 }
 

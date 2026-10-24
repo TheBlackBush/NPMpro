@@ -25,6 +25,13 @@ import {
 const DEFAULT_RANGE = "24h";
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
 
+// secondary below 1 %, orange from 1 %, red from 5 %
+const errorRateColor = (rate) => {
+	if (rate >= 0.05) return "red";
+	if (rate >= 0.01) return "orange";
+	return "secondary";
+};
+
 const hostLabel = (host) => (host === OTHER_HOST ? intl.formatMessage({ id: "monitoring.host.other" }) : host);
 
 const countryLabel = (code) =>
@@ -141,7 +148,7 @@ function TrafficData({ data, range }) {
 					value={percentFormat.format(totals.errorRate)}
 					hint={<T id="monitoring.stat.error-rate.hint" />}
 					icon={IconAlertTriangle}
-					color={totals.errorRate > 0.05 ? "red" : "orange"}
+					color={errorRateColor(totals.errorRate)}
 				/>
 				<StatCard
 					label={<T id="monitoring.stat.top-country" />}
@@ -264,7 +271,7 @@ const Traffic = () => {
 	const [params, setParams] = useSearchParams();
 	const range = rangeOptions.some((o) => o.value === params.get("range")) ? params.get("range") : DEFAULT_RANGE;
 	const host = params.get("host") ?? "";
-	const { data, error, isPending } = useMonitoringTraffic(range, host);
+	const { data, error, isPending, isPlaceholderData } = useMonitoringTraffic(range, host);
 
 	const onChange = (key, value) =>
 		setParams(
@@ -283,7 +290,12 @@ const Traffic = () => {
 	} else if (error && !data) {
 		content = <ErrorAlert error={error} />;
 	} else if (data.status.enabled) {
-		content = <TrafficData data={data} range={range} />;
+		// the previous range or host stays visible, dimmed, until the new data is there
+		content = (
+			<div className={isPlaceholderData ? "opacity-50" : undefined} aria-busy={isPlaceholderData}>
+				<TrafficData data={data} range={range} />
+			</div>
+		);
 	} else {
 		content = (
 			<div className="card">

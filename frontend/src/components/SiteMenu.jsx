@@ -1,4 +1,5 @@
 import {
+	IconActivity,
 	IconAdjustments,
 	IconArrowsCross,
 	IconBolt,
@@ -83,7 +84,7 @@ const menuGroups = [
 		},
 		{
 			to: "/monitoring",
-			icon: IconChartBar,
+			icon: IconActivity,
 			label: "monitoring",
 			permissionSection: ADMIN,
 			permission: VIEW,

@@ -42,7 +42,10 @@ function TopList({
 								<div key={item.key} className="list-group-item">
 									<div className="row g-2 align-items-center">
 										<div className="col-auto">
-											<span className="badge bg-secondary-lt">{idx + 1}</span>
+											{/* fixed width so ranks 1 to 20 line up; no utility gives a 2em width */}
+											<span className="badge bg-secondary-lt" style={{ minWidth: "2em" }}>
+												{idx + 1}
+											</span>
 										</div>
 										<div className="col text-truncate">
 											<div className="d-flex align-items-center gap-2">

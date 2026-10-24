@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	getGeoipSettings,
 	getMonitoringCrowdsec,
@@ -14,6 +14,8 @@ const POLL = {
 	refetchInterval: 60 * 1000,
 	refetchIntervalInBackground: false,
 	staleTime: 30 * 1000,
+	// one retry: the page refreshes every minute anyway, so an error shows soon instead of after three retries
+	retry: 1,
 };
 
 const useMonitoringTraffic = (range = "24h", host = "") =>
@@ -21,6 +23,8 @@ const useMonitoringTraffic = (range = "24h", host = "") =>
 		queryKey: ["monitoring-traffic", range, host],
 		queryFn: () => getMonitoringTraffic(range, host),
 		...POLL,
+		// keep showing the last range or host while the next one loads, so the chart and map stay mounted
+		placeholderData: keepPreviousData,
 	});
 
 const useMonitoringCrowdsec = () =>
