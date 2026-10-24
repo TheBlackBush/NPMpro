@@ -3,7 +3,9 @@ import nodeFs, { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from "node
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
+import { createRuntimeUpdater } from "../internal/runtime-update.js";
 import { renderCertbotIni } from "../lib/certbot-ini.js";
+import { renderDefaultCertConf } from "../lib/default-cert.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
@@ -29,8 +31,12 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		certbotIni: path.join(dir, "certbot.ini"),
 		renewalDir: path.join(dir, "renewal"),
 		crontabDir: path.join(dir, "crontabs"),
+		defaultCertConf: path.join(dir, "default-cert.conf"),
+		tlsDir: path.join(dir, "tls"),
 	};
 	await writeFile(paths.certbotIni, "old ini\n");
+	// what start.sh writes without DEFAULT_CERT_ID
+	await writeFile(paths.defaultCertConf, renderDefaultCertConf(null, paths.tlsDir));
 	await mkdir(paths.renewalDir);
 	for (const [name, content] of Object.entries(renewal)) await writeFile(path.join(paths.renewalDir, name), content);
 	await mkdir(paths.crontabDir);
@@ -435,4 +441,177 @@ it("startup apply with the default paths writes the live certbot config and noth
 		touched.filter((file) => file.startsWith("/etc")),
 		[],
 	);
+});
+
+// default certificate and stapling
+
+const certTree = async (paths) => {
+	const live = path.join(paths.tlsDir, "certbot/live/npm-5");
+	await mkdir(live, { recursive: true });
+	await writeFile(path.join(live, "fullchain.pem"), "chain");
+	await writeFile(path.join(live, "privkey.pem"), "key");
+	await writeFile(path.join(paths.tlsDir, "certbot/live/npm-5.der"), "der");
+	return live;
+};
+
+const certApplier = (paths, overrides = {}) => {
+	const fetches = [];
+	const a = applier(paths, {
+		listCertificates: async () => [{ id: 5 }],
+		ocsp: { fetch: async (kind) => fetches.push(kind) },
+		...overrides,
+	});
+	return { ...a, fetches };
+};
+
+it("setting the default certificate writes its paths to the include and reloads", async () => {
+	const { paths } = await setup();
+	const live = await certTree(paths);
+	const a = certApplier(paths);
+	const prev = certValues();
+	const result = await a.applyGroup("certificates", { ...prev, default_certificate_id: 5 }, prev);
+	assert.deepEqual(result, { changed: ["default_certificate_id"], reloaded: true });
+	assert.equal(
+		await readFile(paths.defaultCertConf, "utf8"),
+		`ssl_certificate ${live}/fullchain.pem;\nssl_certificate_key ${live}/privkey.pem;\n`,
+	);
+	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+	assert.deepEqual(a.fetches, []);
+});
+
+it("a default certificate that was deleted renders the built-in certificate and logs once", async () => {
+	const { paths } = await setup();
+	await certTree(paths);
+	const a = certApplier(paths, { listCertificates: async () => [] });
+	const prev = certValues();
+	const next = { ...prev, default_certificate_id: 5 };
+	await a.applyGroup("certificates", next, prev);
+	await a.applyGroup("certificates", { ...next, ocsp_stapling: !next.ocsp_stapling }, next);
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), renderDefaultCertConf(null, paths.tlsDir));
+	assert.equal(a.log.lines.filter((line) => line.includes("#5 does not exist")).length, 1);
+	// startup with the stored id: same fallback, the start.sh include is kept, nginx is not tested
+	const b = certApplier(paths, { listCertificates: async () => [] });
+	await b.applyGroup("certificates", next);
+	assert.deepEqual(b.nginx.calls, []);
+	assert.equal(b.log.lines.filter((line) => line.includes("#5 does not exist")).length, 1);
+});
+
+it("turning stapling on fetches the OCSP responses, staples the default certificate and re-renders hosts", async () => {
+	const { dir, paths } = await setup();
+	const live = await certTree(paths);
+	const host = path.join(dir, "1.conf");
+	await writeFile(host, "no stapling\n");
+	const rendered = [];
+	const a = certApplier(paths, {
+		renderHosts: (_group, ctx) => {
+			rendered.push(ctx.changed);
+			return Promise.resolve([
+				{ path: host, content: `stapling ${ctx.env.overrides.certificates.ocsp_stapling}\n`, nginx: true },
+			]);
+		},
+	});
+	const prev = certValues({ default_certificate_id: 5, ocsp_stapling: false });
+	const on = { ...prev, ocsp_stapling: true };
+	await a.applyGroup("certificates", on, prev);
+	assert.deepEqual(a.fetches, ["acme"]);
+	assert.deepEqual(rendered, [["ocsp_stapling"]]);
+	assert.equal(await readFile(host, "utf8"), "stapling true\n");
+	assert.ok(hasLine(await readFile(paths.defaultCertConf, "utf8"), `ssl_stapling_file ${live}.der;`));
+
+	await a.applyGroup("certificates", prev, on);
+	assert.deepEqual(a.fetches, ["acme"]);
+	assert.equal(await readFile(host, "utf8"), "stapling false\n");
+	assert.equal((await readFile(paths.defaultCertConf, "utf8")).includes("ssl_stapling"), false);
+	assert.deepEqual(a.nginx.calls, ["test", "reload", "test", "reload"]);
+});
+
+it("custom stapling fetches the custom OCSP responses only", async () => {
+	const { paths } = await setup();
+	const a = certApplier(paths);
+	const prev = certValues({ custom_ocsp_stapling: false });
+	await a.applyGroup("certificates", { ...prev, custom_ocsp_stapling: true }, prev);
+	assert.deepEqual(a.fetches, ["custom"]);
+});
+
+it("startup fetches OCSP responses only when launch.sh did not (stapling on from the stored value)", async () => {
+	const { paths } = await setup();
+	const fromStored = certApplier(paths, { env: () => ({ ...BOOT_ENV, ACME_OCSP_STAPLING: "false" }) });
+	await fromStored.applyGroup("certificates", certValues({ ocsp_stapling: true }));
+	assert.deepEqual(fromStored.fetches, ["acme"]);
+	const fromEnv = certApplier(paths, { env: () => ({ ...BOOT_ENV, ACME_OCSP_STAPLING: "true" }) });
+	await fromEnv.applyGroup("certificates", certValues({ ocsp_stapling: true }));
+	assert.deepEqual(fromEnv.fetches, []);
+});
+
+it("an nginx -t failure restores the include and the hosts and stores nothing", async () => {
+	const { dir, paths } = await setup();
+	await certTree(paths);
+	const host = path.join(dir, "1.conf");
+	await writeFile(host, "old host\n");
+	const before = await readFile(paths.defaultCertConf, "utf8");
+	const a = certApplier(paths, {
+		nginx: nginxFake({ testError: "nginx: [emerg] cannot load certificate" }),
+		renderHosts: async () => [{ path: host, content: "new host\n", nginx: true }],
+	});
+	const saved = [];
+	const update = createRuntimeUpdater({
+		readStored: async () => ({}),
+		saveStored: async (_group, meta) => saved.push(meta),
+		getApply: () => a.applyGroup,
+		certificateExists: async (id) => id === 5,
+		env: BOOT_ENV,
+	});
+	await assert.rejects(update("certificates", { default_certificate_id: 5, ocsp_stapling: true }), {
+		name: "ValidationError",
+		message: "nginx: [emerg] cannot load certificate",
+	});
+	assert.deepEqual(saved, []);
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), before);
+	assert.equal(await readFile(host, "utf8"), "old host\n");
+	await assert.rejects(update("certificates", { default_certificate_id: 9 }), {
+		name: "ValidationError",
+		message: "default_certificate_id: Certificate not found",
+	});
+	assert.deepEqual(saved, []);
+});
+
+it("startup with env DEFAULT_CERT_ID keeps the include start.sh wrote and does not test nginx", async () => {
+	const { paths } = await setup();
+	const live = await certTree(paths);
+	const startSh = `ssl_certificate ${live}/fullchain.pem;\nssl_certificate_key ${live}/privkey.pem;\n`;
+	await writeFile(paths.defaultCertConf, startSh);
+	const env = { ...BOOT_ENV, DEFAULT_CERT_ID: "5", NPMPRO_USER_ENV: "DEFAULT_CERT_ID" };
+	// a stored id is ignored while the env sets one
+	const config = createRuntimeConfig({
+		env,
+		readStored: async () => ({ default_certificate_id: 6 }),
+		log: quietLog(),
+	});
+	const a = certApplier(paths, { getConfig: config.getRuntimeConfig, env: () => env });
+	assert.deepEqual(await a.applyAll(), {});
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), startSh);
+	assert.deepEqual(a.nginx.calls, []);
+});
+
+it("startup with a stored default certificate rewrites the include and tests nginx, a failure keeps start.sh's file", async () => {
+	const { paths } = await setup();
+	await certTree(paths);
+	const before = await readFile(paths.defaultCertConf, "utf8");
+	const config = createRuntimeConfig({
+		env: { ...BOOT_ENV, NPMPRO_USER_ENV: "" },
+		readStored: async (group) => (group === "certificates" ? { default_certificate_id: 5 } : {}),
+		log: quietLog(),
+	});
+	const ok = certApplier(paths, { getConfig: config.getRuntimeConfig });
+	assert.deepEqual(await ok.applyAll(), {});
+	assert.ok((await readFile(paths.defaultCertConf, "utf8")).includes("npm-5/fullchain.pem"));
+	assert.deepEqual(ok.nginx.calls, ["test"]);
+
+	await writeFile(paths.defaultCertConf, before);
+	const failing = certApplier(paths, {
+		getConfig: config.getRuntimeConfig,
+		nginx: nginxFake({ testError: "nginx: [emerg] x" }),
+	});
+	assert.deepEqual(Object.keys(await failing.applyAll()), ["certificates"]);
+	assert.equal(await readFile(paths.defaultCertConf, "utf8"), before);
 });

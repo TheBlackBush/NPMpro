@@ -60,7 +60,7 @@ const createRuntimeUpdater = ({
 		}
 		const certId = changes.default_certificate_id;
 		if (Number.isInteger(certId) && certId !== 0 && !(await certificateExists(certId))) {
-			throw new errs.ValidationError(`default_certificate_id: certificate ${certId} does not exist`);
+			throw new errs.ValidationError("default_certificate_id: Certificate not found");
 		}
 
 		const meta = { ...stored, ...changes };

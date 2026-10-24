@@ -1,13 +1,17 @@
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
+import { effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
 const authRequestProviders = ["anubis", "tinyauth", "oauth2proxy", "voidauth", "authelia", "authentik"];
+const ocspDirs = { acme: "/data/tls/certbot/live", custom: "/data/tls/custom" };
 
 const internalNginx = {
 	/**
@@ -60,34 +64,31 @@ const internalNginx = {
 	test: () => utils.execFile("nginx", ["-tq"]),
 
 	/**
+	 * Fetches the missing or outdated OCSP responses (.der stapling files) of the certbot ("acme") or custom
+	 * certificates; a failure is ignored (nginx -t then reports a missing stapling file)
+	 *
+	 * @param {"acme"|"custom"} kind
+	 */
+	fetchOcsp: async (kind) => {
+		try {
+			await utils.execFile("certbot-ocsp-fetcher.sh", [
+				"-c",
+				ocspDirs[kind],
+				"-o",
+				ocspDirs[kind],
+				"--no-reload-webserver",
+				"--quiet",
+			]);
+		} catch {}
+	},
+
+	/**
 	 * @returns {Promise}
 	 */
 	reload: async () => {
-		if (process.env.ACME_OCSP_STAPLING === "true") {
-			try {
-				await utils.execFile("certbot-ocsp-fetcher.sh", [
-					"-c",
-					"/data/tls/certbot/live",
-					"-o",
-					"/data/tls/certbot/live",
-					"--no-reload-webserver",
-					"--quiet",
-				]);
-			} catch {}
-		}
-
-		if (process.env.CUSTOM_OCSP_STAPLING === "true") {
-			try {
-				await utils.execFile("certbot-ocsp-fetcher.sh", [
-					"-c",
-					"/data/tls/custom",
-					"-o",
-					"/data/tls/custom",
-					"--no-reload-webserver",
-					"--quiet",
-				]);
-			} catch {}
-		}
+		const env = effectiveEnv();
+		if (env.ACME_OCSP_STAPLING === "true") await internalNginx.fetchOcsp("acme");
+		if (env.CUSTOM_OCSP_STAPLING === "true") await internalNginx.fetchOcsp("custom");
 
 		const res = await fetch("http://localhost/1/control/config", { method: "PATCH", dispatcher: controlApi });
 		const logs = (await res.json()).logs.join("").trim();
@@ -212,19 +213,42 @@ const internalNginx = {
 	},
 
 	/**
-	 * @param   {String}  host_type
-	 * @param   {Object}  host
-	 * @returns {Promise}
+	 * Runs nginxbeautifier on a copy of the config in a temp folder; the text as it is when that fails
+	 *
+	 * @param   {String}  text
+	 * @returns {Promise<String>}
 	 */
-	generateConfig: async (host_type, host_row) => {
+	beautify: async (text) => {
+		const dir = await mkdtemp(path.join(tmpdir(), "npmpro-beautify-"));
+		const file = path.join(dir, "host.conf");
+		try {
+			await writeFile(file, text, { encoding: "utf8" });
+			await utils.execFile("nginxbeautifier", ["-s", "2", file]);
+			return await readFile(file, "utf8");
+		} catch {
+			return text;
+		} finally {
+			await rm(dir, { force: true, recursive: true });
+		}
+	},
+
+	/**
+	 * Renders the config of a host without writing it
+	 *
+	 * @param   {String}  host_type
+	 * @param   {Object}  host_row
+	 * @param   {Object}  [options]
+	 * @param   {Object}  [options.env]  env the template reads as env.*, default effectiveEnv() (an apply passes the
+	 *                                   values it is about to save)
+	 * @returns {Promise<String>}
+	 */
+	renderConfig: async (host_type, host_row, { env } = {}) => {
 		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
 
 		const renderEngine = utils.getRenderEngine();
 
-		const filename = internalNginx.getConfigName(host_type, host.id);
-
-		host.env = process.env;
+		host.env = env ?? effectiveEnv();
 
 		if (
 			host.forward_host?.includes("/") &&
@@ -311,17 +335,18 @@ const internalNginx = {
 			host,
 		);
 
-		await writeFile(filename, config_text, { encoding: "utf8" });
+		return process.env.DISABLE_NGINX_BEAUTIFIER === "false" ? internalNginx.beautify(config_text) : config_text;
+	},
+
+	/**
+	 * @param   {String}  host_type
+	 * @param   {Object}  host
+	 * @returns {Promise}
+	 */
+	generateConfig: async (host_type, host_row) => {
+		const filename = internalNginx.getConfigName(host_type, host_row.id);
+		await writeFile(filename, await internalNginx.renderConfig(host_type, host_row), { encoding: "utf8" });
 		logger.debug("Wrote config:", filename);
-
-		if (process.env.DISABLE_NGINX_BEAUTIFIER === "false") {
-			try {
-				await utils.execFile("nginxbeautifier", ["-s", "2", filename]);
-			} catch {
-				// do nothing
-			}
-		}
-
 		return true;
 	},
 

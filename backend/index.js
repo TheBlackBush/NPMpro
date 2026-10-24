@@ -13,6 +13,7 @@ import {
 } from "./internal/monitoring-services.js";
 import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
+import { renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { setRuntimeApply } from "./internal/runtime-setting.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
@@ -22,6 +23,7 @@ import { applyAccessLog } from "./lib/traffic/access-log.js";
 import { createTrafficHooks } from "./lib/traffic/service.js";
 import { global as logger } from "./logger.js";
 import { migrateUp } from "./migrate.js";
+import certificateModel from "./models/certificate.js";
 import { getCompiledSchema } from "./schema/index.js";
 import setup from "./setup.js";
 
@@ -31,7 +33,10 @@ async function appStart() {
 
 		const runtimeApplier = createRuntimeApplier({
 			nginx: { test: internalNginx.test, reload: internalNginx.reload },
+			renderHosts: renderRuntimeHosts,
 			timers: { restartRenewal: internalCertificate.restartTimer },
+			listCertificates: () => certificateModel.query().select("id"),
+			ocsp: { fetch: internalNginx.fetchOcsp },
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
 		// a failed startup apply keeps the files from start.sh, the backend still starts

@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from "node:util";
 import { Agent, fetch as undiciFetch } from "undici";
 import { global as logger } from "../logger.js";
 import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
+import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { acmeServerOf, appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
@@ -12,9 +13,17 @@ const PATHS = {
 	certbotIni: CERTBOT_INI,
 	renewalDir: RENEWAL_DIR,
 	crontabDir: "/tmp/crontabs",
+	defaultCertConf: DEFAULT_CERT_CONF,
+	tlsDir: TLS_DIR,
 };
 
 const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
+const DEFAULT_CERT_KEYS = ["default_certificate_id", "ocsp_stapling", "custom_ocsp_stapling"];
+// stapling key, the OCSP fetcher kind and the env var launch.sh fetched with at boot
+const OCSP_KINDS = [
+	{ key: "ocsp_stapling", kind: "acme", env: "ACME_OCSP_STAPLING" },
+	{ key: "custom_ocsp_stapling", kind: "custom", env: "CUSTOM_OCSP_STAPLING" },
+];
 const ECH_LINE = /^\S+ \S+ \S+ \S+ \S+ cron-ech\.sh$/u;
 const PROFILE_TIMEOUT = 10_000;
 
@@ -167,6 +176,8 @@ const changedKeys = (next, prev) =>
  * @param   {Function}  [deps.effectiveEnv]  lib/runtime-config effectiveEnv
  * @param   {Function}  [deps.getConfig]     lib/runtime-config getRuntimeConfig
  * @param   {Function}  [deps.fetchDirectory] (server) => { directory, profiles }
+ * @param   {Function}  [deps.listCertificates] () => [{ id }], the certificates that exist (default certificate)
+ * @param   {Object}    [deps.ocsp]           { fetch(kind) } fetches the OCSP responses of "acme" or "custom" certificates
  */
 const createRuntimeApplier = ({
 	fs = nodeFs,
@@ -179,6 +190,8 @@ const createRuntimeApplier = ({
 	effectiveEnv = defaultEffectiveEnv,
 	getConfig = defaultGetRuntimeConfig,
 	fetchDirectory = fetchAcmeDirectory,
+	listCertificates = async () => [],
+	ocsp = { fetch: async () => {} },
 } = {}) => {
 	const logged = new Set();
 	const logOnce = (id, message) => {
@@ -235,8 +248,44 @@ const createRuntimeApplier = ({
 		return { path: target.file, content: lines.join("\n") };
 	};
 
+	/**
+	 * Fetches the OCSP responses for a stapling kind that is now on, before the configs that name the .der files are
+	 * tested: on save when it was off, at startup when launch.sh did not fetch them (the env value was not true)
+	 */
+	const fetchStapling = async ({ next, prev, startup }) => {
+		for (const { key, kind, env: name } of OCSP_KINDS) {
+			if (next[key] !== true) continue;
+			if (startup ? env()[name] === "true" : prev[key] === true) continue;
+			await ocsp.fetch(kind);
+		}
+	};
+
+	/**
+	 * The default certificate include for the values; a certificate that no longer exists (or whose files are
+	 * missing) gives the built-in certificate, logged once
+	 */
+	const defaultCertConf = async (next) => {
+		const id = next.default_certificate_id;
+		const certificates = id === 0 ? [] : await listCertificates();
+		const files = await defaultCertificatePaths(id, certificates, {
+			stapling: { acme: next.ocsp_stapling, custom: next.custom_ocsp_stapling },
+			fs,
+			tlsDir: paths.tlsDir,
+		});
+		if (id !== 0 && files === null) {
+			const known = certificates.some((certificate) => certificate.id === id);
+			logOnce(
+				`default-cert-${id}-${known}`,
+				known
+					? `The files of the default certificate #${id} are missing, the built-in certificate is used`
+					: `The default certificate #${id} does not exist (deleted?), the built-in certificate is used`,
+			);
+		}
+		return renderDefaultCertConf(files, paths.tlsDir);
+	};
+
 	const planners = {
-		certificates: async ({ next, changed, startup }) => {
+		certificates: async ({ next, prev, changed, startup }) => {
 			const plan = { files: [], after: [] };
 			if (CERTBOT_KEYS.some((key) => changed.includes(key))) {
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
@@ -249,6 +298,11 @@ const createRuntimeApplier = ({
 			if (changed.includes("ech_rotation_interval")) {
 				const crontab = await echCrontab(next.ech_rotation_interval);
 				if (crontab) plan.files.push(crontab);
+			}
+			if (DEFAULT_CERT_KEYS.some((key) => changed.includes(key))) {
+				await fetchStapling({ next, prev, startup });
+				// default.conf and npmpro.conf include it, so they need no re-render
+				plan.files.push({ path: paths.defaultCertConf, content: await defaultCertConf(next), nginx: true });
 			}
 			if (changed.includes("renewal_interval") && timers.restartRenewal) {
 				plan.after.push(() => timers.restartRenewal(next.renewal_interval));

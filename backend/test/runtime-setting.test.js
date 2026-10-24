@@ -160,7 +160,7 @@ it("refuses a default certificate that does not exist", async () => {
 	const update = updater(store, { certificateExists: async (id) => id === 4 });
 	await assert.rejects(update("certificates", { default_certificate_id: 7 }), {
 		name: "ValidationError",
-		message: "default_certificate_id: certificate 7 does not exist",
+		message: "default_certificate_id: Certificate not found",
 	});
 	await update("certificates", { default_certificate_id: 4 });
 	await update("certificates", { default_certificate_id: 0 });

@@ -13,6 +13,7 @@ import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { createRenewalTimer } from "../lib/renewal-timer.js";
+import { getRuntimeConfig } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import apiValidator from "../lib/validator/api.js";
 import { ssl as logger } from "../logger.js";
@@ -327,7 +328,9 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		const row = await internalCertificate.get(access, { id: data.id });
 
-		if (row.id === Number(process.env.DEFAULT_CERT_ID)) {
+		// the effective default certificate (env DEFAULT_CERT_ID or the Certificates & TLS setting)
+		const { values: tls } = await getRuntimeConfig("certificates");
+		if (row.id === tls.default_certificate_id) {
 			throw new error.ValidationError("Certificate is still in use by the default host");
 		}
 

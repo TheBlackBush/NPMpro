@@ -352,31 +352,27 @@ if { [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] && [ "$DEFAULT_KEY" != "/da
     echo "something went wrong, using dummycerts."
 fi
 
-if [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] || [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; then
-    if [ ! -s /data/tls/dummycert.pem ] || [ ! -s /data/tls/dummykey.pem ]; then
-        rm -vrf /data/tls/dummycert.pem /data/tls/dummykey.pem
-        openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -x509 -days 365000 -nodes -subj "/" -sha512 -keyout /data/tls/dummykey.pem -out /data/tls/dummycert.pem
-    fi
-    unset DEFAULT_STAPLING_FILE
-else
+# the built-in certificate is always kept: the default certificate can be switched to it at runtime
+if [ ! -s /data/tls/dummycert.pem ] || [ ! -s /data/tls/dummykey.pem ]; then
     rm -vrf /data/tls/dummycert.pem /data/tls/dummykey.pem
+    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -x509 -days 365000 -nodes -subj "/" -sha512 -keyout /data/tls/dummykey.pem -out /data/tls/dummycert.pem
+fi
+if [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] || [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; then
+    unset DEFAULT_STAPLING_FILE
 fi
 
-sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /app/templates/default.conf
-sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /app/templates/default.conf
-if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /app/templates/default.conf
-    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /app/templates/default.conf
-    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /app/templates/default.conf
-fi
-
-sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-fi
+# default certificate include of default.conf and npmpro.conf, the backend rewrites it from the runtime settings
+mkdir -p /data/npmpro/nginx
+{
+    echo "ssl_certificate $DEFAULT_CERT;"
+    echo "ssl_certificate_key $DEFAULT_KEY;"
+    if [ -s "$DEFAULT_STAPLING_FILE" ]; then
+        echo "ssl_stapling on;"
+        echo "ssl_stapling_verify on;"
+        echo "ssl_stapling_file $DEFAULT_STAPLING_FILE;"
+        echo "ssl_certificate_compression off;"
+    fi
+} > /data/npmpro/nginx/default-cert.conf
 
 sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 
