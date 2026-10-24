@@ -18,24 +18,6 @@ const TOP_IPS = 20;
 
 const num = (v) => Number(v);
 
-/**
- * Adds the counters to the row with the same key, or inserts the row. Select then patch keeps it portable
- * across SQLite, MySQL and Postgres; the caller runs it inside one transaction.
- */
-const upsert = async (trx, table, keyColumns, row, addColumns) => {
-	const key = Object.fromEntries(keyColumns.map((c) => [c, row[c]]));
-	const hit = await trx(table).where(key).first("id");
-	if (!hit) {
-		await trx(table).insert(row);
-		return;
-	}
-	const patch = {};
-	for (const c of addColumns) {
-		patch[c] = trx.raw("?? + ?", [c, row[c]]);
-	}
-	await trx(table).where({ id: hit.id }).update(patch);
-};
-
 const TABLES = {
 	minutes: ["traffic_minute", ["bucket", "host", "status_class"], ["requests", "bytes"]],
 	hours: ["traffic_hour", ["bucket", "host", "status_class"], ["requests", "bytes"]],
@@ -44,17 +26,77 @@ const TABLES = {
 	ips: ["traffic_ip_hour", ["bucket", "host", "ip"], ["requests"]],
 };
 
+const CHUNK_BUCKETS = 500;
+const CHUNK_INSERT = 200;
+
+const chunks = (list, size) => {
+	const out = [];
+	for (let i = 0; i < list.length; i += size) {
+		out.push(list.slice(i, i + size));
+	}
+	return out;
+};
+
+/**
+ * Adds the counters to the stored rows with the same unique key and inserts the rest.
+ * One select per bucket chunk, chunked inserts for new rows, one update per existing row
+ * (`col = col + ?`). Portable across SQLite, MySQL and Postgres; the caller runs it in a transaction.
+ */
 const addRows = async (trx, kind, rows = []) => {
 	const [table, keys, adds] = TABLES[kind];
+	const keyOf = (row) => keys.map((c) => String(row[c])).join("|");
+
+	// merge duplicate keys inside the batch first
+	const merged = new Map();
 	for (const row of rows) {
-		await upsert(trx, table, keys, row, adds);
+		const hit = merged.get(keyOf(row));
+		if (hit) {
+			for (const c of adds) {
+				hit[c] += row[c];
+			}
+		} else {
+			merged.set(keyOf(row), { ...row });
+		}
+	}
+	if (merged.size === 0) {
+		return;
+	}
+
+	const existing = new Map();
+	const buckets = [...new Set([...merged.values()].map((r) => r.bucket))];
+	for (const part of chunks(buckets, CHUNK_BUCKETS)) {
+		for (const found of await trx(table)
+			.whereIn("bucket", part)
+			.select("id", ...keys)) {
+			existing.set(keyOf(found), found.id);
+		}
+	}
+
+	const fresh = [];
+	for (const [key, row] of merged) {
+		const id = existing.get(key);
+		if (id === undefined) {
+			fresh.push(row);
+			continue;
+		}
+		const patch = {};
+		for (const c of adds) {
+			patch[c] = trx.raw("?? + ?", [c, row[c]]);
+		}
+		await trx(table).where({ id }).update(patch);
+	}
+	for (const part of chunks(fresh, CHUNK_INSERT)) {
+		await trx(table).insert(part);
 	}
 };
 
 const top = (rows, limit) => rows.slice(0, limit);
 
 /**
- * @param   {Object}  knex  knex instance (the one the Objection models use)
+ * Single-writer assumption: flush and rollUpAndPrune must run through one queue (never concurrently),
+ * because the select-then-write upserts would race on the unique indexes. The traffic service serialises them.
+ *
+ * @param   {Object}  knex  knex instance
  * @returns {Object}  store functions
  */
 export const createStore = (knex) => {
@@ -105,6 +147,8 @@ export const createStore = (knex) => {
 		return [...out.values()].sort((a, b) => b.requests - a.requests);
 	};
 
+	// Top lists read whole hour rows from the range's first hour on, so for 1h and 24h they can include up to
+	// one extra partial hour compared with the totals, which count exact minutes.
 	const hourTop = async (table, startHour, host, columns) => {
 		const query = knex(table)
 			.where("bucket", ">=", startHour)
@@ -140,6 +184,7 @@ export const createStore = (knex) => {
 
 		const countryRows = await hourTop("traffic_country_hour", startHour, host, ["country"]);
 		const asnRows = await hourTop("traffic_asn_hour", startHour, host, ["asn"]);
+		// asn_name: an upsert keeps the first name seen for a row; across hours max() picks one name per asn
 		const asnNames = await hostFilter(
 			knex("traffic_asn_hour")
 				.where("bucket", ">=", startHour)

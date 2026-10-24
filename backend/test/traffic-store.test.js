@@ -72,3 +72,86 @@ it("summary reports today and deleteIps clears the ip table", async () => {
 	assert.equal((await knex("traffic_ip_hour")).length, 0);
 	await knex.destroy();
 });
+
+const HOUR_NOW = Math.floor(NOW / 3600000);
+
+it("flushes 1500 ip rows twice in batches and sums them", async () => {
+	const { knex, store } = await setup();
+	const ips = Array.from({ length: 1500 }, (_, i) => ({
+		bucket: HOUR_NOW,
+		host: "a",
+		ip: `10.0.${Math.floor(i / 250)}.${i % 250}`,
+		requests: 2,
+	}));
+	await store.flush({ ips });
+	await store.flush({ ips: ips.map((r) => ({ ...r })) });
+	const rows = await knex("traffic_ip_hour");
+	assert.equal(rows.length, 1500);
+	assert.ok(rows.every((r) => Number(r.requests) === 4));
+	await knex.destroy();
+});
+
+it("prune empties all four hour tables past the retention", async () => {
+	const { knex, store } = await setup();
+	const bucket = HOUR_NOW - 40 * 24;
+	await store.flush({
+		countries: [{ bucket, host: "a", country: "DE", requests: 1 }],
+		asns: [{ bucket, host: "a", asn: 1, asn_name: "x", requests: 1 }],
+		ips: [{ bucket, host: "a", ip: "1.1.1.1", requests: 1 }],
+	});
+	await knex("traffic_hour").insert({ bucket, host: "a", status_class: "2xx", requests: 1, bytes: 1 });
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	for (const t of ["traffic_hour", "traffic_country_hour", "traffic_asn_hour", "traffic_ip_hour"]) {
+		assert.equal((await knex(t)).length, 0, t);
+	}
+	await knex.destroy();
+});
+
+it("counts a stored hour row and unrolled minutes of another hour once, and folds a roll-up into an existing hour", async () => {
+	const { knex, store } = await setup();
+	const oldMinute = MIN - 25 * 60;
+	const oldHour = Math.floor(oldMinute / 60);
+	await knex("traffic_hour").insert({ bucket: oldHour, host: "a", status_class: "2xx", requests: 5, bytes: 50 });
+	await store.flush({ minutes: [m(oldMinute, "2xx", 2, 20), m(MIN, "2xx", 1, 10)] });
+	// unrolled old minutes plus the stored hour row: both count
+	assert.equal((await store.queryTraffic({ range: "7d", now: NOW })).totals.requests, 8);
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	const hours = await knex("traffic_hour");
+	assert.equal(hours.length, 1);
+	assert.equal(Number(hours[0].requests), 7);
+	assert.equal(Number(hours[0].bytes), 70);
+	assert.equal((await store.queryTraffic({ range: "7d", now: NOW })).totals.requests, 8);
+	await knex.destroy();
+});
+
+it("filters by host and hides ips unless showIps", async () => {
+	const { knex, store } = await setup();
+	await store.flush({
+		minutes: [m(MIN, "2xx", 2, 10, "a"), m(MIN, "2xx", 5, 10, "b")],
+		ips: [{ bucket: HOUR_NOW, host: "a", ip: "1.1.1.1", requests: 2 }],
+	});
+	const a = await store.queryTraffic({ range: "24h", host: "a", showIps: false, now: NOW });
+	assert.equal(a.totals.requests, 2);
+	assert.deepEqual(
+		a.top_hosts.map((h) => h.host),
+		["a"],
+	);
+	assert.deepEqual(a.top_ips, []);
+	assert.equal((await store.queryTraffic({ range: "24h", now: NOW })).totals.requests, 7);
+	await knex.destroy();
+});
+
+it("summary counts only the UTC day so far across midnight", async () => {
+	const { knex, store } = await setup();
+	const now = Date.UTC(2026, 9, 25, 0, 30, 0);
+	const minute = Math.floor(now / 60000);
+	await store.flush({ minutes: [m(minute - 60, "2xx", 4), m(minute, "5xx", 1)] });
+	const s = await store.summary({ now });
+	assert.equal(s.requests_today, 1);
+	assert.equal(s.error_rate_today, 1);
+	assert.equal(
+		s.series_24h.reduce((n, p) => n + p.requests, 0),
+		5,
+	);
+	await knex.destroy();
+});

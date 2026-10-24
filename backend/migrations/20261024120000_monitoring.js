@@ -73,7 +73,7 @@ const up = async (knex) => {
 		"traffic_asn_hour",
 		"tah",
 		(table) => {
-			table.integer("asn").notNull();
+			table.bigInteger("asn").notNull();
 			table.string("asn_name", 255).notNull().defaultTo("");
 			counts(table);
 		},
