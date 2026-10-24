@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
 import { renderCertbotIni } from "../lib/certbot-ini.js";
-import { createRuntimeApplier, testAndReload, withFiles } from "../lib/runtime-apply.js";
+import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
 
@@ -60,6 +60,7 @@ const applier = (paths, overrides = {}) => {
 	const nginx = overrides.nginx ?? nginxFake();
 	const log = quietLog();
 	const fetched = [];
+	const verifies = [];
 	const instance = createRuntimeApplier({
 		nginx,
 		paths,
@@ -67,13 +68,14 @@ const applier = (paths, overrides = {}) => {
 		timers: { restartRenewal: (hours) => restarts.push(hours) },
 		env: () => BOOT_ENV,
 		effectiveEnv: (o) => ({ overrides: o }),
-		fetchDirectory: (server) => {
+		fetchDirectory: (server, options) => {
 			fetched.push(server);
+			verifies.push(options?.verify);
 			return Promise.resolve({ directory: true, profiles: { classic: {}, shortlived: {} } });
 		},
 		...overrides,
 	});
-	return { ...instance, restarts, nginx, log, fetched };
+	return { ...instance, restarts, nginx, log, fetched, verifies };
 };
 
 // withFiles
@@ -347,7 +349,9 @@ it("startup applyAll uses env values for env-set keys over stored ones and does 
 it("startup applyAll applies stored values for keys the env did not set", async () => {
 	const { paths } = await setup();
 	const env = { ...BOOT_ENV, ACME_KEY_TYPE: "ecdsa", ACME_KEY_SIZE: "secp384r1", NPMPRO_USER_ENV: "" };
-	const stored = { certificates: { key_size: "secp256r1", profile: "classic", renewal_interval: 20 } };
+	const stored = {
+		certificates: { key_size: "secp256r1", profile: "classic", profile_server: LE, renewal_interval: 20 },
+	};
 	const config = createRuntimeConfig({ env, readStored: async (group) => stored[group] ?? {}, log: quietLog() });
 	const a = applier(paths, { getConfig: config.getRuntimeConfig });
 	await a.applyAll();
@@ -380,4 +384,55 @@ it("startup tests nginx only when an nginx file changed, and a failing group doe
 	assert.deepEqual(nginx.calls, ["test"]);
 	await assert.rejects(readFile(host, "utf8"), { code: "ENOENT" });
 	assert.equal(a.log.lines.filter((line) => line.includes("at startup")).length, 2);
+});
+
+it("checks the profile with the server TLS verification of the new values", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = certValues();
+	await a.applyGroup("certificates", { ...prev, profile: "classic", server_tls_verify: false }, prev);
+	await a.applyGroup("certificates", { ...prev, profile: "classic" }, { ...prev, profile: "shortlived" });
+	assert.deepEqual(a.verifies, [false, true]);
+});
+
+it("startup apply with the default paths writes the live certbot config and nothing under /etc", async () => {
+	const touched = [];
+	const record =
+		(name) =>
+		(file, ...rest) => {
+			touched.push(String(file));
+			if (name === "rename") touched.push(String(rest[0]));
+			return Promise.resolve();
+		};
+	const missing = () => Promise.reject(Object.assign(new Error("missing"), { code: "ENOENT" }));
+	const fakeFs = {
+		readFile: missing,
+		readdir: missing,
+		stat: missing,
+		writeFile: record("writeFile"),
+		rename: record("rename"),
+		chmod: record("chmod"),
+		rm: record("rm"),
+	};
+	const env = {
+		...BOOT_ENV,
+		ACME_KEY_TYPE: "rsa",
+		ACME_KEY_SIZE: "2048",
+		NPMPRO_USER_ENV: "ACME_KEY_TYPE ACME_KEY_SIZE",
+	};
+	const config = createRuntimeConfig({ env, readStored: () => Promise.resolve({}), log: quietLog() });
+	const a = createRuntimeApplier({
+		fs: fakeFs,
+		nginx: nginxFake(),
+		log: quietLog(),
+		getConfig: config.getRuntimeConfig,
+		timers: { restartRenewal: () => {} },
+	});
+	assert.deepEqual(await a.applyAll(), {});
+	assert.ok(touched.includes(PATHS.certbotIni));
+	assert.equal(PATHS.certbotIni, "/run/npmpro/certbot.ini");
+	assert.deepEqual(
+		touched.filter((file) => file.startsWith("/etc")),
+		[],
+	);
 });

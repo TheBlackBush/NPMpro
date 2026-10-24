@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CERTBOT_INI_BASE, cleanRenewalProfiles, renderCertbotIni, renewalProfileEdits } from "../lib/certbot-ini.js";
+import { CERTBOT_INI, CERTBOT_INI_BASE, renderCertbotIni, renewalProfileEdits } from "../lib/certbot-ini.js";
 import { mergeRuntimeConfig } from "../lib/runtime-rules.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -118,7 +118,7 @@ it("renders from an already rendered file the same way", () => {
 	assert.equal(renderCertbotIni(values({ profile: "x" }), once).includes("required-profile = x\n"), true);
 });
 
-// start.sh lines 3-23, run with sh against a copy of the image's certbot.ini
+// start.sh's certbot block (copy to /run/npmpro and seds), run with sh in a temp folder
 const startShCertbot = async () => {
 	const lines = (await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8")).split("\n");
 	const cleanup = lines.findIndex((line) => line.includes("required_profile/d"));
@@ -145,10 +145,12 @@ it("renders what start.sh writes for the same env", async () => {
 		};
 		const dir = await mkdtemp(path.join(tmpdir(), "certbot-ini-"));
 		const ini = path.join(dir, "certbot.ini");
-		await writeFile(ini, CERTBOT_INI_BASE);
+		const image = path.join(dir, "image-certbot.ini");
+		await writeFile(image, CERTBOT_INI_BASE);
 		await mkdir(path.join(dir, "renewal"));
 		const local = script
-			.replaceAll("/etc/certbot.ini", ini)
+			.replaceAll("/etc/certbot.ini", image)
+			.replaceAll("/run/npmpro", dir)
 			.replaceAll("/data/tls/certbot/renewal", `${dir}/renewal`);
 		execFileSync("sh", ["-c", local], { env: { PATH: process.env.PATH, ...env } });
 		const { values: merged } = mergeRuntimeConfig("certificates", {}, env);
@@ -168,8 +170,20 @@ it("removes required_profile lines from renewal confs", async () => {
 	assert.deepEqual(edits, [
 		{ path: path.join(dir, "a.conf"), content: "version = 5\n[renewalparams]\nkey_type = ecdsa\n" },
 	]);
-	assert.deepEqual(await cleanRenewalProfiles(dir), [path.join(dir, "a.conf")]);
-	assert.equal(await readFile(path.join(dir, "a.conf"), "utf8"), "version = 5\n[renewalparams]\nkey_type = ecdsa\n");
 	assert.equal(await readFile(path.join(dir, "c.txt"), "utf8"), "required_profile = x\n");
 	assert.deepEqual(await renewalProfileEdits(path.join(dir, "missing")), []);
+});
+
+it("points every certbot call at the live config, not the root-owned /etc copy", async () => {
+	assert.equal(CERTBOT_INI, "/run/npmpro/certbot.ini");
+	const startSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8");
+	assert.deepEqual(
+		startSh.split("\n").filter((line) => line.includes("/etc/certbot.ini")),
+		["cp /etc/certbot.ini /run/npmpro/certbot.ini"],
+	);
+	const launchSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/launch.sh"), "utf8");
+	assert.equal(launchSh.includes("/etc/certbot.ini"), false);
+	assert.equal(launchSh.includes("--config /run/npmpro/certbot.ini"), true);
+	const certificate = await readFile(path.join(ROOT, "backend/internal/certificate.js"), "utf8");
+	assert.equal(certificate.includes("/etc/certbot.ini"), false);
 });

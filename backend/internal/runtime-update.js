@@ -1,5 +1,5 @@
 import errs from "../lib/error.js";
-import { appliesOf, isRuntimeGroup, mergeRuntimeConfig, rulesOf } from "../lib/runtime-rules.js";
+import { acmeServerOf, appliesOf, isRuntimeGroup, mergeRuntimeConfig, rulesOf } from "../lib/runtime-rules.js";
 import { createSerializer, pickEditable } from "./monitoring-update.js";
 
 /**
@@ -69,6 +69,11 @@ const createRuntimeUpdater = ({
 			if (rule.key in meta && !(rule.key in changes) && rule.validate(meta[rule.key], target) !== null) {
 				delete meta[rule.key];
 			}
+		}
+		// internal: the ACME server a non-empty profile was checked against (the merge ignores it for another server)
+		if (group === "certificates" && "profile" in changes) {
+			if (changes.profile) meta.profile_server = acmeServerOf(envOf());
+			else delete meta.profile_server;
 		}
 		const next = mergeRuntimeConfig(group, meta, envOf(), opts);
 

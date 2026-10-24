@@ -27,11 +27,12 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 			const id = `${group}.${key}.${source}`;
 			if (warned.has(id)) continue;
 			warned.add(id);
-			log.warn(
-				source === "env"
-					? `Runtime setting ${group}.${key}: the env value cannot be used, the stored value or the default applies`
-					: `Runtime setting ${group}.${key}: the stored value is invalid, the default applies`,
-			);
+			const messages = {
+				env: "the env value cannot be used, the stored value or the default applies",
+				server: "the stored value was checked against another ACME server, the default applies",
+				stored: "the stored value is invalid, the default applies",
+			};
+			log.warn(`Runtime setting ${group}.${key}: ${messages[source]}`);
 		}
 	};
 

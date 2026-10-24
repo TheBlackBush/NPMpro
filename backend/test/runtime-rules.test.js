@@ -13,6 +13,7 @@ import {
 } from "../lib/runtime-rules.js";
 
 const NOPE = /"nope"/u;
+const STALE_PROFILE = /certificates\.profile: the stored value was checked against another ACME server/u;
 const RUNTIME_ENVS_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
 const sorted = (list) => [...list].sort((a, b) => a.localeCompare(b));
 const rule = (key) => RUNTIME_RULES.find((entry) => entry.key === key);
@@ -432,4 +433,40 @@ it("does not cache a read that a save overtook", async () => {
 	assert.equal((await pending).values.log_rotations, 4);
 	assert.equal((await config.getRuntimeConfig("logs")).values.log_rotations, 8);
 	assert.equal(config.effectiveEnv().LOGROTATIONS, "8");
+});
+
+it("ignores a stored profile checked against another ACME server (Let's Encrypt to ZeroSSL)", () => {
+	const le = "https://acme-v02.api.letsencrypt.org/directory";
+	const zerossl = "https://acme.zerossl.com/v2/DV90";
+	const stored = { profile: "classic", profile_server: le };
+	const onLe = mergeRuntimeConfig("certificates", stored, BOOT_ENV, noImages);
+	assert.equal(onLe.values.profile, "classic");
+	assert.deepEqual(onLe.invalid, []);
+	assert.equal("profile_server" in onLe.values, false);
+
+	const onZerossl = mergeRuntimeConfig("certificates", stored, { ...BOOT_ENV, ACME_SERVER: zerossl }, noImages);
+	assert.equal(onZerossl.values.profile, "");
+	assert.deepEqual(onZerossl.invalid, [{ key: "profile", source: "server" }]);
+
+	const unchecked = mergeRuntimeConfig("certificates", { profile: "classic" }, BOOT_ENV, noImages);
+	assert.equal(unchecked.values.profile, "shortlived");
+	const none = mergeRuntimeConfig("certificates", { profile: "" }, { ...BOOT_ENV, ACME_SERVER: zerossl }, noImages);
+	assert.equal(none.values.profile, "");
+	assert.deepEqual(none.invalid, []);
+});
+
+it("logs a stale stored profile once through the accessor", async () => {
+	const warnings = [];
+	const config = createRuntimeConfig({
+		env: { ...BOOT_ENV, ACME_SERVER: "https://acme.zerossl.com/v2/DV90" },
+		readStored: () =>
+			Promise.resolve({ profile: "classic", profile_server: "https://acme-v02.api.letsencrypt.org/directory" }),
+		log: { warn: (line) => warnings.push(line) },
+		opts: noImages,
+	});
+	await config.getRuntimeConfig("certificates");
+	config.invalidate();
+	await config.getRuntimeConfig("certificates");
+	assert.equal(warnings.length, 1);
+	assert.match(warnings[0], STALE_PROFILE);
 });

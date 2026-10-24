@@ -208,3 +208,41 @@ it("drops must_staple when OCSP stapling is switched off by env", async () => {
 	assert.equal(out.values.must_staple, false);
 	assert.ok(out.locked.includes("must_staple"));
 });
+
+it("stores the ACME server a profile was checked against, never in the view", async () => {
+	const store = fakeStore();
+	const update = updater(store);
+	const result = await update("certificates", { profile: "classic" });
+	assert.deepEqual(store.rows.certificates, { profile: "classic", profile_server: BOOT_ENV.ACME_SERVER });
+	assert.equal("profile_server" in runtimeView("certificates", result), false);
+	await update("certificates", { profile: "" });
+	assert.deepEqual(store.rows.certificates, { profile: "" });
+});
+
+it("passes the merged previous values (env-locked keys included) to apply inside the queue", async () => {
+	const store = fakeStore({ certificates: { renewal_interval: 5 } });
+	const env = { ...BOOT_ENV, ACME_KEY_SIZE: "secp521r1", NPMPRO_USER_ENV: "ACME_KEY_SIZE" };
+	const seen = [];
+	let running = 0;
+	const update = updater(store, {
+		env,
+		apply: async (_group, next, prev) => {
+			running += 1;
+			seen.push({ next, prev, overlap: running > 1 });
+			await sleep(10);
+			running -= 1;
+		},
+	});
+	await Promise.all([
+		update("certificates", { renewal_interval: 6 }),
+		update("certificates", { renewal_interval: 7 }),
+	]);
+	assert.deepEqual(seen[0].prev, mergeRuntimeConfig("certificates", { renewal_interval: 5 }, env, noImages).values);
+	assert.equal(seen[0].prev.key_size, "secp521r1");
+	assert.equal(seen[0].prev.key_type, "ecdsa");
+	assert.equal(seen[1].prev.renewal_interval, 6);
+	assert.deepEqual(
+		seen.map((entry) => entry.overlap),
+		[false, false],
+	);
+});

@@ -8,9 +8,11 @@ import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { installPlugin } from "../lib/certbot.js";
+import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
+import { createRenewalTimer } from "../lib/renewal-timer.js";
 import utils from "../lib/utils.js";
 import apiValidator from "../lib/validator/api.js";
 import { ssl as logger } from "../logger.js";
@@ -39,42 +41,27 @@ const getNiceName = (domainNames) => {
 	return [...shown, "..."].join(", ");
 };
 
-const hoursToMs = (hours) => 1000 * 60 * 60 * hours;
 // the startup apply sets the runtime setting (restartTimer) before initTimer runs; env (envs.sh default 3) until then
-const envRenewalHours = () => {
-	const hours = Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10);
-	return Number.isInteger(hours) && hours > 0 ? hours : 3;
-};
+const renewalTimer = createRenewalTimer({
+	run: () => internalCertificate.processExpiringHosts(),
+	hours: Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
+	log: logger,
+});
 
 const internalCertificate = {
 	allowedSslFiles: ["certificate", "certificate_key"],
-	intervalTimeout: hoursToMs(envRenewalHours()),
-	interval: null,
 	intervalProcessing: false,
 
 	/**
 	 * Sets the renewal interval and restarts a running timer with it (a timer not started yet uses it in initTimer)
 	 *
-	 * @param {number} [hours]  keeps the current interval when omitted
+	 * @param {number} [hours]  an invalid value keeps the current interval
 	 */
-	restartTimer: (hours) => {
-		if (Number.isInteger(hours) && hours > 0) internalCertificate.intervalTimeout = hoursToMs(hours);
-		if (!internalCertificate.interval) return;
-		clearInterval(internalCertificate.interval);
-		internalCertificate.interval = setInterval(
-			internalCertificate.processExpiringHosts,
-			internalCertificate.intervalTimeout,
-		);
-		logger.info(`Certbot Renewal Timer restarted (every ${internalCertificate.intervalTimeout / 3_600_000} hours)`);
-	},
+	restartTimer: (hours) => renewalTimer.restart(hours),
 
 	initTimer: () => {
-		if (internalCertificate.interval) return;
-		logger.info("Certbot Renewal Timer initialized");
-		internalCertificate.interval = setInterval(
-			internalCertificate.processExpiringHosts,
-			internalCertificate.intervalTimeout,
-		);
+		if (!renewalTimer.start()) return;
+		logger.info(`Certbot Renewal Timer initialized (every ${renewalTimer.hours()} hours)`);
 		// And do this now as well
 		void internalCertificate.processExpiringHosts();
 	},
@@ -94,7 +81,7 @@ const internalCertificate = {
 			try {
 				const result = await utils.execFile("certbot", [
 					"--config",
-					"/etc/certbot.ini",
+					CERTBOT_INI,
 					"renew",
 					"--server",
 					process.env.ACME_SERVER,
@@ -669,7 +656,7 @@ const internalCertificate = {
 
 		const result = await utils.execFile("certbot", [
 			"--config",
-			"/etc/certbot.ini",
+			CERTBOT_INI,
 			"certonly",
 			"--server",
 			process.env.ACME_SERVER,
@@ -706,7 +693,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"certonly",
 				"--server",
 				process.env.ACME_SERVER,
@@ -823,7 +810,7 @@ const internalCertificate = {
 
 		const renewResult = await utils.execFile("certbot", [
 			"--config",
-			"/etc/certbot.ini",
+			CERTBOT_INI,
 			"renew",
 			"--server",
 			process.env.ACME_SERVER,
@@ -837,7 +824,7 @@ const internalCertificate = {
 		try {
 			const revokeResult = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"revoke",
 				"--server",
 				oldServer,
@@ -867,7 +854,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"revoke",
 				"--cert-name",
 				`npm-${certificate.id}`,
@@ -883,7 +870,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"delete",
 				"--cert-name",
 				`npm-${certificate.id}`,

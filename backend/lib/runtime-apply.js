@@ -1,14 +1,15 @@
 import nodeFs from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { Agent, fetch as undiciFetch } from "undici";
 import { global as logger } from "../logger.js";
-import { RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
+import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from "./certbot-ini.js";
 import errs from "./error.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
-import { appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
+import { acmeServerOf, appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
 
 const PATHS = {
-	certbotIni: "/etc/certbot.ini",
+	certbotIni: CERTBOT_INI,
 	renewalDir: RENEWAL_DIR,
 	crontabDir: "/tmp/crontabs",
 };
@@ -123,17 +124,20 @@ const testAndReload = async (nginx, { reload = true } = {}) => {
 	}
 };
 
+let insecureAgent;
+
 /**
  * meta.profiles (and whether it is an ACME directory) of the ACME server directory, 10 s timeout
  *
- * @param   {string}  server  the directory URL
+ * @param   {string}   server            the directory URL
+ * @param   {Object}   [options]
+ * @param   {boolean}  [options.verify]  false: the server's TLS certificate is not verified (server_tls_verify)
  * @returns {Promise<{directory: boolean, profiles: Object}>}
  */
-const fetchAcmeDirectory = async (server) => {
-	const res = await fetch(server, {
-		headers: { accept: "application/json" },
-		signal: AbortSignal.timeout(PROFILE_TIMEOUT),
-	});
+const fetchAcmeDirectory = async (server, { verify = true } = {}) => {
+	const init = { headers: { accept: "application/json" }, signal: AbortSignal.timeout(PROFILE_TIMEOUT) };
+	if (!verify) insecureAgent ??= new Agent({ connect: { rejectUnauthorized: false } });
+	const res = verify ? await fetch(server, init) : await undiciFetch(server, { ...init, dispatcher: insecureAgent });
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);
 	const body = await res.json();
 	const profiles = body?.meta?.profiles;
@@ -183,12 +187,13 @@ const createRuntimeApplier = ({
 		log.warn(message);
 	};
 
-	const checkProfile = async (profile) => {
+	const checkProfile = async (profile, verify) => {
+		const server = acmeServerOf(env());
 		let result;
 		try {
-			result = await fetchDirectory(env().ACME_SERVER);
+			result = await fetchDirectory(server, { verify });
 		} catch (err) {
-			log.warn(`Could not read the ACME server directory ${env().ACME_SERVER}: ${err.message}`);
+			log.warn(`Could not read the ACME server directory ${server}: ${err.message}`);
 			throw new errs.ValidationError("Could not check the ACME server profiles", undefined, { cause: err });
 		}
 		if (Object.hasOwn(result.profiles, profile)) return;
@@ -237,8 +242,8 @@ const createRuntimeApplier = ({
 				plan.files.push({ path: paths.certbotIni, content: renderCertbotIni(next) });
 			}
 			if (changed.includes("profile")) {
-				if (next.profile && !startup) plan.check = () => checkProfile(next.profile);
-				// stale profile lines would win over certbot.ini at renewal; at startup only for "none", like start.sh
+				if (next.profile && !startup) plan.check = () => checkProfile(next.profile, next.server_tls_verify);
+				// renewal conf profile lines go on any profile change on save, at startup only for an empty profile
 				if (!next.profile || !startup) plan.files.push(...(await renewalProfileEdits(paths.renewalDir, fs)));
 			}
 			if (changed.includes("ech_rotation_interval")) {
@@ -292,6 +297,7 @@ const createRuntimeApplier = ({
 			},
 			{ fs, log },
 		);
+		// after steps (timers) run before the settings are stored and are not rolled back when the store fails
 		for (const step of plan.after ?? []) await step();
 		return { changed, reloaded };
 	};

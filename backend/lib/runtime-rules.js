@@ -319,8 +319,9 @@ const defaultOf = (rule, env, values, opts) =>
  * @param   {Object}  env               process.env or a test object
  * @param   {Object}  [opts]
  * @param   {Function} [opts.fileExists] (path) => boolean, for the Anubis images default
- * @returns {{values: Object, locked: string[], invalid: {key: string, source: "env"|"stored"}[]}}
- *          invalid lists the values that could not be used (the caller logs them once)
+ * @returns {{values: Object, locked: string[], invalid: {key: string, source: "env"|"stored"|"server"}[]}}
+ *          invalid lists the values that could not be used (the caller logs them once); "server": a stored profile
+ *          whose profile_server (the ACME server it was checked against) is not the current ACME_SERVER
  */
 const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	const userSet = userSetEnvNames(env);
@@ -340,6 +341,12 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 			invalid.push({ key: rule.key, source: "env" });
 		}
 		const own = meta[rule.key];
+		if (group === "certificates" && rule.key === "profile" && own && meta.profile_server !== serverOf(env)) {
+			// checked against another ACME server (ACME_SERVER changed since the save): it may not be offered there
+			invalid.push({ key: rule.key, source: "server" });
+			values[rule.key] = defaultOf(rule, env, values, opts);
+			continue;
+		}
 		if (own !== undefined && own !== null) {
 			if (rule.validate(own, values) === null) {
 				values[rule.key] = own;
@@ -401,12 +408,19 @@ const buildEffectiveEnv = (env, configs) => {
 };
 
 /**
+ * @param   {Object}  env
+ * @returns {string}  the ACME directory URL (ACME_SERVER, Let's Encrypt when unset)
+ */
+const acmeServerOf = (env) => serverOf(env);
+
+/**
  * @param   {string}  group
  * @returns {Object}  { key: applies } for the group
  */
 const appliesOf = (group) => Object.fromEntries(rulesOf(group).map((rule) => [rule.key, rule.applies]));
 
 export {
+	acmeServerOf,
 	appliesOf,
 	buildEffectiveEnv,
 	isRuntimeGroup,

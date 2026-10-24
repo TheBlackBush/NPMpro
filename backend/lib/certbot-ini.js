@@ -1,8 +1,11 @@
 import nodeFs from "node:fs/promises";
 import path from "node:path";
 
-// The image's /etc/certbot.ini (rootfs/etc/certbot.ini, kept equal by a test). start.sh edits the file in place at
-// boot, so the file on disk is no base to render from.
+// The live certbot config: start.sh copies the image's /etc/certbot.ini here at boot and edits it from env, the
+// backend writes it again from the runtime settings (/etc is not writable for PUID)
+const CERTBOT_INI = "/run/npmpro/certbot.ini";
+
+// The image's /etc/certbot.ini (rootfs/etc/certbot.ini, kept equal by a test)
 const CERTBOT_INI_BASE = `logs-dir = /tmp/certbot-log
 work-dir = /tmp/certbot-work
 config-dir = /data/tls/certbot
@@ -27,7 +30,7 @@ const PROFILE_LINE = /^#?required-profile(?:\s*=.*)?$/u;
 const RENEWAL_PROFILE_LINE = /required_profile/u;
 
 /**
- * /etc/certbot.ini for the certificate request settings, the same lines start.sh writes for the same env
+ * The certbot config (CERTBOT_INI) for the certificate request settings, the same lines start.sh writes for the same env
  *
  * @param   {Object}  values  key_type, key_size, must_staple, server_tls_verify, profile ("" = none)
  * @param   {string}  [base]  the image's certbot.ini
@@ -87,17 +90,4 @@ const renewalProfileEdits = async (dir = RENEWAL_DIR, fs = nodeFs) => {
 	return edits;
 };
 
-/**
- * Removes the required_profile lines from the renewal confs
- *
- * @param   {string}  [dir]
- * @param   {Object}  [fs]
- * @returns {Promise<string[]>}  the changed files
- */
-const cleanRenewalProfiles = async (dir = RENEWAL_DIR, fs = nodeFs) => {
-	const edits = await renewalProfileEdits(dir, fs);
-	for (const edit of edits) await fs.writeFile(edit.path, edit.content);
-	return edits.map((edit) => edit.path);
-};
-
-export { CERTBOT_INI_BASE, cleanRenewalProfiles, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits };
+export { CERTBOT_INI, CERTBOT_INI_BASE, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits };
