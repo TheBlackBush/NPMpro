@@ -72,6 +72,10 @@ Also check that the callback URL shown in Settings, Authentication is registered
 
 If password sign-in is turned off and OIDC does not work, set `OIDC_DISABLE_PASSWORD=false` and recreate the container.
 
+## Signed out after every restart
+
+The session cookie is signed with `COOKIE_SECRET`. Without it, NPMpro creates a new random secret at every start, so every restart, recreate and upgrade signs all users out. Set `COOKIE_SECRET` to a long random string in `compose.yaml` and recreate the container.
+
 ## Password or MFA reset
 
 ```bash
@@ -88,14 +92,14 @@ With SQLite, NPMpro copies the database to `/data/npmpro/backups` before it runs
 2. Replace `/data/npmpro/database.sqlite` with the backup and remove `database.sqlite-wal` and `database.sqlite-shm` next to it.
 3. Start the previous image.
 
-For your own backups, stop the container and copy the whole data folder. It includes `/data/npmpro/dns-credentials.key`, which saved DNS credentials need.
+For your own backups, stop the container and copy the whole data folder. It includes `/data/npmpro/dns-credentials.key`, which encrypts the saved DNS credentials, the OIDC client secret, the MaxMind license key and the unique visitor key. Without it the credentials, the client secret and the license key have to be entered again.
 
 ## NPMplus migration checks fail
 
 When NPMpro takes over an NPMplus volume, it checks the copy of `/data/npmplus` before it uses it. If a check fails, the container waits and the log says why; `/data/npmplus` stays unchanged.
 
 - If both `/data/npmplus` and `/data/npmpro` exist and `/data/npmplus/database.sqlite` is newer, NPMpro does not choose: move the folder you do not want out of `/data` and start again.
-- Make sure the disk has room for a second copy of the data folder.
+- The move needs free space of the size of `/data/npmplus` plus 10%; otherwise it stops with "not enough free space".
 
 See [Upgrading from NPMplus](Upgrading-from-NPMplus).
 

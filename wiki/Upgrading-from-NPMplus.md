@@ -18,8 +18,8 @@ NPMpro can take over an existing NPMplus data volume. Paths like `/data/...` are
 
 ## After the upgrade
 
-- The host path of the volume does not matter to NPMpro. You can keep `/opt/npmplus` or rename it to `/opt/npmpro` while the container is stopped.
-- Users stay logged in. An OIDC login that is in progress during the upgrade has to be started again.
+- The host path of the volume does not matter to NPMpro. You can keep `/opt/npmplus`, or rename it to `/opt/npmpro` while the container is stopped and change the volume line in `compose.yaml` to match (`/opt/npmpro:/data`).
+- Users stay signed in only if you already set a static `COOKIE_SECRET` for NPMplus and keep it; otherwise everyone signs in again, and without one after every restart too (set one now to avoid that). An OIDC login that is in progress during the upgrade has to be started again.
 - Many variables are now settings in the web UI. Your variables keep working and lock their fields; remove them from `compose.yaml` when you prefer to manage the setting in the UI.
 - Once everything works, you can delete `/data/npmplus.backup-<date>`.
 
