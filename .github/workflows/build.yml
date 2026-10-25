@@ -34,8 +34,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ github.token }}
       - name: version
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          v="${{ inputs.version }}-$(git rev-parse --short HEAD)"
+          v="$VERSION-$(git rev-parse --short HEAD)"
           for pkg in frontend/package.json backend/package.json; do
             jq --arg v "$v" '.version = $v' "$pkg" > "$pkg.tmp" && mv "$pkg.tmp" "$pkg"
           done
@@ -70,8 +72,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ github.token }}
       - name: version
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          v="${{ inputs.version }}-$(git rev-parse --short HEAD)"
+          v="$VERSION-$(git rev-parse --short HEAD)"
           for pkg in frontend/package.json backend/package.json; do
             jq --arg v "$v" '.version = $v' "$pkg" > "$pkg.tmp" && mv "$pkg.tmp" "$pkg"
           done

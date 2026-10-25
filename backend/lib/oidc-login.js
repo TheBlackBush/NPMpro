@@ -75,6 +75,19 @@ const hasFlowCookies = (signedCookies) =>
  */
 const logValue = (value) => JSON.stringify(String(value));
 
+/**
+ * An OIDC error for the log: the message plus its cause (openid-client puts the provider's answer or the network
+ * error there), each quoted like logValue.
+ *
+ * @param   {Error} err
+ * @returns {String}
+ */
+const logError = (err) => {
+	const cause =
+		err?.cause?.message ?? err?.cause?.status ?? (err?.cause === undefined ? undefined : JSON.stringify(err.cause));
+	return cause === undefined ? logValue(err?.message) : `${logValue(err?.message)} (cause: ${logValue(cause)})`;
+};
+
 const PERMISSION_VALUES = {
 	visibility: ["all", "user"],
 	proxy_hosts: ["hidden", "view", "manage"],
@@ -106,6 +119,7 @@ export {
 	claimsErrorCode,
 	FLOW_COOKIE_NAMES,
 	hasFlowCookies,
+	logError,
 	logValue,
 	newUserPermissions,
 	OIDC_ERROR_CODES,

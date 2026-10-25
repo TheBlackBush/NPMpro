@@ -17,6 +17,7 @@ import {
 	claimsErrorCode,
 	FLOW_COOKIE_NAMES,
 	hasFlowCookies,
+	logError,
 	logValue,
 	oidcErrorCode,
 	oidcErrorUrl,
@@ -123,7 +124,7 @@ router
 
 			res.redirect(buildAuthorizationUrl(config, parameters).toString());
 		} catch (err) {
-			logger.error(`Init error: ${logValue(err.message)}`);
+			logger.error(`Init error: ${logError(err)}`);
 			fail(res, "provider_error");
 		}
 	});
@@ -168,7 +169,7 @@ router
 			}
 			claims = await exchangeCode(req, cfg.values);
 		} catch (err) {
-			logger.error(`Callback error: ${logValue(err.message)}`);
+			logger.error(`Callback error: ${logError(err)}`);
 			return fail(res, "provider_error");
 		}
 
