@@ -58,7 +58,7 @@ for name in $NPMPRO_RUNTIME_ENVS $NPMPRO_STARTUP_ENVS; do
 done
 export NPMPRO_USER_ENV
 
-# TZ and GOA saved in the UI (Settings), for the ones the env does not set; after NPMPRO_USER_ENV, so they do not count
+# TZ, GOA and the GoAccess options saved in the UI (Settings), for the ones the env does not set; after NPMPRO_USER_ENV, so they do not count
 # as set by the user, and before their defaults and checks below. The file is parsed line by line, never sourced.
 # shellcheck source=/dev/null
 . /usr/local/bin/startup-settings.sh
@@ -70,6 +70,10 @@ if [ -z "$TZ" ]; then
 fi
 if [ -z "$GOA" ]; then
     GOA="$(startup_setting /data/npmpro/startup-settings.env GOA)"
+fi
+# the GoAccess options from the UI become fixed GOACLA flags; a GOACLA from the env wins (checked below like before)
+if [ -z "$GOACLA" ]; then
+    GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"
 fi
 
 

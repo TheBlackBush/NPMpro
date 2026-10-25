@@ -45,7 +45,10 @@ it("has the five groups, every rule in one of them, keys unique", () => {
 	assert.deepEqual(RUNTIME_GROUPS, ["certificates", "network", "forward-auth", "logs", "advanced"]);
 	for (const entry of RUNTIME_RULES) assert.ok(RUNTIME_GROUPS.includes(entry.group), entry.key);
 	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.key)).size, RUNTIME_RULES.length);
-	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.env)).size, RUNTIME_RULES.length);
+	// one env var per rule, except GOACLA, which sets all GoAccess options
+	const own = RUNTIME_RULES.filter((entry) => entry.env !== "GOACLA");
+	assert.equal(new Set(own.map((entry) => entry.env)).size, own.length);
+	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.fileName ?? entry.env)).size, RUNTIME_RULES.length);
 	for (const entry of RUNTIME_RULES) {
 		assert.ok(["next-certificate", "reload", "immediately", "restart"].includes(entry.applies), entry.key);
 	}
@@ -142,6 +145,11 @@ it("uses the defaults without stored values and with the envs.sh boot defaults",
 		write_log_files: false,
 		log_rotations: 3,
 		goaccess: false,
+		goaccess_keep_days: 30,
+		goaccess_anonymize: "1",
+		goaccess_drop_query_strings: true,
+		goaccess_real_os: true,
+		goaccess_resolve_hosts: true,
 	});
 	assert.deepEqual(mergeRuntimeConfig("advanced", {}, BOOT_ENV).values, {
 		config_beautifier: true,

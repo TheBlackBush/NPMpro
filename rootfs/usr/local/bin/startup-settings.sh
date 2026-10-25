@@ -3,6 +3,8 @@
 # UI (backend/lib/runtime-rules.js renderStartupSettings). The file is data: it is never sourced or evaluated, each
 # line is matched against a strict pattern and anything else is ignored.
 #   GOA=true or GOA=false
+#   goaccess_keep_days=1 to 366, goaccess_anonymize=off|1|2|3, goaccess_drop_query_strings, goaccess_real_os and
+#   goaccess_resolve_hosts =true|false (GoAccess options: envs.sh turns them into fixed GOACLA flags)
 #   TZ=<zone name>: like backend/lib/time-zones.js isTimeZone: letters, digits, _ + - and / between the parts, at most
 #   64 characters, not posix/, right/, posixrules, localtime or Factory, and a TZif file in the zoneinfo folder
 # The callers pass the file (and the tests their own zoneinfo folder); a file that is not a regular file (a link, a
@@ -25,12 +27,23 @@ startup_settings_readable() {
     return 0
 }
 
-# prints the name of the setting the line $1 sets (GOA or TZ) when the line is valid, nothing otherwise; $2 is the
+# prints the name of the setting the line $1 sets (GOA, TZ or a goaccess_ option) when the line is valid, nothing otherwise; $2 is the
 # zoneinfo folder
 startup_setting_name() {
     case "$1" in
         GOA=true | GOA=false)
             echo GOA
+            ;;
+        goaccess_drop_query_strings=true | goaccess_drop_query_strings=false | goaccess_real_os=true | goaccess_real_os=false | goaccess_resolve_hosts=true | goaccess_resolve_hosts=false)
+            echo "${1%%=*}"
+            ;;
+        goaccess_anonymize=off | goaccess_anonymize=1 | goaccess_anonymize=2 | goaccess_anonymize=3)
+            echo goaccess_anonymize
+            ;;
+        goaccess_keep_days=[1-9] | goaccess_keep_days=[1-9][0-9] | goaccess_keep_days=[1-9][0-9][0-9])
+            if [ "${1#goaccess_keep_days=}" -le 366 ]; then
+                echo goaccess_keep_days
+            fi
             ;;
         TZ=*)
             startup_setting_tz="${1#TZ=}"
@@ -49,7 +62,7 @@ startup_setting_name() {
     esac
 }
 
-# prints the value of the setting $2 (GOA or TZ) from the file $1, the last valid line wins; nothing when the file
+# prints the value of the setting $2 (GOA, TZ or a goaccess_ option) from the file $1, the last valid line wins; nothing when the file
 # does not set it. $3: the zoneinfo folder, /usr/share/zoneinfo by default
 startup_setting() {
     startup_settings_readable "$1" || return 0
@@ -73,7 +86,33 @@ startup_settings_warn() {
             "" | "#"*) continue ;;
         esac
         if [ -z "$(startup_setting_name "$startup_setting_line" "${2:-/usr/share/zoneinfo}")" ]; then
-            echo "Ignoring line $startup_setting_number of $1: only GOA=true, GOA=false and TZ=<a time zone> are read from it."
+            echo "Ignoring line $startup_setting_number of $1: only GOA, TZ and the goaccess_ options with valid values are read from it."
         fi
     done < "$1"
+}
+
+# prints GOACLA built from the GoAccess options in the file $1, with fixed flag text only (the values are validated
+# words and numbers); without the file or an option its default applies, so no options give exactly the default
+# GOACLA of envs.sh. $2: the zoneinfo folder (the option lines do not use it)
+startup_settings_goacla() {
+    startup_goacla_keep="$(startup_setting "$1" goaccess_keep_days "$2")"
+    startup_goacla_anonymize="$(startup_setting "$1" goaccess_anonymize "$2")"
+    startup_goacla_query="$(startup_setting "$1" goaccess_drop_query_strings "$2")"
+    startup_goacla_os="$(startup_setting "$1" goaccess_real_os "$2")"
+    startup_goacla_resolve="$(startup_setting "$1" goaccess_resolve_hosts "$2")"
+    startup_goacla="--agent-list"
+    [ "${startup_goacla_os:-true}" = "true" ] && startup_goacla="$startup_goacla --real-os"
+    startup_goacla="$startup_goacla --double-decode"
+    case "${startup_goacla_anonymize:-1}" in
+        1) startup_goacla="$startup_goacla --anonymize-ip --anonymize-level=1" ;;
+        2) startup_goacla="$startup_goacla --anonymize-ip --anonymize-level=2" ;;
+        3) startup_goacla="$startup_goacla --anonymize-ip --anonymize-level=3" ;;
+    esac
+    case "${startup_goacla_keep:-30}" in
+        *[!0-9]*) startup_goacla="$startup_goacla --keep-last=30" ;;
+        *) startup_goacla="$startup_goacla --keep-last=${startup_goacla_keep:-30}" ;;
+    esac
+    [ "${startup_goacla_resolve:-true}" = "true" ] && startup_goacla="$startup_goacla --with-output-resolver"
+    [ "${startup_goacla_query:-true}" = "true" ] && startup_goacla="$startup_goacla --no-query-string"
+    printf '%s' "$startup_goacla"
 }

@@ -33,6 +33,34 @@
 						"goaccess": {
 							"type": "boolean",
 							"description": "GoAccess report (env GOA); applies after a container restart"
+						},
+						"goaccess_keep_days": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 366,
+							"description": "GoAccess keeps report data for this many days (--keep-last). Applies after a container restart"
+						},
+						"goaccess_anonymize": {
+							"type": "string",
+							"enum": [
+								"off",
+								"1",
+								"2",
+								"3"
+							],
+							"description": "Anonymize visitor IPs in the GoAccess report: off or the --anonymize-level. Applies after a container restart, locked by GOACLA"
+						},
+						"goaccess_drop_query_strings": {
+							"type": "boolean",
+							"description": "Drop query strings from the URLs in the GoAccess report (--no-query-string). Applies after a container restart, locked by GOACLA"
+						},
+						"goaccess_real_os": {
+							"type": "boolean",
+							"description": "Full operating system versions in the GoAccess report (--real-os). Applies after a container restart, locked by GOACLA"
+						},
+						"goaccess_resolve_hosts": {
+							"type": "boolean",
+							"description": "Resolve visitor host names in the GoAccess report (--with-output-resolver). Applies after a container restart, locked by GOACLA"
 						}
 					}
 				},
@@ -53,13 +81,23 @@
 								"write_log_files": false,
 								"log_rotations": 3,
 								"goaccess": false,
+								"goaccess_keep_days": 30,
+								"goaccess_anonymize": "1",
+								"goaccess_drop_query_strings": true,
+								"goaccess_real_os": true,
+								"goaccess_resolve_hosts": true,
 								"locked": [],
 								"locked_by": {},
 								"locked_reason": {},
 								"applies": {
 									"write_log_files": "reload",
 									"log_rotations": "immediately",
-									"goaccess": "restart"
+									"goaccess": "restart",
+									"goaccess_keep_days": "restart",
+									"goaccess_anonymize": "restart",
+									"goaccess_drop_query_strings": "restart",
+									"goaccess_real_os": "restart",
+									"goaccess_resolve_hosts": "restart"
 								},
 								"restart_pending": []
 							}

@@ -103,6 +103,41 @@ const rangeRule = ({ group, key, env, min, max, fallback, applies }) => ({
 	applies,
 });
 
+const ANONYMIZE_LEVELS = ["off", "1", "2", "3"];
+
+/**
+ * The value of a GoAccess option in a GOACLA string (`--name=value` or `--name value`), the last one wins
+ *
+ * @param   {string}  raw
+ * @param   {string}  name  with the leading dashes
+ * @returns {string|undefined}
+ */
+const goaclaOption = (raw, name) => {
+	const tokens = String(raw).trim().split(WHITESPACE);
+	let value;
+	for (const [index, token] of tokens.entries()) {
+		if (token.startsWith(`${name}=`)) value = token.slice(name.length + 1);
+		else if (token === name && index + 1 < tokens.length) value = tokens[index + 1];
+	}
+	return value;
+};
+
+const goaclaFlag = (raw, name) => String(raw).trim().split(WHITESPACE).includes(name);
+
+// a GoAccess option that is one flag, on by default (today's default GOACLA has all of them)
+const goaclaFlagRule = (key, flag) => ({
+	group: "logs",
+	key,
+	env: "GOACLA",
+	fileName: key,
+	type: "boolean",
+	validate: validateBool,
+	parseEnv: (raw) => goaclaFlag(raw, flag),
+	toEnv: String,
+	default: true,
+	applies: "restart",
+});
+
 const upstreamRule = (name, key) => ({
 	group: "forward-auth",
 	key,
@@ -263,6 +298,43 @@ const RUNTIME_RULES = [
 	}),
 	// startup settings (applies "restart"): written to the startup settings file, read by envs.sh at the next start
 	boolRule({ group: "logs", key: "goaccess", env: "GOA", fallback: false, applies: "restart" }),
+	// GoAccess options: envs.sh builds GOACLA from them with fixed flags; a GOACLA from the user locks them all
+	{
+		group: "logs",
+		key: "goaccess_keep_days",
+		env: "GOACLA",
+		fileName: "goaccess_keep_days",
+		type: "integer",
+		validate: validateRange(1, 366),
+		// null: GOACLA has no --keep-last (GoAccess keeps all data)
+		parseEnv: (raw) => {
+			const value = goaclaOption(raw, "--keep-last");
+			return value === undefined ? null : (parseDigits(value) ?? null);
+		},
+		toEnv: String,
+		default: 30,
+		applies: "restart",
+	},
+	{
+		group: "logs",
+		key: "goaccess_anonymize",
+		env: "GOACLA",
+		fileName: "goaccess_anonymize",
+		type: "string",
+		validate: (value) => (ANONYMIZE_LEVELS.includes(value) ? null : `must be ${ANONYMIZE_LEVELS.join(", ")}`),
+		parseEnv: (raw) => {
+			if (!goaclaFlag(raw, "--anonymize-ip")) return "off";
+			const level = goaclaOption(raw, "--anonymize-level");
+			// GoAccess uses level 1 without --anonymize-level
+			return ANONYMIZE_LEVELS.includes(level) && level !== "off" ? level : "1";
+		},
+		toEnv: String,
+		default: "1",
+		applies: "restart",
+	},
+	goaclaFlagRule("goaccess_drop_query_strings", "--no-query-string"),
+	goaclaFlagRule("goaccess_real_os", "--real-os"),
+	goaclaFlagRule("goaccess_resolve_hosts", "--with-output-resolver"),
 	boolRule({
 		group: "advanced",
 		key: "config_beautifier",
@@ -512,7 +584,7 @@ const renderStartupSettings = (valuesByGroup, env) => {
 	const userSet = userSetEnvNames(env);
 	const lines = RUNTIME_RULES.filter(isRestartRule)
 		.filter((rule) => !userSet.has(rule.env) && valuesByGroup?.[rule.group]?.[rule.key] !== undefined)
-		.map((rule) => `${rule.env}=${rule.toEnv(valuesByGroup[rule.group][rule.key])}\n`);
+		.map((rule) => `${rule.fileName ?? rule.env}=${rule.toEnv(valuesByGroup[rule.group][rule.key])}\n`);
 	return STARTUP_SETTINGS_HEADER + lines.join("");
 };
 

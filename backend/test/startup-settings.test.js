@@ -22,6 +22,13 @@ const HELPER = new URL("startup-settings.sh", BIN).pathname;
 const TZIF = "TZif2 fake zone data";
 const BOOT_ENV = { NPMPRO_USER_ENV: "PATH", TZ: "UTC", GOA: "false" };
 const userEnv = (vars) => ({ ...BOOT_ENV, ...vars, NPMPRO_USER_ENV: `PATH ${Object.keys(vars).join(" ")}` });
+const GOACCESS_DEFAULT_LINES = [
+	"goaccess_keep_days=30",
+	"goaccess_anonymize=1",
+	"goaccess_drop_query_strings=true",
+	"goaccess_real_os=true",
+	"goaccess_resolve_hosts=true",
+];
 const HAS_ZONEINFO = existsSync("/usr/share/zoneinfo/Europe/Berlin");
 
 const zoneinfo = async () => {
@@ -196,7 +203,12 @@ it("writes the startup settings file on save of a restart setting, with the othe
 	const prev = mergeRuntimeConfig("advanced", {}, BOOT_ENV).values;
 	const next = { ...prev, time_zone: "Europe/Berlin" };
 	await applier.applyGroup("advanced", next, prev);
-	assert.deepEqual((await readFile(file, "utf8")).split("\n").slice(1), ["GOA=true", "TZ=Europe/Berlin", ""]);
+	assert.deepEqual((await readFile(file, "utf8")).split("\n").slice(1), [
+		"GOA=true",
+		...GOACCESS_DEFAULT_LINES,
+		"TZ=Europe/Berlin",
+		"",
+	]);
 	assert.deepEqual(nginxCalls, []);
 	// another advanced key leaves the file alone
 	await writeFile(file, "kept\n");
@@ -307,8 +319,131 @@ it("writes the startup settings file at startup even when nginx -t fails on the 
 	});
 	const values = { ...mergeRuntimeConfig("logs", {}, BOOT_ENV).values, write_log_files: true, goaccess: true };
 	await assert.rejects(applier.applyGroup("logs", values), /nginx -t failed/u);
-	assert.deepEqual((await readFile(file, "utf8")).split("\n").slice(1), ["GOA=true", "TZ=UTC", ""]);
+	assert.deepEqual((await readFile(file, "utf8")).split("\n").slice(1), [
+		"GOA=true",
+		...GOACCESS_DEFAULT_LINES,
+		"TZ=UTC",
+		"",
+	]);
 	// the nginx files were put back
 	assert.equal(existsSync(host), false);
 	assert.ok(errors.length > 0);
+});
+
+// GOACLA as envs.sh builds it from the startup settings file
+const composeGoacla = (file) => {
+	const out = spawnSync("sh", ["-c", '. "$HELPER"; startup_settings_goacla "$F"'], {
+		env: { PATH: process.env.PATH, HELPER, F: file },
+		encoding: "utf8",
+	});
+	assert.equal(out.status, 0, out.stderr);
+	return out.stdout;
+};
+
+it("builds GOACLA from the GoAccess options with the default of envs.sh when nothing is saved", async () => {
+	const text = readFileSync(new URL("envs.sh", BIN), "utf8");
+	const fallback = /^export GOACLA="\$\{GOACLA:-"(?<value>[^"]+)"\}"$/mu.exec(text)?.groups.value;
+	assert.ok(fallback);
+	const work = await mkdtemp(path.join(tmpdir(), "goacla-"));
+	const file = path.join(work, "startup-settings.env");
+	assert.equal(composeGoacla(path.join(work, "missing")), fallback);
+	// what the backend writes with the defaults gives the same string
+	const defaults = mergeRuntimeConfig("logs", {}, BOOT_ENV).values;
+	await writeFile(file, renderStartupSettings({ logs: defaults }, BOOT_ENV));
+	assert.equal(composeGoacla(file), fallback);
+	// the backend reads its own defaults back from that string
+	const parsed = mergeRuntimeConfig("logs", {}, userEnv({ GOACLA: fallback })).values;
+	for (const key of Object.keys(defaults).filter((name) => name.startsWith("goaccess_"))) {
+		assert.deepEqual(parsed[key], defaults[key], key);
+	}
+	// composed before the charset check and the GeoIP append, only without GOACLA from the env
+	const compose = text.indexOf('GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"');
+	assert.ok(text.indexOf("export NPMPRO_USER_ENV") < compose);
+	assert.ok(compose < text.indexOf('if echo "$GOACLA" | grep -vq "geoip-database"; then'));
+	assert.ok(compose < text.indexOf('if [ -n "$GOACLA" ] && ! echo "$GOACLA" | grep -q'));
+});
+
+it("maps each GoAccess option to fixed flags and ignores bad values", async () => {
+	const work = await mkdtemp(path.join(tmpdir(), "goacla-"));
+	const file = path.join(work, "startup-settings.env");
+	const values = {
+		...mergeRuntimeConfig("logs", {}, BOOT_ENV).values,
+		goaccess_keep_days: 366,
+		goaccess_anonymize: "off",
+		goaccess_drop_query_strings: false,
+		goaccess_real_os: false,
+		goaccess_resolve_hosts: false,
+	};
+	await writeFile(file, renderStartupSettings({ logs: values }, BOOT_ENV));
+	assert.equal(composeGoacla(file), "--agent-list --double-decode --keep-last=366");
+	await writeFile(file, "goaccess_anonymize=3\ngoaccess_keep_days=7\n");
+	assert.equal(
+		composeGoacla(file),
+		"--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=3 --keep-last=7 --with-output-resolver --no-query-string",
+	);
+	const marker = path.join(work, "ran");
+	const bad = [
+		"goaccess_keep_days=0",
+		"goaccess_keep_days=367",
+		"goaccess_keep_days=030",
+		"goaccess_keep_days=1000",
+		"goaccess_keep_days=30 --log-file=/etc/shadow",
+		"goaccess_anonymize=4",
+		"goaccess_anonymize=on",
+		"goaccess_real_os=yes",
+		`goaccess_resolve_hosts=$(touch ${marker})`,
+		"goaccess_drop_query_strings=TRUE",
+		"goaccess_output=/tmp/x",
+	];
+	await writeFile(file, `${bad.join("\n")}\n`);
+	const out = spawnSync("sh", ["-c", '. "$HELPER"; startup_settings_warn "$F"; startup_settings_goacla "$F"'], {
+		env: { PATH: process.env.PATH, HELPER, F: file },
+		encoding: "utf8",
+	});
+	assert.equal(out.status, 0, out.stderr);
+	assert.equal((out.stdout.match(/Ignoring line/gu) ?? []).length, bad.length, out.stdout);
+	assert.ok(
+		out.stdout.endsWith(
+			"--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string",
+		),
+	);
+	assert.equal(out.stdout.includes("shadow"), false);
+	assert.equal(existsSync(marker), false);
+});
+
+it("locks every GoAccess option with a GOACLA from the user and reads the values from it", () => {
+	const env = userEnv({ GOACLA: "--keep-last 90 --anonymize-ip --anonymize-level=2 --real-os" });
+	const {
+		values,
+		locked,
+		locked_by: lockedBy,
+		locked_reason: lockedReason,
+	} = mergeRuntimeConfig("logs", { goaccess_keep_days: 5, goaccess_real_os: false }, env);
+	const keys = [
+		"goaccess_keep_days",
+		"goaccess_anonymize",
+		"goaccess_drop_query_strings",
+		"goaccess_real_os",
+		"goaccess_resolve_hosts",
+	];
+	for (const key of keys) {
+		assert.ok(locked.includes(key), key);
+		assert.equal(lockedBy[key], "GOACLA");
+		assert.equal(lockedReason[key], undefined);
+	}
+	assert.equal(values.goaccess_keep_days, 90);
+	assert.equal(values.goaccess_anonymize, "2");
+	assert.equal(values.goaccess_real_os, true);
+	assert.equal(values.goaccess_drop_query_strings, false);
+	assert.equal(values.goaccess_resolve_hosts, false);
+	assert.equal(mergeRuntimeConfig("logs", {}, userEnv({ GOACLA: "--agent-list" })).values.goaccess_keep_days, null);
+	assert.equal(mergeRuntimeConfig("logs", {}, userEnv({ GOACLA: "--anonymize-ip" })).values.goaccess_anonymize, "1");
+	// not written to the startup settings file while GOACLA comes from the env
+	const content = renderStartupSettings({ logs: values }, env);
+	assert.equal(content.includes("goaccess_"), false);
+	// the GOACLA envs.sh built (not user-set) is the running value: no restart pending for matching stored values
+	const running = { ...BOOT_ENV, GOACLA: "--agent-list --double-decode --keep-last=7" };
+	const stored = { goaccess_keep_days: 7, goaccess_anonymize: "off", goaccess_real_os: false };
+	const merged = mergeRuntimeConfig("logs", { ...stored, goaccess_drop_query_strings: false }, running);
+	assert.deepEqual(restartPendingOf("logs", merged.values, merged.locked, running), ["goaccess_resolve_hosts"]);
 });

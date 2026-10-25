@@ -20,13 +20,23 @@
 								"write_log_files": false,
 								"log_rotations": 3,
 								"goaccess": false,
+								"goaccess_keep_days": 30,
+								"goaccess_anonymize": "1",
+								"goaccess_drop_query_strings": true,
+								"goaccess_real_os": true,
+								"goaccess_resolve_hosts": true,
 								"locked": [],
 								"locked_by": {},
 								"locked_reason": {},
 								"applies": {
 									"write_log_files": "reload",
 									"log_rotations": "immediately",
-									"goaccess": "restart"
+									"goaccess": "restart",
+									"goaccess_keep_days": "restart",
+									"goaccess_anonymize": "restart",
+									"goaccess_drop_query_strings": "restart",
+									"goaccess_real_os": "restart",
+									"goaccess_resolve_hosts": "restart"
 								},
 								"restart_pending": []
 							}

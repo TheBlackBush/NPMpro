@@ -39,7 +39,16 @@ it("saves the editable keys and returns the merged values", async () => {
 	const update = updater(store);
 	const out = await update("logs", { log_rotations: 10 });
 	assert.deepEqual(store.rows.logs, { log_rotations: 10 });
-	assert.deepEqual(out.values, { write_log_files: false, log_rotations: 10, goaccess: false });
+	assert.deepEqual(out.values, {
+		write_log_files: false,
+		log_rotations: 10,
+		goaccess: false,
+		goaccess_keep_days: 30,
+		goaccess_anonymize: "1",
+		goaccess_drop_query_strings: true,
+		goaccess_real_os: true,
+		goaccess_resolve_hosts: true,
+	});
 });
 
 it("drops locked keys", async () => {
