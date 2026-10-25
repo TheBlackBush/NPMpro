@@ -383,11 +383,13 @@ const pickEditable = (values, keys) => {
 
 /**
  * Only the editable keys of the traffic statistics settings, without locked ones and without the visitor limit while unique visitors are off.
+ * deleteStats is only sent as true, together with trafficEnabled false (the backend refuses it otherwise).
  */
 const monitoringSettingsPayload = (values) => {
 	const payload = pickEditable(values, MONITORING_KEYS);
 	// the visitor limit is only sent while unique visitors are on (it is only validated then)
 	if (!values.uniqueVisitors) delete payload.visitorsCap;
+	if (values.deleteStats === true && payload.trafficEnabled === false) payload.deleteStats = true;
 	return payload;
 };
 
