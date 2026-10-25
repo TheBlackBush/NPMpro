@@ -123,7 +123,10 @@ const setup = ({
 	adminPort = "81",
 	visitorKey = { key: Buffer.alloc(32, 7), created: false },
 	store: givenStore = null,
+	logStat = null,
 } = {}) => {
+	// the access log as statLog() sees it: { ino, size }, or null for a missing file
+	let logFile = logStat;
 	let hostList = hosts;
 	let failures = configFails;
 	let hostLoads = 0;
@@ -163,6 +166,11 @@ const setup = ({
 			return visitorKey instanceof Error ? Promise.reject(visitorKey) : Promise.resolve(visitorKey);
 		},
 		createReader: reader.create,
+		statLog: () => {
+			if (logFile instanceof Error) return Promise.reject(logFile);
+			if (!logFile) return Promise.reject(Object.assign(new Error("ENOENT: no such file"), { code: "ENOENT" }));
+			return Promise.resolve(logFile);
+		},
 		now: () => time,
 		timers,
 		adminPort,
@@ -180,6 +188,9 @@ const setup = ({
 		hostLoads: () => hostLoads,
 		setHosts: (next) => {
 			hostList = next;
+		},
+		setLog: (next) => {
+			logFile = next;
 		},
 		advance: (ms) => {
 			time += ms;
@@ -1902,6 +1913,8 @@ describe("monitoring API", () => {
 });
 
 describe("traffic service: delete statistics", () => {
+	const tick = () => new Promise((r) => setImmediate(r));
+
 	it("drops the counts in memory, the pending batches and the recent requests, then empties the tables", async () => {
 		const t = setup({
 			config: { show_ips: true, unique_visitors: true },
@@ -1926,27 +1939,108 @@ describe("traffic service: delete statistics", () => {
 		assert.equal(t.service.status().dropped_requests, 0);
 	});
 
-	it("keeps the reader position, so a later switch-on goes on from where reading stopped", async () => {
+	it("switching on starts at the end of the access log: lines written while off are not counted", async () => {
 		const t = setup({
-			results: [read([line("example.com")], 100), read([line("example.com")], 200)],
+			logStat: { ino: 1, size: 100 },
+			results: [read([line("example.com")], 100), read([line("example.com")], 300)],
 		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.setEnabled(false);
+		const flushedBefore = t.store.flushed.length;
+		// Write log files kept the log on: nginx appended 150 bytes while statistics were off
+		t.setLog({ ino: 1, size: 250 });
+		await t.service.setEnabled(true);
+		assert.deepEqual(t.saved.at(-1), { inode: 1, offset: 250 });
+		await t.service.read();
+		// a new reader starts from the end, not from the old position 100
+		assert.deepEqual(t.reader.states, [null, { inode: 1, offset: 250 }]);
+		await t.service.flush();
+		const counted = t.store.flushed
+			.slice(flushedBefore)
+			.flatMap((b) => b.minutes)
+			.reduce((n, r) => n + r.requests, 0);
+		// only the line the reader returned after the switch-on
+		assert.equal(counted, 1);
+	});
+
+	it("delete then switch on: nothing from before the delete or from the off time comes back", async () => {
+		const t = setup({ logStat: { ino: 1, size: 100 }, results: [read([line("example.com")], 100)] });
 		await t.service.start();
 		await t.service.read();
 		await t.service.setEnabled(false);
 		await t.service.deleteStats();
 		const flushedBefore = t.store.flushed.length;
+		t.setLog({ ino: 1, size: 400 });
 		await t.service.setEnabled(true);
 		await t.service.read();
+		assert.deepEqual(t.reader.states.at(-1), { inode: 1, offset: 400 });
 		await t.service.flush();
-		// one reader for the whole run: it was not recreated from an older position
+		assert.deepEqual(t.store.flushed.slice(flushedBefore), []);
+	});
+
+	it("switching on with a missing access log reads it from the beginning once it exists", async () => {
+		const t = setup({ results: [read([line("example.com")], 100)] });
+		await t.service.start();
+		await t.service.setEnabled(false);
+		const saves = t.saved.length;
+		await t.service.setEnabled(true);
+		await t.service.read();
+		assert.deepEqual(t.reader.states.at(-1), null);
+		assert.equal(t.saved.length, saves);
+	});
+
+	it("keeps the position when the access log cannot be checked", async () => {
+		const t = setup({ logStat: { ino: 1, size: 100 }, results: [read([line("example.com")], 100)] });
+		await t.service.start();
+		await t.service.read();
+		await t.service.setEnabled(false);
+		t.setLog(Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" }));
+		await t.service.setEnabled(true);
+		await t.service.read();
 		assert.deepEqual(t.reader.states, [null]);
-		assert.deepEqual(t.saved.at(-1), { inode: 1, offset: 200 });
-		// only the line read after the switch-on is written after the delete
-		const counted = t.store.flushed
-			.slice(flushedBefore)
-			.flatMap((b) => b.minutes)
-			.reduce((n, r) => n + r.requests, 0);
-		assert.equal(counted, 1);
+		assert.ok(t.errors.some((message) => message.includes("could not find the end of the access log")));
+	});
+
+	it("a flush or roll-up queued before the delete runs first, the delete empties the tables after it", async () => {
+		const t = setup({ results: [read([line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		// the switch-off flush fails, so the counts stay pending for the next (timer) flush
+		t.store.failing = true;
+		await t.service.setEnabled(false);
+		t.store.failing = false;
+		let release;
+		t.store.gate = new Promise((r) => {
+			release = r;
+		});
+		const flushing = t.service.flush();
+		const rolling = t.service.maintain();
+		const deleting = t.service.deleteStats();
+		await tick();
+		assert.ok(!t.store.calls.includes("deleteAll"));
+		release();
+		t.store.gate = null;
+		await Promise.all([flushing, rolling, deleting]);
+		const last = t.store.calls.filter((c) => c === "deleteAll" || Array.isArray(c)).at(-1);
+		assert.equal(last, "deleteAll");
+		// nothing is written after the delete
+		const after = t.store.calls.length;
+		await t.service.flush();
+		assert.equal(t.store.calls.slice(after).filter((c) => c === "flush").length, 0);
+	});
+
+	it("a failed delete keeps the unsaved counts", async () => {
+		const t = setup({ results: [read([line("example.com")])] });
+		await t.service.start();
+		await t.service.read();
+		t.store.failing = true;
+		await t.service.setEnabled(false);
+		t.store.failing = false;
+		t.store.deleteAllFails = true;
+		await assert.rejects(t.service.deleteStats(), DB_LOCKED);
+		await t.service.flush();
+		assert.equal(t.store.flushed.at(-1).minutes[0].requests, 1);
 	});
 
 	it("counts a visitor again after the delete", async () => {

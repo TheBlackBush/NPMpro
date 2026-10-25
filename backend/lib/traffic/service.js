@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
@@ -154,6 +155,7 @@ const createStateMeta = ({ read, write }) => ({
  *                                             called once in start();
  *                                             without it (or when it fails) unique visitors are not counted
  * @param   {Function}  [deps.createReader]  (state) => { read() }
+ * @param   {Function}  [deps.statLog]   () => Promise<{ino, size}>  the access log (rejects with ENOENT when missing)
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
@@ -171,6 +173,7 @@ const createTrafficService = ({
 	loadHosts,
 	loadVisitorKey = null,
 	createReader = (state) => createLogReader({ path: ACCESS_LOG, state, maxChunk: READ_MAX_CHUNK }),
+	statLog = () => stat(ACCESS_LOG),
 	now = Date.now,
 	timers = defaultTimers,
 	maxPerKey = 1000,
@@ -425,6 +428,34 @@ const createTrafficService = ({
 		}
 	};
 
+	/**
+	 * Moves the reader to the current end of the access log and saves that position (runs inside the queue): the
+	 * lines nginx wrote while statistics were off (Write log files keeps the log on) are not counted. A missing log
+	 * starts from its beginning once it exists; another stat error keeps the old position.
+	 */
+	const moveToLogEnd = async () => {
+		if (readInFlight) await readInFlight;
+		let state = null;
+		try {
+			const st = await statLog();
+			state = { inode: Number(st.ino), offset: Number(st.size) };
+		} catch (err) {
+			if (err?.code !== "ENOENT") {
+				logError("could not find the end of the access log")(err);
+				return;
+			}
+		}
+		reader = null;
+		lastState = state;
+		if (!state) return;
+		try {
+			await saveState(state);
+			savedState = state;
+		} catch (err) {
+			log.error(`Traffic statistics: could not save the reader position: ${err.message}`);
+		}
+	};
+
 	const flush = () =>
 		queue(async () => {
 			await flushNow();
@@ -516,7 +547,10 @@ const createTrafficService = ({
 			if (!started) return;
 			if (enabled) {
 				retryAt = 0;
-				await queue(refreshHosts);
+				await queue(async () => {
+					await moveToLogEnd();
+					await refreshHosts();
+				});
 				startReading();
 			} else {
 				stopReading();
@@ -555,28 +589,25 @@ const createTrafficService = ({
 
 		/**
 		 * Deletes every stored statistic (traffic statistics are being switched off, setEnabled(false) ran first).
-		 * Drops what is counted in memory, the pending batches and the recent requests, then empties the tables
-		 * through the queue, after a flush or roll-up that was still running. The reader position and the visitor
-		 * key are kept: the lines up to the position were counted and are deleted now, so a later switch-on goes on
-		 * from there without counting them again. A failed delete rejects (the caller saves nothing).
+		 * Inside the queue, after a flush or roll-up that was still running: empties the tables, then drops what is
+		 * counted in memory, the pending batches and the recent requests. A failed delete rejects (the caller saves
+		 * nothing) and keeps the memory as it was. The visitor key is kept. The
+		 * reader position needs no reset here: switching statistics on moves it to the end of the access log, so
+		 * neither these lines nor the ones written while statistics were off are counted again.
 		 */
-		deleteStats: async () => {
-			const forget = () => {
+		deleteStats: () =>
+			queue(async () => {
+				// lines of a read that was still running when the switch went off
+				if (readInFlight) await readInFlight;
+				// a failed delete keeps the unsaved counts (the setting stays on)
+				await store.deleteAll();
 				counter.reset();
 				pending = [];
 				recent.clear();
 				skipped = 0;
 				droppedRequests = 0;
 				flushError = null;
-			};
-			forget();
-			await queue(async () => {
-				// lines of a read that was still running when the switch went off
-				if (readInFlight) await readInFlight;
-				forget();
-				await store.deleteAll();
-			});
-		},
+			}),
 
 		/** Counts visitors again from the next line: the user switched them on and the setting is saved. */
 		uniqueVisitorsOn: () => {
