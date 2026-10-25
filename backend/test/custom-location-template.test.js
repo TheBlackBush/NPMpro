@@ -90,3 +90,13 @@ it("basic auth without pass_auth strips the credentials for grpc and PHP custom 
 	assert.ok(!passed.includes("HTTP_AUTHORIZATION"));
 	assert.ok(!passed.includes("grpc_set_header Authorization"));
 });
+
+it("a path the user quoted by hand keeps its meaning", () => {
+	assert.equal(quoteLocation({ location_type: "~ ", path: '"^/api/\\d{3}$"' }).path, '"^/api/\\\\d{3}$"');
+	assert.equal(quoteLocation({ location_type: "~* ", path: "'^/v\\d{2}/'" }).path, '"^/v\\\\d{2}/"');
+	assert.equal(quoteLocation({ location_type: "", path: '"/quoted/"' }).path, '"/quoted/"');
+	assert.equal(quoteLocation({ location_type: "@", path: '"named"' }).path, '"@named"');
+	// only one matching pair is removed
+	assert.equal(quoteLocation({ location_type: "", path: "\"/a'" }).path, '"\\"/a\'"');
+	assert.equal(quoteLocation({ location_type: "", path: '"' }).path, '"\\""');
+});

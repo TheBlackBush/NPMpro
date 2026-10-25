@@ -15,6 +15,10 @@ import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
 
+// nginxbeautifier misreads braces, quotes, `$` patterns and escapes inside a quoted custom location path (crash,
+// silent rewrite of the path); such configs are written unformatted
+const BEAUTIFIER_UNSAFE_LOCATION = /^\s*location\s[^\n]*"[^\n]*[{}'$\\;#][^\n]*"/mu;
+
 const internalNginx = {
 	/**
 	 * This will:
@@ -226,6 +230,7 @@ const internalNginx = {
 	 * @returns {Promise<String>}
 	 */
 	beautify: async (text) => {
+		if (BEAUTIFIER_UNSAFE_LOCATION.test(text)) return text;
 		const dir = await mkdtemp(path.join(tmpdir(), "npmpro-beautify-"));
 		const file = path.join(dir, "host.conf");
 		try {
