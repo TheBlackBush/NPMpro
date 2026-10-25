@@ -16,8 +16,8 @@ const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 const RuntimeContext = createContext(null);
 
 /**
- * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it) and
- * appliesId(key) (camelCase keys)
+ * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it),
+ * reasonOf(key) (why another setting's env var locks it, null for a direct lock) and appliesId(key) (camelCase keys)
  */
 const useRuntimeSection = () => useContext(RuntimeContext);
 
@@ -33,6 +33,8 @@ const runtimeContextOf = (group, data) => {
 		isLocked: (key) => locked.has(key),
 		// locked_by: the env var that locks each key (its keys camelized by base.js, the values are env names)
 		envOf: (key) => data.lockedBy?.[key],
+		// locked_reason: only the keys locked by another setting's env var
+		reasonOf: (key) => data.lockedReason?.[key] ?? null,
 		appliesId: (key) => appliesMessageId(data.applies, key),
 	};
 };

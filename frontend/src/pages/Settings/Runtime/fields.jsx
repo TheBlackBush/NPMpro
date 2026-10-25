@@ -2,33 +2,39 @@ import cn from "clsx";
 import { Field, useFormikContext } from "formik";
 import { SwitchField } from "src/components";
 import { T } from "src/locale";
-import { LockedBadge } from "../Authentication/LockedBadge";
+import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
 import { useRuntimeSection } from "./RuntimeSection";
 
 const idOf = (name) => `runtime-${name}`;
 
 /**
- * Label text with the "Set by <ENV>" badge when the key is locked
+ * Label text with the lock badge when the key is locked ("Set by <ENV>", or the wording of an indirect lock)
  */
 function FieldLabel({ name, children }) {
-	const { isLocked, envOf } = useRuntimeSection();
+	const { isLocked, envOf, reasonOf } = useRuntimeSection();
 	return (
 		<>
 			{children}
-			{isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
+			{isLocked(name) ? <LockedBadge env={envOf(name)} reason={reasonOf(name)} /> : null}
 		</>
 	);
 }
 
 /**
- * The field hint followed by when a change takes effect
+ * The field hint, why another setting locks it (indirect lock) and when a change takes effect
  */
 function FieldHint({ name, hint }) {
-	const { appliesId } = useRuntimeSection();
+	const { appliesId, isLocked, envOf, reasonOf } = useRuntimeSection();
 	const applies = appliesId(name);
+	const reason = isLocked(name) ? reasonOf(name) : null;
 	return (
 		<>
 			{hint}
+			{reason ? (
+				<span className="d-block">
+					<LockReason env={envOf(name)} reason={reason} />
+				</span>
+			) : null}
 			{applies ? (
 				<span className="d-block">
 					<T id={applies} />

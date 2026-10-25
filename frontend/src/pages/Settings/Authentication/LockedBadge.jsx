@@ -1,12 +1,36 @@
 import { T } from "src/locale";
 
-// "Set by environment", or with `env` the name of the env var that sets the value
-function LockedBadge({ env }) {
+// the badge text of a lock by another setting's env var (backend LOCK_REASONS)
+const REASON_BADGES = {
+	"key-size": "settings.runtime.locked.follows",
+	"ocsp-stapling-off": "settings.runtime.locked.off-because",
+	"must-staple": "settings.runtime.locked.required-by",
+	goaccess: "settings.runtime.locked.required-by",
+};
+
+const badgeIdOf = (env, reason) => {
+	if (!env) return "settings.authentication.locked";
+	return REASON_BADGES[reason] ?? "settings.runtime.locked";
+};
+
+/**
+ * "Set by environment", with `env` "Set by <ENV>", and with an indirect lock `reason` its own wording ("Follows
+ * <ENV>", "Off because of <ENV>", "Required by <ENV>")
+ */
+function LockedBadge({ env, reason, className = "ms-2" }) {
 	return (
-		<span className="badge bg-secondary-lt ms-2 text-wrap text-break">
-			{env ? <T id="settings.runtime.locked" data={{ env }} /> : <T id="settings.authentication.locked" />}
+		<span className={`badge bg-secondary-lt text-wrap text-break ${className}`}>
+			<T id={badgeIdOf(env, reason)} data={env ? { env } : undefined} />
 		</span>
 	);
 }
 
-export { LockedBadge };
+/**
+ * Why another setting's env var locks a setting (one sentence), or nothing for a direct lock
+ */
+function LockReason({ env, reason }) {
+	if (!(env && Object.hasOwn(REASON_BADGES, reason))) return null;
+	return <T id={`settings.runtime.locked.reason.${reason}`} data={{ env }} />;
+}
+
+export { LockedBadge, LockReason };

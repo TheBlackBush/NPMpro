@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { ErrorAlert, Loading } from "src/components";
 import { useEnvironment } from "src/hooks";
 import { intl, T } from "src/locale";
+import { LockedBadge, LockReason } from "./Authentication/LockedBadge";
 import { StatusAlert } from "./StatusAlert";
 
 // provider names are product names, shown as they are
@@ -76,7 +77,7 @@ function LockedSettings({ locked }) {
 							<T id="settings.environment.setting" />
 						</th>
 						<th>
-							<T id="settings.environment.variable" />
+							<T id="settings.environment.locked-by" />
 						</th>
 						<th>
 							<T id="settings.environment.section" />
@@ -84,13 +85,19 @@ function LockedSettings({ locked }) {
 					</tr>
 				</thead>
 				<tbody>
-					{locked.map(({ group, key, env }) => (
+					{locked.map(({ group, key, env, reason }) => (
 						<tr key={`${group}/${key}`}>
 							<td data-label={label("settings.environment.setting")}>
 								<SettingLabel group={group} name={key} />
 							</td>
-							<td data-label={label("settings.environment.variable")}>
-								<code className="text-break">{env}</code>
+							<td data-label={label("settings.environment.locked-by")}>
+								{/* the same wording as the badge in the settings section */}
+								<LockedBadge env={env} reason={reason} className="" />
+								{reason ? (
+									<div className="small text-secondary mt-1">
+										<LockReason env={env} reason={reason} />
+									</div>
+								) : null}
 							</td>
 							<td data-label={label("settings.environment.section")}>
 								<Link to={`/settings/${SECTION_OF_GROUP[group]}`}>

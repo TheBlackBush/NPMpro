@@ -4,6 +4,7 @@ import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
 	appliesOf,
 	buildEffectiveEnv,
+	LOCK_REASONS,
 	mergeRuntimeConfig,
 	RUNTIME_GROUPS,
 	RUNTIME_RULES,
@@ -502,4 +503,37 @@ it("keeps locked_by in the cache and after prime", async () => {
 	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_by, first.locked_by);
 	config.prime("logs", { values: {}, locked: [] });
 	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_by, {});
+});
+
+it("marks the indirect locks with their reason in locked_reason, direct locks are not in it", () => {
+	const reasonOf = (group, env) => mergeRuntimeConfig(group, {}, env).locked_reason;
+	assert.deepEqual(reasonOf("forward-auth", userEnv({ AUTH_REQUEST_ANUBIS_UPSTREAM: "http://a:1" })), {});
+	assert.deepEqual(reasonOf("certificates", userEnv({ ACME_KEY_SIZE: "4096" })), { key_type: "key-size" });
+	assert.deepEqual(reasonOf("certificates", userEnv({ ACME_KEY_TYPE: "rsa", ACME_KEY_SIZE: "4096" })), {});
+	assert.deepEqual(reasonOf("certificates", userEnv({ ACME_OCSP_STAPLING: "false" })), {
+		must_staple: "ocsp-stapling-off",
+	});
+	assert.deepEqual(reasonOf("certificates", userEnv({ ACME_MUST_STAPLE: "true" })), {
+		ocsp_stapling: "must-staple",
+	});
+	assert.deepEqual(reasonOf("logs", { ...BOOT_ENV, GOA: "true" }), { write_log_files: "goaccess" });
+	assert.deepEqual(reasonOf("logs", { ...userEnv({ LOGROTATE: "true" }), GOA: "true" }), {
+		write_log_files: "goaccess",
+	});
+	assert.deepEqual(reasonOf("logs", userEnv({ LOGROTATE: "true" })), {});
+	for (const reason of ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"]) {
+		assert.ok(LOCK_REASONS.includes(reason));
+	}
+});
+
+it("keeps locked_reason in the cache and after prime", async () => {
+	const env = userEnv({ ACME_KEY_SIZE: "4096" });
+	const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
+	const first = await config.getRuntimeConfig("certificates");
+	assert.deepEqual(first.locked_reason, { key_type: "key-size" });
+	assert.equal("invalid" in first, false);
+	config.prime("certificates", first);
+	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_reason, { key_type: "key-size" });
+	config.prime("logs", { values: {}, locked: [] });
+	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_reason, {});
 });

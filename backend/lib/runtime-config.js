@@ -38,21 +38,16 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 
 	/**
 	 * @param   {string}  group
-	 * @returns {Promise<{values: Object, locked: string[], locked_by: Object}>}
+	 * @returns {Promise<{values: Object, locked: string[], locked_by: Object, locked_reason: Object}>}
 	 */
 	const getRuntimeConfig = async (group) => {
 		if (cache.has(group)) return structuredClone(cache.get(group));
 		const generation = generations.get(group) ?? 0;
-		const { values, locked, locked_by, invalid } = mergeRuntimeConfig(
-			group,
-			await readStored(group),
-			envOf(),
-			opts,
-		);
+		const { invalid, ...cfg } = mergeRuntimeConfig(group, await readStored(group), envOf(), opts);
 		warnInvalid(group, invalid);
 		// a save (invalidate) while this read ran makes it stale: return it, but do not cache it
-		if ((generations.get(group) ?? 0) === generation) cache.set(group, { values, locked, locked_by });
-		return structuredClone({ values, locked, locked_by });
+		if ((generations.get(group) ?? 0) === generation) cache.set(group, cfg);
+		return structuredClone(cfg);
 	};
 
 	/**
@@ -72,17 +67,17 @@ const createRuntimeConfig = ({ readStored = readSettingRow, env, log = logger, o
 	 * read that started before it is not cached (generation)
 	 *
 	 * @param {string}  group
-	 * @param {{values: Object, locked: string[], locked_by?: Object}}  cfg
+	 * @param {{values: Object, locked: string[], locked_by?: Object, locked_reason?: Object}}  cfg
 	 */
-	const prime = (group, { values, locked, locked_by = {} }) => {
+	const prime = (group, { values, locked, locked_by = {}, locked_reason = {} }) => {
 		generations.set(group, (generations.get(group) ?? 0) + 1);
-		cache.set(group, structuredClone({ values, locked, locked_by }));
+		cache.set(group, structuredClone({ values, locked, locked_by, locked_reason }));
 	};
 
 	/**
 	 * Reads every group again (startup and tests)
 	 *
-	 * @returns {Promise<Object>}  { [group]: { values, locked, locked_by } }
+	 * @returns {Promise<Object>}  { [group]: { values, locked, locked_by, locked_reason } }
 	 */
 	const loadRuntimeConfig = async () => {
 		invalidate();

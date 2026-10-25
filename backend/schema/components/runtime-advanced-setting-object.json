@@ -7,6 +7,7 @@
 		"gravatar",
 		"locked",
 		"locked_by",
+		"locked_reason",
 		"applies"
 	],
 	"properties": {
@@ -43,6 +44,12 @@
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				}
 			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"additionalProperties": false,
+			"properties": {}
 		},
 		"applies": {
 			"type": "object",

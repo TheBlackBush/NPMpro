@@ -82,24 +82,24 @@ it("lists the locked runtime settings with their env var", () => {
 		{ group: "logs", key: "write_log_files" },
 	]);
 	assert.deepEqual(info.locked_runtime, [
-		{ group: "certificates", key: "key_type", env: "ACME_KEY_TYPE" },
-		{ group: "logs", key: "write_log_files", env: "LOGROTATE" },
+		{ group: "certificates", key: "key_type", env: "ACME_KEY_TYPE", reason: null },
+		{ group: "logs", key: "write_log_files", env: "LOGROTATE", reason: null },
 	]);
 	assert.deepEqual(environmentInfo({}, undefined).locked_runtime, []);
 });
 
 it("names the variable that actually locks a runtime setting (locked_by)", () => {
 	const info = environmentInfo({}, [
-		{ group: "certificates", key: "key_type", env: "ACME_KEY_SIZE" },
-		{ group: "certificates", key: "must_staple", env: "ACME_OCSP_STAPLING" },
-		{ group: "logs", key: "write_log_files", env: "GOA" },
+		{ group: "certificates", key: "key_type", env: "ACME_KEY_SIZE", reason: "key-size" },
+		{ group: "certificates", key: "must_staple", env: "ACME_OCSP_STAPLING", reason: "ocsp-stapling-off" },
+		{ group: "logs", key: "write_log_files", env: "GOA", reason: "goaccess" },
 	]);
 	assert.deepEqual(
-		info.locked_runtime.map(({ key, env }) => [key, env]),
+		info.locked_runtime.map(({ key, env, reason }) => [key, env, reason]),
 		[
-			["key_type", "ACME_KEY_SIZE"],
-			["must_staple", "ACME_OCSP_STAPLING"],
-			["write_log_files", "GOA"],
+			["key_type", "ACME_KEY_SIZE", "key-size"],
+			["must_staple", "ACME_OCSP_STAPLING", "ocsp-stapling-off"],
+			["write_log_files", "GOA", "goaccess"],
 		],
 	);
 });

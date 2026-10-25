@@ -107,7 +107,7 @@ it("GROUP_KEYS match the backend response schemas", () => {
 	for (const group of Object.keys(GROUP_KEYS)) {
 		const url = new URL(`../../../backend/schema/components/runtime-${group}-setting-object.json`, import.meta.url);
 		const props = Object.keys(JSON.parse(readFileSync(url, "utf8")).properties).filter(
-			(key) => !["locked", "locked_by", "applies"].includes(key),
+			(key) => !["locked", "locked_by", "locked_reason", "applies"].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}

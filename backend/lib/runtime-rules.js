@@ -277,6 +277,13 @@ const RUNTIME_RULES = [
 	}),
 ];
 
+/**
+ * Why a key is locked by another setting's env var: key-size (key_type follows ACME_KEY_SIZE, the size is an ECDSA
+ * curve or an RSA size), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns stapling off),
+ * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files)
+ */
+const LOCK_REASONS = ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"];
+
 const RUNTIME_ENV_NAMES = RUNTIME_RULES.map((rule) => rule.env);
 
 /**
@@ -321,9 +328,11 @@ const defaultOf = (rule, env, values, opts) =>
  * @param   {Object}  env               process.env or a test object
  * @param   {Object}  [opts]
  * @param   {Function} [opts.fileExists] (path) => boolean, for the Anubis images default
- * @returns {{values: Object, locked: string[], locked_by: Object, invalid: {key: string, source: "env"|"stored"|"server"}[]}}
+ * @returns {{values: Object, locked: string[], locked_by: Object, locked_reason: Object, invalid: {key: string, source: "env"|"stored"|"server"}[]}}
  *          locked_by names the env var that locks each locked key (the key's own one, or the one that forces it:
  *          ACME_KEY_SIZE for key_type, ACME_OCSP_STAPLING / ACME_MUST_STAPLE for each other, GOA for write_log_files);
+ *          locked_reason holds the keys locked by another setting's env var (an indirect lock) with why
+ *          (LOCK_REASONS), a key locked by its own env var is not in it;
  *          invalid lists the values that could not be used (the caller logs them once); "server": a stored profile
  *          whose profile_server (the ACME server it was checked against) is not the current ACME_SERVER
  */
@@ -333,10 +342,14 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	const values = {};
 	const locked = [];
 	const lockedBy = {};
+	const lockedReason = {};
 	const invalid = [];
-	const lock = (key, name) => {
+	// reason: null for a lock by the key's own env var, else a LOCK_REASONS entry
+	const lock = (key, name, reason = null) => {
 		if (!locked.includes(key)) locked.push(key);
 		lockedBy[key] = name;
+		if (reason === null) delete lockedReason[key];
+		else lockedReason[key] = reason;
 	};
 
 	for (const rule of rulesOf(group)) {
@@ -371,17 +384,17 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 		// the key type is locked to match the size (an rsa size alone, refused by envs.sh, locks rsa)
 		if (locked.includes("key_size") && !locked.includes("key_type")) {
 			values.key_type = KEY_SIZES.rsa.includes(values.key_size) ? "rsa" : "ecdsa";
-			lock("key_type", "ACME_KEY_SIZE");
+			lock("key_type", "ACME_KEY_SIZE", "key-size");
 		}
 		if (locked.includes("ocsp_stapling") && !values.ocsp_stapling && !locked.includes("must_staple")) {
 			// OCSP stapling switched off by env: must-staple certificates would fail without it
 			values.must_staple = false;
-			lock("must_staple", "ACME_OCSP_STAPLING");
+			lock("must_staple", "ACME_OCSP_STAPLING", "ocsp-stapling-off");
 		} else if (values.must_staple && !values.ocsp_stapling) {
 			// envs.sh:793 must-staple forces OCSP stapling on
 			values.ocsp_stapling = true;
 			if (locked.includes("must_staple") && !locked.includes("ocsp_stapling")) {
-				lock("ocsp_stapling", lockedBy.must_staple);
+				lock("ocsp_stapling", lockedBy.must_staple, "must-staple");
 			}
 		}
 	}
@@ -389,10 +402,10 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	if (group === "logs" && env.GOA === "true") {
 		values.write_log_files = true;
 		// GOA is what keeps it on, also when LOGROTATE is set
-		lock("write_log_files", "GOA");
+		lock("write_log_files", "GOA", "goaccess");
 	}
 
-	return { values, locked, locked_by: lockedBy, invalid };
+	return { values, locked, locked_by: lockedBy, locked_reason: lockedReason, invalid };
 };
 
 /**
@@ -439,6 +452,7 @@ export {
 	isTrustedIp,
 	KEY_SIZES,
 	LETSENCRYPT_SERVER,
+	LOCK_REASONS,
 	mergeRuntimeConfig,
 	RUNTIME_ENV_NAMES,
 	RUNTIME_GROUPS,

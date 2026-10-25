@@ -101,22 +101,28 @@ const ENV_OF_RUNTIME = new Map(RUNTIME_RULES.map((rule) => [`${rule.group}/${rul
 /**
  * The runtime settings an env var locks, for the Environment page: one entry per locked key
  *
- * @param   {{group: string, key: string, env?: string}[]}  runtimeLocked  env: the variable that locks it (locked_by),
- *          else the key's own env var
- * @returns {{group: string, key: string, env: string}[]}
+ * @param   {{group: string, key: string, env?: string, reason?: string|null}[]}  runtimeLocked  env: the variable that
+ *          locks it (locked_by), else the key's own env var; reason: why another setting's variable locks it
+ *          (locked_reason), null for a lock by its own variable
+ * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
 const lockedRuntimeOf = (runtimeLocked) =>
 	(runtimeLocked ?? [])
-		.map(({ group, key, env }) => ({ group, key, env: env ?? ENV_OF_RUNTIME.get(`${group}/${key}`) }))
+		.map(({ group, key, env, reason }) => ({
+			group,
+			key,
+			env: env ?? ENV_OF_RUNTIME.get(`${group}/${key}`),
+			reason: reason ?? null,
+		}))
 		.filter((entry) => entry.env !== undefined);
 
 /**
  * The Environment page data. A secret item has no `value` key, whether it is set or not.
  *
  * @param   {Object}  env            process.env or a test object
- * @param   {{group: string, key: string, env?: string}[]}  runtimeLocked  runtime settings locked by env, with the
- *          variable that locks each
- * @returns {{groups: {id: string, items: Object[]}[], locked_runtime: {group: string, key: string, env: string}[]}}
+ * @param   {{group: string, key: string, env?: string, reason?: string|null}[]}  runtimeLocked  runtime settings
+ *          locked by env, with the variable that locks each and the reason of an indirect lock
+ * @returns {{groups: {id: string, items: Object[]}[], locked_runtime: {group: string, key: string, env: string, reason: string|null}[]}}
  */
 const environmentInfo = (env, runtimeLocked) => {
 	const userSet = userSetNames(env, ENVIRONMENT_NAMES);

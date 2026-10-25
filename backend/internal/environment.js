@@ -13,8 +13,10 @@ const internalEnvironment = {
 		access.canAdmin();
 		const runtimeLocked = [];
 		for (const group of RUNTIME_GROUPS) {
-			const { locked, locked_by: lockedBy } = await getRuntimeConfig(group);
-			for (const key of locked) runtimeLocked.push({ group, key, env: lockedBy?.[key] });
+			const { locked, locked_by: lockedBy, locked_reason: lockedReason } = await getRuntimeConfig(group);
+			for (const key of locked) {
+				runtimeLocked.push({ group, key, env: lockedBy?.[key], reason: lockedReason?.[key] ?? null });
+			}
 		}
 		return environmentInfo(process.env, runtimeLocked);
 	},
