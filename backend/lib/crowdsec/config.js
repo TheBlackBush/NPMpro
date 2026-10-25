@@ -1,5 +1,17 @@
+import { readFile } from "node:fs/promises";
+
 /** Default location of the bouncer config inside the container (copied from crowdsec.conf.example by start.sh). */
 export const CROWDSEC_CONF_PATH = "/data/crowdsec/crowdsec.conf";
+
+/** The bouncer config text, "" when the file does not exist. */
+export const readCrowdsecConf = async () => {
+	try {
+		return await readFile(CROWDSEC_CONF_PATH, "utf8");
+	} catch (err) {
+		if (err.code === "ENOENT") return "";
+		throw err;
+	}
+};
 
 const INLINE_COMMENT = /\s+#.*$/u;
 const LINE_BREAK = /\r?\n/u;

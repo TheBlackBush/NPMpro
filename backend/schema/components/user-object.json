@@ -81,6 +81,11 @@
 			"description": "Is goaccess enabled, only sent for the requesting user itself",
 			"example": true
 		},
+		"monitoring": {
+			"type": "boolean",
+			"description": "Whether the Monitoring page has anything to show (traffic statistics on or the CrowdSec bouncer configured), only sent for the requesting user itself and false for non-admins",
+			"example": true
+		},
 		"permissions": {
 			"type": "object",
 			"description": "Permissions if expanded in request",

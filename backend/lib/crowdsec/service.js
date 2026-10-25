@@ -1,20 +1,10 @@
-import { readFile } from "node:fs/promises";
 import { global as logger } from "../../logger.js";
-import { CROWDSEC_CONF_PATH, isCrowdsecConfigured, parseCrowdsecConf } from "./config.js";
+import { isCrowdsecConfigured, parseCrowdsecConf, readCrowdsecConf } from "./config.js";
 import { fetchDecisions, summariseDecisions } from "./decisions.js";
 
 const POLL_MS = 60000;
 // first seen time for the decisions of the first poll: they existed before, so they never count as added
 const SEEDED = 0;
-
-const readConfFile = async () => {
-	try {
-		return await readFile(CROWDSEC_CONF_PATH, "utf8");
-	} catch (err) {
-		if (err.code === "ENOENT") return "";
-		throw err;
-	}
-};
 
 const text = (v) => (typeof v === "string" ? v : String(v ?? ""));
 
@@ -55,7 +45,7 @@ const defaultTimers = {
  * @returns {Object}
  */
 const createCrowdsecService = ({
-	readConf = readConfFile,
+	readConf = readCrowdsecConf,
 	fetch = (conf) => fetchDecisions(conf),
 	geoLookup = () => null,
 	now = Date.now,
