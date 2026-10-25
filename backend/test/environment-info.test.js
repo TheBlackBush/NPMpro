@@ -9,6 +9,7 @@ import {
 	LOCK_GROUP_ORDER,
 	settingLocksOf,
 } from "../lib/environment-info.js";
+import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
@@ -167,7 +168,7 @@ it("lists ENABLE_PRERUN, which entrypoint.sh reads without exporting a default",
 
 it("lists the OIDC, monitoring and GeoIP env locks with their variables, in settings menu order", () => {
 	const env = { NPMPRO_USER_ENV: "", LOGROTATE: "false" };
-	const locks = settingLocksOf(env, {
+	const locks = settingLocksOf({
 		oidc: ["issuer_url", "client_secret"],
 		monitoring: ["traffic_enabled", "retention_days"],
 		geoip: ["license_key", "editions"],
@@ -187,16 +188,14 @@ it("lists the OIDC, monitoring and GeoIP env locks with their variables, in sett
 	);
 });
 
-it("names LOGROTATE, or GOA when envs.sh set LOGROTATE for it, as the indirect lock of traffic statistics", () => {
-	const traffic = (env) => settingLocksOf(env, { monitoring: ["traffic_enabled"] })[0];
-	assert.deepEqual(traffic({ NPMPRO_USER_ENV: "LOGROTATE", LOGROTATE: "true" }), {
-		group: "monitoring",
-		key: "traffic_enabled",
-		env: "LOGROTATE",
-		reason: "write-log-files",
-	});
-	assert.equal(traffic({ NPMPRO_USER_ENV: "GOA", LOGROTATE: "true", GOA: "true" }).env, "GOA");
-	assert.equal(traffic({ NPMPRO_USER_ENV: "GOA LOGROTATE", LOGROTATE: "true", GOA: "true" }).env, "LOGROTATE");
+it("never names LOGROTATE or GOA as a lock of traffic statistics, only TRAFFIC_STATS", () => {
+	const traffic = (env) => settingLocksOf({ monitoring: mergeMonitoringConfig({}, env).locked });
+	assert.deepEqual(traffic({ NPMPRO_USER_ENV: "LOGROTATE", LOGROTATE: "true" }), []);
+	assert.deepEqual(traffic({ NPMPRO_USER_ENV: "GOA", LOGROTATE: "true", GOA: "true" }), []);
+	assert.deepEqual(
+		traffic({ NPMPRO_USER_ENV: "LOGROTATE TRAFFIC_STATS", LOGROTATE: "true", TRAFFIC_STATS: "false" }),
+		[{ group: "monitoring", key: "traffic_enabled", env: "TRAFFIC_STATS", reason: null }],
+	);
 });
 
 it("matches the environment response schema with the setting locks", async () => {
@@ -207,7 +206,7 @@ it("matches the environment response schema with the setting locks", async () =>
 	const env = { NPMPRO_USER_ENV: "LOGROTATE", LOGROTATE: "true" };
 	const info = environmentInfo(env, [
 		{ group: "logs", key: "write_log_files", env: "GOA", reason: "goaccess" },
-		...settingLocksOf(env, { oidc: ["client_id"], monitoring: ["traffic_enabled"], geoip: ["account_id"] }),
+		...settingLocksOf({ oidc: ["client_id"], monitoring: ["traffic_enabled"], geoip: ["account_id"] }),
 	]);
 	const ajv = new Ajv({ strict: false, allowUnionTypes: true });
 	assert.equal(ajv.validate(response, info), true, ajv.errorsText());
@@ -245,5 +244,5 @@ it("leaves the locks of the GoAccess report setting out of the env locked list",
 	);
 	// GOA=true from the setting turned LOGROTATE on in envs.sh: traffic statistics are not locked by an env var
 	const fromSetting = { NPMPRO_USER_ENV: "", LOGROTATE: "true", GOA: "true" };
-	assert.deepEqual(settingLocksOf(fromSetting, { monitoring: ["traffic_enabled"] }), []);
+	assert.deepEqual(settingLocksOf({ monitoring: mergeMonitoringConfig({}, fromSetting).locked }), []);
 });

@@ -22,7 +22,7 @@ const internalEnvironment = {
 			}
 		}
 		locked.push(
-			...settingLocksOf(process.env, {
+			...settingLocksOf({
 				oidc: (await getOidcConfig()).locked,
 				monitoring: (await getMonitoringConfig()).locked,
 				geoip: (await getGeoipConfig()).locked,

@@ -7,7 +7,7 @@ const MONITORING_DEFAULTS = {
 };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
-// the env var of each field (traffic_enabled: also LOGROTATE=true, see mergeMonitoringConfig)
+// the env var of each field
 const MONITORING_ENV_KEYS = {
 	traffic_enabled: "TRAFFIC_STATS",
 	retention_days: "TRAFFIC_RETENTION_DAYS",
@@ -42,10 +42,8 @@ const isSet = (raw) => raw !== undefined && raw !== "";
 const mergeMonitoringConfig = (stored, env) => {
 	const values = { ...MONITORING_DEFAULTS, ...withoutNulls(stored) };
 	const locked = [];
-	if (env.LOGROTATE === "true") {
-		values.traffic_enabled = true;
-		locked.push("traffic_enabled");
-	} else if (isSet(env.TRAFFIC_STATS)) {
+	// only TRAFFIC_STATS sets it: Write log files (LOGROTATE, also turned on by GOA) keeps the access log on by itself
+	if (isSet(env.TRAFFIC_STATS)) {
 		values.traffic_enabled = env.TRAFFIC_STATS === "true";
 		locked.push("traffic_enabled");
 	}
