@@ -6,6 +6,8 @@ const REASON_BADGES = {
 	"ocsp-stapling-off": "settings.runtime.locked.off-because",
 	"must-staple": "settings.runtime.locked.required-by",
 	goaccess: "settings.runtime.locked.required-by",
+	// traffic statistics kept on by LOGROTATE (Environment page)
+	"write-log-files": "settings.runtime.locked.on-because",
 };
 
 const badgeIdOf = (env, reason) => {

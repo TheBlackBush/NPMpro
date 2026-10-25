@@ -16,17 +16,35 @@ const PROVIDERS = {
 	authentik: "Authentik",
 };
 
-// where each runtime settings group lives (the logs group is shown in Logs & monitoring)
+// where each settings group lives (the logs group is shown in Logs & monitoring, OIDC in Authentication)
 const SECTION_OF_GROUP = {
+	oidc: "authentication",
 	certificates: "certificates",
 	network: "network",
 	"forward-auth": "forward-auth",
 	logs: "monitoring",
+	monitoring: "monitoring",
+	geoip: "geoip",
 	advanced: "advanced",
 };
 
-// the label of each runtime setting, the same text as in its settings section
+// the label of each setting, the same text as in its settings section
 const LABELS = {
+	"oidc/issuer_url": "settings.authentication.issuer-url",
+	"oidc/client_id": "settings.authentication.client-id",
+	"oidc/client_secret": "settings.authentication.client-secret",
+	"oidc/redirect_domain": "settings.authentication.redirect-domain",
+	"oidc/require_verified_email": "settings.authentication.require-verified-email",
+	"oidc/skip_mfa": "settings.authentication.skip-mfa",
+	"oidc/disable_password": "settings.authentication.disable-password",
+	"monitoring/traffic_enabled": "settings.monitoring.traffic",
+	"monitoring/retention_days": "settings.monitoring.retention",
+	"monitoring/show_ips": "settings.monitoring.show-ips",
+	"monitoring/unique_visitors": "settings.monitoring.unique-visitors",
+	"monitoring/visitors_cap": "settings.monitoring.visitors-cap",
+	"geoip/account_id": "settings.geoip.account-id",
+	"geoip/license_key": "settings.geoip.license-key",
+	"geoip/editions": "settings.geoip.editions",
 	"certificates/key_type": "settings.certificates.key-type",
 	"certificates/key_size": "settings.certificates.key-size",
 	"certificates/profile": "settings.certificates.profile",

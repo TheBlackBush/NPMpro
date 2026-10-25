@@ -1,3 +1,5 @@
+import { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS } from "./monitoring-rules.js";
+import { ENV_KEYS as OIDC_ENV_KEYS } from "./oidc-rules.js";
 import { RUNTIME_RULES, userSetNames } from "./runtime-rules.js";
 
 const ENVIRONMENT_GROUPS = ["network", "users", "nginx", "modules", "goaccess", "database", "certificates-account"];
@@ -96,6 +98,9 @@ const ENVIRONMENT_ITEMS = [
 
 const ENVIRONMENT_NAMES = ENVIRONMENT_ITEMS.map((entry) => entry.name);
 
+// the settings sections in menu order (runtime groups and the oidc, monitoring and geoip rows)
+const LOCK_GROUP_ORDER = ["oidc", "certificates", "network", "forward-auth", "logs", "monitoring", "geoip", "advanced"];
+
 const ENV_OF_RUNTIME = new Map(RUNTIME_RULES.map((rule) => [`${rule.group}/${rule.key}`, rule.env]));
 
 /**
@@ -114,7 +119,46 @@ const lockedRuntimeOf = (runtimeLocked) =>
 			env: env ?? ENV_OF_RUNTIME.get(`${group}/${key}`),
 			reason: reason ?? null,
 		}))
-		.filter((entry) => entry.env !== undefined);
+		.filter((entry) => entry.env !== undefined)
+		.map((entry, index) => ({ entry, index }))
+		// in the order of the settings menu, keeping the order inside a group
+		.sort(
+			(a, b) =>
+				LOCK_GROUP_ORDER.indexOf(a.entry.group) - LOCK_GROUP_ORDER.indexOf(b.entry.group) || a.index - b.index,
+		)
+		.map(({ entry }) => entry);
+
+/**
+ * The OIDC, monitoring and GeoIP settings an env var locks, in the form of the runtime ones
+ *
+ * @param   {Object}  env  process.env or a test object
+ * @param   {Object}  locked
+ * @param   {string[]}  [locked.oidc]        mergeOidcConfig().locked
+ * @param   {string[]}  [locked.monitoring]  mergeMonitoringConfig().locked
+ * @param   {string[]}  [locked.geoip]       mergeGeoipConfig().locked
+ * @returns {{group: string, key: string, env: string, reason: string|null}[]}
+ */
+const settingLocksOf = (env, { oidc = [], monitoring = [], geoip = [] } = {}) => {
+	const entries = [];
+	const add = (group, keys, names) => {
+		for (const key of keys) {
+			if (names[key]) entries.push({ group, key, env: names[key], reason: null });
+		}
+	};
+	add("oidc", oidc, OIDC_ENV_KEYS);
+	for (const key of monitoring) {
+		if (key === "traffic_enabled" && env.LOGROTATE === "true") {
+			// LOGROTATE=true turns traffic statistics on (mergeMonitoringConfig); without LOGROTATE from the user,
+			// envs.sh set it for GOA=true
+			const name = userSetNames(env, ["LOGROTATE"]).has("LOGROTATE") || env.GOA !== "true" ? "LOGROTATE" : "GOA";
+			entries.push({ group: "monitoring", key, env: name, reason: "write-log-files" });
+		} else {
+			add("monitoring", [key], MONITORING_ENV_KEYS);
+		}
+	}
+	add("geoip", geoip, GEOIP_ENV_KEYS);
+	return entries;
+};
 
 /**
  * The Environment page data. A secret item has no `value` key, whether it is set or not.
@@ -147,4 +191,4 @@ const environmentInfo = (env, runtimeLocked) => {
 	return { groups, locked_runtime: lockedRuntimeOf(runtimeLocked) };
 };
 
-export { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, ENVIRONMENT_NAMES, environmentInfo };
+export { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, ENVIRONMENT_NAMES, environmentInfo, LOCK_GROUP_ORDER, settingLocksOf };

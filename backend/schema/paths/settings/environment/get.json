@@ -48,7 +48,14 @@
 									{
 										"group": "certificates",
 										"key": "key_type",
-										"env": "ACME_KEY_TYPE"
+										"env": "ACME_KEY_SIZE",
+										"reason": "key-size"
+									},
+									{
+										"group": "monitoring",
+										"key": "retention_days",
+										"env": "TRAFFIC_RETENTION_DAYS",
+										"reason": null
 									}
 								]
 							}

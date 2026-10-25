@@ -77,7 +77,7 @@
 		},
 		"locked_runtime": {
 			"type": "array",
-			"description": "Runtime settings whose environment variable is set (the setting is read only in the UI)",
+			"description": "Settings locked by an environment variable (read only in the UI): the runtime settings groups and the oidc, monitoring and geoip settings, in settings menu order",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
@@ -91,10 +91,13 @@
 					"group": {
 						"type": "string",
 						"enum": [
+							"oidc",
 							"certificates",
 							"network",
 							"forward-auth",
 							"logs",
+							"monitoring",
+							"geoip",
 							"advanced"
 						]
 					},
@@ -114,9 +117,10 @@
 							"ocsp-stapling-off",
 							"must-staple",
 							"goaccess",
+							"write-log-files",
 							null
 						],
-						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it"
+						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it. write-log-files: LOGROTATE (or GOA through it) keeps traffic statistics on"
 					}
 				}
 			}

@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, environmentInfo } from "../lib/environment-info.js";
+import {
+	ENVIRONMENT_GROUPS,
+	ENVIRONMENT_ITEMS,
+	environmentInfo,
+	LOCK_GROUP_ORDER,
+	settingLocksOf,
+} from "../lib/environment-info.js";
 import { RUNTIME_ENV_NAMES, userSetEnvNames } from "../lib/runtime-rules.js";
 
 const RUNTIME_LINE = /^NPMPRO_RUNTIME_ENVS="(?<names>[^"]*)"$/mu;
@@ -157,4 +163,53 @@ it("lists ENABLE_PRERUN, which entrypoint.sh reads without exporting a default",
 	assert.equal(set.value, "true");
 	assert.equal(set.set, true);
 	assert.equal(set.is_default, false);
+});
+
+it("lists the OIDC, monitoring and GeoIP env locks with their variables, in settings menu order", () => {
+	const env = { NPMPRO_USER_ENV: "", LOGROTATE: "false" };
+	const locks = settingLocksOf(env, {
+		oidc: ["issuer_url", "client_secret"],
+		monitoring: ["traffic_enabled", "retention_days"],
+		geoip: ["license_key", "editions"],
+	});
+	const info = environmentInfo(env, [{ group: "advanced", key: "gravatar" }, ...locks]);
+	assert.deepEqual(
+		info.locked_runtime.map(({ group, key, env: name, reason }) => [group, key, name, reason]),
+		[
+			["oidc", "issuer_url", "OIDC_ISSUER_URL", null],
+			["oidc", "client_secret", "OIDC_CLIENT_SECRET", null],
+			["monitoring", "traffic_enabled", "TRAFFIC_STATS", null],
+			["monitoring", "retention_days", "TRAFFIC_RETENTION_DAYS", null],
+			["geoip", "license_key", "GEOIP_LICENSE_KEY", null],
+			["geoip", "editions", "GEOIP_EDITIONS", null],
+			["advanced", "gravatar", "DISABLE_GRAVATAR", null],
+		],
+	);
+});
+
+it("names LOGROTATE, or GOA when envs.sh set LOGROTATE for it, as the indirect lock of traffic statistics", () => {
+	const traffic = (env) => settingLocksOf(env, { monitoring: ["traffic_enabled"] })[0];
+	assert.deepEqual(traffic({ NPMPRO_USER_ENV: "LOGROTATE", LOGROTATE: "true" }), {
+		group: "monitoring",
+		key: "traffic_enabled",
+		env: "LOGROTATE",
+		reason: "write-log-files",
+	});
+	assert.equal(traffic({ NPMPRO_USER_ENV: "GOA", LOGROTATE: "true", GOA: "true" }).env, "GOA");
+	assert.equal(traffic({ NPMPRO_USER_ENV: "GOA LOGROTATE", LOGROTATE: "true", GOA: "true" }).env, "LOGROTATE");
+});
+
+it("matches the environment response schema with the setting locks", async () => {
+	const { getCompiledSchema } = await import("../schema/index.js");
+	const { default: Ajv } = await import("ajv/dist/2020.js");
+	const schema = await getCompiledSchema();
+	const response = schema.paths["/settings/environment"].get.responses["200"].content["application/json"].schema;
+	const env = { NPMPRO_USER_ENV: "LOGROTATE", LOGROTATE: "true" };
+	const info = environmentInfo(env, [
+		{ group: "logs", key: "write_log_files", env: "GOA", reason: "goaccess" },
+		...settingLocksOf(env, { oidc: ["client_id"], monitoring: ["traffic_enabled"], geoip: ["account_id"] }),
+	]);
+	const ajv = new Ajv({ strict: false, allowUnionTypes: true });
+	assert.equal(ajv.validate(response, info), true, ajv.errorsText());
+	assert.deepEqual(response.properties.locked_runtime.items.properties.group.enum, LOCK_GROUP_ORDER);
 });
