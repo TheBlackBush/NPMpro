@@ -24,7 +24,7 @@ import { filterBans, formatCount, secondsLeftNow, timeLeftParts } from "src/modu
 // Top lists show at most this many rows; the share bars use the overall total
 const TOP_LIST = 10;
 
-const README_CROWDSEC = "https://github.com/TheBlackBush/NPMpro#crowdsec";
+const CROWDSEC_GUIDE = "https://github.com/TheBlackBush/NPMpro/wiki/CrowdSec";
 
 // newest first, as the API sends them; no column sorting, since only the first rows are shown until "Show all"
 const features = tableFeatures({
@@ -325,8 +325,8 @@ const Crowdsec = () => {
 					icon={IconPlugConnectedX}
 					title={<T id="monitoring.crowdsec.conf-error" />}
 					subtitle={<T id="monitoring.crowdsec.unreachable.subtitle" data={{ error: data.error }} />}
-					href={README_CROWDSEC}
-					action={<T id="monitoring.crowdsec.readme" />}
+					href={CROWDSEC_GUIDE}
+					action={<T id="monitoring.crowdsec.guide" />}
 				/>
 			</EmptyCard>
 		);
@@ -338,8 +338,8 @@ const Crowdsec = () => {
 					icon={IconShieldOff}
 					title={<T id="monitoring.crowdsec.off" />}
 					subtitle={<T id="monitoring.crowdsec.off.subtitle" />}
-					href={README_CROWDSEC}
-					action={<T id="monitoring.crowdsec.readme" />}
+					href={CROWDSEC_GUIDE}
+					action={<T id="monitoring.crowdsec.guide" />}
 				/>
 			</EmptyCard>
 		);
