@@ -1,6 +1,6 @@
 import { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS } from "./monitoring-rules.js";
 import { ENV_KEYS as OIDC_ENV_KEYS } from "./oidc-rules.js";
-import { RUNTIME_RULES, userSetNames } from "./runtime-rules.js";
+import { RUNTIME_RULES, SETTING_LOCK_REASONS, userSetNames } from "./runtime-rules.js";
 
 const ENVIRONMENT_GROUPS = ["network", "users", "nginx", "modules", "goaccess", "database", "certificates-account"];
 
@@ -122,7 +122,8 @@ const lockedRuntimeOf = (runtimeLocked) =>
 			env: env ?? ENV_OF_RUNTIME.get(`${group}/${key}`),
 			reason: reason ?? null,
 		}))
-		.filter((entry) => entry.env !== undefined)
+		// a lock caused by a setting (GoAccess report from the UI) is not set by an environment variable
+		.filter((entry) => entry.env !== undefined && !SETTING_LOCK_REASONS.includes(entry.reason))
 		.map((entry, index) => ({ entry, index }))
 		// in the order of the settings menu, keeping the order inside a group
 		.sort(
@@ -152,9 +153,14 @@ const settingLocksOf = (env, { oidc = [], monitoring = [], geoip = [] } = {}) =>
 	for (const key of monitoring) {
 		if (key === "traffic_enabled" && env.LOGROTATE === "true") {
 			// LOGROTATE=true turns traffic statistics on (mergeMonitoringConfig); without LOGROTATE from the user,
-			// envs.sh set it for GOA=true
-			const name = userSetNames(env, ["LOGROTATE"]).has("LOGROTATE") || env.GOA !== "true" ? "LOGROTATE" : "GOA";
-			entries.push({ group: "monitoring", key, env: name, reason: "write-log-files" });
+			// envs.sh set it for GOA=true, which is an env lock only when the user set GOA (else the GoAccess report
+			// setting keeps it on: not listed)
+			const userSet = userSetNames(env, ["LOGROTATE", "GOA"]);
+			if (userSet.has("LOGROTATE") || env.GOA !== "true") {
+				entries.push({ group: "monitoring", key, env: "LOGROTATE", reason: "write-log-files" });
+			} else if (userSet.has("GOA")) {
+				entries.push({ group: "monitoring", key, env: "GOA", reason: "write-log-files" });
+			}
 		} else {
 			add("monitoring", [key], MONITORING_ENV_KEYS);
 		}

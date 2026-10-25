@@ -233,3 +233,17 @@ it("shows TZ and GOA as settings: the running value without the variable, set an
 	assert.equal(fromEnv.value, "Asia/Tokyo");
 	assert.equal(itemOf(environmentInfo({}, []), "NPM_PORT").setting, undefined);
 });
+
+it("leaves the locks of the GoAccess report setting out of the env locked list", () => {
+	const info = environmentInfo({ NPMPRO_USER_ENV: "" }, [
+		{ group: "logs", key: "write_log_files", env: "GOA", reason: "goaccess-setting" },
+		{ group: "logs", key: "log_rotations" },
+	]);
+	assert.deepEqual(
+		info.locked_runtime.map(({ key }) => key),
+		["log_rotations"],
+	);
+	// GOA=true from the setting turned LOGROTATE on in envs.sh: traffic statistics are not locked by an env var
+	const fromSetting = { NPMPRO_USER_ENV: "", LOGROTATE: "true", GOA: "true" };
+	assert.deepEqual(settingLocksOf(fromSetting, { monitoring: ["traffic_enabled"] }), []);
+});

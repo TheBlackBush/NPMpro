@@ -297,9 +297,13 @@ const RUNTIME_RULES = [
 /**
  * Why a key is locked by another setting's env var: key-size (key_type follows ACME_KEY_SIZE, the size is an ECDSA
  * curve or an RSA size), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns stapling off),
- * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files)
+ * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log
+ * files), goaccess-setting (the same with GoAccess turned on by the GoAccess report setting: not an env lock, left out
+ * of the Environment page)
  */
-const LOCK_REASONS = ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"];
+const LOCK_REASONS = ["key-size", "ocsp-stapling-off", "must-staple", "goaccess", "goaccess-setting"];
+// reasons of locks that no env var set by the user causes
+const SETTING_LOCK_REASONS = ["goaccess-setting"];
 
 /**
  * The settings that apply at the next container start (TZ, GOA): envs.sh reads them from the startup settings file
@@ -426,8 +430,9 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 	// envs.sh:827 GoAccess needs the log files
 	if (group === "logs" && env.GOA === "true") {
 		values.write_log_files = true;
-		// GOA is what keeps it on, also when LOGROTATE is set
-		lock("write_log_files", "GOA", "goaccess");
+		// GOA is what keeps it on, also when LOGROTATE is set; without GOA from the user it runs from the GoAccess
+		// report setting (startup settings file), not from an env var
+		lock("write_log_files", "GOA", userSet.has("GOA") ? "goaccess" : "goaccess-setting");
 	}
 
 	return { values, locked, locked_by: lockedBy, locked_reason: lockedReason, invalid };
@@ -544,6 +549,7 @@ export {
 	renderStartupSettings,
 	restartPendingOf,
 	rulesOf,
+	SETTING_LOCK_REASONS,
 	UPSTREAM,
 	userSetEnvNames,
 	userSetNames,

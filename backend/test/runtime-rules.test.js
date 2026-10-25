@@ -526,10 +526,13 @@ it("marks the indirect locks with their reason in locked_reason, direct locks ar
 	assert.deepEqual(reasonOf("certificates", userEnv({ ACME_MUST_STAPLE: "true" })), {
 		ocsp_stapling: "must-staple",
 	});
-	assert.deepEqual(reasonOf("logs", { ...BOOT_ENV, GOA: "true" }), { write_log_files: "goaccess" });
+	// GOA from the user: an env lock; GOA from the GoAccess report setting (startup settings file): a setting lock
+	assert.deepEqual(reasonOf("logs", userEnv({ GOA: "true" })), { write_log_files: "goaccess" });
+	assert.deepEqual(reasonOf("logs", { ...BOOT_ENV, GOA: "true" }), { write_log_files: "goaccess-setting" });
 	assert.deepEqual(reasonOf("logs", { ...userEnv({ LOGROTATE: "true" }), GOA: "true" }), {
-		write_log_files: "goaccess",
+		write_log_files: "goaccess-setting",
 	});
+	assert.deepEqual(reasonOf("logs", userEnv({ LOGROTATE: "true", GOA: "true" })), { write_log_files: "goaccess" });
 	assert.deepEqual(reasonOf("logs", userEnv({ LOGROTATE: "true" })), {});
 	for (const reason of ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"]) {
 		assert.ok(LOCK_REASONS.includes(reason));

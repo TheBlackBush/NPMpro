@@ -20,6 +20,8 @@ const hasMessage = (id) => Boolean(intl.messages[id]);
 const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 const RuntimeContext = createContext(null);
+// lock reasons of a setting, not of an env var (backend SETTING_LOCK_REASONS)
+const SETTING_LOCK_REASONS = new Set(["goaccess-setting"]);
 
 /**
  * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it),
@@ -36,7 +38,8 @@ const runtimeContextOf = (group, data) => {
 	return {
 		group,
 		data,
-		anyLocked: locked.size > 0,
+		// locked by an env var (the "set by environment variables" notice): not the locks of a setting
+		anyLocked: (data.locked ?? []).some((key) => !SETTING_LOCK_REASONS.has(data.lockedReason?.[camel(key)])),
 		isLocked: (key) => locked.has(key),
 		// locked_by: the env var that locks each key (its keys camelized by base.js, the values are env names)
 		envOf: (key) => data.lockedBy?.[key],

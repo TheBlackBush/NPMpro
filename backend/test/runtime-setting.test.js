@@ -271,8 +271,9 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 	const logs = schema.paths["/settings/runtime/logs"].get.responses["200"].content["application/json"].schema;
 	const goaEnv = { ...BOOT_ENV, GOA: "true" };
 	const goaView = runtimeView("logs", mergeRuntimeConfig("logs", {}, goaEnv, noImages), goaEnv);
-	assert.deepEqual(goaView.locked_reason, { write_log_files: "goaccess" });
-	// running with GOA=true (from the startup settings file), stored off: a restart turns it off
+	// running with GOA=true from the startup settings file: locked by the GoAccess report setting, not by env
+	assert.deepEqual(goaView.locked_reason, { write_log_files: "goaccess-setting" });
+	// stored off: a restart turns it off
 	assert.deepEqual(goaView.restart_pending, ["goaccess"]);
 	assert.equal(ajv.validate(logs, goaView), true, ajv.errorsText());
 	const advanced = schema.paths["/settings/runtime/advanced"].get.responses["200"].content["application/json"].schema;

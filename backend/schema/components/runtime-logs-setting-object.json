@@ -60,13 +60,14 @@
 		},
 		"locked_reason": {
 			"type": "object",
-			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log files), goaccess-setting (GoAccess, turned on by the GoAccess report setting, reads the log files: not an env lock). Fields locked by their own variable are not listed.",
 			"additionalProperties": false,
 			"properties": {
 				"write_log_files": {
 					"type": "string",
 					"enum": [
-						"goaccess"
+						"goaccess",
+						"goaccess-setting"
 					]
 				}
 			}
