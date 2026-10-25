@@ -34,94 +34,138 @@ services:
 #      - "/var/www:/var/www" # optional, if you want to use NPMpro directly as a webserver for html/php
 #      - "/path/to/old/npm/letsencrypt/folder:/etc/letsencrypt" # Only needed for initial migration from original nginx-proxy-manager to this fork, remove after migration
     environment:
-      - "TZ=your-timezone" # set timezone, required, set it to one of the values from the "TZ identifier" https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
-#      - "ACME_EMAIL=your-email" # email address to use for acme, required for zerossl and google public ca
-#      - "ACME_SERVER=https://dv.acme-v02.api.pki.goog/directory (google public ca) / https://acme.zerossl.com/v2/DV90 (zerossl)" # acme server used when requesting/renewing certs using certbot, default: https://acme-v02.api.letsencrypt.org/directory (letsencrypt)
-#      - "ACME_EAB_KID=123456789abcdef" # Key Identifier for External Account Binding for the acme server, not supported by letsencrypt, optional for zerossl (Login on their site => Developer), but required for google public ca: https://cloud.google.com/certificate-manager/docs/public-ca-tutorial?hl=de#request-key-hmac
-#      - "ACME_EAB_HMAC_KEY=123456789abcdef" # HMAC key for External Account Binding for the acme server, not supported by letsencrypt, optional for zerossl (Login on their site => Developer), but required for google public ca: https://cloud.google.com/certificate-manager/docs/public-ca-tutorial?hl=de#request-key-hmac
-#      - "ACME_PROFILE=shortlived" # sets the profile to be used from the acme server, when using letsencrypt shortlived is used by default else it defaults to "none" (the default ca profile), supported by letsencrypt (https://letsencrypt.org/docs/profiles) - clients incorrectly requiring a Certificate Common Name in a cert break when using certs from the shortlived/tlsserver profile
-#      - "ACME_MUST_STAPLE=true" # enables must-staple, default false (default is true when using zerossl), I recommend enabling this if your CA supports it, supported by zerossl, google public ca ignores this, unsupported by letsencrypt (will fail), overrides ACME_OCSP_STAPLING to true
-#      - "ACME_OCSP_STAPLING=true" # enables ocsp stapling, default false (default is true when using google public ca or zerossl), I recommend enabling this if your CA supports it, supported by zerossl and google public ca, this will disable tls certificate compression
-#      - "ACME_KEY_TYPE=rsa" # which key type to use ecdsa or rsa, default and recommended: ecdsa
-#      - "ACME_KEY_SIZE=2048" # key size for ACME cert, for ecdsa: secp256r1, secp384r1, secp521r1 (default and recommended: secp384r1), for rsa: 2048, 3072, 4096 (default and recommended: 4096)
-#      - "ACME_SERVER_TLS_VERIFY=false" # enables checking if ACME_SERVER has a valid TLS cert, default and recommended true
-#      - "CUSTOM_OCSP_STAPLING=true" # enables ocsp stapling for custom certs, default false, I recommend enabling this if your custom certs support it, this will disable tls certificate compression
-#      - "PUID=1000" # set user id, needs to be a number greater or equal to 99, or equal to 0, default 0 (root), if network mode host is used and PUID changed, you may need to set sysctl net.ipv4.ip_unprivileged_port_start=0 to bind ports like 80 or 443, please note that this will allow all non-root services to bind ports below 1024
-#      - "PGID=1000" # set group id, needs to be a number greater or equal to 99, or equal to 0, default 0 (root), requires non-zero PUID
-#      - "NPM_PORT=82" # Port the NPM UI should be bound to, default 81, change this if you want to run multiple npm instances in network mode host
-#      - "IPV4_BINDING=127.0.0.1" # IPv4 address to bind, defaults to all
-#      - "NPM_IPV4_BINDING=127.0.0.1" # IPv4 address to bind for the NPM UI, defaults to all
-#      - "IPV6_BINDING=[::1]" # IPv6 address to bind, defaults to all
-#      - "NPM_IPV6_BINDING=[::1]" # IPv6 address to bind for the NPM UI, defaults to all
-#      - "DISABLE_IPV6=true" # fully disables listening on IPv6 and the IPv6 resolver of nginx, overrides IPV6_BINDING/NPM_IPV6_BINDING, default false
-#      - "NPM_LISTEN_LOCALHOST=true" # Binds the NPM UI only to localhost (IPv4+IPv6), overrides NPM_IPV4_BINDING/NPM_IPV6_BINDING, default false
-#      - "DEFAULT_CERT_ID=1" # ID of cert to use instead of dummycerts, default 0/unset/dummycerts
-#      - "HTTP_PORT=8080" # tcp port to use for http traffic, changing this may break certbot http challenge, default 80
-#      - "HTTPS_PORT=8443" # udp and tcp port to use for https traffic, changing this may break certbot http challenge, default 443
-#      - "DISABLE_HTTP=true" # prevents nginx from listening on port 80, default false
-#      - "LISTEN_PROXY_PROTOCOL=true" # should listeners of http(s) hosts (proxy/redirect/dead and default) use proxy protocol instead of http(s)? default false, overrides DISABLE_H3_QUIC, LISTEN_PROXY_PROTOCOL_HTTP and LISTEN_PROXY_PROTOCOL_HTTPS to true
-#      - "LISTEN_PROXY_PROTOCOL_HTTP=true" # should listeners of http hosts (proxy/redirect/dead and default) use proxy protocol instead of http? default false
-#      - "LISTEN_PROXY_PROTOCOL_HTTPS=true" # should listeners of https hosts (proxy/redirect/dead and default) use proxy protocol instead of https? default false, overrides DISABLE_H3_QUIC to true
-#      - "DISABLE_H3_QUIC=true" # prevents nginx from listening on port 443 udp for default host and all your hosts, this will fully disable HTTP/3 and QUIC, even if you enable it inside the UI, not recommended, default false
-#      - "ENABLE_MPTCP=true" # enables multipathtcp, required network_mode host, recommended, default false
-#      - "NGINX_QUIC_BPF=true" # enables nginx's quic_bpf (https://nginx.org/en/docs/http/ngx_http_v3_module.html#quic_bpf), you must also add caps to the NPMpro container (see cap_add of this compose file) to use this, recommended, default false
-#      - "NGINX_LOG_NOT_FOUND=true" # Log 404 errors to the docker logs, unrelated to access logs, default false
-#      - "NGINX_WORKER_PROCESSES=8" # value of worker_processes, default and recommended: auto
-#      - "NGINX_WORKER_CONNECTIONS=1024" # value of worker_connections, default: 512
-#      - "NGINX_FORCE_X25519MLKEM768=true" # forces usage of X25519MLKEM768 by disabling everything else (including TLS1.2), default false (overrides NGINX_DISABLE_TLS12 to true and NGINX_TRUST_SECPR1 to false), please note that browsers most browsers support it, but other application may not support this
-#      - "NGINX_DISABLE_TLS12=true" # disabled TLS1.2, default false, TLS1.2 can still be assumed to be secure with the settings NPMpro uses, but if you know all your clients support TLS1.3 this allows you to disable it
-#      - "NGINX_TRUST_SECPR1=false" # enables secp521r1:secp384r1:secp256r1 ecdh curves, default true, disable if all your clients support X25519MLKEM768 or x25519
-#      - "NGINX_TRUST_RSA_PKCS1=true" # enables rsa_pkcs1_sha512:rsa_pkcs1_sha384:rsa_pkcs1_sha256 sigalgs, default false, enable if your use a RSA key and your client doesn't support RSA-PSS sigalgs
-#      - "DISABLE_NGINX_BEAUTIFIER=true" # disables nginxbeautifier, useful when it fails parsing non-standard custom/advanced configs, default false
-#      - "LOGROTATE=true" # Enables writing http access logs to /opt/npmpro/nginx/logs/access.log, stream access logs to /opt/npmpro/nginx/logs/stream.log and enables daily logrotation, default false
-#      - "LOGROTATIONS=7" # Set how often the access.log should be rotated until it is deleted, default 3
-#      - "TRUST_IP=10.0.0.0/8 192.168.1.5" # Space separated list of reverse proxy IPs/subnets to trust for the X-Forwarded-For header, so nginx will see the real client IPs, default empty
-#      - "TRUST_CLOUDFLARE=true" # Enables fetching/whitelisting IPs from cloudflare, so nginx will see the real client IPs, default false
-#      - "CERTBOT_RUN_INTERVAL=72" # Set how many hours should be between certbot trying to renew your certs if needed, default 3
-#      - "ECH_ROTATION_INTERVAL=3" # Set how many hours should be between the runs of your ech cron script, default 1
-#      - "GOA=true" # Enables goaccess (and overrides LOGROTATE to true), served under /goaccess of the NPMpro web UI, only reachable for logged in admins, default false --- if you download the GeoLite2-Country.mmdb, GeoLite2-City.mmdb AND GeoLite2-ASN.mmdb file from MaxMind and place them in /opt/npmpro/goaccess/geoip it will automatically enable GeoIP in goaccess after restarting NPMpro (no need to change GOACLA below), you may also enable the geoipupdate container below (please change the timezone)
-#      - "GOACLA=--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=2 --keep-last=7 --with-output-resolver --no-query-string" # Arguments that should be passed to goaccess, default: --agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string
-#      - "PHP83=true" # Activate PHP83, default false, supported, but not recommended, you should prefer to use a dedicated php-fpm container
-#      - "PHP83_APKS=php83-curl php83-openssl" # Add php extensions, also enables PHP83, see available packages here: https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php83-*, default none, requires PHP83
-#      - "PHP84=true" # Activate PHP84, default false, supported, but not recommended, you should prefer to use a dedicated php-fpm container
-#      - "PHP84_APKS=php84-curl php84-openssl" # Add php extensions, also enables PHP84, see available packages here: https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php84-*, default none, requires PHP84
-#      - "PHP85=true" # Activate PHP85, default false, supported, but not recommended, you should prefer to use a dedicated php-fpm container
-#      - "PHP85_APKS=php85-curl php85-openssl" # Add php extensions, also enables PHP85, see available packages here: https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php85-*, default none, requires PHP85
-#      - "PHP_APKS=php-pecl-apcu php-pecl-redis" # Add php extensions, see available packages here: https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php-*, default none, requires PHP83, PHP84 and/or PHP85, not recommended, please use PHP83_APKS, PHP84_APKS or PHP85_APKS
-#      - "INITIAL_ADMIN_EMAIL=<initial@email.tld>" # email of the initial admin user, only used together with INITIAL_ADMIN_PASSWORD on the initial NPMpro start, without both the setup wizard creates the user
-#      - "INITIAL_ADMIN_PASSWORD=<initial-password>" # password of the initial admin user, only used together with INITIAL_ADMIN_EMAIL on the initial NPMpro start, without both the setup wizard creates the user
-#      - "INITIAL_DEFAULT_PAGE=444" # default page to set on initial start of NPMpro, default "congratulations", can be one of: 404, 444, redirect, congratulations or html
-#      - "DISABLE_GRAVATAR=true" # disables usage of gravatar images, users need to update theier profile for this to apply, default false
-#      - "COOKIE_SECRET=some-random-string" # by default a new secret to encrypt/decrypt cookies is used after each restart, to keep cookies valid after restarts you can set a static secret here
-#      - "ENABLE_PRERUN=true" # see readme, default off
-#      - "NGINX_LOAD_NJS_MODULE=true" # loads the njs module, requires manual configuration, default false
-#      - "NGINX_LOAD_LDAP_MODULE=true" # loads the ldap module, requires manual configuration, default false
-#      - "NGINX_LOAD_NTLM_MODULE=true" # loads the ntlm module, requires manual configuration, default false
-#      - "NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE=true" # loads the virtual host traffic status module, requires manual configuration, default false
-#      # OIDC can also be configured in the web UI under Settings, Authentication. A variable set here wins over the saved value and locks its field in the UI; with the four connection variables (issuer url, client id, client secret, redirect domain) set, OIDC is active without enabling it in the UI.
-#      - "OIDC_REDIRECT_DOMAIN=<domain-ip>[:<port>]" # redirect domain/ip (+ port) for oidc, without scheme and without path, redirect url will be https://$OIDC_REDIRECT_DOMAIN/api/oidc/callback
-#      - "OIDC_ISSUER_URL=https://..." # issuer url for oidc
-#      - "NODE_TLS_REJECT_UNAUTHORIZED=0" # if your issuer uses a self signed cert you may need to set this, but please note that this will disable cert verification for all requests done by the backend (not nginx), like to github for version checks, gravatar, reachability checks or cloudflare for IP updates
-#      - "OIDC_CLIENT_ID=..." # client id for oidc
-#      - "OIDC_CLIENT_SECRET=..." # client secret for oidc
-#      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # requires the email sent by the OIDC Provider to be marked as verified, when unset the value from the UI is used (default true)
-#      - "OIDC_DISABLE_PASSWORD=true" # disables plain email/password login, when unset the value from the UI is used (default false)
-#      - "OIDC_SKIP_MFA=true" # skips the second factor after a successful OIDC login, when unset the value from the UI is used (default false)
-#      # Monitoring can also be configured in the web UI under Settings, Monitoring and GeoIP. A variable set here wins over the saved value and locks its field in the UI.
-#      - "TRAFFIC_STATS=true" # turns the traffic statistics (Monitoring page) on or off, also turns the nginx access log on, default false (off), LOGROTATE=true also turns it on and locks it
-#      - "TRAFFIC_RETENTION_DAYS=30" # days the hourly traffic statistics are kept, 7 to 365, default 30 (per-minute counts are kept for 24 hours)
-#      - "TRAFFIC_SHOW_IPS=true" # also stores the top visitor IPs, turning it off deletes the stored IPs, default false
-#      - "TRAFFIC_UNIQUE_VISITORS=true" # counts unique visitors per host and day by storing a keyed hash of the visitor IP (not the IP), turning it off deletes the hashes, default false
+      # Basics
+      - "TZ=Etc/UTC" # change to your time zone ("TZ identifier" from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List), optional: without it the Time zone setting (Settings, Advanced) is used, default UTC; an invalid value stops the container from starting
+#      - "PUID=1000" # user id to run as, a number, default 0 (root); with network_mode host and a non-root PUID you may need sysctl net.ipv4.ip_unprivileged_port_start=0 to bind ports below 1024 (this allows every non-root service to bind them)
+#      - "PGID=1000" # group id to run as, a number, default 0 (root), requires PUID
+#      - "NPM_PORT=82" # port of the NPMpro web UI, default 81, change it to run several instances with network_mode host
+#      - "IPV4_BINDING=127.0.0.1" # IPv4 address nginx listens on for your hosts, default 0.0.0.0 (all)
+#      - "IPV6_BINDING=[::1]" # IPv6 address (in brackets) nginx listens on for your hosts, default [::] (all)
+#      - "NPM_IPV4_BINDING=127.0.0.1" # IPv4 address of the web UI, default 0.0.0.0 (all)
+#      - "NPM_IPV6_BINDING=[::1]" # IPv6 address (in brackets) of the web UI, default [::] (all)
+#      - "NPM_LISTEN_LOCALHOST=true" # web UI only on localhost (IPv4 and IPv6), overrides NPM_IPV4_BINDING/NPM_IPV6_BINDING, default false
+#      - "HTTP_PORT=8080" # tcp port for http, changing it may break the certbot http challenge, default 80
+#      - "HTTPS_PORT=8443" # tcp and udp port for https, changing it may break the certbot http challenge, default 443
+#      - "DISABLE_HTTP=true" # nginx does not listen on the http port, default false
+#      - "DISABLE_IPV6=true" # no IPv6 listeners and no IPv6 resolver in nginx, overrides IPV6_BINDING/NPM_IPV6_BINDING, default false
+
+      # Network and TLS at startup
+#      - "LISTEN_PROXY_PROTOCOL=true" # http and https listeners (proxy/redirection/404 hosts and the default host) expect proxy protocol, turns on LISTEN_PROXY_PROTOCOL_HTTP, LISTEN_PROXY_PROTOCOL_HTTPS and DISABLE_H3_QUIC, default false
+#      - "LISTEN_PROXY_PROTOCOL_HTTP=true" # http listeners expect proxy protocol, default false
+#      - "LISTEN_PROXY_PROTOCOL_HTTPS=true" # https listeners expect proxy protocol, turns on DISABLE_H3_QUIC, default false
+#      - "DISABLE_H3_QUIC=true" # nginx does not listen on the https port over udp: no HTTP/3 (QUIC) for any host, even when enabled in the UI, not recommended, default false
+#      - "ENABLE_MPTCP=true" # enables multipath TCP, needs network_mode host, recommended, default false
+#      - "NGINX_QUIC_BPF=true" # enables quic_bpf (https://nginx.org/en/docs/http/ngx_http_v3_module.html#quic_bpf), needs the BPF, PERFMON and NET_ADMIN caps (see cap_add above), recommended, default false
+#      - "NGINX_WORKER_PROCESSES=8" # worker_processes, auto or a number, default and recommended auto
+#      - "NGINX_WORKER_CONNECTIONS=1024" # worker_connections, a number, default 512
+#      - "NGINX_FORCE_X25519MLKEM768=true" # only X25519MLKEM768 key exchange, nothing else (this also means no TLS 1.2), turns on NGINX_DISABLE_TLS12 and off NGINX_TRUST_SECPR1; most browsers support it, other clients may not, default false
+#      - "NGINX_DISABLE_TLS12=true" # disables TLS 1.2, which is still safe with the settings NPMpro uses; only if all your clients support TLS 1.3, default false
+#      - "NGINX_TRUST_SECPR1=false" # the secp521r1, secp384r1 and secp256r1 curves for key exchange, default true, turn off if all your clients support X25519MLKEM768 or x25519
+#      - "NGINX_TRUST_RSA_PKCS1=true" # the rsa_pkcs1_sha512/384/256 signature algorithms, default false, turn on if you use an RSA key and a client does not support RSA-PSS
+#      - "NGINX_LOG_NOT_FOUND=true" # log requests for missing files (404) to the docker logs, unrelated to access logs, default false
+
+      # Modules and PHP
+#      - "NGINX_LOAD_NJS_MODULE=true" # loads the njs module, needs your own configuration, default false
+#      - "NGINX_LOAD_LDAP_MODULE=true" # loads the ldap module, needs your own configuration, default false
+#      - "NGINX_LOAD_NTLM_MODULE=true" # loads the ntlm module, needs your own configuration, default false
+#      - "NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE=true" # loads the virtual host traffic status module, needs your own configuration, default false
+#      - "PHP83=true" # starts the built-in php-fpm 8.3, default false, supported but not recommended: prefer a separate php-fpm container
+#      - "PHP83_APKS=php83-curl php83-openssl" # php 8.3 extensions to install (https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php83-*), also turns on PHP83, default none
+#      - "PHP84=true" # starts the built-in php-fpm 8.4, default false, supported but not recommended: prefer a separate php-fpm container
+#      - "PHP84_APKS=php84-curl php84-openssl" # php 8.4 extensions to install (https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php84-*), also turns on PHP84, default none
+#      - "PHP85=true" # starts the built-in php-fpm 8.5, default false, supported but not recommended: prefer a separate php-fpm container
+#      - "PHP85_APKS=php85-curl php85-openssl" # php 8.5 extensions to install (https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php85-*), also turns on PHP85, default none
+#      - "PHP_APKS=php-pecl-apcu php-pecl-redis" # extra php- packages (names must start with php-, https://pkgs.alpinelinux.org/packages?branch=v3.21&repo=community&arch=x86_64&name=php-*), needs PHP83, PHP84 or PHP85, not recommended: use PHP83_APKS, PHP84_APKS or PHP85_APKS, default none
+
+      # Database and first start
+      # MariaDB/MySQL and PostgreSQL may work but are unsupported, have no advantage over SQLite and are not recommended; you cannot move from them to SQLite without a fresh install. Without these variables NPMpro uses SQLite in /data/npmpro/database.sqlite
+#      - "DB_MYSQL_HOST=127.0.0.1" # MariaDB/MySQL host, used when DB_MYSQL_HOST, DB_MYSQL_USER and DB_MYSQL_NAME are set
+#      - "DB_MYSQL_PORT=3306" # default 3306
+#      - "DB_MYSQL_USER=npmpro"
+#      - "DB_MYSQL_PASSWORD=<password>"
+#      - "DB_MYSQL_NAME=npmpro"
+#      - "DB_MYSQL_SSL=true" # TLS to the database, default false
+#      - "DB_MYSQL_SSL_REJECT_UNAUTHORIZED=false" # with DB_MYSQL_SSL: reject an untrusted server certificate, default true
+#      - "DB_MYSQL_SSL_VERIFY_IDENTITY=false" # with DB_MYSQL_SSL: check the server name in its certificate, default true
+#      - "DB_POSTGRES_HOST=127.0.0.1" # PostgreSQL host, used when DB_POSTGRES_HOST, DB_POSTGRES_USER and DB_POSTGRES_NAME are set (and no MySQL host is)
+#      - "DB_POSTGRES_PORT=5432" # default 5432
+#      - "DB_POSTGRES_USER=npmpro"
+#      - "DB_POSTGRES_PASSWORD=<password>"
+#      - "DB_POSTGRES_NAME=npmpro"
+#      - "INITIAL_ADMIN_EMAIL=<initial@email.tld>" # email of the first admin, only with INITIAL_ADMIN_PASSWORD and only on the first start; without both the setup page in the web UI creates the first user
+#      - "INITIAL_ADMIN_PASSWORD=<initial-password>" # password of the first admin (8 to 255 characters), only with INITIAL_ADMIN_EMAIL and only on the first start
+#      - "INITIAL_DEFAULT_PAGE=444" # default site on the first start: 404, 444, redirect, congratulations or html, default congratulations
+#      - "COOKIE_SECRET=some-random-string" # secret for signed cookies; without it a new random secret is used after each restart, set a static one to keep those cookies valid across restarts
+#      - "ENABLE_PRERUN=true" # runs the scripts in /opt/npmpro/prerun/*.sh before NPMpro starts (see README), default false
+#      - "NC_AIO=true" # Nextcloud All-in-One mode: creates a proxy host for NC_DOMAIN to 127.0.0.1:11000 with a new certificate, and DISABLE_HTTP defaults to true, default false
+#      - "NC_DOMAIN=cloud.example.com" # the Nextcloud domain, required with NC_AIO=true
+#      - "NODE_TLS_REJECT_UNAUTHORIZED=0" # turns off certificate checks for every request the backend makes (not nginx), for example to an OIDC issuer with a self-signed certificate, GitHub version checks, Gravatar, reachability checks and Cloudflare IP updates; avoid it if you can
+
+      # ACME account (certificate authority)
+#      - "ACME_SERVER=https://acme.zerossl.com/v2/DV90" # ACME directory URL, default https://acme-v02.api.letsencrypt.org/directory (Let's Encrypt); Google Public CA: https://dv.acme-v02.api.pki.goog/directory, ZeroSSL: https://acme.zerossl.com/v2/DV90
+#      - "ACME_EMAIL=your-email" # email address for the ACME account, required for ZeroSSL and Google Public CA
+#      - "ACME_EAB_KID=123456789abcdef" # External Account Binding key id, not supported by Let's Encrypt, optional for ZeroSSL (on their site: Developer), required for Google Public CA (https://cloud.google.com/certificate-manager/docs/public-ca-tutorial#request-key-hmac); needs ACME_EAB_HMAC_KEY and ACME_EMAIL
+#      - "ACME_EAB_HMAC_KEY=123456789abcdef" # External Account Binding HMAC key, see ACME_EAB_KID
+
+      # Settings you can also change in the web UI
+      # The web UI (Settings) is the normal place for these. A variable set here wins over the saved value and locks its
+      # field in the UI ("Set by <variable>"). Fields marked "Restart required" in the UI (TZ above, GOA and GOACLA) apply
+      # at the next container start; the others apply on save.
+
+      # Certificates & TLS
+#      - "ACME_KEY_TYPE=rsa" # ecdsa or rsa, default and recommended ecdsa
+#      - "ACME_KEY_SIZE=4096" # ecdsa: secp256r1, secp384r1 or secp521r1 (default secp384r1); rsa: 2048, 3072 or 4096 (default 4096)
+#      - "ACME_PROFILE=shortlived" # ACME profile, must be offered by the ACME server, "none" for the server default; default shortlived with Let's Encrypt, else none; clients that require a Common Name do not work with shortlived and tlsserver certificates
+#      - "ACME_MUST_STAPLE=true" # marks new certificates as must-staple and turns on ACME_OCSP_STAPLING, default false (true for ZeroSSL and Google Public CA); Let's Encrypt refuses it
+#      - "ACME_OCSP_STAPLING=true" # OCSP stapling for ACME certificates, turns TLS certificate compression off, default false (true for ZeroSSL and Google Public CA)
+#      - "ACME_SERVER_TLS_VERIFY=false" # check the TLS certificate of ACME_SERVER, default and recommended true
+#      - "CUSTOM_OCSP_STAPLING=true" # OCSP stapling for uploaded (custom) certificates, turns TLS certificate compression off, default false
+#      - "CERTBOT_RUN_INTERVAL=12" # hours between renewal checks, 1 to 499, default 3
+#      - "DEFAULT_CERT_ID=1" # id of the certificate for unknown host names and the web UI, default 0 (built-in placeholder certificate)
+#      - "ECH_ROTATION_INTERVAL=3" # hours between runs of your ECH script (/opt/npmpro/tls/ech/cron.sh), 1 to 24, default 1
+
+      # Network
+#      - "TRUST_IP=10.0.0.0/8 192.168.1.5" # space separated IPv4/IPv6 addresses or CIDR ranges of proxies in front of NPMpro that may pass the real client IP, default empty
+#      - "TRUST_CLOUDFLARE=true" # fetch and trust the Cloudflare IP ranges, read the Cloudflare notes in the README first, default false
+
+      # Forward authentication (default upstreams for the Auth Request option of proxy hosts, unrelated to OIDC)
+      # scheme + ip/hostname/domain + port (or scheme + name of a cu_ upstream block), no path; a host's own value wins
+#      - "AUTH_REQUEST_ANUBIS_UPSTREAM=http://127.0.0.1:8923"
+#      - "AUTH_REQUEST_TINYAUTH_UPSTREAM=http://127.0.0.1:3000"
+#      - "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM=http://127.0.0.1:4180"
+#      - "AUTH_REQUEST_VOIDAUTH_UPSTREAM=http://127.0.0.1:3000"
+#      - "AUTH_REQUEST_AUTHELIA_UPSTREAM=http://127.0.0.1:9091"
+#      - "AUTH_REQUEST_AUTHENTIK_UPSTREAM=https://127.0.0.1:9443" # currently only works with the embedded outpost
+#      - "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES=false" # use your images from /opt/npmpro/anubis (happy.webp, reject.webp, pensive.webp), default true when all three exist
+
+      # Logs & monitoring
+#      - "LOGROTATE=true" # Write log files: access log (/opt/npmpro/nginx/logs/access.log), stream log and error log (level warn) on disk, rotated daily; also turns on and locks traffic statistics, default false
+#      - "LOGROTATIONS=7" # rotated log files kept, 1 to 1000, default 3
+#      - "GOA=true" # GoAccess report under /goaccess of the web UI (admins only), keeps Write log files on, applies at the next start, default false; GeoIP in the report uses the databases in /opt/npmpro/goaccess/geoip (Settings, GeoIP)
+#      - "GOACLA=--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=2 --keep-last=7 --with-output-resolver --no-query-string" # your own GoAccess options instead of the GoAccess fields in the UI (they are then locked), applies at the next start, default built from those fields: --agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string
+#      - "TRAFFIC_STATS=true" # traffic statistics (Monitoring page), also writes the access log, default false
+#      - "TRAFFIC_RETENTION_DAYS=30" # days the hourly statistics are kept, 7 to 365, default 30 (per-minute counts are kept for 24 hours)
+#      - "TRAFFIC_SHOW_IPS=true" # also store the top visitor IPs, turning it off deletes them, default false
+#      - "TRAFFIC_UNIQUE_VISITORS=true" # count unique visitors per host and day with a keyed hash of the IP (not the IP), turning it off deletes the hashes, default false
 #      - "TRAFFIC_VISITORS_CAP=100000" # visitors counted per host and day, 1000 to 1000000, default 100000
-#      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id, NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed
+
+      # GeoIP (NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed)
+#      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id
 #      - "GEOIP_LICENSE_KEY=<your-license-key>" # MaxMind license key
-#      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated, GeoLite2-Country, GeoLite2-ASN and GeoLite2-City, default GeoLite2-Country GeoLite2-ASN
-#      - "AUTH_REQUEST_ANUBIS_UPSTREAM=http://127.0.0.1:8923" # scheme + ip/hostname/domain (+ port) to internal anubis, without path, this is unrelated to OIDC
-#      - "AUTH_REQUEST_TINYAUTH_UPSTREAM=http://127.0.0.1:3000" # scheme + ip/hostname/domain (+ port) to internal tinyauth, without path, this is unrelated to OIDC
-#      - "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM=http://127.0.0.1:4180" # scheme + ip/hostname/domain (+ port) to internal oauth2proxy, without path, this is unrelated to OIDC
-#      - "AUTH_REQUEST_VOIDAUTH_UPSTREAM=http://127.0.0.1:3000" # scheme + ip/hostname/domain (+ port) to internal voidauth, without path, this is unrelated to OIDC
-#      - "AUTH_REQUEST_AUTHELIA_UPSTREAM=http://127.0.0.1:9091" # scheme + ip/hostname/domain (+ port) to internal authelia, without path, this is unrelated to OIDC
-#      - "AUTH_REQUEST_AUTHENTIK_UPSTREAM=https://127.0.0.1:9443" # scheme + ip/hostname/domain (+ port) to internal authentik, without path, currently only works with embedded outpost, this is unrelated to OIDC
+#      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated: GeoLite2-Country, GeoLite2-ASN, GeoLite2-City, default GeoLite2-Country GeoLite2-ASN
+
+      # Authentication (OIDC sign-in for the web UI); with the four connection variables set, OIDC is active without enabling it in the UI
+#      - "OIDC_ISSUER_URL=https://..." # issuer URL, must start with https://
+#      - "OIDC_CLIENT_ID=..." # client id
+#      - "OIDC_CLIENT_SECRET=..." # client secret
+#      - "OIDC_REDIRECT_DOMAIN=<domain-ip>[:<port>]" # domain or ip (with port if not 443) you open NPMpro with, no scheme and no path; the callback URL is https://<this>/api/oidc/callback
+#      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # refuse users whose provider has not verified their email, default true
+#      - "OIDC_DISABLE_PASSWORD=true" # turns off email/password sign-in, set it to false to restore password sign-in, default false
+#      - "OIDC_SKIP_MFA=true" # skip the second factor after an OIDC sign-in, default false
+
+      # Advanced (Time zone: TZ at the top)
+#      - "DISABLE_NGINX_BEAUTIFIER=true" # do not format the configs NPMpro writes, useful when nginxbeautifier fails on non-standard custom/advanced configs, default false
+#      - "DISABLE_GRAVATAR=true" # no Gravatar profile pictures, applies to a user at their next profile save, default false
 
 # This can be used to enable crowdsec, see README for a guide
 #  crowdsec:
@@ -158,7 +202,7 @@ services:
 #    volumes:
 #      - "/opt/anubis.yaml:/etc/botPolicies.yaml:ro" # since a file is mounted here, you first need to create it before deploying this container, you can download the default file matching your anubis version from here: https://raw.githubusercontent.com/TecharoHQ/anubis/refs/tags/<version>/data/botPolicies.yaml
 
-# Optional: NPMpro can download the GeoLite2 databases itself (Settings > GeoIP or the GEOIP_* variables above). This container can still be used with GOA=true to keep the geoip database updated, environment variables must be configured
+# Legacy, optional: NPMpro downloads the GeoLite2 databases itself (Settings, GeoIP or the GEOIP_* variables above), so this container is not needed. It still works if you prefer it (it writes to the same folder)
 #  geoipupdate:
 #    container_name: npmpro-geoipupdate
 #    restart: unless-stopped
