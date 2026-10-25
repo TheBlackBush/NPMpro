@@ -139,7 +139,7 @@ API_KEY=<the key from step 6>
 APPSEC_URL=http://127.0.0.1:7422
 ```
 
-- `ENABLED=true` decides at the start of the container whether the bouncer is loaded. NPMpro checks the line with `^ENABLED *= *true$` (upper or lower case and spaces around `=` are fine): nothing may follow `true`, not even a space, and the file must not have Windows (CRLF) line endings. Otherwise the bouncer is not loaded.
+- `ENABLED=true` decides at the start of the container whether the bouncer is loaded (upper or lower case and spaces around `=` are fine). At every start NPMpro removes trailing spaces and Windows (CRLF) line endings from this file, so a file edited on Windows works too.
 - `API_URL` is the address of the LAPI as NPMpro sees it. With the compose file above it stays `http://127.0.0.1:8080`.
 - `APPSEC_URL` is the AppSec listener from step 4. **If you did not set up AppSec, clear it** (`APPSEC_URL=`). The default `APPSEC_FAILURE_ACTION=deny` blocks requests when AppSec cannot be reached, so an `APPSEC_URL` that points to nothing makes every host answer with 403.
 
@@ -268,7 +268,7 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 
 ### The bouncer does not connect
 
-- Look into `docker logs npmpro` for lines starting with `[Crowdsec]`. No `[Crowdsec] Initialisation done` after a restart means the bouncer was not loaded: check that `ENABLED=true` is written exactly like that. A space after `true` or Windows (CRLF) line endings are a common cause: the Monitoring CrowdSec tab then treats the bouncer as configured while nginx did not load it, so bans are shown but not enforced. Remove the space or convert the file (for example `sed -i 's/\r$//' /opt/npmpro/crowdsec/crowdsec.conf`) and restart NPMpro.
+- Look into `docker logs npmpro` for lines starting with `[Crowdsec]`. No `[Crowdsec] Initialisation done` after a restart means the bouncer was not loaded: check that `ENABLED=true` is written exactly like that. Also check for a typo in the key name (`ENABLED`) and that the container was restarted after the change.
 - `API_URL` must be reachable from NPMpro. With `network_mode: host` and the compose file above that is `http://127.0.0.1:8080`. Test it from the host with `curl http://127.0.0.1:8080/v1/decisions -H "X-Api-Key: <key>"`: a working key returns `null` or a list, a wrong key returns 403.
 - A wrong or deleted key: create a new one (step 6), put it into `crowdsec.conf` and restart NPMpro.
 - Changes of `crowdsec.conf` only apply after `docker restart npmpro`.
