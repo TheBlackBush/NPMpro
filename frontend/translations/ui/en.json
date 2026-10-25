@@ -408,6 +408,8 @@
 	"monitoring.map.zoom-out": "Zoom out",
 	"monitoring.network.other": "Other networks",
 	"monitoring.no-data": "No data in this time range",
+	"monitoring.off": "Monitoring is off",
+	"monitoring.off.subtitle": "Switch on traffic statistics in the monitoring settings, or configure the CrowdSec bouncer, to see traffic and bans here.",
 	"monitoring.range": "Time range",
 	"monitoring.range.1h": "1 hour",
 	"monitoring.range.24h": "24 hours",
