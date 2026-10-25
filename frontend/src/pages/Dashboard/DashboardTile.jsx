@@ -5,7 +5,7 @@ import { Link } from "react-router";
  */
 function DashboardTile({ to, icon: Icon, color, children }) {
 	return (
-		<div className="col-sm-6 col-lg-4">
+		<div className="col-sm-6 col-lg-3">
 			<Link to={to} className="card card-sm card-link card-link-pop">
 				<div className="card-body">
 					<div className="row align-items-center">
