@@ -1,7 +1,41 @@
 #!/usr/bin/env sh
+# Runs as root. With PUID set, root never runs, sources, chowns or writes through anything the PUID user can change:
+# image code stays root-owned, the few runtime folders are recreated before they are handed over (without
+# recursion), and the /data housekeeping (data-setup.sh) runs as the PUID user.
+
+umask 022
+
+if [ "$PUID" != "0" ]; then
+    if [ -n "$(getent group "$PGID" 2>/dev/null)" ]; then
+        :
+    elif [ -n "$(getent group npmpro 2>/dev/null)" ]; then
+        groupmod -g "$PGID" npmpro
+    else
+        groupadd -g "$PGID" npmpro
+    fi
+
+    if [ -n "$(getent passwd "$PUID" 2>/dev/null)" ]; then
+        :
+    elif [ -n "$(getent passwd npmpro 2>/dev/null)" ]; then
+        usermod -u "$PUID" -g "$PGID" -G "" -d /tmp npmpro
+    else
+        useradd -u "$PUID" -g "$PGID" -M -d /tmp -s /sbin/nologin npmpro
+    fi
+fi
+
+# runtime folders, recreated on every start so nothing a PUID process left there survives; root writes only into the
+# fresh /run/npmpro before it is handed over
+# nscd: musl asks /run/nscd/socket for users and groups missing from /etc/passwd and /etc/group
+rm -rf /run/npmpro /run/nginx /run/dinitctl /run/nscd /var/run/nscd
+find /run -maxdepth 1 -type s -delete
+mkdir -p /run/npmpro /run/nginx
+rm -rf /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx /tmp/env.sha512sum
+mkdir -p /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx
+# nginx opens its compiled-in error log (logs/error.log) before it reads nginx.conf
+rm -rf /usr/local/nginx/logs /usr/local/nginx/client_body_temp /usr/local/nginx/proxy_temp /usr/local/nginx/fastcgi_temp /usr/local/nginx/uwsgi_temp /usr/local/nginx/scgi_temp
+mkdir -p /usr/local/nginx/logs
 
 # the live certbot config, written again by the backend when the certificate settings change (PUID can not write /etc)
-mkdir -p /run/npmpro
 cp /etc/certbot.ini /run/npmpro/certbot.ini
 if [ "$ACME_KEY_TYPE" = "rsa" ]; then
     sed -i "s|key-type = ecdsa|key-type = rsa|g" /run/npmpro/certbot.ini
@@ -21,8 +55,6 @@ if [ "$ACME_SERVER_TLS_VERIFY" = "false" ]; then
 fi
 if [ "$ACME_PROFILE" != "none" ]; then
     sed -i "s|#required-profile|required-profile = $ACME_PROFILE|g" /run/npmpro/certbot.ini
-else
-    find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "/required_profile/d" {} \;
 fi
 
 # the live logrotate config, written again by the backend when the log rotations setting changes
@@ -47,11 +79,6 @@ if [ "$PHP83" = "true" ]; then
             fi
         done
     fi
-    mkdir -vp /data/php
-    cp -varnT /etc/php83 /data/php/83
-    sed -i "s|#\?listen =.*|listen = /run/php83.sock|" /data/php/83/php-fpm.d/www.conf
-    sed -i "s|;error_log =.*|error_log = /proc/self/fd/2|g" /data/php/83/php-fpm.conf
-    sed -i "s|include=.*|include=/data/php/83/php-fpm.d/*.conf|g" /data/php/83/php-fpm.conf
 fi
 
 if [ "$PHP84" = "true" ]; then
@@ -71,11 +98,6 @@ if [ "$PHP84" = "true" ]; then
             fi
         done
     fi
-    mkdir -vp /data/php
-    cp -varnT /etc/php84 /data/php/84
-    sed -i "s|#\?listen =.*|listen = /run/php84.sock|" /data/php/84/php-fpm.d/www.conf
-    sed -i "s|;error_log =.*|error_log = /proc/self/fd/2|g" /data/php/84/php-fpm.conf
-    sed -i "s|include=.*|include=/data/php/84/php-fpm.d/*.conf|g" /data/php/84/php-fpm.conf
 fi
 
 if [ "$PHP85" = "true" ]; then
@@ -95,11 +117,6 @@ if [ "$PHP85" = "true" ]; then
             fi
         done
     fi
-    mkdir -vp /data/php
-    cp -varnT /etc/php85 /data/php/85
-    sed -i "s|#\?listen =.*|listen = /run/php85.sock|" /data/php/85/php-fpm.d/www.conf
-    sed -i "s|;error_log =.*|error_log = /proc/self/fd/2|g" /data/php/85/php-fpm.conf
-    sed -i "s|include=.*|include=/data/php/85/php-fpm.d/*.conf|g" /data/php/85/php-fpm.conf
 fi
 
 if { [ "$PHP83" = "true" ] || [ "$PHP84" = "true" ] || [ "$PHP85" = "true" ]; } && [ -n "$PHP_APKS" ]; then
@@ -119,266 +136,51 @@ if { [ "$PHP83" = "true" ] || [ "$PHP84" = "true" ] || [ "$PHP85" = "true" ]; } 
 fi
 
 
-mkdir -p /tmp/npmhome \
-         /tmp/goa \
-         /tmp/crontabs \
-         /tmp/certbot-log \
-         /tmp/certbot-work \
-         /tmp/certbot-credentials
-mkdir -vp /data/npmpro/avatar \
-          /data/npmpro/gravatar \
-          /data/tls/certbot/renewal \
-          /data/tls/certbot/acme-challenge/.well-known/acme-challenge \
-          /data/tls/custom \
-          /data/tls/mtls \
-          /data/tls/ech \
-          /data/html \
-          /data/access \
-          /data/anubis \
-          /data/crowdsec \
-          /data/nginx/redirection_host \
-          /data/nginx/proxy_host \
-          /data/nginx/dead_host \
-          /data/nginx/stream \
-          /data/nginx/logs \
-          /data/custom_nginx
+# conf.d: start.sh edits it as root and the backend (as PUID) writes default.conf and ip_ranges.conf into it. Only
+# single-link regular files are kept, and they go back to root for the edits.
+find /usr/local/nginx/conf/conf.d -mindepth 1 \( ! -type f -o -links +1 \) -exec rm -rf {} +
+chown -R 0:0 /usr/local/nginx/conf/conf.d
 
+# /data itself stays root's (so the PUID user can not remove or swap .env or prerun); its top-level folders are
+# created here and the old top-level leftovers are removed after data-setup.sh
+chown 0:0 /data
+chmod 755 /data
+mkdir -p /data/npmpro /data/tls /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
-if [ -n "$(ls -A /data/nginx/custom 2> /dev/null)"  ]; then
-    cp -van /data/nginx/custom/* /data/custom_nginx
+if [ "$PUID" != "0" ]; then
+    # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
+    # hardlink can not hand over a root file. The runtime folders get only their own owner, never their contents.
+    find /data -mindepth 1 \( -path /data/.env -o -path /data/prerun \) -prune -o \( -type d -o -links 1 \) \
+         -not \( -uid "$PUID" -and -gid "$PGID" \) \
+         -print0 \
+         | xargs -r0 -P "$(($(nproc)*4))" -n 100 chown -h "$PUID:$PGID"
+    chown "$PUID:$PGID" /run /run/npmpro /run/nginx /run/npmpro/certbot.ini /run/npmpro/logrotate \
+          /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx \
+          /usr/local/nginx/logs
+    chown "$PUID:$PGID" /proc/self/fd/2
+    su-exec "$PUID:$PGID" data-setup.sh
+else
+    find /data -not \( -uid 0 -and -gid 0 \) -print0 | xargs -r0 -P "$(($(nproc)*4))" -n 100 chown -h 0:0
+    data-setup.sh
 fi
-rm -vrf /data/nginx/custom
 
-#tmp
-if [ -n "$(ls -A /data/nginx_custom 2> /dev/null)"  ]; then
-    cp -van /data/nginx_custom/* /data/custom_nginx
+# top-level leftovers of old versions, copied by data-setup.sh (rm does not follow links)
+rm -rf /data/nginx_custom /data/etc /data/npm /data/custom_ssl /data/letsencrypt-acme-challenge /data/logs /data/keys.json
+if [ -f /data/database.sqlite ] && [ -s /data/npmpro/database.sqlite ] && cmp -s /data/database.sqlite /data/npmpro/database.sqlite; then
+    rm -f /data/database.sqlite
 fi
-rm -vrf /data/nginx_custom
-
-#tmp
-if [ -n "$(ls -A /data/etc 2> /dev/null)" ]; then
-    cp -van /data/etc/* /data
-    if [ -s /data/crowdsec/crowdsec.conf ]; then
-        sed -i "s|/data/etc|/data|g" /data/crowdsec/crowdsec.conf
-    fi
-fi
-rm -vrf /data/etc
-
-#tmp
-if [ -n "$(ls -A /data/npm 2> /dev/null)" ]; then
-    cp -van /data/npm/* /data/npmpro
-fi
-rm -vrf /data/npm
-
-#tmp
-if [ -s /data/database.sqlite ]; then
-    mv -vn /data/database.sqlite /data/npmpro/database.sqlite
+if [ -f /data/logrotate.state ] && [ -e /data/nginx/logs/logrotate.state ]; then
+    rm -f /data/logrotate.state
 fi
 
 
-if [ -n "$(ls -A /data/nginx/default_www 2> /dev/null)" ]; then
-    cp -van /data/nginx/default_www/* /data/html
-fi
-rm -vrf /data/nginx/default_www
-
-if [ -n "$(ls -A /data/custom_ssl 2> /dev/null)" ]; then
-    cp -van /data/custom_ssl/* /data/tls/custom
-fi
-rm -vrf /data/custom_ssl
-
-for dir in /data/tls/custom/npm-*; do
-    if [ -s "$dir/fullchain.pem" ] && { [ ! -s "$dir/cert.pem" ] || [ ! -s "$dir/chain.pem" ]; } then
-        awk '/-----BEGIN CERTIFICATE-----/ { n++ } n == 1' "$dir/fullchain.pem" > "$dir/cert.pem"
-        awk '/-----BEGIN CERTIFICATE-----/ { n++ } n > 1' "$dir/fullchain.pem" > "$dir/chain.pem"
-    fi
-done
-
-
-if mountpoint -q /etc/letsencrypt; then
-  if [ -n "$(ls -A /etc/letsencrypt 2> /dev/null)" ]; then
-    cp -van /etc/letsencrypt/* /data/tls/certbot
-  fi
-  echo "All certbot certs have been copied, please remove the /etc/letsencrypt mountpoint and redeploy to continue the migration!"
-  sleep inf
-fi
-
-#tmp move to mointpoint if block
-find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
-find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
-
-if [ -d /data/tls/certbot/live ] && [ -d /data/tls/certbot/archive ]; then
-  find /data/tls/certbot/live ! -name "$(printf "*\n*")" -type f -name "*.pem" > /tmp/certs.txt
-  while IFS= read -r cert
-  do
-    ln -rsf "$(find /data/tls/certbot/archive/"$(echo "$cert" | sed "s|/data/tls/certbot/live/\(npm-[0-9]\+/.*\).pem|\1|g")"*.pem | sort -V | tail -n1)" "$cert"
-  done < /tmp/certs.txt
-  rm /tmp/certs.txt
-fi
-
-rm -vrf /data/tls/certbot/crs
-rm -vrf /data/tls/certbot/keys
-if [ -d /data/tls/certbot/live ] && [ -d /data/tls/certbot/archive ]; then
-    certs_in_use="$(find /data/tls/certbot/live -type l -name "*.pem" -exec readlink -f {} \;)"
-    find /data/tls/certbot/archive ! -name "$(printf "*\n*")" -type f -name "*.pem" > tmp
-    while IFS= read -r archive
-    do
-        if ! echo "$certs_in_use" | grep -q "$archive"; then
-          rm -vf "$archive"
-        fi
-    done < tmp
-    rm tmp
-fi
-
-# can be used to delete certificates which expired more than 16 weeks ago
-#for cert in $(find /data/tls/certbot/live/npm-* -type d | sed "s|/data/tls/certbot/live/||g"); do
-#    if ! openssl x509 -in "/data/tls/certbot/live/$cert/fullchain.pem" -checkend -9676800 >/dev/null; then
-#        rm -rvf "/data/tls/certbot/live/$cert"
-#        rm -rvf "/data/tls/certbot/live/$cert.der"
-#        rm -rvf "/data/tls/certbot/archive/$cert"
-#        rm -rvf "/data/tls/certbot/renewal/$cert.conf"
-#    fi
-#done
-
-rm -vrf /data/letsencrypt-acme-challenge \
-        /data/nginx/default_host \
-        /data/nginx/temp \
-        /data/logs \
-        /data/keys.json \
-        /data/npmpro/keys.json
-
-touch /data/tls/ech/nginx.conf \
-      /data/tls/ech/cron.sh \
-      /data/html/index.html \
-      /data/anubis/happy.webp \
-      /data/anubis/reject.webp \
-      /data/anubis/pensive.webp \
-      /data/custom_nginx/events.conf \
-      /data/custom_nginx/http.conf \
-      /data/custom_nginx/http_top.conf \
-      /data/custom_nginx/root_top.conf \
-      /data/custom_nginx/root.conf \
-      /data/custom_nginx/server_http.conf \
-      /data/custom_nginx/server_dead.conf \
-      /data/custom_nginx/server_proxy.conf \
-      /data/custom_nginx/server_redirect.conf \
-      /data/custom_nginx/stream.conf \
-      /data/custom_nginx/stream_top.conf \
-      /data/custom_nginx/server_stream.conf \
-      /data/custom_nginx/server_stream_tcp.conf \
-      /data/custom_nginx/server_stream_udp.conf
-
-
-if [ ! -s /data/crowdsec/ban.html ]; then
-    cp -van /etc/ban.html.original /data/crowdsec/ban.html
-fi
-cp -a /etc/ban.html.original /data/crowdsec/ban.html.example
-
-if [ ! -s /data/crowdsec/captcha.html ]; then
-    cp -van /etc/captcha.html.original /data/crowdsec/captcha.html
-fi
-cp -a /etc/captcha.html.original /data/crowdsec/captcha.html.example
-
-if [ ! -s /data/crowdsec/crowdsec.conf ]; then
-    cp -van /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf
-fi
-cp -a /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf.example
-# trailing spaces and Windows line endings would silently keep the bouncer off (and break values like API_KEY)
-sed -i "s/[[:space:]]*$//" /data/crowdsec/crowdsec.conf
-
-if grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
+if [ -f /data/crowdsec/crowdsec.conf ] && [ ! -L /data/crowdsec/crowdsec.conf ] && grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
     if [ ! -s /usr/local/nginx/conf/conf.d/crowdsec.conf ]; then
         cp -van /usr/local/nginx/conf/conf.d/crowdsec.conf.disabled /usr/local/nginx/conf/conf.d/crowdsec.conf
     fi
 else
     rm -vf /usr/local/nginx/conf/conf.d/crowdsec.conf
 fi
-
-
-if [ "$DEFAULT_CERT_ID" = "0" ]; then
-    export DEFAULT_CERT=/data/tls/dummycert.pem
-    export DEFAULT_KEY=/data/tls/dummykey.pem
-    echo "no DEFAULT_CERT_ID set, using dummycerts."
-else
-    if [ -d "/data/tls/certbot/live/npm-$DEFAULT_CERT_ID" ]; then
-        if [ ! -s /data/tls/certbot/live/npm-"$DEFAULT_CERT_ID"/fullchain.pem ]; then
-            echo "/data/tls/certbot/live/npm-$DEFAULT_CERT_ID/fullchain.pem does not exist"
-            export DEFAULT_CERT=/data/tls/dummycert.pem
-            export DEFAULT_KEY=/data/tls/dummykey.pem
-            echo "using dummycerts."
-        else
-            export DEFAULT_CERT=/data/tls/certbot/live/npm-"$DEFAULT_CERT_ID"/fullchain.pem
-            echo "DEFAULT_CERT set to /data/tls/certbot/live/npm-$DEFAULT_CERT_ID/fullchain.pem"
-            if [ ! -s /data/tls/certbot/live/npm-"$DEFAULT_CERT_ID"/privkey.pem ]; then
-                echo "/data/tls/certbot/live/npm-$DEFAULT_CERT_ID/privkey.pem does not exist"
-                export DEFAULT_CERT=/data/tls/dummycert.pem
-                export DEFAULT_KEY=/data/tls/dummykey.pem
-                echo "using dummycerts."
-            else
-                export DEFAULT_KEY=/data/tls/certbot/live/npm-"$DEFAULT_CERT_ID"/privkey.pem
-                echo "DEFAULT_KEY set to /data/tls/certbot/live/npm-$DEFAULT_CERT_ID/privkey.pem"
-                if [ -s /data/tls/certbot/live/npm-"$DEFAULT_CERT_ID".der ] && [ "$ACME_OCSP_STAPLING" = "true" ]; then
-                     export DEFAULT_STAPLING_FILE=/data/tls/certbot/live/npm-"$DEFAULT_CERT_ID".der
-                     echo "DEFAULT_STAPLING_FILE set to /data/tls/certbot/live/npm-$DEFAULT_CERT_ID.der"
-                fi
-            fi
-        fi
-    elif [ -d "/data/tls/custom/npm-$DEFAULT_CERT_ID" ]; then
-        if [ ! -s /data/tls/custom/npm-"$DEFAULT_CERT_ID"/fullchain.pem ]; then
-            echo "/data/tls/custom/npm-$DEFAULT_CERT_ID/fullchain.pem does not exist"
-            export DEFAULT_CERT=/data/tls/dummycert.pem
-            export DEFAULT_KEY=/data/tls/dummykey.pem
-            echo "using dummycerts."
-        else
-            export DEFAULT_CERT=/data/tls/custom/npm-"$DEFAULT_CERT_ID"/fullchain.pem
-            echo "DEFAULT_CERT set to /data/tls/custom/npm-$DEFAULT_CERT_ID/fullchain.pem"
-            if [ ! -s /data/tls/custom/npm-"$DEFAULT_CERT_ID"/privkey.pem ]; then
-                echo "/data/tls/custom/npm-$DEFAULT_CERT_ID/privkey.pem does not exist"
-                export DEFAULT_CERT=/data/tls/dummycert.pem
-                export DEFAULT_KEY=/data/tls/dummykey.pem
-                echo "using dummycerts."
-            else
-                export DEFAULT_KEY=/data/tls/custom/npm-"$DEFAULT_CERT_ID"/privkey.pem
-                echo "DEFAULT_KEY set to /data/tls/custom/npm-$DEFAULT_CERT_ID/privkey.pem"
-                if [ -s /data/tls/custom/npm-"$DEFAULT_CERT_ID".der ] && [ "$CUSTOM_OCSP_STAPLING" = "true" ]; then
-                     export DEFAULT_STAPLING_FILE=/data/tls/custom/npm-"$DEFAULT_CERT_ID".der
-                     echo "DEFAULT_STAPLING_FILE set to /data/tls/custom/npm-$DEFAULT_CERT_ID.der"
-                fi
-            fi
-        fi
-    else
-        export DEFAULT_CERT=/data/tls/dummycert.pem
-        export DEFAULT_KEY=/data/tls/dummykey.pem
-        echo "cert with ID $DEFAULT_CERT_ID does not exist, using dummycerts."
-    fi
-fi
-
-if { [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] && [ "$DEFAULT_KEY" != "/data/tls/dummykey.pem" ]; } || { [ "$DEFAULT_CERT" != "/data/tls/dummycert.pem" ] && [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; }; then
-    export DEFAULT_CERT=/data/tls/dummycert.pem
-    export DEFAULT_KEY=/data/tls/dummykey.pem
-    echo "something went wrong, using dummycerts."
-fi
-
-# the built-in certificate is always kept: the default certificate can be switched to it at runtime
-if [ ! -s /data/tls/dummycert.pem ] || [ ! -s /data/tls/dummykey.pem ]; then
-    rm -vrf /data/tls/dummycert.pem /data/tls/dummykey.pem
-    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -x509 -days 365000 -nodes -subj "/" -sha512 -keyout /data/tls/dummykey.pem -out /data/tls/dummycert.pem
-fi
-if [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] || [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; then
-    unset DEFAULT_STAPLING_FILE
-fi
-
-# default certificate include of default.conf and npmpro.conf, the backend rewrites it from the runtime settings
-mkdir -p /data/npmpro/nginx
-{
-    echo "ssl_certificate $DEFAULT_CERT;"
-    echo "ssl_certificate_key $DEFAULT_KEY;"
-    if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-        echo "ssl_stapling on;"
-        echo "ssl_stapling_verify on;"
-        echo "ssl_stapling_file $DEFAULT_STAPLING_FILE;"
-        echo "ssl_certificate_compression off;"
-    fi
-} > /data/npmpro/nginx/default-cert.conf
 
 sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 
@@ -391,10 +193,6 @@ fi
 
 if [ "$ENABLE_MPTCP" = "false" ]; then
     sed -i "s| multipath||g" /usr/local/nginx/conf/conf.d/npmpro.conf
-fi
-
-if [ "$GOA" = "true" ]; then
-    mkdir -vp /data/goaccess/data /data/goaccess/geoip
 fi
 
 if [ "$LISTEN_PROXY_PROTOCOL_HTTP" = "true" ] || [ "$LISTEN_PROXY_PROTOCOL_HTTPS" = "true" ]; then
@@ -439,118 +237,14 @@ if [ "$NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE" = "true" ]; then
     sed -i "s|#\(load_module.\+ngx_http_vhost_traffic_status_module.so;\)|\1|g" /usr/local/nginx/conf/nginx.conf
 fi
 
-if [ "$REGENERATE_ALL" = "true" ]; then
-    find /data/nginx -name "*.conf" -delete
-fi
-
-if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
-rm -f /data/logrotate.state
-
-# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
-# setting changes
-mkdir -p /data/npmpro/nginx
-if [ "$LOGROTATE" = "true" ] || [ "$TRAFFIC_STATS" = "true" ]; then
-    echo "access_log /data/nginx/logs/access.log alog;" > /data/npmpro/nginx/access-log.conf
-    if [ ! -L /data/nginx/access.log ] && [ ! -f /data/nginx/logs/access.log ]; then mv -vn /data/nginx/access.log* /data/nginx/logs; fi
-    touch /data/nginx/logs/access.log
-    if [ ! -L /data/nginx/access.log ]; then rm -f /data/nginx/access.log; ln -rs /data/nginx/logs/access.log /data/nginx/access.log; fi
-else
-    echo "access_log off;" > /data/npmpro/nginx/access-log.conf
-fi
-
-# error log and stream access log: included by nginx.conf, the backend rewrites them when Write log files changes
-# (the same lines as lib/log-files.js logIncludes)
-if [ "$LOGROTATE" = "true" ]; then
-    echo "error_log /data/nginx/logs/error.log warn;" > /data/npmpro/nginx/error-log.conf
-    echo "access_log /data/nginx/logs/stream.log slog;" > /data/npmpro/nginx/stream-log.conf
-
-    if [ ! -L /data/nginx/stream.log ] && [ ! -f /data/nginx/logs/stream.log ]; then mv -vn /data/nginx/stream.log* /data/nginx/logs; fi
-    if [ ! -L /data/nginx/error.log ] && [ ! -f /data/nginx/logs/error.log ]; then mv -vn /data/nginx/error.log* /data/nginx/logs; fi
-
-    touch /data/nginx/logs/stream.log \
-          /data/nginx/logs/error.log
-
-    if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
-    if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
-else
-    echo "# no error log file, errors go to stderr" > /data/npmpro/nginx/error-log.conf
-    echo "access_log off;" > /data/npmpro/nginx/stream-log.conf
-fi
-
-find /data/tls \
-     /data/access \
-     /data/npmpro \
-     /data/nginx/logs \
-     -type d \
-     -not -perm 700 \
-     -exec chmod 700 {} \;
-
-find /data/tls \
-     /data/access \
-     /data/npmpro \
-     /data/nginx/logs \
-     -type f \
-     -not -perm 600 \
-     -exec chmod 600 {} \;
-
-rm -vf /usr/local/nginx/logs/nginx.pid
-rm -vf /run/*.sock
-
 if [ "$PUID" != "0" ]; then
-    if [ -n "$(getent group "$PGID" 2>/dev/null)" ]; then
-        :
-    elif [ -n "$(getent group npmpro 2>/dev/null)" ]; then
-        groupmod -g "$PGID" npmpro
-    else
-        groupadd -g "$PGID" npmpro
-    fi
+    chown "$PUID:$PGID" /usr/local/nginx/conf/conf.d
+    find /usr/local/nginx/conf/conf.d -mindepth 1 -maxdepth 1 -type f -links 1 -exec chown "$PUID:$PGID" {} +
 
-    if [ -n "$(getent passwd "$PUID" 2>/dev/null)" ]; then
-        :
-    elif [ -n "$(getent passwd npmpro 2>/dev/null)" ]; then
-        usermod -u "$PUID" -g "$PGID" -G "" -d /tmp npmpro
-    else
-        useradd -u "$PUID" -g "$PGID" -M -d /tmp -s /sbin/nologin npmpro
-    fi
-
-    find /usr/local \
-         /data \
-         /run \
-         /tmp \
-         -not \( -uid "$PUID" -and -gid "$PGID" \) \
-         -print0 \
-         | xargs -r0 -P "$(($(nproc)*4))" -n 100 chown -h "$PUID:$PGID"
-    chown "$PUID:$PGID" /proc/self/fd/2
-
-    if [ "$PHP83" = "true" ]; then
-        sed -i "s|;\?user =.*|;user = root|" /data/php/83/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|;group = root|" /data/php/83/php-fpm.d/www.conf
-    fi
-    if [ "$PHP84" = "true" ]; then
-        sed -i "s|;\?user =.*|;user = root|" /data/php/84/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|;group = root|" /data/php/84/php-fpm.d/www.conf
-    fi
-    if [ "$PHP85" = "true" ]; then
-        sed -i "s|;\?user =.*|;user = root|" /data/php/85/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|;group = root|" /data/php/85/php-fpm.d/www.conf
-    fi
-
+    # certbot DNS plugins: the image's Python (/usr/local) is root's, so pip installs them for the PUID user into a
+    # folder recreated on every start; only the PUID user ever runs certbot
+    export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
     exec su-exec "$PUID:$PGID" launch.sh
 else
-    find /data -not \( -uid 0 -and -gid 0 \) -print0 | xargs -r0 -P "$(($(nproc)*4))" -n 100 chown -h 0:0
-
-    if [ "$PHP83" = "true" ]; then
-        sed -i "s|;user =.*|user = root|" /data/php/83/php-fpm.d/www.conf
-        sed -i "s|;group =.*|group = root|" /data/php/83/php-fpm.d/www.conf
-    fi
-    if [ "$PHP84" = "true" ]; then
-        sed -i "s|;user =.*|user = root|" /data/php/84/php-fpm.d/www.conf
-        sed -i "s|;group =.*|group = root|" /data/php/84/php-fpm.d/www.conf
-    fi
-    if [ "$PHP85" = "true" ]; then
-        sed -i "s|;user =.*|user = root|" /data/php/85/php-fpm.d/www.conf
-        sed -i "s|;group =.*|group = root|" /data/php/85/php-fpm.d/www.conf
-    fi
-
     exec launch.sh
 fi

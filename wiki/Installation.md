@@ -37,7 +37,7 @@ Do not set `user:` for the container. It must start as root and drops to `PUID`/
 
 Edit `compose.yaml` and run `docker compose up -d`: Compose recreates the container. A plain restart does not pick up changed variables. Settings that are marked "Restart required" in the UI (Time zone, GoAccess) are the exception: they are saved in the UI and applied by `docker restart npmpro`.
 
-Variables can also be put into `/opt/npmpro/.env` (the `.env` file in the data folder). After changing it, recreate the container; a restart after a change of this file is refused.
+Variables can also be put into `/opt/npmpro/.env` (the `.env` file in the data folder). It is read as root, so it must be owned by root and not writable by group or others (`chown root:root /opt/npmpro/.env && chmod 600 /opt/npmpro/.env`); otherwise the container waits with a message. After changing it, recreate the container; a restart after a change of this file is refused. Variables in `environment:` or `env_file:` of `compose.yaml` need none of this.
 
 ## Reaching the web UI through a domain
 

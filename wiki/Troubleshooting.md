@@ -17,7 +17,9 @@ When a check fails at startup, the container prints the reason and then waits in
 - **"/data is not mounted! Check your compose.yaml."**: add the `/data` volume.
 - **"You need to recreate the NPMpro container after changing the .env file ..."**: you changed `/data/.env`; run `docker compose up -d --force-recreate`.
 - **"The ACME_PROFILE seems to be not supported by the ACME_SERVER."**: the profile set in `ACME_PROFILE` is not offered by your ACME server; change or remove it.
-- **PUID/PGID:** `PGID` without `PUID` is refused. With a non-root `PUID`, uncomment `SETUID`, `CHOWN`, `FOWNER` and `DAC_OVERRIDE` in `cap_add`, and with `network_mode: host` you may need `sysctl net.ipv4.ip_unprivileged_port_start=0` to bind ports below 1024.
+- **PUID/PGID:** `PGID` without `PUID` is refused. With a non-root `PUID`, uncomment `SETUID`, `CHOWN`, `FOWNER` and `DAC_OVERRIDE` in `cap_add`. With `network_mode: host` you may need `sysctl net.ipv4.ip_unprivileged_port_start=0` to bind ports below 1024.
+- **"/data/.env must be owned by root ..."**: the `.env` file in the data folder is read as root, so it must be a file only root can change. Run `chown root:root /opt/npmpro/.env && chmod 600 /opt/npmpro/.env` on the host (with your data folder), then recreate the container. Or move the variables into `environment:` or `env_file:` in `compose.yaml` and delete the file.
+- **"Skipping the prerun scripts ..."**: the prerun folder and scripts must be owned by root and not writable by group or others: `chown -R root:root /opt/npmpro/prerun && chmod -R go-w /opt/npmpro/prerun`.
 - **`NGINX_QUIC_BPF=true`** needs the `BPF`, `PERFMON` and `NET_ADMIN` capabilities.
 - **Port already in use:** another service (or a second proxy) listens on 80, 443 or 81. Stop it, or change `HTTP_PORT`, `HTTPS_PORT` or `NPM_PORT`.
 

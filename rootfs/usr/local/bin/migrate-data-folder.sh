@@ -31,6 +31,8 @@ keep_old() {
         echo "Warning: could not rename $OLD to $backup, NPMpro uses $NEW anyway."
         return
     fi
+    # a link planted there would be followed by root (no other process runs yet, so removing it first is enough)
+    rm -rf "$backup/MOVED-TO-NPMPRO.txt"
     cat > "$backup/MOVED-TO-NPMPRO.txt" << EOT
 NPMpro moved its data to $NEW on $(date).
 This folder is the data as it was before the upgrade. NPMpro does not use it.
@@ -46,8 +48,13 @@ EOT
 
 rm -rf "$TMP"
 
-if [ ! -d "$OLD" ]; then
+if [ ! -d "$OLD" ] && [ ! -L "$OLD" ]; then
     exit 0
+fi
+# root runs this: never follow a link planted in the data folder
+if [ -L "$OLD" ] || [ -L "$NEW" ]; then
+    echo "$OLD or $NEW is a symbolic link, not a folder. Replace it with the real folder and restart the container."
+    exit 1
 fi
 
 if [ -d "$NEW" ]; then

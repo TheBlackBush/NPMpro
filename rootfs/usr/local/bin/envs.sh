@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+umask 022
+
 echo "
 -------------------------------------
  _ _  ___  __ __       _
@@ -29,16 +31,41 @@ if [ ! -d /data ]; then
 fi
 
 
-touch /data/.env
+# /data/.env is sourced as root, so it must be a file only root can change. /data belongs to the PUID user when PUID
+# is set, and that user could otherwise put commands into it (or remove a PUID line from it). A missing or empty file
+# is (re)created as root. No PUID process runs yet, so nothing can swap the file between these checks and the source.
+if [ -L /data/.env ] || { [ -e /data/.env ] && [ ! -f /data/.env ]; }; then
+    echo "/data/.env must be a regular file, not a link or a folder. Replace it and recreate the container."
+    sleep inf
+fi
+if [ ! -s /data/.env ]; then
+    rm -f /data/.env
+    (umask 077 && : > /data/.env)
+fi
+if [ "$(stat -c %u /data/.env)" != "0" ] || [ "$(stat -c %h /data/.env)" != "1" ] || [ -n "$(find /data/.env -perm /022)" ]; then
+    echo "-----------------------------------------------------------------------------------------------------------"
+    echo "/data/.env must be owned by root, have one link and not be writable by group or others: it is read as root."
+    echo "Run this once on the host (with the path of your data folder), then recreate the container:"
+    echo "  chown root:root /path/to/data/.env && chmod 600 /path/to/data/.env"
+    echo "Or move the variables to environment: or env_file: in compose.yaml and delete /data/.env."
+    echo "-----------------------------------------------------------------------------------------------------------"
+    sleep inf
+fi
+chmod 600 /data/.env
 set -a
 # shellcheck source=/dev/null
 . /data/.env
 set +a
-if [ -s /tmp/env.sha512sum ] && [ "$(cat /tmp/env.sha512sum)" != "$(sha512sum < /data/.env)" ]; then
+mkdir -p /etc/npmpro
+chown 0:0 /etc/npmpro
+chmod 755 /etc/npmpro
+if [ -s /etc/npmpro/env.sha512sum ] && [ "$(cat /etc/npmpro/env.sha512sum)" != "$(sha512sum < /data/.env)" ]; then
     echo "You need to recreate the NPMpro container after changing the .env file, restarting the container after changing the .env file is not supported"
     sleep inf
 fi
-sha512sum < /data/.env > /tmp/env.sha512sum
+env_sum="$(mktemp /etc/npmpro/.env-sum.XXXXXX)"
+sha512sum < /data/.env > "$env_sum"
+mv -f "$env_sum" /etc/npmpro/env.sha512sum
 
 # Env vars that are settings in the UI (backend/lib/runtime-rules.js) and the ones listed on the Environment page
 # (backend/lib/environment-info.js), checked by test/environment-info.test.js.
@@ -634,16 +661,6 @@ if ! echo "$GOA" | grep -q "^true$\|^false$"; then
     echo "GOA needs to be true or false."
     sleep inf
 fi
-# the GOA this start runs with, for healthcheck.sh: the startup settings file may change before the next start. In
-# /etc/npmpro, which stays root-owned (start.sh hands /data, /run, /tmp and /usr/local to PUID): a temp file in it,
-# then a rename over whatever is there, so a planted link is replaced, never followed
-mkdir -p /etc/npmpro
-chown 0:0 /etc/npmpro
-chmod 755 /etc/npmpro
-startup_snapshot="$(mktemp /etc/npmpro/.startup-settings.XXXXXX)"
-printf 'GOA=%s\n' "$GOA" > "$startup_snapshot"
-chmod 644 "$startup_snapshot"
-mv -f "$startup_snapshot" /etc/npmpro/startup-settings.env
 
 if echo "$GOACLA" | grep -vq "geoip-database"; then
     if [ -s /data/etc/goaccess/geoip/GeoLite2-City.mmdb ] || [ -s /data/etc/goaccess/geoip/GeoLite2-Country.mmdb ]|| [ -s /data/etc/goaccess/geoip/GeoLite2-ASN.mmdb ]; then
@@ -866,5 +883,17 @@ if [ ! -s /data/npmpro/env.sha512sum ] || [ "$(cat /data/npmpro/env.sha512sum)" 
     echo "At least one env or the template version changed, all hosts will be regenerated. Please make sure to read the changelog."
     export REGENERATE_ALL="true"
 fi
+
+# the values healthcheck.sh (run as root by Docker) needs, so it never reads /data: root-owned, one KEY=value per line,
+# parsed with fixed patterns
+healthcheck_ipv4="$NPM_IPV4_BINDING"
+if [ "$healthcheck_ipv4" = "0.0.0.0" ] || [ "$NPM_LISTEN_LOCALHOST" = "true" ]; then
+    healthcheck_ipv4="127.0.0.1"
+fi
+healthcheck_snapshot="$(mktemp /etc/npmpro/.healthcheck.XXXXXX)"
+printf 'NPM_PORT=%s\nNPM_IPV4_BINDING=%s\nGOA=%s\nPHP83=%s\nPHP84=%s\nPHP85=%s\n' \
+    "$NPM_PORT" "$healthcheck_ipv4" "$GOA" "$PHP83" "$PHP84" "$PHP85" > "$healthcheck_snapshot"
+chmod 644 "$healthcheck_snapshot"
+mv -f "$healthcheck_snapshot" /etc/npmpro/healthcheck.env
 
 exec start.sh

@@ -1242,8 +1242,8 @@ it("logIncludes gives the error and stream log lines, off: start.sh's defaults",
 	});
 });
 
-it("start.sh writes the same include lines as logIncludes", async () => {
-	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/start.sh", import.meta.url), "utf8");
+it("data-setup.sh (run by start.sh) writes the same include lines as logIncludes", async () => {
+	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/data-setup.sh", import.meta.url), "utf8");
 	for (const on of [true, false]) {
 		const { error, stream } = logIncludes(on);
 		assert.ok(startSh.includes(`echo "${error.trim()}" > /data/npmpro/nginx/error-log.conf`), error);

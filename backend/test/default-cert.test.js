@@ -96,12 +96,12 @@ it("picks the hosts a stapling change affects", () => {
 	assert.equal(stapledHost(le, ["default_certificate_id"]), false);
 });
 
-// start.sh's default certificate block, run with sh on a temp /data
+// the default certificate block of data-setup.sh (run by start.sh), run with sh on a temp /data
 const startShDefaultCert = async () => {
-	const lines = (await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8")).split("\n");
+	const lines = (await readFile(path.join(ROOT, "rootfs/usr/local/bin/data-setup.sh"), "utf8")).split("\n");
 	const start = lines.indexOf('if [ "$DEFAULT_CERT_ID" = "0" ]; then');
 	const end = lines.indexOf("} > /data/npmpro/nginx/default-cert.conf");
-	if (start < 0 || end < start) throw new Error("default certificate block not found in start.sh");
+	if (start < 0 || end < start) throw new Error("default certificate block not found in data-setup.sh");
 	return lines.slice(start, end + 1).join("\n");
 };
 
@@ -132,7 +132,7 @@ it("renders what start.sh writes for the same env (env DEFAULT_CERT_ID keeps tod
 });
 
 it("keeps the default certificate out of default.conf and npmpro.conf, start.sh no longer edits them", async () => {
-	const startSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8");
+	const startSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/data-setup.sh"), "utf8");
 	assert.equal(startSh.includes("ssl_certificate .*"), false);
 	assert.equal(startSh.includes("ssl_stapling"), true);
 	const npmproConf = await readFile(path.join(ROOT, "rootfs/usr/local/nginx/conf/conf.d/npmpro.conf"), "utf8");
