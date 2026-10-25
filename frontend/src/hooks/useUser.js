@@ -30,7 +30,8 @@ const useUser = (id) => {
  * Whether the signed-in user is an administrator; undefined while the user is loading
  */
 const useIsAdmin = () => {
-	const { data } = useUser("me");
+	const { data, isError } = useUser("me");
+	if (isError) return false;
 	return data ? isAdmin(data.roles) === true : undefined;
 };
 

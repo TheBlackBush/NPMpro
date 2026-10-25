@@ -69,7 +69,7 @@
 			"type": "string",
 			"minLength": 1,
 			"maxLength": 253,
-			"pattern": "^\\S+$",
+			"pattern": "^[^\\s;{}\"'\\\\#]+$",
 			"example": "jc21.com"
 		},
 		"preserve_path": {

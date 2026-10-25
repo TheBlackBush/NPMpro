@@ -106,6 +106,7 @@ const internalStream = {
 		}
 
 		access.can("streams:manage");
+		// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
 		assertHostConfig(access, "stream", data, existingRow);
 
 		if (createCertificate) {

@@ -56,7 +56,7 @@
 		"forward_host": {
 			"type": "string",
 			"maxLength": 255,
-			"pattern": "^[^\\s/]{0,253}(/\\S*)?$",
+			"pattern": "^[^\\s/;{}\"'\\\\#]{0,253}(/[^\\s;{}\"'\\\\#]*)?$",
 			"default": "",
 			"example": "127.0.0.1"
 		},

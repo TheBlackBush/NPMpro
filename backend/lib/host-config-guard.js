@@ -29,6 +29,12 @@ const pathSchemeError = () =>
 		"error.path-scheme-webroot",
 	);
 
+const aliasPrefixError = () =>
+	new errs.ValidationError(
+		"A custom location that serves a folder (a path ending in /) must itself end in /.",
+		"error.path-scheme-alias-prefix",
+	);
+
 const UNSAFE_PATH_CHARS = /[\s\p{Cc}$;{}"'\\#]/u;
 
 const asText = (value) => (typeof value === "string" ? value : "");
@@ -89,6 +95,24 @@ const assertPathScheme = (isAdmin, item, stored) => {
 	if (!isInsideWebroot(host)) throw pathSchemeError();
 };
 
+/**
+ * A custom prefix location renders a folder path (ending in `/`) as `alias`. nginx then replaces the location path
+ * with the folder, so a location path without the trailing slash (`/x` with `/var/www/a/`) lets `/x../` reach the
+ * parent folder. Non-admins must end such a location path in `/`, unless the location is the stored one.
+ *
+ * @param {Object} location  location payload
+ * @param {Object} [stored]  the matching stored location
+ */
+const assertAliasPrefix = (location, stored) => {
+	const scheme = location.forward_scheme ?? stored?.forward_scheme;
+	const host = location.forward_host ?? stored?.forward_host;
+	if (scheme !== "path" || typeof host !== "string" || !host.endsWith("/")) return;
+	if (!["", "^~ "].includes(location.location_type ?? "")) return;
+	if (String(location.path ?? "").endsWith("/")) return;
+	if (stored?.forward_scheme === "path" && stored.forward_host === host) return;
+	throw aliasPrefixError();
+};
+
 const locationKey = (location) => `${location.location_type ?? ""}\u0000${location.path ?? ""}`;
 
 /**
@@ -110,6 +134,7 @@ const assertLocations = (isAdmin, locations, storedLocations = []) => {
 			throw advancedConfigError();
 		}
 		assertPathScheme(false, location, match);
+		assertAliasPrefix(location, match);
 	}
 };
 
@@ -131,6 +156,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 };
 
 export {
+	assertAliasPrefix,
 	assertConfigFields,
 	assertHostConfig,
 	assertLocations,

@@ -203,7 +203,7 @@ it("non-admin path scheme on custom locations", () => {
 	);
 	assert.doesNotThrow(() =>
 		assertHostConfig(user, "proxy_host", {
-			locations: [{ path: "/f", forward_scheme: "path", forward_host: "/var/www/files/" }],
+			locations: [{ path: "/f/", forward_scheme: "path", forward_host: "/var/www/files/" }],
 		}),
 	);
 	const stored = { locations: [{ location_type: "", path: "/f", forward_scheme: "path", forward_host: "/srv/" }] };
@@ -229,4 +229,53 @@ it("non-admin path scheme on custom locations", () => {
 
 it("an access without the isAdmin flag is treated as a non-admin", () => {
 	assert.throws(() => assertHostConfig({}, "dead_host", { advanced_config: LUA }), CONFIG_REFUSED);
+});
+
+const ALIAS_REFUSED = { status: 400, message_i18n: "error.path-scheme-alias-prefix" };
+const folderLocation = (path, location_type = "") => ({
+	location_type,
+	path,
+	forward_scheme: "path",
+	forward_host: "/var/www/a/",
+});
+
+it("non-admin prefix locations that serve a folder must end in a slash", () => {
+	for (const type of ["", "^~ "]) {
+		assert.throws(
+			() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("/x", type)] }),
+			ALIAS_REFUSED,
+		);
+		assert.throws(
+			() =>
+				assertHostConfig(user, "proxy_host", {
+					locations: [{ ...folderLocation("/x", type), forward_host: "/var/www/" }],
+				}),
+			ALIAS_REFUSED,
+		);
+		assert.doesNotThrow(() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("/x/", type)] }));
+	}
+	// regex and exact locations map the whole request to the alias, a file path (root) has no alias at all
+	assert.doesNotThrow(() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("/x", "= ")] }));
+	assert.doesNotThrow(() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("^/x", "~ ")] }));
+	assert.doesNotThrow(() =>
+		assertHostConfig(user, "proxy_host", {
+			locations: [{ ...folderLocation("/x"), forward_host: "/var/www/a" }],
+		}),
+	);
+	assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x")] }));
+});
+
+it("non-admins may keep a stored folder location without the slash", () => {
+	const stored = { locations: [folderLocation("/x")] };
+	assert.doesNotThrow(() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("/x")] }, stored));
+	assert.throws(
+		() =>
+			assertHostConfig(
+				user,
+				"proxy_host",
+				{ locations: [{ ...folderLocation("/x"), forward_host: "/var/www/b/" }] },
+				stored,
+			),
+		ALIAS_REFUSED,
+	);
 });

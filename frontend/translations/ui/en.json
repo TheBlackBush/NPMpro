@@ -259,6 +259,7 @@
 	"error.oidc-disable-password-session": "Password login can only be disabled while signed in with OIDC. Untick Disable password login to save these settings now.",
 	"error.oidc-icon-too-large": "The icon is larger than 256 KB",
 	"error.passwords-must-match": "Passwords must match",
+	"error.path-scheme-alias-prefix": "A custom location that serves a folder (a path ending in /) must itself end in /.",
 	"error.path-scheme-webroot": "Only administrators can serve files from outside /var/www. Use an absolute path inside /var/www.",
 	"error.request-failed": "Request failed (HTTP {status})",
 	"error.required": "This is required",
