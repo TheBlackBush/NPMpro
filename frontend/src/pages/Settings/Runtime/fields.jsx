@@ -21,10 +21,11 @@ function FieldLabel({ name, children }) {
 }
 
 /**
- * The field hint, why another setting locks it (indirect lock) and when a change takes effect
+ * The field hint, why another setting locks it (indirect lock), when a change takes effect and, for a saved restart
+ * setting the container does not run with yet, that it needs a restart
  */
 function FieldHint({ name, hint }) {
-	const { appliesId, isLocked, envOf, reasonOf } = useRuntimeSection();
+	const { appliesId, isLocked, envOf, reasonOf, restartPending } = useRuntimeSection();
 	const applies = appliesId(name);
 	const reason = isLocked(name) ? reasonOf(name) : null;
 	return (
@@ -38,6 +39,11 @@ function FieldHint({ name, hint }) {
 			{applies ? (
 				<span className="d-block">
 					<T id={applies} />
+				</span>
+			) : null}
+			{restartPending(name) ? (
+				<span className="d-block text-warning">
+					<T id="settings.runtime.restart-pending" />
 				</span>
 			) : null}
 		</>

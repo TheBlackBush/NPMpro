@@ -22,11 +22,11 @@ const GROUP_KEYS = {
 		"authentikUpstream",
 		"anubisCustomImages",
 	],
-	logs: ["writeLogFiles", "logRotations"],
-	advanced: ["configBeautifier", "gravatar"],
+	logs: ["writeLogFiles", "logRotations", "goaccess"],
+	advanced: ["configBeautifier", "gravatar", "timeZone"],
 };
 
-const APPLIES = new Set(["next-certificate", "reload", "immediately"]);
+const APPLIES = new Set(["next-certificate", "reload", "immediately", "restart"]);
 
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
@@ -156,6 +156,30 @@ const appliesMessageId = (applies, key) => {
 };
 
 /**
+ * Whether the key is a restart setting saved with another value than the container runs with (API restart_pending,
+ * snake_case keys), so the container needs a restart to apply it
+ *
+ * @param   {string[]}  restartPending
+ * @param   {string}    key  camelCase
+ * @returns {boolean}
+ */
+const isRestartPending = (restartPending, key) => (restartPending ?? []).map(camel).includes(key);
+
+/**
+ * The time zone options: the zones the image ships, plus the current value when it is not one of them (a TZ set by
+ * env, for example a posix/ name)
+ *
+ * @param   {string[]}  zones
+ * @param   {string}    current
+ * @returns {{ value: string, label: string }[]}
+ */
+const timeZoneOptions = (zones, current) => {
+	const names = [...(zones ?? [])];
+	if (current && !names.includes(current)) names.unshift(current);
+	return names.map((name) => ({ value: name, label: name }));
+};
+
+/**
  * The form field a save error belongs to: the backend prefixes validation errors with the snake_case key. Returns
  * { key (camelCase), message } for a key of the group, else null.
  *
@@ -187,8 +211,10 @@ export {
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isRestartPending,
 	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
 	runtimeSettingsPayload,
+	timeZoneOptions,
 };

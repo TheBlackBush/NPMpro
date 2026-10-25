@@ -60,6 +60,8 @@ const LABELS = {
 	"forward-auth/anubis_custom_images": "settings.forward-auth.anubis-images",
 	"logs/write_log_files": "settings.logs.write",
 	"logs/log_rotations": "settings.logs.rotations",
+	"logs/goaccess": "settings.logs.goaccess",
+	"advanced/time_zone": "settings.advanced.time-zone",
 	"advanced/config_beautifier": "settings.advanced.beautifier",
 	"advanced/gravatar": "settings.advanced.gravatar",
 };
@@ -148,6 +150,22 @@ function Value({ item }) {
 	return <code className={item.value.length > 24 ? "text-break" : "text-nowrap"}>{item.value}</code>;
 }
 
+// "set" or "default"; a startup setting (TZ, GOA) not set by env comes from its settings section
+function Status({ item }) {
+	if (item.setting && !item.set) {
+		return (
+			<Link to={`/settings/${item.setting}`} className="badge bg-azure-lt">
+				<T id="settings.environment.from-setting" />
+			</Link>
+		);
+	}
+	return (
+		<span className={`badge ${item.set ? "bg-green-lt" : "bg-secondary-lt"}`}>
+			<T id={item.set ? "settings.environment.set" : "settings.environment.default"} />
+		</span>
+	);
+}
+
 function GroupRows({ group }) {
 	return (
 		<tbody>
@@ -165,9 +183,7 @@ function GroupRows({ group }) {
 						<Value item={item} />
 					</td>
 					<td data-label={label("settings.environment.status")}>
-						<span className={`badge ${item.set ? "bg-green-lt" : "bg-secondary-lt"}`}>
-							<T id={item.set ? "settings.environment.set" : "settings.environment.default"} />
-						</span>
+						<Status item={item} />
 					</td>
 					<td data-label={label("settings.environment.description")}>
 						<T id={`environment.${group.id}.${item.name}`} />

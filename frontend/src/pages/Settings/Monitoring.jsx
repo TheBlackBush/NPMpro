@@ -74,11 +74,20 @@ function LogFields() {
 				hint={<T id="settings.logs.rotations.hint" data={ROTATIONS} />}
 				{...ROTATIONS}
 			/>
+			<RuntimeSwitch
+				name="goaccess"
+				label={<T id="settings.logs.goaccess" />}
+				hint={<T id="settings.logs.goaccess.hint" />}
+			/>
 		</Part>
 	);
 }
 
-const logsApi = (values) => ({ writeLogFiles: values.writeLogFiles, logRotations: Number(values.logRotations) });
+const logsApi = (values) => ({
+	writeLogFiles: values.writeLogFiles,
+	logRotations: Number(values.logRotations),
+	goaccess: values.goaccess,
+});
 
 function Fields({ isLocked }) {
 	const { values, setFieldValue } = useFormikContext();
@@ -241,6 +250,7 @@ export default function Monitoring() {
 		visitorsCap: String(data.visitorsCap ?? 100_000),
 		writeLogFiles: Boolean(logs.writeLogFiles),
 		logRotations: String(logs.logRotations),
+		goaccess: Boolean(logs.goaccess),
 	};
 
 	const onSubmit = async (allValues, { setSubmitting, setFieldError }) => {

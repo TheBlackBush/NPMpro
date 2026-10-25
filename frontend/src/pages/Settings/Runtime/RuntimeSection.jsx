@@ -5,7 +5,13 @@ import { Button, ErrorAlert, Loading } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
-import { appliesMessageId, fieldOfError, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
+import {
+	appliesMessageId,
+	fieldOfError,
+	isEmptyPayload,
+	isRestartPending,
+	runtimeSettingsPayload,
+} from "src/modules/RuntimeSettings";
 import { showError, showObjectSuccess } from "src/notifications";
 import { StatusAlert } from "../StatusAlert";
 
@@ -17,7 +23,8 @@ const RuntimeContext = createContext(null);
 
 /**
  * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it),
- * reasonOf(key) (why another setting's env var locks it, null for a direct lock) and appliesId(key) (camelCase keys)
+ * reasonOf(key) (why another setting's env var locks it, null for a direct lock), appliesId(key) and
+ * restartPending(key) (saved, applies at the next container start) (camelCase keys)
  */
 const useRuntimeSection = () => useContext(RuntimeContext);
 
@@ -36,6 +43,7 @@ const runtimeContextOf = (group, data) => {
 		// locked_reason: only the keys locked by another setting's env var
 		reasonOf: (key) => data.lockedReason?.[key] ?? null,
 		appliesId: (key) => appliesMessageId(data.applies, key),
+		restartPending: (key) => isRestartPending(data.restartPending, key),
 	};
 };
 

@@ -7,10 +7,12 @@ import {
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isRestartPending,
 	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
 	runtimeSettingsPayload,
+	timeZoneOptions,
 } from "./RuntimeSettings.js";
 
 it("keySizeOptions follows the key type", () => {
@@ -107,7 +109,8 @@ it("GROUP_KEYS match the backend response schemas", () => {
 	for (const group of Object.keys(GROUP_KEYS)) {
 		const url = new URL(`../../../backend/schema/components/runtime-${group}-setting-object.json`, import.meta.url);
 		const props = Object.keys(JSON.parse(readFileSync(url, "utf8")).properties).filter(
-			(key) => !["locked", "locked_by", "locked_reason", "applies"].includes(key),
+			(key) =>
+				!["locked", "locked_by", "locked_reason", "applies", "restart_pending", "time_zones"].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
@@ -158,4 +161,31 @@ it("isServableCertificate keeps certificates with files, without mTLS CAs", () =
 	assert.equal(isServableCertificate({ provider: "mtls", domainNames: ["ca"] }), false);
 	assert.equal(isServableCertificate({ provider: "other" }), false);
 	assert.equal(isServableCertificate(undefined), false);
+});
+
+it("maps the restart applies value and the restart pending keys", () => {
+	assert.equal(appliesMessageId({ timeZone: "restart" }, "timeZone"), "settings.runtime.applies.restart");
+	assert.equal(isRestartPending(["time_zone"], "timeZone"), true);
+	assert.equal(isRestartPending(["time_zone"], "goaccess"), false);
+	assert.equal(isRestartPending(undefined, "timeZone"), false);
+});
+
+it("timeZoneOptions keeps a current value the list does not have", () => {
+	assert.deepEqual(timeZoneOptions(["UTC", "Europe/Berlin"], "UTC"), [
+		{ value: "UTC", label: "UTC" },
+		{ value: "Europe/Berlin", label: "Europe/Berlin" },
+	]);
+	assert.deepEqual(
+		timeZoneOptions(["UTC"], "posix/Asia/Tokyo").map((option) => option.value),
+		["posix/Asia/Tokyo", "UTC"],
+	);
+	assert.deepEqual(timeZoneOptions(undefined, ""), []);
+});
+
+it("sends the restart settings like the others", () => {
+	const loaded = { timeZone: "UTC", configBeautifier: true, gravatar: true };
+	assert.deepEqual(runtimeSettingsPayload("advanced", { ...loaded, timeZone: "Europe/Berlin" }, [], loaded), {
+		timeZone: "Europe/Berlin",
+	});
+	assert.deepEqual(runtimeSettingsPayload("logs", { goaccess: true }, ["goaccess"]), {});
 });
