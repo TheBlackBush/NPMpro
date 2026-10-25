@@ -1,5 +1,6 @@
 import { useDelayElapsed } from "src/hooks";
 import { intl, T } from "src/locale";
+import { BrandMark } from "./BrandMark";
 
 /**
  * @param {Object}  props
@@ -22,16 +23,8 @@ export function Loading({ label, noLogo, delay = 0 }) {
 	}
 	return (
 		<div className="empty">
-			<div className="empty-img navbar-brand-autodark">
-				<img
-					src="/images/logo-no-text.svg"
-					width={87}
-					height={100}
-					className="navbar-brand-image"
-					// navbar-brand-image turns the logo white in dark mode but caps the height at 2rem, sized for the navbar
-					style={{ height: "100px" }}
-					alt=""
-				/>
+			<div className="empty-img">
+				<BrandMark size={100} />
 			</div>
 			<div className="text-secondary mb-3">{label || <T id="loading" />}</div>
 			<div className="progress progress-sm" role="progressbar" aria-label={intl.formatMessage({ id: "loading" })}>

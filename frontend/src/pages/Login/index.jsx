@@ -1,6 +1,6 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
+import { BrandMark, Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -215,17 +215,8 @@ export default function Login() {
 					<ThemeSwitcher />
 				</div>
 				<div className="text-center mb-4">
-					<h1 className="navbar-brand navbar-brand-autodark fs-1">
-						<img
-							src="/images/logo-no-text.svg"
-							width={64}
-							height={64}
-							className="navbar-brand-image me-3"
-							// navbar-brand-image keeps the dark mode colour but caps the height at 2rem, sized for the navbar
-							style={{ height: "4rem" }}
-							alt=""
-						/>
-						NPMpro
+					<h1 className="navbar-brand fs-1">
+						<BrandMark variant="stacked" size={160} alt="NPMpro" className="navbar-brand-image" />
 					</h1>
 				</div>
 				<div className="card card-md">

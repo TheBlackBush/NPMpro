@@ -1,4 +1,5 @@
 import { IconAlertTriangle, IconFlag, IconGauge, IconShieldLock } from "@tabler/icons-react";
+import { cloneElement } from "react";
 import { CountryName } from "src/components/Monitoring/CountryName";
 import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
@@ -40,8 +41,17 @@ function Sparkline({ series }) {
 	);
 }
 
+// Column classes by the number of cards shown, so the cards always fill their row and the tiles start a new one.
+// With four cards the second pair takes the full width on phones, so a long country name is not cut off.
+const COLUMNS_BY_COUNT = {
+	1: ["col-12"],
+	2: ["col-12 col-sm-6", "col-12 col-sm-6"],
+	3: ["col-12 col-md-4", "col-12 col-md-4", "col-12 col-md-4"],
+	4: ["col-6 col-lg-3", "col-6 col-lg-3", "col-12 col-md-6 col-lg-3", "col-12 col-md-6 col-lg-3"],
+};
+
 /**
- * Row of four monitoring cards above the dashboard tiles. Each card is hidden when its value is unknown.
+ * Row of up to four monitoring cards above the dashboard tiles. Each card is hidden when its value is unknown.
  * Only rendered for administrators (the summary endpoint is admin only).
  */
 function MonitoringRow() {
@@ -53,7 +63,6 @@ function MonitoringRow() {
 	const cards = [
 		requestsToday !== null && requestsToday !== undefined ? (
 			<StatCard
-				className="col-6 col-lg-3"
 				key="requests"
 				to="/monitoring/traffic"
 				icon={IconGauge}
@@ -71,7 +80,6 @@ function MonitoringRow() {
 		) : null,
 		errorRateToday !== null && errorRateToday !== undefined ? (
 			<StatCard
-				className="col-6 col-lg-3"
 				key="errors"
 				to="/monitoring/traffic"
 				icon={IconAlertTriangle}
@@ -83,7 +91,6 @@ function MonitoringRow() {
 		) : null,
 		activeBans !== null && activeBans !== undefined ? (
 			<StatCard
-				className="col-6 col-lg-3"
 				key="bans"
 				to="/monitoring/crowdsec"
 				icon={IconShieldLock}
@@ -94,7 +101,6 @@ function MonitoringRow() {
 		) : null,
 		hasCountry ? (
 			<StatCard
-				className="col-6 col-lg-3"
 				key="country"
 				to="/monitoring/traffic"
 				icon={IconFlag}
@@ -105,7 +111,8 @@ function MonitoringRow() {
 		) : null,
 	].filter(Boolean);
 
-	return cards;
+	const columns = COLUMNS_BY_COUNT[cards.length];
+	return cards.map((card, i) => cloneElement(card, { className: columns[i] }));
 }
 
 export { MonitoringRow };

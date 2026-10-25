@@ -1,0 +1,17 @@
+# NPMpro wiki
+
+NPMpro is a reverse proxy with a web UI: you add your domains, point them at your services and get HTTPS certificates, without writing nginx configs. It is a hardened fork of nginx-proxy-manager and ships as one Docker image.
+
+These pages cover setup and daily use. The [README](https://github.com/TheBlackBush/NPMpro#readme) stays the reference for the features, the settings and environment variables, CrowdSec, forward authentication, load balancing, ECH, geoblocking and the privacy hints.
+
+## Pages
+
+- [Installation](Installation): requirements, the compose file, the first start
+- [Usage](Usage): hosts, certificates, access lists, streams, settings, monitoring, users
+- [Troubleshooting](Troubleshooting): logs, start problems, certificates, HTTP/3, client IPs, resets and backups
+- [Upgrading from NPMplus](Upgrading-from-NPMplus): taking over an NPMplus data volume
+- [Migrating from Nginx Proxy Manager](Migrating-from-Nginx-Proxy-Manager): moving from the original project
+
+## Getting help
+
+Questions, feature requests and reproducible bugs: https://github.com/TheBlackBush/NPMpro/issues

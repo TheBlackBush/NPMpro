@@ -1,6 +1,6 @@
 import { Collapse } from "@tabler/core";
 import { IconDevicesX, IconLock, IconLogout, IconShieldLock, IconUser } from "@tabler/icons-react";
-import { LocalePicker, NavLink, ThemeSwitcher } from "src/components";
+import { BrandMark, LocalePicker, NavLink, ThemeSwitcher } from "src/components";
 import { useAuthState } from "src/context";
 import { useUser } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -27,16 +27,9 @@ export function SiteHeader() {
 				>
 					<span className="navbar-toggler-icon" />
 				</button>
-				<h1 className="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
+				<h1 className="navbar-brand pe-0 pe-md-3">
 					<NavLink to="/">
-						<img
-							src="/images/logo-no-text.svg"
-							width={40}
-							height={40}
-							className="navbar-brand-image me-3"
-							alt=""
-						/>
-						NPMpro
+						<BrandMark variant="horizontal" size={66} alt="NPMpro" />
 					</NavLink>
 				</h1>
 				<div className="navbar-nav flex-row order-md-last">

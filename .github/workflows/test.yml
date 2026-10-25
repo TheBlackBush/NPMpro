@@ -82,6 +82,8 @@ jobs:
         run: git ls-files '*.json' | xargs -n1 jq empty
       - name: old project name
         run: sh .github/scripts/check-names.sh
+      - name: compose.yaml variables
+        run: sh .github/scripts/check-compose-envs.sh
       - name: nginx config format
         run: |
           npx --yes nginxbeautifier@1.0.19 -s 2 -r rootfs/usr/local/nginx/conf
