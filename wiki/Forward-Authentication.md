@@ -3,7 +3,8 @@
 Forward authentication puts a login (or a bot check) in front of a service that has none of its own, or that you do not want to expose without one. For every request to a protected proxy host, nginx first asks an authentication service (with the nginx `auth_request` module) whether the visitor may pass:
 
 - the service answers 2xx: the request goes on to your service, together with headers that name the user;
-- the service answers 401 (or 403): NPMpro sends the visitor to the login page or the challenge of the service instead.
+- the service answers 401: NPMpro sends the visitor to the login page or the challenge of the service instead. With Anubis and Tinyauth a 403 does the same; with the other providers a 403 is shown to the visitor as 403 Forbidden;
+- any other answer, or no answer, ends the request with an error (500).
 
 NPMpro has the nginx side built in for six providers: [Anubis](#anubis), [Tinyauth](#tinyauth), [oauth2-proxy](#oauth2-proxy), [VoidAuth](#voidauth), [Authelia](#authelia) and [authentik](#authentik). You run the provider in its own container, tell NPMpro where it is, and choose it in the proxy host. No custom or advanced nginx config and no extra custom locations are needed.
 
@@ -33,7 +34,7 @@ Not allowed: a path (NPMpro adds the path of each provider itself), whitespace a
 
 With the default `network_mode: host`, NPMpro reaches a provider container through a port that the container publishes on the host, so the upstream is `http://127.0.0.1:<published port>`. Docker container names do not resolve from a container with host networking.
 
-**Variables win.** `AUTH_REQUEST_ANUBIS_UPSTREAM`, `AUTH_REQUEST_TINYAUTH_UPSTREAM`, `AUTH_REQUEST_OAUTH2PROXY_UPSTREAM`, `AUTH_REQUEST_VOIDAUTH_UPSTREAM`, `AUTH_REQUEST_AUTHELIA_UPSTREAM` and `AUTH_REQUEST_AUTHENTIK_UPSTREAM` in `compose.yaml` override the field and lock it in the UI ("Set by" the variable). A value in the wrong format stops the container at start with a message that explains the format. Remove the variable and recreate the container (`docker compose up -d`) to manage the field in the UI again.
+**Variables win.** `AUTH_REQUEST_ANUBIS_UPSTREAM`, `AUTH_REQUEST_TINYAUTH_UPSTREAM`, `AUTH_REQUEST_OAUTH2PROXY_UPSTREAM`, `AUTH_REQUEST_VOIDAUTH_UPSTREAM`, `AUTH_REQUEST_AUTHELIA_UPSTREAM` and `AUTH_REQUEST_AUTHENTIK_UPSTREAM` in `compose.yaml` override the field and lock it in the UI ("Set by" the variable). A value in the wrong format halts the start: the container keeps running, but NPMpro does not start, and `docker logs npmpro` shows a message that explains the format. Remove the variable and recreate the container (`docker compose up -d`) to manage the field in the UI again.
 
 **Clearing a default is refused while hosts need it.** If proxy hosts use a provider without their own upstream, emptying its default is refused with the message `<provider>_upstream: still used by proxy hosts without their own upstream: ...` and the list of those hosts. Give those hosts their own upstream or choose another Auth Request first.
 
@@ -135,7 +136,8 @@ Steps:
 
 - `--reverse-proxy=true`, so it uses the forwarded headers from NPMpro;
 - `--set-xauthrequest=true`, so it returns the user and email headers (and `--pass-access-token=true` if your service needs the access token);
-- `--cookie-domain` and `--whitelist-domain` set to your domain when it protects several hosts;
+- `--whitelist-domain` set to your domain (for example `.example.com`), always: NPMpro sends the address to return to after the sign-in as a full URL (`rd=https://...`), and oauth2-proxy only redirects to domains on this list;
+- `--cookie-domain` set to your domain when it protects several hosts;
 - as redirect URL, `https://<protected host>/oauth2/callback`, registered at your identity provider for every protected host.
 
 oauth2-proxy does not need a proxy host of its own: NPMpro serves its pages on each protected host.
@@ -153,6 +155,7 @@ Steps:
 
 - The callback URL of a protected host is not registered at the identity provider: the provider shows a redirect URI error.
 - `--reverse-proxy` is missing: oauth2-proxy builds wrong redirect addresses.
+- `--whitelist-domain` is missing or does not cover the protected host: after the sign-in, oauth2-proxy refuses the return address and the visitor does not get back to the page they opened.
 - The service itself uses paths below `/oauth2/`: they are taken by oauth2-proxy on a protected host.
 
 ## VoidAuth
@@ -167,7 +170,7 @@ Steps:
 2. Set **VoidAuth upstream** in Settings, Forward authentication to `http://127.0.0.1:3000` (or your port; `AUTH_REQUEST_VOIDAUTH_UPSTREAM`).
 3. In the proxy host of the service choose **Auth Request** `voidauth` and save.
 
-**What NPMpro does:** it checks every request with `<upstream>/api/authz/auth-request` (the internal path `/api/authz/auth-request` of the protected host), with `X-Original-URL` and `X-Forwarded-URI` set to the original request. On 401 or 407 it redirects the visitor to the address that VoidAuth returns in its `Location` header. After the login, it passes `Remote-User`, `Remote-Groups`, `Remote-Name` and `Remote-Email` to your service.
+**What NPMpro does:** it checks every request with `<upstream>/api/authz/auth-request` (the internal path `/api/authz/auth-request` of the protected host), with `X-Original-URL` and `X-Forwarded-URI` set to the original request. On 401 it redirects the visitor to the address that VoidAuth returns in its `Location` header. A 403 is shown as 403, any other answer that is not 2xx ends in an error (500). After the login, it passes `Remote-User`, `Remote-Groups`, `Remote-Name` and `Remote-Email` to your service.
 
 **What the visitor sees:** the VoidAuth login page, then the service.
 
