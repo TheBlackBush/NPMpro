@@ -750,7 +750,7 @@
 	"settings.logs.goaccess.anonymize.1": "Level 1",
 	"settings.logs.goaccess.anonymize.2": "Level 2 (strong)",
 	"settings.logs.goaccess.anonymize.3": "Level 3 (pedantic)",
-	"settings.logs.goaccess.anonymize.hint": "Masks part of each visitor IP in the report (--anonymize-ip). Level 1 masks the last IPv4 byte, level 2 two bytes, level 3 three bytes, and IPv6 addresses are shortened in the same way.",
+	"settings.logs.goaccess.anonymize.hint": "Masks part of each visitor IP in the report (--anonymize-ip). Level 1 hides the last IPv4 byte (the last 64 bits of IPv6), level 2 two bytes (80 bits), level 3 three bytes (96 bits).",
 	"settings.logs.goaccess.anonymize.off": "Off",
 	"settings.logs.goaccess.drop-query-strings": "Drop query strings",
 	"settings.logs.goaccess.drop-query-strings.hint": "Removes the query string from the URLs in the report (--no-query-string), so tokens in URLs are not stored.",
