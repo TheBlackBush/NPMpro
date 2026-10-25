@@ -22,6 +22,10 @@
 				"type": "string",
 				"description": "Instructions on how to format the credentials for this DNS provider"
 			},
+			"deprecated": {
+				"type": "boolean",
+				"description": "No longer offered for new certificates and DNS credentials (the service is gone or its plugin does not work with the image's certbot); existing ones keep working"
+			},
 			"fields": {
 				"type": [
 					"array",

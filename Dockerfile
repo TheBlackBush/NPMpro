@@ -269,7 +269,9 @@ RUN apk upgrade --no-cache -a && \
     \
     python3 -m venv /usr/local && \
     sed -i "s|include-system-site-packages = false|include-system-site-packages = true|" /usr/local/pyvenv.cfg && \
-    pip install --no-cache-dir --upgrade pip certbot && \
+    pip install --no-cache-dir --require-hashes -r /app/certbot/requirements.txt && \
+    mkdir -p /usr/local/share/npmpro && \
+    pip freeze --all --exclude pip > /usr/local/share/npmpro/certbot-constraints.txt && \
     \
     wget -q https://raw.githubusercontent.com/tomwassenberg/certbot-ocsp-fetcher/"$COF_VER"/certbot-ocsp-fetcher -O /usr/local/bin/certbot-ocsp-fetcher.sh && \
     echo "60148ed2ffef2f1354427d3e080400d008132f8e5fb014f721f5986f438dd621  /usr/local/bin/certbot-ocsp-fetcher.sh" | sha256sum -c - && \

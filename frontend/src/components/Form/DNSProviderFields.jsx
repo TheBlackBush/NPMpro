@@ -15,10 +15,13 @@ export function DNSProviderFields({ showBoundaryBox }) {
 		void setFieldValue("npmproDnsCredentialId", undefined);
 	};
 
-	const options = dnsProviders?.map((p) => ({
-		value: p.id,
-		label: p.name,
-	}));
+	// deprecated providers are not offered for new certificates, only kept when already selected
+	const options = dnsProviders
+		?.filter((p) => !p.deprecated || p.id === values.npmproDnsProvider)
+		.map((p) => ({
+			value: p.id,
+			label: p.name,
+		}));
 
 	return (
 		<div className={showBoundaryBox ? "py-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined}>

@@ -57,7 +57,10 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const isNew = id === "new";
-	const options = providers?.map((p) => ({ value: p.id, label: p.name }));
+	// deprecated providers are not offered for new credentials, only kept for the one that already uses them
+	const options = providers
+		?.filter((p) => !p.deprecated || p.id === data?.provider)
+		.map((p) => ({ value: p.id, label: p.name }));
 
 	const onSubmit = (values, { setSubmitting }) => {
 		if (isSubmitting) return;

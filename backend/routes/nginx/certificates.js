@@ -119,10 +119,11 @@ router
 	.get((_, res) => {
 		res.status(200).send(
 			Object.entries(dnsPlugins)
-				.map(([id, { name, credentials }]) => ({
+				.map(([id, { name, credentials, deprecated }]) => ({
 					id,
 					name,
 					credentials,
+					deprecated: deprecated === true,
 					fields: getFieldDefinition(id)?.fields ?? null,
 					one_of: getFieldDefinition(id)?.one_of ?? null,
 				}))

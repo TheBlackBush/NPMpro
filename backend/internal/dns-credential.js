@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
+import { assertProviderForNew } from "../lib/certbot.js";
 import { buildValues, publicView, toIni } from "../lib/dns-credential-values.js";
 import errs from "../lib/error.js";
 import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
@@ -51,6 +52,7 @@ const internalDnsCredential = {
 	create: async (access, data) => {
 		access.can("certificates:manage");
 		if (!dnsPlugins[data.provider]) throw new errs.ValidationError(`Unknown DNS provider '${data.provider}'`);
+		assertProviderForNew(data.provider);
 		const ownerUserId = access.token.getUserId(1);
 		await internalDnsCredential.assertNameFree(ownerUserId, data.name);
 
@@ -74,6 +76,7 @@ const internalDnsCredential = {
 		const row = await internalDnsCredential.get(access, { id: data.id });
 		const provider = data.provider ?? row.provider;
 		if (!dnsPlugins[provider]) throw new errs.ValidationError(`Unknown DNS provider '${provider}'`);
+		if (provider !== row.provider) assertProviderForNew(provider);
 		if (provider !== row.provider && (await internalDnsCredential.countCertificates(row.id)) > 0) {
 			throw new errs.ValidationError("The provider cannot change while certificates use this credential");
 		}
