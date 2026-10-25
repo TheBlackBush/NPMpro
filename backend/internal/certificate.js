@@ -7,14 +7,13 @@ import { domainToASCII } from "node:url";
 import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
-import { installPlugin } from "../lib/certbot.js";
+import { assertProviderForNew, installPlugin, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { createRenewalTimer } from "../lib/renewal-timer.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
-import utils from "../lib/utils.js";
 import apiValidator from "../lib/validator/api.js";
 import { ssl as logger } from "../logger.js";
 import certificateModel from "../models/certificate.js";
@@ -82,7 +81,7 @@ const internalCertificate = {
 
 		try {
 			try {
-				const result = await utils.execFile("certbot", [
+				const result = await runCertbot([
 					"--config",
 					CERTBOT_INI,
 					"renew",
@@ -147,6 +146,7 @@ const internalCertificate = {
 		data.owner_user_id = access.token.getUserId(1);
 
 		if (data.npmpro_dns_challenge) {
+			assertProviderForNew(data.npmpro_dns_provider);
 			const credential = await internalDnsCredential.get(access, { id: data.npmpro_dns_credential_id });
 			if (credential.provider !== data.npmpro_dns_provider) {
 				throw new error.ValidationError("The DNS credential belongs to another DNS provider");
@@ -664,7 +664,7 @@ const internalCertificate = {
 			net.isIP(entry) === 0 ? "domains" : "ips",
 		);
 
-		const result = await utils.execFile("certbot", [
+		const result = await runCertbot([
 			"--config",
 			CERTBOT_INI,
 			"certonly",
@@ -701,7 +701,7 @@ const internalCertificate = {
 		await internalDnsCredential.writeCertificateFile(certificate);
 
 		try {
-			const result = await utils.execFile("certbot", [
+			const result = await runCertbot([
 				"--config",
 				CERTBOT_INI,
 				"certonly",
@@ -818,7 +818,7 @@ const internalCertificate = {
 			renewalServerPattern,
 		)?.groups.server;
 
-		const renewResult = await utils.execFile("certbot", [
+		const renewResult = await runCertbot([
 			"--config",
 			CERTBOT_INI,
 			"renew",
@@ -832,7 +832,7 @@ const internalCertificate = {
 		logger.info(renewResult);
 
 		try {
-			const revokeResult = await utils.execFile("certbot", [
+			const revokeResult = await runCertbot([
 				"--config",
 				CERTBOT_INI,
 				"revoke",
@@ -862,7 +862,7 @@ const internalCertificate = {
 		);
 
 		try {
-			const result = await utils.execFile("certbot", [
+			const result = await runCertbot([
 				"--config",
 				CERTBOT_INI,
 				"revoke",
@@ -878,7 +878,7 @@ const internalCertificate = {
 		}
 
 		try {
-			const result = await utils.execFile("certbot", [
+			const result = await runCertbot([
 				"--config",
 				CERTBOT_INI,
 				"delete",

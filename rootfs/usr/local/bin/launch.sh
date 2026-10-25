@@ -17,7 +17,6 @@ if [ -z "$(find -L /data/tls/certbot/accounts/"$(echo "$ACME_SERVER" | sed "s|^h
         fi
 
         ZS_EAB="$(curl -sSL https://api.zerossl.com/acme/eab-credentials-email --data-urlencode "email=$ACME_EMAIL")"
-        export ZS_EAB
         ACME_EAB_KID="$(echo "$ZS_EAB" | jq -r .eab_kid)"
         export ACME_EAB_KID
         ACME_EAB_HMAC_KEY="$(echo "$ZS_EAB" | jq -r .eab_hmac_key)"
@@ -32,9 +31,13 @@ if [ -z "$(find -L /data/tls/certbot/accounts/"$(echo "$ACME_SERVER" | sed "s|^h
             sleep inf
         fi
     elif [ -n "$ACME_EMAIL" ] && [ -n "$ACME_EAB_KID" ] && [ -n "$ACME_EAB_HMAC_KEY" ]; then
-        if ! certbot --config /run/npmpro/certbot.ini register --server "$ACME_SERVER" --eab-kid "$ACME_EAB_KID" --eab-hmac-key "$ACME_EAB_HMAC_KEY" --email "$ACME_EMAIL"; then
+        # certbot logs its command line: a log folder of its own, removed afterwards, keeps the EAB key out of the log
+        eab_logs="$(mktemp -d)"
+        if ! certbot --config /run/npmpro/certbot.ini --logs-dir "$eab_logs" register --server "$ACME_SERVER" --eab-kid "$ACME_EAB_KID" --eab-hmac-key "$ACME_EAB_HMAC_KEY" --email "$ACME_EMAIL"; then
+            rm -rf "$eab_logs"
             sleep inf
         fi
+        rm -rf "$eab_logs"
     fi
     echo
 fi

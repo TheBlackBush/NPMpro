@@ -1,0 +1,4 @@
+# certbot for the image (Dockerfile): pin the version here, then regenerate requirements.txt with hashes:
+#   pip install pip-tools && pip-compile --generate-hashes --allow-unsafe --strip-extras -o requirements.txt requirements.in
+# (run in the image, so the Python version matches)
+certbot==5.8.0
