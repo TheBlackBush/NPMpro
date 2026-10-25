@@ -12,9 +12,9 @@ The paths below assume the default volumes: NPMpro data in `/opt/npmpro` and Cro
 
 ## Requirements
 
-- NPMpro with `network_mode: host` (the default in `compose.yaml`). Then nginx sees the real client IPs and reaches the CrowdSec ports on `127.0.0.1`. Without host networking, the LAPI and AppSec ports must be reachable from inside the NPMpro container and you have to change `API_URL` and `APPSEC_URL` in step 7 to match.
+- NPMpro with `network_mode: host` (the default in `compose.yaml`). Then nginx sees the real client IPs and reaches the CrowdSec ports on `127.0.0.1`. Without host networking, the LAPI and AppSec ports must be reachable from inside the NPMpro container and you have to change `API_URL` and `APPSEC_URL` in step 8 to match.
 - If NPMpro sits behind another proxy, CDN or tunnel, set up Trusted proxy IPs (or Trust Cloudflare) first, see [Troubleshooting](Troubleshooting#the-logs-show-the-wrong-client-ips). Otherwise CrowdSec bans the IP of that proxy.
-- Write log files turned on (step 2): CrowdSec reads `access.log` from the NPMpro data folder.
+- Write log files turned on (step 3): CrowdSec reads `access.log` from the NPMpro data folder.
 - The host ports 8080 (LAPI) and 7422 (AppSec) free on `127.0.0.1`. If something else uses 8080 there, for example NPMpro itself with `HTTP_PORT=8080`, publish the LAPI on another host port and use that port in `API_URL`.
 
 ## Setup step by step
@@ -52,7 +52,7 @@ Optional collections, added to the same variable separated by spaces (for exampl
 | Collection | What it adds |
 |---|---|
 | [crowdsecurity/http-dos](https://app.crowdsec.net/hub/author/crowdsecurity/collections/http-dos) | detects HTTP DoS tools that the default HTTP scenarios miss; expect some false positives |
-| [crowdsecurity/appsec-crs](https://app.crowdsec.net/hub/author/crowdsecurity/collections/appsec-crs) | the OWASP Core Rule Set for AppSec. It is loaded out-of-band: matching requests are not blocked, but an IP that triggers more than 5 rules gets banned. Also uncomment `crowdsecurity/crs` in step 3 |
+| [crowdsecurity/appsec-crs](https://app.crowdsec.net/hub/author/crowdsecurity/collections/appsec-crs) | the OWASP Core Rule Set for AppSec. It is loaded out-of-band: matching requests are not blocked, but an IP that triggers more than 5 rules gets banned. Also uncomment `crowdsecurity/crs` in step 4 |
 | [crowdsecurity/http-extended-context](https://app.crowdsec.net/hub/author/crowdsecurity/collections/http-extended-context) | adds the attacked domain to the alert context, which is sent to CrowdSec if your engine is enrolled in the CrowdSec console |
 
 Start it once, so that it creates its configuration in `/opt/crowdsec/conf`:
@@ -62,13 +62,25 @@ docker compose up -d crowdsec
 docker logs crowdsec
 ```
 
-### 2. Turn on Write log files
+### 2. Update the hub
+
+The CrowdSec image can ship an outdated hub index, and with it an old version of the parser for the NPMpro access log that parses none of the log lines (`ZoeyVid/npmplus-logs` before 0.4). Update the hub index and all installed collections, parsers and scenarios, then restart CrowdSec:
+
+```bash
+docker exec crowdsec cscli hub update
+docker exec crowdsec cscli hub upgrade
+docker restart crowdsec
+```
+
+Run the two `cscli hub` commands again from time to time (or after pulling a new CrowdSec image) to get updated parsers, scenarios and AppSec rules.
+
+### 3. Turn on Write log files
 
 In the NPMpro web UI open Settings, Logs & monitoring and turn on **Write log files**, then save. It applies on save. Or set `LOGROTATE=true` in the `npmpro` service and run `docker compose up -d`.
 
 nginx then writes `/opt/npmpro/nginx/logs/access.log` (and `error.log` and `stream.log`), rotated daily.
 
-### 3. Create the acquisition file
+### 4. Create the acquisition file
 
 The acquisition file tells CrowdSec which logs to read and starts the AppSec listener. Create `/opt/crowdsec/conf/acquis.d/npmpro.yaml` (create the `acquis.d` folder if it does not exist) with this content:
 
@@ -91,9 +103,9 @@ labels:
 
 - The first part reads the access log. `type: npmplus` selects the parser of the collection; keep it exactly like this.
 - The second part (after `---`) starts the AppSec listener on port 7422 inside the CrowdSec container. `0.0.0.0` is correct here: it is the address inside the container, and step 1 publishes the port on `127.0.0.1` of the host only.
-- If you do not want AppSec, leave out everything from `---` on, and clear `APPSEC_URL` in step 7.
+- If you do not want AppSec, leave out everything from `---` on, and clear `APPSEC_URL` in step 8.
 
-### 4. Restart CrowdSec
+### 5. Restart CrowdSec
 
 ```bash
 docker restart crowdsec
@@ -102,7 +114,7 @@ docker logs crowdsec
 
 The log should show that the file `/opt/npmpro/nginx/logs/access.log` is read and that the AppSec component listens on `0.0.0.0:7422`. Errors in the acquisition file are shown here too.
 
-### 5. Create the bouncer key
+### 6. Create the bouncer key
 
 ```bash
 docker exec crowdsec cscli bouncers add npmpro
@@ -110,30 +122,30 @@ docker exec crowdsec cscli bouncers add npmpro
 
 The output contains an API key. Copy it now: it is shown only once. (If you lose it, run `docker exec crowdsec cscli bouncers delete npmpro` and add the bouncer again.)
 
-### 6. Open the bouncer config
+### 7. Open the bouncer config
 
 NPMpro creates the bouncer config at its first start: `/opt/npmpro/crowdsec/crowdsec.conf` on the host (`/data/crowdsec/crowdsec.conf` in the container). Open it with an editor, for example `sudo nano /opt/npmpro/crowdsec/crowdsec.conf`.
 
-Next to it, `crowdsec.conf.example` always holds the current default config of the image (it is replaced at every start, so do not edit it). Your `crowdsec.conf` is never overwritten. The same folder has `ban.html` and `captcha.html`, the pages shown to banned visitors, which you can edit; the `.example` copies are refreshed at every start.
+Next to it, `crowdsec.conf.example` always holds the current default config of the image (it is replaced at every start, so do not edit it). Your `crowdsec.conf` is only created from the example when it is missing or empty; NPMpro does not change it otherwise. The same folder has `ban.html` and `captcha.html`, the pages shown to banned visitors, which you can edit; the `.example` copies are refreshed at every start.
 
-### 7. Set the keys
+### 8. Set the keys
 
 Change these lines and leave the rest as it is:
 
 ```ini
 ENABLED=true
 API_URL=http://127.0.0.1:8080
-API_KEY=<the key from step 5>
+API_KEY=<the key from step 6>
 APPSEC_URL=http://127.0.0.1:7422
 ```
 
-- `ENABLED=true` must be written exactly like this, on its own line, without spaces after `true`: NPMpro checks the line at start to decide whether to load the bouncer.
+- `ENABLED=true` decides at the start of the container whether the bouncer is loaded. NPMpro checks the line with `^ENABLED *= *true$` (upper or lower case and spaces around `=` are fine): nothing may follow `true`, not even a space, and the file must not have Windows (CRLF) line endings. Otherwise the bouncer is not loaded.
 - `API_URL` is the address of the LAPI as NPMpro sees it. With the compose file above it stays `http://127.0.0.1:8080`.
-- `APPSEC_URL` is the AppSec listener from step 3. **If you did not set up AppSec, clear it** (`APPSEC_URL=`). The default `APPSEC_FAILURE_ACTION=deny` blocks requests when AppSec cannot be reached, so an `APPSEC_URL` that points to nothing makes every host answer with 403.
+- `APPSEC_URL` is the AppSec listener from step 4. **If you did not set up AppSec, clear it** (`APPSEC_URL=`). The default `APPSEC_FAILURE_ACTION=deny` blocks requests when AppSec cannot be reached, so an `APPSEC_URL` that points to nothing makes every host answer with 403.
 
 Save the file.
 
-### 8. Restart NPMpro
+### 9. Restart NPMpro
 
 ```bash
 docker restart npmpro
@@ -180,7 +192,7 @@ The bouncer supports the captcha remediation. Set `CAPTCHA_PROVIDER` and the `SI
    ```bash
    docker exec crowdsec cscli metrics
    ```
-   The acquisition table should list `/opt/npmpro/nginx/logs/access.log` with a growing number of lines read and parsed. If the lines are read but not parsed, the `type` in the acquisition file is wrong.
+   The acquisition table should list `/opt/npmpro/nginx/logs/access.log` with a growing number of lines read and parsed. "Lines parsed" should be close to "Lines read". If "Lines unparsed" grows instead, the parser is outdated: run the hub update of step 2 again. If the file is missing from the table or nothing is parsed at all, check the `type` in the acquisition file.
 2. **The bouncer is connected:**
    ```bash
    docker exec crowdsec cscli bouncers list
@@ -195,12 +207,16 @@ The bouncer supports the captcha remediation. Set `CAPTCHA_PROVIDER` and the `SI
    docker exec crowdsec cscli decisions delete --ip 203.0.113.7
    ```
    Do not ban the IP you manage the server from: the bouncer also protects the web UI port, so you would lock yourself out until the ban expires or you delete it with `cscli`.
-4. **The current bans:**
+4. **Optional, a real ban:** from the second device, request about 20 paths that do not exist on a 404 host of yours (for example `https://unused.example.com/test1` to `/test20`). This triggers the scenario `crowdsecurity/http-probing` and CrowdSec bans the device's IP (it shows up in `cscli decisions list` with that reason, and the device then gets the ban page). Delete the ban afterwards:
+   ```bash
+   docker exec crowdsec cscli decisions delete --ip 203.0.113.7
+   ```
+5. **The current bans:**
    ```bash
    docker exec crowdsec cscli decisions list
    ```
-5. **In the web UI:** with the bouncer enabled and a key set, the Monitoring page (administrators) shows a **CrowdSec** tab and the dashboard shows an **Active bans** card. The tab lists the active bans (total, added in the last 24 hours, by reason, origin and type, a map and the newest bans) and the connection state. NPMpro reads the bans with the key from `crowdsec.conf` and polls the LAPI every 60 seconds, so a new ban can take up to a minute to appear. It is read-only and shows no alerts. See [Monitoring](https://github.com/TheBlackBush/NPMpro#monitoring) in the README.
-6. **AppSec:** request a path that a virtual patch blocks, for example `https://app.example.com/.env` (use one of your hosts). With AppSec working the answer is 403 from NPMpro, and `docker exec crowdsec cscli metrics` shows the request in the AppSec tables. Repeated hits like this can get your IP banned, so test from the second device or delete the decision afterwards.
+6. **In the web UI:** the Monitoring page (administrators) has a **CrowdSec** tab whenever Monitoring is available, that is while traffic statistics are on or the bouncer is configured. Without a configured bouncer the tab says "CrowdSec is not configured". Once the bouncer is enabled with a key, Monitoring appears in the menu even with traffic statistics off, the tab shows the bans and the dashboard shows an **Active bans** card. The tab lists the active bans (total, added in the last 24 hours, by reason, origin and type, a map and the newest bans) and the connection state. NPMpro reads the bans with the key from `crowdsec.conf` and polls the LAPI every 60 seconds, so a new ban can take up to a minute to appear. It is read-only and shows no alerts. See [Monitoring](https://github.com/TheBlackBush/NPMpro#monitoring) in the README.
+7. **AppSec:** request a path that a virtual patch blocks on one of your proxy hosts, for example `https://app.example.com/.env` (a 404 host does not block it). With AppSec working the answer is 403 from NPMpro, and `docker exec crowdsec cscli metrics` shows the request in the AppSec tables. Repeated hits like this can get your IP banned, so test from the second device or delete the decision afterwards.
 
 ## AppSec and your hosts
 
@@ -215,7 +231,7 @@ The bouncer supports the captcha remediation. Set `CAPTCHA_PROVIDER` and the `SI
 Bot detection challenges every request without a valid cookie, so clients that cannot solve the challenge, such as mobile apps or API clients, are blocked. Use it only for hosts that are opened in a browser. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable. The short version:
 
 1. Add `crowdsecurity/appsec-bot-challenge`, `crowdsecurity/appsec-bot-challenge-strict` or `crowdsecurity/appsec-bot-challenge-permissive` to the `COLLECTIONS` variable of the CrowdSec container, depending on the threshold you want, and run `docker compose up -d crowdsec`.
-2. Uncomment `crowdsecurity/appsec-bot-*` in the acquisition file from step 3. The wildcard only matches the AppSec configs you actually installed.
+2. Uncomment `crowdsecurity/appsec-bot-*` in the acquisition file from step 4. The wildcard only matches the AppSec configs you actually installed.
 3. Restart CrowdSec: `docker restart crowdsec`.
 
 For hosts used by apps, turn on Disable Crowdsec Appsec (this also turns off bot detection there).
@@ -252,9 +268,9 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 
 ### The bouncer does not connect
 
-- Look into `docker logs npmpro` for lines starting with `[Crowdsec]`. No `[Crowdsec] Initialisation done` after a restart means the bouncer was not loaded: check that `ENABLED=true` is written exactly like that.
+- Look into `docker logs npmpro` for lines starting with `[Crowdsec]`. No `[Crowdsec] Initialisation done` after a restart means the bouncer was not loaded: check that `ENABLED=true` is written exactly like that. A space after `true` or Windows (CRLF) line endings are a common cause: the Monitoring CrowdSec tab then treats the bouncer as configured while nginx did not load it, so bans are shown but not enforced. Remove the space or convert the file (for example `sed -i 's/\r$//' /opt/npmpro/crowdsec/crowdsec.conf`) and restart NPMpro.
 - `API_URL` must be reachable from NPMpro. With `network_mode: host` and the compose file above that is `http://127.0.0.1:8080`. Test it from the host with `curl http://127.0.0.1:8080/v1/decisions -H "X-Api-Key: <key>"`: a working key returns `null` or a list, a wrong key returns 403.
-- A wrong or deleted key: create a new one (step 5), put it into `crowdsec.conf` and restart NPMpro.
+- A wrong or deleted key: create a new one (step 6), put it into `crowdsec.conf` and restart NPMpro.
 - Changes of `crowdsec.conf` only apply after `docker restart npmpro`.
 
 ### The CrowdSec tab says "CrowdSec is not configured"
@@ -265,6 +281,7 @@ The tab needs `ENABLED=true`, an `API_URL` and an `API_KEY` (or `USE_TLS_AUTH=tr
 
 - Check that Write log files is on and `/opt/npmpro/nginx/logs/access.log` grows.
 - Check that the CrowdSec container mounts the log folder (step 1) and that `cscli metrics` shows the file with parsed lines.
+- "Lines unparsed" grows while "Lines parsed" stays at 0 or low: the parser is outdated. Run `docker exec crowdsec cscli hub update`, `docker exec crowdsec cscli hub upgrade` and `docker restart crowdsec` (step 2).
 - Normal traffic does not create bans. Use the test ban above to check the bouncer.
 
 ### Logs
