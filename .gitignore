@@ -33,3 +33,6 @@ pnpm-debug.log*
 Thumbs.db
 *.swp
 *~
+
+# local scratch files (not part of the repo)
+tmp/

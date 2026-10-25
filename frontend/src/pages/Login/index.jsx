@@ -216,8 +216,7 @@ export default function Login() {
 				</div>
 				<div className="text-center mb-4">
 					<h1 className="navbar-brand fs-1">
-						<BrandMark size={64} className="navbar-brand-image me-3" />
-						NPMpro
+						<BrandMark variant="stacked" size={160} alt="NPMpro" className="navbar-brand-image" />
 					</h1>
 				</div>
 				<div className="card card-md">

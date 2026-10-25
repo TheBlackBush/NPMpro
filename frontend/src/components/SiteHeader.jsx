@@ -29,8 +29,7 @@ export function SiteHeader() {
 				</button>
 				<h1 className="navbar-brand pe-0 pe-md-3">
 					<NavLink to="/">
-						<BrandMark size={40} className="navbar-brand-image me-3" />
-						NPMpro
+						<BrandMark variant="horizontal" size={66} alt="NPMpro" />
 					</NavLink>
 				</h1>
 				<div className="navbar-nav flex-row order-md-last">
