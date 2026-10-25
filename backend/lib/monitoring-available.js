@@ -27,4 +27,19 @@ const createMonitoringAvailable =
 		}
 	};
 
-export { createMonitoringAvailable };
+/**
+ * Sets `monitoring` on the user of GET /users/:id when it is the requesting user: false for non-admins, else the
+ * result of `available()`. Other users are returned unchanged.
+ *
+ * @param   {Object}    user          the loaded user row
+ * @param   {number}    tokenUserId   id of the requesting user
+ * @param   {Function}  available     createMonitoringAvailable() result
+ * @returns {Promise<Object>}  the same user object
+ */
+const addMonitoringFlag = async (user, tokenUserId, available) => {
+	if (user?.id !== tokenUserId) return user;
+	user.monitoring = Boolean(user.roles?.includes("admin")) && (await available());
+	return user;
+};
+
+export { addMonitoringFlag, createMonitoringAvailable };

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { createMonitoringAvailable } from "../lib/monitoring-available.js";
+import { addMonitoringFlag, createMonitoringAvailable } from "../lib/monitoring-available.js";
 
 const API_URL = "API_URL=http://crowdsec:8080";
 const BOUNCER = ["ENABLED=true", API_URL, "API_KEY=bouncer-key"].join("\n");
@@ -39,4 +39,19 @@ it("counts a source that cannot be read as off and logs it", async () => {
 	const conf = available({ confFails: true });
 	assert.equal(await conf.check(), false);
 	assert.deepEqual(conf.errors, ["Could not read the CrowdSec config: EACCES"]);
+});
+
+it("adds monitoring to the requesting user only, false for non-admins", async () => {
+	let calls = 0;
+	const yes = () => {
+		calls += 1;
+		return Promise.resolve(true);
+	};
+	const admin = await addMonitoringFlag({ id: 1, roles: ["admin"] }, 1, yes);
+	assert.equal(admin.monitoring, true);
+	const plain = await addMonitoringFlag({ id: 2, roles: [] }, 2, yes);
+	assert.equal(plain.monitoring, false);
+	const other = await addMonitoringFlag({ id: 3, roles: ["admin"] }, 1, yes);
+	assert.equal(Object.hasOwn(other, "monitoring"), false);
+	assert.equal(calls, 1);
 });

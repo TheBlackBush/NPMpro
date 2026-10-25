@@ -9,11 +9,15 @@ import Access from "../lib/access.js";
 import errs from "../lib/error.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import userIdFromMe from "../lib/express/user-id-from-me.js";
+import { addMonitoringFlag, createMonitoringAvailable } from "../lib/monitoring-available.js";
+import { getMonitoringConfig } from "../lib/monitoring-config.js";
 import apiValidator from "../lib/validator/api.js";
 import validator from "../lib/validator/index.js";
 import { express as logger } from "../logger.js";
 import { getValidationSchema } from "../schema/index.js";
 import { isSetup } from "../setup.js";
+
+const monitoringAvailable = createMonitoringAvailable({ getConfig: getMonitoringConfig });
 
 const listSchema = {
 	type: "object",
@@ -152,6 +156,8 @@ router
 			id: data.user_id,
 			expand: data.expand,
 		});
+		// whether the menu shows Monitoring, only for the requesting user itself (not in internal calls or audit logs)
+		await addMonitoringFlag(user, res.locals.access.token.getUserId(0), monitoringAvailable);
 		res.status(200).send(user);
 	})
 

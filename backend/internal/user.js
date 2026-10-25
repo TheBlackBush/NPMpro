@@ -1,16 +1,12 @@
 import { rm, writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
 import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
-import { createMonitoringAvailable } from "../lib/monitoring-available.js";
-import { getMonitoringConfig } from "../lib/monitoring-config.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
 import internalAuditLog from "./audit-log.js";
 import internalToken from "./token.js";
-
-const monitoringAvailable = createMonitoringAvailable({ getConfig: getMonitoringConfig });
 
 const internalUser = {
 	/**
@@ -191,10 +187,7 @@ const internalUser = {
 		}
 
 		if (row.id === access.token.getUserId(0)) {
-			const isAdmin = row.roles.includes("admin");
-			row.goaccess = process.env.GOA === "true" && isAdmin;
-			// the menu hides Monitoring when it has nothing to show (the page is admin only)
-			row.monitoring = isAdmin && (await monitoringAvailable());
+			row.goaccess = process.env.GOA === "true" && row.roles.includes("admin");
 		}
 		return row;
 	},
