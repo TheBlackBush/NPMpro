@@ -18,6 +18,9 @@ const item = (group, name, fallback = "", secret = false) => ({
 
 const flag = (group, name, fallback = "false") => item(group, name, fallback);
 const secretItem = (group, name) => item(group, name, null, true);
+// also a setting that applies after a restart (Settings section id): set by env it locks the setting, else the value
+// shown is the one from the section the container started with
+const settingItem = (group, name, fallback, section) => ({ ...item(group, name, fallback), setting: section });
 
 /**
  * The startup (container) variables shown on the read-only Environment page. Variables that are also runtime
@@ -48,7 +51,7 @@ const ENVIRONMENT_ITEMS = [
 
 	item("users", "PUID", "0"),
 	item("users", "PGID", "0"),
-	item("users", "TZ"),
+	settingItem("users", "TZ", "UTC", "advanced"),
 
 	flag("nginx", "NGINX_LOG_NOT_FOUND"),
 	item("nginx", "NGINX_WORKER_PROCESSES", "auto"),
@@ -70,7 +73,7 @@ const ENVIRONMENT_ITEMS = [
 	item("modules", "PHP85_APKS"),
 	item("modules", "PHP_APKS"),
 
-	flag("goaccess", "GOA"),
+	settingItem("goaccess", "GOA", "false", "monitoring"),
 	item("goaccess", "GOACLA", GOACLA_DEFAULT),
 
 	item("database", "DB_MYSQL_HOST"),
@@ -176,6 +179,19 @@ const environmentInfo = (env, runtimeLocked) => {
 			const set = userSet.has(entry.name);
 			if (entry.secret) {
 				return { name: entry.name, default: null, is_default: !set, secret: true, set };
+			}
+			if (entry.setting) {
+				// a startup setting: without the variable, the value from the settings section the container runs with
+				const value = env[entry.name] || entry.default;
+				return {
+					name: entry.name,
+					value,
+					default: entry.default,
+					is_default: value === entry.default,
+					secret: false,
+					set,
+					setting: entry.setting,
+				};
 			}
 			const value = set ? env[entry.name] : entry.default;
 			return {

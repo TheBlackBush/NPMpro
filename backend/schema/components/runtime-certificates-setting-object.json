@@ -16,7 +16,8 @@
 		"locked",
 		"locked_by",
 		"locked_reason",
-		"applies"
+		"applies",
+		"restart_pending"
 	],
 	"properties": {
 		"key_type": {
@@ -267,6 +268,14 @@
 					]
 				}
 			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string"
+			},
+			"maxItems": 0
 		}
 	}
 }

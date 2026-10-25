@@ -5,10 +5,12 @@
 	"required": [
 		"write_log_files",
 		"log_rotations",
+		"goaccess",
 		"locked",
 		"locked_by",
 		"locked_reason",
-		"applies"
+		"applies",
+		"restart_pending"
 	],
 	"properties": {
 		"write_log_files": {
@@ -21,13 +23,18 @@
 			"maximum": 1000,
 			"description": "Rotated log files kept (env LOGROTATIONS)"
 		},
+		"goaccess": {
+			"type": "boolean",
+			"description": "GoAccess report (env GOA); applies after a container restart"
+		},
 		"locked": {
 			"type": "array",
 			"items": {
 				"type": "string",
 				"enum": [
 					"write_log_files",
-					"log_rotations"
+					"log_rotations",
+					"goaccess"
 				]
 			},
 			"description": "Fields set by environment variables (read only)"
@@ -42,6 +49,10 @@
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
 				"log_rotations": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess": {
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				}
@@ -66,7 +77,8 @@
 			"additionalProperties": false,
 			"required": [
 				"write_log_files",
-				"log_rotations"
+				"log_rotations",
+				"goaccess"
 			],
 			"properties": {
 				"write_log_files": {
@@ -84,7 +96,26 @@
 						"reload",
 						"immediately"
 					]
+				},
+				"goaccess": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
 				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string",
+				"enum": [
+					"goaccess"
+				]
 			}
 		}
 	}

@@ -39,7 +39,7 @@ it("saves the editable keys and returns the merged values", async () => {
 	const update = updater(store);
 	const out = await update("logs", { log_rotations: 10 });
 	assert.deepEqual(store.rows.logs, { log_rotations: 10 });
-	assert.deepEqual(out.values, { write_log_files: false, log_rotations: 10 });
+	assert.deepEqual(out.values, { write_log_files: false, log_rotations: 10, goaccess: false });
 });
 
 it("drops locked keys", async () => {
@@ -240,7 +240,7 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 	for (const group of RUNTIME_GROUPS) {
 		const path = schema.paths[`/settings/runtime/${group}`];
 		assert.ok(path?.get && path?.put, group);
-		const view = runtimeView(group, mergeRuntimeConfig(group, {}, BOOT_ENV, noImages));
+		const view = runtimeView(group, mergeRuntimeConfig(group, {}, BOOT_ENV, noImages), BOOT_ENV);
 		const response = path.get.responses["200"].content["application/json"].schema;
 		assert.equal(ajv.validate(response, view), true, `${group}: ${ajv.errorsText()}`);
 		const {
@@ -248,6 +248,7 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 			locked_by: _lockedBy,
 			locked_reason: _lockedReason,
 			applies: _applies,
+			restart_pending: _restartPending,
 			...values
 		} = view;
 		const body = path.put.requestBody.content["application/json"].schema;
@@ -268,9 +269,22 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 	assert.equal(ajv.validate(certificates.schema, { ...lockedView, locked_by: { nope: "X" } }), false);
 	assert.equal(ajv.validate(certificates.schema, { ...lockedView, locked_reason: { key_type: "goaccess" } }), false);
 	const logs = schema.paths["/settings/runtime/logs"].get.responses["200"].content["application/json"].schema;
-	const goaView = runtimeView("logs", mergeRuntimeConfig("logs", {}, { ...BOOT_ENV, GOA: "true" }, noImages));
+	const goaEnv = { ...BOOT_ENV, GOA: "true" };
+	const goaView = runtimeView("logs", mergeRuntimeConfig("logs", {}, goaEnv, noImages), goaEnv);
 	assert.deepEqual(goaView.locked_reason, { write_log_files: "goaccess" });
+	// running with GOA=true (from the startup settings file), stored off: a restart turns it off
+	assert.deepEqual(goaView.restart_pending, ["goaccess"]);
 	assert.equal(ajv.validate(logs, goaView), true, ajv.errorsText());
+	const advanced = schema.paths["/settings/runtime/advanced"].get.responses["200"].content["application/json"].schema;
+	const tzView = {
+		...runtimeView("advanced", mergeRuntimeConfig("advanced", { time_zone: "UTC" }, BOOT_ENV), BOOT_ENV),
+		time_zones: ["UTC"],
+	};
+	assert.equal(ajv.validate(advanced, tzView), true, ajv.errorsText());
+	assert.equal(ajv.validate(advanced, { ...tzView, restart_pending: ["gravatar"] }), false);
+	const network = schema.paths["/settings/runtime/network"].get.responses["200"].content["application/json"].schema;
+	const networkView = runtimeView("network", mergeRuntimeConfig("network", {}, BOOT_ENV), BOOT_ENV);
+	assert.equal(ajv.validate(network, { ...networkView, restart_pending: ["trusted_ips"] }), false);
 });
 
 it("drops must_staple when OCSP stapling is switched off by env", async () => {

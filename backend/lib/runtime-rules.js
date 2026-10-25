@@ -1,5 +1,7 @@
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
+import { isDeepStrictEqual } from "node:util";
+import { isTimeZone } from "./time-zones.js";
 
 const RUNTIME_GROUPS = ["certificates", "network", "forward-auth", "logs", "advanced"];
 
@@ -259,6 +261,8 @@ const RUNTIME_RULES = [
 		fallback: 3,
 		applies: "immediately",
 	}),
+	// startup settings (applies "restart"): written to the startup settings file, read by envs.sh at the next start
+	boolRule({ group: "logs", key: "goaccess", env: "GOA", fallback: false, applies: "restart" }),
 	boolRule({
 		group: "advanced",
 		key: "config_beautifier",
@@ -275,6 +279,19 @@ const RUNTIME_RULES = [
 		applies: "immediately",
 		invert: true,
 	}),
+	{
+		group: "advanced",
+		key: "time_zone",
+		env: "TZ",
+		type: "string",
+		validate: (value) => (isTimeZone(value) ? null : "must be a time zone of the image, for example Europe/Berlin"),
+		// as it is: envs.sh refuses a TZ without a zoneinfo file (it also accepts posix/ and right/ names)
+		parseEnv: (raw) => raw,
+		toEnv: String,
+		// envs.sh without TZ from the env or the startup settings file
+		default: "UTC",
+		applies: "restart",
+	},
 ];
 
 /**
@@ -284,7 +301,15 @@ const RUNTIME_RULES = [
  */
 const LOCK_REASONS = ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"];
 
-const RUNTIME_ENV_NAMES = RUNTIME_RULES.map((rule) => rule.env);
+/**
+ * The settings that apply at the next container start (TZ, GOA): envs.sh reads them from the startup settings file
+ */
+const isRestartRule = (rule) => rule.applies === "restart";
+
+// NPMPRO_RUNTIME_ENVS in envs.sh; the restart settings are startup variables there (NPMPRO_STARTUP_ENVS) and stay
+// on the Environment page
+const RUNTIME_ENV_NAMES = RUNTIME_RULES.filter((rule) => !isRestartRule(rule)).map((rule) => rule.env);
+const RULE_ENV_NAMES = RUNTIME_RULES.map((rule) => rule.env);
 
 /**
  * @param   {string}  group
@@ -313,9 +338,9 @@ const userSetNames = (env, names) => {
 
 /**
  * @param   {Object}  env
- * @returns {Set<string>}  the runtime env vars the user set
+ * @returns {Set<string>}  the env vars of the runtime settings (restart ones included) the user set
  */
-const userSetEnvNames = (env) => userSetNames(env, RUNTIME_ENV_NAMES);
+const userSetEnvNames = (env) => userSetNames(env, RULE_ENV_NAMES);
 
 const defaultOf = (rule, env, values, opts) =>
 	typeof rule.default === "function" ? rule.default(env, values, opts) : rule.default;
@@ -421,7 +446,8 @@ const buildEffectiveEnv = (env, configs) => {
 	const userSet = userSetEnvNames(env);
 	for (const rule of RUNTIME_RULES) {
 		const config = configs?.[rule.group];
-		if (!config || userSet.has(rule.env)) continue;
+		// a restart setting keeps the value the container started with
+		if (!config || userSet.has(rule.env) || isRestartRule(rule)) continue;
 		const value = rule.toEnv(config.values[rule.key]);
 		if (value === undefined) {
 			delete out[rule.env];
@@ -431,6 +457,62 @@ const buildEffectiveEnv = (env, configs) => {
 	}
 	return out;
 };
+
+/**
+ * The value a restart setting runs with: the env var as envs.sh exported it at the start, else the default
+ *
+ * @param   {Object}  rule
+ * @param   {Object}  env
+ * @returns {*}
+ */
+const runningValueOf = (rule, env) => {
+	const raw = env[rule.env];
+	const value = isSet(raw) && raw.trim() !== "" ? rule.parseEnv(raw) : undefined;
+	return value === undefined ? defaultOf(rule, env, {}) : value;
+};
+
+/**
+ * The restart settings of a group whose value differs from the one the container runs with (the container needs a
+ * restart to apply them); keys locked by env never differ
+ *
+ * @param   {string}    group
+ * @param   {Object}    values  merged values
+ * @param   {string[]}  locked
+ * @param   {Object}    env     process.env (the values envs.sh exported at the start)
+ * @returns {string[]}
+ */
+const restartPendingOf = (group, values, locked, env) =>
+	rulesOf(group)
+		.filter(
+			(rule) =>
+				isRestartRule(rule) &&
+				!(locked ?? []).includes(rule.key) &&
+				values?.[rule.key] !== undefined &&
+				!isDeepStrictEqual(values[rule.key], runningValueOf(rule, env)),
+		)
+		.map((rule) => rule.key);
+
+const STARTUP_SETTINGS_HEADER =
+	"# Written by NPMpro when a startup setting is saved in Settings. envs.sh reads it (never sources it) for the variables the env does not set.\n";
+
+/**
+ * The startup settings file (rootfs/usr/local/bin/startup-settings.sh reads it): NAME=value per restart setting
+ * whose env var the user did not set
+ *
+ * @param   {Object}  valuesByGroup  { [group]: merged values }
+ * @param   {Object}  env
+ * @returns {string}
+ */
+const renderStartupSettings = (valuesByGroup, env) => {
+	const userSet = userSetEnvNames(env);
+	const lines = RUNTIME_RULES.filter(isRestartRule)
+		.filter((rule) => !userSet.has(rule.env) && valuesByGroup?.[rule.group]?.[rule.key] !== undefined)
+		.map((rule) => `${rule.env}=${rule.toEnv(valuesByGroup[rule.group][rule.key])}\n`);
+	return STARTUP_SETTINGS_HEADER + lines.join("");
+};
+
+// the groups that have restart settings: the startup settings file holds the values of all of them
+const RESTART_GROUPS = [...new Set(RUNTIME_RULES.filter(isRestartRule).map((rule) => rule.group))];
 
 /**
  * @param   {Object}  env
@@ -448,15 +530,19 @@ export {
 	acmeServerOf,
 	appliesOf,
 	buildEffectiveEnv,
+	isRestartRule,
 	isRuntimeGroup,
 	isTrustedIp,
 	KEY_SIZES,
 	LETSENCRYPT_SERVER,
 	LOCK_REASONS,
 	mergeRuntimeConfig,
+	RESTART_GROUPS,
 	RUNTIME_ENV_NAMES,
 	RUNTIME_GROUPS,
 	RUNTIME_RULES,
+	renderStartupSettings,
+	restartPendingOf,
 	rulesOf,
 	UPSTREAM,
 	userSetEnvNames,

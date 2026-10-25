@@ -1,5 +1,12 @@
 import errs from "../lib/error.js";
-import { acmeServerOf, appliesOf, isRuntimeGroup, mergeRuntimeConfig, rulesOf } from "../lib/runtime-rules.js";
+import {
+	acmeServerOf,
+	appliesOf,
+	isRuntimeGroup,
+	mergeRuntimeConfig,
+	restartPendingOf,
+	rulesOf,
+} from "../lib/runtime-rules.js";
 import { global as logger } from "../logger.js";
 import { createSerializer, pickEditable } from "./monitoring-update.js";
 
@@ -8,13 +15,16 @@ import { createSerializer, pickEditable } from "./monitoring-update.js";
  *
  * @param   {string}  group
  * @param   {{values: Object, locked: string[], locked_by?: Object, locked_reason?: Object}}  cfg
+ * @param   {Object}  [env]  the env the container started with, for restart_pending
  * @returns {Object}
  */
-const runtimeView = (group, cfg) => ({
+const runtimeView = (group, cfg, env = process.env) => ({
 	...cfg.values,
 	locked: cfg.locked,
 	locked_by: cfg.locked_by ?? {},
 	locked_reason: cfg.locked_reason ?? {},
+	// restart settings saved with another value than the container runs with
+	restart_pending: restartPendingOf(group, cfg.values, cfg.locked, env),
 	applies: appliesOf(group),
 });
 

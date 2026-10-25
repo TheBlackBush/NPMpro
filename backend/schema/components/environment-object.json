@@ -68,6 +68,14 @@
 								"set": {
 									"type": "boolean",
 									"description": "True when the user set the variable"
+								},
+								"setting": {
+									"type": "string",
+									"enum": [
+										"advanced",
+										"monitoring"
+									],
+									"description": "Settings section of a variable that is also a setting applied after a restart (TZ, GOA): without the variable, value is the one from that section the container runs with"
 								}
 							}
 						}

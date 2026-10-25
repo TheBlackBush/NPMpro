@@ -10,7 +10,7 @@ import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
 import { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF } from "./log-files.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { describeHosts } from "./runtime-hosts.js";
-import { acmeServerOf, appliesOf, RUNTIME_GROUPS } from "./runtime-rules.js";
+import { acmeServerOf, appliesOf, RESTART_GROUPS, RUNTIME_GROUPS, renderStartupSettings } from "./runtime-rules.js";
 import { ACCESS_LOG_CONF, accessLogDirective } from "./traffic/access-log.js";
 
 const PATHS = {
@@ -25,6 +25,8 @@ const PATHS = {
 	accessLogConf: ACCESS_LOG_CONF,
 	logrotateConf: LOGROTATE_CONF,
 	nginxDir: "/data/nginx",
+	// TZ and GOA saved in the UI, read by envs.sh and healthcheck.sh (startup-settings.sh)
+	startupSettings: "/data/npmpro/startup-settings.env",
 };
 
 // the log files Write log files turns on, created like start.sh does (mode 0600, /data/nginx/<name> symlinks)
@@ -407,6 +409,18 @@ const createRuntimeApplier = ({
 		}
 	};
 
+	/**
+	 * The startup settings file with the restart settings of every group (the other groups as they are in effect);
+	 * envs.sh reads it at the next start, nothing is reloaded
+	 */
+	const startupSettingsFile = async (group, next) => {
+		const valuesByGroup = {};
+		for (const name of RESTART_GROUPS) {
+			valuesByGroup[name] = name === group ? next : (await getConfig(name)).values;
+		}
+		return { path: paths.startupSettings, content: renderStartupSettings(valuesByGroup, env()) };
+	};
+
 	const planners = {
 		logs: async ({ next, changed }) => {
 			const plan = { files: [] };
@@ -518,6 +532,7 @@ const createRuntimeApplier = ({
 		const applies = appliesOf(group);
 		const reloadKeys = changed.some((key) => applies[key] === "reload");
 		const files = [...(plan.files ?? [])];
+		if (changed.some((key) => applies[key] === "restart")) files.push(await startupSettingsFile(group, next));
 		if (reloadKeys) {
 			const hostEnv = effectiveEnv({ [group]: next });
 			files.push(...((await renderHosts(group, { next, prev, changed, startup, env: hostEnv })) ?? []));

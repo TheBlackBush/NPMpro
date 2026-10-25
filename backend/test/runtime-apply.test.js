@@ -49,6 +49,7 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		accessLogConf: path.join(dir, "access-log.conf"),
 		logrotateConf: path.join(dir, "logrotate"),
 		nginxDir: path.join(dir, "nginx"),
+		startupSettings: path.join(dir, "startup-settings.env"),
 	};
 	await mkdir(path.join(paths.nginxDir, "logs"), { recursive: true });
 	await writeFile(paths.certbotIni, "old ini\n");

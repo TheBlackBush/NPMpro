@@ -213,3 +213,23 @@ it("matches the environment response schema with the setting locks", async () =>
 	assert.equal(ajv.validate(response, info), true, ajv.errorsText());
 	assert.deepEqual(response.properties.locked_runtime.items.properties.group.enum, LOCK_GROUP_ORDER);
 });
+
+it("shows TZ and GOA as settings: the running value without the variable, set and locking with it", () => {
+	const fromSettings = environmentInfo({ NPMPRO_USER_ENV: "", TZ: "Europe/Berlin", GOA: "false" }, []);
+	assert.deepEqual(itemOf(fromSettings, "TZ"), {
+		name: "TZ",
+		value: "Europe/Berlin",
+		default: "UTC",
+		is_default: false,
+		secret: false,
+		set: false,
+		setting: "advanced",
+	});
+	assert.equal(itemOf(fromSettings, "GOA").setting, "monitoring");
+	assert.equal(itemOf(fromSettings, "GOA").is_default, true);
+	assert.equal(itemOf(environmentInfo({}, []), "TZ").value, "UTC");
+	const fromEnv = itemOf(environmentInfo({ NPMPRO_USER_ENV: "TZ", TZ: "Asia/Tokyo" }, []), "TZ");
+	assert.equal(fromEnv.set, true);
+	assert.equal(fromEnv.value, "Asia/Tokyo");
+	assert.equal(itemOf(environmentInfo({}, []), "NPM_PORT").setting, undefined);
+});

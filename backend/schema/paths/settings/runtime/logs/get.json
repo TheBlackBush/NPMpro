@@ -19,11 +19,16 @@
 							"value": {
 								"write_log_files": false,
 								"log_rotations": 3,
+								"goaccess": false,
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"write_log_files": "reload",
-									"log_rotations": "immediately"
-								}
+									"log_rotations": "immediately",
+									"goaccess": "restart"
+								},
+								"restart_pending": []
 							}
 						}
 					},

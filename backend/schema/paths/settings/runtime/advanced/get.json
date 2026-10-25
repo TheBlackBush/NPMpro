@@ -19,11 +19,23 @@
 							"value": {
 								"config_beautifier": true,
 								"gravatar": true,
+								"time_zone": "Europe/Berlin",
 								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
 								"applies": {
 									"config_beautifier": "immediately",
-									"gravatar": "immediately"
-								}
+									"gravatar": "immediately",
+									"time_zone": "restart"
+								},
+								"restart_pending": [
+									"time_zone"
+								],
+								"time_zones": [
+									"Africa/Abidjan",
+									"Europe/Berlin",
+									"UTC"
+								]
 							}
 						}
 					},

@@ -1,6 +1,7 @@
 import errs from "../lib/error.js";
 import { getRuntimeConfig, prime } from "../lib/runtime-config.js";
 import { isRuntimeGroup } from "../lib/runtime-rules.js";
+import { listTimeZones } from "../lib/time-zones.js";
 import certificateModel from "../models/certificate.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
@@ -53,6 +54,12 @@ const updateRuntimeStored = createRuntimeUpdater({
 	serialize: runtimeQueue,
 });
 
+// the advanced view also lists the time zones to pick from
+const viewOf = async (group, cfg) => {
+	const view = runtimeView(group, cfg);
+	return group === "advanced" ? { ...view, time_zones: await listTimeZones() } : view;
+};
+
 const assertGroup = (group) => {
 	if (!isRuntimeGroup(group)) throw new errs.ItemNotFoundError(group);
 };
@@ -66,7 +73,7 @@ const internalRuntimeSetting = {
 	getRuntime: async (access, group) => {
 		access.canAdmin();
 		assertGroup(group);
-		return runtimeView(group, await getRuntimeConfig(group));
+		return viewOf(group, await getRuntimeConfig(group));
 	},
 
 	/**
@@ -84,7 +91,7 @@ const internalRuntimeSetting = {
 			object_type: "setting",
 			meta: { id: group, ...meta },
 		});
-		return runtimeView(group, await getRuntimeConfig(group));
+		return viewOf(group, await getRuntimeConfig(group));
 	},
 };
 

@@ -47,11 +47,13 @@ it("has the five groups, every rule in one of them, keys unique", () => {
 	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.key)).size, RUNTIME_RULES.length);
 	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.env)).size, RUNTIME_RULES.length);
 	for (const entry of RUNTIME_RULES) {
-		assert.ok(["next-certificate", "reload", "immediately"].includes(entry.applies), entry.key);
+		assert.ok(["next-certificate", "reload", "immediately", "restart"].includes(entry.applies), entry.key);
 	}
 	assert.equal(appliesOf("logs").log_rotations, "immediately");
 	assert.equal(appliesOf("certificates").key_type, "next-certificate");
 	assert.equal(appliesOf("network").trusted_ips, "reload");
+	assert.equal(appliesOf("advanced").time_zone, "restart");
+	assert.equal(appliesOf("logs").goaccess, "restart");
 });
 
 it("validates booleans", () => {
@@ -136,8 +138,16 @@ it("uses the defaults without stored values and with the envs.sh boot defaults",
 		ech_rotation_interval: 1,
 	});
 	assert.deepEqual(mergeRuntimeConfig("network", {}, BOOT_ENV).values, { trusted_ips: [], trust_cloudflare: false });
-	assert.deepEqual(mergeRuntimeConfig("logs", {}, BOOT_ENV).values, { write_log_files: false, log_rotations: 3 });
-	assert.deepEqual(mergeRuntimeConfig("advanced", {}, BOOT_ENV).values, { config_beautifier: true, gravatar: true });
+	assert.deepEqual(mergeRuntimeConfig("logs", {}, BOOT_ENV).values, {
+		write_log_files: false,
+		log_rotations: 3,
+		goaccess: false,
+	});
+	assert.deepEqual(mergeRuntimeConfig("advanced", {}, BOOT_ENV).values, {
+		config_beautifier: true,
+		gravatar: true,
+		time_zone: "UTC",
+	});
 	assert.equal(mergeRuntimeConfig("forward-auth", {}, BOOT_ENV, noImages).values.anubis_custom_images, false);
 	assert.equal(mergeRuntimeConfig("forward-auth", {}, BOOT_ENV, noImages).values.anubis_upstream, "");
 });
@@ -264,7 +274,7 @@ it("parses inverted env vars", () => {
 		{ config_beautifier: true, gravatar: false },
 		userEnv({ DISABLE_NGINX_BEAUTIFIER: "true", DISABLE_GRAVATAR: "false" }),
 	);
-	assert.deepEqual(values, { config_beautifier: false, gravatar: true });
+	assert.deepEqual(values, { config_beautifier: false, gravatar: true, time_zone: "UTC" });
 	assert.deepEqual(locked, ["config_beautifier", "gravatar"]);
 });
 
