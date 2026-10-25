@@ -33,8 +33,8 @@ const createSerializer = () => {
  * @param   {Function} deps.saveStored  (meta) => void
  * @param   {Function} deps.deleteIps   () => void
  * @param   {Object}   deps.hooks       read on every update: onTrafficEnabledChange(enabled),
- *                                      onDeleteStats() (before the save, only with delete_stats while traffic_enabled
- *                                      goes from true to false, after the switch-off hook), onShowIpsOff(),
+ *                                      onDeleteStats() (right before the save, only with delete_stats while
+ *                                      traffic_enabled goes from true to false), onShowIpsOff(),
  *                                      onShowIpsOn() (optional, after the save; a failure is only logged),
  *                                      onUniqueVisitorsOff() (before the save, deletes the stored visitor hashes),
  *                                      onUniqueVisitorsOn() (optional, after the save; a failure is only logged)
@@ -80,20 +80,6 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 			}
 		};
 
-		// after the reader stopped (above), before the save: a failed delete saves nothing
-		if (deleteStats) {
-			try {
-				await hooks.onDeleteStats();
-			} catch (err) {
-				await revertTraffic();
-				throw new errs.ValidationError(
-					`Could not delete the stored statistics, the setting was not changed: ${err.message}`,
-					undefined,
-					{ cause: err },
-				);
-			}
-		}
-
 		if (before.show_ips && !after.show_ips) {
 			try {
 				await deleteIps();
@@ -115,6 +101,21 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 				await revertTraffic();
 				throw new errs.ValidationError(
 					`Could not delete the stored visitor hashes, the setting was not changed: ${err.message}`,
+					undefined,
+					{ cause: err },
+				);
+			}
+		}
+
+		// last step before the save (the reader stopped above): a failed earlier step deletes nothing, a failed delete
+		// saves nothing
+		if (deleteStats) {
+			try {
+				await hooks.onDeleteStats();
+			} catch (err) {
+				await revertTraffic();
+				throw new errs.ValidationError(
+					`Could not delete the stored statistics, the setting was not changed: ${err.message}`,
 					undefined,
 					{ cause: err },
 				);

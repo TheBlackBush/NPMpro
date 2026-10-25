@@ -372,7 +372,33 @@ it("deletes the statistics after stopping the reader and before the save", async
 it("combines the statistics delete with the IP and visitor off hooks in one update", async () => {
 	const t = deleteStatsSetup({ initial: { traffic_enabled: true, show_ips: true, unique_visitors: true } });
 	await t.update({ traffic_enabled: false, show_ips: false, unique_visitors: false, delete_stats: true });
-	assert.deepEqual(t.events, ["traffic-false", "stats", "ips-deleted", "visitors", "save"]);
+	assert.deepEqual(t.events, ["traffic-false", "ips-deleted", "visitors", "stats", "save"]);
+});
+
+it("deletes no statistics when an earlier step fails", async () => {
+	const store = fakeStore({ traffic_enabled: true, show_ips: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: () => Promise.reject(new Error("db locked")),
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: (enabled) => {
+				events.push(`traffic-${enabled}`);
+				return Promise.resolve();
+			},
+			onDeleteStats: () => {
+				events.push("stats");
+				return Promise.resolve();
+			},
+			onShowIpsOff: ok,
+		},
+	});
+	await assert.rejects(update({ traffic_enabled: false, show_ips: false, delete_stats: true }), {
+		message: "Could not delete the stored IP addresses, the setting was not changed: db locked",
+	});
+	assert.deepEqual(events, ["traffic-false", "traffic-true"]);
+	assert.deepEqual(store.get(), { traffic_enabled: true, show_ips: true });
 });
 
 it("saves nothing and switches the access log back when the statistics delete fails", async () => {
