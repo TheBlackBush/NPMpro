@@ -208,6 +208,8 @@ Read the full steps, the checks and how to go back in the wiki: [Upgrading from 
 - Many forms have changed behavior, see [Comments on some buttons](#comments-on-some-buttons)
 
 ## Crowdsec
+Step-by-step guide in the wiki: [CrowdSec](https://github.com/TheBlackBush/NPMpro/wiki/CrowdSec).
+
 Note: If you don't [disable sharing in crowdsec](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing), you may need to mention that [this](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data) is sent to crowdsec in your privacy policy.
 1. Install crowdsec and the ZoeyVid/npmplus collection for example by using crowdsec container in the compose.yaml. These are the names of the CrowdSec hub collection and bouncer that NPMpro uses, so they keep their original spelling. You may also want to install some of these optional collections by editing the `COLLECTIONS` env:
     - [crowdsecurity/http-dos](https://app.crowdsec.net/hub/author/crowdsecurity/collections/http-dos): detects http dos tools which the default http scenarios miss, but be warned of false positives
@@ -329,6 +331,8 @@ GoAccess builds a web log report from the access log. Turn on GoAccess report un
 - X-Frame-Options: will control the X-Frame-Options header, none will remove the header, SAMEORIGIN/DENY will set it to these values and upstream will keep what upstream sends
 
 ## Examples of implementing some services using auth_request
+
+Step-by-step guide in the wiki: [Forward authentication](https://github.com/TheBlackBush/NPMpro/wiki/Forward-Authentication).
 
 The default upstream of each provider is set under Settings, Forward authentication (or with its `AUTH_REQUEST_*_UPSTREAM` variable, which locks the field). A proxy host can override it on its own; a main location's override takes precedence over any custom location's override. Forward authentication is unrelated to the [OIDC login](#oidc-login) of the web UI.
 

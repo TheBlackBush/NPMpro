@@ -8,6 +8,8 @@ These pages cover setup and daily use. The [README](https://github.com/TheBlackB
 
 - [Installation](Installation): requirements, the compose file, the first start
 - [Usage](Usage): hosts, certificates, access lists, streams, settings, monitoring, users
+- [CrowdSec](CrowdSec): blocking attackers with CrowdSec and AppSec, step by step
+- [Forward authentication](Forward-Authentication): a login or bot check in front of your services with Anubis, Tinyauth, oauth2-proxy, VoidAuth, Authelia or authentik
 - [Troubleshooting](Troubleshooting): logs, start problems, certificates, HTTP/3, client IPs, resets and backups
 - [Upgrading from NPMplus](Upgrading-from-NPMplus): taking over an NPMplus data volume
 - [Migrating from Nginx Proxy Manager](Migrating-from-Nginx-Proxy-Manager): moving from the original project

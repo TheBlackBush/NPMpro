@@ -12,5 +12,5 @@
 8. Remove the `/etc/letsencrypt` mount, since its content was moved to `/data` during the migration, then redeploy the compose file.
 9. Many forms have changed, so check every host. See [Comments on some buttons](https://github.com/TheBlackBush/NPMpro#comments-on-some-buttons).
 10. If you proxy NPMpro (or NPM) through another NPMpro (or NPM) instance, change the scheme from http to https.
-11. Maybe set up [CrowdSec](https://github.com/TheBlackBush/NPMpro#crowdsec).
+11. Maybe set up [CrowdSec](CrowdSec).
 12. Please report all (migration) issues you have: https://github.com/TheBlackBush/NPMpro/issues

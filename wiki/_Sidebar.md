@@ -7,6 +7,8 @@
 
 **Use**
 - [Usage](Usage)
+- [CrowdSec](CrowdSec)
+- [Forward authentication](Forward-Authentication)
 - [Troubleshooting](Troubleshooting)
 
 **Reference**

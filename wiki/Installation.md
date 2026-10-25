@@ -46,5 +46,6 @@ To open the web UI with a domain and a real certificate, either choose that cert
 ## Next steps
 
 - [Usage](Usage) for your first hosts and certificates
-- The [README](https://github.com/TheBlackBush/NPMpro#crowdsec) for CrowdSec
+- [CrowdSec](CrowdSec) to block attackers
+- [Forward authentication](Forward-Authentication) to put a login in front of your services
 - [Troubleshooting](Troubleshooting) when the container does not start
