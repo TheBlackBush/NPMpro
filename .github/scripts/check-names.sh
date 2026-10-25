@@ -1,13 +1,14 @@
 #!/usr/bin/env sh
 # Fails when the old project name appears outside the places that must keep it.
-# wiki/ documents the upgrade from NPMplus (folder and table names), like the README.
+# Wiki pages that need it: the NPMplus upgrade page (folder and table names) and the pages that link to it or cover
+# its failed checks (Home, sidebar, Troubleshooting).
 set -u
 
 RENAME_MIGRATION="20261023180000_rename_to_npmpro.js"
 
 hits="$(git grep -n -i npmplus -- . \
     ':!README.md' ':!COPYING' ':!MIT.LICENSE' \
-    ':!wiki' \
+    ':!wiki/Upgrading-from-NPMplus.md' ':!wiki/Home.md' ':!wiki/_Sidebar.md' ':!wiki/Troubleshooting.md' \
     ':!frontend/src/components/SiteFooter.jsx' \
     ':!backend/migrations' \
     ':!backend/test/*migration*.test.js' \
