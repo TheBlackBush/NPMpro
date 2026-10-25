@@ -68,7 +68,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 ### TLS and certificates
 - hardened TLS by default: patched nginx built with aws-lc compiled from source, enforced cipher and curve order, certificate compression (zlib-ng and brotli), optional encrypted client hello ([ECH](#encrypted-client-hello-ech))
 - short-lived Let's Encrypt certificates by default, plus proper support for other ACME servers (ZeroSSL, Google Public CA, your own) with OCSP stapling and Must-Staple
-- DNS challenge with many providers and saved DNS credentials: enter the credentials of a DNS provider once (Certificates, DNS credentials tab) and reuse them; they are stored encrypted with the key `/data/npmpro/dns-credentials.key`, keep it with your backups (without it saved credentials must be entered again)
+- DNS challenge with many providers and saved DNS credentials: enter the credentials of a DNS provider once (Certificates, DNS credentials tab) and reuse them; they are stored encrypted with the key `/data/npmpro/dns-credentials.key`. The same key also encrypts the OIDC client secret, the MaxMind license key and the key behind the unique visitor hashes: keep it with your backups (without it saved DNS credentials, the client secret and the license key must be entered again)
 - custom certificates can be replaced, and mTLS with client certificates per host
 
 ### Security
@@ -101,7 +101,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
    - [Docker Install documentation](https://docs.docker.com/engine/install)
    - [Docker Compose Install documentation](https://docs.docker.com/compose/install/linux)
 2. Download this [compose.yaml](https://raw.githubusercontent.com/TheBlackBush/NPMpro/refs/heads/develop/compose.yaml) (or use its content as a portainer stack)
-3. Set `TZ` to your time zone (optional: without it the Time zone setting in Settings, Advanced is used, default UTC). Most other options can be set later in the web UI.
+3. Set `TZ` to your time zone. Set there, it wins over the Time zone setting (Settings, Advanced), which then shows "Set by TZ". To choose the time zone in the web UI instead (default UTC), comment `TZ` out and keep at least one other active variable (compose refuses an empty `environment:` list) or remove the `environment:` key. Most other options can be set later in the web UI.
 4. Start NPMpro (or deploy your portainer stack):
 ```bash
 docker compose up -d
@@ -114,9 +114,9 @@ More detail (requirements, first steps, reverse proxying the web UI itself) is i
 
 Most settings live in the web UI under Settings, and that is the normal place to change them. Every one of them can also be set with an environment variable in your `compose.yaml`:
 
-- **A variable wins and locks the field.** The field shows the value of the variable and cannot be changed in the UI. Its badge names the variable: "Set by ACME_KEY_TYPE". A field that another variable forces gets its own badge with the reason: "Follows ACME_KEY_SIZE" (the key type follows the key size: a curve means ECDSA, a number of bits RSA), "Off because of ACME_OCSP_STAPLING" (Must-Staple needs OCSP stapling), "Required by ACME_MUST_STAPLE" (OCSP stapling stays on) and "Required by GOA" (GoAccess reads the log files, so Write log files stays on; "Required by the GoAccess report" when the setting turned GoAccess on). The Authentication, traffic statistics and GeoIP fields show "Set by environment".
+- **A variable wins and locks the field.** The field shows the value of the variable and cannot be changed in the UI. Its badge names the variable: "Set by ACME_KEY_TYPE". A field that another variable forces gets its own badge with the reason: "Follows ACME_KEY_SIZE" (`ACME_KEY_SIZE` set alone is an ECDSA curve, so the key type stays ECDSA; an RSA size only works together with `ACME_KEY_TYPE=rsa`), "Off because of ACME_OCSP_STAPLING" (Must-Staple needs OCSP stapling), "Required by ACME_MUST_STAPLE" (OCSP stapling stays on) and "Required by GOA" (GoAccess reads the log files, so Write log files stays on; "Required by the GoAccess report" when the setting turned GoAccess on). The Authentication, traffic statistics and GeoIP fields show "Set by environment".
 - **Remove the variable to manage the field in the UI again.** Changing or removing a variable needs the container to be recreated (`docker compose up -d`), like any change in `compose.yaml`.
-- **The Environment page** (Settings, Environment) lists the startup variables that are not settings (ports, bindings, PUID/PGID, nginx and TLS switches, modules and PHP, database, first start, ACME account) with their value or default, and every setting that a variable locks. Values of passwords, email addresses and keys are never shown, only whether they are set.
+- **The Environment page** (Settings, Environment) lists the startup variables (ports, bindings, PUID/PGID, nginx and TLS switches, modules and PHP, database, first start, ACME account) with their value or default, among them `TZ`, `GOA` and `GOACLA`, which are also settings, and every setting that a variable locks. Values of passwords, email addresses and keys are never shown, only whether they are set.
 - **"Restart required" settings** (Time zone, GoAccess report and the GoAccess options) are read when the container starts. Saving them stores the value; the section then shows "Restart the container to apply" with the fields until you restart the container (`docker restart npmpro`).
 - Variables that are only read at startup and have no field (ports, bindings, `PUID`/`PGID`, `DISABLE_HTTP`, `NGINX_*`, PHP, database, `ACME_SERVER`, `ACME_EMAIL` and the EAB keys, `INITIAL_*`) stay in `compose.yaml`; the [compose.yaml](compose.yaml) lists every supported variable with its default.
 
@@ -132,7 +132,7 @@ When a saved setting applies:
 | Certificates & TLS | Renewal check interval | `CERTBOT_RUN_INTERVAL` | immediately |
 | Certificates & TLS | OCSP stapling for ACME certificates | `ACME_OCSP_STAPLING` | on save, with an nginx reload |
 | Certificates & TLS | OCSP stapling for custom certificates | `CUSTOM_OCSP_STAPLING` | on save, with an nginx reload |
-| Certificates & TLS | Default certificate (unknown hosts and the web UI) | `DEFAULT_CERT_ID` | on save, with an nginx reload |
+| Certificates & TLS | Default certificate: Certificate for unknown hosts and the web UI | `DEFAULT_CERT_ID` | on save, with an nginx reload |
 | Certificates & TLS | ECH key rotation interval | `ECH_ROTATION_INTERVAL` | immediately |
 | Network | Trusted proxy IPs | `TRUST_IP` | on save, with an nginx reload |
 | Network | Trust Cloudflare | `TRUST_CLOUDFLARE` | on save, with an nginx reload |
@@ -187,7 +187,7 @@ These variables are not supported anymore. If one is set, the container does not
 
 ## Upgrading from NPMplus
 
-NPMpro can take over an existing NPMplus data volume. On the first start it copies `/data/npmplus` to `/data/npmpro`, checks the copy and keeps the old folder as `/data/npmplus.backup-<date>`; the database tables and columns are then renamed, so NPMplus images cannot use the migrated database. Users stay logged in. External databases (MySQL/MariaDB, Postgres) are changed in place: dump them before upgrading.
+NPMpro can take over an existing NPMplus data volume. On the first start it copies `/data/npmplus` to `/data/npmpro`, checks the copy and keeps the old folder as `/data/npmplus.backup-<date>`; the database tables and columns are then renamed, so NPMplus images cannot use the migrated database. Users stay signed in only if you already use a static `COOKIE_SECRET` and keep it; otherwise everyone signs in again (and after every restart, until you set one). External databases (MySQL/MariaDB, Postgres) are changed in place: dump them before upgrading.
 
 Read the full steps, the checks and how to go back in the wiki: [Upgrading from NPMplus](https://github.com/TheBlackBush/NPMpro/wiki/Upgrading-from-NPMplus).
 
@@ -277,7 +277,7 @@ location ~* [^/]\.php(?:$|/) {
 OIDC is set up under Settings, Authentication in the web UI (administrators only). Enter the issuer URL, client ID, client secret and redirect domain, register the shown callback URL at your provider, then enable it. The sign-in page then shows a button with the name, colour and icon you choose.
 - Environment variables win: `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_DOMAIN`, `OIDC_REQUIRE_VERIFIED_EMAIL`, `OIDC_SKIP_MFA` and `OIDC_DISABLE_PASSWORD` override the saved value of their field. The field is shown as "Set by environment" and cannot be changed in the UI. If the four connection variables are all set, OIDC is active without enabling it in the UI.
 - Scopes default to `openid email profile`. A provider that only allows some scopes may need this changed (for example to `openid email`).
-- Disable password login: only OIDC can then be used to sign in. This can only be turned on from a session that signed in with OIDC, and a session that signed in with a password also cannot save a change that would switch it on in effect (for example enabling OIDC while it is still set). A value set by `OIDC_DISABLE_PASSWORD` is not affected. To restore password login set `OIDC_DISABLE_PASSWORD=false` and restart the container.
+- Disable password login: only OIDC can then be used to sign in. This can only be turned on from a session that signed in with OIDC, and a session that signed in with a password also cannot save a change that would switch it on in effect (for example enabling OIDC while it is still set). A value set by `OIDC_DISABLE_PASSWORD` is not affected. To restore password login set `OIDC_DISABLE_PASSWORD=false` and recreate the container (`docker compose up -d`).
 - Require a verified email (default on) refuses users whose provider has not verified their email address. Skip two-factor after OIDC (default off) trusts the multi-factor check of the provider.
 - Create users on their first sign-in (default off): a person without an account gets one with the default permissions set on the page. Allowed email domains limit this (comma separated, empty allows any domain; they are dotted host names such as `example.com`, single-label and non-ASCII names are not accepted). Enabled users can always sign in. Warning: with an empty domain list and Require a verified email off, anyone your provider will authenticate gets an account, under any email address they can set at the provider. New users are never administrators, an access list cannot be hidden while proxy hosts are visible, and certificates cannot be hidden while any host type is visible.
 - Button icon: choose a built-in icon, upload a file or download one from a URL. PNG, JPEG, WebP and SVG are accepted, up to 256 KB. SVG files that contain scripts, event handlers, embedded documents or references to other files (anything but `#` fragments and inline PNG, JPEG or WebP images) are refused.
@@ -296,7 +296,7 @@ Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitor
 - CrowdSec bans: the CrowdSec tab shows the currently active bans (total, added in the last 24 hours, by reason (the CrowdSec scenario), origin and type, a map and the newest bans). It needs the bouncer of the [Crowdsec](#crowdsec) section enabled (`ENABLED=true` in `/data/crowdsec/crowdsec.conf`) with an API key or a TLS client certificate. NPMpro reads the bans with those bouncer settings (including `SSL_VERIFY`), read-only, and polls the LAPI every 60 seconds. It needs no additional key. Only active bans are shown, no alerts.
 - For alerts, decision management and CrowdSec metrics I recommend the companion project [CrowdSec Web UI](https://github.com/TheDuffman85/crowdsec-web-ui).
 - Environment variables win over the saved value and lock their field in the UI ("Set by environment"):
-  - `TRAFFIC_STATS` (`true` or `false`), `LOGROTATE=true` also turns traffic statistics on and locks the setting
+  - `TRAFFIC_STATS` (`true` or `false`), `LOGROTATE=true` also turns traffic statistics on and locks the setting; so does GoAccess (`GOA=true` or the GoAccess report setting), because it turns on `LOGROTATE` at the start
   - `TRAFFIC_RETENTION_DAYS` (7 to 365, default 30; any other value stops the container from starting)
   - `TRAFFIC_SHOW_IPS` (`true` or `false`, default false)
   - `TRAFFIC_UNIQUE_VISITORS` (`true` or `false`, default false)
@@ -304,7 +304,7 @@ Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitor
   - `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY` and `GEOIP_EDITIONS` (space separated, for example `GeoLite2-Country GeoLite2-ASN`; unknown edition names are ignored, and if none is valid the variable is ignored and the field stays editable)
 
 ## GoAccess
-GoAccess builds a web log report from the access log. Turn on GoAccess report under Settings, Logs & monitoring (or set `GOA=true`); it applies after a restart of the container. The report is then served under `/goaccess` of the web UI and only reachable for signed-in administrators. GoAccess reads the log files, so Write log files stays on while it runs.
+GoAccess builds a web log report from the access log. Turn on GoAccess report under Settings, Logs & monitoring (or set `GOA=true`); it applies after a restart of the container. The report is then served under `/goaccess` of the web UI and only reachable for signed-in administrators. GoAccess reads the log files, so it turns on `LOGROTATE` at the start: Write log files stays on, and traffic statistics are turned on and locked, while it runs.
 - The GoAccess options are fields in the same block, all applied after a restart: keep report data (1 to 366 days, default 30), anonymize visitor IPs (off or level 1 to 3, default level 1), drop query strings (default on), full operating system versions (default on) and resolve host names (default on, this sends DNS queries for visitor IPs). `--agent-list --double-decode` are always used.
 - `GOACLA` replaces these fields with your own GoAccess options and locks them. Its default matches the default fields: `--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string`.
 - When GeoLite2 databases are in `/opt/npmpro/goaccess/geoip` (downloaded by NPMpro, see Settings, GeoIP), GoAccess uses them automatically after a restart, unless `GOACLA` sets its own `--geoip-database`.
@@ -338,7 +338,7 @@ status_codes:
   DENY: 403
 ```
 3. Set the Anubis upstream in Settings, Forward authentication (or `AUTH_REQUEST_ANUBIS_UPSTREAM`) and select anubis in the Auth Request selection, no custom/advanced config/locations needed
-4. You can replace the "allow", "checking" and "blocked" images by putting your images as happy.webp, pensive.webp and reject.webp into /opt/npmpro/anubis and turning on Custom Anubis images in Settings, Forward authentication (it is on by default when all three files exist; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it)
+4. You can replace the "allow", "checking" and "blocked" images by putting your images as happy.webp, pensive.webp and reject.webp into /opt/npmpro/anubis and turning on Custom Anubis images in Settings, Forward authentication (it is on by default when all three files exist and are not empty; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it)
 
 ### Tinyauth
 1. Set the Tinyauth upstream in Settings, Forward authentication (or `AUTH_REQUEST_TINYAUTH_UPSTREAM`) and select tinyauth in the Auth Request selection, no custom/advanced config/locations needed
