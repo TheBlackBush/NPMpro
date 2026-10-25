@@ -1,7 +1,7 @@
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
 import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
-import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring } from "src/hooks";
+import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
 import { GROUP_KEYS, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
@@ -59,7 +59,7 @@ const validate = (values) => {
 	return errors;
 };
 
-// Write log files and rotations: the logs runtime settings group, saved with its own request
+// Write log files and rotations: the logs runtime settings group (with GoAccess below), saved with its own request
 function LogFields() {
 	return (
 		<Part titleId="settings.logs.files">
@@ -74,11 +74,26 @@ function LogFields() {
 				hint={<T id="settings.logs.rotations.hint" data={ROTATIONS} />}
 				{...ROTATIONS}
 			/>
+		</Part>
+	);
+}
+
+// GoAccess is its own tool with its own report, applied after a restart; the link shows while it runs
+function GoAccessFields() {
+	const { data: user } = useUser("me");
+	return (
+		<Part titleId="settings.logs.goaccess.title">
 			<RuntimeSwitch
 				name="goaccess"
 				label={<T id="settings.logs.goaccess" />}
 				hint={<T id="settings.logs.goaccess.hint" />}
 			/>
+			{user?.goaccess ? (
+				<a href="/goaccess" target="_blank" rel="noopener noreferrer" className="link-primary">
+					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
+					<T id="settings.logs.goaccess.open" />
+				</a>
+			) : null}
 		</Part>
 	);
 }
@@ -341,6 +356,7 @@ export default function Monitoring() {
 					) : null}
 					<RuntimeContext.Provider value={logsCtx}>
 						<LogFields />
+						<GoAccessFields />
 					</RuntimeContext.Provider>
 					<Fields isLocked={isLocked} />
 				</div>
