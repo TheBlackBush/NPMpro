@@ -85,6 +85,11 @@ const fakeStore = () => {
 			calls.push("deleteIps");
 			return Promise.resolve();
 		},
+		deleteAllFails: false,
+		deleteAll() {
+			calls.push("deleteAll");
+			return this.deleteAllFails ? Promise.reject(new Error("database is locked")) : Promise.resolve();
+		},
 	};
 };
 
@@ -1720,6 +1725,17 @@ describe("monitoring API", () => {
 		assert.equal(failing.summaries.length, 2);
 	});
 
+	it("clearCaches makes the next traffic and summary calls query the store again", async () => {
+		const { api, queries, summaries } = make();
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		await api.getSummary(admin);
+		api.clearCaches();
+		await api.getTraffic(admin, { range: "24h", host: "" });
+		await api.getSummary(admin);
+		assert.equal(queries.length, 2);
+		assert.equal(summaries.length, 2);
+	});
+
 	it("fills every newest field of a CrowdSec decision that lacks some", async () => {
 		const svc = createCrowdsecService({
 			readConf: () =>
@@ -1882,5 +1898,95 @@ describe("monitoring API", () => {
 		const noGeo = await make({ available: { country: false, asn: false } }).api.getSummary(admin);
 		assert.equal(noGeo.top_country_today, null);
 		assert.equal(noGeo.requests_today, 3);
+	});
+});
+
+describe("traffic service: delete statistics", () => {
+	it("drops the counts in memory, the pending batches and the recent requests, then empties the tables", async () => {
+		const t = setup({
+			config: { show_ips: true, unique_visitors: true },
+			results: [read([line("example.com")]), read([line("example.com", "198.51.100.1")], 200)],
+		});
+		await t.service.start();
+		await t.service.read();
+		// a failed flush keeps the batch pending
+		t.store.failing = true;
+		await t.service.flush();
+		t.store.failing = false;
+		await t.service.read();
+		assert.equal(t.service.recent().length, 2);
+		await t.service.setEnabled(false);
+		const flushedBefore = t.store.flushed.length;
+		await t.service.deleteStats();
+		assert.equal(t.store.calls.at(-1), "deleteAll");
+		assert.deepEqual(t.service.recent(), []);
+		// nothing counted before the delete is written afterwards
+		await t.service.flush();
+		assert.equal(t.store.flushed.length, flushedBefore);
+		assert.equal(t.service.status().dropped_requests, 0);
+	});
+
+	it("keeps the reader position, so a later switch-on goes on from where reading stopped", async () => {
+		const t = setup({
+			results: [read([line("example.com")], 100), read([line("example.com")], 200)],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.setEnabled(false);
+		await t.service.deleteStats();
+		const flushedBefore = t.store.flushed.length;
+		await t.service.setEnabled(true);
+		await t.service.read();
+		await t.service.flush();
+		// one reader for the whole run: it was not recreated from an older position
+		assert.deepEqual(t.reader.states, [null]);
+		assert.deepEqual(t.saved.at(-1), { inode: 1, offset: 200 });
+		// only the line read after the switch-on is written after the delete
+		const counted = t.store.flushed
+			.slice(flushedBefore)
+			.flatMap((b) => b.minutes)
+			.reduce((n, r) => n + r.requests, 0);
+		assert.equal(counted, 1);
+	});
+
+	it("counts a visitor again after the delete", async () => {
+		const t = setup({
+			config: { unique_visitors: true },
+			results: [read([line("example.com")]), read([line("example.com")], 200)],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed[0].visitors.length, 1);
+		await t.service.setEnabled(false);
+		await t.service.deleteStats();
+		await t.service.setEnabled(true);
+		await t.service.read();
+		await t.service.flush();
+		assert.equal(t.store.flushed.at(-1).visitors.length, 1);
+	});
+
+	it("rejects when the delete fails", async () => {
+		const t = setup();
+		await t.service.start();
+		await t.service.setEnabled(false);
+		t.store.deleteAllFails = true;
+		await assert.rejects(t.service.deleteStats(), DB_LOCKED);
+	});
+
+	it("the onDeleteStats hook deletes, then clears the API caches", async () => {
+		const t = setup();
+		await t.service.start();
+		const events = [];
+		const hooks = createTrafficHooks({
+			applyAccessLog: () => Promise.resolve(),
+			traffic: t.service,
+			clearCaches: () => events.push(t.store.calls.at(-1)),
+		});
+		await hooks.onDeleteStats();
+		assert.deepEqual(events, ["deleteAll"]);
+		t.store.deleteAllFails = true;
+		await assert.rejects(hooks.onDeleteStats(), DB_LOCKED);
+		assert.equal(events.length, 1);
 	});
 });

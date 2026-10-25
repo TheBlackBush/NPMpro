@@ -8,6 +8,7 @@ import { defaultSecretBox } from "../lib/secret-box.js";
 import { createStateMeta, createTrafficService } from "../lib/traffic/service.js";
 import {
 	countVisitors,
+	deleteAll,
 	deleteIps,
 	deleteVisitors,
 	flush,
@@ -84,6 +85,7 @@ const store = {
 	rollUpAndPrune,
 	deleteIps,
 	deleteVisitors,
+	deleteAll,
 	visitorDayHashes,
 	countVisitors,
 	queryTraffic,

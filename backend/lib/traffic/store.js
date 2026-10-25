@@ -26,6 +26,16 @@ const TABLES = {
 	ips: ["traffic_ip_hour", ["bucket", "host", "ip"], ["requests"]],
 };
 
+// every table with stored traffic data (deleteAll empties them all)
+const ALL_TABLES = [
+	"traffic_minute",
+	"traffic_hour",
+	"traffic_country_hour",
+	"traffic_asn_hour",
+	"traffic_ip_hour",
+	"traffic_visitor",
+];
+
 const CHUNK_BUCKETS = 500;
 const CHUNK_INSERT = 200;
 
@@ -142,6 +152,14 @@ export const createStore = (knex) => {
 	const deleteVisitors = async () => {
 		await knex("traffic_visitor").del();
 	};
+
+	/** Deletes every stored count, top list row, IP row and visitor hash in one transaction. */
+	const deleteAll = () =>
+		knex.transaction(async (trx) => {
+			for (const table of ALL_TABLES) {
+				await trx(table).del();
+			}
+		});
 
 	/**
 	 * Distinct visitor hashes from startDay (UTC day number) on. The empty hash is the cap marker: it is not
@@ -330,6 +348,7 @@ export const createStore = (knex) => {
 		rollUpAndPrune,
 		deleteIps,
 		deleteVisitors,
+		deleteAll,
 		countVisitors,
 		visitorDayHashes,
 		queryTraffic,
@@ -350,6 +369,7 @@ export const flush = lazy("flush");
 export const rollUpAndPrune = lazy("rollUpAndPrune");
 export const deleteIps = lazy("deleteIps");
 export const deleteVisitors = lazy("deleteVisitors");
+export const deleteAll = lazy("deleteAll");
 export const countVisitors = lazy("countVisitors");
 export const visitorDayHashes = lazy("visitorDayHashes");
 export const queryTraffic = lazy("queryTraffic");
