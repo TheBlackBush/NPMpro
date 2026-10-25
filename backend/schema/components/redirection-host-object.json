@@ -94,6 +94,7 @@
 			"$ref": "../common.json#/properties/npmpro_http3_support"
 		},
 		"advanced_config": {
+			"description": "Raw nginx config. Only administrators can set or change it; other users can only keep the stored value.",
 			"type": "string",
 			"default": "",
 			"example": ""

@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
+import { assertHostConfig } from "../lib/host-config-guard.js";
 import deadHostModel from "../models/dead_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
@@ -26,6 +27,7 @@ const internalDeadHost = {
 		}
 
 		access.can("dead_hosts:manage");
+		assertHostConfig(access, "dead_host", thisData);
 
 		// Get a list of the domain names and check each of them against existing records
 		const checkResults = await Promise.all(
@@ -92,6 +94,7 @@ const internalDeadHost = {
 		access.can("dead_hosts:manage");
 
 		const existingRow = await internalDeadHost.get(access, { id: thisData.id });
+		assertHostConfig(access, "dead_host", thisData, existingRow);
 
 		// Get a list of the domain names and check each of them against existing records
 		if (thisData.domain_names !== undefined) {
