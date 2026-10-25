@@ -1,3 +1,4 @@
+import { IconRefresh } from "@tabler/icons-react";
 import cn from "clsx";
 import { Field, useFormikContext } from "formik";
 import { SwitchField } from "src/components";
@@ -8,24 +9,40 @@ import { useRuntimeSection } from "./RuntimeSection";
 const idOf = (name) => `runtime-${name}`;
 
 /**
- * Label text with the lock badge when the key is locked ("Set by <ENV>", or the wording of an indirect lock)
+ * The badge of a setting that applies after a container restart
+ */
+function RestartBadge() {
+	return (
+		<span className="badge bg-orange-lt ms-2 text-wrap">
+			<IconRefresh className="icon me-1" aria-hidden="true" />
+			<T id="settings.runtime.restart-required" />
+		</span>
+	);
+}
+
+/**
+ * Label text with the lock badge when the key is locked ("Set by <ENV>", or the wording of an indirect lock), else
+ * the Restart required badge for a setting that applies after a container restart
  */
 function FieldLabel({ name, children }) {
-	const { isLocked, envOf, reasonOf } = useRuntimeSection();
+	const { isLocked, envOf, reasonOf, isRestart } = useRuntimeSection();
+	let badge = null;
+	if (isLocked(name)) badge = <LockedBadge env={envOf(name)} reason={reasonOf(name)} />;
+	else if (isRestart(name)) badge = <RestartBadge />;
 	return (
 		<>
 			{children}
-			{isLocked(name) ? <LockedBadge env={envOf(name)} reason={reasonOf(name)} /> : null}
+			{badge}
 		</>
 	);
 }
 
 /**
- * The field hint, why another setting locks it (indirect lock), when a change takes effect and, for a saved restart
- * setting the container does not run with yet, that it needs a restart
+ * The field hint, why another setting locks it (indirect lock) and when a change takes effect (restart settings show
+ * their badge instead, a pending restart shows at the top of the section)
  */
 function FieldHint({ name, hint }) {
-	const { appliesId, isLocked, envOf, reasonOf, restartPending } = useRuntimeSection();
+	const { appliesId, isLocked, envOf, reasonOf } = useRuntimeSection();
 	const applies = appliesId(name);
 	const reason = isLocked(name) ? reasonOf(name) : null;
 	return (
@@ -39,11 +56,6 @@ function FieldHint({ name, hint }) {
 			{applies ? (
 				<span className="d-block">
 					<T id={applies} />
-				</span>
-			) : null}
-			{restartPending(name) ? (
-				<span className="d-block text-warning">
-					<T id="settings.runtime.restart-pending" />
 				</span>
 			) : null}
 		</>

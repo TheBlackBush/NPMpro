@@ -10,6 +10,7 @@ import { LockedBadge } from "./Authentication/LockedBadge";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch } from "./Runtime/fields";
 import {
 	Part,
+	RestartPendingAlert,
 	RuntimeContext,
 	reportSaveError,
 	runtimeContextOf,
@@ -433,6 +434,7 @@ export default function Monitoring() {
 					{locked.size > 0 || logsCtx.anyLocked ? (
 						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
 					) : null}
+					<RestartPendingAlert data={logs} />
 					<RuntimeContext.Provider value={logsCtx}>
 						<LogFields />
 						<GoAccessFields />

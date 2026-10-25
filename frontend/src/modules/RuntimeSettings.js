@@ -35,7 +35,20 @@ const GROUP_KEYS = {
 	advanced: ["configBeautifier", "gravatar", "timeZone"],
 };
 
-const APPLIES = new Set(["next-certificate", "reload", "immediately", "restart"]);
+// applies values with a hint line; "restart" fields get the Restart required badge instead (isRestartField)
+const APPLIES = new Set(["next-certificate", "reload", "immediately"]);
+
+// the label of each restart setting (applies "restart"), for the "Restart the container to apply" notice; the same
+// text as the field label
+const RESTART_LABELS = {
+	timeZone: "settings.advanced.time-zone",
+	goaccess: "settings.logs.goaccess",
+	goaccessKeepDays: "settings.logs.goaccess.keep-days",
+	goaccessAnonymize: "settings.logs.goaccess.anonymize",
+	goaccessDropQueryStrings: "settings.logs.goaccess.drop-query-strings",
+	goaccessRealOs: "settings.logs.goaccess.real-os",
+	goaccessResolveHosts: "settings.logs.goaccess.resolve-hosts",
+};
 
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
@@ -175,6 +188,20 @@ const appliesMessageId = (applies, key) => {
 const isRestartPending = (restartPending, key) => (restartPending ?? []).map(camel).includes(key);
 
 /**
+ * Whether the key applies only after a container restart (API applies map, camelCase keys)
+ */
+const isRestartField = (applies, key) => applies?.[key] === "restart";
+
+/**
+ * The pending restart settings as { key, labelId } in API order; labelId is null for a key without a known label
+ *
+ * @param   {string[]}  restartPending  API restart_pending (snake_case)
+ * @returns {{ key: string, labelId: string|null }[]}
+ */
+const restartPendingFields = (restartPending) =>
+	(restartPending ?? []).map(camel).map((key) => ({ key, labelId: RESTART_LABELS[key] ?? null }));
+
+/**
  * The time zone options: the zones the image ships, plus the current value when it is not one of them (a TZ set by
  * env, for example a posix/ name)
  *
@@ -220,10 +247,13 @@ export {
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isRestartField,
 	isRestartPending,
 	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
+	RESTART_LABELS,
+	restartPendingFields,
 	runtimeSettingsPayload,
 	timeZoneOptions,
 };

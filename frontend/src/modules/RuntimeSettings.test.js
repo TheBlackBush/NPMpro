@@ -7,10 +7,13 @@ import {
 	fieldOfError,
 	GROUP_KEYS,
 	isEmptyPayload,
+	isRestartField,
 	isRestartPending,
 	isServableCertificate,
 	keySizeOptions,
 	parseTrustedIps,
+	RESTART_LABELS,
+	restartPendingFields,
 	runtimeSettingsPayload,
 	timeZoneOptions,
 } from "./RuntimeSettings.js";
@@ -164,7 +167,17 @@ it("isServableCertificate keeps certificates with files, without mTLS CAs", () =
 });
 
 it("maps the restart applies value and the restart pending keys", () => {
-	assert.equal(appliesMessageId({ timeZone: "restart" }, "timeZone"), "settings.runtime.applies.restart");
+	// restart settings show a badge, not an applies line
+	assert.equal(appliesMessageId({ timeZone: "restart" }, "timeZone"), null);
+	assert.equal(isRestartField({ timeZone: "restart", gravatar: "immediately" }, "timeZone"), true);
+	assert.equal(isRestartField({ timeZone: "restart", gravatar: "immediately" }, "gravatar"), false);
+	assert.equal(isRestartField(undefined, "timeZone"), false);
+	assert.deepEqual(restartPendingFields(["time_zone", "goaccess_keep_days", "future_key"]), [
+		{ key: "timeZone", labelId: "settings.advanced.time-zone" },
+		{ key: "goaccessKeepDays", labelId: "settings.logs.goaccess.keep-days" },
+		{ key: "futureKey", labelId: null },
+	]);
+	assert.deepEqual(restartPendingFields(undefined), []);
 	assert.equal(isRestartPending(["time_zone"], "timeZone"), true);
 	assert.equal(isRestartPending(["time_zone"], "goaccess"), false);
 	assert.equal(isRestartPending(undefined, "timeZone"), false);
@@ -188,4 +201,16 @@ it("sends the restart settings like the others", () => {
 		timeZone: "Europe/Berlin",
 	});
 	assert.deepEqual(runtimeSettingsPayload("logs", { goaccess: true }, ["goaccess"]), {});
+});
+
+it("has a label for every restart setting of the backend, in en.json", async () => {
+	const { RUNTIME_RULES } = await import("../../../backend/lib/runtime-rules.js");
+	const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
+	const en = JSON.parse(readFileSync(new URL("../../translations/ui/en.json", import.meta.url), "utf8"));
+	const restart = RUNTIME_RULES.filter((rule) => rule.applies === "restart").map((rule) => camel(rule.key));
+	assert.ok(restart.length > 0);
+	assert.deepEqual(Object.keys(RESTART_LABELS).sort(), [...restart].sort());
+	for (const id of Object.values(RESTART_LABELS)) assert.ok(en[id], id);
+	assert.ok(en["settings.runtime.restart-required"]);
+	assert.ok(en["settings.runtime.restart-pending"].includes("{fields}"));
 });

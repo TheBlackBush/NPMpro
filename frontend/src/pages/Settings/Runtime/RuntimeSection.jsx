@@ -1,4 +1,4 @@
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import { Form, Formik, useFormikContext } from "formik";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Button, ErrorAlert, Loading } from "src/components";
@@ -9,7 +9,9 @@ import {
 	appliesMessageId,
 	fieldOfError,
 	isEmptyPayload,
+	isRestartField,
 	isRestartPending,
+	restartPendingFields,
 	runtimeSettingsPayload,
 } from "src/modules/RuntimeSettings";
 import { showError, showObjectSuccess } from "src/notifications";
@@ -25,8 +27,9 @@ const SETTING_LOCK_REASONS = new Set(["goaccess-setting"]);
 
 /**
  * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it),
- * reasonOf(key) (why another setting's env var locks it, null for a direct lock), appliesId(key) and
- * restartPending(key) (saved, applies at the next container start) (camelCase keys)
+ * reasonOf(key) (why another setting's env var locks it, null for a direct lock), appliesId(key), isRestart(key)
+ * (applies after a container restart) and restartPending(key) (saved, applies at the next container start)
+ * (camelCase keys)
  */
 const useRuntimeSection = () => useContext(RuntimeContext);
 
@@ -46,9 +49,28 @@ const runtimeContextOf = (group, data) => {
 		// locked_reason: only the keys locked by another setting's env var
 		reasonOf: (key) => data.lockedReason?.[key] ?? null,
 		appliesId: (key) => appliesMessageId(data.applies, key),
+		isRestart: (key) => isRestartField(data.applies, key),
 		restartPending: (key) => isRestartPending(data.restartPending, key),
 	};
 };
+
+/**
+ * "Restart the container to apply: <labels>." while restart settings of the group are saved with another value than
+ * the container runs with
+ */
+function RestartPendingAlert({ data }) {
+	const fields = restartPendingFields(data.restartPending);
+	if (fields.length === 0) return null;
+	const labels = fields.map(({ key, labelId }) => (labelId ? intl.formatMessage({ id: labelId }) : key));
+	return (
+		<StatusAlert
+			variant="orange"
+			icon={IconRefresh}
+			id="settings.runtime.restart-pending"
+			data={{ fields: intl.formatList(labels, { type: "conjunction" }) }}
+		/>
+	);
+}
 
 function Heading({ titleId }) {
 	return (
@@ -182,6 +204,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 								id="settings.authentication.status.locked"
 							/>
 						) : null}
+						<RestartPendingAlert data={data} />
 						{children}
 					</div>
 					<div className="card-footer text-end">
@@ -207,4 +230,13 @@ function Part({ titleId, children, last = false }) {
 	);
 }
 
-export { Part, RuntimeContext, RuntimeSection, reportSaveError, runtimeContextOf, useRuntimeSection, useSaveError };
+export {
+	Part,
+	RestartPendingAlert,
+	RuntimeContext,
+	RuntimeSection,
+	reportSaveError,
+	runtimeContextOf,
+	useRuntimeSection,
+	useSaveError,
+};
