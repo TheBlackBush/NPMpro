@@ -4,6 +4,7 @@ import {
 	claimsErrorCode,
 	FLOW_COOKIE_NAMES,
 	hasFlowCookies,
+	logError,
 	logValue,
 	newUserPermissions,
 	OIDC_ERROR_CODES,
@@ -101,4 +102,14 @@ it("log values are quoted and cannot start new lines", () => {
 	assert.equal(logValue("a@b.c"), '"a@b.c"');
 	assert.equal(logValue("x\nERROR forged"), '"x\\nERROR forged"');
 	assert.equal(logValue(undefined), '"undefined"');
+});
+
+it("logs an OIDC error with its cause, quoted", () => {
+	assert.equal(logError(new Error("bad")), '"bad"');
+	assert.equal(logError(new Error("bad", { cause: new Error("ECONNREFUSED") })), '"bad" (cause: "ECONNREFUSED")');
+	assert.equal(logError(new Error("bad", { cause: { status: 401 } })), '"bad" (cause: "401")');
+	assert.equal(
+		logError(new Error("bad", { cause: { error: "x\ny" } })),
+		'"bad" (cause: "{\\"error\\":\\"x\\\\ny\\"}")',
+	);
 });

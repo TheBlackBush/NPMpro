@@ -48,14 +48,14 @@ importers:
         specifier: 5.0.7
         version: 5.0.7
       multer:
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: 2.5.0
+        version: 2.5.0
       mysql2:
         specifier: 3.24.6
         version: 3.24.6(@types/node@26.6.5)
       objection:
-        specifier: 4.2.0
-        version: 4.2.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1))
+        specifier: 4.3.0
+        version: 4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1))
       openid-client:
         specifier: 6.8.8
         version: 6.8.8
@@ -314,8 +314,8 @@ packages:
     resolution: {integrity: sha512-RbOBxmLBG8uvFUc15X9+9SFemKcQ0WBuISBVkpuiaUB2qblC8UWlHEjdWVoZ8AdhSwmoEgsiXKfopX0CQxaACQ==}
     engines: {node: '>=22'}
 
-  body-parser@2.3.0:
-    resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
+  body-parser@2.4.0:
+    resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
     engines: {node: '>=18'}
 
   brace-expansion@5.0.12:
@@ -494,8 +494,8 @@ packages:
   fast-fifo@1.3.2:
     resolution: {integrity: sha512-/d9sfos4yxzpwkDkuN7k2SqFKtYNmCTzgfEpz82x34IM9/zc8KGxQoXg1liNC/izpRM/MBdt44Nmx41ZWqk+FQ==}
 
-  fast-uri@3.1.8:
-    resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
+  fast-uri@3.1.9:
+    resolution: {integrity: sha512-hS/0Wt3Ya043oKXs0sIxrMpKQITXhMLIrVAKKXi4gozGC9v7YRWVnXIZzjNPTO02M9BdxLCWqK1yRXgNziVyJQ==}
 
   finalhandler@2.1.1:
     resolution: {integrity: sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==}
@@ -737,8 +737,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  multer@2.4.0:
-    resolution: {integrity: sha512-7dqa0ZcFfzbefdTuIkzOSMvZWC0J7FLqBOjJUZvDCXShIURWKxAyTT1wHhnE5q19c7jOJf43IYYKjBmZVZmvhg==}
+  multer@2.5.0:
+    resolution: {integrity: sha512-BsqOzYGVq49JcW2IzoSAxeKYRevb+dGGPPWleOR8Lrlk4igwxu1/9pwSXlByhCb7MVZDrNJFC0IBP5/O5nLYRw==}
     engines: {node: '>= 10.16.0'}
 
   mysql2@3.24.6:
@@ -770,8 +770,8 @@ packages:
     resolution: {integrity: sha512-W67iLl4J2EXEGTbfeHCffrjDfitvLANg0UlX3wFUUSTx92KXRFegMHUVgSqE+wvhAbi4WqjGg9czysTV2Epbew==}
     engines: {node: '>= 0.4'}
 
-  objection@4.2.0:
-    resolution: {integrity: sha512-oPif7LtnZHYwDJb77EbFd3KggGrwH7ss/rQaYRrRGhMWiNLL2vimJJ3zUm/HOQ5wMWVXFv8qXcE1dN54oYit6A==}
+  objection@4.3.0:
+    resolution: {integrity: sha512-syXfcc1LlLgKKMi0fRaQNwv4UQKccHuXgEB6acLr5f/Q7Koho/swku2sahvZtBkaQkM6MCG6QXOcq9PBPwo02A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       knex: ^3.3.0
@@ -1191,7 +1191,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.8
+      fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -1260,7 +1260,7 @@ snapshots:
     dependencies:
       node-addon-api: 8.9.2
 
-  body-parser@2.3.0:
+  body-parser@2.4.0:
     dependencies:
       bytes: 3.1.2
       content-type: 2.1.0
@@ -1406,7 +1406,7 @@ snapshots:
   express@5.3.0:
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.3.0
+      body-parser: 2.4.0
       content-disposition: 2.0.1
       content-type: 2.1.0
       cookie: 0.7.2
@@ -1440,7 +1440,7 @@ snapshots:
 
   fast-fifo@1.3.2: {}
 
-  fast-uri@3.1.8: {}
+  fast-uri@3.1.9: {}
 
   finalhandler@2.1.1:
     dependencies:
@@ -1651,7 +1651,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  multer@2.4.0:
+  multer@2.5.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0
@@ -1684,7 +1684,7 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  objection@4.2.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)):
+  objection@4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)):
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
