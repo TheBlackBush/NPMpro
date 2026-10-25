@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/images/logo-dark.svg">
-    <img src=".github/images/logo-light.svg" alt="NPMpro" width="400">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/images/logo-dark.png">
+    <img src=".github/images/logo-light.svg" alt="NPMpro" width="320">
   </picture>
 </p>
 
