@@ -35,7 +35,7 @@ services:
 #      - "/path/to/old/npm/letsencrypt/folder:/etc/letsencrypt" # Only needed for initial migration from original nginx-proxy-manager to this fork, remove after migration
     environment:
       # Basics
-      - "TZ=Etc/UTC" # change to your time zone ("TZ identifier" from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List), optional: without it the Time zone setting (Settings, Advanced) is used, default UTC; an invalid value stops the container from starting
+      - "TZ=Etc/UTC" # change to your time zone ("TZ identifier" from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List); set here it wins over the Time zone setting (Settings, Advanced), which then shows "Set by TZ"; keep at least one active variable here, compose refuses an empty environment list; an invalid value stops the container from starting
 #      - "PUID=1000" # user id to run as, a number, default 0 (root); with network_mode host and a non-root PUID you may need sysctl net.ipv4.ip_unprivileged_port_start=0 to bind ports below 1024 (this allows every non-root service to bind them)
 #      - "PGID=1000" # group id to run as, a number, default 0 (root), requires PUID
 #      - "NPM_PORT=82" # port of the NPMpro web UI, default 81, change it to run several instances with network_mode host

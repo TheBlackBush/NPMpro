@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="frontend/public/images/logo-text-horizontal-grey.png" alt="NPMpro" width="400">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/images/logo-dark.svg">
+    <img src=".github/images/logo-light.svg" alt="NPMpro" width="400">
+  </picture>
 </p>
 
 <p align="center">
