@@ -48,8 +48,13 @@ EOT
 
 rm -rf "$TMP"
 
-if [ ! -d "$OLD" ]; then
+if [ ! -d "$OLD" ] && [ ! -L "$OLD" ]; then
     exit 0
+fi
+# root runs this: never follow a link planted in the data folder
+if [ -L "$OLD" ] || [ -L "$NEW" ]; then
+    echo "$OLD or $NEW is a symbolic link, not a folder. Replace it with the real folder and restart the container."
+    exit 1
 fi
 
 if [ -d "$NEW" ]; then

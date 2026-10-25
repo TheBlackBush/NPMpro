@@ -268,6 +268,7 @@ RUN apk upgrade --no-cache -a && \
     apk del --no-cache luarocks5.1 git make && \
     \
     python3 -m venv /usr/local && \
+    sed -i "s|include-system-site-packages = false|include-system-site-packages = true|" /usr/local/pyvenv.cfg && \
     pip install --no-cache-dir --upgrade pip certbot && \
     \
     wget -q https://raw.githubusercontent.com/tomwassenberg/certbot-ocsp-fetcher/"$COF_VER"/certbot-ocsp-fetcher -O /usr/local/bin/certbot-ocsp-fetcher.sh && \

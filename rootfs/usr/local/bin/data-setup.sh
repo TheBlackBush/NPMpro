@@ -56,7 +56,6 @@ rm -vrf /data/nginx/custom
 if [ -n "$(ls -A /data/nginx_custom 2> /dev/null)"  ]; then
     cp -van /data/nginx_custom/* /data/custom_nginx
 fi
-rm -vrf /data/nginx_custom
 
 #tmp
 if [ -n "$(ls -A /data/etc 2> /dev/null)" ]; then
@@ -65,17 +64,16 @@ if [ -n "$(ls -A /data/etc 2> /dev/null)" ]; then
         sed -i "s|/data/etc|/data|g" /data/crowdsec/crowdsec.conf
     fi
 fi
-rm -vrf /data/etc
 
 #tmp
 if [ -n "$(ls -A /data/npm 2> /dev/null)" ]; then
     cp -van /data/npm/* /data/npmpro
 fi
-rm -vrf /data/npm
 
 #tmp
-if [ -s /data/database.sqlite ]; then
-    mv -vn /data/database.sqlite /data/npmpro/database.sqlite
+# copied, not moved: /data itself is root's, start.sh removes the old file afterwards
+if [ -s /data/database.sqlite ] && [ ! -e /data/npmpro/database.sqlite ]; then
+    cp -va /data/database.sqlite /data/npmpro/database.sqlite
 fi
 
 
@@ -87,7 +85,6 @@ rm -vrf /data/nginx/default_www
 if [ -n "$(ls -A /data/custom_ssl 2> /dev/null)" ]; then
     cp -van /data/custom_ssl/* /data/tls/custom
 fi
-rm -vrf /data/custom_ssl
 
 for dir in /data/tls/custom/npm-*; do
     if [ -s "$dir/fullchain.pem" ] && { [ ! -s "$dir/cert.pem" ] || [ ! -s "$dir/chain.pem" ]; } then
@@ -123,14 +120,15 @@ rm -vrf /data/tls/certbot/crs
 rm -vrf /data/tls/certbot/keys
 if [ -d /data/tls/certbot/live ] && [ -d /data/tls/certbot/archive ]; then
     certs_in_use="$(find /data/tls/certbot/live -type l -name "*.pem" -exec readlink -f {} \;)"
-    find /data/tls/certbot/archive ! -name "$(printf "*\n*")" -type f -name "*.pem" > tmp
+    archives="$(mktemp)"
+    find /data/tls/certbot/archive ! -name "$(printf "*\n*")" -type f -name "*.pem" > "$archives"
     while IFS= read -r archive
     do
         if ! echo "$certs_in_use" | grep -q "$archive"; then
           rm -vf "$archive"
         fi
-    done < tmp
-    rm tmp
+    done < "$archives"
+    rm -f "$archives"
 fi
 
 # can be used to delete certificates which expired more than 16 weeks ago
@@ -143,11 +141,8 @@ fi
 #    fi
 #done
 
-rm -vrf /data/letsencrypt-acme-challenge \
-        /data/nginx/default_host \
+rm -vrf /data/nginx/default_host \
         /data/nginx/temp \
-        /data/logs \
-        /data/keys.json \
         /data/npmpro/keys.json
 
 touch /data/tls/ech/nginx.conf \
@@ -284,8 +279,7 @@ if [ "$REGENERATE_ALL" = "true" ]; then
     find /data/nginx -name "*.conf" -delete
 fi
 
-if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
-rm -f /data/logrotate.state
+if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; then cp -va /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 
 # http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
 # setting changes

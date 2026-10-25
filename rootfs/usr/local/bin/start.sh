@@ -25,11 +25,12 @@ fi
 
 # runtime folders, recreated on every start so nothing a PUID process left there survives; root writes only into the
 # fresh /run/npmpro before it is handed over
-rm -rf /run/npmpro /run/nginx /run/dinitctl
+# nscd: musl asks /run/nscd/socket for users and groups missing from /etc/passwd and /etc/group
+rm -rf /run/npmpro /run/nginx /run/dinitctl /run/nscd /var/run/nscd
 find /run -maxdepth 1 -type s -delete
 mkdir -p /run/npmpro /run/nginx
-rm -rf /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/nginx /tmp/env.sha512sum
-mkdir -p /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/nginx
+rm -rf /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx /tmp/env.sha512sum
+mkdir -p /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx
 # nginx opens its compiled-in error log (logs/error.log) before it reads nginx.conf
 rm -rf /usr/local/nginx/logs /usr/local/nginx/client_body_temp /usr/local/nginx/proxy_temp /usr/local/nginx/fastcgi_temp /usr/local/nginx/uwsgi_temp /usr/local/nginx/scgi_temp
 mkdir -p /usr/local/nginx/logs
@@ -140,15 +141,21 @@ fi
 find /usr/local/nginx/conf/conf.d -mindepth 1 \( ! -type f -o -links +1 \) -exec rm -rf {} +
 chown -R 0:0 /usr/local/nginx/conf/conf.d
 
+# /data itself stays root's (so the PUID user can not remove or swap .env or prerun); its top-level folders are
+# created here and the old top-level leftovers are removed after data-setup.sh
+chown 0:0 /data
+chmod 755 /data
+mkdir -p /data/npmpro /data/tls /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
+
 if [ "$PUID" != "0" ]; then
     # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
     # hardlink can not hand over a root file. The runtime folders get only their own owner, never their contents.
-    find /data \( -path /data/.env -o -path /data/prerun \) -prune -o \( -type d -o -links 1 \) \
+    find /data -mindepth 1 \( -path /data/.env -o -path /data/prerun \) -prune -o \( -type d -o -links 1 \) \
          -not \( -uid "$PUID" -and -gid "$PGID" \) \
          -print0 \
          | xargs -r0 -P "$(($(nproc)*4))" -n 100 chown -h "$PUID:$PGID"
     chown "$PUID:$PGID" /run /run/npmpro /run/nginx /run/npmpro/certbot.ini /run/npmpro/logrotate \
-          /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/nginx \
+          /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work /tmp/certbot-credentials /tmp/certbot-python /tmp/nginx \
           /usr/local/nginx/logs
     chown "$PUID:$PGID" /proc/self/fd/2
     su-exec "$PUID:$PGID" data-setup.sh
@@ -157,8 +164,17 @@ else
     data-setup.sh
 fi
 
+# top-level leftovers of old versions, copied by data-setup.sh (rm does not follow links)
+rm -rf /data/nginx_custom /data/etc /data/npm /data/custom_ssl /data/letsencrypt-acme-challenge /data/logs /data/keys.json
+if [ -f /data/database.sqlite ] && [ -s /data/npmpro/database.sqlite ] && cmp -s /data/database.sqlite /data/npmpro/database.sqlite; then
+    rm -f /data/database.sqlite
+fi
+if [ -f /data/logrotate.state ] && [ -e /data/nginx/logs/logrotate.state ]; then
+    rm -f /data/logrotate.state
+fi
 
-if grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
+
+if [ -f /data/crowdsec/crowdsec.conf ] && [ ! -L /data/crowdsec/crowdsec.conf ] && grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
     if [ ! -s /usr/local/nginx/conf/conf.d/crowdsec.conf ]; then
         cp -van /usr/local/nginx/conf/conf.d/crowdsec.conf.disabled /usr/local/nginx/conf/conf.d/crowdsec.conf
     fi
@@ -225,11 +241,9 @@ if [ "$PUID" != "0" ]; then
     chown "$PUID:$PGID" /usr/local/nginx/conf/conf.d
     find /usr/local/nginx/conf/conf.d -mindepth 1 -maxdepth 1 -type f -links 1 -exec chown "$PUID:$PGID" {} +
 
-    # nginx binds ports below 1024 as the PUID user: an ambient capability, so no host-wide sysctl is needed. Without
-    # NET_BIND_SERVICE in the container's capabilities this is skipped and nginx needs ports from 1024.
-    if setpriv --reuid "$PUID" --regid "$PGID" --init-groups --inh-caps +net_bind_service --ambient-caps +net_bind_service true 2> /dev/null; then
-        exec setpriv --reuid "$PUID" --regid "$PGID" --init-groups --inh-caps +net_bind_service --ambient-caps +net_bind_service launch.sh
-    fi
+    # certbot DNS plugins: the image's Python (/usr/local) is root's, so pip installs them for the PUID user into a
+    # folder recreated on every start; only the PUID user ever runs certbot
+    export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
     exec su-exec "$PUID:$PGID" launch.sh
 else
     exec launch.sh
