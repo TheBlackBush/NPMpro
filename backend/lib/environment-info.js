@@ -84,6 +84,8 @@ const ENVIRONMENT_ITEMS = [
 	secretItem("database", "INITIAL_ADMIN_EMAIL"),
 	secretItem("database", "INITIAL_ADMIN_PASSWORD"),
 	item("database", "INITIAL_DEFAULT_PAGE"),
+	// read by entrypoint.sh, before envs.sh
+	flag("database", "ENABLE_PRERUN"),
 
 	item("certificates-account", "ACME_SERVER", LETSENCRYPT_SERVER),
 	secretItem("certificates-account", "ACME_EMAIL"),

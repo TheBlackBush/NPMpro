@@ -194,6 +194,7 @@
 	"environment.database.DB_POSTGRES_PASSWORD": "Password of the PostgreSQL database.",
 	"environment.database.DB_POSTGRES_PORT": "Port of the PostgreSQL database.",
 	"environment.database.DB_POSTGRES_USER": "User of the PostgreSQL database. Needed together with the host and name.",
+	"environment.database.ENABLE_PRERUN": "Runs the scripts in /data/prerun/*.sh before NPMpro starts.",
 	"environment.database.INITIAL_ADMIN_EMAIL": "E-mail address of the first administrator, created at the first start. Remove it afterwards.",
 	"environment.database.INITIAL_ADMIN_PASSWORD": "Password of the first administrator, created at the first start. Remove it afterwards.",
 	"environment.database.INITIAL_DEFAULT_PAGE": "Default site for the first start: 404, 444, redirect, congratulations or html. Without it, congratulations is used. Remove it afterwards.",

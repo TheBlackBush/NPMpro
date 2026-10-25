@@ -143,3 +143,18 @@ it("keeps userSetEnvNames to the runtime names", () => {
 	const env = { NPMPRO_USER_ENV: "ACME_KEY_TYPE HTTP_PORT", ACME_KEY_TYPE: "rsa", HTTP_PORT: "8080" };
 	assert.deepEqual([...userSetEnvNames(env)], ["ACME_KEY_TYPE"]);
 });
+
+it("lists ENABLE_PRERUN, which entrypoint.sh reads without exporting a default", () => {
+	const entrypoint = readFileSync(new URL("../../rootfs/usr/local/bin/entrypoint.sh", import.meta.url), "utf8");
+	assert.equal(/^\s*export ENABLE_PRERUN/mu.test(entrypoint), false);
+	const unset = itemOf(environmentInfo({ NPMPRO_USER_ENV: "" }, []), "ENABLE_PRERUN");
+	assert.equal(unset.value, "false");
+	assert.equal(unset.set, false);
+	const set = itemOf(
+		environmentInfo({ NPMPRO_USER_ENV: "ENABLE_PRERUN", ENABLE_PRERUN: "true" }, []),
+		"ENABLE_PRERUN",
+	);
+	assert.equal(set.value, "true");
+	assert.equal(set.set, true);
+	assert.equal(set.is_default, false);
+});
