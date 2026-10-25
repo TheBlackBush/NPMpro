@@ -1,5 +1,6 @@
 import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
+import { useSyncExternalStore } from "react";
 import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -159,6 +160,99 @@ function GoAccessFields() {
 				</a>
 			) : null}
 		</Part>
+	);
+}
+
+/**
+ * The "Also delete the stored statistics" choice of one confirm dialog, shared by its checkbox and its button label
+ * (both rendered inside the modal) and read by onConfirm
+ */
+const createDeleteChoice = () => {
+	let value = false;
+	const listeners = new Set();
+	return {
+		get: () => value,
+		set: (next) => {
+			value = next;
+			for (const listener of listeners) listener();
+		},
+		subscribe: (listener) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+	};
+};
+
+const useDeleteChoice = (choice) => useSyncExternalStore(choice.subscribe, choice.get);
+
+/**
+ * Confirm dialog body for switching traffic statistics off: what stays stored, what the other switches delete, and
+ * the unticked "Also delete the stored statistics" checkbox
+ */
+function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
+	const checked = useDeleteChoice(choice);
+	return (
+		<>
+			<T id="settings.monitoring.traffic.confirm.body" data={{ days }} />
+			{ipsOff || visitorsOff ? (
+				<>
+					<div className="mt-2">
+						<T id="settings.monitoring.traffic.confirm.also" />
+					</div>
+					<ul className="mt-2 mb-0 text-start">
+						{ipsOff ? (
+							<li>
+								<T id="settings.monitoring.show-ips.confirm.item" />
+							</li>
+						) : null}
+						{visitorsOff ? (
+							<li>
+								<T id="settings.monitoring.unique-visitors.confirm.item" />
+							</li>
+						) : null}
+					</ul>
+				</>
+			) : null}
+			<label className="form-check text-start mt-3 mb-0">
+				<input
+					className="form-check-input"
+					type="checkbox"
+					checked={checked}
+					onChange={(e) => choice.set(e.target.checked)}
+				/>
+				<span className="form-check-label">
+					<T id="settings.monitoring.traffic.confirm.delete" />
+				</span>
+			</label>
+		</>
+	);
+}
+
+// "Turn off and delete" when anything is deleted, "Turn off" when traffic statistics only go off and are kept
+function TrafficOffLabel({ choice, deletesOther }) {
+	const deleting = useDeleteChoice(choice) || deletesOther;
+	return (
+		<T
+			id={deleting ? "settings.monitoring.show-ips.confirm.button" : "settings.monitoring.traffic.confirm.button"}
+		/>
+	);
+}
+
+// the dialog body when only visitor IPs and/or unique visitors are switched off
+function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
+	if (!(ipsOff && visitorsOff)) return <T id={`${confirmKey}.confirm.body`} />;
+	return (
+		<>
+			<T id="settings.monitoring.both-off.confirm.body" />
+			<ul className="mt-2 mb-0 text-start">
+				<li>
+					<T id="settings.monitoring.show-ips.confirm.item" />
+				</li>
+				<li>
+					<T id="settings.monitoring.unique-visitors.confirm.item" />
+				</li>
+			</ul>
+		</>
 	);
 }
 
@@ -369,40 +463,45 @@ export default function Monitoring() {
 				lead: err?.logsSaved ? <T id="settings.logs.saved-monitoring-failed" /> : null,
 			});
 		// the caches (and with them the form) are refreshed only after both parts are saved
-		const run = async () => {
-			await save({ logs: logsBody, monitoring: monitoringBody });
+		const run = async (deleteStats = false) => {
+			await save({
+				logs: logsBody,
+				monitoring: deleteStats ? { ...monitoringBody, deleteStats } : monitoringBody,
+			});
 			showObjectSuccess("setting", "saved");
 		};
-		// switching visitor IPs or unique visitors off deletes the stored data: ask first, once for both
+		// switching traffic statistics, visitor IPs or unique visitors off: ask first, once for all of them
+		// (visitor IPs and unique visitors delete their stored data, traffic statistics offer to delete theirs)
+		const trafficOff =
+			monitoringChanged && data.trafficEnabled && !values.trafficEnabled && !isLocked("trafficEnabled");
 		const ipsOff = monitoringChanged && data.showIps && !values.showIps && !isLocked("showIps");
 		const visitorsOff =
 			monitoringChanged && data.uniqueVisitors && !values.uniqueVisitors && !isLocked("uniqueVisitors");
-		if (ipsOff || visitorsOff) {
+		if (trafficOff || ipsOff || visitorsOff) {
 			const key = confirmKey(ipsOff, visitorsOff);
+			const choice = createDeleteChoice();
 			setSubmitting(false);
 			showDeleteConfirmModal({
-				title: <T id={`${key}.confirm`} />,
-				children:
-					ipsOff && visitorsOff ? (
-						<>
-							<T id="settings.monitoring.both-off.confirm.body" />
-							<ul className="mt-2 mb-0 text-start">
-								<li>
-									<T id="settings.monitoring.show-ips.confirm.item" />
-								</li>
-								<li>
-									<T id="settings.monitoring.unique-visitors.confirm.item" />
-								</li>
-							</ul>
-						</>
-					) : (
-						<T id={`${key}.confirm.body`} />
-					),
-				confirmLabel: <T id="settings.monitoring.show-ips.confirm.button" />,
+				title: <T id={trafficOff ? "settings.monitoring.traffic.confirm" : `${key}.confirm`} />,
+				children: trafficOff ? (
+					<TrafficOffConfirm
+						days={data.retentionDays}
+						ipsOff={ipsOff}
+						visitorsOff={visitorsOff}
+						choice={choice}
+					/>
+				) : (
+					<DataOffConfirm ipsOff={ipsOff} visitorsOff={visitorsOff} confirmKey={key} />
+				),
+				confirmLabel: trafficOff ? (
+					<TrafficOffLabel choice={choice} deletesOther={ipsOff || visitorsOff} />
+				) : (
+					<T id="settings.monitoring.show-ips.confirm.button" />
+				),
 				// a failure shows in the modal and, like a direct save, inline and on the field
 				onConfirm: async () => {
 					try {
-						await run();
+						await run(choice.get());
 					} catch (err) {
 						report(err);
 						throw err;

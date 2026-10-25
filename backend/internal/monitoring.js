@@ -183,6 +183,12 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 	};
 
 	return {
+		/** Drops the cached traffic results and dashboard numbers (the stored statistics were deleted). */
+		clearCaches: () => {
+			trafficCache.clear();
+			summaryCache.clear();
+		},
+
 		/**
 		 * @param   {Access}  access
 		 * @param   {{range: string, host?: string, host_id?: number, host_type?: string}}  query  host_id with

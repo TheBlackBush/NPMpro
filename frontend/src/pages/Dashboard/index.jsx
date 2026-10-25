@@ -52,9 +52,12 @@ const Dashboard = () => {
 		<div>
 			<PageHeader title={<T id="dashboard" />} />
 			<div className="row row-deck row-cards">
-				<HasPermission section={ADMIN} permission={VIEW} hideError>
-					<MonitoringRow />
-				</HasPermission>
+				{/* only while monitoring has anything to show, so the summary is not fetched otherwise */}
+				{user?.monitoring ? (
+					<HasPermission section={ADMIN} permission={VIEW} hideError>
+						<MonitoringRow />
+					</HasPermission>
+				) : null}
 				<HasPermission section={PROXY_HOSTS} permission={VIEW} hideError>
 					<DashboardTile to="/nginx/proxy" icon={IconBolt} color="green">
 						<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />

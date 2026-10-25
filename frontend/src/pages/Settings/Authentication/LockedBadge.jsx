@@ -8,8 +8,6 @@ const REASON_BADGES = {
 	goaccess: "settings.runtime.locked.required-by",
 	// GoAccess turned on by the GoAccess report setting, not by an env var: the text names the setting
 	"goaccess-setting": "settings.runtime.locked.required-by-goaccess-setting",
-	// traffic statistics kept on by LOGROTATE (Environment page)
-	"write-log-files": "settings.runtime.locked.on-because",
 };
 
 const badgeIdOf = (env, reason) => {

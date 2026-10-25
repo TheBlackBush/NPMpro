@@ -133,16 +133,15 @@ const lockedRuntimeOf = (runtimeLocked) =>
 		.map(({ entry }) => entry);
 
 /**
- * The OIDC, monitoring and GeoIP settings an env var locks, in the form of the runtime ones
+ * The OIDC, monitoring and GeoIP settings an env var locks, in the form of the runtime ones (each by its own variable)
  *
- * @param   {Object}  env  process.env or a test object
  * @param   {Object}  locked
  * @param   {string[]}  [locked.oidc]        mergeOidcConfig().locked
  * @param   {string[]}  [locked.monitoring]  mergeMonitoringConfig().locked
  * @param   {string[]}  [locked.geoip]       mergeGeoipConfig().locked
  * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
-const settingLocksOf = (env, { oidc = [], monitoring = [], geoip = [] } = {}) => {
+const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
 	const entries = [];
 	const add = (group, keys, names) => {
 		for (const key of keys) {
@@ -150,21 +149,7 @@ const settingLocksOf = (env, { oidc = [], monitoring = [], geoip = [] } = {}) =>
 		}
 	};
 	add("oidc", oidc, OIDC_ENV_KEYS);
-	for (const key of monitoring) {
-		if (key === "traffic_enabled" && env.LOGROTATE === "true") {
-			// LOGROTATE=true turns traffic statistics on (mergeMonitoringConfig); without LOGROTATE from the user,
-			// envs.sh set it for GOA=true, which is an env lock only when the user set GOA (else the GoAccess report
-			// setting keeps it on: not listed)
-			const userSet = userSetNames(env, ["LOGROTATE", "GOA"]);
-			if (userSet.has("LOGROTATE") || env.GOA !== "true") {
-				entries.push({ group: "monitoring", key, env: "LOGROTATE", reason: "write-log-files" });
-			} else if (userSet.has("GOA")) {
-				entries.push({ group: "monitoring", key, env: "GOA", reason: "write-log-files" });
-			}
-		} else {
-			add("monitoring", [key], MONITORING_ENV_KEYS);
-		}
-	}
+	add("monitoring", monitoring, MONITORING_ENV_KEYS);
 	add("geoip", geoip, GEOIP_ENV_KEYS);
 	return entries;
 };

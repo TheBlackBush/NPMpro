@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { createCounter } from "./counter.js";
@@ -140,7 +141,8 @@ const createStateMeta = ({ read, write }) => ({
  * rolls up and prunes hourly. Failures never throw out of the timers: they are logged and exposed by status().
  *
  * @param   {Object}    deps
- * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, visitorDayHashes }
+ * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, deleteAll,
+ *                                        visitorDayHashes }
  *                                        (lib/traffic/store.js)
  * @param   {Object}    deps.geo          { lookup(ip), available() } (lib/geoip/lookup.js)
  * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips,
@@ -153,6 +155,7 @@ const createStateMeta = ({ read, write }) => ({
  *                                             called once in start();
  *                                             without it (or when it fails) unique visitors are not counted
  * @param   {Function}  [deps.createReader]  (state) => { read() }
+ * @param   {Function}  [deps.statLog]   () => Promise<{ino, size}>  the access log (rejects with ENOENT when missing)
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
  * @param   {number}    [deps.maxPerKey]
@@ -170,6 +173,7 @@ const createTrafficService = ({
 	loadHosts,
 	loadVisitorKey = null,
 	createReader = (state) => createLogReader({ path: ACCESS_LOG, state, maxChunk: READ_MAX_CHUNK }),
+	statLog = () => stat(ACCESS_LOG),
 	now = Date.now,
 	timers = defaultTimers,
 	maxPerKey = 1000,
@@ -424,6 +428,34 @@ const createTrafficService = ({
 		}
 	};
 
+	/**
+	 * Moves the reader to the current end of the access log and saves that position (runs inside the queue): the
+	 * lines nginx wrote while statistics were off (Write log files keeps the log on) are not counted. A missing log
+	 * starts from its beginning once it exists; another stat error keeps the old position.
+	 */
+	const moveToLogEnd = async () => {
+		if (readInFlight) await readInFlight;
+		let state = null;
+		try {
+			const st = await statLog();
+			state = { inode: Number(st.ino), offset: Number(st.size) };
+		} catch (err) {
+			if (err?.code !== "ENOENT") {
+				logError("could not find the end of the access log")(err);
+				return;
+			}
+		}
+		reader = null;
+		lastState = state;
+		if (!state) return;
+		try {
+			await saveState(state);
+			savedState = state;
+		} catch (err) {
+			log.error(`Traffic statistics: could not save the reader position: ${err.message}`);
+		}
+	};
+
 	const flush = () =>
 		queue(async () => {
 			await flushNow();
@@ -515,7 +547,10 @@ const createTrafficService = ({
 			if (!started) return;
 			if (enabled) {
 				retryAt = 0;
-				await queue(refreshHosts);
+				await queue(async () => {
+					await moveToLogEnd();
+					await refreshHosts();
+				});
 				startReading();
 			} else {
 				stopReading();
@@ -551,6 +586,28 @@ const createTrafficService = ({
 			for (const p of pending) p.data.visitors = [];
 			await queue(() => store.deleteVisitors());
 		},
+
+		/**
+		 * Deletes every stored statistic (traffic statistics are being switched off, setEnabled(false) ran first).
+		 * Inside the queue, after a flush or roll-up that was still running: empties the tables, then drops what is
+		 * counted in memory, the pending batches and the recent requests. A failed delete rejects (the caller saves
+		 * nothing) and keeps the memory as it was. The visitor key is kept. The
+		 * reader position needs no reset here: switching statistics on moves it to the end of the access log, so
+		 * neither these lines nor the ones written while statistics were off are counted again.
+		 */
+		deleteStats: () =>
+			queue(async () => {
+				// lines of a read that was still running when the switch went off
+				if (readInFlight) await readInFlight;
+				// a failed delete keeps the unsaved counts (the setting stays on)
+				await store.deleteAll();
+				counter.reset();
+				pending = [];
+				recent.clear();
+				skipped = 0;
+				droppedRequests = 0;
+				flushError = null;
+			}),
 
 		/** Counts visitors again from the next line: the user switched them on and the setting is saved. */
 		uniqueVisitorsOn: () => {
@@ -606,11 +663,16 @@ const createTrafficService = ({
  *                                           then runs after() (starts or stops the reader) and switches the include
  *                                           back when after() throws
  * @param   {Object}    deps.traffic         createTrafficService() instance
- * @returns {{onTrafficEnabledChange: Function, onShowIpsOff: Function, onShowIpsOn: Function,
- *            onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function}}
+ * @param   {Function}  [deps.clearCaches]   drops the cached API results after the statistics were deleted
+ * @returns {{onTrafficEnabledChange: Function, onDeleteStats: Function, onShowIpsOff: Function,
+ *            onShowIpsOn: Function, onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function}}
  */
-const createTrafficHooks = ({ applyAccessLog, traffic }) => ({
+const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} }) => ({
 	onTrafficEnabledChange: (enabled) => applyAccessLog(enabled, () => traffic.setEnabled(enabled)),
+	onDeleteStats: async () => {
+		await traffic.deleteStats();
+		clearCaches();
+	},
 	onShowIpsOff: () => traffic.showIpsOff(),
 	onShowIpsOn: () => traffic.showIpsOn(),
 	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),

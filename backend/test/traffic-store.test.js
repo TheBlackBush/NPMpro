@@ -249,3 +249,32 @@ it("visitorDayHashes gives the stored hashes and the marker per day and host for
 	);
 	await knex.destroy();
 });
+
+it("deleteAll empties every traffic table", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({
+		minutes: [m(MIN, "2xx", 2), m(MIN - 25 * 60, "2xx", 1)],
+		countries: [{ bucket: hour, host: "a", country: "DE", requests: 1 }],
+		asns: [{ bucket: hour, host: "a", asn: 64500, asn_name: "Net", requests: 1 }],
+		ips: [{ bucket: hour, host: "a", ip: "1.2.3.4", requests: 1 }],
+		visitors: [{ day: Math.floor(NOW / 86400000), host: "a", hash: "abc" }],
+	});
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	const tables = [
+		"traffic_minute",
+		"traffic_hour",
+		"traffic_country_hour",
+		"traffic_asn_hour",
+		"traffic_ip_hour",
+		"traffic_visitor",
+	];
+	for (const table of tables) assert.ok((await knex(table)).length > 0, table);
+	await store.deleteAll();
+	for (const table of tables) assert.equal((await knex(table)).length, 0, table);
+	assert.equal((await store.queryTraffic({ range: "30d", now: NOW })).totals.requests, 0);
+	// later counts start from zero
+	await store.flush({ minutes: [m(MIN, "2xx", 3)] });
+	assert.equal((await store.queryTraffic({ range: "1h", now: NOW })).totals.requests, 3);
+	await knex.destroy();
+});

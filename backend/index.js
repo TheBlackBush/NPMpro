@@ -6,6 +6,7 @@ import app from "./app.js";
 import internalCertificate from "./internal/certificate.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
+	internalMonitoring,
 	runGeoipUpdate,
 	startMonitoringServices,
 	stopMonitoringServices,
@@ -74,7 +75,11 @@ async function appStart() {
 		setMonitoringHooks({
 			runGeoipUpdate,
 			onGeoipCredentialsChange: runGeoipUpdate,
-			...createTrafficHooks({ applyAccessLog: accessLog.onTrafficEnabledChange, traffic }),
+			...createTrafficHooks({
+				applyAccessLog: accessLog.onTrafficEnabledChange,
+				traffic,
+				clearCaches: internalMonitoring.clearCaches,
+			}),
 		});
 		await geoip.reload();
 		await internalNginx.reload();

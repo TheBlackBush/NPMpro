@@ -88,6 +88,8 @@ const menuGroups = [
 			label: "monitoring",
 			permissionSection: ADMIN,
 			permission: VIEW,
+			// hidden while traffic statistics are off and CrowdSec is not configured
+			monitoring: true,
 		},
 	],
 	[
@@ -202,6 +204,9 @@ export function SiteMenu() {
 												group.filter((item) => {
 													if (item.goaccess) {
 														return user?.goaccess;
+													}
+													if (item.monitoring && !user?.monitoring) {
+														return false;
 													}
 													return hasPermission(
 														item.permissionSection,

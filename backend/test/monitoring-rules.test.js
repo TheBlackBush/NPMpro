@@ -10,9 +10,13 @@ it("monitoring defaults and env locks", () => {
 		unique_visitors: false,
 		visitors_cap: 100000,
 	});
-	const a = mergeMonitoringConfig({ traffic_enabled: false }, { LOGROTATE: "true" });
-	assert.equal(a.values.traffic_enabled, true);
-	assert.deepEqual(a.locked, ["traffic_enabled"]);
+	// Write log files (LOGROTATE, also set by GOA) neither turns on nor locks traffic statistics
+	for (const env of [{ LOGROTATE: "true" }, { LOGROTATE: "true", GOA: "true" }]) {
+		const a = mergeMonitoringConfig({ traffic_enabled: false }, env);
+		assert.equal(a.values.traffic_enabled, false);
+		assert.deepEqual(a.locked, []);
+		assert.equal(mergeMonitoringConfig({ traffic_enabled: true }, env).values.traffic_enabled, true);
+	}
 	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "400" }).values.retention_days, 365);
 	assert.equal(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "3" }).values.retention_days, 7);
 	assert.deepEqual(mergeMonitoringConfig({}, { TRAFFIC_RETENTION_DAYS: "x", TRAFFIC_SHOW_IPS: "" }).locked, []);
@@ -26,11 +30,9 @@ it("monitoring env switches lock on and off", () => {
 	const off = mergeMonitoringConfig({ traffic_enabled: true }, { TRAFFIC_STATS: "false" });
 	assert.equal(off.values.traffic_enabled, false);
 	assert.deepEqual(off.locked, ["traffic_enabled"]);
-	assert.equal(
-		mergeMonitoringConfig({ traffic_enabled: true }, { TRAFFIC_STATS: "false", LOGROTATE: "true" }).values
-			.traffic_enabled,
-		true,
-	);
+	const offWithLogs = mergeMonitoringConfig({ traffic_enabled: true }, { TRAFFIC_STATS: "false", LOGROTATE: "true" });
+	assert.equal(offWithLogs.values.traffic_enabled, false);
+	assert.deepEqual(offWithLogs.locked, ["traffic_enabled"]);
 	assert.equal(mergeMonitoringConfig({ retention_days: 90, show_ips: null }, {}).values.retention_days, 90);
 });
 

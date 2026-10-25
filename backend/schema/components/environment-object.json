@@ -125,10 +125,9 @@
 							"ocsp-stapling-off",
 							"must-staple",
 							"goaccess",
-							"write-log-files",
 							null
 						],
-						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it. write-log-files: LOGROTATE (or GOA through it) keeps traffic statistics on"
+						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it"
 					}
 				}
 			}

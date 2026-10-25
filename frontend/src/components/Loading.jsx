@@ -27,7 +27,11 @@ export function Loading({ label, noLogo, delay = 0 }) {
 				<BrandMark size={100} />
 			</div>
 			<div className="text-secondary mb-3">{label || <T id="loading" />}</div>
-			<div className="progress progress-sm" role="progressbar" aria-label={intl.formatMessage({ id: "loading" })}>
+			<div
+				className="progress progress-sm progress-brand"
+				role="progressbar"
+				aria-label={intl.formatMessage({ id: "loading" })}
+			>
 				<div className="progress-bar progress-bar-indeterminate" />
 			</div>
 		</div>

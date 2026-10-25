@@ -66,6 +66,7 @@ const useSaveMonitoringSettings = () => {
 				queryClient.invalidateQueries({ queryKey: ["monitoring-traffic"] }),
 				queryClient.invalidateQueries({ queryKey: ["monitoring-summary"] }),
 				queryClient.invalidateQueries({ queryKey: ["audit-logs"] }),
+				queryClient.invalidateQueries({ queryKey: ["user", "me"] }),
 			]),
 	});
 };
@@ -99,6 +100,8 @@ const useSaveLogsAndMonitoring = () => {
 				["monitoring-settings"],
 				["monitoring-traffic"],
 				["monitoring-summary"],
+				// user.monitoring: whether the menu shows Monitoring
+				["user", "me"],
 			];
 			return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 		},

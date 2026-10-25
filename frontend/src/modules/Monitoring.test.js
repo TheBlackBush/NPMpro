@@ -460,3 +460,24 @@ it("statusColor follows the chart colours per status class", () => {
 	assert.equal(statusColor(101), "secondary");
 	assert.equal(statusColor(0), "secondary");
 });
+
+it("sends deleteStats only as true together with trafficEnabled false", () => {
+	const off = { trafficEnabled: false, showIps: false, locked: [] };
+	assert.deepEqual(monitoringSettingsPayload({ ...off, deleteStats: true }), {
+		trafficEnabled: false,
+		showIps: false,
+		deleteStats: true,
+	});
+	assert.deepEqual(monitoringSettingsPayload({ ...off, deleteStats: false }), {
+		trafficEnabled: false,
+		showIps: false,
+	});
+	assert.deepEqual(monitoringSettingsPayload({ ...off, trafficEnabled: true, deleteStats: true }), {
+		trafficEnabled: true,
+		showIps: false,
+	});
+	// locked by TRAFFIC_STATS: trafficEnabled is not sent, so neither is deleteStats
+	assert.deepEqual(monitoringSettingsPayload({ ...off, deleteStats: true, locked: ["traffic_enabled"] }), {
+		showIps: false,
+	});
+});

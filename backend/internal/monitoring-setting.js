@@ -17,6 +17,7 @@ const noop = async () => {};
 // Filled in by the traffic reader (access log switch) and the GeoIP updater
 const hooks = {
 	onTrafficEnabledChange: noop,
+	onDeleteStats: () => Promise.reject(new Error("traffic statistics are not available")),
 	onShowIpsOff: noop,
 	onShowIpsOn: noop,
 	onUniqueVisitorsOff: noop,
@@ -30,6 +31,8 @@ const hooks = {
  *
  * onTrafficEnabledChange(enabled) runs before the new value is saved: when it throws, nothing is saved;
  * when the save fails afterwards, it runs again with the previous value.
+ * onDeleteStats() deletes all stored statistics: it runs before the save, after onTrafficEnabledChange(false), only
+ * when the body has delete_stats: true (a throw saves nothing).
  * onShowIpsOff() runs after the saved IPs were deleted. onShowIpsOn() runs after show_ips was saved as on. onGeoipCredentialsChange() runs after saving.
  * onUniqueVisitorsOff() runs before the save when unique_visitors goes off (a throw saves nothing). onUniqueVisitorsOn() runs after unique_visitors was saved as on.
  * runGeoipUpdate() returns { ok, updated, error }.
@@ -103,7 +106,7 @@ const internalMonitoringSetting = {
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "setting",
-			meta: { id: "monitoring", ...next },
+			meta: { id: "monitoring", ...next, ...(body?.delete_stats === true ? { deleted_stats: true } : {}) },
 		});
 		return internalMonitoringSetting.getMonitoring(access);
 	},

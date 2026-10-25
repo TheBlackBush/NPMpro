@@ -326,3 +326,122 @@ it("saves visitors_cap unless the env locks it", async () => {
 	});
 	assert.deepEqual(locked.get(), { visitors_cap: 2000 });
 });
+
+const deleteStatsSetup = ({ initial = { traffic_enabled: true }, env = {}, deleteFails = false } = {}) => {
+	const store = fakeStore(initial);
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: () => {
+			events.push("ips-deleted");
+			return Promise.resolve();
+		},
+		env,
+		hooks: {
+			onTrafficEnabledChange: (enabled) => {
+				events.push(`traffic-${enabled}`);
+				return Promise.resolve();
+			},
+			onDeleteStats: () => {
+				events.push("stats");
+				return deleteFails ? Promise.reject(new Error("db locked")) : Promise.resolve();
+			},
+			onShowIpsOff: ok,
+			onUniqueVisitorsOff: () => {
+				events.push("visitors");
+				return Promise.resolve();
+			},
+		},
+	});
+	return { store, events, update };
+};
+
+it("deletes the statistics after stopping the reader and before the save", async () => {
+	const t = deleteStatsSetup();
+	const saved = await t.update({ traffic_enabled: false, delete_stats: true });
+	assert.deepEqual(t.events, ["traffic-false", "stats", "save"]);
+	// delete_stats is an action, never stored
+	assert.deepEqual(saved, { traffic_enabled: false });
+	assert.deepEqual(t.store.get(), { traffic_enabled: false });
+});
+
+it("combines the statistics delete with the IP and visitor off hooks in one update", async () => {
+	const t = deleteStatsSetup({ initial: { traffic_enabled: true, show_ips: true, unique_visitors: true } });
+	await t.update({ traffic_enabled: false, show_ips: false, unique_visitors: false, delete_stats: true });
+	assert.deepEqual(t.events, ["traffic-false", "ips-deleted", "visitors", "stats", "save"]);
+});
+
+it("deletes no statistics when an earlier step fails", async () => {
+	const store = fakeStore({ traffic_enabled: true, show_ips: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: () => Promise.reject(new Error("db locked")),
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: (enabled) => {
+				events.push(`traffic-${enabled}`);
+				return Promise.resolve();
+			},
+			onDeleteStats: () => {
+				events.push("stats");
+				return Promise.resolve();
+			},
+			onShowIpsOff: ok,
+		},
+	});
+	await assert.rejects(update({ traffic_enabled: false, show_ips: false, delete_stats: true }), {
+		message: "Could not delete the stored IP addresses, the setting was not changed: db locked",
+	});
+	assert.deepEqual(events, ["traffic-false", "traffic-true"]);
+	assert.deepEqual(store.get(), { traffic_enabled: true, show_ips: true });
+});
+
+it("saves nothing and switches the access log back when the statistics delete fails", async () => {
+	const t = deleteStatsSetup({ deleteFails: true });
+	await assert.rejects(t.update({ traffic_enabled: false, delete_stats: true }), {
+		name: "ValidationError",
+		message: "Could not delete the stored statistics, the setting was not changed: db locked",
+	});
+	assert.deepEqual(t.events, ["traffic-false", "stats", "traffic-true"]);
+	assert.deepEqual(t.store.get(), { traffic_enabled: true });
+});
+
+it("refuses delete_stats unless traffic_enabled goes from true to false", async () => {
+	const cases = [
+		[{ traffic_enabled: true }, { delete_stats: true }],
+		[{ traffic_enabled: true }, { traffic_enabled: true, delete_stats: true }],
+		[{ traffic_enabled: false }, { traffic_enabled: false, delete_stats: true }],
+		[{ traffic_enabled: false }, { traffic_enabled: true, delete_stats: true }],
+		[{}, { retention_days: 60, delete_stats: true }],
+	];
+	for (const [initial, body] of cases) {
+		const t = deleteStatsSetup({ initial });
+		await assert.rejects(t.update(body), {
+			name: "ValidationError",
+			message: "delete_stats can only be sent together with traffic_enabled switching from true to false",
+		});
+		assert.deepEqual(t.events, [], JSON.stringify(body));
+		assert.deepEqual(t.store.get(), initial);
+	}
+});
+
+it("refuses delete_stats while TRAFFIC_STATS locks traffic_enabled", async () => {
+	const t = deleteStatsSetup({ env: { TRAFFIC_STATS: "true" } });
+	await assert.rejects(t.update({ traffic_enabled: false, delete_stats: true }), {
+		name: "ValidationError",
+		message: "delete_stats cannot be used while an environment variable sets traffic_enabled",
+	});
+	assert.deepEqual(t.events, []);
+});
+
+it("ignores delete_stats: false", async () => {
+	const t = deleteStatsSetup();
+	await t.update({ retention_days: 60, delete_stats: false });
+	assert.deepEqual(t.events, ["save"]);
+	assert.deepEqual(t.store.get(), { traffic_enabled: true, retention_days: 60 });
+});

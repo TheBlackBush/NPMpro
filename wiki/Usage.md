@@ -47,7 +47,8 @@ The full table of fields, variables and when they apply is in the README: [Setti
 
 The Monitoring page (administrators) has a Traffic tab and a CrowdSec tab:
 
-- **Traffic** needs Traffic statistics turned on in Settings, Logs & monitoring. NPMpro then counts requests, bytes and status classes per host from the access log, plus countries and networks when GeoIP databases exist. Visitor IPs and unique visitors are separate opt-in settings.
+- **Traffic** needs Traffic statistics turned on in Settings, Logs & monitoring (or `TRAFFIC_STATS=true`; Write log files and GoAccess do not turn it on). NPMpro then counts requests, bytes and status classes per host from the access log, plus countries and networks when GeoIP databases exist. Visitor IPs and unique visitors are separate opt-in settings. Switching it off stops counting and keeps the stored statistics until they age out; tick "Also delete the stored statistics" in the dialog on saving to delete them at once.
+- While traffic statistics are off and the CrowdSec bouncer is not configured, the Monitoring menu entry and the dashboard row are hidden, and `/monitoring` shows "Monitoring is off" with a link to the settings.
 - **CrowdSec** shows the active bans once the CrowdSec bouncer is configured.
 - **GeoIP:** enter a free MaxMind account ID and license key in Settings, GeoIP; NPMpro downloads the GeoLite2 databases itself and updates them every 3 days.
 

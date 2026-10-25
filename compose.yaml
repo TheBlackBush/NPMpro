@@ -139,9 +139,9 @@ services:
 #      - "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES=false" # use your images from /opt/npmpro/anubis (happy.webp, reject.webp, pensive.webp), default true when all three files exist and are not empty
 
       # Logs & monitoring
-#      - "LOGROTATE=true" # Write log files: access log (/opt/npmpro/nginx/logs/access.log), stream log and error log (level warn) on disk, rotated daily; also turns on and locks traffic statistics, default false (GOA turns it on too)
+#      - "LOGROTATE=true" # Write log files: access log (/opt/npmpro/nginx/logs/access.log), stream log and error log (level warn) on disk, rotated daily, default false (GOA turns it on too); it does not turn on traffic statistics (TRAFFIC_STATS does)
 #      - "LOGROTATIONS=7" # rotated log files kept, 1 to 1000, default 3
-#      - "GOA=true" # GoAccess report under /goaccess of the web UI (admins only), applies at the next start, default false; it turns on LOGROTATE (Write log files), which also turns on and locks traffic statistics; GeoIP in the report uses the databases in /opt/npmpro/goaccess/geoip (Settings, GeoIP)
+#      - "GOA=true" # GoAccess report under /goaccess of the web UI (admins only), applies at the next start, default false; it turns on LOGROTATE (Write log files), not traffic statistics; GeoIP in the report uses the databases in /opt/npmpro/goaccess/geoip (Settings, GeoIP)
 #      - "GOACLA=--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=2 --keep-last=7 --with-output-resolver --no-query-string" # your own GoAccess options instead of the GoAccess fields in the UI (they are then locked), applies at the next start, default built from those fields: --agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string
 #      - "TRAFFIC_STATS=true" # traffic statistics (Monitoring page), also writes the access log, default false
 #      - "TRAFFIC_RETENTION_DAYS=30" # days the hourly statistics are kept, 7 to 365, default 30 (per-minute counts are kept for 24 hours)

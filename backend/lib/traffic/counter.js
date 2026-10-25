@@ -144,6 +144,19 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 			dayVisitors.clear();
 		},
 
+		/** Drops everything counted and every admission set: the stored statistics were deleted. */
+		reset() {
+			minutes = new Map();
+			countries = new Map();
+			asns = new Map();
+			ips = new Map();
+			visitors = [];
+			seenAsns.clear();
+			seenIps.clear();
+			dayVisitors.clear();
+			skipped = 0;
+		},
+
 		/**
 		 * Starts from the stored hashes after a restart, so the cap holds for the whole day and a returning visitor
 		 * is not counted against it twice (the sets hold the same hashes as without a restart). A pair is full only
