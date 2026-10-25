@@ -284,7 +284,8 @@ RUN apk upgrade --no-cache -a && \
     ln -s /app/password-reset.js /usr/local/bin/password-reset.js && \
     ln -s /app/index.js /usr/local/bin/index.js && \
     \
-    chmod +x /usr/local/bin/*
+    chmod +x /usr/local/bin/* && \
+    find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 
 COPY --from=frontend /app/dist /app/frontend
 

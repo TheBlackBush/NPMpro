@@ -121,9 +121,10 @@ it("renders from an already rendered file the same way", () => {
 // start.sh's certbot block (copy to /run/npmpro and seds), run with sh in a temp folder
 const startShCertbot = async () => {
 	const lines = (await readFile(path.join(ROOT, "rootfs/usr/local/bin/start.sh"), "utf8")).split("\n");
-	const cleanup = lines.findIndex((line) => line.includes("required_profile/d"));
-	const end = lines.findIndex((line, index) => index > cleanup && line === "fi");
-	return lines.slice(1, end + 1).join("\n");
+	const start = lines.indexOf("cp /etc/certbot.ini /run/npmpro/certbot.ini");
+	const profile = lines.findIndex((line) => line.includes("required-profile = $ACME_PROFILE"));
+	const end = lines.findIndex((line, index) => index > profile && line === "fi");
+	return lines.slice(start, end + 1).join("\n");
 };
 
 const ENVS = [

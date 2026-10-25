@@ -230,15 +230,16 @@ it("reads the startup settings in envs.sh after NPMPRO_USER_ENV and before the T
 	assert.ok(at('export TZ="${TZ:-UTC}"') < at('if [ -z "$TZ" ] || [ ! -s /usr/share/zoneinfo/"$TZ" ]; then'));
 	assert.equal(text.includes(". /data/npmpro/startup-settings.env"), false);
 	const health = readFileSync(new URL("healthcheck.sh", BIN), "utf8");
-	assert.ok(health.includes(". /usr/local/bin/startup-settings.sh"));
-	// the snapshot of the running GOA lives outside the folders start.sh hands to PUID, replaced by a rename
-	assert.ok(health.includes("startup_setting /etc/npmpro/startup-settings.env GOA"));
-	assert.ok(text.includes('mv -f "$startup_snapshot" /etc/npmpro/startup-settings.env'));
+	// Docker runs the healthcheck as root: it reads only the root-owned snapshot, never /data, and never sources a file
+	assert.equal(health.includes("/data/"), false);
+	assert.equal(/^\s*\.\s/mu.test(health), false);
+	assert.ok(health.includes("done < /etc/npmpro/healthcheck.env"));
+	assert.ok(text.includes('mv -f "$healthcheck_snapshot" /etc/npmpro/healthcheck.env'));
 	assert.equal(text.includes("/run/npmpro/startup-settings.env"), false);
+	// root never chowns the image code or the contents of /run and /tmp
 	const start = readFileSync(new URL("start.sh", BIN), "utf8");
-	const chownBlock = start.slice(start.indexOf("find /usr/local"), start.indexOf('chown -h "$PUID:$PGID"'));
-	assert.ok(chownBlock.includes("/run"));
-	assert.equal(chownBlock.includes("/etc"), false);
+	assert.equal(start.includes("find /usr/local "), false);
+	assert.equal(/chown -R "\$PUID/u.test(start), false);
 	// the paths come from the callers, never from the environment
 	const helper = readFileSync(HELPER, "utf8");
 	assert.equal(helper.includes("STARTUP_SETTINGS_FILE"), false);
