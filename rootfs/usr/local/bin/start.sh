@@ -282,6 +282,8 @@ if [ ! -s /data/crowdsec/crowdsec.conf ]; then
     cp -van /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf
 fi
 cp -a /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf.example
+# trailing spaces and Windows line endings would silently keep the bouncer off (and break values like API_KEY)
+sed -i "s/[[:space:]]*$//" /data/crowdsec/crowdsec.conf
 
 if grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
     if [ ! -s /usr/local/nginx/conf/conf.d/crowdsec.conf ]; then
