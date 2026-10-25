@@ -483,7 +483,7 @@ if ($geoip2_country_rule = no) {
 4. you can create multiple rule lists by adding multiple map directive, but you need to use a unique name instead of `$geoip2_country_rule` for each rule list (you need the unique name also in the custom locations)
 
 ## Prerun scripts (EXPERT option) - if you don't know what this is, ignore it
-If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/prerun/*.sh` (please add `#!/usr/bin/env sh` / `#!/usr/bin/env bash` to the top of the script) you need to create this folder yourself, also set `ENABLE_PRERUN=true` in your `compose.yaml` (shown on the Environment page). The scripts run as root on every start, before the variables are checked
+If you need to run scripts before NPMpro launches put them under: `/opt/npmpro/prerun/*.sh` (please add `#!/usr/bin/env sh` / `#!/usr/bin/env bash` to the top of the script) you need to create this folder yourself, also set `ENABLE_PRERUN=true` in your `compose.yaml` (shown on the Environment page). The scripts run as root on every start, before the variables are checked, so they only run when root alone can change them: the folder and every script must be owned by root (`chown -R root:root /opt/npmpro/prerun`), not be links and not be writable by group or others; anything else is skipped with a message in the log
 
 ## Notes on Cloudflare
 - Using cloudflare proxy/tunnel before NPMpro (so between the users and NPMpro `users <=> cloudflare <=> NPMpro`) is strongly discouraged
