@@ -5,6 +5,7 @@ import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { quoteLocation } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
@@ -149,6 +150,7 @@ const internalNginx = {
 			} else {
 				location.forward_upstream_name = `upstream_${host.id}_location_${idx}`;
 			}
+			Object.assign(location, quoteLocation(location));
 			renderedLocations += await renderEngine.parseAndRender(template, location);
 		}
 
