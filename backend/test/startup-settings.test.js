@@ -50,10 +50,10 @@ const parse = (file, dir) => {
 		"sh",
 		[
 			"-c",
-			'. "$HELPER"; startup_settings_warn; printf "TZ=[%s] GOA=[%s]" "$(startup_setting TZ)" "$(startup_setting GOA)"',
+			'. "$HELPER"; startup_settings_warn "$F" "$Z"; printf "TZ=[%s] GOA=[%s]" "$(startup_setting "$F" TZ "$Z")" "$(startup_setting "$F" GOA "$Z")"',
 		],
 		{
-			env: { PATH: process.env.PATH, HELPER, STARTUP_SETTINGS_FILE: file, STARTUP_SETTINGS_ZONEINFO: dir },
+			env: { PATH: process.env.PATH, HELPER, F: file, Z: dir },
 			encoding: "utf8",
 		},
 	);
@@ -219,6 +219,96 @@ it("reads the startup settings in envs.sh after NPMPRO_USER_ENV and before the T
 	assert.equal(text.includes(". /data/npmpro/startup-settings.env"), false);
 	const health = readFileSync(new URL("healthcheck.sh", BIN), "utf8");
 	assert.ok(health.includes(". /usr/local/bin/startup-settings.sh"));
-	assert.ok(health.includes("STARTUP_SETTINGS_FILE=/run/npmpro/startup-settings.env"));
-	assert.ok(text.includes("> /run/npmpro/startup-settings.env"));
+	// the snapshot of the running GOA lives outside the folders start.sh hands to PUID, replaced by a rename
+	assert.ok(health.includes("startup_setting /etc/npmpro/startup-settings.env GOA"));
+	assert.ok(text.includes('mv -f "$startup_snapshot" /etc/npmpro/startup-settings.env'));
+	assert.equal(text.includes("/run/npmpro/startup-settings.env"), false);
+	const start = readFileSync(new URL("start.sh", BIN), "utf8");
+	const chownBlock = start.slice(start.indexOf("find /usr/local"), start.indexOf('chown -h "$PUID:$PGID"'));
+	assert.ok(chownBlock.includes("/run"));
+	assert.equal(chownBlock.includes("/etc"), false);
+	// the paths come from the callers, never from the environment
+	const helper = readFileSync(HELPER, "utf8");
+	assert.equal(helper.includes("STARTUP_SETTINGS_FILE"), false);
+	assert.equal(helper.includes("STARTUP_SETTINGS_ZONEINFO"), false);
+});
+
+it("does not read a startup settings file that is a link, not a regular file or larger than 4096 bytes", async () => {
+	const dir = await zoneinfo();
+	const work = await mkdtemp(path.join(tmpdir(), "startup-guard-"));
+	const real = path.join(work, "real.env");
+	await writeFile(real, "GOA=true\nTZ=UTC\n");
+	assert.equal(parse(real, dir), "TZ=[UTC] GOA=[true]");
+	const link = path.join(work, "link.env");
+	await symlink(real, link);
+	const linked = parse(link, dir);
+	assert.ok(linked.endsWith("TZ=[] GOA=[]"), linked);
+	assert.match(linked, /is not a regular file/u);
+	const big = path.join(work, "big.env");
+	await writeFile(big, `GOA=true\n${"#".repeat(4096)}\n`);
+	const tooBig = parse(big, dir);
+	assert.ok(tooBig.endsWith("TZ=[] GOA=[]"), tooBig);
+	assert.equal((tooBig.match(/larger than 4096 bytes/gu) ?? []).length, 1);
+	const fifo = path.join(work, "fifo.env");
+	assert.equal(spawnSync("mkfifo", [fifo]).status, 0);
+	assert.ok(parse(fifo, dir).endsWith("TZ=[] GOA=[]"));
+	assert.ok(parse(work, dir).endsWith("TZ=[] GOA=[]"));
+});
+
+it("accepts in the shell exactly the zones the backend accepts", async () => {
+	const dir = await zoneinfo();
+	await writeFile(path.join(dir, "NoMagic"), "not a tzif file");
+	await writeFile(path.join(dir, "posixrules"), TZIF);
+	await writeFile(path.join(dir, "Factory"), TZIF);
+	const work = await mkdtemp(path.join(tmpdir(), "startup-zones-"));
+	const file = path.join(work, "startup-settings.env");
+	for (const zone of [
+		"UTC",
+		"Europe/Berlin",
+		"Berlin",
+		"Etc/GMT+1",
+		"posix/UTC",
+		"right/UTC",
+		"posixrules",
+		"Factory",
+		"NoMagic",
+		"Empty",
+		"zone1970.tab",
+		"Europe",
+	]) {
+		await writeFile(file, `TZ=${zone}\n`);
+		const shell = parse(file, dir).endsWith(`TZ=[${zone}] GOA=[]`);
+		assert.equal(shell, isTimeZone(zone, dir), zone);
+	}
+});
+
+it("writes the startup settings file at startup even when nginx -t fails on the log includes and hosts", async () => {
+	const work = await mkdtemp(path.join(tmpdir(), "startup-order-"));
+	const file = path.join(work, "startup-settings.env");
+	await mkdir(path.join(work, "nginx", "logs"), { recursive: true });
+	const paths = {
+		startupSettings: file,
+		errorLogConf: path.join(work, "error-log.conf"),
+		streamLogConf: path.join(work, "stream-log.conf"),
+		accessLogConf: path.join(work, "access-log.conf"),
+		logrotateConf: path.join(work, "logrotate"),
+		nginxDir: path.join(work, "nginx"),
+	};
+	const host = path.join(work, "1.conf");
+	const errors = [];
+	const applier = createRuntimeApplier({
+		nginx: { test: async () => Promise.reject(new Error("nginx -t failed")), reload: async () => {} },
+		paths,
+		env: () => BOOT_ENV,
+		effectiveEnv: () => BOOT_ENV,
+		getConfig: async (group) => ({ values: mergeRuntimeConfig(group, { time_zone: "UTC" }, BOOT_ENV).values }),
+		renderHosts: async () => [{ path: host, content: "server {}\n", nginx: true }],
+		log: { warn: () => {}, error: (line) => errors.push(line), info: () => {} },
+	});
+	const values = { ...mergeRuntimeConfig("logs", {}, BOOT_ENV).values, write_log_files: true, goaccess: true };
+	await assert.rejects(applier.applyGroup("logs", values), /nginx -t failed/u);
+	assert.deepEqual((await readFile(file, "utf8")).split("\n").slice(1), ["GOA=true", "TZ=UTC", ""]);
+	// the nginx files were put back
+	assert.equal(existsSync(host), false);
+	assert.ok(errors.length > 0);
 });

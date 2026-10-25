@@ -62,14 +62,14 @@ export NPMPRO_USER_ENV
 # as set by the user, and before their defaults and checks below. The file is parsed line by line, never sourced.
 # shellcheck source=/dev/null
 . /usr/local/bin/startup-settings.sh
-startup_settings_warn
+startup_settings_warn /data/npmpro/startup-settings.env
 if [ -z "$TZ" ]; then
-    TZ="$(startup_setting TZ)"
+    TZ="$(startup_setting /data/npmpro/startup-settings.env TZ)"
     # without TZ from the env or the UI
     export TZ="${TZ:-UTC}"
 fi
 if [ -z "$GOA" ]; then
-    GOA="$(startup_setting GOA)"
+    GOA="$(startup_setting /data/npmpro/startup-settings.env GOA)"
 fi
 
 
@@ -630,9 +630,16 @@ if ! echo "$GOA" | grep -q "^true$\|^false$"; then
     echo "GOA needs to be true or false."
     sleep inf
 fi
-# the GOA this start runs with, for healthcheck.sh: the startup settings file may change before the next start
-mkdir -p /run/npmpro
-printf 'GOA=%s\n' "$GOA" > /run/npmpro/startup-settings.env
+# the GOA this start runs with, for healthcheck.sh: the startup settings file may change before the next start. In
+# /etc/npmpro, which stays root-owned (start.sh hands /data, /run, /tmp and /usr/local to PUID): a temp file in it,
+# then a rename over whatever is there, so a planted link is replaced, never followed
+mkdir -p /etc/npmpro
+chown 0:0 /etc/npmpro
+chmod 755 /etc/npmpro
+startup_snapshot="$(mktemp /etc/npmpro/.startup-settings.XXXXXX)"
+printf 'GOA=%s\n' "$GOA" > "$startup_snapshot"
+chmod 644 "$startup_snapshot"
+mv -f "$startup_snapshot" /etc/npmpro/startup-settings.env
 
 if echo "$GOACLA" | grep -vq "geoip-database"; then
     if [ -s /data/etc/goaccess/geoip/GeoLite2-City.mmdb ] || [ -s /data/etc/goaccess/geoip/GeoLite2-Country.mmdb ]|| [ -s /data/etc/goaccess/geoip/GeoLite2-ASN.mmdb ]; then

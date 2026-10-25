@@ -418,7 +418,14 @@ const createRuntimeApplier = ({
 		for (const name of RESTART_GROUPS) {
 			valuesByGroup[name] = name === group ? next : (await getConfig(name)).values;
 		}
-		return { path: paths.startupSettings, content: renderStartupSettings(valuesByGroup, env()) };
+		return {
+			path: paths.startupSettings,
+			content: renderStartupSettings(valuesByGroup, env()),
+			// not an nginx file: at startup its own transaction, so a failing nginx -t of the group's other files
+			// (hosts, log includes) does not undo it
+			startupOwn: true,
+			startupFailure: `Could not write ${paths.startupSettings} at startup, the previous startup settings stay`,
+		};
 	};
 
 	const planners = {
