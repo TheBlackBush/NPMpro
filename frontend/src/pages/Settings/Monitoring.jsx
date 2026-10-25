@@ -1,6 +1,6 @@
 import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -164,11 +164,33 @@ function GoAccessFields() {
 }
 
 /**
- * Confirm dialog body for switching traffic statistics off: what stays stored, what the other switches delete, and
- * the unticked "Also delete the stored statistics" checkbox (reported through onDeleteChange)
+ * The "Also delete the stored statistics" choice of one confirm dialog, shared by its checkbox and its button label
+ * (both rendered inside the modal) and read by onConfirm
  */
-function TrafficOffConfirm({ days, ipsOff, visitorsOff, onDeleteChange }) {
-	const [checked, setChecked] = useState(false);
+const createDeleteChoice = () => {
+	let value = false;
+	const listeners = new Set();
+	return {
+		get: () => value,
+		set: (next) => {
+			value = next;
+			for (const listener of listeners) listener();
+		},
+		subscribe: (listener) => {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+	};
+};
+
+const useDeleteChoice = (choice) => useSyncExternalStore(choice.subscribe, choice.get);
+
+/**
+ * Confirm dialog body for switching traffic statistics off: what stays stored, what the other switches delete, and
+ * the unticked "Also delete the stored statistics" checkbox
+ */
+function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
+	const checked = useDeleteChoice(choice);
 	return (
 		<>
 			<T id="settings.monitoring.traffic.confirm.body" data={{ days }} />
@@ -196,16 +218,23 @@ function TrafficOffConfirm({ days, ipsOff, visitorsOff, onDeleteChange }) {
 					className="form-check-input"
 					type="checkbox"
 					checked={checked}
-					onChange={(e) => {
-						setChecked(e.target.checked);
-						onDeleteChange(e.target.checked);
-					}}
+					onChange={(e) => choice.set(e.target.checked)}
 				/>
 				<span className="form-check-label">
 					<T id="settings.monitoring.traffic.confirm.delete" />
 				</span>
 			</label>
 		</>
+	);
+}
+
+// "Turn off and delete" when anything is deleted, "Turn off" when traffic statistics only go off and are kept
+function TrafficOffLabel({ choice, deletesOther }) {
+	const deleting = useDeleteChoice(choice) || deletesOther;
+	return (
+		<T
+			id={deleting ? "settings.monitoring.show-ips.confirm.button" : "settings.monitoring.traffic.confirm.button"}
+		/>
 	);
 }
 
@@ -450,7 +479,7 @@ export default function Monitoring() {
 			monitoringChanged && data.uniqueVisitors && !values.uniqueVisitors && !isLocked("uniqueVisitors");
 		if (trafficOff || ipsOff || visitorsOff) {
 			const key = confirmKey(ipsOff, visitorsOff);
-			const choice = { deleteStats: false };
+			const choice = createDeleteChoice();
 			setSubmitting(false);
 			showDeleteConfirmModal({
 				title: <T id={trafficOff ? "settings.monitoring.traffic.confirm" : `${key}.confirm`} />,
@@ -459,26 +488,20 @@ export default function Monitoring() {
 						days={data.retentionDays}
 						ipsOff={ipsOff}
 						visitorsOff={visitorsOff}
-						onDeleteChange={(next) => {
-							choice.deleteStats = next;
-						}}
+						choice={choice}
 					/>
 				) : (
 					<DataOffConfirm ipsOff={ipsOff} visitorsOff={visitorsOff} confirmKey={key} />
 				),
-				confirmLabel: (
-					<T
-						id={
-							trafficOff && !(ipsOff || visitorsOff)
-								? "settings.monitoring.traffic.confirm.button"
-								: "settings.monitoring.show-ips.confirm.button"
-						}
-					/>
+				confirmLabel: trafficOff ? (
+					<TrafficOffLabel choice={choice} deletesOther={ipsOff || visitorsOff} />
+				) : (
+					<T id="settings.monitoring.show-ips.confirm.button" />
 				),
 				// a failure shows in the modal and, like a direct save, inline and on the field
 				onConfirm: async () => {
 					try {
-						await run(choice.deleteStats);
+						await run(choice.get());
 					} catch (err) {
 						report(err);
 						throw err;
