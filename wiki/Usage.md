@@ -8,7 +8,7 @@ You can turn on two-factor authentication (TOTP, with one-time backup codes) for
 
 ## Hosts
 
-- **Proxy hosts** forward a domain to a service (`http`, `https`, `grpc`, `grpcs`, or `path` to serve files or PHP from a folder). The Details tab holds the per-host switches under Options, such as forward authentication (Auth Request, see [Forward authentication](Forward-Authentication)), Disable Crowdsec Appsec (see [CrowdSec](CrowdSec#appsec-and-your-hosts)) and the buffering switches; the Advanced tab holds custom nginx config. Custom locations forward sub paths elsewhere.
+- **Proxy hosts** forward a domain to a service (`http`, `https`, `grpc`, `grpcs`, or `path` to serve files or PHP from a folder). The Details tab holds the per-host switches under Options, such as forward authentication (Auth Request, see [Forward authentication](Forward-Authentication)), Disable Crowdsec Appsec (see [CrowdSec](CrowdSec#appsec-and-your-hosts)) and the buffering switches; the Advanced tab holds custom nginx config (only administrators can set or change it, other users see it read-only). Custom locations forward sub paths elsewhere. With `path`, users who are not administrators can only serve files from inside `/var/www`.
 - **Redirection hosts** send visitors of a domain to another address with the HTTP code you choose.
 - **404 hosts** answer a domain with a 404 page.
 - **Streams** forward TCP or UDP ports (for example a game server or SSH), optionally with TLS from an NPMpro certificate.
