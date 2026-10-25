@@ -7,8 +7,15 @@ import { showDeleteConfirmModal } from "src/modals";
 import { GROUP_KEYS, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
-import { RuntimeNumber, RuntimeSwitch } from "./Runtime/fields";
-import { Part, RuntimeContext, reportSaveError, runtimeContextOf, useSaveError } from "./Runtime/RuntimeSection";
+import { RuntimeNumber, RuntimeSelect, RuntimeSwitch } from "./Runtime/fields";
+import {
+	Part,
+	RuntimeContext,
+	reportSaveError,
+	runtimeContextOf,
+	useRuntimeSection,
+	useSaveError,
+} from "./Runtime/RuntimeSection";
 import { StatusAlert } from "./StatusAlert";
 
 const RETENTION_MIN = 7;
@@ -17,6 +24,8 @@ const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visit
 const CAP_MIN = 1000;
 const CAP_MAX = 1_000_000;
 const ROTATIONS = { min: 1, max: 1000 };
+const KEEP_DAYS = { min: 1, max: 366 };
+const ANONYMIZE_LEVELS = ["off", "1", "2", "3"];
 const MONITORING_FIELDS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
 
 function Heading() {
@@ -36,7 +45,8 @@ function SaveButton({ allLocked }) {
 	);
 }
 
-const validate = (values) => {
+// logsLocked: the logs keys locked by env (a GOACLA without --keep-last has no keep days to check)
+const validateWith = (logsLocked) => (values) => {
 	const errors = {};
 	const days = Number(values.retentionDays);
 	if (!Number.isInteger(days) || days < RETENTION_MIN || days > RETENTION_MAX) {
@@ -48,6 +58,16 @@ const validate = (values) => {
 	const rotations = Number(values.logRotations);
 	if (!Number.isInteger(rotations) || rotations < ROTATIONS.min || rotations > ROTATIONS.max) {
 		errors.logRotations = intl.formatMessage({ id: "settings.runtime.number.invalid" }, ROTATIONS);
+	}
+	const keepDays = Number(values.goaccessKeepDays);
+	if (
+		!logsLocked.includes("goaccess_keep_days") &&
+		(values.goaccessKeepDays === "" ||
+			!Number.isInteger(keepDays) ||
+			keepDays < KEEP_DAYS.min ||
+			keepDays > KEEP_DAYS.max)
+	) {
+		errors.goaccessKeepDays = intl.formatMessage({ id: "settings.runtime.number.invalid" }, KEEP_DAYS);
 	}
 	const cap = Number(values.visitorsCap);
 	if (values.uniqueVisitors && (!Number.isInteger(cap) || cap < CAP_MIN || cap > CAP_MAX)) {
@@ -79,8 +99,50 @@ function LogFields() {
 }
 
 // GoAccess is its own tool with its own report, applied after a restart; the link shows while it runs
+// the GoAccess options (GOACLA flags), while the report is switched on or GOA is set by env
+function GoAccessOptions() {
+	const anonymize = ANONYMIZE_LEVELS.map((value) => ({
+		value,
+		label: intl.formatMessage({ id: `settings.logs.goaccess.anonymize.${value}` }),
+	}));
+	return (
+		<>
+			<RuntimeNumber
+				name="goaccessKeepDays"
+				label={<T id="settings.logs.goaccess.keep-days" />}
+				hint={<T id="settings.logs.goaccess.keep-days.hint" data={KEEP_DAYS} />}
+				unit={<T id="settings.monitoring.retention.days" />}
+				{...KEEP_DAYS}
+			/>
+			<RuntimeSelect
+				name="goaccessAnonymize"
+				label={<T id="settings.logs.goaccess.anonymize" />}
+				hint={<T id="settings.logs.goaccess.anonymize.hint" />}
+				options={anonymize}
+			/>
+			<RuntimeSwitch
+				name="goaccessDropQueryStrings"
+				label={<T id="settings.logs.goaccess.drop-query-strings" />}
+				hint={<T id="settings.logs.goaccess.drop-query-strings.hint" />}
+			/>
+			<RuntimeSwitch
+				name="goaccessRealOs"
+				label={<T id="settings.logs.goaccess.real-os" />}
+				hint={<T id="settings.logs.goaccess.real-os.hint" />}
+			/>
+			<RuntimeSwitch
+				name="goaccessResolveHosts"
+				label={<T id="settings.logs.goaccess.resolve-hosts" />}
+				hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
+			/>
+		</>
+	);
+}
+
 function GoAccessFields() {
 	const { data: user } = useUser("me");
+	const { values } = useFormikContext();
+	const { isLocked } = useRuntimeSection();
 	return (
 		<Part titleId="settings.logs.goaccess.title">
 			<RuntimeSwitch
@@ -88,6 +150,7 @@ function GoAccessFields() {
 				label={<T id="settings.logs.goaccess" />}
 				hint={<T id="settings.logs.goaccess.hint" />}
 			/>
+			{values.goaccess || isLocked("goaccess") ? <GoAccessOptions /> : null}
 			{user?.goaccess ? (
 				<a href="/goaccess" target="_blank" rel="noopener noreferrer" className="link-primary">
 					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
@@ -102,6 +165,11 @@ const logsApi = (values) => ({
 	writeLogFiles: values.writeLogFiles,
 	logRotations: Number(values.logRotations),
 	goaccess: values.goaccess,
+	goaccessKeepDays: Number(values.goaccessKeepDays),
+	goaccessAnonymize: values.goaccessAnonymize,
+	goaccessDropQueryStrings: values.goaccessDropQueryStrings,
+	goaccessRealOs: values.goaccessRealOs,
+	goaccessResolveHosts: values.goaccessResolveHosts,
 });
 
 function Fields({ isLocked }) {
@@ -266,6 +334,12 @@ export default function Monitoring() {
 		writeLogFiles: Boolean(logs.writeLogFiles),
 		logRotations: String(logs.logRotations),
 		goaccess: Boolean(logs.goaccess),
+		// null: a GOACLA from the env without --keep-last (locked)
+		goaccessKeepDays: logs.goaccessKeepDays === null ? "" : String(logs.goaccessKeepDays),
+		goaccessAnonymize: logs.goaccessAnonymize,
+		goaccessDropQueryStrings: Boolean(logs.goaccessDropQueryStrings),
+		goaccessRealOs: Boolean(logs.goaccessRealOs),
+		goaccessResolveHosts: Boolean(logs.goaccessResolveHosts),
 	};
 
 	const onSubmit = async (allValues, { setSubmitting, setFieldError }) => {
@@ -346,7 +420,12 @@ export default function Monitoring() {
 	};
 
 	return (
-		<Formik enableReinitialize initialValues={initialValues} validate={validate} onSubmit={onSubmit}>
+		<Formik
+			enableReinitialize
+			initialValues={initialValues}
+			validate={validateWith(logs.locked ?? [])}
+			onSubmit={onSubmit}
+		>
 			<Form className="d-flex flex-column flex-fill" noValidate>
 				<div className="card-body flex-fill">
 					<Heading />

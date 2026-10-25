@@ -22,7 +22,16 @@ const GROUP_KEYS = {
 		"authentikUpstream",
 		"anubisCustomImages",
 	],
-	logs: ["writeLogFiles", "logRotations", "goaccess"],
+	logs: [
+		"writeLogFiles",
+		"logRotations",
+		"goaccess",
+		"goaccessKeepDays",
+		"goaccessAnonymize",
+		"goaccessDropQueryStrings",
+		"goaccessRealOs",
+		"goaccessResolveHosts",
+	],
 	advanced: ["configBeautifier", "gravatar", "timeZone"],
 };
 
