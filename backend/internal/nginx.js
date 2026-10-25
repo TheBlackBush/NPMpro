@@ -1,13 +1,18 @@
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
+import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
+import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
-const authRequestProviders = ["anubis", "tinyauth", "oauth2proxy", "voidauth", "authelia", "authentik"];
 
 const internalNginx = {
 	/**
@@ -19,20 +24,29 @@ const internalNginx = {
 	 * - IF BAD: save the offline status and rename the config
 	 * - then reload nginx
 	 *
+	 * Runs in the runtime settings queue: a runtime save cannot test or restore host configs meanwhile, and the
+	 * render reads the values of the last finished save.
+	 *
 	 * @param   {Object|String}  model
 	 * @param   {String}         host_type
 	 * @param   {Object}         host
 	 * @returns {Promise}
 	 */
-	configure: async (model, host_type, host, { skipReload = false } = {}) => {
-		let status = {};
-
+	configure: async (model, host_type, host, options = {}) => {
 		// skip disabled hosts
-		if (!host.enabled) return status;
+		if (!host.enabled) return {};
+		return await runtimeExclusive(() => internalNginx.configureNow(model, host_type, host, options));
+	},
+
+	/**
+	 * configure without the queue; only for code that runs in the runtime settings queue already
+	 */
+	configureNow: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
+		let status = {};
 
 		await internalProxyHostAccessList.build(host_type, host);
 		await internalNginx.deleteConfig(host_type, host);
-		await internalNginx.generateConfig(host_type, host);
+		await internalNginx.generateConfig(host_type, host, { fetchMissingOcsp });
 
 		try {
 			await (skipReload ? internalNginx.test() : internalNginx.reload());
@@ -60,34 +74,26 @@ const internalNginx = {
 	test: () => utils.execFile("nginx", ["-tq"]),
 
 	/**
+	 * Fetches the missing or outdated OCSP responses (.der stapling files) of the certbot ("acme") or custom
+	 * certificates. Bounded per kind (lib/ocsp-fetch.js): concurrent calls share one run, a call within 10 minutes of
+	 * the last attempt is skipped unless force is set (stapling switched on), a run is stopped after 60 s (with its
+	 * child processes); a failure is logged with the kind. Hosts and the default include staple only when their .der
+	 * file exists; a fetch that brings new .der files (onNewResponses) starts the stapling recovery
+	 * (internal/stapling-recovery.js), which re-renders the configs written without them.
+	 *
+	 * @param   {"acme"|"custom"} kind
+	 * @param   {Object}  [options]  { force }
+	 * @returns {Promise<void>}
+	 */
+	fetchOcsp,
+
+	/**
 	 * @returns {Promise}
 	 */
 	reload: async () => {
-		if (process.env.ACME_OCSP_STAPLING === "true") {
-			try {
-				await utils.execFile("certbot-ocsp-fetcher.sh", [
-					"-c",
-					"/data/tls/certbot/live",
-					"-o",
-					"/data/tls/certbot/live",
-					"--no-reload-webserver",
-					"--quiet",
-				]);
-			} catch {}
-		}
-
-		if (process.env.CUSTOM_OCSP_STAPLING === "true") {
-			try {
-				await utils.execFile("certbot-ocsp-fetcher.sh", [
-					"-c",
-					"/data/tls/custom",
-					"-o",
-					"/data/tls/custom",
-					"--no-reload-webserver",
-					"--quiet",
-				]);
-			} catch {}
-		}
+		const env = effectiveEnv();
+		if (env.ACME_OCSP_STAPLING === "true") await internalNginx.fetchOcsp("acme");
+		if (env.CUSTOM_OCSP_STAPLING === "true") await internalNginx.fetchOcsp("custom");
 
 		const res = await fetch("http://localhost/1/control/config", { method: "PATCH", dispatcher: controlApi });
 		const logs = (await res.json()).logs.join("").trim();
@@ -212,19 +218,50 @@ const internalNginx = {
 	},
 
 	/**
-	 * @param   {String}  host_type
-	 * @param   {Object}  host
-	 * @returns {Promise}
+	 * Runs nginxbeautifier on a copy of the config in a temp folder; the text as it is when that fails
+	 *
+	 * @param   {String}  text
+	 * @returns {Promise<String>}
 	 */
-	generateConfig: async (host_type, host_row) => {
+	beautify: async (text) => {
+		const dir = await mkdtemp(path.join(tmpdir(), "npmpro-beautify-"));
+		const file = path.join(dir, "host.conf");
+		try {
+			await writeFile(file, text, { encoding: "utf8" });
+			await utils.execFile("nginxbeautifier", ["-s", "2", file]);
+			return await readFile(file, "utf8");
+		} catch {
+			return text;
+		} finally {
+			await rm(dir, { force: true, recursive: true });
+		}
+	},
+
+	/**
+	 * Renders the config of a host without writing it
+	 *
+	 * @param   {String}  host_type
+	 * @param   {Object}  host_row
+	 * @param   {Object}  [options]
+	 * @param   {Object}  [options.env]  env the template reads as env.*, default effectiveEnv() (an apply passes the
+	 *                                   values it is about to save)
+	 * @param   {boolean} [options.fetchMissingOcsp]  stapling on and no OCSP response yet (a new certificate): fetch
+	 *                                   them first; false when the caller already fetched (runtime apply)
+	 * @returns {Promise<String>}
+	 */
+	renderConfig: async (host_type, host_row, { env, fetchMissingOcsp = true } = {}) => {
 		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
 
 		const renderEngine = utils.getRenderEngine();
 
-		const filename = internalNginx.getConfigName(host_type, host.id);
+		host.env = env ?? effectiveEnv();
 
-		host.env = process.env;
+		// the templates staple only when the OCSP response file exists (not every CA runs an OCSP responder)
+		host.npmpro_stapling_file_exists = await staplingFileReady(host, host.env, {
+			fetchMissingOcsp,
+			fetch: internalNginx.fetchOcsp,
+		});
 
 		if (
 			host.forward_host?.includes("/") &&
@@ -267,43 +304,15 @@ const internalNginx = {
 				if (htpasswdFileName.length > 0) {
 					location.filename = htpasswdFileName;
 				}
-				if (location.npmpro_enabled === false) continue;
-				const provider =
-					location.npmpro_auth_request === "authentik-send-basic-auth"
-						? "authentik"
-						: location.npmpro_auth_request;
-				if (authRequestProviders.includes(provider)) host[`create_${provider}_locations`] = true;
 			}
 
-			const originalLocations = [...host.locations];
+			// the host's or a location's own upstream; empty: the template uses the Forward authentication default
+			for (const provider of AUTH_REQUEST_PROVIDERS) {
+				if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
+				host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
+			}
+
 			host.locations = await internalNginx.renderLocations(host);
-
-			for (const provider of authRequestProviders) {
-				let effectiveUpstream = "";
-
-				if (
-					(host.npmpro_auth_request === provider ||
-						(provider === "authentik" && host.npmpro_auth_request === "authentik-send-basic-auth")) &&
-					host.npmpro_auth_request_upstream
-				) {
-					effectiveUpstream = host.npmpro_auth_request_upstream;
-				} else {
-					for (const location of originalLocations) {
-						if (
-							location.npmpro_enabled !== false &&
-							(location.npmpro_auth_request === provider ||
-								(provider === "authentik" &&
-									location.npmpro_auth_request === "authentik-send-basic-auth")) &&
-							location.npmpro_auth_request_upstream
-						) {
-							effectiveUpstream = location.npmpro_auth_request_upstream;
-							break;
-						}
-					}
-				}
-
-				host[`auth_request_${provider}_upstream_resolved`] = effectiveUpstream;
-			}
 		}
 
 		const config_text = await renderEngine.parseAndRender(
@@ -311,19 +320,41 @@ const internalNginx = {
 			host,
 		);
 
-		await writeFile(filename, config_text, { encoding: "utf8" });
+		// the beautifier switch of the render's env (advanced.config_beautifier, also inside a runtime save)
+		return beautifierOn(host.env) ? internalNginx.beautify(config_text) : config_text;
+	},
+
+	/**
+	 * @param   {String}  host_type
+	 * @param   {Object}  host_row
+	 * @param   {Object}  [options]
+	 * @param   {boolean} [options.fetchMissingOcsp]  see renderConfig
+	 * @returns {Promise}
+	 */
+	generateConfig: async (host_type, host_row, { fetchMissingOcsp = true } = {}) => {
+		const filename = internalNginx.getConfigName(host_type, host_row.id);
+		const text = await internalNginx.renderConfig(host_type, host_row, { fetchMissingOcsp });
+		await writeFile(filename, text, { encoding: "utf8" });
 		logger.debug("Wrote config:", filename);
-
-		if (process.env.DISABLE_NGINX_BEAUTIFIER === "false") {
-			try {
-				await utils.execFile("nginxbeautifier", ["-s", "2", filename]);
-			} catch {
-				// do nothing
-			}
-		}
-
 		return true;
 	},
+
+	/**
+	 * Deletes a host's config (disable, delete) and reloads nginx, in the runtime settings queue (a runtime save
+	 * cannot put the config back meanwhile)
+	 *
+	 * @param   {String}    host_type
+	 * @param   {Object}    host
+	 * @param   {Object}    [options]
+	 * @param   {Function}  [options.also]  runs after the delete, before the reload (access list files)
+	 * @returns {Promise}
+	 */
+	removeConfig: (host_type, host, { also } = {}) =>
+		runtimeExclusive(async () => {
+			await internalNginx.deleteConfig(host_type, host);
+			await also?.();
+			await internalNginx.reload();
+		}),
 
 	/**
 	 * @param   {String}  host_type

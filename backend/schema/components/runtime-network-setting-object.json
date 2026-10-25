@@ -1,0 +1,97 @@
+{
+	"type": "object",
+	"description": "Effective network runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"trusted_ips",
+		"trust_cloudflare",
+		"locked",
+		"locked_by",
+		"locked_reason",
+		"applies",
+		"restart_pending"
+	],
+	"properties": {
+		"trusted_ips": {
+			"type": "array",
+			"maxItems": 1000,
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 64
+			},
+			"description": "IPv4/IPv6 addresses or CIDR ranges whose X-Forwarded-For / PROXY protocol address is trusted (env TRUST_IP)"
+		},
+		"trust_cloudflare": {
+			"type": "boolean",
+			"description": "Trust the Cloudflare IP ranges (env TRUST_CLOUDFLARE)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"trusted_ips",
+					"trust_cloudflare"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"trusted_ips": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"trust_cloudflare": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"additionalProperties": false,
+			"properties": {}
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"trusted_ips",
+				"trust_cloudflare"
+			],
+			"properties": {
+				"trusted_ips": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"trust_cloudflare": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string"
+			},
+			"maxItems": 0
+		}
+	}
+}

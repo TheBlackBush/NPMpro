@@ -252,10 +252,9 @@ const internalProxyHost = {
 
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("proxy_host", row);
-
-			await internalProxyHostAccessList.delete(row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("proxy_host", row, {
+				also: () => internalProxyHostAccessList.delete(row),
+			});
 		} finally {
 			// Add to audit log
 			await internalAuditLog.add(access, {
@@ -342,8 +341,7 @@ const internalProxyHost = {
 		let savedRow;
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("proxy_host", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("proxy_host", row);
 		} finally {
 			savedRow = await internalProxyHost.get(access, { id: row.id });
 

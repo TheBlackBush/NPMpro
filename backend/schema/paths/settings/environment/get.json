@@ -1,0 +1,71 @@
+{
+	"operationId": "getEnvironment",
+	"summary": "Get the startup environment variables (admin only, secret values are never returned)",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"groups": [
+									{
+										"id": "network",
+										"items": [
+											{
+												"name": "HTTP_PORT",
+												"value": "80",
+												"default": "80",
+												"is_default": true,
+												"secret": false,
+												"set": false
+											}
+										]
+									},
+									{
+										"id": "certificates-account",
+										"items": [
+											{
+												"name": "ACME_EAB_HMAC_KEY",
+												"default": null,
+												"is_default": false,
+												"secret": true,
+												"set": true
+											}
+										]
+									}
+								],
+								"locked_runtime": [
+									{
+										"group": "certificates",
+										"key": "key_type",
+										"env": "ACME_KEY_SIZE",
+										"reason": "key-size"
+									},
+									{
+										"group": "monitoring",
+										"key": "retention_days",
+										"env": "TRAFFIC_RETENTION_DAYS",
+										"reason": null
+									}
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../components/environment-object.json"
+					}
+				}
+			}
+		}
+	}
+}

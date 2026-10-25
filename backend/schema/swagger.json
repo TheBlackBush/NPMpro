@@ -409,6 +409,51 @@
 				"$ref": "./paths/settings/geoip/update/post.json"
 			}
 		},
+		"/settings/runtime/certificates": {
+			"get": {
+				"$ref": "./paths/settings/runtime/certificates/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/certificates/put.json"
+			}
+		},
+		"/settings/runtime/network": {
+			"get": {
+				"$ref": "./paths/settings/runtime/network/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/network/put.json"
+			}
+		},
+		"/settings/runtime/forward-auth": {
+			"get": {
+				"$ref": "./paths/settings/runtime/forward-auth/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/forward-auth/put.json"
+			}
+		},
+		"/settings/runtime/logs": {
+			"get": {
+				"$ref": "./paths/settings/runtime/logs/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/logs/put.json"
+			}
+		},
+		"/settings/runtime/advanced": {
+			"get": {
+				"$ref": "./paths/settings/runtime/advanced/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/advanced/put.json"
+			}
+		},
+		"/settings/environment": {
+			"get": {
+				"$ref": "./paths/settings/environment/get.json"
+			}
+		},
 		"/settings/{settingID}": {
 			"get": {
 				"$ref": "./paths/settings/settingID/get.json"

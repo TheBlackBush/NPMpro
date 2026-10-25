@@ -24,15 +24,15 @@ if [ -z "$(find -L /data/tls/certbot/accounts/"$(echo "$ACME_SERVER" | sed "s|^h
         export ACME_EAB_HMAC_KEY
     fi
     if [ -z "$ACME_EMAIL" ]; then
-        if ! certbot --config /etc/certbot.ini register --server "$ACME_SERVER" --register-unsafely-without-email; then
+        if ! certbot --config /run/npmpro/certbot.ini register --server "$ACME_SERVER" --register-unsafely-without-email; then
             sleep inf
         fi
     elif [ -n "$ACME_EMAIL" ] && [ -z "$ACME_EAB_KID" ] && [ -z "$ACME_EAB_HMAC_KEY" ]; then
-        if ! certbot --config /etc/certbot.ini register --server "$ACME_SERVER" --email "$ACME_EMAIL"; then
+        if ! certbot --config /run/npmpro/certbot.ini register --server "$ACME_SERVER" --email "$ACME_EMAIL"; then
             sleep inf
         fi
     elif [ -n "$ACME_EMAIL" ] && [ -n "$ACME_EAB_KID" ] && [ -n "$ACME_EAB_HMAC_KEY" ]; then
-        if ! certbot --config /etc/certbot.ini register --server "$ACME_SERVER" --eab-kid "$ACME_EAB_KID" --eab-hmac-key "$ACME_EAB_HMAC_KEY" --email "$ACME_EMAIL"; then
+        if ! certbot --config /run/npmpro/certbot.ini register --server "$ACME_SERVER" --eab-kid "$ACME_EAB_KID" --eab-hmac-key "$ACME_EAB_HMAC_KEY" --email "$ACME_EMAIL"; then
             sleep inf
         fi
     fi
@@ -96,8 +96,8 @@ fi
 
 echo "0 */$ECH_ROTATION_INTERVAL * * * cron-ech.sh" | tee "/tmp/crontabs/$(id -un)"
 # always installed: the access log can be switched on at runtime (traffic statistics), missingok/notifempty skip absent or empty logs
-logrotate --state /data/nginx/logs/logrotate.state /etc/logrotate
-echo "0 * * * * logrotate --state /data/nginx/logs/logrotate.state /etc/logrotate" | tee -a "/tmp/crontabs/$(id -un)"
+logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate
+echo "0 * * * * logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate" | tee -a "/tmp/crontabs/$(id -un)"
 
 set -- backend nginx crond
 [ "$GOA" = "true" ] && set -- "$@" goaccess

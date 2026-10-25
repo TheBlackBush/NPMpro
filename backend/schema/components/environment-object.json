@@ -1,0 +1,137 @@
+{
+	"type": "object",
+	"description": "Startup environment variables (read only) and the runtime settings locked by environment variables. Secret values are never returned.",
+	"additionalProperties": false,
+	"required": [
+		"groups",
+		"locked_runtime"
+	],
+	"properties": {
+		"groups": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"items"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"enum": [
+							"network",
+							"users",
+							"nginx",
+							"modules",
+							"goaccess",
+							"database",
+							"certificates-account"
+						]
+					},
+					"items": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"name",
+								"default",
+								"is_default",
+								"secret",
+								"set"
+							],
+							"properties": {
+								"name": {
+									"type": "string",
+									"description": "Environment variable name"
+								},
+								"value": {
+									"type": "string",
+									"description": "Effective value, omitted for secrets"
+								},
+								"default": {
+									"type": [
+										"string",
+										"null"
+									],
+									"description": "Default value, null for secrets"
+								},
+								"is_default": {
+									"type": "boolean",
+									"description": "True when the variable is not set or equals the default"
+								},
+								"secret": {
+									"type": "boolean",
+									"description": "Secret items never carry a value"
+								},
+								"set": {
+									"type": "boolean",
+									"description": "True when the user set the variable"
+								},
+								"setting": {
+									"type": "string",
+									"enum": [
+										"advanced",
+										"monitoring"
+									],
+									"description": "Settings section of a variable that is also a setting applied after a restart (TZ, GOA): without the variable, value is the one from that section the container runs with"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"locked_runtime": {
+			"type": "array",
+			"description": "Settings locked by an environment variable (read only in the UI): the runtime settings groups and the oidc, monitoring and geoip settings, in settings menu order",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"group",
+					"key",
+					"env",
+					"reason"
+				],
+				"properties": {
+					"group": {
+						"type": "string",
+						"enum": [
+							"oidc",
+							"certificates",
+							"network",
+							"forward-auth",
+							"logs",
+							"monitoring",
+							"geoip",
+							"advanced"
+						]
+					},
+					"key": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					},
+					"reason": {
+						"type": [
+							"string",
+							"null"
+						],
+						"enum": [
+							"key-size",
+							"ocsp-stapling-off",
+							"must-staple",
+							"goaccess",
+							"write-log-files",
+							null
+						],
+						"description": "Why the variable of another setting locks it (an indirect lock), null when the setting's own variable sets it. write-log-files: LOGROTATE (or GOA through it) keeps traffic statistics on"
+					}
+				}
+			}
+		}
+	}
+}

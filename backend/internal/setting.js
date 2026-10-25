@@ -1,15 +1,12 @@
 import { writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
 import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
+import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
 import { sanitizeOidcRow } from "./oidc-setting-rules.js";
-
-// Rows with their own API and endpoints: the generic API must not change them
-const DEDICATED_IDS = ["oidc", "monitoring", "geoip", "traffic-state"];
-// The reader position is internal and not exposed
-const HIDDEN_IDS = ["traffic-state"];
+import { runtimeExclusive } from "./runtime-queue.js";
 
 // The oidc and geoip rows hold encrypted secrets, which no API returns
 const sanitizeRow = (row) => {
@@ -28,7 +25,7 @@ const internalSetting = {
 	update: async (access, data) => {
 		access.canAdmin();
 		const refused = () => new errs.ValidationError("This setting has its own endpoint under /api/settings");
-		if (DEDICATED_IDS.includes(String(data.id).trim().toLowerCase())) throw refused();
+		if (isDedicatedSettingId(data.id)) throw refused();
 
 		const existingRow = await internalSetting.get(access, { id: data.id });
 		if (DEDICATED_IDS.includes(existingRow.id)) throw refused();
@@ -55,19 +52,22 @@ const internalSetting = {
 				await writeFile("/data/html/index.html", row.meta.html, { encoding: "utf8" });
 			}
 
-			try {
-				await internalNginx.deleteConfig("default");
-				await internalNginx.generateConfig("default", row);
-				await internalNginx.test();
-				await internalNginx.reload();
-			} catch (err) {
-				await internalNginx.deleteConfig("default");
-				await internalNginx.test();
-				await internalNginx.reload();
-				throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, {
-					cause: err,
-				});
-			}
+			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written
+			await runtimeExclusive(async () => {
+				try {
+					await internalNginx.deleteConfig("default");
+					await internalNginx.generateConfig("default", row);
+					await internalNginx.test();
+					await internalNginx.reload();
+				} catch (err) {
+					await internalNginx.deleteConfig("default");
+					await internalNginx.test();
+					await internalNginx.reload();
+					throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, {
+						cause: err,
+					});
+				}
+			});
 		}
 		return row;
 	},

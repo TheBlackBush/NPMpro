@@ -1,26 +1,33 @@
 #!/usr/bin/env sh
 
+# the live certbot config, written again by the backend when the certificate settings change (PUID can not write /etc)
+mkdir -p /run/npmpro
+cp /etc/certbot.ini /run/npmpro/certbot.ini
 if [ "$ACME_KEY_TYPE" = "rsa" ]; then
-    sed -i "s|key-type = ecdsa|key-type = rsa|g" /etc/certbot.ini
+    sed -i "s|key-type = ecdsa|key-type = rsa|g" /run/npmpro/certbot.ini
     if [ "$ACME_KEY_SIZE" != "4096" ]; then
-        sed -i "s|rsa-key-size = .*|rsa-key-size = $ACME_KEY_SIZE|g" /etc/certbot.ini
+        sed -i "s|rsa-key-size = .*|rsa-key-size = $ACME_KEY_SIZE|g" /run/npmpro/certbot.ini
     fi
 else
     if [ "$ACME_KEY_SIZE" != "secp384r1" ]; then
-        sed -i "s|elliptic-curve = .*|elliptic-curve = $ACME_KEY_SIZE|g" /etc/certbot.ini
+        sed -i "s|elliptic-curve = .*|elliptic-curve = $ACME_KEY_SIZE|g" /run/npmpro/certbot.ini
     fi
 fi
 if [ "$ACME_MUST_STAPLE" = "false" ]; then
-    sed -i "s|must-staple = true|must-staple = false|g" /etc/certbot.ini
+    sed -i "s|must-staple = true|must-staple = false|g" /run/npmpro/certbot.ini
 fi
 if [ "$ACME_SERVER_TLS_VERIFY" = "false" ]; then
-    sed -i "s|no-verify-ssl = false|no-verify-ssl = true|g" /etc/certbot.ini
+    sed -i "s|no-verify-ssl = false|no-verify-ssl = true|g" /run/npmpro/certbot.ini
 fi
 if [ "$ACME_PROFILE" != "none" ]; then
-    sed -i "s|#required-profile|required-profile = $ACME_PROFILE|g" /etc/certbot.ini
+    sed -i "s|#required-profile|required-profile = $ACME_PROFILE|g" /run/npmpro/certbot.ini
 else
     find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "/required_profile/d" {} \;
 fi
+
+# the live logrotate config, written again by the backend when the log rotations setting changes
+cp /etc/logrotate /run/npmpro/logrotate
+sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /run/npmpro/logrotate
 
 
 if [ "$PHP83" = "true" ]; then
@@ -349,31 +356,27 @@ if { [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] && [ "$DEFAULT_KEY" != "/da
     echo "something went wrong, using dummycerts."
 fi
 
-if [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] || [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; then
-    if [ ! -s /data/tls/dummycert.pem ] || [ ! -s /data/tls/dummykey.pem ]; then
-        rm -vrf /data/tls/dummycert.pem /data/tls/dummykey.pem
-        openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -x509 -days 365000 -nodes -subj "/" -sha512 -keyout /data/tls/dummykey.pem -out /data/tls/dummycert.pem
-    fi
-    unset DEFAULT_STAPLING_FILE
-else
+# the built-in certificate is always kept: the default certificate can be switched to it at runtime
+if [ ! -s /data/tls/dummycert.pem ] || [ ! -s /data/tls/dummykey.pem ]; then
     rm -vrf /data/tls/dummycert.pem /data/tls/dummykey.pem
+    openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:secp384r1 -x509 -days 365000 -nodes -subj "/" -sha512 -keyout /data/tls/dummykey.pem -out /data/tls/dummycert.pem
+fi
+if [ "$DEFAULT_CERT" = "/data/tls/dummycert.pem" ] || [ "$DEFAULT_KEY" = "/data/tls/dummykey.pem" ]; then
+    unset DEFAULT_STAPLING_FILE
 fi
 
-sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /app/templates/default.conf
-sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /app/templates/default.conf
-if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /app/templates/default.conf
-    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /app/templates/default.conf
-    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /app/templates/default.conf
-fi
-
-sed -i "s|ssl_certificate .*|ssl_certificate $DEFAULT_CERT;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-sed -i "s|ssl_certificate_key .*|ssl_certificate_key $DEFAULT_KEY;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-if [ -s "$DEFAULT_STAPLING_FILE" ]; then
-    sed -i "s|#\?ssl_stapling|ssl_stapling|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-    sed -i "s|#\?ssl_stapling_file .*|ssl_stapling_file $DEFAULT_STAPLING_FILE;|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-    sed -i "s|#\?ssl_certificate_compression|ssl_certificate_compression|g" /usr/local/nginx/conf/conf.d/npmpro.conf
-fi
+# default certificate include of default.conf and npmpro.conf, the backend rewrites it from the runtime settings
+mkdir -p /data/npmpro/nginx
+{
+    echo "ssl_certificate $DEFAULT_CERT;"
+    echo "ssl_certificate_key $DEFAULT_KEY;"
+    if [ -s "$DEFAULT_STAPLING_FILE" ]; then
+        echo "ssl_stapling on;"
+        echo "ssl_stapling_verify on;"
+        echo "ssl_stapling_file $DEFAULT_STAPLING_FILE;"
+        echo "ssl_certificate_compression off;"
+    fi
+} > /data/npmpro/nginx/default-cert.conf
 
 sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 
@@ -438,11 +441,11 @@ if [ "$REGENERATE_ALL" = "true" ]; then
     find /data/nginx -name "*.conf" -delete
 fi
 
-sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /etc/logrotate
 if [ -f /data/logrotate.state ]; then mv -vn /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 rm -f /data/logrotate.state
 
-# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics setting changes
+# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
+# setting changes
 mkdir -p /data/npmpro/nginx
 if [ "$LOGROTATE" = "true" ] || [ "$TRAFFIC_STATS" = "true" ]; then
     echo "access_log /data/nginx/logs/access.log alog;" > /data/npmpro/nginx/access-log.conf
@@ -453,9 +456,11 @@ else
     echo "access_log off;" > /data/npmpro/nginx/access-log.conf
 fi
 
+# error log and stream access log: included by nginx.conf, the backend rewrites them when Write log files changes
+# (the same lines as lib/log-files.js logIncludes)
 if [ "$LOGROTATE" = "true" ]; then
-    sed -i "s|access_log off; # stream|access_log /data/nginx/logs/stream.log slog;|g" /usr/local/nginx/conf/nginx.conf
-    sed -i "s|#error_log|error_log|g" /usr/local/nginx/conf/nginx.conf
+    echo "error_log /data/nginx/logs/error.log warn;" > /data/npmpro/nginx/error-log.conf
+    echo "access_log /data/nginx/logs/stream.log slog;" > /data/npmpro/nginx/stream-log.conf
 
     if [ ! -L /data/nginx/stream.log ] && [ ! -f /data/nginx/logs/stream.log ]; then mv -vn /data/nginx/stream.log* /data/nginx/logs; fi
     if [ ! -L /data/nginx/error.log ] && [ ! -f /data/nginx/logs/error.log ]; then mv -vn /data/nginx/error.log* /data/nginx/logs; fi
@@ -465,6 +470,9 @@ if [ "$LOGROTATE" = "true" ]; then
 
     if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
     if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
+else
+    echo "# no error log file, errors go to stderr" > /data/npmpro/nginx/error-log.conf
+    echo "access_log off;" > /data/npmpro/nginx/stream-log.conf
 fi
 
 find /data/tls \

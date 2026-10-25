@@ -1,0 +1,122 @@
+{
+	"type": "object",
+	"description": "Effective advanced runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"config_beautifier",
+		"gravatar",
+		"time_zone",
+		"locked",
+		"locked_by",
+		"locked_reason",
+		"applies",
+		"restart_pending"
+	],
+	"properties": {
+		"config_beautifier": {
+			"type": "boolean",
+			"description": "Format the generated nginx configs (env DISABLE_NGINX_BEAUTIFIER, inverted)"
+		},
+		"gravatar": {
+			"type": "boolean",
+			"description": "Fetch Gravatar profile pictures, sends a hash of the email address to Gravatar (env DISABLE_GRAVATAR, inverted)"
+		},
+		"time_zone": {
+			"type": "string",
+			"maxLength": 64,
+			"pattern": "^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$",
+			"description": "Time zone of the container, one of time_zones (env TZ); applies after a container restart"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"config_beautifier",
+					"gravatar",
+					"time_zone"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"config_beautifier": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"gravatar": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"time_zone": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"additionalProperties": false,
+			"properties": {}
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"config_beautifier",
+				"gravatar",
+				"time_zone"
+			],
+			"properties": {
+				"config_beautifier": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"gravatar": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"time_zone": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string",
+				"enum": [
+					"time_zone"
+				]
+			}
+		},
+		"time_zones": {
+			"type": "array",
+			"description": "The time zones the image ships (/usr/share/zoneinfo without posix/ and right/), the values time_zone accepts",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}

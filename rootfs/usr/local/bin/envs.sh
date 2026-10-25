@@ -40,6 +40,42 @@ if [ -s /tmp/env.sha512sum ] && [ "$(cat /tmp/env.sha512sum)" != "$(sha512sum < 
 fi
 sha512sum < /data/.env > /tmp/env.sha512sum
 
+# Env vars that are settings in the UI (backend/lib/runtime-rules.js) and the ones listed on the Environment page
+# (backend/lib/environment-info.js), checked by test/environment-info.test.js.
+# NPMPRO_USER_ENV lists those set (non-empty) before the defaults below: the backend treats only these as set by the
+# user and applies the stored settings to the others. NPMPRO_USER_RUNTIME_ENV is its runtime part, for ENV_SHA512SUM.
+NPMPRO_RUNTIME_ENVS="ACME_KEY_TYPE ACME_KEY_SIZE ACME_PROFILE ACME_MUST_STAPLE ACME_SERVER_TLS_VERIFY CERTBOT_RUN_INTERVAL ACME_OCSP_STAPLING CUSTOM_OCSP_STAPLING DEFAULT_CERT_ID ECH_ROTATION_INTERVAL TRUST_IP TRUST_CLOUDFLARE AUTH_REQUEST_ANUBIS_UPSTREAM AUTH_REQUEST_TINYAUTH_UPSTREAM AUTH_REQUEST_OAUTH2PROXY_UPSTREAM AUTH_REQUEST_VOIDAUTH_UPSTREAM AUTH_REQUEST_AUTHELIA_UPSTREAM AUTH_REQUEST_AUTHENTIK_UPSTREAM AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES LOGROTATE LOGROTATIONS DISABLE_NGINX_BEAUTIFIER DISABLE_GRAVATAR"
+NPMPRO_STARTUP_ENVS="NPM_PORT HTTP_PORT HTTPS_PORT IPV4_BINDING IPV6_BINDING NPM_IPV4_BINDING NPM_IPV6_BINDING NPM_LISTEN_LOCALHOST DISABLE_IPV6 DISABLE_HTTP DISABLE_H3_QUIC LISTEN_PROXY_PROTOCOL LISTEN_PROXY_PROTOCOL_HTTP LISTEN_PROXY_PROTOCOL_HTTPS ENABLE_MPTCP NGINX_QUIC_BPF PUID PGID TZ NGINX_LOG_NOT_FOUND NGINX_WORKER_PROCESSES NGINX_WORKER_CONNECTIONS NGINX_FORCE_X25519MLKEM768 NGINX_DISABLE_TLS12 NGINX_TRUST_SECPR1 NGINX_TRUST_RSA_PKCS1 NGINX_LOAD_NJS_MODULE NGINX_LOAD_LDAP_MODULE NGINX_LOAD_NTLM_MODULE NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE PHP83 PHP84 PHP85 PHP83_APKS PHP84_APKS PHP85_APKS PHP_APKS GOA GOACLA DB_MYSQL_HOST DB_MYSQL_PORT DB_MYSQL_NAME DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_HOST DB_POSTGRES_PORT DB_POSTGRES_NAME DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD INITIAL_DEFAULT_PAGE ACME_SERVER ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY NODE_TLS_REJECT_UNAUTHORIZED NC_AIO NC_DOMAIN ENABLE_PRERUN"
+NPMPRO_USER_ENV=""
+NPMPRO_USER_RUNTIME_ENV=""
+for name in $NPMPRO_RUNTIME_ENVS $NPMPRO_STARTUP_ENVS; do
+    if [ -n "$(printenv "$name")" ]; then
+        NPMPRO_USER_ENV="${NPMPRO_USER_ENV:+$NPMPRO_USER_ENV }$name"
+        case " $NPMPRO_RUNTIME_ENVS " in
+            *" $name "*) NPMPRO_USER_RUNTIME_ENV="${NPMPRO_USER_RUNTIME_ENV:+$NPMPRO_USER_RUNTIME_ENV }$name" ;;
+        esac
+    fi
+done
+export NPMPRO_USER_ENV
+
+# TZ, GOA and the GoAccess options saved in the UI (Settings), for the ones the env does not set; after NPMPRO_USER_ENV, so they do not count
+# as set by the user, and before their defaults and checks below. The file is parsed line by line, never sourced.
+# shellcheck source=/dev/null
+. /usr/local/bin/startup-settings.sh
+startup_settings_warn /data/npmpro/startup-settings.env
+if [ -z "$TZ" ]; then
+    TZ="$(startup_setting /data/npmpro/startup-settings.env TZ)"
+    # without TZ from the env or the UI
+    export TZ="${TZ:-UTC}"
+fi
+if [ -z "$GOA" ]; then
+    GOA="$(startup_setting /data/npmpro/startup-settings.env GOA)"
+fi
+# the GoAccess options from the UI become fixed GOACLA flags; a GOACLA from the env wins (checked below like before)
+if [ -z "$GOACLA" ]; then
+    GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"
+fi
+
 
 if [ -n "$NC_AIO" ] && ! echo "$NC_AIO" | grep -q "^true$\|^false$"; then
     echo "NC_AIO needs to be true or false."
@@ -313,7 +349,7 @@ fi
 
 
 if [ -z "$TZ" ] || [ ! -s /usr/share/zoneinfo/"$TZ" ]; then
-    echo "TZ is unset or invalid."
+    echo "TZ is invalid."
     sleep inf
 fi
 
@@ -598,6 +634,16 @@ if ! echo "$GOA" | grep -q "^true$\|^false$"; then
     echo "GOA needs to be true or false."
     sleep inf
 fi
+# the GOA this start runs with, for healthcheck.sh: the startup settings file may change before the next start. In
+# /etc/npmpro, which stays root-owned (start.sh hands /data, /run, /tmp and /usr/local to PUID): a temp file in it,
+# then a rename over whatever is there, so a planted link is replaced, never followed
+mkdir -p /etc/npmpro
+chown 0:0 /etc/npmpro
+chmod 755 /etc/npmpro
+startup_snapshot="$(mktemp /etc/npmpro/.startup-settings.XXXXXX)"
+printf 'GOA=%s\n' "$GOA" > "$startup_snapshot"
+chmod 644 "$startup_snapshot"
+mv -f "$startup_snapshot" /etc/npmpro/startup-settings.env
 
 if echo "$GOACLA" | grep -vq "geoip-database"; then
     if [ -s /data/etc/goaccess/geoip/GeoLite2-City.mmdb ] || [ -s /data/etc/goaccess/geoip/GeoLite2-Country.mmdb ]|| [ -s /data/etc/goaccess/geoip/GeoLite2-ASN.mmdb ]; then
@@ -759,35 +805,16 @@ if ! echo "$AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES" | grep -q "^true$\|^false$"; 
     sleep inf
 fi
 
-if [ -n "$AUTH_REQUEST_ANUBIS_UPSTREAM" ] && ! echo "$AUTH_REQUEST_ANUBIS_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_ANUBIS_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_TINYAUTH_UPSTREAM" ] && ! echo "$AUTH_REQUEST_TINYAUTH_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_TINYAUTH_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_OAUTH2PROXY_UPSTREAM" ] && ! echo "$AUTH_REQUEST_OAUTH2PROXY_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_OAUTH2PROXY_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_VOIDAUTH_UPSTREAM" ] && ! echo "$AUTH_REQUEST_VOIDAUTH_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_VOIDAUTH_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_AUTHELIA_UPSTREAM" ] && ! echo "$AUTH_REQUEST_AUTHELIA_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_AUTHELIA_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
-
-if [ -n "$AUTH_REQUEST_AUTHENTIK_UPSTREAM" ] && ! echo "$AUTH_REQUEST_AUTHENTIK_UPSTREAM" | grep -q "^https\?://\(\([^/:]\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:]\+\)$"; then
-    echo "AUTH_REQUEST_AUTHENTIK_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path."
-    sleep inf
-fi
+# the same rule as the backend (UPSTREAM in lib/runtime-rules.js): no whitespace and no nginx syntax characters
+AUTH_REQUEST_UPSTREAM_REGEX='^https\?://\(\([^/:;{}#"$\[:space:]'"'"']\+\|\[[a-fA-F0-9:]\+\]\):[0-9]\+\|cu_[^/:;{}#"$\[:space:]'"'"']\+\)$'
+for name in ANUBIS TINYAUTH OAUTH2PROXY VOIDAUTH AUTHELIA AUTHENTIK; do
+    eval "value=\${AUTH_REQUEST_${name}_UPSTREAM:-}"
+    if [ -n "$value" ] && { [ "$(printf '%s\n' "$value" | wc -l)" -ne 1 ] || ! printf '%s\n' "$value" | grep -q "$AUTH_REQUEST_UPSTREAM_REGEX"; }; then
+        echo "AUTH_REQUEST_${name}_UPSTREAM needs to contain the scheme, the target ip/domain/hostname and port or the scheme and the name of a cu_ upstream block but is not allowed to contain a path, whitespace or any of ; { } # \" ' \$ \\."
+        sleep inf
+    fi
+done
+unset name value
 
 
 if [ "$ACME_MUST_STAPLE" = "true" ] && [ "$ACME_OCSP_STAPLING" = "false" ]; then
@@ -830,8 +857,10 @@ if [ "$GOA" = "true" ] && [ "$LOGROTATE" = "false" ]; then
 fi
 
 
-TV="21"
-ENV_SHA512SUM="$( (grep "env\.[A-Z0-9_]\+" -roh /app/templates | sed "s|env.||g" | sort | uniq | xargs printenv; echo "$TV") | tr -d "\n" | sha512sum | cut -d" " -f1)"
+TV="22"
+# NPMPRO_USER_RUNTIME_ENV: which runtime vars the env sets decides whether a template reads the env or the stored
+# setting; the startup vars (TZ, PUID, ...) are left out, setting or unsetting them does not regenerate the hosts
+ENV_SHA512SUM="$( (grep "env\.[A-Z0-9_]\+" -roh /app/templates | sed "s|env.||g" | sort | uniq | xargs printenv; echo "$NPMPRO_USER_RUNTIME_ENV"; echo "$TV") | tr -d "\n" | sha512sum | cut -d" " -f1)"
 export ENV_SHA512SUM
 if [ ! -s /data/npmpro/env.sha512sum ] || [ "$(cat /data/npmpro/env.sha512sum)" != "$ENV_SHA512SUM" ]; then
     echo "At least one env or the template version changed, all hosts will be regenerated. Please make sure to read the changelog."

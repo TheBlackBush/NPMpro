@@ -23,6 +23,7 @@ export * from "./useProxyHosts";
 export * from "./useRecentAuditLogs";
 export * from "./useRedirectionHost";
 export * from "./useRedirectionHosts";
+export * from "./useRuntimeSettings";
 export * from "./useSetting";
 export * from "./useStream";
 export * from "./useStreams";

@@ -1,27 +1,12 @@
-import crypto from "node:crypto";
 import { rm, writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
+import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
-import { gravatar as logger } from "../logger.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
-import pjson from "../package.json" with { type: "json" };
 import internalAuditLog from "./audit-log.js";
 import internalToken from "./token.js";
-
-const avatarExts = ["png", "jpg", "gif", "webp"];
-
-const avatarExt = (b) => {
-	if (!b || b.length < 12) return null;
-	if (b.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) return "png";
-	if (b.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex"))) return "jpg";
-	if (b.subarray(0, 4).toString("latin1") === "GIF8") return "gif";
-	if (b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP") {
-		return "webp";
-	}
-	return null;
-};
 
 const internalUser = {
 	/**
@@ -90,38 +75,8 @@ const internalUser = {
 		return user;
 	},
 
-	fetchGravatar: async (id, email, name) => {
-		for (const e of avatarExts) await rm(`/data/npmpro/gravatar/${id}.${e}`, { force: true });
-		if (process.env.DISABLE_GRAVATAR === "true") return "/images/default-avatar.jpg";
-		try {
-			const response = await fetch(
-				`https://www.gravatar.com/avatar/${crypto.hash("sha256", email)}?s=64&default=initials&name=${encodeURIComponent(
-					name
-						.split(" ")
-						.map((n) => n[0])
-						.join(""),
-				)}`,
-				{
-					headers: {
-						"User-Agent": `NPMpro/${pjson.version}`,
-					},
-				},
-			);
-
-			if (!response.ok) throw new Error(`Status code: ${response.status}`);
-
-			const buffer = Buffer.from(await response.arrayBuffer());
-			const ext = avatarExt(buffer);
-			if (!ext) throw new Error("Unsupported image format");
-
-			await writeFile(`/data/npmpro/gravatar/${id}.${ext}`, buffer);
-
-			return `/images/gravatar/${id}.${ext}?v=${Date.now()}`;
-		} catch (err) {
-			logger.error(`Error downloading gravatar: ${err.message}`);
-			return "/images/default-avatar.jpg";
-		}
-	},
+	// Gravatar on or off is read per call (advanced.gravatar)
+	fetchGravatar: (id, email, name) => fetchGravatar(id, email, name),
 
 	deleteAvatarFiles: async (id) => {
 		for (const e of avatarExts) {

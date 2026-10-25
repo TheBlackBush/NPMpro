@@ -8,6 +8,7 @@ import {
 	updateGeoipNow,
 	updateGeoipSettings,
 	updateMonitoringSettings,
+	updateRuntimeSettings,
 } from "src/api/backend";
 
 const POLL = {
@@ -69,6 +70,41 @@ const useSaveMonitoringSettings = () => {
 	});
 };
 
+/**
+ * Settings > Logs & monitoring: saves the log files (logs runtime group) and then the monitoring settings, each only
+ * when given. The caches are refreshed only after both succeeded, so the form keeps its values until then. When the
+ * monitoring part fails after the log files were saved, the error carries logsSaved: true.
+ */
+const useSaveLogsAndMonitoring = () => {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: async ({ logs, monitoring }) => {
+			if (logs) await updateRuntimeSettings("logs", logs);
+			if (monitoring) {
+				try {
+					await updateMonitoringSettings(monitoring);
+				} catch (err) {
+					if (logs) err.logsSaved = true;
+					throw err;
+				}
+			}
+			return { sent: Boolean(logs || monitoring) };
+		},
+		onSuccess: ({ sent }) => {
+			if (!sent) return;
+			const keys = [
+				["runtime-settings", "logs"],
+				["environment"],
+				["audit-logs"],
+				["monitoring-settings"],
+				["monitoring-traffic"],
+				["monitoring-summary"],
+			];
+			return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+		},
+	});
+};
+
 const useSaveGeoipSettings = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -100,6 +136,7 @@ export {
 	useMonitoringSummary,
 	useMonitoringTraffic,
 	useSaveGeoipSettings,
+	useSaveLogsAndMonitoring,
 	useSaveMonitoringSettings,
 	useUpdateGeoipNow,
 };

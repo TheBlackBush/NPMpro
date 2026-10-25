@@ -1,0 +1,192 @@
+{
+	"type": "object",
+	"description": "Effective forward authentication runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"anubis_upstream",
+		"tinyauth_upstream",
+		"oauth2proxy_upstream",
+		"voidauth_upstream",
+		"authelia_upstream",
+		"authentik_upstream",
+		"anubis_custom_images",
+		"locked",
+		"locked_by",
+		"locked_reason",
+		"applies",
+		"restart_pending"
+	],
+	"properties": {
+		"anubis_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Anubis upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"tinyauth_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Tinyauth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"oauth2proxy_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default OAuth2 Proxy upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"voidauth_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default VoidAuth upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"authelia_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Authelia upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"authentik_upstream": {
+			"type": "string",
+			"maxLength": 255,
+			"description": "Default Authentik upstream for proxy hosts without their own: scheme://host:port or scheme://cu_name, no path; empty = none (env AUTH_REQUEST_*_UPSTREAM)"
+		},
+		"anubis_custom_images": {
+			"type": "boolean",
+			"description": "Use the custom Anubis images from /data/anubis (env AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES)"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"anubis_upstream",
+					"tinyauth_upstream",
+					"oauth2proxy_upstream",
+					"voidauth_upstream",
+					"authelia_upstream",
+					"authentik_upstream",
+					"anubis_custom_images"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"anubis_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"tinyauth_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"oauth2proxy_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"voidauth_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"authelia_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"authentik_upstream": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"anubis_custom_images": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess reads the log files). Fields locked by their own variable are not listed.",
+			"additionalProperties": false,
+			"properties": {}
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"anubis_upstream",
+				"tinyauth_upstream",
+				"oauth2proxy_upstream",
+				"voidauth_upstream",
+				"authelia_upstream",
+				"authentik_upstream",
+				"anubis_custom_images"
+			],
+			"properties": {
+				"anubis_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"tinyauth_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"oauth2proxy_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"voidauth_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"authelia_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"authentik_upstream": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"anubis_custom_images": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string"
+			},
+			"maxItems": 0
+		}
+	}
+}

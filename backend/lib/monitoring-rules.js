@@ -7,6 +7,19 @@ const MONITORING_DEFAULTS = {
 };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
+// the env var of each field (traffic_enabled: also LOGROTATE=true, see mergeMonitoringConfig)
+const MONITORING_ENV_KEYS = {
+	traffic_enabled: "TRAFFIC_STATS",
+	retention_days: "TRAFFIC_RETENTION_DAYS",
+	show_ips: "TRAFFIC_SHOW_IPS",
+	unique_visitors: "TRAFFIC_UNIQUE_VISITORS",
+	visitors_cap: "TRAFFIC_VISITORS_CAP",
+};
+const GEOIP_ENV_KEYS = {
+	account_id: "GEOIP_ACCOUNT_ID",
+	license_key: "GEOIP_LICENSE_KEY",
+	editions: "GEOIP_EDITIONS",
+};
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
 const VISITORS_CAP_MIN = 1000;
@@ -116,7 +129,9 @@ const sanitizeGeoipMeta = (meta) => {
 export {
 	GEOIP_DEFAULTS,
 	GEOIP_EDITIONS,
+	GEOIP_ENV_KEYS,
 	MONITORING_DEFAULTS,
+	MONITORING_ENV_KEYS,
 	mergeGeoipConfig,
 	mergeMonitoringConfig,
 	sanitizeGeoipMeta,

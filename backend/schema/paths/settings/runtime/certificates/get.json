@@ -1,0 +1,53 @@
+{
+	"operationId": "getRuntimeCertificatesSettings",
+	"summary": "Get the certificates and TLS settings",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"key_type": "ecdsa",
+								"key_size": "secp384r1",
+								"profile": "shortlived",
+								"must_staple": false,
+								"server_tls_verify": true,
+								"renewal_interval": 3,
+								"ocsp_stapling": false,
+								"custom_ocsp_stapling": false,
+								"default_certificate_id": 0,
+								"ech_rotation_interval": 1,
+								"locked": [],
+								"applies": {
+									"key_type": "next-certificate",
+									"key_size": "next-certificate",
+									"profile": "next-certificate",
+									"must_staple": "next-certificate",
+									"server_tls_verify": "next-certificate",
+									"renewal_interval": "immediately",
+									"ocsp_stapling": "reload",
+									"custom_ocsp_stapling": "reload",
+									"default_certificate_id": "reload",
+									"ech_rotation_interval": "immediately"
+								}
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-certificates-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

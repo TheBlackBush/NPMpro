@@ -1,0 +1,82 @@
+{
+	"operationId": "updateRuntimeAdvancedSettings",
+	"summary": "Update the advanced settings",
+	"description": "Fields set by environment variables are ignored. The change is applied before it is saved: when applying fails, nothing is saved.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"config_beautifier": {
+							"type": "boolean",
+							"description": "Format the generated nginx configs (env DISABLE_NGINX_BEAUTIFIER, inverted)"
+						},
+						"gravatar": {
+							"type": "boolean",
+							"description": "Fetch Gravatar profile pictures, sends a hash of the email address to Gravatar (env DISABLE_GRAVATAR, inverted)"
+						},
+						"time_zone": {
+							"type": "string",
+							"maxLength": 64,
+							"pattern": "^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$",
+							"description": "Time zone of the container, one of time_zones (env TZ); applies after a container restart"
+						}
+					}
+				},
+				"example": {
+					"config_beautifier": true
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"config_beautifier": true,
+								"gravatar": true,
+								"time_zone": "Europe/Berlin",
+								"locked": [],
+								"locked_by": {},
+								"locked_reason": {},
+								"applies": {
+									"config_beautifier": "immediately",
+									"gravatar": "immediately",
+									"time_zone": "restart"
+								},
+								"restart_pending": [
+									"time_zone"
+								],
+								"time_zones": [
+									"Africa/Abidjan",
+									"Europe/Berlin",
+									"UTC"
+								]
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/runtime-advanced-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}

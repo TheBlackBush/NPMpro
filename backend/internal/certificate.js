@@ -8,9 +8,12 @@ import { ZipArchive } from "archiver";
 import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { installPlugin } from "../lib/certbot.js";
+import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
+import { createRenewalTimer } from "../lib/renewal-timer.js";
+import { getRuntimeConfig } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import apiValidator from "../lib/validator/api.js";
 import { ssl as logger } from "../logger.js";
@@ -24,6 +27,8 @@ import { getValidationSchema } from "../schema/index.js";
 import internalAuditLog from "./audit-log.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
+import { runtimeExclusive } from "./runtime-queue.js";
+import { recoverStapling } from "./stapling-recovery.js";
 
 const cnPattern = /\bCN=(?<cn>[^\n]+)/iu;
 const renewalServerPattern = /^server = (?<server>.+)$/mu;
@@ -39,19 +44,27 @@ const getNiceName = (domainNames) => {
 	return [...shown, "..."].join(", ");
 };
 
+// the startup apply sets the runtime setting (restartTimer) before initTimer runs; env (envs.sh default 3) until then
+const renewalTimer = createRenewalTimer({
+	run: () => internalCertificate.processExpiringHosts(),
+	hours: Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
+	log: logger,
+});
+
 const internalCertificate = {
 	allowedSslFiles: ["certificate", "certificate_key"],
-	intervalTimeout: 1000 * 60 * 60 * Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
-	interval: null,
 	intervalProcessing: false,
 
+	/**
+	 * Sets the renewal interval and restarts a running timer with it (a timer not started yet uses it in initTimer)
+	 *
+	 * @param {number} [hours]  an invalid value keeps the current interval
+	 */
+	restartTimer: (hours) => renewalTimer.restart(hours),
+
 	initTimer: () => {
-		if (internalCertificate.interval) return;
-		logger.info("Certbot Renewal Timer initialized");
-		internalCertificate.interval = setInterval(
-			internalCertificate.processExpiringHosts,
-			internalCertificate.intervalTimeout,
-		);
+		if (!renewalTimer.start()) return;
+		logger.info(`Certbot Renewal Timer initialized (every ${renewalTimer.hours()} hours)`);
 		// And do this now as well
 		void internalCertificate.processExpiringHosts();
 	},
@@ -71,7 +84,7 @@ const internalCertificate = {
 			try {
 				const result = await utils.execFile("certbot", [
 					"--config",
-					"/etc/certbot.ini",
+					CERTBOT_INI,
 					"renew",
 					"--server",
 					process.env.ACME_SERVER,
@@ -88,6 +101,8 @@ const internalCertificate = {
 			} catch (err) {
 				logger.error(err);
 			}
+			// renewed certificates whose configs were written before their OCSP response existed
+			await recoverStapling();
 
 			const certificates = await certificateModel.query().where("provider", "letsencrypt");
 
@@ -317,23 +332,28 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		const row = await internalCertificate.get(access, { id: data.id });
 
-		if (row.id === Number(process.env.DEFAULT_CERT_ID)) {
-			throw new error.ValidationError("Certificate is still in use by the default host");
-		}
-
-		for (const hostModel of [proxyHostModel, redirectionHostModel, deadHostModel, streamModel]) {
-			if (
-				(await hostModel
-					.query()
-					.where("certificate_id", row.id)
-					.orWhere("npmpro_mtls_certificate_id", row.id)
-					.resultSize()) > 0
-			) {
-				throw new error.ValidationError("Certificate is still in use");
+		// in the runtime settings queue: a save of the default certificate cannot pass its check at the same time
+		await runtimeExclusive(async () => {
+			// the effective default certificate (env DEFAULT_CERT_ID or the Certificates & TLS setting)
+			const { values: tls } = await getRuntimeConfig("certificates");
+			if (row.id === tls.default_certificate_id) {
+				throw new error.ValidationError("Certificate is still in use by the default host");
 			}
-		}
 
-		await certificateModel.query().deleteById(row.id);
+			for (const hostModel of [proxyHostModel, redirectionHostModel, deadHostModel, streamModel]) {
+				if (
+					(await hostModel
+						.query()
+						.where("certificate_id", row.id)
+						.orWhere("npmpro_mtls_certificate_id", row.id)
+						.resultSize()) > 0
+				) {
+					throw new error.ValidationError("Certificate is still in use");
+				}
+			}
+
+			await certificateModel.query().deleteById(row.id);
+		});
 
 		// Add to audit log
 		await internalAuditLog.add(access, {
@@ -646,7 +666,7 @@ const internalCertificate = {
 
 		const result = await utils.execFile("certbot", [
 			"--config",
-			"/etc/certbot.ini",
+			CERTBOT_INI,
 			"certonly",
 			"--server",
 			process.env.ACME_SERVER,
@@ -683,7 +703,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"certonly",
 				"--server",
 				process.env.ACME_SERVER,
@@ -800,7 +820,7 @@ const internalCertificate = {
 
 		const renewResult = await utils.execFile("certbot", [
 			"--config",
-			"/etc/certbot.ini",
+			CERTBOT_INI,
 			"renew",
 			"--server",
 			process.env.ACME_SERVER,
@@ -814,7 +834,7 @@ const internalCertificate = {
 		try {
 			const revokeResult = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"revoke",
 				"--server",
 				oldServer,
@@ -844,7 +864,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"revoke",
 				"--cert-name",
 				`npm-${certificate.id}`,
@@ -860,7 +880,7 @@ const internalCertificate = {
 		try {
 			const result = await utils.execFile("certbot", [
 				"--config",
-				"/etc/certbot.ini",
+				CERTBOT_INI,
 				"delete",
 				"--cert-name",
 				`npm-${certificate.id}`,

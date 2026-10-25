@@ -4,6 +4,12 @@
 . /data/.env
 
 
+if [ -z "$GOA" ]; then
+    # GOA from the UI: the value this start runs with, written by envs.sh in the format of the startup settings file
+    # shellcheck source=/dev/null
+    . /usr/local/bin/startup-settings.sh
+    GOA="$(startup_setting /etc/npmpro/startup-settings.env GOA)"
+fi
 export GOA="${GOA:-false}"
 
 export PHP83="${PHP83:-false}"

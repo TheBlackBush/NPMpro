@@ -186,8 +186,7 @@ const internalDeadHost = {
 
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("dead_host", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("dead_host", row);
 		} finally {
 			// Add to audit log
 			await internalAuditLog.add(access, {
@@ -274,8 +273,7 @@ const internalDeadHost = {
 		let savedRow;
 		try {
 			// Delete Nginx Config
-			await internalNginx.deleteConfig("dead_host", row);
-			await internalNginx.reload();
+			await internalNginx.removeConfig("dead_host", row);
 		} finally {
 			savedRow = await internalDeadHost.get(access, { id: row.id });
 

@@ -1,0 +1,237 @@
+{
+	"type": "object",
+	"description": "Effective log files runtime settings",
+	"additionalProperties": false,
+	"required": [
+		"write_log_files",
+		"log_rotations",
+		"goaccess",
+		"goaccess_keep_days",
+		"goaccess_anonymize",
+		"goaccess_drop_query_strings",
+		"goaccess_real_os",
+		"goaccess_resolve_hosts",
+		"locked",
+		"locked_by",
+		"locked_reason",
+		"applies",
+		"restart_pending"
+	],
+	"properties": {
+		"write_log_files": {
+			"type": "boolean",
+			"description": "Write the error and stream log files; forced on by GOA (env LOGROTATE)"
+		},
+		"log_rotations": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 1000,
+			"description": "Rotated log files kept (env LOGROTATIONS)"
+		},
+		"goaccess": {
+			"type": "boolean",
+			"description": "GoAccess report (env GOA); applies after a container restart"
+		},
+		"goaccess_keep_days": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"description": "GoAccess keeps report data for this many days (--keep-last), 1 to 366; null when a GOACLA from the env has no --keep-last. Applies after a container restart, locked by GOACLA"
+		},
+		"goaccess_anonymize": {
+			"type": "string",
+			"enum": [
+				"off",
+				"1",
+				"2",
+				"3"
+			],
+			"description": "Anonymize visitor IPs in the GoAccess report: off or the --anonymize-level. Applies after a container restart, locked by GOACLA"
+		},
+		"goaccess_drop_query_strings": {
+			"type": "boolean",
+			"description": "Drop query strings from the URLs in the GoAccess report (--no-query-string). Applies after a container restart, locked by GOACLA"
+		},
+		"goaccess_real_os": {
+			"type": "boolean",
+			"description": "Full operating system versions in the GoAccess report (--real-os). Applies after a container restart, locked by GOACLA"
+		},
+		"goaccess_resolve_hosts": {
+			"type": "boolean",
+			"description": "Resolve visitor host names in the GoAccess report (--with-output-resolver). Applies after a container restart, locked by GOACLA"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"write_log_files",
+					"log_rotations",
+					"goaccess",
+					"goaccess_keep_days",
+					"goaccess_anonymize",
+					"goaccess_drop_query_strings",
+					"goaccess_real_os",
+					"goaccess_resolve_hosts"
+				]
+			},
+			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"description": "The environment variable that sets each locked field (read only)",
+			"additionalProperties": false,
+			"properties": {
+				"write_log_files": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"log_rotations": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess_keep_days": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess_anonymize": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess_drop_query_strings": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess_real_os": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"goaccess_resolve_hosts": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				}
+			}
+		},
+		"locked_reason": {
+			"type": "object",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log files), goaccess-setting (GoAccess, turned on by the GoAccess report setting, reads the log files: not an env lock). Fields locked by their own variable are not listed.",
+			"additionalProperties": false,
+			"properties": {
+				"write_log_files": {
+					"type": "string",
+					"enum": [
+						"goaccess",
+						"goaccess-setting"
+					]
+				}
+			}
+		},
+		"applies": {
+			"type": "object",
+			"description": "When a change of each field takes effect",
+			"additionalProperties": false,
+			"required": [
+				"write_log_files",
+				"log_rotations",
+				"goaccess",
+				"goaccess_keep_days",
+				"goaccess_anonymize",
+				"goaccess_drop_query_strings",
+				"goaccess_real_os",
+				"goaccess_resolve_hosts"
+			],
+			"properties": {
+				"write_log_files": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"log_rotations": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"goaccess": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				},
+				"goaccess_keep_days": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				},
+				"goaccess_anonymize": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				},
+				"goaccess_drop_query_strings": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				},
+				"goaccess_real_os": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				},
+				"goaccess_resolve_hosts": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately",
+						"restart"
+					]
+				}
+			}
+		},
+		"restart_pending": {
+			"type": "array",
+			"description": "Settings that apply after a container restart (applies restart) saved with another value than the container runs with: restart the container to apply them",
+			"items": {
+				"type": "string",
+				"enum": [
+					"goaccess",
+					"goaccess_keep_days",
+					"goaccess_anonymize",
+					"goaccess_drop_query_strings",
+					"goaccess_real_os",
+					"goaccess_resolve_hosts"
+				]
+			}
+		}
+	}
+}
