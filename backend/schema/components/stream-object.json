@@ -47,7 +47,7 @@
 			"type": "string",
 			"minLength": 1,
 			"maxLength": 253,
-			"pattern": "^\\S+$",
+			"pattern": "^[^\\s;{}\"'\\\\#]+$",
 			"example": "127.0.0.1"
 		},
 		"forwarding_port": {
@@ -85,6 +85,7 @@
 			"$ref": "../common.json#/properties/certificate_id"
 		},
 		"npmpro_advanced_config": {
+			"description": "Raw nginx config. Only administrators can set or change it; other users can only keep the stored value.",
 			"type": "string",
 			"default": "",
 			"example": ""

@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
+import { assertHostConfig } from "../lib/host-config-guard.js";
 import streamModel from "../models/stream.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
@@ -49,6 +50,7 @@ const internalStream = {
 		}
 
 		access.can("streams:manage");
+		assertHostConfig(access, "stream", data);
 
 		thisData.owner_user_id = access.token.getUserId(1);
 
@@ -104,6 +106,8 @@ const internalStream = {
 		}
 
 		access.can("streams:manage");
+		// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
+		assertHostConfig(access, "stream", data, existingRow);
 
 		if (createCertificate) {
 			const cert = await internalCertificate.createQuickCertificate(access, thisData);

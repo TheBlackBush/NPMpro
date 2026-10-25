@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createUser, getUser, updateUser } from "src/api/backend";
+import { isAdmin } from "src/modules/Permissions";
 
 const fetchUser = (id) => {
 	if (id === "new") {
@@ -25,6 +26,15 @@ const useUser = (id) => {
 	});
 };
 
+/**
+ * Whether the signed-in user is an administrator; undefined while the user is loading
+ */
+const useIsAdmin = () => {
+	const { data, isError } = useUser("me");
+	if (isError) return false;
+	return data ? isAdmin(data.roles) === true : undefined;
+};
+
 const useSetUser = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -39,4 +49,4 @@ const useSetUser = () => {
 	});
 };
 
-export { useSetUser, useUser };
+export { useIsAdmin, useSetUser, useUser };

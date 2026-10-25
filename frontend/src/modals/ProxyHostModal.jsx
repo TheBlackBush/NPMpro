@@ -22,6 +22,7 @@ import {
 import {
 	DirtyTracker,
 	useDirectorySuggestions,
+	useIsAdmin,
 	useProxyHost,
 	useProxyHosts,
 	useSetProxyHost,
@@ -37,6 +38,9 @@ import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useProxyHost(id);
+	const isAdmin = useIsAdmin();
+	// raw nginx config is admin-only: a non-admin clone starts without it
+	const dropConfig = isClone && !isAdmin;
 	const { data: allProxyHosts } = useProxyHosts();
 	const suggestions = useDirectorySuggestions(allProxyHosts);
 	const { mutate: setProxyHost } = useSetProxyHost();
@@ -48,6 +52,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const [schemeResetNotice, setSchemeResetNotice] = useState(false);
 	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
 		...location,
+		...(dropConfig ? { advancedConfig: "" } : {}),
 		npmproAccessListIds: accessLists.map((accessList) => accessList.id),
 	}));
 
@@ -99,7 +104,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
-			{data && (
+			{data && isAdmin !== undefined && (
 				<Formik
 					initialValues={{
 						// Details tab
@@ -118,8 +123,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 						hstsEnabled: data?.hstsEnabled,
 						hstsSubdomains: data?.hstsSubdomains,
 						// Advanced tab
-						advancedConfig: data?.advancedConfig,
-						npmproLocationConfig: data?.npmproLocationConfig,
+						advancedConfig: dropConfig ? "" : data?.advancedConfig,
+						npmproLocationConfig: dropConfig ? "" : data?.npmproLocationConfig,
 						npmproDirectory: data?.npmproDirectory,
 						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
 						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
@@ -289,6 +294,11 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																pattern="(?=\S{0,255}$)[^\s\/]{0,253}(\/\S*)?"
 																{...field}
 															/>
+															{form.values.forwardScheme === "path" && (
+																<div className="form-hint">
+																	<T id="host.forward-host.path-hint" />
+																</div>
+															)}
 														</div>
 													)}
 												</Field>
@@ -319,21 +329,25 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	)}
 																	{...field}
 																/>
-																<button
-																	type="button"
-																	className="btn btn-icon"
-																	title={intl.formatMessage({
-																		id: "host.location-config.toggle",
-																	})}
-																	aria-label={intl.formatMessage({
-																		id: "host.location-config.toggle",
-																	})}
-																	aria-expanded={advVisible}
-																	onClick={() => setAdvVisible((prev) => !prev)}
-																>
-																	<IconSettings size={20} aria-hidden="true" />
-																	{values?.npmproLocationConfig?.trim() ? "*" : ""}
-																</button>
+																{(isAdmin || values?.npmproLocationConfig?.trim()) && (
+																	<button
+																		type="button"
+																		className="btn btn-icon"
+																		title={intl.formatMessage({
+																			id: "host.location-config.toggle",
+																		})}
+																		aria-label={intl.formatMessage({
+																			id: "host.location-config.toggle",
+																		})}
+																		aria-expanded={advVisible}
+																		onClick={() => setAdvVisible((prev) => !prev)}
+																	>
+																		<IconSettings size={20} aria-hidden="true" />
+																		{values?.npmproLocationConfig?.trim()
+																			? "*"
+																			: ""}
+																	</button>
+																)}
 
 																{form.errors.forwardPort && form.touched.forwardPort ? (
 																	<div className="invalid-feedback">
@@ -633,8 +647,20 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	id: "nginx-config.placeholder",
 																})}
 																rows={8}
+																readOnly={!isAdmin}
+																aria-describedby={
+																	isAdmin ? undefined : "npmproLocationConfig-hint"
+																}
 																{...field}
 															/>
+															{!isAdmin && (
+																<div
+																	className="form-hint"
+																	id="npmproLocationConfig-hint"
+																>
+																	<T id="nginx-config.admin-only" />
+																</div>
+															)}
 														</div>
 													)}
 												</>

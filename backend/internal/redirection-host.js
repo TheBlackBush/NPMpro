@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
+import { assertHostConfig } from "../lib/host-config-guard.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
@@ -26,6 +27,7 @@ const internalRedirectionHost = {
 		}
 
 		access.can("redirection_hosts:manage");
+		assertHostConfig(access, "redirection_host", thisData);
 
 		// Get a list of the domain names and check each of them against existing records
 		const checkResults = await Promise.all(
@@ -92,6 +94,7 @@ const internalRedirectionHost = {
 		access.can("redirection_hosts:manage");
 
 		const existingRow = await internalRedirectionHost.get(access, { id: thisData.id });
+		assertHostConfig(access, "redirection_host", thisData, existingRow);
 
 		// Get a list of the domain names and check each of them against existing records
 		if (thisData.domain_names !== undefined) {

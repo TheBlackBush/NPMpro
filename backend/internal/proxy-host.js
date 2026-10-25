@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
+import { assertHostConfig } from "../lib/host-config-guard.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
@@ -70,6 +71,7 @@ const internalProxyHost = {
 		}
 
 		access.can("proxy_hosts:manage");
+		assertHostConfig(access, "proxy_host", thisData);
 
 		// Get a list of the domain names and check each of them against existing records
 		const checkResults = await Promise.all(
@@ -143,6 +145,7 @@ const internalProxyHost = {
 		access.can("proxy_hosts:manage");
 
 		const existingRow = await internalProxyHost.get(access, { id: thisData.id });
+		assertHostConfig(access, "proxy_host", thisData, existingRow);
 
 		// Get a list of the domain names and check each of them against existing records
 		if (thisData.domain_names !== undefined) {

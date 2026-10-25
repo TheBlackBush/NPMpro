@@ -12,6 +12,7 @@ import { useFormikContext } from "formik";
 import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { AccessFields, SwitchField } from "src/components";
+import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
@@ -20,6 +21,7 @@ import { NoticeAlert } from "../NoticeAlert";
 
 export function LocationsFields({ initialValues, name = "locations" }) {
 	const nextUiKey = useRef(0);
+	const isAdmin = useIsAdmin();
 	const createUiLocation = (item) => ({
 		npmproEnabled: true,
 		path: "",
@@ -268,17 +270,19 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 								</div>
 							</div>
 							<div className="col-md-2 text-end">
-								<button
-									type="button"
-									className="btn p-0"
-									title={intl.formatMessage({ id: "location.config.toggle" })}
-									aria-label={intl.formatMessage({ id: "location.config.toggle" })}
-									aria-expanded={advVisible.includes(item.uiKey)}
-									onClick={() => toggle(item.uiKey, advVisible, setAdvVisible)}
-								>
-									<IconSettings size={20} />
-									{item?.advancedConfig?.trim() ? "*" : ""}
-								</button>
+								{(isAdmin || item?.advancedConfig?.trim()) && (
+									<button
+										type="button"
+										className="btn p-0"
+										title={intl.formatMessage({ id: "location.config.toggle" })}
+										aria-label={intl.formatMessage({ id: "location.config.toggle" })}
+										aria-expanded={advVisible.includes(item.uiKey)}
+										onClick={() => toggle(item.uiKey, advVisible, setAdvVisible)}
+									>
+										<IconSettings size={20} />
+										{item?.advancedConfig?.trim() ? "*" : ""}
+									</button>
+								)}
 							</div>
 						</div>
 						{!item.path?.endsWith("/") && (item.locationType === "" || item.locationType === "^~ ") && (
@@ -329,6 +333,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										value={item.forwardHost}
 										onChange={(e) => handleChange(idx, "forwardHost", e.target.value)}
 									/>
+									{item.forwardScheme === "path" && (
+										<div className="form-hint">
+											<T id="host.forward-host.path-hint" />
+										</div>
+									)}
 								</div>
 							</div>
 							<div className="col-md-3">
@@ -553,7 +562,14 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									value={item.advancedConfig}
 									onChange={(e) => handleChange(idx, "advancedConfig", e.target.value)}
 									rows={8}
+									readOnly={!isAdmin}
+									aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${item.uiKey}`}
 								/>
+								{!isAdmin && (
+									<div className="form-hint" id={`advancedConfig-hint-${item.uiKey}`}>
+										<T id="nginx-config.admin-only" />
+									</div>
+								)}
 							</div>
 						)}
 					</div>

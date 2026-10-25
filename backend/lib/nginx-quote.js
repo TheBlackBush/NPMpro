@@ -1,0 +1,39 @@
+/**
+ * Wraps a value in double quotes for an nginx config argument. nginx unescapes \\ and \" (and \t, \r, \n) in every
+ * argument, so escaping backslashes first keeps a regex such as `\d{3}` unchanged after nginx reads it, and a value
+ * cannot end the string early.
+ *
+ * @param   {String} value
+ * @returns {String}
+ */
+const quoteNginxString = (value) => `"${String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+
+/**
+ * Removes one pair of matching outer quotes. Paths with braces used to pass `nginx -t` only when quoted by hand, so
+ * stored paths such as `"^/api/\d{3}$"` must keep their meaning now that every path is quoted.
+ *
+ * @param   {String} value
+ * @returns {String}
+ */
+const unquote = (value) => {
+	const text = String(value ?? "");
+	const first = text[0];
+	return text.length >= 2 && (first === '"' || first === "'") && text.at(-1) === first ? text.slice(1, -1) : text;
+};
+
+/**
+ * The location type and path of a custom location as rendered after `location `: the path is always quoted, so
+ * braces, semicolons or quotes in it cannot leave the location block. A named location (`@`) quotes the whole name.
+ * A path the user quoted already is unquoted first.
+ *
+ * @param   {Object} location
+ * @param   {String} [location.location_type]  "", "@", "= ", "~ ", "~* " or "^~ "
+ * @param   {String} location.path
+ * @returns {{location_type: String, path: String}}
+ */
+const quoteLocation = ({ location_type: type, path }) =>
+	type === "@"
+		? { location_type: "", path: quoteNginxString(`@${unquote(path)}`) }
+		: { location_type: type ?? "", path: quoteNginxString(unquote(path)) };
+
+export { quoteLocation, quoteNginxString, unquote };

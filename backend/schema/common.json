@@ -216,7 +216,7 @@
 		"address": {
 			"type": "string",
 			"maxLength": 255,
-			"pattern": "^\\S*$",
+			"pattern": "^([Aa][Ll][Ll]|unix:|[0-9A-Fa-f.:/]*)$",
 			"example": "192.168.0.11"
 		},
 		"access_items": {

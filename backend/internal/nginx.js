@@ -5,6 +5,7 @@ import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { quoteLocation } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
@@ -13,6 +14,10 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
+
+// nginxbeautifier misreads braces, quotes, `$` patterns and escapes inside a quoted custom location path (crash,
+// silent rewrite of the path); such configs are written unformatted
+const BEAUTIFIER_UNSAFE_LOCATION = /^\s*location\s[^\n]*"[^\n]*[{}'$\\;#][^\n]*"/mu;
 
 const internalNginx = {
 	/**
@@ -149,6 +154,7 @@ const internalNginx = {
 			} else {
 				location.forward_upstream_name = `upstream_${host.id}_location_${idx}`;
 			}
+			Object.assign(location, quoteLocation(location));
 			renderedLocations += await renderEngine.parseAndRender(template, location);
 		}
 
@@ -224,6 +230,7 @@ const internalNginx = {
 	 * @returns {Promise<String>}
 	 */
 	beautify: async (text) => {
+		if (BEAUTIFIER_UNSAFE_LOCATION.test(text)) return text;
 		const dir = await mkdtemp(path.join(tmpdir(), "npmpro-beautify-"));
 		const file = path.join(dir, "host.conf");
 		try {

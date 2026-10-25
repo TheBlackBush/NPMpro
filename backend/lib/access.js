@@ -73,6 +73,15 @@ export default function (tokenString) {
 		},
 
 		/**
+		 * Non-throwing admin check, valid after load()
+		 *
+		 * @returns {Boolean}
+		 */
+		get isAdmin() {
+			return isAdmin;
+		},
+
+		/**
 		 *
 		 * @returns {Boolean}
 		 */
