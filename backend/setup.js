@@ -1,10 +1,12 @@
 import { existsSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { readdir, rm, writeFile } from "node:fs/promises";
 import dnsPlugins from "./certbot/dns-plugins.json" with { type: "json" };
 import internalDnsCredential from "./internal/dns-credential.js";
 import internalHost from "./internal/host.js";
 import internalNginx from "./internal/nginx.js";
 import internalProxyHost from "./internal/proxy-host.js";
+import internalProxyHostAccessList from "./internal/proxy-host-access-list.js";
+import { runtimeExclusive } from "./internal/runtime-queue.js";
 import internalUser from "./internal/user.js";
 import Access from "./lib/access.js";
 import { installPlugins } from "./lib/certbot.js";
@@ -116,10 +118,66 @@ const setupCertbotPlugins = async () => {
 	}
 };
 
+const HOST_CONFIG_DIRS = ["proxy_host", "redirection_host", "dead_host", "stream"];
+
 /**
- * Regenerates host configs. All enabled hosts when an env or the template version changed (start.sh then deleted
- * all configs), otherwise only enabled hosts whose config file is missing, e.g. because a previous start deleted the
- * configs and stopped before regenerating them.
+ * Removes host configs that a full regeneration did not write: configs of hosts that were deleted or disabled, and the
+ * configs launch.sh moved aside (*.conf.stale) because nginx rejected them
+ *
+ * @param   {Set<String>}  written  the config files the regeneration wrote
+ * @returns {Promise}
+ */
+const removeLeftoverConfigs = async (written) => {
+	for (const dir of HOST_CONFIG_DIRS) {
+		const names = await readdir(`/data/nginx/${dir}`).catch(() => []);
+		for (const name of names) {
+			const file = `/data/nginx/${dir}/${name}`;
+			if (name.endsWith(".conf.stale") || (name.endsWith(".conf") && !written.has(file))) {
+				await rm(file, { force: true });
+			}
+		}
+	}
+};
+
+/**
+ * Full regeneration: writes every config (the previous ones stay in use until the reload), then one nginx -t. Only
+ * when that fails, the hosts are checked one by one like a single save, so the broken ones end up as .err.
+ *
+ * @param   {Array<{model: Object, hostType: String, host: Object}>}  hosts
+ * @returns {Promise}
+ */
+const regenerateAllHosts = (hosts) =>
+	runtimeExclusive(async () => {
+		const written = new Set();
+		for (const { hostType, host } of hosts) {
+			await internalProxyHostAccessList.build(hostType, host);
+			await internalNginx.deleteConfig(hostType, host);
+			// launch.sh and the startup apply fetched the OCSP responses, the reload afterwards fetches the rest once
+			await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp: false });
+			written.add(internalNginx.getConfigName(hostType, host.id));
+		}
+		await removeLeftoverConfigs(written);
+
+		try {
+			await internalNginx.test();
+		} catch (err) {
+			logger.warn(`The regenerated configs do not pass nginx -t, checking the hosts one by one: ${err.message}`);
+			for (const { hostType, host } of hosts) await internalNginx.deleteConfig(hostType, host);
+			for (const { model, hostType, host } of hosts) {
+				await internalNginx.configureNow(model, hostType, host, { skipReload: true, fetchMissingOcsp: false });
+			}
+			return;
+		}
+		const ok = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
+		for (const model of new Set(hosts.map(({ model }) => model))) {
+			const ids = hosts.filter((entry) => entry.model === model).map(({ host }) => host.id);
+			if (ids.length > 0) await model.query().whereIn("id", ids).patch(ok);
+		}
+	});
+
+/**
+ * Regenerates host configs. All enabled hosts when an env or the template version changed, otherwise only enabled
+ * hosts whose config file is missing, e.g. because a previous start stopped before regenerating them.
  *
  * @returns {Promise}
  */
@@ -132,24 +190,36 @@ const regenerateHosts = async () => {
 		[streamModel, "stream", "certificate"],
 	];
 
+	if (regenerateAll) {
+		const hosts = [];
+		for (const [model, hostType, graph] of hostTypes) {
+			for (const host of await model.query().where("enabled", 1).withGraphFetched(graph)) {
+				hosts.push({ model, hostType, host });
+			}
+		}
+		await regenerateAllHosts(hosts);
+		await writeFile("/data/npmpro/env.sha512sum", process.env.ENV_SHA512SUM);
+		logger.info(`Regenerated ${hosts.length} host config(s)`);
+		await internalNginx.reload();
+		return;
+	}
+
 	let regenerated = 0;
 	for (const [model, hostType, graph] of hostTypes) {
 		for (const host of await model.query().where("enabled", 1).withGraphFetched(graph)) {
 			const configFile = internalNginx.getConfigName(hostType, host.id);
 			// a config nginx rejected is kept as .err, regenerating it on every start would only fail again
-			if (!regenerateAll && (existsSync(configFile) || existsSync(`${configFile}.err`))) continue;
+			if (existsSync(configFile) || existsSync(`${configFile}.err`)) continue;
 			// launch.sh and the startup apply fetched the OCSP responses, the reload below fetches the rest once
 			await internalNginx.configure(model, hostType, host, { skipReload: true, fetchMissingOcsp: false });
 			regenerated++;
 		}
 	}
 
-	if (regenerateAll) {
-		await writeFile("/data/npmpro/env.sha512sum", process.env.ENV_SHA512SUM);
-	} else if (regenerated > 0) {
+	if (regenerated > 0) {
 		logger.warn(`Regenerated ${regenerated} host config(s) that were missing`);
+		await internalNginx.reload();
 	}
-	if (regenerated > 0) await internalNginx.reload();
 };
 
 /**
