@@ -2,6 +2,7 @@
  * Pure rules for the OIDC settings API (no database access, so they can be unit tested)
  */
 
+import errs from "../lib/error.js";
 import { mergeOidcConfig } from "../lib/oidc-rules.js";
 
 /**
@@ -55,6 +56,17 @@ const applyOidcUpdate = (stored, body, locked, encrypt) => {
 		} else {
 			next[key] = value;
 		}
+	}
+	// the stored client secret is only ever sent to the identity provider it was entered for
+	const moved = ["issuer_url", "client_id"].some(
+		(key) => !locked.includes(key) && stored?.[key] && (next[key] ?? "") !== stored[key],
+	);
+	const newSecret = typeof body?.client_secret === "string" && body.client_secret !== "";
+	if (moved && stored?.client_secret && !newSecret && !locked.includes("client_secret")) {
+		throw new errs.ValidationError(
+			"Enter the client secret again when the issuer URL or client ID changes",
+			"error.oidc-secret-required",
+		);
 	}
 	return next;
 };

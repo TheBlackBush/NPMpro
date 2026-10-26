@@ -105,6 +105,14 @@ fi
 #tmp move to mointpoint if block
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
+# the old plaintext credential files, once no renewal config points to them (the line above moved them all)
+if [ -d /data/tls/certbot/credentials ] && ! grep -rqs /data/tls/certbot/credentials /data/tls/certbot/renewal; then
+    rm -rvf /data/tls/certbot/credentials
+fi
+# copies of the database from before an upgrade still hold what it held then (plaintext DNS credentials of NPMplus)
+for old_data in /data/npmplus.backup-*; do
+    [ -d "$old_data" ] && echo "Note: $old_data is the data folder from before the NPMplus upgrade and holds its secrets in plaintext (DNS credentials, signing key). Delete it once NPMpro works for you."
+done
 
 if [ -d /data/tls/certbot/live ] && [ -d /data/tls/certbot/archive ]; then
   certs="$(mktemp)"
@@ -312,10 +320,14 @@ else
     echo "access_log off;" > /data/npmpro/nginx/stream-log.conf
 fi
 
+# secrets live here: TLS keys, htpasswd files, the database and keys, logs, the CrowdSec API key and custom nginx
+# snippets (often with tokens); nginx runs as the same user, so 700/600 keeps them readable for it
 find /data/tls \
      /data/access \
      /data/npmpro \
      /data/nginx/logs \
+     /data/crowdsec \
+     /data/custom_nginx \
      -type d \
      -not -perm 700 \
      -exec chmod 700 {} \;
@@ -324,6 +336,8 @@ find /data/tls \
      /data/access \
      /data/npmpro \
      /data/nginx/logs \
+     /data/crowdsec \
+     /data/custom_nginx \
      -type f \
      -not -perm 600 \
      -exec chmod 600 {} \;

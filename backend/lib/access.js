@@ -7,6 +7,7 @@
 import TokenModel from "../models/token.js";
 import userModel from "../models/user.js";
 import errs from "./error.js";
+import { isSessionRevoked } from "./session.js";
 
 export default function (tokenString) {
 	const Token = TokenModel();
@@ -45,7 +46,7 @@ export default function (tokenString) {
 				.first();
 
 			if (user) {
-				if (tokenData.iat <= user.npmpro_token_valid_after) {
+				if (tokenData.iat <= user.npmpro_token_valid_after || (await isSessionRevoked(tokenData.sid))) {
 					throw new errs.PermissionError("Token has been revoked");
 				}
 

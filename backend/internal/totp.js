@@ -1,5 +1,6 @@
 import { createGuardrails, generateSecret, generateURI, verify } from "otplib";
 import errs from "../lib/error.js";
+import { isSealed, openSecret, sealSecret } from "../lib/totp-secret.js";
 import authModel from "../models/auth.js";
 import now from "../models/now_helper.js";
 import userModel from "../models/user.js";
@@ -47,7 +48,9 @@ const internalTotp = {
 
 		await authModel.transaction(async (trx) => {
 			await authModel.query(trx).where("user_id", userId).andWhere("type", "totp_pending").delete();
-			await authModel.query(trx).insert({ user_id: userId, type: "totp_pending", secret, meta: {} });
+			await authModel
+				.query(trx)
+				.insert({ user_id: userId, type: "totp_pending", secret: sealSecret(secret), meta: {} });
 		});
 
 		return { secret, otpauth_url };
@@ -87,7 +90,7 @@ const internalTotp = {
 			throw new errs.ValidationError("TOTP setup has expired");
 		}
 
-		const result = await verify({ token: code, secret: pending.secret });
+		const result = await verify({ token: code, secret: openSecret(pending.secret) });
 		if (!result.valid) {
 			throw new errs.ValidationError("Invalid verification code", "error.invalid-code");
 		}
@@ -165,9 +168,16 @@ const internalTotp = {
 			return false;
 		}
 
+		let secret;
+		try {
+			secret = openSecret(enrolled.secret);
+		} catch {
+			// the encryption key changed: the code cannot be checked (backup codes still work)
+			return false;
+		}
 		const result = await verify({
 			token: code,
-			secret: enrolled.secret,
+			secret,
 			// These guardrails lower the minimum length requirement for secrets.
 			// In v12 of otplib the default minimum length is 10 and in v13 it is 16.
 			// Since there are totp secrets in the wild generated with v12 we need to allow shorter secrets
@@ -180,6 +190,12 @@ const internalTotp = {
 		if (!result.valid || (usedSteps.get(enrolled.id) ?? startStep) >= result.timeStep) return false;
 
 		usedSteps.set(enrolled.id, result.timeStep);
+		if (!isSealed(enrolled.secret)) {
+			await authModel
+				.query()
+				.findById(enrolled.id)
+				.patch({ secret: sealSecret(secret) });
+		}
 		return true;
 	},
 };

@@ -192,3 +192,45 @@ it("buildValues rejects values that cannot be quoted and any control character",
 	assert.throws(() => apiKeyOf(`a"""b'c`), cannotStoreError);
 	assert.throws(() => apiKeyOf("a\tb"), lineBreakError);
 });
+
+const endpointChangeError = /requires entering .* again/u;
+
+it("a changed endpoint needs the secrets again, an unchanged one keeps them", () => {
+	const previous = {
+		fields: { dns_pdns_endpoint: "https://pdns.example", dns_pdns_api_key: "old", dns_pdns_server_id: "localhost" },
+	};
+	const moved = f({
+		dns_pdns_endpoint: "https://elsewhere.example",
+		dns_pdns_api_key: "",
+		dns_pdns_server_id: "localhost",
+	});
+	assert.throws(() => buildValues("powerdns", { fields: moved }, previous), endpointChangeError);
+	const movedWithKey = f({
+		dns_pdns_endpoint: "https://elsewhere.example",
+		dns_pdns_api_key: "new",
+		dns_pdns_server_id: "localhost",
+	});
+	assert.equal(buildValues("powerdns", { fields: movedWithKey }, previous).fields.dns_pdns_api_key, "new");
+	const same = f({ dns_pdns_endpoint: "https://pdns.example", dns_pdns_api_key: "", dns_pdns_server_id: "other" });
+	assert.equal(buildValues("powerdns", { fields: same }, previous).fields.dns_pdns_api_key, "old");
+});
+
+it("text fields marked endpoint count as endpoints too", () => {
+	const previous = {
+		fields: { dns_rfc2136_server: "192.0.2.1", dns_rfc2136_name: "key.", dns_rfc2136_secret: "old" },
+	};
+	const moved = f({ dns_rfc2136_server: "198.51.100.7", dns_rfc2136_name: "key.", dns_rfc2136_secret: "" });
+	assert.throws(() => buildValues("rfc2136", { fields: moved }, previous), endpointChangeError);
+	const ovh = {
+		fields: {
+			dns_ovh_endpoint: "ovh-eu",
+			dns_ovh_application_key: "a",
+			dns_ovh_application_secret: "s",
+			dns_ovh_consumer_key: "c",
+		},
+	};
+	const ovhMoved = f({ dns_ovh_endpoint: "ovh-ca", dns_ovh_application_key: "a" });
+	assert.throws(() => buildValues("ovh", { fields: ovhMoved }, ovh), endpointChangeError);
+	// a new credential has nothing saved to carry over
+	assert.throws(() => buildValues("rfc2136", { fields: moved }, null), /required/u);
+});
