@@ -5,6 +5,9 @@ import { coerceRow, exportRows } from "../lib/backup/rows.js";
 
 const BINARY = /binary/u;
 
+// the expected naive dates below are in UTC; test/backup-rows-tz.test.js covers another zone
+process.env.TZ = "UTC";
+
 const sqlite = async () => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
@@ -117,4 +120,21 @@ it("coerces for mysql dates and keeps null JSON values", () => {
 		meta: null,
 		modified_on: "2026-10-26 10:00:00",
 	});
+});
+
+it("stringifies object and array values whatever the column, so mysql2 and pg build valid inserts", () => {
+	const row = { id: 1, locations: [], extra: { a: 1 } };
+	const columns = { id: { type: "int" }, locations: { type: "text" }, extra: { type: "text" } };
+	const mysqlRow = coerceRow({ ...columns, __client: "mysql2" }, "proxy_host", row);
+	assert.deepEqual(mysqlRow, { id: 1, locations: "[]", extra: '{"a":1}' });
+	assert.equal(
+		knexFactory({ client: "mysql2" })("proxy_host").insert(mysqlRow).toString(),
+		"insert into `proxy_host` (`extra`, `id`, `locations`) values ('{\\\"a\\\":1}', 1, '[]')",
+	);
+	const pgRow = coerceRow({ ...columns, __client: "pg" }, "redirection_host", row);
+	assert.deepEqual(pgRow, { id: 1, locations: "[]", extra: '{"a":1}' });
+	assert.equal(
+		knexFactory({ client: "pg" })("proxy_host").insert(pgRow).toString(),
+		'insert into "proxy_host" ("extra", "id", "locations") values (\'{"a":1}\', 1, \'[]\')',
+	);
 });
