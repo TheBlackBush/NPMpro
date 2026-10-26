@@ -22,6 +22,12 @@ class BackupError extends Error {
 	}
 }
 
+const SCRYPT_MAXMEM = 256 * SCRYPT.N * SCRYPT.r;
+const SALT_BYTES = 16;
+const IV_BYTES = 12;
+
+const hasBytes = (value, length) => typeof value === "string" && Buffer.from(value, "base64").length === length;
+
 const deriveKey = (header, { passphrase, instanceKey }) => {
 	const salt = Buffer.from(header.salt, "base64");
 	if (header.kdf === "instance") {
@@ -35,9 +41,8 @@ const deriveKey = (header, { passphrase, instanceKey }) => {
 	if (typeof passphrase !== "string" || passphrase === "") {
 		return Promise.reject(new BackupError("wrong-passphrase", "This backup needs its passphrase"));
 	}
-	const { N, r, p } = header;
 	return new Promise((resolve, reject) =>
-		scrypt(passphrase.normalize("NFC"), salt, 32, { N, r, p, maxmem: 256 * N * r }, (err, key) =>
+		scrypt(passphrase.normalize("NFC"), salt, 32, { ...SCRYPT, maxmem: SCRYPT_MAXMEM }, (err, key) =>
 			err ? reject(err) : resolve(key),
 		),
 	);
@@ -115,6 +120,12 @@ const readHeader = async (file) => {
 		if (!Number.isInteger(header?.v) || !["scrypt", "none", "instance"].includes(header.kdf)) {
 			throw new BackupError("not-a-backup", "The backup header is damaged");
 		}
+		if (header.kdf !== "none") {
+			const fixedCost = header.kdf !== "scrypt" || ["N", "r", "p"].every((name) => header[name] === SCRYPT[name]);
+			if (!(fixedCost && hasBytes(header.salt, SALT_BYTES) && hasBytes(header.iv, IV_BYTES))) {
+				throw new BackupError("not-a-backup", "The backup header is damaged");
+			}
+		}
 		return { header, headBytes: Buffer.concat([start, json]), dataStart: start.length + length, size };
 	} finally {
 		await handle.close();
@@ -148,6 +159,10 @@ const openBackupFile = async ({ file, passphrase, instanceKey }) => {
 		decipher.destroy();
 		out.destroy(new BackupError("wrong-passphrase", "Wrong passphrase or damaged backup file", { cause: err }));
 	};
+	out.on("close", () => {
+		input.destroy();
+		decipher.destroy();
+	});
 	input.on("error", fail);
 	decipher.on("error", fail);
 	input.pipe(decipher).pipe(out);

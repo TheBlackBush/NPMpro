@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -126,4 +127,59 @@ it("leaves no partial file when the target folder is missing", async () => {
 	const file = path.join(folder, "missing", "a.npmpro");
 	await assert.rejects(writeBackupFile({ source: Readable.from([payload]), file, mode: "none", summary }));
 	assert.deepEqual(await readdir(folder), []);
+});
+
+const MAGIC = Buffer.from("NPMPROBK");
+const craft = async (header) => {
+	const file = path.join(await dir(), "crafted.npmpro");
+	const json = Buffer.from(JSON.stringify(header));
+	const length = Buffer.alloc(4);
+	length.writeUInt32BE(json.length);
+	await writeFile(file, Buffer.concat([MAGIC, length, json, Buffer.alloc(64)]));
+	return file;
+};
+const good = {
+	v: 1,
+	kdf: "scrypt",
+	N: 131072,
+	r: 8,
+	p: 1,
+	salt: Buffer.alloc(16).toString("base64"),
+	iv: Buffer.alloc(12).toString("base64"),
+	summary,
+};
+const notABackup = (err) => err.code === "not-a-backup";
+
+it("refuses scrypt cost parameters other than the fixed ones", async () => {
+	for (const cost of [{ N: 2 ** 22, r: 64 }, { p: 2 }, { N: 1024 }]) {
+		await assert.rejects(readHeader(await craft({ ...good, ...cost })), notABackup);
+	}
+	const file = await craft({ ...good, N: 2 ** 22 });
+	await assert.rejects(openBackupFile({ file, passphrase: pass }), notABackup);
+});
+
+it("refuses a missing salt and a short iv", async () => {
+	await assert.rejects(
+		readHeader(await craft({ ...good, kdf: "instance", N: undefined, salt: undefined })),
+		notABackup,
+	);
+	await assert.rejects(readHeader(await craft({ ...good, iv: Buffer.alloc(8).toString("base64") })), notABackup);
+	await assert.rejects(readHeader(await craft({ ...good, salt: Buffer.alloc(4).toString("base64") })), notABackup);
+});
+
+it("releases the file when the returned stream is destroyed early", async () => {
+	const big = randomBytes(1024 * 1024);
+	const fds = async () => (await readdir("/proc/self/fd")).length;
+	for (const mode of ["passphrase", "none"]) {
+		const file = path.join(await dir(), "big.npmpro");
+		await writeBackupFile({ source: Readable.from([big]), file, mode, passphrase: pass, summary });
+		const before = await fds();
+		for (let i = 0; i < 10; i++) {
+			const stream = await openBackupFile({ file, passphrase: pass });
+			await new Promise((resolve) => stream.once("data", resolve));
+			stream.destroy();
+		}
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		assert.ok((await fds()) <= before + 1, `${mode}: file descriptors leaked`);
+	}
 });
