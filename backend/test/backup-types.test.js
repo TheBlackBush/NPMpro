@@ -120,10 +120,8 @@ it("strips the user secrets and round trips totp secrets", () => {
 	];
 	const rows = { auth, user: [{ id: 1 }, { id: 2 }] };
 	const stripped = secrets.strip(rows);
-	assert.deepEqual(
-		stripped.auth.map((row) => row.id),
-		[5],
-	);
+	assert.deepEqual(stripped.auth, []);
+	assert.deepEqual(secrets.strip({ user: [] }).auth, []);
 	assert.equal(stripped.user.length, 2);
 	assert.equal(rows.auth.length, 5);
 

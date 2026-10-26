@@ -33,7 +33,6 @@ const RESTORE_ORDER = [
 ];
 
 const SEALED_PREFIX = "v1:";
-const SECRET_AUTH_TYPES = new Set(["password", "totp", "totp_pending", "backup_code"]);
 const TOTP_AUTH_TYPES = new Set(["totp", "totp_pending"]);
 const PRIVATE_KEY = /^privkey\d*\.pem$/u;
 
@@ -193,11 +192,9 @@ const TYPES = {
 						? { ...row, secret: box.decrypt(row.secret).totp }
 						: row,
 				),
-			// password and backup code hashes go too: these users cannot sign in until an admin sets a password
-			strip: (rowsByTable) =>
-				Array.isArray(rowsByTable.auth)
-					? { ...rowsByTable, auth: rowsByTable.auth.filter((row) => !SECRET_AUTH_TYPES.has(row.type)) }
-					: rowsByTable,
+			// every auth row is a credential (password and backup code hashes, TOTP secrets, and any type added later),
+			// so they all go: these users cannot sign in until an admin sets a password
+			strip: (rowsByTable) => ({ ...rowsByTable, auth: [] }),
 			seal: (rowsByTable, box) =>
 				mapRows(rowsByTable, "auth", (row) =>
 					TOTP_AUTH_TYPES.has(row.type) && typeof row.secret === "string" && row.secret !== ""
