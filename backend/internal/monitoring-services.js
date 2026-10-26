@@ -1,10 +1,12 @@
 import db from "../db.js";
+import { isSqlite, SQLITE_FILE } from "../lib/config.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { GEOIP_DIR, geoip } from "../lib/geoip/instance.js";
 import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
+import { createReadClient } from "../lib/traffic/read-client.js";
 import { createStateMeta, createTrafficService } from "../lib/traffic/service.js";
 import {
 	countVisitors,
@@ -107,7 +109,24 @@ const crowdsec = createCrowdsecService({ geoLookup: (ip) => geoip.lookup(ip)?.co
 
 const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getConfig: getGeoipConfig });
 
-const internalMonitoring = createMonitoring({ traffic, crowdsec, geoip, store, getConfig: getMonitoringConfig });
+// the statistics reads: on SQLite in a worker thread (a slow query would block the API), else on the shared pool
+let reads = null;
+const monitoringReads = () => {
+	reads ??= isSqlite() ? createReadClient({ filename: SQLITE_FILE }) : { queryTraffic, summary, countVisitors };
+	return reads;
+};
+const internalMonitoring = createMonitoring({
+	traffic,
+	crowdsec,
+	geoip,
+	store: {
+		...store,
+		queryTraffic: (args) => monitoringReads().queryTraffic(args),
+		summary: (args) => monitoringReads().summary(args),
+		countVisitors: (args) => monitoringReads().countVisitors(args),
+	},
+	getConfig: getMonitoringConfig,
+});
 
 /** Starts the monitoring timers in the background; a failure is logged and never stops the backend. */
 const startMonitoringServices = () => {
@@ -125,6 +144,7 @@ const stopMonitoringServices = async () => {
 	} catch (err) {
 		logger.error(`Traffic statistics could not stop cleanly: ${err.message}`);
 	}
+	await reads?.close?.();
 };
 
 export { internalMonitoring, runGeoipUpdate, startMonitoringServices, stopMonitoringServices, traffic };

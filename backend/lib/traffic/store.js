@@ -210,12 +210,47 @@ export const createStore = (knex) => {
 		return [...out.values()];
 	};
 
-	/** Hourly rows (stored plus not yet rolled minutes) from startHour on. */
-	const hourRows = async (startHour, host) => {
-		const stored = await hostFilter(knex("traffic_hour").where("bucket", ">=", startHour), host);
-		const minutes = await hostFilter(knex("traffic_minute").where("bucket", ">=", startHour * 60), host);
-		return [...stored, ...minutesToHours(minutes)];
+	// the hour of a minute bucket (integer division; bucket is an integer column in every dialect)
+	const client = knex.client?.config?.client;
+	const hourOfMinute = client === "mysql2" || client === "mysql" ? "bucket DIV 60" : "bucket / 60";
+
+	const toRows = (rows) =>
+		rows.map((r) => ({
+			...r,
+			bucket: num(r.bucket),
+			requests: num(r.requests),
+			bytes: num(r.bytes),
+		}));
+
+	/**
+	 * Requests and bytes per bucket and status class, summed in SQL: minute buckets, or with hourly the minute rows
+	 * summed per hour. Grouped by the expression, not an alias (Postgres would take the column of the same name).
+	 */
+	const seriesRows = async (table, from, host, { hourly = false } = {}) => {
+		const bucket = hourly ? hourOfMinute : "bucket";
+		const query = knex(table)
+			.where("bucket", ">=", from)
+			.select(knex.raw(`${bucket} as bucket`), "status_class")
+			.sum({ requests: "requests", bytes: "bytes" })
+			.groupByRaw(`${bucket}, status_class`);
+		return toRows(await hostFilter(query, host));
 	};
+
+	/** Requests and bytes per host key, summed in SQL. */
+	const hostRows = async (table, from, host) => {
+		const query = knex(table)
+			.where("bucket", ">=", from)
+			.select("host")
+			.sum({ requests: "requests", bytes: "bytes" })
+			.groupBy("host");
+		return toRows(await hostFilter(query, host)).map(({ bucket: _bucket, ...row }) => row);
+	};
+
+	/** Series and per host sums from startHour on: stored hour rows plus the minute rows not rolled up yet. */
+	const hourSeries = async (startHour, host) => [
+		...(await seriesRows("traffic_hour", startHour, host)),
+		...(await seriesRows("traffic_minute", startHour * 60, host, { hourly: true })),
+	];
 
 	const sumBy = (rows, keyOf, make) => {
 		const out = new Map();
@@ -253,16 +288,22 @@ export const createStore = (knex) => {
 		const startHour = Math.floor((start * size) / HOUR);
 
 		let rows;
+		let hostSums;
 		if (spec.unit === "minute") {
-			rows = await hostFilter(knex("traffic_minute").where("bucket", ">=", start), host);
+			rows = await seriesRows("traffic_minute", start, host);
+			hostSums = await hostRows("traffic_minute", start, host);
 		} else {
-			rows = await hourRows(start, host);
+			rows = await hourSeries(start, host);
+			hostSums = [
+				...(await hostRows("traffic_hour", start, host)),
+				...(await hostRows("traffic_minute", start * 60, host)),
+			];
 		}
 		rows = rows.filter((r) => r.bucket >= start);
 
 		const totals = {
-			requests: rows.reduce((n, r) => n + num(r.requests), 0),
-			bytes: rows.reduce((n, r) => n + num(r.bytes), 0),
+			requests: rows.reduce((n, r) => n + r.requests, 0),
+			bytes: rows.reduce((n, r) => n + r.bytes, 0),
 			error_rate: errorRate(rows),
 		};
 
@@ -295,7 +336,7 @@ export const createStore = (knex) => {
 			series: fillSeries(rows, start, spec.count),
 			// every host key of the range, sorted by requests: the API groups them per NPMpro host before trimming
 			hosts: sumBy(
-				rows,
+				hostSums,
 				(r) => r.host,
 				(r) => ({ host: r.host, requests: 0, bytes: 0 }),
 			),
@@ -324,7 +365,7 @@ export const createStore = (knex) => {
 		const currentHour = Math.floor(now / HOUR);
 		const startHour = currentHour - 23;
 		const todayHour = Math.floor(now / DAY) * 24;
-		const rows = (await hourRows(startHour, "")).filter((r) => r.bucket >= startHour);
+		const rows = (await hourSeries(startHour, "")).filter((r) => r.bucket >= startHour);
 		const today = rows.filter((r) => r.bucket >= todayHour);
 		const countries = await hourTop("traffic_country_hour", todayHour, "", ["country"]);
 		const best = sumBy(
@@ -333,7 +374,7 @@ export const createStore = (knex) => {
 			(r) => ({ country: r.country, requests: 0 }),
 		).find((r) => r.country !== "--");
 		return {
-			requests_today: today.reduce((n, r) => n + num(r.requests), 0),
+			requests_today: today.reduce((n, r) => n + r.requests, 0),
 			series_24h: fillSeries(rows, startHour, 24).map((p) => ({
 				bucket: p.bucket,
 				requests: Object.values(p.by_class).reduce((a, b) => a + b, 0),

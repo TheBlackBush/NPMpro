@@ -3,6 +3,14 @@ import validator from "../lib/validator/index.js";
 import { global as logger } from "../logger.js";
 
 const TRAFFIC_CACHE_MS = 30000;
+// 7d and 30d change little within minutes and are the expensive ones: kept longer than the page's 60 s poll
+const LONG_RANGE_CACHE_MS = 5 * 60000;
+const CACHE_MS = {
+	"1h": TRAFFIC_CACHE_MS,
+	"24h": TRAFFIC_CACHE_MS,
+	"7d": LONG_RANGE_CACHE_MS,
+	"30d": LONG_RANGE_CACHE_MS,
+};
 const TOP_HOSTS = 10;
 const RECENT_LIMIT = 100;
 const DAY = 86400000;
@@ -114,18 +122,18 @@ const groupHosts = (rows, resolver) => {
  * @returns {Object}
  */
 const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Date.now, log = logger }) => {
-	// results per (range, filter, show_ips, unique_visitors) for 30 s: the page refreshes every minute per open tab,
-	// the counts change once a minute (flush)
+	// results per (range, filter, show_ips, unique_visitors), 30 s for 1h and 24h and 5 minutes for 7d and 30d: the
+	// page refreshes every minute per open tab, the counts change once a minute (flush)
 	const trafficCache = new Map();
 
-	const cached = (cache, key, compute) => {
+	const cached = (cache, key, compute, ttl = TRAFFIC_CACHE_MS) => {
 		const time = now();
 		for (const [k, hit] of cache) {
-			if (time - hit.at >= TRAFFIC_CACHE_MS) cache.delete(k);
+			if (time - hit.at >= hit.ttl) cache.delete(k);
 		}
 		let hit = cache.get(key);
 		if (!hit) {
-			hit = { at: time, result: compute(time) };
+			hit = { at: time, ttl, result: compute(time) };
 			cache.set(key, hit);
 			// a failed query is not cached
 			hit.result.catch(() => {
@@ -213,8 +221,11 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				countries,
 				...data
 			} = structuredClone(
-				await cached(trafficCache, key, (time) =>
-					computeTraffic({ range, keys, showIps, uniqueVisitors, resolver }, time),
+				await cached(
+					trafficCache,
+					key,
+					(time) => computeTraffic({ range, keys, showIps, uniqueVisitors, resolver }, time),
+					CACHE_MS[range],
 				),
 			);
 			const { enabled: _running, ...status } = traffic.status();
