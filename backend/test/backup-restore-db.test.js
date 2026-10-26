@@ -73,6 +73,7 @@ const sqlite = async () => {
 		t.integer("owner_user_id").notNull();
 		t.string("name").notNull();
 		t.text("values").notNull();
+		t.unique(["owner_user_id", "name"]);
 	});
 	await knex.schema.createTable("setting", (t) => {
 		t.string("id").primary();
@@ -269,6 +270,38 @@ it("hands the instance's rows of a removed user to the admin", async () => {
 		[1],
 	);
 	await knex.destroy();
+});
+
+it("renames DNS credentials of missing owners that collide by name once handed to the admin", async () => {
+	const knex = await sqlite();
+	try {
+		await knex("user").where({ id: 2 }).del();
+		const data = {
+			dns_credentials: {
+				npmpro_dns_credential: [
+					{ id: 1, owner_user_id: 5, name: "cloudflare", values: {} },
+					{ id: 2, owner_user_id: 6, name: "cloudflare", values: {} },
+				],
+			},
+		};
+		const preview = await previewReplace({ knex, data, types: ["dns_credentials"], adminUserId: 1 });
+		const result = await replaceTypes({ knex, data, types: ["dns_credentials"], adminUserId: 1, box, now: NOW });
+		for (const references of [preview.references, result.references]) {
+			assert.deepEqual(
+				references.filter((change) => change.column === "name").map((change) => [change.id, change.to]),
+				[[2, "cloudflare (2)"]],
+			);
+		}
+		assert.deepEqual(
+			(await knex("npmpro_dns_credential").orderBy("id")).map((row) => [row.id, row.owner_user_id, row.name]),
+			[
+				[1, 1, "cloudflare"],
+				[2, 1, "cloudflare (2)"],
+			],
+		);
+	} finally {
+		await knex.destroy();
+	}
 });
 
 it("rolls back every type when an insert fails", async () => {

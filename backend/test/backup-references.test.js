@@ -120,6 +120,54 @@ it("reassigns rows whose owner is missing to the admin", () => {
 	);
 });
 
+it("renames a DNS credential handed to the admin when the admin has one with its name", () => {
+	const finalRows = {
+		...base(),
+		npmpro_dns_credential: [
+			{ id: 1, name: "Cloudflare", owner_user_id: 1 },
+			{ id: 2, name: "cloudflare", owner_user_id: 5 },
+			{ id: 3, name: "cloudflare", owner_user_id: 6 },
+			{ id: 4, name: "other", owner_user_id: 6 },
+		],
+	};
+	const changes = planReferences({ finalRows, adminUserId: 1 });
+	assert.deepEqual(
+		changes.map((c) => [c.id, c.column, c.from, c.to, c.label]),
+		[
+			[2, "owner_user_id", 5, 1, "npmpro_dns_credential cloudflare: owner #5 not found"],
+			[
+				2,
+				"name",
+				"cloudflare",
+				"cloudflare (2)",
+				"npmpro_dns_credential cloudflare: renamed to cloudflare (2), the admin has a DNS credential with this name",
+			],
+			[3, "owner_user_id", 6, 1, "npmpro_dns_credential cloudflare: owner #6 not found"],
+			[
+				3,
+				"name",
+				"cloudflare",
+				"cloudflare (3)",
+				"npmpro_dns_credential cloudflare: renamed to cloudflare (3), the admin has a DNS credential with this name",
+			],
+			[4, "owner_user_id", 6, 1, "npmpro_dns_credential other: owner #6 not found"],
+		],
+	);
+});
+
+it("keeps a renamed DNS credential within 255 characters", () => {
+	const long = "x".repeat(255);
+	const finalRows = {
+		...base(),
+		npmpro_dns_credential: [
+			{ id: 1, name: long, owner_user_id: 1 },
+			{ id: 2, name: long, owner_user_id: 5 },
+		],
+	};
+	const rename = planReferences({ finalRows, adminUserId: 1 }).find((c) => c.column === "name");
+	assert.equal(rename.to, `${"x".repeat(251)} (2)`);
+});
+
 it("returns an empty list when every reference resolves", () => {
 	const finalRows = {
 		...base(),
@@ -145,6 +193,12 @@ it("applyReferences writes updates and removes link rows", async () => {
 			t.increments("id");
 			t.integer("npmpro_dns_credential_id").nullable();
 		});
+		await knex.schema.createTable("npmpro_dns_credential", (t) => {
+			t.increments("id");
+			t.integer("owner_user_id");
+			t.string("name");
+			t.unique(["owner_user_id", "name"]);
+		});
 		await knex.schema.createTable("npmpro_proxy_host_access_list", (t) => {
 			t.integer("proxy_host_id");
 			t.integer("location_id");
@@ -156,6 +210,11 @@ it("applyReferences writes updates and removes link rows", async () => {
 			{ certificate_id: 9, owner_user_id: 5 },
 		]);
 		await knex("certificate").insert({ npmpro_dns_credential_id: 8 });
+		await knex("npmpro_dns_credential").insert([
+			{ owner_user_id: 1, name: "cf" },
+			{ owner_user_id: 5, name: "cf" },
+			{ owner_user_id: 5, name: "cf (2)" },
+		]);
 		await knex("npmpro_proxy_host_access_list").insert([
 			{ proxy_host_id: 1, location_id: 0, access_list_id: 7, position: 0 },
 			{ proxy_host_id: 1, location_id: 0, access_list_id: 1, position: 1 },
@@ -165,6 +224,10 @@ it("applyReferences writes updates and removes link rows", async () => {
 				{ table: "proxy_host", id: 1, column: "certificate_id", from: 9, to: 0, label: "" },
 				{ table: "proxy_host", id: 1, column: "owner_user_id", from: 5, to: 1, label: "" },
 				{ table: "certificate", id: 1, column: "npmpro_dns_credential_id", from: 8, to: null, label: "" },
+				{ table: "npmpro_dns_credential", id: 2, column: "owner_user_id", from: 5, to: 1, label: "" },
+				{ table: "npmpro_dns_credential", id: 2, column: "name", from: "cf", to: "cf (2)", label: "" },
+				{ table: "npmpro_dns_credential", id: 3, column: "owner_user_id", from: 5, to: 1, label: "" },
+				{ table: "npmpro_dns_credential", id: 3, column: "name", from: "cf (2)", to: "cf (2) (2)", label: "" },
 				{
 					table: "npmpro_proxy_host_access_list",
 					proxy_host_id: 1,
@@ -182,6 +245,11 @@ it("applyReferences writes updates and removes link rows", async () => {
 			{ id: 2, certificate_id: 9, owner_user_id: 5 },
 		]);
 		assert.equal((await knex("certificate").first()).npmpro_dns_credential_id, null);
+		assert.deepEqual(await knex("npmpro_dns_credential").orderBy("id"), [
+			{ id: 1, owner_user_id: 1, name: "cf" },
+			{ id: 2, owner_user_id: 1, name: "cf (2)" },
+			{ id: 3, owner_user_id: 1, name: "cf (2) (2)" },
+		]);
 		assert.deepEqual(await knex("npmpro_proxy_host_access_list"), [
 			{ proxy_host_id: 1, location_id: 0, access_list_id: 1, position: 1 },
 		]);

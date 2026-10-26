@@ -6,6 +6,9 @@
 const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
 const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential"];
 const LINK_TABLE = "npmpro_proxy_host_access_list";
+const CREDENTIAL_TABLE = "npmpro_dns_credential";
+// npmpro_dns_credential.name is a varchar(255), unique per owner
+const MAX_NAME = 255;
 
 // ids can arrive as numbers or strings (JSON round trips, bigint columns), so compare them as strings
 const key = (value) => String(value);
@@ -15,6 +18,20 @@ const rowLabel = (table, row) => {
 	const domain = Array.isArray(row.domain_names) ? row.domain_names[0] : undefined;
 	const name = domain || row.nice_name || row.name;
 	return `${table} ${name || `#${row.id}`}`;
+};
+
+// names compare case-insensitively: MySQL's default collation does
+const nameKey = (name) => String(name ?? "").toLowerCase();
+
+// name, or name with the first free suffix " (2)", " (3)" ... when taken holds it
+const freeName = (name, taken) => {
+	const base = String(name ?? "");
+	if (!taken.has(nameKey(base))) return base;
+	for (let n = 2; ; n++) {
+		const suffix = ` (${n})`;
+		const candidate = `${base.slice(0, MAX_NAME - suffix.length)}${suffix}`;
+		if (!taken.has(nameKey(candidate))) return candidate;
+	}
 };
 
 /**
@@ -82,16 +99,34 @@ const planReferences = ({ finalRows, adminUserId }) => {
 		}
 	}
 
+	// the names of the admin's DNS credentials: unique per owner, so a credential handed to the admin may need another
+	const adminCredentialNames = new Set(
+		rows(CREDENTIAL_TABLE)
+			.filter((row) => key(row.owner_user_id) === key(adminUserId))
+			.map((row) => nameKey(row.name)),
+	);
 	for (const table of OWNED_TABLES) {
 		for (const row of rows(table)) {
-			if (!userIds.has(key(row.owner_user_id))) {
+			if (userIds.has(key(row.owner_user_id))) continue;
+			changes.push({
+				table,
+				id: row.id,
+				column: "owner_user_id",
+				from: row.owner_user_id,
+				to: adminUserId,
+				label: `${rowLabel(table, row)}: owner #${row.owner_user_id} not found`,
+			});
+			if (table !== CREDENTIAL_TABLE) continue;
+			const name = freeName(row.name, adminCredentialNames);
+			adminCredentialNames.add(nameKey(name));
+			if (name !== row.name) {
 				changes.push({
 					table,
 					id: row.id,
-					column: "owner_user_id",
-					from: row.owner_user_id,
-					to: adminUserId,
-					label: `${rowLabel(table, row)}: owner #${row.owner_user_id} not found`,
+					column: "name",
+					from: row.name,
+					to: name,
+					label: `${rowLabel(table, row)}: renamed to ${name}, the admin has a DNS credential with this name`,
 				});
 			}
 		}
@@ -101,11 +136,15 @@ const planReferences = ({ finalRows, adminUserId }) => {
 };
 
 /**
+ * The changes of one row are written in one update: a DNS credential's new owner and new name only together keep
+ * unique(owner_user_id, name).
+ *
  * @param   {Object} trx      knex transaction
  * @param   {Array}  changes  the list returned by planReferences
  * @returns {Promise}
  */
 const applyReferences = async (trx, changes) => {
+	const updates = new Map();
 	for (const change of changes) {
 		if (change.column === "*") {
 			await trx(change.table)
@@ -115,12 +154,13 @@ const applyReferences = async (trx, changes) => {
 					access_list_id: change.access_list_id,
 				})
 				.del();
-		} else {
-			await trx(change.table)
-				.where({ id: change.id })
-				.update({ [change.column]: change.to });
+			continue;
 		}
+		const rowKey = `${change.table}#${key(change.id)}`;
+		if (!updates.has(rowKey)) updates.set(rowKey, { table: change.table, id: change.id, values: {} });
+		updates.get(rowKey).values[change.column] = change.to;
 	}
+	for (const { table, id, values } of updates.values()) await trx(table).where({ id }).update(values);
 };
 
 export { applyReferences, planReferences };
