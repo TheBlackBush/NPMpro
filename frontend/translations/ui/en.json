@@ -839,6 +839,8 @@
 	"settings.runtime.number.invalid": "Enter a whole number from {min} to {max}",
 	"settings.runtime.restart-pending": "Restart the container to apply: {fields}.",
 	"settings.runtime.restart-required": "Restart required",
+	"settings.save.all-locked": "All values are set by environment variables",
+	"settings.save.no-changes": "No changes to save",
 	"setup.create-account": "Create account",
 	"setup.preamble": "Get started by creating your admin account.",
 	"setup.title": "Welcome!",

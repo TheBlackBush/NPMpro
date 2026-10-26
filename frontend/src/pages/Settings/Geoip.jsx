@@ -34,7 +34,13 @@ function Heading() {
 
 function SaveButton({ allLocked }) {
 	const { dirty } = useFormikContext();
-	return <SaveBar disabled={allLocked || !dirty} labels={FIELD_LABELS} />;
+	return (
+		<SaveBar
+			disabled={allLocked || !dirty}
+			reasonId={allLocked ? "settings.save.all-locked" : undefined}
+			labels={FIELD_LABELS}
+		/>
+	);
 }
 
 // field name -> label, for the note next to Save (the inputs' ids differ from the field names)

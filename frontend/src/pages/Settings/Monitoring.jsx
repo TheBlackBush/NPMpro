@@ -41,7 +41,7 @@ function Heading() {
 
 function SaveButton({ allLocked }) {
 	const { dirty } = useFormikContext();
-	return <SaveBar disabled={allLocked || !dirty} />;
+	return <SaveBar disabled={allLocked || !dirty} reasonId={allLocked ? "settings.save.all-locked" : undefined} />;
 }
 
 // logsLocked: the logs keys locked by env (a GOACLA without --keep-last has no keep days to check)

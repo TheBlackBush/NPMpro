@@ -8,6 +8,7 @@ import { formatApiError } from "src/modules/ApiError";
 import {
 	appliesMessageId,
 	fieldOfError,
+	GROUP_KEYS,
 	isEmptyPayload,
 	isRestartField,
 	isRestartPending,
@@ -102,7 +103,14 @@ function SaveErrorContent({ message, lead }) {
 
 function SaveButton({ group, toApi, data }) {
 	const { values } = useFormikContext();
-	return <SaveBar disabled={isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))} />;
+	const locked = new Set((data.locked ?? []).map(camel));
+	const allLocked = (GROUP_KEYS[group] ?? []).every((key) => locked.has(key));
+	return (
+		<SaveBar
+			disabled={isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))}
+			reasonId={allLocked ? "settings.save.all-locked" : undefined}
+		/>
+	);
 }
 
 /**
