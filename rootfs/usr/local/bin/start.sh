@@ -159,6 +159,19 @@ chown 0:0 /data
 chmod 755 /data
 mkdir -p /data/npmpro /data/tls /data/public /data/access /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
+# Migration from nginx-proxy-manager: its /etc/letsencrypt (certbot's data, private keys only root may read) is copied
+# as root, before /data is handed to PUID. The mount has to be removed afterwards, so the message only comes when
+# every file was copied.
+if mountpoint -q /etc/letsencrypt; then
+    mkdir -p /data/tls/certbot
+    if [ -n "$(ls -A /etc/letsencrypt 2> /dev/null)" ] && ! cp -van /etc/letsencrypt/. /data/tls/certbot/; then
+        echo "Copying /etc/letsencrypt to /data/tls/certbot failed (see above). Keep the mount, fix the cause and restart the container."
+        sleep inf
+    fi
+    echo "All certbot certs have been copied, please remove the /etc/letsencrypt mountpoint and redeploy to continue the migration!"
+    sleep inf
+fi
+
 if [ "$PUID" != "0" ]; then
     # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
     # hardlink can not hand over a root file. The runtime folders get only their own owner, never their contents.

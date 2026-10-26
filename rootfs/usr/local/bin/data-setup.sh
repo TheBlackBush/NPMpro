@@ -103,19 +103,13 @@ for dir in /data/tls/custom/npm-*; do
 done
 
 
-if mountpoint -q /etc/letsencrypt; then
-  if [ -n "$(ls -A /etc/letsencrypt 2> /dev/null)" ]; then
-    cp -van /etc/letsencrypt/* /data/tls/certbot
-  fi
-  echo "All certbot certs have been copied, please remove the /etc/letsencrypt mountpoint and redeploy to continue the migration!"
-  sleep inf
-fi
-
 #tmp move to mointpoint if block
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
 # the folders the nginx workers serve live outside the root-only /data/tls and /data/npmpro (moved there before)
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/acme-challenge|/data/public/acme-challenge|g" {} \;
+# nginx-proxy-manager's webroot
+find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/letsencrypt-acme-challenge|/data/public/acme-challenge|g" {} \;
 rm -rf /data/tls/certbot/acme-challenge
 for kind in avatar gravatar; do
     if [ -d /data/npmpro/"$kind" ]; then
