@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { rm } from "node:fs/promises";
+import { chmod, chown, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
 import internalCertificate from "./internal/certificate.js";
@@ -22,6 +22,7 @@ import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";
 import { getRuntimeConfig, loadRuntimeConfig } from "./lib/runtime-config.js";
+import { workerGid } from "./lib/secret-file.js";
 import { applyAccessLog, createAccessLogSwitch } from "./lib/traffic/access-log.js";
 import { createTrafficHooks } from "./lib/traffic/service.js";
 import { global as logger } from "./logger.js";
@@ -86,8 +87,13 @@ async function appStart() {
 		startMonitoringServices();
 
 		await rm("/run/npmpro.sock", { force: true });
-		const server = app.listen("/run/npmpro.sock", (err) => {
+		const server = app.listen("/run/npmpro.sock", async (err) => {
 			if (err) throw err;
+			// the unprivileged nginx workers (start.sh) may connect, other users may not
+			if (workerGid() !== null) {
+				await chown("/run/npmpro.sock", 0, workerGid());
+				await chmod("/run/npmpro.sock", 0o660);
+			}
 			logger.info(`Backend PID ${process.pid} listening on unix socket...`);
 
 			process.on("SIGTERM", () => {

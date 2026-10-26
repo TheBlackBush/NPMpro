@@ -29,7 +29,7 @@ Images: `docker.io/blackbush/npmpro` or `ghcr.io/theblackbush/npmpro`, tags `lat
 
 ## Capabilities
 
-The compose file drops all capabilities and adds back only `NET_BIND_SERVICE` and `SETGID`. Uncomment more in `cap_add` when you use a feature that needs them (the comments in `compose.yaml` name them): `BPF`, `PERFMON` and `NET_ADMIN` for `NGINX_QUIC_BPF`; `SETUID`, `CHOWN`, `FOWNER` and `DAC_OVERRIDE` when you change `PUID`/`PGID` (`SETUID` also for the built-in php-fpm); `NET_RAW` for `ping` inside the container.
+The compose file drops all capabilities and adds back only `NET_BIND_SERVICE`, `SETGID`, `SETUID` and `CHOWN`. With `SETUID` and `CHOWN` the nginx workers, which handle all internet traffic, run as the unprivileged `npmpro-worker` user (uid/gid 101) instead of root; without them they stay root and the container log says so. Uncomment more in `cap_add` when you use a feature that needs them (the comments in `compose.yaml` name them): `BPF`, `PERFMON` and `NET_ADMIN` for `NGINX_QUIC_BPF`; `FOWNER` and `DAC_OVERRIDE` when you change `PUID`/`PGID`; `NET_RAW` for `ping` inside the container.
 
 Do not set `user:` for the container. It must start as root and drops to `PUID`/`PGID` itself.
 

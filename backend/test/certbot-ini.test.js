@@ -12,7 +12,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const HEAD = `logs-dir = /tmp/certbot-log
 work-dir = /tmp/certbot-work
 config-dir = /data/tls/certbot
-webroot-path = /data/tls/certbot/acme-challenge
+webroot-path = /data/public/acme-challenge
 
 agree-tos = true
 non-interactive  = true

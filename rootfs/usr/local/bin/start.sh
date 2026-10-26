@@ -141,11 +141,23 @@ fi
 find /usr/local/nginx/conf/conf.d -mindepth 1 \( ! -type f -o -links +1 \) -exec rm -rf {} +
 chown -R 0:0 /usr/local/nginx/conf/conf.d
 
+# As root, the nginx workers run as npmpro-worker (uid/gid 101) when the container has the capabilities for it:
+# SETUID and SETGID (start the workers as another user) and CHOWN (give them read access). Without them the workers
+# stay root, as before, and the log says what to add.
+if [ "$PUID" = "0" ]; then
+    capeff="$(awk '/^CapEff:/ {print $2}' /proc/self/status)"
+    if [ $((0x$capeff & 0xC1)) -eq $((0xC1)) ]; then
+        export NPMPRO_NGINX_WORKER_GID=101
+    else
+        echo "The nginx workers run as root: add the SETUID and CHOWN capabilities (cap_add in compose.yaml) to run them as the unprivileged npmpro-worker user."
+    fi
+fi
+
 # /data itself stays root's (so the PUID user can not remove or swap .env or prerun); its top-level folders are
 # created here and the old top-level leftovers are removed after data-setup.sh
 chown 0:0 /data
 chmod 755 /data
-mkdir -p /data/npmpro /data/tls /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
+mkdir -p /data/npmpro /data/tls /data/public /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
 if [ "$PUID" != "0" ]; then
     # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
@@ -249,5 +261,21 @@ if [ "$PUID" != "0" ]; then
     export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
     exec su-exec "$PUID:$PGID" launch.sh
 else
+    # The internet-facing workers run as npmpro-worker (uid/gid 101), the master stays root: it reads the TLS keys,
+    # the configs and opens the logs before the workers start. The workers only get what they serve or check per
+    # request; the database, keys, credentials and TLS private keys stay root-only (700/600).
+    if [ -n "$NPMPRO_NGINX_WORKER_GID" ]; then
+        sed -i "s|^#user;|user npmpro-worker npmpro-worker;|" /usr/local/nginx/conf/nginx.conf
+        # nginx's temp folders, made here: root has no DAC_OVERRIDE, so it can not create them in a folder it gave away
+        mkdir -p /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
+        chown 101:101 /tmp/nginx /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
+        # /data/public (ACME http challenges, avatars) and the htpasswd files; nothing in /data/tls or /data/npmpro
+        for dir in /data/public/acme-challenge /data/access /data/public/avatar /data/public/gravatar; do
+            [ -d "$dir" ] || continue
+            find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
+            find "$dir" -type d -exec chmod 750 {} +
+            find "$dir" -type f -links 1 -exec chmod 640 {} +
+        done
+    fi
     exec launch.sh
 fi

@@ -16,22 +16,31 @@ php_setup() {
     sed -i "s|include=.*|include=/data/php/$1/php-fpm.d/*.conf|g" /data/php/"$1"/php-fpm.conf
     if [ "$PUID" != "0" ]; then
         # the pool runs as the user that starts php-fpm (the PUID user)
-        sed -i "s|;\?user =.*|;user = root|" /data/php/"$1"/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|;group = root|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?user =.*|;user = root|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?group =.*|;group = root|" /data/php/"$1"/php-fpm.d/www.conf
     else
         # started as root, the pool runs as nobody (also when the file was set up for PUID before)
-        sed -i "s|;\?user =.*|user = nobody|" /data/php/"$1"/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|group = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?user =.*|user = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?group =.*|group = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        if [ -n "$NPMPRO_NGINX_WORKER_GID" ]; then
+            # the unprivileged nginx workers (npmpro-worker) connect to the socket
+            sed -i "s|^;\?listen.group =.*|listen.group = npmpro-worker|" /data/php/"$1"/php-fpm.d/www.conf
+            sed -i "s|^;\?listen.mode =.*|listen.mode = 0660|" /data/php/"$1"/php-fpm.d/www.conf
+        else
+            # root workers: the socket of the running user (php-fpm's default)
+            sed -i "s|^listen.group =.*|;listen.group = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+            sed -i "s|^listen.mode =.*|;listen.mode = 0660|" /data/php/"$1"/php-fpm.d/www.conf
+        fi
     fi
 }
 if [ "$PHP83" = "true" ]; then php_setup 83; fi
 if [ "$PHP84" = "true" ]; then php_setup 84; fi
 if [ "$PHP85" = "true" ]; then php_setup 85; fi
 
-mkdir -vp /data/npmpro/avatar \
-          /data/npmpro/gravatar \
+mkdir -vp /data/public/avatar \
+          /data/public/gravatar \
           /data/tls/certbot/renewal \
-          /data/tls/certbot/acme-challenge/.well-known/acme-challenge \
+          /data/public/acme-challenge/.well-known/acme-challenge \
           /data/tls/custom \
           /data/tls/mtls \
           /data/tls/ech \
@@ -105,6 +114,14 @@ fi
 #tmp move to mointpoint if block
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
+# the folders the nginx workers serve live outside the root-only /data/tls and /data/npmpro (moved there before)
+find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/acme-challenge|/data/public/acme-challenge|g" {} \;
+rm -rf /data/tls/certbot/acme-challenge
+for kind in avatar gravatar; do
+    if [ -d /data/npmpro/"$kind" ]; then
+        cp -an /data/npmpro/"$kind"/. /data/public/"$kind"/ && rm -rf /data/npmpro/"$kind"
+    fi
+done
 # the old plaintext credential files, once no renewal config points to them (the line above moved them all)
 if [ -d /data/tls/certbot/credentials ] && ! grep -rqs /data/tls/certbot/credentials /data/tls/certbot/renewal; then
     rm -rvf /data/tls/certbot/credentials

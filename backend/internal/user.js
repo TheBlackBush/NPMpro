@@ -80,8 +80,8 @@ const internalUser = {
 
 	deleteAvatarFiles: async (id) => {
 		for (const e of avatarExts) {
-			await rm(`/data/npmpro/avatar/${id}.${e}`, { force: true });
-			await rm(`/data/npmpro/gravatar/${id}.${e}`, { force: true });
+			await rm(`/data/public/avatar/${id}.${e}`, { force: true });
+			await rm(`/data/public/gravatar/${id}.${e}`, { force: true });
 		}
 	},
 
@@ -91,7 +91,7 @@ const internalUser = {
 		if (!ext) throw new errs.ValidationError("Invalid avatar file type");
 		const user = await internalUser.get(access, { id });
 		await internalUser.deleteAvatarFiles(user.id);
-		await writeFile(`/data/npmpro/avatar/${user.id}.${ext}`, file.buffer);
+		await writeFile(`/data/public/avatar/${user.id}.${ext}`, file.buffer);
 		await userModel
 			.query()
 			.findById(user.id)
@@ -111,7 +111,7 @@ const internalUser = {
 	deleteAvatar: async (access, id) => {
 		access.canUser(id);
 		const user = await internalUser.get(access, { id });
-		for (const e of avatarExts) await rm(`/data/npmpro/avatar/${user.id}.${e}`, { force: true });
+		for (const e of avatarExts) await rm(`/data/public/avatar/${user.id}.${e}`, { force: true });
 		await userModel.query().findById(user.id).patch({ avatar: "" });
 		return internalUser.update(access, { id: user.id });
 	},
