@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { availableParallelism } from "node:os";
+import { performance } from "node:perf_hooks";
 import { it } from "node:test";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
@@ -647,4 +648,12 @@ it("post-quantum only forces TLS 1.2 and the P curves off, by env or by the sett
 	assert.equal(bySetting.locked_by.secp_curves, "NGINX_FORCE_X25519MLKEM768");
 	assert.ok(SETTING_LOCK_REASONS.includes("force-mlkem-setting"));
 	assert.ok(LOCK_REASONS.includes("force-mlkem"));
+});
+
+it("refuses a long bad worker_shutdown_timeout without backtracking", () => {
+	const start = performance.now();
+	assert.notEqual(rule("worker_shutdown_timeout").validate(`${"1".repeat(30)}x`), null);
+	assert.notEqual(rule("worker_shutdown_timeout").validate(`${"1h".repeat(15)}x`), null);
+	assert.ok(performance.now() - start < 50);
+	assert.equal(rule("worker_shutdown_timeout").validate("90"), null);
 });

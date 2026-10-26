@@ -22,7 +22,7 @@ const WHITESPACE = /\s+/u;
 // envs.sh TRUST_IP charset
 const TRUST_IP_CHARS = /^[0-9a-fA-F.:/]+$/u;
 
-const TIME_VALUE = /^(?:[0-9]+(?:ms|s|m|h|d|w|M|y)?)+$/u;
+const TIME_VALUE = /^[0-9]+(?:ms|s|m|h|d|w|M|y)?(?:[0-9]+(?:ms|s|m|h|d|w|M|y))*$/u;
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 
