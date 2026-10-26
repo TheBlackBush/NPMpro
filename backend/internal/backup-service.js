@@ -40,6 +40,7 @@ const internalBackup = createBackupService({
 	dataDir: "/data",
 	store: backupStore,
 	dbVersion: () => db().migrate.currentVersion({ tableName: "migrations", directory: "migrations" }),
+	dbMigrations: () => db()("migrations").pluck("name"),
 	// set from .version when the image is built, like the version check
 	npmproVersion: pjson.version,
 	instanceKey: readInstanceKey,

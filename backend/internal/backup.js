@@ -24,7 +24,24 @@ const TYPE_OF_TABLE = Object.fromEntries(
 		type.tables.filter(({ where }) => !where).map(({ table }) => [table, typeId]),
 	),
 );
-const MIGRATION_DIGITS = /^\d+/u;
+
+const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
+const MAX_HOST_ERROR = 500;
+const OFFLINE = new Set([0, false, "0", null]);
+
+// a host's first domain name, a stream's incoming port
+const hostLabel = (row) => {
+	let names = row.domain_names;
+	if (typeof names === "string") {
+		try {
+			names = JSON.parse(names);
+		} catch {
+			names = [];
+		}
+	}
+	if (Array.isArray(names) && names.length > 0) return String(names[0]);
+	return row.incoming_port === undefined || row.incoming_port === null ? "" : String(row.incoming_port);
+};
 
 const invalid = (reason) => new BackupError("invalid-archive", reason);
 
@@ -40,14 +57,21 @@ const chosenTypes = (types, available = ALL_TYPES) => {
 };
 
 /**
- * A knex migration version as a number: its leading timestamp digits (14, padded), 0 when there is none
+ * The migrations a backup's database had that this instance has not run (a newer NPMpro made it). Migration names are
+ * compared as a set: some old names have malformed timestamps, so the newest name says nothing. A backup without the
+ * list (made before it was recorded) is accepted.
  *
- * @param   {string}  version
- * @returns {number}
+ * @param   {*}         backupMigrations  manifest.db_migrations
+ * @param   {string[]}  instanceMigrations
+ * @returns {string[]}
  */
-const migrationNumber = (version) => {
-	const digits = MIGRATION_DIGITS.exec(String(version ?? ""))?.[0];
-	return digits ? Number(digits.slice(0, 14).padEnd(14, "0")) : 0;
+const unknownMigrations = (backupMigrations, instanceMigrations) => {
+	if (backupMigrations === undefined) return [];
+	if (!(Array.isArray(backupMigrations) && backupMigrations.every((name) => typeof name === "string"))) {
+		throw invalid("The manifest lists invalid migrations");
+	}
+	const known = new Set(instanceMigrations);
+	return backupMigrations.filter((name) => !known.has(name));
 };
 
 const checkPassphrase = (passphrase) => {
@@ -91,7 +115,8 @@ const withoutStage = async (stageDir) => {
  * @param   {Object}    deps.box               the secret box: { encrypt, decrypt }
  * @param   {string}    deps.dataDir           the data folder (/data)
  * @param   {Object}    deps.store             createBackupStore()
- * @param   {Function}  deps.dbVersion         () => Promise<string>, the newest migration of the instance
+ * @param   {Function}  deps.dbVersion         () => Promise<string>, the newest migration of the instance (shown)
+ * @param   {Function}  deps.dbMigrations      () => Promise<string[]>, the names of the completed migrations
  * @param   {string}    deps.npmproVersion
  * @param   {Function}  deps.instanceKey       () => Promise<Buffer>, the key of the automatic backups
  * @param   {Function}  deps.audit             (access, { action, object_type, object_id, meta }) => Promise
@@ -102,6 +127,7 @@ const withoutStage = async (stageDir) => {
  * @param   {Object}    deps.runtime           { loadRuntimeConfig, applyAllRuntime }
  * @param   {Object}    [deps.reloadSettings]  { oidc, monitoring }: make the running services read the settings again
  * @param   {Function}  [deps.exclusive]       (fn) => runs fn in the runtime settings queue
+ * @param   {number}    [deps.maxUpload]       bytes, 2 GiB
  * @param   {string}    deps.hostname
  * @param   {Object}    [deps.clock]           { now() } in ms
  * @param   {Object}    [deps.log]             { info, warn, error }
@@ -112,6 +138,7 @@ const createBackupService = ({
 	dataDir,
 	store,
 	dbVersion,
+	dbMigrations,
 	npmproVersion,
 	instanceKey,
 	audit,
@@ -121,6 +148,7 @@ const createBackupService = ({
 	runtime,
 	reloadSettings = {},
 	exclusive = (fn) => fn(),
+	maxUpload = MAX_UPLOAD,
 	hostname,
 	clock = Date,
 	log = console,
@@ -168,6 +196,7 @@ const createBackupService = ({
 				meta: {
 					npmproVersion,
 					dbVersion: await dbVersion(),
+					dbMigrations: await dbMigrations(),
 					createdBy: await createdBy(userId),
 					createdAt: new Date(clock.now()).toISOString(),
 				},
@@ -231,7 +260,7 @@ const createBackupService = ({
 			if (!isTypeList(manifest.types) || manifest.types.some((typeId) => !summary.types.includes(typeId))) {
 				throw invalid("The manifest lists other types than the header");
 			}
-			if (migrationNumber(manifest.db_version) > migrationNumber(await dbVersion())) {
+			if (unknownMigrations(manifest.db_migrations, await dbMigrations()).length > 0) {
 				throw new BackupError(
 					"newer-database",
 					"This backup has a newer database version, update NPMpro first",
@@ -304,6 +333,29 @@ const createBackupService = ({
 		for (const problem of problems) log.warn(`Rolling back the restore: ${problem.message}`);
 	};
 
+	/**
+	 * The enabled hosts of the restored host types whose config nginx rejected in the regeneration (kept as .err);
+	 * they do not fail the restore
+	 *
+	 * @returns {Promise<Array<{ type: string, id: number, domain: string, error: string }>>}
+	 */
+	const offlineHosts = async (types) => {
+		const out = [];
+		for (const typeId of HOST_TYPES.filter((item) => types.includes(item))) {
+			const { table } = TYPES[typeId].tables[0];
+			for (const row of await knex(table).where("enabled", 1).orderBy("id")) {
+				if (!OFFLINE.has(row.npmpro_nginx_online)) continue;
+				out.push({
+					type: table,
+					id: row.id,
+					domain: hostLabel(row),
+					error: String(row.npmpro_nginx_err ?? "").slice(0, MAX_HOST_ERROR),
+				});
+			}
+		}
+		return out;
+	};
+
 	// whether a restored runtime settings row holds a setting that needs a restart
 	const needsRestart = (types, data) =>
 		types.includes("settings_runtime") &&
@@ -322,7 +374,6 @@ const createBackupService = ({
 		let asideDir = null;
 		let runtimeFailed = [];
 		try {
-			await renewals.pause();
 			autoName = await automaticBackup(adminUserId);
 			result = await replaceTypes({
 				knex,
@@ -359,7 +410,7 @@ const createBackupService = ({
 					throw Object.assign(
 						new BackupError(
 							"rollback-failed",
-							`The restore failed and could not be rolled back, restore ${autoName}: ${error.message}`,
+							`The restore failed and could not be rolled back, restore the automatic backup ${autoName}`,
 							{ cause: rollbackError },
 						),
 						{ status: 500 },
@@ -373,16 +424,14 @@ const createBackupService = ({
 					);
 				}
 				if (error.public) throw error;
-				throw new BackupError(
-					"restore-failed",
-					`The restore failed, everything was rolled back: ${error.message}`,
-					{ cause: error },
-				);
+				throw new BackupError("restore-failed", "The restore failed, everything was rolled back", {
+					cause: error,
+				});
 			}
 		} finally {
-			renewals.resume();
 			await withoutStage(asideDir);
 		}
+		const offline = await offlineHosts(types);
 		await audit(access, {
 			action: "restored",
 			object_type: "backup",
@@ -393,6 +442,7 @@ const createBackupService = ({
 				counts: result.counts,
 				references: result.references.length,
 				skipped_users: result.skippedUsers.map((user) => user.email),
+				offline_hosts: offline.length,
 				automatic_backup: autoName,
 			},
 		});
@@ -402,6 +452,7 @@ const createBackupService = ({
 			skippedUsers: result.skippedUsers,
 			restartNeeded: needsRestart(types, data),
 			runtimeFailed,
+			offlineHosts: offline,
 		};
 	};
 
@@ -509,7 +560,7 @@ const createBackupService = ({
 				const limit = new Transform({
 					transform(chunk, _encoding, done) {
 						bytes += chunk.length;
-						if (bytes > MAX_UPLOAD) {
+						if (bytes > maxUpload) {
 							done(
 								Object.assign(new BackupError("too-large", "The backup file is larger than 2 GiB"), {
 									status: 413,
@@ -592,21 +643,23 @@ const createBackupService = ({
 		 * Replaces the chosen types with the backup's (spec "Restore (replace)")
 		 *
 		 * @returns {Promise<{ counts: Object, references: Array, skippedUsers: Array, restartNeeded: boolean,
-		 *                     runtimeFailed: string[] }>}
+		 *                     runtimeFailed: string[], offlineHosts: Array }>}
 		 */
 		restore: async (access, token, { types }) => {
 			const adminUserId = adminOf(access);
-			return await store.withLock(() =>
-				exclusive(async () => {
-					const chosen = chosenTypes(types, store.takeToken(token).manifest.types);
-					const entry = store.takeToken(token, { keep: false });
-					try {
-						return await runRestore({ access, adminUserId, entry, types: chosen });
-					} finally {
-						await withoutStage(entry.stageDir);
-					}
-				}),
-			);
+			return await store.withLock(async () => {
+				const chosen = chosenTypes(types, store.takeToken(token).manifest.types);
+				const entry = store.takeToken(token, { keep: false });
+				try {
+					// outside the runtime queue: a running renewal queues its stapling recovery there and must be able
+					// to finish before the pause returns
+					await renewals.pause();
+					return await exclusive(() => runRestore({ access, adminUserId, entry, types: chosen }));
+				} finally {
+					renewals.resume();
+					await withoutStage(entry.stageDir);
+				}
+			});
 		},
 
 		cancel: (access, token) => {
@@ -616,4 +669,4 @@ const createBackupService = ({
 	};
 };
 
-export { createBackupService, migrationNumber };
+export { createBackupService, unknownMigrations };

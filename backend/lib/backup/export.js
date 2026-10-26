@@ -77,7 +77,8 @@ const writeData = async ({ knex, box, stageDir, types, secrets }) => {
  * @param   {string}   options.stageDir
  * @param   {string[]} options.types     type ids
  * @param   {boolean}  options.secrets   whether secrets go into the backup
- * @param   {Object}   options.meta      { npmproVersion, dbVersion, createdBy: { name, email }, createdAt }
+ * @param   {Object}   options.meta      { npmproVersion, dbVersion, dbMigrations, createdBy: { name, email },
+ *                                       createdAt }; dbMigrations: the names of the completed migrations
  * @returns {Promise<{ manifest: Object, summary: Object }>}
  */
 const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, meta }) => {
@@ -106,6 +107,7 @@ const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, meta 
 		types,
 		counts,
 		db_version: meta.dbVersion,
+		db_migrations: [...(meta.dbMigrations ?? [])].sort((a, b) => (a < b ? -1 : Number(a > b))),
 		files,
 	};
 	await writeFile(path.join(stageDir, "manifest.json"), JSON.stringify(manifest, null, "\t"), { mode: 0o600 });

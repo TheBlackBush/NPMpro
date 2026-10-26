@@ -6,7 +6,8 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
 import knexFactory from "knex";
-import { createBackupService, migrationNumber } from "../internal/backup.js";
+import { createBackupService, unknownMigrations } from "../internal/backup.js";
+import { createSerializer } from "../internal/monitoring-update.js";
 import { writeBackupFile } from "../lib/backup/format.js";
 import { createBackupStore } from "../lib/backup/store.js";
 
@@ -15,9 +16,12 @@ process.env.TZ = "UTC";
 const TIMEOUT = { timeout: 60_000 };
 const PASSPHRASE = "correct horse battery staple";
 const DB_VERSION = "20261026000000";
+const MIGRATIONS = ["20180618015850_initial.js", "20261026000000_base.js"];
 const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
 const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
 const UNKNOWN_DIRECTIVE = /unknown directive/u;
+const AUTO_IN_MESSAGE = /npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro/u;
+const UPLOAD_NAME = /^npmpro-backup-upload-\d{8}-\d{6}\.npmpro$/u;
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
 const silent = { info: () => {}, warn: () => {}, error: () => {} };
@@ -31,6 +35,8 @@ const createSchema = async (knex) => {
 			t.integer("enabled").notNull().defaultTo(1);
 			t.integer("certificate_id").notNull().defaultTo(0);
 			t.json("meta").notNull().defaultTo("{}");
+			t.integer("npmpro_nginx_online").notNull().defaultTo(1);
+			t.text("npmpro_nginx_err").notNull().defaultTo("");
 			extra(t);
 		});
 	await knex.schema.createTable("user", (t) => {
@@ -118,12 +124,26 @@ const createSchema = async (knex) => {
 /**
  * A service on a fresh database and folders with spies for everything outside
  *
- * @param {Object} [options]
- * @param {Function} [options.test]       the fake nginx -t
- * @param {Function} [options.pause]      the fake renewal pause
- * @param {string}   [options.dbVersion]
+ * @param {Object}   [options]
+ * @param {Function} [options.test]         the fake nginx -t, gets the call number
+ * @param {Function} [options.pause]        the fake renewal pause
+ * @param {string[]} [options.migrations]   the instance's completed migrations
+ * @param {string}   [options.root]         shares the folders of another setup
+ * @param {Function} [options.exclusive]    the runtime queue
+ * @param {Function} [options.regenerated]  (knex, call) => Promise, runs in the fake host regeneration
+ * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
+ * @param {number}   [options.maxUpload]
  */
-const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion = DB_VERSION, root } = {}) => {
+const setup = async ({
+	test = async () => {},
+	pause = async () => {},
+	migrations = MIGRATIONS,
+	root,
+	exclusive,
+	regenerated = async () => {},
+	failedGroups = {},
+	maxUpload,
+} = {}) => {
 	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
 	const dataDir = path.join(base, "data");
 	const backupsDir = path.join(base, "backups");
@@ -136,7 +156,7 @@ const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion 
 	});
 	await createSchema(knex);
 	const clock = { offset: 0, now: () => Date.now() + clock.offset };
-	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, audit: [] };
+	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, reloaded: [], audit: [] };
 	let paused = false;
 	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
 	const service = createBackupService({
@@ -144,7 +164,8 @@ const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion 
 		box,
 		dataDir,
 		store,
-		dbVersion: async () => dbVersion,
+		dbVersion: () => Promise.resolve(DB_VERSION),
+		dbMigrations: () => Promise.resolve(migrations),
 		npmproVersion: "1.0.0",
 		instanceKey: async () => Buffer.alloc(32, 7),
 		audit: (_access, entry) => {
@@ -176,7 +197,7 @@ const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion 
 			loadEnabledHosts: async () => [],
 			regenerateAllHostsNow: () => {
 				calls.regenerate++;
-				return Promise.resolve();
+				return regenerated(knex, calls.regenerate);
 			},
 			rebuildAccessListFiles: async () => {},
 			regenerateDefaultSite: async () => {},
@@ -185,9 +206,20 @@ const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion 
 			loadRuntimeConfig: async () => {},
 			applyAllRuntime: () => {
 				calls.applyAll++;
-				return Promise.resolve({});
+				return Promise.resolve(failedGroups);
 			},
 		},
+		reloadSettings: {
+			oidc: () => {
+				calls.reloaded.push("oidc");
+			},
+			monitoring: () => {
+				calls.reloaded.push("monitoring");
+				return Promise.resolve();
+			},
+		},
+		...(exclusive ? { exclusive } : {}),
+		...(maxUpload ? { maxUpload } : {}),
 		hostname: "test-host",
 		clock,
 		log: silent,
@@ -349,7 +381,7 @@ it("refuses an expired restore token", TIMEOUT, async () => {
 });
 
 it("refuses at inspect a backup of a newer database or a newer format", TIMEOUT, async () => {
-	const newer = await setup({ dbVersion: "20261101000000_later.js" });
+	const newer = await setup({ migrations: [...MIGRATIONS, "20261101000000_later.js"] });
 	const ctx = await setup({ root: newer.base });
 	try {
 		const entry = await backupThenChange(newer, { secrets: false });
@@ -495,9 +527,187 @@ it("stores a download that is not kept as a pending file", TIMEOUT, async () => 
 	}
 });
 
-it("compares migration versions by their timestamps", () => {
-	assert.ok(migrationNumber("20261101000000_later.js") > migrationNumber("20261026000000"));
-	assert.equal(migrationNumber("20261026000000"), migrationNumber("20261026000000_name.js"));
-	assert.equal(migrationNumber(null), 0);
-	assert.equal(migrationNumber("none"), 0);
+it("compares the migrations as sets of names", () => {
+	assert.deepEqual(unknownMigrations(["b.js", "a.js"], ["a.js", "b.js"]), []);
+	assert.deepEqual(unknownMigrations(["a.js"], ["a.js", "b.js"]), []);
+	// a malformed old name sorts after every new one: only the names count
+	assert.deepEqual(unknownMigrations(["20261402145603_old.js", "20261101000000_new.js"], ["20261402145603_old.js"]), [
+		"20261101000000_new.js",
+	]);
+	assert.deepEqual(unknownMigrations(undefined, []), []);
+	assert.throws(() => unknownMigrations("a.js", []), hasCode("invalid-archive"));
+});
+
+it("finishes a restore while a running renewal waits on the runtime queue", { timeout: 20_000 }, async () => {
+	// the runtime queue, as runtimeExclusive; a running renewal queues its stapling recovery there before it ends
+	const queue = createSerializer();
+	let renewalRan = false;
+	const ctx = await setup({
+		exclusive: queue,
+		pause: () =>
+			queue(() => {
+				renewalRan = true;
+			}),
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.equal(renewalRan, true);
+		assert.deepEqual(result.counts, { proxy_hosts: 1 });
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("accepts a backup whose migrations the instance has all run", TIMEOUT, async () => {
+	const older = await setup({ migrations: [MIGRATIONS[0]] });
+	const ctx = await setup({ root: older.base });
+	try {
+		const entry = await backupThenChange(older, { secrets: false });
+		const { manifest, token } = await ctx.service.inspect(access, entry.name, {});
+		assert.deepEqual(manifest.db_migrations, [MIGRATIONS[0]]);
+		ctx.service.cancel(access, token);
+		const same = await older.service.inspect(access, entry.name, {});
+		assert.equal(typeof same.token, "string");
+	} finally {
+		await ctx.cleanup();
+		await older.cleanup();
+		await rm(older.base, { recursive: true, force: true });
+	}
+});
+
+it("reports hosts nginx rejected in the regeneration without rolling back", TIMEOUT, async () => {
+	const ctx = await setup({
+		regenerated: (knex) =>
+			knex("proxy_host")
+				.where({ id: 1 })
+				.update({ npmpro_nginx_online: 0, npmpro_nginx_err: "x".repeat(600) }),
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 1, domain: "one.example.com", error: "x".repeat(500) },
+		]);
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.deepEqual([ctx.calls.test, ctx.calls.reload], [1, 1]);
+		assert.equal(ctx.calls.audit.at(-1).meta.offline_hosts, 1);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it(
+	"reports settings that need a restart, failed runtime groups and reloads the restored settings",
+	TIMEOUT,
+	async () => {
+		const ctx = await setup({ failedGroups: { network: new Error("could not fetch the Cloudflare ranges") } });
+		try {
+			await ctx.knex("setting").insert([
+				{ id: "logs", meta: JSON.stringify({ goaccess: true }) },
+				{ id: "oidc", meta: JSON.stringify({ enabled: false }) },
+				{ id: "monitoring", meta: "{}" },
+				{ id: "geoip", meta: "{}" },
+			]);
+			const types = ["settings_runtime", "settings_oidc", "settings_monitoring"];
+			const { entry } = await ctx.service.create(access, { types, secrets: false, keep: true });
+			const { token } = await ctx.service.inspect(access, entry.name, {});
+			const result = await ctx.service.restore(access, token, { types });
+			assert.equal(result.restartNeeded, true);
+			assert.deepEqual(result.runtimeFailed, ["network"]);
+			assert.deepEqual(ctx.calls.reloaded, ["oidc", "monitoring"]);
+			assert.deepEqual(result.offlineHosts, []);
+		} finally {
+			await ctx.cleanup();
+		}
+	},
+);
+
+it("names the automatic backup when the rollback fails too", TIMEOUT, async () => {
+	const ctx = await setup({
+		test: () => {
+			throw new Error("nginx: [emerg] broken");
+		},
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(ctx.service.restore(access, token, { types: ["proxy_hosts"] }), (error) => {
+			assert.equal(error.code, "rollback-failed");
+			assert.equal(error.status, 500);
+			assert.match(error.message, AUTO_IN_MESSAGE);
+			return true;
+		});
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("rolls back an internal failure without showing its message", TIMEOUT, async () => {
+	const ctx = await setup({
+		regenerated: (_knex, call) =>
+			call === 1 ? Promise.reject(new Error("connection to db.internal:5432 failed")) : Promise.resolve(),
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "restore-failed");
+				assert.equal(error.message.includes("db.internal"), false);
+				return true;
+			},
+		);
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# the instance\n");
+		assert.deepEqual([ctx.calls.test, ctx.calls.reload], [1, 1]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+const dotFiles = async (dir) => (await readdir(dir)).filter((name) => name.startsWith("."));
+
+it("stores uploads under their own name and refuses too large or foreign files", TIMEOUT, async () => {
+	const ctx = await setup({ maxUpload: 64 * 1024 });
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1 });
+		const { entry } = await ctx.service.create(access, { types: ["proxy_hosts"], secrets: false, keep: true });
+		const bytes = await readFile(path.join(ctx.backupsDir, entry.name));
+		await ctx.service.remove(access, entry.name);
+
+		const stored = await ctx.service.upload(access, Readable.from([bytes]), { name: entry.name });
+		assert.equal(stored.name, entry.name);
+		assert.deepEqual(stored.summary.types, ["proxy_hosts"]);
+		const again = await ctx.service.upload(access, Readable.from([bytes]), { name: entry.name });
+		assert.equal(again.name, entry.name.replace(".npmpro", "-2.npmpro"));
+		const renamed = await ctx.service.upload(access, Readable.from([bytes]), { name: "../backup.npmpro" });
+		assert.match(renamed.name, UPLOAD_NAME);
+		assert.deepEqual(
+			ctx.calls.audit.filter((item) => item.action === "uploaded").map((item) => item.meta.name),
+			[stored.name, again.name, renamed.name],
+		);
+
+		await assert.rejects(
+			ctx.service.upload(access, Readable.from([Buffer.alloc(100 * 1024)]), { name: entry.name }),
+			(error) => {
+				assert.equal(error.code, "too-large");
+				assert.equal(error.status, 413);
+				return true;
+			},
+		);
+		await assert.rejects(
+			ctx.service.upload(access, Readable.from([Buffer.from("not a backup at all")]), {}),
+			hasCode("not-a-backup"),
+		);
+		assert.deepEqual(await dotFiles(ctx.backupsDir), []);
+		assert.equal((await ctx.service.list(access)).length, 3);
+	} finally {
+		await ctx.cleanup();
+	}
 });
