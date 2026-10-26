@@ -284,7 +284,6 @@
 	"form.example": "e.g. {example}",
 	"form.fix-fields": "Fix before saving: {fields}",
 	"form.fix-fields.continue": "Fix before continuing: {fields}",
-	"form.fix-fields.sign-in": "Fix before signing in: {fields}",
 	"form.no-changes": "No changes to save",
 	"help": "Help",
 	"host.auth-request": "Auth Request",
