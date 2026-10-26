@@ -1,35 +1,19 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import {
-	BrandMark,
-	Button,
-	ErrorAlert,
-	FormSubmit,
-	LocalePicker,
-	OidcButton,
-	Page,
-	ThemeSwitcher,
-} from "src/components";
+import { BrandMark, Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
 import { getCookie } from "src/modules/Cookies";
 import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
-import { validateEmail, validateString } from "src/modules/Validations";
+import { validateEmail } from "src/modules/Validations";
 
+// Sign in is enabled only for a valid email address and a password
 const checkEmail = validateEmail();
-const checkPassword = validateString(1, 255, false);
 
-// one form-level check, so both fields are checked on the first submit
-const validateSignIn = (values) => {
-	const errors = {};
-	const email = checkEmail(values.email);
-	const password = checkPassword(values.password);
-	if (email) errors.email = email;
-	if (password) errors.password = password;
-	return errors;
-};
+// the invalid-address hint once the field was left with something typed in it (an empty field shows nothing)
+const emailHint = (value, touched) => (touched && value.trim() !== "" ? (checkEmail(value.trim()) ?? null) : null);
 
 function TotpForm() {
 	const codeRef = useRef(null);
@@ -61,11 +45,11 @@ function TotpForm() {
 			</p>
 			{formErr && <ErrorAlert error={formErr} />}
 			<Formik initialValues={{ code: "" }} onSubmit={onSubmit}>
-				{({ isSubmitting }) => (
+				{({ isSubmitting, values }) => (
 					<Form noValidate>
 						<div className="mb-3">
-							<Field name="code" validate={validateString(6, 8)}>
-								{({ field, form }) => (
+							<Field name="code">
+								{({ field }) => (
 									<PasswordInput
 										{...field}
 										id="login-totp-code"
@@ -75,11 +59,6 @@ function TotpForm() {
 										autoComplete="one-time-code"
 										required
 										maxLength={8}
-										error={
-											form.errors.code && (form.touched.code || form.submitCount > 0)
-												? form.errors.code
-												: null
-										}
 										placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
 									/>
 								)}
@@ -89,16 +68,15 @@ function TotpForm() {
 							<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
-							<FormSubmit
-								stacked
-								className="w-100"
-								messageId="form.fix-fields.sign-in"
+							<Button
+								type="submit"
+								fullWidth
 								color="azure"
 								isLoading={isSubmitting}
-								disabled={isSubmitting}
+								disabled={isSubmitting || values.code.trim() === ""}
 							>
 								<T id="login.totp-verify" />
-							</FormSubmit>
+							</Button>
 						</div>
 					</Form>
 				)}
@@ -167,14 +145,13 @@ function PasswordForm({ oidcError, noRedirect }) {
 						email: "",
 						password: "",
 					}}
-					validate={validateSignIn}
 					onSubmit={onSubmit}
 				>
-					{({ isSubmitting }) => (
+					{({ isSubmitting, values }) => (
 						<Form noValidate>
 							<div className="mb-3">
 								<Field name="email">
-									{({ field, form }) => (
+									{({ field, meta }) => (
 										<>
 											<label className="form-label" htmlFor="login-email">
 												<T id="email-address" />
@@ -186,17 +163,27 @@ function PasswordForm({ oidcError, noRedirect }) {
 												type="email"
 												autoComplete="username"
 												required
-												className={`form-control ${form.errors.email && (form.touched.email || form.submitCount > 0) ? "is-invalid" : ""}`}
+												className={`form-control ${emailHint(field.value, meta.touched) ? "is-invalid" : ""}`}
+												aria-invalid={emailHint(field.value, meta.touched) ? "true" : undefined}
+												aria-describedby={
+													emailHint(field.value, meta.touched)
+														? "login-email-error"
+														: undefined
+												}
 												placeholder={intl.formatMessage({ id: "email-address" })}
 											/>
-											<div className="invalid-feedback">{form.errors.email}</div>
+											{emailHint(field.value, meta.touched) ? (
+												<div className="invalid-feedback" id="login-email-error">
+													{emailHint(field.value, meta.touched)}
+												</div>
+											) : null}
 										</>
 									)}
 								</Field>
 							</div>
 							<div className="mb-2">
 								<Field name="password">
-									{({ field, form }) => (
+									{({ field }) => (
 										<PasswordInput
 											{...field}
 											id="login-password"
@@ -205,26 +192,24 @@ function PasswordForm({ oidcError, noRedirect }) {
 											required
 											maxLength={255}
 											placeholder={intl.formatMessage({ id: "password" })}
-											error={
-												form.errors.password && (form.touched.password || form.submitCount > 0)
-													? form.errors.password
-													: null
-											}
 										/>
 									)}
 								</Field>
 							</div>
 							<div className="form-footer">
-								<FormSubmit
-									stacked
-									className="w-100"
-									messageId="form.fix-fields.sign-in"
+								<Button
+									type="submit"
+									fullWidth
 									color="azure"
 									isLoading={isSubmitting}
-									disabled={isSubmitting}
+									disabled={
+										isSubmitting ||
+										Boolean(checkEmail(values.email.trim())) ||
+										values.password === ""
+									}
 								>
 									<T id="sign-in" />
-								</FormSubmit>
+								</Button>
 							</div>
 						</Form>
 					)}
