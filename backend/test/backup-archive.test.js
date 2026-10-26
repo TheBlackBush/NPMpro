@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Readable } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 import { it } from "node:test";
 import { gzipSync } from "node:zlib";
 import { create, Header } from "tar";
@@ -151,26 +151,83 @@ const entryBlock = (name, body) => {
 	return Buffer.concat([header.block, padded]);
 };
 
-it("writes nothing in dir after a refusal has settled", async () => {
-	const big = randomBytes(32 * 1024 * 1024);
-	const raw = Buffer.concat([
-		entryBlock("files/custom_nginx/big.conf", big),
-		entryBlock("files/custom_nginx/after1.conf", Buffer.from("x")),
-		entryBlock("files/custom_nginx/after2.conf", Buffer.from("x")),
-		entryBlock("evil.txt", Buffer.from("x")),
-		Buffer.alloc(1024),
-	]);
-	const gz = gzipSync(raw);
-	const chunks = [];
-	for (let i = 0; i < gz.length; i += 1024 * 1024) {
-		chunks.push(gz.subarray(i, i + 1024 * 1024));
+const chunked = (buf, size) => {
+	const out = [];
+	for (let i = 0; i < buf.length; i += size) {
+		out.push(buf.subarray(i, i + size));
 	}
+	return out;
+};
+
+// Runs extractTo, expects a rejection, and checks that dir no longer changes once it has settled.
+const rejectsAndStays = async (source, check) => {
 	const dir = await tmp("out-");
-	await assert.rejects(
-		extractTo({ source: Readable.from(chunks), dir, allow: allowFiles }),
-		(err) => err.code === "invalid-archive",
-	);
+	let error = null;
+	try {
+		await extractTo({ source, dir, allow: allowFiles });
+	} catch (err) {
+		error = err;
+	}
+	assert.ok(error, "extractTo should reject");
+	check(error);
 	const settled = await snapshot(dir);
 	await new Promise((resolve) => setTimeout(resolve, 200));
 	assert.deepEqual(await snapshot(dir), settled);
+};
+
+const withRefusal = (big) =>
+	gzipSync(
+		Buffer.concat([
+			entryBlock("files/custom_nginx/big.conf", big),
+			entryBlock("files/custom_nginx/after1.conf", Buffer.from("x")),
+			entryBlock("files/custom_nginx/after2.conf", Buffer.from("x")),
+			entryBlock("evil.txt", Buffer.from("x")),
+			Buffer.alloc(1024),
+		]),
+	);
+const invalid = (err) => assert.equal(err.code, "invalid-archive");
+
+it("writes nothing in dir after a refusal has settled", { timeout: 20_000 }, async () => {
+	const gz = withRefusal(randomBytes(32 * 1024 * 1024));
+	await rejectsAndStays(Readable.from(chunked(gz, 1024 * 1024)), invalid);
+});
+
+it("writes nothing in dir after a refusal that lands mid-gzip", { timeout: 20_000 }, async () => {
+	const gz = withRefusal(Buffer.alloc(64 * 1024 * 1024, "a"));
+	await rejectsAndStays(Readable.from(chunked(gz, 4096)), invalid);
+});
+
+const midStream = (gz) => {
+	const source = new PassThrough();
+	source.write(gz.subarray(0, 300_000));
+	return source;
+};
+
+it("rethrows a mid-stream source BackupError unchanged", { timeout: 20_000 }, async () => {
+	const wrong = new BackupError("wrong-passphrase", "x");
+	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
+	setTimeout(() => source.destroy(wrong), 50);
+	await rejectsAndStays(source, (err) => assert.equal(err, wrong));
+});
+
+it("wraps a mid-stream plain source error", { timeout: 20_000 }, async () => {
+	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
+	setTimeout(() => source.destroy(new Error("boom")), 50);
+	await rejectsAndStays(source, invalid);
+});
+
+it("rejects a truncated gzip", { timeout: 20_000 }, async () => {
+	const gz = withRefusal(randomBytes(8 * 1024 * 1024));
+	await rejectsAndStays(Readable.from([gz.subarray(0, 500_000)]), invalid);
+});
+
+it("rejects a source that closes silently mid-stream", { timeout: 20_000 }, async () => {
+	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
+	setTimeout(() => source.destroy(), 50);
+	await rejectsAndStays(source, invalid);
+});
+
+it("rejects garbage and empty input", { timeout: 20_000 }, async () => {
+	await rejectsAndStays(Readable.from([randomBytes(5000)]), invalid);
+	await rejectsAndStays(Readable.from([]), invalid);
 });

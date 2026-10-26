@@ -1,5 +1,7 @@
+import { createWriteStream } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { create, extract } from "tar";
+import { create, Parser } from "tar";
 import { BackupError } from "./format.js";
 
 const LIMITS = { entries: 200_000, unpacked: 8 * 1024 ** 3 };
@@ -31,29 +33,84 @@ const checkPath = (rel, type, allow) => {
 };
 
 /**
- * Extracts a backup's gzip tar into dir. Every entry is checked before it is written. The first bad entry (or an
- * error from the source or from tar) ends the extraction: nothing further is read from the source, the source is
- * destroyed, and entries tar had already accepted are finished (the one being written is cut short, later ones are
- * written as far as the data went). The promise settles only after tar is done writing, so once it has settled
- * nothing more is created or written in dir and the caller may remove dir. A bad entry rejects with
- * BackupError("invalid-archive"); an error from the source (for example a BackupError from decryption) is passed on
- * unchanged.
+ * Extracts a backup's gzip tar into dir. tar only parses; the files are written here, so this function knows exactly
+ * which writes are in flight. Every entry is checked before anything is written for it. The first bad entry, an
+ * error from the source or from tar, truncated input or a source that closes early ends the extraction: the source
+ * is destroyed, no further entry is started and the file being written is cut short. The promise settles exactly
+ * once, and only after every write it started has closed, so once it has settled nothing more is created or
+ * written in dir and the caller may remove dir. A bad entry rejects with BackupError("invalid-archive"); an error
+ * from the source (for example a BackupError from decryption) is passed on unchanged; any other error is wrapped
+ * as invalid-archive.
  */
-const extractTo = async ({ source, dir, allow, limits = LIMITS }) => {
-	let entries = 0;
-	let bytes = 0;
-	let failure = null;
-	const extractor = extract({
-		cwd: dir,
-		strict: true,
-		preservePaths: false,
-		noMtime: true,
-		preserveOwner: false,
-		filter: (rawPath, entry) => {
-			if (failure) {
-				return false;
+const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
+	new Promise((resolve, reject) => {
+		const parser = new Parser({ strict: true });
+		const writing = new Set();
+		let entries = 0;
+		let bytes = 0;
+		let failure = null;
+		let parsed = false;
+		let sourceEnded = false;
+		let settled = false;
+
+		const maybeSettle = () => {
+			if (settled || writing.size > 0 || !(failure || parsed)) {
+				return;
 			}
-			const rel = rawPath.replace(TRAILING_SLASH, "");
+			settled = true;
+			if (failure) {
+				reject(failure);
+			} else {
+				resolve({ entries, bytes });
+			}
+		};
+		const fail = (err) => {
+			failure ??=
+				err instanceof BackupError
+					? err
+					: new BackupError("invalid-archive", "Invalid backup archive", { cause: err });
+			source.unpipe(parser);
+			source.destroy?.();
+			for (const item of writing) {
+				item.destroy?.();
+			}
+			maybeSettle();
+		};
+		// Every started piece of filesystem work is tracked until it has finished and its file is closed.
+		// destroy, when set, cuts a running write short.
+		const track = async (work) => {
+			const item = { destroy: null };
+			writing.add(item);
+			try {
+				await work(item);
+			} catch (err) {
+				fail(err);
+			} finally {
+				writing.delete(item);
+				maybeSettle();
+			}
+		};
+		const writeFile = (entry, abs) =>
+			void track(async (item) => {
+				await mkdir(path.dirname(abs), { recursive: true, mode: 0o755 });
+				if (failure) {
+					entry.resume();
+					return;
+				}
+				const out = createWriteStream(abs, { flags: "wx", mode: 0o644 });
+				const closed = new Promise((done) => out.once("close", done));
+				item.destroy = () => out.destroy();
+				out.on("error", fail);
+				entry.pipe(out);
+				await closed;
+			});
+
+		parser.on("entry", (entry) => {
+			if (failure) {
+				entry.resume();
+				return;
+			}
+			const rel = entry.path.replace(TRAILING_SLASH, "");
 			entries += 1;
 			bytes += entry.size ?? 0;
 			let reason = checkPath(rel, entry.type, allow);
@@ -64,46 +121,33 @@ const extractTo = async ({ source, dir, allow, limits = LIMITS }) => {
 				reason = "unpacked size too large";
 			}
 			if (reason) {
-				failure = new BackupError("invalid-archive", `Invalid backup archive: ${reason} (${rel})`);
-				queueMicrotask(halt);
-				return false;
+				entry.resume();
+				fail(new BackupError("invalid-archive", `Invalid backup archive: ${reason} (${rel})`));
+				return;
 			}
-			return true;
-		},
+			const abs = path.join(dir, rel);
+			if (entry.type === "Directory") {
+				entry.resume();
+				void track(() => mkdir(abs, { recursive: true, mode: 0o755 }));
+			} else {
+				void writeFile(entry, abs);
+			}
+		});
+		parser.on("error", fail);
+		parser.on("end", () => {
+			parsed = true;
+			maybeSettle();
+		});
+		source.on("error", fail);
+		source.on("end", () => {
+			sourceEnded = true;
+		});
+		source.on("close", () => {
+			if (!sourceEnded) {
+				fail(new BackupError("invalid-archive", "Invalid backup archive: the data ended early"));
+			}
+		});
+		source.pipe(parser);
 	});
-
-	let finished = false;
-	let settle = () => undefined;
-	const done = new Promise((resolve) => {
-		settle = resolve;
-	});
-	// Stop reading, then let tar flush what it already accepted; 'finish' fires once all its writes have ended.
-	function halt() {
-		if (finished) {
-			return;
-		}
-		finished = true;
-		source.unpipe(extractor);
-		source.destroy();
-		extractor.end();
-	}
-	const fail = (err) => {
-		failure ??=
-			err instanceof BackupError
-				? err
-				: new BackupError("invalid-archive", "Invalid backup archive", { cause: err });
-		halt();
-	};
-	source.on("error", fail);
-	extractor.on("error", fail);
-	extractor.on("finish", settle);
-	extractor.on("close", settle);
-	source.pipe(extractor);
-	await done;
-	if (failure) {
-		throw failure;
-	}
-	return { entries, bytes };
-};
 
 export { extractTo, LIMITS, packStage };
