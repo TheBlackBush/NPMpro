@@ -1,14 +1,50 @@
 import { IconEye, IconEyeOff, IconX } from "@tabler/icons-react";
-import { useFormikContext } from "formik";
-import { useEffect, useState } from "react";
+import cn from "clsx";
+import { getIn, useField, useFormikContext } from "formik";
+import { useEffect, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 
 const blankItem = { username: "", password: "" };
+// the backend's rules (schema/common.json, internal/access-list.js); bcrypt reads at most 72 bytes
+const USERNAME = /^[^:\p{Cc}]{1,255}$/u;
+const MAX_PASSWORD_BYTES = 72;
+
+const message = (id, data) => intl.formatMessage({ id }, data);
+
+/**
+ * The errors of the rows (blank ones included), one object per row, or undefined
+ */
+const itemErrors = (rows, saved) => {
+	const seen = new Set();
+	const errors = rows.map((row) => {
+		const error = {};
+		const username = String(row.username ?? "").trim();
+		if (username === "") return null;
+		if (!USERNAME.test(username)) error.username = message("access-list.username.invalid");
+		else if (seen.has(username)) error.username = message("error.access.duplicate-usernames");
+		seen.add(username);
+		const password = String(row.password ?? "");
+		if (password === "" && !saved.has(username)) error.password = message("error.required");
+		else if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
+			error.password = message("error.max-byte-length", { max: MAX_PASSWORD_BYTES });
+		}
+		return Object.keys(error).length > 0 ? error : null;
+	});
+	return errors.some(Boolean) ? errors : undefined;
+};
 
 export function BasicAuthFields({ initialValues, name = "items" }) {
 	const [values, setValues] = useState(initialValues);
 	const [revealed, setRevealed] = useState([]);
-	const { setFieldValue } = useFormikContext();
+	const { setFieldValue, setFieldTouched, errors, touched, submitCount } = useFormikContext();
+	// the Formik value leaves out rows without a username, so the rows are checked here
+	const rowsRef = useRef(values);
+	const saved = new Set(initialValues.map((iv) => iv.username));
+	useField({ name, validate: () => itemErrors(rowsRef.current, saved) });
+	const shownError = (idx, field) =>
+		getIn(touched, `${name}[${idx}].${field}`) || submitCount > 0
+			? getIn(errors, `${name}[${idx}].${field}`)
+			: null;
 
 	useEffect(() => {
 		if (values.length === 0) {
@@ -24,16 +60,19 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 		const newValues = values.filter((_, i) => i !== idx);
 		setValues(newValues);
 		setRevealed(revealed.toSpliced(idx, 1));
+		void setFieldTouched(name, undefined, false);
 		setFormField(newValues);
 	};
 
 	const handleChange = (idx, field, fieldValue) => {
 		const newValues = values.map((v, i) => (i === idx ? { ...v, [field]: fieldValue } : v));
 		setValues(newValues);
+		void setFieldTouched(`${name}[${idx}].${field}`, true, false);
 		setFormField(newValues);
 	};
 
 	const setFormField = (newValues) => {
+		rowsRef.current = newValues;
 		const filtered = newValues.filter((v) => v?.username?.trim() !== "");
 		void setFieldValue(name, filtered);
 	};
@@ -57,26 +96,32 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 					<div className="col-6">
 						<input
 							type="text"
+							name={`${name}[${idx}].username`}
 							autoComplete="off"
-							className="form-control input-sm"
-							pattern="[^:\p{Cc}]{1,255}"
+							className={cn("form-control input-sm", shownError(idx, "username") && "is-invalid")}
+							aria-label={intl.formatMessage({ id: "username" })}
+							aria-invalid={shownError(idx, "username") ? "true" : undefined}
 							value={item.username}
 							onChange={(e) => handleChange(idx, "username", e.target.value)}
 						/>
+						{shownError(idx, "username") ? (
+							<div className="invalid-feedback">{shownError(idx, "username")}</div>
+						) : null}
 					</div>
 					<div className="col-5">
-						<div className="input-group input-group-flat">
+						<div
+							className={cn(
+								"input-group input-group-flat",
+								shownError(idx, "password") && "has-validation",
+							)}
+						>
 							<input
 								type={revealed[idx] ? "text" : "password"}
+								name={`${name}[${idx}].password`}
 								autoComplete="new-password"
-								className="form-control"
-								ref={(input) =>
-									input?.setCustomValidity(
-										new TextEncoder().encode(item.password).length > 72
-											? intl.formatMessage({ id: "error.max-byte-length" }, { max: 72 })
-											: "",
-									)
-								}
+								className={cn("form-control", shownError(idx, "password") && "is-invalid")}
+								aria-label={intl.formatMessage({ id: "password" })}
+								aria-invalid={shownError(idx, "password") ? "true" : undefined}
 								required={
 									item.username.trim() !== "" &&
 									!initialValues.some((iv) => iv.username === item.username)
@@ -103,6 +148,9 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 									)}
 								</button>
 							</span>
+							{shownError(idx, "password") ? (
+								<div className="invalid-feedback">{shownError(idx, "password")}</div>
+							) : null}
 						</div>
 					</div>
 					<div className="col-1">

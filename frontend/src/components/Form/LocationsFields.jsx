@@ -8,9 +8,8 @@ import {
 	IconX,
 } from "@tabler/icons-react";
 import cn from "clsx";
-import { useFormikContext } from "formik";
+import { getIn, useField, useFormikContext } from "formik";
 import { useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { AccessFields, SwitchField } from "src/components";
 import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -18,6 +17,55 @@ import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
 import { upstreamUrlPattern } from "src/modules/Validations";
 import { NoticeAlert } from "../NoticeAlert";
+
+// the backend's rules (schema/components/proxy-host-object.json, lib/host-config-guard.js)
+const PATH = /^\S{1,255}$/u;
+const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
+const PORT = /^\d{1,5}$/u;
+
+const message = (id, data) => intl.formatMessage({ id }, data);
+
+/**
+ * The errors of the location rows (blank ones included), one object per row in the same order, or undefined
+ *
+ * @param   {Object[]} rows
+ * @returns {Object[]|undefined}
+ */
+const locationErrors = (rows) => {
+	const seen = new Set();
+	const errors = rows.map((row) => {
+		const error = {};
+		const path = String(row.path ?? "").trim();
+		if (path === "") error.path = message("error.required");
+		else if (!PATH.test(path)) error.path = message("location.path.invalid");
+		else {
+			const key = `${row.locationType}${path}`;
+			if (seen.has(key)) error.path = message("location.path.duplicate");
+			seen.add(key);
+		}
+		const host = String(row.forwardHost ?? "").trim();
+		if (row.forwardScheme !== "empty") {
+			if (host === "") error.forwardHost = message("error.required");
+			else if (host.length > 255 || !FORWARD_HOST.test(host)) error.forwardHost = message("error.invalid-host");
+		}
+		const port = String(row.forwardPort ?? "").trim();
+		if (port !== "" && port !== "0" && !(PORT.test(port) && Number(port) >= 1 && Number(port) <= 65535)) {
+			error.forwardPort = message("error.number-range", { min: 1, max: 65535 });
+		}
+		if (
+			row.npmproAuthRequest !== "none" &&
+			row.npmproAuthRequestUpstream &&
+			!upstreamUrlPattern.test(row.npmproAuthRequestUpstream)
+		) {
+			error.npmproAuthRequestUpstream = message("error.invalid-upstream-url");
+		}
+		if (row.npmproAccessListType === "custom" && !(row.npmproAccessListIds?.length > 0)) {
+			error.npmproAccessListIds = message("error.required");
+		}
+		return Object.keys(error).length > 0 ? error : undefined;
+	});
+	return errors.some(Boolean) ? errors : undefined;
+};
 
 export function LocationsFields({ initialValues, name = "locations" }) {
 	const nextUiKey = useRef(0);
@@ -46,7 +94,15 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 	});
 
 	const [values, setValues] = useState(initialValues.map(createUiLocation));
-	const { setFieldValue } = useFormikContext();
+	const { setFieldValue, setFieldTouched, errors, touched, submitCount } = useFormikContext();
+	// the Formik value leaves out rows without a path, so the rows are checked here (all of them, in UI order)
+	const rowsRef = useRef(values);
+	useField({ name, validate: () => locationErrors(rowsRef.current) });
+	const errorOf = (idx, field) => getIn(errors, `${name}[${idx}].${field}`);
+	const shownError = (idx, field) =>
+		getIn(touched, `${name}[${idx}].${field}`) || submitCount > 0 ? errorOf(idx, field) : null;
+	// after a refused save a row with an error is open and not filtered away, so its error can be seen
+	const forcedOpen = (idx) => submitCount > 0 && Boolean(getIn(errors, `${name}[${idx}]`));
 	const [advVisible, setAdvVisible] = useState([]);
 	const [expanded, setExpanded] = useState([]);
 	const [filter, setFilter] = useState("");
@@ -58,6 +114,8 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 		const item = createUiLocation();
 		const newValues = [...values, item];
 		setValues(newValues);
+		// checks the new (empty) row too
+		setFormField(newValues);
 		setExpanded([...expanded, item.uiKey]);
 		setFilter("");
 		scrollToKey.current = item.uiKey;
@@ -66,6 +124,8 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 	const handleRemove = (idx) => {
 		const newValues = values.filter((_, i) => i !== idx);
 		setValues(newValues);
+		// the touched flags are per row index, which shifts
+		void setFieldTouched(name, undefined, false);
 		setFormField(newValues);
 	};
 
@@ -98,6 +158,7 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 			return updatedLocation;
 		});
 		setValues(newValues);
+		void setFieldTouched(`${name}[${idx}].${field}`, true, false);
 		setFormField(newValues);
 	};
 
@@ -113,11 +174,12 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 	};
 
 	const setFormField = (newValues) => {
+		rowsRef.current = newValues;
 		const filtered = newValues.filter((v) => v?.path?.trim() !== "").map(({ uiKey, ...rest }) => rest);
 		void setFieldValue(name, filtered);
 	};
 
-	const isOpen = (item) => expanded.includes(item.uiKey);
+	const isOpen = (item, idx) => expanded.includes(item.uiKey) || forcedOpen(idx);
 
 	const locationLabel = (item) => `${item.locationType}${item.path}`;
 
@@ -185,18 +247,18 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 							node.scrollIntoView({ block: "nearest" });
 						}
 					}}
-					className={cn("card", "card-active", "mb-2", !matchesFilter(item) && "d-none")}
+					className={cn("card", "card-active", "mb-2", !matchesFilter(item) && !forcedOpen(idx) && "d-none")}
 					style={{ "--tblr-card-border-color": "var(--tblr-border-color)" }}
 				>
-					<div className={cn("card-header", "p-2", !isOpen(item) && "border-bottom-0")}>
+					<div className={cn("card-header", "p-2", !isOpen(item, idx) && "border-bottom-0")}>
 						<button
 							type="button"
 							className="d-flex flex-fill align-self-stretch align-items-center overflow-hidden p-0 text-start text-body bg-transparent border-0"
-							aria-expanded={isOpen(item)}
+							aria-expanded={isOpen(item, idx)}
 							aria-controls={`location-body-${item.uiKey}`}
 							onClick={() => toggle(item.uiKey, expanded, setExpanded)}
 						>
-							{isOpen(item) ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+							{isOpen(item, idx) ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
 							<span className="ms-2 fw-medium text-truncate">{locationLabel(item)}</span>
 							<span className="ms-2 text-secondary text-truncate">{forwardSummary(item)}</span>
 							{item.advancedConfig?.trim() && (
@@ -220,16 +282,7 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 							<IconTrash size={16} className="icon" />
 						</button>
 					</div>
-					<div
-						className={cn("card-body", !isOpen(item) && "d-none")}
-						id={`location-body-${item.uiKey}`}
-						onInvalid={() =>
-							flushSync(() => {
-								setFilter("");
-								setExpanded((keys) => (keys.includes(item.uiKey) ? keys : [...keys, item.uiKey]));
-							})
-						}
-					>
+					<div className={cn("card-body", !isOpen(item, idx) && "d-none")} id={`location-body-${item.uiKey}`}>
 						<div className="row mb-3">
 							<SwitchField
 								id={`npmproEnabled-${item.uiKey}`}
@@ -259,14 +312,19 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									</select>
 									<input
 										type="text"
-										className="form-control"
+										name={`${name}[${idx}].path`}
+										className={cn("form-control", shownError(idx, "path") && "is-invalid")}
 										placeholder="/path"
 										autoComplete="off"
 										required
-										pattern="\S{1,255}"
+										aria-label={intl.formatMessage({ id: "location.path" })}
+										aria-invalid={shownError(idx, "path") ? "true" : undefined}
 										value={item.path}
 										onChange={(e) => handleChange(idx, "path", e.target.value)}
 									/>
+									{shownError(idx, "path") ? (
+										<div className="invalid-feedback">{shownError(idx, "path")}</div>
+									) : null}
 								</div>
 							</div>
 							<div className="col-md-2 text-end">
@@ -322,10 +380,11 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									</label>
 									<input
 										id={`forwardHost-${item.uiKey}`}
+										name={`${name}[${idx}].forwardHost`}
 										type="text"
-										className="form-control"
+										className={cn("form-control", shownError(idx, "forwardHost") && "is-invalid")}
 										required={item.forwardScheme !== "empty"}
-										pattern="(?=\S{0,255}$)[^\s\/]{0,253}(\/\S*)?"
+										aria-invalid={shownError(idx, "forwardHost") ? "true" : undefined}
 										placeholder={intl.formatMessage(
 											{ id: "form.example" },
 											{ example: "10.0.0.1/path/" },
@@ -333,6 +392,9 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 										value={item.forwardHost}
 										onChange={(e) => handleChange(idx, "forwardHost", e.target.value)}
 									/>
+									{shownError(idx, "forwardHost") ? (
+										<div className="invalid-feedback">{shownError(idx, "forwardHost")}</div>
+									) : null}
 									{item.forwardScheme === "path" && (
 										<div className="form-hint">
 											<T id="host.forward-host.path-hint" />
@@ -347,14 +409,19 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 									</label>
 									<input
 										id={`forwardPort-${item.uiKey}`}
+										name={`${name}[${idx}].forwardPort`}
 										type="number"
 										min={1}
 										max={65535}
-										className="form-control"
+										className={cn("form-control", shownError(idx, "forwardPort") && "is-invalid")}
+										aria-invalid={shownError(idx, "forwardPort") ? "true" : undefined}
 										placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
 										value={item.forwardPort || ""}
 										onChange={(e) => handleChange(idx, "forwardPort", e.target.value)}
 									/>
+									{shownError(idx, "forwardPort") ? (
+										<div className="invalid-feedback">{shownError(idx, "forwardPort")}</div>
+									) : null}
 								</div>
 							</div>
 

@@ -33,40 +33,49 @@ export function DomainNamesField({
 			name={name}
 			validate={validateDomains(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate)}
 		>
-			{({ field, form }) => (
-				<div className="mb-3">
-					<label className="form-label" htmlFor={id}>
-						<T id={label} />
-					</label>
-					<CreatableSelect
-						unstyled
-						classNames={selectClassNames}
-						name={field.name}
-						id={id}
-						closeMenuOnSelect={true}
-						isClearable={false}
-						isValidNewOption={validateDomain(
-							isWildcardPermitted && dnsProviderWildcardSupported,
-							forCertificate,
-						)}
-						isMulti
-						required
-						placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
-						onChange={handleChange}
-						value={field.value?.map((d) => ({ label: d, value: d }))}
-					/>
+			{({ field, form }) => {
+				// shown once the field was left or a submit was tried
+				const error =
+					form.errors[field.name] && (form.touched[field.name] || form.submitCount > 0)
+						? form.errors[field.name]
+						: null;
+				return (
+					<div className="mb-3">
+						<label className="form-label" htmlFor={id}>
+							<T id={label} />
+						</label>
+						<CreatableSelect
+							unstyled
+							classNames={selectClassNames}
+							name={field.name}
+							id={id}
+							closeMenuOnSelect={true}
+							isClearable={false}
+							isValidNewOption={validateDomain(
+								isWildcardPermitted && dnsProviderWildcardSupported,
+								forCertificate,
+							)}
+							isMulti
+							required
+							aria-invalid={error ? "true" : undefined}
+							onBlur={() => form.setFieldTouched(field.name, true)}
+							placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
+							onChange={handleChange}
+							value={field.value?.map((d) => ({ label: d, value: d }))}
+						/>
 
-					{form.errors[field.name] && form.touched[field.name] ? (
-						<div className="invalid-feedback d-block">{form.errors[field.name]}</div>
-					) : helperTexts.length ? (
-						helperTexts.map((i, idx) => (
-							<div key={idx} className="form-hint">
-								{i}
-							</div>
-						))
-					) : null}
-				</div>
-			)}
+						{error ? (
+							<div className="invalid-feedback d-block">{error}</div>
+						) : helperTexts.length ? (
+							helperTexts.map((i, idx) => (
+								<div key={idx} className="form-hint">
+									{i}
+								</div>
+							))
+						) : null}
+					</div>
+				);
+			}}
 		</Field>
 	);
 }

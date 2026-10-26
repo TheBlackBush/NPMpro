@@ -1,8 +1,24 @@
 import { IconX } from "@tabler/icons-react";
 import cn from "clsx";
-import { useFormikContext } from "formik";
-import { useState } from "react";
+import { getIn, useField, useFormikContext } from "formik";
+import { useRef, useState } from "react";
 import { intl, T } from "src/locale";
+
+// the backend's rule (schema/common.json): an address or CIDR range, or unix:; "all" is only the last rule
+const ADDRESS = /^(?:unix:|[0-9A-Fa-f.:/]{1,255})$/u;
+
+/**
+ * The errors of the rules before the last ("all") one, one object per row, or undefined
+ */
+const clientErrors = (rows) => {
+	const errors = rows.slice(0, -1).map((row) => {
+		const address = String(row.address ?? "").trim();
+		return address === "" || ADDRESS.test(address)
+			? undefined
+			: { address: intl.formatMessage({ id: "access-list.address.invalid" }) };
+	});
+	return errors.some(Boolean) ? errors : undefined;
+};
 
 export function AccessClientFields({ initialValues, name = "clients" }) {
 	const [values, setValues] = useState(
@@ -10,7 +26,13 @@ export function AccessClientFields({ initialValues, name = "clients" }) {
 			? initialValues
 			: [...initialValues, { directive: "deny", address: "all" }],
 	);
-	const { setFieldValue } = useFormikContext();
+	const { setFieldValue, setFieldTouched, errors, touched, submitCount } = useFormikContext();
+	// the Formik value leaves out rows without an address, so the rows are checked here
+	const rowsRef = useRef(values);
+	rowsRef.current = values;
+	useField({ name, validate: () => clientErrors(rowsRef.current) });
+	const shownError = (idx) =>
+		getIn(touched, `${name}[${idx}].address`) || submitCount > 0 ? getIn(errors, `${name}[${idx}].address`) : null;
 
 	const blankClient = { directive: "allow", address: "" };
 
@@ -25,16 +47,19 @@ export function AccessClientFields({ initialValues, name = "clients" }) {
 	const handleRemove = (idx) => {
 		const newValues = values.toSpliced(idx, 1);
 		setValues(newValues);
+		void setFieldTouched(name, undefined, false);
 		setFormField(newValues);
 	};
 
 	const handleChange = (idx, field, fieldValue) => {
 		const newValues = values.with(idx, { ...values[idx], [field]: fieldValue });
 		setValues(newValues);
+		void setFieldTouched(`${name}[${idx}].${field}`, true, false);
 		setFormField(newValues);
 	};
 
 	const setFormField = (newValues) => {
+		rowsRef.current = newValues;
 		const filtered = newValues.filter((v) => v?.address?.trim() !== "");
 		void setFieldValue(name, filtered);
 	};
@@ -67,17 +92,19 @@ export function AccessClientFields({ initialValues, name = "clients" }) {
 								</option>
 							</select>
 							<input
-								name={`clients[${idx}].address`}
+								name={`${name}[${idx}].address`}
 								type="text"
-								className="form-control"
+								className={cn("form-control", shownError(idx) && "is-invalid")}
 								autoComplete="off"
-								pattern="[^\slL]{1,255}"
+								aria-label={intl.formatMessage({ id: "access-list.address" })}
+								aria-invalid={shownError(idx) ? "true" : undefined}
 								value={client.address}
 								onChange={(e) => handleChange(idx, "address", e.target.value)}
 								placeholder={intl.formatMessage({
 									id: "access-list.rule-source.placeholder",
 								})}
 							/>
+							{shownError(idx) ? <div className="invalid-feedback">{shownError(idx)}</div> : null}
 						</div>
 					</div>
 					<div className="col-1">

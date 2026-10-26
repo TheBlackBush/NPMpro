@@ -4,15 +4,17 @@ import { Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
-import { validateString } from "src/modules/Validations";
+import { validateString, validateText } from "src/modules/Validations";
 
 const showMfaModal = (id) => {
 	EasyModal.show(MfaModal, { id });
 };
+
+const validateSixDigits = validateText({ required: true, pattern: /^\d{6}$/u, messageId: "error.code-six-digits" });
 
 const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 	const [error, setError] = useState(null);
@@ -181,8 +183,8 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					</label>
 					<Formik initialValues={{ code: "" }} onSubmit={handleVerify}>
 						{() => (
-							<Form>
-								<Field name="code" validate={validateString(6, 6)}>
+							<Form noValidate>
+								<Field name="code" validate={validateSixDigits}>
 									{({ field, form }) => (
 										<div className="mb-3">
 											<PasswordInput
@@ -201,7 +203,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									)}
 								</Field>
-								<div className="d-flex gap-2">
+								<div className="d-flex gap-2 align-items-start">
 									<Button
 										type="button"
 										fullWidth
@@ -210,15 +212,16 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									>
 										<T id="cancel" />
 									</Button>
-									<Button
-										type="submit"
-										fullWidth
+									<FormSubmit
+										stacked
+										className="w-100"
+										messageId="form.fix-fields.continue"
 										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="totp.verify-enable" />
-									</Button>
+									</FormSubmit>
 								</div>
 							</Form>
 						)}
@@ -257,7 +260,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					</NoticeAlert>
 					<Formik initialValues={{ code: "" }} onSubmit={handleDisable}>
 						{() => (
-							<Form>
+							<Form noValidate>
 								<Field name="code" validate={validateString(6, 8)}>
 									{({ field, form }) => (
 										<div className="mb-3">
@@ -276,7 +279,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									)}
 								</Field>
-								<div className="d-flex gap-2">
+								<div className="d-flex gap-2 align-items-start">
 									<Button
 										type="button"
 										fullWidth
@@ -285,15 +288,16 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									>
 										<T id="cancel" />
 									</Button>
-									<Button
-										type="submit"
-										fullWidth
+									<FormSubmit
+										stacked
+										className="w-100"
+										messageId="form.fix-fields.continue"
 										color="danger"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="totp.disable-confirm" />
-									</Button>
+									</FormSubmit>
 								</div>
 							</Form>
 						)}
@@ -313,8 +317,8 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					</p>
 					<Formik initialValues={{ code: "" }} onSubmit={handleRegenerateBackup}>
 						{() => (
-							<Form>
-								<Field name="code" validate={validateString(6, 6)}>
+							<Form noValidate>
+								<Field name="code" validate={validateSixDigits}>
 									{({ field, form }) => (
 										<div className="mb-3">
 											<PasswordInput
@@ -333,7 +337,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										</div>
 									)}
 								</Field>
-								<div className="d-flex gap-2">
+								<div className="d-flex gap-2 align-items-start">
 									<Button
 										type="button"
 										fullWidth
@@ -342,15 +346,16 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 									>
 										<T id="cancel" />
 									</Button>
-									<Button
-										type="submit"
-										fullWidth
+									<FormSubmit
+										stacked
+										className="w-100"
+										messageId="form.fix-fields.continue"
 										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="mfa.regenerate" />
-									</Button>
+									</FormSubmit>
 								</div>
 							</Form>
 						)}

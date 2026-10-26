@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { createSetupUser } from "src/api/backend";
-import { ApiErrorContent, BrandMark, Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
+import { ApiErrorContent, BrandMark, ErrorAlert, FormSubmit, LocalePicker, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -69,7 +69,7 @@ export default function Setup() {
 						onSubmit={onSubmit}
 					>
 						{({ isSubmitting }) => (
-							<Form>
+							<Form noValidate>
 								<div className="card-body text-center py-4 p-sm-5">
 									<h1 className="mt-5">
 										<T id="setup.title" />
@@ -92,12 +92,14 @@ export default function Setup() {
 														id="name"
 														autoComplete="name"
 														required
-														className={`form-control ${form.errors.name && form.touched.name ? "is-invalid" : ""}`}
+														className={`form-control ${form.errors.name && (form.touched.name || form.submitCount > 0) ? "is-invalid" : ""}`}
 														placeholder={intl.formatMessage({ id: "user.full-name" })}
 													/>
 													{form.errors.name ? (
 														<div className="invalid-feedback">
-															{form.touched.name ? form.errors.name : null}
+															{form.touched.name || form.submitCount > 0
+																? form.errors.name
+																: null}
 														</div>
 													) : null}
 												</>
@@ -117,12 +119,14 @@ export default function Setup() {
 														type="email"
 														autoComplete="username"
 														required
-														className={`form-control ${form.errors.email && form.touched.email ? "is-invalid" : ""}`}
+														className={`form-control ${form.errors.email && (form.touched.email || form.submitCount > 0) ? "is-invalid" : ""}`}
 														placeholder={intl.formatMessage({ id: "email-address" })}
 													/>
 													{form.errors.email ? (
 														<div className="invalid-feedback">
-															{form.touched.email ? form.errors.email : null}
+															{form.touched.email || form.submitCount > 0
+																? form.errors.email
+																: null}
 														</div>
 													) : null}
 												</>
@@ -139,7 +143,8 @@ export default function Setup() {
 													autoComplete="new-password"
 													required
 													error={
-														form.errors.password && form.touched.password
+														form.errors.password &&
+														(form.touched.password || form.submitCount > 0)
 															? form.errors.password
 															: null
 													}
@@ -150,15 +155,15 @@ export default function Setup() {
 									</div>
 								</div>
 								<div className="text-center my-3 mx-3">
-									<Button
-										type="submit"
+									<FormSubmit
+										stacked
+										messageId="form.fix-fields.continue"
 										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
-										className="w-100"
 									>
 										<T id="setup.create-account" />
-									</Button>
+									</FormSubmit>
 								</div>
 							</Form>
 						)}

@@ -7,6 +7,7 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	NginxConfigField,
@@ -26,8 +27,15 @@ import {
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
-import { showTabOfInvalid, validateString } from "src/modules/Validations";
+import { HOST_PATTERN, validateText } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+
+const validateForwardDomain = validateText({
+	required: true,
+	max: 253,
+	pattern: HOST_PATTERN,
+	messageId: "error.invalid-host",
+});
 
 const showRedirectionHostModal = (id) => {
 	EasyModal.show(RedirectionHostModal, { id });
@@ -106,7 +114,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{({ values }) => (
-						<Form onInvalid={showTabOfInvalid}>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -192,7 +200,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 												</Field>
 											</div>
 											<div className="col-md-6">
-												<Field name="forwardDomainName" validate={validateString(1, 253)}>
+												<Field name="forwardDomainName" validate={validateForwardDomain}>
 													{({ field, form }) => (
 														<div className="mb-3">
 															<label className="form-label" htmlFor="forwardDomainName">
@@ -296,15 +304,15 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-									<Button
-										type="submit"
-										color="primary"
+									<FormSubmit
 										className="ms-auto"
+										edit={Boolean(data?.id)}
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="save" />
-									</Button>
+									</FormSubmit>
 								</HasPermission>
 							</AppModal.Footer>
 						</Form>

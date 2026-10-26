@@ -7,6 +7,7 @@ import {
 	Button,
 	DnsCredentialValuesFields,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	NoticeAlert,
@@ -47,6 +48,9 @@ const toPayload = (values, id, provider) => {
 		.map((field) => ({ key: field.key, value: values.fieldValues[field.key] ?? "" }));
 	return { ...base, fields };
 };
+
+const validateProvider = (values) =>
+	values.provider ? {} : { provider: intl.formatMessage({ id: "error.required" }) };
 
 const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onSaved, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -108,12 +112,14 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending || providersPending) && <Loading noLogo />}
 			{ready && (
-				<Formik initialValues={initialValuesFor(data)} onSubmit={onSubmit}>
-					{({ values, setFieldValue }) => {
+				<Formik initialValues={initialValuesFor(data)} validate={validateProvider} onSubmit={onSubmit}>
+					{({ values, setFieldValue, setFieldTouched, errors, touched, submitCount }) => {
+						const providerError =
+							errors.provider && (touched.provider || submitCount > 0) ? errors.provider : null;
 						const provider = providers.find((p) => p.id === values.provider);
 						const locked = !isNew && (data.certificates?.length ?? 0) > 0;
 						return (
-							<Form>
+							<Form noValidate>
 								<DirtyTracker dirtyRef={dirtyRef} />
 								<AppModal.Header closeButton={!isSubmitting}>
 									<AppModal.Title>
@@ -141,12 +147,14 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 													type="text"
 													required
 													autoComplete="off"
-													className={`form-control ${form.errors.name && form.touched.name ? "is-invalid" : ""}`}
+													className={`form-control ${form.errors.name && (form.touched.name || form.submitCount > 0) ? "is-invalid" : ""}`}
 													{...field}
 												/>
 												{form.errors.name ? (
 													<div className="invalid-feedback">
-														{form.touched.name ? form.errors.name : null}
+														{form.touched.name || form.submitCount > 0
+															? form.errors.name
+															: null}
 													</div>
 												) : null}
 											</div>
@@ -159,7 +167,11 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 										<Select
 											unstyled
 											classNames={selectClassNames}
+											name="provider"
 											inputId="dnsCredentialProvider"
+											aria-invalid={providerError ? "true" : undefined}
+											aria-describedby={providerError ? "dnsCredentialProvider-error" : undefined}
+											onBlur={() => setFieldTouched("provider", true)}
 											closeMenuOnSelect={true}
 											isClearable={false}
 											isDisabled={locked}
@@ -179,6 +191,11 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 												void setFieldValue("oneOfGroup", defaultGroup(next, null));
 											}}
 										/>
+										{providerError ? (
+											<div className="invalid-feedback d-block" id="dnsCredentialProvider-error">
+												{providerError}
+											</div>
+										) : null}
 										{locked ? (
 											<small className="text-secondary">
 												<T id="dns-credentials.provider-locked" />
@@ -195,15 +212,15 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 										<T id="cancel" />
 									</Button>
 									<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-										<Button
-											type="submit"
-											color="primary"
+										<FormSubmit
 											className="ms-auto"
+											edit={!isNew}
+											color="primary"
 											isLoading={isSubmitting}
 											disabled={isSubmitting}
 										>
 											<T id="save" />
-										</Button>
+										</FormSubmit>
 									</HasPermission>
 								</AppModal.Footer>
 							</Form>

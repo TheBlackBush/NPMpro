@@ -8,6 +8,7 @@ import {
 	Button,
 	DomainNamesField,
 	ErrorAlert,
+	FormSubmit,
 	NoticeAlert,
 	RequestProgress,
 	SwitchField,
@@ -109,7 +110,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 				onSubmit={onSubmit}
 			>
 				{({ values }) => (
-					<Form>
+					<Form noValidate>
 						<DirtyTracker dirtyRef={dirtyRef} />
 						<AppModal.Header closeButton={!(isSubmitting || isTesting)}>
 							<AppModal.Title>
@@ -163,7 +164,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 							>
 								<T id="cancel" />
 							</Button>
-							<div className="ms-auto">
+							<div className="d-flex flex-grow-1 align-items-center justify-content-end">
 								<Button
 									type="button"
 									color="secondary"
@@ -174,14 +175,13 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								>
 									<T id="test" />
 								</Button>
-								<Button
-									type="submit"
+								<FormSubmit
 									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting || isTesting}
 								>
 									<T id="save" />
-								</Button>
+								</FormSubmit>
 							</div>
 						</AppModal.Footer>
 					</Form>

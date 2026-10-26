@@ -6,6 +6,7 @@ import {
 	Button,
 	DirectoryField,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	NginxConfigField,
@@ -25,8 +26,31 @@ import {
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { showTabOfInvalid, validateString } from "src/modules/Validations";
+import { HOST_PATTERN, validateString, validateText } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+
+// the backend's rules (schema/components/stream-object.json), plus the port range nothing checked before
+const SINGLE_PORT = /^[0-9]{1,5}$/u;
+const PORT_RANGE = /^(?<from>[0-9]{1,5})(?:-(?<to>[0-9]{1,5}))?$/u;
+const isPort = (text) => text !== undefined && Number(text) >= 1 && Number(text) <= 65535;
+const validateForwardHost = validateText({
+	required: true,
+	max: 253,
+	pattern: HOST_PATTERN,
+	messageId: "error.invalid-host",
+});
+const validateIncomingPort = (value) => {
+	const text = String(value ?? "").trim();
+	if (text === "") return intl.formatMessage({ id: "error.required" });
+	const match = PORT_RANGE.exec(text);
+	const valid = match && isPort(match.groups.from) && (match.groups.to === undefined || isPort(match.groups.to));
+	return valid ? undefined : intl.formatMessage({ id: "stream.incoming-port.invalid" });
+};
+const validateForwardPort = (value) => {
+	const text = String(value ?? "").trim();
+	if (text === "" || text === "$server_port" || (SINGLE_PORT.test(text) && isPort(text))) return;
+	return intl.formatMessage({ id: "stream.forward-port.invalid" });
+};
 
 const showStreamModal = (id) => {
 	EasyModal.show(StreamModal, { id });
@@ -107,7 +131,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{({ values, setFieldValue }) => (
-						<Form onInvalid={showTabOfInvalid}>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -161,7 +185,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 								</ul>
 								<div className="tab-content">
 									<div className="tab-pane active show" id="tab-details" role="tabpanel">
-										<Field name="incomingPort" validate={validateString(1, 11)}>
+										<Field name="incomingPort" validate={validateIncomingPort}>
 											{({ field, form }) => (
 												<div className="mb-3">
 													<label className="form-label" htmlFor="incomingPort">
@@ -221,7 +245,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 										</Field>
 										<div className="row">
 											<div className="col-md-8">
-												<Field name="forwardingHost" validate={validateString(1, 253)}>
+												<Field name="forwardingHost" validate={validateForwardHost}>
 													{({ field, form }) => (
 														<div className="mb-3">
 															<label className="form-label" htmlFor="forwardingHost">
@@ -251,7 +275,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 												</Field>
 											</div>
 											<div className="col-md-4">
-												<Field name="forwardingPort" validate={validateString(0, 12)}>
+												<Field name="forwardingPort" validate={validateForwardPort}>
 													{({ field, form }) => (
 														<div className="mb-3">
 															<label className="form-label" htmlFor="forwardingPort">
@@ -444,15 +468,15 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={STREAMS} permission={MANAGE} hideError>
-									<Button
-										type="submit"
-										color="primary"
+									<FormSubmit
 										className="ms-auto"
+										edit={Boolean(data?.id)}
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="save" />
-									</Button>
+									</FormSubmit>
 								</HasPermission>
 							</AppModal.Footer>
 						</Form>

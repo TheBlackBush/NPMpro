@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { Button, FormErrorNote } from "src/components";
+import { Button, FormErrorNote, showFirstInvalid } from "src/components";
 import { LeaveGuard } from "src/hooks";
 import { T } from "src/locale";
 
@@ -17,7 +17,7 @@ const REASON_ID = "settings-save-reason";
  * @param {string}  [props.reasonId]   why it is disabled (translation id), default "no changes"
  * @param {Object}  [props.labels]     field name -> label translation id (FormErrorNote), a stable object
  */
-function SaveBar({ disabled: nothingToSave, reasonId = "settings.save.no-changes", labels }) {
+function SaveBar({ disabled: nothingToSave, reasonId = "form.no-changes", labels }) {
 	const { isSubmitting, isValid, dirty } = useFormikContext();
 	const disabled = nothingToSave ?? !dirty;
 	const showReason = disabled && isValid && !isSubmitting;
@@ -36,6 +36,8 @@ function SaveBar({ disabled: nothingToSave, reasonId = "settings.save.no-changes
 				isLoading={isSubmitting}
 				disabled={isSubmitting || (disabled && isValid)}
 				blocked={!isValid}
+				onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+				onMouseDown={(e) => e.preventDefault()}
 				aria-describedby={isValid ? (showReason ? REASON_ID : undefined) : NOTE_ID}
 			>
 				<T id="save" />

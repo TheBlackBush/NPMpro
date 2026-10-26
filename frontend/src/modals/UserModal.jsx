@@ -2,7 +2,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useRef, useState } from "react";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, GravatarFormatter, Loading, SwitchField } from "src/components";
+import {
+	ApiErrorContent,
+	AppModal,
+	Button,
+	ErrorAlert,
+	FormSubmit,
+	GravatarFormatter,
+	Loading,
+	SwitchField,
+} from "src/components";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -87,7 +96,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{() => (
-						<Form>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -213,15 +222,15 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
-								<Button
-									type="submit"
+								<FormSubmit
 									className="ms-auto"
+									edit={Boolean(data?.id)}
 									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>
 									<T id="save" />
-								</Button>
+								</FormSubmit>
 							</AppModal.Footer>
 						</Form>
 					)}

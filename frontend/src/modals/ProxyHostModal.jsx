@@ -10,6 +10,7 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	LocationsFields,
@@ -32,16 +33,43 @@ import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
 import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptions";
-import { showTabOfInvalid, validateNumber, validateUpstreamUrl } from "src/modules/Validations";
+import { validateInteger, validateUpstreamUrl } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
+const PRINTABLE_ASCII = /^[\x21-\x7e]+$/u;
+const NGINX_SYNTAX = /[$;{}"'\\#]/u;
 // the backend's rule for a non-admin "path" target (lib/host-config-guard.js): an absolute path inside /var/www, no ..
 const insideWebroot = (value) =>
 	typeof value === "string" &&
 	(value === "/var/www" || value.startsWith("/var/www/")) &&
 	!value.split("/").includes("..") &&
-	/^[\x21-\x7e]+$/u.test(value) &&
-	!/[$;{}"'\\#]/u.test(value);
+	PRINTABLE_ASCII.test(value) &&
+	!NGINX_SYNTAX.test(value);
+
+const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
+const validatePort = validateInteger({ min: 1, max: 65535 });
+
+// field name -> label for the note next to Save (no control has these names)
+const FIELD_LABELS = {
+	locations: "column.custom-locations",
+	npmproAccessListIds: "proxy-host.global-access-lists",
+};
+
+// the backend's rules for the forward host (schema/components/proxy-host-object.json) and custom access lists
+const validateHost = (values) => {
+	const errors = {};
+	const host = String(values.forwardHost ?? "").trim();
+	if (values.forwardScheme !== "empty") {
+		if (host === "") errors.forwardHost = intl.formatMessage({ id: "error.required" });
+		else if (host.length > 255 || !FORWARD_HOST.test(host)) {
+			errors.forwardHost = intl.formatMessage({ id: "error.invalid-host" });
+		}
+	}
+	if (values.npmproAccessListType === "custom" && !(values.npmproAccessListIds?.length > 0)) {
+		errors.npmproAccessListIds = intl.formatMessage({ id: "error.required" });
+	}
+	return errors;
+};
 
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -117,6 +145,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 			{isPending && <Loading noLogo />}
 			{data && isAdmin !== undefined && (
 				<Formik
+					validate={validateHost}
 					initialValues={{
 						// Details tab
 						domainNames: data?.domainNames,
@@ -153,7 +182,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{({ values }) => (
-						<Form onInvalid={showTabOfInvalid}>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -291,31 +320,41 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 											</div>
 											<div className="col-md-5">
 												<Field name="forwardHost">
-													{({ field, form }) => (
-														<div className="mb-3">
-															<label className="form-label" htmlFor="forwardHost">
-																<T id="proxy-host.forward-host-path" />
-															</label>
-															<input
-																id="forwardHost"
-																type="text"
-																className="form-control"
-																placeholder="example.com"
-																required={form.values.forwardScheme !== "empty"}
-																pattern="(?=\S{0,255}$)[^\s\/]{0,253}(\/\S*)?"
-																{...field}
-															/>
-															{form.values.forwardScheme === "path" && (
-																<div className="form-hint">
-																	<T id="host.forward-host.path-hint" />
-																</div>
-															)}
-														</div>
-													)}
+													{({ field, form }) => {
+														const hostError =
+															form.errors.forwardHost &&
+															(form.touched.forwardHost || form.submitCount > 0)
+																? form.errors.forwardHost
+																: null;
+														return (
+															<div className="mb-3">
+																<label className="form-label" htmlFor="forwardHost">
+																	<T id="proxy-host.forward-host-path" />
+																</label>
+																<input
+																	id="forwardHost"
+																	type="text"
+																	className={`form-control ${hostError ? "is-invalid" : ""}`}
+																	placeholder="example.com"
+																	required={form.values.forwardScheme !== "empty"}
+																	aria-invalid={hostError ? "true" : undefined}
+																	{...field}
+																/>
+																{error ? (
+																	<div className="invalid-feedback">{error}</div>
+																) : null}
+																{form.values.forwardScheme === "path" && (
+																	<div className="form-hint">
+																		<T id="host.forward-host.path-hint" />
+																	</div>
+																)}
+															</div>
+														);
+													}}
 												</Field>
 											</div>
 											<div className="col-md-4">
-												<Field name="forwardPort" validate={validateNumber(-1, 65535)}>
+												<Field name="forwardPort" validate={validatePort}>
 													{({ field, form }) => (
 														<div className="mb-3">
 															<label className="form-label" htmlFor="forwardPort">
@@ -325,15 +364,15 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																className={cn("input-group", {
 																	"has-validation":
 																		form.errors.forwardPort &&
-																		form.touched.forwardPort,
+																		(form.touched.forwardPort ||
+																			form.submitCount > 0),
 																})}
 															>
 																<input
 																	id="forwardPort"
 																	type="text"
 																	inputMode="numeric"
-																	pattern="[1-9][0-9]*"
-																	className={`form-control ${form.errors.forwardPort && form.touched.forwardPort ? "is-invalid" : ""}`}
+																	className={`form-control ${form.errors.forwardPort && (form.touched.forwardPort || form.submitCount > 0) ? "is-invalid" : ""}`}
 																	placeholder={intl.formatMessage(
 																		{ id: "form.example" },
 																		{ example: "8081" },
@@ -360,7 +399,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	</button>
 																)}
 
-																{form.errors.forwardPort && form.touched.forwardPort ? (
+																{form.errors.forwardPort &&
+																(form.touched.forwardPort || form.submitCount > 0) ? (
 																	<div className="invalid-feedback">
 																		{form.errors.forwardPort}
 																	</div>
@@ -709,15 +749,16 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
-									<Button
-										type="submit"
-										color="primary"
+									<FormSubmit
+										labels={FIELD_LABELS}
 										className="ms-auto"
+										edit={Boolean(data?.id) && !isClone}
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="save" />
-									</Button>
+									</FormSubmit>
 								</HasPermission>
 							</AppModal.Footer>
 						</Form>

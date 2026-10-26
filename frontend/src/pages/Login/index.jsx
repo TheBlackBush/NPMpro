@@ -1,6 +1,15 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { BrandMark, Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
+import {
+	BrandMark,
+	Button,
+	ErrorAlert,
+	FormSubmit,
+	LocalePicker,
+	OidcButton,
+	Page,
+	ThemeSwitcher,
+} from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -8,6 +17,19 @@ import { intl, T } from "src/locale";
 import { getCookie } from "src/modules/Cookies";
 import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
 import { validateEmail, validateString } from "src/modules/Validations";
+
+const checkEmail = validateEmail();
+const checkPassword = validateString(1, 255, false);
+
+// one form-level check, so both fields are checked on the first submit
+const validateSignIn = (values) => {
+	const errors = {};
+	const email = checkEmail(values.email);
+	const password = checkPassword(values.password);
+	if (email) errors.email = email;
+	if (password) errors.password = password;
+	return errors;
+};
 
 function TotpForm() {
 	const codeRef = useRef(null);
@@ -40,7 +62,7 @@ function TotpForm() {
 			{formErr && <ErrorAlert error={formErr} />}
 			<Formik initialValues={{ code: "" }} onSubmit={onSubmit}>
 				{({ isSubmitting }) => (
-					<Form>
+					<Form noValidate>
 						<div className="mb-3">
 							<Field name="code" validate={validateString(6, 8)}>
 								{({ field, form }) => (
@@ -53,25 +75,30 @@ function TotpForm() {
 										autoComplete="one-time-code"
 										required
 										maxLength={8}
-										error={form.errors.code && form.touched.code ? form.errors.code : null}
+										error={
+											form.errors.code && (form.touched.code || form.submitCount > 0)
+												? form.errors.code
+												: null
+										}
 										placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
 									/>
 								)}
 							</Field>
 						</div>
-						<div className="form-footer d-flex gap-2">
+						<div className="form-footer d-flex gap-2 align-items-start">
 							<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
-							<Button
-								type="submit"
-								fullWidth
+							<FormSubmit
+								stacked
+								className="w-100"
+								messageId="form.fix-fields.sign-in"
 								color="azure"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}
 							>
 								<T id="login.totp-verify" />
-							</Button>
+							</FormSubmit>
 						</div>
 					</Form>
 				)}
@@ -140,12 +167,13 @@ function PasswordForm({ oidcError, noRedirect }) {
 						email: "",
 						password: "",
 					}}
+					validate={validateSignIn}
 					onSubmit={onSubmit}
 				>
 					{({ isSubmitting }) => (
-						<Form>
+						<Form noValidate>
 							<div className="mb-3">
-								<Field name="email" validate={validateEmail()}>
+								<Field name="email">
 									{({ field, form }) => (
 										<>
 											<label className="form-label" htmlFor="login-email">
@@ -158,7 +186,7 @@ function PasswordForm({ oidcError, noRedirect }) {
 												type="email"
 												autoComplete="username"
 												required
-												className={`form-control ${form.errors.email && form.touched.email ? "is-invalid" : ""}`}
+												className={`form-control ${form.errors.email && (form.touched.email || form.submitCount > 0) ? "is-invalid" : ""}`}
 												placeholder={intl.formatMessage({ id: "email-address" })}
 											/>
 											<div className="invalid-feedback">{form.errors.email}</div>
@@ -168,7 +196,7 @@ function PasswordForm({ oidcError, noRedirect }) {
 							</div>
 							<div className="mb-2">
 								<Field name="password">
-									{({ field }) => (
+									{({ field, form }) => (
 										<PasswordInput
 											{...field}
 											id="login-password"
@@ -177,20 +205,26 @@ function PasswordForm({ oidcError, noRedirect }) {
 											required
 											maxLength={255}
 											placeholder={intl.formatMessage({ id: "password" })}
+											error={
+												form.errors.password && (form.touched.password || form.submitCount > 0)
+													? form.errors.password
+													: null
+											}
 										/>
 									)}
 								</Field>
 							</div>
 							<div className="form-footer">
-								<Button
-									type="submit"
-									fullWidth
+								<FormSubmit
+									stacked
+									className="w-100"
+									messageId="form.fix-fields.sign-in"
 									color="azure"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>
 									<T id="sign-in" />
-								</Button>
+								</FormSubmit>
 							</div>
 						</Form>
 					)}

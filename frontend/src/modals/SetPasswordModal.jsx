@@ -1,7 +1,7 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { updateAuth } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -40,7 +40,7 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 				onSubmit={onSubmit}
 			>
 				{() => (
-					<Form>
+					<Form noValidate>
 						<AppModal.Header closeButton={!isSubmitting}>
 							<AppModal.Title>
 								<T id="user.set-password" />
@@ -70,15 +70,14 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 							<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
-							<Button
-								type="submit"
-								color="primary"
+							<FormSubmit
 								className="ms-auto"
+								color="primary"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}
 							>
 								<T id="save" />
-							</Button>
+							</FormSubmit>
 						</AppModal.Footer>
 					</Form>
 				)}
