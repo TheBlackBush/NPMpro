@@ -7,7 +7,9 @@ const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
 const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential"];
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 
-const idSet = (rows) => new Set((rows ?? []).map((row) => row.id));
+// ids can arrive as numbers or strings (JSON round trips, bigint columns), so compare them as strings
+const key = (value) => String(value);
+const idSet = (rows) => new Set((rows ?? []).map((row) => key(row.id)));
 
 const rowLabel = (table, row) => {
 	const domain = Array.isArray(row.domain_names) ? row.domain_names[0] : undefined;
@@ -33,7 +35,7 @@ const planReferences = ({ finalRows, adminUserId }) => {
 		for (const row of rows(table)) {
 			for (const column of ["certificate_id", "npmpro_mtls_certificate_id"]) {
 				const value = row[column];
-				if (value > 0 && !certificateIds.has(value)) {
+				if (Number(value) > 0 && !certificateIds.has(key(value))) {
 					const what = column === "certificate_id" ? "certificate" : "client certificate";
 					changes.push({
 						table,
@@ -48,10 +50,10 @@ const planReferences = ({ finalRows, adminUserId }) => {
 		}
 	}
 
-	const hostsById = new Map(rows("proxy_host").map((row) => [row.id, row]));
+	const hostsById = new Map(rows("proxy_host").map((row) => [key(row.id), row]));
 	for (const link of rows(LINK_TABLE)) {
-		if (!accessListIds.has(link.access_list_id)) {
-			const host = hostsById.get(link.proxy_host_id);
+		if (!accessListIds.has(key(link.access_list_id))) {
+			const host = hostsById.get(key(link.proxy_host_id));
 			const hostLabel = host ? rowLabel("proxy_host", host) : `proxy_host #${link.proxy_host_id}`;
 			changes.push({
 				table: LINK_TABLE,
@@ -68,7 +70,7 @@ const planReferences = ({ finalRows, adminUserId }) => {
 
 	for (const row of rows("certificate")) {
 		const value = row.npmpro_dns_credential_id;
-		if (value && !credentialIds.has(value)) {
+		if (value !== null && value !== undefined && value !== "" && !credentialIds.has(key(value))) {
 			changes.push({
 				table: "certificate",
 				id: row.id,
@@ -82,7 +84,7 @@ const planReferences = ({ finalRows, adminUserId }) => {
 
 	for (const table of OWNED_TABLES) {
 		for (const row of rows(table)) {
-			if (!userIds.has(row.owner_user_id)) {
+			if (!userIds.has(key(row.owner_user_id))) {
 				changes.push({
 					table,
 					id: row.id,

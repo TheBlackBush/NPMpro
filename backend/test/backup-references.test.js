@@ -189,3 +189,26 @@ it("applyReferences writes updates and removes link rows", async () => {
 		await knex.destroy();
 	}
 });
+
+it("matches ids across number and string types", () => {
+	const strings = {
+		...base(),
+		user: [{ id: "1" }],
+		certificate: [{ id: "2", nice_name: "c", owner_user_id: 1, npmpro_dns_credential_id: 3 }],
+		npmpro_dns_credential: [{ id: "3", name: "d", owner_user_id: "1" }],
+		access_list: [{ id: "4", name: "l", owner_user_id: 1 }],
+		proxy_host: [host(1, { certificate_id: 2, npmpro_mtls_certificate_id: 2 })],
+		npmpro_proxy_host_access_list: [{ proxy_host_id: 1, location_id: 0, access_list_id: 4, position: 0 }],
+	};
+	assert.deepEqual(planReferences({ finalRows: strings, adminUserId: 1 }), []);
+	const reverse = {
+		...strings,
+		user: [{ id: 1 }],
+		certificate: [{ id: 2, nice_name: "c", owner_user_id: "1", npmpro_dns_credential_id: "3" }],
+		npmpro_dns_credential: [{ id: 3, name: "d", owner_user_id: 1 }],
+		access_list: [{ id: 4, name: "l", owner_user_id: 1 }],
+		proxy_host: [host(1, { certificate_id: "2", npmpro_mtls_certificate_id: "2" })],
+		npmpro_proxy_host_access_list: [{ proxy_host_id: "1", location_id: 0, access_list_id: "4", position: 0 }],
+	};
+	assert.deepEqual(planReferences({ finalRows: reverse, adminUserId: 1 }), []);
+});
