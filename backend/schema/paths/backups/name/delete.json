@@ -1,0 +1,40 @@
+{
+	"operationId": "deleteBackup",
+	"summary": "Delete a stored backup",
+	"description": "Admin only.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "name",
+			"description": "Backup file name",
+			"schema": {
+				"type": "string",
+				"pattern": "^npmpro-backup-[a-z0-9-]+-\\d{8}-\\d{6}(-\\d{1,3})?(-auto)?\\.npmpro$",
+				"maxLength": 255
+			},
+			"required": true,
+			"example": "npmpro-backup-npmpro-20261026-120000.npmpro"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "boolean",
+						"example": true
+					}
+				}
+			}
+		}
+	}
+}

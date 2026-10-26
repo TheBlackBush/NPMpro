@@ -1,0 +1,28 @@
+{
+	"operationId": "listBackups",
+	"summary": "List the stored backups",
+	"description": "Admin only. Newest first, automatic backups included.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "../../components/backup-object.json"
+						}
+					}
+				}
+			}
+		}
+	}
+}

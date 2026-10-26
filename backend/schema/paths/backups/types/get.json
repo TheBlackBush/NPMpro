@@ -1,0 +1,85 @@
+{
+	"operationId": "getBackupTypes",
+	"summary": "Get the backup types with their current counts",
+	"description": "Admin only.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"categories",
+							"counts",
+							"certificateKinds"
+						],
+						"properties": {
+							"categories": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"id",
+										"types"
+									],
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"types": {
+											"type": "array",
+											"items": {
+												"type": "string",
+												"enum": [
+													"proxy_hosts",
+													"redirection_hosts",
+													"dead_hosts",
+													"streams",
+													"certificates",
+													"access_lists",
+													"dns_credentials",
+													"users",
+													"settings_runtime",
+													"settings_default_site",
+													"settings_oidc",
+													"settings_monitoring",
+													"custom_nginx",
+													"crowdsec_files"
+												]
+											}
+										}
+									}
+								}
+							},
+							"counts": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer"
+								},
+								"description": "Rows or files per type"
+							},
+							"certificateKinds": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer"
+								},
+								"description": "Certificates per provider"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

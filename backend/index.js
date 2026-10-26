@@ -114,6 +114,9 @@ async function appStart() {
 				});
 			});
 		});
+		// the default 300 s limit on receiving a request would cut off a backup upload (up to 2 GiB) on a slow link; only
+		// nginx connects here and it limits idle body reads (client_body_timeout). The header timeout stays.
+		server.requestTimeout = 0;
 	} catch (err) {
 		logger.error(`Startup Error: ${err.message}`, err);
 		setTimeout(appStart, 1000);
