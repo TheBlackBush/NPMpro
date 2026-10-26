@@ -5,6 +5,7 @@ import {
 	IconListDetails,
 	IconLock,
 	IconNetwork,
+	IconServerCog,
 	IconShieldCheck,
 	IconWorld,
 	IconWorldPin,
@@ -18,12 +19,14 @@ import ForwardAuth from "./ForwardAuth";
 import Geoip from "./Geoip";
 import Monitoring from "./Monitoring";
 import Network from "./Network";
+import Nginx from "./Nginx";
 
 export const SECTIONS = [
 	{ id: "default-site", labelKey: "settings.default-site", icon: IconWorld, element: DefaultSite },
 	{ id: "authentication", labelKey: "settings.authentication", icon: IconLock, element: Authentication },
 	{ id: "certificates", labelKey: "settings.certificates", icon: IconCertificate, element: Certificates },
 	{ id: "network", labelKey: "settings.network", icon: IconNetwork, element: Network },
+	{ id: "nginx", labelKey: "settings.nginx", icon: IconServerCog, element: Nginx },
 	{ id: "forward-auth", labelKey: "settings.forward-auth", icon: IconShieldCheck, element: ForwardAuth },
 	// the route stays /settings/monitoring so existing links keep working
 	{ id: "monitoring", labelKey: "settings.monitoring", icon: IconChartBar, element: Monitoring },

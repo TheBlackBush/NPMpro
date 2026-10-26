@@ -63,9 +63,10 @@ function FieldHint({ name, hint }) {
 }
 
 /**
- * A boolean setting as a Tabler settings switch row. `forced` shows it on and read-only (another setting needs it).
+ * A boolean setting as a Tabler settings switch row. `forced` shows it on and read-only (another setting needs it),
+ * `forcedOff` shows it off and read-only (another setting rules it out).
  */
-function RuntimeSwitch({ name, label, hint, forced = false, className = "mb-3" }) {
+function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false, className = "mb-3" }) {
 	const { values, setFieldValue } = useFormikContext();
 	const { isLocked } = useRuntimeSection();
 	return (
@@ -74,8 +75,8 @@ function RuntimeSwitch({ name, label, hint, forced = false, className = "mb-3" }
 			id={idOf(name)}
 			label={<FieldLabel name={name}>{label}</FieldLabel>}
 			hint={<FieldHint name={name} hint={hint} />}
-			disabled={isLocked(name) || forced}
-			checked={forced || Boolean(values[name])}
+			disabled={isLocked(name) || forced || forcedOff}
+			checked={forced || (!forcedOff && Boolean(values[name]))}
 			onChange={(e) => setFieldValue(name, e.target.checked)}
 		/>
 	);

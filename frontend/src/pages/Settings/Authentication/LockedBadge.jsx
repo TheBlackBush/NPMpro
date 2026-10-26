@@ -8,6 +8,9 @@ const REASON_BADGES = {
 	goaccess: "settings.runtime.locked.required-by",
 	// GoAccess turned on by the GoAccess report setting, not by an env var: the text names the setting
 	"goaccess-setting": "settings.runtime.locked.required-by-goaccess-setting",
+	"force-mlkem": "settings.runtime.locked.required-by",
+	// post-quantum only switched on by its setting, not by an env var
+	"force-mlkem-setting": "settings.nginx.locked.post-quantum",
 };
 
 const badgeIdOf = (env, reason) => {
