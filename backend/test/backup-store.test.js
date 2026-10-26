@@ -75,6 +75,18 @@ it("uniqueName adds -2, -3 before -auto and matches NAME", async () => {
 	assert.ok(store.NAME.test(next));
 });
 
+it("uniqueName keeps a free numbered name and renumbers a taken one", async () => {
+	const { store } = await make();
+	const numbered = "npmpro-backup-h-20261026-101500-2.npmpro";
+	assert.equal(store.uniqueName(numbered), numbered);
+	await writeFile(store.pathOf(numbered), "x");
+	assert.equal(store.uniqueName(numbered), "npmpro-backup-h-20261026-101500-3.npmpro");
+	const auto = "npmpro-backup-h-20261026-101500-12-auto.npmpro";
+	assert.equal(store.uniqueName(auto), auto);
+	await writeFile(store.pathOf(auto), "x");
+	assert.equal(store.uniqueName(auto), "npmpro-backup-h-20261026-101500-2-auto.npmpro");
+});
+
 it("list reads headers, flags unreadable files and sorts newest first", async () => {
 	const { dir, store } = await make();
 	const plain = "npmpro-backup-h-20261026-101500.npmpro";

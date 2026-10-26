@@ -8,7 +8,8 @@ const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
-const NAME_PARTS = /^(.+-\d{8}-\d{6})(-auto)?\.npmpro$/u;
+// the name without its number; a taken name gets a new number in place of the old one
+const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-auto)?\.npmpro$/u;
 
 const pad = (value, length = 2) => String(value).padStart(length, "0");
 
