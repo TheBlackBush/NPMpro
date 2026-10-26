@@ -8,6 +8,7 @@ import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_
 import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
 import { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF } from "./log-files.js";
+import { NGINX_CORE_FILES, renderNginxCore } from "./nginx-core.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { describeHosts } from "./runtime-hosts.js";
 import { acmeServerOf, appliesOf, RESTART_GROUPS, RUNTIME_GROUPS, renderStartupSettings } from "./runtime-rules.js";
@@ -27,6 +28,7 @@ const PATHS = {
 	nginxDir: "/data/nginx",
 	// TZ and GOA saved in the UI, read by envs.sh and healthcheck.sh (startup-settings.sh)
 	startupSettings: "/data/npmpro/startup-settings.env",
+	nginxCore: NGINX_CORE_FILES,
 };
 
 // the log files Write log files turns on, created like start.sh does (mode 0600, /data/nginx/<name> symlinks)
@@ -459,6 +461,18 @@ const createRuntimeApplier = ({
 				if (file) plan.files.push(file);
 			}
 			return plan;
+		},
+		// the four include files together: nginx -t and the reload see all of them (at startup one transaction; a
+		// failing test keeps the files from the last start)
+		nginx: ({ next }) => {
+			const content = renderNginxCore(next);
+			return {
+				files: Object.entries(paths.nginxCore).map(([part, file]) => ({
+					path: file,
+					content: content[part],
+					nginx: true,
+				})),
+			};
 		},
 		"forward-auth": (ctx) => (ctx.startup ? {} : { check: () => checkClearedUpstreams(ctx) }),
 		network: async (ctx) => {

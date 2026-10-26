@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { availableParallelism } from "node:os";
 import { it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import Ajv from "ajv/dist/2020.js";
 import { runtimeExclusive, runtimeQueue } from "../internal/runtime-queue.js";
-import { createRuntimeUpdater, runtimeView } from "../internal/runtime-update.js";
+import { createRuntimeUpdater, runtimeView, withCpuCount } from "../internal/runtime-update.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig, RUNTIME_GROUPS } from "../lib/runtime-rules.js";
 import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
@@ -295,6 +296,27 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 	const network = schema.paths["/settings/runtime/network"].get.responses["200"].content["application/json"].schema;
 	const networkView = runtimeView("network", mergeRuntimeConfig("network", {}, BOOT_ENV), BOOT_ENV);
 	assert.equal(ajv.validate(network, { ...networkView, restart_pending: ["trusted_ips"] }), false);
+});
+
+it("the nginx view carries the CPU thread count", () => {
+	const view = withCpuCount(runtimeView("nginx", mergeRuntimeConfig("nginx", {}, BOOT_ENV), BOOT_ENV));
+	assert.equal(view.cpu_count, availableParallelism());
+	for (const key of [
+		"worker_processes",
+		"worker_connections",
+		"worker_shutdown_timeout",
+		"log_not_found",
+		"tls12",
+		"force_mlkem",
+		"secp_curves",
+		"rsa_pkcs1",
+		"module_njs",
+		"module_ldap",
+		"module_ntlm",
+		"module_vts",
+	]) {
+		assert.ok(key in view, key);
+	}
 });
 
 it("drops must_staple when OCSP stapling is switched off by env", async () => {
