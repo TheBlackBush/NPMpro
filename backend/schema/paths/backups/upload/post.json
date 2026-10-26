@@ -39,7 +39,16 @@
 			"content": {
 				"application/json": {
 					"schema": {
-						"$ref": "../../../components/backup-object.json"
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"entry"
+						],
+						"properties": {
+							"entry": {
+								"$ref": "../../../components/backup-object.json"
+							}
+						}
 					}
 				}
 			}

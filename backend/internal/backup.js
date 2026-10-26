@@ -43,6 +43,8 @@ const hostLabel = (row) => {
 	return row.incoming_port === undefined || row.incoming_port === null ? "" : String(row.incoming_port);
 };
 
+const AUTO_SUFFIX = /-auto\.npmpro$/u;
+
 const invalid = (reason) => new BackupError("invalid-archive", reason);
 
 const isTypeList = (types) =>
@@ -586,7 +588,8 @@ const createBackupService = ({
 						date: Number.isNaN(created.getTime()) ? new Date(clock.now()) : created,
 					});
 				}
-				const stored = store.uniqueName(wanted);
+				// an uploaded file is never an automatic backup: those are pruned and live in their own folder
+				const stored = store.uniqueName(wanted.replace(AUTO_SUFFIX, ".npmpro"));
 				await rename(temp, store.pathOf(stored));
 				await audit(access, {
 					action: "uploaded",

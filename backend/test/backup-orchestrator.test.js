@@ -709,8 +709,14 @@ it("stores uploads under their own name and refuses too large or foreign files",
 			ctx.service.upload(access, Readable.from([Buffer.from("not a backup at all")]), {}),
 			hasCode("not-a-backup"),
 		);
+		const autoNamed = await ctx.service.upload(access, Readable.from([bytes]), {
+			name: "npmpro-backup-x-20261026-101500-auto.npmpro",
+		});
+		assert.equal(autoNamed.name, "npmpro-backup-x-20261026-101500.npmpro");
+		assert.equal(autoNamed.auto, false);
+		assert.ok(existsSync(path.join(ctx.backupsDir, autoNamed.name)));
 		assert.deepEqual(await dotFiles(ctx.backupsDir), []);
-		assert.equal((await ctx.service.list(access)).length, 3);
+		assert.equal((await ctx.service.list(access)).length, 4);
 	} finally {
 		await ctx.cleanup();
 	}

@@ -63,7 +63,7 @@ router
 	 */
 	.post(async (req, res) => {
 		const name = typeof req.query.name === "string" ? req.query.name : undefined;
-		res.status(200).send(await internalBackup.upload(res.locals.access, req, { name }));
+		res.status(200).send({ entry: await internalBackup.upload(res.locals.access, req, { name }) });
 	});
 
 router
