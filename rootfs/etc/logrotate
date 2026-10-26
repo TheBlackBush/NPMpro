@@ -4,4 +4,7 @@
         missingok
         notifempty
         copytruncate
+        compress
+        delaycompress
+        maxsize 100M
 }

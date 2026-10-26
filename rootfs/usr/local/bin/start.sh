@@ -210,6 +210,9 @@ fi
 if [ "$NGINX_FORCE_X25519MLKEM768" = "true" ]; then
     sed -i "s|X25519MLKEM768:x25519:secp521r1:secp384r1:prime256v1;|X25519MLKEM768;|g" /usr/local/nginx/conf/nginx.conf
 fi
+if [ "$NGINX_WORKER_SHUTDOWN_TIMEOUT" != "0" ]; then
+    sed -i "s|#worker_shutdown_timeout;|worker_shutdown_timeout $NGINX_WORKER_SHUTDOWN_TIMEOUT;|g" /usr/local/nginx/conf/nginx.conf
+fi
 if [ "$NGINX_WORKER_CONNECTIONS" != "512" ]; then
     sed -i "s|#worker_connections;|worker_connections $NGINX_WORKER_CONNECTIONS;|g" /usr/local/nginx/conf/nginx.conf
 fi
