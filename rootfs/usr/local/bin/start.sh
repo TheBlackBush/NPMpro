@@ -157,7 +157,7 @@ fi
 # created here and the old top-level leftovers are removed after data-setup.sh
 chown 0:0 /data
 chmod 755 /data
-mkdir -p /data/npmpro /data/tls /data/public /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
+mkdir -p /data/npmpro /data/tls /data/public /data/access /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
 if [ "$PUID" != "0" ]; then
     # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
@@ -178,6 +178,10 @@ fi
 
 # top-level leftovers of old versions, copied by data-setup.sh (rm does not follow links)
 rm -rf /data/nginx_custom /data/etc /data/npm /data/custom_ssl /data/letsencrypt-acme-challenge /data/logs /data/keys.json
+# moved into /data/public by data-setup.sh (copied, then removed here once the copy is there)
+for kind in html anubis; do
+    if [ -d /data/"$kind" ] && [ -d /data/public/"$kind" ]; then rm -rf /data/"$kind"; fi
+done
 if [ -f /data/database.sqlite ] && [ -s /data/npmpro/database.sqlite ] && cmp -s /data/database.sqlite /data/npmpro/database.sqlite; then
     rm -f /data/database.sqlite
 fi

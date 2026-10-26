@@ -137,7 +137,7 @@ services:
 #      - "AUTH_REQUEST_VOIDAUTH_UPSTREAM=http://127.0.0.1:3000"
 #      - "AUTH_REQUEST_AUTHELIA_UPSTREAM=http://127.0.0.1:9091"
 #      - "AUTH_REQUEST_AUTHENTIK_UPSTREAM=https://127.0.0.1:9443" # currently only works with the embedded outpost
-#      - "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES=false" # use your images from /opt/npmpro/anubis (happy.webp, reject.webp, pensive.webp), default true when all three files exist and are not empty
+#      - "AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES=false" # use your images from /opt/npmpro/public/anubis (happy.webp, reject.webp, pensive.webp), default true when all three files exist and are not empty
 
       # Logs & monitoring
 #      - "LOGROTATE=true" # Write log files: access log (/opt/npmpro/nginx/logs/access.log), stream log and error log (level warn) on disk, rotated daily, default false (GOA turns it on too); it does not turn on traffic statistics (TRAFFIC_STATS does)

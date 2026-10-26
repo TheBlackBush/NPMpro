@@ -58,7 +58,7 @@
 						},
 						"anubis_custom_images": {
 							"type": "boolean",
-							"description": "Use the custom Anubis images from /data/anubis (env AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES)"
+							"description": "Use the custom Anubis images from /data/public/anubis (env AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES)"
 						}
 					}
 				},

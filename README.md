@@ -348,7 +348,7 @@ status_codes:
   DENY: 403
 ```
 3. Set the Anubis upstream in Settings, Forward authentication (or `AUTH_REQUEST_ANUBIS_UPSTREAM`) and select anubis in the Auth Request selection, no custom/advanced config/locations needed
-4. You can replace the "allow", "checking" and "blocked" images by putting your images as happy.webp, pensive.webp and reject.webp into /opt/npmpro/anubis and turning on Custom Anubis images in Settings, Forward authentication (it is on by default when all three files exist and are not empty; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it)
+4. You can replace the "allow", "checking" and "blocked" images by putting your images as happy.webp, pensive.webp and reject.webp into /opt/npmpro/public/anubis and turning on Custom Anubis images in Settings, Forward authentication (it is on by default when all three files exist and are not empty; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it)
 
 ### Tinyauth
 1. Set the Tinyauth upstream in Settings, Forward authentication (or `AUTH_REQUEST_TINYAUTH_UPSTREAM`) and select tinyauth in the Auth Request selection, no custom/advanced config/locations needed

@@ -295,7 +295,11 @@ it("defaults the Anubis custom images to whether all three files exist", () => {
 		},
 	});
 	assert.equal(all.values.anubis_custom_images, true);
-	assert.deepEqual(seen, ["/data/anubis/happy.webp", "/data/anubis/reject.webp", "/data/anubis/pensive.webp"]);
+	assert.deepEqual(seen, [
+		"/data/public/anubis/happy.webp",
+		"/data/public/anubis/reject.webp",
+		"/data/public/anubis/pensive.webp",
+	]);
 	const some = mergeRuntimeConfig("forward-auth", {}, BOOT_ENV, { fileExists: (path) => path.includes("happy") });
 	assert.equal(some.values.anubis_custom_images, false);
 });
