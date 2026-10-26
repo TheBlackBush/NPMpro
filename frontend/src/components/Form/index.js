@@ -6,6 +6,7 @@ export * from "./DNSProviderFields";
 export * from "./DnsCredentialSelect";
 export * from "./DnsCredentialValuesFields";
 export * from "./DomainNamesField";
+export * from "./FormErrorNote";
 export * from "./LocationsFields";
 export * from "./NginxConfigField";
 export * from "./PasswordInput";

@@ -2,8 +2,8 @@ import { IconAlertCircle, IconCircleCheck, IconCircleDashed, IconInfoCircle } fr
 import { Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
 import { Accordion } from "react-bootstrap";
-import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
-import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
+import { ApiErrorContent, Button, ErrorAlert, FormErrorNote, Loading } from "src/components";
+import { LeaveGuard, useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
 	camel,
@@ -260,6 +260,8 @@ export default function Authentication() {
 					<AuthAccordion data={data} isLocked={isLocked} />
 				</div>
 				<div className="card-footer text-end">
+					<LeaveGuard />
+					<FormErrorNote className="me-3" />
 					<SaveButton />
 				</div>
 			</Form>

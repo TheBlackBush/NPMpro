@@ -4,7 +4,7 @@ import { Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, NoticeAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, FormErrorNote, Loading, NoticeAlert } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -220,6 +220,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="totp.verify-enable" />
 									</Button>
 								</div>
+								<FormErrorNote block />
 							</Form>
 						)}
 					</Formik>
@@ -295,6 +296,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="totp.disable-confirm" />
 									</Button>
 								</div>
+								<FormErrorNote block />
 							</Form>
 						)}
 					</Formik>
@@ -352,6 +354,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 										<T id="mfa.regenerate" />
 									</Button>
 								</div>
+								<FormErrorNote block />
 							</Form>
 						)}
 					</Formik>

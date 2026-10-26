@@ -7,6 +7,7 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	ErrorAlert,
+	FormErrorNote,
 	HasPermission,
 	Loading,
 	NginxConfigField,
@@ -295,11 +296,11 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
+								<FormErrorNote className="ms-auto me-3" />
 								<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
 										color="primary"
-										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>

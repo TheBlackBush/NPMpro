@@ -1,7 +1,7 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
-import { useSetSetting, useSetting } from "src/hooks";
+import { ApiErrorContent, Button, ErrorAlert, FormErrorNote, Loading } from "src/components";
+import { LeaveGuard, useSetSetting, useSetting } from "src/hooks";
 import { intl, T } from "src/locale";
 import { validateString } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
@@ -14,7 +14,7 @@ export default function DefaultSite() {
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const onSubmit = (values, { setSubmitting }) => {
+	const onSubmit = (values, { resetForm, setSubmitting }) => {
 		if (isSubmitting) return;
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -32,6 +32,8 @@ export default function DefaultSite() {
 		setSetting(payload, {
 			onError: (err) => setErrorMsg(<ApiErrorContent error={err} />),
 			onSuccess: () => {
+				// the saved values are the new starting point (no unsaved changes)
+				resetForm({ values });
 				showObjectSuccess("setting", "saved");
 			},
 			onSettled: () => {
@@ -198,6 +200,8 @@ export default function DefaultSite() {
 						)}
 					</div>
 					<div className="card-footer text-end">
+						<LeaveGuard />
+						<FormErrorNote className="me-3" />
 						<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
 							<T id="save" />
 						</Button>

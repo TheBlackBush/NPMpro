@@ -1,8 +1,16 @@
 import { IconAlertCircle, IconCircleCheck, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { ApiErrorContent, Button, ErrorAlert, Loading, PasswordInput, SwitchField } from "src/components";
-import { useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
+import {
+	ApiErrorContent,
+	Button,
+	ErrorAlert,
+	FormErrorNote,
+	Loading,
+	PasswordInput,
+	SwitchField,
+} from "src/components";
+import { LeaveGuard, useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
@@ -44,9 +52,6 @@ const validate = (values) => {
 	const errors = {};
 	if (!ACCOUNT_ID.test(values.accountId.trim())) {
 		errors.accountId = intl.formatMessage({ id: "settings.geoip.account-id.invalid" });
-	}
-	if (values.editions.length === 0) {
-		errors.editions = intl.formatMessage({ id: "settings.geoip.editions.required" });
 	}
 	return errors;
 };
@@ -116,7 +121,7 @@ function AccountFields({ data, isLocked }) {
 }
 
 function EditionFields({ isLocked }) {
-	const { values, errors, setFieldValue } = useFormikContext();
+	const { values, setFieldValue } = useFormikContext();
 	const locked = isLocked("editions");
 	const toggle = (edition, on) => {
 		const next = on ? [...values.editions, edition] : values.editions.filter((e) => e !== edition);
@@ -146,7 +151,11 @@ function EditionFields({ isLocked }) {
 					/>
 				))}
 			</div>
-			{errors.editions ? <div className="invalid-feedback d-block">{errors.editions}</div> : null}
+			{values.editions.length === 0 ? (
+				<div className="form-hint">
+					<T id="settings.geoip.editions.none" />
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -335,6 +344,8 @@ export default function Geoip() {
 					<UpdateStatus data={data} />
 				</div>
 				<div className="card-footer text-end">
+					<LeaveGuard />
+					<FormErrorNote className="me-3" />
 					<SaveButton allLocked={allLocked} />
 				</div>
 			</Form>

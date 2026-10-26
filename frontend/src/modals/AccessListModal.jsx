@@ -7,6 +7,7 @@ import {
 	BasicAuthFields,
 	Button,
 	ErrorAlert,
+	FormErrorNote,
 	HasPermission,
 	Loading,
 	SwitchField,
@@ -220,11 +221,11 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
+								<FormErrorNote className="ms-auto me-3" />
 								<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 									<Button
 										type="submit"
 										color="primary"
-										className="ms-auto"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>

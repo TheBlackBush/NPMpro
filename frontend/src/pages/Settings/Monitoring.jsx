@@ -1,8 +1,8 @@
 import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
 import { useSyncExternalStore } from "react";
-import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
-import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
+import { Button, ErrorAlert, FormErrorNote, Loading, SwitchField } from "src/components";
+import { LeaveGuard, useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
 import { GROUP_KEYS, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
@@ -541,6 +541,8 @@ export default function Monitoring() {
 					<Fields isLocked={isLocked} />
 				</div>
 				<div className="card-footer text-end">
+					<LeaveGuard />
+					<FormErrorNote className="me-3" />
 					<SaveButton allLocked={allLocked} />
 				</div>
 			</Form>

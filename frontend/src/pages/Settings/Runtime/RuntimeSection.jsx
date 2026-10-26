@@ -1,8 +1,8 @@
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import { Form, Formik, useFormikContext } from "formik";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { Button, ErrorAlert, Loading } from "src/components";
-import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
+import { Button, ErrorAlert, FormErrorNote, Loading } from "src/components";
+import { LeaveGuard, useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
 import {
@@ -100,8 +100,9 @@ function SaveErrorContent({ message, lead }) {
 }
 
 function SaveButton({ group, toApi, data }) {
-	const { isSubmitting, values } = useFormikContext();
-	const unchanged = isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data));
+	const { isSubmitting, isValid, values } = useFormikContext();
+	// an invalid value is not in the payload: Save stays clickable then, so that clicking it shows what to fix
+	const unchanged = isValid && isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data));
 	return (
 		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting || unchanged}>
 			<T id="save" />
@@ -208,6 +209,8 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 						{children}
 					</div>
 					<div className="card-footer text-end">
+						<LeaveGuard />
+						<FormErrorNote className="me-3" />
 						<SaveButton group={group} toApi={toApi} data={data} />
 					</div>
 				</Form>

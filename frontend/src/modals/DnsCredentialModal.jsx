@@ -7,6 +7,7 @@ import {
 	Button,
 	DnsCredentialValuesFields,
 	ErrorAlert,
+	FormErrorNote,
 	HasPermission,
 	Loading,
 	NoticeAlert,
@@ -194,11 +195,11 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 									<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 										<T id="cancel" />
 									</Button>
+									<FormErrorNote className="ms-auto me-3" />
 									<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 										<Button
 											type="submit"
 											color="primary"
-											className="ms-auto"
 											isLoading={isSubmitting}
 											disabled={isSubmitting}
 										>
