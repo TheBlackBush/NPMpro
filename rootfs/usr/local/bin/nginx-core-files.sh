@@ -1,9 +1,16 @@
 #!/usr/bin/env sh
 # Writes the nginx include files of Settings > nginx into $1 from the NGINX_* env vars envs.sh exported. The same
-# output as backend/lib/nginx-core.js (backend/test/nginx-core.test.js compares them). data-setup.sh runs it only when
-# a file is missing; afterwards the backend writes them.
+# output as backend/lib/nginx-core.js (backend/test/nginx-core.test.js compares them). data-setup.sh runs it with
+# --if-missing: then nothing is written while all four files exist (the backend writes them on every save and start).
 set -eu
-dir="$1"
+if [ "$1" = "--if-missing" ]; then
+    dir="$2"
+    if [ -f "$dir/core-main.conf" ] && [ -f "$dir/core-events.conf" ] && [ -f "$dir/core-http.conf" ] && [ -f "$dir/core-stream.conf" ]; then
+        exit 0
+    fi
+else
+    dir="$1"
+fi
 header="# written by NPMpro from Settings > nginx and the NGINX_* environment variables, do not edit"
 sigalgs="mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256"
 if [ "$NGINX_TRUST_RSA_PKCS1" = "true" ]; then sigalgs="$sigalgs:rsa_pkcs1_sha512:rsa_pkcs1_sha384:rsa_pkcs1_sha256"; fi

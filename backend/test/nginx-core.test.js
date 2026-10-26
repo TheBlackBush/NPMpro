@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -128,4 +128,41 @@ it("the shell twin matches the renderer", () => {
 			module_vts: true,
 		}),
 	);
+});
+
+// data-setup.sh runs the script with --if-missing: files the backend wrote (with the modules of the last apply) stay
+const NAMES = ["main", "events", "http", "stream"].map((name) => `core-${name}.conf`);
+const ifMissing = (dir) =>
+	execFileSync("sh", [SCRIPT, "--if-missing", dir], { env: { PATH: process.env.PATH, ...ENVS } });
+
+it("--if-missing keeps the files when all four exist", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), `# kept ${name}\n`);
+	}
+	writeFileSync(
+		path.join(dir, "core-main.conf"),
+		"worker_processes 2;\nload_module modules/ngx_http_js_module.so;\n",
+	);
+	ifMissing(dir);
+	assert.equal(
+		readFileSync(path.join(dir, "core-main.conf"), "utf8"),
+		"worker_processes 2;\nload_module modules/ngx_http_js_module.so;\n",
+	);
+	for (const name of NAMES.slice(1)) {
+		assert.equal(readFileSync(path.join(dir, name), "utf8"), `# kept ${name}\n`);
+	}
+});
+
+it("--if-missing writes all four files when one is missing", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	for (const name of NAMES) {
+		writeFileSync(path.join(dir, name), "# old\n");
+	}
+	rmSync(path.join(dir, "core-stream.conf"));
+	ifMissing(dir);
+	const expected = renderNginxCore(DEFAULTS);
+	assert.ok(existsSync(path.join(dir, "core-stream.conf")));
+	assert.equal(readFileSync(path.join(dir, "core-stream.conf"), "utf8"), expected.stream);
+	assert.equal(readFileSync(path.join(dir, "core-main.conf"), "utf8"), expected.main);
 });
