@@ -409,7 +409,7 @@ it("startup tests nginx only when an nginx file changed, and a failing group doe
 		Object.keys(failed).toSorted((x, y) => x.localeCompare(y)),
 		["certificates", "network"],
 	);
-	assert.equal(groups.length, 5);
+	assert.equal(groups.length, 6);
 	assert.deepEqual(nginx.calls, ["test"]);
 	await assert.rejects(readFile(host, "utf8"), { code: "ENOENT" });
 	assert.equal(a.log.lines.filter((line) => line.includes("at startup")).length, 2);

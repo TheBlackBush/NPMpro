@@ -102,6 +102,7 @@
 							"oidc",
 							"certificates",
 							"network",
+							"nginx",
 							"forward-auth",
 							"logs",
 							"monitoring",

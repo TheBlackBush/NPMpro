@@ -2,7 +2,7 @@ import { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS } from "./monitoring-rules.js";
 import { ENV_KEYS as OIDC_ENV_KEYS } from "./oidc-rules.js";
 import { RUNTIME_RULES, SETTING_LOCK_REASONS, userSetNames } from "./runtime-rules.js";
 
-const ENVIRONMENT_GROUPS = ["network", "users", "nginx", "modules", "goaccess", "database", "certificates-account"];
+const ENVIRONMENT_GROUPS = ["network", "users", "modules", "goaccess", "database", "certificates-account"];
 
 const GOACLA_DEFAULT =
 	"--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string";
@@ -19,7 +19,6 @@ const item = (group, name, fallback = "", secret = false) => ({
 const flag = (group, name, fallback = "false") => item(group, name, fallback);
 const secretItem = (group, name) => item(group, name, null, true);
 // a default that envs.sh works out at start (shown as the value it exported, still marked as the default)
-const computedItem = (group, name, fallback) => ({ ...item(group, name, fallback), computed: true });
 // also a setting that applies after a restart (Settings section id): set by env it locks the setting, else the value
 // shown is the one from the section the container started with
 const settingItem = (group, name, fallback, section) => ({ ...item(group, name, fallback), setting: section });
@@ -55,19 +54,6 @@ const ENVIRONMENT_ITEMS = [
 	item("users", "PGID", "0"),
 	settingItem("users", "TZ", "UTC", "advanced"),
 
-	flag("nginx", "NGINX_LOG_NOT_FOUND"),
-	computedItem("nginx", "NGINX_WORKER_PROCESSES", "CPU threads, at most 4"),
-	item("nginx", "NGINX_WORKER_CONNECTIONS", "512"),
-	item("nginx", "NGINX_WORKER_SHUTDOWN_TIMEOUT", "1h"),
-	flag("nginx", "NGINX_FORCE_X25519MLKEM768"),
-	flag("nginx", "NGINX_DISABLE_TLS12"),
-	flag("nginx", "NGINX_TRUST_SECPR1", "true"),
-	flag("nginx", "NGINX_TRUST_RSA_PKCS1"),
-
-	flag("modules", "NGINX_LOAD_NJS_MODULE"),
-	flag("modules", "NGINX_LOAD_LDAP_MODULE"),
-	flag("modules", "NGINX_LOAD_NTLM_MODULE"),
-	flag("modules", "NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE"),
 	flag("modules", "PHP83"),
 	flag("modules", "PHP84"),
 	flag("modules", "PHP85"),
@@ -105,7 +91,17 @@ const ENVIRONMENT_ITEMS = [
 const ENVIRONMENT_NAMES = ENVIRONMENT_ITEMS.map((entry) => entry.name);
 
 // the settings sections in menu order (runtime groups and the oidc, monitoring and geoip rows)
-const LOCK_GROUP_ORDER = ["oidc", "certificates", "network", "forward-auth", "logs", "monitoring", "geoip", "advanced"];
+const LOCK_GROUP_ORDER = [
+	"oidc",
+	"certificates",
+	"network",
+	"nginx",
+	"forward-auth",
+	"logs",
+	"monitoring",
+	"geoip",
+	"advanced",
+];
 
 const ENV_OF_RUNTIME = new Map(RUNTIME_RULES.map((rule) => [`${rule.group}/${rule.key}`, rule.env]));
 
@@ -187,8 +183,7 @@ const environmentInfo = (env, runtimeLocked) => {
 					setting: entry.setting,
 				};
 			}
-			let value = set ? env[entry.name] : entry.default;
-			if (!set && entry.computed && env[entry.name]) value = env[entry.name];
+			const value = set ? env[entry.name] : entry.default;
 			return {
 				name: entry.name,
 				value,
