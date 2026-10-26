@@ -62,6 +62,16 @@ const internalCertificate = {
 	 */
 	restartTimer: (hours) => renewalTimer.restart(hours),
 
+	/**
+	 * Stops renewals for a restore: waits for a running renewal, then the timer skips its runs until resumeRenewals()
+	 */
+	pauseRenewals: async () => {
+		renewalTimer.pause();
+		while (internalCertificate.intervalProcessing) await new Promise((resolve) => setTimeout(resolve, 1000));
+	},
+
+	resumeRenewals: () => renewalTimer.resume(),
+
 	initTimer: () => {
 		if (!renewalTimer.start()) return;
 		logger.info(`Certbot Renewal Timer initialized (every ${renewalTimer.hours()} hours)`);
