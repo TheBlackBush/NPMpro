@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { rm } from "node:fs/promises";
+import { chmod, chown, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
 import internalCertificate from "./internal/certificate.js";
@@ -86,8 +86,13 @@ async function appStart() {
 		startMonitoringServices();
 
 		await rm("/run/npmpro.sock", { force: true });
-		const server = app.listen("/run/npmpro.sock", (err) => {
+		const server = app.listen("/run/npmpro.sock", async (err) => {
 			if (err) throw err;
+			// as root the nginx workers run as npmpro-worker (gid 101): they may connect, other users may not
+			if (process.getuid?.() === 0) {
+				await chown("/run/npmpro.sock", 0, 101);
+				await chmod("/run/npmpro.sock", 0o660);
+			}
 			logger.info(`Backend PID ${process.pid} listening on unix socket...`);
 
 			process.on("SIGTERM", () => {

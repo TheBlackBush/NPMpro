@@ -290,6 +290,8 @@ RUN apk upgrade --no-cache -a && \
     ln -s /app/index.js /usr/local/bin/index.js && \
     \
     chmod +x /usr/local/bin/* && \
+    addgroup -S -g 101 npmpro-worker && \
+    adduser -S -D -H -u 101 -G npmpro-worker -h /nonexistent -s /sbin/nologin npmpro-worker && \
     find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 
 COPY --from=frontend /app/dist /app/frontend

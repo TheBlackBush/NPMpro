@@ -16,12 +16,16 @@ php_setup() {
     sed -i "s|include=.*|include=/data/php/$1/php-fpm.d/*.conf|g" /data/php/"$1"/php-fpm.conf
     if [ "$PUID" != "0" ]; then
         # the pool runs as the user that starts php-fpm (the PUID user)
-        sed -i "s|;\?user =.*|;user = root|" /data/php/"$1"/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|;group = root|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?user =.*|;user = root|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?group =.*|;group = root|" /data/php/"$1"/php-fpm.d/www.conf
     else
         # started as root, the pool runs as nobody (also when the file was set up for PUID before)
-        sed -i "s|;\?user =.*|user = nobody|" /data/php/"$1"/php-fpm.d/www.conf
-        sed -i "s|;\?group =.*|group = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?user =.*|user = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?group =.*|group = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        # the nginx workers (npmpro-worker) connect to the socket
+        sed -i "s|^;\?listen.owner =.*|listen.owner = nobody|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?listen.group =.*|listen.group = npmpro-worker|" /data/php/"$1"/php-fpm.d/www.conf
+        sed -i "s|^;\?listen.mode =.*|listen.mode = 0660|" /data/php/"$1"/php-fpm.d/www.conf
     fi
 }
 if [ "$PHP83" = "true" ]; then php_setup 83; fi

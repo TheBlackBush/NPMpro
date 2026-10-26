@@ -249,5 +249,20 @@ if [ "$PUID" != "0" ]; then
     export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
     exec su-exec "$PUID:$PGID" launch.sh
 else
+    # The internet-facing workers run as npmpro-worker (uid/gid 101), the master stays root: it reads the TLS keys,
+    # the configs and opens the logs before the workers start. The workers only get what they serve or check per
+    # request; the database, keys, credentials and TLS private keys stay root-only (700/600).
+    sed -i "s|^#user;|user npmpro-worker npmpro-worker;|" /usr/local/nginx/conf/nginx.conf
+    chown 101:101 /tmp/nginx
+    # traverse only (no listing) through the root-only parents of what they serve
+    chgrp 101 /data/tls /data/tls/certbot /data/npmpro
+    chmod 710 /data/tls /data/tls/certbot /data/npmpro
+    # ACME http challenges (certbot writes world-readable files), htpasswd files, avatars
+    for dir in /data/tls/certbot/acme-challenge /data/access /data/npmpro/avatar /data/npmpro/gravatar; do
+        [ -d "$dir" ] || continue
+        find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
+        find "$dir" -type d -exec chmod 750 {} +
+        find "$dir" -type f -links 1 -exec chmod 640 {} +
+    done
     exec launch.sh
 fi

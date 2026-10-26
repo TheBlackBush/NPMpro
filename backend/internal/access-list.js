@@ -392,7 +392,9 @@ const internalAccessList = {
 	writeData: async (htpasswdFile, items) => {
 		const validItems = (items ?? []).filter((item) => item.username?.length > 0 && item.password?.length > 0);
 		for (const item of validItems) logger.info(`Adding: ${item.username}`);
-		await writeSecretFile(htpasswdFile, validItems.map((item) => `${item.username}:${item.password}\n`).join(""));
+		await writeSecretFile(htpasswdFile, validItems.map((item) => `${item.username}:${item.password}\n`).join(""), {
+			workerReadable: true,
+		});
 	},
 
 	/**
