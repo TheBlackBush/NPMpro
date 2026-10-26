@@ -1,8 +1,8 @@
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import { Form, Formik, useFormikContext } from "formik";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { Button, ErrorAlert, FormErrorNote, Loading } from "src/components";
-import { LeaveGuard, useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
+import { ErrorAlert, Loading } from "src/components";
+import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
 import {
@@ -15,6 +15,7 @@ import {
 	runtimeSettingsPayload,
 } from "src/modules/RuntimeSettings";
 import { showError, showObjectSuccess } from "src/notifications";
+import { SaveBar } from "../SaveBar";
 import { StatusAlert } from "../StatusAlert";
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
@@ -100,14 +101,8 @@ function SaveErrorContent({ message, lead }) {
 }
 
 function SaveButton({ group, toApi, data }) {
-	const { isSubmitting, isValid, values } = useFormikContext();
-	// an invalid value is not in the payload: Save stays clickable then, so that clicking it shows what to fix
-	const unchanged = isValid && isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data));
-	return (
-		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting || unchanged}>
-			<T id="save" />
-		</Button>
-	);
+	const { values } = useFormikContext();
+	return <SaveBar disabled={isEmptyPayload(runtimeSettingsPayload(group, toApi(values), data.locked, data))} />;
 }
 
 /**
@@ -176,6 +171,9 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 	}
 
 	const ctx = runtimeContextOf(group, data);
+	// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
+	const validateUnlocked = (values) =>
+		Object.fromEntries(Object.entries(validate?.(values) ?? {}).filter(([key]) => !ctx.isLocked(key)));
 
 	const onSubmit = async (values, { setSubmitting, setFieldError }) => {
 		setErrorMsg(null);
@@ -193,7 +191,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 
 	return (
 		<RuntimeContext.Provider value={ctx}>
-			<Formik enableReinitialize initialValues={toForm(data)} validate={validate} onSubmit={onSubmit}>
+			<Formik enableReinitialize initialValues={toForm(data)} validate={validateUnlocked} onSubmit={onSubmit}>
 				<Form className="d-flex flex-column flex-fill" noValidate>
 					<div className="card-body flex-fill">
 						<Heading titleId={titleId} />
@@ -208,11 +206,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 						<RestartPendingAlert data={data} />
 						{children}
 					</div>
-					<div className="card-footer text-end">
-						<LeaveGuard />
-						<FormErrorNote className="me-3" />
-						<SaveButton group={group} toApi={toApi} data={data} />
-					</div>
+					<SaveButton group={group} toApi={toApi} data={data} />
 				</Form>
 			</Formik>
 		</RuntimeContext.Provider>

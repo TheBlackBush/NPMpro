@@ -1,15 +1,6 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import {
-	BrandMark,
-	Button,
-	ErrorAlert,
-	FormErrorNote,
-	LocalePicker,
-	OidcButton,
-	Page,
-	ThemeSwitcher,
-} from "src/components";
+import { BrandMark, Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -82,7 +73,6 @@ function TotpForm() {
 								<T id="login.totp-verify" />
 							</Button>
 						</div>
-						<FormErrorNote block />
 					</Form>
 				)}
 			</Formik>
@@ -201,7 +191,6 @@ function PasswordForm({ oidcError, noRedirect }) {
 								>
 									<T id="sign-in" />
 								</Button>
-								<FormErrorNote block />
 							</div>
 						</Form>
 					)}

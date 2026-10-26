@@ -23,7 +23,12 @@ const toApi = (values) => ({
 	...Object.fromEntries(PROVIDERS.map(({ name }) => [name, values[name].trim()])),
 });
 
-const checkUpstream = validateUpstreamUrl();
+const checkUrl = validateUpstreamUrl();
+// the backend also limits the length (schema/paths/settings/runtime/forward-auth/put.json)
+const checkUpstream = (value) =>
+	value && value.length > 255
+		? intl.formatMessage({ id: "error.max-character-length" }, { max: 255 })
+		: checkUrl(value);
 
 export default function ForwardAuth() {
 	return (

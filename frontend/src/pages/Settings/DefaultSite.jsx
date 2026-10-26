@@ -1,12 +1,36 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
-import { ApiErrorContent, Button, ErrorAlert, FormErrorNote, Loading } from "src/components";
-import { LeaveGuard, useSetSetting, useSetting } from "src/hooks";
+import { ApiErrorContent, ErrorAlert, Loading } from "src/components";
+import { useSetSetting, useSetting } from "src/hooks";
 import { intl, T } from "src/locale";
-import { validateString } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { SaveBar } from "./SaveBar";
 
 const OPTIONS = ["congratulations", "404", "444", "redirect", "html"];
+// the backend's rule (lib/default-site.js): rendered into `return 302 <redirect>;`
+const REDIRECT_PATTERN = /^https?:\/\/[^\s;{}"'\\#]+$/u;
+
+// only the fields of the chosen option are checked (and sent), the others keep their saved values
+const validate = (values) => {
+	const errors = {};
+	if (values.value === "redirect") {
+		const redirect = values.redirect.trim();
+		if (redirect === "") errors.redirect = intl.formatMessage({ id: "error.required" });
+		else if (redirect.length > 255) {
+			errors.redirect = intl.formatMessage({ id: "error.max-character-length" }, { max: 255 });
+		} else if (!REDIRECT_PATTERN.test(redirect)) {
+			errors.redirect = intl.formatMessage({ id: "settings.default-site.redirect.invalid" });
+		}
+	}
+	if (values.value === "html") {
+		if (values.html.trim() === "") errors.html = intl.formatMessage({ id: "error.required" });
+		const status = Number(values.status);
+		if (values.status !== "" && !(Number.isInteger(status) && status >= 400 && status <= 599)) {
+			errors.status = intl.formatMessage({ id: "settings.default-site.status.invalid" });
+		}
+	}
+	return errors;
+};
 
 export default function DefaultSite() {
 	const { data, isPending, error } = useSetting("default-site");
@@ -22,11 +46,16 @@ export default function DefaultSite() {
 		const payload = {
 			id: "default-site",
 			value: values.value,
-			meta: {
-				redirect: values.redirect,
-				html: values.html,
-				status: values.status || undefined,
-			},
+			meta:
+				values.value === "redirect"
+					? { ...data?.meta, redirect: values.redirect.trim() }
+					: values.value === "html"
+						? {
+								...data?.meta,
+								html: values.html,
+								status: values.status === "" ? undefined : Number(values.status),
+							}
+						: { ...data?.meta },
 		};
 
 		setSetting(payload, {
@@ -77,10 +106,11 @@ export default function DefaultSite() {
 				html: data?.meta?.html || "",
 				status: data?.meta?.status || "",
 			}}
+			validate={validate}
 			onSubmit={onSubmit}
 		>
 			{({ values }) => (
-				<Form className="d-flex flex-column flex-fill">
+				<Form className="d-flex flex-column flex-fill" noValidate>
 					<div className="card-body flex-fill">
 						<h2 className="mb-3">
 							<T id="settings.default-site" />
@@ -125,7 +155,7 @@ export default function DefaultSite() {
 							)}
 						</Field>
 						{values.value === "redirect" && (
-							<Field name="redirect" validate={validateString(1, 255)}>
+							<Field name="redirect">
 								{({ field, form }) => (
 									<div className="mt-5 mb-3">
 										<label className="form-label" htmlFor="redirect">
@@ -136,17 +166,12 @@ export default function DefaultSite() {
 												id="redirect"
 												type="text"
 												placeholder="https://"
-												required
-												pattern="\S+"
 												autoComplete="off"
-												className={`form-control ${form.errors.redirect && form.touched.redirect ? "is-invalid" : ""}`}
+												className={`form-control ${form.errors.redirect ? "is-invalid" : ""}`}
 												{...field}
 											/>
-
 											{form.errors.redirect ? (
-												<div className="invalid-feedback">
-													{form.touched.redirect ? form.errors.redirect : null}
-												</div>
+												<div className="invalid-feedback">{form.errors.redirect}</div>
 											) : null}
 										</div>
 									</div>
@@ -156,7 +181,7 @@ export default function DefaultSite() {
 						{values.value === "html" && (
 							<>
 								<Field name="html">
-									{({ field }) => (
+									{({ field, form }) => (
 										<div className="mt-5 mb-3">
 											<label className="form-label" htmlFor="html">
 												<T id="settings.default-site.html" />
@@ -164,8 +189,7 @@ export default function DefaultSite() {
 											<div>
 												<textarea
 													id="html"
-													required
-													className="form-control font-monospace"
+													className={`form-control font-monospace ${form.errors.html ? "is-invalid" : ""}`}
 													spellCheck={false}
 													placeholder={intl.formatMessage({
 														id: "settings.default-site.html.placeholder",
@@ -173,12 +197,15 @@ export default function DefaultSite() {
 													rows={14}
 													{...field}
 												/>
+												{form.errors.html ? (
+													<div className="invalid-feedback">{form.errors.html}</div>
+												) : null}
 											</div>
 										</div>
 									)}
 								</Field>
 								<Field name="status">
-									{({ field }) => (
+									{({ field, form }) => (
 										<div className="mb-3">
 											<label className="form-label" htmlFor="status">
 												<T id="settings.default-site.status" />
@@ -190,22 +217,19 @@ export default function DefaultSite() {
 												max={599}
 												placeholder="200"
 												autoComplete="off"
-												className="form-control"
+												className={`form-control ${form.errors.status ? "is-invalid" : ""}`}
 												{...field}
 											/>
+											{form.errors.status ? (
+												<div className="invalid-feedback">{form.errors.status}</div>
+											) : null}
 										</div>
 									)}
 								</Field>
 							</>
 						)}
 					</div>
-					<div className="card-footer text-end">
-						<LeaveGuard />
-						<FormErrorNote className="me-3" />
-						<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
-							<T id="save" />
-						</Button>
-					</div>
+					<SaveBar />
 				</Form>
 			)}
 		</Formik>

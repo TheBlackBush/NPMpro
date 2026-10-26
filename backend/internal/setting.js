@@ -32,7 +32,7 @@ const internalSetting = {
 		if (DEDICATED_IDS.includes(existingRow.id)) throw refused();
 
 		const merged = { ...existingRow, ...data };
-		if (["html", "redirect"].includes(merged.value) && !merged.meta?.[merged.value]) {
+		if (["html", "redirect"].includes(merged.value) && !String(merged.meta?.[merged.value] ?? "").trim()) {
 			throw new errs.ValidationError(`meta.${merged.value} is required for ${merged.value}`);
 		}
 		if (merged.id === "default-site") assertDefaultSiteMeta(merged.meta ?? {});

@@ -4,7 +4,7 @@ import { T } from "src/locale";
 import { LockedBadge } from "./LockedBadge";
 
 function SignInRules({ data, isLocked }) {
-	const { values, setFieldValue } = useFormikContext();
+	const { values, errors, setFieldValue } = useFormikContext();
 	// Turning password login off from a password session is refused by the backend; an already-on value may stay
 	const passwordLockedOut = data.sessionAuthMethod !== "oidc" && !data.disablePassword;
 
@@ -26,6 +26,7 @@ function SignInRules({ data, isLocked }) {
 			}
 			hint={hintId ? <T id={hintId} /> : null}
 			disabled={isLocked(name) || extra.disabled}
+			error={errors[name]}
 			checked={Boolean(values[name])}
 			onChange={(e) => setFieldValue(name, e.target.checked)}
 		/>

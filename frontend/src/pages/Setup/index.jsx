@@ -2,16 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { createSetupUser } from "src/api/backend";
-import {
-	ApiErrorContent,
-	BrandMark,
-	Button,
-	ErrorAlert,
-	FormErrorNote,
-	LocalePicker,
-	Page,
-	ThemeSwitcher,
-} from "src/components";
+import { ApiErrorContent, BrandMark, Button, ErrorAlert, LocalePicker, Page, ThemeSwitcher } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -168,7 +159,6 @@ export default function Setup() {
 									>
 										<T id="setup.create-account" />
 									</Button>
-									<FormErrorNote block />
 								</div>
 							</Form>
 						)}

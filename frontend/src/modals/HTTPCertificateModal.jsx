@@ -8,7 +8,6 @@ import {
 	Button,
 	DomainNamesField,
 	ErrorAlert,
-	FormErrorNote,
 	NoticeAlert,
 	RequestProgress,
 	SwitchField,
@@ -165,7 +164,6 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 								<T id="cancel" />
 							</Button>
 							<div className="ms-auto">
-								<FormErrorNote className="me-3" />
 								<Button
 									type="button"
 									color="secondary"
