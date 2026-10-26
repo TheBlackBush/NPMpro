@@ -1,7 +1,8 @@
 import { intl } from "src/locale";
 
 const emailPattern = /@/u;
-const domainPattern = /^(?:~\S{0,252}|(?!.*:[0-9]+$)[^\s/]{1,253})$/u;
+// the backend's rule (schema/common.json): a name that is not a regular expression has no nginx syntax characters
+const domainPattern = /^(?:~\S{0,252}|(?!.*:[0-9]+$)[^\s/;{}"'\\#]{1,253})$/u;
 const certificateHttpDomainPattern =
 	/^(?:(?:[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+\.)+[\p{L}\p{Mn}\p{Mc}\p{Nd}-]+|\[[0-9a-fA-F:]+\])$/u;
 const certificateDnsDomainPattern =

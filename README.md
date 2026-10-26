@@ -275,7 +275,8 @@ location ~* [^/]\.php(?:$|/) {
 ## Use of inbuilt php-fpm (not recommended)
 1. First enable php inside your compose file (you can add more php extension using envs in the compose file)
 2. Set the forwarding port to the php version you want to use and is supported by NPMpro (like 83/84/85)
-3. Extra `fastcgi_param` lines (for example `fastcgi_param PHP_VALUE "upload_max_filesize=64M";`) go into `custom_nginx/php.conf`: it is included in every PHP location of the built-in php-fpm. `fastcgi_param` lines in a host's advanced config do not reach PHP, because the PHP location sets its own parameters (`PATH_INFO`, and with an access list without pass auth an empty `HTTP_AUTHORIZATION`).
+3. `session.upload_progress.enabled` is off (mitigation for the upload progress bugs CVE-2026-109618 and CVE-2026-109619, kept as defence in depth after the PHP fix, `/data/php/<version>/conf.d/00-npmpro.ini`, rewritten at every start). To turn it on again, set it in a later file of that folder, for example `zz-local.ini`.
+4. Extra `fastcgi_param` lines (for example `fastcgi_param PHP_VALUE "upload_max_filesize=64M";`) go into `custom_nginx/php.conf`: it is included in every PHP location of the built-in php-fpm. `fastcgi_param` lines in a host's advanced config do not reach PHP, because the PHP location sets its own parameters (`PATH_INFO`, and with an access list without pass auth an empty `HTTP_AUTHORIZATION`).
 
 ## OIDC login
 OIDC is set up under Settings, Authentication in the web UI (administrators only). Enter the issuer URL, client ID, client secret and redirect domain, register the shown callback URL at your provider, then enable it. The sign-in page then shows a button with the name, colour and icon you choose.
