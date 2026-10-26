@@ -49,7 +49,8 @@ const renderNginxCore = (values) => {
 				: [`worker_shutdown_timeout ${values.worker_shutdown_timeout};`]),
 			...modules,
 		]),
-		events: file([`worker_connections ${values.worker_connections};`]),
+		// 512 is nginx's own default and left out, so a custom events.conf may set it
+		events: file(values.worker_connections === 512 ? [] : [`worker_connections ${values.worker_connections};`]),
 		http: file([`log_not_found ${values.log_not_found ? "on" : "off"};`, ...tlsLines(values), ...js]),
 		stream: file([...tlsLines(values), ...js]),
 	};

@@ -78,6 +78,22 @@ fi
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
+    # The saved nginx settings (Settings > nginx) can be what fails, e.g. after an image update. Try the files written
+    # from the environment first (cp -p and writing into the existing files keep owner and mode), else put them back.
+    core_backup="$(mktemp -d)"
+    for core_name in main events http stream; do
+        cp -p "/data/npmpro/nginx/core-$core_name.conf" "$core_backup/" 2> /dev/null || true
+    done
+    if nginx-core-files.sh /data/npmpro/nginx && nginx -tq; then
+        echo "The saved nginx settings did not pass nginx -t, the nginx settings files were rewritten from the environment."
+    else
+        for core_name in main events http stream; do
+            [ -f "$core_backup/core-$core_name.conf" ] && cp -p "$core_backup/core-$core_name.conf" /data/npmpro/nginx/
+        done
+    fi
+    rm -rf "$core_backup"
+fi
+if ! nginx -tq; then
     if [ "$REGENERATE_ALL" = "true" ]; then
         echo "The previous host configs do not pass nginx -t, starting without them until they are regenerated."
         find /data/nginx -mindepth 2 -maxdepth 2 -name "*.conf" -exec mv {} {}.stale \;

@@ -605,7 +605,13 @@ it("refuses invalid nginx values and falls back to the default for a stored one"
 	assert.notEqual(rule("worker_connections").validate(63), null);
 	assert.notEqual(rule("worker_shutdown_timeout").validate("1 h"), null);
 	assert.notEqual(rule("worker_shutdown_timeout").validate("1h;"), null);
-	assert.equal(rule("worker_shutdown_timeout").validate("1h30m"), null);
+	for (const ok of ["1h30m", "90", "0", "1d12h", "500ms"])
+		assert.equal(rule("worker_shutdown_timeout").validate(ok), null);
+	for (const bad of ["1s1h", "5m5m", "1h30m15", "30s10", "1 h", "1h;"]) {
+		assert.notEqual(rule("worker_shutdown_timeout").validate(bad), null, bad);
+		assert.equal(rule("worker_shutdown_timeout").parseEnv(bad), undefined, bad);
+	}
+	assert.equal(rule("worker_shutdown_timeout").parseEnv("1h30m"), "1h30m");
 	const { values, invalid } = mergeRuntimeConfig("nginx", { worker_processes: "999" }, BOOT_ENV);
 	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
 	assert.deepEqual(invalid, [{ key: "worker_processes", source: "stored" }]);

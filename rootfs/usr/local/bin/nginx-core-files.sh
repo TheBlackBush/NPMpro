@@ -40,7 +40,11 @@ tls() {
     if [ "$NGINX_LOAD_NTLM_MODULE" = "true" ]; then echo "load_module modules/ngx_http_upstream_ntlm_module.so;"; fi
     if [ "$NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE" = "true" ]; then echo "load_module modules/ngx_http_vhost_traffic_status_module.so;"; fi
 } > "$dir/core-main.conf"
-printf '%s\nworker_connections %s;\n' "$header" "$NGINX_WORKER_CONNECTIONS" > "$dir/core-events.conf"
+# 512 is nginx's own default and left out, so a custom events.conf may set it
+{
+    echo "$header"
+    if [ "$NGINX_WORKER_CONNECTIONS" != "512" ]; then echo "worker_connections $NGINX_WORKER_CONNECTIONS;"; fi
+} > "$dir/core-events.conf"
 {
     echo "$header"
     if [ "$NGINX_LOG_NOT_FOUND" = "true" ]; then echo "log_not_found on;"; else echo "log_not_found off;"; fi

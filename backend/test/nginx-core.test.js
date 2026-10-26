@@ -27,7 +27,8 @@ const lines = (text) => text.split("\n").filter((line) => line && !line.startsWi
 it("renders today's nginx.conf values for the defaults", () => {
 	const out = renderNginxCore(DEFAULTS);
 	assert.deepEqual(lines(out.main), ["worker_processes 4;", "worker_shutdown_timeout 1h;"]);
-	assert.deepEqual(lines(out.events), ["worker_connections 512;"]);
+	assert.deepEqual(lines(out.events), []);
+	assert.ok(out.events.startsWith("# written by NPMpro"));
 	assert.deepEqual(lines(out.http), [
 		"log_not_found off;",
 		"ssl_protocols TLSv1.2 TLSv1.3;",
@@ -100,6 +101,7 @@ it("the shell twin matches the renderer", () => {
 	const variant = {
 		...ENVS,
 		NGINX_WORKER_PROCESSES: "auto",
+		NGINX_WORKER_CONNECTIONS: "4096",
 		NGINX_WORKER_SHUTDOWN_TIMEOUT: "0",
 		NGINX_LOG_NOT_FOUND: "true",
 		NGINX_FORCE_X25519MLKEM768: "true",
@@ -115,7 +117,7 @@ it("the shell twin matches the renderer", () => {
 		shellFiles(variant),
 		renderNginxCore({
 			worker_processes: "auto",
-			worker_connections: 512,
+			worker_connections: 4096,
 			worker_shutdown_timeout: "0",
 			log_not_found: true,
 			tls12: false,
