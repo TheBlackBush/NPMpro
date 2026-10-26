@@ -3,6 +3,7 @@ import errs from "../lib/error.js";
 import { parseDatePeriod } from "../lib/helpers.js";
 import { OidcLoginError } from "../lib/oidc-login.js";
 import { emailDomainAllowed } from "../lib/oidc-rules.js";
+import { continueSession, newSession } from "../lib/session.js";
 import authModel from "../models/auth.js";
 import TokenModel from "../models/token.js";
 import userModel from "../models/user.js";
@@ -85,6 +86,7 @@ export default {
 			},
 			scope: ["user"],
 			expiresIn: "1h",
+			...newSession(),
 		});
 
 		return {
@@ -147,6 +149,7 @@ export default {
 			},
 			scope: ["user"],
 			expiresIn: "1h",
+			...newSession(),
 		});
 
 		return {
@@ -172,6 +175,7 @@ export default {
 				},
 				expiresIn: "1h",
 				iat: Math.floor(Date.now() / 1000) + (afterRevoke ? 1 : 0),
+				...continueSession(access.token.getSession()),
 			});
 
 			return {
@@ -237,6 +241,7 @@ export default {
 			},
 			scope: ["user"],
 			expiresIn: "1h",
+			...newSession(),
 		});
 
 		return {

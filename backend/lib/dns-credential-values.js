@@ -55,6 +55,9 @@ const pickActiveGroup = (def, submitted, previous) => {
 	return fromPrevious[0];
 };
 
+/** Fields that say where the secrets are sent: every url field, and text fields marked endpoint in dns-fields.json. */
+const isEndpoint = (field) => field.type === "url" || field.endpoint === true;
+
 const buildFields = (provider, def, input, previous) => {
 	const known = new Map(def.fields.map((field) => [field.key, field]));
 	const submitted = {};
@@ -73,10 +76,23 @@ const buildFields = (provider, def, input, previous) => {
 	const activeGroup = def.one_of ? pickActiveGroup(def, submitted, previous) : null;
 	const fields = { ...submitted };
 
+	// a saved secret is only ever sent where it was sent before: a changed endpoint needs the secrets again
+	const changedEndpoint = def.fields.find(
+		(field) =>
+			isEndpoint(field) &&
+			Object.keys(previous).length > 0 &&
+			(fields[field.key] ?? "") !== (previous[field.key] ?? ""),
+	);
+
 	// an empty secret keeps its saved value, but never one from the inactive group
 	for (const field of def.fields) {
 		const inActiveGroup = !field.group || field.group === activeGroup;
 		if (field.type === "secret" && inActiveGroup && !isFilled(fields, field.key) && isFilled(previous, field.key)) {
+			if (changedEndpoint) {
+				throw new errs.ValidationError(
+					`Changing ${changedEndpoint.label} requires entering ${field.label} again`,
+				);
+			}
 			fields[field.key] = previous[field.key];
 		}
 	}

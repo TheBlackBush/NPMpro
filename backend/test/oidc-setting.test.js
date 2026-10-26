@@ -150,3 +150,22 @@ it("refuses a non-OIDC save that disables password login in effect", () => {
 		"giving password login back is always allowed",
 	);
 });
+
+it("a new issuer or client id needs the client secret again", () => {
+	const stored = { issuer_url: "https://idp.example", client_id: "npmpro", client_secret: "v1:old" };
+	const refused = { status: 400, message_i18n: "error.oidc-secret-required" };
+	assert.throws(() => applyOidcUpdate(stored, { issuer_url: "https://attacker.example" }, [], encrypt), refused);
+	assert.throws(() => applyOidcUpdate(stored, { client_id: "other", client_secret: "" }, [], encrypt), refused);
+	const moved = applyOidcUpdate(stored, { issuer_url: "https://new.example", client_secret: "s" }, [], encrypt);
+	assert.equal(moved.issuer_url, "https://new.example");
+	assert.notEqual(moved.client_secret, "v1:old");
+	// unchanged values, a secret set by env, or a locked issuer keep working
+	assert.equal(
+		applyOidcUpdate(stored, { issuer_url: "https://idp.example", enabled: true }, [], encrypt).client_secret,
+		"v1:old",
+	);
+	assert.doesNotThrow(() => applyOidcUpdate(stored, { issuer_url: "https://x.example" }, ["client_secret"], encrypt));
+	assert.doesNotThrow(() => applyOidcUpdate(stored, { issuer_url: "https://x.example" }, ["issuer_url"], encrypt));
+	// first setup: nothing stored to protect
+	assert.doesNotThrow(() => applyOidcUpdate({}, { issuer_url: "https://idp.example", client_id: "a" }, [], encrypt));
+});

@@ -182,6 +182,11 @@ const internalOidcSetting = {
 		if (!(values.issuer_url && values.client_id)) {
 			return { ok: false, message: "Issuer URL and client ID are required" };
 		}
+		// like a save: the stored secret is only used with the issuer and client it was entered for
+		const sentSecret = typeof body?.client_secret === "string" && body.client_secret !== "";
+		if (!sentSecret && (values.issuer_url !== cfg.values.issuer_url || values.client_id !== cfg.values.client_id)) {
+			values.client_secret = undefined;
+		}
 		try {
 			const config = await discovery(
 				new URL(values.issuer_url),

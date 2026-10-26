@@ -74,5 +74,10 @@ export default () => {
 		 * @returns {"oidc"|"password"}
 		 */
 		getAuthMethod: () => carryAuthMethod(tokenData.attrs),
+
+		/**
+		 * @returns {{sid: String|undefined, auth_time: Number|undefined}}  the session claims (lib/session.js)
+		 */
+		getSession: () => ({ sid: tokenData.sid, auth_time: tokenData.auth_time }),
 	};
 };

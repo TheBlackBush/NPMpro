@@ -12,7 +12,7 @@
 	"hetzner-cloud": { "fields": [{ "key": "dns_hetzner_cloud_api_token", "label": "API token", "type": "secret" }] },
 	"ovh": {
 		"fields": [
-			{ "key": "dns_ovh_endpoint", "label": "Endpoint", "type": "text", "placeholder": "ovh-eu" },
+			{ "key": "dns_ovh_endpoint", "label": "Endpoint", "type": "text", "endpoint": true, "placeholder": "ovh-eu" },
 			{ "key": "dns_ovh_application_key", "label": "Application key", "type": "text" },
 			{ "key": "dns_ovh_application_secret", "label": "Application secret", "type": "secret" },
 			{ "key": "dns_ovh_consumer_key", "label": "Consumer key", "type": "secret" }
@@ -83,7 +83,7 @@
 	},
 	"rfc2136": {
 		"fields": [
-			{ "key": "dns_rfc2136_server", "label": "DNS server", "type": "text", "placeholder": "192.0.2.1" },
+			{ "key": "dns_rfc2136_server", "label": "DNS server", "type": "text", "endpoint": true, "placeholder": "192.0.2.1" },
 			{ "key": "dns_rfc2136_port", "label": "Port", "type": "number", "optional": true, "placeholder": "53" },
 			{ "key": "dns_rfc2136_name", "label": "TSIG key name", "type": "text", "placeholder": "keyname." },
 			{ "key": "dns_rfc2136_secret", "label": "TSIG key secret", "type": "secret" },

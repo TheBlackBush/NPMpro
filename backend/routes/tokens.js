@@ -4,7 +4,9 @@ import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
+import { revokeSession } from "../lib/session.js";
 import apiValidator from "../lib/validator/api.js";
+import TokenModel from "../models/token.js";
 import { getValidationSchema } from "../schema/index.js";
 
 const router = express.Router({
@@ -88,7 +90,16 @@ router
 	 *
 	 * Delete the Token
 	 */
-	.delete((_, res) => {
+	.delete(async (req, res) => {
+		// logout ends the whole session: every other copy of its tokens stops working too
+		const token = req.signedCookies?.["__Host-Http-token"];
+		if (token) {
+			try {
+				await revokeSession(TokenModel().load(token));
+			} catch {
+				// an expired or invalid token has no session left to end
+			}
+		}
 		res.clearCookie("__Host-Http-token", {
 			httpOnly: true,
 			secure: true,

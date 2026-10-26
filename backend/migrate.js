@@ -48,6 +48,8 @@ const migrateUp = async () => {
 		await db().raw("PRAGMA journal_mode = WAL");
 		await db().raw("PRAGMA auto_vacuum = 1");
 		await db().raw("VACUUM");
+		// the write-ahead log can still hold old pages (old secrets) after the VACUUM
+		await db().raw("PRAGMA wal_checkpoint(TRUNCATE)");
 		await db().raw("PRAGMA optimize");
 		logger.info("Sqlite database vacuumed");
 	}

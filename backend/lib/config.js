@@ -84,6 +84,8 @@ const configure = () => {
 				pool: {
 					afterCreate: (conn, done) => {
 						conn.pragma("synchronous = NORMAL");
+						// deleted rows (old secrets) are overwritten, not left in free pages
+						conn.pragma("secure_delete = FAST");
 						conn.pragma("temp_store = MEMORY");
 						conn.pragma("optimize = 0x10002");
 						done(null, conn);

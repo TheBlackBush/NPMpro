@@ -84,8 +84,14 @@ function ProviderFields({ data, isLocked }) {
 	// With every connection value from env vars OIDC is active whatever the stored switch says
 	const envOnly = CONNECTION_KEYS.every((key) => isLocked(key));
 	const enabledLocked = envOnly || isLocked("enabled");
+	// the saved secret is only sent to the issuer and client it was entered for (the API refuses the save otherwise)
+	const connectionChanged =
+		(!isLocked("issuerUrl") && (values.issuerUrl ?? "") !== (data.issuerUrl ?? "")) ||
+		(!isLocked("clientId") && (values.clientId ?? "") !== (data.clientId ?? ""));
 	const secretKey = () => {
 		if (secretLocked) return "settings.authentication.locked";
+		if (data.clientSecretSet && !data.secretError && connectionChanged)
+			return "settings.authentication.client-secret.reenter";
 		if (data.clientSecretSet && !data.secretError) return "settings.authentication.client-secret.saved";
 		return "settings.authentication.client-secret.empty";
 	};
