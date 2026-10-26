@@ -7,7 +7,13 @@ import { extractTo, packStage } from "../lib/backup/archive.js";
 import { exportStage, verifyStage } from "../lib/backup/export.js";
 import { BackupError, FORMAT_VERSION, openBackupFile, readHeader, writeBackupFile } from "../lib/backup/format.js";
 import { loadStageData, previewReplace, replaceTypes } from "../lib/backup/restore-db.js";
-import { relinkCertbotLive, swapFiles } from "../lib/backup/restore-files.js";
+import {
+	adminAvatarFiles,
+	fitStagedAvatars,
+	relinkCertbotLive,
+	removeCachedGravatars,
+	swapFiles,
+} from "../lib/backup/restore-files.js";
 import { allowFile, CATEGORIES, RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
 import { isRestartRule, rulesOf } from "../lib/runtime-rules.js";
 
@@ -289,6 +295,13 @@ const createBackupService = ({
 		if (types.includes("settings_monitoring")) await reloadSettings.monitoring?.();
 	};
 
+	// the staged files of the chosen types in place; a users restore leaves the admin's picture files alone
+	const swapStage = async ({ stageDir, types, asideDir, adminUserId, users }) => {
+		if (!types.includes("users")) return await swapFiles({ dataDir, stageDir, types, asideDir });
+		if (users) await fitStagedAvatars({ stageDir, adminUserId, users });
+		return await swapFiles({ dataDir, stageDir, types, asideDir, keep: adminAvatarFiles(adminUserId) });
+	};
+
 	// configs, access files and runtime settings from the database as it is now, then one nginx -t and reload
 	const applyRestored = async (types, { onNginx } = {}) => {
 		await regenerate.rebuildAccessListFiles();
@@ -325,7 +338,7 @@ const createBackupService = ({
 		const asideDir = await store.createStageDir("restore");
 		try {
 			const data = await loadStageData(auto.stageDir, restoreTypes);
-			await replaceTypes({
+			const { users } = await replaceTypes({
 				knex,
 				data,
 				types: restoreTypes,
@@ -334,7 +347,7 @@ const createBackupService = ({
 				// the users' sessions stay as they were before the failed restore
 				now: null,
 			});
-			await swapFiles({ dataDir, stageDir: auto.stageDir, types, asideDir });
+			await swapStage({ stageDir: auto.stageDir, types, asideDir, adminUserId, users });
 			if (types.includes("certificates")) await relinkCertbotLive({ dataDir, ids: certificateIdsBefore });
 			await applyRestored(restoreTypes);
 		} finally {
@@ -404,7 +417,7 @@ const createBackupService = ({
 		try {
 			try {
 				asideDir = await store.createStageDir("restore");
-				swap = await swapFiles({ dataDir, stageDir: entry.stageDir, types, asideDir });
+				swap = await swapStage({ stageDir: entry.stageDir, types, asideDir, adminUserId, users: result.users });
 				if (types.includes("certificates")) {
 					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });
 				}
@@ -449,6 +462,14 @@ const createBackupService = ({
 			}
 		} finally {
 			await withoutStage(asideDir);
+		}
+		if (result.users) {
+			try {
+				await removeCachedGravatars({ dataDir, ids: result.users.ids });
+			} catch (error) {
+				// a cache: the pictures are fetched again later
+				log.warn(`Could not remove the cached Gravatar pictures of the restored users: ${error.message}`);
+			}
 		}
 		let offline = [];
 		try {

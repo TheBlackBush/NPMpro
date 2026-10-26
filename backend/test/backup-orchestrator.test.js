@@ -45,6 +45,7 @@ const createSchema = async (knex) => {
 		t.string("email").notNull();
 		t.string("name").notNull();
 		t.json("roles").notNull();
+		t.string("avatar").notNull().defaultTo("");
 		t.integer("npmpro_token_valid_after").notNull().defaultTo(0);
 	});
 	await knex.schema.createTable("auth", (t) => {
@@ -741,6 +742,66 @@ it("reports a committed restore as done when its audit log entry cannot be writt
 		assert.deepEqual(result.counts, { proxy_hosts: 1 });
 		assert.deepEqual(await hostIds(ctx.knex), [1]);
 		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# from the backup\n");
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("keeps the admin's picture and gives a moved user's picture its new id", TIMEOUT, async () => {
+	const ctx = await setup();
+	const picture = (folder, name) => path.join(ctx.dataDir, "public", folder, name);
+	try {
+		await ctx.knex("user").where({ id: 1 }).update({ avatar: "/images/avatar/1.png?v=1" });
+		await ctx.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		await mkdir(path.join(ctx.dataDir, "public", "avatar"), { recursive: true });
+		await writeFile(picture("avatar", "1.png"), "first admin");
+		await writeFile(picture("avatar", "2.png"), "two");
+		const { entry } = await ctx.service.create(access, { types: ["users"], secrets: false, keep: true });
+		// another admin on the same id restores it: the backup's user #1 is someone else to them
+		await ctx.knex("user").where({ id: 1 }).update({ email: "second@example.com" });
+		await writeFile(picture("avatar", "1.png"), "second admin");
+		await mkdir(path.join(ctx.dataDir, "public", "gravatar"), { recursive: true });
+		for (const name of ["1.png", "2.png", "3.png"]) await writeFile(picture("gravatar", name), "cached");
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await ctx.service.restore(access, token, { types: ["users"] });
+
+		const moved = await ctx.knex("user").where({ email: "admin@example.com" }).first();
+		assert.equal(moved.id, 3);
+		assert.equal(moved.avatar, "/images/avatar/3.png?v=1");
+		assert.equal(await readFile(picture("avatar", "1.png"), "utf8"), "second admin");
+		assert.equal(await readFile(picture("avatar", "3.png"), "utf8"), "first admin");
+		assert.equal(await readFile(picture("avatar", "2.png"), "utf8"), "two");
+		assert.deepEqual(await readdir(path.join(ctx.dataDir, "public", "gravatar")), ["1.png"]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("keeps the admin's picture when a users restore is rolled back", TIMEOUT, async () => {
+	const ctx = await setup({
+		test: (call) => {
+			if (call === 1) throw new Error("nginx: [emerg] broken");
+		},
+	});
+	const picture = (name) => path.join(ctx.dataDir, "public", "avatar", name);
+	try {
+		await ctx.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		await mkdir(path.join(ctx.dataDir, "public", "avatar"), { recursive: true });
+		await writeFile(picture("1.png"), "first admin");
+		await writeFile(picture("2.png"), "two");
+		const { entry } = await ctx.service.create(access, { types: ["users"], secrets: false, keep: true });
+		await ctx.knex("user").where({ id: 1 }).update({ email: "second@example.com" });
+		await writeFile(picture("1.png"), "second admin");
+		await writeFile(picture("2.png"), "two now");
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(ctx.service.restore(access, token, { types: ["users"] }), hasCode("nginx-failed"));
+		assert.deepEqual((await readdir(path.join(ctx.dataDir, "public", "avatar"))).sort(), ["1.png", "2.png"]);
+		assert.equal(await readFile(picture("1.png"), "utf8"), "second admin");
+		assert.equal(await readFile(picture("2.png"), "utf8"), "two now");
+		assert.deepEqual(
+			(await ctx.knex("user").orderBy("id")).map((row) => row.email),
+			["second@example.com", "two@example.com"],
+		);
 	} finally {
 		await ctx.cleanup();
 	}

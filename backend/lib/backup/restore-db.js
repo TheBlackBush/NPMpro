@@ -294,12 +294,27 @@ const checkTypeRows = async (trx, table, where, rows) => {
 	if (Number(count) !== ids.length) throw invalid(`The backup holds ${table} rows of another type`);
 };
 
+// a moved user's avatar that names the picture file by the old id names it by the new one
+const movedAvatar = (avatar, from, to) => {
+	if (typeof avatar !== "string") return null;
+	for (const folder of ["/images/avatar/", "/images/gravatar/"]) {
+		if (avatar.startsWith(`${folder}${from}.`)) return `${folder}${to}${avatar.slice(`${folder}${from}`.length)}`;
+	}
+	return null;
+};
+
 const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => {
 	const admin = await findAdmin(trx, adminUserId);
 	const split = splitUsers(rowsByTable.user, admin);
 	const stamp = now === null ? (row) => row : (row) => ({ ...row, npmpro_token_valid_after: now });
 	await inserter.insert("user", split.users.map(stamp));
-	if (split.moved) split.idMap.set(key(split.moved.id), await inserter.insertWithNewId("user", stamp(split.moved)));
+	let moved = null;
+	if (split.moved) {
+		moved = { from: split.moved.id, to: await inserter.insertWithNewId("user", stamp(split.moved)) };
+		split.idMap.set(key(moved.from), moved.to);
+		const avatar = movedAvatar(split.moved.avatar, moved.from, moved.to);
+		if (avatar !== null) await trx("user").where({ id: moved.to }).update({ avatar });
+	}
 	const restoredIds = new Set([...split.users, ...(split.moved ? [split.moved] : [])].map((row) => key(row.id)));
 	for (const table of ["auth", "user_permission"]) {
 		// the admin's rows stay: a backup row with one of their ids gets a new id
@@ -311,7 +326,16 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
 		);
 		for (const row of rows.filter((item) => keptIds.has(key(item.id)))) await inserter.insertWithNewId(table, row);
 	}
-	return { idMap: split.idMap, skipped: split.skipped, count: restoredIds.size };
+	return {
+		idMap: split.idMap,
+		skipped: split.skipped,
+		count: restoredIds.size,
+		users: {
+			ids: [...split.users.map((row) => row.id), ...(moved ? [moved.to] : [])],
+			moved,
+			skippedIds: split.skipped.map((row) => row.id),
+		},
+	};
 };
 
 /**
@@ -326,7 +350,9 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
  * @param   {Object}    options.box           the secret box that seals the secrets
  * @param   {?number}   [options.now]         seconds, npmpro_token_valid_after of the restored users; null keeps
  *                                            the backup's values (the rollback to the automatic backup)
- * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number> }>}
+ * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number>, users: ?Object }>}
+ *          users, when users were restored: { ids: the restored users' ids, moved: { from, to } of the backup user
+ *          that held the admin's id or null, skippedIds: the backup ids of the skipped users }
  */
 const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.floor(Date.now() / 1000) }) => {
 	for (const typeId of types) typeOf(typeId);
@@ -337,6 +363,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		const counts = {};
 		let idMap = new Map();
 		let skippedUsers = [];
+		let users = null;
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
 			const rowsByTable = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
@@ -346,6 +373,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 				({ idMap } = result);
 				skippedUsers = result.skipped;
 				counts[typeId] = result.count;
+				({ users } = result);
 				continue;
 			}
 			for (const { table, where } of type.tables) {
@@ -359,7 +387,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		for (const table of REFERENCE_TABLES) finalRows[table] = await readReferenceRows(trx, table);
 		const references = planReferences({ finalRows, adminUserId });
 		await applyReferences(trx, references);
-		return { references, skippedUsers, counts };
+		return { references, skippedUsers, counts, users };
 	});
 };
 

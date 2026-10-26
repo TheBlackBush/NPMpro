@@ -3,7 +3,13 @@ import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, rm, stat, symlink, 
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { relinkCertbotLive, swapFiles } from "../lib/backup/restore-files.js";
+import {
+	adminAvatarFiles,
+	fitStagedAvatars,
+	relinkCertbotLive,
+	removeCachedGravatars,
+	swapFiles,
+} from "../lib/backup/restore-files.js";
 
 const IN_THE_WAY = /crowdsec\/crowdsec\.conf is in the way/u;
 
@@ -79,6 +85,50 @@ it("gives new files under public/html readable modes and moves a missing root's 
 	assert.equal(((await stat(path.join(dataDir, "public/html"))).mode % 0o1000).toString(8), "755");
 	await undo();
 	assert.deepEqual(await snapshot(dataDir), {});
+	await rm(root, { recursive: true });
+});
+
+it("keeps the admin's picture files out of a users swap, also when undone", async () => {
+	const { root, dataDir, stageDir, asideDir } = await setup();
+	await put(path.join(dataDir, "public/avatar/1.png"), "admin", 0o644);
+	await put(path.join(dataDir, "public/avatar/10.png"), "old ten", 0o644);
+	await put(path.join(dataDir, "public/avatar/2.png"), "old two", 0o644);
+	await put(path.join(stageDir, "files/public/avatar/1.jpg"), "backup one");
+	await put(path.join(stageDir, "files/public/avatar/2.png"), "backup two");
+	const before = await snapshot(dataDir);
+	const { undo } = await swapFiles({ dataDir, stageDir, types: ["users"], asideDir, keep: adminAvatarFiles(1) });
+	const after = await snapshot(dataDir);
+	assert.equal(after["public/avatar/1.png"], "file 644 admin");
+	assert.equal(after["public/avatar/1.jpg"], undefined);
+	assert.equal(after["public/avatar/10.png"], undefined);
+	assert.equal(after["public/avatar/2.png"], "file 644 backup two");
+	await undo();
+	assert.deepEqual(await snapshot(dataDir), before);
+	await rm(root, { recursive: true });
+});
+
+it("renames the staged pictures of the moved user and drops the admin's and the skipped users'", async () => {
+	const { root, stageDir } = await setup();
+	const folder = path.join(stageDir, "files/public/avatar");
+	for (const name of ["1.png", "1.jpg", "4.png", "7.png", "12.png", "15.gif"])
+		await put(path.join(folder, name), name);
+	await fitStagedAvatars({ stageDir, adminUserId: 1, users: { moved: { from: 1, to: 15 }, skippedIds: [4] } });
+	assert.deepEqual((await readdir(folder)).sort(), ["12.png", "15.jpg", "15.png", "7.png"]);
+	assert.equal(await readFile(path.join(folder, "15.png"), "utf8"), "1.png");
+	await fitStagedAvatars({ stageDir, adminUserId: 7, users: { moved: null, skippedIds: [12] } });
+	assert.deepEqual((await readdir(folder)).sort(), ["15.jpg", "15.png"]);
+	await rm(path.join(stageDir, "files"), { recursive: true });
+	await fitStagedAvatars({ stageDir, adminUserId: 1, users: { moved: null, skippedIds: [] } });
+	await rm(root, { recursive: true });
+});
+
+it("removes the cached Gravatar pictures of the given users only", async () => {
+	const { root, dataDir } = await setup();
+	await removeCachedGravatars({ dataDir, ids: [2] });
+	for (const name of ["1.png", "2.png", "2.webp", "20.png"])
+		await put(path.join(dataDir, "public/gravatar", name), "x");
+	await removeCachedGravatars({ dataDir, ids: [2, 3] });
+	assert.deepEqual((await readdir(path.join(dataDir, "public/gravatar"))).sort(), ["1.png", "20.png"]);
 	await rm(root, { recursive: true });
 });
 

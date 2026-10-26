@@ -25,6 +25,7 @@ const sqlite = async () => {
 		t.string("name").notNull();
 		t.json("roles").notNull();
 		t.integer("is_disabled").notNull().defaultTo(0);
+		t.string("avatar").notNull().defaultTo("");
 		t.integer("npmpro_token_valid_after").notNull().defaultTo(0);
 	});
 	await knex.schema.createTable("auth", (t) => {
@@ -158,7 +159,14 @@ it("replaces the locations and access list links with the proxy hosts and drops 
 const usersData = () => ({
 	users: {
 		user: [
-			{ id: 1, email: "someone@example.com", name: "Backup One", roles: [], npmpro_token_valid_after: 0 },
+			{
+				id: 1,
+				email: "someone@example.com",
+				name: "Backup One",
+				roles: [],
+				avatar: "/images/avatar/1.png?v=7",
+				npmpro_token_valid_after: 0,
+			},
 			{ id: 4, email: "ADMIN@example.com", name: "Backup Admin", roles: ["admin"], npmpro_token_valid_after: 0 },
 			{ id: 6, email: "six@example.com", name: "Six", roles: [], npmpro_token_valid_after: 0 },
 		],
@@ -193,6 +201,8 @@ it("replaces users but keeps the restoring admin, skips the admin's email and mo
 	assert.equal(admin.npmpro_token_valid_after, 5);
 	const moved = users.find((row) => row.email === "someone@example.com");
 	assert.ok(moved.id > 6, "the backup user with the admin's id gets a new id");
+	assert.equal(moved.avatar, `/images/avatar/${moved.id}.png?v=7`);
+	assert.deepEqual(result.users, { ids: [6, moved.id], moved: { from: 1, to: moved.id }, skippedIds: [4] });
 	assert.deepEqual(
 		users.map((row) => row.email),
 		["admin@example.com", "six@example.com", "someone@example.com"],

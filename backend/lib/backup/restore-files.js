@@ -11,6 +11,11 @@ const LIVE_NAMES = ["cert", "chain", "fullchain", "privkey"];
 const LIVE_FOLDER = /^npm-(?<id>\d+)$/u;
 const ARCHIVE_FILE = /^(?<kind>[a-z]+)(?<number>\d+)\.pem$/u;
 const DIGITS = /^\d+$/u;
+const AVATAR_DIR = "public/avatar";
+const GRAVATAR_DIR = "public/gravatar";
+
+// a user's picture files are named <user id>.<extension>
+const isPictureOf = (id, name) => name.startsWith(`${id}.`) && !name.includes("/");
 
 // files the nginx workers serve, and the folders that lead to them
 const isServed = (rel) =>
@@ -39,7 +44,7 @@ const move = async (from, to) => {
 	}
 };
 
-const createSwap = ({ dataDir, stageDir, asideDir }) => {
+const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 	const journal = [];
 	const inData = (rel) => path.join(dataDir, rel);
 	const inAside = (rel) => path.join(asideDir, rel);
@@ -62,7 +67,7 @@ const createSwap = ({ dataDir, stageDir, asideDir }) => {
 	// that end up empty are removed
 	const moveAside = async (files, rel, modes, isRoot) => {
 		const info = await exists(inData(rel));
-		if (!(info && files.allow(rel))) return;
+		if (!(info && files.allow(rel)) || keep(rel)) return;
 		if (info.isDirectory()) {
 			for (const name of (await readdir(inData(rel))).sort())
 				await moveAside(files, `${rel}/${name}`, modes, false);
@@ -82,7 +87,7 @@ const createSwap = ({ dataDir, stageDir, asideDir }) => {
 	const place = async (files, rel, modes) => {
 		const from = path.join(stageDir, "files", rel);
 		const info = await exists(from);
-		if (!info) return;
+		if (!info || keep(rel)) return;
 		if (!files.allow(rel)) throw new BackupError("invalid-archive", `files/${rel} is not allowed`);
 		if (info.isDirectory()) {
 			await ensureFolder(rel);
@@ -137,10 +142,12 @@ const createSwap = ({ dataDir, stageDir, asideDir }) => {
  * @param   {string}    options.stageDir    holds files/<path below dataDir>
  * @param   {string[]}  options.types
  * @param   {string}    options.asideDir    an empty folder (mode 700) on the same filesystem as dataDir, ideally
+ * @param   {Function}  [options.keep]      (rel) => boolean: the instance's entry at rel stays as it is and a staged
+ *                                          one is not placed
  * @returns {Promise<{ undo: () => Promise<void> }>}  on failure everything is moved back before it rejects
  */
-const swapFiles = async ({ dataDir, stageDir, types, asideDir }) => {
-	const swap = createSwap({ dataDir, stageDir, asideDir });
+const swapFiles = async ({ dataDir, stageDir, types, asideDir, keep = () => false }) => {
+	const swap = createSwap({ dataDir, stageDir, asideDir, keep });
 	try {
 		for (const typeId of new Set(types)) {
 			if (!Object.hasOwn(TYPES, typeId)) throw new BackupError("invalid-archive", `Unknown type ${typeId}`);
@@ -151,6 +158,69 @@ const swapFiles = async ({ dataDir, stageDir, types, asideDir }) => {
 		throw error;
 	}
 	return { undo: swap.undo };
+};
+
+/**
+ * The keep callback of swapFiles for a users restore: the restoring admin's picture files.
+ *
+ * @param   {number|string}  adminUserId
+ * @returns {(rel: string) => boolean}
+ */
+const adminAvatarFiles = (adminUserId) => (rel) =>
+	rel.startsWith(`${AVATAR_DIR}/`) && isPictureOf(adminUserId, rel.slice(AVATAR_DIR.length + 1));
+
+const namesIn = async (folder) => {
+	try {
+		return await readdir(folder);
+	} catch (error) {
+		if (error.code === "ENOENT") return [];
+		throw error;
+	}
+};
+
+/**
+ * Fits the staged picture files of a users restore to the ids the users got: the files of the backup user that held
+ * the admin's id are renamed to its new id, the files of the admin's id and of the skipped users are removed.
+ *
+ * @param   {Object}         options
+ * @param   {string}         options.stageDir
+ * @param   {number|string}  options.adminUserId
+ * @param   {Object}         options.users   replaceTypes().users: { moved: ?{ from, to }, skippedIds }
+ * @returns {Promise<void>}
+ */
+const fitStagedAvatars = async ({ stageDir, adminUserId, users }) => {
+	const folder = path.join(stageDir, "files", AVATAR_DIR);
+	const names = await namesIn(folder);
+	const { moved } = users;
+	if (moved) {
+		for (const name of names.filter((item) => isPictureOf(moved.to, item)))
+			await rm(path.join(folder, name), { recursive: true });
+		for (const name of names.filter((item) => isPictureOf(moved.from, item))) {
+			await rename(
+				path.join(folder, name),
+				path.join(folder, `${moved.to}${name.slice(String(moved.from).length)}`),
+			);
+		}
+	}
+	const dropped = moved ? users.skippedIds : [adminUserId, ...users.skippedIds];
+	for (const name of await namesIn(folder)) {
+		if (dropped.some((id) => isPictureOf(id, name))) await rm(path.join(folder, name), { recursive: true });
+	}
+};
+
+/**
+ * Removes the cached Gravatar pictures of these users; they are fetched again later.
+ *
+ * @param   {Object}                 options
+ * @param   {string}                 options.dataDir
+ * @param   {Array<number|string>}   options.ids
+ * @returns {Promise<void>}
+ */
+const removeCachedGravatars = async ({ dataDir, ids }) => {
+	const folder = path.join(dataDir, GRAVATAR_DIR);
+	for (const name of await namesIn(folder)) {
+		if (ids.some((id) => isPictureOf(id, name))) await rm(path.join(folder, name), { force: true });
+	}
 };
 
 // name -> the archive file with the highest number, e.g. cert -> cert10.pem over cert9.pem
@@ -201,4 +271,4 @@ const relinkCertbotLive = async ({ dataDir, ids }) => {
 	}
 };
 
-export { relinkCertbotLive, swapFiles };
+export { adminAvatarFiles, fitStagedAvatars, relinkCertbotLive, removeCachedGravatars, swapFiles };
