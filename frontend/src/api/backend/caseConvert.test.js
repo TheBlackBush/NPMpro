@@ -13,3 +13,17 @@ it("does not throw on keys ending in a separator", () => {
 it("decamelizes keys", () => {
 	assert.deepEqual(decamelizeKeys({ topIps: 1 }), { top_ips: 1 });
 });
+
+it("keeps the keys of rawKeys maps and camelizes everything else", () => {
+	const data = {
+		certificate_kinds: { letsencrypt: 1, other: 2 },
+		counts: { proxy_hosts: 3, settings_oidc: 1 },
+		entries: [{ created_at: 1, summary: { counts: { dns_credentials: 2 }, npmpro_version: "1" } }],
+	};
+	assert.deepEqual(camelizeKeys(data, { rawKeys: ["counts", "certificate_kinds"] }), {
+		certificateKinds: { letsencrypt: 1, other: 2 },
+		counts: { proxy_hosts: 3, settings_oidc: 1 },
+		entries: [{ createdAt: 1, summary: { counts: { dns_credentials: 2 }, npmproVersion: "1" } }],
+	});
+	assert.deepEqual(camelizeKeys({ counts: { proxy_hosts: 3 } }), { counts: { proxyHosts: 3 } });
+});

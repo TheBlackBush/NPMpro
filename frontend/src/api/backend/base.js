@@ -20,6 +20,16 @@ function buildBody(data) {
 	return JSON.stringify(decamelizeKeys(data));
 }
 
+// maps keyed by backup type id or certificate provider: their keys are data and stay as the API sends them
+const BACKUP_RAW_KEYS = ["counts", "certificate_kinds", "certificateKinds"];
+
+function camelizeResponse(payload, responseUrl) {
+	const isBackupApi =
+		typeof responseUrl === "string" &&
+		new URL(responseUrl, window.location.origin).pathname.startsWith("/api/backups");
+	return camelizeKeys(payload, isBackupApi ? { rawKeys: BACKUP_RAW_KEYS } : undefined);
+}
+
 function logoutOnUnauthorized(reload) {
 	// Force logout user and reload the page if Unauthorized
 	AuthStore.clear();
@@ -42,7 +52,7 @@ async function processResponse(response, reload = true) {
 		error.payload = payload;
 		throw error;
 	}
-	return camelizeKeys(payload);
+	return camelizeResponse(payload, response.url);
 }
 
 /**
@@ -58,7 +68,7 @@ function processXhr(xhr, reload = true) {
 	}
 	if (xhr.status >= 200 && xhr.status < 300) {
 		if (payload === null) throw new Error("error.request-failed");
-		return camelizeKeys(payload);
+		return camelizeResponse(payload, xhr.responseURL);
 	}
 	if (xhr.status === 401) logoutOnUnauthorized(reload);
 	let error;
