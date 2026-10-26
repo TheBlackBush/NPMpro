@@ -1,0 +1,503 @@
+import assert from "node:assert/strict";
+import { existsSync, readlinkSync } from "node:fs";
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { it } from "node:test";
+import knexFactory from "knex";
+import { createBackupService, migrationNumber } from "../internal/backup.js";
+import { writeBackupFile } from "../lib/backup/format.js";
+import { createBackupStore } from "../lib/backup/store.js";
+
+process.env.TZ = "UTC";
+
+const TIMEOUT = { timeout: 60_000 };
+const PASSPHRASE = "correct horse battery staple";
+const DB_VERSION = "20261026000000";
+const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
+const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
+const UNKNOWN_DIRECTIVE = /unknown directive/u;
+const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
+const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
+const silent = { info: () => {}, warn: () => {}, error: () => {} };
+
+const createSchema = async (knex) => {
+	const hostTable = (name, extra = () => {}) =>
+		knex.schema.createTable(name, (t) => {
+			t.increments("id");
+			t.integer("owner_user_id").notNull().defaultTo(1);
+			t.json("domain_names").notNull().defaultTo("[]");
+			t.integer("enabled").notNull().defaultTo(1);
+			t.integer("certificate_id").notNull().defaultTo(0);
+			t.json("meta").notNull().defaultTo("{}");
+			extra(t);
+		});
+	await knex.schema.createTable("user", (t) => {
+		t.increments("id");
+		t.string("email").notNull();
+		t.string("name").notNull();
+		t.json("roles").notNull();
+		t.integer("npmpro_token_valid_after").notNull().defaultTo(0);
+	});
+	await knex.schema.createTable("auth", (t) => {
+		t.increments("id");
+		t.integer("user_id").notNull();
+		t.string("type").notNull();
+		t.string("secret").notNull();
+		t.json("meta").notNull();
+	});
+	await knex.schema.createTable("user_permission", (t) => {
+		t.increments("id");
+		t.integer("user_id").notNull();
+		t.string("visibility").notNull();
+	});
+	await hostTable("proxy_host", (t) => {
+		t.integer("npmpro_mtls_certificate_id").notNull().defaultTo(0);
+		t.integer("access_list_id").notNull().defaultTo(0);
+	});
+	await hostTable("redirection_host");
+	await hostTable("dead_host");
+	await knex.schema.createTable("stream", (t) => {
+		t.increments("id");
+		t.integer("owner_user_id").notNull().defaultTo(1);
+		t.integer("certificate_id").notNull().defaultTo(0);
+		t.json("meta").notNull().defaultTo("{}");
+	});
+	await knex.schema.createTable("npmpro_location", (t) => {
+		t.increments("id");
+		t.integer("proxy_host_id").notNull();
+		t.text("path").notNull();
+	});
+	await knex.schema.createTable("npmpro_proxy_host_access_list", (t) => {
+		t.integer("proxy_host_id").notNull();
+		t.integer("location_id").notNull().defaultTo(0);
+		t.integer("access_list_id").notNull();
+		t.primary(["proxy_host_id", "location_id", "access_list_id"]);
+	});
+	await knex.schema.createTable("certificate", (t) => {
+		t.increments("id");
+		t.integer("owner_user_id").notNull().defaultTo(1);
+		t.string("provider").notNull();
+		t.string("nice_name").notNull().defaultTo("");
+		t.json("domain_names").notNull().defaultTo("[]");
+		t.json("meta").notNull().defaultTo("{}");
+		t.integer("npmpro_dns_credential_id").nullable();
+	});
+	await knex.schema.createTable("access_list", (t) => {
+		t.increments("id");
+		t.integer("owner_user_id").notNull().defaultTo(1);
+		t.string("name").notNull();
+		t.json("meta").notNull().defaultTo("{}");
+	});
+	for (const table of ["access_list_auth", "access_list_client"]) {
+		await knex.schema.createTable(table, (t) => {
+			t.increments("id");
+			t.integer("access_list_id").notNull();
+			t.string("value").notNull().defaultTo("");
+			t.string("password").notNull().defaultTo("");
+			t.json("meta").notNull().defaultTo("{}");
+		});
+	}
+	await knex.schema.createTable("npmpro_dns_credential", (t) => {
+		t.increments("id");
+		t.integer("owner_user_id").notNull().defaultTo(1);
+		t.string("name").notNull();
+		t.text("values").notNull();
+	});
+	await knex.schema.createTable("setting", (t) => {
+		t.string("id").primary();
+		t.string("name").notNull().defaultTo("");
+		t.json("meta").notNull().defaultTo("{}");
+	});
+	await knex("user").insert({ id: 1, email: "admin@example.com", name: "Admin", roles: '["admin"]' });
+	await knex("auth").insert({ id: 1, user_id: 1, type: "password", secret: "admin-hash", meta: "{}" });
+	await knex("user_permission").insert({ id: 1, user_id: 1, visibility: "all" });
+};
+
+/**
+ * A service on a fresh database and folders with spies for everything outside
+ *
+ * @param {Object} [options]
+ * @param {Function} [options.test]       the fake nginx -t
+ * @param {Function} [options.pause]      the fake renewal pause
+ * @param {string}   [options.dbVersion]
+ */
+const setup = async ({ test = async () => {}, pause = async () => {}, dbVersion = DB_VERSION, root } = {}) => {
+	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
+	const dataDir = path.join(base, "data");
+	const backupsDir = path.join(base, "backups");
+	await mkdir(dataDir, { recursive: true });
+	await mkdir(backupsDir, { recursive: true, mode: 0o700 });
+	const knex = knexFactory({
+		client: "better-sqlite3",
+		connection: { filename: ":memory:" },
+		useNullAsDefault: true,
+	});
+	await createSchema(knex);
+	const clock = { offset: 0, now: () => Date.now() + clock.offset };
+	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, audit: [] };
+	let paused = false;
+	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
+	const service = createBackupService({
+		knex,
+		box,
+		dataDir,
+		store,
+		dbVersion: async () => dbVersion,
+		npmproVersion: "1.0.0",
+		instanceKey: async () => Buffer.alloc(32, 7),
+		audit: (_access, entry) => {
+			calls.audit.push(entry);
+			return Promise.resolve();
+		},
+		nginx: {
+			test: async () => {
+				calls.test++;
+				await test(calls.test);
+			},
+			reload: () => {
+				calls.reload++;
+				return Promise.resolve();
+			},
+		},
+		renewals: {
+			pause: async () => {
+				calls.pause++;
+				paused = true;
+				await pause();
+			},
+			resume: () => {
+				calls.resume++;
+				paused = false;
+			},
+		},
+		regenerate: {
+			loadEnabledHosts: async () => [],
+			regenerateAllHostsNow: () => {
+				calls.regenerate++;
+				return Promise.resolve();
+			},
+			rebuildAccessListFiles: async () => {},
+			regenerateDefaultSite: async () => {},
+		},
+		runtime: {
+			loadRuntimeConfig: async () => {},
+			applyAllRuntime: () => {
+				calls.applyAll++;
+				return Promise.resolve({});
+			},
+		},
+		hostname: "test-host",
+		clock,
+		log: silent,
+	});
+	const cleanup = async () => {
+		await knex.destroy();
+		if (!root) await rm(base, { recursive: true, force: true });
+	};
+	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
+};
+
+const hostIds = async (knex) => (await knex("proxy_host").orderBy("id").pluck("id")).map(Number);
+
+const customFile = (dataDir) => path.join(dataDir, "custom_nginx", "http.conf");
+
+// the instance as the backup is made: proxy host #1 and a custom nginx file; afterwards it changes to host #2 and
+// another file content
+const backupThenChange = async (ctx, { secrets = true, types = ["proxy_hosts", "custom_nginx"] } = {}) => {
+	await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+	await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+	await writeFile(customFile(ctx.dataDir), "# from the backup\n");
+	const { entry } = await ctx.service.create(access, {
+		types,
+		secrets,
+		passphrase: secrets ? PASSPHRASE : undefined,
+		keep: true,
+	});
+	await ctx.knex("proxy_host").del();
+	await ctx.knex("proxy_host").insert({ id: 2, domain_names: '["two.example.com"]' });
+	await writeFile(customFile(ctx.dataDir), "# the instance\n");
+	return entry;
+};
+
+const hasCode = (code) => (error) => error.code === code;
+
+it("restores proxy hosts and custom nginx files from a backup with secrets", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx);
+		assert.equal(entry.summary.secrets, true);
+		assert.equal(entry.encrypted, true);
+		const inspected = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		assert.deepEqual(inspected.manifest.types, ["proxy_hosts", "custom_nginx"]);
+		assert.equal(inspected.manifest.files, undefined);
+		assert.deepEqual(inspected.preview.missingSecrets, []);
+		const result = await ctx.service.restore(access, inspected.token, { types: ["proxy_hosts", "custom_nginx"] });
+		assert.deepEqual(result.counts, { proxy_hosts: 1 });
+		assert.equal(result.restartNeeded, false);
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# from the backup\n");
+		assert.equal(ctx.calls.test, 1);
+		assert.equal(ctx.calls.reload, 1);
+		assert.equal(ctx.calls.regenerate, 1);
+		assert.equal(ctx.calls.applyAll, 1);
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+		const auto = await readdir(path.join(ctx.backupsDir, "auto"));
+		assert.equal(auto.length, 1);
+		assert.match(auto[0], AUTO_NAME);
+		assert.deepEqual(
+			ctx.calls.audit.map((item) => item.action),
+			["created", "restored"],
+		);
+		const restored = ctx.calls.audit[1];
+		assert.equal(restored.object_type, "backup");
+		assert.equal(restored.meta.name, entry.name);
+		assert.equal(JSON.stringify(ctx.calls.audit).includes(PASSPHRASE), false);
+		// the stage is gone with the token
+		await assert.rejects(
+			ctx.service.check(access, inspected.token, { types: ["proxy_hosts"] }),
+			hasCode("token-expired"),
+		);
+		assert.deepEqual(
+			(await readdir(ctx.backupsDir)).filter((name) => name.startsWith(".")),
+			[],
+		);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("rolls back to the instance's state when nginx rejects the restored configuration", TIMEOUT, async () => {
+	const ctx = await setup({
+		test: (call) => {
+			if (call === 1) throw new Error("nginx: [emerg] unknown directive in custom_nginx/http.conf");
+		},
+	});
+	try {
+		const entry = await backupThenChange(ctx);
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "nginx-failed");
+				assert.match(error.message, UNKNOWN_DIRECTIVE);
+				return true;
+			},
+		);
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# the instance\n");
+		assert.equal(ctx.calls.test, 2);
+		assert.equal(ctx.calls.reload, 1);
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+		assert.deepEqual(
+			ctx.calls.audit.map((item) => item.action),
+			["created"],
+		);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("refuses a second restore while one runs", TIMEOUT, async () => {
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	let started;
+	const running = new Promise((resolve) => {
+		started = resolve;
+	});
+	const ctx = await setup({
+		pause: () => {
+			started();
+			return held;
+		},
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const first = ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		await running;
+		await assert.rejects(ctx.service.restore(access, token, { types: ["proxy_hosts"] }), (error) => {
+			assert.equal(error.code, "busy");
+			assert.equal(error.status, 409);
+			return true;
+		});
+		await assert.rejects(ctx.service.inspect(access, entry.name, {}), hasCode("busy"));
+		release();
+		await first;
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+	} finally {
+		release();
+		await ctx.cleanup();
+	}
+});
+
+it("refuses an expired restore token", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		ctx.clock.offset = 61_000;
+		await assert.rejects(ctx.service.restore(access, token, { types: ["proxy_hosts"] }), hasCode("token-expired"));
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		assert.equal(ctx.calls.pause, 0);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("refuses at inspect a backup of a newer database or a newer format", TIMEOUT, async () => {
+	const newer = await setup({ dbVersion: "20261101000000_later.js" });
+	const ctx = await setup({ root: newer.base });
+	try {
+		const entry = await backupThenChange(newer, { secrets: false });
+		await assert.rejects(ctx.service.inspect(access, entry.name, {}), hasCode("newer-database"));
+
+		const write = (name, headerSummary) =>
+			writeBackupFile({
+				source: Readable.from([Buffer.from("not read")]),
+				file: path.join(ctx.backupsDir, name),
+				mode: "none",
+				summary: headerSummary,
+			});
+		const summary = { types: ["proxy_hosts"], counts: {}, created_at: new Date().toISOString(), secrets: false };
+		await write("npmpro-backup-other-20261026-120000.npmpro", { ...summary, format: 2 });
+		await assert.rejects(
+			ctx.service.inspect(access, "npmpro-backup-other-20261026-120000.npmpro", {}),
+			hasCode("newer-format"),
+		);
+		await write("npmpro-backup-other-20261026-120001.npmpro", { ...summary, format: 1, types: ["traffic"] });
+		await assert.rejects(
+			ctx.service.inspect(access, "npmpro-backup-other-20261026-120001.npmpro", {}),
+			hasCode("invalid-archive"),
+		);
+		// nothing staged is left behind
+		assert.deepEqual(
+			(await readdir(ctx.backupsDir)).filter((name) => name.startsWith(".")),
+			[],
+		);
+	} finally {
+		await ctx.cleanup();
+		await newer.cleanup();
+		await rm(newer.base, { recursive: true, force: true });
+	}
+});
+
+it("lists the types left out of a backup without secrets in the preview", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false, types: ["users", "proxy_hosts"] });
+		assert.equal(entry.encrypted, false);
+		const { preview, token } = await ctx.service.inspect(access, entry.name, {});
+		assert.deepEqual(preview.missingSecrets, ["users"]);
+		assert.deepEqual((await ctx.service.check(access, token, { types: ["proxy_hosts"] })).missingSecrets, []);
+		await assert.rejects(ctx.service.check(access, token, { types: ["custom_nginx"] }), hasCode("invalid-types"));
+		ctx.service.cancel(access, token);
+		await assert.rejects(ctx.service.check(access, token, { types: ["users"] }), hasCode("token-expired"));
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+const certificateFiles = async (dataDir, id) => {
+	const archive = path.join(dataDir, "tls/certbot/archive", `npm-${id}`);
+	await mkdir(archive, { recursive: true });
+	for (const name of ["cert1.pem", "chain1.pem", "fullchain1.pem", "privkey1.pem"]) {
+		await writeFile(path.join(archive, name), `${name} of ${id}\n`);
+	}
+	const live = path.join(dataDir, "tls/certbot/live", `npm-${id}`);
+	await mkdir(live, { recursive: true });
+	for (const name of ["cert", "chain", "fullchain", "privkey"]) {
+		await symlink(`../../archive/npm-${id}/${name}1.pem`, path.join(live, `${name}.pem`));
+	}
+};
+
+it("links the instance's certificates again when a certificate restore is rolled back", TIMEOUT, async () => {
+	const ctx = await setup({
+		test: (call) => {
+			if (call === 1) throw new Error("nginx: [emerg] cannot load certificate");
+		},
+	});
+	try {
+		await ctx.knex("certificate").insert({ id: 5, provider: "letsencrypt", nice_name: "backup" });
+		await certificateFiles(ctx.dataDir, 5);
+		const { entry } = await ctx.service.create(access, {
+			types: ["certificates"],
+			secrets: true,
+			passphrase: PASSPHRASE,
+			keep: true,
+		});
+		await ctx.knex("certificate").del();
+		await rm(path.join(ctx.dataDir, "tls"), { recursive: true });
+		await ctx.knex("certificate").insert({ id: 3, provider: "letsencrypt", nice_name: "instance" });
+		await certificateFiles(ctx.dataDir, 3);
+
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		await assert.rejects(ctx.service.restore(access, token, { types: ["certificates"] }), hasCode("nginx-failed"));
+		assert.deepEqual((await ctx.knex("certificate").pluck("id")).map(Number), [3]);
+		const live = path.join(ctx.dataDir, "tls/certbot/live");
+		assert.deepEqual(await readdir(live), ["npm-3"]);
+		assert.equal(readlinkSync(path.join(live, "npm-3", "cert.pem")), "../../archive/npm-3/cert1.pem");
+		assert.equal(await readFile(path.join(live, "npm-3", "cert.pem"), "utf8"), "cert1.pem of 3\n");
+		assert.equal(existsSync(path.join(ctx.dataDir, "tls/certbot/archive/npm-5")), false);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("checks the passphrase length, the chosen types and the counts", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		await assert.rejects(
+			ctx.service.create(access, { types: ["proxy_hosts"], secrets: true, passphrase: "short", keep: true }),
+			hasCode("weak-passphrase"),
+		);
+		await assert.rejects(
+			ctx.service.create(access, { types: ["traffic"], secrets: false, keep: true }),
+			hasCode("invalid-types"),
+		);
+		await ctx.knex("certificate").insert([
+			{ id: 1, provider: "letsencrypt" },
+			{ id: 2, provider: "mtls" },
+		]);
+		await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(customFile(ctx.dataDir), "#\n");
+		const { counts, certificateKinds } = await ctx.service.types(access);
+		assert.equal(counts.certificates, 2);
+		assert.equal(counts.users, 1);
+		assert.equal(counts.custom_nginx, 1);
+		assert.deepEqual(certificateKinds, { letsencrypt: 1, other: 0, mtls: 1 });
+		const denied = {
+			canAdmin: () => {
+				throw Object.assign(new Error("Permission Denied"), { name: "PermissionError" });
+			},
+			token: { getUserId: () => 2 },
+		};
+		await assert.rejects(ctx.service.list(denied), { name: "PermissionError" });
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("stores a download that is not kept as a pending file", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1 });
+		const created = await ctx.service.create(access, { types: ["proxy_hosts"], secrets: false, keep: false });
+		assert.match(created.name, PLAIN_NAME);
+		const file = ctx.service.takePending(access, created.pending);
+		assert.ok(existsSync(file));
+		assert.deepEqual(await ctx.service.list(access), []);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("compares migration versions by their timestamps", () => {
+	assert.ok(migrationNumber("20261101000000_later.js") > migrationNumber("20261026000000"));
+	assert.equal(migrationNumber("20261026000000"), migrationNumber("20261026000000_name.js"));
+	assert.equal(migrationNumber(null), 0);
+	assert.equal(migrationNumber("none"), 0);
+});

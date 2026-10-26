@@ -3,6 +3,7 @@
 import { chmod, chown, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
+import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
@@ -34,6 +35,12 @@ import setup from "./setup.js";
 async function appStart() {
 	try {
 		await migrateUp();
+		// restore stages, unfinished writes and pending downloads of the previous run
+		try {
+			await backupStore.cleanup();
+		} catch (err) {
+			logger.warn(`Could not clean up the backup folder: ${err.message}`);
+		}
 
 		// the http access log is on while traffic statistics or Write log files is on
 		const accessLog = createAccessLogSwitch({
