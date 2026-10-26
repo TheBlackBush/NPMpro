@@ -2,7 +2,7 @@ import { createWriteStream } from "node:fs";
 import { lstat, mkdir, readdir, readFile, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { finished, pipeline } from "node:stream/promises";
 import { extractTo, packStage } from "../lib/backup/archive.js";
 import { exportStage, verifyStage } from "../lib/backup/export.js";
 import { BackupError, FORMAT_VERSION, openBackupFile, readHeader, writeBackupFile } from "../lib/backup/format.js";
@@ -241,12 +241,20 @@ const createBackupService = ({
 		}
 		const stageDir = await store.createStageDir("restore");
 		try {
-			const source = await openBackupFile({
-				file,
-				passphrase,
-				instanceKey: header.kdf === "instance" ? await instanceKey() : undefined,
-			});
-			await extractTo({ source, dir: stageDir, allow: (rel) => allowFile(summary.types, rel) });
+			const open = async () =>
+				openBackupFile({
+					file,
+					passphrase,
+					instanceKey: header.kdf === "instance" ? await instanceKey() : undefined,
+				});
+			try {
+				await extractTo({ source: await open(), dir: stageDir, allow: (rel) => allowFile(summary.types, rel) });
+			} catch (error) {
+				// an encrypted file is authenticated only at its end, so the garbage of a wrong passphrase or a changed
+				// byte fails the gzip or tar parsing first: an invalid archive counts only once the file proved authentic
+				if (header.kdf !== "none" && error?.code === "invalid-archive") await finished((await open()).resume());
+				throw error;
+			}
 			let manifest;
 			try {
 				manifest = JSON.parse(await readFile(path.join(stageDir, "manifest.json"), "utf8"));

@@ -517,6 +517,31 @@ it("checks the passphrase length, the chosen types and the counts", TIMEOUT, asy
 	}
 });
 
+it("reports a wrong passphrase or a changed byte at inspect as such, not as an invalid archive", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx);
+		await assert.rejects(
+			ctx.service.inspect(access, entry.name, { passphrase: "a wrong passphrase" }),
+			hasCode("wrong-passphrase"),
+		);
+		const file = path.join(ctx.backupsDir, entry.name);
+		const bytes = await readFile(file);
+		bytes[bytes.length - 40] ^= 1;
+		await writeFile(file, bytes);
+		await assert.rejects(
+			ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE }),
+			hasCode("wrong-passphrase"),
+		);
+		assert.deepEqual(
+			(await readdir(ctx.backupsDir)).filter((name) => name.startsWith(".restore-")),
+			[],
+		);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
 it("stores a download that is not kept as a pending file", TIMEOUT, async () => {
 	const ctx = await setup();
 	try {
