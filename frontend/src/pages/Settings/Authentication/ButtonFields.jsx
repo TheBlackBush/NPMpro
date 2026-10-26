@@ -13,6 +13,8 @@ import {
 	validOidcColor,
 } from "src/modules/Oidc";
 
+const ICON_URL = /^https?:\/\/[^\s/$.?#].[^\s]*$/u;
+
 const SOURCES = ["builtin", "upload", "url"];
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml";
 
@@ -91,6 +93,8 @@ function IconFields({ storedIcon }) {
 	const { values, setFieldValue } = useFormikContext();
 	const [source, setSource] = useState(storedIcon?.type === "file" ? "upload" : "builtin");
 	const [url, setUrl] = useState("");
+	// the backend's rule (schema/paths/settings/oidc/icon/url/post.json)
+	const urlInvalid = url.trim() !== "" && !(url.trim().length <= 2048 && ICON_URL.test(url.trim()));
 	const [result, setResult] = useState(null);
 	const upload = useUploadOidcIcon();
 	const download = useDownloadOidcIcon();
@@ -213,27 +217,36 @@ function IconFields({ storedIcon }) {
 				</>
 			) : null}
 			{source === "url" ? (
-				<div className="input-group">
-					<input
-						type="url"
-						className="form-control"
-						aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.url" })}
-						placeholder="https://"
-						autoComplete="off"
-						value={url}
-						disabled={busy}
-						onChange={(e) => setUrl(e.target.value)}
-					/>
-					<Button
-						outline
-						color="secondary"
-						isLoading={download.isPending}
-						disabled={busy || !url.trim()}
-						onClick={onDownload}
-					>
-						<T id="settings.authentication.button.icon.download" />
-					</Button>
-				</div>
+				<>
+					<div className="input-group">
+						<input
+							type="url"
+							className={`form-control ${urlInvalid ? "is-invalid" : ""}`}
+							aria-invalid={urlInvalid ? "true" : undefined}
+							aria-describedby={urlInvalid ? "oidc-icon-url-error" : undefined}
+							aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.url" })}
+							placeholder="https://"
+							autoComplete="off"
+							value={url}
+							disabled={busy}
+							onChange={(e) => setUrl(e.target.value)}
+						/>
+						<Button
+							outline
+							color="secondary"
+							isLoading={download.isPending}
+							disabled={busy || !url.trim() || urlInvalid}
+							onClick={onDownload}
+						>
+							<T id="settings.authentication.button.icon.download" />
+						</Button>
+					</div>
+					{urlInvalid ? (
+						<div className="invalid-feedback d-block" id="oidc-icon-url-error">
+							<T id="settings.authentication.button.icon.url.invalid" />
+						</div>
+					) : null}
+				</>
 			) : null}
 			{storedIcon?.type === "file" ? (
 				<div className="mt-3">
@@ -271,8 +284,8 @@ function IconFields({ storedIcon }) {
 }
 
 function ButtonFields({ data }) {
-	const { values, handleChange, handleBlur, errors, touched, submitCount } = useFormikContext();
-	const labelInvalid = Boolean(errors.buttonLabel) && (touched.buttonLabel || submitCount > 0);
+	const { values, handleChange, handleBlur, errors } = useFormikContext();
+	const labelInvalid = Boolean(errors.buttonLabel);
 	const labelId = "oidc-buttonLabel";
 	const icon = effectiveIcon(values.buttonIcon, data.button?.icon);
 	return (

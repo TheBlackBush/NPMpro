@@ -10,12 +10,22 @@ const toForm = (data) => ({
 
 const toApi = (values) => ({ ...values, trustedIps: parseTrustedIps(values.trustedIps).list });
 
+// the backend accepts at most this many entries (schema/paths/settings/runtime/network/put.json)
+const MAX_TRUSTED_IPS = 1000;
+
 const validate = (values) => {
-	const { errors } = parseTrustedIps(values.trustedIps);
-	if (errors.length === 0) return {};
-	return {
-		trustedIps: errors.map(({ line, message }) => intl.formatMessage({ id: message }, { line })).join(" "),
-	};
+	const { list, errors } = parseTrustedIps(values.trustedIps);
+	if (errors.length > 0) {
+		return {
+			trustedIps: errors.map(({ line, message }) => intl.formatMessage({ id: message }, { line })).join(" "),
+		};
+	}
+	if (list.length > MAX_TRUSTED_IPS) {
+		return {
+			trustedIps: intl.formatMessage({ id: "settings.network.trusted-ips.too-many" }, { max: MAX_TRUSTED_IPS }),
+		};
+	}
+	return {};
 };
 
 export default function Network() {

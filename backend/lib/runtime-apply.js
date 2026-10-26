@@ -232,11 +232,13 @@ const createRuntimeApplier = ({
 			result = await fetchDirectory(server, { verify });
 		} catch (err) {
 			log.warn(`Could not read the ACME server directory ${server}: ${err.message}`);
-			throw new errs.ValidationError("Could not check the ACME server profiles", undefined, { cause: err });
+			throw new errs.ValidationError("profile: Could not check the ACME server profiles", undefined, {
+				cause: err,
+			});
 		}
 		if (Object.hasOwn(result.profiles, profile)) return;
-		if (!result.directory) throw new errs.ValidationError("Could not check the ACME server profiles");
-		throw new errs.ValidationError("The ACME server does not offer this profile");
+		if (!result.directory) throw new errs.ValidationError("profile: Could not check the ACME server profiles");
+		throw new errs.ValidationError("profile: The ACME server does not offer this profile");
 	};
 
 	/**

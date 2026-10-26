@@ -285,6 +285,13 @@ describe("runConfiguredGeoipUpdate", () => {
 		assert.deepEqual(events, []);
 	});
 
+	it("downloads, records and reloads nothing without selected databases", async () => {
+		const { args, events } = make({ account_id: "1", license_key: "k", editions: [] }, { ok: false, updated: [] });
+		const result = await runConfiguredGeoipUpdate(args);
+		assert.deepEqual(result, { ok: true, updated: [] });
+		assert.deepEqual(events, []);
+	});
+
 	it("updates, records and reloads on success", async () => {
 		const { args, events } = make(
 			{ account_id: "1", license_key: "k", editions: ["GeoLite2-ASN"] },

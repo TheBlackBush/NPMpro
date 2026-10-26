@@ -6,6 +6,7 @@ import { useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/h
 import { formatDateTime, intl, T } from "src/locale";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
+import { SaveBar } from "./SaveBar";
 import { StatusAlert } from "./StatusAlert";
 
 const SIGNUP_URL = "https://www.maxmind.com/en/geolite2/signup";
@@ -32,21 +33,27 @@ function Heading() {
 }
 
 function SaveButton({ allLocked }) {
-	const { isSubmitting, dirty } = useFormikContext();
+	const { dirty } = useFormikContext();
 	return (
-		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting || allLocked || !dirty}>
-			<T id="save" />
-		</Button>
+		<SaveBar
+			disabled={allLocked || !dirty}
+			reasonId={allLocked ? "settings.save.all-locked" : undefined}
+			labels={FIELD_LABELS}
+		/>
 	);
 }
 
-const validate = (values) => {
+// field name -> label, for the note next to Save (the inputs' ids differ from the field names)
+const FIELD_LABELS = { accountId: "settings.geoip.account-id", licenseKey: "settings.geoip.license-key" };
+
+// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
+const validateWith = (isLocked) => (values) => {
 	const errors = {};
-	if (!ACCOUNT_ID.test(values.accountId.trim())) {
+	if (!isLocked("accountId") && !ACCOUNT_ID.test(values.accountId.trim())) {
 		errors.accountId = intl.formatMessage({ id: "settings.geoip.account-id.invalid" });
 	}
-	if (values.editions.length === 0) {
-		errors.editions = intl.formatMessage({ id: "settings.geoip.editions.required" });
+	if (!isLocked("licenseKey") && values.licenseKey.length > 255) {
+		errors.licenseKey = intl.formatMessage({ id: "error.max-character-length" }, { max: 255 });
 	}
 	return errors;
 };
@@ -85,7 +92,7 @@ function AccountFields({ data, isLocked }) {
 				)}
 			</Field>
 			<Field name="licenseKey">
-				{({ field }) => (
+				{({ field, meta }) => (
 					<div className="mb-3">
 						<PasswordInput
 							{...field}
@@ -99,6 +106,7 @@ function AccountFields({ data, isLocked }) {
 							autoComplete="new-password"
 							disabled={keyLocked}
 							placeholder={keyPlaceholder}
+							error={meta.error}
 							value={keyLocked ? "" : (field.value ?? "")}
 						/>
 					</div>
@@ -116,7 +124,7 @@ function AccountFields({ data, isLocked }) {
 }
 
 function EditionFields({ isLocked }) {
-	const { values, errors, setFieldValue } = useFormikContext();
+	const { values, setFieldValue } = useFormikContext();
 	const locked = isLocked("editions");
 	const toggle = (edition, on) => {
 		const next = on ? [...values.editions, edition] : values.editions.filter((e) => e !== edition);
@@ -146,7 +154,11 @@ function EditionFields({ isLocked }) {
 					/>
 				))}
 			</div>
-			{errors.editions ? <div className="invalid-feedback d-block">{errors.editions}</div> : null}
+			{values.editions.length === 0 ? (
+				<div className="form-hint">
+					<T id="settings.geoip.editions.none" />
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -311,10 +323,10 @@ export default function Geoip() {
 				licenseKey: "",
 				editions: EDITIONS.map((e) => e.value).filter((e) => (data.editions ?? []).includes(e)),
 			}}
-			validate={validate}
+			validate={validateWith(isLocked)}
 			onSubmit={onSubmit}
 		>
-			<Form className="d-flex flex-column flex-fill">
+			<Form className="d-flex flex-column flex-fill" noValidate>
 				<div className="card-body flex-fill">
 					<Heading />
 					<div ref={errorRef} tabIndex={-1}>
@@ -334,9 +346,7 @@ export default function Geoip() {
 					<EditionFields isLocked={isLocked} />
 					<UpdateStatus data={data} />
 				</div>
-				<div className="card-footer text-end">
-					<SaveButton allLocked={allLocked} />
-				</div>
+				<SaveButton allLocked={allLocked} />
 			</Form>
 		</Formik>
 	);

@@ -249,7 +249,7 @@ it("refuses a profile the ACME server does not offer and writes nothing", async 
 		.applyGroup("certificates", { ...prev, profile: "tlsserver", key_type: "rsa", key_size: "2048" }, prev)
 		.catch((e) => e);
 	assert.equal(err.name, "ValidationError");
-	assert.equal(err.message, "The ACME server does not offer this profile");
+	assert.equal(err.message, "profile: The ACME server does not offer this profile");
 	assert.equal(await readFile(paths.certbotIni, "utf8"), "old ini\n");
 	assert.equal(await readFile(path.join(paths.renewalDir, "a.conf"), "utf8"), conf);
 });
@@ -261,11 +261,11 @@ it("reports an unreachable ACME server", async () => {
 		fetchDirectory: () => Promise.reject(new Error("timeout")),
 	});
 	const err = await down.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
-	assert.equal(err.message, "Could not check the ACME server profiles");
+	assert.equal(err.message, "profile: Could not check the ACME server profiles");
 	assert.equal(err.public, true);
 	const notAcme = applier(paths, { fetchDirectory: async () => ({ directory: false, profiles: {} }) });
 	const err2 = await notAcme.applyGroup("certificates", { ...prev, profile: "classic" }, prev).catch((e) => e);
-	assert.equal(err2.message, "Could not check the ACME server profiles");
+	assert.equal(err2.message, "profile: Could not check the ACME server profiles");
 });
 
 it("does not check an empty profile and removes stale renewal profile lines", async () => {

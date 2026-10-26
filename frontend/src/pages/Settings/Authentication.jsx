@@ -2,7 +2,7 @@ import { IconAlertCircle, IconCircleCheck, IconCircleDashed, IconInfoCircle } fr
 import { Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
 import { Accordion } from "react-bootstrap";
-import { ApiErrorContent, Button, ErrorAlert, Loading } from "src/components";
+import { ApiErrorContent, ErrorAlert, Loading } from "src/components";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -19,16 +19,8 @@ import { ButtonFields } from "./Authentication/ButtonFields";
 import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUsersFields";
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
+import { SaveBar } from "./SaveBar";
 import { StatusAlert } from "./StatusAlert";
-
-function SaveButton() {
-	const { isSubmitting } = useFormikContext();
-	return (
-		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting}>
-			<T id="save" />
-		</Button>
-	);
-}
 
 function Heading() {
 	return (
@@ -104,8 +96,77 @@ function AuthAccordion({ data, isLocked }) {
 	);
 }
 
-const validate = (values) => {
+// the backend's rules (schema/paths/settings/oidc/put.json, internal/oidc-setting-rules.js)
+const ISSUER_URL = /^https:\/\/[^\s/$.?#].[^\s]*$/u;
+const REDIRECT_DOMAIN =
+	/^(?=.{1,253}(?::[0-9]{1,5})?$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?::[0-9]{1,5})?$/u;
+const SCOPES = /^(?=[\x21-\x7e ]*$)(?:.* )?openid(?: .*)?$/u;
+
+// field name -> label, for the note next to Save (the inputs' ids are prefixed, so it cannot find them by name)
+const FIELD_LABELS = {
+	issuerUrl: "settings.authentication.issuer-url",
+	clientId: "settings.authentication.client-id",
+	clientSecret: "settings.authentication.client-secret",
+	redirectDomain: "settings.authentication.redirect-domain",
+	scopes: "settings.authentication.scopes",
+	disablePassword: "settings.authentication.disable-password",
+	buttonLabel: "settings.authentication.button.label",
+	buttonColor: "settings.authentication.button.color",
+	autoCreateDomains: "settings.authentication.allowed-domains",
+};
+
+const maxLength = (value, max) =>
+	value.length > max ? intl.formatMessage({ id: "error.max-character-length" }, { max }) : null;
+
+/**
+ * @param {Object}   data      the stored settings (GET /settings/oidc)
+ * @param {Function} isLocked  camelCase key -> locked by env
+ */
+const validateWith = (data, isLocked) => (values) => {
 	const errors = {};
+	const set = (key, message) => {
+		if (message && !isLocked(key) && !errors[key]) errors[key] = message;
+	};
+	const issuerUrl = values.issuerUrl.trim();
+	set("issuerUrl", maxLength(issuerUrl, 2048));
+	if (issuerUrl && !ISSUER_URL.test(issuerUrl)) {
+		set("issuerUrl", intl.formatMessage({ id: "settings.authentication.issuer-url.invalid" }));
+	}
+	set("clientId", maxLength(values.clientId.trim(), 255));
+	set("clientSecret", maxLength(values.clientSecret, 1024));
+	const redirectDomain = values.redirectDomain.trim();
+	set("redirectDomain", maxLength(redirectDomain, 260));
+	if (redirectDomain && !REDIRECT_DOMAIN.test(redirectDomain)) {
+		set("redirectDomain", intl.formatMessage({ id: "settings.authentication.redirect-domain.invalid" }));
+	}
+	const scopes = values.scopes.trim();
+	set("scopes", maxLength(scopes, 255));
+	if (scopes && !SCOPES.test(scopes)) {
+		set("scopes", intl.formatMessage({ id: "settings.authentication.scopes.invalid" }));
+	}
+
+	// the saved secret is only sent to the issuer and client it was entered for
+	const moved = ["issuerUrl", "clientId"].some(
+		(key) => !isLocked(key) && data[key] && values[key].trim() !== data[key],
+	);
+	if (moved && data.clientSecretSet && !values.clientSecret) {
+		set("clientSecret", intl.formatMessage({ id: "error.oidc-secret-required" }));
+	}
+
+	// from a password session a save may not end with password login disabled when it was not before
+	if (data.sessionAuthMethod !== "oidc") {
+		const connection = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
+		const secretKept = data.clientSecretSet && !data.secretError && !moved;
+		const complete = connection.every((key) =>
+			key === "clientSecret" ? Boolean(values.clientSecret) || secretKept : Boolean(values[key].trim()),
+		);
+		const activeAfter = (values.enabled || connection.every(isLocked)) && complete;
+		const disabledBefore = Boolean(data.active && data.disablePassword);
+		if (!disabledBefore && activeAfter && values.disablePassword) {
+			set("disablePassword", intl.formatMessage({ id: "error.oidc-disable-password-session" }));
+		}
+	}
+
 	if (!isOidcColor(values.buttonColor)) {
 		errors.buttonColor = intl.formatMessage({ id: "settings.authentication.button.color.invalid" });
 	}
@@ -223,10 +284,10 @@ export default function Authentication() {
 				// a built-in icon picked but not saved yet; null keeps the stored icon (uploads save on their own)
 				buttonIcon: null,
 			}}
-			validate={validate}
+			validate={validateWith(data, isLocked)}
 			onSubmit={onSubmit}
 		>
-			<Form className="d-flex flex-column flex-fill">
+			<Form className="d-flex flex-column flex-fill" noValidate>
 				<div className="card-body flex-fill">
 					<Heading />
 					<div ref={errorRef} tabIndex={-1}>
@@ -259,9 +320,7 @@ export default function Authentication() {
 					<ButtonFields data={data} />
 					<AuthAccordion data={data} isLocked={isLocked} />
 				</div>
-				<div className="card-footer text-end">
-					<SaveButton />
-				</div>
+				<SaveBar labels={FIELD_LABELS} />
 			</Form>
 		</Formik>
 	);

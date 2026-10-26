@@ -1,7 +1,7 @@
 import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { Field, Form, Formik, useFormikContext } from "formik";
 import { useSyncExternalStore } from "react";
-import { Button, ErrorAlert, Loading, SwitchField } from "src/components";
+import { ErrorAlert, Loading, SwitchField } from "src/components";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
@@ -18,6 +18,7 @@ import {
 	useRuntimeSection,
 	useSaveError,
 } from "./Runtime/RuntimeSection";
+import { SaveBar } from "./SaveBar";
 import { StatusAlert } from "./StatusAlert";
 
 const RETENTION_MIN = 7;
@@ -39,12 +40,8 @@ function Heading() {
 }
 
 function SaveButton({ allLocked }) {
-	const { isSubmitting, dirty } = useFormikContext();
-	return (
-		<Button type="submit" color="teal" isLoading={isSubmitting} disabled={isSubmitting || allLocked || !dirty}>
-			<T id="save" />
-		</Button>
-	);
+	const { dirty } = useFormikContext();
+	return <SaveBar disabled={allLocked || !dirty} reasonId={allLocked ? "settings.save.all-locked" : undefined} />;
 }
 
 // logsLocked: the logs keys locked by env (a GOACLA without --keep-last has no keep days to check)
@@ -58,7 +55,10 @@ const validateWith = (logsLocked) => (values) => {
 		);
 	}
 	const rotations = Number(values.logRotations);
-	if (!Number.isInteger(rotations) || rotations < ROTATIONS.min || rotations > ROTATIONS.max) {
+	if (
+		!logsLocked.includes("log_rotations") &&
+		(!Number.isInteger(rotations) || rotations < ROTATIONS.min || rotations > ROTATIONS.max)
+	) {
 		errors.logRotations = intl.formatMessage({ id: "settings.runtime.number.invalid" }, ROTATIONS);
 	}
 	const keepDays = Number(values.goaccessKeepDays);
@@ -540,9 +540,7 @@ export default function Monitoring() {
 					</RuntimeContext.Provider>
 					<Fields isLocked={isLocked} />
 				</div>
-				<div className="card-footer text-end">
-					<SaveButton allLocked={allLocked} />
-				</div>
+				<SaveButton allLocked={allLocked} />
 			</Form>
 		</Formik>
 	);

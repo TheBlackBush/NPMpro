@@ -40,6 +40,8 @@ const runOnce = async ({ geoip, dir, recordResult, getConfig, update = updateGeo
 	if (!values.account_id || !values.license_key) {
 		return { ok: false, updated: [], error: "MaxMind account ID and license key are required" };
 	}
+	// no databases selected: nothing to download, the files already downloaded stay
+	if (values.editions.length === 0) return { ok: true, updated: [] };
 	const result = await update({
 		accountId: values.account_id,
 		licenseKey: values.license_key,

@@ -13,7 +13,7 @@ function TextField({ name, label, hint, locked, type = "text", placeholder, ...r
 	const hintId = `${id}-hint`;
 	return (
 		<Field name={name}>
-			{({ field }) => (
+			{({ field, meta }) => (
 				<div className="mb-3">
 					<label className="form-label" htmlFor={id}>
 						{label}
@@ -23,14 +23,23 @@ function TextField({ name, label, hint, locked, type = "text", placeholder, ...r
 						{...field}
 						id={id}
 						type={type}
-						className="form-control"
+						className={`form-control ${meta.error ? "is-invalid" : ""}`}
 						autoComplete="off"
 						placeholder={placeholder}
 						disabled={locked}
-						aria-describedby={hint ? hintId : undefined}
+						aria-invalid={meta.error ? "true" : undefined}
+						aria-describedby={
+							[meta.error ? `${id}-error` : null, hint ? hintId : null].filter(Boolean).join(" ") ||
+							undefined
+						}
 						value={field.value ?? ""}
 						{...rest}
 					/>
+					{meta.error ? (
+						<div className="invalid-feedback" id={`${id}-error`}>
+							{meta.error}
+						</div>
+					) : null}
 					{hint ? (
 						<div className="form-hint" id={hintId}>
 							{hint}
@@ -129,7 +138,7 @@ function ProviderFields({ data, isLocked }) {
 				locked={isLocked("clientId")}
 			/>
 			<Field name="clientSecret">
-				{({ field }) => (
+				{({ field, meta }) => (
 					<div className="mb-3">
 						<PasswordInput
 							{...field}
@@ -143,6 +152,7 @@ function ProviderFields({ data, isLocked }) {
 							autoComplete="new-password"
 							disabled={secretLocked}
 							placeholder={secretPlaceholder}
+							error={meta.error}
 							value={secretLocked ? "" : (field.value ?? "")}
 						/>
 					</div>
