@@ -231,6 +231,21 @@ it("replaces users but keeps the restoring admin, skips the admin's email and mo
 	await knex.destroy();
 });
 
+it("keeps the users' own session cut-off when now is null (the rollback to the automatic backup)", async () => {
+	const knex = await sqlite();
+	try {
+		const data = usersData();
+		data.users.user[2].npmpro_token_valid_after = 1234;
+		await replaceTypes({ knex, data, types: ["users"], adminUserId: 1, box, now: null });
+		const users = await knex("user").orderBy("id");
+		assert.equal(users.find((row) => row.email === "six@example.com").npmpro_token_valid_after, 1234);
+		assert.equal(users.find((row) => row.email === "someone@example.com").npmpro_token_valid_after, 0);
+		assert.equal(users.find((row) => row.id === 1).npmpro_token_valid_after, 5);
+	} finally {
+		await knex.destroy();
+	}
+});
+
 it("hands the instance's rows of a removed user to the admin", async () => {
 	const knex = await sqlite();
 	const result = await replaceTypes({

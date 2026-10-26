@@ -331,7 +331,8 @@ const createBackupService = ({
 				types: restoreTypes,
 				adminUserId,
 				box,
-				now: Math.floor(clock.now() / 1000),
+				// the users' sessions stay as they were before the failed restore
+				now: null,
 			});
 			await swapFiles({ dataDir, stageDir: auto.stageDir, types, asideDir });
 			if (types.includes("certificates")) await relinkCertbotLive({ dataDir, ids: certificateIdsBefore });

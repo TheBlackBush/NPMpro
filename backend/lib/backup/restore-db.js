@@ -297,7 +297,7 @@ const checkTypeRows = async (trx, table, where, rows) => {
 const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => {
 	const admin = await findAdmin(trx, adminUserId);
 	const split = splitUsers(rowsByTable.user, admin);
-	const stamp = (row) => ({ ...row, npmpro_token_valid_after: now });
+	const stamp = now === null ? (row) => row : (row) => ({ ...row, npmpro_token_valid_after: now });
 	await inserter.insert("user", split.users.map(stamp));
 	if (split.moved) split.idMap.set(key(split.moved.id), await inserter.insertWithNewId("user", stamp(split.moved)));
 	const restoredIds = new Set([...split.users, ...(split.moved ? [split.moved] : [])].map((row) => key(row.id)));
@@ -324,7 +324,8 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
  * @param   {string[]}  options.types
  * @param   {number}    options.adminUserId   the restoring admin, kept as they are
  * @param   {Object}    options.box           the secret box that seals the secrets
- * @param   {number}    [options.now]         seconds, npmpro_token_valid_after of the restored users
+ * @param   {?number}   [options.now]         seconds, npmpro_token_valid_after of the restored users; null keeps
+ *                                            the backup's values (the rollback to the automatic backup)
  * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number> }>}
  */
 const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.floor(Date.now() / 1000) }) => {
