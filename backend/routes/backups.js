@@ -12,10 +12,11 @@ const router = express.Router({ caseSensitive: true, strict: true, mergeParams: 
 
 const FALLBACK_NAME = "npmpro-backup.npmpro";
 
-// sends the file; a pending download is removed afterwards, sent or not
+// sends the file; a pending download is removed afterwards, sent or not.
+// dotfiles: pending downloads are stored as .pending-<id>.npmpro, which send ignores (404) by default
 const sendFile = (res, file, name, { once = false } = {}) =>
 	new Promise((resolve, reject) => {
-		res.status(200).download(file, name, async (err) => {
+		res.status(200).download(file, name, { dotfiles: "allow" }, async (err) => {
 			if (once) await rm(file, { force: true });
 			if (err && !res.headersSent) reject(err);
 			else resolve();
