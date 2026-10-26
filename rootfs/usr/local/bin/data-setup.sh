@@ -59,6 +59,15 @@ mkdir -vp /data/public/avatar \
           /data/nginx/logs \
           /data/custom_nginx
 
+mkdir -vp /data/backups/auto /data/backups/database
+chmod 700 /data/backups /data/backups/auto /data/backups/database
+
+# database copies made before migrations moved from /data/npmpro/backups (2026-10)
+if [ -d /data/npmpro/backups ]; then
+    find /data/npmpro/backups -maxdepth 1 -type f -name "database-*.sqlite" -exec mv -vn {} /data/backups/database/ \;
+    rmdir /data/npmpro/backups 2>/dev/null || true
+fi
+
 
 if [ -n "$(ls -A /data/nginx/custom 2> /dev/null)"  ]; then
     cp -van /data/nginx/custom/* /data/custom_nginx

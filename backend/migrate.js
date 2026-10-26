@@ -4,7 +4,7 @@ import { isSqlite, SQLITE_FILE } from "./lib/config.js";
 import { migrate as logger } from "./logger.js";
 
 const migrationConfig = { tableName: "migrations", directory: "migrations" };
-const backupDir = "/data/npmpro/backups";
+const backupDir = "/data/backups/database";
 const keepBackups = 5;
 const backupPattern = /^database-.+\.sqlite$/u;
 

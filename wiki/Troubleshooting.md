@@ -89,7 +89,7 @@ The new password is read from stdin (leave it empty to keep the current one). `-
 
 ## Database backup and restore
 
-With SQLite, NPMpro copies the database to `/data/npmpro/backups` before it runs database migrations (the newest 5 copies are kept). To go back to the previous image:
+With SQLite, NPMpro copies the database to `/data/backups/database` before it runs database migrations (the newest 5 copies are kept). To go back to the previous image:
 
 1. Stop the container.
 2. Replace `/data/npmpro/database.sqlite` with the backup and remove `database.sqlite-wal` and `database.sqlite-shm` next to it.

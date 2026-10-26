@@ -157,7 +157,7 @@ fi
 # created here and the old top-level leftovers are removed after data-setup.sh
 chown 0:0 /data
 chmod 755 /data
-mkdir -p /data/npmpro /data/tls /data/public /data/access /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
+mkdir -p /data/npmpro /data/backups /data/tls /data/public /data/access /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
 # Migration from nginx-proxy-manager: its /etc/letsencrypt (certbot's data, private keys only root may read) is copied
 # as root, before /data is handed to PUID. The mount has to be removed afterwards, so the message only comes when

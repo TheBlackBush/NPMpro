@@ -92,7 +92,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 - most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](#settings-and-environment-variables))
 - an Environment page (Settings, Environment) that lists the startup variables read-only, secrets never shown
 - audit log, users with per-section permissions, light and dark theme
-- database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/npmpro/backups` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
+- database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/backups/database` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
 - Alpine based, a much smaller image
 - many other things, see this README and the [compose.yaml](compose.yaml)
 
