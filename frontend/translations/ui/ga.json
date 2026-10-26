@@ -235,6 +235,8 @@
 	"settings.backup.reason.confirm": "Confirm the replacement first",
 	"settings.backup.reason.no-restore-types": "Choose at least one part to restore",
 	"settings.backup.reason.no-types": "Choose at least one part to back up",
+	"settings.backup.reason.parts-failed": "The parts of this backup could not be shown",
+	"settings.backup.reason.parts-loading": "Loading the parts of this backup…",
 	"settings.backup.restore": "Restore",
 	"settings.backup.restore.confirm": "I understand that the selected parts on this instance are replaced",
 	"settings.backup.restore.continue": "Continue",

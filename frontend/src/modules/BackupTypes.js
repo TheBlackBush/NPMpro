@@ -83,3 +83,33 @@ export function withErrorDetails(err) {
 		payload: { ...err.payload, error: { ...apiError, output: apiError.message } },
 	});
 }
+
+/**
+ * Why a restore cannot start yet, a translation id or null. shown: the type ids the tree shows (null while the types
+ * are not loaded), so a restore never replaces a part the user did not see ticked.
+ *
+ * @param {Object}        state
+ * @param {string[]}      state.selected
+ * @param {string[]|null} state.shown
+ * @param {boolean}       [state.partsFailed]  the types could not be loaded
+ * @param {boolean}       [state.checkFailed]  the check of the selection failed
+ * @param {boolean}       [state.stale]        the check of the selection is still running
+ * @param {boolean}       [state.confirmed]
+ */
+export function restoreBlockReason({
+	selected,
+	shown,
+	partsFailed = false,
+	checkFailed = false,
+	stale = false,
+	confirmed = false,
+}) {
+	if (shown === null)
+		return partsFailed ? "settings.backup.reason.parts-failed" : "settings.backup.reason.parts-loading";
+	if (selected.some((id) => !shown.includes(id))) return "settings.backup.reason.parts-failed";
+	if (selected.length === 0) return "settings.backup.reason.no-restore-types";
+	if (checkFailed) return "settings.backup.reason.check-failed";
+	if (stale) return "settings.backup.reason.checking";
+	if (!confirmed) return "settings.backup.reason.confirm";
+	return null;
+}

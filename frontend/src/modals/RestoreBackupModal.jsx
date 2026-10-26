@@ -1,11 +1,12 @@
 import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { cancelRestore, checkRestore, inspectBackup } from "src/api/backend";
 import { AppModal, Button, ErrorAlert, Loading, PasswordInput } from "src/components";
 import { useBackupTypes, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
 import { formatDateTime, intl, T } from "src/locale";
-import { categoriesOf, PASSPHRASE_MIN_LENGTH, withErrorDetails } from "src/modules/BackupTypes";
+import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetails } from "src/modules/BackupTypes";
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
@@ -198,6 +199,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const baseId = useId();
 	const { data: typesData, error: typesError } = useBackupTypes();
 	const restore = useRestoreBackup();
+	const queryClient = useQueryClient();
 	const [step, setStep] = useState(needsPassphrase ? "passphrase" : "opening");
 	const [passphrase, setPassphrase] = useState("");
 	const [openError, setOpenError] = useState(null);
@@ -296,6 +298,9 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 			setResult(await restore.mutateAsync({ token, types: selected }));
 			setStep("done");
 		} catch (err) {
+			// the automatic backup made before the restore is listed now; after a failed rollback anything may differ
+			const rollbackFailed = err?.payload?.error?.message_i18n === "backup.error.rollback-failed";
+			void queryClient.invalidateQueries(rollbackFailed ? undefined : { queryKey: ["backups"] });
 			setRestoreError(withErrorDetails(err));
 			setStep("failed");
 		}
@@ -309,14 +314,16 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const reasonId = `${baseId}-reason`;
 	const passphraseShort = [...passphrase].length < PASSPHRASE_MIN_LENGTH;
 	const stale = checking || selected !== checkedRef.current;
-	let restoreReason = null;
-	if (selected.length === 0) restoreReason = "settings.backup.reason.no-restore-types";
-	else if (checkError) restoreReason = "settings.backup.reason.check-failed";
-	else if (stale) restoreReason = "settings.backup.reason.checking";
-	else if (!confirmed) restoreReason = "settings.backup.reason.confirm";
-
 	const manifest = opened?.manifest;
 	const categories = typesData && manifest ? categoriesOf(typesData.categories, manifest.types) : [];
+	const restoreReason = restoreBlockReason({
+		selected,
+		shown: typesData && manifest ? categories.flatMap((category) => category.types) : null,
+		partsFailed: Boolean(typesError),
+		checkFailed: Boolean(checkError),
+		stale,
+		confirmed,
+	});
 
 	let body = null;
 	let footer = null;
@@ -409,7 +416,16 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 				<div className="form-label">
 					<T id="settings.backup.restore.parts" />
 				</div>
-				<TypeTree categories={categories} counts={manifest.counts} selected={selected} onChange={setSelected} />
+				<TypeTree
+					categories={categories}
+					counts={manifest.counts}
+					selected={selected}
+					onChange={(next) => {
+						setSelected(next);
+						// the confirmation covers the selection it was given for
+						setConfirmed(false);
+					}}
+				/>
 				<ErrorAlert error={checkError} />
 				{preview && selected.length > 0 ? <PreviewLists preview={preview} /> : null}
 				<Alert variant="danger" icon={IconAlertCircle}>

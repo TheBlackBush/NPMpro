@@ -6,6 +6,7 @@ import {
 	contentLabels,
 	DEFAULT_SELECTED,
 	passphraseErrors,
+	restoreBlockReason,
 	toggleCategory,
 	toggleType,
 	withErrorDetails,
@@ -100,4 +101,19 @@ it("withErrorDetails offers the message of detailed backup errors as output", ()
 	const withOutput = apiError({ message_i18n: "backup.error.nginx-failed", message: "m", output: "o" });
 	assert.equal(withErrorDetails(withOutput), withOutput);
 	assert.equal(withErrorDetails(null), null);
+});
+
+it("restoreBlockReason blocks a restore of parts the tree does not show", () => {
+	const ready = { selected: ["streams"], shown: ["streams", "users"], confirmed: true };
+	assert.equal(restoreBlockReason(ready), null);
+	assert.equal(restoreBlockReason({ ...ready, shown: null }), "settings.backup.reason.parts-loading");
+	assert.equal(
+		restoreBlockReason({ ...ready, shown: null, partsFailed: true }),
+		"settings.backup.reason.parts-failed",
+	);
+	assert.equal(restoreBlockReason({ ...ready, shown: ["users"] }), "settings.backup.reason.parts-failed");
+	assert.equal(restoreBlockReason({ ...ready, selected: [] }), "settings.backup.reason.no-restore-types");
+	assert.equal(restoreBlockReason({ ...ready, checkFailed: true }), "settings.backup.reason.check-failed");
+	assert.equal(restoreBlockReason({ ...ready, stale: true }), "settings.backup.reason.checking");
+	assert.equal(restoreBlockReason({ ...ready, confirmed: false }), "settings.backup.reason.confirm");
 });
