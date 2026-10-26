@@ -113,6 +113,14 @@ const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, meta 
 	return { manifest, summary: { format, types, counts, created_at, npmpro_version, secrets } };
 };
 
+// the files below a stage folder; the folder itself must be a real directory (or absent)
+const listStageFiles = async (dir, name) => {
+	const info = await lstat(dir).catch(() => null);
+	if (!info) return [];
+	if (!info.isDirectory()) throw invalid(`${name} is not a directory`);
+	return listFiles(dir);
+};
+
 const invalid = (reason) => new BackupError("invalid-archive", reason);
 
 // a manifest file path that stays inside files/
@@ -132,26 +140,25 @@ const isStagePath = (value) =>
  */
 const verifyStage = async (stageDir, manifest) => {
 	if (!Array.isArray(manifest?.files) || !Array.isArray(manifest.types)) throw invalid("The manifest is incomplete");
+	const present = new Set(
+		(await listStageFiles(path.join(stageDir, "files"), "files")).map((rel) => `${FILES_PREFIX}${rel}`),
+	);
 	const listed = new Set();
 	for (const entry of manifest.files) {
 		if (!isStagePath(entry?.path)) throw invalid("The manifest lists an invalid file path");
 		if (listed.has(entry.path)) throw invalid(`${entry.path} is listed twice`);
 		listed.add(entry.path);
+		// only paths the walk found are read: it has already refused every symlink under files/
+		if (!present.has(entry.path)) throw invalid(`${entry.path} is missing`);
 		const full = path.join(stageDir, entry.path);
-		const info = await lstat(full).catch(() => null);
-		if (!info?.isFile()) throw invalid(`${entry.path} is missing`);
-		if (info.size !== entry.size || (await sha256(full)) !== entry.sha256) {
+		if ((await stat(full)).size !== entry.size || (await sha256(full)) !== entry.sha256) {
 			throw invalid(`${entry.path} does not match the manifest`);
 		}
 	}
-	const filesDir = path.join(stageDir, "files");
-	const present = existsSync(filesDir) ? await listFiles(filesDir) : [];
 	for (const rel of present) {
-		if (!listed.has(`${FILES_PREFIX}${rel}`)) throw invalid(`${FILES_PREFIX}${rel} is not in the manifest`);
+		if (!listed.has(rel)) throw invalid(`${rel} is not in the manifest`);
 	}
-	const dataDir = path.join(stageDir, "data");
-	const dataFiles = existsSync(dataDir) ? await listFiles(dataDir) : [];
-	for (const rel of dataFiles) {
+	for (const rel of await listStageFiles(path.join(stageDir, "data"), "data")) {
 		const typeId = rel.endsWith(".json") ? rel.slice(0, -".json".length) : null;
 		if (typeId === null || !manifest.types.includes(typeId)) throw invalid(`data/${rel} is not a chosen type`);
 	}

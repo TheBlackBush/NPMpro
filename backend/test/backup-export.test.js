@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -171,6 +171,43 @@ it("verifyStage refuses manifest paths outside files/", async () => {
 		const tampered = { ...manifest, files: [...manifest.files, { path: bad, size: 0, sha256: "" }] };
 		await assert.rejects(verifyStage(paths.stageDir, tampered), INVALID);
 	}
+	await knex.destroy();
+	await rm(paths.root, { recursive: true });
+});
+
+it("verifyStage refuses symlinks under files/ and a symlinked files/ or data/ without reading through them", async () => {
+	const knex = await sqlite();
+	const paths = await setup();
+	const { manifest } = await run(knex, paths, { secrets: false });
+	const outside = path.join(paths.root, "outside");
+	await put(path.join(outside, "secret.txt"), "outside");
+	const outsideEntry = {
+		path: "files/link/secret.txt",
+		size: 7,
+		sha256: createHash("sha256").update("outside").digest("hex"),
+	};
+	const tampered = { ...manifest, files: [...manifest.files, outsideEntry] };
+
+	await symlink(outside, path.join(paths.stageDir, "files/link"));
+	await assert.rejects(verifyStage(paths.stageDir, tampered), {
+		code: "invalid-archive",
+		message: /link is not a regular file/u,
+	});
+	await rm(path.join(paths.stageDir, "files/link"));
+
+	for (const name of ["files", "data"]) {
+		const real = path.join(paths.stageDir, name);
+		const claimed = name === "files" ? tampered : manifest;
+		await rename(real, `${real}-real`);
+		await symlink(outside, real);
+		await assert.rejects(verifyStage(paths.stageDir, claimed), {
+			code: "invalid-archive",
+			message: new RegExp(`${name} is not a directory`, "u"),
+		});
+		await rm(real);
+		await rename(`${real}-real`, real);
+	}
+	await verifyStage(paths.stageDir, manifest);
 	await knex.destroy();
 	await rm(paths.root, { recursive: true });
 });
