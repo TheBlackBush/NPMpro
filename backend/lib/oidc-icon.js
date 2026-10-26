@@ -1,6 +1,9 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
+import { isIP } from "node:net";
+import { fetch } from "undici";
 import pjson from "../package.json" with { type: "json" };
 import errs from "./error.js";
+import { blockedError, guardedAgent, isBlockedAddress } from "./outbound-guard.js";
 
 /**
  * OIDC login button icon: type detection, SVG checks, URL download and the stored file
@@ -185,22 +188,30 @@ const readLimited = async (response) => {
 };
 
 /**
- * Downloads an icon over http or https (private addresses allowed). Redirects are
- * followed manually, at most 3, each one re-checked. The body is cut off above 256 KB.
+ * Downloads an icon over http or https. Private LAN addresses are allowed (a self-hosted identity provider), this
+ * host, link-local (cloud metadata) and multicast addresses are not (lib/outbound-guard.js), also after a redirect.
+ * Redirects are followed manually, at most 3, each one re-checked. The body is cut off above 256 KB.
  * Response bodies never end up in error messages.
  *
  * @param   {string}  value      the URL
  * @param   {number}  [timeout]  total timeout in ms (default 10 s)
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.allowLocal]  tests only: no address check
  * @returns {Promise<Buffer>}
  * @throws  {errs.ValidationError}
  */
-const downloadIcon = async (value, timeout = DOWNLOAD_TIMEOUT_MS) => {
+const downloadIcon = async (value, timeout = DOWNLOAD_TIMEOUT_MS, { allowLocal = false } = {}) => {
 	let url = httpUrl(value);
 	const signal = AbortSignal.timeout(timeout);
 	try {
 		for (let redirects = 0; ; redirects++) {
+			// a host that is an IP address is never looked up, so it is checked here; names are checked at connect
+			if (!allowLocal && isIP(url.hostname.replace(/^\[|\]$/gu, "")) !== 0 && isBlockedAddress(url.hostname)) {
+				throw blockedError(url.hostname);
+			}
 			const response = await fetch(url, {
 				redirect: "manual",
+				...(allowLocal ? {} : { dispatcher: guardedAgent }),
 				signal,
 				headers: { "User-Agent": `NPMpro/${pjson.version}`, Accept: Object.values(ICON_MIME).join(", ") },
 			});
@@ -220,6 +231,15 @@ const downloadIcon = async (value, timeout = DOWNLOAD_TIMEOUT_MS) => {
 	} catch (err) {
 		if (err instanceof errs.ValidationError) throw err;
 		if (signal.aborted) throw new errs.ValidationError("Icon download timed out");
+		let cause = err;
+		while (cause && cause.code !== "EBLOCKED") cause = cause.cause;
+		if (cause) {
+			throw new errs.ValidationError(
+				"Icon download failed: the address is not allowed (this host, link-local or multicast)",
+				undefined,
+				{ cause: err },
+			);
+		}
 		throw new errs.ValidationError("Icon download failed: could not connect", undefined, { cause: err });
 	}
 };

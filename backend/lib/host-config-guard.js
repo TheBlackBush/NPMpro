@@ -35,7 +35,8 @@ const aliasPrefixError = () =>
 		"error.path-scheme-alias-prefix",
 	);
 
-const UNSAFE_PATH_CHARS = /[\s\p{Cc}$;{}"'\\#]/u;
+// anything but printable ASCII (whitespace, control and non-ASCII characters) and what nginx treats specially
+const UNSAFE_PATH_CHARS = /[^\x21-\x7e]|[$;{}"'\\#]/u;
 
 const asText = (value) => (typeof value === "string" ? value : "");
 const isBlank = (value) => asText(value).trim() === "";
@@ -126,15 +127,34 @@ const locationKey = (location) => `${location.location_type ?? ""}\u0000${locati
 const assertLocations = (isAdmin, locations, storedLocations = []) => {
 	if (isAdmin || !Array.isArray(locations)) return;
 	const stored = new Map((storedLocations ?? []).map((location) => [locationKey(location), location]));
-	for (const location of locations) {
+	for (const payload of locations) {
+		// a saved location without a scheme gets the column default, so the checks use it too
+		const location = { ...payload, forward_scheme: payload.forward_scheme ?? "http" };
 		const match = stored.get(locationKey(location));
-		if (location.advanced_config === undefined) {
-			location.advanced_config = match?.advanced_config ?? "";
+		if (payload.advanced_config === undefined) {
+			payload.advanced_config = match?.advanced_config ?? "";
 		} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
 			throw advancedConfigError();
 		}
 		assertPathScheme(false, location, match);
 		assertAliasPrefix(location, match);
+	}
+};
+
+/**
+ * Two custom locations with the same type and path: nginx would reject the config, so refused for everyone
+ *
+ * @param {Object[]} [locations]
+ */
+const assertUniqueLocations = (locations) => {
+	if (!Array.isArray(locations)) return;
+	const seen = new Set();
+	for (const location of locations) {
+		const key = locationKey(location);
+		if (seen.has(key)) {
+			throw new errs.ValidationError(`Two custom locations have the same path: ${location.path}`);
+		}
+		seen.add(key);
 	}
 };
 
@@ -150,6 +170,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 	const isAdmin = access.isAdmin === true;
 	assertConfigFields(isAdmin, data, stored, CONFIG_FIELDS[hostType]);
 	if (hostType === "proxy_host") {
+		assertUniqueLocations(data.locations);
 		assertPathScheme(isAdmin, data, stored);
 		assertLocations(isAdmin, data.locations, stored?.locations);
 	}
@@ -161,6 +182,7 @@ export {
 	assertHostConfig,
 	assertLocations,
 	assertPathScheme,
+	assertUniqueLocations,
 	CONFIG_FIELDS,
 	isInsideWebroot,
 	sameConfig,

@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { after, before, it } from "node:test";
 import { checkIcon, detectIconType, downloadIcon, ICON_MAX_BYTES, ICON_MIME, svgIsSafe } from "../lib/oidc-icon.js";
+import { isBlockedAddress } from "../lib/outbound-guard.js";
+
+// the test server listens on 127.0.0.1, which the address check refuses
+const LOCAL = { allowLocal: true };
 
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
 const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
@@ -221,23 +225,23 @@ it("maps every type to a mime type", () => {
 });
 
 it("downloads an icon", async () => {
-	assert.deepEqual(await downloadIcon(`${base}/icon.png`), png);
+	assert.deepEqual(await downloadIcon(`${base}/icon.png`, undefined, LOCAL), png);
 });
 
 it("follows at most three redirects", async () => {
-	assert.deepEqual(await downloadIcon(`${base}/hop/2`), png);
-	await assert.rejects(downloadIcon(`${base}/hop/3`), TOO_MANY_REDIRECTS);
+	assert.deepEqual(await downloadIcon(`${base}/hop/2`, undefined, LOCAL), png);
+	await assert.rejects(downloadIcon(`${base}/hop/3`, undefined, LOCAL), TOO_MANY_REDIRECTS);
 });
 
 it("refuses other protocols, also after a redirect", async () => {
 	await assert.rejects(downloadIcon("ftp://example.com/icon.png"), HTTP_ONLY);
 	await assert.rejects(downloadIcon("file:///etc/passwd"), HTTP_ONLY);
 	await assert.rejects(downloadIcon("not a url"), HTTP_ONLY);
-	await assert.rejects(downloadIcon(`${base}/ftp`), HTTP_ONLY);
+	await assert.rejects(downloadIcon(`${base}/ftp`, undefined, LOCAL), HTTP_ONLY);
 });
 
 it("reports the status without the response body", async () => {
-	await assert.rejects(downloadIcon(`${base}/missing`), (err) => {
+	await assert.rejects(downloadIcon(`${base}/missing`, undefined, LOCAL), (err) => {
 		assert.match(err.message, HTTP_404);
 		assert.doesNotMatch(err.message, BODY_TEXT);
 		return true;
@@ -245,10 +249,38 @@ it("reports the status without the response body", async () => {
 });
 
 it("cuts off large downloads", async () => {
-	await assert.rejects(downloadIcon(`${base}/big`), TOO_LARGE);
-	await assert.rejects(downloadIcon(`${base}/big-stream`), TOO_LARGE);
+	await assert.rejects(downloadIcon(`${base}/big`, undefined, LOCAL), TOO_LARGE);
+	await assert.rejects(downloadIcon(`${base}/big-stream`, undefined, LOCAL), TOO_LARGE);
 });
 
 it("times out", async () => {
-	await assert.rejects(downloadIcon(`${base}/slow`, 200), TIMED_OUT);
+	await assert.rejects(downloadIcon(`${base}/slow`, 200, LOCAL), TIMED_OUT);
+});
+
+it("refuses this host, link-local and multicast addresses, also behind a name", async () => {
+	const BLOCKED = /not allowed/u;
+	await assert.rejects(downloadIcon("http://127.0.0.1/icon.png"), BLOCKED);
+	await assert.rejects(downloadIcon("http://169.254.169.254/latest/meta-data"), BLOCKED);
+	await assert.rejects(downloadIcon("http://[::1]/icon.png"), BLOCKED);
+	await assert.rejects(downloadIcon("http://[::ffff:127.0.0.1]/icon.png"), BLOCKED);
+	await assert.rejects(downloadIcon("http://localhost/icon.png"), BLOCKED);
+});
+
+it("knows which addresses are blocked", () => {
+	for (const ip of [
+		"127.0.0.1",
+		"0.0.0.0",
+		"169.254.169.254",
+		"224.0.0.1",
+		"::1",
+		"[::1]",
+		"fe80::1",
+		"::ffff:127.0.0.1",
+	]) {
+		assert.equal(isBlockedAddress(ip), true, ip);
+	}
+	for (const ip of ["192.168.1.10", "10.0.0.5", "172.16.3.4", "100.64.0.1", "8.8.8.8", "fd00::1", "2001:db8::1"]) {
+		assert.equal(isBlockedAddress(ip), false, ip);
+	}
+	assert.equal(isBlockedAddress("example.com"), true);
 });

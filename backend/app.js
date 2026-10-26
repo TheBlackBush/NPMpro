@@ -52,6 +52,8 @@ app.use((req, res, next) => {
 
 app.use("/", mainRoutes);
 
+const COMMAND_OUTPUT_MAX = 8000;
+
 // production error handler
 // no stacktraces leaked to user
 app.use((err, req, res, _) => {
@@ -68,8 +70,11 @@ app.use((err, req, res, _) => {
 		payload.error.message_i18n = err.message_i18n;
 	}
 
+	// on purpose, although the error is not public: the UI shows the certbot or nginx output so a failed certificate
+	// request or config can be fixed (DNS, rate limits, a rejected directive). Only the end, where the cause is.
 	if (err instanceof errs.CommandError) {
-		payload.error.output = err.message;
+		payload.error.output =
+			err.message.length > COMMAND_OUTPUT_MAX ? `…${err.message.slice(-COMMAND_OUTPUT_MAX)}` : err.message;
 	}
 
 	// Not every error is worth logging - but this is good for now until it gets annoying.

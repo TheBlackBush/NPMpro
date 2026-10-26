@@ -494,6 +494,7 @@
 	"object.event.created": "Created {object}",
 	"object.event.deleted": "Deleted {object}",
 	"object.event.disabled": "Disabled {object}",
+	"object.event.downloaded": "Downloaded {object}",
 	"object.event.enabled": "Enabled {object}",
 	"object.event.renewed": "Renewed {object}",
 	"object.event.updated": "Updated {object}",
