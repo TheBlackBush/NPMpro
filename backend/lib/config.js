@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
 
 const keysFile = "/data/npmpro/keys-ec.json";
+const SQLITE_FILE = "/data/npmpro/database.sqlite";
 const sqliteEngine = "better-sqlite3";
 const mysqlEngine = "mysql2";
 const postgresEngine = "pg";
@@ -69,7 +70,7 @@ const configure = () => {
 		};
 	}
 
-	const envSqliteFile = "/data/npmpro/database.sqlite";
+	const envSqliteFile = SQLITE_FILE;
 
 	logger.info(`Using Sqlite: ${envSqliteFile}`);
 	return {
@@ -203,4 +204,4 @@ const getPrivateKey = () => {
 	return instance.keys.key;
 };
 
-export { configGet, getPrivateKey, getPublicKey, isMysql, isPostgres, isSqlite };
+export { configGet, getPrivateKey, getPublicKey, isMysql, isPostgres, isSqlite, SQLITE_FILE };
