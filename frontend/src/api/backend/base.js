@@ -20,6 +20,15 @@ function buildBody(data) {
 	return JSON.stringify(decamelizeKeys(data));
 }
 
+function logoutOnUnauthorized(reload) {
+	// Force logout user and reload the page if Unauthorized
+	AuthStore.clear();
+	queryClient.clear();
+	if (reload) {
+		window.location.reload();
+	}
+}
+
 async function processResponse(response, reload = true) {
 	let payload = {};
 	try {
@@ -28,19 +37,69 @@ async function processResponse(response, reload = true) {
 		if (response.ok) throw err;
 	}
 	if (!response.ok) {
-		if (response.status === 401) {
-			// Force logout user and reload the page if Unauthorized
-			AuthStore.clear();
-			queryClient.clear();
-			if (reload) {
-				window.location.reload();
-			}
-		}
+		if (response.status === 401) logoutOnUnauthorized(reload);
 		const error = new Error(payload.error?.message_i18n ?? payload.error?.message ?? `HTTP ${response.status}`);
 		error.payload = payload;
 		throw error;
 	}
 	return camelizeKeys(payload);
+}
+
+/**
+ * Parses an XMLHttpRequest response like processResponse. A non-2xx answer that is not JSON (for example the
+ * 413 page of nginx) becomes an error with a translation id, so the caller never sees a JSON.parse failure.
+ */
+function processXhr(xhr, reload = true) {
+	let payload = null;
+	try {
+		payload = JSON.parse(xhr.responseText);
+	} catch {
+		// not JSON, handled below
+	}
+	if (xhr.status >= 200 && xhr.status < 300) {
+		if (payload === null) throw new Error("error.request-failed");
+		return camelizeKeys(payload);
+	}
+	if (xhr.status === 401) logoutOnUnauthorized(reload);
+	let error;
+	if (payload && typeof payload === "object" && payload.error) {
+		error = new Error(payload.error.message_i18n ?? payload.error.message ?? `HTTP ${xhr.status}`);
+		error.payload = payload;
+	} else {
+		error = new Error(`HTTP ${xhr.status}`);
+		const message_i18n = xhr.status === 413 ? "backup.error.too-large" : "error.request-failed";
+		error.payload = { error: { message_i18n, message: error.message } };
+	}
+	throw error;
+}
+
+/**
+ * POSTs a file as the raw body (application/octet-stream) and reports the upload progress as a fraction 0..1.
+ * There is no size check on the client: the server limit applies.
+ */
+export function upload({ url, params, file, onProgress, reload }, abortController) {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open("POST", buildUrl({ url, params }));
+		xhr.withCredentials = true;
+		xhr.setRequestHeader(contentTypeHeader, "application/octet-stream");
+		if (onProgress) {
+			xhr.upload.addEventListener("progress", (event) => {
+				if (event.lengthComputable) onProgress(event.loaded / event.total);
+			});
+		}
+		xhr.addEventListener("load", () => {
+			try {
+				resolve(processXhr(xhr, reload));
+			} catch (err) {
+				reject(err);
+			}
+		});
+		xhr.addEventListener("error", () => reject(new Error("error.request-failed")));
+		xhr.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+		abortController?.signal.addEventListener("abort", () => xhr.abort());
+		xhr.send(file);
+	});
 }
 
 export async function get({ url, params, reload }, abortController) {
