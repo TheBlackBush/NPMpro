@@ -141,6 +141,18 @@ fi
 find /usr/local/nginx/conf/conf.d -mindepth 1 \( ! -type f -o -links +1 \) -exec rm -rf {} +
 chown -R 0:0 /usr/local/nginx/conf/conf.d
 
+# As root, the nginx workers run as npmpro-worker (uid/gid 101) when the container has the capabilities for it:
+# SETUID and SETGID (start the workers as another user) and CHOWN (give them read access). Without them the workers
+# stay root, as before, and the log says what to add.
+if [ "$PUID" = "0" ]; then
+    capeff="$(awk '/^CapEff:/ {print $2}' /proc/self/status)"
+    if [ $((0x$capeff & 0xC1)) -eq $((0xC1)) ]; then
+        export NPMPRO_NGINX_WORKER_GID=101
+    else
+        echo "The nginx workers run as root: add the SETUID and CHOWN capabilities (cap_add in compose.yaml) to run them as the unprivileged npmpro-worker user."
+    fi
+fi
+
 # /data itself stays root's (so the PUID user can not remove or swap .env or prerun); its top-level folders are
 # created here and the old top-level leftovers are removed after data-setup.sh
 chown 0:0 /data
@@ -252,17 +264,19 @@ else
     # The internet-facing workers run as npmpro-worker (uid/gid 101), the master stays root: it reads the TLS keys,
     # the configs and opens the logs before the workers start. The workers only get what they serve or check per
     # request; the database, keys, credentials and TLS private keys stay root-only (700/600).
-    sed -i "s|^#user;|user npmpro-worker npmpro-worker;|" /usr/local/nginx/conf/nginx.conf
-    chown 101:101 /tmp/nginx
-    # traverse only (no listing) through the root-only parents of what they serve
-    chgrp 101 /data/tls /data/tls/certbot /data/npmpro
-    chmod 710 /data/tls /data/tls/certbot /data/npmpro
-    # ACME http challenges (certbot writes world-readable files), htpasswd files, avatars
-    for dir in /data/tls/certbot/acme-challenge /data/access /data/npmpro/avatar /data/npmpro/gravatar; do
-        [ -d "$dir" ] || continue
-        find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
-        find "$dir" -type d -exec chmod 750 {} +
-        find "$dir" -type f -links 1 -exec chmod 640 {} +
-    done
+    if [ -n "$NPMPRO_NGINX_WORKER_GID" ]; then
+        sed -i "s|^#user;|user npmpro-worker npmpro-worker;|" /usr/local/nginx/conf/nginx.conf
+        chown 101:101 /tmp/nginx
+        # traverse only (no listing) through the root-only parents of what they serve
+        chgrp 101 /data/tls /data/tls/certbot /data/npmpro
+        chmod 710 /data/tls /data/tls/certbot /data/npmpro
+        # ACME http challenges (certbot writes world-readable files), htpasswd files, avatars
+        for dir in /data/tls/certbot/acme-challenge /data/access /data/npmpro/avatar /data/npmpro/gravatar; do
+            [ -d "$dir" ] || continue
+            find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
+            find "$dir" -type d -exec chmod 750 {} +
+            find "$dir" -type f -links 1 -exec chmod 640 {} +
+        done
+    fi
     exec launch.sh
 fi
