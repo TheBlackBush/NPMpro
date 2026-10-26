@@ -24,8 +24,9 @@ const HOST_TYPES = [
 ];
 
 /**
- * Removes host configs that a full regeneration did not write: configs of hosts that were deleted or disabled, and the
- * configs launch.sh moved aside (*.conf.stale) because nginx rejected them
+ * Removes host configs that a full regeneration did not write: configs and *.conf.err of hosts that were deleted or
+ * disabled (a restore that rolled back leaves the .err of hosts that only the backup had), and the configs launch.sh
+ * moved aside (*.conf.stale) because nginx rejected them
  *
  * @param   {Set<String>}  written  the config files the regeneration wrote
  * @returns {Promise}
@@ -35,7 +36,9 @@ const removeLeftoverConfigs = async (written) => {
 		const names = await readdir(`/data/nginx/${dir}`).catch(() => []);
 		for (const name of names) {
 			const file = `/data/nginx/${dir}/${name}`;
-			if (name.endsWith(".conf.stale") || (name.endsWith(".conf") && !written.has(file))) {
+			const isError = name.endsWith(".conf.err");
+			const config = isError ? file.slice(0, -".err".length) : file;
+			if (name.endsWith(".conf.stale") || ((isError || name.endsWith(".conf")) && !written.has(config))) {
 				await rm(file, { force: true });
 			}
 		}
