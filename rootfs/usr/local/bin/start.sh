@@ -157,7 +157,7 @@ fi
 # created here and the old top-level leftovers are removed after data-setup.sh
 chown 0:0 /data
 chmod 755 /data
-mkdir -p /data/npmpro /data/tls /data/acme-challenge /data/avatar /data/gravatar /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
+mkdir -p /data/npmpro /data/tls /data/public /data/html /data/access /data/anubis /data/crowdsec /data/nginx /data/custom_nginx /data/php /data/goaccess
 
 if [ "$PUID" != "0" ]; then
     # /data is its own filesystem; .env and prerun stay root's, and files with more than one link are skipped so a
@@ -269,8 +269,8 @@ else
         # nginx's temp folders, made here: root has no DAC_OVERRIDE, so it can not create them in a folder it gave away
         mkdir -p /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
         chown 101:101 /tmp/nginx /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
-        # ACME http challenges, htpasswd files and avatars; the workers get nothing in /data/tls or /data/npmpro
-        for dir in /data/acme-challenge /data/access /data/avatar /data/gravatar; do
+        # /data/public (ACME http challenges, avatars) and the htpasswd files; nothing in /data/tls or /data/npmpro
+        for dir in /data/public/acme-challenge /data/access /data/public/avatar /data/public/gravatar; do
             [ -d "$dir" ] || continue
             find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
             find "$dir" -type d -exec chmod 750 {} +
