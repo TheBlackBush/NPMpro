@@ -48,6 +48,11 @@ EOT
 
 rm -rf "$TMP"
 
+# the kept old folder still holds what it held then: plaintext DNS credentials and the old signing key
+for kept in "$OLD".backup-*; do
+    [ -d "$kept" ] && echo "Note: $kept is the data folder from before the upgrade and holds its secrets in plaintext (DNS credentials, signing key). Delete it once NPMpro works for you."
+done
+
 if [ ! -d "$OLD" ] && [ ! -L "$OLD" ]; then
     exit 0
 fi
