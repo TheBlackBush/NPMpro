@@ -7,6 +7,23 @@ import { StatusAlert } from "./StatusAlert";
 
 // the backend's rules (lib/runtime-rules.js)
 const TIME_VALUE = /^[0-9]+(?:ms|s|m|h|d|w|M|y)?(?:[0-9]+(?:ms|s|m|h|d|w|M|y))*$/u;
+const TIME_TOKEN = /([0-9]+)(ms|s|m|h|d|w|M|y)?/gu;
+const TIME_UNITS = ["y", "M", "w", "d", "h", "m", "s", "ms"];
+// nginx's time parser: "0", or tokens of digits plus a unit with the units strictly decreasing, each at most once;
+// a bare number (seconds) is only valid as the whole value
+const isNginxTime = (value) => {
+	if (value.length > 32 || !TIME_VALUE.test(value)) return false;
+	if (value === "0") return true;
+	const tokens = [...value.matchAll(TIME_TOKEN)];
+	let last = -1;
+	for (const [, , unit] of tokens) {
+		if (unit === undefined) return tokens.length === 1;
+		const index = TIME_UNITS.indexOf(unit);
+		if (index <= last) return false;
+		last = index;
+	}
+	return true;
+};
 const KEYS = [
 	"logNotFound",
 	"tls12",
@@ -28,8 +45,6 @@ const toForm = (data) => ({
 const toApi = (values) => ({
 	...values,
 	workerConnections: Number(values.workerConnections),
-	tls12: values.forceMlkem ? false : values.tls12,
-	secpCurves: values.forceMlkem ? false : values.secpCurves,
 });
 
 const validate = (values) => {
@@ -42,7 +57,7 @@ const validate = (values) => {
 		);
 	}
 	const timeout = String(values.workerShutdownTimeout ?? "").trim();
-	if (timeout.length > 32 || !(timeout === "0" || TIME_VALUE.test(timeout))) {
+	if (!isNginxTime(timeout)) {
 		errors.workerShutdownTimeout = intl.formatMessage({ id: "settings.nginx.shutdown-timeout.invalid" });
 	}
 	return errors;
