@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { mkdir, mkdtemp, readdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -125,4 +126,51 @@ it("passes a source stream BackupError through and destroys the source on refusa
 		(err) => err.code === "invalid-archive",
 	);
 	assert.ok(source.destroyed);
+});
+
+const snapshot = async (dir) => {
+	const out = {};
+	const walk = async (rel) => {
+		for (const e of await readdir(path.join(dir, rel), { withFileTypes: true })) {
+			const r = path.join(rel, e.name);
+			out[r] = e.isDirectory() ? -1 : (await stat(path.join(dir, r))).size;
+			if (e.isDirectory()) {
+				await walk(r);
+			}
+		}
+	};
+	await walk("");
+	return out;
+};
+
+const entryBlock = (name, body) => {
+	const header = new Header({ path: name, type: "File", size: body.length, mode: 0o644, mtime: new Date(0) });
+	header.encode();
+	const padded = Buffer.alloc(Math.ceil(body.length / 512) * 512);
+	body.copy(padded);
+	return Buffer.concat([header.block, padded]);
+};
+
+it("writes nothing in dir after a refusal has settled", async () => {
+	const big = randomBytes(32 * 1024 * 1024);
+	const raw = Buffer.concat([
+		entryBlock("files/custom_nginx/big.conf", big),
+		entryBlock("files/custom_nginx/after1.conf", Buffer.from("x")),
+		entryBlock("files/custom_nginx/after2.conf", Buffer.from("x")),
+		entryBlock("evil.txt", Buffer.from("x")),
+		Buffer.alloc(1024),
+	]);
+	const gz = gzipSync(raw);
+	const chunks = [];
+	for (let i = 0; i < gz.length; i += 1024 * 1024) {
+		chunks.push(gz.subarray(i, i + 1024 * 1024));
+	}
+	const dir = await tmp("out-");
+	await assert.rejects(
+		extractTo({ source: Readable.from(chunks), dir, allow: allowFiles }),
+		(err) => err.code === "invalid-archive",
+	);
+	const settled = await snapshot(dir);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	assert.deepEqual(await snapshot(dir), settled);
 });

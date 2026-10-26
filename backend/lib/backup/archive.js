@@ -1,5 +1,4 @@
 import path from "node:path";
-import { pipeline } from "node:stream/promises";
 import { create, extract } from "tar";
 import { BackupError } from "./format.js";
 
@@ -32,14 +31,18 @@ const checkPath = (rel, type, allow) => {
 };
 
 /**
- * Extracts a backup's gzip tar into dir. Every entry is checked before it is written; the first bad one stops the
- * extraction with BackupError("invalid-archive") and destroys the source stream. An error coming from the source
- * itself (for example a BackupError from decryption) is passed on unchanged.
+ * Extracts a backup's gzip tar into dir. Every entry is checked before it is written. The first bad entry (or an
+ * error from the source or from tar) ends the extraction: nothing further is read from the source, the source is
+ * destroyed, and entries tar had already accepted are finished (the one being written is cut short, later ones are
+ * written as far as the data went). The promise settles only after tar is done writing, so once it has settled
+ * nothing more is created or written in dir and the caller may remove dir. A bad entry rejects with
+ * BackupError("invalid-archive"); an error from the source (for example a BackupError from decryption) is passed on
+ * unchanged.
  */
 const extractTo = async ({ source, dir, allow, limits = LIMITS }) => {
 	let entries = 0;
 	let bytes = 0;
-	let refused = null;
+	let failure = null;
 	const extractor = extract({
 		cwd: dir,
 		strict: true,
@@ -47,7 +50,7 @@ const extractTo = async ({ source, dir, allow, limits = LIMITS }) => {
 		noMtime: true,
 		preserveOwner: false,
 		filter: (rawPath, entry) => {
-			if (refused) {
+			if (failure) {
 				return false;
 			}
 			const rel = rawPath.replace(TRAILING_SLASH, "");
@@ -61,27 +64,44 @@ const extractTo = async ({ source, dir, allow, limits = LIMITS }) => {
 				reason = "unpacked size too large";
 			}
 			if (reason) {
-				refused = new BackupError("invalid-archive", `Invalid backup archive: ${reason} (${rel})`);
-				extractor.abort(refused);
+				failure = new BackupError("invalid-archive", `Invalid backup archive: ${reason} (${rel})`);
+				queueMicrotask(halt);
 				return false;
 			}
 			return true;
 		},
 	});
-	try {
-		await pipeline(source, extractor);
-	} catch (err) {
-		if (refused) {
-			source.destroy?.();
-			throw refused;
+
+	let finished = false;
+	let settle = () => undefined;
+	const done = new Promise((resolve) => {
+		settle = resolve;
+	});
+	// Stop reading, then let tar flush what it already accepted; 'finish' fires once all its writes have ended.
+	function halt() {
+		if (finished) {
+			return;
 		}
-		throw err instanceof BackupError
-			? err
-			: new BackupError("invalid-archive", "Invalid backup archive", { cause: err });
+		finished = true;
+		source.unpipe(extractor);
+		source.destroy();
+		extractor.end();
 	}
-	if (refused) {
-		source.destroy?.();
-		throw refused;
+	const fail = (err) => {
+		failure ??=
+			err instanceof BackupError
+				? err
+				: new BackupError("invalid-archive", "Invalid backup archive", { cause: err });
+		halt();
+	};
+	source.on("error", fail);
+	extractor.on("error", fail);
+	extractor.on("finish", settle);
+	extractor.on("close", settle);
+	source.pipe(extractor);
+	await done;
+	if (failure) {
+		throw failure;
 	}
 	return { entries, bytes };
 };
