@@ -46,12 +46,18 @@ const migrateUp = async () => {
 
 	if (isSqlite()) {
 		await db().raw("PRAGMA journal_mode = WAL");
-		await db().raw("PRAGMA auto_vacuum = 1");
-		await db().raw("VACUUM");
-		// the write-ahead log can still hold old pages (old secrets) after the VACUUM
+		// full auto_vacuum gives freed pages back on every commit, so the database is only rewritten (VACUUM, which
+		// needs the time and the free space of a whole copy) once, to switch an older database to it
+		const pragma = await db().raw("PRAGMA auto_vacuum");
+		const autoVacuum = (Array.isArray(pragma) ? pragma[0] : pragma)?.auto_vacuum;
+		if (Number(autoVacuum) !== 1) {
+			await db().raw("PRAGMA auto_vacuum = 1");
+			await db().raw("VACUUM");
+			logger.info("Sqlite database switched to auto_vacuum and vacuumed once");
+		}
+		// the write-ahead log can still hold old pages (old secrets)
 		await db().raw("PRAGMA wal_checkpoint(TRUNCATE)");
 		await db().raw("PRAGMA optimize");
-		logger.info("Sqlite database vacuumed");
 	}
 
 	return result;

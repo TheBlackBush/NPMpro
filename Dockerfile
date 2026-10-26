@@ -199,6 +199,8 @@ RUN apk upgrade --no-cache -a && \
     apk add --no-cache nodejs pnpm llvm file && \
     pnpm install --frozen-lockfile --prod && \
     find /app/node_modules -name "*.map" -delete && \
+    find /app/node_modules -type f \( -name "*.d.ts" -o -name "*.d.mts" -o -name "*.d.cts" -o \( -iname "*.md" ! -iname "licen[cs]e*" \) \) -delete && \
+    find /app/node_modules/.pnpm -maxdepth 1 -type d -name "@types+*" -exec rm -r {} + && \
     rm -vr /app/node_modules/better-sqlite3/deps/sqlite3 && \
     case "$TARGETARCH" in \
       amd64) keep="linuxmusl-x64.node" ;; \
@@ -237,7 +239,7 @@ RUN apk upgrade --no-cache -a && \
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
                        pcre2 luajit zlib-ng brotli zstd lua5.1-cjson libxml2 libldap quickjs-ng-libs libmaxminddb-libs \
                        curl coreutils findutils grep jq openssl shadow su-exec util-linux-misc \
-                       bash bash-completion nano \
+                       bash nano \
                        logrotate goaccess fcgi \
                        luarocks5.1 git make \
                        nodejs python3 && \
@@ -293,7 +295,8 @@ RUN apk upgrade --no-cache -a && \
 COPY --from=frontend /app/dist /app/frontend
 
 ENTRYPOINT ["tini", "--", "entrypoint.sh"]
-HEALTHCHECK CMD ["healthcheck.sh"]
+# checked every 2 s while starting (Docker 25+, older engines keep the 30 s interval), then every 30 s
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --start-interval=2s CMD ["healthcheck.sh"]
 
 LABEL com.centurylinklabs.watchtower.monitor-only="true"
 LABEL wud.watch="false"

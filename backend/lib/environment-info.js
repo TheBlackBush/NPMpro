@@ -18,6 +18,8 @@ const item = (group, name, fallback = "", secret = false) => ({
 
 const flag = (group, name, fallback = "false") => item(group, name, fallback);
 const secretItem = (group, name) => item(group, name, null, true);
+// a default that envs.sh works out at start (shown as the value it exported, still marked as the default)
+const computedItem = (group, name, fallback) => ({ ...item(group, name, fallback), computed: true });
 // also a setting that applies after a restart (Settings section id): set by env it locks the setting, else the value
 // shown is the one from the section the container started with
 const settingItem = (group, name, fallback, section) => ({ ...item(group, name, fallback), setting: section });
@@ -54,8 +56,9 @@ const ENVIRONMENT_ITEMS = [
 	settingItem("users", "TZ", "UTC", "advanced"),
 
 	flag("nginx", "NGINX_LOG_NOT_FOUND"),
-	item("nginx", "NGINX_WORKER_PROCESSES", "auto"),
+	computedItem("nginx", "NGINX_WORKER_PROCESSES", "CPU threads, at most 4"),
 	item("nginx", "NGINX_WORKER_CONNECTIONS", "512"),
+	item("nginx", "NGINX_WORKER_SHUTDOWN_TIMEOUT", "1h"),
 	flag("nginx", "NGINX_FORCE_X25519MLKEM768"),
 	flag("nginx", "NGINX_DISABLE_TLS12"),
 	flag("nginx", "NGINX_TRUST_SECPR1", "true"),
@@ -184,7 +187,8 @@ const environmentInfo = (env, runtimeLocked) => {
 					setting: entry.setting,
 				};
 			}
-			const value = set ? env[entry.name] : entry.default;
+			let value = set ? env[entry.name] : entry.default;
+			if (!set && entry.computed && env[entry.name]) value = env[entry.name];
 			return {
 				name: entry.name,
 				value,
