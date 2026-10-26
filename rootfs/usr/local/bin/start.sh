@@ -230,44 +230,6 @@ fi
 if [ "$NGINX_QUIC_BPF" = "true" ]; then
   sed -i "s|quic_bpf.*|quic_bpf on;|g" /usr/local/nginx/conf/nginx.conf
 fi
-if [ "$NGINX_LOG_NOT_FOUND" = "true" ]; then
-    sed -i "s|log_not_found.*|log_not_found on;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_WORKER_PROCESSES" != "auto" ]; then
-    sed -i "s|worker_processes.*|worker_processes $NGINX_WORKER_PROCESSES;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_FORCE_X25519MLKEM768" = "true" ]; then
-    sed -i "s|X25519MLKEM768:x25519:secp521r1:secp384r1:prime256v1;|X25519MLKEM768;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_WORKER_SHUTDOWN_TIMEOUT" != "0" ]; then
-    sed -i "s|#worker_shutdown_timeout;|worker_shutdown_timeout $NGINX_WORKER_SHUTDOWN_TIMEOUT;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_WORKER_CONNECTIONS" != "512" ]; then
-    sed -i "s|#worker_connections;|worker_connections $NGINX_WORKER_CONNECTIONS;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_DISABLE_TLS12" = "true" ]; then
-    sed -i "s|ssl_protocols TLSv1.2|ssl_protocols|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_TRUST_SECPR1" = "false" ]; then
-    sed -i "s|X25519MLKEM768:x25519:secp521r1:secp384r1:prime256v1;|X25519MLKEM768:x25519;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_TRUST_RSA_PKCS1" = "true" ]; then
-    sed -i "s|mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256;|mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256:rsa_pkcs1_sha512:rsa_pkcs1_sha384:rsa_pkcs1_sha256;|g" /usr/local/nginx/conf/nginx.conf
-fi
-
-if [ "$NGINX_LOAD_NJS_MODULE" = "true" ]; then
-    sed -i "s|#\(load_module.\+js_module.so;\)|\1|g" /usr/local/nginx/conf/nginx.conf
-    sed -i "s|#js_engine qjs;|js_engine qjs;|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_LOAD_LDAP_MODULE" = "true" ]; then
-    sed -i "s|#\(load_module.\+ngx_http_auth_ldap_module.so;\)|\1|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_LOAD_NTLM_MODULE" = "true" ]; then
-    sed -i "s|#\(load_module.\+ngx_http_upstream_ntlm_module.so;\)|\1|g" /usr/local/nginx/conf/nginx.conf
-fi
-if [ "$NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE" = "true" ]; then
-    sed -i "s|#\(load_module.\+ngx_http_vhost_traffic_status_module.so;\)|\1|g" /usr/local/nginx/conf/nginx.conf
-fi
 
 if [ "$PUID" != "0" ]; then
     chown "$PUID:$PGID" /usr/local/nginx/conf/conf.d

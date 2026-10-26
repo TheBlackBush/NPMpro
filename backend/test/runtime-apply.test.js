@@ -12,6 +12,7 @@ import { ownUpstream, proxyHostsForProvider } from "../lib/forward-auth.js";
 import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
 import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
 import { logIncludes, renderRotations } from "../lib/log-files.js";
+import { NGINX_CORE_FILES, renderNginxCore } from "../lib/nginx-core.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
 import { createHostRenderer, describeHosts } from "../lib/runtime-hosts.js";
@@ -50,6 +51,9 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		logrotateConf: path.join(dir, "logrotate"),
 		nginxDir: path.join(dir, "nginx"),
 		startupSettings: path.join(dir, "startup-settings.env"),
+		nginxCore: Object.fromEntries(
+			Object.keys(NGINX_CORE_FILES).map((part) => [part, path.join(dir, `core-${part}.conf`)]),
+		),
 	};
 	await mkdir(path.join(paths.nginxDir, "logs"), { recursive: true });
 	await writeFile(paths.certbotIni, "old ini\n");
@@ -58,6 +62,9 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 	await writeFile(paths.streamLogConf, logIncludes(false).stream);
 	await writeFile(paths.accessLogConf, accessLogDirective(false));
 	await writeFile(paths.logrotateConf, LOGROTATE);
+	// what data-setup.sh writes
+	const core = renderNginxCore(mergeRuntimeConfig("nginx", {}, BOOT_ENV).values);
+	for (const [part, file] of Object.entries(paths.nginxCore)) await writeFile(file, core[part]);
 	// what start.sh writes without DEFAULT_CERT_ID
 	await writeFile(paths.defaultCertConf, renderDefaultCertConf(null, paths.tlsDir));
 	await mkdir(paths.renewalDir);
@@ -409,7 +416,7 @@ it("startup tests nginx only when an nginx file changed, and a failing group doe
 		Object.keys(failed).toSorted((x, y) => x.localeCompare(y)),
 		["certificates", "network"],
 	);
-	assert.equal(groups.length, 5);
+	assert.equal(groups.length, 6);
 	assert.deepEqual(nginx.calls, ["test"]);
 	await assert.rejects(readFile(host, "utf8"), { code: "ENOENT" });
 	assert.equal(a.log.lines.filter((line) => line.includes("at startup")).length, 2);
@@ -1589,4 +1596,26 @@ it("startup: a failing shared write (crontab) still runs the timers and the own 
 		`ssl_certificate ${live}/fullchain.pem;\nssl_certificate_key ${live}/privkey.pem;\n`,
 	);
 	assert.deepEqual(a.nginx.calls, ["test"]);
+});
+
+it("a nginx save writes the four include files, tests and reloads", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = mergeRuntimeConfig("nginx", {}, BOOT_ENV).values;
+	const next = { ...prev, worker_connections: 2048, module_vts: true };
+	const { changed, reloaded } = await a.applyGroup("nginx", next, prev);
+	assert.deepEqual(changed.toSorted(), ["module_vts", "worker_connections"]);
+	assert.equal(reloaded, true);
+	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+	assert.ok((await readFile(paths.nginxCore.events, "utf8")).includes("worker_connections 2048;"));
+	assert.ok((await readFile(paths.nginxCore.main, "utf8")).includes("ngx_http_vhost_traffic_status_module.so"));
+});
+
+it("a failing nginx -t puts the four files back and reports nginx's message", async () => {
+	const { paths } = await setup();
+	const before = await readFile(paths.nginxCore.main, "utf8");
+	const a = applier(paths, { nginx: nginxFake({ testError: 'unknown directive "vhost_traffic_status_zone"' }) });
+	const prev = mergeRuntimeConfig("nginx", {}, BOOT_ENV).values;
+	await assert.rejects(a.applyGroup("nginx", { ...prev, module_vts: true }, prev), /vhost_traffic_status_zone/u);
+	assert.equal(await readFile(paths.nginxCore.main, "utf8"), before);
 });

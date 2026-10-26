@@ -303,6 +303,10 @@ fi
 
 if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; then cp -va /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 
+# nginx core and module settings (Settings > nginx): the backend writes these files on every save and start; here
+# only when one is missing (first start, upgrade), so nginx starts with the modules the last apply loaded
+nginx-core-files.sh --if-missing /data/npmpro/nginx
+
 # http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
 # setting changes
 mkdir -p /data/npmpro/nginx

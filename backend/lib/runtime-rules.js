@@ -1,9 +1,10 @@
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
+import { availableParallelism } from "node:os";
 import { isDeepStrictEqual } from "node:util";
 import { isTimeZone } from "./time-zones.js";
 
-const RUNTIME_GROUPS = ["certificates", "network", "forward-auth", "logs", "advanced"];
+const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"];
 
 const LETSENCRYPT_SERVER = "https://acme-v02.api.letsencrypt.org/directory";
 // envs.sh: these servers default to must-staple and OCSP stapling on
@@ -20,6 +21,27 @@ const DIGITS = /^\d+$/u;
 const WHITESPACE = /\s+/u;
 // envs.sh TRUST_IP charset
 const TRUST_IP_CHARS = /^[0-9a-fA-F.:/]+$/u;
+
+const TIME_VALUE = /^[0-9]+(?:ms|s|m|h|d|w|M|y)?(?:[0-9]+(?:ms|s|m|h|d|w|M|y))*$/u;
+
+const TIME_TOKEN = /([0-9]+)(ms|s|m|h|d|w|M|y)?/gu;
+const TIME_UNITS = ["y", "M", "w", "d", "h", "m", "s", "ms"];
+
+// nginx's time parser: "0", or tokens of digits plus a unit with the units strictly decreasing, each at most once;
+// a bare number (seconds) is only valid as the whole value
+const isNginxTime = (value) => {
+	if (typeof value !== "string" || value.length > 32 || !TIME_VALUE.test(value)) return false;
+	if (value === "0") return true;
+	const tokens = [...value.matchAll(TIME_TOKEN)];
+	let last = -1;
+	for (const [, , unit] of tokens) {
+		if (unit === undefined) return tokens.length === 1;
+		const index = TIME_UNITS.indexOf(unit);
+		if (index <= last) return false;
+		last = index;
+	}
+	return true;
+};
 
 const isSet = (raw) => typeof raw === "string" && raw !== "";
 
@@ -137,6 +159,12 @@ const goaclaFlagRule = (key, flag) => ({
 	default: true,
 	applies: "restart",
 });
+
+// envs.sh: CPU threads, at most 4
+const defaultWorkers = () => String(Math.min(availableParallelism(), 4));
+
+const nginxSwitch = (key, env, fallback = false, invert = false) =>
+	boolRule({ group: "nginx", key, env, fallback, invert, applies: "reload" });
 
 const upstreamRule = (name, key) => ({
 	group: "forward-auth",
@@ -335,6 +363,51 @@ const RUNTIME_RULES = [
 	goaclaFlagRule("goaccess_drop_query_strings", "--no-query-string"),
 	goaclaFlagRule("goaccess_real_os", "--real-os"),
 	goaclaFlagRule("goaccess_resolve_hosts", "--with-output-resolver"),
+	{
+		group: "nginx",
+		key: "worker_processes",
+		env: "NGINX_WORKER_PROCESSES",
+		type: "string",
+		validate: (value) =>
+			value === "auto" ||
+			(DIGITS.test(String(value)) && Number(value) >= 1 && Number(value) <= availableParallelism())
+				? null
+				: `must be auto or a number from 1 to ${availableParallelism()}`,
+		parseEnv: (raw) => (raw === "auto" || DIGITS.test(raw) ? raw : undefined),
+		toEnv: String,
+		default: defaultWorkers,
+		applies: "reload",
+	},
+	rangeRule({
+		group: "nginx",
+		key: "worker_connections",
+		env: "NGINX_WORKER_CONNECTIONS",
+		min: 64,
+		max: 65535,
+		fallback: 512,
+		applies: "reload",
+	}),
+	{
+		group: "nginx",
+		key: "worker_shutdown_timeout",
+		env: "NGINX_WORKER_SHUTDOWN_TIMEOUT",
+		type: "string",
+		validate: (value) =>
+			isNginxTime(value) ? null : "must be 0 or an nginx time value such as 30s, 10m, 1h or 1h30m",
+		parseEnv: (raw) => (isNginxTime(raw) ? raw : undefined),
+		toEnv: String,
+		default: "1h",
+		applies: "reload",
+	},
+	nginxSwitch("log_not_found", "NGINX_LOG_NOT_FOUND"),
+	nginxSwitch("tls12", "NGINX_DISABLE_TLS12", true, true),
+	nginxSwitch("force_mlkem", "NGINX_FORCE_X25519MLKEM768"),
+	nginxSwitch("secp_curves", "NGINX_TRUST_SECPR1", true),
+	nginxSwitch("rsa_pkcs1", "NGINX_TRUST_RSA_PKCS1"),
+	nginxSwitch("module_njs", "NGINX_LOAD_NJS_MODULE"),
+	nginxSwitch("module_ldap", "NGINX_LOAD_LDAP_MODULE"),
+	nginxSwitch("module_ntlm", "NGINX_LOAD_NTLM_MODULE"),
+	nginxSwitch("module_vts", "NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE"),
 	boolRule({
 		group: "advanced",
 		key: "config_beautifier",
@@ -371,11 +444,20 @@ const RUNTIME_RULES = [
  * curve or an RSA size), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns stapling off),
  * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log
  * files), goaccess-setting (the same with GoAccess turned on by the GoAccess report setting: not an env lock, left out
- * of the Environment page)
+ * of the Environment page), force-mlkem (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2
+ * and the NIST P curves off), force-mlkem-setting (the same with post-quantum only turned on by the setting)
  */
-const LOCK_REASONS = ["key-size", "ocsp-stapling-off", "must-staple", "goaccess", "goaccess-setting"];
+const LOCK_REASONS = [
+	"key-size",
+	"ocsp-stapling-off",
+	"must-staple",
+	"goaccess",
+	"goaccess-setting",
+	"force-mlkem",
+	"force-mlkem-setting",
+];
 // reasons of locks that no env var set by the user causes
-const SETTING_LOCK_REASONS = ["goaccess-setting"];
+const SETTING_LOCK_REASONS = ["goaccess-setting", "force-mlkem-setting"];
 
 /**
  * The settings that apply at the next container start (TZ, GOA): envs.sh reads them from the startup settings file
@@ -505,6 +587,14 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 		// GOA is what keeps it on, also when LOGROTATE is set; without GOA from the user it runs from the GoAccess
 		// report setting (startup settings file), not from an env var
 		lock("write_log_files", "GOA", userSet.has("GOA") ? "goaccess" : "goaccess-setting");
+	}
+	// envs.sh: post-quantum only turns TLS 1.2 and the NIST P curves off
+	if (group === "nginx" && values.force_mlkem) {
+		const reason = userSet.has("NGINX_FORCE_X25519MLKEM768") ? "force-mlkem" : "force-mlkem-setting";
+		for (const key of ["tls12", "secp_curves"]) {
+			values[key] = false;
+			lock(key, "NGINX_FORCE_X25519MLKEM768", reason);
+		}
 	}
 
 	return { values, locked, locked_by: lockedBy, locked_reason: lockedReason, invalid };

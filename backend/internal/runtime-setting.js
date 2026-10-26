@@ -6,7 +6,7 @@ import certificateModel from "../models/certificate.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
 import { runtimeQueue } from "./runtime-queue.js";
-import { createRuntimeUpdater, runtimeView } from "./runtime-update.js";
+import { createRuntimeUpdater, runtimeView, withCpuCount } from "./runtime-update.js";
 
 const NAMES = {
 	certificates: "Certificates & TLS",
@@ -14,6 +14,7 @@ const NAMES = {
 	"forward-auth": "Forward authentication",
 	logs: "Logs",
 	advanced: "Advanced",
+	nginx: "Nginx",
 };
 
 const noApply = async () => {};
@@ -54,9 +55,10 @@ const updateRuntimeStored = createRuntimeUpdater({
 	serialize: runtimeQueue,
 });
 
-// the advanced view also lists the time zones to pick from
+// the advanced view also lists the time zones to pick from, the nginx view the CPU threads
 const viewOf = async (group, cfg) => {
 	const view = runtimeView(group, cfg);
+	if (group === "nginx") return withCpuCount(view);
 	return group === "advanced" ? { ...view, time_zones: await listTimeZones() } : view;
 };
 

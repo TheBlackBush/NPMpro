@@ -89,7 +89,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 - the [GoAccess](#goaccess) log report (`/goaccess`) and a Swagger UI (`/api/docs`) for the API, both inside the web UI
 
 ### Web UI and operations
-- most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication and more; an environment variable still wins and locks the field (see [Settings and environment variables](#settings-and-environment-variables))
+- most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](#settings-and-environment-variables))
 - an Environment page (Settings, Environment) that lists the startup variables read-only, secrets never shown
 - audit log, users with per-section permissions, light and dark theme
 - database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/npmpro/backups` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
@@ -116,9 +116,9 @@ Most settings live in the web UI under Settings, and that is the normal place to
 
 - **A variable wins and locks the field.** The field shows the value of the variable and cannot be changed in the UI. Its badge names the variable: "Set by ACME_KEY_TYPE". A field that another variable forces gets its own badge with the reason: "Follows ACME_KEY_SIZE" (`ACME_KEY_SIZE` set alone is an ECDSA curve, so the key type stays ECDSA; an RSA size only works together with `ACME_KEY_TYPE=rsa`), "Off because of ACME_OCSP_STAPLING" (Must-Staple needs OCSP stapling), "Required by ACME_MUST_STAPLE" (OCSP stapling stays on) and "Required by GOA" (GoAccess reads the log files, so Write log files stays on; "Required by the GoAccess report" when the setting turned GoAccess on). The Authentication, traffic statistics and GeoIP fields show "Set by environment".
 - **Remove the variable to manage the field in the UI again.** Changing or removing a variable needs the container to be recreated (`docker compose up -d`), like any change in `compose.yaml`.
-- **The Environment page** (Settings, Environment) lists the startup variables (ports, bindings, PUID/PGID, nginx and TLS switches, modules and PHP, database, first start, ACME account) with their value or default, among them `TZ`, `GOA` and `GOACLA`, which are also settings, and every setting that a variable locks. Values of passwords, email addresses and keys are never shown, only whether they are set.
+- **The Environment page** (Settings, Environment) lists the startup variables (ports, bindings, PUID/PGID, `NGINX_QUIC_BPF` and PHP, database, first start, ACME account) with their value or default, among them `TZ`, `GOA` and `GOACLA`, which are also settings, and every setting that a variable locks. Values of passwords, email addresses and keys are never shown, only whether they are set.
 - **"Restart required" settings** (Time zone, GoAccess report and the GoAccess options) are read when the container starts. Saving them stores the value; the section then shows "Restart the container to apply" with the fields until you restart the container (`docker restart npmpro`).
-- Variables that are only read at startup and have no field (ports, bindings, `PUID`/`PGID`, `DISABLE_HTTP`, `NGINX_*`, PHP, database, `ACME_SERVER`, `ACME_EMAIL` and the EAB keys, `INITIAL_*`) stay in `compose.yaml`; the [compose.yaml](compose.yaml) lists every supported variable with its default.
+- Variables that are only read at startup and have no field (ports, bindings, `PUID`/`PGID`, `DISABLE_HTTP`, `NGINX_QUIC_BPF`, PHP, database, `ACME_SERVER`, `ACME_EMAIL` and the EAB keys, `INITIAL_*`) stay in `compose.yaml`; the [compose.yaml](compose.yaml) lists every supported variable with its default.
 
 When a saved setting applies:
 
@@ -145,9 +145,16 @@ When a saved setting applies:
 | Logs & monitoring | Traffic statistics, keep statistics for, show visitor IPs, count unique visitors, visitor limit per host and day | `TRAFFIC_STATS`, `TRAFFIC_RETENTION_DAYS`, `TRAFFIC_SHOW_IPS`, `TRAFFIC_UNIQUE_VISITORS`, `TRAFFIC_VISITORS_CAP` | on save |
 | GeoIP | Account ID, license key, databases | `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY`, `GEOIP_EDITIONS` | on save (the download starts) |
 | Authentication | Issuer URL, client ID, client secret, redirect domain, require a verified email, disable password login, skip two-factor after OIDC | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_DOMAIN`, `OIDC_REQUIRE_VERIFIED_EMAIL`, `OIDC_DISABLE_PASSWORD`, `OIDC_SKIP_MFA` | on save |
+| nginx | Worker processes, worker connections, worker shutdown timeout | `NGINX_WORKER_PROCESSES`, `NGINX_WORKER_CONNECTIONS`, `NGINX_WORKER_SHUTDOWN_TIMEOUT` | on save, with an nginx reload |
+| nginx | Log requests for missing files | `NGINX_LOG_NOT_FOUND` | on save, with an nginx reload |
+| nginx | TLS 1.2, NIST P curves (secp521r1, secp384r1, secp256r1), RSA PKCS#1 signature algorithms | `NGINX_DISABLE_TLS12` (inverted), `NGINX_TRUST_SECPR1`, `NGINX_TRUST_RSA_PKCS1` | on save, with an nginx reload |
+| nginx | Post-quantum only (X25519MLKEM768): turns TLS 1.2 and the NIST P curves off and locks them | `NGINX_FORCE_X25519MLKEM768` | on save, with an nginx reload |
+| nginx | Modules: njs, LDAP, NTLM, virtual host traffic status | `NGINX_LOAD_NJS_MODULE`, `NGINX_LOAD_LDAP_MODULE`, `NGINX_LOAD_NTLM_MODULE`, `NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE` | on save, with an nginx reload |
 | Advanced | Format nginx configs | `DISABLE_NGINX_BEAUTIFIER` (inverted) | immediately |
 | Advanced | Gravatar profile pictures | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture changes at their next profile save) |
 | Advanced | Time zone | `TZ` | after a restart |
+
+Turning on post-quantum only (by `NGINX_FORCE_X25519MLKEM768` or in Settings) overrides `NGINX_DISABLE_TLS12` and `NGINX_TRUST_SECPR1`; the stored TLS 1.2 and P curve settings are not changed.
 
 Changes that need an nginx reload are tested with `nginx -t` first: if the test fails, nothing is saved, the previous files are kept and the nginx message is shown.
 

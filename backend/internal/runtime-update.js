@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import errs from "../lib/error.js";
 import {
 	acmeServerOf,
@@ -27,6 +28,14 @@ const runtimeView = (group, cfg, env = process.env) => ({
 	restart_pending: restartPendingOf(group, cfg.values, cfg.locked, env),
 	applies: appliesOf(group),
 });
+
+/**
+ * The nginx view also carries the CPU threads (the worker_processes maximum), not a setting
+ *
+ * @param   {Object}  view  runtimeView("nginx", ...)
+ * @returns {Object}
+ */
+const withCpuCount = (view) => ({ ...view, cpu_count: availableParallelism() });
 
 /**
  * Builds the runtime settings update. All groups share one queue: each update (read stored, validate, apply, save)
@@ -145,4 +154,4 @@ const createRuntimeUpdater = ({
 	return run;
 };
 
-export { createRuntimeUpdater, runtimeView };
+export { createRuntimeUpdater, runtimeView, withCpuCount };

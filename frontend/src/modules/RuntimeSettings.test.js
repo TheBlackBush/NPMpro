@@ -113,11 +113,19 @@ it("GROUP_KEYS match the backend response schemas", () => {
 		const url = new URL(`../../../backend/schema/components/runtime-${group}-setting-object.json`, import.meta.url);
 		const props = Object.keys(JSON.parse(readFileSync(url, "utf8")).properties).filter(
 			(key) =>
-				!["locked", "locked_by", "locked_reason", "applies", "restart_pending", "time_zones"].includes(key),
+				![
+					"locked",
+					"locked_by",
+					"locked_reason",
+					"applies",
+					"restart_pending",
+					"time_zones",
+					"cpu_count",
+				].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
 	}
-	assert.equal(Object.keys(GROUP_KEYS).length, 5);
+	assert.equal(Object.keys(GROUP_KEYS).length, 6);
 });
 
 it("appliesMessageId maps the applies values to their translation ids", () => {

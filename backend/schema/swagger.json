@@ -425,6 +425,14 @@
 				"$ref": "./paths/settings/runtime/network/put.json"
 			}
 		},
+		"/settings/runtime/nginx": {
+			"get": {
+				"$ref": "./paths/settings/runtime/nginx/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/runtime/nginx/put.json"
+			}
+		},
 		"/settings/runtime/forward-auth": {
 			"get": {
 				"$ref": "./paths/settings/runtime/forward-auth/get.json"

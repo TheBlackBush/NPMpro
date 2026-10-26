@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { availableParallelism } from "node:os";
+import { performance } from "node:perf_hooks";
 import { it } from "node:test";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
@@ -8,6 +10,7 @@ import {
 	mergeRuntimeConfig,
 	RUNTIME_GROUPS,
 	RUNTIME_RULES,
+	SETTING_LOCK_REASONS,
 	userSetEnvNames,
 	userSetNames,
 } from "../lib/runtime-rules.js";
@@ -38,11 +41,23 @@ const BOOT_ENV = {
 	DISABLE_NGINX_BEAUTIFIER: "false",
 	DISABLE_GRAVATAR: "false",
 	AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES: "false",
+	NGINX_WORKER_PROCESSES: "4",
+	NGINX_WORKER_CONNECTIONS: "512",
+	NGINX_WORKER_SHUTDOWN_TIMEOUT: "1h",
+	NGINX_LOG_NOT_FOUND: "false",
+	NGINX_FORCE_X25519MLKEM768: "false",
+	NGINX_DISABLE_TLS12: "false",
+	NGINX_TRUST_SECPR1: "true",
+	NGINX_TRUST_RSA_PKCS1: "false",
+	NGINX_LOAD_NJS_MODULE: "false",
+	NGINX_LOAD_LDAP_MODULE: "false",
+	NGINX_LOAD_NTLM_MODULE: "false",
+	NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "false",
 };
 const userEnv = (vars) => ({ ...BOOT_ENV, ...vars, NPMPRO_USER_ENV: `PATH ${Object.keys(vars).join(" ")}` });
 
-it("has the five groups, every rule in one of them, keys unique", () => {
-	assert.deepEqual(RUNTIME_GROUPS, ["certificates", "network", "forward-auth", "logs", "advanced"]);
+it("has the six groups, every rule in one of them, keys unique", () => {
+	assert.deepEqual(RUNTIME_GROUPS, ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"]);
 	for (const entry of RUNTIME_RULES) assert.ok(RUNTIME_GROUPS.includes(entry.group), entry.key);
 	assert.equal(new Set(RUNTIME_RULES.map((entry) => entry.key)).size, RUNTIME_RULES.length);
 	// one env var per rule, except GOACLA, which sets all GoAccess options
@@ -561,4 +576,90 @@ it("keeps locked_reason in the cache and after prime", async () => {
 	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_reason, { key_type: "key-size" });
 	config.prime("logs", { values: {}, locked: [] });
 	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_reason, {});
+});
+
+const NGINX_DEFAULTS_CPU = String(Math.min(availableParallelism(), 4));
+
+it("the nginx group has today's defaults and takes valid stored values", () => {
+	const { values, locked } = mergeRuntimeConfig("nginx", {}, BOOT_ENV);
+	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
+	assert.equal(values.worker_connections, 512);
+	assert.equal(values.worker_shutdown_timeout, "1h");
+	assert.equal(values.tls12, true);
+	assert.equal(values.secp_curves, true);
+	assert.equal(values.module_vts, false);
+	assert.deepEqual(locked, []);
+	const stored = mergeRuntimeConfig(
+		"nginx",
+		{ worker_processes: "auto", worker_shutdown_timeout: "90s", module_njs: true },
+		BOOT_ENV,
+	).values;
+	assert.equal(stored.worker_processes, "auto");
+	assert.equal(stored.worker_shutdown_timeout, "90s");
+	assert.equal(stored.module_njs, true);
+	for (const entry of RUNTIME_RULES.filter((one) => one.group === "nginx")) assert.equal(entry.applies, "reload");
+});
+
+it("refuses invalid nginx values and falls back to the default for a stored one", () => {
+	assert.notEqual(rule("worker_processes").validate(String(availableParallelism() + 1)), null);
+	assert.notEqual(rule("worker_connections").validate(63), null);
+	assert.notEqual(rule("worker_shutdown_timeout").validate("1 h"), null);
+	assert.notEqual(rule("worker_shutdown_timeout").validate("1h;"), null);
+	for (const ok of ["1h30m", "90", "0", "1d12h", "500ms"])
+		assert.equal(rule("worker_shutdown_timeout").validate(ok), null);
+	for (const bad of ["1s1h", "5m5m", "1h30m15", "30s10", "1 h", "1h;"]) {
+		assert.notEqual(rule("worker_shutdown_timeout").validate(bad), null, bad);
+		assert.equal(rule("worker_shutdown_timeout").parseEnv(bad), undefined, bad);
+	}
+	assert.equal(rule("worker_shutdown_timeout").parseEnv("1h30m"), "1h30m");
+	const { values, invalid } = mergeRuntimeConfig("nginx", { worker_processes: "999" }, BOOT_ENV);
+	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
+	assert.deepEqual(invalid, [{ key: "worker_processes", source: "stored" }]);
+});
+
+it("an env var locks its nginx field, NGINX_DISABLE_TLS12 inverted", () => {
+	const env = userEnv({ NGINX_DISABLE_TLS12: "true", NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE: "true" });
+	const {
+		values,
+		locked,
+		locked_by: lockedBy,
+	} = mergeRuntimeConfig("nginx", { tls12: true, module_vts: false }, env);
+	assert.equal(values.tls12, false);
+	assert.equal(values.module_vts, true);
+	assert.deepEqual(sorted(locked), ["module_vts", "tls12"]);
+	assert.equal(lockedBy.tls12, "NGINX_DISABLE_TLS12");
+});
+
+it("post-quantum only forces TLS 1.2 and the P curves off, by env or by the setting", () => {
+	const byEnv = mergeRuntimeConfig(
+		"nginx",
+		{ tls12: true, secp_curves: true },
+		userEnv({ NGINX_FORCE_X25519MLKEM768: "true" }),
+	);
+	assert.equal(byEnv.values.tls12, false);
+	assert.equal(byEnv.values.secp_curves, false);
+	assert.equal(byEnv.locked_reason.tls12, "force-mlkem");
+	assert.equal(byEnv.locked_by.secp_curves, "NGINX_FORCE_X25519MLKEM768");
+	// set in the UI, and the env sets TLS 1.2 back on: post-quantum still wins
+	const bySetting = mergeRuntimeConfig(
+		"nginx",
+		{ force_mlkem: true, tls12: true },
+		userEnv({ NGINX_DISABLE_TLS12: "false" }),
+	);
+	assert.equal(bySetting.values.tls12, false);
+	assert.equal(bySetting.values.secp_curves, false);
+	assert.equal(bySetting.locked_reason.tls12, "force-mlkem-setting");
+	assert.equal(bySetting.locked_reason.secp_curves, "force-mlkem-setting");
+	assert.equal(bySetting.locked_by.tls12, "NGINX_FORCE_X25519MLKEM768");
+	assert.equal(bySetting.locked_by.secp_curves, "NGINX_FORCE_X25519MLKEM768");
+	assert.ok(SETTING_LOCK_REASONS.includes("force-mlkem-setting"));
+	assert.ok(LOCK_REASONS.includes("force-mlkem"));
+});
+
+it("refuses a long bad worker_shutdown_timeout without backtracking", () => {
+	const start = performance.now();
+	assert.notEqual(rule("worker_shutdown_timeout").validate(`${"1".repeat(30)}x`), null);
+	assert.notEqual(rule("worker_shutdown_timeout").validate(`${"1h".repeat(15)}x`), null);
+	assert.ok(performance.now() - start < 50);
+	assert.equal(rule("worker_shutdown_timeout").validate("90"), null);
 });

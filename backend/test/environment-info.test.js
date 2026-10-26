@@ -61,24 +61,10 @@ it("reports set from the user list and is_default when unset or equal to the def
 });
 
 it("shows the default value of an unset item", () => {
-	const entry = itemOf(environmentInfo({}, []), "NGINX_WORKER_CONNECTIONS");
-	assert.equal(entry.value, "512");
+	const entry = itemOf(environmentInfo({}, []), "NPM_IPV4_BINDING");
+	assert.equal(entry.value, "0.0.0.0");
 	assert.equal(entry.set, false);
 	assert.equal(entry.is_default, true);
-});
-
-it("shows the worker count envs.sh worked out as the default, and a set value as set", () => {
-	const computed = itemOf(
-		environmentInfo({ NGINX_WORKER_PROCESSES: "4", NPMPRO_USER_ENV: "" }, []),
-		"NGINX_WORKER_PROCESSES",
-	);
-	assert.equal(computed.value, "4");
-	assert.equal(computed.set, false);
-	assert.equal(computed.is_default, true);
-	assert.equal(itemOf(environmentInfo({}, []), "NGINX_WORKER_PROCESSES").value, "CPU threads, at most 4");
-	const userSet = environmentInfo({ NGINX_WORKER_PROCESSES: "auto", NPMPRO_USER_ENV: "NGINX_WORKER_PROCESSES" }, []);
-	assert.equal(itemOf(userSet, "NGINX_WORKER_PROCESSES").set, true);
-	assert.equal(itemOf(userSet, "NGINX_WORKER_PROCESSES").value, "auto");
 });
 
 it("puts every item in a known group, without duplicates or runtime names", () => {

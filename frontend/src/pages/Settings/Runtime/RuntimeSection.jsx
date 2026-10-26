@@ -25,7 +25,7 @@ const formatMessage = (id, values) => intl.formatMessage({ id }, values);
 
 const RuntimeContext = createContext(null);
 // lock reasons of a setting, not of an env var (backend SETTING_LOCK_REASONS)
-const SETTING_LOCK_REASONS = new Set(["goaccess-setting"]);
+const SETTING_LOCK_REASONS = new Set(["goaccess-setting", "force-mlkem-setting"]);
 
 /**
  * The loaded group inside a RuntimeSection: data, isLocked(key), envOf(key) (the env var that locks it),
