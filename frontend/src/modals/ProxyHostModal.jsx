@@ -36,13 +36,15 @@ import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptio
 import { validateInteger, validateUpstreamUrl } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
+const PRINTABLE_ASCII = /^[\x21-\x7e]+$/u;
+const NGINX_SYNTAX = /[$;{}"'\\#]/u;
 // the backend's rule for a non-admin "path" target (lib/host-config-guard.js): an absolute path inside /var/www, no ..
 const insideWebroot = (value) =>
 	typeof value === "string" &&
 	(value === "/var/www" || value.startsWith("/var/www/")) &&
 	!value.split("/").includes("..") &&
-	/^[\x21-\x7e]+$/u.test(value) &&
-	!/[$;{}"'\\#]/u.test(value);
+	PRINTABLE_ASCII.test(value) &&
+	!NGINX_SYNTAX.test(value);
 
 const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
 const validatePort = validateInteger({ min: 1, max: 65535 });
