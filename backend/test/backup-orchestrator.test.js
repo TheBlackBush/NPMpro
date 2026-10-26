@@ -21,6 +21,7 @@ const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
 const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
 const UNKNOWN_DIRECTIVE = /unknown directive/u;
 const AUTO_IN_MESSAGE = /npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro/u;
+const LOCATION_TABLE = /npmpro_location/u;
 const UPLOAD_NAME = /^npmpro-backup-upload-\d{8}-\d{6}\.npmpro$/u;
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
@@ -137,6 +138,7 @@ const createSchema = async (knex) => {
  * @param {Function} [options.regenerated]  (knex, call) => Promise, runs in the fake host regeneration
  * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
  * @param {number}   [options.maxUpload]
+ * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
  */
 const setup = async ({
 	test = async () => {},
@@ -147,6 +149,7 @@ const setup = async ({
 	regenerated = async () => {},
 	failedGroups = {},
 	maxUpload,
+	audited = async () => {},
 } = {}) => {
 	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
 	const dataDir = path.join(base, "data");
@@ -174,7 +177,7 @@ const setup = async ({
 		instanceKey: async () => Buffer.alloc(32, 7),
 		audit: (_access, entry) => {
 			calls.audit.push(entry);
-			return Promise.resolve();
+			return audited(entry);
 		},
 		nginx: {
 			test: async () => {
@@ -695,6 +698,49 @@ it("rolls back an internal failure without showing its message", TIMEOUT, async 
 		assert.deepEqual(await hostIds(ctx.knex), [2]);
 		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# the instance\n");
 		assert.deepEqual([ctx.calls.test, ctx.calls.reload], [1, 1]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("reports a failure before the database commit as a restore that changed nothing", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		// the inserts of the proxy hosts fail inside the transaction
+		await ctx.knex.schema.dropTable("npmpro_location");
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "restore-failed");
+				assert.equal(error.public, true);
+				assert.equal(error.message, "The restore failed and nothing was changed");
+				assert.match(error.cause.message, LOCATION_TABLE);
+				return true;
+			},
+		);
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# the instance\n");
+		assert.deepEqual([ctx.calls.test, ctx.calls.reload, ctx.calls.regenerate], [0, 0, 0]);
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("reports a committed restore as done when its audit log entry cannot be written", TIMEOUT, async () => {
+	const ctx = await setup({
+		audited: (entry) =>
+			entry.action === "restored" ? Promise.reject(new Error("audit table locked")) : Promise.resolve(),
+	});
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] });
+		assert.deepEqual(result.counts, { proxy_hosts: 1 });
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.equal(await readFile(customFile(ctx.dataDir), "utf8"), "# from the backup\n");
 	} finally {
 		await ctx.cleanup();
 	}

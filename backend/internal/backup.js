@@ -395,6 +395,13 @@ const createBackupService = ({
 				box,
 				now: Math.floor(clock.now() / 1000),
 			});
+		} catch (error) {
+			// the database transaction rolled back, the files are untouched
+			log.error(`The restore failed before any change: ${error.message}`);
+			if (error.public) throw error;
+			throw new BackupError("restore-failed", "The restore failed and nothing was changed", { cause: error });
+		}
+		try {
 			try {
 				asideDir = await store.createStageDir("restore");
 				swap = await swapFiles({ dataDir, stageDir: entry.stageDir, types, asideDir });
@@ -450,20 +457,25 @@ const createBackupService = ({
 			// the restore itself succeeded
 			log.error(`Could not read the hosts nginx rejected after the restore: ${error.message}`);
 		}
-		await audit(access, {
-			action: "restored",
-			object_type: "backup",
-			object_id: 0,
-			meta: {
-				name: entry.file,
-				types,
-				counts: result.counts,
-				references: result.references.length,
-				skipped_users: result.skippedUsers.map((user) => user.email),
-				offline_hosts: offline.length,
-				automatic_backup: autoName,
-			},
-		});
+		try {
+			await audit(access, {
+				action: "restored",
+				object_type: "backup",
+				object_id: 0,
+				meta: {
+					name: entry.file,
+					types,
+					counts: result.counts,
+					references: result.references.length,
+					skipped_users: result.skippedUsers.map((user) => user.email),
+					offline_hosts: offline.length,
+					automatic_backup: autoName,
+				},
+			});
+		} catch (error) {
+			// the restore itself succeeded
+			log.error(`Could not write the audit log entry of the restore: ${error.message}`);
+		}
 		return {
 			counts: result.counts,
 			references: result.references,
