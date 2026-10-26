@@ -51,7 +51,7 @@ const internalSetting = {
 		if (row.id === "default-site") {
 			// write the html if we need to
 			if (row.value === "html") {
-				await writeFile("/data/html/index.html", row.meta.html, { encoding: "utf8" });
+				await writeFile("/data/public/html/index.html", row.meta.html, { encoding: "utf8" });
 			}
 
 			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written

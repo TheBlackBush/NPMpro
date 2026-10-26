@@ -44,9 +44,9 @@ mkdir -vp /data/public/avatar \
           /data/tls/custom \
           /data/tls/mtls \
           /data/tls/ech \
-          /data/html \
+          /data/public/html \
           /data/access \
-          /data/anubis \
+          /data/public/anubis \
           /data/crowdsec \
           /data/nginx/redirection_host \
           /data/nginx/proxy_host \
@@ -87,7 +87,7 @@ fi
 
 
 if [ -n "$(ls -A /data/nginx/default_www 2> /dev/null)" ]; then
-    cp -van /data/nginx/default_www/* /data/html
+    cp -van /data/nginx/default_www/* /data/public/html
 fi
 rm -vrf /data/nginx/default_www
 
@@ -120,6 +120,12 @@ rm -rf /data/tls/certbot/acme-challenge
 for kind in avatar gravatar; do
     if [ -d /data/npmpro/"$kind" ]; then
         cp -an /data/npmpro/"$kind"/. /data/public/"$kind"/ && rm -rf /data/npmpro/"$kind"
+    fi
+done
+# the custom default page and the Anubis images (start.sh removes the old top-level folders, /data is root's)
+for kind in html anubis; do
+    if [ -d /data/"$kind" ]; then
+        cp -an /data/"$kind"/. /data/public/"$kind"/
     fi
 done
 # the old plaintext credential files, once no renewal config points to them (the line above moved them all)
@@ -168,10 +174,10 @@ rm -vrf /data/nginx/default_host \
 
 touch /data/tls/ech/nginx.conf \
       /data/tls/ech/cron.sh \
-      /data/html/index.html \
-      /data/anubis/happy.webp \
-      /data/anubis/reject.webp \
-      /data/anubis/pensive.webp \
+      /data/public/html/index.html \
+      /data/public/anubis/happy.webp \
+      /data/public/anubis/reject.webp \
+      /data/public/anubis/pensive.webp \
       /data/custom_nginx/events.conf \
       /data/custom_nginx/http.conf \
       /data/custom_nginx/http_top.conf \

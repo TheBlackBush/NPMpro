@@ -98,7 +98,7 @@ Steps:
 
 **What the visitor sees:** a short "checking your browser" page on the first visit, then your service.
 
-**Custom images:** to replace the "allow", "checking" and "blocked" images, put your images as `happy.webp`, `pensive.webp` and `reject.webp` into `/opt/npmpro/anubis` and turn on **Custom Anubis images** in Settings, Forward authentication. It is on by default when all three files exist and are not empty; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it.
+**Custom images:** to replace the "allow", "checking" and "blocked" images, put your images as `happy.webp`, `pensive.webp` and `reject.webp` into `/opt/npmpro/public/anubis` and turn on **Custom Anubis images** in Settings, Forward authentication. It is on by default when all three files exist and are not empty; `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` sets it.
 
 **Common mistakes:**
 
