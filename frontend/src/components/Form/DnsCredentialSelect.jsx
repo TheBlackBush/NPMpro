@@ -1,13 +1,18 @@
 import { IconPlus } from "@tabler/icons-react";
-import { useField } from "formik";
+import { useField, useFormikContext } from "formik";
 import Select from "react-select";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
 import { selectClassNames } from "src/modules/Select";
+import { validateRequired } from "src/modules/Validations";
+
+const required = validateRequired();
 
 export function DnsCredentialSelect({ name, provider }) {
-	const [field, , helpers] = useField(name);
+	const [field, meta, helpers] = useField({ name, validate: required });
+	const { submitCount } = useFormikContext();
+	const error = meta.error && (meta.touched || submitCount > 0) ? meta.error : null;
 	const { data, isPending } = useDnsCredentials();
 
 	const options = (data ?? [])
@@ -33,6 +38,9 @@ export function DnsCredentialSelect({ name, provider }) {
 						isLoading={isPending}
 						isSearchable
 						required
+						aria-invalid={error ? "true" : undefined}
+						aria-describedby={error ? "dnsCredential-error" : undefined}
+						onBlur={() => helpers.setTouched(true)}
 						placeholder={intl.formatMessage({
 							id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
 						})}
@@ -53,6 +61,11 @@ export function DnsCredentialSelect({ name, provider }) {
 					<IconPlus size={16} />
 				</button>
 			</div>
+			{error ? (
+				<div className="invalid-feedback d-block" id="dnsCredential-error">
+					{error}
+				</div>
+			) : null}
 		</div>
 	);
 }

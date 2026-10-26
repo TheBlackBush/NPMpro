@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { setPermissions } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading } from "src/components";
 import { PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
@@ -58,7 +58,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{() => (
-						<Form>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -132,15 +132,15 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 									<T id="cancel" />
 								</Button>
-								<Button
-									type="submit"
+								<FormSubmit
 									className="ms-auto"
+									edit={true}
 									color="primary"
 									isLoading={isSubmitting}
 									disabled={isSubmitting}
 								>
 									<T id="save" />
-								</Button>
+								</FormSubmit>
 							</AppModal.Footer>
 						</Form>
 					)}

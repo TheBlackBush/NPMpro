@@ -1,11 +1,13 @@
 import cn from "clsx";
-import { useFormikContext } from "formik";
+import { getIn, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 
 const INVALID = '.is-invalid, [aria-invalid="true"], .invalid-feedback.d-block';
 const FOCUSABLE = "input:not([type=hidden]), select, textarea, button";
 const NO_LABELS = {};
+const LIST_INDEX = /\[(?<index>\d+)\]/gu;
+const PATH_START = /[.[]/u;
 
 /**
  * Shows the first marked field of a form: opens its tab, scrolls to it and focuses it (the field itself, or for a
@@ -27,34 +29,82 @@ const showFirstInvalid = (form) => {
  */
 const labelInForm = (form, name) => {
 	if (!form) return null;
-	const escaped = CSS.escape(name);
-	const control = form.querySelector(`[name="${escaped}"]`) ?? form.querySelector(`#${escaped}`);
+	// a list item's field may be named locations[0].path or locations.0.path
+	const names = [...new Set([name, name.replaceAll(LIST_INDEX, ".$<index>")])];
+	const control =
+		names.map((n) => form.querySelector(`[name="${CSS.escape(n)}"]`)).find(Boolean) ??
+		form.querySelector(`#${CSS.escape(name)}`);
 	if (!control) return null;
+	const own = control.getAttribute("aria-label");
+	if (own) return own.trim();
 	const byFor = control.id ? form.querySelector(`label[for="${CSS.escape(control.id)}"]`) : null;
-	const label = byFor ?? control.closest(".mb-3, fieldset")?.querySelector(".form-label, legend");
-	return label?.textContent?.trim() || null;
+	if (byFor) return byFor.textContent?.trim() || null;
+	// else the nearest form label above the control (custom selects keep their input in nested wrappers)
+	for (let node = control.parentElement; node && node !== form; node = node.parentElement) {
+		const label = node.querySelector(".form-label, legend");
+		if (label) return label.textContent?.trim() || null;
+	}
+	return null;
 };
 
 const sameList = (a, b) => a.length === b.length && a.every((item, index) => item === b[index]);
 
 /**
- * Place next to a form's submit button, inside its Formik form, and give the button blocked={!isValid} and
- * aria-describedby={id}. While a field has an error it names the fields to fix. After a submit Formik refused (Enter
- * in a field) it also shows the first marked field.
+ * The path of every error message in Formik's errors: name, fieldValues.token, locations[0].path
+ *
+ * @param   {*}       errors
+ * @param   {string}  [prefix]
+ * @returns {string[]}
+ */
+const errorPaths = (errors, prefix = "") => {
+	if (typeof errors === "string") return prefix ? [prefix] : [];
+	if (Array.isArray(errors)) return errors.flatMap((item, index) => errorPaths(item, `${prefix}[${index}]`));
+	if (errors && typeof errors === "object") {
+		return Object.entries(errors).flatMap(([key, value]) => errorPaths(value, prefix ? `${prefix}.${key}` : key));
+	}
+	return [];
+};
+
+/**
+ * The fields whose error the form shows. late: only after the field was left (touched) or a submit was tried, for
+ * forms that start empty (an add form); else every error at once, for forms that start with saved values.
+ *
+ * @param   {boolean}  [late]
+ * @returns {string[]} the paths of the fields (errorPaths)
+ */
+const useShownErrors = (late = false) => {
+	const { errors, touched, submitCount } = useFormikContext();
+	const paths = errorPaths(errors);
+	return late && submitCount === 0 ? paths.filter((path) => Boolean(getIn(touched, path))) : paths;
+};
+
+/**
+ * Place next to a form's submit button, inside its Formik form, and give the button
+ * blocked={useShownErrors(late).length > 0} and aria-describedby={id}. While a shown field has an error it names the
+ * fields to fix. After a submit Formik refused (Enter in a field) it also shows the first marked field.
  *
  * @param {Object}  props
- * @param {string}  props.id          referenced by the button's aria-describedby
- * @param {Object}  [props.labels]    field name -> translation id of its label, for a field whose label the form does
- *                                    not show next to a control of that name (keep the object stable)
- * @param {boolean} [props.block]     its own centred line (under full-width buttons), without height while empty
+ * @param {string}  props.id           referenced by the button's aria-describedby
+ * @param {Object}  [props.labels]     field name -> translation id of its label, for a field whose label the form
+ *                                     does not show next to a control of that name (keep the object stable)
+ * @param {boolean} [props.late]       name a field only after it was left or a submit was tried (useShownErrors)
+ * @param {string}  [props.messageId]  the note, with {fields}: "Fix before saving: {fields}" by default
+ * @param {boolean} [props.block]      its own centred line (under full-width buttons), without height while empty
  * @param {string}  [props.className]
  */
-function FormErrorNote({ id, labels = NO_LABELS, block = false, className }) {
-	const { submitCount, isSubmitting, isValid, errors } = useFormikContext();
+function FormErrorNote({
+	id,
+	labels = NO_LABELS,
+	late = false,
+	messageId = "form.fix-fields",
+	block = false,
+	className,
+}) {
+	const { submitCount, isSubmitting, isValid } = useFormikContext();
 	const ref = useRef(null);
 	const handled = useRef(0);
 	const [names, setNames] = useState([]);
-	const keysId = Object.keys(errors ?? {}).join("|");
+	const keysId = useShownErrors(late).join("|");
 
 	// the labels are read from the rendered form, so after the render
 	useEffect(() => {
@@ -62,7 +112,10 @@ function FormErrorNote({ id, labels = NO_LABELS, block = false, className }) {
 		const found = keysId
 			.split("|")
 			.filter(Boolean)
-			.map((key) => (labels[key] ? intl.formatMessage({ id: labels[key] }) : labelInForm(form, key)) ?? key);
+			.map((path) => {
+				const labelId = labels[path] ?? labels[path.split(PATH_START)[0]];
+				return (labelId ? intl.formatMessage({ id: labelId }) : labelInForm(form, path)) ?? path;
+			});
 		const unique = [...new Set(found)];
 		setNames((current) => (sameList(current, unique) ? current : unique));
 	}, [keysId, labels]);
@@ -73,7 +126,7 @@ function FormErrorNote({ id, labels = NO_LABELS, block = false, className }) {
 		showFirstInvalid(ref.current?.closest("form"));
 	}, [submitCount, isSubmitting, isValid]);
 
-	const show = !isValid && names.length > 0;
+	const show = keysId !== "" && names.length > 0;
 	const Tag = block ? "div" : "span";
 	return (
 		<Tag
@@ -82,9 +135,9 @@ function FormErrorNote({ id, labels = NO_LABELS, block = false, className }) {
 			className={cn("text-danger small", block && "text-center", block && show && "mt-2", className)}
 			role="status"
 		>
-			{show ? <T id="form.fix-fields" data={{ fields: names.join(", ") }} /> : null}
+			{show ? <T id={messageId} data={{ fields: names.join(", ") }} /> : null}
 		</Tag>
 	);
 }
 
-export { FormErrorNote };
+export { FormErrorNote, showFirstInvalid, useShownErrors };

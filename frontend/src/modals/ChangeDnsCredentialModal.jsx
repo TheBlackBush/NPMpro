@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Form, Formik } from "formik";
 import { useState } from "react";
 import { setCertificateDnsCredential } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, DnsCredentialSelect, ErrorAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, DnsCredentialSelect, ErrorAlert, FormSubmit } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -44,8 +44,8 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 				initialValues={{ npmproDnsCredentialId: certificate.npmproDnsCredentialId ?? undefined }}
 				onSubmit={onSubmit}
 			>
-				{({ values }) => (
-					<Form>
+				{() => (
+					<Form noValidate>
 						<DirtyTracker dirtyRef={dirtyRef} />
 						<AppModal.Header closeButton={!isSubmitting}>
 							<AppModal.Title>
@@ -63,15 +63,15 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
-							<Button
-								type="submit"
-								color="primary"
+							<FormSubmit
 								className="ms-auto"
+								edit={true}
+								color="primary"
 								isLoading={isSubmitting}
-								disabled={isSubmitting || !values.npmproDnsCredentialId}
+								disabled={isSubmitting}
 							>
 								<T id="save" />
-							</Button>
+							</FormSubmit>
 						</AppModal.Footer>
 					</Form>
 				)}

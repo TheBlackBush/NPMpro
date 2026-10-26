@@ -7,6 +7,7 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	NginxConfigField,
@@ -25,7 +26,6 @@ import {
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
-import { showTabOfInvalid } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const showDeadHostModal = (id) => {
@@ -98,7 +98,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 					onSubmit={onSubmit}
 				>
 					{({ values }) => (
-						<Form onInvalid={showTabOfInvalid}>
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -186,15 +186,15 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
-									<Button
-										type="submit"
-										color="primary"
+									<FormSubmit
 										className="ms-auto"
+										edit={Boolean(data?.id)}
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="save" />
-									</Button>
+									</FormSubmit>
 								</HasPermission>
 							</AppModal.Footer>
 						</Form>

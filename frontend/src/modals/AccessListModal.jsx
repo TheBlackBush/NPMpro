@@ -7,6 +7,7 @@ import {
 	BasicAuthFields,
 	Button,
 	ErrorAlert,
+	FormSubmit,
 	HasPermission,
 	Loading,
 	SwitchField,
@@ -15,12 +16,21 @@ import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard }
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
-import { showTabOfInvalid, validateString } from "src/modules/Validations";
+import { validateString } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
 const showAccessListModal = (id) => {
 	EasyModal.show(AccessListModal, { id });
 };
+
+// either users or access rules (besides the last "all" one) must be set; duplicate names are checked per row
+const validateAtLeastOne = (values) =>
+	(values.items ?? []).length === 0 && (values.clients ?? []).every((c) => c.address.trim().toLowerCase() === "all")
+		? { accessRules: intl.formatMessage({ id: "error.access.at-least-one" }) }
+		: {};
+
+// field name -> label for the note next to Save
+const FIELD_LABELS = { accessRules: "access-list.rules-required" };
 
 const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -29,30 +39,8 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const [errorMsg, setErrorMsg] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const validate = (values) => {
-		// either Auths or Clients must be defined
-		if (values.items.length === 0 && values.clients.every((c) => c.address.trim().toLowerCase() === "all")) {
-			return intl.formatMessage({ id: "error.access.at-least-one" });
-		}
-
-		// ensure the items don't contain the same username twice
-		const usernames = values.items.map((i) => i.username);
-		const uniqueUsernames = Array.from(new Set(usernames));
-		if (usernames.length !== uniqueUsernames.length) {
-			return intl.formatMessage({ id: "error.access.duplicate-usernames" });
-		}
-
-		return null;
-	};
-
 	const onSubmit = (values, { setSubmitting }) => {
 		if (isSubmitting) return;
-
-		const vErr = validate(values);
-		if (vErr) {
-			setErrorMsg(vErr);
-			return;
-		}
 
 		setIsSubmitting(true);
 		setErrorMsg(null);
@@ -100,10 +88,11 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 						items: data?.items,
 						clients: data?.clients,
 					}}
+					validate={validateAtLeastOne}
 					onSubmit={onSubmit}
 				>
-					{({ setFieldValue }) => (
-						<Form onInvalid={showTabOfInvalid}>
+					{({ setFieldValue, errors, submitCount }) => (
+						<Form noValidate>
 							<DirtyTracker dirtyRef={dirtyRef} />
 							<AppModal.Header closeButton={!isSubmitting}>
 								<AppModal.Title>
@@ -114,6 +103,11 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
 									{errorMsg}
 								</ErrorAlert>
+								{errors.accessRules && submitCount > 0 ? (
+									<div className="invalid-feedback d-block mb-3" role="alert">
+										{errors.accessRules}
+									</div>
+								) : null}
 								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
 									<li className="nav-item" role="presentation">
 										<a
@@ -221,15 +215,16 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 									<T id="cancel" />
 								</Button>
 								<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
-									<Button
-										type="submit"
-										color="primary"
+									<FormSubmit
+										labels={FIELD_LABELS}
 										className="ms-auto"
+										edit={Boolean(data?.id)}
+										color="primary"
 										isLoading={isSubmitting}
 										disabled={isSubmitting}
 									>
 										<T id="save" />
-									</Button>
+									</FormSubmit>
 								</HasPermission>
 							</AppModal.Footer>
 						</Form>

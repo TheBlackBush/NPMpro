@@ -9,6 +9,7 @@ import {
 	DNSProviderFields,
 	DomainNamesField,
 	ErrorAlert,
+	FormSubmit,
 	RequestProgress,
 	SwitchField,
 } from "src/components";
@@ -56,7 +57,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 				onSubmit={onSubmit}
 			>
 				{({ values }) => (
-					<Form>
+					<Form noValidate>
 						<DirtyTracker dirtyRef={dirtyRef} />
 						<AppModal.Header closeButton={!isSubmitting}>
 							<AppModal.Title>
@@ -89,15 +90,14 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 							<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 								<T id="cancel" />
 							</Button>
-							<Button
-								type="submit"
-								color="primary"
+							<FormSubmit
 								className="ms-auto"
+								color="primary"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}
 							>
 								<T id="save" />
-							</Button>
+							</FormSubmit>
 						</AppModal.Footer>
 					</Form>
 				)}
