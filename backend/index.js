@@ -16,7 +16,7 @@ import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { runtimeExclusive } from "./internal/runtime-queue.js";
-import { setRuntimeApply } from "./internal/runtime-setting.js";
+import { setRuntimeApply, setRuntimeApplyAll } from "./internal/runtime-setting.js";
 import { recoverStapling, watchOcspResponses } from "./internal/stapling-recovery.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
@@ -57,6 +57,7 @@ async function appStart() {
 			accessLogOn: accessLog.enabled,
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
+		setRuntimeApplyAll(runtimeApplier.applyAll);
 		// a failed startup apply keeps the files from start.sh, the backend still starts
 		try {
 			await loadRuntimeConfig();
