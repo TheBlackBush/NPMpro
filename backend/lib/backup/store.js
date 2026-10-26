@@ -33,7 +33,7 @@ const randomName = () => randomBytes(12).toString("hex");
 const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 60 * 1000 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
-	let current = null; // { token, entry }
+	let current = null; // { token, entry, timer }
 	const pending = new Map();
 
 	const fileName = ({ host, date, auto }) =>
@@ -153,6 +153,7 @@ const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 
 
 	const dropToken = (token) => {
 		if (current?.token !== token) return;
+		clearTimeout(current.timer);
 		rmSync(current.entry.stageDir, { recursive: true, force: true });
 		current = null;
 	};
@@ -160,7 +161,10 @@ const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 
 	const createToken = ({ stageDir, file, manifest }) => {
 		if (current) dropToken(current.token);
 		const token = randomBytes(24).toString("base64url");
-		current = { token, entry: { stageDir, file, manifest, expires: clock.now() + tokenTtlMs } };
+		// an abandoned restore session does not keep its stage until the next one
+		const timer = setTimeout(() => dropToken(token), tokenTtlMs);
+		timer.unref();
+		current = { token, entry: { stageDir, file, manifest, expires: clock.now() + tokenTtlMs }, timer };
 		return token;
 	};
 
@@ -171,7 +175,10 @@ const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 
 			throw expired();
 		}
 		const { entry } = current;
-		if (!keep) current = null;
+		if (!keep) {
+			clearTimeout(current.timer);
+			current = null;
+		}
 		return entry;
 	};
 

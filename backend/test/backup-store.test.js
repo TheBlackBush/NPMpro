@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
+import { setTimeout as sleep } from "node:timers/promises";
 import { writeBackupFile } from "../lib/backup/format.js";
 import { createBackupStore } from "../lib/backup/store.js";
 
@@ -187,6 +188,23 @@ it("tokens expire, are replaced and drop their stage", async () => {
 	store.dropToken(t4);
 	assert.equal(await exists(stage4), false);
 	assert.throws(() => store.takeToken("nope"), code("token-expired"));
+});
+
+it("removes a token's stage when the token expires unused, and not after it was taken", async () => {
+	const { store } = await make({ tokenTtlMs: 30 });
+	const stage1 = await store.createStageDir("restore");
+	const t1 = store.createToken({ stageDir: stage1, file: "f", manifest: {} });
+	await sleep(100);
+	assert.equal(await exists(stage1), false);
+	assert.throws(() => store.takeToken(t1), code("token-expired"));
+	const stage2 = await store.createStageDir("restore");
+	const t2 = store.createToken({ stageDir: stage2, file: "g", manifest: {} });
+	assert.equal(store.takeToken(t2, { keep: false }).file, "g");
+	const stage3 = await store.createStageDir("restore");
+	store.createToken({ stageDir: stage3, file: "h", manifest: {} });
+	await sleep(100);
+	assert.equal(await exists(stage2), true);
+	assert.equal(await exists(stage3), false);
 });
 
 it("pending downloads are one-time, validated and expire", async () => {
