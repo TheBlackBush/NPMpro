@@ -95,7 +95,7 @@ With SQLite, NPMpro copies the database to `/data/backups/database` before it ru
 2. Replace `/data/npmpro/database.sqlite` with the backup and remove `database.sqlite-wal` and `database.sqlite-shm` next to it.
 3. Start the previous image.
 
-For your own backups, stop the container and copy the whole data folder. It includes `/data/npmpro/dns-credentials.key`, which encrypts the saved DNS credentials, the OIDC client secret, the MaxMind license key and the unique visitor key. Without it the credentials, the client secret and the license key have to be entered again.
+For backups of your hosts, certificates, users and settings use Settings, Backup and restore (see [Backup and restore](Backup-and-restore)). For a copy of everything, stop the container and copy the whole data folder. It includes `/data/npmpro/dns-credentials.key`, which encrypts the saved DNS credentials, the OIDC client secret, the MaxMind license key and the unique visitor key. Without it the credentials, the client secret and the license key have to be entered again.
 
 ## NPMplus migration checks fail
 
