@@ -53,8 +53,9 @@ function WorkerProcesses() {
 	const { values } = useFormikContext();
 	// cpuCount is optional in the API: without it only "auto" and the current value are offered
 	const counts = Array.from({ length: data.cpuCount ?? 0 }, (_, i) => String(i + 1));
-	if (values.workerProcesses !== "auto" && !counts.includes(values.workerProcesses))
+	if (values.workerProcesses !== "auto" && !counts.includes(values.workerProcesses)) {
 		counts.push(values.workerProcesses);
+	}
 	const options = [
 		{ value: "auto", label: intl.formatMessage({ id: "settings.nginx.workers.auto" }) },
 		...counts.map((count) => ({ value: count, label: count })),

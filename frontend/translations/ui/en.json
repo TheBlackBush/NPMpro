@@ -714,6 +714,7 @@
 	"settings.environment.group.modules": "Modules and PHP",
 	"settings.environment.group.monitoring": "Logs & monitoring",
 	"settings.environment.group.network": "Network",
+	"settings.environment.group.nginx": "nginx",
 	"settings.environment.group.oidc": "Authentication",
 	"settings.environment.group.users": "User and time zone",
 	"settings.environment.locked": "Settings set by environment variables",
