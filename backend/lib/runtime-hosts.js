@@ -52,7 +52,7 @@ const createHostRenderer = ({ hostTypes, getConfigName, renderConfig, exists = e
 	 * renderHosts of the runtime applier: the host configs a changed reload key affects. At startup nothing is
 	 * re-rendered: the host configs on disk were rendered with the stored values. When an env value the templates
 	 * read, the list of runtime vars the env sets (NPMPRO_USER_RUNTIME_ENV) or the template version changed, envs.sh sets
-	 * REGENERATE_ALL, start.sh deletes the configs and setup.js regenerates them with effectiveEnv() after the
+	 * REGENERATE_ALL and setup.js regenerates them with effectiveEnv() (the previous configs stay in use until then) after the
 	 * startup apply.
 	 *
 	 * @param   {string}  group

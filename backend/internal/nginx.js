@@ -1,10 +1,9 @@
-import { mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { beautify } from "../lib/nginx-beautify.js";
 import { quoteLocation } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
@@ -14,10 +13,6 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
-
-// nginxbeautifier misreads braces, quotes, `$` patterns and escapes inside a quoted custom location path (crash,
-// silent rewrite of the path); such configs are written unformatted
-const BEAUTIFIER_UNSAFE_LOCATION = /^\s*location\s[^\n]*"[^\n]*[{}'$\\;#][^\n]*"/mu;
 
 const internalNginx = {
 	/**
@@ -224,25 +219,12 @@ const internalNginx = {
 	},
 
 	/**
-	 * Runs nginxbeautifier on a copy of the config in a temp folder; the text as it is when that fails
+	 * Formats a config like `nginxbeautifier -s 2`, in this process (lib/nginx-beautify.js)
 	 *
 	 * @param   {String}  text
 	 * @returns {Promise<String>}
 	 */
-	beautify: async (text) => {
-		if (BEAUTIFIER_UNSAFE_LOCATION.test(text)) return text;
-		const dir = await mkdtemp(path.join(tmpdir(), "npmpro-beautify-"));
-		const file = path.join(dir, "host.conf");
-		try {
-			await writeFile(file, text, { encoding: "utf8" });
-			await utils.execFile("nginxbeautifier", ["-s", "2", file]);
-			return await readFile(file, "utf8");
-		} catch {
-			return text;
-		} finally {
-			await rm(dir, { force: true, recursive: true });
-		}
-	},
+	beautify: async (text) => beautify(text),
 
 	/**
 	 * Renders the config of a host without writing it

@@ -74,8 +74,17 @@ elif [ -s /data/tls/ech/nginx.conf ]; then
 fi
 
 
+# A full regeneration (REGENERATE_ALL) keeps the previous host configs, so the sites keep working until the backend
+# has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
+# are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
-    sleep inf
+    if [ "$REGENERATE_ALL" = "true" ]; then
+        echo "The previous host configs do not pass nginx -t, starting without them until they are regenerated."
+        find /data/nginx -mindepth 2 -maxdepth 2 -name "*.conf" -exec mv {} {}.stale \;
+    fi
+    if ! nginx -tq; then
+        sleep inf
+    fi
 fi
 if [ "$PHP83" = "true" ]; then
     if ! PHP_INI_SCAN_DIR=/data/php/83/conf.d php-fpm83 -c /data/php/83 -y /data/php/83/php-fpm.conf -FOt > /dev/null 2>&1; then

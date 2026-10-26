@@ -279,10 +279,6 @@ if [ "$GOA" = "true" ]; then
     mkdir -vp /data/goaccess/data /data/goaccess/geoip
 fi
 
-if [ "$REGENERATE_ALL" = "true" ]; then
-    find /data/nginx -name "*.conf" -delete
-fi
-
 if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; then cp -va /data/logrotate.state /data/nginx/logs/logrotate.state; fi
 
 # http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
