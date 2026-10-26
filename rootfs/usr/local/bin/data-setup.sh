@@ -163,6 +163,7 @@ touch /data/tls/ech/nginx.conf \
       /data/custom_nginx/server_http.conf \
       /data/custom_nginx/server_dead.conf \
       /data/custom_nginx/server_proxy.conf \
+      /data/custom_nginx/php.conf \
       /data/custom_nginx/server_redirect.conf \
       /data/custom_nginx/stream.conf \
       /data/custom_nginx/stream_top.conf \

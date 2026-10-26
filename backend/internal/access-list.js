@@ -1,6 +1,7 @@
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
 import errs from "../lib/error.js";
+import { writeSecretFile } from "../lib/secret-file.js";
 import { access as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
 import accessListAuthModel from "../models/access_list_auth.js";
@@ -391,9 +392,7 @@ const internalAccessList = {
 	writeData: async (htpasswdFile, items) => {
 		const validItems = (items ?? []).filter((item) => item.username?.length > 0 && item.password?.length > 0);
 		for (const item of validItems) logger.info(`Adding: ${item.username}`);
-		await writeFile(htpasswdFile, validItems.map((item) => `${item.username}:${item.password}\n`).join(""), {
-			encoding: "utf8",
-		});
+		await writeSecretFile(htpasswdFile, validItems.map((item) => `${item.username}:${item.password}\n`).join(""));
 	},
 
 	/**

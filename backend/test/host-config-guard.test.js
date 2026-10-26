@@ -279,3 +279,26 @@ it("non-admins may keep a stored folder location without the slash", () => {
 		ALIAS_REFUSED,
 	);
 });
+
+it("refuses two custom locations with the same type and path, also for admins", () => {
+	const twice = { locations: [{ path: "/api" }, { path: "/api" }] };
+	assert.throws(() => assertHostConfig(admin, "proxy_host", twice), { status: 400 });
+	assert.throws(() => assertHostConfig(user, "proxy_host", twice), { status: 400 });
+	const differentType = { locations: [{ path: "/api" }, { location_type: "= ", path: "/api" }] };
+	assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", differentType));
+});
+
+it("refuses non-ASCII characters in a non-admin path target", () => {
+	for (const value of ["/var/www/sité/", "/var/www/a​b/", "/var/www/‮evil/"]) {
+		assert.equal(isInsideWebroot(value), false, value);
+	}
+	assert.equal(isInsideWebroot("/var/www/site-2_x.y/"), true);
+});
+
+it("checks a location without a scheme as http, the scheme it is saved with", () => {
+	const stored = { locations: [{ location_type: "", path: "/f/", forward_scheme: "path", forward_host: "/srv/" }] };
+	// the payload drops the scheme: saved as http, so no path check applies
+	assert.doesNotThrow(() =>
+		assertHostConfig(user, "proxy_host", { locations: [{ path: "/f/", forward_host: "app" }] }, stored),
+	);
+});

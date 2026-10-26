@@ -35,12 +35,22 @@ import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptio
 import { showTabOfInvalid, validateNumber, validateUpstreamUrl } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
+// the backend's rule for a non-admin "path" target (lib/host-config-guard.js): an absolute path inside /var/www, no ..
+const insideWebroot = (value) =>
+	typeof value === "string" &&
+	(value === "/var/www" || value.startsWith("/var/www/")) &&
+	!value.split("/").includes("..") &&
+	/^[\x21-\x7e]+$/u.test(value) &&
+	!/[$;{}"'\\#]/u.test(value);
+
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useProxyHost(id);
 	const isAdmin = useIsAdmin();
 	// raw nginx config is admin-only: a non-admin clone starts without it
 	const dropConfig = isClone && !isAdmin;
+	// so does a "path" target outside /var/www (the backend refuses it from a non-admin), the field starts empty
+	const clonedPath = (scheme, host) => (dropConfig && scheme === "path" && !insideWebroot(host) ? "" : host);
 	const { data: allProxyHosts } = useProxyHosts();
 	const suggestions = useDirectorySuggestions(allProxyHosts);
 	const { mutate: setProxyHost } = useSetProxyHost();
@@ -53,6 +63,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
 		...location,
 		...(dropConfig ? { advancedConfig: "" } : {}),
+		forwardHost: clonedPath(location.forwardScheme, location.forwardHost),
 		npmproAccessListIds: accessLists.map((accessList) => accessList.id),
 	}));
 
@@ -110,7 +121,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 						// Details tab
 						domainNames: data?.domainNames,
 						forwardScheme: data?.forwardScheme,
-						forwardHost: data?.forwardHost,
+						forwardHost: clonedPath(data?.forwardScheme, data?.forwardHost),
 						forwardPort: data?.forwardPort || "",
 						npmproAccessListIds: data?.accessLists.map((accessList) => accessList.id),
 						npmproAccessListType: data?.npmproAccessListType,

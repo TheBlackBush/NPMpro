@@ -1,4 +1,5 @@
 import { writeFile } from "node:fs/promises";
+import { assertDefaultSiteMeta } from "../lib/default-site.js";
 import errs from "../lib/error.js";
 import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
 import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
@@ -34,6 +35,7 @@ const internalSetting = {
 		if (["html", "redirect"].includes(merged.value) && !merged.meta?.[merged.value]) {
 			throw new errs.ValidationError(`meta.${merged.value} is required for ${merged.value}`);
 		}
+		if (merged.id === "default-site") assertDefaultSiteMeta(merged.meta ?? {});
 
 		await settingModel.query().where({ id: data.id }).patch(data);
 

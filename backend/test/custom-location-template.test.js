@@ -6,7 +6,7 @@ import { quoteLocation, quoteNginxString } from "../lib/nginx-quote.js";
 import utils from "../lib/utils.js";
 
 const PHP_AUTH_STRIPPED =
-	/include fastcgi\.conf;\s+fastcgi_param PATH_INFO \$fastcgi_path_info;\s+fastcgi_param HTTP_AUTHORIZATION "";\s+fastcgi_pass unix:\/run\/php1\.sock;/u;
+	/set \$path_info \$fastcgi_path_info;\s+try_files \$fastcgi_script_name =404;\s+include fastcgi\.conf;\s+fastcgi_param PATH_INFO \$path_info;\s+fastcgi_param HTTP_AUTHORIZATION "";\s+(?:#[^\n]*\s+)?include \/data\/custom_nginx\/php\.conf;\s+fastcgi_pass unix:\/run\/php1\.sock;/u;
 
 const render = async (location) => {
 	const template = await readFile(
@@ -89,6 +89,9 @@ it("basic auth without pass_auth strips the credentials for grpc and PHP custom 
 	});
 	assert.ok(!passed.includes("HTTP_AUTHORIZATION"));
 	assert.ok(!passed.includes("grpc_set_header Authorization"));
+	// PATH_INFO is kept before try_files clears it, with or without an access list
+	assert.ok(passed.includes("set $path_info $fastcgi_path_info;"));
+	assert.ok(passed.includes("fastcgi_param PATH_INFO $path_info;"));
 });
 
 it("a path the user quoted by hand keeps its meaning", () => {

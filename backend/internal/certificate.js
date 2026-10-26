@@ -14,6 +14,7 @@ import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { createRenewalTimer } from "../lib/renewal-timer.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
+import { writeSecretFile } from "../lib/secret-file.js";
 import apiValidator from "../lib/validator/api.js";
 import { ssl as logger } from "../logger.js";
 import certificateModel from "../models/certificate.js";
@@ -301,6 +302,13 @@ const internalCertificate = {
 
 		await internalCertificate.zipFiles(certFiles, opName);
 		logger.debug("zip completed : ", opName);
+		// the zip holds the private key
+		await internalAuditLog.add(access, {
+			action: "downloaded",
+			object_type: "certificate",
+			object_id: certificate.id,
+			meta: { id: certificate.id, nice_name: certificate.nice_name, provider: certificate.provider },
+		});
 		return {
 			fileName: opName,
 		};
@@ -473,7 +481,7 @@ const internalCertificate = {
 
 		await mkdir(dir, { recursive: true });
 		await writeFile(`${dir}/fullchain.pem`, certificate.certificate);
-		await writeFile(`${dir}/privkey.pem`, certificate.certificate_key);
+		await writeSecretFile(`${dir}/privkey.pem`, certificate.certificate_key);
 		const certs = certificate.certificate.match(/-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----\s*/gsu);
 		await writeFile(`${dir}/cert.pem`, certs[0]);
 		await writeFile(`${dir}/chain.pem`, certs.slice(1).join(""));
