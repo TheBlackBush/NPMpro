@@ -2,6 +2,7 @@ import {
 	IconAdjustments,
 	IconCertificate,
 	IconChartBar,
+	IconDatabaseExport,
 	IconListDetails,
 	IconLock,
 	IconNetwork,
@@ -12,6 +13,7 @@ import {
 } from "@tabler/icons-react";
 import Advanced from "./Advanced";
 import Authentication from "./Authentication";
+import Backup from "./Backup";
 import Certificates from "./Certificates";
 import DefaultSite from "./DefaultSite";
 import Environment from "./Environment";
@@ -32,5 +34,6 @@ export const SECTIONS = [
 	{ id: "monitoring", labelKey: "settings.monitoring", icon: IconChartBar, element: Monitoring },
 	{ id: "geoip", labelKey: "settings.geoip", icon: IconWorldPin, element: Geoip },
 	{ id: "advanced", labelKey: "settings.advanced", icon: IconAdjustments, element: Advanced },
+	{ id: "backup", labelKey: "settings.backup", icon: IconDatabaseExport, element: Backup },
 	{ id: "environment", labelKey: "settings.environment", icon: IconListDetails, element: Environment },
 ];

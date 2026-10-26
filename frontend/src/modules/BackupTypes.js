@@ -1,6 +1,7 @@
 /**
- * Selection helpers for the backup type tree. A category is { id, types: string[] } as returned by
- * GET /api/backups/types, `selected` is the array of selected type ids. Every helper returns a new array.
+ * Helpers of the backup UI: the selection of the type tree and the passphrase check. A category is
+ * { id, types: string[] } as returned by GET /api/backups/types, `selected` is the array of selected type ids. Every
+ * selection helper returns a new array.
  */
 
 export function categoryState(category, selected) {
@@ -23,4 +24,62 @@ export function toggleType(typeId, selected) {
 
 export function DEFAULT_SELECTED(categories) {
 	return categories.flatMap((category) => category.types);
+}
+
+// the categories limited to these type ids, without the ones left empty (a restore offers only the file's types)
+export function categoriesOf(categories, typeIds) {
+	return categories
+		.map((category) => ({ ...category, types: category.types.filter((id) => typeIds.includes(id)) }))
+		.filter((category) => category.types.length > 0);
+}
+
+export const PASSPHRASE_MIN_LENGTH = 12;
+
+/**
+ * Field errors of the passphrase inputs as translation ids, only when secrets are included. The length counts
+ * characters (code points) like the API's minLength.
+ */
+export function passphraseErrors({ secrets, passphrase, passphraseRepeat }) {
+	if (!secrets) return {};
+	const errors = {};
+	if ([...passphrase].length < PASSPHRASE_MIN_LENGTH) errors.passphrase = "settings.backup.passphrase.too-short";
+	if (passphraseRepeat !== passphrase) errors.passphraseRepeat = "settings.backup.passphrase.mismatch";
+	return errors;
+}
+
+/**
+ * What a backup holds, for its badges: a category when all its types are in it, else its types one by one. Types
+ * that no category knows are listed at the end.
+ *
+ * @returns {Array<{ kind: "category" | "type", id: string }>}
+ */
+export function contentLabels(categories, typeIds) {
+	const known = categories.flatMap((category) => category.types);
+	const labels = categories.flatMap((category) => {
+		const present = category.types.filter((id) => typeIds.includes(id));
+		if (present.length === 0) return [];
+		if (present.length === category.types.length) return [{ kind: "category", id: category.id }];
+		return present.map((id) => ({ kind: "type", id }));
+	});
+	return [...labels, ...typeIds.filter((id) => !known.includes(id)).map((id) => ({ kind: "type", id }))];
+}
+
+// backup errors whose English message carries details the translation leaves out (the nginx output, the reason an
+// archive is refused, the name of the automatic backup to restore by hand)
+const DETAILED_ERRORS = new Set([
+	"backup.error.nginx-failed",
+	"backup.error.invalid-archive",
+	"backup.error.rollback-failed",
+]);
+
+/**
+ * An API error (src/api/backend/base.js) of these codes with its message as the output that ApiErrorContent offers
+ * behind "Show details"; any other error as it is.
+ */
+export function withErrorDetails(err) {
+	const apiError = err?.payload?.error;
+	if (!DETAILED_ERRORS.has(apiError?.message_i18n) || apiError.output || !apiError.message) return err;
+	return Object.assign(new Error(err.message), {
+		payload: { ...err.payload, error: { ...apiError, output: apiError.message } },
+	});
 }
