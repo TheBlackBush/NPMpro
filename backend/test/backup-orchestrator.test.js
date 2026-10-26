@@ -67,6 +67,10 @@ const createSchema = async (knex) => {
 	await knex.schema.createTable("stream", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull().defaultTo(1);
+		t.string("incoming_port").notNull().defaultTo("");
+		t.integer("enabled").notNull().defaultTo(1);
+		t.integer("npmpro_nginx_online").notNull().defaultTo(1);
+		t.text("npmpro_nginx_err").notNull().defaultTo("");
 		t.integer("certificate_id").notNull().defaultTo(0);
 		t.json("meta").notNull().defaultTo("{}");
 	});
@@ -707,6 +711,40 @@ it("stores uploads under their own name and refuses too large or foreign files",
 		);
 		assert.deepEqual(await dotFiles(ctx.backupsDir), []);
 		assert.equal((await ctx.service.list(access)).length, 3);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("reports hosts of types that were not restored when the regeneration took them offline", TIMEOUT, async () => {
+	const ctx = await setup({
+		regenerated: (knex) =>
+			knex("proxy_host").where({ id: 2 }).update({ npmpro_nginx_online: 0, npmpro_nginx_err: "no certificate" }),
+	});
+	try {
+		await ctx.knex("access_list").insert({ id: 4, name: "office" });
+		const { entry } = await ctx.service.create(access, { types: ["access_lists"], secrets: false, keep: true });
+		await ctx.knex("proxy_host").insert({ id: 2, domain_names: '["two.example.com"]' });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["access_lists"] });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 2, domain: "two.example.com", error: "no certificate" },
+		]);
+		assert.equal(ctx.calls.audit.at(-1).meta.offline_hosts, 1);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("finishes a restore when the offline hosts cannot be read", TIMEOUT, async () => {
+	const ctx = await setup({ regenerated: (knex) => knex.schema.dropTable("stream") });
+	try {
+		const entry = await backupThenChange(ctx, { secrets: false });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(result.offlineHosts, []);
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.equal(ctx.calls.audit.at(-1).action, "restored");
 	} finally {
 		await ctx.cleanup();
 	}

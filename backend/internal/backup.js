@@ -334,14 +334,15 @@ const createBackupService = ({
 	};
 
 	/**
-	 * The enabled hosts of the restored host types whose config nginx rejected in the regeneration (kept as .err);
-	 * they do not fail the restore
+	 * The enabled hosts of every host type whose config nginx rejected in the regeneration (kept as .err): the
+	 * regeneration renders all hosts, so a restore of certificates or access lists can break hosts too. They do not
+	 * fail the restore.
 	 *
 	 * @returns {Promise<Array<{ type: string, id: number, domain: string, error: string }>>}
 	 */
-	const offlineHosts = async (types) => {
+	const offlineHosts = async () => {
 		const out = [];
-		for (const typeId of HOST_TYPES.filter((item) => types.includes(item))) {
+		for (const typeId of HOST_TYPES) {
 			const { table } = TYPES[typeId].tables[0];
 			for (const row of await knex(table).where("enabled", 1).orderBy("id")) {
 				if (!OFFLINE.has(row.npmpro_nginx_online)) continue;
@@ -431,7 +432,13 @@ const createBackupService = ({
 		} finally {
 			await withoutStage(asideDir);
 		}
-		const offline = await offlineHosts(types);
+		let offline = [];
+		try {
+			offline = await offlineHosts();
+		} catch (error) {
+			// the restore itself succeeded
+			log.error(`Could not read the hosts nginx rejected after the restore: ${error.message}`);
+		}
 		await audit(access, {
 			action: "restored",
 			object_type: "backup",
