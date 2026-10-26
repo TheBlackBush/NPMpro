@@ -1,10 +1,9 @@
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
-import { domainToASCII } from "node:url";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
 import { beautify } from "../lib/nginx-beautify.js";
-import { quoteLocation } from "../lib/nginx-quote.js";
+import { quoteLocation, serverNames } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
@@ -263,7 +262,7 @@ const internalNginx = {
 		}
 
 		if (host.domain_names) {
-			host.server_names = host.domain_names.map((domain_name) => domainToASCII(domain_name) || domain_name);
+			host.server_names = serverNames(host.domain_names);
 		}
 		if (host.npmpro_access_list_type === "custom") {
 			// note that there is access_lists -> an array in the correct order

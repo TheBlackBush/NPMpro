@@ -81,7 +81,8 @@
 				"type": "string",
 				"minLength": 1,
 				"maxLength": 253,
-				"pattern": "^(~\\S*|(?!.*:[0-9]+$)[^\\s/]+)$"
+				"description": "A host name, a wildcard name or a regular expression starting with ~ (nginx server_name); a name that is not a regular expression has no nginx syntax characters",
+				"pattern": "^(~\\S*|(?!.*:[0-9]+$)[^\\s/;{}\"'\\\\#]+)$"
 			},
 			"example": [
 				"example.com",

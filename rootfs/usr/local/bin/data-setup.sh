@@ -14,6 +14,10 @@ php_setup() {
     sed -i "s|#\?listen =.*|listen = /run/php$1.sock|" /data/php/"$1"/php-fpm.d/www.conf
     sed -i "s|;error_log =.*|error_log = /proc/self/fd/2|g" /data/php/"$1"/php-fpm.conf
     sed -i "s|include=.*|include=/data/php/$1/php-fpm.d/*.conf|g" /data/php/"$1"/php-fpm.conf
+    # session upload progress off (CVE-2026-109618, CVE-2026-109619; defence in depth after the PHP fix). Written at every start; the files in conf.d are
+    # read in name order after php.ini, so a later file there (for example zz-local.ini) can turn it on again
+    mkdir -p /data/php/"$1"/conf.d
+    printf '%s\n' "; written by NPMpro at every start, a later file in this folder overrides it" "session.upload_progress.enabled = Off" > /data/php/"$1"/conf.d/00-npmpro.ini
     if [ "$PUID" != "0" ]; then
         # the pool runs as the user that starts php-fpm (the PUID user)
         sed -i "s|^;\?user =.*|;user = root|" /data/php/"$1"/php-fpm.d/www.conf
