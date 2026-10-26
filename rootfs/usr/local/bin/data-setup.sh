@@ -37,10 +37,10 @@ if [ "$PHP83" = "true" ]; then php_setup 83; fi
 if [ "$PHP84" = "true" ]; then php_setup 84; fi
 if [ "$PHP85" = "true" ]; then php_setup 85; fi
 
-mkdir -vp /data/npmpro/avatar \
-          /data/npmpro/gravatar \
+mkdir -vp /data/avatar \
+          /data/gravatar \
           /data/tls/certbot/renewal \
-          /data/tls/certbot/acme-challenge/.well-known/acme-challenge \
+          /data/acme-challenge/.well-known/acme-challenge \
           /data/tls/custom \
           /data/tls/mtls \
           /data/tls/ech \
@@ -114,6 +114,14 @@ fi
 #tmp move to mointpoint if block
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
+# the folders the nginx workers serve live outside the root-only /data/tls and /data/npmpro (moved there before)
+find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/acme-challenge|/data/acme-challenge|g" {} \;
+rm -rf /data/tls/certbot/acme-challenge
+for kind in avatar gravatar; do
+    if [ -d /data/npmpro/"$kind" ]; then
+        cp -an /data/npmpro/"$kind"/. /data/"$kind"/ && rm -rf /data/npmpro/"$kind"
+    fi
+done
 # the old plaintext credential files, once no renewal config points to them (the line above moved them all)
 if [ -d /data/tls/certbot/credentials ] && ! grep -rqs /data/tls/certbot/credentials /data/tls/certbot/renewal; then
     rm -rvf /data/tls/certbot/credentials

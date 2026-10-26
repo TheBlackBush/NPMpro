@@ -912,7 +912,7 @@ const internalCertificate = {
 		access.can("certificates:view");
 
 		// Create a test challenge file
-		await writeFile("/data/tls/certbot/acme-challenge/.well-known/acme-challenge/test-challenge", "Success", {
+		await writeFile("/data/acme-challenge/.well-known/acme-challenge/test-challenge", "Success", {
 			encoding: "utf8",
 		});
 

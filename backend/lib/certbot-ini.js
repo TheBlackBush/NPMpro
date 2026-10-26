@@ -9,7 +9,7 @@ const CERTBOT_INI = "/run/npmpro/certbot.ini";
 const CERTBOT_INI_BASE = `logs-dir = /tmp/certbot-log
 work-dir = /tmp/certbot-work
 config-dir = /data/tls/certbot
-webroot-path = /data/tls/certbot/acme-challenge
+webroot-path = /data/acme-challenge
 
 agree-tos = true
 non-interactive  = true
