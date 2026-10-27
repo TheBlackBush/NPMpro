@@ -44,7 +44,9 @@ const move = async (from, to) => {
 	}
 };
 
-const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
+// The journal of a placement: every step that changes dataDir is noted so undo() puts the folder back as it was.
+// Replaced entries go to asideDir (same filesystem as dataDir, ideally) and come back on undo.
+const createJournal = ({ dataDir, asideDir }) => {
 	const journal = [];
 	const inData = (rel) => path.join(dataDir, rel);
 	const inAside = (rel) => path.join(asideDir, rel);
@@ -63,49 +65,29 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 		}
 	};
 
-	// moves the allowed entries at rel aside, noting the modes of the regular files in modes; folders below a root
-	// that end up empty are removed
-	const moveAside = async (files, rel, modes, isRoot) => {
+	// moves the entry at rel (a folder as a whole) aside; returns the mode of a regular file, else undefined
+	const setAside = async (rel) => {
 		const info = await exists(inData(rel));
-		if (!(info && files.allow(rel)) || keep(rel)) return;
-		if (info.isDirectory()) {
-			for (const name of (await readdir(inData(rel))).sort())
-				await moveAside(files, `${rel}/${name}`, modes, false);
-			if (!isRoot && (await readdir(inData(rel))).length === 0) {
-				await rmdir(inData(rel));
-				journal.push({ op: "rmdir", rel, mode: permissions(info.mode) });
-			}
-			return;
-		}
+		if (!info) return;
 		await mkdir(path.dirname(inAside(rel)), { recursive: true, mode: 0o700 });
 		await move(inData(rel), inAside(rel));
 		journal.push({ op: "aside", rel });
-		if (info.isFile()) modes.set(rel, permissions(info.mode));
+		return info.isFile() ? permissions(info.mode) : undefined;
 	};
 
-	// moves the staged entries at rel into place
-	const place = async (files, rel, modes) => {
-		const from = path.join(stageDir, "files", rel);
-		const info = await exists(from);
-		if (!info || keep(rel)) return;
-		if (!files.allow(rel)) throw new BackupError("invalid-archive", `files/${rel} is not allowed`);
-		if (info.isDirectory()) {
-			await ensureFolder(rel);
-			for (const name of (await readdir(from)).sort()) await place(files, `${rel}/${name}`, modes);
-			return;
-		}
-		if (!info.isFile()) throw new BackupError("invalid-archive", `files/${rel} is not a regular file`);
+	// removes a folder that is empty and notes how to bring it back
+	const removeEmptyFolder = async (rel, mode) => {
+		await rmdir(inData(rel));
+		journal.push({ op: "rmdir", rel, mode });
+	};
+
+	// moves the file at from to rel, with the given mode or the default of rel
+	const placeFile = async (rel, from, mode) => {
 		await ensureFolder(path.posix.dirname(rel));
 		if (await exists(inData(rel))) throw new Error(`${rel} is in the way of the restored file`);
 		await move(from, inData(rel));
 		journal.push({ op: "place", rel });
-		await chmod(inData(rel), modes.get(rel) ?? fileMode(rel));
-	};
-
-	const swapType = async (files) => {
-		const modes = new Map();
-		for (const root of files.roots) await moveAside(files, root, modes, true);
-		for (const root of files.roots) await place(files, root, modes);
+		await chmod(inData(rel), mode ?? fileMode(rel));
 	};
 
 	const undoEntry = async ({ op, rel, mode }) => {
@@ -131,7 +113,51 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 		if (errors.length > 0) throw new AggregateError(errors, "Some restored files could not be moved back");
 	};
 
-	return { swapType, undo };
+	return { ensureFolder, setAside, removeEmptyFolder, placeFile, undo };
+};
+
+const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
+	const journal = createJournal({ dataDir, asideDir });
+	const inData = (rel) => path.join(dataDir, rel);
+
+	// moves the allowed entries at rel aside, noting the modes of the regular files in modes; folders below a root
+	// that end up empty are removed
+	const moveAside = async (files, rel, modes, isRoot) => {
+		const info = await exists(inData(rel));
+		if (!(info && files.allow(rel)) || keep(rel)) return;
+		if (info.isDirectory()) {
+			for (const name of (await readdir(inData(rel))).sort())
+				await moveAside(files, `${rel}/${name}`, modes, false);
+			if (!isRoot && (await readdir(inData(rel))).length === 0)
+				await journal.removeEmptyFolder(rel, permissions(info.mode));
+			return;
+		}
+		const mode = await journal.setAside(rel);
+		if (mode !== undefined) modes.set(rel, mode);
+	};
+
+	// moves the staged entries at rel into place
+	const place = async (files, rel, modes) => {
+		const from = path.join(stageDir, "files", rel);
+		const info = await exists(from);
+		if (!info || keep(rel)) return;
+		if (!files.allow(rel)) throw new BackupError("invalid-archive", `files/${rel} is not allowed`);
+		if (info.isDirectory()) {
+			await journal.ensureFolder(rel);
+			for (const name of (await readdir(from)).sort()) await place(files, `${rel}/${name}`, modes);
+			return;
+		}
+		if (!info.isFile()) throw new BackupError("invalid-archive", `files/${rel} is not a regular file`);
+		await journal.placeFile(rel, from, modes.get(rel));
+	};
+
+	const swapType = async (files) => {
+		const modes = new Map();
+		for (const root of files.roots) await moveAside(files, root, modes, true);
+		for (const root of files.roots) await place(files, root, modes);
+	};
+
+	return { swapType, undo: journal.undo };
 };
 
 /**
@@ -276,14 +302,11 @@ const relinkCertbotLive = async ({ dataDir, ids }) => {
 
 export {
 	adminAvatarFiles,
+	createJournal,
 	exists,
-	fileMode,
 	fitStagedAvatars,
-	folderMode,
 	isPictureOf,
-	move,
 	namesIn,
-	permissions,
 	relinkCertbotLive,
 	removeCachedGravatars,
 	swapFiles,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstat, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -30,6 +30,7 @@ const has = (file) =>
 		() => false,
 	);
 
+const IN_THE_WAY = /ENOTDIR|is in the way/u;
 const KEPT_LINE = /archive\/npm-33$/mu;
 
 const RENEWAL = [
@@ -173,6 +174,135 @@ it("changes nothing for a move without a staged picture", async () => {
 		assert.equal(await readFile(path.join(dirs.dataDir, "public/avatar/5.jpg"), "utf8"), "old");
 		await placed.undo();
 		assert.deepEqual(await readdir(path.join(dirs.dataDir, "public/avatar")), ["5.jpg"]);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+const modeOf = async (file) => (await stat(file)).mode % 0o1000;
+
+it("moves an orphan of the new id aside as a whole", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "backup");
+		await put(path.join(dirs.dataDir, "tls/certbot/archive/npm-12/cert5.pem"), "orphan");
+		await put(path.join(dirs.dataDir, "tls/custom/npm-12.der"), "orphan der");
+		const placed = await placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] }));
+		const archive = path.join(dirs.dataDir, "tls/certbot/archive/npm-12");
+		assert.deepEqual(await readdir(archive), ["cert1.pem"]);
+		assert.equal(await has(path.join(dirs.dataDir, "tls/custom/npm-12.der")), false);
+		await placed.undo();
+		assert.deepEqual(await readdir(archive), ["cert5.pem"]);
+		assert.equal(await readFile(path.join(dirs.dataDir, "tls/custom/npm-12.der"), "utf8"), "orphan der");
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("undoes the earlier steps and rejects with the original error when a later step fails", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "backup");
+		await put(path.join(dirs.stageDir, "files/custom_nginx/http.conf"), "new http");
+		await put(path.join(dirs.dataDir, "custom_nginx"), "a file, not a folder");
+		await put(path.join(dirs.dataDir, "tls/certbot/archive/npm-12/cert5.pem"), "orphan");
+		await assert.rejects(
+			placeMergedFiles(
+				options(dirs, { certificateMoves: [{ from: 3, to: 12 }], takeFiles: ["custom_nginx/http.conf"] }),
+			),
+			(error) => {
+				assert.match(error.message, IN_THE_WAY);
+				return true;
+			},
+		);
+		assert.deepEqual(await readdir(path.join(dirs.dataDir, "tls/certbot/archive/npm-12")), ["cert5.pem"]);
+		assert.equal(await readFile(path.join(dirs.dataDir, "custom_nginx"), "utf8"), "a file, not a folder");
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("keeps chained moves apart", async () => {
+	const dirs = await setup();
+	try {
+		const staged = (rel) => path.join(dirs.stageDir, "files", rel);
+		await put(staged("tls/certbot/archive/npm-3/cert1.pem"), "three");
+		await put(staged("tls/certbot/archive/npm-12/cert1.pem"), "twelve");
+		await placeMergedFiles(
+			options(dirs, {
+				certificateMoves: [
+					{ from: 3, to: 12 },
+					{ from: 12, to: 20 },
+				],
+			}),
+		);
+		const archive = (id) => path.join(dirs.dataDir, `tls/certbot/archive/npm-${id}/cert1.pem`);
+		assert.equal(await readFile(archive(12), "utf8"), "three");
+		assert.equal(await readFile(archive(20), "utf8"), "twelve");
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("rewrites only whole npm-<id> path segments of the renewal conf", async () => {
+	const dirs = await setup();
+	try {
+		const text = "a = /x/npm-3.conf\nb = foonpm-3\nc = /x/npm-33\nd = /x/npm-3";
+		await put(path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf"), text);
+		await placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] }));
+		assert.equal(
+			await readFile(path.join(dirs.dataDir, "tls/certbot/renewal/npm-12.conf"), "utf8"),
+			"a = /x/npm-12.conf\nb = foonpm-3\nc = /x/npm-33\nd = /x/npm-12",
+		);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("adds a taken file the instance lacks and sets the modes", async () => {
+	const dirs = await setup();
+	try {
+		const staged = (rel) => path.join(dirs.stageDir, "files", rel);
+		await put(staged("custom_nginx/new.conf"), "new");
+		await put(staged("custom_nginx/http.conf"), "new http");
+		await put(staged("tls/certbot/accounts/acme/dir/abc/meta.json"), "meta");
+		await put(staged("public/avatar/2.png"), "pic");
+		await put(path.join(dirs.dataDir, "custom_nginx/http.conf"), "old http");
+		await chmod(path.join(dirs.dataDir, "custom_nginx/http.conf"), 0o640);
+		await placeMergedFiles(
+			options(dirs, {
+				takeFiles: ["custom_nginx/new.conf", "custom_nginx/http.conf"],
+				avatarMoves: [{ from: 2, to: 7 }],
+			}),
+		);
+		const data = (rel) => path.join(dirs.dataDir, rel);
+		assert.equal(await readFile(data("custom_nginx/new.conf"), "utf8"), "new");
+		assert.equal(await modeOf(data("custom_nginx/new.conf")), 0o600);
+		assert.equal(await modeOf(data("custom_nginx/http.conf")), 0o640);
+		assert.equal(await modeOf(data("tls/certbot/accounts/acme/dir/abc/meta.json")), 0o600);
+		assert.equal(await modeOf(data("public/avatar/7.png")), 0o644);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("refuses a taken file outside the custom file types before moving anything", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "backup");
+		await put(path.join(dirs.stageDir, "files/custom_nginx/http.conf"), "new http");
+		for (const rel of ["/etc/passwd", "custom_nginx/../x", "tls/mtls/npm-1.pem", "database.sqlite"]) {
+			await assert.rejects(
+				placeMergedFiles(
+					options(dirs, {
+						certificateMoves: [{ from: 3, to: 12 }],
+						takeFiles: ["custom_nginx/http.conf", rel],
+					}),
+				),
+				{ code: "invalid-archive" },
+			);
+			assert.deepEqual(await readdir(dirs.dataDir), []);
+		}
 	} finally {
 		await rm(dirs.root, { recursive: true, force: true });
 	}
