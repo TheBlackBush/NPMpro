@@ -22,6 +22,23 @@ export function toggleType(typeId, selected) {
 	return selected.includes(typeId) ? selected.filter((id) => id !== typeId) : [...selected, typeId];
 }
 
+// the rows of the selection grid, boxes of a similar size side by side: the two with most parts, the two with a
+// short second line, the three plain ones
+const BOX_ROWS = [
+	["hosts", "settings"],
+	["custom_files", "certificates"],
+	["access_lists", "dns_credentials", "users"],
+];
+
+// the categories in grid rows, missing ones left out; a category not in BOX_ROWS goes into a last row
+export function arrangeRows(categories) {
+	const byId = new Map(categories.map((category) => [category.id, category]));
+	const rows = BOX_ROWS.map((ids) => ids.filter((id) => byId.has(id)).map((id) => byId.get(id)));
+	const placed = new Set(BOX_ROWS.flat());
+	rows.push(categories.filter((category) => !placed.has(category.id)));
+	return rows.filter((row) => row.length > 0);
+}
+
 export function DEFAULT_SELECTED(categories) {
 	return categories.flatMap((category) => category.types);
 }

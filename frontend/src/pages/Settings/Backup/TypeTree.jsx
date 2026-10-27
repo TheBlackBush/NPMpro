@@ -2,7 +2,7 @@ import { IconFileCode, IconKey, IconLock, IconServer2, IconSettings, IconShield,
 import cn from "clsx";
 import { useEffect, useId, useRef } from "react";
 import { T } from "src/locale";
-import { categoryState, toggleCategory, toggleType } from "src/modules/BackupTypes";
+import { arrangeRows, categoryState, toggleCategory, toggleType } from "src/modules/BackupTypes";
 
 // certificate providers in the order shown, with their label
 const CERTIFICATE_KINDS = [
@@ -72,9 +72,9 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 }
 
 /**
- * The backup parts as select boxes: one box per category (full width when it has parts, half width and the same
- * height as its neighbour otherwise) with a header checkbox (ticked, cleared or mixed), the
- * types of a category with several as pill toggles inside the box. Counts per category and type, the certificates
+ * The backup parts as select boxes in a grid arranged by size (see arrangeRows: boxes of a similar size share a row
+ * and its height): one box per category with a header checkbox (ticked, cleared or mixed), the types of a category
+ * with several as pill toggles inside the box. Counts per category and type, the certificates
  * with their kinds when given. A label row with "Select all" and "None".
  *
  * @param {Object}    props
@@ -114,61 +114,59 @@ function TypeTree({ label, categories, counts = {}, certificateKinds, selected, 
 				</div>
 			</div>
 			<div className="row g-2">
-				{categories.map((category) => {
-					const labelId = `${baseId}-${category.id}`;
-					const kindsId = `${labelId}-kinds`;
-					const kinds = category.types.includes("certificates") ? certificateKinds : null;
-					const state = categoryState(category, selected);
-					const several = category.types.length > 1;
-					return (
-						<div key={category.id} className={several ? "col-12" : "col-12 col-md-6"}>
-							<fieldset
-								className={cn(
-									"card card-sm",
-									!several && "h-100",
-									state !== "none" && "border-primary",
-								)}
-								aria-labelledby={labelId}
-							>
-								<div className="card-body">
-									<CategoryCheck
-										category={category}
-										state={state}
-										count={categoryCount(category, counts)}
-										onChange={() => onChange(toggleCategory(category, selected))}
-										disabled={disabled}
-										labelId={labelId}
-										describedBy={kinds ? kindsId : undefined}
-									/>
-									<CertificateKinds kinds={kinds} id={kindsId} />
-									{several ? (
-										<div className="form-selectgroup form-selectgroup-pills mt-3">
-											{category.types.map((typeId) => (
-												<label key={typeId} className="form-selectgroup-item">
-													<input
-														type="checkbox"
-														className="form-selectgroup-input"
-														checked={selected.includes(typeId)}
-														onChange={() => onChange(toggleType(typeId, selected))}
-														disabled={disabled}
-													/>
-													<span className="form-selectgroup-label">
-														<T id={`settings.backup.type.${typeId}`} />
-														{counts[typeId] === undefined ? null : (
-															<span className="text-secondary ms-1">
-																{counts[typeId]}
-															</span>
-														)}
-													</span>
-												</label>
-											))}
-										</div>
-									) : null}
-								</div>
-							</fieldset>
-						</div>
-					);
-				})}
+				{arrangeRows(categories).flatMap((row) =>
+					row.map((category) => {
+						const labelId = `${baseId}-${category.id}`;
+						const kindsId = `${labelId}-kinds`;
+						const kinds = category.types.includes("certificates") ? certificateKinds : null;
+						const state = categoryState(category, selected);
+						const several = category.types.length > 1;
+						return (
+							<div key={category.id} className={row.length > 2 ? "col-12 col-md-4" : "col-12 col-md-6"}>
+								<fieldset
+									className={cn("card card-sm h-100", state !== "none" && "border-primary")}
+									aria-labelledby={labelId}
+								>
+									<div className="card-body">
+										<CategoryCheck
+											category={category}
+											state={state}
+											count={categoryCount(category, counts)}
+											onChange={() => onChange(toggleCategory(category, selected))}
+											disabled={disabled}
+											labelId={labelId}
+											describedBy={kinds ? kindsId : undefined}
+										/>
+										<CertificateKinds kinds={kinds} id={kindsId} />
+										{several ? (
+											<div className="form-selectgroup form-selectgroup-pills mt-3">
+												{category.types.map((typeId) => (
+													<label key={typeId} className="form-selectgroup-item">
+														<input
+															type="checkbox"
+															className="form-selectgroup-input"
+															checked={selected.includes(typeId)}
+															onChange={() => onChange(toggleType(typeId, selected))}
+															disabled={disabled}
+														/>
+														<span className="form-selectgroup-label">
+															<T id={`settings.backup.type.${typeId}`} />
+															{counts[typeId] === undefined ? null : (
+																<span className="text-secondary ms-1">
+																	{counts[typeId]}
+																</span>
+															)}
+														</span>
+													</label>
+												))}
+											</div>
+										) : null}
+									</div>
+								</fieldset>
+							</div>
+						);
+					}),
+				)}
 			</div>
 		</div>
 	);

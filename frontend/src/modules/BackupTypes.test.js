@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	arrangeRows,
 	categoriesOf,
 	categoryState,
 	contentLabels,
@@ -116,4 +117,24 @@ it("restoreBlockReason blocks a restore of parts the tree does not show", () => 
 	assert.equal(restoreBlockReason({ ...ready, checkFailed: true }), "settings.backup.reason.check-failed");
 	assert.equal(restoreBlockReason({ ...ready, stale: true }), "settings.backup.reason.checking");
 	assert.equal(restoreBlockReason({ ...ready, confirmed: false }), "settings.backup.reason.confirm");
+});
+
+it("arrangeRows pairs boxes of a similar size and leaves missing categories out", () => {
+	const cat = (id) => ({ id, types: [id] });
+	const all = ["hosts", "certificates", "access_lists", "dns_credentials", "users", "settings", "custom_files"].map(
+		cat,
+	);
+	assert.deepEqual(
+		arrangeRows(all).map((row) => row.map((category) => category.id)),
+		[
+			["hosts", "settings"],
+			["custom_files", "certificates"],
+			["access_lists", "dns_credentials", "users"],
+		],
+	);
+	assert.deepEqual(
+		arrangeRows([cat("users"), cat("hosts"), cat("other")]).map((row) => row.map((category) => category.id)),
+		[["hosts"], ["users"], ["other"]],
+	);
+	assert.deepEqual(arrangeRows([]), []);
 });

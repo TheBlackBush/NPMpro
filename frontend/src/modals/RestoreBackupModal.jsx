@@ -486,7 +486,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	}
 
 	return (
-		<AppModal show={visible} onHide={close} size="lg" backdrop={running ? "static" : true} keyboard={!running}>
+		<AppModal show={visible} onHide={close} size="xl" backdrop={running ? "static" : true} keyboard={!running}>
 			<AppModal.Header closeButton={!running}>
 				<AppModal.Title>
 					<T id="settings.backup.restore.title" />
