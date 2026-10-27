@@ -27,3 +27,32 @@ it("keeps the keys of rawKeys maps and camelizes everything else", () => {
 	});
 	assert.deepEqual(camelizeKeys({ counts: { proxy_hosts: 3 } }), { counts: { proxyHosts: 3 } });
 });
+
+it("keeps the keys of items and choices maps in a request", () => {
+	const data = {
+		planHash: "abc",
+		types: ["proxy_hosts"],
+		items: { proxy_hosts: [3], dns_credentials: [1] },
+		choices: { "proxy_hosts:3": "replace", "file:custom_nginx/MyFile.conf": "take", "setting:oidc": "skip" },
+	};
+	assert.deepEqual(decamelizeKeys(data, { rawKeys: ["items", "choices"] }), {
+		plan_hash: "abc",
+		types: ["proxy_hosts"],
+		items: { proxy_hosts: [3], dns_credentials: [1] },
+		choices: { "proxy_hosts:3": "replace", "file:custom_nginx/MyFile.conf": "take", "setting:oidc": "skip" },
+	});
+	assert.deepEqual(decamelizeKeys({ choices: { "file:MyFile.conf": "take" } }), {
+		choices: { "file:_my_file.conf": "take" },
+	});
+});
+
+it("keeps the keys of the items map of a manifest and leaves the plan items array alone", () => {
+	const data = {
+		manifest: { items: { proxy_hosts: [{ id: 3, domain_names: ["a"] }] }, created_at: 1 },
+		plan: { items: [{ key: "proxy_hosts:3", needed_by: [], choices: ["add", "skip"] }], cleared_links: 0 },
+	};
+	assert.deepEqual(camelizeKeys(data, { rawKeys: ["items", "choices"] }), {
+		manifest: { items: { proxy_hosts: [{ id: 3, domainNames: ["a"] }] }, createdAt: 1 },
+		plan: { items: [{ key: "proxy_hosts:3", neededBy: [], choices: ["add", "skip"] }], clearedLinks: 0 },
+	});
+});

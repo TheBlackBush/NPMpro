@@ -16,12 +16,14 @@ function buildUrl({ url, params }) {
 	return apiUrl;
 }
 
-function buildBody(data) {
-	return JSON.stringify(decamelizeKeys(data));
-}
+// maps keyed by backup type id, certificate provider or item key: their keys are data and stay as they are
+// (items: type ids, choices: keys like "proxy_hosts:3" or "file:custom_nginx/MyFile.conf")
+export const BACKUP_RAW_KEYS = ["counts", "certificate_kinds", "certificateKinds", "items", "choices"];
 
-// maps keyed by backup type id or certificate provider: their keys are data and stay as the API sends them
-const BACKUP_RAW_KEYS = ["counts", "certificate_kinds", "certificateKinds"];
+function buildBody(data, url) {
+	const isBackupApi = typeof url === "string" && url.startsWith("/backups");
+	return JSON.stringify(decamelizeKeys(data, isBackupApi ? { rawKeys: BACKUP_RAW_KEYS } : undefined));
+}
 
 function camelizeResponse(payload, responseUrl) {
 	const isBackupApi =
@@ -160,7 +162,7 @@ export async function post({ url, params, data }, abortController) {
 		headers = {
 			[contentTypeHeader]: "application/json",
 		};
-		body = buildBody(data);
+		body = buildBody(data, url);
 	}
 
 	const signal = abortController?.signal;
@@ -175,7 +177,7 @@ export async function put({ url, params, data }, abortController) {
 		[contentTypeHeader]: "application/json",
 	};
 	const signal = abortController?.signal;
-	const body = buildBody(data);
+	const body = buildBody(data, url);
 	const response = await fetch(apiUrl, { method, headers, body, signal });
 	return processResponse(response);
 }
