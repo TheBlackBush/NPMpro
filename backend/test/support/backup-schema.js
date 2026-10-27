@@ -37,9 +37,13 @@ export const createSchema = async (knex) => {
 	await hostTable("proxy_host", (t) => {
 		t.integer("npmpro_mtls_certificate_id").notNull().defaultTo(0);
 		t.integer("access_list_id").notNull().defaultTo(0);
+		t.string("forward_scheme").notNull().defaultTo("http");
+		t.string("forward_host").notNull().defaultTo("");
+		t.integer("forward_port").notNull().defaultTo(80);
+		t.text("advanced_config").notNull().defaultTo("");
 	});
-	await hostTable("redirection_host");
-	await hostTable("dead_host");
+	await hostTable("redirection_host", (t) => t.text("advanced_config").notNull().defaultTo(""));
+	await hostTable("dead_host", (t) => t.text("advanced_config").notNull().defaultTo(""));
 	await knex.schema.createTable("stream", (t) => {
 		t.increments("id");
 		t.integer("owner_user_id").notNull().defaultTo(1);
@@ -51,6 +55,8 @@ export const createSchema = async (knex) => {
 		t.json("meta").notNull().defaultTo("{}");
 		t.integer("tcp_forwarding").notNull().defaultTo(1);
 		t.integer("udp_forwarding").notNull().defaultTo(0);
+		t.string("forwarding_host").notNull().defaultTo("");
+		t.text("npmpro_advanced_config").notNull().defaultTo("");
 	});
 	await knex.schema.createTable("npmpro_location", (t) => {
 		t.increments("id");
@@ -85,6 +91,8 @@ export const createSchema = async (knex) => {
 			t.string("value").notNull().defaultTo("");
 			t.string("username").notNull().defaultTo("");
 			t.string("password").notNull().defaultTo("");
+			t.string("address").notNull().defaultTo("");
+			t.string("directive").notNull().defaultTo("allow");
 			t.json("meta").notNull().defaultTo("{}");
 		});
 	}

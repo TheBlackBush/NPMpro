@@ -653,3 +653,80 @@ it("refuses a page import whose certificate has a renewal conf with an unknown a
 		await cleanup();
 	}
 });
+
+// a file of A's host #1 changed in A's database first (no API checks there)
+const hostFileWith = async (a, values) => {
+	await a.knex("proxy_host").where({ id: 1 }).update(values);
+	return backupOf(a, { types: ["proxy_hosts"], secrets: false });
+};
+
+const invalidItem = (label, field) => (error) =>
+	error.code === "invalid-item" &&
+	error.status === 400 &&
+	error.public === true &&
+	error.message.includes(label) &&
+	error.message.includes(field);
+
+it("refuses a non-admin page import of a host with advanced config; an admin imports it", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await b.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		const importer = userAccess(2, { proxy_hosts: "manage" });
+		const file = await hostFileWith(a, { advanced_config: "location /x { content_by_lua_block { } }" });
+		const upload = await b.service.importUpload(importer, createReadStream(file), { kind: "proxy_hosts" });
+		await assert.rejects(
+			b.service.importOpen(importer, upload.id, {}),
+			invalidItem("a.example.com", "advanced_config"),
+		);
+		assert.deepEqual(await autoFiles(b), []);
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+		assert.deepEqual(
+			(await readdir(b.backupsDir)).filter((name) => name.startsWith(".")),
+			[],
+		);
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, {});
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [
+			[1, "b.example.com"],
+			[2, "a.example.com"],
+		]);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("refuses a non-admin page import of a host whose domain or forward host holds nginx syntax", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await b.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		const importer = userAccess(2, { proxy_hosts: "manage" });
+		const cases = [
+			[{ domain_names: JSON.stringify(["a.example.com;include /etc/passwd"]) }, "domain_names"],
+			[{ forward_host: "app;\n}" }, "forward_host"],
+			[{ forward_scheme: "path", forward_host: "/etc" }, "forward_host"],
+			[{ forward_port: 70_000 }, "forward_port"],
+		];
+		for (const [values, field] of cases) {
+			const file = await hostFileWith(a, values);
+			const { id } = await b.service.importUpload(importer, createReadStream(file), { kind: "proxy_hosts" });
+			await assert.rejects(b.service.importOpen(importer, id, {}), invalidItem("#1", field));
+			await a
+				.knex("proxy_host")
+				.where({ id: 1 })
+				.update({
+					domain_names: JSON.stringify(["a.example.com"]),
+					forward_host: "",
+					forward_scheme: "http",
+					forward_port: 80,
+				});
+		}
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+	} finally {
+		await cleanup();
+	}
+});
