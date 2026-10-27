@@ -144,4 +144,4 @@ const certificateFileFilter = (ids) => {
 	};
 };
 
-export { certificateFileFilter, ITEM_TYPES, itemLabel, linkedOf, selectRows };
+export { certificateFileFilter, domainsOf, ITEM_TYPES, itemLabel, linkedOf, selectRows };
