@@ -11,6 +11,7 @@ process.env.TZ = "UTC";
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const NOW = 1_800_000_000;
 const CONSTRAINT = /UNIQUE|PRIMARY/u;
+const INVALID_ID = /invalid id/u;
 
 const sqlite = async () => {
 	const knex = knexFactory({
@@ -444,5 +445,26 @@ it("loads the stage data of the chosen types and refuses tables of another type"
 	assert.deepEqual(await loadStageData(stageDir, ["streams", "custom_nginx"]), { streams: { stream: [{ id: 1 }] } });
 	await assert.rejects(loadStageData(stageDir, ["dead_hosts"]), (error) => error.code === "invalid-archive");
 	await assert.rejects(loadStageData(stageDir, ["redirection_hosts"]), (error) => error.code === "invalid-archive");
+	await rm(stageDir, { recursive: true });
+});
+
+it("refuses a backup whose item rows have ids that are not positive integers", async () => {
+	const stageDir = await mkdtemp(path.join(os.tmpdir(), "npmpro-restore-db-"));
+	await mkdir(path.join(stageDir, "data"));
+	const write = (typeId, rows) => writeFile(path.join(stageDir, "data", `${typeId}.json`), JSON.stringify(rows));
+	await write("certificates", { certificate: [{ id: "1/../../../../x", provider: "letsencrypt" }] });
+	await write("streams", { stream: [{ id: 0 }] });
+	await write("dead_hosts", { dead_host: [{ id: "01" }] });
+	await write("access_lists", { access_list: [{ id: 3 }], access_list_client: [{ id: 1, access_list_id: 3 }] });
+	await write("redirection_hosts", { redirection_host: [{ id: "12" }] });
+	for (const typeId of ["certificates", "streams", "dead_hosts"]) {
+		await assert.rejects(loadStageData(stageDir, [typeId]), (error) => {
+			assert.equal(error.code, "invalid-archive");
+			assert.match(error.message, INVALID_ID);
+			return true;
+		});
+	}
+	assert.equal((await loadStageData(stageDir, ["access_lists"])).access_lists.access_list[0].id, 3);
+	assert.equal((await loadStageData(stageDir, ["redirection_hosts"])).redirection_hosts.redirection_host[0].id, "12");
 	await rm(stageDir, { recursive: true });
 });

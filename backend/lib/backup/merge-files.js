@@ -10,6 +10,25 @@ import { TYPES } from "./types.js";
 const CUSTOM_TYPES = ["custom_nginx", "crowdsec_files"];
 const ACCOUNTS = "tls/certbot/accounts";
 const AVATAR_DIR = "public/avatar";
+// ids name files (npm-<id>, <id>.png), so a move takes nothing but positive integers
+const ITEM_ID = /^[1-9]\d*$/u;
+
+const invalid = (reason) => new BackupError("invalid-archive", reason);
+
+const checkMoves = (moves, what) => {
+	for (const move of moves) {
+		if (!(ITEM_ID.test(String(move?.from)) && ITEM_ID.test(String(move?.to)))) {
+			throw invalid(`A ${what} move has an invalid id`);
+		}
+	}
+};
+
+// root joined with rel, refused when the result leaves root
+const inside = (root, rel) => {
+	const full = path.resolve(root, rel);
+	if (full !== root && !full.startsWith(`${root}${path.sep}`)) throw invalid(`${rel} leaves its folder`);
+	return full;
+};
 
 const certificatePaths = (id) => [
 	`tls/certbot/archive/npm-${id}`,
@@ -22,12 +41,15 @@ const certificatePaths = (id) => [
 
 const createPlacer = ({ dataDir, stageDir, asideDir }) => {
 	const journal = createJournal({ dataDir, asideDir });
-	const inData = (rel) => path.join(dataDir, rel);
-	const inStage = (rel) => path.join(stageDir, "files", rel);
+	const dataRoot = path.resolve(dataDir);
+	const stageRoot = path.resolve(stageDir, "files");
+	const inData = (rel) => inside(dataRoot, rel);
+	const inStage = (rel) => inside(stageRoot, rel);
 
 	// places the staged file or folder at stageRel as destRel; a file the instance has is moved aside first and its
 	// mode kept. transform maps the text of a file.
 	const putTree = async (stageRel, destRel, transform) => {
+		inData(destRel);
 		const from = inStage(stageRel);
 		const info = await exists(from);
 		if (!info) return;
@@ -44,6 +66,7 @@ const createPlacer = ({ dataDir, stageDir, asideDir }) => {
 
 	// places the staged account files the instance lacks
 	const addMissing = async (rel) => {
+		inData(rel);
 		const from = inStage(rel);
 		const info = await exists(from);
 		if (!info) return;
@@ -88,8 +111,10 @@ const placeMergedFiles = async ({
 }) => {
 	for (const rel of takeFiles) {
 		if (!CUSTOM_TYPES.some((type) => TYPES[type].files.allow(rel)))
-			throw new BackupError("invalid-archive", `files/${rel} is not a custom file`);
+			throw invalid(`files/${rel} is not a custom file`);
 	}
+	checkMoves(certificateMoves, "certificate");
+	checkMoves(avatarMoves, "picture");
 	const placer = createPlacer({ dataDir, stageDir, asideDir });
 	let siteSwap = null;
 	const undo = async () => {

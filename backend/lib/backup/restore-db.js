@@ -3,6 +3,7 @@ import path from "node:path";
 import { BackupError } from "./format.js";
 import { applyReferences, planReferences } from "./references.js";
 import { coerceRow } from "./rows.js";
+import { ITEM_TYPES } from "./select.js";
 import { RESTORE_ORDER, TYPES } from "./types.js";
 
 // Replace restore of the database rows: the chosen types' rows are deleted and the backup's rows inserted with their
@@ -57,6 +58,8 @@ const NEW_USER_ID = "new";
 
 // ids can be numbers or strings (JSON, bigint columns)
 const key = (value) => String(value);
+// the id of an item row: it names files (npm-<id>) and links, so nothing but a positive integer
+const ITEM_ID = /^[1-9]\d*$/u;
 
 const isPlainObject = (value) =>
 	value !== null &&
@@ -104,6 +107,10 @@ const checkTypeData = (typeId, parsed) => {
 		if (!(Array.isArray(rows) && rows.every(isPlainObject)))
 			throw invalid(`data/${typeId}.json: ${table} is invalid`);
 		out[table] = rows;
+	}
+	const main = ITEM_TYPES[typeId]?.table;
+	for (const row of main ? out[main] : []) {
+		if (!ITEM_ID.test(key(row.id))) throw invalid(`data/${typeId}.json: ${main} has an invalid id`);
 	}
 	return out;
 };

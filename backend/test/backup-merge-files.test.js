@@ -307,3 +307,27 @@ it("refuses a taken file outside the custom file types before moving anything", 
 		await rm(dirs.root, { recursive: true, force: true });
 	}
 });
+
+it("refuses certificate and avatar moves whose ids are not positive integers before moving anything", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.root, "victim/secret.txt"), "secret");
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "backup");
+		const bad = [
+			{ certificateMoves: [{ from: "1/../../../../victim", to: 12 }] },
+			{ certificateMoves: [{ from: 3, to: "12/../../x" }] },
+			{ certificateMoves: [{ from: 3, to: 0 }] },
+			{ certificateMoves: [{ from: 3, to: 12 }], avatarMoves: [{ from: "../x", to: 2 }] },
+		];
+		for (const extra of bad) {
+			await assert.rejects(placeMergedFiles(options(dirs, extra)), (error) => {
+				assert.equal(error.code, "invalid-archive");
+				return true;
+			});
+			assert.deepEqual(await readdir(dirs.dataDir), []);
+		}
+		assert.equal(await readFile(path.join(dirs.root, "victim/secret.txt"), "utf8"), "secret");
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});

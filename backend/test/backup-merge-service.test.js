@@ -9,6 +9,7 @@ import { extractTo } from "../lib/backup/archive.js";
 import { openBackupFile } from "../lib/backup/format.js";
 import { CATEGORIES } from "../lib/backup/types.js";
 import errs from "../lib/error.js";
+import { craftBackup } from "./support/backup-craft.js";
 import { setup } from "./support/backup-service.js";
 
 process.env.TZ = "UTC";
@@ -536,5 +537,28 @@ it("an own items export leaves out a linked certificate of another user", TIMEOU
 		assert.deepEqual(manifestOut.items, { proxy_hosts: [1] });
 	} finally {
 		await a.cleanup();
+	}
+});
+
+it("refuses a file whose certificate id is a path before anything moves", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const crafted = await craftBackup(
+			await backupOf(a, { types: ["proxy_hosts", "certificates"] }),
+			path.join(a.base, "crafted.npmpro"),
+			async ({ data, writeData }) => {
+				const certificates = await data("certificates");
+				certificates.certificate[0].id = "1/../../../../x";
+				await writeData("certificates", certificates);
+			},
+			{ passphrase: PASSPHRASE },
+		);
+		const { id } = await b.service.importUpload(admin, createReadStream(crafted), { kind: "proxy_hosts" });
+		await assert.rejects(b.service.importOpen(admin, id, {}), hasCode("invalid-archive"));
+		assert.deepEqual(await autoFiles(b), []);
+		assert.deepEqual(await domainsOf(b.knex, "certificate"), [[1, "b.example.com"]]);
+		assert.deepEqual(await readdir(path.join(b.dataDir, "tls/certbot/archive")), ["npm-1"]);
+	} finally {
+		await cleanup();
 	}
 });
