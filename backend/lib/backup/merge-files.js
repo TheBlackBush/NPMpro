@@ -88,8 +88,11 @@ const rebuiltRenewals = async ({ dataDir, stageDir, certificateMoves, placeAccou
 	if (placeAccounts) for (const id of await accountIds(path.join(stageDir, "files"))) accounts.add(id);
 	const out = new Map();
 	for (const { from, to } of certificateMoves) {
-		const staged = path.join(stageDir, "files", `tls/certbot/renewal/npm-${from}.conf`);
-		if (!(await exists(staged))?.isFile()) continue;
+		const rel = `tls/certbot/renewal/npm-${from}.conf`;
+		const staged = path.join(stageDir, "files", rel);
+		const info = await exists(staged);
+		if (!info) continue;
+		if (!info.isFile()) throw invalid(`files/${rel} is not a regular file`);
 		const text = await readFile(staged, "utf8");
 		out.set(String(from), rebuildRenewalConf(text, { id: to, dataDir, accounts, label: `#${from}` }));
 	}

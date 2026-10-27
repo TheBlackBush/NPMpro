@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { accountIds, namedAccounts, rebuildRenewalConf } from "../lib/backup/renewal-conf.js";
+import { accountIds, checkStagedRenewals, namedAccounts, rebuildRenewalConf } from "../lib/backup/renewal-conf.js";
 
 const ACCOUNT = "a".repeat(32);
 const options = { id: 7, dataDir: "/data", accounts: new Set([ACCOUNT]) };
@@ -78,4 +78,19 @@ it("reads a webroot_map only below renewalparams", () => {
 		options,
 	);
 	assert.equal(conf.includes("x.example.com"), false);
+});
+
+it("refuses a staged renewal conf of an added certificate that is a folder", async () => {
+	const stageDir = await mkdtemp(path.join(os.tmpdir(), "renewal-conf-"));
+	try {
+		await mkdir(path.join(stageDir, "files/tls/certbot/renewal/npm-3.conf"), { recursive: true });
+		const items = [{ type: "certificates", action: "add", id: 3, label: "a.example.com" }];
+		await assert.rejects(
+			checkStagedRenewals({ stageDir, dataDir: "/data", items }),
+			(error) => error.code === "invalid-archive",
+		);
+		await checkStagedRenewals({ stageDir, dataDir: "/data", items: [{ ...items[0], action: "existing" }] });
+	} finally {
+		await rm(stageDir, { recursive: true, force: true });
+	}
 });

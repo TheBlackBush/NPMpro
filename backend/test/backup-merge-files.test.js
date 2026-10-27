@@ -449,3 +449,18 @@ it("places no account files when told not to", async () => {
 		await rm(dirs.root, { recursive: true, force: true });
 	}
 });
+
+it("refuses a staged renewal conf that is a folder before moving anything", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "cert");
+		await put(path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf/x"), "x");
+		await assert.rejects(
+			placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] })),
+			(error) => error.code === "invalid-archive" && error.message.includes("npm-3.conf is not a regular file"),
+		);
+		assert.deepEqual(await readdir(dirs.dataDir), []);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});

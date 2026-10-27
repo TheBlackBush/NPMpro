@@ -174,9 +174,11 @@ const namedAccounts = (texts) =>
 const checkStagedRenewals = async ({ stageDir, dataDir, items }) => {
 	for (const item of items) {
 		if (item.type !== "certificates" || item.action !== "add") continue;
-		const staged = path.join(stageDir, "files", `tls/certbot/renewal/npm-${item.id}.conf`);
+		const rel = `tls/certbot/renewal/npm-${item.id}.conf`;
+		const staged = path.join(stageDir, "files", rel);
 		const info = await lstat(staged).catch(() => null);
-		if (!info?.isFile()) continue;
+		if (!info) continue;
+		if (!info.isFile()) throw new BackupError("invalid-archive", `files/${rel} is not a regular file`);
 		rebuildRenewalConf(await readFile(staged, "utf8"), {
 			id: item.id,
 			dataDir,
