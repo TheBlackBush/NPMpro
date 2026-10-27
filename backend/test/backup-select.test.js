@@ -64,3 +64,18 @@ it("filters certificate files by id and keeps the shared accounts", () => {
 	assert.equal(allow("tls/custom/npm-4.der"), false);
 	assert.equal(allow("tls/certbot/accounts/acme-v02.api.letsencrypt.org/directory/abc/regr.json"), true);
 });
+
+it("limits the ACME accounts of a certificate file filter to the chosen ones", () => {
+	const kept = "c".repeat(32);
+	const other = "d".repeat(32);
+	const base = "tls/certbot/accounts/acme-v02.api.letsencrypt.org/directory";
+	const all = certificateFileFilter([1]);
+	const named = certificateFileFilter([1], new Set([kept]));
+	const none = certificateFileFilter([1], new Set());
+	assert.equal(all(`${base}/${other}/meta.json`), true);
+	assert.equal(named(base), true);
+	assert.equal(named(`${base}/${kept}/private_key.json`), true);
+	assert.equal(named(`${base}/${other}/private_key.json`), false);
+	assert.equal(none(`${base}/${kept}`), false);
+	assert.equal(none("tls/certbot/archive/npm-1/cert1.pem"), true);
+});

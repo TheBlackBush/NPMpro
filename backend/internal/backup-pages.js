@@ -66,7 +66,7 @@ const compareText = (a, b) => (a < b ? -1 : Number(a > b));
  * @param   {Object}    deps.knex
  * @param   {Object}    deps.store
  * @param   {Function}  deps.extractBackup    (file, { passphrase }) => { stageDir, summary, manifest }
- * @param   {Function}  deps.writeBackup      ({ file, types, secrets, mode, passphrase, userId, items })
+ * @param   {Function}  deps.writeBackup      ({ file, types, secrets, mode, passphrase, userId, items, accounts })
  * @param   {Function}  deps.buildPlan        ({ entry, scope, types, items, choices }) => { plan }
  * @param   {Function}  deps.receive          (readable, file, max, message) => bytes
  * @param   {Function}  deps.checkPassphrase
@@ -186,6 +186,8 @@ const createBackupPages = ({
 						passphrase: secrets ? passphrase : undefined,
 						userId,
 						items,
+						// ACME account keys only go to an administrator, and only those of the exported certificates
+						accounts: secrets && access.isAdmin === true ? "named" : "none",
 					});
 					return {
 						pending: await store.addPending(file, { owner: userId }),

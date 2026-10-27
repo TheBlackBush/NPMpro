@@ -730,3 +730,58 @@ it("refuses a non-admin page import of a host whose domain or forward host holds
 		await cleanup();
 	}
 });
+
+const ACCOUNT_B = "b".repeat(32);
+
+// instance A's certificate #1 names account A in its renewal conf; the instance also has account B
+const seedAccounts = async (a) => {
+	await mkdir(path.join(a.dataDir, "tls/certbot/renewal"), { recursive: true });
+	await writeFile(
+		path.join(a.dataDir, "tls/certbot/renewal/npm-1.conf"),
+		`[renewalparams]\naccount = ${ACCOUNT_A}\nauthenticator = webroot\n`,
+	);
+	for (const account of [ACCOUNT_A, ACCOUNT_B]) {
+		await mkdir(path.join(a.dataDir, accountDir(account)), { recursive: true });
+		for (const name of ["meta.json", "regr.json", "private_key.json"]) {
+			await writeFile(path.join(a.dataDir, accountDir(account), name), "{}");
+		}
+	}
+};
+
+const exportedPaths = async (ctx, access, secrets) => {
+	const { pending } = await ctx.service.exportItems(access, {
+		kind: "proxy_hosts",
+		ids: [1],
+		linked: { certificates: [1] },
+		secrets,
+		passphrase: secrets ? PASSPHRASE : undefined,
+	});
+	const out = await mkdtemp(path.join(ctx.base, "out-"));
+	const file = ctx.service.takePending(access, pending);
+	await extractTo({
+		source: await openBackupFile({ file, passphrase: PASSPHRASE }),
+		dir: out,
+		allow: () => true,
+	});
+	const manifest = JSON.parse(await readFile(path.join(out, "manifest.json"), "utf8"));
+	return manifest.files.map((entry) => entry.path);
+};
+
+it("a page export holds ACME accounts only for an admin with secrets, and only the named ones", TIMEOUT, async () => {
+	const a = await setup();
+	try {
+		await seedHost(a, "a");
+		await seedAccounts(a);
+		await a.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		const manager = userAccess(2, { proxy_hosts: "manage", certificates: "manage" });
+		const accounts = (paths) => paths.filter((rel) => rel.includes("/accounts/"));
+		assert.deepEqual(accounts(await exportedPaths(a, manager, true)), []);
+		assert.deepEqual(accounts(await exportedPaths(a, admin, false)), []);
+		assert.deepEqual(
+			accounts(await exportedPaths(a, admin, true)),
+			["meta.json", "private_key.json", "regr.json"].map((name) => `files/${accountDir(ACCOUNT_A)}/${name}`),
+		);
+	} finally {
+		await a.cleanup();
+	}
+});

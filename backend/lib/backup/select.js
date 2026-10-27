@@ -127,18 +127,26 @@ const linkedOf = (data) => {
 	return linked;
 };
 
+// an ACME account folder name (certbot names them by a hash)
+const ACCOUNT_ID = /^[0-9a-f]{32}$/u;
+
 /**
- * A filter for the certificate files of the given certificate ids; the shared ACME accounts and the folders that lead
- * to the certificates stay allowed.
+ * A filter for the certificate files of the given certificate ids; the folders that lead to the certificates stay
+ * allowed. The shared ACME accounts are all allowed, or only those in accounts (the folders leading to them stay).
  *
  * @param   {Array<string|number>}  ids
+ * @param   {Set<string>}           [accounts]  the account ids allowed; all when not given
  * @returns {Function}              (rel) => boolean
  */
-const certificateFileFilter = (ids) => {
+const certificateFileFilter = (ids, accounts) => {
 	const chosen = new Set(ids.map(String));
 	return (rel) => {
 		if (!TYPES.certificates.files.allow(rel)) return false;
-		if (rel === ACCOUNTS_ROOT || rel.startsWith(`${ACCOUNTS_ROOT}/`)) return true;
+		if (rel === ACCOUNTS_ROOT || rel.startsWith(`${ACCOUNTS_ROOT}/`)) {
+			if (accounts === undefined) return true;
+			const account = rel.split("/").find((part) => ACCOUNT_ID.test(part));
+			return account === undefined || accounts.has(account);
+		}
 		const last = [...rel.matchAll(CERTIFICATE_ID)].at(-1);
 		return last === undefined || chosen.has(last.groups.id);
 	};
