@@ -163,6 +163,8 @@ it("replaces a host in place: the instance id stays, its locations and links are
 		await knex("proxy_host").insert({
 			id: 7,
 			domain_names: '["app.example.com"]',
+			created_on: "2020-01-01 00:00:00",
+			modified_on: "2020-01-01 00:00:00",
 			npmpro_nginx_online: 0,
 			npmpro_nginx_err: "broken",
 		});
@@ -174,7 +176,14 @@ it("replaces a host in place: the instance id stays, its locations and links are
 		await knex("npmpro_proxy_host_access_list").insert({ proxy_host_id: 7, location_id: 1, access_list_id: 2 });
 		const data = {
 			proxy_hosts: proxyHosts(
-				[host(3, "app.example.com", { enabled: 0, owner_user_id: 99 })],
+				[
+					host(3, "app.example.com", {
+						enabled: 0,
+						owner_user_id: 99,
+						created_on: "2026-01-01T00:00:00.000Z",
+						modified_on: "2026-01-01T00:00:00.000Z",
+					}),
+				],
 				[{ id: 8, proxy_host_id: 3, path: "/new" }],
 				[{ proxy_host_id: 3, location_id: 8, access_list_id: 5 }],
 			),
@@ -189,6 +198,9 @@ it("replaces a host in place: the instance id stays, its locations and links are
 		assert.equal(rows[0].owner_user_id, 1);
 		assert.equal(rows[0].npmpro_nginx_online, 1);
 		assert.equal(rows[0].npmpro_nginx_err, "");
+		assert.equal(rows[0].created_on, "2020-01-01 00:00:00");
+		assert.notEqual(rows[0].modified_on, "2020-01-01 00:00:00");
+		assert.notEqual(rows[0].modified_on, "2026-01-01 00:00:00");
 		const locations = await knex("npmpro_location");
 		assert.deepEqual(
 			locations.map(({ proxy_host_id, path }) => [proxy_host_id, path]),
@@ -374,6 +386,43 @@ it("gives every added row the importer as owner on a page import", async () => {
 	}
 });
 
+it("moves an added user's avatar to the new id and keeps an external one", async () => {
+	const knex = await open();
+	try {
+		await knex("user").insert({
+			id: 2,
+			email: "bob@example.com",
+			name: "Bob",
+			roles: "[]",
+			avatar: "/images/avatar/2.png",
+		});
+		const external = "https://www.gravatar.com/avatar/abc?default=mm";
+		const data = {
+			users: {
+				user: [
+					{ id: 2, email: "carol@example.com", name: "Carol", roles: [], avatar: "/images/avatar/2.png" },
+					{ id: 4, email: "dave@example.com", name: "Dave", roles: [], avatar: external },
+				],
+				auth: [],
+				user_permission: [],
+			},
+		};
+		const { result } = await merge(knex, { data, types: ["users"] });
+		const carolId = result.maps.user.get("2");
+		const daveId = result.maps.user.get("4");
+		assert.equal(carolId, 3);
+		assert.equal((await knex("user").where({ id: carolId }).first()).avatar, `/images/avatar/${carolId}.png`);
+		assert.equal((await knex("user").where({ id: daveId }).first()).avatar, external);
+		assert.equal((await knex("user").where({ id: 2 }).first()).avatar, "/images/avatar/2.png");
+		assert.deepEqual(result.avatarMoves, [
+			{ from: 2, to: carolId },
+			{ from: 4, to: daveId },
+		]);
+	} finally {
+		await knex.destroy();
+	}
+});
+
 it("replaces a user in place with the backup's auth rows and a fresh token time; never the admin", async () => {
 	const knex = await open();
 	try {
@@ -384,7 +433,13 @@ it("replaces a user in place with the backup's auth rows and a fresh token time;
 			users: {
 				user: [
 					{ id: 1, email: "admin@example.com", name: "Other Admin", roles: [] },
-					{ id: 5, email: "bob@example.com", name: "New Bob", roles: ["admin"] },
+					{
+						id: 5,
+						email: "bob@example.com",
+						name: "New Bob",
+						roles: ["admin"],
+						avatar: "/images/avatar/5.png",
+					},
 				],
 				auth: [
 					{ id: 1, user_id: 1, type: "password", secret: "backup-admin", meta: {} },
@@ -404,6 +459,8 @@ it("replaces a user in place with the backup's auth rows and a fresh token time;
 		assert.equal(bob.name, "New Bob");
 		assert.deepEqual(json(bob.roles), ["admin"]);
 		assert.equal(bob.npmpro_token_valid_after, NOW);
+		assert.equal(bob.avatar, "/images/avatar/2.png");
+		assert.deepEqual(result.avatarMoves, [{ from: 5, to: 2 }]);
 		assert.deepEqual(
 			(await knex("auth").where({ user_id: 2 })).map((row) => row.secret),
 			["new"],

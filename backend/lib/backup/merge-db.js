@@ -1,5 +1,5 @@
 import { freeName } from "./references.js";
-import { clientOf, createInserter, key, SECRET_TYPES, typeData } from "./restore-db.js";
+import { clientOf, createInserter, key, movedAvatar, SECRET_TYPES, typeData } from "./restore-db.js";
 import { coerceRow } from "./rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
@@ -94,10 +94,11 @@ const checkedItems = (plan) => {
  * @param   {boolean}   options.secrets       whether the backup holds secrets
  * @param   {number}    [options.now]         seconds, npmpro_token_valid_after of added and replaced users
  * @returns {Promise<{ counts: Object, maps: { [table]: Map<string, number> }, certificateMoves: Array<{ from, to }>,
- *                     replacedUserIds: number[], cleared: number }>}
+ *                     replacedUserIds: number[], avatarMoves: Array<{ from, to }>, cleared: number }>}
  *          maps: String(backup id) -> instance id per table, for added, replaced and matched rows (and the locations
- *          of written proxy hosts); certificateMoves: backup id -> new id of added certificates; cleared: links whose
- *          target is neither imported nor matched
+ *          of written proxy hosts); certificateMoves: backup id -> new id of added certificates; avatarMoves: backup
+ *          id -> instance id of every added or replaced user, whose avatar path now names the instance id; cleared:
+ *          links whose target is neither imported nor matched
  */
 const mergeTypes = async ({
 	knex,
@@ -139,6 +140,7 @@ const mergeTypes = async ({
 		};
 		const certificateMoves = [];
 		const replacedUserIds = [];
+		const avatarMoves = [];
 		const cleared = new Set();
 
 		// the instance users by email, read before any user is written
@@ -177,14 +179,18 @@ const mergeTypes = async ({
 			let userId;
 			if (item.action === "add") {
 				userId = await inserter.insertWithNewId("user", row);
+				const avatar = movedAvatar(row.avatar, item.id, userId);
+				if (avatar !== null) await trx("user").where({ id: userId }).update({ avatar });
 			} else {
 				userId = item.target.id;
 				if (key(userId) === key(adminUserId)) throw new Error("A merge never replaces the restoring admin");
-				await updateRow("user", userId, row);
+				const avatar = movedAvatar(row.avatar, item.id, userId);
+				await updateRow("user", userId, avatar === null ? row : { ...row, avatar });
 				for (const table of ["auth", "user_permission"]) await trx(table).where({ user_id: userId }).del();
 				replacedUserIds.push(userId);
 			}
 			maps.user.set(key(item.id), userId);
+			avatarMoves.push({ from: item.id, to: userId });
 			const own = (rows) => (rows ?? []).filter((child) => key(child.user_id) === key(item.id));
 			const { auth } = TYPES.users.secrets.seal({ auth: own(prepared.users.auth) }, box);
 			for (const child of auth) await inserter.insertWithNewId("auth", { ...child, user_id: userId });
@@ -364,7 +370,7 @@ const mergeTypes = async ({
 			else if (kind === "host") await writeHost(item);
 			else await writeSetting(item);
 		}
-		return { counts, maps, certificateMoves, replacedUserIds, cleared: cleared.size };
+		return { counts, maps, certificateMoves, replacedUserIds, avatarMoves, cleared: cleared.size };
 	});
 };
 

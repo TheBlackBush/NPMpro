@@ -9,6 +9,8 @@ export const createSchema = async (knex) => {
 			t.json("meta").notNull().defaultTo("{}");
 			t.integer("npmpro_nginx_online").notNull().defaultTo(1);
 			t.text("npmpro_nginx_err").notNull().defaultTo("");
+			t.dateTime("created_on").nullable();
+			t.dateTime("modified_on").nullable();
 			extra(t);
 		});
 	await knex.schema.createTable("user", (t) => {

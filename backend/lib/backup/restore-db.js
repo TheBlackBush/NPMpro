@@ -396,6 +396,7 @@ export {
 	createInserter,
 	key,
 	loadStageData,
+	movedAvatar,
 	previewReplace,
 	replaceTypes,
 	SECRET_TYPES,
