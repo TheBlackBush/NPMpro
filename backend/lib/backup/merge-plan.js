@@ -158,7 +158,8 @@ const matchItem = (typeId, row, ctx) => {
 	}
 	const [first] = targets;
 	let choices = [...MATCH_CHOICES[typeId]];
-	if (HOST_TYPES.includes(typeId) && targets.length > 1) choices = ["skip"];
+	// a replace keeps the target's id, so it needs a single target of the same type
+	if (HOST_TYPES.includes(typeId) && (targets.length > 1 || first.type !== typeId)) choices = ["skip"];
 	if (typeId === "users" && same(first.row.id, ctx.scope.adminUserId)) choices = ["existing"];
 	const target = { type: first.type, id: first.row.id, label: itemLabel(first.type, first.row) };
 	const item = { ...base, action: choices[0], reason: reasonOf(typeId, targets.length), target, choices };
@@ -233,10 +234,11 @@ const activeData = (items, data) =>
 			}),
 	);
 
-const settingMeta = (typeId, row) => {
+// the compared part of a setting row: its value and its meta without secret keys
+const settingContent = (typeId, row) => {
 	const meta = parseJson(row.meta);
 	const stripped = TYPES[typeId].secrets.strip({ setting: [{ ...row, meta: meta ?? {} }] }).setting[0].meta;
-	return JSON.stringify(canonical(stripped));
+	return JSON.stringify(canonical([row.value ?? null, stripped]));
 };
 
 const listedItem = ({ key, typeId, id, label, target }) => ({
@@ -254,12 +256,12 @@ const listedItem = ({ key, typeId, id, label, target }) => ({
 	unticked: false,
 });
 
-// setting rows whose meta, without secrets, differs from the instance's
+// setting rows whose value or meta, without secrets, differs from the instance's
 const settingDiffs = (ctx) =>
 	SETTINGS_TYPES.filter((typeId) => ctx.types.includes(typeId)).flatMap((typeId) =>
 		(ctx.data[typeId]?.setting ?? []).flatMap((row) => {
 			const current = (ctx.instance.setting ?? []).find((other) => same(other.id, row.id));
-			if (current && settingMeta(typeId, current) === settingMeta(typeId, row)) return [];
+			if (current && settingContent(typeId, current) === settingContent(typeId, row)) return [];
 			const target = current ? { type: typeId, id: current.id, label: current.name || String(current.id) } : null;
 			return [
 				listedItem({ key: `setting:${row.id}`, typeId, id: row.id, label: row.name || String(row.id), target }),
@@ -300,7 +302,7 @@ const linksOf = (typeId, row, data) => {
 	if (typeId === "proxy_hosts") {
 		for (const link of data.proxy_hosts?.npmpro_proxy_host_access_list ?? []) {
 			if (same(link.proxy_host_id, row.id) && link.access_list_id > 0) {
-				links.push(["access_list_id", "access_lists", link.access_list_id]);
+				links.push(["npmpro_proxy_host_access_list.access_list_id", "access_lists", link.access_list_id]);
 			}
 		}
 	}

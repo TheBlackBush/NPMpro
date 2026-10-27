@@ -40,7 +40,7 @@ const hostsWithCertificate = (certificate) => ({
 	certificates: { certificate: certificate ? [certificate] : [] },
 });
 
-it("adds a host without a clash and offers skip or replace for a domain in use", () => {
+it("adds a host without a clash and only skips a domain in use by another host type", () => {
 	const data = {
 		proxy_hosts: {
 			proxy_host: [
@@ -60,13 +60,26 @@ it("adds a host without a clash and offers skip or replace for a domain in use",
 	assert.equal(clash.action, "skip");
 	assert.equal(clash.reason, "domain-in-use");
 	assert.deepEqual(clash.target, { type: "redirection_hosts", id: 12, label: "app.example.com" });
-	assert.deepEqual(clash.choices, ["skip", "replace"]);
+	assert.deepEqual(clash.choices, ["skip"]);
 	assert.equal(clash.default, "skip");
 	assert.equal(clash.linked, false);
 	assert.equal(clash.unticked, false);
 	const replaced = plan({ data, instance, types: ["proxy_hosts"], choices: { "proxy_hosts:3": "replace" } });
+	assert.equal(find(replaced, "proxy_hosts:3").action, "skip");
+});
+
+it("offers skip or replace for a domain in use by a host of the same type", () => {
+	const data = { proxy_hosts: { proxy_host: [{ id: 3, domain_names: ["App.Example.com"] }] } };
+	const instance = { proxy_host: [{ id: 12, domain_names: ["app.example.com"] }] };
+	const result = plan({ data, instance, types: ["proxy_hosts"] });
+	const clash = find(result, "proxy_hosts:3");
+	assert.equal(clash.action, "skip");
+	assert.equal(clash.reason, "domain-in-use");
+	assert.deepEqual(clash.target, { type: "proxy_hosts", id: 12, label: "app.example.com" });
+	assert.deepEqual(clash.choices, ["skip", "replace"]);
+	const replaced = plan({ data, instance, types: ["proxy_hosts"], choices: { "proxy_hosts:3": "replace" } });
 	assert.equal(find(replaced, "proxy_hosts:3").action, "replace");
-	assert.deepEqual(replaced.counts, { add: 1, replace: 1, skip: 0, existing: 0, take: 0, keep: 0 });
+	assert.deepEqual(replaced.counts, { add: 0, replace: 1, skip: 0, existing: 0, take: 0, keep: 0 });
 });
 
 it("only skips a host that matches several instance hosts", () => {
@@ -312,6 +325,46 @@ it("lists a setting only when it differs outside its secrets", () => {
 	assert.deepEqual(item.choices, ["keep", "take"]);
 	const taken = plan({ data, instance, types: ["settings_oidc"], choices: { "setting:oidc": "take" } });
 	assert.equal(find(taken, "setting:oidc").action, "take");
+});
+
+it("lists the default site when its value differs", () => {
+	const instance = { setting: [{ id: "default-site", name: "Default Site", value: "congratulations", meta: {} }] };
+	const data = {
+		settings_default_site: { setting: [{ id: "default-site", name: "Default Site", value: "404", meta: {} }] },
+	};
+	const differs = plan({ data, instance, types: ["settings_default_site"] });
+	assert.equal(find(differs, "setting:default-site").action, "keep");
+	const taken = plan({
+		data,
+		instance,
+		types: ["settings_default_site"],
+		choices: { "setting:default-site": "take" },
+	});
+	assert.equal(find(taken, "setting:default-site").action, "take");
+	const equal = plan({
+		data: {
+			settings_default_site: {
+				setting: [{ id: "default-site", name: "Default Site", value: "congratulations", meta: {} }],
+			},
+		},
+		instance,
+		types: ["settings_default_site"],
+	});
+	assert.deepEqual(equal.items, []);
+});
+
+it("reports access list rows of a proxy host apart from its own access list column", () => {
+	const data = {
+		proxy_hosts: {
+			proxy_host: [{ id: 1, domain_names: ["a.example.com"], access_list_id: 5 }],
+			npmpro_proxy_host_access_list: [{ proxy_host_id: 1, location_id: 0, access_list_id: 5 }],
+		},
+	};
+	const result = plan({ data, types: ["proxy_hosts"] });
+	assert.deepEqual(result.cleared_links, [
+		{ key: "proxy_hosts:1", column: "access_list_id", from: 5, label: "#5" },
+		{ key: "proxy_hosts:1", column: "npmpro_proxy_host_access_list.access_list_id", from: 5, label: "#5" },
+	]);
 });
 
 it("lists a staged file only when the instance's differs", () => {
