@@ -1,0 +1,57 @@
+{
+	"operationId": "uploadBackup",
+	"summary": "Upload a backup file",
+	"description": "Admin only. The raw file is the request body (streamed, not buffered), at most 2 GiB. The file name comes from the name query parameter when it is a valid backup name, else one is made from the backup. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "name",
+			"description": "The uploaded file's name",
+			"required": false,
+			"schema": {
+				"type": "string",
+				"maxLength": 255
+			}
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/octet-stream": {
+				"schema": {
+					"type": "string",
+					"format": "binary"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"entry"
+						],
+						"properties": {
+							"entry": {
+								"$ref": "../../../components/backup-object.json"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

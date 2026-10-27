@@ -1,0 +1,38 @@
+{
+	"operationId": "cancelBackupRestore",
+	"summary": "Cancel a restore and drop its unpacked files",
+	"description": "Admin only.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "token",
+			"description": "Restore token returned by the inspect call",
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			},
+			"required": true
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "boolean",
+						"example": true
+					}
+				}
+			}
+		}
+	}
+}

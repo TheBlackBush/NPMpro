@@ -1,0 +1,78 @@
+{
+	"operationId": "checkBackupRestore",
+	"summary": "Preview a restore of chosen types",
+	"description": "Admin only. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "token",
+			"description": "Restore token returned by the inspect call",
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			},
+			"required": true
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"types"
+					],
+					"properties": {
+						"types": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							},
+							"minItems": 1,
+							"uniqueItems": true,
+							"description": "Backup types"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/backup-preview-object.json"
+					}
+				}
+			}
+		}
+	}
+}

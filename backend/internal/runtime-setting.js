@@ -31,6 +31,25 @@ const setRuntimeApply = (apply) => {
 	applyHook = typeof apply === "function" ? apply : noApply;
 };
 
+const noApplyAll = async () => ({});
+let applyAllHook = noApplyAll;
+
+/**
+ * Sets the function that applies every runtime settings group from the loaded runtime config (after a restore)
+ *
+ * @param {Function} [applyAll]  () => Promise<{ [group]: Error }>; without one, nothing is applied
+ */
+const setRuntimeApplyAll = (applyAll) => {
+	applyAllHook = typeof applyAll === "function" ? applyAll : noApplyAll;
+};
+
+/**
+ * Applies every runtime settings group; call loadRuntimeConfig() first so the stored rows are read
+ *
+ * @returns {Promise<Object>}  { [group]: Error } for the groups that failed
+ */
+const applyAllRuntime = () => applyAllHook();
+
 const readStored = async (group) => (await settingModel.query().where("id", group).first())?.meta ?? {};
 
 const saveStored = async (group, meta) => {
@@ -97,5 +116,5 @@ const internalRuntimeSetting = {
 	},
 };
 
-export { setRuntimeApply };
+export { applyAllRuntime, setRuntimeApply, setRuntimeApplyAll };
 export default internalRuntimeSetting;

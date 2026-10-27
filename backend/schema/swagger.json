@@ -79,6 +79,10 @@
 		{
 			"name": "docs",
 			"description": "Endpoints related to this API documentation"
+		},
+		{
+			"name": "backups",
+			"description": "Endpoints related to backups and restores"
 		}
 	],
 	"paths": {
@@ -564,6 +568,55 @@
 		"/users/{userID}/permissions": {
 			"put": {
 				"$ref": "./paths/users/userID/permissions/put.json"
+			}
+		},
+		"/backups/types": {
+			"get": {
+				"$ref": "./paths/backups/types/get.json"
+			}
+		},
+		"/backups": {
+			"get": {
+				"$ref": "./paths/backups/get.json"
+			},
+			"post": {
+				"$ref": "./paths/backups/post.json"
+			}
+		},
+		"/backups/upload": {
+			"post": {
+				"$ref": "./paths/backups/upload/post.json"
+			}
+		},
+		"/backups/pending/{id}": {
+			"get": {
+				"$ref": "./paths/backups/pending/id/get.json"
+			}
+		},
+		"/backups/restore/{token}/check": {
+			"post": {
+				"$ref": "./paths/backups/restore/token/check/post.json"
+			}
+		},
+		"/backups/restore/{token}": {
+			"post": {
+				"$ref": "./paths/backups/restore/token/post.json"
+			},
+			"delete": {
+				"$ref": "./paths/backups/restore/token/delete.json"
+			}
+		},
+		"/backups/{name}/inspect": {
+			"post": {
+				"$ref": "./paths/backups/name/inspect/post.json"
+			}
+		},
+		"/backups/{name}": {
+			"get": {
+				"$ref": "./paths/backups/name/get.json"
+			},
+			"delete": {
+				"$ref": "./paths/backups/name/delete.json"
 			}
 		}
 	}

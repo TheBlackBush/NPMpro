@@ -1,0 +1,153 @@
+{
+	"operationId": "restoreBackup",
+	"summary": "Restore a backup (replace)",
+	"description": "Admin only. Replaces the chosen types with the backup's after an automatic backup. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "token",
+			"description": "Restore token returned by the inspect call",
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			},
+			"required": true
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"types",
+						"confirm"
+					],
+					"properties": {
+						"types": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							},
+							"minItems": 1,
+							"uniqueItems": true,
+							"description": "Backup types"
+						},
+						"confirm": {
+							"type": "boolean",
+							"enum": [
+								true
+							]
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"counts",
+							"references",
+							"skippedUsers",
+							"restartNeeded",
+							"runtimeFailed",
+							"offlineHosts"
+						],
+						"properties": {
+							"counts": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "integer"
+								}
+							},
+							"references": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": true
+								}
+							},
+							"skippedUsers": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": true
+								}
+							},
+							"restartNeeded": {
+								"type": "boolean"
+							},
+							"runtimeFailed": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Settings groups that could not be applied"
+							},
+							"offlineHosts": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"type",
+										"id",
+										"domain",
+										"error"
+									],
+									"properties": {
+										"type": {
+											"type": "string"
+										},
+										"id": {
+											"type": "integer"
+										},
+										"domain": {
+											"type": "string"
+										},
+										"error": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

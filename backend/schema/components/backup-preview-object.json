@@ -1,0 +1,77 @@
+{
+	"type": "object",
+	"description": "What a restore would change",
+	"additionalProperties": false,
+	"required": [
+		"references",
+		"skippedUsers",
+		"missingSecrets"
+	],
+	"properties": {
+		"references": {
+			"type": "array",
+			"description": "References to rows that do not exist after the restore, cleared or moved to the restoring admin",
+			"items": {
+				"type": "object",
+				"additionalProperties": true,
+				"required": [
+					"table",
+					"column",
+					"label"
+				],
+				"properties": {
+					"table": {
+						"type": "string"
+					},
+					"id": {
+						"type": [
+							"integer",
+							"string",
+							"null"
+						]
+					},
+					"column": {
+						"type": "string",
+						"description": "* when a link row is removed"
+					},
+					"from": {},
+					"to": {},
+					"label": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"skippedUsers": {
+			"type": "array",
+			"description": "Backup users that are not restored because they are the restoring admin",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"email",
+					"name"
+				],
+				"properties": {
+					"id": {
+						"type": "integer"
+					},
+					"email": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"missingSecrets": {
+			"type": "array",
+			"description": "Chosen types whose secrets the backup does not hold",
+			"items": {
+				"type": "string"
+			}
+		}
+	}
+}

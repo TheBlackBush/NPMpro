@@ -9,6 +9,7 @@
 - [Usage](Usage)
 - [CrowdSec](CrowdSec)
 - [Forward authentication](Forward-Authentication)
+- [Backup and restore](Backup-and-restore)
 - [Troubleshooting](Troubleshooting)
 
 **Reference**

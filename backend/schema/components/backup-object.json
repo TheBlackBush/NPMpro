@@ -1,0 +1,71 @@
+{
+	"type": "object",
+	"description": "A stored backup file",
+	"additionalProperties": false,
+	"required": [
+		"name",
+		"size",
+		"modified",
+		"auto",
+		"summary",
+		"encrypted"
+	],
+	"properties": {
+		"name": {
+			"type": "string"
+		},
+		"size": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"modified": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"auto": {
+			"type": "boolean",
+			"description": "Made automatically before a restore"
+		},
+		"encrypted": {
+			"type": [
+				"boolean",
+				"null"
+			],
+			"description": "null when the header cannot be read"
+		},
+		"summary": {
+			"type": [
+				"object",
+				"null"
+			],
+			"description": "What the file says it holds, null when the header cannot be read",
+			"additionalProperties": true,
+			"properties": {
+				"format": {
+					"type": "integer"
+				},
+				"types": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"counts": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "integer"
+					}
+				},
+				"created_at": {
+					"type": "string"
+				},
+				"npmpro_version": {
+					"type": "string"
+				},
+				"secrets": {
+					"type": "boolean"
+				}
+			}
+		}
+	}
+}

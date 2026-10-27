@@ -14,9 +14,16 @@ const validHours = (hours) => Number.isInteger(hours) && hours > 0;
 const createRenewalTimer = ({ run, hours, clock = globalThis, log } = {}) => {
 	let intervalHours = validHours(hours) ? hours : 3;
 	let handle = null;
+	let isPaused = false;
+
+	// a paused timer keeps its interval but skips the runs
+	const tick = () => {
+		if (isPaused) return;
+		return run();
+	};
 
 	const schedule = () => {
-		handle = clock.setInterval(run, intervalHours * HOUR);
+		handle = clock.setInterval(tick, intervalHours * HOUR);
 	};
 
 	return {
@@ -25,6 +32,19 @@ const createRenewalTimer = ({ run, hours, clock = globalThis, log } = {}) => {
 
 		/** @returns {boolean} whether the timer is running */
 		running: () => handle !== null,
+
+		/** @returns {boolean} whether the runs are skipped */
+		paused: () => isPaused,
+
+		/** Skips the runs until resume() */
+		pause: () => {
+			isPaused = true;
+		},
+
+		/** Ends a pause; a run missed meanwhile is not made up, the next interval runs */
+		resume: () => {
+			isPaused = false;
+		},
 
 		/**
 		 * Starts the timer once

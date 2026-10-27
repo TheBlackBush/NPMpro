@@ -3,6 +3,7 @@
 import { chmod, chown, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
+import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
@@ -16,7 +17,7 @@ import { setMonitoringHooks } from "./internal/monitoring-setting.js";
 import internalNginx from "./internal/nginx.js";
 import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-hosts.js";
 import { runtimeExclusive } from "./internal/runtime-queue.js";
-import { setRuntimeApply } from "./internal/runtime-setting.js";
+import { setRuntimeApply, setRuntimeApplyAll } from "./internal/runtime-setting.js";
 import { recoverStapling, watchOcspResponses } from "./internal/stapling-recovery.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
@@ -34,6 +35,12 @@ import setup from "./setup.js";
 async function appStart() {
 	try {
 		await migrateUp();
+		// restore stages, unfinished writes and pending downloads of the previous run
+		try {
+			await backupStore.cleanup();
+		} catch (err) {
+			logger.warn(`Could not clean up the backup folder: ${err.message}`);
+		}
 
 		// the http access log is on while traffic statistics or Write log files is on
 		const accessLog = createAccessLogSwitch({
@@ -57,6 +64,7 @@ async function appStart() {
 			accessLogOn: accessLog.enabled,
 		});
 		setRuntimeApply(runtimeApplier.applyGroup);
+		setRuntimeApplyAll(runtimeApplier.applyAll);
 		// a failed startup apply keeps the files from start.sh, the backend still starts
 		try {
 			await loadRuntimeConfig();
@@ -106,6 +114,10 @@ async function appStart() {
 				});
 			});
 		});
+		// the default 300 s limit on receiving a request would cut off a backup upload (up to 2 GiB) on a slow link. A long
+		// limit is safe only because nginx buffers the body of every other route (at most 1m) and just the upload location
+		// streams it. The header timeout stays.
+		server.requestTimeout = 3 * 60 * 60 * 1000;
 	} catch (err) {
 		logger.error(`Startup Error: ${err.message}`, err);
 		setTimeout(appStart, 1000);

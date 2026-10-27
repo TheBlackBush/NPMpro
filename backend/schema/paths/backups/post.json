@@ -1,0 +1,112 @@
+{
+	"operationId": "createBackup",
+	"summary": "Create a backup",
+	"description": "Admin only. With keep the backup is stored and returned as entry; without keep it is returned as a pending download (GET /backups/pending/{id}), once. Secrets need a passphrase. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Backup options",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"types",
+						"secrets",
+						"keep"
+					],
+					"properties": {
+						"types": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							},
+							"minItems": 1,
+							"uniqueItems": true,
+							"description": "Backup types"
+						},
+						"secrets": {
+							"type": "boolean",
+							"description": "Include secrets, encrypted with the passphrase"
+						},
+						"passphrase": {
+							"type": "string",
+							"minLength": 12,
+							"maxLength": 1024,
+							"description": "Passphrase, at least 12 characters, never stored"
+						},
+						"keep": {
+							"type": "boolean",
+							"description": "Store the backup on the server"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"oneOf": [
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"entry"
+								],
+								"properties": {
+									"entry": {
+										"$ref": "../../components/backup-object.json"
+									}
+								}
+							},
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"pending",
+									"name"
+								],
+								"properties": {
+									"pending": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									}
+								}
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}

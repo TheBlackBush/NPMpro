@@ -43,6 +43,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 - [OIDC login](#oidc-login)
 - [Monitoring](#monitoring)
 - [GoAccess](#goaccess)
+- [Backup and restore](#backup-and-restore)
 - [Comments on some buttons](#comments-on-some-buttons)
 - [Forward authentication (auth_request) examples](#examples-of-implementing-some-services-using-auth_request)
 - [Load Balancing](#load-balancing)
@@ -92,7 +93,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 - most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](#settings-and-environment-variables))
 - an Environment page (Settings, Environment) that lists the startup variables read-only, secrets never shown
 - audit log, users with per-section permissions, light and dark theme
-- database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/npmpro/backups` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
+- database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/backups/database` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
 - Alpine based, a much smaller image
 - many other things, see this README and the [compose.yaml](compose.yaml)
 
@@ -322,6 +323,20 @@ GoAccess builds a web log report from the access log. Turn on GoAccess report un
 - The GoAccess options are fields in the same block, all applied after a restart: keep report data (1 to 366 days, default 30), anonymize visitor IPs (off or level 1 to 3, default level 1), drop query strings (default on), full operating system versions (default on) and resolve host names (default on, this sends DNS queries for visitor IPs). `--agent-list --double-decode` are always used.
 - `GOACLA` replaces these fields with your own GoAccess options and locks them. Its default matches the default fields: `--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string`.
 - When GeoLite2 databases are in `/opt/npmpro/goaccess/geoip` (downloaded by NPMpro, see Settings, GeoIP), GoAccess uses them automatically after a restart, unless `GOACLA` sets its own `--geoip-database`.
+
+## Backup and restore
+Administrators create and restore backups under Settings, Backup and restore (`/settings/backup`). A backup is one `.npmpro` file with the parts you choose; it restores on the same or another NPMpro instance, also between SQLite, MySQL/MariaDB and Postgres. Copying the whole `/data` folder is not needed for it.
+- Parts: hosts (proxy, redirection and 404 hosts, streams), certificates (Let's Encrypt, custom and mTLS CAs, with their files), access lists, DNS credentials, users, settings (runtime settings, default site, OIDC sign-in, monitoring and GeoIP) and custom files (`custom_nginx/` and the CrowdSec files `crowdsec.conf`, `ban.html`, `captcha.html`).
+- Never in a backup: traffic statistics (they are not backed up at all), logs, the audit log, sessions, `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, and `/data/backups`.
+- Include secrets (default on): the backup holds private keys, the certbot account keys, password hashes, two-factor secrets and backup codes, DNS credential values, the OIDC client secret, the GeoIP license key and `crowdsec.conf`, and the whole file is encrypted with a passphrase of at least 12 characters (AES-256-GCM, key from scrypt). The passphrase is never stored: without it the backup cannot be restored. A wrong passphrase or a changed file is refused with "Wrong passphrase or damaged backup file".
+- Without secrets: the file is not encrypted and leaves all of the above out. It still holds host names, users, settings and certificates, so keep it private. After a restore of such a file, enter the missing secrets again (the restore lists the parts that came without them).
+- Download sends the file to the browser; Keep on server stores it in `/data/backups` (folder mode 700, files 600), where the list offers download, restore and delete. Upload backup adds a file (up to 2 GiB) to that list.
+- Restore replaces the chosen parts on this instance with the ones in the backup and keeps their ids. The restore window shows what the file holds; untick parts to keep them as they are. A reference to something that does not exist after the restore (a certificate, an access list, an mTLS CA or a DNS credential that was neither restored nor on the instance) is cleared, never matched by name or domain; the owner of a removed user's items becomes the restoring administrator. The window lists every reference it will clear before you confirm.
+- Users: the administrator who runs the restore keeps their account, password, two-factor setup and admin role and stays signed in; a backup user with their email address is skipped. Every other restored user is signed out and signs in again with the password and two-factor setup from the backup.
+- Before every restore NPMpro makes an automatic backup of everything in `/data/backups/auto` (the newest 5 are kept). It is encrypted with this instance's key, needs no passphrase and only restores on this instance.
+- If anything fails, including `nginx -t` (for example a broken file in `custom_nginx`), the restore is rolled back completely and the error shows the nginx message. Hosts that nginx rejects on their own are taken offline and listed in the result, the rest of the restore stays. When restored settings only apply at start-up, the result asks for a restart of the container.
+- One backup or restore runs at a time, and certificate renewal pauses during a restore. A backup made by a newer NPMpro (newer file format or database version) is refused: update NPMpro first.
+- `/data/backups/database` holds the SQLite copies NPMpro makes before database migrations (see [Features](#web-ui-and-operations)); they are not listed in the UI.
 
 ## Comments on some buttons
 - Forward Hostname / IP / Path: if the scheme is set to path you can just put here a path in and nginx works as a file server, otherwise you need to input ip/domain, you can also append a path to the ip/domain like `127.0.0.1/path` to proxy to a subpath.

@@ -1,0 +1,48 @@
+{
+	"operationId": "downloadPendingBackup",
+	"summary": "Download a backup created without keep",
+	"description": "Admin only. One time: the file is removed after it is sent.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "name",
+			"description": "File name offered to the browser",
+			"required": false,
+			"schema": {
+				"type": "string",
+				"maxLength": 255
+			}
+		},
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Pending download id returned by the create call",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/octet-stream": {
+					"schema": {
+						"type": "string",
+						"format": "binary"
+					}
+				}
+			}
+		}
+	}
+}
