@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readdir, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -336,4 +336,48 @@ it("a pending file is read without taking it, with its kind, by its owner only",
 	time.value += 30 * 60 * 1000;
 	assert.throws(() => store.peekPending(late, { owner: 2 }), code("token-expired"));
 	assert.equal(await exists(path.join(dir, `.pending-${late}.npmpro`)), false);
+});
+
+it("removes a pending file when it expires unused, and logs a file that cannot be removed", async () => {
+	const warnings = [];
+	const { dir, store } = await make({ pendingTtlMs: 30, logger: { warn: (...args) => warnings.push(args) } });
+	const src = path.join(dir, "x.tmp-file");
+	await writeFile(src, "data");
+	const id = await store.addPending(src, { owner: 1, kind: "proxy_hosts" });
+	const target = path.join(dir, `.pending-${id}.npmpro`);
+	await writeFile(src, "data");
+	const taken = await store.addPending(src, { owner: 1 });
+	const takenFile = store.takePending(taken, { owner: 1 });
+	await sleep(100);
+	assert.equal(await exists(target), false);
+	// a taken file belongs to its taker
+	assert.equal(await exists(takenFile), true);
+	assert.throws(() => store.peekPending(id, { owner: 1 }), code("token-expired"));
+	assert.deepEqual(warnings, []);
+	// a folder in the way of the removal stands for a file that cannot be removed
+	await writeFile(src, "data");
+	const stuck = await store.addPending(src, { owner: 2 });
+	const stuckFile = path.join(dir, `.pending-${stuck}.npmpro`);
+	await rm(stuckFile);
+	await mkdir(path.join(stuckFile, "x"), { recursive: true });
+	await sleep(100);
+	assert.equal(warnings.length, 1);
+});
+
+it("keeps one pending import per owner: a new upload drops the older one and its file", async () => {
+	const { dir, store } = await make();
+	const src = path.join(dir, "x.tmp-file");
+	const add = async (owner, kind) => {
+		await writeFile(src, "data");
+		return store.addPending(src, { owner, kind });
+	};
+	const first = await add(1, "proxy_hosts");
+	const download = await add(1, null);
+	const other = await add(2, "streams");
+	const second = await add(1, "streams");
+	assert.equal(await exists(path.join(dir, `.pending-${first}.npmpro`)), false);
+	assert.throws(() => store.peekPending(first, { owner: 1 }), code("token-expired"));
+	assert.equal(store.peekPending(second, { owner: 1 }).kind, "streams");
+	assert.equal(store.peekPending(other, { owner: 2 }).kind, "streams");
+	assert.equal(store.peekPending(download, { owner: 1 }).kind, null);
 });

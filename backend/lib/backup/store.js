@@ -39,6 +39,7 @@ const createBackupStore = ({
 	clock = Date,
 	keepAuto = 5,
 	tokenTtlMs = 30 * 60 * 1000,
+	pendingTtlMs = PENDING_TTL_MS,
 	logger = defaultLogger,
 }) => {
 	const autoDir = path.join(dir, "auto");
@@ -154,6 +155,7 @@ const createBackupStore = ({
 					await rm(path.join(folder, entry), { recursive: true, force: true });
 			}
 		}
+		for (const entry of pending.values()) clearTimeout(entry.timer);
 		pending.clear();
 	};
 
@@ -211,12 +213,33 @@ const createBackupStore = ({
 		return session.entry;
 	};
 
-	// kind: the page a pending upload is imported on (null for a download)
+	// forgets a pending entry and removes its file; runs from a timer too, so a failed removal is logged, not thrown
+	const dropPending = (id) => {
+		const entry = pending.get(id);
+		if (!entry) return;
+		clearTimeout(entry.timer);
+		pending.delete(id);
+		try {
+			rmSync(entry.target, { force: true });
+		} catch (err) {
+			logger.warn(`Could not remove the pending file ${entry.target}: ${err.message}`);
+		}
+	};
+
+	// kind: the page a pending upload is imported on (null for a download). An owner has one pending import: a new one
+	// drops the older one. An entry not taken in time is removed with its file.
 	const addPending = async (file, { owner, kind = null }) => {
+		if (kind !== null) {
+			for (const [other, entry] of pending) {
+				if (entry.owner === owner && entry.kind !== null) dropPending(other);
+			}
+		}
 		const id = randomBytes(18).toString("base64url");
 		const target = path.join(dir, `.pending-${id}.npmpro`);
 		await rename(file, target);
-		pending.set(id, { target, owner, kind, expires: clock.now() + PENDING_TTL_MS });
+		const timer = setTimeout(() => dropPending(id), pendingTtlMs);
+		timer.unref();
+		pending.set(id, { target, owner, kind, expires: clock.now() + pendingTtlMs, timer });
 		return id;
 	};
 
@@ -226,8 +249,7 @@ const createBackupStore = ({
 		const entry = pending.get(id);
 		if (!entry || entry.owner !== owner) throw expired();
 		if (clock.now() >= entry.expires) {
-			pending.delete(id);
-			rmSync(entry.target, { force: true });
+			dropPending(id);
 			throw expired();
 		}
 		return entry;
@@ -235,6 +257,7 @@ const createBackupStore = ({
 
 	const takePending = (id, { owner }) => {
 		const entry = pendingOf(id, owner);
+		clearTimeout(entry.timer);
 		pending.delete(id);
 		return entry.target;
 	};

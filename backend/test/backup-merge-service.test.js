@@ -785,3 +785,26 @@ it("a page export holds ACME accounts only for an admin with secrets, and only t
 		await a.cleanup();
 	}
 });
+
+it("removes the extracted stage when using up the page import upload fails", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const file = await backupOf(a, { types: ["proxy_hosts"], secrets: false });
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const takePending = b.store.takePending;
+		b.store.takePending = () => {
+			throw new Error("cannot take");
+		};
+		try {
+			await assert.rejects(b.service.importOpen(admin, id, {}), (error) => error.message === "cannot take");
+		} finally {
+			b.store.takePending = takePending;
+		}
+		assert.deepEqual(
+			(await readdir(b.backupsDir)).filter((name) => name.startsWith(".restore-")),
+			[],
+		);
+	} finally {
+		await cleanup();
+	}
+});

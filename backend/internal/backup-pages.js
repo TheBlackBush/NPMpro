@@ -267,9 +267,9 @@ const createBackupPages = ({
 					if (error.code !== "wrong-passphrase") await consume();
 					throw error;
 				}
-				await consume();
 				const { stageDir, summary, manifest } = extracted;
 				try {
+					await consume();
 					if (!manifest.types.includes(kind)) {
 						throw new BackupError("wrong-kind", "The file holds no items of this page");
 					}
