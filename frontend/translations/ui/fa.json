@@ -32,6 +32,7 @@
 	"backup": "Backup",
 	"backup.error.busy": "A backup or restore is running. Try again when it is done.",
 	"backup.error.invalid-archive": "The backup file is not valid.",
+	"backup.error.invalid-item": "An item in this file cannot be imported. Its settings can only be set by an administrator, or its renewal settings are not supported.",
 	"backup.error.invalid-types": "The chosen parts are not valid for this backup.",
 	"backup.error.name-taken": "A backup with this name exists already.",
 	"backup.error.newer-database": "This backup has a newer database version. Update NPMpro first.",

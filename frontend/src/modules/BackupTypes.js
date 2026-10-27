@@ -82,10 +82,11 @@ export function contentLabels(categories, typeIds) {
 }
 
 // backup errors whose English message carries details the translation leaves out (the nginx output, the reason an
-// archive is refused, the name of the automatic backup to restore by hand)
+// archive is refused, the item and field an import refuses, the name of the automatic backup to restore by hand)
 const DETAILED_ERRORS = new Set([
 	"backup.error.nginx-failed",
 	"backup.error.invalid-archive",
+	"backup.error.invalid-item",
 	"backup.error.rollback-failed",
 ]);
 

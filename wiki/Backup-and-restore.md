@@ -24,7 +24,7 @@ With **Include secrets** off the file is not encrypted and leaves the secrets ou
 
 The list shows the backups in `/data/backups` with their contents. Use the menu of a row to download, restore or delete a backup, and **Upload backup** to add a file from your computer (up to 2 GiB).
 
-Backups marked **Automatic** are made by NPMpro before every restore, merge and page import and are kept in `/data/backups/auto` (the newest 5). They are encrypted with this instance's key, need no passphrase and can only be restored on this instance.
+Backups marked **Automatic** are made by NPMpro before every restore, merge and page import and are kept in `/data/backups/auto` (the newest 5, and apart from them the newest 5 made before page imports). They are encrypted with this instance's key, need no passphrase and can only be restored on this instance.
 
 `/data/backups/database` holds the copies of the SQLite database that NPMpro makes before it updates the database. They are not shown in the list; see [Troubleshooting](Troubleshooting#database-backup-and-restore).
 
@@ -79,7 +79,7 @@ The Proxy hosts, Redirection hosts, 404 hosts, Streams, Certificates, Access lis
 
 1. Tick the items to export (all are ticked at first; **Select all** and **None** help with long lists).
 2. Their linked certificates, access lists and DNS credentials are ticked under **Needed by the chosen items**; untick the ones you do not want. Linked items of a kind you cannot view are left out.
-3. **Include secrets** with a passphrase entered twice adds private keys, access list passwords and DNS credential values, encrypted. It needs manage permission on the page and on the linked items you include.
+3. **Include secrets** with a passphrase entered twice adds private keys, access list passwords and DNS credential values, encrypted. It needs manage permission on the page and on the linked items you include. ACME account keys only go into an export with secrets made by an administrator.
 4. Click **Download**. The file goes to your browser and is not stored on the server.
 
 **Import** (needs manage permission on the page):
@@ -88,4 +88,4 @@ The Proxy hosts, Redirection hosts, 404 hosts, Streams, Certificates, Access lis
 2. The merge window opens for the page's kind and its linked items. There is no Replace, and users, settings and custom files are never imported from a page.
 3. Make the choices as in [Merging](#merging), tick the confirmation and click **Import**.
 
-Imported items always belong to you. Linked items of a kind you cannot manage are not imported: they are matched with an existing item or their link is cleared (for example hosts imported without their certificate are served without TLS until you choose one). **Replace** is offered only for hosts you may edit, and a host you cannot see still blocks its domain, so the clashing item can only be skipped.
+Added items always belong to you, and a replaced host keeps its owner. If you are not an administrator, an import is refused when an item holds settings only administrators may set: advanced nginx config, or serving files outside `/var/www`. The renewal settings of imported Let's Encrypt certificates are rebuilt for this instance: its own paths and ACME account, without hooks. Linked items of a kind you cannot manage are not imported: they are matched with an existing item or their link is cleared (for example hosts imported without their certificate are served without TLS until you choose one). **Replace** is offered only for hosts you may edit, and a host you cannot see still blocks its domain, so the clashing item can only be skipped.
