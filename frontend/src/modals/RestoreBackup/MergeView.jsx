@@ -7,6 +7,7 @@ import {
 	ACTIONS,
 	byAction,
 	chooseItems,
+	linkedItems as linkedOf,
 	mergeCatalogue,
 	mergeDefaults,
 	needsChoice,
@@ -272,8 +273,18 @@ function ItemRows({ items, merge, labelOf, disabled, capped = false }) {
  * @param {Function}  props.onTypesChange  (types) => void
  * @param {Function}  props.onEdit         called on every change of items or choices
  * @param {boolean}   [props.disabled]
+ * @param {string}    [props.partsLabelId]  the label of the type boxes
  */
-export function MergeView({ merge, categories, counts, selected, onTypesChange, onEdit, disabled = false }) {
+export function MergeView({
+	merge,
+	categories,
+	counts,
+	selected,
+	onTypesChange,
+	onEdit,
+	disabled = false,
+	partsLabelId = "settings.backup.restore.parts",
+}) {
 	const baseId = useId();
 	const [openType, setOpenType] = useState(null);
 	const [showAll, setShowAll] = useState(false);
@@ -311,17 +322,17 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 		onEdit();
 	};
 	const rowProps = { merge: { ...merge, setChoice: choose }, labelOf, disabled };
-	// clashes and matches with a choice, and the linked items, which can be left out
+	// clashes and matches with a choice
 	const choiceItems = plan ? needsChoice(plan) : [];
-	// linked items with nothing to choose but Include, listed after the choices
-	const linkedItems = plan ? plan.items.filter((item) => item.linked && item.choices.length < 2) : [];
+	// the linked items, with Include and their choice, listed after the choices
+	const linkedItems = plan ? linkedOf(plan) : [];
 	const groups = plan ? byAction(plan) : {};
 	const allId = `${baseId}-all`;
 
 	return (
 		<>
 			<TypeTree
-				label={<T id="settings.backup.restore.parts" />}
+				label={<T id={partsLabelId} />}
 				categories={categories}
 				counts={counts}
 				selected={selected}
@@ -358,31 +369,20 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 							))}
 						</div>
 					</div>
-					{choiceItems.length > 0 || linkedItems.length > 0 ? (
+					{choiceItems.length > 0 ? (
 						<div className="mb-3">
-							{choiceItems.length > 0 ? (
-								<>
-									<div className="fw-bold mb-1">
-										<T
-											id="settings.backup.merge.needs-choice"
-											data={{ count: choiceItems.length }}
-										/>
-									</div>
-									<ItemRows items={choiceItems} {...rowProps} />
-								</>
-							) : null}
-							{linkedItems.length > 0 ? (
-								<>
-									<div
-										className={
-											choiceItems.length > 0 ? "text-secondary small mt-2 mb-1" : "fw-bold mb-1"
-										}
-									>
-										<T id="settings.backup.merge.linked" />
-									</div>
-									<ItemRows items={linkedItems} {...rowProps} />
-								</>
-							) : null}
+							<div className="fw-bold mb-1">
+								<T id="settings.backup.merge.needs-choice" data={{ count: choiceItems.length }} />
+							</div>
+							<ItemRows items={choiceItems} {...rowProps} />
+						</div>
+					) : null}
+					{linkedItems.length > 0 ? (
+						<div className="mb-3">
+							<div className="fw-bold mb-1">
+								<T id="settings.backup.merge.linked" />
+							</div>
+							<ItemRows items={linkedItems} {...rowProps} />
 						</div>
 					) : null}
 					{plan.items.length > 0 ? (

@@ -8,15 +8,16 @@ import {
 	FormErrorNote,
 	ItemChecklist,
 	Loading,
+	SecretsFields,
 	showFirstInvalid,
 	useShownErrors,
+	validateSecrets,
 } from "src/components";
 import { useExportPreview, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { withErrorDetails } from "src/modules/BackupTypes";
 import EasyModal from "src/modules/easyModal";
 import { isAdmin } from "src/modules/Permissions";
-import { SecretsFields, validateSecrets } from "src/pages/Settings/Backup/SecretsFields";
 
 /**
  * @param {string} kind  the page's kind of items: proxy_hosts, redirection_hosts, dead_hosts, streams, certificates,
@@ -40,14 +41,16 @@ const linkedRequest = (linked, unticked) => {
 
 /**
  * The linked items of the chosen items (and whether secrets may be included), asked again 300 ms after the last
- * change of the selection. stale: the shown list does not belong to the selection yet.
+ * change of the selection. stale: the shown list does not belong to the selection yet; failed: the last request for
+ * the selection failed, retry() asks again.
  */
 function useLinked(kind, ids, initial) {
-	const [state, setState] = useState({ ids, preview: initial, error: null });
+	const [state, setState] = useState({ ids, preview: initial });
+	const [failure, setFailure] = useState(null);
 	const [checking, setChecking] = useState(false);
+	const failed = failure !== null && failure.ids === ids;
 	useEffect(() => {
-		if (ids === state.ids) return;
-		if (ids.length === 0) {
+		if (ids === state.ids || ids.length === 0 || failed) {
 			setChecking(false);
 			return;
 		}
@@ -56,9 +59,11 @@ function useLinked(kind, ids, initial) {
 		const timer = setTimeout(async () => {
 			try {
 				const preview = await exportPreview(kind, ids);
-				if (current) setState({ ids, preview, error: null });
+				if (!current) return;
+				setState({ ids, preview });
+				setFailure(null);
 			} catch (err) {
-				if (current) setState((prev) => ({ ...prev, error: withErrorDetails(err) }));
+				if (current) setFailure({ ids, error: withErrorDetails(err) });
 			} finally {
 				if (current) setChecking(false);
 			}
@@ -67,8 +72,25 @@ function useLinked(kind, ids, initial) {
 			current = false;
 			clearTimeout(timer);
 		};
-	}, [kind, ids, state.ids]);
-	return { ...state, stale: checking || (ids.length > 0 && ids !== state.ids) };
+	}, [kind, ids, state.ids, failed]);
+	return {
+		preview: state.preview,
+		error: failed ? failure.error : null,
+		failed,
+		stale: !failed && (checking || (ids.length > 0 && ids !== state.ids)),
+		retry: () => setFailure(null),
+	};
+}
+
+// the title and the close button, in every state of the window
+function ExportHeader({ kind, closable = true }) {
+	return (
+		<AppModal.Header closeButton={closable}>
+			<AppModal.Title>
+				<T id="backup.export.title" data={{ objects: typeLabel(kind) }} />
+			</AppModal.Title>
+		</AppModal.Header>
+	);
 }
 
 // one linked item: the include box, its name, its type and the chosen items that need it
@@ -126,11 +148,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 
 	return (
 		<Form noValidate>
-			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
-					<T id="backup.export.title" data={{ objects: typeLabel(kind) }} />
-				</AppModal.Title>
-			</AppModal.Header>
+			<ExportHeader kind={kind} closable={!isSubmitting} />
 			<AppModal.Body>
 				<div className="card card-sm mb-3">
 					<div className="card-header py-2">
@@ -146,7 +164,14 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						disabled={isSubmitting}
 					/>
 				</div>
-				<ErrorAlert error={linked.error} />
+				{linked.error ? (
+					<div className="mb-3">
+						<ErrorAlert error={linked.error} className="mb-2" />
+						<Button size="sm" onClick={linked.retry}>
+							<T id="backup.export.retry" />
+						</Button>
+					</div>
+				) : null}
 				{shownLinked.length > 0 ? (
 					<div className="mb-3">
 						<div id={linkedTitleId} className="form-label">
@@ -181,7 +206,11 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 					</div>
 				) : null}
 				{secretsAllowed ? (
-					<SecretsFields offNoteId="backup.export.no-secrets-note" disabled={isSubmitting} />
+					<SecretsFields
+						offNoteId="backup.export.no-secrets-note"
+						passphraseHintId="backup.export.passphrase.hint"
+						disabled={isSubmitting}
+					/>
 				) : (
 					<p className="text-secondary small mb-3">
 						<T id="backup.export.no-secrets-note" />
@@ -227,6 +256,7 @@ function ExportContent({ kind, base, admin, onClose }) {
 	const shownLinked = ids.length > 0 ? linked.preview.linked : [];
 	let reason = null;
 	if (ids.length === 0) reason = "backup.export.reason.no-items";
+	else if (linked.failed) reason = "backup.export.reason.linked-failed";
 	else if (linked.stale) reason = "backup.export.reason.checking";
 
 	const onSubmit = async (values) => {
@@ -280,18 +310,29 @@ const ExportItemsModal = EasyModal.create(({ kind, visible, remove }) => {
 	const { data: me, isPending: mePending } = useUser("me");
 	return (
 		<AppModal show={visible} onHide={remove} size="lg" backdrop="static">
-			{isPending || mePending ? (
-				<AppModal.Body>
-					<Loading noLogo />
-				</AppModal.Body>
-			) : null}
-			{error ? (
-				<AppModal.Body>
-					<ErrorAlert error={error} className="mb-0" />
-				</AppModal.Body>
-			) : null}
 			{base && !mePending ? (
 				<ExportContent kind={kind} base={base} admin={isAdmin(me?.roles)} onClose={remove} />
+			) : null}
+			{!base && error ? (
+				<>
+					<ExportHeader kind={kind} />
+					<AppModal.Body>
+						<ErrorAlert error={error} className="mb-0" />
+					</AppModal.Body>
+					<AppModal.Footer>
+						<Button className="ms-auto" onClick={remove}>
+							<T id="action.close" />
+						</Button>
+					</AppModal.Footer>
+				</>
+			) : null}
+			{!error && (isPending || mePending) ? (
+				<>
+					<ExportHeader kind={kind} />
+					<AppModal.Body>
+						<Loading noLogo />
+					</AppModal.Body>
+				</>
 			) : null}
 		</AppModal>
 	);

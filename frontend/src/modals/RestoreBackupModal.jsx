@@ -11,7 +11,7 @@ import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetai
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
-import { importCategories, importTypes, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
+import { importCategories, isTooLarge, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
 import { ItemList } from "./RestoreBackup/ItemList";
 import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
 
@@ -256,7 +256,8 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				cancelRestore(res.token).catch(() => undefined);
 				return;
 			}
-			const types = importing ? importTypes(importKind, res.manifest.types) : res.manifest.types;
+			// a page import selects only its kind; the linked items come along with the items that need them
+			const types = importing ? [importKind] : res.manifest.types;
 			tokenRef.current = res.token;
 			checkedRef.current = types;
 			setOpened(res);
@@ -298,7 +299,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 			else void open(undefined);
 		} catch (err) {
 			if (closed.current || err?.name === "AbortError") return;
-			setOpenError(withErrorDetails(err));
+			setOpenError(isTooLarge(err) ? tooLargeError() : withErrorDetails(err));
 			setStep("open-failed");
 		} finally {
 			abortRef.current = null;
@@ -400,7 +401,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	const stale = merging ? merge.stale : checking || selected !== checkedRef.current;
 	const manifest = opened?.manifest;
 	let categories = null;
-	if (manifest && importing) categories = importCategories(importTypes(importKind, manifest.types));
+	if (manifest && importing) categories = importCategories(importKind);
 	else if (manifest && typesData) categories = categoriesOf(typesData.categories, manifest.types);
 	const baseReason = restoreBlockReason({
 		selected,
@@ -530,6 +531,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 						selected={selected}
 						onTypesChange={changeTypes}
 						onEdit={() => setConfirmed(false)}
+						partsLabelId={importing ? "backup.import.parts" : undefined}
 					/>
 				) : (
 					<>

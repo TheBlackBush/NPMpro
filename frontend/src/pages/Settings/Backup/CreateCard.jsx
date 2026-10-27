@@ -1,12 +1,20 @@
 import { Form, Formik, useFormikContext } from "formik";
 import { useId, useRef, useState } from "react";
 import { downloadPendingBackup } from "src/api/backend";
-import { Button, ErrorAlert, FormErrorNote, Loading, showFirstInvalid, useShownErrors } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	FormErrorNote,
+	Loading,
+	SecretsFields,
+	showFirstInvalid,
+	useShownErrors,
+	validateSecrets,
+} from "src/components";
 import { useBackupTypes, useCreateBackup } from "src/hooks";
 import { T } from "src/locale";
 import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
 import { showObjectSuccess } from "src/notifications";
-import { SecretsFields, validateSecrets } from "./SecretsFields";
 import { TypeTree } from "./TypeTree";
 
 function CreateForm({ data, error, keepRef }) {

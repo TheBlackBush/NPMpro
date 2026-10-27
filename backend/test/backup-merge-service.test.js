@@ -278,7 +278,7 @@ it("imports a host on its page; a certificate the user cannot manage is not adde
 		);
 		const result = await b.service.restore(importer, opened.token, {
 			mode: "merge",
-			types: ["proxy_hosts", "certificates"],
+			types: ["proxy_hosts"],
 			planHash: opened.plan.hash,
 		});
 		assert.deepEqual(result.counts, { proxy_hosts: 1 });
@@ -298,6 +298,75 @@ it("imports a host on its page; a certificate the user cannot manage is not adde
 		await cleanup();
 	}
 });
+
+it(
+	"imports a host on its page with its certificate as a linked item, linked to the added certificate",
+	TIMEOUT,
+	async () => {
+		const { a, b, cleanup } = await twoInstances();
+		try {
+			const file = await backupOf(a, { types: ["proxy_hosts", "certificates"] });
+			const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+			const opened = await b.service.importOpen(admin, id, { passphrase: PASSPHRASE });
+			const certificate = opened.plan.items.find((item) => item.key === "certificates:1");
+			assert.equal(certificate.linked, true);
+			assert.deepEqual(certificate.needed_by, ["proxy_hosts:1"]);
+			assert.equal(certificate.action, "add");
+			// a page import selects only its kind: linked kinds come along through the hosts that need them
+			await assert.rejects(
+				b.service.plan(admin, opened.token, { mode: "merge", types: ["proxy_hosts", "certificates"] }),
+				hasCode("invalid-types"),
+			);
+			const plan = await b.service.plan(admin, opened.token, { mode: "merge", types: ["proxy_hosts"] });
+			assert.equal(plan.hash, opened.plan.hash);
+			const result = await b.service.restore(admin, opened.token, {
+				mode: "merge",
+				types: ["proxy_hosts"],
+				planHash: opened.plan.hash,
+			});
+			assert.deepEqual(result.counts, { proxy_hosts: 1, certificates: 1 });
+			assert.deepEqual(result.cleared, []);
+			assert.deepEqual(await domainsOf(b.knex, "certificate"), [
+				[1, "b.example.com"],
+				[2, "a.example.com"],
+			]);
+			assert.equal(Number((await b.knex("proxy_host").where({ id: 2 }).first()).certificate_id), 2);
+		} finally {
+			await cleanup();
+		}
+	},
+);
+
+it(
+	"imports a host on its page whose certificate matches: the host uses the existing certificate",
+	TIMEOUT,
+	async () => {
+		const { a, b, cleanup } = await twoInstances();
+		try {
+			// the certificate of A covers the domain of B's certificate
+			await a
+				.knex("certificate")
+				.where({ id: 1 })
+				.update({ domain_names: JSON.stringify(["b.example.com"]) });
+			const file = await backupOf(a, { types: ["proxy_hosts", "certificates"] });
+			const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+			const opened = await b.service.importOpen(admin, id, { passphrase: PASSPHRASE });
+			const certificate = opened.plan.items.find((item) => item.key === "certificates:1");
+			assert.equal(certificate.linked, true);
+			assert.equal(certificate.action, "existing");
+			const result = await b.service.restore(admin, opened.token, {
+				mode: "merge",
+				types: ["proxy_hosts"],
+				planHash: opened.plan.hash,
+			});
+			assert.deepEqual(result.counts, { proxy_hosts: 1 });
+			assert.deepEqual(await domainsOf(b.knex, "certificate"), [[1, "b.example.com"]]);
+			assert.equal(Number((await b.knex("proxy_host").where({ id: 2 }).first()).certificate_id), 1);
+		} finally {
+			await cleanup();
+		}
+	},
+);
 
 it("exports a host with its certificate, secrets only with manage permission", TIMEOUT, async () => {
 	const a = await setup();

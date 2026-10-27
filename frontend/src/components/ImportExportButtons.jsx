@@ -35,7 +35,12 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 		<>
 			{hasItems ? (
 				<HasPermission section={permissionSection} permission={VIEW} hideError>
-					<Button size="sm" onClick={() => showExportItemsModal(kind)} aria-label={exportLabel}>
+					<Button
+						size="sm"
+						onClick={() => showExportItemsModal(kind)}
+						aria-label={exportLabel}
+						title={exportLabel}
+					>
 						<IconDownload className="icon" aria-hidden="true" />
 						<span className="d-none d-sm-inline">
 							<T id="backup.export" />
@@ -53,7 +58,12 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 					aria-hidden="true"
 					onChange={onFile}
 				/>
-				<Button size="sm" onClick={() => inputRef.current?.click()} aria-label={importLabel}>
+				<Button
+					size="sm"
+					onClick={() => inputRef.current?.click()}
+					aria-label={importLabel}
+					title={importLabel}
+				>
 					<IconUpload className="icon" aria-hidden="true" />
 					<span className="d-none d-sm-inline">
 						<T id="backup.import" />

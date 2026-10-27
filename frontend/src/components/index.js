@@ -19,6 +19,7 @@ export * from "./OidcButton";
 export * from "./Page";
 export * from "./PageHeader";
 export * from "./RequestProgress";
+export * from "./SecretsFields";
 export * from "./SiteContainer";
 export * from "./SiteFooter";
 export * from "./SiteHeader";

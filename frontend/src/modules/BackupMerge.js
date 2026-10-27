@@ -1,7 +1,10 @@
 export const ACTIONS = ["add", "replace", "take", "existing", "skip", "keep"];
 
-// the items that offer more than one choice, in plan order
-export const needsChoice = (plan) => plan.items.filter((item) => item.choices.length > 1);
+// the items of the backup's selection that offer more than one choice, in plan order
+export const needsChoice = (plan) => plan.items.filter((item) => !item.linked && item.choices.length > 1);
+
+// the linked items (they come along with the items that need them and can be left out), in plan order
+export const linkedItems = (plan) => plan.items.filter((item) => item.linked);
 
 // { action: items[] } in ACTIONS order, empty actions left out
 export const byAction = (plan) => {

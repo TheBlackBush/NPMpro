@@ -107,7 +107,7 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 			/>
 			{Icon ? <Icon className="icon text-secondary" aria-hidden="true" /> : null}
 			<span id={labelId} className="fw-bold">
-				<T id={`settings.backup.category.${category.id}`} />
+				<T id={category.labelId ?? `settings.backup.category.${category.id}`} />
 			</span>
 			{count === undefined ? null : <span className="badge bg-secondary-lt ms-auto">{count}</span>}
 		</label>
@@ -122,7 +122,7 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
  *
  * @param {Object}    props
  * @param {ReactNode} [props.label]             the field label shown above the boxes
- * @param {Array}     props.categories          [{ id, types }]
+ * @param {Array}     props.categories          [{ id, types, labelId? }], labelId names the box instead of the category
  * @param {Object}    [props.counts]            type id -> rows or files
  * @param {Object}    [props.certificateKinds]  provider -> certificates (letsencrypt, other, mtls)
  * @param {string[]}  props.selected            the ticked type ids

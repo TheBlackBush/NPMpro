@@ -6,6 +6,7 @@ import {
 	changedChoices,
 	chooseItems,
 	emptyItemType,
+	linkedItems,
 	mergeCatalogue,
 	mergeDefaults,
 	needsChoice,
@@ -32,6 +33,24 @@ describe("BackupMerge", () => {
 		assert.deepEqual(
 			needsChoice(plan).map((item) => item.key),
 			["proxy_hosts:1", "setting:oidc"],
+		);
+	});
+
+	it("needsChoice leaves out linked items, linkedItems returns them with or without a choice", () => {
+		const withLinked = {
+			items: [
+				...plan.items,
+				{ key: "certificates:1", linked: true, action: "existing", choices: ["existing", "add"] },
+				{ key: "certificates:2", linked: true, action: "add", choices: ["add"] },
+			],
+		};
+		assert.deepEqual(
+			needsChoice(withLinked).map((item) => item.key),
+			["proxy_hosts:1", "setting:oidc"],
+		);
+		assert.deepEqual(
+			linkedItems(withLinked).map((item) => item.key),
+			["certificates:1", "certificates:2"],
 		);
 	});
 

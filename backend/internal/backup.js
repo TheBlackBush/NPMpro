@@ -629,19 +629,22 @@ const createBackupService = ({
 		return { userId, entry, scope: pageScope(access, userId) };
 	};
 
-	// the merged types: any of the backup's in a Settings session; a page's kind and the linked kinds the file has
+	// the merged types and the types loaded for them: any of the backup's in a Settings session; a page session selects
+	// only its kind and loads the linked kinds the file has, whose items come along with the hosts that need them
 	const mergedTypes = (entry, types) => {
-		if (!entry.kind) return chosenTypes(types, entry.manifest.types);
-		const available = [entry.kind, ...LINKED_KINDS.filter((typeId) => typeId !== entry.kind)].filter((typeId) =>
-			entry.manifest.types.includes(typeId),
-		);
-		return chosenTypes(types ?? available, available);
+		if (!entry.kind) {
+			const chosen = chosenTypes(types, entry.manifest.types);
+			return { chosen, loaded: chosen };
+		}
+		const chosen = chosenTypes(types ?? [entry.kind], [entry.kind]);
+		const linked = LINKED_KINDS.filter((typeId) => typeId !== entry.kind && entry.manifest.types.includes(typeId));
+		return { chosen, loaded: [...chosen, ...linked] };
 	};
 
 	const buildPlan = async ({ entry, scope, types, items, choices }) => {
-		const chosen = mergedTypes(entry, types);
+		const { chosen, loaded: typesLoaded } = mergedTypes(entry, types);
 		// owners are mapped by email through the backup's users, also when users are not merged
-		const loaded = entry.manifest.types.includes("users") ? [...new Set([...chosen, "users"])] : chosen;
+		const loaded = entry.manifest.types.includes("users") ? [...new Set([...typesLoaded, "users"])] : typesLoaded;
 		const data = await loadStageData(entry.stageDir, loaded);
 		const files = {};
 		for (const typeId of MERGE_FILE_TYPES.filter((type) => chosen.includes(type))) {

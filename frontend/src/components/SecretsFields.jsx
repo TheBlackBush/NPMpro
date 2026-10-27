@@ -1,8 +1,8 @@
 import { Field, useFormikContext } from "formik";
 import { useId } from "react";
-import { PasswordInput, SwitchField } from "src/components";
 import { intl, T } from "src/locale";
 import { passphraseErrors } from "src/modules/BackupTypes";
+import { PasswordInput, SwitchField } from "./Form";
 
 /**
  * Formik validate of the secrets fields (secrets, passphrase, passphraseRepeat): the messages of passphraseErrors
@@ -41,10 +41,11 @@ function PassphraseField({ name, id, labelId, hintId }) {
  * passphraseRepeat); while it is off a note on what is left out.
  *
  * @param {Object}  props
- * @param {string}  props.offNoteId  the translation of the note shown without secrets
+ * @param {string}  props.offNoteId           the translation of the note shown without secrets
+ * @param {string}  [props.passphraseHintId]  the translation of the hint under the passphrase
  * @param {boolean} [props.disabled]
  */
-function SecretsFields({ offNoteId, disabled = false }) {
+function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphrase.hint", disabled = false }) {
 	const { values } = useFormikContext();
 	const baseId = useId();
 	return (
@@ -68,7 +69,7 @@ function SecretsFields({ offNoteId, disabled = false }) {
 							name="passphrase"
 							id={`${baseId}-passphrase`}
 							labelId="settings.backup.passphrase"
-							hintId="settings.backup.passphrase.hint"
+							hintId={passphraseHintId}
 						/>
 					</div>
 					<div className="col-12 col-md-6">
