@@ -1,7 +1,9 @@
 import { IconArchive, IconDotsVertical, IconDownload, IconRestore, IconTrash, IconUpload } from "@tabler/icons-react";
 import {
 	createColumnHelper,
+	createPaginatedRowModel,
 	createSortedRowModel,
+	rowPaginationFeature,
 	rowSortingFeature,
 	sortFn_alphanumeric,
 	sortFn_datetime,
@@ -14,6 +16,7 @@ import { useNavigate } from "react-router";
 import { deleteBackup, downloadBackup } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { TablePagination } from "src/components/Table/TablePagination";
 import { useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
@@ -24,9 +27,13 @@ import { showApiError, showObjectSuccess } from "src/notifications";
 
 const label = (id) => intl.formatMessage({ id });
 
+const PAGE_SIZE = 10;
+
 const features = tableFeatures({
 	rowSortingFeature,
+	rowPaginationFeature,
 	sortedRowModel: createSortedRowModel(),
+	paginatedRowModel: createPaginatedRowModel(),
 	sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
 });
 
@@ -163,29 +170,41 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 		];
 	}, [categories, onDelete, navigate]);
 
+	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
+	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
 	const tableInstance = useTable({
 		features,
 		columns,
 		data,
 		getRowId: (row) => row.name,
 		enableSortingRemoval: false,
+		state: { pagination },
+		onPaginationChange: setPagination,
 	});
 
 	return (
-		<TableLayout
-			tableInstance={tableInstance}
-			emptyState={
-				<EmptyData
-					icon={IconArchive}
-					object="backup"
-					objects="backups"
-					tableInstance={tableInstance}
-					customAddBtn={uploadButton}
-					permissionSection={ADMIN}
-					permission={VIEW}
-				/>
-			}
-		/>
+		<>
+			<TableLayout
+				tableInstance={tableInstance}
+				emptyState={
+					<EmptyData
+						icon={IconArchive}
+						object="backup"
+						objects="backups"
+						tableInstance={tableInstance}
+						customAddBtn={uploadButton}
+						permissionSection={ADMIN}
+						permission={VIEW}
+					/>
+				}
+			/>
+			<TablePagination
+				pageIndex={pagination.pageIndex}
+				pageSize={pagination.pageSize}
+				total={data.length}
+				onPage={(pageIndex) => setPagination((current) => ({ ...current, pageIndex }))}
+			/>
+		</>
 	);
 }
 

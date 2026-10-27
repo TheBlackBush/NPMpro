@@ -71,10 +71,8 @@ function CreateForm({ data, error, keepRef }) {
 				</h3>
 			</div>
 			<div className="card-body">
-				<div className="form-label">
-					<T id="settings.backup.create.parts" />
-				</div>
 				<TypeTree
+					label={<T id="settings.backup.create.parts" />}
 					categories={data.categories}
 					counts={data.counts}
 					certificateKinds={data.certificateKinds}

@@ -413,10 +413,8 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 					/>
 				</p>
 				<ErrorAlert error={typesError} />
-				<div className="form-label">
-					<T id="settings.backup.restore.parts" />
-				</div>
 				<TypeTree
+					label={<T id="settings.backup.restore.parts" />}
 					categories={categories}
 					counts={manifest.counts}
 					selected={selected}
