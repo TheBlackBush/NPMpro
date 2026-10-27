@@ -171,10 +171,10 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 	].filter(Boolean);
 	const value = item.choices.includes(choice) ? choice : item.action;
 	return (
-		<div className="list-group-item flex-wrap">
+		<div className="list-group-item d-block d-sm-flex">
 			<div className="list-group-item-content">
 				<div className="list-group-item-title text-wrap text-break">{item.label}</div>
-				<div className="list-group-item-description text-wrap small">
+				<div className="list-group-item-description text-wrap text-break small">
 					{description.map((part, index) => (
 						<span key={part.key}>
 							{index > 0 ? " · " : null}
@@ -183,7 +183,7 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 					))}
 				</div>
 			</div>
-			<div className="list-group-item-actions d-flex flex-wrap align-items-center gap-3">
+			<div className="list-group-item-actions d-flex flex-wrap align-items-center gap-3 mt-2 mt-sm-0">
 				{item.linked ? (
 					<label className="form-check mb-0">
 						<input
@@ -225,10 +225,13 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 	);
 }
 
-function ItemRows({ items, merge, labelOf, disabled }) {
+// capped: a long list scrolls instead of stretching the dialog (no Tabler utility caps a height, only mh-100)
+function ItemRows({ items, merge, labelOf, disabled, capped = false }) {
 	return (
-		// no Tabler utility caps a height (only mh-100): a long list scrolls instead of stretching the dialog
-		<div className="list-group overflow-auto" style={{ maxHeight: "20rem" }}>
+		<div
+			className={capped ? "list-group overflow-auto" : "list-group"}
+			style={capped ? { maxHeight: "20rem" } : undefined}
+		>
 			{items.map((item) => (
 				<ItemRow
 					key={item.key}
@@ -367,7 +370,7 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 												<span className="ms-1">{list.length}</span>
 											</span>
 										</div>
-										<ItemRows items={list} {...rowProps} />
+										<ItemRows items={list} {...rowProps} capped />
 									</div>
 								))
 							: null}

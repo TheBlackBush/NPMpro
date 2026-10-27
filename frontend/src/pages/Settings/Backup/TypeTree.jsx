@@ -73,7 +73,7 @@ function ChooseLinks({ types, several, openType, panelId, onChoose, disabled }) 
 		return <div className="mt-2">{link(types[0], <T id="settings.backup.choose-items" />)}</div>;
 	}
 	return (
-		<div className="d-flex flex-wrap align-items-baseline gap-3 mt-2">
+		<div className="d-flex flex-wrap align-items-baseline column-gap-3 row-gap-1 mt-2">
 			<span className="text-secondary small">
 				<T id="settings.backup.choose-items" />
 			</span>
