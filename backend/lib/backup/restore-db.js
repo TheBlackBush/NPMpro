@@ -391,4 +391,14 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 	});
 };
 
-export { loadStageData, previewReplace, replaceTypes, sequenceResetQuery };
+export {
+	clientOf,
+	createInserter,
+	key,
+	loadStageData,
+	previewReplace,
+	replaceTypes,
+	SECRET_TYPES,
+	sequenceResetQuery,
+	typeData,
+};
