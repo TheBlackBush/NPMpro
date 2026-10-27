@@ -1,144 +1,25 @@
 import assert from "node:assert/strict";
 import { existsSync, readlinkSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
-import knexFactory from "knex";
-import { createBackupService, unknownMigrations } from "../internal/backup.js";
+import { unknownMigrations } from "../internal/backup.js";
 import { createSerializer } from "../internal/monitoring-update.js";
 import { writeBackupFile } from "../lib/backup/format.js";
-import { createBackupStore } from "../lib/backup/store.js";
-import { createSchema } from "./support/backup-schema.js";
+import { MIGRATIONS, setup } from "./support/backup-service.js";
 
 process.env.TZ = "UTC";
 
 const TIMEOUT = { timeout: 60_000 };
 const PASSPHRASE = "correct horse battery staple";
-const DB_VERSION = "20261026000000";
-const MIGRATIONS = ["20180618015850_initial.js", "20261026000000_base.js"];
 const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
 const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
 const UNKNOWN_DIRECTIVE = /unknown directive/u;
 const AUTO_IN_MESSAGE = /npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro/u;
 const LOCATION_TABLE = /npmpro_location/u;
 const UPLOAD_NAME = /^npmpro-backup-upload-\d{8}-\d{6}\.npmpro$/u;
-const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
-const silent = { info: () => {}, warn: () => {}, error: () => {} };
-
-/**
- * A service on a fresh database and folders with spies for everything outside
- *
- * @param {Object}   [options]
- * @param {Function} [options.test]         the fake nginx -t, gets the call number
- * @param {Function} [options.pause]        the fake renewal pause
- * @param {string[]} [options.migrations]   the instance's completed migrations
- * @param {string}   [options.root]         shares the folders of another setup
- * @param {Function} [options.exclusive]    the runtime queue
- * @param {Function} [options.regenerated]  (knex, call) => Promise, runs in the fake host regeneration
- * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
- * @param {number}   [options.maxUpload]
- * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
- */
-const setup = async ({
-	test = async () => {},
-	pause = async () => {},
-	migrations = MIGRATIONS,
-	root,
-	exclusive,
-	regenerated = async () => {},
-	failedGroups = {},
-	maxUpload,
-	audited = async () => {},
-} = {}) => {
-	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
-	const dataDir = path.join(base, "data");
-	const backupsDir = path.join(base, "backups");
-	await mkdir(dataDir, { recursive: true });
-	await mkdir(backupsDir, { recursive: true, mode: 0o700 });
-	const knex = knexFactory({
-		client: "better-sqlite3",
-		connection: { filename: ":memory:" },
-		useNullAsDefault: true,
-	});
-	await createSchema(knex);
-	const clock = { offset: 0, now: () => Date.now() + clock.offset };
-	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, reloaded: [], audit: [] };
-	let paused = false;
-	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
-	const service = createBackupService({
-		knex,
-		box,
-		dataDir,
-		store,
-		dbVersion: () => Promise.resolve(DB_VERSION),
-		dbMigrations: () => Promise.resolve(migrations),
-		npmproVersion: "1.0.0",
-		instanceKey: async () => Buffer.alloc(32, 7),
-		audit: (_access, entry) => {
-			calls.audit.push(entry);
-			return audited(entry);
-		},
-		nginx: {
-			test: async () => {
-				calls.test++;
-				await test(calls.test);
-			},
-			reload: () => {
-				calls.reload++;
-				return Promise.resolve();
-			},
-		},
-		renewals: {
-			pause: async () => {
-				calls.pause++;
-				paused = true;
-				await pause();
-			},
-			resume: () => {
-				calls.resume++;
-				paused = false;
-			},
-		},
-		regenerate: {
-			loadEnabledHosts: async () => [],
-			regenerateAllHostsNow: () => {
-				calls.regenerate++;
-				return regenerated(knex, calls.regenerate);
-			},
-			rebuildAccessListFiles: async () => {},
-			regenerateDefaultSite: async () => {},
-		},
-		runtime: {
-			loadRuntimeConfig: async () => {},
-			applyAllRuntime: () => {
-				calls.applyAll++;
-				return Promise.resolve(failedGroups);
-			},
-		},
-		reloadSettings: {
-			oidc: () => {
-				calls.reloaded.push("oidc");
-			},
-			monitoring: () => {
-				calls.reloaded.push("monitoring");
-				return Promise.resolve();
-			},
-		},
-		...(exclusive ? { exclusive } : {}),
-		...(maxUpload ? { maxUpload } : {}),
-		hostname: "test-host",
-		clock,
-		log: silent,
-	});
-	const cleanup = async () => {
-		await knex.destroy();
-		if (!root) await rm(base, { recursive: true, force: true });
-	};
-	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
-};
 
 const hostIds = async (knex) => (await knex("proxy_host").orderBy("id").pluck("id")).map(Number);
 
