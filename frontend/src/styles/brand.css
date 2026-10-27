@@ -9,3 +9,18 @@
 .progress-brand .progress-bar-indeterminate::after {
 	background-image: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
 }
+
+/* Tabler marks a select group item on :focus, so after a mouse click the ring and the selected colours stay until
+   focus moves on, and an unticked pill still looks ticked. Keep them for keyboard focus (:focus-visible) only. */
+.form-selectgroup-input:focus:not(:focus-visible) + .form-selectgroup-label {
+	outline-color: transparent;
+}
+
+.form-selectgroup-input[type="checkbox"]:not(:checked):focus:not(:focus-visible) + .form-selectgroup-label {
+	color: var(--tblr-secondary);
+	border-color: var(--tblr-border-color);
+}
+
+.form-selectgroup-input[type="checkbox"]:not(:checked):focus:not(:focus-visible) + .form-selectgroup-label:hover {
+	color: var(--tblr-body-color);
+}
