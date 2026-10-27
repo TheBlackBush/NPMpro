@@ -19,7 +19,13 @@ const PASSPHRASE = "correct horse battery staple";
 const ALL_TYPES = CATEGORIES.flatMap((category) => category.types);
 const EXPORT_NAME = /^npmpro-export-proxy-hosts-test-host-\d{8}-\d{6}\.npmpro$/u;
 const COPIED_NAME = "npmpro-backup-other-20261027-120000.npmpro";
-const admin = { canAdmin: () => true, can: () => true, visibility: "all", token: { getUserId: () => 1 } };
+const admin = {
+	isAdmin: true,
+	canAdmin: () => true,
+	can: () => true,
+	visibility: "all",
+	token: { getUserId: () => 1 },
+};
 
 // a user who is no administrator, with these permissions ({ proxy_hosts: "manage", certificates: "view" })
 const userAccess = (userId, permissions, visibility = "all") => ({
@@ -558,6 +564,91 @@ it("refuses a file whose certificate id is a path before anything moves", TIMEOU
 		assert.deepEqual(await autoFiles(b), []);
 		assert.deepEqual(await domainsOf(b.knex, "certificate"), [[1, "b.example.com"]]);
 		assert.deepEqual(await readdir(path.join(b.dataDir, "tls/certbot/archive")), ["npm-1"]);
+	} finally {
+		await cleanup();
+	}
+});
+
+const ACCOUNT_A = "a".repeat(32);
+const accountDir = (id) => `tls/certbot/accounts/acme-v02.api.letsencrypt.org/directory/${id}`;
+const HOOK = /hook/u;
+const LABEL_A = /a\.example\.com/u;
+
+// a backup of A's host and certificate whose renewal conf and ACME account were changed by hand
+const craftedCertificate = async (a, renewal) =>
+	craftBackup(
+		await backupOf(a, { types: ["proxy_hosts", "certificates"] }),
+		path.join(a.base, "crafted.npmpro"),
+		async ({ dir, write }) => {
+			await mkdir(path.join(dir, "files/tls/certbot/renewal"), { recursive: true });
+			await write("tls/certbot/renewal/npm-1.conf", renewal);
+			await mkdir(path.join(dir, "files", accountDir(ACCOUNT_A)), { recursive: true });
+			await write(`${accountDir(ACCOUNT_A)}/private_key.json`, "{}");
+		},
+		{ passphrase: PASSPHRASE },
+	);
+
+it("a page import rebuilds the renewal conf and a non-admin import places no account files", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await b.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		const importer = userAccess(2, { proxy_hosts: "manage", certificates: "manage" });
+		const crafted = await craftedCertificate(
+			a,
+			`[renewalparams]\naccount = ${ACCOUNT_A}\nauthenticator = webroot\nconfig_dir = /etc\ndeploy_hook = rm -rf /\n`,
+		);
+		const { id } = await b.service.importUpload(importer, createReadStream(crafted), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(importer, id, {});
+		await b.service.restore(importer, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		const conf = await readFile(path.join(b.dataDir, "tls/certbot/renewal/npm-2.conf"), "utf8");
+		assert.doesNotMatch(conf, HOOK);
+		assert.equal(conf.includes(`config_dir = ${b.dataDir}/tls/certbot`), true);
+		// the account was not placed, so the conf does not name it
+		assert.equal(conf.includes("account"), false);
+		assert.equal(existsSync(path.join(b.dataDir, accountDir(ACCOUNT_A))), false);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("an admin page import places the missing account its renewal conf names", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const crafted = await craftedCertificate(
+			a,
+			`[renewalparams]\naccount = ${ACCOUNT_A}\nauthenticator = webroot\n`,
+		);
+		const { id } = await b.service.importUpload(admin, createReadStream(crafted), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, {});
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		const conf = await readFile(path.join(b.dataDir, "tls/certbot/renewal/npm-2.conf"), "utf8");
+		assert.equal(conf.includes(`account = ${ACCOUNT_A}`), true);
+		assert.equal(existsSync(path.join(b.dataDir, accountDir(ACCOUNT_A), "private_key.json")), true);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("refuses a page import whose certificate has a renewal conf with an unknown authenticator", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		// biome-ignore lint/security/noSecrets: a renewal conf sample, not a secret
+		const crafted = await craftedCertificate(a, "[renewalparams]\nauthenticator = manual\n");
+		const { id } = await b.service.importUpload(admin, createReadStream(crafted), { kind: "proxy_hosts" });
+		await assert.rejects(b.service.importOpen(admin, id, {}), (error) => {
+			assert.equal(error.code, "invalid-item");
+			assert.match(error.message, LABEL_A);
+			return true;
+		});
+		assert.deepEqual(await autoFiles(b), []);
 	} finally {
 		await cleanup();
 	}

@@ -10,6 +10,7 @@ import { BackupError, FORMAT_VERSION, openBackupFile, readHeader, writeBackupFil
 import { mergeTypes } from "../lib/backup/merge-db.js";
 import { placeMergedFiles } from "../lib/backup/merge-files.js";
 import { planMerge, readInstanceRows } from "../lib/backup/merge-plan.js";
+import { checkStagedRenewals } from "../lib/backup/renewal-conf.js";
 import { loadStageData, previewReplace, replaceTypes } from "../lib/backup/restore-db.js";
 import {
 	adminAvatarFiles,
@@ -70,6 +71,7 @@ const settingsScope = (adminUserId) => ({
 	adminUserId,
 	importerId: adminUserId,
 	page: false,
+	isAdmin: true,
 	canView: () => true,
 	canManage: () => true,
 	canEdit: () => true,
@@ -664,6 +666,7 @@ const createBackupService = ({
 			scope,
 			secrets: entry.manifest.secrets === true,
 		});
+		await checkStagedRenewals({ stageDir: entry.stageDir, dataDir, items: plan.items });
 		return { plan, data, types: chosen };
 	};
 
@@ -711,6 +714,8 @@ const createBackupService = ({
 					takeFiles,
 					takeDefaultSite,
 					avatarMoves: merged.avatarMoves,
+					// ACME accounts hold private keys: only an administrator brings new ones in
+					placeAccounts: scope.isAdmin,
 				});
 				if (merged.certificateMoves.length > 0) {
 					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });

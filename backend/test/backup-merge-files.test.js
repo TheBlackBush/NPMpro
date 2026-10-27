@@ -31,12 +31,15 @@ const has = (file) =>
 	);
 
 const IN_THE_WAY = /ENOTDIR|is in the way/u;
-const KEPT_LINE = /archive\/npm-33$/mu;
+const ARCHIVE_12 = /^archive_dir = .*\/tls\/certbot\/archive\/npm-12$/mu;
+const LIVE_12 = /^cert = .*\/tls\/certbot\/live\/npm-12\/cert\.pem$/mu;
+const NPM_3 = /npm-3\b/u;
 
 const RENEWAL = [
 	"archive_dir = /data/tls/certbot/archive/npm-3",
 	"cert = /data/tls/certbot/live/npm-3/cert.pem",
-	"other = /data/tls/certbot/archive/npm-33",
+	"[renewalparams]",
+	"authenticator = webroot",
 	"",
 ].join("\n");
 
@@ -64,11 +67,9 @@ it("places certificate files under the new id and rewrites the renewal conf", as
 		const data = (rel) => path.join(dirs.dataDir, rel);
 		assert.equal(await readFile(data("tls/certbot/archive/npm-12/cert1.pem"), "utf8"), "cert");
 		const conf = await readFile(data("tls/certbot/renewal/npm-12.conf"), "utf8");
-		assert.equal(
-			conf,
-			RENEWAL.replace("archive/npm-3\n", "archive/npm-12\n").replace("live/npm-3/", "live/npm-12/"),
-		);
-		assert.match(conf, KEPT_LINE);
+		assert.match(conf, ARCHIVE_12);
+		assert.match(conf, LIVE_12);
+		assert.doesNotMatch(conf, NPM_3);
 		for (const rel of ["tls/custom/npm-12/fullchain.pem", "tls/custom/npm-12.der", "tls/mtls/npm-12.pem"]) {
 			assert.ok(await has(data(rel)), rel);
 		}
@@ -244,21 +245,6 @@ it("keeps chained moves apart", async () => {
 	}
 });
 
-it("rewrites only whole npm-<id> path segments of the renewal conf", async () => {
-	const dirs = await setup();
-	try {
-		const text = "a = /x/npm-3.conf\nb = foonpm-3\nc = /x/npm-33\nd = /x/npm-3";
-		await put(path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf"), text);
-		await placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] }));
-		assert.equal(
-			await readFile(path.join(dirs.dataDir, "tls/certbot/renewal/npm-12.conf"), "utf8"),
-			"a = /x/npm-12.conf\nb = foonpm-3\nc = /x/npm-33\nd = /x/npm-12",
-		);
-	} finally {
-		await rm(dirs.root, { recursive: true, force: true });
-	}
-});
-
 it("adds a taken file the instance lacks and sets the modes", async () => {
 	const dirs = await setup();
 	try {
@@ -327,6 +313,138 @@ it("refuses certificate and avatar moves whose ids are not positive integers bef
 			assert.deepEqual(await readdir(dirs.dataDir), []);
 		}
 		assert.equal(await readFile(path.join(dirs.root, "victim/secret.txt"), "utf8"), "secret");
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+const ACCOUNT = "a".repeat(32);
+const OTHER_ACCOUNT = "b".repeat(32);
+const CRAFTED_RENEWAL = [
+	"version = 5.1.0",
+	"archive_dir = /etc",
+	"cert = /etc/passwd",
+	"privkey = /etc/shadow",
+	"chain = /data/tls/certbot/live/npm-3/chain.pem",
+	"fullchain = /data/tls/certbot/live/npm-3/fullchain.pem",
+	"renew_hook = touch /tmp/top-level",
+	"",
+	"[renewalparams]",
+	`account = ${OTHER_ACCOUNT}`,
+	"authenticator = webroot",
+	"webroot_path = /etc,",
+	"server = https://acme-v02.api.letsencrypt.org/directory",
+	"key_type = ecdsa",
+	"elliptic_curve = secp384r1",
+	"config_dir = /etc",
+	"work_dir = /etc/work",
+	"deploy_hook = rm -rf /",
+	"pre_hook = touch /tmp/pre",
+	"post_hook = touch /tmp/post",
+	"manual_auth_hook = touch /tmp/auth",
+	"installer = nginx",
+	"[[webroot_map]]",
+	"a.example.com = /etc",
+	"b.example.com; = /etc",
+	"",
+].join("\n");
+
+it("rebuilds the renewal conf of a merged certificate: fixed paths, no hooks, unknown account dropped", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "cert");
+		await put(path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf"), CRAFTED_RENEWAL);
+		await mkdir(path.join(dirs.dataDir, `tls/certbot/accounts/acme/directory/${ACCOUNT}`), { recursive: true });
+		await placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] }));
+		const conf = await readFile(path.join(dirs.dataDir, "tls/certbot/renewal/npm-12.conf"), "utf8");
+		const certbot = `${dirs.dataDir}/tls/certbot`;
+		assert.equal(
+			conf,
+			[
+				"version = 5.1.0",
+				`archive_dir = ${certbot}/archive/npm-12`,
+				`cert = ${certbot}/live/npm-12/cert.pem`,
+				`privkey = ${certbot}/live/npm-12/privkey.pem`,
+				`chain = ${certbot}/live/npm-12/chain.pem`,
+				`fullchain = ${certbot}/live/npm-12/fullchain.pem`,
+				"",
+				"# Options used in the renewal process",
+				"[renewalparams]",
+				"authenticator = webroot",
+				"server = https://acme-v02.api.letsencrypt.org/directory",
+				"key_type = ecdsa",
+				"elliptic_curve = secp384r1",
+				`config_dir = ${certbot}`,
+				"work_dir = /tmp/certbot-work",
+				`webroot_path = ${dirs.dataDir}/public/acme-challenge,`,
+				"[[webroot_map]]",
+				`a.example.com = ${dirs.dataDir}/public/acme-challenge`,
+				"",
+			].join("\n"),
+		);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("keeps the account of a merged renewal conf when the instance has it, and the DNS plugin settings", async () => {
+	const dirs = await setup();
+	try {
+		const text = [
+			"[renewalparams]",
+			`account = ${ACCOUNT}`,
+			"authenticator = dns-cloudflare",
+			"dns_cloudflare_credentials = /etc/shadow",
+			"dns_cloudflare_propagation_seconds = 60",
+			"dns_cloudflare_other = x",
+			"",
+		].join("\n");
+		await put(path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf"), text);
+		await mkdir(path.join(dirs.dataDir, `tls/certbot/accounts/acme/directory/${ACCOUNT}`), { recursive: true });
+		await placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] }));
+		const conf = await readFile(path.join(dirs.dataDir, "tls/certbot/renewal/npm-12.conf"), "utf8");
+		assert.equal(
+			conf.slice(conf.indexOf("[renewalparams]")),
+			[
+				"[renewalparams]",
+				`account = ${ACCOUNT}`,
+				"authenticator = dns-cloudflare",
+				"dns_cloudflare_credentials = /tmp/certbot-credentials/credentials-12",
+				"dns_cloudflare_propagation_seconds = 60",
+				"",
+			].join("\n"),
+		);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("refuses a merged certificate whose renewal conf has an unknown authenticator before moving anything", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, "files/tls/certbot/archive/npm-3/cert1.pem"), "cert");
+		await put(
+			path.join(dirs.stageDir, "files/tls/certbot/renewal/npm-3.conf"),
+			// biome-ignore lint/security/noSecrets: a renewal conf sample, not a secret
+			"[renewalparams]\nauthenticator = manual\nmanual_auth_hook = touch /tmp/x\n",
+		);
+		await assert.rejects(placeMergedFiles(options(dirs, { certificateMoves: [{ from: 3, to: 12 }] })), (error) => {
+			assert.equal(error.code, "invalid-item");
+			assert.equal(error.public, true);
+			return true;
+		});
+		assert.deepEqual(await readdir(dirs.dataDir), []);
+	} finally {
+		await rm(dirs.root, { recursive: true, force: true });
+	}
+});
+
+it("places no account files when told not to", async () => {
+	const dirs = await setup();
+	try {
+		await put(path.join(dirs.stageDir, `files/tls/certbot/accounts/acme/directory/${ACCOUNT}/meta.json`), "m");
+		await placeMergedFiles(options(dirs, { placeAccounts: false }));
+		assert.deepEqual(await readdir(dirs.dataDir), []);
 	} finally {
 		await rm(dirs.root, { recursive: true, force: true });
 	}

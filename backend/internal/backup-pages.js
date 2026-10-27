@@ -50,6 +50,7 @@ const pageScope = (access, importerId) => {
 		adminUserId: importerId,
 		importerId,
 		page: true,
+		isAdmin: access.isAdmin === true,
 		canView: (typeId) => allows(access, typeId, "view"),
 		canManage,
 		canEdit: (table, row) =>

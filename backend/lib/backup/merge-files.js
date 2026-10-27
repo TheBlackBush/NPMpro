@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { BackupError } from "./format.js";
+import { accountIds, rebuildRenewalConf } from "./renewal-conf.js";
 import { createJournal, exists, isPictureOf, namesIn, swapFiles } from "./restore-files.js";
 import { TYPES } from "./types.js";
 
@@ -80,9 +81,19 @@ const createPlacer = ({ dataDir, stageDir, asideDir }) => {
 	return { ...journal, putTree, addMissing, inData, inStage };
 };
 
-const renewalText = (from, to) => {
-	const segment = new RegExp(`(?<=/)npm-${from}(?=[/.]|$)`, "gmu");
-	return (text) => text.replace(segment, `npm-${to}`);
+// the rebuilt renewal conf of every moved certificate that has one, by backup id; the ACME accounts the confs may name
+// are the instance's and those placed with the merge
+const rebuiltRenewals = async ({ dataDir, stageDir, certificateMoves, placeAccounts }) => {
+	const accounts = await accountIds(dataDir);
+	if (placeAccounts) for (const id of await accountIds(path.join(stageDir, "files"))) accounts.add(id);
+	const out = new Map();
+	for (const { from, to } of certificateMoves) {
+		const staged = path.join(stageDir, "files", `tls/certbot/renewal/npm-${from}.conf`);
+		if (!(await exists(staged))?.isFile()) continue;
+		const text = await readFile(staged, "utf8");
+		out.set(String(from), rebuildRenewalConf(text, { id: to, dataDir, accounts, label: `#${from}` }));
+	}
+	return out;
 };
 
 /**
@@ -96,6 +107,7 @@ const renewalText = (from, to) => {
  * @param   {string[]}  options.takeFiles         rel paths (custom_nginx/..., crowdsec/...) to take
  * @param   {boolean}   options.takeDefaultSite   whether public/html is taken (settings_default_site)
  * @param   {Array}     [options.avatarMoves]     [{ from, to }] backup user id -> instance user id
+ * @param   {boolean}   [options.placeAccounts]   whether the staged ACME accounts the instance lacks are added
  * @returns {Promise<{ undo: () => Promise<void> }>}  staged files are moved, not copied (the stage is disposable);
  *          undo() restores the instance, not the stage. On failure everything is moved back before the original
  *          error rejects (a failing undo is attached as its cause).
@@ -108,6 +120,7 @@ const placeMergedFiles = async ({
 	takeFiles,
 	takeDefaultSite,
 	avatarMoves = [],
+	placeAccounts = true,
 }) => {
 	for (const rel of takeFiles) {
 		if (!CUSTOM_TYPES.some((type) => TYPES[type].files.allow(rel)))
@@ -115,6 +128,8 @@ const placeMergedFiles = async ({
 	}
 	checkMoves(certificateMoves, "certificate");
 	checkMoves(avatarMoves, "picture");
+	// a renewal conf that cannot be rebuilt refuses its certificate before anything moves
+	const renewals = await rebuiltRenewals({ dataDir, stageDir, certificateMoves, placeAccounts });
 	const placer = createPlacer({ dataDir, stageDir, asideDir });
 	let siteSwap = null;
 	const undo = async () => {
@@ -133,10 +148,14 @@ const placeMergedFiles = async ({
 			for (const rel of certificatePaths(from)) {
 				const destRel = rel.replaceAll(`npm-${from}`, `npm-${to}`);
 				await placer.setAside(destRel);
-				await placer.putTree(rel, destRel, rel.endsWith(".conf") ? renewalText(from, to) : undefined);
+				await placer.putTree(
+					rel,
+					destRel,
+					rel.endsWith(".conf") ? () => renewals.get(String(from)) : undefined,
+				);
 			}
 		}
-		await placer.addMissing(ACCOUNTS);
+		if (placeAccounts) await placer.addMissing(ACCOUNTS);
 		for (const rel of takeFiles) await placer.putTree(rel, rel);
 		for (const { from, to } of avatarMoves) {
 			const staged = await namesIn(placer.inStage(AVATAR_DIR));
