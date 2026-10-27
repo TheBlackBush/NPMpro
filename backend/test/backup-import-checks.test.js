@@ -131,3 +131,43 @@ it("lets a replace keep the stored raw config but not change it", async () => {
 		await knex.destroy();
 	}
 });
+
+it("refuses values whose type is not the API schema's, raw config above all", async () => {
+	const knex = await database();
+	try {
+		const host = { id: 1, domain_names: '["a.example.com"]', forward_host: "app", forward_port: 80 };
+		const hostWith = (values, location) => ({
+			proxy_hosts: {
+				proxy_host: [{ ...host, ...values }],
+				npmpro_location: location
+					? [{ id: 5, proxy_host_id: 1, path: "/x/", forward_host: "app", ...location }]
+					: [],
+			},
+		});
+		const probes = [
+			[hostWith({ advanced_config: { a: "x;}" } }), "advanced_config"],
+			[hostWith({ npmpro_location_config: 5 }), "npmpro_location_config"],
+			[hostWith({}, { advanced_config: { a: "x;}" } }), "locations[0].advanced_config"],
+			[hostWith({ forward_port: [80] }), "forward_port"],
+			[hostWith({ forward_host: ["127.0.0.1"] }), "forward_host"],
+			[hostWith({ enabled: "yes" }), "enabled"],
+			[hostWith({ domain_names: { a: 1 } }), "domain_names"],
+			[hostWith({ npmpro_x_frame_options: null }), "npmpro_x_frame_options"],
+			[{ streams: { stream: [{ id: 1, npmpro_advanced_config: ["x"] }] } }, "npmpro_advanced_config", "streams"],
+		];
+		for (const [data, field, type = "proxy_hosts"] of probes) {
+			await assert.rejects(check(knex, [item(type, 1)], data), refuses(field), field);
+		}
+		// what a database export holds passes: integers for booleans, JSON text, null where the schema allows it
+		await check(knex, [item("proxy_hosts", 1)], hostWith({ enabled: 1, advanced_config: null }));
+		await check(knex, [item("certificates", 1)], {
+			certificates: {
+				certificate: [
+					{ id: 1, provider: "letsencrypt", domain_names: ["a.com"], npmpro_dns_credential_id: null },
+				],
+			},
+		});
+	} finally {
+		await knex.destroy();
+	}
+});

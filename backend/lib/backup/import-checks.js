@@ -85,6 +85,42 @@ const parseList = (value) => {
 	}
 };
 
+const INTEGER_TEXT = /^-?\d+$/u;
+const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+
+// whether the value has a JSON type the rule allows; a database export holds booleans as 0/1, JSON columns as values
+// or text and big integers as text
+const typeOf = (value) => {
+	if (value === null) return "null";
+	if (Array.isArray(value)) return "array";
+	return typeof value;
+};
+
+const hasType = (schema, rule, value) => {
+	const alternatives = (rule.anyOf ?? rule.oneOf)?.map((alternative) => resolve(schema, alternative) ?? {});
+	if (alternatives) return alternatives.some((alternative) => hasBasicType(alternative, value));
+	return hasBasicType(rule, value);
+};
+
+// hasType for a rule without alternatives
+const hasBasicType = (rule, value) => {
+	if (rule.anyOf ?? rule.oneOf) return typeOf(value) !== "undefined";
+	if (rule.const !== undefined) return value === rule.const;
+	if (rule.type === undefined) return value !== null || rule.enum?.includes(null) === true;
+	const types = Array.isArray(rule.type) ? rule.type : [rule.type];
+	return types.some((type) => {
+		if (type === "null") return value === null;
+		if (type === "string") return typeof value === "string";
+		if (type === "integer")
+			return Number.isInteger(value) || (typeof value === "string" && INTEGER_TEXT.test(value));
+		if (type === "number") return typeof value === "number" && Number.isFinite(value);
+		if (type === "boolean") return typeof value === "boolean" || value === 0 || value === 1;
+		if (type === "array") return Array.isArray(parseList(value));
+		if (type === "object") return isPlainObject(parseList(value));
+		return false;
+	});
+};
+
 const fits = (rule, value) => {
 	if (rule.enum && !rule.enum.some((allowed) => String(allowed) === String(value))) return false;
 	if (rule.type === "integer") {
@@ -99,20 +135,30 @@ const fits = (rule, value) => {
 	return !rule.pattern || new RegExp(rule.pattern, "u").test(text);
 };
 
+// raw config fields: blank (null) or text, nothing else, since the guard reads anything else as blank
+const RAW_CONFIG = new Set([...Object.values(CONFIG_FIELDS).flat(), "advanced_config"]);
+
 /**
- * Throws a FieldError for the first column of row whose value the schema's property rules refuse. Read-only and
- * boolean properties, links (anyOf) and nested objects are left alone; a missing or null value passes.
+ * Throws a FieldError for the first column of row whose value the schema's property rules refuse: a JSON type the
+ * schema does not allow (null only where it allows null, or in a raw config field), then the patterns, enums, lengths
+ * and ranges. Read-only properties are left alone; a missing value passes.
  */
 const checkSchema = (schema, row, { properties = schema.properties, prefix = "" } = {}) => {
 	for (const [name, raw] of Object.entries(properties)) {
 		const rule = resolve(schema, raw);
 		const value = row[name];
-		if (!rule || rule.readOnly || value === undefined || value === null) continue;
+		if (!rule || rule.readOnly || value === undefined) continue;
+		if (value === null && RAW_CONFIG.has(name)) continue;
+		if (!hasType(schema, rule, value)) throw new FieldError(`${prefix}${name}`);
+		if (value === null) continue;
 		if (rule.type === "array") {
 			const items = resolve(schema, rule.items);
-			if (!(items?.type === "string")) continue;
 			const list = parseList(value);
-			if (!(Array.isArray(list) && list.every((item) => typeof item === "string" && fits(items, item)))) {
+			if (items?.type === "string") {
+				if (!list.every((item) => typeof item === "string" && fits(items, item))) {
+					throw new FieldError(`${prefix}${name}`);
+				}
+			} else if (items && !list.every((item) => hasType(schema, items, item))) {
 				throw new FieldError(`${prefix}${name}`);
 			}
 		} else if (!fits(rule, value)) {
@@ -126,6 +172,7 @@ const checkGuard = (typeId, row, stored, locations) => {
 	const { guard } = HOSTS[typeId];
 	for (const field of CONFIG_FIELDS[guard]) {
 		if (row[field] === undefined) continue;
+		if (row[field] !== null && typeof row[field] !== "string") throw new FieldError(field);
 		try {
 			assertConfigFields(false, { [field]: row[field] }, stored, [field]);
 		} catch {
@@ -144,6 +191,10 @@ const checkGuard = (typeId, row, stored, locations) => {
 		throw new FieldError("locations");
 	}
 	for (const [index, location] of locations.entries()) {
+		const config = location.advanced_config;
+		if (config !== undefined && config !== null && typeof config !== "string") {
+			throw new FieldError(`locations[${index}].advanced_config`);
+		}
 		try {
 			assertLocations(false, [{ ...location }], stored?.locations ?? []);
 		} catch (error) {
