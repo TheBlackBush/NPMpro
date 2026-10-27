@@ -3,6 +3,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { it } from "node:test";
 import { extractTo } from "../lib/backup/archive.js";
 import { openBackupFile } from "../lib/backup/format.js";
@@ -369,5 +370,102 @@ it("refuses to open an import whose file lacks the page's kind", TIMEOUT, async 
 		);
 	} finally {
 		await cleanup();
+	}
+});
+
+it("keeps a page import upload after a wrong or missing passphrase", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await b.knex("user").insert([
+			{ id: 2, email: "two@example.com", name: "Two", roles: "[]" },
+			{ id: 3, email: "three@example.com", name: "Three", roles: "[]" },
+		]);
+		const importer = userAccess(2, { proxy_hosts: "manage", certificates: "manage" });
+		const other = userAccess(3, { proxy_hosts: "manage", certificates: "manage" });
+		const file = await backupOf(a, { types: ["proxy_hosts", "certificates"] });
+		const { id, encrypted } = await b.service.importUpload(importer, createReadStream(file), {
+			kind: "proxy_hosts",
+		});
+		assert.equal(encrypted, true);
+		await assert.rejects(
+			b.service.importOpen(importer, id, { passphrase: "a wrong passphrase here" }),
+			hasCode("wrong-passphrase"),
+		);
+		await assert.rejects(b.service.importOpen(importer, id, {}), hasCode("wrong-passphrase"));
+		await assert.rejects(b.service.importOpen(other, id, { passphrase: PASSPHRASE }), hasCode("token-expired"));
+		const opened = await b.service.importOpen(importer, id, { passphrase: PASSPHRASE });
+		assert.equal(typeof opened.token, "string");
+		// used up once opened
+		await assert.rejects(b.service.importOpen(importer, id, { passphrase: PASSPHRASE }), hasCode("token-expired"));
+		assert.deepEqual(
+			(await readdir(b.backupsDir)).filter((name) => name.startsWith(".pending-")),
+			[],
+		);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("refuses an automatic backup and a too large file for a page import", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances({ maxImport: 64 * 1024 });
+	try {
+		// a merge on A leaves its automatic backup
+		const { token, manifest } = await openOn(a, await backupOf(b));
+		const plan = await a.service.plan(admin, token, { mode: "merge", types: manifest.types });
+		await a.service.restore(admin, token, { mode: "merge", types: manifest.types, planHash: plan.hash });
+		const [auto] = await autoFiles(a);
+		const dotFiles = async () => (await readdir(b.backupsDir)).filter((name) => name.startsWith("."));
+		const before = await dotFiles();
+		await assert.rejects(
+			b.service.importUpload(admin, createReadStream(path.join(a.backupsDir, "auto", auto)), {
+				kind: "proxy_hosts",
+			}),
+			(error) => {
+				assert.equal(error.code, "not-importable");
+				assert.equal(error.status, 400);
+				return true;
+			},
+		);
+		await assert.rejects(
+			b.service.importUpload(admin, Readable.from([Buffer.alloc(100 * 1024)]), { kind: "proxy_hosts" }),
+			(error) => {
+				assert.equal(error.code, "too-large");
+				assert.equal(error.status, 413);
+				assert.equal(error.message, "The file is larger than 200 MB");
+				return true;
+			},
+		);
+		// neither upload is kept
+		assert.deepEqual(await dotFiles(), before);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("an own items export leaves out a linked certificate of another user", TIMEOUT, async () => {
+	const a = await setup();
+	try {
+		await seedHost(a, "a");
+		await a.knex("user").insert({ id: 2, email: "two@example.com", name: "Two", roles: "[]" });
+		await a.knex("proxy_host").where({ id: 1 }).update({ owner_user_id: 2 });
+		const own = userAccess(2, { proxy_hosts: "manage", certificates: "manage" }, "user");
+		const preview = await a.service.exportPreview(own, { kind: "proxy_hosts" });
+		assert.deepEqual(preview.items, [{ id: 1, label: "a.example.com" }]);
+		assert.deepEqual(preview.linked, []);
+		const { pending } = await a.service.exportItems(own, {
+			kind: "proxy_hosts",
+			ids: [1],
+			linked: { certificates: [1] },
+			secrets: false,
+		});
+		const file = a.service.takePending(own, pending);
+		const out = path.join(a.base, "out");
+		await mkdir(out);
+		await extractTo({ source: await openBackupFile({ file }), dir: out, allow: () => true });
+		const manifestOut = JSON.parse(await readFile(path.join(out, "manifest.json"), "utf8"));
+		assert.deepEqual(manifestOut.types, ["proxy_hosts"]);
+		assert.deepEqual(manifestOut.items, { proxy_hosts: [1] });
+	} finally {
+		await a.cleanup();
 	}
 });

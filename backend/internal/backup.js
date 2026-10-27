@@ -18,17 +18,15 @@ import {
 	removeCachedGravatars,
 	swapFiles,
 } from "../lib/backup/restore-files.js";
-import { ITEM_TYPES, itemLabel, linkedOf } from "../lib/backup/select.js";
 import { allowFile, CATEGORIES, RESTORE_ORDER, TYPES } from "../lib/backup/types.js";
-import errs from "../lib/error.js";
 import { isRestartRule, rulesOf } from "../lib/runtime-rules.js";
+import { createBackupPages, LINKED_KINDS, PAGE_KINDS, pageScope, permissionOf } from "./backup-pages.js";
 
 // Creating, storing and restoring backups. Everything the service touches is injected (createBackupService), so it
 // runs against a test database and folders; internal/backup-service.js wires the default instance.
 
 const MIN_PASSPHRASE = 12;
 const MAX_UPLOAD = 2 * 1024 ** 3;
-const MAX_IMPORT = 200 * 1024 ** 2;
 const ALL_TYPES = CATEGORIES.flatMap((category) => category.types);
 const CERTIFICATE_KINDS = ["letsencrypt", "other", "mtls"];
 // the type each whole table belongs to: a reference fix in one of them changes that type
@@ -60,41 +58,10 @@ const AUTO_SUFFIX = /-auto\.npmpro$/u;
 const FILES_PREFIX = "files/";
 const FILE_KEY = "file:";
 
-// the kinds of the list pages: the permission they need and their audit log object type
-const PAGE_KINDS = {
-	proxy_hosts: { permission: "proxy_hosts", objectType: "proxy-host" },
-	redirection_hosts: { permission: "redirection_hosts", objectType: "redirection-host" },
-	dead_hosts: { permission: "dead_hosts", objectType: "dead-host" },
-	streams: { permission: "streams", objectType: "stream" },
-	certificates: { permission: "certificates", objectType: "certificate" },
-	access_lists: { permission: "access_lists", objectType: "access-list" },
-	dns_credentials: { permission: "certificates", objectType: "dns-credential" },
-};
-// the kinds a page import or export brings along with its items
-const LINKED_KINDS = ["certificates", "access_lists", "dns_credentials"];
 // the file types whose instance files a merge compares, and those placed file by file
 const MERGE_FILE_TYPES = ["settings_default_site", "custom_nginx", "crowdsec_files"];
 const CUSTOM_FILE_TYPES = ["custom_nginx", "crowdsec_files"];
 const WRITTEN = new Set(["add", "replace", "take"]);
-const TYPE_OF_ITEM_TABLE = Object.fromEntries(Object.entries(ITEM_TYPES).map(([typeId, { table }]) => [table, typeId]));
-
-const pageKind = (kind) => {
-	if (!Object.hasOwn(PAGE_KINDS, kind)) throw new BackupError("invalid-types", "Unknown kind of items");
-	return PAGE_KINDS[kind];
-};
-
-const permissionOf = (typeId) => PAGE_KINDS[typeId]?.permission ?? typeId;
-
-// whether the user has the level (view, manage) on the type's permission
-const allows = (access, typeId, level) => {
-	try {
-		access.can(`${permissionOf(typeId)}:${level}`);
-		return true;
-	} catch (error) {
-		if (error instanceof errs.PermissionError) return false;
-		throw error;
-	}
-};
 
 const expired = () =>
 	Object.assign(new BackupError("token-expired", "The restore session has expired"), { status: 410 });
@@ -108,22 +75,6 @@ const settingsScope = (adminUserId) => ({
 	canEdit: () => true,
 	visibleOwnerId: null,
 });
-
-// a page import: the importer's permissions limit what is added, replaced and matched
-const pageScope = (access, importerId) => {
-	const canManage = (typeId) => allows(access, typeId, "manage");
-	const all = access.visibility === "all";
-	return {
-		adminUserId: importerId,
-		importerId,
-		page: true,
-		canView: (typeId) => allows(access, typeId, "view"),
-		canManage,
-		canEdit: (table, row) =>
-			canManage(TYPE_OF_ITEM_TABLE[table]) && (all || String(row.owner_user_id) === String(importerId)),
-		visibleOwnerId: all ? null : importerId,
-	};
-};
 
 const sha256 = (file) =>
 	new Promise((resolve, reject) => {
@@ -246,6 +197,7 @@ const withoutStage = async (stageDir) => {
  * @param   {Object}    [deps.reloadSettings]  { oidc, monitoring }: make the running services read the settings again
  * @param   {Function}  [deps.exclusive]       (fn) => runs fn in the runtime settings queue
  * @param   {number}    [deps.maxUpload]       bytes, 2 GiB
+ * @param   {number}    [deps.maxImport]       bytes, the page import limit (200 MB)
  * @param   {string}    deps.hostname
  * @param   {Object}    [deps.clock]           { now() } in ms
  * @param   {Object}    [deps.log]             { info, warn, error }
@@ -267,6 +219,7 @@ const createBackupService = ({
 	reloadSettings = {},
 	exclusive = (fn) => fn(),
 	maxUpload = MAX_UPLOAD,
+	maxImport,
 	hostname,
 	clock = Date,
 	log = console,
@@ -500,8 +453,34 @@ const createBackupService = ({
 			return rulesOf(row.id).some((rule) => isRestartRule(rule) && keys.includes(rule.key));
 		});
 
-	const runRestore = async ({ access, adminUserId, entry, types }) => {
-		const data = await loadStageData(entry.stageDir, types);
+	/**
+	 * The apply of a restore or merge: automatic backup, the database step, the file step, regenerate, nginx -t and
+	 * reload; a failure past the database commit puts the instance back from the automatic backup. Then the cached
+	 * Gravatar pictures of the written users go, the offline hosts are read and the audit entry is written.
+	 *
+	 * @param   {Object}    options
+	 * @param   {string}    options.what                   "restore" or "merge", for the messages
+	 * @param   {Object}    options.access
+	 * @param   {number}    options.userId                 who made the automatic backup
+	 * @param   {number}    options.adminUserId
+	 * @param   {string[]}  options.types                  the types regenerated and rolled back
+	 * @param   {Function}  options.dbStep                 () => Promise<result>, one transaction
+	 * @param   {Function}  options.fileStep               (result, asideDir) => Promise<{ undo }>
+	 * @param   {Function}  options.gravatarIds            (result) => ids
+	 * @param   {Function}  options.auditEntry             ({ result, autoName, offline }) => the audit entry
+	 * @returns {Promise<{ result, runtimeFailed: string[], offline: Array }>}
+	 */
+	const applyWithRollback = async ({
+		what,
+		access,
+		userId,
+		adminUserId,
+		types,
+		dbStep,
+		fileStep,
+		gravatarIds,
+		auditEntry,
+	}) => {
 		const certificateIdsBefore = await knex("certificate").pluck("id");
 		let autoName = null;
 		let result = null;
@@ -510,40 +489,30 @@ const createBackupService = ({
 		let asideDir = null;
 		let runtimeFailed = [];
 		try {
-			autoName = await automaticBackup(adminUserId);
-			result = await replaceTypes({
-				knex,
-				data,
-				types,
-				adminUserId,
-				box,
-				now: Math.floor(clock.now() / 1000),
-			});
+			autoName = await automaticBackup(userId);
+			result = await dbStep();
 		} catch (error) {
 			// the database transaction rolled back, the files are untouched
-			log.error(`The restore failed before any change: ${error.message}`);
+			log.error(`The ${what} failed before any change: ${error.message}`);
 			if (error.public) throw error;
-			throw new BackupError("restore-failed", "The restore failed and nothing was changed", { cause: error });
+			throw new BackupError("restore-failed", `The ${what} failed and nothing was changed`, { cause: error });
 		}
 		try {
 			try {
 				asideDir = await store.createStageDir("restore");
-				swap = await swapStage({ stageDir: entry.stageDir, types, asideDir, adminUserId, users: result.users });
-				if (types.includes("certificates")) {
-					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });
-				}
+				swap = await fileStep(result, asideDir);
 				runtimeFailed = await applyRestored(types, {
 					onNginx: () => {
 						nginxStep = true;
 					},
 				});
 			} catch (error) {
-				log.error(`The restore failed, rolling back: ${error.message}`);
+				log.error(`The ${what} failed, rolling back: ${error.message}`);
 				try {
 					await rollBack({
 						autoName,
 						types,
-						references: result.references,
+						references: result.references ?? [],
 						swap,
 						certificateIdsBefore,
 						adminUserId,
@@ -553,7 +522,7 @@ const createBackupService = ({
 					throw Object.assign(
 						new BackupError(
 							"rollback-failed",
-							`The restore failed and could not be rolled back, restore the automatic backup ${autoName}`,
+							`The ${what} failed and could not be rolled back, restore the automatic backup ${autoName}`,
 							{ cause: rollbackError },
 						),
 						{ status: 500 },
@@ -562,52 +531,81 @@ const createBackupService = ({
 				if (nginxStep) {
 					throw new BackupError(
 						"nginx-failed",
-						`nginx rejected the restored configuration, everything was rolled back: ${error.message}`,
+						`nginx rejected the ${what}d configuration, everything was rolled back: ${error.message}`,
 						{ cause: error },
 					);
 				}
 				if (error.public) throw error;
-				throw new BackupError("restore-failed", "The restore failed, everything was rolled back", {
+				throw new BackupError("restore-failed", `The ${what} failed, everything was rolled back`, {
 					cause: error,
 				});
 			}
 		} finally {
 			await withoutStage(asideDir);
 		}
-		if (result.users) {
+		const ids = gravatarIds(result);
+		if (ids.length > 0) {
 			try {
-				await removeCachedGravatars({ dataDir, ids: result.users.ids });
+				await removeCachedGravatars({ dataDir, ids });
 			} catch (error) {
 				// a cache: the pictures are fetched again later
-				log.warn(`Could not remove the cached Gravatar pictures of the restored users: ${error.message}`);
+				log.warn(`Could not remove the cached Gravatar pictures of the ${what}d users: ${error.message}`);
 			}
 		}
 		let offline = [];
 		try {
 			offline = await offlineHosts();
 		} catch (error) {
-			// the restore itself succeeded
-			log.error(`Could not read the hosts nginx rejected after the restore: ${error.message}`);
+			// the apply itself succeeded
+			log.error(`Could not read the hosts nginx rejected after the ${what}: ${error.message}`);
 		}
 		try {
-			await audit(access, {
+			await audit(access, auditEntry({ result, autoName, offline }));
+		} catch (error) {
+			// the apply itself succeeded
+			log.error(`Could not write the audit log entry of the ${what}: ${error.message}`);
+		}
+		return { result, runtimeFailed, offline };
+	};
+
+	const runRestore = async ({ access, adminUserId, entry, types }) => {
+		const data = await loadStageData(entry.stageDir, types);
+		const { result, runtimeFailed, offline } = await applyWithRollback({
+			what: "restore",
+			access,
+			userId: adminUserId,
+			adminUserId,
+			types,
+			dbStep: () => replaceTypes({ knex, data, types, adminUserId, box, now: Math.floor(clock.now() / 1000) }),
+			fileStep: async (replaced, asideDir) => {
+				const swap = await swapStage({
+					stageDir: entry.stageDir,
+					types,
+					asideDir,
+					adminUserId,
+					users: replaced.users,
+				});
+				if (types.includes("certificates")) {
+					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });
+				}
+				return swap;
+			},
+			gravatarIds: (replaced) => replaced.users?.ids ?? [],
+			auditEntry: ({ result: replaced, autoName, offline: rejected }) => ({
 				action: "restored",
 				object_type: "backup",
 				object_id: 0,
 				meta: {
 					name: entry.file,
 					types,
-					counts: result.counts,
-					references: result.references.length,
-					skipped_users: result.skippedUsers.map((user) => user.email),
-					offline_hosts: offline.length,
+					counts: replaced.counts,
+					references: replaced.references.length,
+					skipped_users: replaced.skippedUsers.map((user) => user.email),
+					offline_hosts: rejected.length,
 					automatic_backup: autoName,
 				},
-			});
-		} catch (error) {
-			// the restore itself succeeded
-			log.error(`Could not write the audit log entry of the restore: ${error.message}`);
-		}
+			}),
+		});
 		return {
 			counts: result.counts,
 			references: result.references,
@@ -666,14 +664,12 @@ const createBackupService = ({
 		return { plan, data, types: chosen };
 	};
 
-	// the merge apply, as runRestore: automatic backup, database, files, regenerate, nginx -t, reload; rollback
+	// the merge apply, through the same path as a restore
 	const runMerge = async ({ access, userId, entry, scope, plan, data }) => {
-		const certificateIdsBefore = await knex("certificate").pluck("id");
 		const taken = plan.items.filter((item) => item.action === "take");
-		const fileRel = (item) => item.key.slice(FILE_KEY.length);
 		const takeFiles = taken
 			.filter((item) => item.key.startsWith(FILE_KEY) && CUSTOM_FILE_TYPES.includes(item.type))
-			.map(fileRel);
+			.map((item) => item.key.slice(FILE_KEY.length));
 		const takeDefaultSite = taken.some(
 			(item) =>
 				item.key === "setting:default-site" ||
@@ -685,121 +681,55 @@ const createBackupService = ({
 				(item) => item.type === typeId && WRITTEN.has(item.action) && !item.key.startsWith(FILE_KEY),
 			),
 		);
-		let autoName = null;
-		let result = null;
-		let swap = null;
-		let nginxStep = false;
-		let asideDir = null;
-		let runtimeFailed = [];
-		try {
-			autoName = await automaticBackup(userId);
-			result = await mergeTypes({
-				knex,
-				data,
-				plan,
-				adminUserId: scope.adminUserId,
-				importerId: scope.importerId,
-				page: scope.page,
-				box,
-				secrets: entry.manifest.secrets === true,
-				now: Math.floor(clock.now() / 1000),
-			});
-		} catch (error) {
-			log.error(`The merge failed before any change: ${error.message}`);
-			if (error.public) throw error;
-			throw new BackupError("restore-failed", "The merge failed and nothing was changed", { cause: error });
-		}
-		try {
-			try {
-				asideDir = await store.createStageDir("restore");
-				swap = await placeMergedFiles({
+		const { result, runtimeFailed, offline } = await applyWithRollback({
+			what: "merge",
+			access,
+			userId,
+			adminUserId: scope.adminUserId,
+			types,
+			dbStep: () =>
+				mergeTypes({
+					knex,
+					data,
+					plan,
+					adminUserId: scope.adminUserId,
+					importerId: scope.importerId,
+					page: scope.page,
+					box,
+					secrets: entry.manifest.secrets === true,
+					now: Math.floor(clock.now() / 1000),
+				}),
+			fileStep: async (merged, asideDir) => {
+				const swap = await placeMergedFiles({
 					dataDir,
 					stageDir: entry.stageDir,
 					asideDir,
-					certificateMoves: result.certificateMoves,
+					certificateMoves: merged.certificateMoves,
 					takeFiles,
 					takeDefaultSite,
-					avatarMoves: result.avatarMoves,
+					avatarMoves: merged.avatarMoves,
 				});
-				if (result.certificateMoves.length > 0) {
+				if (merged.certificateMoves.length > 0) {
 					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });
 				}
-				runtimeFailed = await applyRestored(types, {
-					onNginx: () => {
-						nginxStep = true;
-					},
-				});
-			} catch (error) {
-				log.error(`The merge failed, rolling back: ${error.message}`);
-				try {
-					await rollBack({
-						autoName,
-						types,
-						references: [],
-						swap,
-						certificateIdsBefore,
-						adminUserId: scope.adminUserId,
-					});
-				} catch (rollbackError) {
-					log.error(`The rollback failed: ${rollbackError.message}`);
-					throw Object.assign(
-						new BackupError(
-							"rollback-failed",
-							`The merge failed and could not be rolled back, restore the automatic backup ${autoName}`,
-							{ cause: rollbackError },
-						),
-						{ status: 500 },
-					);
-				}
-				if (nginxStep) {
-					throw new BackupError(
-						"nginx-failed",
-						`nginx rejected the merged configuration, everything was rolled back: ${error.message}`,
-						{ cause: error },
-					);
-				}
-				if (error.public) throw error;
-				throw new BackupError("restore-failed", "The merge failed, everything was rolled back", {
-					cause: error,
-				});
-			}
-		} finally {
-			await withoutStage(asideDir);
-		}
-		const userIds = result.avatarMoves.map((move) => move.to);
-		if (userIds.length > 0) {
-			try {
-				await removeCachedGravatars({ dataDir, ids: userIds });
-			} catch (error) {
-				log.warn(`Could not remove the cached Gravatar pictures of the merged users: ${error.message}`);
-			}
-		}
-		let offline = [];
-		try {
-			offline = await offlineHosts();
-		} catch (error) {
-			log.error(`Could not read the hosts nginx rejected after the merge: ${error.message}`);
-		}
-		try {
-			await audit(
-				access,
+				return swap;
+			},
+			gravatarIds: (merged) => merged.avatarMoves.map((move) => move.to),
+			auditEntry: ({ result: merged, autoName }) =>
 				scope.page
 					? {
 							action: "imported",
 							object_type: PAGE_KINDS[entry.kind].objectType,
 							object_id: 0,
-							meta: { counts: result.counts },
+							meta: { counts: merged.counts },
 						}
 					: {
 							action: "merged",
 							object_type: "backup",
 							object_id: 0,
-							meta: { name: entry.file, types, counts: result.counts, automatic_backup: autoName },
+							meta: { name: entry.file, types, counts: merged.counts, automatic_backup: autoName },
 						},
-			);
-		} catch (error) {
-			log.error(`Could not write the audit log entry of the merge: ${error.message}`);
-		}
+		});
 		const takenIds = new Set(taken.map((item) => item.key));
 		const takenRuntime = (data.settings_runtime?.setting ?? []).filter((row) => takenIds.has(`setting:${row.id}`));
 		return {
@@ -839,48 +769,26 @@ const createBackupService = ({
 			}
 		});
 
-	// the rows of a type the user can see, all or those with the ids
-	const visibleRows = (access, typeId, ids) => {
-		const query = knex(ITEM_TYPES[typeId].table).orderBy("id");
-		if (access.visibility !== "all") query.where("owner_user_id", access.token.getUserId(1));
-		if (ids !== undefined) query.whereIn("id", ids);
-		return query;
-	};
-
-	// the user's visible rows of the page kind and the linked items they need, of the kinds the user can view
-	const exportSelection = async (access, { kind, ids }) => {
-		const { permission } = pageKind(kind);
-		access.can(`${permission}:view`);
-		if (!(ids === undefined || Array.isArray(ids))) throw new BackupError("invalid-types", "Choose the items");
-		const rows = await visibleRows(access, kind, ids);
-		const data = { [kind]: { [ITEM_TYPES[kind].table]: rows } };
-		if (kind === "proxy_hosts") {
-			data.proxy_hosts.npmpro_proxy_host_access_list = await knex("npmpro_proxy_host_access_list").whereIn(
-				"proxy_host_id",
-				rows.map((row) => row.id),
-			);
-		}
-		const linked = [];
-		const addLinked = async (typeId, neededBy) => {
-			if (typeId === kind || neededBy.size === 0 || !allows(access, typeId, "view")) return [];
-			const found = await visibleRows(access, typeId, [...neededBy.keys()]);
-			for (const row of found) {
-				const keys = [...neededBy.get(String(row.id))].sort((x, y) => (x < y ? -1 : Number(x > y)));
-				linked.push({ type: typeId, id: row.id, label: itemLabel(typeId, row), needed_by: keys });
-			}
-			return found;
-		};
-		const needed = linkedOf(data);
-		const certificates = await addLinked("certificates", needed.certificates);
-		await addLinked("access_lists", needed.access_lists);
-		const withCertificates = { certificates: { certificate: kind === "certificates" ? rows : certificates } };
-		await addLinked("dns_credentials", linkedOf(withCertificates).dns_credentials);
-		return { rows, linked };
-	};
-
-	const importKinds = new Map();
+	const pages = createBackupPages({
+		knex,
+		store,
+		extractBackup,
+		writeBackup,
+		buildPlan,
+		receive,
+		checkPassphrase,
+		manifestView,
+		withoutStage,
+		audit,
+		hostname,
+		clock,
+		log,
+		maxImport,
+	});
 
 	return {
+		...pages,
+
 		/**
 		 * @returns {Promise<{ categories: Array, counts: Object<string, number>, certificateKinds: Object }>}
 		 */
@@ -1093,131 +1001,6 @@ const createBackupService = ({
 					await withoutStage(entry.stageDir);
 				}
 			});
-		},
-
-		/**
-		 * The items of a page kind an export would hold: the visible ones (all, or those with the ids) and the
-		 * certificates, access lists and DNS credentials they need, of the kinds the user can view
-		 *
-		 * @returns {Promise<{ items: Array<{ id, label }>, linked: Array<{ type, id, label, needed_by }>,
-		 *                     secretsAllowed: boolean }>}
-		 */
-		exportPreview: async (access, { kind, ids } = {}) => {
-			const { rows, linked } = await exportSelection(access, { kind, ids });
-			// secrets need manage permission on every kind they come from
-			const kinds = [kind, ...new Set(linked.map((item) => item.type))];
-			return {
-				items: rows.map((row) => ({ id: row.id, label: itemLabel(kind, row) })),
-				linked,
-				secretsAllowed: kinds.every((typeId) => allows(access, typeId, "manage")),
-			};
-		},
-
-		/**
-		 * Exports items of a page kind with the chosen linked items into a partial file, as a pending download
-		 *
-		 * @param   {Access}  access
-		 * @param   {Object}  options  { kind, ids, linked: { [typeId]: ids }, secrets, passphrase }
-		 * @returns {Promise<{ pending: string, name: string }>}
-		 */
-		exportItems: async (access, { kind, ids, linked, secrets, passphrase } = {}) => {
-			const userId = access.token.getUserId(0);
-			const selection = await exportSelection(access, { kind, ids });
-			if (selection.rows.length === 0) throw new BackupError("invalid-types", "Choose at least one item");
-			const items = { [kind]: selection.rows.map((row) => row.id) };
-			for (const item of selection.linked) {
-				if ((linked?.[item.type] ?? []).some((id) => String(id) === String(item.id))) {
-					items[item.type] ??= [];
-					items[item.type].push(item.id);
-				}
-			}
-			const types = ALL_TYPES.filter((typeId) => Object.hasOwn(items, typeId));
-			if (secrets) {
-				for (const typeId of types) access.can(`${permissionOf(typeId)}:manage`);
-				checkPassphrase(passphrase);
-			}
-			return await store.withLock(async () => {
-				const name = store.exportName({ kind, host: hostname, date: new Date(clock.now()) });
-				const file = store.tempPath("tmp");
-				try {
-					await writeBackup({
-						file,
-						types,
-						secrets: Boolean(secrets),
-						mode: secrets ? "passphrase" : "none",
-						passphrase: secrets ? passphrase : undefined,
-						userId,
-						items,
-					});
-					await audit(access, {
-						action: "exported",
-						object_type: PAGE_KINDS[kind].objectType,
-						object_id: 0,
-						meta: {
-							name,
-							counts: Object.fromEntries(types.map((typeId) => [typeId, items[typeId].length])),
-							secrets: Boolean(secrets),
-						},
-					});
-					return { pending: await store.addPending(file, { owner: userId }), name };
-				} catch (error) {
-					await rm(file, { force: true });
-					throw error;
-				}
-			});
-		},
-
-		/**
-		 * Keeps an uploaded file for a page import of the kind, owned by the user, until importOpen
-		 *
-		 * @returns {Promise<{ id: string, summary: Object, encrypted: boolean }>}
-		 */
-		importUpload: async (access, readable, { kind } = {}) => {
-			access.can(`${pageKind(kind).permission}:manage`);
-			const temp = store.tempPath("upload");
-			try {
-				await receive(readable, temp, MAX_IMPORT, "The file is larger than 200 MB");
-				const { header } = await readHeader(temp);
-				const id = await store.addPending(temp, { owner: access.token.getUserId(0) });
-				importKinds.set(id, kind);
-				return { id, summary: header.summary ?? null, encrypted: header.kdf !== "none" };
-			} finally {
-				await rm(temp, { force: true });
-			}
-		},
-
-		/**
-		 * Unpacks an uploaded page import into a restore session of the user and its kind, with the plan of a merge
-		 * with the default choices
-		 *
-		 * @returns {Promise<{ token: string, summary: Object, manifest: Object, plan: Object }>}
-		 */
-		importOpen: async (access, id, { passphrase } = {}) => {
-			const userId = access.token.getUserId(0);
-			const file = store.takePending(id, { owner: userId });
-			const kind = importKinds.get(id);
-			importKinds.delete(id);
-			try {
-				if (!kind) throw expired();
-				access.can(`${permissionOf(kind)}:manage`);
-				return await store.withLock(async () => {
-					const { stageDir, summary, manifest } = await extractBackup(file, { passphrase });
-					try {
-						if (!manifest.types.includes(kind)) {
-							throw new BackupError("wrong-kind", "The file holds no items of this page");
-						}
-						const entry = { stageDir, file: null, manifest, owner: userId, kind };
-						const { plan } = await buildPlan({ entry, scope: pageScope(access, userId) });
-						const token = store.createToken(entry);
-						return { token, summary, manifest: manifestView(manifest), plan };
-					} catch (error) {
-						await withoutStage(stageDir);
-						throw error;
-					}
-				});
-			} finally {
-				await rm(file, { force: true });
-			}
 		},
 
 		// a Settings session is cancelled by its admin, a page import session by its importer

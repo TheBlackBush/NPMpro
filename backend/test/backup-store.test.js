@@ -317,3 +317,23 @@ it("each owner's token expires on its own timer", async () => {
 	assert.equal(await exists(stage1), false);
 	assert.equal(await exists(stage2), false);
 });
+
+it("a pending file is read without taking it, with its kind, by its owner only", async () => {
+	const { dir, time, store } = await make();
+	const src = path.join(dir, "x.tmp-file");
+	await writeFile(src, "data");
+	const id = await store.addPending(src, { owner: 2, kind: "proxy_hosts" });
+	const target = path.join(dir, `.pending-${id}.npmpro`);
+	assert.deepEqual(store.peekPending(id, { owner: 2 }), { file: target, kind: "proxy_hosts" });
+	assert.deepEqual(store.peekPending(id, { owner: 2 }), { file: target, kind: "proxy_hosts" });
+	assert.throws(() => store.peekPending(id, { owner: 3 }), code("token-expired"));
+	assert.throws(() => store.peekPending("../../etc", { owner: 2 }), code("token-expired"));
+	assert.equal(store.takePending(id, { owner: 2 }), target);
+	assert.throws(() => store.peekPending(id, { owner: 2 }), code("token-expired"));
+	await writeFile(src, "data");
+	const late = await store.addPending(src, { owner: 2 });
+	assert.equal(store.peekPending(late, { owner: 2 }).kind, null);
+	time.value += 30 * 60 * 1000;
+	assert.throws(() => store.peekPending(late, { owner: 2 }), code("token-expired"));
+	assert.equal(await exists(path.join(dir, `.pending-${late}.npmpro`)), false);
+});

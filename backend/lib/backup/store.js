@@ -211,24 +211,38 @@ const createBackupStore = ({
 		return session.entry;
 	};
 
-	const addPending = async (file, { owner }) => {
+	// kind: the page a pending upload is imported on (null for a download)
+	const addPending = async (file, { owner, kind = null }) => {
 		const id = randomBytes(18).toString("base64url");
 		const target = path.join(dir, `.pending-${id}.npmpro`);
 		await rename(file, target);
-		pending.set(id, { target, owner, expires: clock.now() + PENDING_TTL_MS });
+		pending.set(id, { target, owner, kind, expires: clock.now() + PENDING_TTL_MS });
 		return id;
 	};
 
-	const takePending = (id, { owner }) => {
+	// the owner's pending entry; an expired one is removed
+	const pendingOf = (id, owner) => {
 		if (typeof id !== "string" || !PENDING_ID.test(id)) throw expired();
 		const entry = pending.get(id);
 		if (!entry || entry.owner !== owner) throw expired();
-		pending.delete(id);
 		if (clock.now() >= entry.expires) {
+			pending.delete(id);
 			rmSync(entry.target, { force: true });
 			throw expired();
 		}
+		return entry;
+	};
+
+	const takePending = (id, { owner }) => {
+		const entry = pendingOf(id, owner);
+		pending.delete(id);
 		return entry.target;
+	};
+
+	// the pending file and its kind, left in place
+	const peekPending = (id, { owner }) => {
+		const { target, kind } = pendingOf(id, owner);
+		return { file: target, kind };
 	};
 
 	return {
@@ -250,6 +264,7 @@ const createBackupStore = ({
 		dropToken,
 		addPending,
 		takePending,
+		peekPending,
 	};
 };
 

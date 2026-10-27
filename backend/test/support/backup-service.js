@@ -28,6 +28,7 @@ const silent = { info: () => {}, warn: () => {}, error: () => {} };
  * @param {Function} [options.regenerated]  (knex, call) => Promise, runs in the fake host regeneration
  * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
  * @param {number}   [options.maxUpload]
+ * @param {number}   [options.maxImport]    bytes, the page import limit
  * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
  */
 const setup = async ({
@@ -39,6 +40,7 @@ const setup = async ({
 	regenerated = async () => {},
 	failedGroups = {},
 	maxUpload,
+	maxImport,
 	audited = async () => {},
 } = {}) => {
 	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
@@ -117,6 +119,7 @@ const setup = async ({
 		},
 		...(exclusive ? { exclusive } : {}),
 		...(maxUpload ? { maxUpload } : {}),
+		...(maxImport ? { maxImport } : {}),
 		hostname: "test-host",
 		clock,
 		log: silent,
