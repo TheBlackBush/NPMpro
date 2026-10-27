@@ -33,3 +33,49 @@ export const searchItems = (items, text) => {
 			.includes(needle),
 	);
 };
+
+// the types whose rows can be chosen one by one ("Choose items")
+export const ITEM_TYPES = [
+	"proxy_hosts",
+	"redirection_hosts",
+	"dead_hosts",
+	"streams",
+	"certificates",
+	"access_lists",
+	"dns_credentials",
+	"users",
+];
+
+/**
+ * The items of the file per type, for "Choose items": the catalogue so far with the items of a plan added. Only
+ * items chosen through their type count (linked items are not), so a subset chosen later does not shrink it.
+ *
+ * @returns {Object} { [typeId]: [{ id, label }] } ordered by id
+ */
+export const mergeCatalogue = (catalogue, plan) => {
+	const next = { ...catalogue };
+	const own = plan.items.filter((item) => !item.linked && ITEM_TYPES.includes(item.type));
+	for (const item of own) {
+		const list = next[item.type] ?? [];
+		if (!list.some((known) => String(known.id) === String(item.id))) {
+			next[item.type] = [...list, { id: item.id, label: item.label }].sort(
+				(a, b) => Number(a.id) - Number(b.id) || String(a.id).localeCompare(String(b.id)),
+			);
+		}
+	}
+	return next;
+};
+
+// the items request: the chosen subsets of the selected types, undefined when there are none
+export const requestItems = (items, types) => {
+	const chosen = Object.entries(items ?? {}).filter(([typeId]) => types.includes(typeId));
+	return chosen.length > 0 ? Object.fromEntries(chosen) : undefined;
+};
+
+// a subset of a type's items: undefined (the whole type) when every item is chosen
+export const chooseItems = (items, typeId, ids, total) => {
+	const next = { ...items };
+	if (ids.length === total) delete next[typeId];
+	else next[typeId] = ids;
+	return next;
+};

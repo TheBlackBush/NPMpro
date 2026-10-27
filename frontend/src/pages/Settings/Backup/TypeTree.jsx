@@ -42,6 +42,46 @@ function CertificateKinds({ kinds, id }) {
 	);
 }
 
+// the rows or files of a type, "3 of 12" while only some of its items are chosen; bare leaves out the wrapper
+function TypeCount({ typeId, counts, itemCounts, bare = false }) {
+	const part = itemCounts?.[typeId];
+	let text = counts[typeId];
+	if (part && part.selected < part.total) {
+		text = <T id="settings.backup.items-of" data={{ selected: part.selected, total: part.total }} />;
+	}
+	if (text === undefined) return null;
+	return bare ? text : <span className="text-secondary ms-1">{text}</span>;
+}
+
+// "Choose items" of the selected types of a box: one link, or the type names after the label when it has several
+function ChooseLinks({ types, several, openType, panelId, onChoose, disabled }) {
+	if (types.length === 0) return null;
+	const link = (typeId, children) => (
+		<button
+			key={typeId}
+			type="button"
+			className="btn btn-link btn-sm p-0"
+			aria-expanded={openType === typeId}
+			aria-controls={openType === typeId ? panelId : undefined}
+			onClick={() => onChoose(typeId)}
+			disabled={disabled}
+		>
+			{children}
+		</button>
+	);
+	if (!several) {
+		return <div className="mt-2">{link(types[0], <T id="settings.backup.choose-items" />)}</div>;
+	}
+	return (
+		<div className="d-flex flex-wrap align-items-baseline gap-3 mt-2">
+			<span className="text-secondary small">
+				<T id="settings.backup.choose-items" />
+			</span>
+			{types.map((typeId) => link(typeId, <T id={`settings.backup.type.${typeId}`} />))}
+		</div>
+	);
+}
+
 // the category header: a checkbox (ticked, cleared or mixed) with the icon, the name and the count
 function CategoryCheck({ category, state, count, onChange, disabled, labelId, describedBy }) {
 	const ref = useRef(null);
@@ -66,7 +106,9 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 			<span id={labelId} className="fw-bold">
 				<T id={`settings.backup.category.${category.id}`} />
 			</span>
-			{count === undefined ? null : <span className="badge bg-secondary-lt ms-auto">{count}</span>}
+			{count === undefined || count === null ? null : (
+				<span className="badge bg-secondary-lt ms-auto">{count}</span>
+			)}
 		</label>
 	);
 }
@@ -85,11 +127,29 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
  * @param {string[]}  props.selected            the ticked type ids
  * @param {Function}  props.onChange            (selected) => void
  * @param {boolean}   [props.disabled]
+ * @param {Object}    [props.itemCounts]        type id -> { selected, total } for the types whose items can be chosen
+ *                                              one by one; a pill then shows "3 of 12" while some are left out
+ * @param {Function}  [props.onChooseItems]     (typeId) => void, a "Choose items" link per selected type of itemCounts
+ * @param {string}    [props.openType]          the type whose item list is open
+ * @param {ReactNode} [props.itemsPanel]        that list, shown full width under the row of its box
  */
-function TypeTree({ label, categories, counts = {}, certificateKinds, selected, onChange, disabled = false }) {
+function TypeTree({
+	label,
+	categories,
+	counts = {},
+	certificateKinds,
+	selected,
+	onChange,
+	disabled = false,
+	itemCounts,
+	onChooseItems,
+	openType,
+	itemsPanel,
+}) {
 	const baseId = useId();
 	const allTypes = categories.flatMap((category) => category.types);
 	const allSelected = allTypes.length > 0 && allTypes.every((typeId) => selected.includes(typeId));
+	const panelId = `${baseId}-items`;
 	return (
 		<div className="mb-3">
 			<div className="d-flex align-items-center mb-2">
@@ -114,8 +174,8 @@ function TypeTree({ label, categories, counts = {}, certificateKinds, selected, 
 				</div>
 			</div>
 			<div className="row g-2">
-				{arrangeRows(categories).flatMap((row) =>
-					row.map((category) => {
+				{arrangeRows(categories).flatMap((row) => [
+					...row.map((category) => {
 						const labelId = `${baseId}-${category.id}`;
 						const kindsId = `${labelId}-kinds`;
 						const kinds = category.types.includes("certificates") ? certificateKinds : null;
@@ -131,7 +191,18 @@ function TypeTree({ label, categories, counts = {}, certificateKinds, selected, 
 										<CategoryCheck
 											category={category}
 											state={state}
-											count={categoryCount(category, counts)}
+											count={
+												several ? (
+													categoryCount(category, counts)
+												) : (
+													<TypeCount
+														typeId={category.types[0]}
+														counts={counts}
+														itemCounts={itemCounts}
+														bare
+													/>
+												)
+											}
 											onChange={() => onChange(toggleCategory(category, selected))}
 											disabled={disabled}
 											labelId={labelId}
@@ -151,22 +222,41 @@ function TypeTree({ label, categories, counts = {}, certificateKinds, selected, 
 														/>
 														<span className="form-selectgroup-label">
 															<T id={`settings.backup.type.${typeId}`} />
-															{counts[typeId] === undefined ? null : (
-																<span className="text-secondary ms-1">
-																	{counts[typeId]}
-																</span>
-															)}
+															<TypeCount
+																typeId={typeId}
+																counts={counts}
+																itemCounts={itemCounts}
+															/>
 														</span>
 													</label>
 												))}
 											</div>
+										) : null}
+										{onChooseItems ? (
+											<ChooseLinks
+												types={category.types.filter(
+													(typeId) => itemCounts?.[typeId] && selected.includes(typeId),
+												)}
+												several={several}
+												openType={openType}
+												panelId={panelId}
+												onChoose={onChooseItems}
+												disabled={disabled}
+											/>
 										) : null}
 									</div>
 								</fieldset>
 							</div>
 						);
 					}),
-				)}
+					itemsPanel && row.some((category) => category.types.includes(openType))
+						? [
+								<div key="items-panel" id={panelId} className="col-12">
+									{itemsPanel}
+								</div>,
+							]
+						: [],
+				])}
 			</div>
 		</div>
 	);

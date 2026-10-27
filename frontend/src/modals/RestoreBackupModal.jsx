@@ -10,6 +10,8 @@ import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetai
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
+import { ItemList } from "./RestoreBackup/ItemList";
+import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
 
 /**
  * @param {Object}   entry       a stored backup as listed by GET /api/backups
@@ -34,25 +36,6 @@ const groupLabel = (group) => {
 	const id = `settings.environment.group.${group}`;
 	return intl.messages[id] ? intl.formatMessage({ id }) : group;
 };
-
-function ItemList({ titleId, items, className = "mb-3" }) {
-	if (items.length === 0) return null;
-	return (
-		<div className={className}>
-			<div className="fw-bold mb-1">
-				<T id={titleId} data={{ count: items.length }} />
-			</div>
-			{/* no utility gives a capped height: a long list scrolls instead of stretching the dialog */}
-			<ul className="mb-0 overflow-auto" style={{ maxHeight: "12em" }}>
-				{items.map((item) => (
-					<li key={item.key} className="text-break">
-						{item.text}
-					</li>
-				))}
-			</ul>
-		</div>
-	);
-}
 
 const referenceItems = (references = []) =>
 	references.map((ref, index) => ({ key: `${ref.table}-${ref.id}-${ref.column}-${index}`, text: ref.label }));
@@ -106,14 +89,15 @@ function Running() {
 	);
 }
 
-function Result({ result, types, onOpen }) {
+function Result({ result, types, plan, onOpen }) {
 	const monitoring = types.includes("settings_monitoring");
+	const merged = plan !== null;
 	const counts = Object.entries(result.counts ?? {});
 	return (
 		<>
 			<Alert variant="success" icon={IconCircleCheck}>
 				<div className="fw-bold">
-					<T id="settings.backup.restore.done" />
+					<T id={merged ? "settings.backup.merge.done" : "settings.backup.restore.done"} />
 				</div>
 				{counts.length > 0 ? (
 					<ul className="mb-0 mt-1">
@@ -185,14 +169,16 @@ function Result({ result, types, onOpen }) {
 			) : null}
 			<ItemList titleId="settings.backup.restore.references.done" items={referenceItems(result.references)} />
 			<ItemList titleId="settings.backup.restore.skipped-users" items={userItems(result.skippedUsers)} />
+			{merged ? <MergeNotes plan={plan} cleared={result.cleared} needsSecrets={result.needsSecrets} /> : null}
 		</>
 	);
 }
 
 /**
- * Restore a stored backup (replace): the passphrase when the file is encrypted with one, then what it holds as the
- * type tree (all ticked) with what a restore of the selection clears or skips, a confirmation and the restore. Closing
- * before the restore releases the unpacked backup; while it runs the dialog cannot be closed.
+ * Restore a stored backup: the passphrase when the file is encrypted with one, then Replace or Merge (a file of single
+ * items only merges). Replace shows what it holds as the type tree (all ticked) with what a restore of the selection
+ * clears or skips; Merge shows the merge view (MergeView) with its dry run. Then a confirmation and the restore.
+ * Closing before the restore releases the unpacked backup; while it runs the dialog cannot be closed.
  */
 const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove }) => {
 	const needsPassphrase = entry.encrypted === true && !entry.auto;
@@ -211,6 +197,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const [confirmed, setConfirmed] = useState(false);
 	const [result, setResult] = useState(null);
 	const [restoreError, setRestoreError] = useState(null);
+	const [mode, setMode] = useState("replace");
 	// the token of an opened backup that was not restored, released when the dialog closes
 	const tokenRef = useRef(null);
 	// the selection the shown preview belongs to
@@ -233,6 +220,8 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 			checkedRef.current = res.manifest.types;
 			setOpened(res);
 			setSelected(res.manifest.types);
+			// a file of single items can only be merged
+			setMode(res.manifest.partial === true ? "merge" : "replace");
 			setPreview(res.preview);
 			setStep("preview");
 		} catch (err) {
@@ -250,9 +239,11 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 		void open(undefined);
 	}, []);
 
-	// the preview follows the selection, asked again 300 ms after the last change
+	const merge = useMergePlan({ token: opened?.token, types: selected, enabled: mode === "merge" });
+
+	// the preview of a replace follows the selection, asked again 300 ms after the last change
 	useEffect(() => {
-		if (!opened || selected === checkedRef.current) return;
+		if (!opened || mode !== "replace" || selected === checkedRef.current) return;
 		if (selected.length === 0) {
 			setChecking(false);
 			return;
@@ -276,7 +267,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 			current = false;
 			clearTimeout(timer);
 		};
-	}, [opened, selected]);
+	}, [opened, mode, selected]);
 
 	const close = () => {
 		if (running) return;
@@ -295,9 +286,24 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 		setRestoreError(null);
 		setStep("running");
 		try {
-			setResult(await restore.mutateAsync({ token, types: selected }));
+			setResult(
+				await restore.mutateAsync(
+					mode === "merge"
+						? { token, mode, ...merge.request, planHash: merge.plan.hash }
+						: { token, types: selected },
+				),
+			);
 			setStep("done");
 		} catch (err) {
+			const plan = err?.payload?.error?.message_i18n === "backup.error.plan-changed" && err.payload.error.plan;
+			if (plan) {
+				// nothing was applied and the backup stays open: the new plan is shown for a new confirmation
+				tokenRef.current = token;
+				merge.planChanged(plan);
+				setConfirmed(false);
+				setStep("preview");
+				return;
+			}
 			// the automatic backup made before the restore is listed now; after a failed rollback anything may differ
 			const rollbackFailed = err?.payload?.error?.message_i18n === "backup.error.rollback-failed";
 			void queryClient.invalidateQueries(rollbackFailed ? undefined : { queryKey: ["backups"] });
@@ -313,17 +319,32 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 
 	const reasonId = `${baseId}-reason`;
 	const passphraseShort = [...passphrase].length < PASSPHRASE_MIN_LENGTH;
-	const stale = checking || selected !== checkedRef.current;
+	const merging = mode === "merge";
+	const stale = merging ? merge.stale : checking || selected !== checkedRef.current;
 	const manifest = opened?.manifest;
 	const categories = typesData && manifest ? categoriesOf(typesData.categories, manifest.types) : [];
 	const restoreReason = restoreBlockReason({
 		selected,
 		shown: typesData && manifest ? categories.flatMap((category) => category.types) : null,
 		partsFailed: Boolean(typesError),
-		checkFailed: Boolean(checkError),
+		checkFailed: Boolean(merging ? merge.error : checkError),
 		stale,
 		confirmed,
 	});
+	const reasonText =
+		merging && restoreReason === "settings.backup.reason.checking"
+			? "settings.backup.reason.checking-changes"
+			: restoreReason;
+
+	// the confirmation covers the selection and the mode it was given for
+	const changeTypes = (next) => {
+		setSelected(next);
+		setConfirmed(false);
+	};
+	const changeMode = (next) => {
+		setMode(next);
+		setConfirmed(false);
+	};
 
 	let body = null;
 	let footer = null;
@@ -412,23 +433,39 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 						}}
 					/>
 				</p>
+				<ModeSwitch mode={mode} partial={manifest.partial === true} onChange={changeMode} />
 				<ErrorAlert error={typesError} />
-				<TypeTree
-					label={<T id="settings.backup.restore.parts" />}
-					categories={categories}
-					counts={manifest.counts}
-					selected={selected}
-					onChange={(next) => {
-						setSelected(next);
-						// the confirmation covers the selection it was given for
-						setConfirmed(false);
-					}}
-				/>
-				<ErrorAlert error={checkError} />
-				{preview && selected.length > 0 ? <PreviewLists preview={preview} /> : null}
-				<Alert variant="danger" icon={IconAlertCircle}>
-					<T id="settings.backup.restore.warning" />
-				</Alert>
+				{merging ? (
+					<MergeView
+						merge={merge}
+						categories={categories}
+						counts={manifest.counts}
+						selected={selected}
+						onTypesChange={changeTypes}
+						onEdit={() => setConfirmed(false)}
+					/>
+				) : (
+					<>
+						<TypeTree
+							label={<T id="settings.backup.restore.parts" />}
+							categories={categories}
+							counts={manifest.counts}
+							selected={selected}
+							onChange={changeTypes}
+						/>
+						<ErrorAlert error={checkError} />
+						{preview && selected.length > 0 ? <PreviewLists preview={preview} /> : null}
+					</>
+				)}
+				{merging ? (
+					<Alert variant="warning" icon={IconAlertTriangle}>
+						<T id="settings.backup.merge.warning" />
+					</Alert>
+				) : (
+					<Alert variant="danger" icon={IconAlertCircle}>
+						<T id="settings.backup.restore.warning" />
+					</Alert>
+				)}
 				<label className="form-check mb-0">
 					<input
 						className="form-check-input"
@@ -437,7 +474,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 						onChange={(e) => setConfirmed(e.target.checked)}
 					/>
 					<span className="form-check-label">
-						<T id="settings.backup.restore.confirm" />
+						<T id={merging ? "settings.backup.merge.confirm" : "settings.backup.restore.confirm"} />
 					</span>
 				</label>
 			</>
@@ -450,7 +487,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 				<div className="ms-auto d-flex align-items-center">
 					{restoreReason ? (
 						<span id={reasonId} className="text-secondary small me-3 text-end">
-							<T id={restoreReason} />
+							<T id={reasonText} />
 						</span>
 					) : null}
 					<Button
@@ -474,7 +511,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	} else {
 		body =
 			step === "done" ? (
-				<Result result={result} types={selected} onOpen={openRoute} />
+				<Result result={result} types={selected} plan={merging ? merge.plan : null} onOpen={openRoute} />
 			) : (
 				<ErrorAlert error={restoreError} className="mb-0" />
 			);
