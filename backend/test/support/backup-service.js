@@ -8,9 +8,9 @@ import { createSchema } from "./backup-schema.js";
 
 // the backup service on a fresh database and folders, with fakes for everything outside it
 
-export const DB_VERSION = "20261026000000";
-export const MIGRATIONS = ["20180618015850_initial.js", "20261026000000_base.js"];
-export const box = {
+const DB_VERSION = "20261026000000";
+const MIGRATIONS = ["20180618015850_initial.js", "20261026000000_base.js"];
+const box = {
 	encrypt: (value) => `v1:${JSON.stringify(value)}`,
 	decrypt: (value) => JSON.parse(value.slice(3)),
 };
@@ -30,7 +30,7 @@ const silent = { info: () => {}, warn: () => {}, error: () => {} };
  * @param {number}   [options.maxUpload]
  * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
  */
-export const setup = async ({
+const setup = async ({
 	test = async () => {},
 	pause = async () => {},
 	migrations = MIGRATIONS,
@@ -127,3 +127,5 @@ export const setup = async ({
 	};
 	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
 };
+
+export { box, DB_VERSION, MIGRATIONS, setup };

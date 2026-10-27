@@ -6,6 +6,8 @@ import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
 const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
+// a page export, offered as the name of its pending download
+const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
 const MAX_SESSIONS = 5;
 const PENDING_TTL_MS = 30 * 60 * 1000;
@@ -46,6 +48,12 @@ const createBackupStore = ({
 
 	const fileName = ({ host, date, auto }) =>
 		`npmpro-backup-${cleanHost(host)}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+
+	const exportName = ({ kind, host, date }) =>
+		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
+
+	// a name a pending download may be offered under: a backup or a page export
+	const isDownloadName = (name) => typeof name === "string" && (NAME.test(name) || EXPORT_NAME.test(name));
 
 	const pathOf = (name) => {
 		if (typeof name !== "string" || !NAME.test(name)) throw notABackup();
@@ -226,6 +234,8 @@ const createBackupStore = ({
 	return {
 		NAME,
 		fileName,
+		exportName,
+		isDownloadName,
 		pathOf,
 		list,
 		remove,

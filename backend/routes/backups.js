@@ -79,7 +79,7 @@ router
 	.get(async (req, res) => {
 		const file = internalBackup.takePending(res.locals.access, req.params.id);
 		const { name } = req.query;
-		await sendFile(res, file, typeof name === "string" && backupStore.NAME.test(name) ? name : FALLBACK_NAME, {
+		await sendFile(res, file, backupStore.isDownloadName(name) ? name : FALLBACK_NAME, {
 			once: true,
 		});
 	});
