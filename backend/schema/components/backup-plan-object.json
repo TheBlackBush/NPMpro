@@ -100,20 +100,79 @@
 		},
 		"counts": {
 			"type": "object",
-			"additionalProperties": true
+			"additionalProperties": false,
+			"required": [
+				"add",
+				"replace",
+				"skip",
+				"existing",
+				"take",
+				"keep"
+			],
+			"properties": {
+				"add": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"replace": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"skip": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"existing": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"take": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"keep": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"description": "Number of items per action"
 		},
 		"cleared_links": {
 			"type": "array",
+			"description": "Links that are cleared because their target is not kept",
 			"items": {
 				"type": "object",
-				"additionalProperties": true
+				"additionalProperties": false,
+				"required": [
+					"key",
+					"column",
+					"from",
+					"label"
+				],
+				"properties": {
+					"key": {
+						"type": "string"
+					},
+					"column": {
+						"type": "string"
+					},
+					"from": {
+						"type": [
+							"integer",
+							"string"
+						]
+					},
+					"label": {
+						"type": "string"
+					}
+				}
 			}
 		},
 		"needs_secrets": {
 			"type": "array",
+			"description": "Keys of the items that need secrets the file does not have",
 			"items": {
-				"type": "object",
-				"additionalProperties": true
+				"type": "string"
 			}
 		},
 		"hash": {

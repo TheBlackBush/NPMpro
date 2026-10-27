@@ -131,6 +131,52 @@
 					}
 				}
 			}
+		},
+		"409": {
+			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"error"
+						],
+						"properties": {
+							"error": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"code",
+									"message",
+									"message_i18n",
+									"plan"
+								],
+								"properties": {
+									"code": {
+										"type": "integer",
+										"enum": [
+											409
+										]
+									},
+									"message": {
+										"type": "string"
+									},
+									"message_i18n": {
+										"type": "string",
+										"enum": [
+											"backup.error.plan-changed"
+										]
+									},
+									"plan": {
+										"$ref": "../../../../../components/backup-plan-object.json"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
