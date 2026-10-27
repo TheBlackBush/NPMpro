@@ -1,0 +1,124 @@
+{
+	"type": "object",
+	"description": "The dry run of a merge",
+	"additionalProperties": false,
+	"required": [
+		"items",
+		"counts",
+		"cleared_links",
+		"needs_secrets",
+		"hash"
+	],
+	"properties": {
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"key",
+					"type",
+					"id",
+					"label",
+					"action",
+					"reason",
+					"target",
+					"choices",
+					"default",
+					"needed_by",
+					"linked"
+				],
+				"properties": {
+					"key": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"id": {
+						"type": [
+							"integer",
+							"string",
+							"null"
+						]
+					},
+					"label": {
+						"type": "string"
+					},
+					"action": {
+						"type": "string",
+						"description": "What a merge would do with the item"
+					},
+					"reason": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"target": {
+						"type": [
+							"object",
+							"null"
+						],
+						"additionalProperties": true
+					},
+					"choices": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": [
+								"skip",
+								"replace",
+								"existing",
+								"add",
+								"keep",
+								"take",
+								"unticked"
+							]
+						}
+					},
+					"default": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"needed_by": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"linked": {
+						"type": "boolean"
+					},
+					"unticked": {
+						"type": "boolean"
+					}
+				}
+			}
+		},
+		"counts": {
+			"type": "object",
+			"additionalProperties": true
+		},
+		"cleared_links": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": true
+			}
+		},
+		"needs_secrets": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": true
+			}
+		},
+		"hash": {
+			"type": "string",
+			"description": "Identifies the plan; send it as plan_hash to apply it"
+		}
+	}
+}

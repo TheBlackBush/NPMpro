@@ -1,0 +1,81 @@
+{
+	"operationId": "openBackupImport",
+	"summary": "Open an uploaded file for a page import",
+	"description": "Admin only. Decrypts and checks the file and returns a restore token with the merge plan. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Id returned by the upload call",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			}
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"passphrase": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 1024
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"token",
+							"summary",
+							"manifest",
+							"plan"
+						],
+						"properties": {
+							"token": {
+								"type": "string"
+							},
+							"summary": {
+								"type": [
+									"object",
+									"null"
+								],
+								"additionalProperties": true
+							},
+							"manifest": {
+								"type": "object",
+								"additionalProperties": true
+							},
+							"plan": {
+								"$ref": "../../../../../components/backup-plan-object.json"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

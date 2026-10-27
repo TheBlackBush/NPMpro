@@ -85,6 +85,70 @@ router
 	});
 
 router
+	.route("/export/preview")
+	.all(jwtdecode())
+
+	/**
+	 * POST /api/backups/export/preview
+	 */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/backups/export/preview", "post"), req.body);
+		const { items, linked, secretsAllowed } = await internalBackup.exportPreview(res.locals.access, payload);
+		res.status(200).send({ items, linked, secrets_allowed: secretsAllowed });
+	});
+
+router
+	.route("/export")
+	.all(jwtdecode())
+
+	/**
+	 * POST /api/backups/export
+	 */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/backups/export", "post"), req.body);
+		res.status(200).send(await internalBackup.exportItems(res.locals.access, payload));
+	});
+
+router
+	.route("/import")
+	.all(jwtdecode())
+
+	/**
+	 * POST /api/backups/import?kind=<kind>
+	 *
+	 * The raw file is the body, streamed to disk by the service
+	 */
+	.post(async (req, res) => {
+		// the service rejects an unknown kind
+		const kind = typeof req.query.kind === "string" ? req.query.kind : undefined;
+		res.status(200).send(await internalBackup.importUpload(res.locals.access, req, { kind }));
+	});
+
+router
+	.route("/import/:id/open")
+	.all(jwtdecode())
+
+	/**
+	 * POST /api/backups/import/:id/open
+	 */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/backups/import/{id}/open", "post"), req.body);
+		res.status(200).send(await internalBackup.importOpen(res.locals.access, req.params.id, payload));
+	});
+
+router
+	.route("/restore/:token/plan")
+	.all(jwtdecode())
+
+	/**
+	 * POST /api/backups/restore/:token/plan
+	 */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/backups/restore/{token}/plan", "post"), req.body);
+		res.status(200).send(await internalBackup.plan(res.locals.access, req.params.token, payload));
+	});
+
+router
 	.route("/restore/:token/check")
 	.all(jwtdecode())
 
@@ -105,9 +169,18 @@ router
 	 */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/backups/restore/{token}", "post"), req.body);
-		res.status(200).send(
-			await internalBackup.restore(res.locals.access, req.params.token, { types: payload.types }),
-		);
+		const { plan_hash: planHash, confirm: _confirm, ...options } = payload;
+		try {
+			res.status(200).send(
+				await internalBackup.restore(res.locals.access, req.params.token, { ...options, planHash }),
+			);
+		} catch (err) {
+			// the error handler does not send payloads: the new plan goes with the 409
+			if (err.code !== "plan-changed" || !err.payload) throw err;
+			res.status(409).send({
+				error: { code: 409, message: err.message, message_i18n: err.message_i18n, plan: err.payload.plan },
+			});
+		}
 	})
 
 	/**
