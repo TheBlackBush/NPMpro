@@ -122,6 +122,16 @@ it("renames the staged pictures of the moved user and drops the admin's and the 
 	await rm(root, { recursive: true });
 });
 
+it("keeps the moved user's picture when its new id is a skipped user's id", async () => {
+	const { root, stageDir } = await setup();
+	const folder = path.join(stageDir, "files/public/avatar");
+	for (const name of ["1.png", "4.png", "9.png"]) await put(path.join(folder, name), name);
+	await fitStagedAvatars({ stageDir, adminUserId: 1, users: { moved: { from: 1, to: 4 }, skippedIds: [4, 9] } });
+	assert.deepEqual(await readdir(folder), ["4.png"]);
+	assert.equal(await readFile(path.join(folder, "4.png"), "utf8"), "1.png");
+	await rm(root, { recursive: true });
+});
+
 it("removes the cached Gravatar pictures of the given users only", async () => {
 	const { root, dataDir } = await setup();
 	await removeCachedGravatars({ dataDir, ids: [2] });

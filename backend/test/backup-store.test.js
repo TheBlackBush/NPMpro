@@ -207,6 +207,21 @@ it("removes a token's stage when the token expires unused, and not after it was 
 	assert.equal(await exists(stage3), false);
 });
 
+it("logs a stage that cannot be removed instead of throwing", async () => {
+	const warnings = [];
+	const { dir, store } = await make({ tokenTtlMs: 30, logger: { warn: (...args) => warnings.push(args) } });
+	await writeFile(path.join(dir, "file"), "x");
+	// a stage below a file cannot be removed (ENOTDIR), like a stage the process may not delete
+	const t1 = store.createToken({ stageDir: path.join(dir, "file/stage"), file: "f", manifest: {} });
+	await sleep(100);
+	assert.equal(warnings.length, 1);
+	assert.throws(() => store.takeToken(t1), code("token-expired"));
+	const t2 = store.createToken({ stageDir: path.join(dir, "file/stage"), file: "g", manifest: {} });
+	store.dropToken(t2);
+	assert.equal(warnings.length, 2);
+	assert.throws(() => store.takeToken(t2), code("token-expired"));
+});
+
 it("pending downloads are one-time, validated and expire", async () => {
 	const { dir, time, store } = await make();
 	const src = path.join(dir, "x.tmp-file");
