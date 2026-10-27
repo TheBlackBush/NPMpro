@@ -45,7 +45,10 @@ it("finds the certificates, access lists and DNS credentials the chosen rows nee
 		},
 		certificates: { certificate: [{ id: 4, npmpro_dns_credential_id: 7 }] },
 	});
-	assert.deepEqual([...linked.certificates.get("4")].sort(), ["proxy_hosts:1", "proxy_hosts:2"]);
+	assert.deepEqual(
+		[...linked.certificates.get("4")].sort((a, b) => a.localeCompare(b)),
+		["proxy_hosts:1", "proxy_hosts:2"],
+	);
 	assert.deepEqual([...linked.certificates.get("6")], ["proxy_hosts:1"]);
 	assert.deepEqual([...linked.access_lists.get("5")], ["proxy_hosts:2"]);
 	assert.deepEqual([...linked.dns_credentials.get("7")], ["certificates:4"]);

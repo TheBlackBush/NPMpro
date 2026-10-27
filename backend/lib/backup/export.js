@@ -8,6 +8,7 @@ import { certificateFileFilter, selectRows } from "./select.js";
 import { TYPES } from "./types.js";
 
 const FILES_PREFIX = "files/";
+const NUMERIC = /^\d+$/u;
 
 const sha256 = (file) =>
 	new Promise((resolve, reject) => {
@@ -76,7 +77,7 @@ const numericItems = (items) =>
 	Object.fromEntries(
 		Object.entries(items).map(([typeId, ids]) => [
 			typeId,
-			ids.map((id) => (/^\d+$/u.test(String(id)) ? Number(id) : id)),
+			ids.map((id) => (NUMERIC.test(String(id)) ? Number(id) : id)),
 		]),
 	);
 

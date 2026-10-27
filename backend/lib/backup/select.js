@@ -31,7 +31,7 @@ const ITEM_TYPES = {
 };
 
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
-const CERTIFICATE_ID = /npm-(\d+)(?:\/|\.conf$|\.der$|\.pem$|$)/gu;
+const CERTIFICATE_ID = /npm-(?<id>\d+)(?:\/|\.conf$|\.der$|\.pem$|$)/gu;
 const ACCOUNTS_ROOT = "tls/certbot/accounts";
 
 const domainsOf = (row) => {
@@ -140,7 +140,7 @@ const certificateFileFilter = (ids) => {
 		if (!TYPES.certificates.files.allow(rel)) return false;
 		if (rel === ACCOUNTS_ROOT || rel.startsWith(`${ACCOUNTS_ROOT}/`)) return true;
 		const last = [...rel.matchAll(CERTIFICATE_ID)].at(-1);
-		return last === undefined || chosen.has(last[1]);
+		return last === undefined || chosen.has(last.groups.id);
 	};
 };
 
