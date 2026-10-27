@@ -274,4 +274,17 @@ const relinkCertbotLive = async ({ dataDir, ids }) => {
 	}
 };
 
-export { adminAvatarFiles, fitStagedAvatars, relinkCertbotLive, removeCachedGravatars, swapFiles };
+export {
+	adminAvatarFiles,
+	exists,
+	fileMode,
+	fitStagedAvatars,
+	folderMode,
+	isPictureOf,
+	move,
+	namesIn,
+	permissions,
+	relinkCertbotLive,
+	removeCachedGravatars,
+	swapFiles,
+};
