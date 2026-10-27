@@ -72,7 +72,8 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 }
 
 /**
- * The backup parts as select boxes: one box per category with a header checkbox (ticked, cleared or mixed), the
+ * The backup parts as select boxes: one box per category (full width when it has parts, half width and the same
+ * height as its neighbour otherwise) with a header checkbox (ticked, cleared or mixed), the
  * types of a category with several as pill toggles inside the box. Counts per category and type, the certificates
  * with their kinds when given. A label row with "Select all" and "None".
  *
@@ -120,9 +121,13 @@ function TypeTree({ label, categories, counts = {}, certificateKinds, selected, 
 					const state = categoryState(category, selected);
 					const several = category.types.length > 1;
 					return (
-						<div key={category.id} className="col-12 col-md-6">
+						<div key={category.id} className={several ? "col-12" : "col-12 col-md-6"}>
 							<fieldset
-								className={cn("card card-sm h-100", state !== "none" && "border-primary")}
+								className={cn(
+									"card card-sm",
+									!several && "h-100",
+									state !== "none" && "border-primary",
+								)}
 								aria-labelledby={labelId}
 							>
 								<div className="card-body">
