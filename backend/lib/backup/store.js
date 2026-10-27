@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
+import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
 const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
@@ -30,7 +31,13 @@ const expired = () =>
 
 const randomName = () => randomBytes(12).toString("hex");
 
-const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 60 * 1000 }) => {
+const createBackupStore = ({
+	dir,
+	clock = Date,
+	keepAuto = 5,
+	tokenTtlMs = 30 * 60 * 1000,
+	logger = defaultLogger,
+}) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
 	let current = null; // { token, entry, timer }
@@ -153,9 +160,15 @@ const createBackupStore = ({ dir, clock = Date, keepAuto = 5, tokenTtlMs = 30 * 
 
 	const dropToken = (token) => {
 		if (current?.token !== token) return;
-		clearTimeout(current.timer);
-		rmSync(current.entry.stageDir, { recursive: true, force: true });
+		const { timer, entry } = current;
+		clearTimeout(timer);
 		current = null;
+		// runs from a timer too: a stage that cannot be removed is logged, not thrown (it is cleared at the next start)
+		try {
+			rmSync(entry.stageDir, { recursive: true, force: true });
+		} catch (err) {
+			logger.warn(`Could not remove the restore stage ${entry.stageDir}: ${err.message}`);
+		}
 	};
 
 	const createToken = ({ stageDir, file, manifest }) => {

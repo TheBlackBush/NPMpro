@@ -202,7 +202,10 @@ const fitStagedAvatars = async ({ stageDir, adminUserId, users }) => {
 			);
 		}
 	}
-	const dropped = moved ? users.skippedIds : [adminUserId, ...users.skippedIds];
+	// the moved user's renamed pictures stay, even when its new id was a skipped user's id
+	const dropped = moved
+		? users.skippedIds.filter((id) => String(id) !== String(moved.to))
+		: [adminUserId, ...users.skippedIds];
 	for (const name of await namesIn(folder)) {
 		if (dropped.some((id) => isPictureOf(id, name))) await rm(path.join(folder, name), { recursive: true });
 	}
