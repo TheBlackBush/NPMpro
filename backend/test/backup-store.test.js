@@ -167,41 +167,41 @@ it("tokens expire, are replaced and drop their stage", async () => {
 	const { time, store } = await make({ tokenTtlMs: 1000 });
 	const stage1 = await store.createStageDir("restore");
 	assert.equal((await stat(stage1)).mode & 0o777, 0o700);
-	const t1 = store.createToken({ stageDir: stage1, file: "f", manifest: {} });
-	assert.equal(store.takeToken(t1).file, "f");
-	assert.equal(store.takeToken(t1).file, "f");
+	const t1 = store.createToken({ stageDir: stage1, file: "f", manifest: {}, owner: 1 });
+	assert.equal(store.takeToken(t1, { owner: 1 }).file, "f");
+	assert.equal(store.takeToken(t1, { owner: 1 }).file, "f");
 	const stage2 = await store.createStageDir("restore");
-	const t2 = store.createToken({ stageDir: stage2, file: "g", manifest: {} });
+	const t2 = store.createToken({ stageDir: stage2, file: "g", manifest: {}, owner: 1 });
 	assert.equal(await exists(stage1), false);
-	assert.throws(() => store.takeToken(t1), code("token-expired"));
+	assert.throws(() => store.takeToken(t1, { owner: 1 }), code("token-expired"));
 	time.value += 999;
-	assert.equal(store.takeToken(t2, { keep: false }).file, "g");
+	assert.equal(store.takeToken(t2, { keep: false, owner: 1 }).file, "g");
 	assert.equal(await exists(stage2), true);
-	assert.throws(() => store.takeToken(t2), code("token-expired"));
+	assert.throws(() => store.takeToken(t2, { owner: 1 }), code("token-expired"));
 	const stage3 = await store.createStageDir("restore");
-	const t3 = store.createToken({ stageDir: stage3, file: "h", manifest: {} });
+	const t3 = store.createToken({ stageDir: stage3, file: "h", manifest: {}, owner: 1 });
 	time.value += 1000;
-	assert.throws(() => store.takeToken(t3), code("token-expired"));
+	assert.throws(() => store.takeToken(t3, { owner: 1 }), code("token-expired"));
 	assert.equal(await exists(stage3), false);
 	const stage4 = await store.createStageDir("restore");
-	const t4 = store.createToken({ stageDir: stage4, file: "i", manifest: {} });
+	const t4 = store.createToken({ stageDir: stage4, file: "i", manifest: {}, owner: 1 });
 	store.dropToken(t4);
 	assert.equal(await exists(stage4), false);
-	assert.throws(() => store.takeToken("nope"), code("token-expired"));
+	assert.throws(() => store.takeToken("nope", { owner: 1 }), code("token-expired"));
 });
 
 it("removes a token's stage when the token expires unused, and not after it was taken", async () => {
 	const { store } = await make({ tokenTtlMs: 30 });
 	const stage1 = await store.createStageDir("restore");
-	const t1 = store.createToken({ stageDir: stage1, file: "f", manifest: {} });
+	const t1 = store.createToken({ stageDir: stage1, file: "f", manifest: {}, owner: 1 });
 	await sleep(100);
 	assert.equal(await exists(stage1), false);
-	assert.throws(() => store.takeToken(t1), code("token-expired"));
+	assert.throws(() => store.takeToken(t1, { owner: 1 }), code("token-expired"));
 	const stage2 = await store.createStageDir("restore");
-	const t2 = store.createToken({ stageDir: stage2, file: "g", manifest: {} });
-	assert.equal(store.takeToken(t2, { keep: false }).file, "g");
+	const t2 = store.createToken({ stageDir: stage2, file: "g", manifest: {}, owner: 1 });
+	assert.equal(store.takeToken(t2, { keep: false, owner: 1 }).file, "g");
 	const stage3 = await store.createStageDir("restore");
-	store.createToken({ stageDir: stage3, file: "h", manifest: {} });
+	store.createToken({ stageDir: stage3, file: "h", manifest: {}, owner: 1 });
 	await sleep(100);
 	assert.equal(await exists(stage2), true);
 	assert.equal(await exists(stage3), false);
@@ -212,32 +212,32 @@ it("logs a stage that cannot be removed instead of throwing", async () => {
 	const { dir, store } = await make({ tokenTtlMs: 30, logger: { warn: (...args) => warnings.push(args) } });
 	// rmSync refuses a path with a NUL byte on every Node version, like a stage the process may not delete
 	const stageDir = path.join(dir, "bad\0stage");
-	const t1 = store.createToken({ stageDir, file: "f", manifest: {} });
+	const t1 = store.createToken({ stageDir, file: "f", manifest: {}, owner: 1 });
 	await sleep(100);
 	assert.equal(warnings.length, 1);
-	assert.throws(() => store.takeToken(t1), code("token-expired"));
-	const t2 = store.createToken({ stageDir, file: "g", manifest: {} });
+	assert.throws(() => store.takeToken(t1, { owner: 1 }), code("token-expired"));
+	const t2 = store.createToken({ stageDir, file: "g", manifest: {}, owner: 1 });
 	store.dropToken(t2);
 	assert.equal(warnings.length, 2);
-	assert.throws(() => store.takeToken(t2), code("token-expired"));
+	assert.throws(() => store.takeToken(t2, { owner: 1 }), code("token-expired"));
 });
 
 it("pending downloads are one-time, validated and expire", async () => {
 	const { dir, time, store } = await make();
 	const src = path.join(dir, "x.tmp-file");
 	await writeFile(src, "data");
-	const id = await store.addPending(src);
+	const id = await store.addPending(src, { owner: 1 });
 	assert.match(id, /^[A-Za-z0-9_-]{16,64}$/u);
 	assert.equal(await exists(src), false);
-	const file = store.takePending(id);
+	const file = store.takePending(id, { owner: 1 });
 	assert.equal(file, path.join(dir, `.pending-${id}.npmpro`));
 	assert.equal(await exists(file), true);
-	assert.throws(() => store.takePending(id), code("token-expired"));
-	assert.throws(() => store.takePending("../../etc"), code("token-expired"));
+	assert.throws(() => store.takePending(id, { owner: 1 }), code("token-expired"));
+	assert.throws(() => store.takePending("../../etc", { owner: 1 }), code("token-expired"));
 	await writeFile(src, "data");
-	const late = await store.addPending(src);
+	const late = await store.addPending(src, { owner: 1 });
 	time.value += 30 * 60 * 1000;
-	assert.throws(() => store.takePending(late), code("token-expired"));
+	assert.throws(() => store.takePending(late, { owner: 1 }), code("token-expired"));
 	assert.equal(await exists(path.join(dir, `.pending-${late}.npmpro`)), false);
 });
 
@@ -256,4 +256,64 @@ it("cleanup removes leftovers and keeps real backups and folders", async () => {
 	await store.cleanup();
 	assert.deepEqual((await readdir(dir)).sort(), ["auto", "database", keep]);
 	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
+});
+
+it("keeps one restore session per owner and drops the oldest of more than five", async () => {
+	const { store } = await make();
+	const stageA = await store.createStageDir("restore");
+	const stageB = await store.createStageDir("restore");
+	const a = store.createToken({ stageDir: stageA, file: "a", manifest: {}, owner: 1 });
+	const b = store.createToken({ stageDir: stageB, file: "b", manifest: {}, owner: 2 });
+	assert.equal(store.takeToken(a, { owner: 1 }).file, "a");
+	assert.deepEqual(Object.keys(store.takeToken(b, { owner: 2 })).sort(), [
+		"expires",
+		"file",
+		"kind",
+		"manifest",
+		"owner",
+		"stageDir",
+	]);
+	const stageA2 = await store.createStageDir("restore");
+	const a2 = store.createToken({ stageDir: stageA2, file: "a2", manifest: {}, owner: 1, kind: "x" });
+	assert.equal(await exists(stageA), false);
+	assert.equal(await exists(stageB), true);
+	assert.throws(() => store.takeToken(a, { owner: 1 }), code("token-expired"));
+	assert.equal(store.takeToken(a2, { owner: 1 }).kind, "x");
+	assert.equal(store.takeToken(b, { owner: 2 }).file, "b");
+	const stages = [];
+	for (let owner = 10; owner < 14; owner++) {
+		const stage = await store.createStageDir("restore");
+		stages.push(stage);
+		store.createToken({ stageDir: stage, file: "f", manifest: {}, owner });
+	}
+	// b (owner 2), a2 (owner 1) and four more make six: the oldest, b, goes
+	assert.equal(await exists(stageB), false);
+	assert.equal(await exists(stageA2), true);
+	assert.throws(() => store.takeToken(b, { owner: 2 }), code("token-expired"));
+	assert.equal(store.takeToken(a2, { owner: 1 }).file, "a2");
+});
+
+it("refuses another owner's token and pending file", async () => {
+	const { dir, store } = await make();
+	const stage = await store.createStageDir("restore");
+	const t = store.createToken({ stageDir: stage, file: "f", manifest: {}, owner: 1 });
+	assert.throws(() => store.takeToken(t, { owner: 2 }), code("token-expired"));
+	assert.equal(store.takeToken(t, { owner: 1 }).file, "f");
+	const src = path.join(dir, "x.tmp-file");
+	await writeFile(src, "data");
+	const id = await store.addPending(src, { owner: 1 });
+	assert.throws(() => store.takePending(id, { owner: 2 }), code("token-expired"));
+	assert.equal(await exists(store.takePending(id, { owner: 1 })), true);
+	assert.throws(() => store.takePending(id, { owner: 1 }), code("token-expired"));
+});
+
+it("each owner's token expires on its own timer", async () => {
+	const { store } = await make({ tokenTtlMs: 30 });
+	const stage1 = await store.createStageDir("restore");
+	const stage2 = await store.createStageDir("restore");
+	store.createToken({ stageDir: stage1, file: "a", manifest: {}, owner: 1 });
+	store.createToken({ stageDir: stage2, file: "b", manifest: {}, owner: 2 });
+	await sleep(100);
+	assert.equal(await exists(stage1), false);
+	assert.equal(await exists(stage2), false);
 });

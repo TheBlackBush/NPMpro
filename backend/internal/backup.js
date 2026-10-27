@@ -555,7 +555,7 @@ const createBackupService = ({
 						meta: { name, types: chosen, secrets: Boolean(secrets), size, kept: Boolean(keep) },
 					});
 					if (keep) return { entry: await entryOf(name) };
-					return { pending: await store.addPending(file), name };
+					return { pending: await store.addPending(file, { owner: userId }), name };
 				} catch (error) {
 					if (!keep) await rm(file, { force: true });
 					throw error;
@@ -568,10 +568,7 @@ const createBackupService = ({
 		 *
 		 * @returns {string}
 		 */
-		takePending: (access, id) => {
-			access.canAdmin();
-			return store.takePending(id);
-		},
+		takePending: (access, id) => store.takePending(id, { owner: access.token.getUserId(0) }),
 
 		list: async (access) => {
 			access.canAdmin();
@@ -667,7 +664,7 @@ const createBackupService = ({
 						adminUserId,
 						secrets: manifest.secrets === true,
 					});
-					const token = store.createToken({ stageDir, file: name, manifest });
+					const token = store.createToken({ stageDir, file: name, manifest, owner: adminUserId });
 					return { token, summary, manifest: manifestView(manifest), preview };
 				} catch (error) {
 					await withoutStage(stageDir);
@@ -679,7 +676,7 @@ const createBackupService = ({
 		/** @returns {Promise<Object>} the preview of a restore of these types */
 		check: async (access, token, { types }) => {
 			const adminUserId = adminOf(access);
-			const entry = store.takeToken(token);
+			const entry = store.takeToken(token, { owner: adminUserId });
 			const chosen = chosenTypes(types, entry.manifest.types);
 			const data = await loadStageData(entry.stageDir, chosen);
 			return previewReplace({
@@ -700,8 +697,8 @@ const createBackupService = ({
 		restore: async (access, token, { types }) => {
 			const adminUserId = adminOf(access);
 			return await store.withLock(async () => {
-				const chosen = chosenTypes(types, store.takeToken(token).manifest.types);
-				const entry = store.takeToken(token, { keep: false });
+				const chosen = chosenTypes(types, store.takeToken(token, { owner: adminUserId }).manifest.types);
+				const entry = store.takeToken(token, { keep: false, owner: adminUserId });
 				try {
 					// outside the runtime queue: a running renewal queues its stapling recovery there and must be able
 					// to finish before the pause returns
@@ -715,7 +712,13 @@ const createBackupService = ({
 		},
 
 		cancel: (access, token) => {
-			access.canAdmin();
+			const owner = adminOf(access);
+			try {
+				store.takeToken(token, { owner });
+			} catch (error) {
+				if (error.code === "token-expired") return;
+				throw error;
+			}
 			store.dropToken(token);
 		},
 	};

@@ -7,6 +7,7 @@ import { BackupError, readHeader } from "./format.js";
 
 const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
+const MAX_SESSIONS = 5;
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
@@ -40,7 +41,7 @@ const createBackupStore = ({
 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
-	let current = null; // { token, entry, timer }
+	const sessions = new Map(); // token -> { entry, timer }, oldest first
 	const pending = new Map();
 
 	const fileName = ({ host, date, auto }) =>
@@ -159,54 +160,61 @@ const createBackupStore = ({
 	};
 
 	const dropToken = (token) => {
-		if (current?.token !== token) return;
-		const { timer, entry } = current;
-		clearTimeout(timer);
-		current = null;
+		const session = sessions.get(token);
+		if (!session) return;
+		clearTimeout(session.timer);
+		sessions.delete(token);
 		// runs from a timer too: a stage that cannot be removed is logged, not thrown (it is cleared at the next start)
 		try {
-			rmSync(entry.stageDir, { recursive: true, force: true });
+			rmSync(session.entry.stageDir, { recursive: true, force: true });
 		} catch (err) {
-			logger.warn(`Could not remove the restore stage ${entry.stageDir}: ${err.message}`);
+			logger.warn(`Could not remove the restore stage ${session.entry.stageDir}: ${err.message}`);
 		}
 	};
 
-	const createToken = ({ stageDir, file, manifest }) => {
-		if (current) dropToken(current.token);
+	const createToken = ({ stageDir, file, manifest, owner, kind = null }) => {
+		// one session per owner, and the oldest goes when there are too many
+		for (const [token, session] of sessions) {
+			if (session.entry.owner === owner) dropToken(token);
+		}
+		while (sessions.size >= MAX_SESSIONS) dropToken(sessions.keys().next().value);
 		const token = randomBytes(24).toString("base64url");
 		// an abandoned restore session does not keep its stage until the next one
 		const timer = setTimeout(() => dropToken(token), tokenTtlMs);
 		timer.unref();
-		current = { token, entry: { stageDir, file, manifest, expires: clock.now() + tokenTtlMs }, timer };
+		sessions.set(token, {
+			entry: { stageDir, file, manifest, owner, kind, expires: clock.now() + tokenTtlMs },
+			timer,
+		});
 		return token;
 	};
 
-	const takeToken = (token, { keep = true } = {}) => {
-		if (!current || current.token !== token) throw expired();
-		if (clock.now() >= current.entry.expires) {
+	const takeToken = (token, { keep = true, owner } = {}) => {
+		const session = sessions.get(token);
+		if (!session || session.entry.owner !== owner) throw expired();
+		if (clock.now() >= session.entry.expires) {
 			dropToken(token);
 			throw expired();
 		}
-		const { entry } = current;
 		if (!keep) {
-			clearTimeout(current.timer);
-			current = null;
+			clearTimeout(session.timer);
+			sessions.delete(token);
 		}
-		return entry;
+		return session.entry;
 	};
 
-	const addPending = async (file) => {
+	const addPending = async (file, { owner }) => {
 		const id = randomBytes(18).toString("base64url");
 		const target = path.join(dir, `.pending-${id}.npmpro`);
 		await rename(file, target);
-		pending.set(id, { target, expires: clock.now() + PENDING_TTL_MS });
+		pending.set(id, { target, owner, expires: clock.now() + PENDING_TTL_MS });
 		return id;
 	};
 
-	const takePending = (id) => {
+	const takePending = (id, { owner }) => {
 		if (typeof id !== "string" || !PENDING_ID.test(id)) throw expired();
 		const entry = pending.get(id);
-		if (!entry) throw expired();
+		if (!entry || entry.owner !== owner) throw expired();
 		pending.delete(id);
 		if (clock.now() >= entry.expires) {
 			rmSync(entry.target, { force: true });
