@@ -566,3 +566,27 @@ it("refuses an item of an unknown type", async () => {
 		await knex.destroy();
 	}
 });
+
+it("keeps the owner of a replaced host, on a page import and in Settings", async () => {
+	for (const page of [true, false]) {
+		const knex = await open();
+		try {
+			await knex("user").insert([
+				{ id: 2, email: "bob@example.com", name: "Bob", roles: "[]" },
+				{ id: 3, email: "carol@example.com", name: "Carol", roles: "[]" },
+			]);
+			await knex("proxy_host").insert({ id: 7, domain_names: '["app.example.com"]', owner_user_id: 3 });
+			const data = { proxy_hosts: proxyHosts([host(3, "app.example.com", { owner_user_id: 2 })]) };
+			await merge(knex, {
+				data,
+				types: ["proxy_hosts"],
+				importerId: 2,
+				page,
+				choices: { "proxy_hosts:3": "replace" },
+			});
+			assert.equal((await knex("proxy_host").where({ id: 7 }).first()).owner_user_id, 3, `page ${page}`);
+		} finally {
+			await knex.destroy();
+		}
+	}
+});

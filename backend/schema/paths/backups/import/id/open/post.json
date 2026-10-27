@@ -1,7 +1,7 @@
 {
 	"operationId": "openBackupImport",
 	"summary": "Open an uploaded file for a page import",
-	"description": "Admin only. Decrypts and checks the file and returns a restore token with the merge plan. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "Only the user who uploaded the file, with manage permission on the page's items. A user who is no administrator cannot import items holding settings only administrators may set (advanced nginx config, file serving outside /var/www, values outside the API patterns): invalid-item. Decrypts and checks the file and returns a restore token with the merge plan. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
 	"tags": [
 		"backups"
 	],

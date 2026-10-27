@@ -293,9 +293,12 @@ const createBackupService = ({
 
 	const entryOf = async (name) => (await store.list()).find((item) => item.name === name);
 
-	// every type, secrets included, into backups/auto with the instance key; the caller holds the lock
-	const automaticBackup = async (userId) => {
-		const name = store.uniqueName(store.fileName({ host: hostname, date: new Date(clock.now()), auto: true }));
+	// every type, secrets included, into backups/auto with the instance key; page: before a page import, named and
+	// pruned apart from the Settings ones; the caller holds the lock
+	const automaticBackup = async (userId, page = false) => {
+		const name = store.uniqueName(
+			store.fileName({ host: hostname, date: new Date(clock.now()), auto: true, page }),
+		);
 		const file = store.pathOf(name);
 		await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
 		await writeBackup({ file, types: ALL_TYPES, secrets: true, mode: "instance", userId });
@@ -464,6 +467,7 @@ const createBackupService = ({
 	 *
 	 * @param   {Object}    options
 	 * @param   {string}    options.what                   "restore" or "merge", for the messages
+	 * @param   {boolean}   [options.page]                 a page import: its automatic backup is named apart
 	 * @param   {Object}    options.access
 	 * @param   {number}    options.userId                 who made the automatic backup
 	 * @param   {number}    options.adminUserId
@@ -476,6 +480,7 @@ const createBackupService = ({
 	 */
 	const applyWithRollback = async ({
 		what,
+		page = false,
 		access,
 		userId,
 		adminUserId,
@@ -493,7 +498,7 @@ const createBackupService = ({
 		let asideDir = null;
 		let runtimeFailed = [];
 		try {
-			autoName = await automaticBackup(userId);
+			autoName = await automaticBackup(userId, page);
 			result = await dbStep();
 		} catch (error) {
 			// the database transaction rolled back, the files are untouched
@@ -693,6 +698,7 @@ const createBackupService = ({
 		);
 		const { result, runtimeFailed, offline } = await applyWithRollback({
 			what: "merge",
+			page: scope.page,
 			access,
 			userId,
 			adminUserId: scope.adminUserId,

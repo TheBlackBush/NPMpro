@@ -1,7 +1,7 @@
 {
 	"operationId": "importBackupUpload",
 	"summary": "Upload a file for a page import",
-	"description": "Admin only. The raw file is the request body (streamed, not buffered). It is kept until it is opened. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "Needs manage permission on the page's items. The raw file is the request body (streamed, not buffered). It is kept until it is opened. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
 	"tags": [
 		"backups"
 	],

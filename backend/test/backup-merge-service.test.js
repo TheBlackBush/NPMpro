@@ -808,3 +808,22 @@ it("removes the extracted stage when using up the page import upload fails", TIM
 		await cleanup();
 	}
 });
+
+it("names the automatic backup of a page import apart from the Settings ones", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const file = await backupOf(a, { types: ["proxy_hosts"], secrets: false });
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, {});
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		const [auto] = await autoFiles(b);
+		assert.equal(auto.includes("--import-"), true, auto);
+		assert.equal(b.store.NAME.test(auto), true);
+	} finally {
+		await cleanup();
+	}
+});

@@ -1,7 +1,7 @@
 {
 	"operationId": "previewBackupExport",
 	"summary": "Preview a page export",
-	"description": "Admin only. Lists the chosen items and the linked items they need. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "Needs view permission on the page's items. Lists the chosen items and the linked items they need. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
 	"tags": [
 		"backups"
 	],

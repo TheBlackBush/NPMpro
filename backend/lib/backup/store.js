@@ -10,6 +10,7 @@ const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/
 const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
 const MAX_SESSIONS = 5;
+const PAGE_MARK = "--import";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
@@ -47,8 +48,10 @@ const createBackupStore = ({
 	const sessions = new Map(); // token -> { entry, timer }, oldest first
 	const pending = new Map();
 
-	const fileName = ({ host, date, auto }) =>
-		`npmpro-backup-${cleanHost(host)}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+	// page: the automatic backup before a page import, pruned apart from the Settings ones. "--" never occurs in a
+	// cleaned host name, so the mark cannot be mistaken for one.
+	const fileName = ({ host, date, auto, page = false }) =>
+		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
 
 	const exportName = ({ kind, host, date }) =>
 		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
@@ -126,9 +129,13 @@ const createBackupStore = ({
 		}
 	};
 
+	// keeps the newest keepAuto automatic backups of Settings restores and, apart from them, of page imports
 	const pruneAuto = async () => {
 		const items = (await list()).filter((item) => item.auto);
-		for (const item of items.slice(keepAuto)) await remove(item.name);
+		for (const page of [false, true]) {
+			const group = items.filter((item) => item.name.includes(`${PAGE_MARK}-`) === page);
+			for (const item of group.slice(keepAuto)) await remove(item.name);
+		}
 	};
 
 	const tempPath = (prefix) => path.join(dir, `.${prefix}-${randomName()}`);
@@ -187,7 +194,12 @@ const createBackupStore = ({
 		for (const [token, session] of sessions) {
 			if (session.entry.owner === owner) dropToken(token);
 		}
-		while (sessions.size >= MAX_SESSIONS) dropToken(sessions.keys().next().value);
+		// a Settings session (an admin's) never goes for the cap, the oldest page session does
+		while (sessions.size >= MAX_SESSIONS) {
+			const oldest = [...sessions].find(([, session]) => session.entry.kind !== null);
+			if (!oldest) break;
+			dropToken(oldest[0]);
+		}
 		const token = randomBytes(24).toString("base64url");
 		// an abandoned restore session does not keep its stage until the next one
 		const timer = setTimeout(() => dropToken(token), tokenTtlMs);

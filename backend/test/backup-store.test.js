@@ -258,7 +258,7 @@ it("cleanup removes leftovers and keeps real backups and folders", async () => {
 	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
 });
 
-it("keeps one restore session per owner and drops the oldest of more than five", async () => {
+it("keeps one restore session per owner and drops the oldest page session of more than five", async () => {
 	const { store } = await make();
 	const stageA = await store.createStageDir("restore");
 	const stageB = await store.createStageDir("restore");
@@ -286,11 +286,11 @@ it("keeps one restore session per owner and drops the oldest of more than five",
 		stages.push(stage);
 		store.createToken({ stageDir: stage, file: "f", manifest: {}, owner });
 	}
-	// b (owner 2), a2 (owner 1) and four more make six: the oldest, b, goes
-	assert.equal(await exists(stageB), false);
-	assert.equal(await exists(stageA2), true);
-	assert.throws(() => store.takeToken(b, { owner: 2 }), code("token-expired"));
-	assert.equal(store.takeToken(a2, { owner: 1 }).file, "a2");
+	// b (owner 2), a2 (owner 1) and four more make six: the oldest page session, a2, goes; Settings sessions stay
+	assert.equal(await exists(stageB), true);
+	assert.equal(await exists(stageA2), false);
+	assert.equal(store.takeToken(b, { owner: 2 }).file, "b");
+	assert.throws(() => store.takeToken(a2, { owner: 1 }), code("token-expired"));
 });
 
 it("refuses another owner's token and pending file", async () => {
@@ -380,4 +380,58 @@ it("keeps one pending import per owner: a new upload drops the older one and its
 	assert.equal(store.peekPending(second, { owner: 1 }).kind, "streams");
 	assert.equal(store.peekPending(other, { owner: 2 }).kind, "streams");
 	assert.equal(store.peekPending(download, { owner: 1 }).kind, null);
+});
+
+it("prunes the automatic backups of page imports apart from the Settings ones", async () => {
+	const { store } = await make();
+	const date = (i) => new Date(2026, 9, 20 + i, 10, 15, 0);
+	const settings = [];
+	const imports = [];
+	for (let i = 1; i <= 6; i++) {
+		const name = store.fileName({ host: "h", date: date(i), auto: true });
+		settings.push(name);
+		await writeFile(store.pathOf(name), "x");
+		await utimes(store.pathOf(name), i * 100, i * 100);
+	}
+	for (let i = 1; i <= 7; i++) {
+		const name = store.fileName({ host: "h", date: date(i), auto: true, page: true });
+		assert.equal(store.NAME.test(name), true, name);
+		imports.push(name);
+		await writeFile(store.pathOf(name), "x");
+		// newer than every Settings backup
+		await utimes(store.pathOf(name), 1000 + i * 100, 1000 + i * 100);
+	}
+	await store.pruneAuto();
+	const byName = (a, b) => a.localeCompare(b);
+	assert.deepEqual(
+		(await store.list()).map((item) => item.name).sort(byName),
+		[...settings.slice(1), ...imports.slice(2)].sort(byName),
+	);
+	assert.equal(new Set([...settings, ...imports]).size, 13);
+});
+
+it("never evicts a Settings session for the session cap; the oldest page session goes", async () => {
+	const { store } = await make();
+	const tokens = [];
+	for (let owner = 1; owner <= 2; owner++) {
+		tokens.push(
+			store.createToken({ stageDir: await store.createStageDir("restore"), file: "s", manifest: {}, owner }),
+		);
+	}
+	for (let owner = 10; owner <= 13; owner++) {
+		tokens.push(
+			store.createToken({
+				stageDir: await store.createStageDir("restore"),
+				file: "p",
+				manifest: {},
+				owner,
+				kind: "streams",
+			}),
+		);
+	}
+	// the first page session (owner 10) went for the sixth session; the Settings sessions stay
+	assert.equal(store.takeToken(tokens[0], { owner: 1 }).file, "s");
+	assert.equal(store.takeToken(tokens[1], { owner: 2 }).file, "s");
+	assert.throws(() => store.takeToken(tokens[2], { owner: 10 }), code("token-expired"));
+	assert.equal(store.takeToken(tokens[5], { owner: 13 }).file, "p");
 });

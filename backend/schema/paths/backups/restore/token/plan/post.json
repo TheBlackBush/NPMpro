@@ -1,7 +1,7 @@
 {
 	"operationId": "planBackupMerge",
 	"summary": "Plan a merge restore (dry run)",
-	"description": "Admin only. Shows what a merge of the chosen items would do and changes nothing. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "A Settings session (inspect) is planned by its admin, a page import session (import open) by its importer, who needs manage permission on the page's items. Shows what a merge of the chosen items would do and changes nothing. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
 	"tags": [
 		"backups"
 	],

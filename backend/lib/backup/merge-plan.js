@@ -149,6 +149,17 @@ const reasonOf = (typeId, count) => {
 	return typeId === "users" ? "same-email" : "same-name";
 };
 
+// a page user sees only the id of a clashing row they cannot view (own items only, or a type they cannot view)
+const targetLabel = ({ type, row }, scope) => {
+	const hidden =
+		scope.page &&
+		(!scope.canView(type) ||
+			(scope.visibleOwnerId !== null &&
+				scope.visibleOwnerId !== undefined &&
+				!same(row.owner_user_id, scope.visibleOwnerId)));
+	return hidden ? `#${row.id}` : itemLabel(type, row);
+};
+
 // the item before limits and choices, with the instance row it matches
 const matchItem = (typeId, row, ctx) => {
 	const base = { key: `${typeId}:${row.id}`, type: typeId, id: row.id, label: itemLabel(typeId, row) };
@@ -161,7 +172,7 @@ const matchItem = (typeId, row, ctx) => {
 	// a replace keeps the target's id, so it needs a single target of the same type
 	if (HOST_TYPES.includes(typeId) && (targets.length > 1 || first.type !== typeId)) choices = ["skip"];
 	if (typeId === "users" && same(first.row.id, ctx.scope.adminUserId)) choices = ["existing"];
-	const target = { type: first.type, id: first.row.id, label: itemLabel(first.type, first.row) };
+	const target = { type: first.type, id: first.row.id, label: targetLabel(first, ctx.scope) };
 	const item = { ...base, action: choices[0], reason: reasonOf(typeId, targets.length), target, choices };
 	return { item: { ...item, default: choices[0] }, targetRow: first.row };
 };

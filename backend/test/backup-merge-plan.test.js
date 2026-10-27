@@ -439,3 +439,29 @@ it("plans no linked item for a host that is skipped", () => {
 	const replaced = plan({ data, instance, types: ["proxy_hosts"], choices: { "proxy_hosts:1": "replace" } });
 	assert.equal(find(replaced, "certificates:4").action, "add");
 });
+
+it("labels a clash target the page user cannot see by its id only", () => {
+	const data = { proxy_hosts: { proxy_host: [{ id: 3, domain_names: ["app.example.com"] }] } };
+	const instance = {
+		proxy_host: [{ id: 12, domain_names: ["app.example.com", "secret.example.com"], owner_user_id: 2 }],
+		redirection_host: [],
+	};
+	const own = plan({
+		data,
+		instance,
+		types: ["proxy_hosts"],
+		scope: { page: true, visibleOwnerId: 5, canEdit: () => false },
+	});
+	assert.equal(find(own, "proxy_hosts:3").target.label, "#12");
+	const noView = plan({
+		data,
+		instance,
+		types: ["proxy_hosts"],
+		scope: { page: true, canView: () => false, canEdit: () => false },
+	});
+	assert.equal(find(noView, "proxy_hosts:3").target.label, "#12");
+	const all = plan({ data, instance, types: ["proxy_hosts"], scope: { page: true } });
+	assert.equal(find(all, "proxy_hosts:3").target.label, "app.example.com, secret.example.com");
+	const mine = plan({ data, instance, types: ["proxy_hosts"], scope: { page: true, visibleOwnerId: 2 } });
+	assert.equal(find(mine, "proxy_hosts:3").target.label, "app.example.com, secret.example.com");
+});

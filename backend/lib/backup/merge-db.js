@@ -307,6 +307,9 @@ const mergeTypes = async ({
 				hostId = await inserter.insertWithNewId(table, row);
 			} else {
 				hostId = item.target.id;
+				// a replaced host stays with its owner
+				const target = await trx(table).where({ id: hostId }).first("owner_user_id");
+				if (target) row.owner_user_id = target.owner_user_id;
 				await updateRow(table, hostId, row);
 				if (item.type === "proxy_hosts") {
 					await trx(LINK_TABLE).where({ proxy_host_id: hostId }).del();

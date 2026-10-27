@@ -1,7 +1,7 @@
 {
 	"operationId": "restoreBackup",
 	"summary": "Restore a backup (replace or merge)",
-	"description": "Admin only. Replace (default) replaces the chosen types with the backup's after an automatic backup. Merge adds the chosen items to the instance and needs the plan_hash of the plan the user confirmed; when the instance changed since, the call fails with 409 plan-changed and the error carries the new plan. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"description": "A Settings session (inspect) is restored by its admin, a page import session (import open) is merged by its importer, who needs manage permission on the page's items. Replace (default, Settings only) replaces the chosen types with the backup's after an automatic backup. Merge adds the chosen items to the instance and needs the plan_hash of the plan the user confirmed; when the instance changed since, the call fails with 409 plan-changed and the error carries the new plan. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
 	"tags": [
 		"backups"
 	],
