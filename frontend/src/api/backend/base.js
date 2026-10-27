@@ -20,15 +20,17 @@ function buildUrl({ url, params }) {
 // (items: type ids, choices: keys like "proxy_hosts:3" or "file:custom_nginx/MyFile.conf")
 export const BACKUP_RAW_KEYS = ["counts", "certificate_kinds", "certificateKinds", "items", "choices"];
 
+// url is "/backups..." (request) or "/api/backups..." (response path)
+export const isBackupUrl = (url) => /^(\/api)?\/backups(?:[/?]|$)/u.test(url);
+
 function buildBody(data, url) {
-	const isBackupApi = typeof url === "string" && url.startsWith("/backups");
+	const isBackupApi = typeof url === "string" && isBackupUrl(url);
 	return JSON.stringify(decamelizeKeys(data, isBackupApi ? { rawKeys: BACKUP_RAW_KEYS } : undefined));
 }
 
 function camelizeResponse(payload, responseUrl) {
 	const isBackupApi =
-		typeof responseUrl === "string" &&
-		new URL(responseUrl, window.location.origin).pathname.startsWith("/api/backups");
+		typeof responseUrl === "string" && isBackupUrl(new URL(responseUrl, window.location.origin).pathname);
 	return camelizeKeys(payload, isBackupApi ? { rawKeys: BACKUP_RAW_KEYS } : undefined);
 }
 

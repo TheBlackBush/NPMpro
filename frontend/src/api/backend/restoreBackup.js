@@ -8,7 +8,8 @@ import { camelizeKeys } from "./caseConvert";
  * @param {{ mode?: "replace" | "merge", types: string[], items?: object, choices?: object, planHash?: string }} options
  */
 export async function restoreBackup(token, { mode = "replace", types, items, choices, planHash } = {}) {
-	const data = mode === "merge" ? { mode, types, items, choices, planHash } : { mode, types, confirm: true };
+	const data =
+		mode === "merge" ? { mode, types, items, choices, planHash, confirm: true } : { mode, types, confirm: true };
 	try {
 		return await api.post({ url: `/backups/restore/${encodeURIComponent(token)}`, data });
 	} catch (err) {
