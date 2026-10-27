@@ -2,7 +2,7 @@ import { IconHelp } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteDeadHost, toggleDeadHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ListToolbar, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { getDirectory, useDeadHosts, useDirectorySuggestions, useListFilters } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeadHostModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
@@ -93,6 +93,11 @@ export default function TableWrapper() {
 						>
 							<IconHelp className="icon" aria-hidden="true" />
 						</Button>
+						<ImportExportButtons
+							kind="dead_hosts"
+							permissionSection={DEAD_HOSTS}
+							hasItems={Boolean(data?.length)}
+						/>
 						<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
 							{data?.length ? (
 								<Button size="sm" color="red" onClick={() => showDeadHostModal("new")}>

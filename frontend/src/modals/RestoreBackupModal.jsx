@@ -1,9 +1,9 @@
 import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
-import { cancelRestore, checkRestore, inspectBackup } from "src/api/backend";
+import { cancelRestore, checkRestore, inspectBackup, openImport } from "src/api/backend";
 import { AppModal, Button, ErrorAlert, Loading, PasswordInput } from "src/components";
-import { useBackupTypes, useRestoreBackup } from "src/hooks";
+import { useBackupTypes, useImportUpload, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
 import { formatDateTime, intl, T } from "src/locale";
 import { emptyItemType } from "src/modules/BackupMerge";
@@ -11,6 +11,7 @@ import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetai
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
+import { importCategories, importTypes, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
 import { ItemList } from "./RestoreBackup/ItemList";
 import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
 
@@ -20,6 +21,18 @@ import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup
  */
 const showRestoreBackupModal = (entry, navigate) => {
 	EasyModal.show(RestoreBackupModal, { entry, navigate });
+};
+
+/**
+ * Import a file on a list page: the upload, the passphrase when the file has secrets, then the merge view limited to
+ * the page's kind and the linked kinds the file holds.
+ *
+ * @param {string}   kind        the page's kind of items (proxy_hosts, certificates, ...)
+ * @param {File}     file        the chosen .npmpro file
+ * @param {Function} [navigate]  opens an app route, for the host list links of the result
+ */
+const showImportItemsModal = (kind, file, navigate) => {
+	EasyModal.show(RestoreBackupModal, { importKind: kind, file, navigate });
 };
 
 // the host list of each host table, for hosts left offline after a restore
@@ -188,18 +201,25 @@ function Result({ result, types, plan, onOpen }) {
 }
 
 /**
- * Restore a stored backup: the passphrase when the file is encrypted with one, then Replace or Merge (a file of single
+ * Restore a stored backup (entry) or import a file on a list page (importKind and file, merge only, see
+ * showImportItemsModal): the passphrase when the file is encrypted with one, then Replace or Merge (a file of single
  * items only merges). Replace shows what it holds as the type tree (all ticked) with what a restore of the selection
  * clears or skips; Merge shows the merge view (MergeView) with its dry run. Then a confirmation and the restore.
  * Closing before the restore releases the unpacked backup; while it runs the dialog cannot be closed.
  */
-const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove }) => {
-	const needsPassphrase = entry.encrypted === true && !entry.auto;
+const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate, visible, remove }) => {
+	const importing = Boolean(importKind);
+	// an import's file says whether it has a passphrase once it is uploaded
+	const [encrypted, setEncrypted] = useState(!importing && entry.encrypted === true && !entry.auto);
+	const needsPassphrase = encrypted;
 	const baseId = useId();
-	const { data: typesData, error: typesError } = useBackupTypes();
+	// the parts of a Settings backup (administrators only); an import shows its kinds without them
+	const { data: typesData, error: typesError } = useBackupTypes(!importing);
 	const restore = useRestoreBackup();
+	const upload = useImportUpload();
 	const queryClient = useQueryClient();
-	const [step, setStep] = useState(needsPassphrase ? "passphrase" : "opening");
+	const [step, setStep] = useState(importing ? "uploading" : needsPassphrase ? "passphrase" : "opening");
+	const [progress, setProgress] = useState(0);
 	const [passphrase, setPassphrase] = useState("");
 	const [openError, setOpenError] = useState(null);
 	const [opened, setOpened] = useState(null);
@@ -220,38 +240,78 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const started = useRef(false);
 	// closed while the backup was still being opened: its token is released as soon as it arrives
 	const closed = useRef(false);
+	// the uploaded import file, kept by the server until it is opened (a wrong passphrase keeps it for another try)
+	const uploadRef = useRef(null);
+	const abortRef = useRef(null);
 	const running = step === "running";
 
 	const open = async (secret) => {
 		setOpenError(null);
 		setStep("opening");
 		try {
-			const res = await inspectBackup(entry.name, secret);
+			const res = importing
+				? await openImport(uploadRef.current, secret)
+				: await inspectBackup(entry.name, secret);
 			if (closed.current) {
 				cancelRestore(res.token).catch(() => undefined);
 				return;
 			}
+			const types = importing ? importTypes(importKind, res.manifest.types) : res.manifest.types;
 			tokenRef.current = res.token;
-			checkedRef.current = res.manifest.types;
+			checkedRef.current = types;
 			setOpened(res);
-			setSelected(res.manifest.types);
-			// a file of single items can only be merged
-			setMode(res.manifest.partial === true ? "merge" : "replace");
-			setPreview(res.preview);
+			setSelected(types);
+			// a file of single items and a page import can only be merged
+			setMode(importing || res.manifest.partial === true ? "merge" : "replace");
+			setPreview(res.preview ?? null);
 			setStep("preview");
 		} catch (err) {
 			if (closed.current) return;
 			setOpenError(withErrorDetails(err));
-			setStep(needsPassphrase ? "passphrase" : "open-failed");
+			// an import's upload is used up by any error but a wrong passphrase
+			const retry =
+				secret !== undefined &&
+				(!importing || err?.payload?.error?.message_i18n === "backup.error.wrong-passphrase");
+			setStep(retry ? "passphrase" : "open-failed");
+		}
+	};
+
+	// an import is uploaded first; it then opens at once or after its passphrase
+	const uploadFile = async () => {
+		if (file.size > MAX_IMPORT) {
+			setOpenError(tooLargeError());
+			setStep("open-failed");
+			return;
+		}
+		abortRef.current = new AbortController();
+		try {
+			const res = await upload.mutateAsync({
+				kind: importKind,
+				file,
+				onProgress: setProgress,
+				abortController: abortRef.current,
+			});
+			if (closed.current) return;
+			uploadRef.current = res.id;
+			setEncrypted(res.encrypted);
+			if (res.encrypted) setStep("passphrase");
+			else void open(undefined);
+		} catch (err) {
+			if (closed.current || err?.name === "AbortError") return;
+			setOpenError(withErrorDetails(err));
+			setStep("open-failed");
+		} finally {
+			abortRef.current = null;
 		}
 	};
 
 	// a backup without a passphrase opens at once
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once when the dialog opens
 	useEffect(() => {
-		if (needsPassphrase || started.current) return;
+		if (started.current) return;
 		started.current = true;
-		void open(undefined);
+		if (importing) void uploadFile();
+		else if (!needsPassphrase) void open(undefined);
 	}, []);
 
 	const merge = useMergePlan({ token: opened?.token, types: selected, enabled: mode === "merge" });
@@ -287,6 +347,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const close = () => {
 		if (running) return;
 		closed.current = true;
+		abortRef.current?.abort();
 		const token = tokenRef.current;
 		tokenRef.current = null;
 		// releasing early only frees the unpacked copy sooner: it expires on the server anyway
@@ -338,10 +399,12 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const merging = mode === "merge";
 	const stale = merging ? merge.stale : checking || selected !== checkedRef.current;
 	const manifest = opened?.manifest;
-	const categories = typesData && manifest ? categoriesOf(typesData.categories, manifest.types) : [];
+	let categories = null;
+	if (manifest && importing) categories = importCategories(importTypes(importKind, manifest.types));
+	else if (manifest && typesData) categories = categoriesOf(typesData.categories, manifest.types);
 	const baseReason = restoreBlockReason({
 		selected,
-		shown: typesData && manifest ? categories.flatMap((category) => category.types) : null,
+		shown: categories ? categories.flatMap((category) => category.types) : null,
 		partsFailed: Boolean(typesError),
 		checkFailed: Boolean(merging ? merge.error : checkError),
 		stale,
@@ -363,7 +426,14 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 
 	let body = null;
 	let footer = null;
-	if (step === "passphrase") {
+	if (step === "uploading") {
+		body = <Uploading progress={progress} />;
+		footer = (
+			<Button className="ms-auto" onClick={close}>
+				<T id="cancel" />
+			</Button>
+		);
+	} else if (step === "passphrase") {
 		const formId = `${baseId}-form`;
 		body = (
 			<form
@@ -448,12 +518,14 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 						}}
 					/>
 				</p>
-				<ModeSwitch mode={mode} partial={manifest.partial === true} onChange={changeMode} />
+				{importing ? null : (
+					<ModeSwitch mode={mode} partial={manifest.partial === true} onChange={changeMode} />
+				)}
 				<ErrorAlert error={typesError} />
 				{merging ? (
 					<MergeView
 						merge={merge}
-						categories={categories}
+						categories={categories ?? []}
 						counts={manifest.counts}
 						selected={selected}
 						onTypesChange={changeTypes}
@@ -463,7 +535,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 					<>
 						<TypeTree
 							label={<T id="settings.backup.restore.parts" />}
-							categories={categories}
+							categories={categories ?? []}
 							counts={manifest.counts}
 							selected={selected}
 							onChange={changeTypes}
@@ -511,7 +583,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 						aria-describedby={restoreReason ? reasonId : undefined}
 						onClick={run}
 					>
-						<T id="settings.backup.restore" />
+						<T id={importing ? "backup.import" : "settings.backup.restore"} />
 					</Button>
 				</div>
 			</>
@@ -546,11 +618,15 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 		<AppModal show={visible} onHide={close} size="xl" backdrop={running ? "static" : true} keyboard={!running}>
 			<AppModal.Header closeButton={!running}>
 				<AppModal.Title>
-					<T id="settings.backup.restore.title" />
+					{importing ? (
+						<T id="backup.import.title" data={{ objects: typeLabel(importKind) }} />
+					) : (
+						<T id="settings.backup.restore.title" />
+					)}
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
-				<div className="text-secondary small text-break mb-3">{entry.name}</div>
+				<div className="text-secondary small text-break mb-3">{importing ? file.name : entry.name}</div>
 				{body}
 			</AppModal.Body>
 			<AppModal.Footer>{footer}</AppModal.Footer>
@@ -558,4 +634,4 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	);
 });
 
-export { showRestoreBackupModal };
+export { showImportItemsModal, showRestoreBackupModal };

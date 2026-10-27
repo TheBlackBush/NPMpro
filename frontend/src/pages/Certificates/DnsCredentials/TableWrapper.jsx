@@ -1,7 +1,7 @@
 import { IconHelp, IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { deleteDnsCredential } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, ImportExportButtons, LoadingPage } from "src/components";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showDnsCredentialModal, showHelpModal } from "src/modals";
@@ -53,6 +53,11 @@ export default function TableWrapper() {
 						>
 							<IconHelp className="icon" aria-hidden="true" />
 						</Button>
+						<ImportExportButtons
+							kind="dns_credentials"
+							permissionSection={CERTIFICATES}
+							hasItems={Boolean(data?.length)}
+						/>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 							{data?.length ? (
 								<Button size="sm" color="pink" onClick={() => showDnsCredentialModal("new")}>

@@ -360,13 +360,24 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 					</div>
 					{choiceItems.length > 0 || linkedItems.length > 0 ? (
 						<div className="mb-3">
-							<div className="fw-bold mb-1">
-								<T id="settings.backup.merge.needs-choice" data={{ count: choiceItems.length }} />
-							</div>
-							{choiceItems.length > 0 ? <ItemRows items={choiceItems} {...rowProps} /> : null}
+							{choiceItems.length > 0 ? (
+								<>
+									<div className="fw-bold mb-1">
+										<T
+											id="settings.backup.merge.needs-choice"
+											data={{ count: choiceItems.length }}
+										/>
+									</div>
+									<ItemRows items={choiceItems} {...rowProps} />
+								</>
+							) : null}
 							{linkedItems.length > 0 ? (
 								<>
-									<div className="text-secondary small mt-2 mb-1">
+									<div
+										className={
+											choiceItems.length > 0 ? "text-secondary small mt-2 mb-1" : "fw-bold mb-1"
+										}
+									>
 										<T id="settings.backup.merge.linked" />
 									</div>
 									<ItemRows items={linkedItems} {...rowProps} />

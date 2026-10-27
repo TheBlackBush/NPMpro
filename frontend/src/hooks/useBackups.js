@@ -10,11 +10,15 @@ import {
 	uploadImport,
 } from "src/api/backend";
 
-const useBackupTypes = () =>
+/**
+ * The backup parts with their counts; administrators only, so a page import passes enabled false.
+ */
+const useBackupTypes = (enabled = true) =>
 	useQuery({
 		queryKey: ["backup-types"],
 		queryFn: () => getBackupTypes(),
 		staleTime: 60 * 1000,
+		enabled,
 	});
 
 const useBackups = () =>

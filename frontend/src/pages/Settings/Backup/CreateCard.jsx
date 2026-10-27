@@ -1,50 +1,13 @@
-import { Field, Form, Formik, useFormikContext } from "formik";
+import { Form, Formik, useFormikContext } from "formik";
 import { useId, useRef, useState } from "react";
 import { downloadPendingBackup } from "src/api/backend";
-import {
-	Button,
-	ErrorAlert,
-	FormErrorNote,
-	Loading,
-	PasswordInput,
-	SwitchField,
-	showFirstInvalid,
-	useShownErrors,
-} from "src/components";
+import { Button, ErrorAlert, FormErrorNote, Loading, showFirstInvalid, useShownErrors } from "src/components";
 import { useBackupTypes, useCreateBackup } from "src/hooks";
-import { intl, T } from "src/locale";
-import { DEFAULT_SELECTED, passphraseErrors, withErrorDetails } from "src/modules/BackupTypes";
+import { T } from "src/locale";
+import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
 import { showObjectSuccess } from "src/notifications";
+import { SecretsFields, validateSecrets } from "./SecretsFields";
 import { TypeTree } from "./TypeTree";
-
-const validate = (values) =>
-	Object.fromEntries(
-		Object.entries(passphraseErrors(values)).map(([field, id]) => [field, intl.formatMessage({ id })]),
-	);
-
-function PassphraseField({ name, id, labelId, hintId }) {
-	const { submitCount } = useFormikContext();
-	return (
-		<Field name={name}>
-			{({ field, meta }) => (
-				<div className="mb-3">
-					<PasswordInput
-						{...field}
-						id={id}
-						label={<T id={labelId} />}
-						autoComplete="new-password"
-						error={meta.touched || submitCount > 0 ? meta.error : undefined}
-					/>
-					{hintId ? (
-						<div className="form-hint">
-							<T id={hintId} />
-						</div>
-					) : null}
-				</div>
-			)}
-		</Field>
-	);
-}
 
 function CreateForm({ data, error, keepRef }) {
 	const { values, setFieldValue, isSubmitting, submitForm } = useFormikContext();
@@ -80,41 +43,7 @@ function CreateForm({ data, error, keepRef }) {
 					onChange={(types) => setFieldValue("types", types)}
 					disabled={isSubmitting}
 				/>
-				<Field name="secrets" type="checkbox">
-					{({ field }) => (
-						<SwitchField
-							{...field}
-							id={`${baseId}-secrets`}
-							className="mt-2 mb-3"
-							label={<T id="settings.backup.secrets" />}
-							hint={<T id="settings.backup.secrets.hint" />}
-							disabled={isSubmitting}
-						/>
-					)}
-				</Field>
-				{values.secrets ? (
-					<div className="row">
-						<div className="col-12 col-md-6">
-							<PassphraseField
-								name="passphrase"
-								id={`${baseId}-passphrase`}
-								labelId="settings.backup.passphrase"
-								hintId="settings.backup.passphrase.hint"
-							/>
-						</div>
-						<div className="col-12 col-md-6">
-							<PassphraseField
-								name="passphraseRepeat"
-								id={`${baseId}-passphrase-repeat`}
-								labelId="settings.backup.passphrase.repeat"
-							/>
-						</div>
-					</div>
-				) : (
-					<p className="text-secondary small mb-3">
-						<T id="settings.backup.secrets.off" />
-					</p>
-				)}
+				<SecretsFields offNoteId="settings.backup.secrets.off" disabled={isSubmitting} />
 				<ErrorAlert error={error} className="mb-0" />
 			</div>
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
@@ -201,7 +130,7 @@ function CreateCard() {
 				passphrase: "",
 				passphraseRepeat: "",
 			}}
-			validate={validate}
+			validate={validateSecrets}
 			onSubmit={onSubmit}
 		>
 			<CreateForm data={data} error={error} keepRef={keepRef} />
