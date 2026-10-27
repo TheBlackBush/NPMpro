@@ -211,3 +211,37 @@ it("verifyStage refuses symlinks under files/ and a symlinked files/ or data/ wi
 	await knex.destroy();
 	await rm(paths.root, { recursive: true });
 });
+
+it("exports only the chosen items and marks the backup partial", async () => {
+	const knex = await sqlite();
+	const paths = await setup();
+	await knex("proxy_host").insert({ id: 2, domain_names: '["b.example.com"]' });
+	await knex("npmpro_location").insert([
+		{ id: 1, proxy_host_id: 1 },
+		{ id: 2, proxy_host_id: 2 },
+	]);
+	await knex("certificate").insert([
+		{ id: 4, provider: "other" },
+		{ id: 5, provider: "other" },
+	]);
+	await put(path.join(paths.dataDir, "tls/certbot/archive/npm-4/cert1.pem"), "C4");
+	await put(path.join(paths.dataDir, "tls/certbot/archive/npm-5/cert1.pem"), "C5");
+	const items = { proxy_hosts: [2], certificates: [4] };
+	const { manifest, summary } = await run(knex, paths, { secrets: false, items });
+	const proxy = JSON.parse(await readFile(path.join(paths.stageDir, "data/proxy_hosts.json"), "utf8"));
+	assert.deepEqual(
+		proxy.proxy_host.map((row) => row.id),
+		[2],
+	);
+	assert.deepEqual(proxy.npmpro_location, [{ id: 2, proxy_host_id: 2 }]);
+	assert.ok(existsSync(path.join(paths.stageDir, "files/tls/certbot/archive/npm-4/cert1.pem")));
+	assert.ok(!existsSync(path.join(paths.stageDir, "files/tls/certbot/archive/npm-5")));
+	assert.ok(!existsSync(path.join(paths.stageDir, "files/tls/certbot/archive/npm-1")));
+	assert.equal(manifest.partial, true);
+	assert.deepEqual(manifest.items, items);
+	assert.equal(summary.partial, true);
+	assert.equal(manifest.counts.proxy_hosts, 1);
+	await verifyStage(paths.stageDir, manifest);
+	await knex.destroy();
+	await rm(paths.root, { recursive: true });
+});
