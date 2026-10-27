@@ -42,15 +42,18 @@ function CertificateKinds({ kinds, id }) {
 	);
 }
 
-// the rows or files of a type, "3 of 12" while only some of its items are chosen; bare leaves out the wrapper
-function TypeCount({ typeId, counts, itemCounts, bare = false }) {
+// the rows or files of a type, "3 of 12" while only some of its items are chosen, undefined when unknown
+const typeCount = (typeId, counts, itemCounts) => {
 	const part = itemCounts?.[typeId];
-	let text = counts[typeId];
 	if (part && part.selected < part.total) {
-		text = <T id="settings.backup.items-of" data={{ selected: part.selected, total: part.total }} />;
+		return <T id="settings.backup.items-of" data={{ selected: part.selected, total: part.total }} />;
 	}
-	if (text === undefined) return null;
-	return bare ? text : <span className="text-secondary ms-1">{text}</span>;
+	return counts[typeId];
+};
+
+function TypeCount({ typeId, counts, itemCounts }) {
+	const text = typeCount(typeId, counts, itemCounts);
+	return text === undefined ? null : <span className="text-secondary ms-1">{text}</span>;
 }
 
 // "Choose items" of the selected types of a box: one link, or the type names after the label when it has several
@@ -106,9 +109,7 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 			<span id={labelId} className="fw-bold">
 				<T id={`settings.backup.category.${category.id}`} />
 			</span>
-			{count === undefined || count === null ? null : (
-				<span className="badge bg-secondary-lt ms-auto">{count}</span>
-			)}
+			{count === undefined ? null : <span className="badge bg-secondary-lt ms-auto">{count}</span>}
 		</label>
 	);
 }
@@ -192,16 +193,9 @@ function TypeTree({
 											category={category}
 											state={state}
 											count={
-												several ? (
-													categoryCount(category, counts)
-												) : (
-													<TypeCount
-														typeId={category.types[0]}
-														counts={counts}
-														itemCounts={itemCounts}
-														bare
-													/>
-												)
+												several
+													? categoryCount(category, counts)
+													: typeCount(category.types[0], counts, itemCounts)
 											}
 											onChange={() => onChange(toggleCategory(category, selected))}
 											disabled={disabled}

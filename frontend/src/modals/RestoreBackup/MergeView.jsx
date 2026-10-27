@@ -3,7 +3,16 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
 import { ErrorAlert, ItemChecklist } from "src/components";
 import { intl, T } from "src/locale";
-import { ACTIONS, byAction, changedChoices, chooseItems, mergeCatalogue, requestItems } from "src/modules/BackupMerge";
+import {
+	ACTIONS,
+	byAction,
+	chooseItems,
+	mergeCatalogue,
+	mergeDefaults,
+	needsChoice,
+	requestItems,
+	sentChoices,
+} from "src/modules/BackupMerge";
 import { withErrorDetails } from "src/modules/BackupTypes";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
 import { ItemList } from "./ItemList";
@@ -84,7 +93,8 @@ export function useMergePlan({ token, types, enabled }) {
 	const [request, setRequest] = useState(null);
 	// the state the shown plan belongs to
 	const checkedRef = useRef(null);
-	const planRef = useRef(null);
+	// the default choice of every item seen in a plan
+	const defaultsRef = useRef({});
 	const state = useMemo(() => ({ types, items, choices }), [types, items, choices]);
 
 	useEffect(() => {
@@ -99,14 +109,14 @@ export function useMergePlan({ token, types, enabled }) {
 			const sent = {
 				types,
 				items: requestItems(items, types),
-				// only choices that differ from the default; the first plan has none to compare with
-				choices: planRef.current ? changedChoices(planRef.current, choices) : {},
+				// every local choice that differs from its item's default, also of items the plan left out for now
+				choices: sentChoices(choices, defaultsRef.current),
 			};
 			try {
 				const next = await planRestore(token, sent);
 				if (!current) return;
 				checkedRef.current = state;
-				planRef.current = next;
+				defaultsRef.current = mergeDefaults(defaultsRef.current, next);
 				setPlan(next);
 				setRequest(sent);
 				setCatalogue((known) => mergeCatalogue(known, next));
@@ -137,7 +147,7 @@ export function useMergePlan({ token, types, enabled }) {
 		stale: checking || state !== checkedRef.current,
 		// the plan a merge answered with when the instance changed since this one: shown for a new confirmation
 		planChanged: (next) => {
-			planRef.current = next;
+			defaultsRef.current = mergeDefaults(defaultsRef.current, next);
 			setPlan(next);
 			setCatalogue((known) => mergeCatalogue(known, next));
 			setChanged(true);
@@ -189,11 +199,15 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 						<input
 							className="form-check-input"
 							type="checkbox"
-							checked={!item.unticked}
+							checked={choice === undefined ? !item.unticked : choice !== "unticked"}
 							onChange={(e) => onChoice(item.key, e.target.checked ? item.default : "unticked")}
 							disabled={disabled}
+							aria-label={intl.formatMessage(
+								{ id: "settings.backup.merge.include-item" },
+								{ label: item.label },
+							)}
 						/>
-						<span className="form-check-label">
+						<span className="form-check-label" aria-hidden="true">
 							<T id="settings.backup.merge.include" />
 						</span>
 					</label>
@@ -275,11 +289,12 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 	const panel = open ? (
 		<div className="card card-sm">
 			<div className="card-header py-2">
-				<div className="card-title">
+				<div id={`${baseId}-items-title`} className="card-title">
 					<T id={`settings.backup.type.${open}`} />
 				</div>
 			</div>
 			<ItemChecklist
+				labelledBy={`${baseId}-items-title`}
 				items={catalogue[open]}
 				selected={items[open] ?? catalogue[open].map((item) => item.id)}
 				onChange={(ids) => {
@@ -297,7 +312,9 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 	};
 	const rowProps = { merge: { ...merge, setChoice: choose }, labelOf, disabled };
 	// clashes and matches with a choice, and the linked items, which can be left out
-	const choiceItems = plan ? plan.items.filter((item) => item.choices.length > 1 || item.linked) : [];
+	const choiceItems = plan ? needsChoice(plan) : [];
+	// linked items with nothing to choose but Include, listed after the choices
+	const linkedItems = plan ? plan.items.filter((item) => item.linked && item.choices.length < 2) : [];
 	const groups = plan ? byAction(plan) : {};
 	const allId = `${baseId}-all`;
 
@@ -341,12 +358,20 @@ export function MergeView({ merge, categories, counts, selected, onTypesChange, 
 							))}
 						</div>
 					</div>
-					{choiceItems.length > 0 ? (
+					{choiceItems.length > 0 || linkedItems.length > 0 ? (
 						<div className="mb-3">
 							<div className="fw-bold mb-1">
 								<T id="settings.backup.merge.needs-choice" data={{ count: choiceItems.length }} />
 							</div>
-							<ItemRows items={choiceItems} {...rowProps} />
+							{choiceItems.length > 0 ? <ItemRows items={choiceItems} {...rowProps} /> : null}
+							{linkedItems.length > 0 ? (
+								<>
+									<div className="text-secondary small mt-2 mb-1">
+										<T id="settings.backup.merge.linked" />
+									</div>
+									<ItemRows items={linkedItems} {...rowProps} />
+								</>
+							) : null}
 						</div>
 					) : null}
 					{plan.items.length > 0 ? (

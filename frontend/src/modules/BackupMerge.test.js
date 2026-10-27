@@ -5,10 +5,13 @@ import {
 	byAction,
 	changedChoices,
 	chooseItems,
+	emptyItemType,
 	mergeCatalogue,
+	mergeDefaults,
 	needsChoice,
 	requestItems,
 	searchItems,
+	sentChoices,
 } from "./BackupMerge.js";
 
 const plan = {
@@ -91,5 +94,44 @@ describe("BackupMerge item choice", () => {
 		assert.deepEqual(chooseItems({}, "proxy_hosts", [1], 2), { proxy_hosts: [1] });
 		assert.deepEqual(chooseItems({ proxy_hosts: [1] }, "proxy_hosts", [1, 2], 2), {});
 		assert.deepEqual(chooseItems({}, "proxy_hosts", [], 2), { proxy_hosts: [] });
+	});
+});
+
+describe("BackupMerge choices across plans", () => {
+	const withApp = {
+		items: [
+			{
+				key: "proxy_hosts:1",
+				type: "proxy_hosts",
+				action: "skip",
+				choices: ["skip", "replace"],
+				default: "skip",
+			},
+			{ key: "setting:3", type: "settings_runtime", action: "keep", choices: ["keep", "take"], default: "keep" },
+		],
+	};
+	const withoutApp = { items: [withApp.items[1]] };
+
+	it("keeps a choice whose item left the plan and comes back", () => {
+		let defaults = mergeDefaults({}, withApp);
+		const choices = { "proxy_hosts:1": "replace" };
+		// the item is left out (unticked in Choose items or its type deselected), then chosen again
+		defaults = mergeDefaults(defaults, withoutApp);
+		assert.deepEqual(sentChoices(choices, defaults), { "proxy_hosts:1": "replace" });
+		defaults = mergeDefaults(defaults, withApp);
+		assert.deepEqual(sentChoices(choices, defaults), { "proxy_hosts:1": "replace" });
+	});
+
+	it("leaves out choices equal to their default", () => {
+		const defaults = mergeDefaults({}, withApp);
+		assert.deepEqual(sentChoices({ "proxy_hosts:1": "skip", "setting:3": "take" }, defaults), {
+			"setting:3": "take",
+		});
+	});
+
+	it("emptyItemType names a selected type with no item chosen", () => {
+		assert.equal(emptyItemType({ proxy_hosts: [] }, ["proxy_hosts"]), "proxy_hosts");
+		assert.equal(emptyItemType({ proxy_hosts: [] }, ["streams"]), null);
+		assert.equal(emptyItemType({ proxy_hosts: [1] }, ["proxy_hosts"]), null);
 	});
 });

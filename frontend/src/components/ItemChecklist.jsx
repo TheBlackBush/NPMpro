@@ -15,8 +15,9 @@ const SEARCH_FROM = 11;
  * @param {Function}  props.onChange      (ids) => void, in the order of items
  * @param {string}    [props.searchLabel] the label of the search field
  * @param {boolean}   [props.disabled]
+ * @param {string}    [props.labelledBy]  the id of the list's title, for the group of checkboxes
  */
-function ItemChecklist({ items, selected, onChange, searchLabel, disabled = false }) {
+function ItemChecklist({ items, selected, onChange, searchLabel, disabled = false, labelledBy }) {
 	const [search, setSearch] = useState("");
 	const ticked = new Set(selected.map(String));
 	const shown = items.length >= SEARCH_FROM ? searchItems(items, search) : items;
@@ -74,7 +75,8 @@ function ItemChecklist({ items, selected, onChange, searchLabel, disabled = fals
 				</p>
 			) : (
 				// no Tabler utility caps a height (only mh-100): a long list scrolls inside the box
-				<div
+				<fieldset
+					aria-labelledby={labelledBy}
 					className="list-group list-group-flush list-group-selectable overflow-auto"
 					style={{ maxHeight: "20rem" }}
 				>
@@ -94,7 +96,7 @@ function ItemChecklist({ items, selected, onChange, searchLabel, disabled = fals
 							</span>
 						</label>
 					))}
-				</div>
+				</fieldset>
 			)}
 		</div>
 	);

@@ -79,3 +79,18 @@ export const chooseItems = (items, typeId, ids, total) => {
 	else next[typeId] = ids;
 	return next;
 };
+
+// the default choice of every item seen in a plan so far, so a choice survives its item leaving the plan
+export const mergeDefaults = (defaults, plan) => ({
+	...defaults,
+	...Object.fromEntries(plan.items.map((item) => [item.key, item.default])),
+});
+
+// the local choices that differ from their item's known default (the server ignores keys and choices it does not
+// know for the current selection)
+export const sentChoices = (choices, defaults) =>
+	Object.fromEntries(Object.entries(choices ?? {}).filter(([key, choice]) => choice !== defaults?.[key]));
+
+// a selected type whose item list was emptied in Choose items, null when there is none
+export const emptyItemType = (items, types) =>
+	types.find((typeId) => Array.isArray(items?.[typeId]) && items[typeId].length === 0) ?? null;

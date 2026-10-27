@@ -6,6 +6,7 @@ import { AppModal, Button, ErrorAlert, Loading, PasswordInput } from "src/compon
 import { useBackupTypes, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
 import { formatDateTime, intl, T } from "src/locale";
+import { emptyItemType } from "src/modules/BackupMerge";
 import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetails } from "src/modules/BackupTypes";
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
@@ -28,6 +29,18 @@ const HOST_LISTS = {
 	dead_host: { path: "/nginx/404", labelId: "dead-hosts" },
 	stream: { path: "/nginx/stream", labelId: "streams" },
 };
+
+// the merge wording of the restore reasons
+const MERGE_REASONS = {
+	"settings.backup.reason.checking": "settings.backup.reason.checking-changes",
+	"settings.backup.reason.confirm": "settings.backup.reason.confirm-merge",
+};
+// reasons that come before an emptied item list
+const EARLY_REASONS = [
+	"settings.backup.reason.parts-loading",
+	"settings.backup.reason.parts-failed",
+	"settings.backup.reason.no-restore-types",
+];
 
 const typeLabel = (typeId) => intl.formatMessage({ id: `settings.backup.type.${typeId}` });
 
@@ -196,6 +209,8 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const [checkError, setCheckError] = useState(null);
 	const [confirmed, setConfirmed] = useState(false);
 	const [result, setResult] = useState(null);
+	// the mode the shown result was made with
+	const [resultMode, setResultMode] = useState(null);
 	const [restoreError, setRestoreError] = useState(null);
 	const [mode, setMode] = useState("replace");
 	// the token of an opened backup that was not restored, released when the dialog closes
@@ -284,6 +299,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 		// a restore uses the token up, whether it succeeds or not
 		tokenRef.current = null;
 		setRestoreError(null);
+		setResultMode(mode);
 		setStep("running");
 		try {
 			setResult(
@@ -323,7 +339,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	const stale = merging ? merge.stale : checking || selected !== checkedRef.current;
 	const manifest = opened?.manifest;
 	const categories = typesData && manifest ? categoriesOf(typesData.categories, manifest.types) : [];
-	const restoreReason = restoreBlockReason({
+	const baseReason = restoreBlockReason({
 		selected,
 		shown: typesData && manifest ? categories.flatMap((category) => category.types) : null,
 		partsFailed: Boolean(typesError),
@@ -331,10 +347,9 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 		stale,
 		confirmed,
 	});
-	const reasonText =
-		merging && restoreReason === "settings.backup.reason.checking"
-			? "settings.backup.reason.checking-changes"
-			: restoreReason;
+	const emptyType = merging ? emptyItemType(merge.items, selected) : null;
+	let restoreReason = merging ? (MERGE_REASONS[baseReason] ?? baseReason) : baseReason;
+	if (emptyType && !EARLY_REASONS.includes(baseReason)) restoreReason = "settings.backup.reason.no-items";
 
 	// the confirmation covers the selection and the mode it was given for
 	const changeTypes = (next) => {
@@ -487,7 +502,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 				<div className="ms-auto d-flex align-items-center">
 					{restoreReason ? (
 						<span id={reasonId} className="text-secondary small me-3 text-end">
-							<T id={reasonText} />
+							<T id={restoreReason} data={emptyType ? { type: typeLabel(emptyType) } : undefined} />
 						</span>
 					) : null}
 					<Button
@@ -511,7 +526,12 @@ const RestoreBackupModal = EasyModal.create(({ entry, navigate, visible, remove 
 	} else {
 		body =
 			step === "done" ? (
-				<Result result={result} types={selected} plan={merging ? merge.plan : null} onOpen={openRoute} />
+				<Result
+					result={result}
+					types={selected}
+					plan={resultMode === "merge" ? merge.plan : null}
+					onOpen={openRoute}
+				/>
 			) : (
 				<ErrorAlert error={restoreError} className="mb-0" />
 			);
