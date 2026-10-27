@@ -77,6 +77,7 @@ export const createSchema = async (knex) => {
 		t.json("domain_names").notNull().defaultTo("[]");
 		t.json("meta").notNull().defaultTo("{}");
 		t.integer("npmpro_dns_credential_id").nullable();
+		t.integer("npmpro_dns_challenge").notNull().defaultTo(0);
 	});
 	await knex.schema.createTable("access_list", (t) => {
 		t.increments("id");

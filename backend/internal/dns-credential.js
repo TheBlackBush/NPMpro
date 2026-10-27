@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew } from "../lib/certbot.js";
 import { buildValues, publicView, toIni } from "../lib/dns-credential-values.js";
@@ -157,6 +157,10 @@ const internalDnsCredential = {
 			await internalDnsCredential.getIni(certificate.npmpro_dns_credential_id),
 			{ mode: 0o600 },
 		);
+	},
+
+	removeCertificateFile: async (certificateId) => {
+		await rm(`${credentialsDir}/credentials-${certificateId}`, { force: true });
 	},
 
 	writeFilesFor: async (credentialId) => {

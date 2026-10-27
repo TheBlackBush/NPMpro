@@ -55,7 +55,18 @@ const setup = async ({
 	});
 	await createSchema(knex);
 	const clock = { offset: 0, now: () => Date.now() + clock.offset };
-	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, reloaded: [], audit: [] };
+	const calls = {
+		test: 0,
+		reload: 0,
+		pause: 0,
+		resume: 0,
+		regenerate: 0,
+		applyAll: 0,
+		reloaded: [],
+		audit: [],
+		credentials: [],
+		removedCredentials: [],
+	};
 	let paused = false;
 	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
 	const service = createBackupService({
@@ -114,6 +125,19 @@ const setup = async ({
 			},
 			monitoring: () => {
 				calls.reloaded.push("monitoring");
+				return Promise.resolve();
+			},
+		},
+		dnsCredentials: {
+			write: (certificate) => {
+				calls.credentials.push({
+					id: Number(certificate.id),
+					credentialId: Number(certificate.npmpro_dns_credential_id),
+				});
+				return Promise.resolve();
+			},
+			remove: (id) => {
+				calls.removedCredentials.push(Number(id));
 				return Promise.resolve();
 			},
 		},

@@ -198,6 +198,8 @@ const withoutStage = async (stageDir) => {
  *                                             regenerateDefaultSite }
  * @param   {Object}    deps.runtime           { loadRuntimeConfig, applyAllRuntime }
  * @param   {Object}    [deps.reloadSettings]  { oidc, monitoring }: make the running services read the settings again
+ * @param   {Object}    [deps.dnsCredentials]  { write(certificate), remove(id) }: the certbot credentials file of a
+ *                                             DNS challenge certificate row, written or removed
  * @param   {Function}  [deps.exclusive]       (fn) => runs fn in the runtime settings queue
  * @param   {number}    [deps.maxUpload]       bytes, 2 GiB
  * @param   {number}    [deps.maxImport]       bytes, the page import limit (200 MB)
@@ -220,6 +222,7 @@ const createBackupService = ({
 	regenerate,
 	runtime,
 	reloadSettings = {},
+	dnsCredentials = { write: async () => {}, remove: async () => {} },
 	exclusive = (fn) => fn(),
 	maxUpload = MAX_UPLOAD,
 	maxImport,
@@ -679,6 +682,46 @@ const createBackupService = ({
 		return { plan, data, types: chosen };
 	};
 
+	/**
+	 * Writes the certbot credentials file of every added DNS challenge certificate under its new id (renewals read it);
+	 * one whose credential was added without its values (a file without secrets) waits until the values are entered.
+	 * The returned undo() removes the written files and then undoes the placed files; a failed write does both at once.
+	 */
+	const withCredentialFiles = async ({ swap, plan, merged, secrets }) => {
+		const credentialMap = merged.maps.npmpro_dns_credential;
+		const blank = new Set(
+			secrets
+				? []
+				: plan.items
+						.filter((item) => item.type === "dns_credentials" && item.action === "add")
+						.map((item) => String(credentialMap.get(String(item.id)))),
+		);
+		const added = merged.certificateMoves.map((move) => move.to);
+		const rows = added.length === 0 ? [] : await knex("certificate").whereIn("id", added).orderBy("id");
+		const written = [];
+		const undo = async () => {
+			for (const id of written) await dnsCredentials.remove(id);
+			await swap.undo();
+		};
+		try {
+			for (const row of rows) {
+				const credentialId = row.npmpro_dns_credential_id;
+				if (!Number(row.npmpro_dns_challenge) || credentialId === null || credentialId === undefined) continue;
+				if (blank.has(String(credentialId))) continue;
+				written.push(row.id);
+				await dnsCredentials.write(row);
+			}
+		} catch (error) {
+			try {
+				await undo();
+			} catch (undoError) {
+				error.cause ??= undoError;
+			}
+			throw error;
+		}
+		return { undo };
+	};
+
 	// the merge apply, through the same path as a restore
 	const runMerge = async ({ access, userId, entry, scope, plan, data }) => {
 		const taken = plan.items.filter((item) => item.action === "take");
@@ -730,7 +773,7 @@ const createBackupService = ({
 				if (merged.certificateMoves.length > 0) {
 					await relinkCertbotLive({ dataDir, ids: await knex("certificate").pluck("id") });
 				}
-				return swap;
+				return await withCredentialFiles({ swap, plan, merged, secrets: entry.manifest.secrets === true });
 			},
 			gravatarIds: (merged) => merged.avatarMoves.map((move) => move.to),
 			auditEntry: ({ result: merged, autoName }) =>

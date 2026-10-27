@@ -827,3 +827,98 @@ it("names the automatic backup of a page import apart from the Settings ones", T
 		await cleanup();
 	}
 });
+
+// instance A's certificate #1 uses the DNS challenge with its credential #4
+const dnsCertificate = async (a) => {
+	await a.knex("npmpro_dns_credential").insert({ id: 4, name: "Cloudflare", values: 'v1:{"fields":{"t":"x"}}' });
+	await a.knex("certificate").where({ id: 1 }).update({ npmpro_dns_challenge: 1, npmpro_dns_credential_id: 4 });
+};
+
+it("writes the DNS credentials file of an added certificate under its new id", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await dnsCertificate(a);
+		await b.knex("npmpro_dns_credential").insert({ id: 7, name: "Other", values: 'v1:{"fields":{"t":"y"}}' });
+		const file = await backupOf(a, { types: ["proxy_hosts", "certificates", "dns_credentials"] });
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, { passphrase: PASSPHRASE });
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		const credentialId = Number((await b.knex("npmpro_dns_credential").where({ name: "Cloudflare" }).first()).id);
+		assert.equal(credentialId, 8);
+		assert.deepEqual(b.calls.credentials, [{ id: 2, credentialId }]);
+		assert.deepEqual(b.calls.removedCredentials, []);
+	} finally {
+		await cleanup();
+	}
+});
+
+it(
+	"writes no DNS credentials file for a matched certificate, removes written ones on a rollback",
+	TIMEOUT,
+	async () => {
+		const { a, b, cleanup } = await twoInstances({
+			test: (call) => (call === 2 ? Promise.reject(new Error("nginx says no")) : Promise.resolve()),
+		});
+		try {
+			await dnsCertificate(a);
+			// the first import matches B's certificate, the second adds a copy and fails at nginx -t
+			await a
+				.knex("certificate")
+				.where({ id: 1 })
+				.update({ domain_names: JSON.stringify(["b.example.com"]) });
+			const types = ["proxy_hosts", "certificates", "dns_credentials"];
+			const importOnce = async (choices) => {
+				const { id } = await b.service.importUpload(admin, createReadStream(await backupOf(a, { types })), {
+					kind: "proxy_hosts",
+				});
+				const opened = await b.service.importOpen(admin, id, { passphrase: PASSPHRASE });
+				const plan = await b.service.plan(admin, opened.token, {
+					mode: "merge",
+					types: ["proxy_hosts"],
+					choices,
+				});
+				return b.service.restore(admin, opened.token, {
+					mode: "merge",
+					types: ["proxy_hosts"],
+					choices,
+					planHash: plan.hash,
+				});
+			};
+			await importOnce({});
+			assert.deepEqual(b.calls.credentials, []);
+			await b.knex("proxy_host").where({ id: 2 }).del();
+			await assert.rejects(importOnce({ "certificates:1": "add" }), hasCode("nginx-failed"));
+			assert.deepEqual(
+				b.calls.credentials.map((call) => call.id),
+				[2],
+			);
+			assert.deepEqual(b.calls.removedCredentials, [2]);
+			assert.deepEqual(await domainsOf(b.knex, "certificate"), [[1, "b.example.com"]]);
+		} finally {
+			await cleanup();
+		}
+	},
+);
+
+it("writes no DNS credentials file for a credential added without its values", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		await dnsCertificate(a);
+		const file = await backupOf(a, { types: ["proxy_hosts", "certificates", "dns_credentials"], secrets: false });
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, {});
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		assert.equal((await domainsOf(b.knex, "certificate")).length, 2);
+		assert.deepEqual(b.calls.credentials, []);
+	} finally {
+		await cleanup();
+	}
+});
