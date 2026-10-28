@@ -1,7 +1,8 @@
-import { IconSearch } from "@tabler/icons-react";
+import { IconSearch, IconSortAscending, IconSortDescending } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
+import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
@@ -35,8 +36,14 @@ function FilterSelect({ label, value, onChange, options }) {
  * @param {number} props.shown rows after filtering
  * @param {string[]} props.kinds any of "status", "tls", "group", "expiry"
  * @param {string[]} [props.groups]
+ * @param {object} [props.sorting] phone-only "Sort by" control, hidden from 768 px up
+ * @param {{ id: string, header: *, enableSorting: boolean }[]} props.sorting.columns resolved columns, built by the
+ *   caller as tableInstance.getAllLeafColumns().map((column) => ({ id: column.id, header: column.columnDef.header,
+ *   enableSorting: column.getCanSort() })); columnDef.id is undefined for accessorKey columns, so pass column.id
+ * @param {{ id: string, desc: boolean }[]} props.sorting.state TanStack SortingState
+ * @param {(state: { id: string, desc: boolean }[]) => void} props.sorting.onChange
  */
-function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [] }) {
+function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [], sorting }) {
 	const active = activeFilterCount(filters, kinds) > 0;
 	const [text, setText] = useState(filters.q);
 	const inputRef = useRef(null);
@@ -48,6 +55,8 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 		setText((current) => (current.trim() === filters.q.trim() ? current : filters.q));
 	}, [filters.q]);
 	if (!total) return null;
+	const sortChoices = sorting ? sortOptions(sorting.columns) : [];
+	const sortValue = sortSelectValue(sorting?.state);
 	return (
 		<div className="card-body border-bottom py-3">
 			<div className="row g-2 align-items-center">
@@ -135,6 +144,48 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 					</div>
 				) : null}
 			</div>
+			{sortChoices.length > 0 ? (
+				<div className="row g-2 align-items-center mt-0 d-md-none">
+					<div className="col-auto">
+						<label className="form-label mb-0" htmlFor="list-sort-by">
+							<T id="list.sort-by" />
+						</label>
+					</div>
+					<div className="col">
+						<select
+							id="list-sort-by"
+							className="form-select form-select-sm"
+							value={sortValue.id ?? ""}
+							onChange={(e) =>
+								sorting.onChange(e.target.value ? [{ id: e.target.value, desc: sortValue.desc }] : [])
+							}
+						>
+							<option value="">{intl.formatMessage({ id: "list.sort-default" })}</option>
+							{sortChoices.map((option) => (
+								<option key={option.id} value={option.id}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</div>
+					<div className="col-auto">
+						<button
+							type="button"
+							className="btn btn-sm btn-icon"
+							aria-label={intl.formatMessage({ id: sortValue.desc ? "list.sort-desc" : "list.sort-asc" })}
+							aria-pressed={sortValue.desc}
+							disabled={!sortValue.id}
+							onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}
+						>
+							{sortValue.desc ? (
+								<IconSortDescending className="icon" aria-hidden="true" />
+							) : (
+								<IconSortAscending className="icon" aria-hidden="true" />
+							)}
+						</button>
+					</div>
+				</div>
+			) : null}
 		</div>
 	);
 }
