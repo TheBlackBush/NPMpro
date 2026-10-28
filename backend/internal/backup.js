@@ -41,6 +41,8 @@ const TYPE_OF_TABLE = Object.fromEntries(
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const MAX_HOST_ERROR = 500;
 const OFFLINE = new Set([0, false, "0", null]);
+// an nginx error about a file in the custom nginx folder, e.g. "in /data/custom_nginx/server_proxy.conf:1"
+const CUSTOM_NGINX_ERROR = /\/custom_nginx\//u;
 
 // a host's first domain name, a stream's incoming port
 const hostLabel = (row) => {
@@ -471,13 +473,16 @@ const createBackupService = ({
 
 	/**
 	 * A changed custom nginx file breaks hosts one by one: the regeneration keeps the config of each host it breaks as
-	 * .err, and nginx -t of the whole configuration passes. A host that was online before and is offline now fails the
-	 * apply as nginx -t would, so that it is rolled back.
+	 * .err, and nginx -t of the whole configuration passes. A host that was online before and is offline now, or an
+	 * offline host whose nginx error names a custom nginx file (a host the apply brought in), fails the apply as
+	 * nginx -t would, so that it is rolled back.
 	 *
 	 * @param {Set<string>} wereOnline  from onlineHosts() before the apply
 	 */
 	const refuseTakenOffline = async (wereOnline) => {
-		const taken = (await offlineHosts()).filter((host) => wereOnline.has(`${host.type}:${host.id}`));
+		const taken = (await offlineHosts()).filter(
+			(host) => wereOnline.has(`${host.type}:${host.id}`) || CUSTOM_NGINX_ERROR.test(host.error),
+		);
 		if (taken.length === 0) return;
 		const names = taken.map((host) => host.domain).join(", ");
 		throw new Error(`${names} would go offline: ${taken[0].error}`);

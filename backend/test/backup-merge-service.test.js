@@ -941,7 +941,8 @@ const withServerFile = () => {
 					broken
 						? {
 								npmpro_nginx_online: 0,
-								npmpro_nginx_err: 'nginx: [emerg] unknown directive "this_is_not_a_directive"',
+								npmpro_nginx_err:
+									'nginx: [emerg] unknown directive "this_is_not_a_directive" in /data/custom_nginx/server_proxy.conf:1',
 							}
 						: { npmpro_nginx_online: 1, npmpro_nginx_err: "" },
 				);
@@ -1059,6 +1060,31 @@ it("an admin page import keeps a host's advanced config and file serving outside
 		const added = await b.knex("proxy_host").where({ id: 2 }).first();
 		assert.equal(added.advanced_config, "add_header X-Test 1;");
 		assert.equal(added.forward_host, "/srv/site");
+	} finally {
+		await cleanup();
+	}
+});
+
+it("finishes a merge with a custom nginx file when an added host is offline for another reason", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances({
+		regenerated: (knex) =>
+			knex("proxy_host")
+				.whereNot({ id: 1 })
+				.update({ npmpro_nginx_online: 0, npmpro_nginx_err: "cannot load certificate /data/tls/x.pem" }),
+	});
+	try {
+		for (const ctx of [a, b]) await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(path.join(a.dataDir, "custom_nginx", "server_proxy.conf"), "# from a\n");
+		await writeFile(path.join(b.dataDir, "custom_nginx", "server_proxy.conf"), "# the instance\n");
+		const types = ["proxy_hosts", "certificates", "custom_nginx"];
+		const { token } = await openOn(b, await backupOf(a, { types }));
+		const choices = { "file:custom_nginx/server_proxy.conf": "take" };
+		const plan = await b.service.plan(admin, token, { mode: "merge", types, choices });
+		const result = await b.service.restore(admin, token, { mode: "merge", types, choices, planHash: plan.hash });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 2, domain: "a.example.com", error: "cannot load certificate /data/tls/x.pem" },
+		]);
+		assert.equal(await readFile(path.join(b.dataDir, "custom_nginx", "server_proxy.conf"), "utf8"), "# from a\n");
 	} finally {
 		await cleanup();
 	}
