@@ -163,9 +163,11 @@ const createBackupStore = ({
 			.filter((item) => !item.auto && item.schedule_id === Number(id))
 			.sort((a, b) => orderKey(b.name).localeCompare(orderKey(a.name)) || b.modified.localeCompare(a.modified));
 
-	// the schedule's files past the newest keep (at least one is always kept); a file removed meanwhile is skipped
+	// the schedule's files past the newest keep (at least one is always kept, nothing when keep is not an integer); a
+	// file removed meanwhile is skipped
 	const pruneSchedule = async (id, keep) => {
 		const removed = [];
+		if (!Number.isInteger(keep)) return removed;
 		for (const item of (await scheduleFiles(id)).slice(Math.max(1, keep))) {
 			try {
 				await remove(item.name);

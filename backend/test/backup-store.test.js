@@ -556,6 +556,14 @@ it("retention always keeps at least one file", async () => {
 	assert.equal((await store.scheduleFiles(5)).length, 1);
 });
 
+it("retention removes nothing when keep is not an integer", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	for (const keep of [Number.NaN, undefined, "2", 1.5]) assert.deepEqual(await store.pruneSchedule(5, keep), []);
+	assert.equal((await store.scheduleFiles(5)).length, 2);
+});
+
 it("listing skips a file that vanishes between the directory read and its stat", async () => {
 	const { store, dir } = await make();
 	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
