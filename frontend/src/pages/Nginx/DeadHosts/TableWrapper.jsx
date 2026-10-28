@@ -81,8 +81,8 @@ export default function TableWrapper() {
 		<div className="card mt-4">
 			<div className="card-status-top bg-red" />
 			<div className="card-table">
-				<div className="card-header">
-					<h2 className="card-title">
+				<div className="card-header flex-wrap gap-2">
+					<h2 className="card-title text-nowrap">
 						<T id="dead-hosts" />
 					</h2>
 					<div className="card-actions btn-list">

@@ -46,6 +46,12 @@ const streamProtocols = (row) => {
 	if (row.udpForwarding) protocols.push("UDP");
 	return protocols;
 };
+// upstream TLS gets its own words, so it does not read like the certificate's "TLS" / "No TLS" next to it
+const protocolSummary = (row) => {
+	const transport = streamProtocols(row).filter((protocol) => protocol !== "TLS");
+	const parts = [transport.join("/"), row.npmproProxyTls ? intl.formatMessage({ id: "streams.tls" }) : ""];
+	return parts.filter(Boolean).join(" · ") || null;
+};
 const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
 
 // shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
@@ -80,6 +86,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 			}),
 			columnHelper.accessor((row) => row.npmproDescription, {
 				id: "npmproDescription",
+				meta: { mobile: "summary", summaryText: (row) => row.npmproDescription || null },
 				header: intl.formatMessage({ id: "column.description" }),
 				cell: (info) => {
 					const value = info.row.original.npmproDescription;
@@ -94,7 +101,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 			}),
 			columnHelper.accessor((row) => streamProtocols(row).join(" "), {
 				id: "protocol",
-				meta: { mobile: "summary", summaryText: (row) => streamProtocols(row).join("/") || null },
+				meta: { mobile: "summary", summaryText: protocolSummary },
 				header: intl.formatMessage({ id: "column.protocol" }),
 				cell: (info) => {
 					const value = info.row.original;
