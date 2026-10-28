@@ -292,4 +292,14 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 	};
 };
 
-export { createScheduleService, SKIPPED };
+// the failed schedules for the dashboard report; a read error is logged and gives none, so the report still answers
+const failedSchedulesOrNone = async (service, log = console) => {
+	try {
+		return await service.failedSchedules();
+	} catch (error) {
+		log.warn(`Could not read the failed backup schedules: ${error?.message ?? error}`);
+		return [];
+	}
+};
+
+export { createScheduleService, failedSchedulesOrNone, SKIPPED };

@@ -1,4 +1,6 @@
+import { global as logger } from "../logger.js";
 import internalAccessList from "./access-list.js";
+import { failedSchedulesOrNone } from "./backup-schedules.js";
 import { internalBackupSchedules } from "./backup-service.js";
 import internalCertificate from "./certificate.js";
 import internalDeadHost from "./dead-host.js";
@@ -69,7 +71,10 @@ const internalReport = {
 			errors: { proxy: errors[0], redirection: errors[1], dead: errors[2], stream: errors[3] },
 			certificates_expiring: expiry.expiring,
 			certificates_expired: expiry.expired,
-			backup_schedules_failed: isAdmin(access) ? await internalBackupSchedules.failedSchedules() : [],
+			// the schedules never fail the dashboard report: a read error is logged and shows none
+			backup_schedules_failed: isAdmin(access)
+				? await failedSchedulesOrNone(internalBackupSchedules, logger)
+				: [],
 		};
 	},
 };

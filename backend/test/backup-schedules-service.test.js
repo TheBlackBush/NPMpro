@@ -5,7 +5,7 @@ import { BackupError } from "../lib/backup/format.js";
 import { createSchema } from "./support/backup-schema.js";
 
 process.env.TZ = "UTC";
-const { createScheduleService, SKIPPED } = await import("../internal/backup-schedules.js");
+const { createScheduleService, failedSchedulesOrNone, SKIPPED } = await import("../internal/backup-schedules.js");
 
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const silent = { info: () => {}, warn: () => {}, error: () => {} };
@@ -898,4 +898,19 @@ it("a backups folder that cannot be listed gives file_count null and a warning, 
 	assert.equal(run.last_status, "success");
 	assert.equal(run.file_count, null);
 	assert.ok(warnings.some((message) => message.includes("permission denied")));
+});
+
+it("the report's failed schedules are none, with a warning, when they cannot be read", async () => {
+	const warnings = [];
+	const log = { ...silent, warn: (message) => warnings.push(message) };
+	const failing = {
+		failedSchedules: async () => {
+			await Promise.resolve();
+			throw new Error("no such table");
+		},
+	};
+	assert.deepEqual(await failedSchedulesOrNone(failing, log), []);
+	assert.ok(warnings.some((message) => message.includes("no such table")));
+	const working = { failedSchedules: async () => [{ id: 1, name: "Nightly" }] };
+	assert.deepEqual(await failedSchedulesOrNone(working, log), [{ id: 1, name: "Nightly" }]);
 });
