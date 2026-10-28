@@ -41,7 +41,7 @@ function Contents({ categories, types }) {
 	return (
 		<div className="badge-list">
 			{contentLabels(categories, types).map(({ kind, id }) => (
-				<span key={`${kind}-${id}`} className="badge bg-secondary-lt">
+				<span key={`${kind}-${id}`} className="badge bg-secondary-lt text-wrap text-start">
 					<T id={kind === "category" ? `settings.backup.category.${id}` : `settings.backup.type.${id}`} />
 				</span>
 			))}
@@ -52,13 +52,13 @@ function Contents({ categories, types }) {
 function SecretsBadge({ entry }) {
 	if (entry.summary?.secrets) {
 		return (
-			<span className="badge bg-azure-lt">
+			<span className="badge bg-azure-lt text-wrap text-start">
 				<T id="settings.backup.with-secrets" />
 			</span>
 		);
 	}
 	return (
-		<span className="badge bg-secondary-lt">
+		<span className="badge bg-secondary-lt text-wrap text-start">
 			<T id="settings.backup.without-secrets" />
 		</span>
 	);
@@ -149,7 +149,8 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 					summaryText: (row) => formatDateTime(row.summary?.createdAt ?? row.modified),
 				},
 				header: label("settings.backup.created"),
-				cell: (info) => <span className="text-nowrap">{formatDateTime(info.getValue())}</span>,
+				// the date and the badges may wrap: the table sits next to the settings menu on tablets
+				cell: (info) => formatDateTime(info.getValue()),
 			}),
 			columnHelper.accessor((row) => row.size, {
 				id: "size",
