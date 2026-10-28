@@ -1,5 +1,5 @@
 import db from "../db.js";
-import { isSqlite, SQLITE_FILE } from "../lib/config.js";
+import { isSqlite, sqliteFile } from "../lib/config.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
 import { GEOIP_DIR, geoip } from "../lib/geoip/instance.js";
 import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
@@ -112,7 +112,7 @@ const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getC
 // the statistics reads: on SQLite in a worker thread (a slow query would block the API), else on the shared pool
 let reads = null;
 const monitoringReads = () => {
-	reads ??= isSqlite() ? createReadClient({ filename: SQLITE_FILE }) : { queryTraffic, summary, countVisitors };
+	reads ??= isSqlite() ? createReadClient({ filename: sqliteFile() }) : { queryTraffic, summary, countVisitors };
 	return reads;
 };
 const internalMonitoring = createMonitoring({
