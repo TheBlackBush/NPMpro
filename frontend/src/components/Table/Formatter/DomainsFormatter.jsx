@@ -14,7 +14,13 @@ const DomainLink = ({ domain, color }) => {
 			target="_blank"
 			rel="noopener"
 			onClick={onClick}
-			className={cn("badge", color ? `bg-${color}-lt` : null, "font-monospace", "me-2")}
+			// a long name wraps inside its badge instead of pushing the row menu off a phone screen
+			className={cn(
+				"badge",
+				color ? `bg-${color}-lt` : null,
+				"font-monospace",
+				"me-2 text-wrap text-break text-start",
+			)}
 		>
 			{domain}
 		</a>

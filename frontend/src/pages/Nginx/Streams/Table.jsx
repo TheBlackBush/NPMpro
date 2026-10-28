@@ -87,7 +87,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 			}),
 			columnHelper.accessor(streamDestination, {
 				id: "destination",
-				meta: { mobile: "summary", summaryText: streamDestination },
+				meta: { className: "text-break", mobile: "summary", summaryText: streamDestination },
 				header: intl.formatMessage({ id: "column.destination" }),
 				cell: (info) => info.getValue(),
 			}),
