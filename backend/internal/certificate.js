@@ -277,54 +277,60 @@ const internalCertificate = {
 	download: async (access, data, dir) => {
 		access.can("certificates:manage");
 		// a GET that writes an audit entry: during a database move that entry could be lost
-		maintenance.refuseWrite();
-		const certificate = await internalCertificate.get(access, data);
-
-		let zipDirectory;
-		let fileNames;
-		if (certificate.provider === "letsencrypt") {
-			zipDirectory = internalCertificate.getLiveCertPath(data.id);
-			fileNames = ["fullchain.pem", "privkey.pem"];
-		} else if (certificate.provider === "mtls") {
-			const mtlsFile = internalCertificate.getMtlsCertFile(data.id);
-			zipDirectory = path.dirname(mtlsFile);
-			fileNames = [path.basename(mtlsFile)];
-		} else {
-			zipDirectory = internalCertificate.getCustomCertPath(data.id);
-			fileNames = ["fullchain.pem", "privkey.pem"];
-		}
-
+		const release = maintenance.beginWrite();
 		try {
-			await stat(zipDirectory);
-		} catch (err) {
-			throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, { cause: err });
-		}
+			const certificate = await internalCertificate.get(access, data);
 
-		const certFiles = [];
-		for (const fileName of fileNames) {
+			let zipDirectory;
+			let fileNames;
+			if (certificate.provider === "letsencrypt") {
+				zipDirectory = internalCertificate.getLiveCertPath(data.id);
+				fileNames = ["fullchain.pem", "privkey.pem"];
+			} else if (certificate.provider === "mtls") {
+				const mtlsFile = internalCertificate.getMtlsCertFile(data.id);
+				zipDirectory = path.dirname(mtlsFile);
+				fileNames = [path.basename(mtlsFile)];
+			} else {
+				zipDirectory = internalCertificate.getCustomCertPath(data.id);
+				fileNames = ["fullchain.pem", "privkey.pem"];
+			}
+
 			try {
-				certFiles.push([fileName, await realpath(path.join(zipDirectory, fileName))]);
+				await stat(zipDirectory);
 			} catch (err) {
-				throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
+				throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, {
 					cause: err,
 				});
 			}
+
+			const certFiles = [];
+			for (const fileName of fileNames) {
+				try {
+					certFiles.push([fileName, await realpath(path.join(zipDirectory, fileName))]);
+				} catch (err) {
+					throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
+						cause: err,
+					});
+				}
+			}
+
+			const opName = path.join(dir, `npm-${data.id}-${Date.now()}.zip`);
+
+			await internalCertificate.zipFiles(certFiles, opName);
+			logger.debug("zip completed : ", opName);
+			// the zip holds the private key
+			await internalAuditLog.add(access, {
+				action: "downloaded",
+				object_type: "certificate",
+				object_id: certificate.id,
+				meta: { id: certificate.id, nice_name: certificate.nice_name, provider: certificate.provider },
+			});
+			return {
+				fileName: opName,
+			};
+		} finally {
+			release();
 		}
-
-		const opName = path.join(dir, `npm-${data.id}-${Date.now()}.zip`);
-
-		await internalCertificate.zipFiles(certFiles, opName);
-		logger.debug("zip completed : ", opName);
-		// the zip holds the private key
-		await internalAuditLog.add(access, {
-			action: "downloaded",
-			object_type: "certificate",
-			object_id: certificate.id,
-			meta: { id: certificate.id, nice_name: certificate.nice_name, provider: certificate.provider },
-		});
-		return {
-			fileName: opName,
-		};
 	},
 
 	/**

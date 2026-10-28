@@ -61,8 +61,6 @@ export default {
 	 * @returns {Promise<Object>}      the user row
 	 */
 	createUser: async (claims, permissions) => {
-		// the new user would be missing in the moved database
-		maintenance.refuseWrite();
 		const checked = newUserPermissions(permissions);
 		if (!checked.permissions) {
 			logger.error(`Auto-create refused, the stored default permissions are invalid: ${checked.error}`);
@@ -72,6 +70,9 @@ export default {
 		const email = String(claims.email).toLowerCase().trim();
 		const name = (String(userNameFromClaims({ ...claims, email })).trim() || email.split("@")[0]).slice(0, 255);
 
+		// the new user would be missing in the moved database; the claim covers the avatar patch too
+		const release = maintenance.tryBeginWrite();
+		if (!release) throw new OidcLoginError("maintenance", "A database move is in progress");
 		const previous = pending.get(email) ?? Promise.resolve();
 		const run = previous.catch(() => null).then(() => insertUser(email, name, checked.permissions));
 		pending.set(email, run);
@@ -79,6 +80,7 @@ export default {
 			return await run;
 		} finally {
 			if (pending.get(email) === run) pending.delete(email);
+			release();
 		}
 	},
 };

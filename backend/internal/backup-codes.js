@@ -72,18 +72,22 @@ const internalBackupCodes = {
 	 */
 	verify: async (userId, code) => {
 		// a used code is deleted: during a database move the delete could be lost and the code valid again
-		maintenance.refuseWrite();
-		const normalizedCode = code.toUpperCase().replaceAll("O", "0").replace(/[IL]/gu, "1");
+		const release = maintenance.beginWrite();
+		try {
+			const normalizedCode = code.toUpperCase().replaceAll("O", "0").replace(/[IL]/gu, "1");
 
-		for (const row of await codesOf(userId)) {
-			const match = row.secret.startsWith("$2")
-				? await bcrypt.compare(normalizedCode, row.secret)
-				: await verify(normalizedCode, row.secret);
-			// Remove used backup code, only the request that removes it counts as used
-			if (match) return (await authModel.query().findById(row.id).delete()) === 1;
+			for (const row of await codesOf(userId)) {
+				const match = row.secret.startsWith("$2")
+					? await bcrypt.compare(normalizedCode, row.secret)
+					: await verify(normalizedCode, row.secret);
+				// Remove used backup code, only the request that removes it counts as used
+				if (match) return (await authModel.query().findById(row.id).delete()) === 1;
+			}
+
+			return false;
+		} finally {
+			release();
 		}
-
-		return false;
 	},
 };
 

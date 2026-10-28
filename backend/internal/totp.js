@@ -192,11 +192,16 @@ const internalTotp = {
 
 		usedSteps.set(enrolled.id, result.timeStep);
 		// not during a database move: the secret is sealed at a later login
-		if (!isSealed(enrolled.secret) && !maintenance.active()) {
-			await authModel
-				.query()
-				.findById(enrolled.id)
-				.patch({ secret: sealSecret(secret) });
+		const release = isSealed(enrolled.secret) ? null : maintenance.tryBeginWrite();
+		if (release) {
+			try {
+				await authModel
+					.query()
+					.findById(enrolled.id)
+					.patch({ secret: sealSecret(secret) });
+			} finally {
+				release();
+			}
 		}
 		return true;
 	},

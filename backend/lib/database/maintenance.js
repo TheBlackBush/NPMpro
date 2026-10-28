@@ -16,11 +16,16 @@ const inProgress = () =>
 		status: 409,
 	});
 
+const writesRunning = () =>
+	new errs.DatabaseMoveError("writes-running", "Requests that write are still running, try again later", {
+		status: 409,
+	});
+
 const isMovePath = (path) => path === "/api/database" || path.startsWith("/api/database/");
 
 const createMaintenance = () => {
 	let moveId = null;
-	// write requests that passed the guard and have not answered yet: one that started before the move may still write
+	// writes that started before the move (requests that passed the guard, claimed writes) and are not done yet
 	let writes = 0;
 	let waiters = [];
 
@@ -31,19 +36,26 @@ const createMaintenance = () => {
 		for (const resolve of ready) resolve();
 	};
 
-	const track = (res) => {
-		if (typeof res?.once !== "function") return;
+	// counts one write until the returned release is called (once; later calls do nothing)
+	const claim = () => {
 		writes += 1;
 		let done = false;
-		const finish = () => {
+		return () => {
 			if (done) return;
 			done = true;
 			writes -= 1;
 			settle();
 		};
-		res.once("finish", finish);
-		res.once("close", finish);
 	};
+
+	const track = (res) => {
+		if (typeof res?.once !== "function") return;
+		const release = claim();
+		res.once("finish", release);
+		res.once("close", release);
+	};
+
+	const tryBeginWrite = () => (moveId === null ? claim() : null);
 
 	return {
 		active: () => moveId !== null,
@@ -57,9 +69,36 @@ const createMaintenance = () => {
 		end: () => {
 			moveId = null;
 		},
-		// resolves once no write request that passed the guard is still running (the move waits for it before copying)
-		idle: () => (writes === 0 ? Promise.resolve() : new Promise((resolve) => waiters.push(resolve))),
-		// for writes outside the guarded routes (login side effects, a GET that writes an audit entry)
+		/**
+		 * Resolves once no write that started before the move is still running (the move waits for it before
+		 * copying). With timeoutMs it rejects with "writes-running" when they take longer.
+		 *
+		 * @param   {{ timeoutMs?: number }}  [options]
+		 * @returns {Promise<void>}
+		 */
+		idle: ({ timeoutMs } = {}) => {
+			if (writes === 0) return Promise.resolve();
+			const settled = new Promise((resolve) => waiters.push(resolve));
+			if (timeoutMs === undefined) return settled;
+			let timer;
+			const late = new Promise((_resolve, reject) => {
+				timer = setTimeout(() => reject(writesRunning()), timeoutMs);
+			});
+			return Promise.race([settled, late]).finally(() => clearTimeout(timer));
+		},
+		/**
+		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused
+		 * during a move, else counted by idle() until the returned release is called (in a finally).
+		 *
+		 * @returns {Function}  release
+		 */
+		beginWrite: () => {
+			const release = tryBeginWrite();
+			if (!release) throw inProgress();
+			return release;
+		},
+		// the same for a write that can be skipped (done at a later login): null during a move
+		tryBeginWrite,
 		refuseWrite: () => {
 			if (moveId !== null) throw inProgress();
 		},

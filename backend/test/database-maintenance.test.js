@@ -95,6 +95,47 @@ it("waits for a write request that started before the move", async () => {
 	m.end();
 });
 
+it("a claimed write is refused during a move and keeps idle() pending until it is released", async () => {
+	const m = createMaintenance();
+	const release = m.beginWrite();
+	m.start("move-claim");
+	assert.throws(
+		() => m.beginWrite(),
+		(error) => refused(error),
+	);
+	assert.equal(m.tryBeginWrite(), null);
+	let settled = false;
+	const idle = m.idle().then(() => {
+		settled = true;
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(settled, false);
+	release();
+	release();
+	await idle;
+	assert.equal(settled, true);
+	m.end();
+	const skipped = m.tryBeginWrite();
+	assert.equal(typeof skipped, "function");
+	skipped();
+	await m.idle();
+});
+
+it("idle() with a time limit rejects when writes do not finish in time", async () => {
+	const m = createMaintenance();
+	await m.idle({ timeoutMs: 1 });
+	const release = m.beginWrite();
+	m.start("move-late");
+	await assert.rejects(
+		m.idle({ timeoutMs: 5 }),
+		(error) => error instanceof errs.DatabaseMoveError && error.code === "writes-running" && error.status === 409,
+	);
+	const idle = m.idle({ timeoutMs: 1000 });
+	release();
+	await idle;
+	m.end();
+});
+
 it("holds a logout's revocation during a move and gives it to the move", async () => {
 	maintenance.start("move-held");
 	try {
@@ -104,6 +145,7 @@ it("holds a logout's revocation during a move and gives it to the move", async (
 		assert.deepEqual(takeHeldRevocations(), [{ sid: "held-sid", expires_at: authTime + 30 * 24 * 60 * 60 }]);
 		assert.deepEqual(takeHeldRevocations(), []);
 	} finally {
+		takeHeldRevocations();
 		maintenance.end();
 	}
 });
@@ -140,6 +182,8 @@ it("writes the held revocations into the database that stays", async () => {
 			],
 		);
 	} finally {
+		takeHeldRevocations();
+		maintenance.end();
 		await db.cleanup();
 	}
 });

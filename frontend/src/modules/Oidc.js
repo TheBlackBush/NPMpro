@@ -6,6 +6,7 @@ const OIDC_ERROR_CODES = [
 	"no_user",
 	"domain_not_allowed",
 	"user_disabled",
+	"maintenance",
 ];
 
 const OIDC_BUILTIN_ICONS = [

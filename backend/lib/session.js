@@ -59,13 +59,21 @@ const revokeSession = async (tokenData) => {
 	if (typeof tokenData?.sid !== "string") return;
 	const authTime = Number.isInteger(tokenData.auth_time) ? tokenData.auth_time : nowSeconds();
 	const expiresAt = authTime + SESSION_MAX_AGE_SECONDS;
-	if (maintenance.active()) {
+	const release = maintenance.tryBeginWrite();
+	if (!release) {
 		heldRevocations.set(tokenData.sid, expiresAt);
 		return;
 	}
-	const knex = db();
-	await knex("session_revocation").where("expires_at", "<", nowSeconds()).delete();
-	await knex("session_revocation").insert({ sid: tokenData.sid, expires_at: expiresAt }).onConflict("sid").ignore();
+	try {
+		const knex = db();
+		await knex("session_revocation").where("expires_at", "<", nowSeconds()).delete();
+		await knex("session_revocation")
+			.insert({ sid: tokenData.sid, expires_at: expiresAt })
+			.onConflict("sid")
+			.ignore();
+	} finally {
+		release();
+	}
 };
 
 /**
