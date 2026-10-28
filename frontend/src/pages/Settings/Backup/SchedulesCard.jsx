@@ -29,9 +29,21 @@ import { contentLabels } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
-import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id, values) => intl.formatMessage({ id }, values);
+
+// a word longer than this cannot sit in the narrow Name column, so such a name may break inside its words
+const LONG_WORD = 12;
+
+// a name wraps between its words; only a name with a very long word may break inside it
+const nameClass = (name) =>
+	String(name)
+		.split(/\s+/u)
+		.some((word) => [...word].length > LONG_WORD)
+		? "text-break"
+		: undefined;
+
+const keepText = (row) => label("settings.backup.schedule.keep-count", { count: row.keep });
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -119,9 +131,7 @@ function LastRun({ schedule, timeZone }) {
 	}
 	return (
 		<>
-			<div>
-				<WrapBelowLg>{formatTime(schedule.lastRunAt, timeZone)}</WrapBelowLg>
-			</div>
+			<div>{formatTime(schedule.lastRunAt, timeZone)}</div>
 			{lastRunSize(schedule) ? (
 				<div className="small text-secondary">{formatBytes(lastRunSize(schedule))}</div>
 			) : null}
@@ -195,7 +205,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 				id: "name",
 				meta: { mobile: "title" },
 				header: label("column.name"),
-				cell: (info) => <span className="text-break">{info.getValue()}</span>,
+				cell: (info) => <span className={nameClass(info.getValue())}>{info.getValue()}</span>,
 			}),
 			columnHelper.display({
 				id: "status",
@@ -219,19 +229,27 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 			}),
 			columnHelper.accessor((row) => label(`settings.backup.schedule.protection.${row.protection}`), {
 				id: "protection",
+				// no sort button: the header stays narrow enough for the table to fit next to the settings menu
+				enableSorting: false,
+				// with the retention: below xl (the settings menu takes room from lg) the Keep column is hidden and its
+				// count shows here
 				meta: {
 					mobile: "summary",
-					summaryText: (row) => label(`settings.backup.schedule.protection.${row.protection}`),
+					summaryText: (row) =>
+						`${label(`settings.backup.schedule.protection.${row.protection}`)} · ${keepText(row)}`,
 				},
 				header: label("settings.backup.schedule.column.protection"),
-				cell: (info) => <WrapBelowLg>{info.getValue()}</WrapBelowLg>,
+				cell: (info) => (
+					<>
+						{info.getValue()}
+						<div className="small text-secondary d-xl-none">{keepText(info.row.original)}</div>
+					</>
+				),
 			}),
 			columnHelper.accessor((row) => row.keep, {
 				id: "keep",
-				meta: {
-					mobile: "summary",
-					summaryText: (row) => label("settings.backup.schedule.keep-count", { count: row.keep }),
-				},
+				// phones show the count in the Protection summary
+				meta: { className: "d-none d-xl-table-cell" },
 				header: label("settings.backup.schedule.column.keep"),
 				cell: (info) => info.getValue(),
 			}),
