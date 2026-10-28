@@ -1,0 +1,38 @@
+{
+	"operationId": "runBackupSchedule",
+	"summary": "Run a backup schedule now",
+	"description": "Admin only. Errors: busy (409) while another backup or restore runs, any other failure is stored on the schedule.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Schedule id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/backup-schedule-object.json"
+					}
+				}
+			}
+		}
+	}
+}

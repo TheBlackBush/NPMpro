@@ -1,0 +1,28 @@
+{
+	"operationId": "listBackupSchedules",
+	"summary": "List the backup schedules",
+	"description": "Admin only. Newest first by id.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "../../../components/backup-schedule-object.json"
+						}
+					}
+				}
+			}
+		}
+	}
+}

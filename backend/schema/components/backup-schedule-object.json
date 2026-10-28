@@ -1,0 +1,173 @@
+{
+	"type": "object",
+	"description": "A backup schedule; the passphrase is never returned",
+	"additionalProperties": false,
+	"required": [
+		"id",
+		"created_on",
+		"modified_on",
+		"owner_user_id",
+		"name",
+		"enabled",
+		"frequency",
+		"every_hours",
+		"time",
+		"weekday",
+		"month_day",
+		"types",
+		"protection",
+		"keep",
+		"next_run_at",
+		"last_run_at",
+		"last_status",
+		"last_error",
+		"last_file",
+		"last_size",
+		"last_duration_ms",
+		"passphrase_set",
+		"file_count"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"minimum": 1
+		},
+		"created_on": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"modified_on": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"owner_user_id": {
+			"type": "integer",
+			"description": "The administrator scheduled runs are logged under"
+		},
+		"name": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 60
+		},
+		"enabled": {
+			"type": "boolean"
+		},
+		"frequency": {
+			"type": "string",
+			"enum": [
+				"hours",
+				"daily",
+				"weekly",
+				"monthly"
+			]
+		},
+		"every_hours": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"maximum": 24
+		},
+		"time": {
+			"type": [
+				"string",
+				"null"
+			],
+			"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+		},
+		"weekday": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"maximum": 6,
+			"description": "0 = Monday"
+		},
+		"month_day": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"maximum": 28
+		},
+		"types": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"protection": {
+			"type": "string",
+			"enum": [
+				"passphrase",
+				"instance_key",
+				"none"
+			]
+		},
+		"keep": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 100
+		},
+		"next_run_at": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"last_run_at": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"last_status": {
+			"type": [
+				"string",
+				"null"
+			],
+			"enum": [
+				"success",
+				"failed",
+				null
+			]
+		},
+		"last_error": {
+			"type": [
+				"string",
+				"null"
+			]
+		},
+		"last_file": {
+			"type": [
+				"string",
+				"null"
+			]
+		},
+		"last_size": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"last_duration_ms": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"passphrase_set": {
+			"type": "boolean"
+		},
+		"file_count": {
+			"type": "integer",
+			"minimum": 0,
+			"description": "Stored files of the schedule"
+		}
+	}
+}

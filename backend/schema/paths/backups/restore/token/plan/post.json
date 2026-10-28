@@ -58,7 +58,8 @@
 									"settings_oidc",
 									"settings_monitoring",
 									"custom_nginx",
-									"crowdsec_files"
+									"crowdsec_files",
+									"backup_schedules"
 								]
 							},
 							"minItems": 1,
@@ -91,7 +92,8 @@
 									"settings_oidc",
 									"settings_monitoring",
 									"custom_nginx",
-									"crowdsec_files"
+									"crowdsec_files",
+									"backup_schedules"
 								]
 							}
 						},

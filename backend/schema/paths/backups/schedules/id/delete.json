@@ -1,0 +1,51 @@
+{
+	"operationId": "deleteBackupSchedule",
+	"summary": "Delete a backup schedule",
+	"description": "Admin only. With files=true the stored files of the schedule are removed too; that fails with busy (409) while a backup or restore runs.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Schedule id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		},
+		{
+			"in": "query",
+			"name": "files",
+			"description": "Also remove the stored files",
+			"required": false,
+			"schema": {
+				"type": "string",
+				"enum": [
+					"true",
+					"false"
+				]
+			}
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			}
+		}
+	}
+}

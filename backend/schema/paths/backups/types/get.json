@@ -21,7 +21,8 @@
 						"required": [
 							"categories",
 							"counts",
-							"certificateKinds"
+							"certificateKinds",
+							"time_zone"
 						],
 						"properties": {
 							"categories": {
@@ -55,7 +56,8 @@
 													"settings_oidc",
 													"settings_monitoring",
 													"custom_nginx",
-													"crowdsec_files"
+													"crowdsec_files",
+													"backup_schedules"
 												]
 											}
 										}
@@ -75,6 +77,10 @@
 									"type": "integer"
 								},
 								"description": "Certificates per provider"
+							},
+							"time_zone": {
+								"type": "string",
+								"description": "The container time zone schedules use"
 							}
 						}
 					}

@@ -1,4 +1,5 @@
 import internalAccessList from "./access-list.js";
+import { internalBackupSchedules } from "./backup-service.js";
 import internalCertificate from "./certificate.js";
 import internalDeadHost from "./dead-host.js";
 import internalProxyHost from "./proxy-host.js";
@@ -8,6 +9,15 @@ import internalStream from "./stream.js";
 const canView = (access, permission) => {
 	try {
 		access.can(permission);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+const isAdmin = (access) => {
+	try {
+		access.canAdmin();
 		return true;
 	} catch {
 		return false;
@@ -59,6 +69,7 @@ const internalReport = {
 			errors: { proxy: errors[0], redirection: errors[1], dead: errors[2], stream: errors[3] },
 			certificates_expiring: expiry.expiring,
 			certificates_expired: expiry.expired,
+			backup_schedules_failed: isAdmin(access) ? await internalBackupSchedules.failedSchedules() : [],
 		};
 	},
 };
