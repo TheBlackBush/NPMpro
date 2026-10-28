@@ -38,8 +38,9 @@ const listTables = async (knex, { views = false } = {}) => {
 			);
 			break;
 		case "postgres":
+			// pg_catalog lists the tables the user has no privilege on too
 			result = await knex.raw(
-				`select table_name as name from information_schema.tables where table_schema = current_schema()${views ? "" : " and table_type = 'BASE TABLE'"}`,
+				`select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = current_schema() and c.relkind in (${views ? "'r', 'p', 'f', 'v', 'm'" : "'r', 'p', 'f'"})`,
 			);
 			break;
 		default:

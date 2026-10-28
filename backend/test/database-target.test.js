@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import knexFactory from "knex";
-import { engineOf, listTables, serverVersion } from "../lib/database/engine.js";
+import { databaseSize, engineOf, listTables, serverVersion } from "../lib/database/engine.js";
 import { knexConfigOf } from "../lib/database/knex-config.js";
 import { parseVersion, sameDatabase, testTarget, validateTarget, versionProblem } from "../lib/database/target.js";
 import errs from "../lib/error.js";
@@ -166,4 +166,167 @@ it("never shows the password in the driver message, and always destroys the conn
 			isMoveError("connect")(error) && !error.details.includes("s3cret-pw") && error.details.includes("***"),
 	);
 	assert.equal(destroyed, 1);
+});
+
+const server = { engine: "postgres", host: "db", port: 5432, user: "u", name: "n" };
+const fakeKnex = ({ client = "pg", raw, schema, destroy } = {}) => ({
+	client: { config: { client } },
+	raw: raw ?? (async () => ({ rows: [{ server_version: "17.1" }] })),
+	schema: schema ?? {
+		createTable: async () => {},
+		dropTable: async () => {},
+		dropTableIfExists: async () => {},
+	},
+	destroy: destroy ?? (async () => {}),
+});
+
+it("stops when a step after connecting hangs and still destroys the connection", async () => {
+	let destroyed = 0;
+	const target = validateTarget(server);
+	const raw = (sql) =>
+		/server_version/u.test(sql) ? Promise.resolve({ rows: [{ server_version: "17.1" }] }) : new Promise(() => {});
+	await assert.rejects(
+		testTarget({
+			target,
+			current,
+			createKnex: () =>
+				fakeKnex({
+					raw,
+					destroy: async () => {
+						destroyed += 1;
+					},
+				}),
+			timeoutMs: 50,
+		}),
+		isMoveError("timeout"),
+	);
+	assert.equal(destroyed, 1);
+});
+
+it("returns even when destroy never finishes", async () => {
+	const target = validateTarget(server);
+	const raw = (sql) =>
+		Promise.resolve(/server_version/u.test(sql) ? { rows: [{ server_version: "17.1" }] } : { rows: [] });
+	const result = await testTarget({
+		target,
+		current,
+		createKnex: () => fakeKnex({ raw, destroy: () => new Promise(() => {}) }),
+		timeoutMs: 100,
+	});
+	assert.equal(result.flavor, "postgres");
+});
+
+it("scrubs the password in every encoding", async () => {
+	const password = 'p@ss/w:rd"';
+	const target = validateTarget({ ...server, password });
+	const echo = `${password} ${encodeURIComponent(password)} ${encodeURI(password)} ${JSON.stringify(password)}`;
+	await assert.rejects(
+		testTarget({ target, current, createKnex: () => fakeKnex({ raw: () => Promise.reject(new Error(echo)) }) }),
+		(error) =>
+			isMoveError("connect")(error) &&
+			!error.details.includes("p@ss") &&
+			!error.details.includes("p%40ss") &&
+			!error.details.includes("w:rd"),
+	);
+});
+
+it("reports a create failure and a drop failure with its retry", async () => {
+	const target = validateTarget(server);
+	const raw = (sql) =>
+		Promise.resolve(/server_version/u.test(sql) ? { rows: [{ server_version: "17.1" }] } : { rows: [] });
+	await assert.rejects(
+		testTarget({
+			target,
+			current,
+			createKnex: () => fakeKnex({ raw, schema: { createTable: () => Promise.reject(new Error("denied")) } }),
+		}),
+		(error) => isMoveError("permission")(error) && error.details === "denied",
+	);
+	let drops = 0;
+	await assert.rejects(
+		testTarget({
+			target,
+			current,
+			createKnex: () =>
+				fakeKnex({
+					raw,
+					schema: {
+						createTable: async () => {},
+						dropTable: () => {
+							drops += 1;
+							return Promise.reject(new Error("no drop"));
+						},
+					},
+				}),
+		}),
+		(error) => isMoveError("permission")(error) && error.details.includes("npmpro_move_probe was left"),
+	);
+	assert.equal(drops, 2);
+});
+
+it("refuses an old server and unknown or mistyped target settings", async () => {
+	const target = validateTarget({ ...server, engine: "mysql", port: 3306 });
+	const raw = async () => [[{ version: "5.7.44" }]];
+	await assert.rejects(
+		testTarget({ target, current, createKnex: () => fakeKnex({ client: "mysql2", raw }) }),
+		(error) => isMoveError("version")(error) && error.details === "5.7.44",
+	);
+	assert.throws(() => validateTarget({ ...server, extra: 1 }), isMoveError("invalid-target"));
+	assert.throws(() => validateTarget({ ...server, ssl: { enabled: "yes" } }), isMoveError("invalid-target"));
+	assert.throws(() => validateTarget({ ...server, ssl: { verify_identity: true } }), isMoveError("invalid-target"));
+	assert.throws(() => validateTarget({ ...server, ssl: [] }), isMoveError("invalid-target"));
+});
+
+it("reads other version strings", () => {
+	assert.equal(parseVersion("postgres", "PostgreSQL 13.14 on x86_64-pc-linux-gnu").major, 13);
+	assert.deepEqual(parseVersion("postgres", "17beta1"), { flavor: "postgres", major: 17, minor: 0, text: "17beta1" });
+	const proxied = parseVersion("mysql", "5.5.5-10.6.12-MariaDB");
+	assert.equal(proxied.flavor, "mariadb");
+	assert.equal(proxied.major, 10);
+	assert.equal(
+		sameDatabase(
+			{ engine: "mysql", host: "h", port: 3306, name: "Npm" },
+			{ engine: "mysql", host: "h", port: 3306, name: "npm" },
+		),
+		true,
+	);
+	assert.equal(
+		sameDatabase(
+			{ engine: "postgres", host: "h", port: 3306, name: "Npm" },
+			{ engine: "postgres", host: "h", port: 3306, name: "npm" },
+		),
+		false,
+	);
+});
+
+it("uses the MySQL and Postgres queries", async () => {
+	const queries = [];
+	const mysql = fakeKnex({
+		client: "mysql2",
+		raw: async (sql) => {
+			queries.push(sql);
+			if (sql.includes("version()")) return [[{ version: "10.11.6-MariaDB" }], []];
+			if (sql.includes("sum(")) return [[{ size: "2048" }], []];
+			return [[{ name: "b" }, { name: "a" }], []];
+		},
+	});
+	assert.equal(engineOf(mysql), "mysql");
+	assert.deepEqual(await listTables(mysql), ["a", "b"]);
+	assert.match(queries[0], /table_type = 'BASE TABLE'/u);
+	assert.doesNotMatch((await listTables(mysql, { views: true }), queries[1]), /BASE TABLE/u);
+	assert.equal(await serverVersion(mysql), "10.11.6-MariaDB");
+	assert.equal(await databaseSize(mysql), 2048);
+	const pg = fakeKnex({
+		raw: async (sql) => {
+			queries.push(sql);
+			if (sql.includes("pg_database_size")) return { rows: [{ size: "4096" }] };
+			return { rows: [{ name: "t" }] };
+		},
+	});
+	assert.deepEqual(await listTables(pg), ["t"]);
+	assert.match(queries.at(-1), /pg_class/u);
+	assert.match(queries.at(-1), /relkind in \('r', 'p', 'f'\)/u);
+	await listTables(pg, { views: true });
+	assert.match(queries.at(-1), /'v', 'm'/u);
+	assert.equal(await databaseSize(pg), 4096);
 });
