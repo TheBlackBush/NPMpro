@@ -17,6 +17,7 @@ import { BreakableHost } from "./BreakableHost";
 const getEventValue = (event) => {
 	switch (event.objectType) {
 		case "access-list":
+		case "backup":
 		case "backup-schedule":
 		case "dns-credential":
 		case "user":
