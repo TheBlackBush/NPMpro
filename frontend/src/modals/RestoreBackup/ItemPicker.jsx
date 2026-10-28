@@ -28,40 +28,55 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 		{ type: inSentence(typeName, intl.locale) },
 	);
 
+	// measured on open and again when the window is resized; the shift in place is taken out of the measure
+	const shiftRef = useRef(0);
 	useLayoutEffect(() => {
-		const menu = ref.current;
-		const bound = menu?.closest(".modal-body") ?? document.body;
-		if (!menu) return;
-		const box = bound.getBoundingClientRect();
-		const rect = menu.getBoundingClientRect();
-		setShift(Math.max(Math.min(0, box.right - rect.right), box.left - rect.left));
+		const measure = () => {
+			const menu = ref.current;
+			if (!menu) return;
+			const box = (menu.closest(".modal-body") ?? document.body).getBoundingClientRect();
+			const rect = menu.getBoundingClientRect();
+			const left = rect.left - shiftRef.current;
+			const right = rect.right - shiftRef.current;
+			shiftRef.current = Math.max(Math.min(0, box.right - right), box.left - left);
+			setShift(shiftRef.current);
+		};
+		measure();
+		window.addEventListener("resize", measure);
+		return () => window.removeEventListener("resize", measure);
 	}, []);
 
 	// focus moves into the search once, on open
 	useEffect(() => searchRef.current?.focus(), []);
 
-	// Escape closes the picker, not the dialog. Tabler's dropdown script handles Escape and the arrow keys in every
-	// .dropdown-menu on the document (capture phase) and fails without its own toggle, so the keys are taken first.
+	// While open, Escape closes the picker, not the dialog, wherever the focus is. Tabler's dropdown script handles
+	// Escape and the arrow keys in every .dropdown-menu on the document (capture phase) and fails without its own
+	// toggle, so these keys are taken first.
 	useEffect(() => {
 		const onKey = (e) => {
-			if (!ref.current?.contains(e.target) || !["Escape", "ArrowUp", "ArrowDown"].includes(e.key)) return;
-			e.stopPropagation();
 			if (e.key === "Escape") {
+				e.stopPropagation();
 				e.preventDefault();
 				onClose(true);
+			} else if (["ArrowUp", "ArrowDown"].includes(e.key) && ref.current?.contains(e.target)) {
+				e.stopPropagation();
 			}
 		};
 		window.addEventListener("keydown", onKey, true);
 		return () => window.removeEventListener("keydown", onKey, true);
 	}, [onClose]);
 
+	// a click or the focus outside the picker (other than on its button) closes it
 	useEffect(() => {
-		const onPointer = (e) => {
-			if (ref.current?.contains(e.target) || opener?.contains(e.target)) return;
-			onClose(false);
-		};
+		const outside = (target) => !(ref.current?.contains(target) || opener?.contains(target));
+		const onPointer = (e) => outside(e.target) && onClose(false);
+		const onFocus = (e) => outside(e.target) && onClose(false);
 		document.addEventListener("mousedown", onPointer);
-		return () => document.removeEventListener("mousedown", onPointer);
+		document.addEventListener("focusin", onFocus);
+		return () => {
+			document.removeEventListener("mousedown", onPointer);
+			document.removeEventListener("focusin", onFocus);
+		};
 	}, [onClose, opener]);
 
 	return (
@@ -82,9 +97,15 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 				typeName={typeName}
 				disabled={disabled}
 				menu={true}
+				label={label}
 				searchRef={searchRef}
 				footer={
-					<button type="button" className="btn btn-sm btn-primary ms-auto" onClick={() => onClose(true)}>
+					<button
+						type="button"
+						className="btn btn-sm btn-primary ms-auto"
+						onClick={() => onClose(true)}
+						disabled={disabled}
+					>
 						<T id="settings.backup.done" />
 					</button>
 				}

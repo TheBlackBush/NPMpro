@@ -181,3 +181,11 @@ export const inSentence = (text, locale) => {
 	if (!String(locale ?? "").startsWith("en") || !CAPITALISED.test(text)) return text;
 	return text.charAt(0).toLowerCase() + text.slice(1);
 };
+
+// the message id of a type's name for a count: the singular name for one item when it exists, null when unknown
+export const typeNameId = (typeId, count, messages) => {
+	const one = `settings.backup.type-one.${typeId}`;
+	const other = `settings.backup.type.${typeId}`;
+	if (count === 1 && messages?.[one]) return one;
+	return messages?.[other] ? other : null;
+};

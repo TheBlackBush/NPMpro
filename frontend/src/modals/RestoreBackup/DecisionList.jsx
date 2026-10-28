@@ -1,6 +1,6 @@
 import { IconChevronDown, IconChevronUp, IconSearch } from "@tabler/icons-react";
 import cn from "clsx";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 import {
 	changedChoices,
@@ -13,6 +13,7 @@ import {
 	inSentence,
 	isIncluded,
 	setAllChoices,
+	typeNameId,
 } from "src/modules/BackupMerge";
 
 // the badge colour of each action
@@ -39,9 +40,10 @@ const REASON_COLORS = {
 // search and the reason filters are shown from this many items
 const TOOLS_FROM = 11;
 
-const typeName = (typeId) => {
-	const id = `settings.backup.type.${typeId}`;
-	return intl.messages[id] ? intl.formatMessage({ id }) : typeId;
+// the type's name, singular for a count of one when it has a singular name
+const typeName = (typeId, count) => {
+	const id = typeNameId(typeId, count, intl.messages);
+	return id ? intl.formatMessage({ id }) : typeId;
 };
 
 const optionLabel = (choice) => intl.formatMessage({ id: `settings.backup.merge.option.${choice}` });
@@ -58,7 +60,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	const value = currentChoice(item, choice);
 	const target = targetText(item);
 	return (
-		<tr>
+		<tr data-key={item.key}>
 			<td>
 				<div className="text-break">{item.label}</div>
 				{item.neededBy?.length ? (
@@ -163,7 +165,11 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 					<span className="badge bg-secondary-lt">{group.items.length}</span>
 					<span className="small text-secondary d-none d-sm-inline">{summary}</span>
 					{options.length > 1 ? (
-						<div className="d-flex align-items-center gap-2 ms-auto">
+						// below sm "Set all" takes its own line at the start, where the scrolled table shows it
+						<div className="w-100 d-sm-none" />
+					) : null}
+					{options.length > 1 ? (
+						<div className="d-flex align-items-center gap-2 ms-sm-auto">
 							<span className="small text-secondary" aria-hidden="true">
 								<T id="settings.backup.merge.set-all" />
 							</span>
@@ -213,6 +219,23 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 	const [reason, setReason] = useState(null);
 	const [folded, setFolded] = useState([]);
 	const [expanded, setExpanded] = useState([]);
+	// the row to focus after "Show more" removed its button
+	const [focusKey, setFocusKey] = useState(null);
+	const tableRef = useRef(null);
+	useEffect(() => {
+		if (!focusKey) return;
+		const row = [...(tableRef.current?.querySelectorAll("tr[data-key]") ?? [])].find(
+			(element) => element.dataset.key === focusKey,
+		);
+		const control = row?.querySelector("input:not(:disabled), button:not(:disabled)");
+		if (control) control.focus();
+		else if (row) {
+			// a row whose choice is fixed has no control: the row itself takes the focus
+			row.tabIndex = -1;
+			row.focus();
+		}
+		setFocusKey(null);
+	}, [focusKey]);
 	const tools = items.length >= TOOLS_FROM;
 	const reasons = decisionReasons(items);
 	const activeReason = tools && reasons.includes(reason) ? reason : null;
@@ -272,7 +295,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 			) : null}
 			<div className="card">
 				<div className="table-responsive">
-					<table className="table table-vcenter card-table" aria-labelledby={titleId}>
+					<table ref={tableRef} className="table table-vcenter card-table" aria-labelledby={titleId}>
 						<thead>
 							<tr>
 								{/* no Tabler utility sets a minimum width: on a phone the table scrolls sideways instead
@@ -324,12 +347,20 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 												<button
 													type="button"
 													className="btn btn-link btn-sm p-0"
-													onClick={() => setExpanded((list) => [...list, group.type])}
+													onClick={() => {
+														setExpanded((list) => [...list, group.type]);
+														// the button goes away: focus moves to the first row it showed
+														setFocusKey(group.items[group.rows.length].key);
+													}}
 												>
 													<T
 														id="settings.backup.merge.show-more"
 														data={{
 															count: group.more,
+															one: inSentence(
+																typeName(group.type, group.more),
+																intl.locale,
+															),
 															type: inSentence(typeName(group.type), intl.locale),
 														}}
 													/>

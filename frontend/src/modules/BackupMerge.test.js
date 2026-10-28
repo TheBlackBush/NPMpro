@@ -26,6 +26,7 @@ import {
 	sentChoices,
 	setAllChoices,
 	tickShown,
+	typeNameId,
 } from "./BackupMerge.js";
 
 const plan = {
@@ -340,5 +341,20 @@ describe("BackupMerge type names in a sentence", () => {
 		assert.equal(inSentence("404 hosts", "en"), "404 hosts");
 		assert.equal(inSentence("Proxy-Hosts", "de"), "Proxy-Hosts");
 		assert.equal(inSentence("", "en"), "");
+	});
+});
+
+describe("BackupMerge type name by count", () => {
+	const messages = {
+		"settings.backup.type.proxy_hosts": "Proxy hosts",
+		"settings.backup.type-one.proxy_hosts": "Proxy host",
+		"settings.backup.type.settings_runtime": "Runtime settings",
+	};
+
+	it("typeNameId uses the singular name for one item when there is one", () => {
+		assert.equal(typeNameId("proxy_hosts", 1, messages), "settings.backup.type-one.proxy_hosts");
+		assert.equal(typeNameId("proxy_hosts", 2, messages), "settings.backup.type.proxy_hosts");
+		assert.equal(typeNameId("settings_runtime", 1, messages), "settings.backup.type.settings_runtime");
+		assert.equal(typeNameId("unknown", 1, messages), null);
 	});
 });

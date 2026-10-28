@@ -16,6 +16,7 @@ import { inSentence, pickerItems, tickShown } from "src/modules/BackupMerge";
  * @param {string}    props.typeName      the type's name, for "Search proxy hosts" and "No proxy hosts match."
  * @param {boolean}   [props.disabled]
  * @param {string}    [props.labelledBy]  the id of the list's title, for the group of checkboxes
+ * @param {string}    [props.label]       the name of the group of checkboxes when there is no title
  * @param {boolean}   [props.menu]        the rows as dropdown items, for a dropdown menu; else as a list group
  * @param {ReactNode} [props.footer]      shown at the end of the footer row (the menu's Done)
  * @param {Object}    [props.searchRef]   a ref to the search field
@@ -27,6 +28,7 @@ function ItemChecklist({
 	typeName,
 	disabled = false,
 	labelledBy,
+	label,
 	menu = false,
 	footer,
 	searchRef,
@@ -97,6 +99,7 @@ function ItemChecklist({
 				// no Tabler utility caps a height (only mh-100): a long list scrolls inside the box
 				<fieldset
 					aria-labelledby={labelledBy}
+					aria-label={labelledBy ? undefined : label}
 					className={cn("overflow-auto", menu ? "py-1" : "list-group list-group-flush list-group-selectable")}
 					style={{ maxHeight: "16rem" }}
 				>
