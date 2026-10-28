@@ -1,8 +1,9 @@
 import db from "../db.js";
 import { isSqlite, sqliteFile } from "../lib/config.js";
 import { createCrowdsecService } from "../lib/crowdsec/service.js";
+import { MOVE_PAUSE_MS, waitWithin } from "../lib/database/pause.js";
 import { GEOIP_DIR, geoip } from "../lib/geoip/instance.js";
-import { runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
+import { geoipUpdateSettled, runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
@@ -147,4 +148,39 @@ const stopMonitoringServices = async () => {
 	await reads?.close?.();
 };
 
-export { internalMonitoring, runGeoipUpdate, startMonitoringServices, stopMonitoringServices, traffic };
+/**
+ * A database move: the monitoring writes stop. The GeoIP checks skip and an update that is going on (also one
+ * started by saving the GeoIP settings) records its result first; the traffic counts and reader position read so far
+ * are written, then the flushes and roll-ups skip (the access log is still read). The timers keep running and the
+ * CrowdSec poll goes on (it writes no database rows). With a writer still busy after timeoutMs it rejects with
+ * "writer-running" and leaves everything as it was.
+ *
+ * @param {{ timeoutMs?: number }} [options]
+ */
+const pauseMonitoringWriters = async ({ timeoutMs = MOVE_PAUSE_MS } = {}) => {
+	geoipService.pause();
+	const [geo, counts] = await Promise.allSettled([
+		waitWithin(geoipUpdateSettled(), { name: "GeoIP update", timeoutMs }),
+		traffic.pause({ timeoutMs }),
+	]);
+	if (geo.status === "fulfilled" && counts.status === "fulfilled") return;
+	geoipService.resume();
+	if (counts.status === "fulfilled") traffic.resume();
+	throw geo.status === "rejected" ? geo.reason : counts.reason;
+};
+
+/** After a failed database move: the GeoIP checks and the traffic writes go on from where they were. */
+const resumeMonitoringWriters = () => {
+	geoipService.resume();
+	traffic.resume();
+};
+
+export {
+	internalMonitoring,
+	pauseMonitoringWriters,
+	resumeMonitoringWriters,
+	runGeoipUpdate,
+	startMonitoringServices,
+	stopMonitoringServices,
+	traffic,
+};

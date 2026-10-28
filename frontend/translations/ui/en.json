@@ -195,6 +195,7 @@
 	"dashboard.view-all": "View all",
 	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
 	"database.error.move-running": "A database move is running already.",
+	"database.error.writer-running": "A background task that writes to the database is still running. Try the move again later.",
 	"database.error.writes-running": "Changes that started before the database move are still running. Try again when they are done.",
 	"dead-host": "404 Host",
 	"dead-host.directory": "Group",

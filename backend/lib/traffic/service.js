@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
+import { waitWithin } from "../database/pause.js";
 import { createCounter } from "./counter.js";
 import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
@@ -227,6 +228,8 @@ const createTrafficService = ({
 	let readTimer = null;
 	let flushTimer = null;
 	let maintainTimer = null;
+	// a database move: nothing is written (the log is still read and counted in memory) until resume()
+	let paused = false;
 
 	const logOnce = (message) => {
 		if (message !== loggedError) log.error(`Traffic statistics: ${message}`);
@@ -458,12 +461,14 @@ const createTrafficService = ({
 
 	const flush = () =>
 		queue(async () => {
+			if (paused) return;
 			await flushNow();
 			await refresh();
 		});
 
 	const maintain = () =>
 		queue(async () => {
+			if (paused) return;
 			try {
 				await store.rollUpAndPrune({ now: now(), retentionDays });
 			} catch (err) {
@@ -530,14 +535,46 @@ const createTrafficService = ({
 			maintain().catch(logError("roll-up failed"));
 		},
 
-		/** Clears the timers and writes what is still counted. */
+		/**
+		 * Clears the timers and writes what is still counted. While paused it writes nothing: the lines read since the
+		 * pause are read again from the saved reader position at the next start.
+		 */
 		stop: async () => {
 			started = false;
 			stopReading();
 			for (const t of [flushTimer, maintainTimer]) if (t) timers.clearInterval(t);
 			flushTimer = null;
 			maintainTimer = null;
-			await queue(flushNow);
+			await queue(async () => {
+				if (!paused) await flushNow();
+			});
+		},
+
+		/**
+		 * A database move: writes the counts and the reader position of everything read so far (after a flush or
+		 * roll-up that is going on), then the flushes and roll-ups skip until resume(). The access log is still read
+		 * and counted in memory: after a failed move the next flush writes it, after a successful one the new
+		 * process reads it again from the position saved here. The timers keep running.
+		 *
+		 * @param {{ timeoutMs?: number }} [options]  rejects with "writer-running" when the writes take longer, and
+		 *                                            the service is not paused then
+		 */
+		pause: async ({ timeoutMs } = {}) => {
+			if (paused) return;
+			const done = queue(flushNow);
+			// a flush or roll-up queued after this one skips; this one still writes
+			paused = true;
+			try {
+				await waitWithin(done, { name: "Traffic statistics", timeoutMs });
+			} catch (error) {
+				paused = false;
+				throw error;
+			}
+		},
+
+		/** Ends a pause: the next flush writes what was counted meanwhile, nothing runs at once. */
+		resume: () => {
+			paused = false;
 		},
 
 		/** Starts or stops reading the access log (the switch itself is done by applyAccessLog). */

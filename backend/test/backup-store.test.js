@@ -749,3 +749,19 @@ it("detachSchedule renames where hard links are not supported", async () => {
 	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");
 	assert.deepEqual(await store.detachSchedule(5), ["npmpro-backup-npm-20261026-120000.npmpro"]);
 });
+
+it("acquire holds the lock until released, once", async () => {
+	const { store } = await make();
+	const release = store.acquire();
+	assert.throws(() => store.acquire(), code("busy", 409));
+	await assert.rejects(
+		store.withLock(async () => 1),
+		code("busy", 409),
+	);
+	release();
+	release();
+	const again = store.acquire();
+	assert.throws(() => store.acquire(), code("busy", 409));
+	again();
+	assert.equal(await store.withLock(async () => 2), 2);
+});

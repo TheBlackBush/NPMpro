@@ -49,6 +49,7 @@ const getNiceName = (domainNames) => {
 const renewalTimer = createRenewalTimer({
 	run: () => internalCertificate.processExpiringHosts(),
 	hours: Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
+	busy: () => internalCertificate.intervalProcessing,
 	log: logger,
 });
 
@@ -64,12 +65,13 @@ const internalCertificate = {
 	restartTimer: (hours) => renewalTimer.restart(hours),
 
 	/**
-	 * Stops renewals for a restore: waits for a running renewal, then the timer skips its runs until resumeRenewals()
+	 * Stops renewals for a restore or a database move: waits for a running renewal, then the timer skips its runs
+	 * until resumeRenewals(). With timeoutMs (a move) it rejects with "writer-running" when the renewal takes longer
+	 * and leaves the timer as it was.
+	 *
+	 * @param {{ timeoutMs?: number }} [options]
 	 */
-	pauseRenewals: async () => {
-		renewalTimer.pause();
-		while (internalCertificate.intervalProcessing) await new Promise((resolve) => setTimeout(resolve, 1000));
-	},
+	pauseRenewals: (options) => renewalTimer.pauseAndWait(options),
 
 	resumeRenewals: () => renewalTimer.resume(),
 

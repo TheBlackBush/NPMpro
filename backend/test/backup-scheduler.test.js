@@ -225,3 +225,132 @@ it("a failing dueSchedules or giveUp is logged and the next tick still works", a
 	await scheduler.tick();
 	assert.equal(errors.length, 2);
 });
+
+it("pause waits for a running tick, skips later ticks and resume starts them again", async () => {
+	const clock = fakeClock();
+	let finish;
+	let calls = 0;
+	const scheduler = createBackupScheduler({
+		dueSchedules: async () => {
+			calls += 1;
+			return [{ id: 1, name: "slow" }];
+		},
+		runAutomatic: () =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+		giveUp: async () => {},
+		clock,
+		log: silent,
+	});
+	const running = scheduler.tick();
+	await new Promise((resolve) => setImmediate(resolve));
+	let paused = false;
+	const pausing = scheduler.pause().then(() => {
+		paused = true;
+	});
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(paused, false);
+	finish();
+	await running;
+	await pausing;
+	assert.equal(paused, true);
+	await scheduler.tick();
+	assert.equal(calls, 1);
+	scheduler.resume();
+	const again = scheduler.tick();
+	await new Promise((resolve) => setImmediate(resolve));
+	finish();
+	await again;
+	assert.equal(calls, 2);
+});
+
+it("a pause that runs out of time leaves the scheduler running", async () => {
+	const clock = fakeClock();
+	let finish;
+	let calls = 0;
+	const scheduler = createBackupScheduler({
+		dueSchedules: async () => {
+			calls += 1;
+			return [{ id: 1, name: "slow" }];
+		},
+		runAutomatic: () =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+		giveUp: async () => {},
+		clock,
+		log: silent,
+	});
+	const running = scheduler.tick();
+	await new Promise((resolve) => setImmediate(resolve));
+	const pausing = scheduler.pause({ timeoutMs: MINUTE });
+	await clock.advance(MINUTE);
+	await assert.rejects(
+		pausing,
+		(error) => error.code === "writer-running" && error.status === 409 && error.details === "Backup scheduler",
+	);
+	finish();
+	await running;
+	// not paused: the next tick runs, and resume() without a pause does nothing
+	scheduler.resume();
+	const again = scheduler.tick();
+	await new Promise((resolve) => setImmediate(resolve));
+	finish();
+	await again;
+	assert.equal(calls, 2);
+});
+
+it("resume runs nothing by itself and the paused time does not count toward a busy wait", async () => {
+	const clock = fakeClock();
+	const runs = [];
+	const givenUp = [];
+	const scheduler = createBackupScheduler({
+		dueSchedules: async () => [{ id: 7, name: "nightly" }],
+		runAutomatic: async () => {
+			runs.push(clock.now());
+			throw busyError();
+		},
+		giveUp: async (row) => {
+			givenUp.push(row.id);
+		},
+		clock,
+		log: silent,
+	});
+	await scheduler.tick();
+	clock.value = 50 * MINUTE;
+	await scheduler.pause();
+	clock.value = 80 * MINUTE;
+	scheduler.resume();
+	assert.equal(runs.length, 1);
+	// 50 minutes waited before the pause and none after it: not given up yet
+	await scheduler.tick();
+	assert.deepEqual(givenUp, []);
+	clock.value = 91 * MINUTE;
+	await scheduler.tick();
+	assert.deepEqual(givenUp, [7]);
+	assert.equal(runs.length, 3);
+});
+
+it("a pause and resume with nothing in between keep the busy wait as it was", async () => {
+	const clock = fakeClock();
+	const givenUp = [];
+	const scheduler = createBackupScheduler({
+		dueSchedules: async () => [{ id: 7, name: "nightly" }],
+		runAutomatic: async () => {
+			throw busyError();
+		},
+		giveUp: async (row) => {
+			givenUp.push(row.id);
+		},
+		clock,
+		log: silent,
+	});
+	await scheduler.tick();
+	clock.value = 30 * MINUTE;
+	await scheduler.pause();
+	scheduler.resume();
+	clock.value = 60 * MINUTE;
+	await scheduler.tick();
+	assert.deepEqual(givenUp, [7]);
+});

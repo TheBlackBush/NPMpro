@@ -92,3 +92,47 @@ it("stays paused across a restart", () => {
 	clock.tick();
 	assert.equal(runs, 1);
 });
+
+it("runs again only when every pause has ended", () => {
+	const clock = fakeClock();
+	let runs = 0;
+	const timer = createRenewalTimer({ run: () => runs++, hours: 3, clock });
+	timer.start();
+	timer.pause();
+	timer.pause();
+	timer.resume();
+	clock.tick();
+	assert.equal(runs, 0);
+	assert.equal(timer.paused(), true);
+	timer.resume();
+	timer.resume();
+	assert.equal(timer.paused(), false);
+	clock.tick();
+	assert.equal(runs, 1);
+});
+
+it("pauseAndWait waits for a running renewal; past its time limit it ends its pause and rejects", async () => {
+	const clock = { ...fakeClock(), setTimeout, clearTimeout };
+	let busy = true;
+	let runs = 0;
+	const timer = createRenewalTimer({ run: () => runs++, hours: 3, busy: () => busy, clock, pollMs: 2 });
+	timer.start();
+	await assert.rejects(
+		timer.pauseAndWait({ timeoutMs: 20 }),
+		(error) => error.code === "writer-running" && error.status === 409 && error.details === "Certificate renewal",
+	);
+	assert.equal(timer.paused(), false);
+	clock.tick();
+	assert.equal(runs, 1);
+	const waiting = timer.pauseAndWait({ timeoutMs: 5000 });
+	assert.equal(timer.paused(), true);
+	setTimeout(() => {
+		busy = false;
+	}, 10);
+	await waiting;
+	clock.tick();
+	assert.equal(runs, 1);
+	timer.resume();
+	clock.tick();
+	assert.equal(runs, 2);
+});
