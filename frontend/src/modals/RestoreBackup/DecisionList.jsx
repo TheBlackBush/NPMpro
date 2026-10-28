@@ -1,6 +1,7 @@
 import { IconChevronDown, IconChevronUp, IconSearch } from "@tabler/icons-react";
 import cn from "clsx";
 import { useEffect, useId, useRef, useState } from "react";
+import { BreakableHost } from "src/components";
 import { intl, T } from "src/locale";
 import {
 	changedChoices,
@@ -77,7 +78,9 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	return (
 		<tr data-key={item.key}>
 			<td>
-				<div className={titleClass()}>{item.label}</div>
+				<div className={titleClass()}>
+					<BreakableHost value={item.label} />
+				</div>
 				{item.neededBy?.length ? (
 					<div className="small text-secondary text-break">
 						<T
@@ -93,13 +96,21 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 								<ReasonBadge reason={item.reason} />
 							</div>
 						) : null}
-						{target ? <div className="mt-1 small text-secondary text-break">{target}</div> : null}
+						{target ? (
+							<div className="mt-1 small text-secondary text-break">
+								<BreakableHost value={target} />
+							</div>
+						) : null}
 					</div>
 				) : null}
 			</td>
 			<td className={PHONE_HIDDEN_CELL}>
 				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
-				{target ? <span className="text-secondary small text-break">{target}</span> : null}
+				{target ? (
+					<span className="text-secondary small text-break">
+						<BreakableHost value={target} />
+					</span>
+				) : null}
 			</td>
 			<td>
 				{/* on phones the line wraps, so the choice group takes its own full-width line when Include does not fit */}
@@ -326,7 +337,8 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 					>
 						<thead>
 							<tr>
-								<th scope="col">
+								{/* the item gets at least half the width, so its name does not break mid-label on tablets */}
+								<th scope="col" className="w-50">
 									<T id="settings.backup.merge.column.item" />
 								</th>
 								<th scope="col">
