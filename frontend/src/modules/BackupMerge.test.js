@@ -14,6 +14,7 @@ import {
 	filterDecisions,
 	groupChoices,
 	groupDecisions,
+	inSentence,
 	isIncluded,
 	linkedItems,
 	mergeCatalogue,
@@ -329,5 +330,15 @@ describe("BackupMerge item picker", () => {
 		assert.deepEqual(tickShown(items, [4], shown, true), [1, 2, 3, 4]);
 		assert.deepEqual(tickShown(items, [1, 2, 4], shown, false), [4]);
 		assert.deepEqual(tickShown(items, [3, 1], [], true), [1, 3]);
+	});
+});
+
+describe("BackupMerge type names in a sentence", () => {
+	it("inSentence lowercases the first letter in English, not acronyms or other languages", () => {
+		assert.equal(inSentence("Proxy hosts", "en"), "proxy hosts");
+		assert.equal(inSentence("DNS credentials", "en"), "DNS credentials");
+		assert.equal(inSentence("404 hosts", "en"), "404 hosts");
+		assert.equal(inSentence("Proxy-Hosts", "de"), "Proxy-Hosts");
+		assert.equal(inSentence("", "en"), "");
 	});
 });

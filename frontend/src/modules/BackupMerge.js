@@ -173,3 +173,11 @@ export const tickShown = (items, selected, shown, on) => {
 	}
 	return items.filter((item) => ticked.has(String(item.id))).map((item) => item.id);
 };
+
+// a type name inside an English sentence ("Show 3 more proxy hosts"): the first letter lowercased unless the name
+// starts with an acronym; other languages keep their casing
+const CAPITALISED = /^\p{Lu}\p{Ll}/u;
+export const inSentence = (text, locale) => {
+	if (!String(locale ?? "").startsWith("en") || !CAPITALISED.test(text)) return text;
+	return text.charAt(0).toLowerCase() + text.slice(1);
+};
