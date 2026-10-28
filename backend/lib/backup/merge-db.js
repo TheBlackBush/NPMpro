@@ -1,6 +1,7 @@
 import { freeName } from "./references.js";
 import { clientOf, createInserter, key, movedAvatar, SECRET_TYPES, typeData } from "./restore-db.js";
 import { coerceRow } from "./rows.js";
+import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
@@ -11,8 +12,6 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const LINK_TYPES = ["dns_credentials", "certificates", "access_lists"];
-const SCHEDULE_TYPE = "backup_schedules";
-const SCHEDULE_TABLE = "npmpro_backup_schedule";
 // the setting row types; backup schedules are their own rows
 const SETTINGS_TYPES = new Set(
 	CATEGORIES.find(({ id }) => id === "settings").types.filter((typeId) => typeId !== SCHEDULE_TYPE),

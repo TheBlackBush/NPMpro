@@ -1,5 +1,6 @@
 import path from "node:path";
 import { RUNTIME_GROUPS } from "../runtime-rules.js";
+import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
 
 // What a backup can hold, by type: the tables, the files under the data folder and how the stored secrets are opened
@@ -14,13 +15,7 @@ const CATEGORIES = [
 	{ id: "users", types: ["users"] },
 	{
 		id: "settings",
-		types: [
-			"settings_runtime",
-			"settings_default_site",
-			"settings_oidc",
-			"settings_monitoring",
-			"backup_schedules",
-		],
+		types: ["settings_runtime", "settings_default_site", "settings_oidc", "settings_monitoring", SCHEDULE_TYPE],
 	},
 	{ id: "custom_files", types: ["custom_nginx", "crowdsec_files"] },
 ];
@@ -38,7 +33,7 @@ const RESTORE_ORDER = [
 	"settings_default_site",
 	"settings_oidc",
 	"settings_monitoring",
-	"backup_schedules",
+	SCHEDULE_TYPE,
 	"custom_nginx",
 	"crowdsec_files",
 ];
@@ -126,7 +121,6 @@ const settingMetaSecret = (id, key) => {
 
 const settingRows = (ids) => [{ table: "setting", where: (qb) => qb.whereIn("id", ids) }];
 
-const SCHEDULE_TABLE = "npmpro_backup_schedule";
 // the run state and owner stay with the instance; a restore starts them anew
 const SCHEDULE_RUN_STATE = [
 	"owner_user_id",
@@ -281,11 +275,11 @@ const TYPES = {
 		}),
 		secrets: NO_SECRETS,
 	},
-	backup_schedules: { tables: [{ table: SCHEDULE_TABLE }], files: NO_FILES, secrets: scheduleSecrets },
+	[SCHEDULE_TYPE]: { tables: [{ table: SCHEDULE_TABLE }], files: NO_FILES, secrets: scheduleSecrets },
 };
 
 // restored schedules: the restoring admin owns them, unknown types go, one that cannot run comes back paused
-TYPES.backup_schedules.restoreRows = (rowsByTable, { adminUserId, nowMs }) =>
+TYPES[SCHEDULE_TYPE].restoreRows = (rowsByTable, { adminUserId, nowMs }) =>
 	mapRows(rowsByTable, SCHEDULE_TABLE, (row) => {
 		const types = (Array.isArray(row.types) ? row.types : []).filter((typeId) => Object.hasOwn(TYPES, typeId));
 		const missingPassphrase = row.protection === "passphrase" && !hasText(row.passphrase);

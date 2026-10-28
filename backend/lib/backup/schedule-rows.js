@@ -4,7 +4,9 @@ import { FREQUENCIES, TIME } from "./schedule-time.js";
 
 // Backup schedule rows: the body checks of the API, the database form of dates and the view the API returns.
 
+// the schedules table and its backup type id, shared by the backup types, the merge plan and the merge
 const TABLE = "npmpro_backup_schedule";
+const SCHEDULE_TYPE = "backup_schedules";
 const PROTECTIONS = ["passphrase", "instance_key", "none"];
 const MIN_PASSPHRASE = 12;
 const MAX_NAME = 60;
@@ -125,4 +127,4 @@ const scheduleView = (parsed, fileCount) => {
 	};
 };
 
-export { fromDbDate, normalizeSchedule, PROTECTIONS, parseRow, scheduleView, TABLE, toDbDate };
+export { fromDbDate, normalizeSchedule, parseRow, SCHEDULE_TYPE, scheduleView, TABLE, toDbDate };

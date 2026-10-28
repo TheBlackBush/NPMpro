@@ -5,7 +5,7 @@ import path from "node:path";
 import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
-const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-s\d{1,9})?(-auto)?\.npmpro$/u;
+const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-s\d{1,10})?(-auto)?\.npmpro$/u;
 // a page export, offered as the name of its pending download
 const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
@@ -14,12 +14,12 @@ const PAGE_MARK = "--import";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
-const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-s\d{1,9})?(-auto)?\.npmpro$/u;
+const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-s\d{1,10})?(-auto)?\.npmpro$/u;
 // the schedule part and the order of a name: its stamp, then its number (none counts as 1)
-const SCHEDULE_PART = /-s(\d{1,9})(?=(?:-auto)?\.npmpro$)/u;
+const SCHEDULE_PART = /-s(\d{1,10})(?=(?:-auto)?\.npmpro$)/u;
 // link() errors of a file system without hard links
 const NO_HARD_LINKS = new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "EMLINK", "ENOSYS"]);
-const ORDER_PARTS = /-(\d{8}-\d{6})(?:-(\d{1,3}))?(?:-s\d{1,9})?(?:-auto)?\.npmpro$/u;
+const ORDER_PARTS = /-(\d{8}-\d{6})(?:-(\d{1,3}))?(?:-s\d{1,10})?(?:-auto)?\.npmpro$/u;
 
 const orderKey = (name) => {
 	const parts = ORDER_PARTS.exec(name);

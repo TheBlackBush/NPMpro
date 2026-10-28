@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { domainsOf, ITEM_TYPES, itemLabel, linkedOf, selectRows } from "./select.js";
 import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
@@ -9,8 +10,6 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 const DOMAIN_HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts"];
 const HOST_TYPES = [...DOMAIN_HOST_TYPES, "streams"];
 const LINK_TYPES = ["certificates", "access_lists", "dns_credentials"];
-const SCHEDULE_TYPE = "backup_schedules";
-const SCHEDULE_TABLE = "npmpro_backup_schedule";
 // the setting row types; backup schedules are their own rows, planned by scheduleDiffs
 const SETTINGS_TYPES = CATEGORIES.find(({ id }) => id === "settings").types.filter(
 	(typeId) => typeId !== SCHEDULE_TYPE,

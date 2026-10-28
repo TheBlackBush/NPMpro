@@ -453,6 +453,17 @@ it("schedule names carry -s<id>, a taken one gets its number before it", async (
 	);
 });
 
+it("a schedule id of up to 10 digits fits the names, as the router allows", async () => {
+	const { store, dir } = await make();
+	const name = store.fileName({ host: "npm", date: new Date(2026, 9, 28, 12, 0, 0), scheduleId: 9_999_999_999 });
+	assert.equal(store.NAME.test(name), true);
+	assert.equal(store.NAME.test(name.replace("-s9999999999", "-s99999999999")), false);
+	await writeNamed(dir, name);
+	assert.equal((await store.list())[0].schedule_id, 9_999_999_999);
+	assert.deepEqual([...(await store.scheduleCounts())], [[9_999_999_999, 1]]);
+	assert.equal(store.uniqueName(name), name.replace("-s9999999999", "-2-s9999999999"));
+});
+
 it("lists schedule_id and instance_key", async () => {
 	const { store, dir } = await make();
 	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
