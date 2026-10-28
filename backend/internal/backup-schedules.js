@@ -95,7 +95,19 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 					last_duration_ms: duration,
 					next_run_at: db(next),
 				});
-		} else log.info(`The schedule "${row.name}" was deleted during its run`);
+		} else {
+			log.info(`The schedule "${row.name}" was deleted during its run`);
+			// the new file loses -s<id>: a later schedule with the same id never counts or prunes it
+			if (result) {
+				try {
+					await store.detachSchedule(row.id);
+				} catch (caught) {
+					log.warn(
+						`Scheduled backup "${row.name}": could not detach the file of the deleted schedule, ${String(caught?.message ?? caught)}`,
+					);
+				}
+			}
+		}
 		const meta = result
 			? {
 					file: result.name,

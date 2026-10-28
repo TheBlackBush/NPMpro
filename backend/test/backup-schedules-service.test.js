@@ -29,7 +29,7 @@ const busyError = () => Object.assign(new BackupError("busy", "A backup or resto
 const idAsString = (value) =>
 	value && typeof value === "object" && Object.hasOwn(value, "id") ? { ...value, id: String(value.id) } : value;
 
-const make = async ({ run, log = silent, sealer = box, prune, removeFile, stringIds = false } = {}) => {
+const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach, stringIds = false } = {}) => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
 		connection: { filename: ":memory:" },
@@ -73,6 +73,11 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, string
 			scheduleFiles: async (id) => (files.get(id) ?? []).map((name) => ({ name })),
 			// the detached files move to the "plain" key, under their names without -s<id>
 			detachSchedule: (id) => {
+				try {
+					detach?.(id);
+				} catch (error) {
+					return Promise.reject(error);
+				}
 				const moved = (files.get(id) ?? []).map((name) => name.replace(SCHEDULE_PART, ""));
 				files.set(id, []);
 				files.set("plain", [...moved, ...(files.get("plain") ?? [])]);
@@ -207,6 +212,43 @@ it("deleted during a run: nothing fails and no row comes back", async () => {
 	assert.equal((await knex("npmpro_backup_schedule").count({ count: "*" }))[0].count, 0);
 	assert.ok(audits.some((entry) => entry.action === "backup-succeeded"));
 	assert.deepEqual(pruneCalls, []);
+});
+
+it("a run that finishes after its schedule was deleted leaves a plain stored backup", async () => {
+	let remove;
+	const { service, clock, files, audits } = await make({ run: async () => remove?.() });
+	const { id } = await service.create(admin(), daily);
+	remove = () => service.remove(admin(), id, { files: false });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+	assert.deepEqual(files.get(id), []);
+	assert.deepEqual(files.get("plain"), ["npmpro-backup-npm-1.npmpro"]);
+	assert.equal(
+		audits.find((entry) => entry.action === "backup-succeeded").meta.file,
+		`npmpro-backup-npm-1-s${id}.npmpro`,
+	);
+});
+
+it("a failed detach after a deleted schedule's run is logged, the run still audits", async () => {
+	const warnings = [];
+	let remove;
+	let detachCalls = 0;
+	const { service, clock, audits } = await make({
+		run: async () => remove?.(),
+		log: { info: () => {}, warn: (line) => warnings.push(line), error: () => {} },
+		// the delete's own detach works, the one after the run fails
+		detach: () => {
+			detachCalls++;
+			if (detachCalls === 2) throw new Error("disk gone");
+		},
+	});
+	const { id } = await service.create(admin(), daily);
+	remove = () => service.remove(admin(), id, { files: false });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+	assert.equal(detachCalls, 2);
+	assert.ok(warnings.some((line) => line.includes("disk gone")));
+	assert.ok(audits.some((entry) => entry.action === "backup-succeeded"));
 });
 
 it("run now keeps a future next run and refuses while busy without touching the status", async () => {
