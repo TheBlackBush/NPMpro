@@ -127,4 +127,4 @@ const coerceRow = (columns, table, row) => {
 	return out;
 };
 
-export { coerceRow, exportRows, JSON_COLUMNS };
+export { coerceRow, exportRows, isoToLocal, JSON_COLUMNS, localToIso };
