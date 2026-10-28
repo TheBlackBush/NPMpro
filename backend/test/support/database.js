@@ -1,6 +1,9 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import knexFactory from "knex";
+import { knexConfigOf } from "../../lib/database/knex-config.js";
+import { runMigrations } from "../../lib/database/schema.js";
 
 const env = process.env;
 
@@ -34,4 +37,19 @@ const tempSqlite = async (name = "database.sqlite") => {
 	};
 };
 
-export { pgConnection, pgSkip, resetPg, tempSqlite };
+// a temp SQLite file with every NPMpro migration applied
+const migratedSqlite = async (name) => {
+	const db = await tempSqlite(name);
+	const knex = knexFactory(knexConfigOf(db.connection));
+	await runMigrations(knex);
+	return {
+		...db,
+		knex,
+		cleanup: async () => {
+			await knex.destroy();
+			await db.cleanup();
+		},
+	};
+};
+
+export { migratedSqlite, pgConnection, pgSkip, resetPg, tempSqlite };
