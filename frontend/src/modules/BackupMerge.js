@@ -97,3 +97,79 @@ export const sentChoices = (choices, defaults) =>
 // a selected type whose item list was emptied in Choose items, null when there is none
 export const emptyItemType = (items, types) =>
 	types.find((typeId) => Array.isArray(items?.[typeId]) && items[typeId].length === 0) ?? null;
+
+// "Already on this instance": the items that match or clash with an instance row, and the linked items (they carry
+// Include); plain adds without a choice are left out, in plan order
+export const decisionItems = (plan) =>
+	plan.items.filter((item) => item.linked || item.choices.length > 1 || (item.reason && item.choices.length > 0));
+
+// the choice shown for an item: the local one when the item offers it, else the plan's action
+export const currentChoice = (item, choice) => (item.choices.includes(choice) ? choice : item.action);
+
+// a linked item is included unless unticked, locally or in the plan
+export const isIncluded = (item, choice) => (choice === undefined ? !item.unticked : choice !== "unticked");
+
+// the decision items whose label contains the text and, when given, with the reason
+export const filterDecisions = (items, { search, reason } = {}) =>
+	searchItems(items, search).filter((item) => !reason || item.reason === reason);
+
+// the reasons of the items, in order of first appearance
+export const decisionReasons = (items) => [...new Set(items.map((item) => item.reason).filter(Boolean))];
+
+// the rows a group of the decisions list shows before "Show more"
+export const DECISION_ROWS = 8;
+
+/**
+ * The decision items per type, in order of first appearance (the plan is in restore order).
+ *
+ * @param   {Object[]}  items
+ * @param   {Object}    [options]
+ * @param   {string[]}  [options.expanded]   the types whose rows are all shown ("Show more")
+ * @param   {boolean}   [options.searching]  a search shows every match
+ * @returns {Object[]}  [{ type, items, rows, more }]: rows are the shown items, more the hidden ones
+ */
+export const groupDecisions = (items, { expanded = [], searching = false } = {}) => {
+	const groups = new Map();
+	for (const item of items) {
+		if (!groups.has(item.type)) groups.set(item.type, []);
+		groups.get(item.type).push(item);
+	}
+	return [...groups.entries()].map(([type, list]) => {
+		const rows = searching || expanded.includes(type) ? list : list.slice(0, DECISION_ROWS);
+		return { type, items: list, rows, more: list.length - rows.length };
+	});
+};
+
+// the choices of a group's items, in order of first appearance
+export const groupChoices = (items) => [...new Set(items.flatMap((item) => item.choices))];
+
+// [{ choice, count }] of a group: how many items show each of its choices
+export const choiceSummary = (items, choices) =>
+	groupChoices(items).map((choice) => ({
+		choice,
+		count: items.filter((item) => currentChoice(item, choices?.[item.key]) === choice).length,
+	}));
+
+// "Set all": the choice for every given item that offers it and is included
+export const setAllChoices = (items, choice, choices) =>
+	Object.fromEntries(
+		items
+			.filter((item) => item.choices.includes(choice) && isIncluded(item, choices?.[item.key]))
+			.map((item) => [item.key, choice]),
+	);
+
+// the rows of the item picker: those matching the search and, with selectedOnly, the ticked ones
+export const pickerItems = (items, selected, { search, selectedOnly = false } = {}) => {
+	const ticked = new Set(selected.map(String));
+	return searchItems(items, search).filter((item) => !selectedOnly || ticked.has(String(item.id)));
+};
+
+// "Select all" (on) or "None" over the shown rows: the ticked ids in the order of items
+export const tickShown = (items, selected, shown, on) => {
+	const ticked = new Set(selected.map(String));
+	for (const item of shown) {
+		if (on) ticked.add(String(item.id));
+		else ticked.delete(String(item.id));
+	}
+	return items.filter((item) => ticked.has(String(item.id))).map((item) => item.id);
+};

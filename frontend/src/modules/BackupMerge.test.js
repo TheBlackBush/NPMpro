@@ -4,15 +4,27 @@ import {
 	ACTIONS,
 	byAction,
 	changedChoices,
+	choiceSummary,
 	chooseItems,
+	currentChoice,
+	DECISION_ROWS,
+	decisionItems,
+	decisionReasons,
 	emptyItemType,
+	filterDecisions,
+	groupChoices,
+	groupDecisions,
+	isIncluded,
 	linkedItems,
 	mergeCatalogue,
 	mergeDefaults,
 	needsChoice,
+	pickerItems,
 	requestItems,
 	searchItems,
 	sentChoices,
+	setAllChoices,
+	tickShown,
 } from "./BackupMerge.js";
 
 const plan = {
@@ -152,5 +164,170 @@ describe("BackupMerge choices across plans", () => {
 		assert.equal(emptyItemType({ proxy_hosts: [] }, ["proxy_hosts"]), "proxy_hosts");
 		assert.equal(emptyItemType({ proxy_hosts: [] }, ["streams"]), null);
 		assert.equal(emptyItemType({ proxy_hosts: [1] }, ["proxy_hosts"]), null);
+	});
+});
+
+describe("BackupMerge decisions list", () => {
+	const proxy = (id, extra = {}) => ({
+		key: `proxy_hosts:${id}`,
+		type: "proxy_hosts",
+		id,
+		label: `app-${id}.example.com`,
+		action: "skip",
+		reason: "domain-in-use",
+		target: { type: "proxy_hosts", id: 100 + id, label: `app-${id}.example.com` },
+		choices: ["skip", "replace"],
+		default: "skip",
+		linked: false,
+		...extra,
+	});
+	const cert = {
+		key: "certificates:4",
+		type: "certificates",
+		id: 4,
+		label: "a.test",
+		action: "existing",
+		reason: "same-certificate",
+		choices: ["existing", "add"],
+		default: "existing",
+		linked: true,
+	};
+	const plainAdd = {
+		key: "streams:1",
+		type: "streams",
+		id: 1,
+		label: "2222",
+		action: "add",
+		choices: [],
+		reason: null,
+	};
+	const onlySkip = proxy(30, { choices: ["skip"], reason: "domain-in-use-several" });
+	const setting = {
+		key: "setting:1",
+		type: "settings_default_site",
+		id: 1,
+		label: "Default site",
+		action: "keep",
+		reason: "differs",
+		choices: ["keep", "take"],
+		default: "keep",
+		linked: false,
+	};
+
+	it("decisionItems lists matches, clashes and linked items, not plain adds", () => {
+		const mixed = { items: [proxy(1), plainAdd, onlySkip, cert, setting] };
+		assert.deepEqual(
+			decisionItems(mixed).map((item) => item.key),
+			["proxy_hosts:1", "proxy_hosts:30", "certificates:4", "setting:1"],
+		);
+	});
+
+	it("currentChoice uses a local choice the item offers, else the plan's action", () => {
+		assert.equal(currentChoice(proxy(1), "replace"), "replace");
+		assert.equal(currentChoice(proxy(1), "take"), "skip");
+		assert.equal(currentChoice(proxy(1), undefined), "skip");
+		assert.equal(currentChoice(cert, "unticked"), "existing");
+	});
+
+	it("isIncluded follows a local untick, else the plan", () => {
+		assert.equal(isIncluded(cert, undefined), true);
+		assert.equal(isIncluded({ ...cert, unticked: true }, undefined), false);
+		assert.equal(isIncluded(cert, "unticked"), false);
+		assert.equal(isIncluded({ ...cert, unticked: true }, "add"), true);
+	});
+
+	it("filterDecisions narrows by search text and reason", () => {
+		const items = [proxy(1), proxy(2), cert, setting];
+		assert.deepEqual(
+			filterDecisions(items, { search: "APP-2" }).map((item) => item.key),
+			["proxy_hosts:2"],
+		);
+		assert.deepEqual(
+			filterDecisions(items, { reason: "differs" }).map((item) => item.key),
+			["setting:1"],
+		);
+		assert.equal(filterDecisions(items, {}).length, 4);
+	});
+
+	it("decisionReasons lists the reasons present in order", () => {
+		assert.deepEqual(decisionReasons([proxy(1), cert, proxy(2), setting]), [
+			"domain-in-use",
+			"same-certificate",
+			"differs",
+		]);
+	});
+
+	it("groupDecisions groups by type in order and shows 8 rows of a group", () => {
+		const items = [...Array.from({ length: 10 }, (_, index) => proxy(index + 1)), cert, setting];
+		const groups = groupDecisions(items);
+		assert.deepEqual(
+			groups.map((group) => group.type),
+			["proxy_hosts", "certificates", "settings_default_site"],
+		);
+		assert.equal(groups[0].items.length, 10);
+		assert.equal(groups[0].rows.length, DECISION_ROWS);
+		assert.equal(groups[0].more, 2);
+		assert.equal(groups[1].rows.length, 1);
+		assert.equal(groups[1].more, 0);
+	});
+
+	it("groupDecisions shows every row of an expanded group or while searching", () => {
+		const items = Array.from({ length: 10 }, (_, index) => proxy(index + 1));
+		assert.equal(groupDecisions(items, { expanded: ["proxy_hosts"] })[0].rows.length, 10);
+		assert.equal(groupDecisions(items, { searching: true })[0].more, 0);
+	});
+
+	it("choiceSummary counts the current choice of each item over the group's choices", () => {
+		const items = [proxy(1), proxy(2), proxy(3), onlySkip];
+		assert.deepEqual(choiceSummary(items, { "proxy_hosts:2": "replace" }), [
+			{ choice: "skip", count: 3 },
+			{ choice: "replace", count: 1 },
+		]);
+	});
+
+	it("groupChoices is the union of the group's choices in order", () => {
+		assert.deepEqual(groupChoices([onlySkip, proxy(1)]), ["skip", "replace"]);
+	});
+
+	it("setAllChoices sets the shown items that offer the choice and are included", () => {
+		const items = [proxy(1), proxy(2), onlySkip, cert];
+		assert.deepEqual(setAllChoices(items, "replace", { "certificates:4": "unticked" }), {
+			"proxy_hosts:1": "replace",
+			"proxy_hosts:2": "replace",
+		});
+		assert.deepEqual(setAllChoices([cert], "add", {}), { "certificates:4": "add" });
+		assert.deepEqual(setAllChoices([{ ...cert, unticked: true }], "add", {}), {});
+	});
+});
+
+describe("BackupMerge item picker", () => {
+	const items = [
+		{ id: 1, label: "app.example.com" },
+		{ id: 2, label: "shop.example.com" },
+		{ id: 3, label: "api.example.com" },
+		{ id: 4, label: "old.test" },
+	];
+
+	it("pickerItems filters by search and by selected only", () => {
+		assert.deepEqual(
+			pickerItems(items, [1, 2], { search: "example" }).map((item) => item.id),
+			[1, 2, 3],
+		);
+		assert.deepEqual(
+			pickerItems(items, ["2", 4], { selectedOnly: true }).map((item) => item.id),
+			[2, 4],
+		);
+		assert.deepEqual(
+			pickerItems(items, [2, 4], { search: "example", selectedOnly: true }).map((item) => item.id),
+			[2],
+		);
+		assert.equal(pickerItems(items, [], {}).length, 4);
+	});
+
+	it("tickShown selects or clears only the shown items, in item order", () => {
+		const shown = pickerItems(items, [], { search: "example" });
+		assert.deepEqual(tickShown(items, [4], shown, true), [1, 2, 3, 4]);
+		assert.deepEqual(tickShown(items, [1, 2, 4], shown, false), [4]);
+		assert.deepEqual(tickShown(items, [3, 1], [], true), [1, 3]);
 	});
 });
