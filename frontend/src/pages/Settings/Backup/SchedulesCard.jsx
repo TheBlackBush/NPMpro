@@ -29,6 +29,7 @@ import { contentLabels } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
+import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id, values) => intl.formatMessage({ id }, values);
 
@@ -118,7 +119,9 @@ function LastRun({ schedule, timeZone }) {
 	}
 	return (
 		<>
-			<div className="text-nowrap">{formatTime(schedule.lastRunAt, timeZone)}</div>
+			<div>
+				<WrapBelowLg>{formatTime(schedule.lastRunAt, timeZone)}</WrapBelowLg>
+			</div>
 			{schedule.lastSize ? <div className="small text-secondary">{formatBytes(schedule.lastSize)}</div> : null}
 			{schedule.lastStatus === "failed" && schedule.lastError ? (
 				<div className="small text-danger text-break">{schedule.lastError}</div>
@@ -219,7 +222,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 					summaryText: (row) => label(`settings.backup.schedule.protection.${row.protection}`),
 				},
 				header: label("settings.backup.schedule.column.protection"),
-				cell: (info) => <span className="text-nowrap">{info.getValue()}</span>,
+				cell: (info) => <WrapBelowLg>{info.getValue()}</WrapBelowLg>,
 			}),
 			columnHelper.accessor((row) => row.keep, {
 				id: "keep",

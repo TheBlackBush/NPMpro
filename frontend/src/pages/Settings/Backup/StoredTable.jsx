@@ -26,6 +26,7 @@ import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
+import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id) => intl.formatMessage({ id });
 
@@ -48,16 +49,6 @@ function Contents({ categories, types }) {
 				</span>
 			))}
 		</div>
-	);
-}
-
-// below lg the content may wrap, so the table fits next to the settings menu on tablets; from lg it stays on one line
-function WrapBelowLg({ children }) {
-	return (
-		<>
-			<span className="d-lg-none">{children}</span>
-			<span className="d-none d-lg-inline text-nowrap">{children}</span>
-		</>
 	);
 }
 
