@@ -227,10 +227,11 @@ function GroupRows({ group }) {
 							summary={<Value item={item} />}
 						/>
 						<div className="d-none d-md-block">
-							{/* breaks only after an underscore, so the table fits next to the settings menu on tablets */}
-							<code>
+							{/* on tablets the name breaks after an underscore, so the table fits next to the settings menu */}
+							<code className="d-lg-none">
 								<BreakableHost value={item.name} separators="_" />
 							</code>
+							<code className="d-none d-lg-inline text-nowrap">{item.name}</code>
 						</div>
 					</td>
 					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.value")}>

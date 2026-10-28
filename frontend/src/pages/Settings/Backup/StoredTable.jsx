@@ -11,6 +11,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import cn from "clsx";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { deleteBackup, downloadBackup } from "src/api/backend";
@@ -49,17 +50,23 @@ function Contents({ categories, types }) {
 	);
 }
 
-function SecretsBadge({ entry }) {
-	if (entry.summary?.secrets) {
-		return (
-			<span className="badge bg-azure-lt text-wrap text-start">
-				<T id="settings.backup.with-secrets" />
-			</span>
-		);
-	}
+// below lg the content may wrap, so the table fits next to the settings menu on tablets; from lg it stays on one line
+function WrapBelowLg({ children }) {
 	return (
-		<span className="badge bg-secondary-lt text-wrap text-start">
-			<T id="settings.backup.without-secrets" />
+		<>
+			<span className="d-lg-none">{children}</span>
+			<span className="d-none d-lg-inline text-nowrap">{children}</span>
+		</>
+	);
+}
+
+function SecretsBadge({ entry }) {
+	const secrets = entry.summary?.secrets;
+	return (
+		<span className={cn("badge text-wrap text-start", secrets ? "bg-azure-lt" : "bg-secondary-lt")}>
+			<WrapBelowLg>
+				<T id={secrets ? "settings.backup.with-secrets" : "settings.backup.without-secrets"} />
+			</WrapBelowLg>
 		</span>
 	);
 }
@@ -149,8 +156,7 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 					summaryText: (row) => formatDateTime(row.summary?.createdAt ?? row.modified),
 				},
 				header: label("settings.backup.created"),
-				// the date and the badges may wrap: the table sits next to the settings menu on tablets
-				cell: (info) => formatDateTime(info.getValue()),
+				cell: (info) => <WrapBelowLg>{formatDateTime(info.getValue())}</WrapBelowLg>,
 			}),
 			columnHelper.accessor((row) => row.size, {
 				id: "size",
