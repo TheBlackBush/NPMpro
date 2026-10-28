@@ -422,7 +422,7 @@
 	"settings.default-site.html.placeholder": "<!-- Adja meg az egyéni HTML tartalmát itt -->",
 	"settings.default-site.redirect": "Átirányítás",
 	"settings.default-site.redirect.description": "A látogatókat másik címre irányítja.",
-	"settings.section": "Settings section",
+	"settings.section": "Beállítások szakasz",
 	"setup.create-account": "Fiók létrehozása",
 	"setup.preamble": "Kezdje az admin fiók létrehozásával.",
 	"setup.title": "Üdvözöljük!",

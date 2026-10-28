@@ -407,7 +407,7 @@
 	"settings.default-site.html.placeholder": "<!-- Masukkan konten HTML kustom Anda di sini -->",
 	"settings.default-site.redirect": "Alihkan",
 	"settings.default-site.redirect.description": "Arahkan pengunjung ke alamat lain.",
-	"settings.section": "Settings section",
+	"settings.section": "Bagian pengaturan",
 	"setup.create-account": "Buat akun",
 	"setup.preamble": "Mulai dengan membuat akun admin Anda.",
 	"setup.title": "Selamat datang!",

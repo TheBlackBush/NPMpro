@@ -494,7 +494,7 @@
 	"settings.default-site.redirect": "重定向",
 	"settings.default-site.redirect.description": "将访客重定向到另一个地址。",
 	"settings.default-site.status": "HTTP 状态码（留空则为 200）",
-	"settings.section": "Settings section",
+	"settings.section": "设置分区",
 	"setup.create-account": "创建账户",
 	"setup.preamble": "通过创建您的管理员账户开始使用。",
 	"setup.title": "欢迎！",
