@@ -1,4 +1,5 @@
 import cn from "clsx";
+import { headerClass } from "src/modules/MobileColumns";
 import { ariaSort } from "src/modules/TableSort";
 
 function TableHeader({ tableInstance }) {
@@ -8,7 +9,7 @@ function TableHeader({ tableInstance }) {
 				<tr key={headerGroup.id}>
 					{headerGroup.headers.map((header) => {
 						const { column } = header;
-						const { className } = column.columnDef.meta ?? {};
+						const className = cn(column.columnDef.meta?.className, headerClass(column.columnDef));
 						const label = typeof column.columnDef.header === "string" ? column.columnDef.header : null;
 						if (!label || !column.getCanSort()) {
 							return (
