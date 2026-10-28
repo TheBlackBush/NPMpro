@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ItemChecklist } from "src/components";
 import { intl, T } from "src/locale";
-import { inSentence } from "src/modules/BackupMerge";
+import { focusLeavesPicker, inSentence, mouseLeavesPicker } from "src/modules/BackupMerge";
 
 /**
  * The items of one type to tick, as a dropdown card under the type's list button: search, "Selected only", the list,
@@ -66,11 +66,11 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 		return () => window.removeEventListener("keydown", onKey, true);
 	}, [onClose]);
 
-	// a click or the focus outside the picker (other than on its button) closes it
+	// a press outside the picker (other than on its button) or the focus moving to a focusable element outside it
+	// closes it; the focus falling back on the dialog (a click on a row's label text) does not
 	useEffect(() => {
-		const outside = (target) => !(ref.current?.contains(target) || opener?.contains(target));
-		const onPointer = (e) => outside(e.target) && onClose(false);
-		const onFocus = (e) => outside(e.target) && onClose(false);
+		const onPointer = (e) => mouseLeavesPicker(e.target, ref.current, opener) && onClose(false);
+		const onFocus = (e) => focusLeavesPicker(e.target, ref.current, opener) && onClose(false);
 		document.addEventListener("mousedown", onPointer);
 		document.addEventListener("focusin", onFocus);
 		return () => {

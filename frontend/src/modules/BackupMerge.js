@@ -189,3 +189,12 @@ export const typeNameId = (typeId, count, messages) => {
 	if (count === 1 && messages?.[one]) return one;
 	return messages?.[other] ? other : null;
 };
+
+// the item picker closes on a press outside it and its button
+export const mouseLeavesPicker = (target, picker, opener) => !(picker?.contains(target) || opener?.contains(target));
+
+// ... and on the focus moving to a focusable element outside it. A click on text that takes no focus (a row's label)
+// focuses the nearest focusable ancestor, the dialog's container (tabindex -1), or the page: that does not close it.
+const NOT_A_FOCUS_TARGET = "html, body, .modal, .modal-dialog";
+export const focusLeavesPicker = (target, picker, opener) =>
+	Boolean(target) && !target.matches?.(NOT_A_FOCUS_TARGET) && mouseLeavesPicker(target, picker, opener);

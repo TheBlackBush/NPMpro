@@ -12,6 +12,7 @@ import {
 	decisionReasons,
 	emptyItemType,
 	filterDecisions,
+	focusLeavesPicker,
 	groupChoices,
 	groupDecisions,
 	inSentence,
@@ -19,6 +20,7 @@ import {
 	linkedItems,
 	mergeCatalogue,
 	mergeDefaults,
+	mouseLeavesPicker,
 	needsChoice,
 	pickerItems,
 	requestItems,
@@ -356,5 +358,55 @@ describe("BackupMerge type name by count", () => {
 		assert.equal(typeNameId("proxy_hosts", 2, messages), "settings.backup.type.proxy_hosts");
 		assert.equal(typeNameId("settings_runtime", 1, messages), "settings.backup.type.settings_runtime");
 		assert.equal(typeNameId("unknown", 1, messages), null);
+	});
+});
+
+describe("BackupMerge item picker, outside", () => {
+	// an element: its tag, classes and the elements it sits in
+	const el = (tag, classes = [], parent = null) => {
+		const node = { tagName: tag.toUpperCase(), classes, parent };
+		node.matches = (selector) =>
+			selector.split(",").some((part) => {
+				const sel = part.trim();
+				return sel.startsWith(".") ? classes.includes(sel.slice(1)) : sel.toUpperCase() === node.tagName;
+			});
+		node.contains = (inner) => {
+			for (let at = inner; at; at = at.parent) if (at === node) return true;
+			return false;
+		};
+		return node;
+	};
+	const html = el("html");
+	const body = el("body", [], html);
+	const modal = el("div", ["modal"], body);
+	const dialog = el("div", ["modal-dialog"], modal);
+	const content = el("div", ["modal-content"], dialog);
+	const opener = el("button", ["btn"], content);
+	const picker = el("div", ["dropdown-menu"], content);
+	const search = el("input", [], picker);
+	const label = el("label", ["dropdown-item"], picker);
+	const other = el("button", ["btn"], content);
+
+	it("focusLeavesPicker is true only for a focusable element outside the picker and its button", () => {
+		assert.equal(focusLeavesPicker(other, picker, opener), true);
+		assert.equal(focusLeavesPicker(search, picker, opener), false);
+		assert.equal(focusLeavesPicker(opener, picker, opener), false);
+	});
+
+	it("focusLeavesPicker ignores the focus landing on the dialog's container, the dialog or the page", () => {
+		// a click on a row's label text focuses the nearest focusable ancestor: the modal (tabindex -1)
+		assert.equal(focusLeavesPicker(modal, picker, opener), false);
+		assert.equal(focusLeavesPicker(dialog, picker, opener), false);
+		assert.equal(focusLeavesPicker(body, picker, opener), false);
+		assert.equal(focusLeavesPicker(html, picker, opener), false);
+		assert.equal(focusLeavesPicker(null, picker, opener), false);
+	});
+
+	it("mouseLeavesPicker is true for a press anywhere outside the picker and its button", () => {
+		assert.equal(mouseLeavesPicker(label, picker, opener), false);
+		assert.equal(mouseLeavesPicker(opener, picker, opener), false);
+		assert.equal(mouseLeavesPicker(other, picker, opener), true);
+		assert.equal(mouseLeavesPicker(modal, picker, opener), true);
+		assert.equal(mouseLeavesPicker(content, picker, null), true);
 	});
 });
