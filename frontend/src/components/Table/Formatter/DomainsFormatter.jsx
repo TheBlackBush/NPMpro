@@ -1,5 +1,6 @@
 import cn from "clsx";
 import { formatDateTime, T } from "src/locale";
+import { BreakableHost } from "./BreakableHost";
 
 const DomainLink = ({ domain, color }) => {
 	// when domain contains a wildcard, make the link go nowhere.
@@ -14,15 +15,10 @@ const DomainLink = ({ domain, color }) => {
 			target="_blank"
 			rel="noopener"
 			onClick={onClick}
-			// a long name wraps inside its badge instead of pushing the row menu off a phone screen
-			className={cn(
-				"badge",
-				color ? `bg-${color}-lt` : null,
-				"font-monospace",
-				"me-2 text-wrap text-break text-start",
-			)}
+			// a long name wraps at its dots inside the badge instead of pushing the row menu off a phone screen
+			className={cn("badge", color ? `bg-${color}-lt` : null, "font-monospace", "me-2 text-wrap text-start")}
 		>
-			{domain}
+			<BreakableHost value={domain} />
 		</a>
 	);
 };
