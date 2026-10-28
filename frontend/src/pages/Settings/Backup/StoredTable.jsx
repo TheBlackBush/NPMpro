@@ -340,10 +340,11 @@ function StoredTable() {
 				<h3 className="card-title text-nowrap">
 					<T id="settings.backup.stored" />
 				</h3>
-				<div className="card-actions d-flex flex-wrap align-items-center gap-2">
+				{/* mw-100 here and on the filter: a long schedule name must not widen the page on phones */}
+				<div className="card-actions d-flex flex-wrap align-items-center gap-2 mw-100">
 					{scheduled.length > 0 ? (
 						<select
-							className="form-select form-select-sm w-auto"
+							className="form-select form-select-sm w-auto mw-100"
 							value={activeFilter}
 							onChange={(event) => setFilter(event.target.value)}
 							aria-label={label("settings.backup.schedule.filter")}
