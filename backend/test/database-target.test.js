@@ -365,7 +365,8 @@ it("drops the probe only after a create that was running at the timeout has sett
 		schema: {
 			createTable: async () => {
 				calls.push("create start");
-				await pause(80);
+				// settles after the 200 ms timeout and well before the 200 ms cleanup bound ends
+				await pause(300);
 				calls.push("create end");
 			},
 			dropTable: async () => calls.push("drop"),
@@ -373,7 +374,7 @@ it("drops the probe only after a create that was running at the timeout has sett
 		},
 	});
 	await assert.rejects(
-		testTarget({ target, current, createKnex: () => knex, timeoutMs: 50 }),
+		testTarget({ target, current, createKnex: () => knex, timeoutMs: 200 }),
 		isMoveError("timeout"),
 	);
 	assert.deepEqual(calls, ["create start", "create end", "dropIfExists"]);
