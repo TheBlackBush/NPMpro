@@ -205,6 +205,9 @@ const firstDifference = (kinds, sourceRow, copiedRow, sourceEngine, targetEngine
 	return null;
 };
 
+// a column whose values never appear in a message
+const isSecretColumn = (column) => SECRET_NAME.test(String(column));
+
 const holdsSecret = (value) => {
 	if (Array.isArray(value)) return value.some(holdsSecret);
 	if (value === null || typeof value !== "object") return typeof value === "string" && SEALED.test(value);
@@ -229,7 +232,7 @@ const parsedIfJson = (value) => {
 // a value for a message: secret columns, sealed values and JSON holding a secret as <hidden>, long values shortened
 const shown = (column, value) => {
 	if (value === null || value === undefined) return "null";
-	if (SECRET_NAME.test(column)) return "<hidden>";
+	if (isSecretColumn(column)) return "<hidden>";
 	if (Buffer.isBuffer(value)) return `${value.length} bytes`;
 	if (holdsSecret(parsedIfJson(value))) return "<hidden>";
 	const text = textOf(value);
@@ -248,4 +251,13 @@ const describeDifference = (column, sourceRow, copiedRow) => {
 	return `${column}: ${shown(column, sourceRow[column])} in use, ${copied} in the target`;
 };
 
-export { columnKinds, comparable, describeDifference, firstDifference, kindOfType, portableRow, targetRow };
+export {
+	columnKinds,
+	comparable,
+	describeDifference,
+	firstDifference,
+	isSecretColumn,
+	kindOfType,
+	portableRow,
+	targetRow,
+};
