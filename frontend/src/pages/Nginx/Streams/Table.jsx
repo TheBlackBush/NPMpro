@@ -108,12 +108,12 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 					return (
 						<>
 							{value.tcpForwarding ? (
-								<span className="badge badge-lg font-monospace">
+								<span className="badge badge-lg font-monospace text-wrap text-start">
 									<T id="streams.tcp" />
 								</span>
 							) : null}
 							{value.npmproProxyProtocolForwarding ? (
-								<span className="badge badge-lg font-monospace">
+								<span className="badge badge-lg font-monospace text-wrap text-start">
 									<T
 										id={
 											value.npmproProxyProtocolForwarding === 1
@@ -124,12 +124,12 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 								</span>
 							) : null}
 							{value.npmproProxyTls ? (
-								<span className="badge badge-lg font-monospace">
+								<span className="badge badge-lg font-monospace text-wrap text-start">
 									<T id="streams.tls" />
 								</span>
 							) : null}
 							{value.udpForwarding ? (
-								<span className="badge badge-lg font-monospace">
+								<span className="badge badge-lg font-monospace text-wrap text-start">
 									<T id="streams.udp" />
 								</span>
 							) : null}
