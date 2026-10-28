@@ -1,32 +1,23 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
-import { ErrorAlert, ItemChecklist } from "src/components";
+import { ErrorAlert } from "src/components";
 import { intl, T } from "src/locale";
 import {
 	ACTIONS,
 	byAction,
 	chooseItems,
-	linkedItems as linkedOf,
+	decisionItems,
 	mergeCatalogue,
 	mergeDefaults,
-	needsChoice,
 	requestItems,
 	sentChoices,
 } from "src/modules/BackupMerge";
 import { withErrorDetails } from "src/modules/BackupTypes";
 import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
+import { ACTION_COLORS, DecisionList } from "./DecisionList";
 import { ItemList } from "./ItemList";
-
-// the badge colour of each action
-const ACTION_COLORS = {
-	add: "bg-green-lt",
-	replace: "bg-orange-lt",
-	existing: "bg-azure-lt",
-	take: "bg-azure-lt",
-	skip: "bg-secondary-lt",
-	keep: "bg-secondary-lt",
-};
+import { ItemPicker } from "./ItemPicker";
 
 const typeLabel = (typeId) => {
 	const id = `settings.backup.type.${typeId}`;
@@ -262,8 +253,9 @@ function ItemRows({ items, merge, labelOf, disabled, capped = false }) {
 }
 
 /**
- * Merge, what to restore and what it changes: the type boxes with "Choose items" per type, the counts per action, the
- * items that need a choice, all changes grouped by action on request, and the links cleared and secrets missing.
+ * Merge, what to restore and what it changes: the type boxes with a picker of single items per type, the counts per
+ * action, the items already on this instance with their choices, all changes grouped by action on request, and the
+ * links cleared and secrets missing.
  *
  * @param {Object}    props
  * @param {Object}    props.merge          useMergePlan()
@@ -288,8 +280,11 @@ export function MergeView({
 	const baseId = useId();
 	const [openType, setOpenType] = useState(null);
 	const [showAll, setShowAll] = useState(false);
+	// the list button that opened the picker, for the focus on close
+	const openerRef = useRef(null);
 	const { plan, catalogue, items } = merge;
 	const labelOf = labelsOf(plan);
+	const pickerId = `${baseId}-picker`;
 
 	const itemCounts = {};
 	for (const [typeId, list] of Object.entries(catalogue)) {
@@ -297,24 +292,25 @@ export function MergeView({
 			itemCounts[typeId] = { selected: items[typeId]?.length ?? list.length, total: list.length };
 	}
 	const open = openType && selected.includes(openType) && catalogue[openType] ? openType : null;
-	const panel = open ? (
-		<div className="card card-sm">
-			<div className="card-header py-2">
-				<div id={`${baseId}-items-title`} className="card-title">
-					<T id={`settings.backup.type.${open}`} />
-				</div>
-			</div>
-			<ItemChecklist
-				labelledBy={`${baseId}-items-title`}
-				items={catalogue[open]}
-				selected={items[open] ?? catalogue[open].map((item) => item.id)}
-				onChange={(ids) => {
-					merge.setItems(chooseItems(items, open, ids, catalogue[open].length));
-					onEdit();
-				}}
-				disabled={disabled}
-			/>
-		</div>
+	const closePicker = useCallback((returnFocus) => {
+		setOpenType(null);
+		if (returnFocus) openerRef.current?.focus();
+	}, []);
+	const picker = open ? (
+		<ItemPicker
+			key={open}
+			id={pickerId}
+			typeId={open}
+			items={catalogue[open]}
+			selected={items[open] ?? catalogue[open].map((item) => item.id)}
+			onChange={(ids) => {
+				merge.setItems(chooseItems(items, open, ids, catalogue[open].length));
+				onEdit();
+			}}
+			onClose={closePicker}
+			opener={openerRef.current}
+			disabled={disabled}
+		/>
 	) : null;
 
 	const choose = (key, choice) => {
@@ -322,10 +318,8 @@ export function MergeView({
 		onEdit();
 	};
 	const rowProps = { merge: { ...merge, setChoice: choose }, labelOf, disabled };
-	// clashes and matches with a choice
-	const choiceItems = plan ? needsChoice(plan) : [];
-	// the linked items, with Include and their choice, listed after the choices
-	const linkedItems = plan ? linkedOf(plan) : [];
+	// the items that match or clash with an instance row, and the linked items
+	const decisions = plan ? decisionItems(plan) : [];
 	const groups = plan ? byAction(plan) : {};
 	const allId = `${baseId}-all`;
 
@@ -339,9 +333,13 @@ export function MergeView({
 				onChange={onTypesChange}
 				disabled={disabled}
 				itemCounts={itemCounts}
-				onChooseItems={(typeId) => setOpenType((current) => (current === typeId ? null : typeId))}
+				onChooseItems={(typeId, button) => {
+					openerRef.current = button;
+					setOpenType((current) => (current === typeId ? null : typeId));
+				}}
 				openType={open}
-				itemsPanel={panel}
+				picker={picker}
+				pickerId={pickerId}
 			/>
 			<ErrorAlert error={merge.error} />
 			{merge.changed ? (
@@ -369,21 +367,14 @@ export function MergeView({
 							))}
 						</div>
 					</div>
-					{choiceItems.length > 0 ? (
-						<div className="mb-3">
-							<div className="fw-bold mb-1">
-								<T id="settings.backup.merge.needs-choice" data={{ count: choiceItems.length }} />
-							</div>
-							<ItemRows items={choiceItems} {...rowProps} />
-						</div>
-					) : null}
-					{linkedItems.length > 0 ? (
-						<div className="mb-3">
-							<div className="fw-bold mb-1">
-								<T id="settings.backup.merge.linked" />
-							</div>
-							<ItemRows items={linkedItems} {...rowProps} />
-						</div>
+					{decisions.length > 0 ? (
+						<DecisionList
+							items={decisions}
+							choices={merge.choices}
+							onChoice={choose}
+							labelOf={labelOf}
+							disabled={disabled}
+						/>
 					) : null}
 					{plan.items.length > 0 ? (
 						<button

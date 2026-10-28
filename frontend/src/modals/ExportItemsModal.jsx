@@ -161,6 +161,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						items={base.items}
 						selected={ids}
 						onChange={setIds}
+						typeName={typeLabel(kind)}
 						disabled={isSubmitting}
 					/>
 				</div>

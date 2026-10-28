@@ -1,7 +1,17 @@
-import { IconFileCode, IconKey, IconLock, IconServer2, IconSettings, IconShield, IconUsers } from "@tabler/icons-react";
+import {
+	IconFileCode,
+	IconKey,
+	IconListCheck,
+	IconLock,
+	IconServer2,
+	IconSettings,
+	IconShield,
+	IconUsers,
+} from "@tabler/icons-react";
 import cn from "clsx";
 import { useEffect, useId, useRef } from "react";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
+import { inSentence } from "src/modules/BackupMerge";
 import { arrangeRows, categoryState, toggleCategory, toggleType } from "src/modules/BackupTypes";
 
 // certificate providers in the order shown, with their label
@@ -56,32 +66,56 @@ function TypeCount({ typeId, counts, itemCounts }) {
 	return text === undefined ? null : <span className="text-secondary ms-1">{text}</span>;
 }
 
-// "Choose items" of the selected types of a box: one link, or the type names after the label when it has several
-function ChooseLinks({ types, several, openType, panelId, onChoose, disabled }) {
-	if (types.length === 0) return null;
-	const link = (typeId, children) => (
+// the list button of a type whose items can be chosen one by one, with the open picker under it: an icon button
+// joined to the type's pill, or for a box with one type a pill "Choose items 3 of 12"
+function ChooseButton({ typeId, part, single, open, menuId, onChoose, disabled }) {
+	const typeName = intl.formatMessage({ id: `settings.backup.type.${typeId}` });
+	return (
 		<button
-			key={typeId}
 			type="button"
-			className="btn btn-link btn-sm p-0"
-			aria-expanded={openType === typeId}
-			aria-controls={openType === typeId ? panelId : undefined}
-			onClick={() => onChoose(typeId)}
+			className={cn("btn btn-outline-primary", single ? "btn-sm btn-pill" : "btn-icon rounded-end-pill")}
+			aria-label={
+				single
+					? undefined
+					: intl.formatMessage(
+							{ id: "settings.backup.choose-type" },
+							{ type: inSentence(typeName, intl.locale) },
+						)
+			}
+			aria-expanded={open}
+			aria-controls={open ? menuId : undefined}
+			onClick={(e) => onChoose(typeId, e.currentTarget)}
 			disabled={disabled}
 		>
-			{children}
+			<IconListCheck className={cn("icon", single && "me-1")} aria-hidden="true" />
+			{single ? (
+				<>
+					<T id="settings.backup.choose-items" />
+					<span className="ms-1 opacity-75">
+						<T id="settings.backup.items-of" data={part} />
+					</span>
+				</>
+			) : null}
 		</button>
 	);
-	if (!several) {
-		return <div className="mt-2">{link(types[0], <T id="settings.backup.choose-items" />)}</div>;
-	}
+}
+
+// a type as a pill toggle; joined: its end is square, for the list button after it
+function TypePill({ typeId, checked, onChange, disabled, joined, counts, itemCounts }) {
 	return (
-		<div className="d-flex flex-wrap align-items-baseline column-gap-3 row-gap-1 mt-2">
-			<span className="text-secondary small">
-				<T id="settings.backup.choose-items" />
+		<label className="form-selectgroup-item">
+			<input
+				type="checkbox"
+				className="form-selectgroup-input"
+				checked={checked}
+				onChange={onChange}
+				disabled={disabled}
+			/>
+			<span className={cn("form-selectgroup-label", joined && "rounded-end-0")}>
+				<T id={`settings.backup.type.${typeId}`} />
+				<TypeCount typeId={typeId} counts={counts} itemCounts={itemCounts} />
 			</span>
-			{types.map((typeId) => link(typeId, <T id={`settings.backup.type.${typeId}`} />))}
-		</div>
+		</label>
 	);
 }
 
@@ -130,9 +164,11 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
  * @param {boolean}   [props.disabled]
  * @param {Object}    [props.itemCounts]        type id -> { selected, total } for the types whose items can be chosen
  *                                              one by one; a pill then shows "3 of 12" while some are left out
- * @param {Function}  [props.onChooseItems]     (typeId) => void, a "Choose items" link per selected type of itemCounts
- * @param {string}    [props.openType]          the type whose item list is open
- * @param {ReactNode} [props.itemsPanel]        that list, shown full width under the row of its box
+ * @param {Function}  [props.onChooseItems]     (typeId, button) => void, a list button per selected type of
+ *                                              itemCounts: joined to its pill, or "Choose items" in a box of one type
+ * @param {string}    [props.openType]          the type whose item picker is open
+ * @param {ReactNode} [props.picker]            that picker, a dropdown menu shown under its button
+ * @param {string}    [props.pickerId]          the id of the picker, for aria-controls
  */
 function TypeTree({
 	label,
@@ -145,12 +181,28 @@ function TypeTree({
 	itemCounts,
 	onChooseItems,
 	openType,
-	itemsPanel,
+	picker,
+	pickerId,
 }) {
 	const baseId = useId();
 	const allTypes = categories.flatMap((category) => category.types);
 	const allSelected = allTypes.length > 0 && allTypes.every((typeId) => selected.includes(typeId));
-	const panelId = `${baseId}-items`;
+	// the list button of a selected type whose items can be chosen, with its picker when open
+	const choosable = (typeId) => Boolean(onChooseItems && itemCounts?.[typeId] && selected.includes(typeId));
+	const chooseButton = (typeId, single) => (
+		<>
+			<ChooseButton
+				typeId={typeId}
+				part={itemCounts[typeId]}
+				single={single}
+				open={openType === typeId}
+				menuId={pickerId}
+				onChoose={onChooseItems}
+				disabled={disabled}
+			/>
+			{openType === typeId ? picker : null}
+		</>
+	);
 	return (
 		<div className="mb-3">
 			<div className="d-flex align-items-center mb-2">
@@ -175,8 +227,8 @@ function TypeTree({
 				</div>
 			</div>
 			<div className="row g-2">
-				{arrangeRows(categories).flatMap((row) => [
-					...row.map((category) => {
+				{arrangeRows(categories).flatMap((row) =>
+					row.map((category) => {
 						const labelId = `${baseId}-${category.id}`;
 						const kindsId = `${labelId}-kinds`;
 						const kinds = category.types.includes("certificates") ? certificateKinds : null;
@@ -205,52 +257,46 @@ function TypeTree({
 										<CertificateKinds kinds={kinds} id={kindsId} />
 										{several ? (
 											<div className="form-selectgroup form-selectgroup-pills mt-3">
-												{category.types.map((typeId) => (
-													<label key={typeId} className="form-selectgroup-item">
-														<input
-															type="checkbox"
-															className="form-selectgroup-input"
-															checked={selected.includes(typeId)}
-															onChange={() => onChange(toggleType(typeId, selected))}
-															disabled={disabled}
-														/>
-														<span className="form-selectgroup-label">
-															<T id={`settings.backup.type.${typeId}`} />
-															<TypeCount
+												{category.types.map((typeId) =>
+													choosable(typeId) ? (
+														<div key={typeId} className="btn-group">
+															<TypePill
 																typeId={typeId}
+																checked={selected.includes(typeId)}
+																onChange={() => onChange(toggleType(typeId, selected))}
+																disabled={disabled}
+																joined={true}
 																counts={counts}
 																itemCounts={itemCounts}
 															/>
-														</span>
-													</label>
-												))}
+															{chooseButton(typeId, false)}
+														</div>
+													) : (
+														<TypePill
+															key={typeId}
+															typeId={typeId}
+															checked={selected.includes(typeId)}
+															onChange={() => onChange(toggleType(typeId, selected))}
+															disabled={disabled}
+															joined={false}
+															counts={counts}
+															itemCounts={itemCounts}
+														/>
+													),
+												)}
 											</div>
 										) : null}
-										{onChooseItems ? (
-											<ChooseLinks
-												types={category.types.filter(
-													(typeId) => itemCounts?.[typeId] && selected.includes(typeId),
-												)}
-												several={several}
-												openType={openType}
-												panelId={panelId}
-												onChoose={onChooseItems}
-												disabled={disabled}
-											/>
+										{!several && choosable(category.types[0]) ? (
+											<div className="dropdown d-inline-block mt-3">
+												{chooseButton(category.types[0], true)}
+											</div>
 										) : null}
 									</div>
 								</fieldset>
 							</div>
 						);
 					}),
-					itemsPanel && row.some((category) => category.types.includes(openType))
-						? [
-								<div key="items-panel" id={panelId} className="col-12">
-									{itemsPanel}
-								</div>,
-							]
-						: [],
-				])}
+				)}
 			</div>
 		</div>
 	);
