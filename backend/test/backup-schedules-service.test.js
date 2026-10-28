@@ -22,11 +22,23 @@ const daily = {
 const opened = [];
 after(() => Promise.all(opened.map((knex) => knex.destroy())));
 
-const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
+const busyError = () => Object.assign(new BackupError("busy", "A backup or restore is running"), { status: 409 });
+
+// MySQL and Postgres can return a bigint id as a string
+const idAsString = (value) =>
+	value && typeof value === "object" && Object.hasOwn(value, "id") ? { ...value, id: String(value.id) } : value;
+
+const make = async ({ run, log = silent, sealer = box, prune, removeFile, stringIds = false } = {}) => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
 		connection: { filename: ":memory:" },
 		useNullAsDefault: true,
+		...(stringIds
+			? {
+					postProcessResponse: (result) =>
+						Array.isArray(result) ? result.map(idAsString) : idAsString(result),
+				}
+			: {}),
 	});
 	opened.push(knex);
 	await createSchema(knex);
@@ -35,6 +47,7 @@ const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
 	const audits = [];
 	const backupCalls = [];
 	const pruneCalls = [];
+	const lock = { held: false };
 	const service = createScheduleService({
 		knex,
 		box: sealer,
@@ -44,7 +57,12 @@ const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
 		backup: {
 			scheduledBackup: async (options) => {
 				backupCalls.push(options);
-				if (run) await run(options);
+				lock.held = true;
+				try {
+					if (run) await run(options);
+				} finally {
+					lock.held = false;
+				}
 				const name = `npmpro-backup-npm-${backupCalls.length}-s${options.scheduleId}.npmpro`;
 				files.set(options.scheduleId, [name, ...(files.get(options.scheduleId) ?? [])]);
 				return { name, size: 100 };
@@ -52,6 +70,24 @@ const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
 		},
 		store: {
 			scheduleFiles: async (id) => (files.get(id) ?? []).map((name) => ({ name })),
+			remove: async (name) => {
+				if (removeFile) await removeFile(name);
+				const [id, list] = [...files].find(([, names]) => names.includes(name)) ?? [];
+				if (!list) throw new BackupError("not-a-backup", "Not a backup");
+				files.set(
+					id,
+					list.filter((item) => item !== name),
+				);
+			},
+			withLock: async (fn) => {
+				if (lock.held) throw busyError();
+				lock.held = true;
+				try {
+					return await fn();
+				} finally {
+					lock.held = false;
+				}
+			},
 			pruneSchedule: async (id, keep) => {
 				pruneCalls.push([id, keep]);
 				if (prune) await prune(id, keep);
@@ -61,7 +97,7 @@ const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
 			},
 		},
 	});
-	return { knex, clock, files, audits, backupCalls, pruneCalls, service };
+	return { knex, clock, files, audits, backupCalls, pruneCalls, lock, service };
 };
 
 it("create sets next_run_at and owner, hides the passphrase and audits", async () => {
@@ -155,13 +191,14 @@ it("edited during a run: the edit stays and retention uses the new keep", async 
 
 it("deleted during a run: nothing fails and no row comes back", async () => {
 	let remove;
-	const { service, clock, knex, audits } = await make({ run: async () => remove?.() });
+	const { service, clock, knex, audits, pruneCalls } = await make({ run: async () => remove?.() });
 	const { id } = await service.create(admin(), daily);
 	remove = () => service.remove(admin(), id, { files: false });
 	clock.value = Date.parse("2026-10-29T03:00:00Z");
 	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
 	assert.equal((await knex("npmpro_backup_schedule").count({ count: "*" }))[0].count, 0);
 	assert.ok(audits.some((entry) => entry.action === "backup-succeeded"));
+	assert.deepEqual(pruneCalls, []);
 });
 
 it("run now keeps a future next run and refuses while busy without touching the status", async () => {
@@ -215,8 +252,6 @@ it("remove with files deletes the schedule's stored files", async () => {
 	assert.equal(removedFiles.length, 1);
 	assert.equal(files.get(id).length, 0);
 });
-
-const busyError = () => Object.assign(new BackupError("busy", "A backup or restore is running"), { status: 409 });
 
 it("a busy automatic run throws and leaves the status for the next tick", async () => {
 	let busy = true;
@@ -500,4 +535,249 @@ it("a retention failure keeps the run a success and moves next_run_at on", async
 	assert.deepEqual(entry.meta.removed, []);
 	assert.ok(lines.includes('Scheduled backup "Nightly": retention failed, permission denied'));
 	assert.deepEqual(await service.dueSchedules(clock.now()), []);
+});
+
+const runFor = (id, action) => async (options) => {
+	if (options.scheduleId === id) await action();
+};
+
+it("a schedule paused by an earlier run of the same tick is not run", async () => {
+	let action = async () => {};
+	const { service, clock, backupCalls, audits } = await make({ run: runFor(1, () => action()) });
+	const first = await service.create(admin(), daily);
+	const second = await service.create(admin(), { ...daily, name: "Second" });
+	action = () => service.update(admin(), second.id, { enabled: false });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	const due = await service.dueSchedules(clock.now());
+	assert.deepEqual(
+		due.map((row) => row.id),
+		[first.id, second.id],
+	);
+	for (const row of due) await service.runAutomatic(row);
+	assert.deepEqual(
+		backupCalls.map((call) => call.scheduleId),
+		[first.id],
+	);
+	const view = await service.get(admin(), second.id);
+	assert.equal(view.last_status, null);
+	assert.equal(view.last_run_at, null);
+	assert.equal(view.next_run_at, null);
+	assert.deepEqual(
+		audits.filter((entry) => entry.object_id === second.id).map((entry) => entry.action),
+		["created", "disabled"],
+	);
+});
+
+it("a schedule deleted by an earlier run of the same tick is not run", async () => {
+	let action = async () => {};
+	const { service, clock, backupCalls, audits, knex } = await make({ run: runFor(1, () => action()) });
+	const first = await service.create(admin(), daily);
+	const second = await service.create(admin(), { ...daily, name: "Second" });
+	action = () => service.remove(admin(), second.id, { files: false });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	const due = await service.dueSchedules(clock.now());
+	for (const row of due) await service.runAutomatic(row);
+	assert.deepEqual(
+		backupCalls.map((call) => call.scheduleId),
+		[first.id],
+	);
+	assert.equal((await knex("npmpro_backup_schedule").count({ count: "*" }))[0].count, 1);
+	assert.deepEqual(
+		audits.filter((entry) => entry.object_id === second.id).map((entry) => entry.action),
+		["created", "deleted"],
+	);
+});
+
+it("a schedule moved to a later time since the due list is not run", async () => {
+	const { service, clock, backupCalls } = await make();
+	const { id } = await service.create(admin(), daily);
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	const [due] = await service.dueSchedules(clock.now());
+	await service.update(admin(), id, { time: "15:00" });
+	await service.runAutomatic(due);
+	await service.giveUp(due);
+	assert.equal(backupCalls.length, 0);
+	const view = await service.get(admin(), id);
+	assert.equal(view.last_status, null);
+	assert.equal(view.next_run_at, "2026-10-29T15:00:00.000Z");
+});
+
+it("give-up on a schedule paused meanwhile does nothing", async () => {
+	const { service, clock, audits } = await make();
+	const { id } = await service.create(admin(), daily);
+	clock.value = Date.parse("2026-10-29T04:00:00Z");
+	const [due] = await service.dueSchedules(clock.now());
+	await service.update(admin(), id, { enabled: false });
+	await service.giveUp(due);
+	const view = await service.get(admin(), id);
+	assert.equal(view.last_status, null);
+	assert.equal(view.last_error, null);
+	assert.equal(view.next_run_at, null);
+	assert.deepEqual(
+		audits.map((entry) => entry.action),
+		["created", "disabled"],
+	);
+});
+
+it("an automatic run uses the stored settings, not the due list's copy", async () => {
+	const { service, clock, backupCalls } = await make();
+	const { id } = await service.create(admin(4), daily);
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	const [due] = await service.dueSchedules(clock.now());
+	await service.update(admin(), id, { types: ["streams"] });
+	// the update computed a later slot; put it back to now to keep the schedule due
+	await service.update(admin(), id, { time: "03:00" });
+	clock.value = Date.parse("2026-10-30T03:00:00Z");
+	await service.runAutomatic(due);
+	assert.deepEqual(backupCalls[0].types, ["streams"]);
+	assert.equal((await service.get(admin(), id)).next_run_at, "2026-10-31T03:00:00.000Z");
+});
+
+for (const [label, thrown, text] of [
+	["undefined", undefined, "undefined"],
+	["a string", "boom", "boom"],
+]) {
+	it(`a run that throws ${label} is a failed run with the status written`, async () => {
+		const { service, clock, audits } = await make({
+			run: () => {
+				throw thrown;
+			},
+		});
+		const { id } = await service.create(admin(), daily);
+		clock.value = Date.parse("2026-10-29T03:00:00Z");
+		await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+		const view = await service.get(admin(), id);
+		assert.equal(view.last_status, "failed");
+		assert.equal(view.last_error, text);
+		assert.equal(view.next_run_at, "2026-10-30T03:00:00.000Z");
+		assert.equal(audits.at(-1).meta.error, text);
+	});
+}
+
+it("remove still audits the delete when removing a file fails, then throws", async () => {
+	const failure = new Error("read-only file system");
+	const { service, knex, audits } = await make({
+		removeFile: () => {
+			throw failure;
+		},
+	});
+	const { id } = await service.create(admin(), daily);
+	await service.runNow(admin(), id);
+	await assert.rejects(service.remove(admin(3), id, { files: true }), (err) => err === failure);
+	assert.equal((await knex("npmpro_backup_schedule").count({ count: "*" }))[0].count, 0);
+	const entry = audits.at(-1);
+	assert.equal(entry.action, "deleted");
+	assert.equal(entry.by, 3);
+	assert.deepEqual(entry.meta, { name: "Nightly", files_deleted: 0 });
+});
+
+it("remove with files is refused while busy, remove without files works", async () => {
+	const { service, lock, knex, audits, files } = await make();
+	const first = await service.create(admin(), daily);
+	const second = await service.create(admin(), { ...daily, name: "Second" });
+	await service.runNow(admin(), first.id);
+	lock.held = true;
+	await assert.rejects(
+		service.remove(admin(), first.id, { files: true }),
+		(err) => err.code === "busy" && err.status === 409,
+	);
+	assert.equal(files.get(first.id).length, 1);
+	assert.equal((await service.get(admin(), first.id)).id, first.id);
+	await service.remove(admin(), second.id, { files: false });
+	lock.held = false;
+	assert.equal((await knex("npmpro_backup_schedule").count({ count: "*" }))[0].count, 1);
+	assert.deepEqual(
+		audits.filter((entry) => entry.action === "deleted").map((entry) => entry.object_id),
+		[second.id],
+	);
+});
+
+it("remove with files deletes every file of the schedule, newest included", async () => {
+	const { service, clock, files } = await make();
+	const { id } = await service.create(admin(), { ...daily, keep: 3 });
+	for (const day of [29, 30]) {
+		clock.value = Date.parse(`2026-10-${day}T03:00:00Z`);
+		await service.runNow(admin(), id);
+	}
+	const { removedFiles } = await service.remove(admin(), id, { files: true });
+	assert.equal(removedFiles.length, 2);
+	assert.deepEqual(files.get(id), []);
+});
+
+it("ids returned as strings never clash with the schedule's own name", async () => {
+	const { service } = await make({ stringIds: true });
+	const { id } = await service.create(admin(), daily);
+	assert.equal(id, 1);
+	const view = await service.update(admin(), id, { name: "nightly", keep: 3 });
+	assert.equal(view.name, "nightly");
+	assert.equal(view.id, 1);
+	await service.create(admin(), { ...daily, name: "Other" });
+	await assert.rejects(
+		service.update(admin(), id, { name: "OTHER" }),
+		(err) => err.message_i18n === "backup.schedule.error.name-taken",
+	);
+});
+
+it("an update without a passphrase keeps the sealed one, Run now still passes it", async () => {
+	const { service, knex, backupCalls } = await make();
+	const { id } = await service.create(admin(), { ...daily, protection: "passphrase", passphrase: "twelve chars!" });
+	const sealed = (await knex("npmpro_backup_schedule").first()).passphrase;
+	const view = await service.update(admin(), id, { keep: 4 });
+	assert.equal(view.passphrase_set, true);
+	assert.equal((await knex("npmpro_backup_schedule").first()).passphrase, sealed);
+	await service.runNow(admin(), id);
+	assert.equal(backupCalls[0].passphrase, "twelve chars!");
+});
+
+it("an explicit null passphrase with protection none clears it", async () => {
+	const { service, knex, backupCalls } = await make();
+	const { id } = await service.create(admin(), { ...daily, protection: "passphrase", passphrase: "twelve chars!" });
+	const view = await service.update(admin(), id, { protection: "none", passphrase: null });
+	assert.equal(view.passphrase_set, false);
+	assert.equal((await knex("npmpro_backup_schedule").first()).passphrase, null);
+	await service.runNow(admin(), id);
+	assert.equal(backupCalls[0].passphrase, undefined);
+});
+
+it("the passphrase never reaches the audit log or the log lines", async () => {
+	const lines = [];
+	const log = {
+		info: (...args) => lines.push(args),
+		warn: (...args) => lines.push(args),
+		error: (...args) => lines.push(args),
+	};
+	let fail = false;
+	const { service, clock, audits } = await make({
+		log,
+		run: () => {
+			if (fail) throw new Error("disk full");
+		},
+	});
+	const secret = "twelve chars!";
+	const { id } = await service.create(admin(), { ...daily, protection: "passphrase", passphrase: secret });
+	await service.update(admin(), id, { passphrase: "another secret!", keep: 3 });
+	await service.runNow(admin(), id);
+	fail = true;
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+	await service.update(admin(), id, { enabled: false });
+	await service.remove(admin(), id, { files: true });
+	const captured = JSON.stringify({ audits, lines });
+	assert.ok(audits.length >= 6);
+	assert.ok(lines.length >= 2);
+	for (const text of [secret, "another secret!", "v1:"]) assert.equal(captured.includes(text), false);
+});
+
+it("the error in the log line is cut to 1000 characters", async () => {
+	const lines = [];
+	const log = { info: () => {}, warn: (line) => lines.push(line), error: () => {} };
+	const { service } = await make({
+		log,
+		run: () => {
+			throw new Error("x".repeat(1500));
+		},
+	});
+	const { id } = await service.create(admin(), daily);
+	await service.runNow(admin(), id);
+	assert.equal(lines[0], `Scheduled backup "Nightly": failed, ${"x".repeat(1000)}, 0 ms`);
 });

@@ -11,6 +11,8 @@ const SKIPPED = "Skipped: another backup or restore was running";
 const MAX_ERROR = 1000;
 const ALL_TYPES = CATEGORIES.flatMap((category) => category.types);
 
+const errorText = (error) => String(error.message).slice(0, MAX_ERROR);
+
 const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, log = console, zone = localZone }) => {
 	const client = clientOf(knex);
 	const now = () => new Date(clock.now());
@@ -61,7 +63,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		const duration = clock.now() - started.getTime();
 		const automatic = !manual;
 		if (result) log.info(`Scheduled backup "${row.name}": succeeded, ${result.size} bytes, ${duration} ms`);
-		else log.warn(`Scheduled backup "${row.name}": failed, ${error.message}, ${duration} ms`);
+		else log.warn(`Scheduled backup "${row.name}": failed, ${errorText(error)}, ${duration} ms`);
 		const current = await readRow(row.id);
 		let removed = [];
 		let retentionError = null;
@@ -87,7 +89,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 				.update({
 					last_run_at: db(started),
 					last_status: result ? "success" : "failed",
-					last_error: result ? null : String(error.message).slice(0, MAX_ERROR),
+					last_error: result ? null : errorText(error),
 					last_file: result ? result.name : current.last_file,
 					last_size: result ? result.size : current.last_size,
 					last_duration_ms: duration,
@@ -102,7 +104,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 					automatic,
 					...(retentionError === null ? {} : { retention_error: retentionError }),
 				}
-			: { error: String(error.message).slice(0, MAX_ERROR), automatic };
+			: { error: errorText(error), automatic };
 		await writeAudit(access, result ? "backup-succeeded" : "backup-failed", row, { meta, userId });
 	};
 
@@ -122,12 +124,31 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		} catch (caught) {
 			// busy: the scheduler waits, Run now answers 409; neither changes the status
 			if (caught?.code === "busy") throw caught;
-			error = caught;
+			error = caught instanceof Error ? caught : new Error(String(caught));
 		}
 		await finish(row, { started, result, error, manual, access, userId });
 	};
 
 	const ownerAccess = (row) => ({ token: { getUserId: () => row.owner_user_id } });
+
+	// the due list can be minutes old: a schedule deleted, paused or moved to a later time since then is left alone
+	const stillDue = async (row) => {
+		const fresh = await readRow(row.id);
+		if (!fresh?.enabled || !fresh.next_run_at || fresh.next_run_at.getTime() > clock.now()) return null;
+		return fresh;
+	};
+
+	// every file of the schedule; a file removed meanwhile is skipped
+	const removeFiles = async (id, removed) => {
+		for (const item of await store.scheduleFiles(id)) {
+			try {
+				await store.remove(item.name);
+				removed.push(item.name);
+			} catch (error) {
+				if (error?.code !== "not-a-backup") throw error;
+			}
+		}
+	};
 
 	return {
 		list: async (access) => {
@@ -185,9 +206,17 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		remove: async (access, id, { files = false } = {}) => {
 			access.canAdmin();
 			const row = await mustRead(id);
-			await knex(TABLE).where({ id: row.id }).del();
-			const removedFiles = files ? await store.pruneSchedule(row.id, 0) : [];
-			await writeAudit(access, "deleted", row, { meta: { files_deleted: removedFiles.length } });
+			const removedFiles = [];
+			const drop = async () => {
+				await knex(TABLE).where({ id: row.id }).del();
+				try {
+					if (files) await removeFiles(row.id, removedFiles);
+				} finally {
+					await writeAudit(access, "deleted", row, { meta: { files_deleted: removedFiles.length } });
+				}
+			};
+			// with its files under the backup lock: a run in progress would leave its new file behind (busy, 409)
+			await (files ? store.withLock(drop) : drop());
 			return { removedFiles };
 		},
 
@@ -205,17 +234,24 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 				.filter((row) => row.next_run_at.getTime() <= nowMs)
 				.sort((a, b) => a.next_run_at - b.next_run_at || a.id - b.id),
 
-		runAutomatic: (row) => execute(row, { manual: false, access: ownerAccess(row), userId: row.owner_user_id }),
+		runAutomatic: async (due) => {
+			const row = await stillDue(due);
+			if (!row) return;
+			await execute(row, { manual: false, access: ownerAccess(row), userId: row.owner_user_id });
+		},
 
-		giveUp: (row) =>
-			finish(row, {
+		giveUp: async (due) => {
+			const row = await stillDue(due);
+			if (!row) return;
+			await finish(row, {
 				started: now(),
 				result: null,
 				error: new Error(SKIPPED),
 				manual: false,
 				access: ownerAccess(row),
 				userId: row.owner_user_id,
-			}),
+			});
+		},
 
 		failedSchedules: async () =>
 			(await knex(TABLE).where({ enabled: true, last_status: "failed" }).orderBy("id").select("id", "name")).map(

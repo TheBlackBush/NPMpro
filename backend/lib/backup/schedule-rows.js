@@ -93,6 +93,7 @@ const parseTypes = (value) => {
 /** A stored row with JSON, booleans, numbers and dates as values */
 const parseRow = (row) => ({
 	...row,
+	id: Number(row.id),
 	enabled: Boolean(Number(row.enabled)),
 	types: parseTypes(row.types),
 	every_hours: numberOrNull(row.every_hours),
