@@ -73,11 +73,10 @@ const connectError = (error, timeoutMs, password) =>
 		? new errs.DatabaseMoveError(
 				"timeout",
 				`The target database did not answer within ${Math.round(timeoutMs / 1000)} seconds`,
-				{ cause: error },
+				{},
 			)
 		: new errs.DatabaseMoveError("connect", "Could not connect to the target database", {
-				details: String(error?.message ?? error),
-				cause: error,
+				details: scrub(error, password),
 			});
 
 /**
