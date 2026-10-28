@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
-import { chooseDatabase, DEFAULT_SQLITE, unsealWith } from "./database/connection-file.js";
+import { chooseDatabase, DATABASE_FILE, DEFAULT_SQLITE, unsealWith } from "./database/connection-file.js";
 import { failingKnexConfig, knexConfigOf } from "./database/knex-config.js";
 import { defaultSecretBox } from "./secret-box.js";
 
@@ -45,6 +45,9 @@ const configure = () => {
 	const { connection } = chosen;
 	const where =
 		connection.engine === "sqlite" ? connection.file : `${connection.host}:${connection.port}/${connection.name}`;
+	if (chosen.source === "env" && existsSync(DATABASE_FILE)) {
+		logger.info(`Ignoring ${DATABASE_FILE}: the connection comes from the DB_* environment variables`);
+	}
 	logger.info(`Using ${ENGINE_TEXT[connection.engine]} ${where} from ${SOURCE_TEXT[chosen.source]}`);
 	return { database: { ...chosen, knex: knexConfigOf(connection) }, keys: getKeys() };
 };

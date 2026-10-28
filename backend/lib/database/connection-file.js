@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { chmod, open, rename, rm } from "node:fs/promises";
 import path from "node:path";
 
@@ -14,6 +15,7 @@ const DB_NAME = /^[A-Za-z0-9_][A-Za-z0-9_$-]{0,63}$/u;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters in a user name are refused on purpose
 const CONTROL = /[\u0000-\u001f\u007f]/u;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+const JSON_POSITION = /\bposition (?<position>\d+)/u;
 const TRUTHY = /^(?:1|true|yes|on)$/iu;
 
 const COMMON_KEYS = ["version", "engine", "moved_at", "moved_from"];
@@ -91,7 +93,9 @@ const parseConnectionFile = (raw, { unseal, dataDir = DATA_DIR }) => {
 	try {
 		value = JSON.parse(raw);
 	} catch (error) {
-		fail(`it is not valid JSON (${error.message})`);
+		// the parser message can quote the content (a hand-typed password): only the position is kept
+		const position = JSON_POSITION.exec(error.message)?.groups.position;
+		fail(position ? `it is not valid JSON (at position ${position})` : "it is not valid JSON");
 	}
 	if (!isObject(value)) fail("it is not a JSON object");
 	if (value.version !== 1) fail("version must be 1");
@@ -138,7 +142,11 @@ const sslOf = (connection) =>
  * @returns {Object}
  */
 const connectionFileOf = (connection, { seal, movedAt, movedFrom }) => {
-	const moved = { moved_at: movedAt, moved_from: movedFrom };
+	// nothing is written for an unknown origin, the parser refuses null
+	const moved = {
+		...(movedAt === null || movedAt === undefined ? {} : { moved_at: movedAt }),
+		...(movedFrom === null || movedFrom === undefined ? {} : { moved_from: movedFrom }),
+	};
 	if (connection.engine === "sqlite") return { version: 1, engine: "sqlite", file: connection.file, ...moved };
 	const { engine, host, port, user, name } = connection;
 	return {
@@ -158,7 +166,7 @@ const connectionFileOf = (connection, { seal, movedAt, movedFrom }) => {
  * Writes the file atomically: a temporary file in the same folder, synced, then renamed over the old one
  */
 const writeConnectionFile = async (file, content) => {
-	const temporary = `${file}.${process.pid}.tmp`;
+	const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
 	try {
 		const handle = await open(temporary, "wx", 0o600);
 		try {

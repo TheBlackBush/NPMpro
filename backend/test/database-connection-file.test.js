@@ -287,3 +287,69 @@ it("no file and no env vars give the same SQLite file and pragmas as before", ()
 	]);
 	assert.equal(result.error, null);
 });
+
+it("a file without a known origin leaves out moved_at and moved_from and reads back", () => {
+	for (const origin of [
+		{ movedAt: null, movedFrom: null },
+		{ movedAt: undefined, movedFrom: undefined },
+	]) {
+		const content = connectionFileOf(postgres, { seal, ...origin });
+		assert.equal(Object.hasOwn(content, "moved_at"), false);
+		assert.equal(Object.hasOwn(content, "moved_from"), false);
+		assert.deepEqual(parseConnectionFile(JSON.stringify(content), { unseal, dataDir }), {
+			...postgres,
+			moved_at: null,
+			moved_from: null,
+		});
+	}
+});
+
+it("a JSON error never quotes the file content", () => {
+	const raw = '{"version": 1, "password": "hand typed secret" oops}';
+	assert.throws(
+		() => parseConnectionFile(raw, { unseal, dataDir }),
+		(error) =>
+			error instanceof ConnectionFileError &&
+			error.message.startsWith("it is not valid JSON") &&
+			!error.message.includes("secret") &&
+			!error.message.includes("oops"),
+	);
+	assert.throws(
+		() => choose({}, { "/data/npmpro/database.json": raw }),
+		(error) => !error.message.includes("secret") && error.message.includes("is not valid JSON"),
+	);
+});
+
+it("incomplete env vars without a file use the default SQLite file", () => {
+	const chosen = choose({ DB_POSTGRES_HOST: "h", DB_POSTGRES_USER: "u" }, {});
+	assert.equal(chosen.source, "default");
+	assert.deepEqual(chosen.connection, { engine: "sqlite", file: "/data/npmpro/database.sqlite" });
+});
+
+it("complete MySQL and Postgres env vars together use MySQL", () => {
+	const chosen = choose({
+		DB_MYSQL_HOST: "m",
+		DB_MYSQL_USER: "u",
+		DB_MYSQL_NAME: "n",
+		DB_POSTGRES_HOST: "h",
+		DB_POSTGRES_USER: "u",
+		DB_POSTGRES_NAME: "n",
+	});
+	assert.equal(chosen.source, "env");
+	assert.equal(chosen.connection.engine, "mysql");
+	assert.equal(chosen.connection.host, "m");
+});
+
+it("accepts a dated SQLite file from a move", () => {
+	const file = "/data/npmpro/database-20261029-100000.sqlite";
+	const raw = JSON.stringify(connectionFileOf({ engine: "sqlite", file }, { seal, ...moved }));
+	assert.deepEqual(parseConnectionFile(raw, { unseal, dataDir }), {
+		engine: "sqlite",
+		file,
+		moved_at: moved.movedAt,
+		moved_from: moved.movedFrom,
+	});
+	const chosen = choose({}, { "/data/npmpro/database.json": raw });
+	assert.equal(chosen.source, "file");
+	assert.equal(chosen.connection.file, file);
+});
