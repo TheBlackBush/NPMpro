@@ -1002,3 +1002,64 @@ it("finishes a merge without custom nginx files that leaves a host offline", TIM
 		await cleanup();
 	}
 });
+
+// a file of A's proxy hosts whose host #1 holds these values as JSON, the way a crafted upload would
+const craftedHost = (a, values) =>
+	backupOf(a, { types: ["proxy_hosts"], secrets: false }).then((file) =>
+		craftBackup(file, path.join(a.base, "crafted-host.npmpro"), async ({ data, writeData }) => {
+			const hosts = await data("proxy_hosts");
+			Object.assign(hosts.proxy_host[0], values);
+			await writeData("proxy_hosts", hosts);
+		}),
+	);
+
+it("refuses an admin page import of a host whose forward port is no integer", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const file = await craftedHost(a, { forward_port: [80] });
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		await assert.rejects(b.service.importOpen(admin, id, {}), invalidItem("a.example.com", "forward_port"));
+		assert.deepEqual(await autoFiles(b), []);
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("refuses an admin Settings merge of a host whose domain holds nginx syntax", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const file = await hostFileWith(a, { domain_names: JSON.stringify(["lim7c.example.com;"]) });
+		const { token } = await openOn(b, file);
+		await assert.rejects(
+			b.service.plan(admin, token, { mode: "merge", types: ["proxy_hosts"] }),
+			invalidItem("#1", "domain_names"),
+		);
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("an admin page import keeps a host's advanced config and file serving outside /var/www", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const file = await craftedHost(a, {
+			advanced_config: "add_header X-Test 1;",
+			forward_scheme: "path",
+			forward_host: "/srv/site",
+		});
+		const { id } = await b.service.importUpload(admin, createReadStream(file), { kind: "proxy_hosts" });
+		const opened = await b.service.importOpen(admin, id, {});
+		await b.service.restore(admin, opened.token, {
+			mode: "merge",
+			types: ["proxy_hosts"],
+			planHash: opened.plan.hash,
+		});
+		const added = await b.knex("proxy_host").where({ id: 2 }).first();
+		assert.equal(added.advanced_config, "add_header X-Test 1;");
+		assert.equal(added.forward_host, "/srv/site");
+	} finally {
+		await cleanup();
+	}
+});

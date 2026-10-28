@@ -16,9 +16,10 @@ import {
 import { BackupError } from "./format.js";
 import { ITEM_TYPES } from "./select.js";
 
-// A page import by a user who is no administrator writes rows only as far as the API would let that user: every row
-// it adds or replaces passes the host config guard (raw nginx config and file serving are admin-only) and the field
-// patterns of the API schemas, since those values reach the nginx templates as they are.
+// A merge writes rows only as far as the API would let its user: every row it adds or replaces passes the field types
+// and patterns of the API schemas (for everyone, administrators too, since those values reach the nginx templates as
+// they are), and for a user who is no administrator the host config guard too (raw nginx config and file serving are
+// admin-only).
 
 const WRITES = new Set(["add", "replace"]);
 const LOCATION_TABLE = "npmpro_location";
@@ -167,57 +168,40 @@ const checkSchema = (schema, row, { properties = schema.properties, prefix = "" 
 	}
 };
 
-// the host config guard for one row, as for a non-admin create (stored: undefined) or update
-const checkGuard = (typeId, row, stored, locations) => {
-	const { guard } = HOSTS[typeId];
-	for (const field of CONFIG_FIELDS[guard]) {
-		if (row[field] === undefined) continue;
-		if (row[field] !== null && typeof row[field] !== "string") throw new FieldError(field);
-		try {
-			assertConfigFields(false, { [field]: row[field] }, stored, [field]);
-		} catch {
-			throw new FieldError(field);
-		}
-	}
-	if (typeId !== "proxy_hosts") return;
-	try {
-		assertPathScheme(false, row, stored);
-	} catch {
-		throw new FieldError("forward_host");
-	}
-	try {
-		assertUniqueLocations(locations);
-	} catch {
-		throw new FieldError("locations");
-	}
-	for (const [index, location] of locations.entries()) {
-		const config = location.advanced_config;
-		if (config !== undefined && config !== null && typeof config !== "string") {
-			throw new FieldError(`locations[${index}].advanced_config`);
-		}
-		try {
-			assertLocations(false, [{ ...location }], stored?.locations ?? []);
-		} catch (error) {
-			throw new FieldError(`locations[${index}].${GUARD_FIELDS[error.message_i18n] ?? "path"}`);
-		}
-	}
-};
+const locationsOf = (typeId, row, data) =>
+	typeId === "proxy_hosts"
+		? (data.proxy_hosts?.[LOCATION_TABLE] ?? []).filter(
+				(location) => String(location.proxy_host_id) === String(row.id),
+			)
+		: [];
 
-const checkRow = ({ typeId, row, data, stored }) => {
+// the values of one row as the API schemas take them from anyone, administrators too
+const checkRowValues = ({ typeId, row, data }) => {
 	if (Object.hasOwn(HOSTS, typeId)) {
 		checkSchema(HOSTS[typeId].schema, row);
-		const locations =
-			typeId === "proxy_hosts"
-				? (data.proxy_hosts?.[LOCATION_TABLE] ?? []).filter(
-						(location) => String(location.proxy_host_id) === String(row.id),
-					)
-				: [];
+		const locations = locationsOf(typeId, row, data);
 		for (const [index, location] of locations.entries())
 			checkSchema(proxyHostSchema, location, {
 				properties: LOCATION_SCHEMA.properties,
 				prefix: `locations[${index}].`,
 			});
-		checkGuard(typeId, row, stored, locations);
+		// raw config fields hold text or nothing, which the guard and the templates read
+		for (const field of CONFIG_FIELDS[HOSTS[typeId].guard]) {
+			if (row[field] !== undefined && row[field] !== null && typeof row[field] !== "string") {
+				throw new FieldError(field);
+			}
+		}
+		for (const [index, location] of locations.entries()) {
+			const config = location.advanced_config;
+			if (config !== undefined && config !== null && typeof config !== "string") {
+				throw new FieldError(`locations[${index}].advanced_config`);
+			}
+		}
+		try {
+			assertUniqueLocations(locations);
+		} catch {
+			throw new FieldError("locations");
+		}
 		return;
 	}
 	checkSchema(LINKED[typeId], row);
@@ -234,6 +218,34 @@ const checkRow = ({ typeId, row, data, stored }) => {
 	}
 };
 
+// the host config guard for one host row, as for a non-admin create (stored: undefined) or update: raw nginx config
+// and file serving are admin-only
+const checkRowAdminOnly = ({ typeId, row, data, stored }) => {
+	if (!Object.hasOwn(HOSTS, typeId)) return;
+	const { guard } = HOSTS[typeId];
+	for (const field of CONFIG_FIELDS[guard]) {
+		if (row[field] === undefined) continue;
+		try {
+			assertConfigFields(false, { [field]: row[field] }, stored, [field]);
+		} catch {
+			throw new FieldError(field);
+		}
+	}
+	if (typeId !== "proxy_hosts") return;
+	try {
+		assertPathScheme(false, row, stored);
+	} catch {
+		throw new FieldError("forward_host");
+	}
+	for (const [index, location] of locationsOf(typeId, row, data).entries()) {
+		try {
+			assertLocations(false, [{ ...location }], stored?.locations ?? []);
+		} catch (error) {
+			throw new FieldError(`locations[${index}].${GUARD_FIELDS[error.message_i18n] ?? "path"}`);
+		}
+	}
+};
+
 // the instance row a replace overwrites, with a proxy host's locations, for the "keeps the stored value" rules
 const storedRow = async (knex, item) => {
 	const { table } = ITEM_TYPES[item.target.type];
@@ -245,16 +257,10 @@ const storedRow = async (knex, item) => {
 };
 
 /**
- * Refuses a non-admin page import whose plan adds or replaces a row with a value the API would refuse that user: raw
- * nginx config, file serving outside /var/www, or a field outside its API schema pattern.
- *
- * @param   {Object}    options
- * @param   {Object}    options.knex  reads the rows a replace overwrites
- * @param   {Object}    options.plan  planMerge() result
- * @param   {Object}    options.data  loadStageData() of the planned types
- * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the item and the field
+ * Runs the checks on every row the plan adds or replaces, item by item; a FieldError becomes BackupError("invalid-item")
+ * naming the item, the field and why.
  */
-const checkPageImport = async ({ knex, plan, data }) => {
+const checkWrittenRows = async ({ knex, plan, data, values, adminOnly }) => {
 	for (const item of plan.items) {
 		if (!(WRITES.has(item.action) && (Object.hasOwn(HOSTS, item.type) || Object.hasOwn(LINKED, item.type)))) {
 			continue;
@@ -263,17 +269,51 @@ const checkPageImport = async ({ knex, plan, data }) => {
 			(other) => String(other.id) === String(item.id),
 		);
 		if (!row) continue;
-		const stored = item.action === "replace" ? await storedRow(knex, item) : undefined;
+		const check = { typeId: item.type, row, data };
+		let step = "value";
 		try {
-			checkRow({ typeId: item.type, row, data, stored });
+			if (values) checkRowValues(check);
+			step = "admin";
+			if (adminOnly) {
+				const stored = item.action === "replace" ? await storedRow(knex, item) : undefined;
+				checkRowAdminOnly({ ...check, stored });
+			}
 		} catch (error) {
 			if (!(error instanceof FieldError)) throw error;
+			const why = step === "value" ? "is not a valid value" : "is not allowed for a user who is no administrator";
 			throw new BackupError(
 				"invalid-item",
-				`${item.label} (#${item.id}) cannot be imported: its ${error.field} is not allowed for a user who is no administrator`,
+				`${item.label} (#${item.id}) cannot be imported: its ${error.field} ${why}`,
 			);
 		}
 	}
 };
 
-export { checkPageImport };
+/**
+ * Refuses a merge (a Settings merge or a page import, by anyone) whose plan adds or replaces a row with a value the
+ * API would refuse everyone: a JSON type, pattern, enum, length or range outside the API schema, raw config that is
+ * no text, two locations with the same path, a certificate domain or an access list entry outside its rule.
+ *
+ * @param   {Object}    options
+ * @param   {Object}    options.plan  planMerge() result
+ * @param   {Object}    options.data  loadStageData() of the planned types
+ * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the item and the field
+ */
+const checkItemValues = ({ plan, data }) => checkWrittenRows({ plan, data, values: true });
+
+/**
+ * Refuses a non-admin page import whose plan adds or replaces a row with what only an administrator may set: raw nginx
+ * config or file serving outside /var/www (the host config guard).
+ *
+ * @param   {Object}    options
+ * @param   {Object}    options.knex  reads the rows a replace overwrites
+ * @param   {Object}    options.plan  planMerge() result
+ * @param   {Object}    options.data  loadStageData() of the planned types
+ * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the item and the field
+ */
+const checkAdminOnly = ({ knex, plan, data }) => checkWrittenRows({ knex, plan, data, adminOnly: true });
+
+// both, item by item: what a non-admin page import must pass
+const checkPageImport = ({ knex, plan, data }) => checkWrittenRows({ knex, plan, data, values: true, adminOnly: true });
+
+export { checkAdminOnly, checkItemValues, checkPageImport };

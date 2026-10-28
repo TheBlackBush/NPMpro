@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import knexFactory from "knex";
-import { checkPageImport } from "../lib/backup/import-checks.js";
+import { checkAdminOnly, checkItemValues, checkPageImport } from "../lib/backup/import-checks.js";
 import { createSchema } from "./support/backup-schema.js";
 
 const database = async () => {
@@ -167,6 +167,51 @@ it("refuses values whose type is not the API schema's, raw config above all", as
 				],
 			},
 		});
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("checks the values of every merge apart from the admin-only fields", async () => {
+	const knex = await database();
+	try {
+		const host = { id: 1, domain_names: '["a.example.com"]', forward_host: "app", forward_port: 80 };
+		const hosts = (values, locations = []) => ({
+			proxy_hosts: { proxy_host: [{ ...host, ...values }], npmpro_location: locations },
+		});
+		const items = [item("proxy_hosts", 1)];
+		const adminOnly = hosts({ advanced_config: "return 200;", forward_scheme: "path", forward_host: "/srv/site" }, [
+			{ id: 5, proxy_host_id: 1, path: "/x/", forward_host: "app", advanced_config: "return 204;" },
+		]);
+		// what only an administrator may set passes the value checks and fails the admin-only ones
+		await checkItemValues({ plan: { items }, data: adminOnly });
+		await assert.rejects(checkAdminOnly({ knex, plan: { items }, data: adminOnly }), refuses("advanced_config"));
+		await assert.rejects(checkPageImport({ knex, plan: { items }, data: adminOnly }), refuses("advanced_config"));
+		// a value the API refuses everyone fails the value checks, not the admin-only ones
+		for (const [data, field] of [
+			[hosts({ forward_port: [80] }), "forward_port"],
+			[hosts({ domain_names: '["lim7c.example.com;"]' }), "domain_names"],
+			[hosts({ advanced_config: ["return 200;"] }), "advanced_config"],
+			[
+				hosts({}, [
+					{ id: 5, proxy_host_id: 1, path: "/x/", forward_host: "app" },
+					{ id: 6, proxy_host_id: 1, path: "/x/", forward_host: "app" },
+				]),
+				"locations",
+			],
+		]) {
+			await assert.rejects(checkItemValues({ plan: { items }, data }), refuses(field));
+			await checkAdminOnly({ knex, plan: { items }, data });
+		}
+		await assert.rejects(
+			checkItemValues({
+				plan: { items: [item("certificates", 1)] },
+				data: {
+					certificates: { certificate: [{ id: 1, provider: "other", domain_names: '["a.example.com;"]' }] },
+				},
+			}),
+			refuses("domain_names"),
+		);
 	} finally {
 		await knex.destroy();
 	}

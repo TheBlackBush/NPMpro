@@ -7,7 +7,7 @@ import { finished, pipeline } from "node:stream/promises";
 import { extractTo, packStage } from "../lib/backup/archive.js";
 import { exportStage, verifyStage } from "../lib/backup/export.js";
 import { BackupError, FORMAT_VERSION, openBackupFile, readHeader, writeBackupFile } from "../lib/backup/format.js";
-import { checkPageImport } from "../lib/backup/import-checks.js";
+import { checkAdminOnly, checkItemValues } from "../lib/backup/import-checks.js";
 import { mergeTypes } from "../lib/backup/merge-db.js";
 import { placeMergedFiles } from "../lib/backup/merge-files.js";
 import { planMerge, readInstanceRows } from "../lib/backup/merge-plan.js";
@@ -711,8 +711,10 @@ const createBackupService = ({
 			scope,
 			secrets: entry.manifest.secrets === true,
 		});
-		// a user who is no administrator imports only what the API would let them set; checked again before an apply
-		if (scope.page && !scope.isAdmin) await checkPageImport({ knex, plan, data });
+		// a merge writes only what the API would let its user set: values the API refuses everyone, and for a user who
+		// is no administrator raw config and file serving too; checked again before an apply
+		await checkItemValues({ plan, data });
+		if (!scope.isAdmin) await checkAdminOnly({ knex, plan, data });
 		await checkStagedRenewals({ stageDir: entry.stageDir, dataDir, items: plan.items });
 		return { plan, data, types: chosen };
 	};
