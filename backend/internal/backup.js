@@ -999,8 +999,8 @@ const createBackupService = ({
 						date: Number.isNaN(created.getTime()) ? new Date(clock.now()) : created,
 					});
 				}
-				// an uploaded file is never an automatic backup: those are pruned and live in their own folder
-				const stored = store.uniqueName(wanted.replace(AUTO_SUFFIX, ".npmpro"));
+				// an uploaded file is never an automatic backup or part of a local schedule: those are pruned and live in their own folder
+				const stored = store.uniqueName(store.withoutSchedule(wanted.replace(AUTO_SUFFIX, ".npmpro")));
 				await rename(temp, store.pathOf(stored));
 				await audit(access, {
 					action: "uploaded",

@@ -5,7 +5,7 @@ import path from "node:path";
 import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
-const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
+const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-s\d{1,9})?(-auto)?\.npmpro$/u;
 // a page export, offered as the name of its pending download
 const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
@@ -14,7 +14,15 @@ const PAGE_MARK = "--import";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
-const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-auto)?\.npmpro$/u;
+const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-s\d{1,9})?(-auto)?\.npmpro$/u;
+// the schedule part and the order of a name: its stamp, then its number (none counts as 1)
+const SCHEDULE_PART = /-s(\d{1,9})(?=(?:-auto)?\.npmpro$)/u;
+const ORDER_PARTS = /-(\d{8}-\d{6})(?:-(\d{1,3}))?(?:-s\d{1,9})?(?:-auto)?\.npmpro$/u;
+
+const orderKey = (name) => {
+	const parts = ORDER_PARTS.exec(name);
+	return parts ? `${parts[1]}-${String(parts[2] ?? 1).padStart(3, "0")}` : "";
+};
 
 const pad = (value, length = 2) => String(value).padStart(length, "0");
 
@@ -50,8 +58,8 @@ const createBackupStore = ({
 
 	// page: the automatic backup before a page import, pruned apart from the Settings ones. "--" never occurs in a
 	// cleaned host name, so the mark cannot be mistaken for one.
-	const fileName = ({ host, date, auto, page = false }) =>
-		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+	const fileName = ({ host, date, auto, page = false, scheduleId = null }) =>
+		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${scheduleId === null ? "" : `-s${scheduleId}`}${auto ? "-auto" : ""}.npmpro`;
 
 	const exportName = ({ kind, host, date }) =>
 		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
@@ -70,7 +78,7 @@ const createBackupStore = ({
 		let candidate = name;
 		for (let n = 2; existsSync(pathOf(candidate)); n++) {
 			if (n > 999) throw new BackupError("name-taken", "Too many backups with the same name");
-			candidate = `${parts[1]}-${n}${parts[2] ?? ""}.npmpro`;
+			candidate = `${parts[1]}-${n}${parts[2] ?? ""}${parts[3] ?? ""}.npmpro`;
 		}
 		return candidate;
 	};
@@ -81,10 +89,12 @@ const createBackupStore = ({
 		if (!info.isFile()) return null;
 		let summary = null;
 		let encrypted = null;
+		let instanceKey = null;
 		try {
 			const { header } = await readHeader(file);
 			summary = header.summary ?? null;
 			encrypted = header.kdf !== "none";
+			instanceKey = header.kdf === "instance";
 		} catch {
 			// Unreadable headers stay listed so the file can still be deleted.
 		}
@@ -95,6 +105,8 @@ const createBackupStore = ({
 			auto: folder === autoDir,
 			summary,
 			encrypted,
+			instance_key: instanceKey,
+			schedule_id: folder === autoDir ? null : Number(SCHEDULE_PART.exec(name)?.[1] ?? Number.NaN) || null,
 		};
 	};
 
@@ -137,6 +149,27 @@ const createBackupStore = ({
 			for (const item of group.slice(keepAuto)) await remove(item.name);
 		}
 	};
+
+	const scheduleFiles = async (id) =>
+		(await list())
+			.filter((item) => !item.auto && item.schedule_id === Number(id))
+			.sort((a, b) => orderKey(b.name).localeCompare(orderKey(a.name)) || b.modified.localeCompare(a.modified));
+
+	// the schedule's files past the newest keep; a file removed meanwhile is skipped
+	const pruneSchedule = async (id, keep) => {
+		const removed = [];
+		for (const item of (await scheduleFiles(id)).slice(keep)) {
+			try {
+				await remove(item.name);
+				removed.push(item.name);
+			} catch (error) {
+				if (error.code !== "not-a-backup") throw error;
+			}
+		}
+		return removed;
+	};
+
+	const withoutSchedule = (name) => name.replace(SCHEDULE_PART, "");
 
 	const tempPath = (prefix) => path.join(dir, `.${prefix}-${randomName()}`);
 
@@ -289,6 +322,9 @@ const createBackupStore = ({
 		list,
 		remove,
 		pruneAuto,
+		scheduleFiles,
+		pruneSchedule,
+		withoutSchedule,
 		uniqueName,
 		tempPath,
 		createStageDir,

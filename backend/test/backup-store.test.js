@@ -435,3 +435,109 @@ it("never evicts a Settings session for the session cap; the oldest page session
 	assert.throws(() => store.takeToken(tokens[2], { owner: 10 }), code("token-expired"));
 	assert.equal(store.takeToken(tokens[5], { owner: 13 }).file, "p");
 });
+
+const writeNamed = async (dir, name) =>
+	writeBackupFile({ source: Readable.from([Buffer.from("x")]), file: path.join(dir, name), mode: "none", summary });
+
+it("schedule names carry -s<id>, a taken one gets its number before it", async () => {
+	const { store, dir } = await make();
+	const date = new Date(2026, 9, 28, 12, 0, 0);
+	const name = store.fileName({ host: "npm", date, scheduleId: 5 });
+	assert.equal(name, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	assert.equal(store.NAME.test(name), true);
+	await writeNamed(dir, name);
+	assert.equal(store.uniqueName(name), "npmpro-backup-npm-20261028-120000-2-s5.npmpro");
+	assert.equal(
+		store.withoutSchedule("npmpro-backup-npm-20261028-120000-2-s5.npmpro"),
+		"npmpro-backup-npm-20261028-120000-2.npmpro",
+	);
+});
+
+it("lists schedule_id and instance_key", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120100.npmpro");
+	await writeBackupFile({
+		source: Readable.from([Buffer.from("x")]),
+		file: path.join(dir, "npmpro-backup-npm-20261028-120200-s6.npmpro"),
+		mode: "instance",
+		instanceKey: Buffer.alloc(32, 1),
+		summary,
+	});
+	const byName = Object.fromEntries((await store.list()).map((item) => [item.name, item]));
+	assert.equal(byName["npmpro-backup-npm-20261028-120000-s5.npmpro"].schedule_id, 5);
+	assert.equal(byName["npmpro-backup-npm-20261028-120100.npmpro"].schedule_id, null);
+	assert.equal(byName["npmpro-backup-npm-20261028-120200-s6.npmpro"].instance_key, true);
+	assert.equal(byName["npmpro-backup-npm-20261028-120000-s5.npmpro"].instance_key, false);
+});
+
+it("retention keeps the newest files of the schedule and touches nothing else", async () => {
+	const { store, dir } = await make();
+	for (const name of [
+		"npmpro-backup-npm-20261026-120000-s5.npmpro",
+		"npmpro-backup-npm-20261027-120000-s5.npmpro",
+		"npmpro-backup-npm-20261028-120000-s5.npmpro",
+		"npmpro-backup-npm-20261028-120000-2-s5.npmpro",
+		"npmpro-backup-npm-20261025-120000-s6.npmpro",
+		"npmpro-backup-npm-20261020-120000.npmpro",
+	]) {
+		await writeNamed(dir, name);
+	}
+	await writeNamed(path.join(dir, "auto"), "npmpro-backup-npm-20261019-120000-auto.npmpro");
+	// same mtime for all: the order comes from the name
+	assert.deepEqual(
+		(await store.scheduleFiles(5)).map((item) => item.name),
+		[
+			"npmpro-backup-npm-20261028-120000-2-s5.npmpro",
+			"npmpro-backup-npm-20261028-120000-s5.npmpro",
+			"npmpro-backup-npm-20261027-120000-s5.npmpro",
+			"npmpro-backup-npm-20261026-120000-s5.npmpro",
+		],
+	);
+	assert.deepEqual(await store.pruneSchedule(5, 2), [
+		"npmpro-backup-npm-20261027-120000-s5.npmpro",
+		"npmpro-backup-npm-20261026-120000-s5.npmpro",
+	]);
+	const left = (await readdir(dir)).filter((name) => name.endsWith(".npmpro")).sort();
+	assert.deepEqual(left, [
+		"npmpro-backup-npm-20261020-120000.npmpro",
+		"npmpro-backup-npm-20261025-120000-s6.npmpro",
+		"npmpro-backup-npm-20261028-120000-2-s5.npmpro",
+		"npmpro-backup-npm-20261028-120000-s5.npmpro",
+	]);
+	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
+});
+
+it("retention skips a file deleted by hand", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	await rm(path.join(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro"));
+	assert.deepEqual(await store.pruneSchedule(5, 1), []);
+});
+
+it("retention ignores a file gone between listing and removal", async () => {
+	const { store, dir } = await make();
+	for (const day of [26, 27, 28]) await writeNamed(dir, `npmpro-backup-npm-202610${day}-120000-s5.npmpro`);
+	const files = await store.scheduleFiles(5);
+	await rm(path.join(dir, files[2].name));
+	assert.deepEqual(await store.pruneSchedule(5, 1), ["npmpro-backup-npm-20261027-120000-s5.npmpro"]);
+});
+
+it("an uploaded name from another instance, auto and page files never count for a schedule", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm--import-20261027-120000.npmpro");
+	await writeNamed(path.join(dir, "auto"), "npmpro-backup-npm-20261026-120000-s5-auto.npmpro");
+	const uploaded = store.uniqueName(store.withoutSchedule("npmpro-backup-npm-20261028-120000-s5.npmpro"));
+	assert.equal(uploaded, "npmpro-backup-npm-20261028-120000.npmpro");
+	await writeNamed(dir, uploaded);
+	assert.deepEqual(
+		(await store.scheduleFiles(5)).map((item) => item.name),
+		["npmpro-backup-npm-20261028-120000-s5.npmpro"],
+	);
+	assert.deepEqual(await store.pruneSchedule(5, 0), ["npmpro-backup-npm-20261028-120000-s5.npmpro"]);
+	assert.deepEqual(await store.pruneSchedule(7, 0), []);
+	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
+	assert.equal((await store.list()).length, 3);
+});
