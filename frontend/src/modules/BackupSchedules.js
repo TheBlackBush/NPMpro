@@ -180,3 +180,49 @@ export function filterBySchedule(entries, filter) {
 		return entries.filter((entry) => entry.scheduleId === null || entry.scheduleId === undefined);
 	return entries.filter((entry) => String(entry.scheduleId) === filter);
 }
+
+// the fields that decide when a schedule runs
+const TIMING_FIELDS = ["frequency", ...new Set(Object.values(FREQUENCY_FIELDS).flat())];
+
+/**
+ * Whether the timing fields of the form are valid (the next run can be computed)
+ */
+export function timingValid(values) {
+	const errors = scheduleErrors(values);
+	return !TIMING_FIELDS.some((field) => Object.hasOwn(errors, field));
+}
+
+/**
+ * The form values as the schedule nextRun (ScheduleTime.js) takes, in the API's snake_case
+ *
+ * @param {Object}      values
+ * @param {string|null} [lastRunAt]  the start of the schedule's last run (the base of "every N hours")
+ */
+export function scheduleOf(values, lastRunAt = null) {
+	return {
+		frequency: values.frequency,
+		every_hours: Number(values.everyHours),
+		time: values.time,
+		weekday: Number(values.weekday),
+		month_day: Number(values.monthDay),
+		last_run_at: lastRunAt,
+	};
+}
+
+/**
+ * A date and time (an ISO string or a Date) in the server's time zone, so it agrees with the schedule's "at 03:00";
+ * in the browser's zone when the zone is unknown or not valid
+ *
+ * @param {string|Date} value
+ * @param {string}      locale
+ * @param {string}      [timeZone]
+ */
+export function formatInZone(value, locale, timeZone) {
+	const options = { dateStyle: "medium", timeStyle: "short", hourCycle: "h23" };
+	const date = new Date(value);
+	try {
+		return new Intl.DateTimeFormat(locale, { ...options, timeZone: timeZone || undefined }).format(date);
+	} catch {
+		return new Intl.DateTimeFormat(locale, options).format(date);
+	}
+}

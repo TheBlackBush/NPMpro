@@ -71,4 +71,12 @@ const showNginxConfigError = (obj, nginxErr) => {
 	});
 };
 
-export { getNginxConfigError, NginxConfigErrorMsg, showApiError, showError, showNginxConfigError, showObjectSuccess };
+export {
+	getNginxConfigError,
+	NginxConfigErrorMsg,
+	showApiError,
+	showError,
+	showNginxConfigError,
+	showObjectSuccess,
+	showSuccess,
+};

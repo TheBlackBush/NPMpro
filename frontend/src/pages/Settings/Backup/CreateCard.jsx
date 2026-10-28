@@ -8,6 +8,7 @@ import {
 	Loading,
 	SecretsFields,
 	showFirstInvalid,
+	TypeTree,
 	useShownErrors,
 	validateSecrets,
 } from "src/components";
@@ -15,7 +16,6 @@ import { useBackupTypes, useCreateBackup } from "src/hooks";
 import { T } from "src/locale";
 import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
 import { showObjectSuccess } from "src/notifications";
-import { TypeTree } from "./TypeTree";
 
 function CreateForm({ data, error, keepRef }) {
 	const { values, setFieldValue, isSubmitting, submitForm } = useFormikContext();

@@ -18,9 +18,10 @@ import { deleteBackup, downloadBackup } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { TablePagination } from "src/components/Table/TablePagination";
-import { useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
+import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
+import { filterBySchedule, scheduleNames } from "src/modules/BackupSchedules";
 import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
@@ -71,10 +72,24 @@ function SecretsBadge({ entry }) {
 	);
 }
 
-function NameCell({ entry }) {
+// the schedule that made a file; "Deleted schedule" for a file left from one that no longer exists
+function ScheduleBadge({ entry, names }) {
+	if (entry.scheduleId === null || entry.scheduleId === undefined) return null;
+	const name = names.get(entry.scheduleId);
+	return (
+		<div className="mt-1">
+			<span className="badge bg-purple-lt text-wrap text-start">
+				{name ?? <T id="settings.backup.schedule.deleted" />}
+			</span>
+		</div>
+	);
+}
+
+function NameCell({ entry, names }) {
 	return (
 		<>
 			<div className="text-break">{entry.name}</div>
+			<ScheduleBadge entry={entry} names={names} />
 			{entry.auto ? (
 				<div className="mt-1">
 					<span className="badge bg-purple-lt me-2">
@@ -139,7 +154,7 @@ function Actions({ entry, onDelete, navigate }) {
 	);
 }
 
-function Table({ data, categories, onDelete, navigate, uploadButton }) {
+function Table({ data, categories, names, filtered, onClearFilter, onDelete, navigate, uploadButton }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -147,7 +162,7 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 				id: "name",
 				meta: { mobile: "title" },
 				header: label("column.name"),
-				cell: (info) => <NameCell entry={info.row.original} />,
+				cell: (info) => <NameCell entry={info.row.original} names={names} />,
 			}),
 			columnHelper.accessor((row) => row.summary?.createdAt ?? row.modified, {
 				id: "created",
@@ -195,10 +210,16 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 				meta: { className: "text-end text-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, onDelete, navigate]);
+	}, [categories, names, onDelete, navigate]);
 
 	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
 	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
+	// another schedule filter starts on the first page
+	const [shownFilter, setShownFilter] = useState(filtered);
+	if (shownFilter !== filtered) {
+		setShownFilter(filtered);
+		setPagination((current) => ({ ...current, pageIndex: 0 }));
+	}
 	const tableInstance = useTable({
 		features,
 		columns,
@@ -219,6 +240,8 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 						object="backup"
 						objects="backups"
 						tableInstance={tableInstance}
+						isFiltered={filtered !== ""}
+						onClearFilters={onClearFilter}
 						customAddBtn={uploadButton}
 						permissionSection={ADMIN}
 						permission={VIEW}
@@ -242,6 +265,7 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 function StoredTable() {
 	const { data, isPending, error } = useBackups();
 	const { data: types } = useBackupTypes();
+	const { data: schedules } = useBackupSchedules();
 	const upload = useUploadBackup();
 	const navigate = useNavigate();
 	const inputRef = useRef(null);
@@ -287,6 +311,25 @@ function StoredTable() {
 		[],
 	);
 
+	// the "Schedule" filter: "" all, "none" not scheduled, else a schedule id
+	const [filter, setFilter] = useState("");
+	const names = useMemo(() => scheduleNames(schedules), [schedules]);
+	const scheduled = useMemo(
+		() => (data ?? []).filter((entry) => entry.scheduleId !== null && entry.scheduleId !== undefined),
+		[data],
+	);
+	// the schedules that have files, by name
+	const filterOptions = useMemo(
+		() =>
+			[...names]
+				.filter(([id]) => scheduled.some((entry) => entry.scheduleId === id))
+				.sort(([, a], [, b]) => a.localeCompare(b, intl.locale)),
+		[names, scheduled],
+	);
+	// the filter is gone (and lets everything through) once no file is scheduled
+	const activeFilter = scheduled.length > 0 ? filter : "";
+	const shown = useMemo(() => (data ? filterBySchedule(data, activeFilter) : data), [data, activeFilter]);
+
 	const uploading = progress !== null;
 	const percent = Math.round((progress ?? 0) * 100);
 	const uploadButton = (
@@ -302,7 +345,23 @@ function StoredTable() {
 				<h3 className="card-title text-nowrap">
 					<T id="settings.backup.stored" />
 				</h3>
-				<div className="card-actions">
+				<div className="card-actions d-flex flex-wrap align-items-center gap-2">
+					{scheduled.length > 0 ? (
+						<select
+							className="form-select form-select-sm w-auto"
+							value={activeFilter}
+							onChange={(event) => setFilter(event.target.value)}
+							aria-label={label("settings.backup.schedule.filter")}
+						>
+							<option value="">{label("list.filter.all")}</option>
+							<option value="none">{label("settings.backup.schedule.filter.none")}</option>
+							{filterOptions.map(([id, name]) => (
+								<option key={id} value={String(id)}>
+									{name}
+								</option>
+							))}
+						</select>
+					) : null}
 					<input
 						ref={inputRef}
 						type="file"
@@ -350,8 +409,11 @@ function StoredTable() {
 			) : null}
 			{data ? (
 				<Table
-					data={data}
+					data={shown}
 					categories={types?.categories ?? []}
+					names={names}
+					filtered={activeFilter}
+					onClearFilter={() => setFilter("")}
 					onDelete={onDelete}
 					navigate={navigate}
 					uploadButton={uploadButton}

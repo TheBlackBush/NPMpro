@@ -1,4 +1,12 @@
-import { IconCalendarTime, IconDotsVertical, IconPlayerPause, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
+import {
+	IconCalendarTime,
+	IconDotsVertical,
+	IconEdit,
+	IconPlayerPause,
+	IconPlayerPlay,
+	IconPlus,
+	IconTrash,
+} from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,18 +17,18 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { deleteBackupSchedule } from "src/api/backend";
-import { EmptyData, ErrorAlert, Loading } from "src/components";
+import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useBackupSchedules, useBackupTypes, useRunBackupSchedule, useSaveBackupSchedule } from "src/hooks";
-import { formatDateTime, intl, T } from "src/locale";
-import { showDeleteConfirmModal } from "src/modals";
-import { scheduleStatus, timingText } from "src/modules/BackupSchedules";
+import { intl, T } from "src/locale";
+import { showBackupScheduleModal, showDeleteConfirmModal } from "src/modals";
+import { formatInZone, scheduleStatus, timingText } from "src/modules/BackupSchedules";
 import { contentLabels } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
-import { showApiError, showError, showObjectSuccess } from "src/notifications";
+import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
 
 const label = (id, values) => intl.formatMessage({ id }, values);
 
@@ -38,9 +46,12 @@ const contentsText = (categories, types) =>
 		.map((item) => label(contentLabelId(item)))
 		.join(", ");
 
-const lastRunText = (schedule) =>
+// a date and time in the server's zone, as the schedule's own times ("Daily at 03:00")
+const formatTime = (value, timeZone) => formatInZone(value, intl.locale, timeZone);
+
+const lastRunText = (schedule, timeZone) =>
 	schedule.lastRunAt
-		? [schedule.lastSize ? formatBytes(schedule.lastSize) : null, formatDateTime(schedule.lastRunAt)]
+		? [schedule.lastSize ? formatBytes(schedule.lastSize) : null, formatTime(schedule.lastRunAt, timeZone)]
 				.filter(Boolean)
 				.join(", ")
 		: label("settings.backup.schedule.never");
@@ -57,7 +68,7 @@ function Contents({ categories, types }) {
 	);
 }
 
-function StatusBadge({ schedule }) {
+function StatusBadge({ schedule, timeZone }) {
 	const status = scheduleStatus(schedule);
 	if (status === "paused") {
 		return (
@@ -67,20 +78,26 @@ function StatusBadge({ schedule }) {
 		);
 	}
 	if (status === "failed") {
+		// on phones the error shows under the badge, on wider screens in the Last run column
 		return (
-			<span className="badge bg-red-lt text-wrap text-start" title={schedule.lastError ?? undefined}>
-				<T id="settings.backup.schedule.failed" />
-			</span>
+			<>
+				<span className="badge bg-red-lt text-wrap text-start" title={schedule.lastError ?? undefined}>
+					<T id="settings.backup.schedule.failed" />
+				</span>
+				{schedule.lastError ? (
+					<div className="small text-danger text-break mt-1 d-md-none">{schedule.lastError}</div>
+				) : null}
+			</>
 		);
 	}
 	return schedule.nextRunAt ? (
 		<span className="badge bg-green-lt text-wrap text-start">
-			<T id="settings.backup.schedule.next" data={{ when: formatDateTime(schedule.nextRunAt) }} />
+			<T id="settings.backup.schedule.next" data={{ when: formatTime(schedule.nextRunAt, timeZone) }} />
 		</span>
 	) : null;
 }
 
-function LastRun({ schedule }) {
+function LastRun({ schedule, timeZone }) {
 	if (!schedule.lastRunAt) {
 		return (
 			<span className="text-secondary">
@@ -90,13 +107,16 @@ function LastRun({ schedule }) {
 	}
 	return (
 		<>
-			<div className="text-nowrap">{formatDateTime(schedule.lastRunAt)}</div>
+			<div className="text-nowrap">{formatTime(schedule.lastRunAt, timeZone)}</div>
 			{schedule.lastSize ? <div className="small text-secondary">{formatBytes(schedule.lastSize)}</div> : null}
+			{schedule.lastStatus === "failed" && schedule.lastError ? (
+				<div className="small text-danger text-break">{schedule.lastError}</div>
+			) : null}
 		</>
 	);
 }
 
-function Actions({ schedule, running, onRun, onToggle, onDelete }) {
+function Actions({ schedule, running, onRun, onEdit, onToggle, onDelete }) {
 	if (running) {
 		return (
 			<span
@@ -124,6 +144,10 @@ function Actions({ schedule, running, onRun, onToggle, onDelete }) {
 					<IconPlayerPlay className="icon dropdown-item-icon" aria-hidden="true" />
 					<T id="settings.backup.schedule.run-now" />
 				</button>
+				<button type="button" className="dropdown-item" onClick={() => onEdit(schedule)}>
+					<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
+					<T id="action.edit" />
+				</button>
 				<button type="button" className="dropdown-item" onClick={() => onToggle(schedule)}>
 					{schedule.enabled ? (
 						<>
@@ -147,7 +171,7 @@ function Actions({ schedule, running, onRun, onToggle, onDelete }) {
 	);
 }
 
-function Table({ data, categories, running, onRun, onToggle, onDelete }) {
+function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, onToggle, onDelete }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -161,7 +185,7 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 				id: "status",
 				meta: { mobile: "title-below" },
 				header: label("column.status"),
-				cell: (info) => <StatusBadge schedule={info.row.original} />,
+				cell: (info) => <StatusBadge schedule={info.row.original} timeZone={timeZone} />,
 			}),
 			columnHelper.accessor((row) => timingText(row, intl), {
 				id: "timing",
@@ -197,20 +221,9 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 			}),
 			columnHelper.accessor((row) => row.lastRunAt ?? "", {
 				id: "lastRun",
-				meta: { mobile: "summary", summaryText: lastRunText },
+				meta: { mobile: "summary", summaryText: (row) => lastRunText(row, timeZone) },
 				header: label("settings.backup.schedule.column.last-run"),
-				cell: (info) => <LastRun schedule={info.row.original} />,
-			}),
-			columnHelper.accessor((row) => row.nextRunAt ?? "", {
-				id: "nextRun",
-				meta: { mobile: "hide" },
-				header: label("settings.backup.schedule.column.next-run"),
-				cell: (info) =>
-					info.getValue() ? (
-						<span className="text-nowrap">{formatDateTime(info.getValue())}</span>
-					) : (
-						<span className="text-secondary">-</span>
-					),
+				cell: (info) => <LastRun schedule={info.row.original} timeZone={timeZone} />,
 			}),
 			columnHelper.display({
 				id: "actions",
@@ -219,6 +232,7 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 						schedule={info.row.original}
 						running={running.includes(info.row.original.id)}
 						onRun={onRun}
+						onEdit={onEdit}
 						onToggle={onToggle}
 						onDelete={onDelete}
 					/>
@@ -226,7 +240,7 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 				meta: { className: "text-end text-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, running, onRun, onToggle, onDelete]);
+	}, [categories, timeZone, running, onRun, onEdit, onToggle, onDelete]);
 
 	const tableInstance = useTable({
 		features,
@@ -245,7 +259,7 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 					object="backup-schedule"
 					objects="backup-schedules"
 					tableInstance={tableInstance}
-					customAddBtn={false}
+					customAddBtn={addButton}
 					permissionSection={ADMIN}
 					permission={VIEW}
 				/>
@@ -255,8 +269,39 @@ function Table({ data, categories, running, onRun, onToggle, onDelete }) {
 }
 
 /**
- * The backup schedules with their status, timing, contents, protection and retention, and Run now, Pause/Resume and
- * Delete per schedule. A run answers when the backup is finished; the row shows a spinner until then.
+ * The checkbox of the delete window: also delete the schedule's stored files. Unticked; shown only when it has files.
+ *
+ * @param {Object} props
+ * @param {number} props.count     the schedule's stored files
+ * @param {Object} props.filesRef  { current: boolean }, set while ticked
+ */
+function DeleteFiles({ count, filesRef }) {
+	const id = useId();
+	const [checked, setChecked] = useState(false);
+	if (!(count > 0)) return null;
+	return (
+		<label className="form-check d-inline-block text-start mb-0" htmlFor={id}>
+			<input
+				id={id}
+				type="checkbox"
+				className="form-check-input"
+				checked={checked}
+				onChange={(event) => {
+					filesRef.current = event.target.checked;
+					setChecked(event.target.checked);
+				}}
+			/>
+			<span className="form-check-label">
+				<T id="settings.backup.schedule.delete-files" data={{ count }} />
+			</span>
+		</label>
+	);
+}
+
+/**
+ * The backup schedules with their status, timing, contents, protection and retention, and Run now, Edit,
+ * Pause/Resume and Delete per schedule. A run answers when the backup is finished; the row shows a spinner until
+ * then. Times are shown in the server's zone, as the schedules run in it.
  */
 function SchedulesCard() {
 	const { data, isPending, error } = useBackupSchedules();
@@ -265,6 +310,7 @@ function SchedulesCard() {
 	const save = useSaveBackupSchedule();
 	// the ids of the schedules whose Run now is pending
 	const [running, setRunning] = useState([]);
+	const timeZone = types?.timeZone;
 
 	const handlers = useMemo(
 		() => ({
@@ -276,7 +322,7 @@ function SchedulesCard() {
 					if (result?.lastStatus === "failed") {
 						showError(result.lastError || label("settings.backup.schedule.failed"));
 					} else {
-						showObjectSuccess("backup-schedule", "saved");
+						showSuccess(label("settings.backup.schedule.run-done"));
 					}
 				} catch (err) {
 					showApiError(err);
@@ -284,6 +330,7 @@ function SchedulesCard() {
 					setRunning((ids) => ids.filter((id) => id !== schedule.id));
 				}
 			},
+			onEdit: (schedule) => showBackupScheduleModal(schedule),
 			onToggle: async (schedule) => {
 				try {
 					await save.mutateAsync({ id: schedule.id, enabled: !schedule.enabled });
@@ -292,18 +339,29 @@ function SchedulesCard() {
 					showApiError(err);
 				}
 			},
-			onDelete: (schedule) =>
+			onDelete: (schedule) => {
+				// whether to delete the schedule's files too; a new one for each window
+				const filesRef = { current: false };
 				showDeleteConfirmModal({
 					title: <T id="object.delete" tData={{ object: "backup-schedule" }} />,
 					subject: schedule.name,
+					children: <DeleteFiles count={schedule.fileCount} filesRef={filesRef} />,
 					onConfirm: async () => {
-						await deleteBackupSchedule(schedule.id, false);
+						await deleteBackupSchedule(schedule.id, filesRef.current);
 						showObjectSuccess("backup-schedule", "deleted");
 					},
 					invalidations: [["backup-schedules"], ["backups"], ["host-report"]],
-				}),
+				});
+			},
 		}),
 		[run.mutateAsync, save.mutateAsync],
+	);
+
+	const addButton = (
+		<Button size="sm" onClick={() => showBackupScheduleModal(null)}>
+			<IconPlus className="icon" aria-hidden="true" />
+			<T id="settings.backup.schedule.add" />
+		</Button>
 	);
 
 	return (
@@ -312,7 +370,7 @@ function SchedulesCard() {
 				<h3 className="card-title text-nowrap">
 					<T id="settings.backup.schedules" />
 				</h3>
-				<div className="card-actions" />
+				<div className="card-actions">{data?.length ? addButton : null}</div>
 			</div>
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
@@ -320,7 +378,21 @@ function SchedulesCard() {
 					<ErrorAlert error={error} className="mb-0" />
 				</div>
 			) : null}
-			{data ? <Table data={data} categories={types?.categories ?? []} running={running} {...handlers} /> : null}
+			{data ? (
+				<Table
+					data={data}
+					categories={types?.categories ?? []}
+					timeZone={timeZone}
+					running={running}
+					addButton={addButton}
+					{...handlers}
+				/>
+			) : null}
+			{data?.length && timeZone ? (
+				<div className="card-footer small text-secondary">
+					<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
+				</div>
+			) : null}
 		</div>
 	);
 }
