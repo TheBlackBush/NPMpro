@@ -17,7 +17,7 @@
 			"description": "Backup file name",
 			"schema": {
 				"type": "string",
-				"pattern": "^npmpro-backup-[a-z0-9-]+-\\d{8}-\\d{6}(-\\d{1,3})?(-auto)?\\.npmpro$",
+				"pattern": "^npmpro-backup-[a-z0-9-]+-\\d{8}-\\d{6}(-\\d{1,3})?(-s\\d{1,10})?(-auto)?\\.npmpro$",
 				"maxLength": 255
 			},
 			"required": true,

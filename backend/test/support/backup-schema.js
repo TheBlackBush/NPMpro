@@ -1,3 +1,5 @@
+import { up as createScheduleTable } from "../../migrations/20261028120000_backup_schedules.js";
+
 export const createSchema = async (knex) => {
 	const hostTable = (name, extra = () => {}) =>
 		knex.schema.createTable(name, (t) => {
@@ -111,4 +113,5 @@ export const createSchema = async (knex) => {
 	await knex("user").insert({ id: 1, email: "admin@example.com", name: "Admin", roles: '["admin"]' });
 	await knex("auth").insert({ id: 1, user_id: 1, type: "password", secret: "admin-hash", meta: "{}" });
 	await knex("user_permission").insert({ id: 1, user_id: 1, visibility: "all" });
+	await createScheduleTable(knex);
 };

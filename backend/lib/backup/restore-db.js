@@ -46,6 +46,7 @@ const SECRET_TYPES = new Set([
 	"settings_oidc",
 	"settings_monitoring",
 	"crowdsec_files",
+	"backup_schedules",
 ]);
 // the type each whole table belongs to (the setting table is shared, by row id)
 const TYPE_OF_TABLE = Object.fromEntries(
@@ -373,7 +374,10 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		let users = null;
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
-			const rowsByTable = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
+			const sealed = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
+			const rowsByTable = type.restoreRows
+				? type.restoreRows(sealed, { adminUserId, nowMs: (now ?? Math.floor(Date.now() / 1000)) * 1000 })
+				: sealed;
 			await deleteType(trx, typeId, adminUserId);
 			if (typeId === "users") {
 				const result = await insertUsers({ trx, inserter, rowsByTable, adminUserId, now });

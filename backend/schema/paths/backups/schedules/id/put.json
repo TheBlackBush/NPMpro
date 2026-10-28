@@ -1,0 +1,136 @@
+{
+	"operationId": "updateBackupSchedule",
+	"summary": "Update a backup schedule",
+	"description": "Admin only. Errors carry a backup.schedule.error.<code> message id: name, name-taken, frequency, every-hours, time, weekday, month-day, types, protection, keep, passphrase, passphrase-required.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"description": "Schedule id",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"pattern": "^[1-9]\\d{0,9}$"
+			},
+			"example": "1"
+		}
+	],
+	"requestBody": {
+		"description": "Fields to change",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60,
+							"description": "Unique, case insensitive"
+						},
+						"enabled": {
+							"type": "boolean"
+						},
+						"frequency": {
+							"type": "string",
+							"enum": [
+								"hours",
+								"daily",
+								"weekly",
+								"monthly"
+							]
+						},
+						"every_hours": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 24
+						},
+						"time": {
+							"type": "string",
+							"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+							"description": "HH:MM in the container time zone"
+						},
+						"weekday": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 6,
+							"description": "0 = Monday"
+						},
+						"month_day": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 28
+						},
+						"types": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files",
+									"backup_schedules"
+								]
+							},
+							"minItems": 1,
+							"uniqueItems": true
+						},
+						"protection": {
+							"type": "string",
+							"enum": [
+								"passphrase",
+								"instance_key",
+								"none"
+							]
+						},
+						"passphrase": {
+							"type": "string",
+							"maxLength": 1024,
+							"description": "Empty or left out keeps the stored one"
+						},
+						"keep": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"description": "Files to keep"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../components/backup-schedule-object.json"
+					}
+				}
+			}
+		}
+	}
+}

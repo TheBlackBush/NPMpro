@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
-import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
+import { link, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
-const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
+const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-s\d{1,10})?(-auto)?\.npmpro$/u;
 // a page export, offered as the name of its pending download
 const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
@@ -14,7 +14,17 @@ const PAGE_MARK = "--import";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
-const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-auto)?\.npmpro$/u;
+const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-s\d{1,10})?(-auto)?\.npmpro$/u;
+// the schedule part and the order of a name: its stamp, then its number (none counts as 1)
+const SCHEDULE_PART = /-s(\d{1,10})(?=(?:-auto)?\.npmpro$)/u;
+// link() errors of a file system without hard links
+const NO_HARD_LINKS = new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "EMLINK", "ENOSYS"]);
+const ORDER_PARTS = /-(\d{8}-\d{6})(?:-(\d{1,3}))?(?:-s\d{1,10})?(?:-auto)?\.npmpro$/u;
+
+const orderKey = (name) => {
+	const parts = ORDER_PARTS.exec(name);
+	return parts ? `${parts[1]}-${String(parts[2] ?? 1).padStart(3, "0")}` : "";
+};
 
 const pad = (value, length = 2) => String(value).padStart(length, "0");
 
@@ -42,6 +52,8 @@ const createBackupStore = ({
 	tokenTtlMs = 30 * 60 * 1000,
 	pendingTtlMs = PENDING_TTL_MS,
 	logger = defaultLogger,
+	removeFile = rm,
+	linkFile = link,
 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
@@ -50,8 +62,8 @@ const createBackupStore = ({
 
 	// page: the automatic backup before a page import, pruned apart from the Settings ones. "--" never occurs in a
 	// cleaned host name, so the mark cannot be mistaken for one.
-	const fileName = ({ host, date, auto, page = false }) =>
-		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+	const fileName = ({ host, date, auto, page = false, scheduleId = null }) =>
+		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${scheduleId === null ? "" : `-s${scheduleId}`}${auto ? "-auto" : ""}.npmpro`;
 
 	const exportName = ({ kind, host, date }) =>
 		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
@@ -70,21 +82,30 @@ const createBackupStore = ({
 		let candidate = name;
 		for (let n = 2; existsSync(pathOf(candidate)); n++) {
 			if (n > 999) throw new BackupError("name-taken", "Too many backups with the same name");
-			candidate = `${parts[1]}-${n}${parts[2] ?? ""}.npmpro`;
+			candidate = `${parts[1]}-${n}${parts[2] ?? ""}${parts[3] ?? ""}.npmpro`;
 		}
 		return candidate;
 	};
 
 	const describeFile = async (folder, name) => {
 		const file = path.join(folder, name);
-		const info = await stat(file);
+		let info;
+		try {
+			info = await stat(file);
+		} catch (err) {
+			// removed between the directory read and now
+			if (err.code === "ENOENT") return null;
+			throw err;
+		}
 		if (!info.isFile()) return null;
 		let summary = null;
 		let encrypted = null;
+		let instanceKey = null;
 		try {
 			const { header } = await readHeader(file);
 			summary = header.summary ?? null;
 			encrypted = header.kdf !== "none";
+			instanceKey = header.kdf === "instance";
 		} catch {
 			// Unreadable headers stay listed so the file can still be deleted.
 		}
@@ -95,6 +116,8 @@ const createBackupStore = ({
 			auto: folder === autoDir,
 			summary,
 			encrypted,
+			instance_key: instanceKey,
+			schedule_id: folder === autoDir ? null : Number(SCHEDULE_PART.exec(name)?.[1] ?? Number.NaN) || null,
 		};
 	};
 
@@ -122,7 +145,7 @@ const createBackupStore = ({
 	const remove = async (name) => {
 		const file = pathOf(name);
 		try {
-			await rm(file);
+			await removeFile(file);
 		} catch (err) {
 			if (err.code === "ENOENT") throw notABackup();
 			throw err;
@@ -136,6 +159,98 @@ const createBackupStore = ({
 			const group = items.filter((item) => item.name.includes(`${PAGE_MARK}-`) === page);
 			for (const item of group.slice(keepAuto)) await remove(item.name);
 		}
+	};
+
+	// newest first by the file time: the stamp in a name is local time, so a time zone change or the repeated hour at
+	// the end of summer time can make a new name sort older. The name order only breaks ties.
+	const scheduleFiles = async (id) =>
+		(await list())
+			.filter((item) => !item.auto && item.schedule_id === Number(id))
+			.sort((a, b) => b.modified.localeCompare(a.modified) || orderKey(b.name).localeCompare(orderKey(a.name)));
+
+	// the number of files per schedule id, from the names only (no header reads)
+	const scheduleCounts = async () => {
+		const counts = new Map();
+		for (const name of await names(dir)) {
+			const id = name.endsWith("-auto.npmpro")
+				? null
+				: Number(SCHEDULE_PART.exec(name)?.[1] ?? Number.NaN) || null;
+			if (id !== null) counts.set(id, (counts.get(id) ?? 0) + 1);
+		}
+		return counts;
+	};
+
+	// the schedule's files past the newest keep (at least one is always kept, nothing when keep is not an integer); a
+	// file removed meanwhile is skipped. keepName (the file just written) is never removed and counts as kept.
+	const pruneSchedule = async (id, keep, keepName = null) => {
+		const removed = [];
+		if (!Number.isInteger(keep)) return removed;
+		const files = await scheduleFiles(id);
+		const kept = files.find((item) => item.name === keepName);
+		const others = files.filter((item) => item !== kept);
+		for (const item of others.slice(Math.max(1, keep) - (kept ? 1 : 0))) {
+			try {
+				await remove(item.name);
+				removed.push(item.name);
+			} catch (error) {
+				if (error.code !== "not-a-backup") throw error;
+			}
+		}
+		return removed;
+	};
+
+	const withoutSchedule = (name) => name.replace(SCHEDULE_PART, "");
+
+	// moves a file to a free name: a hard link never replaces a taken name (a name taken between the check and the
+	// link gets the next one); where hard links are not supported, a rename to the name just checked free. Returns the
+	// new name, or null when the file is gone.
+	const moveToFree = async (from, wanted) => {
+		for (let attempt = 0; ; attempt++) {
+			const name = uniqueName(wanted);
+			try {
+				await linkFile(from, pathOf(name));
+			} catch (err) {
+				if (err.code === "ENOENT") return null;
+				if (err.code === "EEXIST" && attempt < 5) continue;
+				if (!NO_HARD_LINKS.has(err.code)) throw err;
+				try {
+					await rename(from, pathOf(name));
+				} catch (renameError) {
+					if (renameError.code === "ENOENT") return null;
+					throw renameError;
+				}
+				return name;
+			}
+			await removeFile(from).catch((err) => {
+				if (err.code !== "ENOENT") throw err;
+			});
+			return name;
+		}
+	};
+
+	// the schedule's files under their names without -s<id>, so a later schedule with the same id never counts or
+	// prunes them; a file removed meanwhile is skipped. Returns the new names.
+	const detachSchedule = async (id) => {
+		const moved = [];
+		for (const item of await scheduleFiles(id)) {
+			const name = await moveToFree(pathOf(item.name), withoutSchedule(item.name));
+			if (name !== null) moved.push(name);
+		}
+		return moved;
+	};
+
+	// every scheduled file (not automatic ones) detached from its schedule; returns the new names
+	const detachAllSchedules = async () => {
+		const ids = [
+			...new Set(
+				(await list())
+					.filter((item) => !item.auto && item.schedule_id !== null)
+					.map((item) => item.schedule_id),
+			),
+		];
+		const moved = [];
+		for (const id of ids) moved.push(...(await detachSchedule(id)));
+		return moved;
 	};
 
 	const tempPath = (prefix) => path.join(dir, `.${prefix}-${randomName()}`);
@@ -289,6 +404,12 @@ const createBackupStore = ({
 		list,
 		remove,
 		pruneAuto,
+		scheduleFiles,
+		scheduleCounts,
+		pruneSchedule,
+		detachSchedule,
+		detachAllSchedules,
+		withoutSchedule,
 		uniqueName,
 		tempPath,
 		createStageDir,

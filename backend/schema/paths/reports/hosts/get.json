@@ -110,12 +110,33 @@
 								"type": "integer",
 								"description": "Certificates (Let's Encrypt or other providers) already expired",
 								"example": 1
+							},
+							"backup_schedules_failed": {
+								"type": "array",
+								"description": "Enabled backup schedules whose last run failed; administrators only, empty otherwise",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"id",
+										"name"
+									],
+									"properties": {
+										"id": {
+											"type": "integer"
+										},
+										"name": {
+											"type": "string"
+										}
+									}
+								}
 							}
 						},
 						"required": [
 							"errors",
 							"certificates_expiring",
-							"certificates_expired"
+							"certificates_expired",
+							"backup_schedules_failed"
 						]
 					}
 				}

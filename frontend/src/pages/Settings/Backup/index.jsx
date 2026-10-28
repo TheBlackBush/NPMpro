@@ -1,5 +1,6 @@
 import { T } from "src/locale";
 import { CreateCard } from "./CreateCard";
+import { SchedulesCard } from "./SchedulesCard";
 import { StoredTable } from "./StoredTable";
 
 export default function Backup() {
@@ -12,6 +13,7 @@ export default function Backup() {
 				<T id="settings.backup.intro" />
 			</p>
 			<CreateCard />
+			<SchedulesCard />
 			<StoredTable />
 		</div>
 	);

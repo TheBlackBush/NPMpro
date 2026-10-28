@@ -2,7 +2,7 @@ import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from "@tabler/ico
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { cancelRestore, checkRestore, inspectBackup, openImport } from "src/api/backend";
-import { AppModal, Button, ErrorAlert, Loading, PasswordInput } from "src/components";
+import { AppModal, Button, ErrorAlert, Loading, PasswordInput, TypeTree } from "src/components";
 import { useBackupTypes, useImportUpload, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
 import { formatDateTime, intl, T } from "src/locale";
@@ -10,7 +10,6 @@ import { emptyItemType } from "src/modules/BackupMerge";
 import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetails } from "src/modules/BackupTypes";
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
-import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
 import { importCategories, isTooLarge, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
 import { ItemList } from "./RestoreBackup/ItemList";
 import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
@@ -210,7 +209,9 @@ function Result({ result, types, plan, onOpen }) {
 const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate, visible, remove }) => {
 	const importing = Boolean(importKind);
 	// an import's file says whether it has a passphrase once it is uploaded
-	const [encrypted, setEncrypted] = useState(!importing && entry.encrypted === true && !entry.auto);
+	const [encrypted, setEncrypted] = useState(
+		!importing && entry.encrypted === true && !entry.auto && !entry.instanceKey,
+	);
 	const needsPassphrase = encrypted;
 	const baseId = useId();
 	// the parts of a Settings backup (administrators only); an import shows its kinds without them

@@ -1,6 +1,7 @@
 import { freeName } from "./references.js";
 import { clientOf, createInserter, key, movedAvatar, SECRET_TYPES, typeData } from "./restore-db.js";
 import { coerceRow } from "./rows.js";
+import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { ITEM_TYPES } from "./select.js";
 import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
@@ -11,7 +12,10 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const LINK_TYPES = ["dns_credentials", "certificates", "access_lists"];
-const SETTINGS_TYPES = new Set(CATEGORIES.find(({ id }) => id === "settings").types);
+// the setting row types; backup schedules are their own rows
+const SETTINGS_TYPES = new Set(
+	CATEGORIES.find(({ id }) => id === "settings").types.filter((typeId) => typeId !== SCHEDULE_TYPE),
+);
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 const LOCATION_TABLE = "npmpro_location";
 // the actions each kind of item can have
@@ -20,6 +24,7 @@ const ROW_ACTIONS = {
 	link: new Set(["add", "existing", "skip"]),
 	host: new Set(["add", "replace", "skip"]),
 	setting: new Set(["take", "keep"]),
+	schedule: new Set(["add", "keep", "take"]),
 };
 // the sealed meta key a setting row keeps from the instance when the backup has no secrets
 const SECRET_SETTING_KEYS = { oidc: "client_secret", geoip: "license_key" };
@@ -46,6 +51,7 @@ const lower = (value) => String(value ?? "").toLowerCase();
 const isLink = (value) => Number(value) > 0;
 
 const kindOf = (typeId) => {
+	if (typeId === SCHEDULE_TYPE) return "schedule";
 	if (typeId === "users") return "users";
 	if (LINK_TYPES.includes(typeId)) return "link";
 	return HOST_TYPES.includes(typeId) ? "host" : "setting";
@@ -58,16 +64,20 @@ const settingIdsOf = (knex, typeId) => {
 	return new Set(query.toSQL().bindings.map(String));
 };
 
-// the plan's row and setting items in RESTORE_ORDER; file items are placed elsewhere
+const knownItem = (item) => {
+	if (!Object.hasOwn(TYPES, item.type)) return false;
+	if (item.type === SCHEDULE_TYPE) return String(item.key).startsWith("schedule:");
+	return Object.hasOwn(ITEM_TYPES, item.type)
+		? !String(item.key).startsWith("setting:")
+		: SETTINGS_TYPES.has(item.type) && String(item.key).startsWith("setting:");
+};
+
+// the plan's row, setting and schedule items in RESTORE_ORDER; file items are placed elsewhere
 const checkedItems = (plan) => {
 	const items = (plan?.items ?? []).filter((item) => !String(item.key).startsWith("file:"));
 	for (const item of items) {
-		const known =
-			Object.hasOwn(TYPES, item.type) &&
-			(Object.hasOwn(ITEM_TYPES, item.type)
-				? !String(item.key).startsWith("setting:")
-				: SETTINGS_TYPES.has(item.type));
-		if (!known) throw new Error(`The merge plan holds an item of the unknown type ${item.type} (${item.key})`);
+		if (!knownItem(item))
+			throw new Error(`The merge plan holds an item of the unknown type ${item.type} (${item.key})`);
 		if (!ROW_ACTIONS[kindOf(item.type)].has(item.action)) {
 			throw new Error(`The merge plan holds the action ${item.action} for ${item.key}`);
 		}
@@ -116,7 +126,9 @@ const mergeTypes = async ({
 	const prepared = Object.fromEntries(types.map((typeId) => [typeId, typeData(data, typeId)]));
 	const backupUsers = Array.isArray(data?.users?.user) ? data.users.user : [];
 	const rowOf = (item) => {
-		const table = Object.hasOwn(ITEM_TYPES, item.type) ? ITEM_TYPES[item.type].table : "setting";
+		let table = "setting";
+		if (Object.hasOwn(ITEM_TYPES, item.type)) ({ table } = ITEM_TYPES[item.type]);
+		else if (item.type === SCHEDULE_TYPE) table = SCHEDULE_TABLE;
 		const row = prepared[item.type][table].find((other) => key(other.id) === key(item.id));
 		if (!row) throw new Error(`The backup has no row for ${item.key}`);
 		return row;
@@ -361,6 +373,32 @@ const mergeTypes = async ({
 			count(item.type);
 		};
 
+		// a schedule is added under a new id or written over the instance's schedule of the same name; without secrets
+		// a taken passphrase schedule keeps the instance's sealed passphrase (other protections hold none)
+		const writeSchedule = async (item) => {
+			if (item.action === "keep") return;
+			const source = rowOf(item);
+			const current =
+				item.action === "take" ? await trx(SCHEDULE_TABLE).where({ id: item.target.id }).first() : null;
+			if (item.action === "take" && !current) throw new Error(`${item.key} has no schedule to take over`);
+			const passphrase = secrets
+				? source.passphrase
+				: source.protection === "passphrase"
+					? (current?.passphrase ?? null)
+					: null;
+			const [prepared] = TYPES[SCHEDULE_TYPE].restoreRows(
+				TYPES[SCHEDULE_TYPE].secrets.seal({ [SCHEDULE_TABLE]: [{ ...source, passphrase }] }, box),
+				{ adminUserId, nowMs: now * 1000 },
+			)[SCHEDULE_TABLE];
+			if (item.action === "add") {
+				await inserter.insertWithNewId(SCHEDULE_TABLE, prepared);
+			} else {
+				// a replaced schedule stays with its owner and keeps its id
+				await updateRow(SCHEDULE_TABLE, item.target.id, { ...prepared, owner_user_id: current.owner_user_id });
+			}
+			count(item.type);
+		};
+
 		for (const item of items) {
 			const kind = kindOf(item.type);
 			if (kind === "users") {
@@ -371,6 +409,7 @@ const mergeTypes = async ({
 				}
 			} else if (kind === "link") await writeLinked(item);
 			else if (kind === "host") await writeHost(item);
+			else if (kind === "schedule") await writeSchedule(item);
 			else await writeSetting(item);
 		}
 		return { counts, maps, certificateMoves, replacedUserIds, avatarMoves, cleared: cleared.size };

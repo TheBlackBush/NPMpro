@@ -43,3 +43,20 @@
 	white-space: normal;
 	overflow-wrap: anywhere;
 }
+
+/* A time field as tall and aligned as the other controls (40px). Chromium: the block padding of the clock icon makes
+   the field 42.8px at the phone font size. WebKit with editable fields (Safari on macOS, WebKit ports): the minute
+   and AM/PM fields keep 1px of padding (Tabler resets the hour field only), so the field is 42px. iOS Safari: WebKit
+   centres the value in ::-webkit-date-and-time-value; start it like the text of the other fields. */
+.form-control[type="time"]::-webkit-calendar-picker-indicator {
+	padding-block: 0;
+}
+
+.form-control[type="time"]::-webkit-datetime-edit-minute-field,
+.form-control[type="time"]::-webkit-datetime-edit-meridiem-field {
+	padding-block: 0;
+}
+
+.form-control[type="time"]::-webkit-date-and-time-value {
+	text-align: start;
+}

@@ -28,9 +28,13 @@ const listSchema = {
 				"dns-credential",
 				"user",
 				"setting",
+				"backup-schedule",
 			],
 		},
-		action: { type: "string", enum: ["created", "updated", "deleted", "enabled", "disabled"] },
+		action: {
+			type: "string",
+			enum: ["created", "updated", "deleted", "enabled", "disabled", "backup-succeeded", "backup-failed"],
+		},
 		user_id: { $ref: "common#/properties/id" },
 	},
 };

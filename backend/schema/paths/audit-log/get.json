@@ -65,7 +65,8 @@
 					"certificate",
 					"dns-credential",
 					"user",
-					"setting"
+					"setting",
+					"backup-schedule"
 				]
 			}
 		},
@@ -80,7 +81,9 @@
 					"updated",
 					"deleted",
 					"enabled",
-					"disabled"
+					"disabled",
+					"backup-succeeded",
+					"backup-failed"
 				]
 			}
 		},

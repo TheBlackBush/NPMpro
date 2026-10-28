@@ -1,4 +1,5 @@
 export * from "./AppModal";
+export * from "./BackupTypeTree";
 export * from "./BrandMark";
 export * from "./Button";
 export * from "./EmptyData";

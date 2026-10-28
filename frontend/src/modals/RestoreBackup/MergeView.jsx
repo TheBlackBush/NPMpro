@@ -1,7 +1,7 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
-import { ErrorAlert } from "src/components";
+import { ErrorAlert, TypeTree } from "src/components";
 import { intl, T } from "src/locale";
 import {
 	ACTIONS,
@@ -14,7 +14,6 @@ import {
 	sentChoices,
 } from "src/modules/BackupMerge";
 import { withErrorDetails } from "src/modules/BackupTypes";
-import { TypeTree } from "src/pages/Settings/Backup/TypeTree";
 import { ACTION_COLORS, DecisionList } from "./DecisionList";
 import { ItemList } from "./ItemList";
 import { ItemPicker } from "./ItemPicker";

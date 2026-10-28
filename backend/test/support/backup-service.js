@@ -29,6 +29,8 @@ const silent = { info: () => {}, warn: () => {}, error: () => {} };
  * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
  * @param {number}   [options.maxUpload]
  * @param {number}   [options.maxImport]    bytes, the page import limit
+ * @param {Buffer}   [options.instanceKey]
+ * @param {string}   [options.hostname]
  * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
  */
 const setup = async ({
@@ -36,6 +38,8 @@ const setup = async ({
 	pause = async () => {},
 	migrations = MIGRATIONS,
 	root,
+	instanceKey = Buffer.alloc(32, 7),
+	hostname = "npmpro",
 	exclusive,
 	regenerated = async () => {},
 	failedGroups = {},
@@ -77,7 +81,7 @@ const setup = async ({
 		dbVersion: () => Promise.resolve(DB_VERSION),
 		dbMigrations: () => Promise.resolve(migrations),
 		npmproVersion: "1.0.0",
-		instanceKey: async () => Buffer.alloc(32, 7),
+		instanceKey: async () => instanceKey,
 		audit: (_access, entry) => {
 			calls.audit.push(entry);
 			return audited(entry);
@@ -144,7 +148,7 @@ const setup = async ({
 		...(exclusive ? { exclusive } : {}),
 		...(maxUpload ? { maxUpload } : {}),
 		...(maxImport ? { maxImport } : {}),
-		hostname: "test-host",
+		hostname,
 		clock,
 		log: silent,
 	});

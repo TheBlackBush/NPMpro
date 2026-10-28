@@ -18,15 +18,21 @@ import { deleteBackup, downloadBackup } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { TablePagination } from "src/components/Table/TablePagination";
-import { useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
+import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
+import { filterBySchedule, formatInZone, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
 import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
+import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id) => intl.formatMessage({ id });
+
+// in the server's zone like the schedules card; the browser's until the zone is known
+const createdText = (value, timeZone) =>
+	timeZone ? formatInZone(value, intl.locale, timeZone) : formatDateTime(value);
 
 const PAGE_SIZE = 10;
 
@@ -50,16 +56,6 @@ function Contents({ categories, types }) {
 	);
 }
 
-// below lg the content may wrap, so the table fits next to the settings menu on tablets; from lg it stays on one line
-function WrapBelowLg({ children }) {
-	return (
-		<>
-			<span className="d-lg-none">{children}</span>
-			<span className="d-none d-lg-inline text-nowrap">{children}</span>
-		</>
-	);
-}
-
 function SecretsBadge({ entry }) {
 	const secrets = entry.summary?.secrets;
 	return (
@@ -71,10 +67,25 @@ function SecretsBadge({ entry }) {
 	);
 }
 
-function NameCell({ entry }) {
+// the schedule that made a file; "Deleted schedule" for a file left from one that no longer exists; nothing until
+// the schedule list is loaded
+function ScheduleBadge({ entry, names }) {
+	const badge = scheduleBadge(entry, names);
+	if (!badge) return null;
+	return (
+		<div className="mt-1">
+			<span className="badge bg-indigo-lt text-wrap text-start">
+				{badge.kind === "name" ? badge.name : <T id="settings.backup.schedule.deleted" />}
+			</span>
+		</div>
+	);
+}
+
+function NameCell({ entry, names }) {
 	return (
 		<>
 			<div className="text-break">{entry.name}</div>
+			<ScheduleBadge entry={entry} names={names} />
 			{entry.auto ? (
 				<div className="mt-1">
 					<span className="badge bg-purple-lt me-2">
@@ -139,7 +150,7 @@ function Actions({ entry, onDelete, navigate }) {
 	);
 }
 
-function Table({ data, categories, onDelete, navigate, uploadButton }) {
+function Table({ data, categories, timeZone, names, filtered, onClearFilter, onDelete, navigate, uploadButton }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -147,16 +158,16 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 				id: "name",
 				meta: { mobile: "title" },
 				header: label("column.name"),
-				cell: (info) => <NameCell entry={info.row.original} />,
+				cell: (info) => <NameCell entry={info.row.original} names={names} />,
 			}),
 			columnHelper.accessor((row) => row.summary?.createdAt ?? row.modified, {
 				id: "created",
 				meta: {
 					mobile: "summary",
-					summaryText: (row) => formatDateTime(row.summary?.createdAt ?? row.modified),
+					summaryText: (row) => createdText(row.summary?.createdAt ?? row.modified, timeZone),
 				},
 				header: label("settings.backup.created"),
-				cell: (info) => <WrapBelowLg>{formatDateTime(info.getValue())}</WrapBelowLg>,
+				cell: (info) => <WrapBelowLg>{createdText(info.getValue(), timeZone)}</WrapBelowLg>,
 			}),
 			columnHelper.accessor((row) => row.size, {
 				id: "size",
@@ -195,10 +206,16 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 				meta: { className: "text-end text-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, onDelete, navigate]);
+	}, [categories, timeZone, names, onDelete, navigate]);
 
 	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
 	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
+	// another schedule filter starts on the first page
+	const [shownFilter, setShownFilter] = useState(filtered);
+	if (shownFilter !== filtered) {
+		setShownFilter(filtered);
+		setPagination((current) => ({ ...current, pageIndex: 0 }));
+	}
 	const tableInstance = useTable({
 		features,
 		columns,
@@ -219,6 +236,8 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 						object="backup"
 						objects="backups"
 						tableInstance={tableInstance}
+						isFiltered={filtered !== ""}
+						onClearFilters={onClearFilter}
 						customAddBtn={uploadButton}
 						permissionSection={ADMIN}
 						permission={VIEW}
@@ -242,6 +261,7 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 function StoredTable() {
 	const { data, isPending, error } = useBackups();
 	const { data: types } = useBackupTypes();
+	const { data: schedules } = useBackupSchedules();
 	const upload = useUploadBackup();
 	const navigate = useNavigate();
 	const inputRef = useRef(null);
@@ -287,6 +307,28 @@ function StoredTable() {
 		[],
 	);
 
+	// the "Schedule" filter: "" all, "none" not scheduled, else a schedule id
+	const [filter, setFilter] = useState("");
+	// null while the schedule list is not loaded (or failed): the badges wait for it
+	const names = useMemo(() => (schedules ? scheduleNames(schedules) : null), [schedules]);
+	const scheduled = useMemo(
+		() => (data ?? []).filter((entry) => entry.scheduleId !== null && entry.scheduleId !== undefined),
+		[data],
+	);
+	// the schedules that have files, by name
+	const filterOptions = useMemo(
+		() =>
+			[...(names ?? [])]
+				.filter(([id]) => scheduled.some((entry) => entry.scheduleId === id))
+				.sort(([, a], [, b]) => a.localeCompare(b, intl.locale)),
+		[names, scheduled],
+	);
+	// back to All once no file is scheduled or the chosen schedule is no longer offered
+	const offered = filter === "" || filter === "none" || filterOptions.some(([id]) => String(id) === filter);
+	const activeFilter = scheduled.length > 0 && offered ? filter : "";
+	if (activeFilter !== filter) setFilter(activeFilter);
+	const shown = useMemo(() => (data ? filterBySchedule(data, activeFilter) : data), [data, activeFilter]);
+
 	const uploading = progress !== null;
 	const percent = Math.round((progress ?? 0) * 100);
 	const uploadButton = (
@@ -302,7 +344,24 @@ function StoredTable() {
 				<h3 className="card-title text-nowrap">
 					<T id="settings.backup.stored" />
 				</h3>
-				<div className="card-actions">
+				{/* mw-100 here and on the filter: a long schedule name must not widen the page on phones */}
+				<div className="card-actions d-flex flex-wrap align-items-center gap-2 mw-100">
+					{scheduled.length > 0 ? (
+						<select
+							className="form-select form-select-sm w-auto mw-100"
+							value={activeFilter}
+							onChange={(event) => setFilter(event.target.value)}
+							aria-label={label("settings.backup.schedule.filter")}
+						>
+							<option value="">{label("settings.backup.schedule.filter.all")}</option>
+							<option value="none">{label("settings.backup.schedule.filter.none")}</option>
+							{filterOptions.map(([id, name]) => (
+								<option key={id} value={String(id)}>
+									{name}
+								</option>
+							))}
+						</select>
+					) : null}
 					<input
 						ref={inputRef}
 						type="file"
@@ -350,8 +409,12 @@ function StoredTable() {
 			) : null}
 			{data ? (
 				<Table
-					data={data}
+					data={shown}
 					categories={types?.categories ?? []}
+					timeZone={types?.timeZone}
+					names={names}
+					filtered={activeFilter}
+					onClearFilter={() => setFilter("")}
 					onDelete={onDelete}
 					navigate={navigate}
 					uploadButton={uploadButton}

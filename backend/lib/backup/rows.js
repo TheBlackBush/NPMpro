@@ -16,6 +16,7 @@ const JSON_COLUMNS = {
 	user: ["roles"],
 	auth: ["meta"],
 	setting: ["meta"],
+	npmpro_backup_schedule: ["types"],
 };
 
 // tables without an id column, ordered by their primary key instead
@@ -127,4 +128,4 @@ const coerceRow = (columns, table, row) => {
 	return out;
 };
 
-export { coerceRow, exportRows, JSON_COLUMNS };
+export { coerceRow, exportRows, isoToLocal, JSON_COLUMNS, localToIso };

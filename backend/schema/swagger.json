@@ -631,6 +631,30 @@
 				"$ref": "./paths/backups/restore/token/delete.json"
 			}
 		},
+		"/backups/schedules": {
+			"get": {
+				"$ref": "./paths/backups/schedules/get.json"
+			},
+			"post": {
+				"$ref": "./paths/backups/schedules/post.json"
+			}
+		},
+		"/backups/schedules/{id}": {
+			"get": {
+				"$ref": "./paths/backups/schedules/id/get.json"
+			},
+			"put": {
+				"$ref": "./paths/backups/schedules/id/put.json"
+			},
+			"delete": {
+				"$ref": "./paths/backups/schedules/id/delete.json"
+			}
+		},
+		"/backups/schedules/{id}/run": {
+			"post": {
+				"$ref": "./paths/backups/schedules/id/run/post.json"
+			}
+		},
 		"/backups/{name}/inspect": {
 			"post": {
 				"$ref": "./paths/backups/name/inspect/post.json"
