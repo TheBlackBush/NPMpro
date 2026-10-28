@@ -118,39 +118,20 @@ const connectError = (error, timeoutMs, password) =>
 
 const PERMISSION_MESSAGE = "The user cannot create and drop tables in the target database";
 
-// create and drop the probe table; a drop that fails twice says that the table was left behind
-const probeTable = async (knex, password) => {
-	try {
-		await knex.schema.createTable(PROBE_TABLE, (table) => table.integer("id"));
-	} catch (error) {
-		throw new errs.DatabaseMoveError("permission", PERMISSION_MESSAGE, { details: scrub(error, password) });
-	}
-	let last;
-	for (let attempt = 0; attempt < 2; attempt += 1) {
-		try {
-			await knex.schema.dropTable(PROBE_TABLE);
-			return;
-		} catch (error) {
-			last = error;
-		}
-	}
-	throw new errs.DatabaseMoveError("permission", PERMISSION_MESSAGE, {
-		details: `The probe table ${PROBE_TABLE} was left on the target and can be dropped by hand: ${scrub(last, password)}`,
-	});
-};
-
-// the probe table of a test that stopped half way (best effort, bounded)
-const cleanProbe = async (knex, timeoutMs) => {
-	try {
-		await withTimeout(knex.schema.dropTableIfExists(PROBE_TABLE), timeoutMs);
-	} catch {
-		// the target is gone or the user may not drop: nothing more to do
-	}
-};
+const settled = (promise) =>
+	promise.then(
+		() => true,
+		() => true,
+	);
 
 /**
  * Checks a move target without changing it: connect, version, empty, create and drop a table, not the database in use.
- * SQLite needs no test (a new file is used). One time limit covers all the steps; nothing is left behind.
+ * SQLite needs no test (a new file is used).
+ *
+ * Time: the checks get timeoutMs in all; after that a cancel flag stops them between steps, and one cleanup of at most
+ * timeoutMs (wait for the running step, drop the probe table, close the connection) follows, so the answer comes after
+ * at most twice the timeout. A step that never settles is not waited for beyond that; the error then says the probe
+ * table may be left.
  *
  * @param   {Object}    options
  * @param   {Object}    options.target      validateTarget()
@@ -165,36 +146,101 @@ const testTarget = async ({ target, current, createKnex, timeoutMs = 10_000 }) =
 		throw new errs.DatabaseMoveError("same-database", "The target is the database in use");
 	}
 	const knex = createKnex(knexConfigOf(target, { timeoutMs }));
-	let probeStarted = false;
+	const state = { cancelled: false, running: Promise.resolve(), probe: false };
+	// one step at a time; none starts after the cancel
+	const step = (action) => {
+		if (state.cancelled) throw timeoutError(timeoutMs);
+		const run = Promise.resolve().then(action);
+		state.running = settled(run);
+		return run;
+	};
+	const dropProbe = async () => {
+		let last;
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			try {
+				await step(() => knex.schema.dropTable(PROBE_TABLE));
+				state.probe = false;
+				return;
+			} catch (error) {
+				if (state.cancelled) throw error;
+				last = error;
+			}
+		}
+		state.probe = false;
+		throw new errs.DatabaseMoveError("permission", PERMISSION_MESSAGE, {
+			details: `The probe table ${PROBE_TABLE} was left on the target and can be dropped by hand: ${scrub(last, target.password)}`,
+		});
+	};
 	const checks = async () => {
-		const version = await serverVersion(knex);
+		const version = await step(() => serverVersion(knex));
 		const parsed = parseVersion(target.engine, version);
 		const problem = versionProblem(parsed);
 		if (problem) throw new errs.DatabaseMoveError("version", problem, { details: version });
-		const tables = await listTables(knex, { views: true });
+		const tables = await step(() => listTables(knex, { views: true }));
 		if (tables.length > 0) {
 			throw new errs.DatabaseMoveError("not-empty", "The target database is not empty", {
 				details: tables.slice(0, 20).join(", "),
 			});
 		}
-		probeStarted = true;
-		await probeTable(knex, target.password);
-		probeStarted = false;
+		try {
+			await step(() => {
+				state.probe = true;
+				return knex.schema.createTable(PROBE_TABLE, (table) => table.integer("id"));
+			});
+		} catch (error) {
+			if (state.cancelled || !(error instanceof Error)) throw error;
+			state.probe = false;
+			throw new errs.DatabaseMoveError("permission", PERMISSION_MESSAGE, {
+				details: scrub(error, target.password),
+			});
+		}
+		await dropProbe();
 		return { engine: target.engine, version, flavor: parsed.flavor };
 	};
-	try {
-		return await withTimeout(checks(), timeoutMs);
-	} catch (error) {
-		if (error instanceof errs.DatabaseMoveError) throw error;
-		throw connectError(error, timeoutMs, target.password);
-	} finally {
-		if (probeStarted) await cleanProbe(knex, timeoutMs);
-		try {
-			await withTimeout(knex.destroy(), timeoutMs);
-		} catch {
-			// a hung connection must not block the answer
+	// after the cancel: the running step settles, then the probe table goes, then the connection closes
+	let maybeLeft = false;
+	const cleanup = async () => {
+		const sequence = (async () => {
+			await state.running;
+			if (state.probe) {
+				try {
+					await knex.schema.dropTableIfExists(PROBE_TABLE);
+				} catch {
+					maybeLeft = true;
+				}
+			}
+			await knex.destroy();
+		})();
+		let timer;
+		const limit = new Promise((resolve) => {
+			timer = setTimeout(resolve, timeoutMs, "late");
+		});
+		const outcome = await Promise.race([settled(sequence).then(() => "done"), limit]);
+		clearTimeout(timer);
+		if (outcome === "late") {
+			maybeLeft = maybeLeft || state.probe;
+			// close anyway, without waiting
+			Promise.resolve()
+				.then(() => knex.destroy())
+				.catch(() => {});
 		}
+	};
+	let result;
+	let failure;
+	try {
+		result = await withTimeout(checks(), timeoutMs);
+	} catch (error) {
+		failure = error;
+		state.cancelled = true;
 	}
+	await cleanup();
+	if (!failure) return result;
+	if (failure instanceof errs.DatabaseMoveError) throw failure;
+	const mapped = connectError(failure, timeoutMs, target.password);
+	if (maybeLeft) {
+		mapped.details = `${mapped.details ? `${mapped.details}. ` : ""}The probe table ${PROBE_TABLE} may be left on the target`;
+	}
+	throw mapped;
 };
 
 export { PROBE_TABLE, parseVersion, sameDatabase, testTarget, validateTarget, versionProblem };

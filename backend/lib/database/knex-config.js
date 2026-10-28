@@ -27,6 +27,8 @@ const knexConfigOf = (connection, { timeoutMs } = {}) => {
 			...timeout,
 		};
 	}
+	// a test connection: one connection, closed within the limit (the pool destroy still waits for a running query)
+	const pool = timeoutMs ? { pool: { min: 0, max: 1, destroyTimeoutMillis: timeoutMs } } : {};
 	const base = {
 		host: connection.host,
 		port: connection.port,
@@ -46,6 +48,7 @@ const knexConfigOf = (connection, { timeoutMs } = {}) => {
 				...(timeoutMs ? { connectTimeout: timeoutMs } : {}),
 			},
 			migrations: { tableName: "migrations" },
+			...pool,
 			...timeout,
 		};
 	}
@@ -54,9 +57,12 @@ const knexConfigOf = (connection, { timeoutMs } = {}) => {
 		connection: {
 			...base,
 			...(connection.ssl?.enabled ? { ssl: true } : {}),
-			...(timeoutMs ? { connectionTimeoutMillis: timeoutMs } : {}),
+			...(timeoutMs
+				? { connectionTimeoutMillis: timeoutMs, query_timeout: timeoutMs, statement_timeout: timeoutMs }
+				: {}),
 		},
 		migrations: { tableName: "migrations" },
+		...pool,
 		...timeout,
 	};
 };

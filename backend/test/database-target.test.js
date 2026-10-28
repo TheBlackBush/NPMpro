@@ -330,3 +330,70 @@ it("uses the MySQL and Postgres queries", async () => {
 	assert.match(queries.at(-1), /'v', 'm'/u);
 	assert.equal(await databaseSize(pg), 4096);
 });
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const emptyRaw = (late) => (sql) =>
+	/server_version/u.test(sql) ? Promise.resolve({ rows: [{ server_version: "17.1" }] }) : late(sql);
+
+it("a listTables that finishes after the timeout does not start the probe", async () => {
+	const calls = [];
+	const target = validateTarget(server);
+	const knex = fakeKnex({
+		raw: emptyRaw(async () => {
+			await pause(150);
+			return { rows: [] };
+		}),
+		schema: {
+			createTable: async () => calls.push("create"),
+			dropTable: async () => calls.push("drop"),
+			dropTableIfExists: async () => calls.push("dropIfExists"),
+		},
+	});
+	await assert.rejects(
+		testTarget({ target, current, createKnex: () => knex, timeoutMs: 50 }),
+		isMoveError("timeout"),
+	);
+	await pause(200);
+	assert.deepEqual(calls, []);
+});
+
+it("drops the probe only after a create that was running at the timeout has settled", async () => {
+	const calls = [];
+	const target = validateTarget(server);
+	const knex = fakeKnex({
+		raw: emptyRaw(async () => ({ rows: [] })),
+		schema: {
+			createTable: async () => {
+				calls.push("create start");
+				await pause(80);
+				calls.push("create end");
+			},
+			dropTable: async () => calls.push("drop"),
+			dropTableIfExists: async () => calls.push("dropIfExists"),
+		},
+	});
+	await assert.rejects(
+		testTarget({ target, current, createKnex: () => knex, timeoutMs: 50 }),
+		isMoveError("timeout"),
+	);
+	assert.deepEqual(calls, ["create start", "create end", "dropIfExists"]);
+});
+
+it("does not let a late step run when destroy hangs, and says the probe may be left", async () => {
+	const calls = [];
+	const target = validateTarget(server);
+	const knex = fakeKnex({
+		raw: emptyRaw(async () => ({ rows: [] })),
+		schema: {
+			createTable: () => new Promise(() => {}),
+			dropTable: async () => calls.push("drop"),
+			dropTableIfExists: async () => calls.push("dropIfExists"),
+		},
+		destroy: () => new Promise(() => {}),
+	});
+	await assert.rejects(
+		testTarget({ target, current, createKnex: () => knex, timeoutMs: 50 }),
+		(error) => isMoveError("timeout")(error) && error.details.includes("npmpro_move_probe may be left"),
+	);
+	assert.deepEqual(calls, []);
+});
