@@ -301,10 +301,14 @@ function RecentTable({ rows }) {
 				enableSorting: false,
 				cell: (info) => (
 					<span className="d-inline-flex flex-wrap align-items-center gap-2">
-						<span className="text-break">{info.getValue()}</span>
+						<span>
+							<BreakableHost value={info.getValue()} />
+						</span>
 						<HostBadge badge={hostEntryLabel(info.row.original).badge} />
 					</span>
 				),
+				// a long host name wraps at its dots, so the request column keeps room on tablets
+				meta: { className: "text-wrap" },
 			}),
 			columnHelper.accessor("path", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.request" }),
