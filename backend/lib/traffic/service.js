@@ -479,6 +479,8 @@ const createTrafficService = ({
 		try {
 			await saveState(state);
 			savedState = state;
+			// a newer saved position: an older unsaved one must never be written over it
+			unsavedState = null;
 		} catch (err) {
 			log.error(`Traffic statistics: could not save the reader position: ${err.message}`);
 		}
@@ -540,6 +542,7 @@ const createTrafficService = ({
 			try {
 				lastState = (await loadState()) ?? null;
 				savedState = lastState;
+				unsavedState = null;
 			} catch (err) {
 				log.error(`Traffic statistics: could not load the reader position: ${err.message}`);
 			}
