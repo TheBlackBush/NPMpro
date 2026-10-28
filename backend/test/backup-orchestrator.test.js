@@ -669,3 +669,79 @@ it("finishes a restore when the offline hosts cannot be read", TIMEOUT, async ()
 		await ctx.cleanup();
 	}
 });
+
+// a fake regeneration that takes every enabled proxy host offline while custom_nginx/server_proxy.conf is broken,
+// as nginx -t of each host's config does, and brings them back online otherwise
+const BROKEN_SERVER_FILE = "this_is_not_a_directive on;;\n";
+const BROKEN_HOSTS = /one\.example\.com/u;
+const regenerateWithServerFile = (dataDir) => async (knex) => {
+	const file = path.join(dataDir, "custom_nginx", "server_proxy.conf");
+	const content = existsSync(file) ? await readFile(file, "utf8") : "";
+	const broken = content.includes("this_is_not_a_directive");
+	await knex("proxy_host")
+		.where("enabled", 1)
+		.update(
+			broken
+				? {
+						npmpro_nginx_online: 0,
+						npmpro_nginx_err: 'nginx: [emerg] unknown directive "this_is_not_a_directive"',
+					}
+				: { npmpro_nginx_online: 1, npmpro_nginx_err: "" },
+		);
+};
+
+it("rolls back a restore whose custom nginx file takes hosts offline", TIMEOUT, async () => {
+	const holder = {};
+	const ctx = await setup({ regenerated: (knex) => regenerateWithServerFile(holder.dataDir)(knex) });
+	holder.dataDir = ctx.dataDir;
+	const serverFile = path.join(ctx.dataDir, "custom_nginx", "server_proxy.conf");
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+		await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(serverFile, BROKEN_SERVER_FILE);
+		const { entry } = await ctx.service.create(access, {
+			types: ["proxy_hosts", "custom_nginx"],
+			secrets: false,
+			keep: true,
+		});
+		await writeFile(serverFile, "# the instance\n");
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "nginx-failed");
+				assert.match(error.message, BROKEN_HOSTS);
+				assert.match(error.message, UNKNOWN_DIRECTIVE);
+				return true;
+			},
+		);
+		assert.equal(await readFile(serverFile, "utf8"), "# the instance\n");
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.equal(Number((await ctx.knex("proxy_host").where({ id: 1 }).first()).npmpro_nginx_online), 1);
+		assert.equal(
+			ctx.calls.audit.some((item) => item.action === "restored"),
+			false,
+		);
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("finishes a restore without custom nginx files that leaves a host offline", TIMEOUT, async () => {
+	const ctx = await setup({
+		regenerated: (knex) =>
+			knex("proxy_host").where({ id: 1 }).update({ npmpro_nginx_online: 0, npmpro_nginx_err: "no certificate" }),
+	});
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+		const { entry } = await ctx.service.create(access, { types: ["proxy_hosts"], secrets: false, keep: true });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 1, domain: "one.example.com", error: "no certificate" },
+		]);
+	} finally {
+		await ctx.cleanup();
+	}
+});

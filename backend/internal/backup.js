@@ -376,8 +376,9 @@ const createBackupService = ({
 		return await swapFiles({ dataDir, stageDir, types, asideDir, keep: adminAvatarFiles(adminUserId) });
 	};
 
-	// configs, access files and runtime settings from the database as it is now, then one nginx -t and reload
-	const applyRestored = async (types, { onNginx } = {}) => {
+	// configs, access files and runtime settings from the database as it is now, then one nginx -t and reload; with
+	// wereOnline, a host of it that the regeneration took offline fails the apply as nginx -t would
+	const applyRestored = async (types, { onNginx, wereOnline } = {}) => {
 		await regenerate.rebuildAccessListFiles();
 		await regenerate.regenerateAllHostsNow(await regenerate.loadEnabledHosts());
 		await regenerate.regenerateDefaultSite();
@@ -388,6 +389,7 @@ const createBackupService = ({
 		}
 		await reloadRestoredSettings(types);
 		onNginx?.();
+		if (wereOnline) await refuseTakenOffline(wereOnline);
 		await nginx.test();
 		await nginx.reload();
 		return Object.keys(failed ?? {});
@@ -455,6 +457,32 @@ const createBackupService = ({
 		return out;
 	};
 
+	// "proxy_host:1" of every enabled host nginx serves now
+	const onlineHosts = async () => {
+		const out = new Set();
+		for (const typeId of HOST_TYPES) {
+			const { table } = TYPES[typeId].tables[0];
+			for (const row of await knex(table).where("enabled", 1).select("id", "npmpro_nginx_online")) {
+				if (!OFFLINE.has(row.npmpro_nginx_online)) out.add(`${table}:${row.id}`);
+			}
+		}
+		return out;
+	};
+
+	/**
+	 * A changed custom nginx file breaks hosts one by one: the regeneration keeps the config of each host it breaks as
+	 * .err, and nginx -t of the whole configuration passes. A host that was online before and is offline now fails the
+	 * apply as nginx -t would, so that it is rolled back.
+	 *
+	 * @param {Set<string>} wereOnline  from onlineHosts() before the apply
+	 */
+	const refuseTakenOffline = async (wereOnline) => {
+		const taken = (await offlineHosts()).filter((host) => wereOnline.has(`${host.type}:${host.id}`));
+		if (taken.length === 0) return;
+		const names = taken.map((host) => host.domain).join(", ");
+		throw new Error(`${names} would go offline: ${taken[0].error}`);
+	};
+
 	// whether a restored runtime settings row holds a setting that needs a restart
 	const needsRestart = (types, data) =>
 		types.includes("settings_runtime") &&
@@ -475,6 +503,8 @@ const createBackupService = ({
 	 * @param   {number}    options.userId                 who made the automatic backup
 	 * @param   {number}    options.adminUserId
 	 * @param   {string[]}  options.types                  the types regenerated and rolled back
+	 * @param   {boolean}   [options.customFiles]          custom nginx files change: a host the apply takes offline
+	 *                                                     fails it
 	 * @param   {Function}  options.dbStep                 () => Promise<result>, one transaction
 	 * @param   {Function}  options.fileStep               (result, asideDir) => Promise<{ undo }>
 	 * @param   {Function}  options.gravatarIds            (result) => ids
@@ -488,6 +518,7 @@ const createBackupService = ({
 		userId,
 		adminUserId,
 		types,
+		customFiles = false,
 		dbStep,
 		fileStep,
 		gravatarIds,
@@ -500,7 +531,9 @@ const createBackupService = ({
 		let nginxStep = false;
 		let asideDir = null;
 		let runtimeFailed = [];
+		let wereOnline = null;
 		try {
+			wereOnline = customFiles ? await onlineHosts() : null;
 			autoName = await automaticBackup(userId, page);
 			result = await dbStep();
 		} catch (error) {
@@ -517,6 +550,7 @@ const createBackupService = ({
 					onNginx: () => {
 						nginxStep = true;
 					},
+					wereOnline,
 				});
 			} catch (error) {
 				log.error(`The ${what} failed, rolling back: ${error.message}`);
@@ -588,6 +622,7 @@ const createBackupService = ({
 			userId: adminUserId,
 			adminUserId,
 			types,
+			customFiles: types.includes("custom_nginx"),
 			dbStep: () => replaceTypes({ knex, data, types, adminUserId, box, now: Math.floor(clock.now() / 1000) }),
 			fileStep: async (replaced, asideDir) => {
 				const swap = await swapStage({
@@ -746,6 +781,7 @@ const createBackupService = ({
 			userId,
 			adminUserId: scope.adminUserId,
 			types,
+			customFiles: taken.some((item) => item.key.startsWith(FILE_KEY) && item.type === "custom_nginx"),
 			dbStep: () =>
 				mergeTypes({
 					knex,

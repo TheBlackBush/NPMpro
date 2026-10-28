@@ -922,3 +922,83 @@ it("writes no DNS credentials file for a credential added without its values", T
 		await cleanup();
 	}
 });
+
+// a fake regeneration that takes every enabled proxy host offline while custom_nginx/server_proxy.conf is broken,
+// as nginx -t of each host's config does, and brings them back online otherwise
+const BROKEN_SERVER_FILE = "this_is_not_a_directive on;;\n";
+const UNKNOWN_DIRECTIVE = /unknown directive/u;
+const B_HOST = /b\.example\.com/u;
+const withServerFile = () => {
+	const holder = {};
+	return {
+		holder,
+		regenerated: async (knex) => {
+			const file = path.join(holder.dataDir, "custom_nginx", "server_proxy.conf");
+			const broken = existsSync(file) && (await readFile(file, "utf8")).includes("this_is_not_a_directive");
+			await knex("proxy_host")
+				.where("enabled", 1)
+				.update(
+					broken
+						? {
+								npmpro_nginx_online: 0,
+								npmpro_nginx_err: 'nginx: [emerg] unknown directive "this_is_not_a_directive"',
+							}
+						: { npmpro_nginx_online: 1, npmpro_nginx_err: "" },
+				);
+		},
+	};
+};
+
+it("rolls a merge back when a taken custom nginx file takes hosts offline", TIMEOUT, async () => {
+	const fake = withServerFile();
+	const { a, b, cleanup } = await twoInstances({ regenerated: fake.regenerated });
+	fake.holder.dataDir = b.dataDir;
+	const serverFile = (ctx) => path.join(ctx.dataDir, "custom_nginx", "server_proxy.conf");
+	try {
+		for (const ctx of [a, b]) await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(serverFile(a), BROKEN_SERVER_FILE);
+		await writeFile(serverFile(b), "# the instance\n");
+		const { token } = await openOn(b, await backupOf(a, { types: ["custom_nginx"] }));
+		const types = ["custom_nginx"];
+		const choices = { "file:custom_nginx/server_proxy.conf": "take" };
+		const plan = await b.service.plan(admin, token, { mode: "merge", types, choices });
+		assert.equal(plan.items.find((item) => item.key === "file:custom_nginx/server_proxy.conf").action, "take");
+		await assert.rejects(
+			b.service.restore(admin, token, { mode: "merge", types, choices, planHash: plan.hash }),
+			(error) => {
+				assert.equal(error.code, "nginx-failed");
+				assert.match(error.message, B_HOST);
+				assert.match(error.message, UNKNOWN_DIRECTIVE);
+				return true;
+			},
+		);
+		assert.equal(await readFile(serverFile(b), "utf8"), "# the instance\n");
+		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+		assert.equal(Number((await b.knex("proxy_host").where({ id: 1 }).first()).npmpro_nginx_online), 1);
+		assert.equal(
+			b.calls.audit.some((entry) => entry.action === "merged"),
+			false,
+		);
+		assert.deepEqual([b.calls.pause, b.calls.resume, b.isPaused()], [1, 1, false]);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("finishes a merge without custom nginx files that leaves a host offline", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances({
+		regenerated: (knex) =>
+			knex("proxy_host").where({ id: 1 }).update({ npmpro_nginx_online: 0, npmpro_nginx_err: "no certificate" }),
+	});
+	try {
+		const { token } = await openOn(b, await backupOf(a, { types: ["proxy_hosts", "certificates"] }));
+		const types = ["proxy_hosts", "certificates"];
+		const plan = await b.service.plan(admin, token, { mode: "merge", types });
+		const result = await b.service.restore(admin, token, { mode: "merge", types, planHash: plan.hash });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 1, domain: "b.example.com", error: "no certificate" },
+		]);
+	} finally {
+		await cleanup();
+	}
+});
