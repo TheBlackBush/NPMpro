@@ -188,6 +188,7 @@
 	"mfa.regenerate-backup": "Ehtiyat kodlarını yenidən yarat",
 	"mfa.regenerate-instructions": "Yeni ehtiyat kodları yaratmaq üçün doğrulama kodunu daxil edin. Köhnə kodlarınız etibarsız olacaq.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSec decisions",
 	"nginx-config.label": "Fərdi Nginx konfiqurasiyası",
 	"nginx-config.placeholder": "# Öz riskinizlə fərdi Nginx konfiqurasiyanızı bura daxil edin!",
 	"no-permission-error": "Bunu görməyə icazəniz yoxdur.",

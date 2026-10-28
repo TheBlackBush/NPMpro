@@ -81,5 +81,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 		enableSortingRemoval: false,
 	});
 
-	return <TableLayout tableInstance={tableInstance} />;
+	return (
+		<TableLayout tableInstance={tableInstance} layout="scroll" label={intl.formatMessage({ id: "auditlogs" })} />
+	);
 }

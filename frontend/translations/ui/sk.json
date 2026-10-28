@@ -183,6 +183,7 @@
 	"mfa.regenerate-backup": "Znova vytvoriť záložné kódy",
 	"mfa.regenerate-instructions": "Zadajte overovací kód, aby sa vytvorili nové záložné kódy. Vaše staré kódy budú neplatné.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "Rozhodnutia CrowdSec",
 	"nginx-config.label": "Vlastná Nginx konfigurácia",
 	"nginx-config.placeholder": "# Zadajte vlastnú Nginx konfiguráciu na vlastné riziko!",
 	"no-permission-error": "Nemáte oprávnenie na zobrazenie tohto obsahu.",

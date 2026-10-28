@@ -167,6 +167,7 @@
 	"list.sort-desc": "降順",
 	"loading": "Loading…",
 	"login.title": "アカウントにログイン",
+	"monitoring.crowdsec.decisions": "CrowdSec の決定",
 	"nginx-config.label": "カスタムNginx設定",
 	"nginx-config.placeholder": "# Enter your custom Nginx configuration here at your own risk!",
 	"no-permission-error": "これを表示する権限がありません",

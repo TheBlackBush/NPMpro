@@ -242,6 +242,7 @@
 	"mfa.regenerate-backup": "重新生成备用代码",
 	"mfa.regenerate-instructions": "输入验证码以生成新的备用代码，旧代码将失效。",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSec 决策",
 	"mtls-certificate": "mTLS 证书",
 	"nginx-config.label": "自定义 Nginx 配置",
 	"nginx-config.placeholder": "# 在此输入您的自定义 Nginx 配置，风险自负！",

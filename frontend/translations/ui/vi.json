@@ -167,6 +167,7 @@
 	"list.sort-desc": "Thứ tự giảm dần",
 	"loading": "Đang tải...",
 	"login.title": "Đăng nhập vào tài khoản của bạn",
+	"monitoring.crowdsec.decisions": "Quyết định CrowdSec",
 	"nginx-config.label": "Cấu hình Nginx tùy chỉnh",
 	"nginx-config.placeholder": "# Nhập cấu hình Nginx tùy chỉnh của bạn vào đây và bạn phải tự chịu rủi ro!",
 	"no-permission-error": "Bạn không có quyền truy cập trang này.",

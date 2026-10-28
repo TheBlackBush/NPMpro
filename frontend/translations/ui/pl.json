@@ -169,6 +169,7 @@
 	"list.sort-desc": "Kolejność malejąca",
 	"loading": "Ładowanie…",
 	"login.title": "Zaloguj się na swoje konto",
+	"monitoring.crowdsec.decisions": "Decyzje CrowdSec",
 	"nginx-config.label": "Własna konfiguracja Nginx",
 	"nginx-config.placeholder": "# Wprowadź tutaj własną konfigurację Nginx na własną odpowiedzialność!",
 	"no-permission-error": "Nie masz uprawnień do wyświetlenia tego.",

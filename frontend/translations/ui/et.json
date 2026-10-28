@@ -207,6 +207,7 @@
 	"mfa.regenerate-backup": "Loo uued varukoodid",
 	"mfa.regenerate-instructions": "Sisesta kinnituskood, et luua uued varukoodid. Vanad koodid muutuvad kehtetuks.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSeci otsused",
 	"nginx-config.label": "Kohandatud Nginx seadistus",
 	"nginx-config.placeholder": "# Sisesta siia oma Nginx seadistus omal vastutusel!",
 	"no-permission-error": "Selle vaatamiseks sul õigust pole.",

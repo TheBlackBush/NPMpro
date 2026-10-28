@@ -328,6 +328,7 @@ function RecentTable({ rows }) {
 				header: intl.formatMessage({ id: "monitoring.recent.column.size" }),
 				enableSorting: false,
 				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
+				meta: { mobile: "hide" },
 			}),
 			columnHelper.accessor((row) => (row.country ? countryLabel(row.country) : ""), {
 				id: "country",
@@ -339,6 +340,7 @@ function RecentTable({ rows }) {
 					) : (
 						<span className="text-secondary">-</span>
 					),
+				meta: { mobile: "hide" },
 			}),
 			...(withIps
 				? [
@@ -389,7 +391,11 @@ function RecentTable({ rows }) {
 								shown={displayed.length}
 								kinds={[]}
 							/>
-							<TableLayout tableInstance={tableInstance} />
+							<TableLayout
+								tableInstance={tableInstance}
+								layout="scroll"
+								label={intl.formatMessage({ id: "monitoring.recent" })}
+							/>
 						</>
 					)}
 				</div>

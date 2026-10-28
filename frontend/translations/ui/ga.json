@@ -168,6 +168,7 @@
 	"list.sort-desc": "Descending order",
 	"loading": "Ag lódáil…",
 	"login.title": "Logáil isteach i do chuntas",
+	"monitoring.crowdsec.decisions": "CrowdSec decisions",
 	"nginx-config.label": "Cumraíocht Nginx Saincheaptha",
 	"nginx-config.placeholder": "# Cuir isteach do chumraíocht saincheaptha Nginx anseo ar do phriacal féin!",
 	"no-permission-error": "Níl rochtain agat chun seo a fheiceáil.",

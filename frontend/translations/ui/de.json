@@ -242,6 +242,7 @@
 	"mfa.regenerate-backup": "Backup-Codes neu generieren",
 	"mfa.regenerate-instructions": "Gib einen Verifizierungscode ein, um neue Backup-Codes zu generieren. Deine alten Codes werden dadurch ungültig.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSec-Entscheidungen",
 	"mtls-certificate": "mTLS-Zertifikat",
 	"nginx-config.label": "Benutzerdefinierte Nginx Konfiguration",
 	"nginx-config.placeholder": "# Geben Sie hier Ihre benutzerdefinierte Nginx-Konfiguration auf eigene Gefahr ein!",

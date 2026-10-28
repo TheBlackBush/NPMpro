@@ -11,6 +11,9 @@ function TableLayout(props) {
 	const hasRows = props.tableInstance.getRowModel().rows.length > 0;
 	const showHeader = props.showHeader ?? true;
 	const scroll = props.layout === "scroll";
+	if (import.meta.env.DEV && scroll && !props.label) {
+		console.warn("TableLayout: a scroll layout needs a label, otherwise its region has no name");
+	}
 	// a scroll area must be reachable by keyboard (Tabler issue #3330)
 	const scrollArea = scroll ? { tabIndex: 0, role: "region", "aria-label": props.label } : {};
 	return (

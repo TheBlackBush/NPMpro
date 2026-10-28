@@ -185,6 +185,7 @@
 	"mfa.regenerate-backup": "Generer nye backup-koder",
 	"mfa.regenerate-instructions": "Angi en verifiseringskode for å generere nye backup-koder. Dine gamle koder vil bli ugyldige.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSec-beslutninger",
 	"nginx-config.label": "Egendefinert Nginx-konfigurasjon",
 	"nginx-config.placeholder": "# Skriv inn din egendefinerte Nginx-konfigurasjon her på egen risiko!",
 	"no-permission-error": "Du har ikke tilgang til å se dette.",

@@ -420,6 +420,7 @@
 	"monitoring.crowdsec.conf-error": "The CrowdSec bouncer config could not be read",
 	"monitoring.crowdsec.connected": "Connected",
 	"monitoring.crowdsec.connection": "Connection",
+	"monitoring.crowdsec.decisions": "CrowdSec decisions",
 	"monitoring.crowdsec.fetched": "Last read {time}",
 	"monitoring.crowdsec.guide": "CrowdSec setup guide",
 	"monitoring.crowdsec.map": "Bans by country",

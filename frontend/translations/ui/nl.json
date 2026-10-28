@@ -242,6 +242,7 @@
 	"mfa.regenerate-backup": "Back-upcodes opnieuw genereren",
 	"mfa.regenerate-instructions": "Voer een verificatiecode in om nieuwe back-upcodes te genereren. Oude codes worden ongeldig gemaakt.",
 	"mfa.title": "MFA",
+	"monitoring.crowdsec.decisions": "CrowdSec-beslissingen",
 	"mtls-certificate": "mTLS-certificaat",
 	"nginx-config.label": "Aangepaste Nginx-configuratie",
 	"nginx-config.placeholder": "# Voer hier je aangepaste Nginx-configuratie in op eigen risico!",
