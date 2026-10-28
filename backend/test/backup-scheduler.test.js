@@ -354,3 +354,25 @@ it("a pause and resume with nothing in between keep the busy wait as it was", as
 	await scheduler.tick();
 	assert.deepEqual(givenUp, [7]);
 });
+
+it("a pause has one owner: a second pause resolves at once and one resume ends it", async () => {
+	const clock = fakeClock();
+	let calls = 0;
+	const scheduler = createBackupScheduler({
+		dueSchedules: async () => {
+			calls += 1;
+			return [];
+		},
+		runAutomatic: async () => {},
+		giveUp: async () => {},
+		clock,
+		log: silent,
+	});
+	await scheduler.pause();
+	await scheduler.pause();
+	await scheduler.tick();
+	assert.equal(calls, 0);
+	scheduler.resume();
+	await scheduler.tick();
+	assert.equal(calls, 1);
+});

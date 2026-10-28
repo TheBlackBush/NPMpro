@@ -88,7 +88,8 @@ const createBackupScheduler = ({
 		tick,
 		/**
 		 * A database move: no runs until resume(). Waits for a run that is going on; with timeoutMs it rejects with
-		 * "writer-running" when that run takes longer, and the scheduler is not paused then.
+		 * "writer-running" when that run takes longer, and the scheduler is not paused then. A pause has one owner
+		 * (the move): a second pause() resolves at once and one resume() ends the pause.
 		 */
 		pause: async ({ timeoutMs } = {}) => {
 			if (paused) return;

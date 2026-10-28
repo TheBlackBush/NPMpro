@@ -42,4 +42,46 @@ const waitWithin = async (work, { name, timeoutMs, clock = globalThis }) => {
 	}
 };
 
-export { MOVE_PAUSE_MS, waitWithin, writerRunning };
+/**
+ * Resumes paused writers in reverse order; a writer that cannot resume is logged and the rest still resume.
+ *
+ * @param   {Array<{ name: string, resume: Function }>}  paused  in the order they were paused
+ * @param   {Object}  [options]
+ * @param   {Object}  [options.log]  logger with error()
+ * @returns {Promise<void>}
+ */
+const resumeWriters = async (paused, { log = console } = {}) => {
+	for (const writer of [...paused].reverse()) {
+		try {
+			await writer.resume();
+		} catch (error) {
+			log.error(`${writer.name} could not resume after the database move: ${error?.message}`);
+		}
+	}
+};
+
+/**
+ * Pauses the background writers of a database move one after another, each with the same time limit. When one
+ * fails (it leaves itself as it was) the ones paused before it resume in reverse order and the error is thrown.
+ *
+ * @param   {Array<{ name: string, pause: Function, resume: Function }>}  writers  pause({ timeoutMs }) => Promise
+ * @param   {Object}  [options]
+ * @param   {number}  [options.timeoutMs]  MOVE_PAUSE_MS
+ * @param   {Object}  [options.log]
+ * @returns {Promise<Array>}  the paused writers, for resumeWriters() after a failed move
+ */
+const pauseWriters = async (writers, { timeoutMs = MOVE_PAUSE_MS, log = console } = {}) => {
+	const paused = [];
+	try {
+		for (const writer of writers) {
+			await writer.pause({ timeoutMs });
+			paused.push(writer);
+		}
+	} catch (error) {
+		await resumeWriters(paused, { log });
+		throw error;
+	}
+	return paused;
+};
+
+export { MOVE_PAUSE_MS, pauseWriters, resumeWriters, waitWithin, writerRunning };

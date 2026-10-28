@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
+import { MOVE_PAUSE_MS, pauseWriters, resumeWriters } from "../lib/database/pause.js";
 import { geoipUpdateSettled, runConfiguredGeoipUpdate } from "../lib/geoip/run.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { createTrafficService } from "../lib/traffic/service.js";
@@ -14,7 +15,8 @@ const line = (host, ip = "203.0.113.7") =>
 
 const read = (lines, offset) => ({ lines, state: { inode: 1, offset }, missing: false, dropped: 0 });
 
-const traffic = (results) => {
+const traffic = (results, { saveFailures = 0 } = {}) => {
+	let failures = saveFailures;
 	const intervals = new Set();
 	const store = {
 		calls: [],
@@ -43,6 +45,10 @@ const traffic = (results) => {
 			}),
 		loadState: () => Promise.resolve(null),
 		saveState: (state) => {
+			if (failures > 0) {
+				failures--;
+				return Promise.reject(new Error("database is locked"));
+			}
 			saved.push(state.offset);
 			return Promise.resolve();
 		},
@@ -57,6 +63,8 @@ const traffic = (results) => {
 				return timer;
 			},
 			clearInterval: (timer) => intervals.delete(timer),
+			setTimeout,
+			clearTimeout,
 		},
 		log: silent,
 	});
@@ -206,4 +214,97 @@ it("the GeoIP wait covers a running update and the one queued after it, a failed
 	await waiting;
 	assert.equal(settled, true);
 	assert.deepEqual(recorded, [true]);
+});
+
+it("a traffic pause saves the position again when saving it after the counts failed once", async () => {
+	const t = traffic([read([line("example.com")], 100)], { saveFailures: 1 });
+	await t.service.start();
+	await t.service.read();
+	await t.service.pause();
+	assert.deepEqual(t.store.flushed, [1]);
+	assert.deepEqual(t.saved, [100]);
+});
+
+it("a traffic pause fails when the position of the written counts cannot be saved, and is not paused then", async () => {
+	const t = traffic([read([line("example.com")], 100), read([line("example.com")], 200)], { saveFailures: 2 });
+	await t.service.start();
+	await t.service.read();
+	await assert.rejects(
+		t.service.pause(),
+		(error) => error.code === "writer-running" && error.details.startsWith("Traffic statistics: the access log"),
+	);
+	assert.deepEqual(t.store.flushed, [1]);
+	assert.deepEqual(t.saved, []);
+	await t.service.read();
+	await t.service.flush();
+	assert.deepEqual(t.store.flushed, [1, 1]);
+	assert.deepEqual(t.saved, [200]);
+});
+
+it("a traffic pause has one owner: a second pause writes nothing and one resume ends it", async () => {
+	const t = traffic([read([line("example.com")], 100), read([line("example.com")], 200)]);
+	await t.service.start();
+	await t.service.read();
+	await t.service.pause();
+	const calls = t.store.calls.length;
+	await t.service.read();
+	await t.service.pause();
+	assert.equal(t.store.calls.length, calls);
+	t.service.resume();
+	await t.service.flush();
+	assert.deepEqual(t.store.flushed, [1, 1]);
+});
+
+const writer = (name, events, { fails = false, resumeFails = false } = {}) => ({
+	name,
+	pause: (options) => {
+		events.push(["pause", name, options.timeoutMs]);
+		return fails
+			? Promise.reject(Object.assign(new Error(`${name} busy`), { code: "writer-running" }))
+			: Promise.resolve();
+	},
+	resume: () => {
+		events.push(["resume", name]);
+		if (resumeFails) throw new Error(`${name} broke`);
+	},
+});
+
+it("pauseWriters pauses in order with the move time limit and resumeWriters resumes in reverse", async () => {
+	const events = [];
+	const writers = [writer("renewals", events), writer("monitoring", events), writer("scheduler", events)];
+	const paused = await pauseWriters(writers);
+	assert.deepEqual(events, [
+		["pause", "renewals", MOVE_PAUSE_MS],
+		["pause", "monitoring", MOVE_PAUSE_MS],
+		["pause", "scheduler", MOVE_PAUSE_MS],
+	]);
+	events.length = 0;
+	const errors = [];
+	writers[1] = writer("monitoring", events, { resumeFails: true });
+	paused[1] = writers[1];
+	await resumeWriters(paused, { log: { error: (message) => errors.push(message) } });
+	assert.deepEqual(events, [
+		["resume", "scheduler"],
+		["resume", "monitoring"],
+		["resume", "renewals"],
+	]);
+	assert.deepEqual(errors, ["monitoring could not resume after the database move: monitoring broke"]);
+});
+
+it("pauseWriters undoes the writers paused before one that fails, in reverse, and throws its error", async () => {
+	const events = [];
+	const writers = [
+		writer("renewals", events),
+		writer("monitoring", events),
+		writer("scheduler", events, { fails: true }),
+		writer("never", events),
+	];
+	await assert.rejects(pauseWriters(writers, { timeoutMs: 5 }), (error) => error.message === "scheduler busy");
+	assert.deepEqual(events, [
+		["pause", "renewals", 5],
+		["pause", "monitoring", 5],
+		["pause", "scheduler", 5],
+		["resume", "monitoring"],
+		["resume", "renewals"],
+	]);
 });
