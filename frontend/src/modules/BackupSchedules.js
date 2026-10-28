@@ -57,7 +57,11 @@ export function scheduleErrors(values, { editingWithPassphrase = false } = {}) {
 	if (!Array.isArray(values.types) || values.types.length === 0) errors.types = "backup.schedule.error.types";
 	if (!PROTECTIONS.includes(values.protection)) errors.protection = "backup.schedule.error.protection";
 	if (intIn(values.keep, 1, 100) === null) errors.keep = "backup.schedule.error.keep";
-	if (values.protection === "passphrase" && (!editingWithPassphrase || values.passphrase !== "")) {
+	const keepsStored = editingWithPassphrase && values.passphrase === "";
+	if (values.protection === "passphrase" && keepsStored && (values.passphraseRepeat ?? "") !== "") {
+		// a value typed only in the repeat field is a mistake, not "keep the stored passphrase"
+		errors.passphraseRepeat = "settings.backup.passphrase.mismatch";
+	} else if (values.protection === "passphrase" && !keepsStored) {
 		Object.assign(
 			errors,
 			passphraseErrors({
@@ -168,6 +172,19 @@ export function scheduleStatus(schedule) {
  */
 export function scheduleNames(schedules) {
 	return new Map((schedules ?? []).map((schedule) => [schedule.id, schedule.name]));
+}
+
+/**
+ * The schedule badge of a stored backup: its schedule's name, "deleted" when the id is not in the loaded list, null
+ * for a file of no schedule or while the list is unknown (names null: not loaded yet or failed)
+ *
+ * @param {Object}                    entry  a stored backup ({ scheduleId })
+ * @param {Map<number, string>|null}  names  scheduleNames of the loaded list, or null
+ * @returns {{ kind: "name", name: string } | { kind: "deleted" } | null}
+ */
+export function scheduleBadge(entry, names) {
+	if (entry.scheduleId === null || entry.scheduleId === undefined || !names) return null;
+	return names.has(entry.scheduleId) ? { kind: "name", name: names.get(entry.scheduleId) } : { kind: "deleted" };
 }
 
 /**

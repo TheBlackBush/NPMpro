@@ -70,31 +70,42 @@ function Contents({ categories, types }) {
 
 function StatusBadge({ schedule, timeZone }) {
 	const status = scheduleStatus(schedule);
+	// the error of a failed last run (paused too): on phones under the badges, on wider screens in the Last run column
+	const error =
+		schedule.lastStatus === "failed" && schedule.lastError ? (
+			<div className="small text-danger text-break mt-1 d-md-none">{schedule.lastError}</div>
+		) : null;
 	if (status === "paused") {
 		return (
-			<span className="badge bg-secondary-lt">
-				<T id="settings.backup.schedule.paused" />
-			</span>
-		);
-	}
-	if (status === "failed") {
-		// on phones the error shows under the badge, on wider screens in the Last run column
-		return (
 			<>
-				<span className="badge bg-red-lt text-wrap text-start" title={schedule.lastError ?? undefined}>
-					<T id="settings.backup.schedule.failed" />
+				<span className="badge bg-secondary-lt">
+					<T id="settings.backup.schedule.paused" />
 				</span>
-				{schedule.lastError ? (
-					<div className="small text-danger text-break mt-1 d-md-none">{schedule.lastError}</div>
-				) : null}
+				{error}
 			</>
 		);
 	}
-	return schedule.nextRunAt ? (
-		<span className="badge bg-green-lt text-wrap text-start">
-			<T id="settings.backup.schedule.next" data={{ when: formatTime(schedule.nextRunAt, timeZone) }} />
-		</span>
-	) : null;
+	// a failed schedule still runs again: "Failed" and its next run
+	return (
+		<>
+			<div className="badge-list">
+				{status === "failed" ? (
+					<span className="badge bg-red-lt text-wrap text-start" title={schedule.lastError ?? undefined}>
+						<T id="settings.backup.schedule.failed" />
+					</span>
+				) : null}
+				{schedule.nextRunAt ? (
+					<span className="badge bg-green-lt text-wrap text-start">
+						<T
+							id="settings.backup.schedule.next"
+							data={{ when: formatTime(schedule.nextRunAt, timeZone) }}
+						/>
+					</span>
+				) : null}
+			</div>
+			{error}
+		</>
+	);
 }
 
 function LastRun({ schedule, timeZone }) {
@@ -345,7 +356,7 @@ function SchedulesCard() {
 				showDeleteConfirmModal({
 					title: <T id="object.delete" tData={{ object: "backup-schedule" }} />,
 					subject: schedule.name,
-					children: <DeleteFiles count={schedule.fileCount} filesRef={filesRef} />,
+					details: <DeleteFiles count={schedule.fileCount} filesRef={filesRef} />,
 					onConfirm: async () => {
 						await deleteBackupSchedule(schedule.id, filesRef.current);
 						showObjectSuccess("backup-schedule", "deleted");

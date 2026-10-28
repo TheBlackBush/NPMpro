@@ -21,7 +21,7 @@ import { TablePagination } from "src/components/Table/TablePagination";
 import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
-import { filterBySchedule, scheduleNames } from "src/modules/BackupSchedules";
+import { filterBySchedule, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
 import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
@@ -72,14 +72,15 @@ function SecretsBadge({ entry }) {
 	);
 }
 
-// the schedule that made a file; "Deleted schedule" for a file left from one that no longer exists
+// the schedule that made a file; "Deleted schedule" for a file left from one that no longer exists; nothing until
+// the schedule list is loaded
 function ScheduleBadge({ entry, names }) {
-	if (entry.scheduleId === null || entry.scheduleId === undefined) return null;
-	const name = names.get(entry.scheduleId);
+	const badge = scheduleBadge(entry, names);
+	if (!badge) return null;
 	return (
 		<div className="mt-1">
-			<span className="badge bg-purple-lt text-wrap text-start">
-				{name ?? <T id="settings.backup.schedule.deleted" />}
+			<span className="badge bg-indigo-lt text-wrap text-start">
+				{badge.kind === "name" ? badge.name : <T id="settings.backup.schedule.deleted" />}
 			</span>
 		</div>
 	);
@@ -313,7 +314,8 @@ function StoredTable() {
 
 	// the "Schedule" filter: "" all, "none" not scheduled, else a schedule id
 	const [filter, setFilter] = useState("");
-	const names = useMemo(() => scheduleNames(schedules), [schedules]);
+	// null while the schedule list is not loaded (or failed): the badges wait for it
+	const names = useMemo(() => (schedules ? scheduleNames(schedules) : null), [schedules]);
 	const scheduled = useMemo(
 		() => (data ?? []).filter((entry) => entry.scheduleId !== null && entry.scheduleId !== undefined),
 		[data],
@@ -321,13 +323,15 @@ function StoredTable() {
 	// the schedules that have files, by name
 	const filterOptions = useMemo(
 		() =>
-			[...names]
+			[...(names ?? [])]
 				.filter(([id]) => scheduled.some((entry) => entry.scheduleId === id))
 				.sort(([, a], [, b]) => a.localeCompare(b, intl.locale)),
 		[names, scheduled],
 	);
-	// the filter is gone (and lets everything through) once no file is scheduled
-	const activeFilter = scheduled.length > 0 ? filter : "";
+	// back to All once no file is scheduled or the chosen schedule is no longer offered
+	const offered = filter === "" || filter === "none" || filterOptions.some(([id]) => String(id) === filter);
+	const activeFilter = scheduled.length > 0 && offered ? filter : "";
+	if (activeFilter !== filter) setFilter(activeFilter);
 	const shown = useMemo(() => (data ? filterBySchedule(data, activeFilter) : data), [data, activeFilter]);
 
 	const uploading = progress !== null;
@@ -353,7 +357,7 @@ function StoredTable() {
 							onChange={(event) => setFilter(event.target.value)}
 							aria-label={label("settings.backup.schedule.filter")}
 						>
-							<option value="">{label("list.filter.all")}</option>
+							<option value="">{label("settings.backup.schedule.filter.all")}</option>
 							<option value="none">{label("settings.backup.schedule.filter.none")}</option>
 							{filterOptions.map(([id, name]) => (
 								<option key={id} value={String(id)}>

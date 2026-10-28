@@ -18,7 +18,7 @@ function PasswordInput({ id, label, error, className, textWhenEmpty, ...inputPro
 					{...inputProps}
 					id={id}
 					aria-invalid={error ? "true" : undefined}
-					aria-describedby={error ? `${id}-error` : undefined}
+					aria-describedby={cn(error && `${id}-error`, inputProps["aria-describedby"]) || undefined}
 					type={asText ? "text" : "password"}
 					className={cn("form-control", error && "is-invalid", className)}
 				/>

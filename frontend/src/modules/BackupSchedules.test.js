@@ -6,6 +6,7 @@ import {
 	filterBySchedule,
 	formatInZone,
 	initialValues,
+	scheduleBadge,
 	scheduleErrors,
 	scheduleNames,
 	scheduleOf,
@@ -189,4 +190,22 @@ it("formats times in the server's zone", () => {
 	assert.ok(formatInZone(at, "en-GB", "UTC").includes("02:00"));
 	// an unknown zone falls back to the browser's instead of failing
 	assert.equal(typeof formatInZone(at, "en-GB", "Not/AZone"), "string");
+});
+
+it("a repeat typed without a passphrase is a mismatch, also when one is stored", () => {
+	const protectedValues = { ...values, protection: "passphrase", passphraseRepeat: "something" };
+	assert.deepEqual(scheduleErrors(protectedValues, { editingWithPassphrase: true }), {
+		passphraseRepeat: "settings.backup.passphrase.mismatch",
+	});
+	assert.equal(Object.hasOwn(scheduleErrors(protectedValues, {}), "passphraseRepeat"), true);
+});
+
+it("the schedule badge waits for the schedule list", () => {
+	const names = scheduleNames([{ id: 1, name: "Nightly" }]);
+	assert.deepEqual(scheduleBadge({ scheduleId: 1 }, names), { kind: "name", name: "Nightly" });
+	assert.deepEqual(scheduleBadge({ scheduleId: 2 }, names), { kind: "deleted" });
+	// not loaded or failed: unknown, no badge
+	assert.equal(scheduleBadge({ scheduleId: 2 }, null), null);
+	assert.equal(scheduleBadge({ scheduleId: null }, names), null);
+	assert.equal(scheduleBadge({}, names), null);
 });

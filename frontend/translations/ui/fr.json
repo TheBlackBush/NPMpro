@@ -426,6 +426,7 @@
 	"settings.backup.schedule.every-hours": "Hours",
 	"settings.backup.schedule.failed": "Failed",
 	"settings.backup.schedule.filter": "Schedule",
+	"settings.backup.schedule.filter.all": "All schedules",
 	"settings.backup.schedule.filter.none": "Not scheduled",
 	"settings.backup.schedule.frequency.daily": "Daily",
 	"settings.backup.schedule.frequency.hours": "Every N hours",

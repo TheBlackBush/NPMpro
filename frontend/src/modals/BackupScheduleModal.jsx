@@ -267,9 +267,10 @@ function PassphraseField({ name, id, labelId, hintId }) {
 						label={<T id={labelId} />}
 						autoComplete="new-password"
 						error={meta.touched || submitCount > 0 ? meta.error : undefined}
+						aria-describedby={hintId ? `${id}-hint` : undefined}
 					/>
 					{hintId ? (
-						<div className="form-hint">
+						<div className="form-hint" id={`${id}-hint`}>
 							<T id={hintId} />
 						</div>
 					) : null}
