@@ -341,3 +341,35 @@ it("page imports never plan schedules", async () => {
 	});
 	assert.equal(plan.items.length, 0);
 });
+
+it("merge without secrets: a taken schedule that moved away from a passphrase drops the instance passphrase", async () => {
+	const knex = await db();
+	await knex("npmpro_backup_schedule").insert({
+		...stored({ id: 7, owner_user_id: 1, passphrase: box.encrypt({ passphrase: "instance pass" }) }),
+		types: JSON.stringify(["proxy_hosts"]),
+		created_on: "2026-10-01 00:00:00",
+		modified_on: "2026-10-01 00:00:00",
+		next_run_at: null,
+		last_run_at: null,
+	});
+	const data = {
+		backup_schedules: type.secrets.strip({
+			npmpro_backup_schedule: [stored({ name: "Nightly", protection: "instance_key", keep: 4 })],
+		}),
+	};
+	const plan = planMerge({
+		data,
+		instance: await readInstanceRows(knex),
+		stageFiles: {},
+		types: ["backup_schedules"],
+		scope,
+		secrets: false,
+		choices: { "schedule:3": "take" },
+	});
+	assert.deepEqual(plan.needs_secrets, []);
+	await mergeTypes({ knex, data, plan, adminUserId: 1, importerId: 1, box, secrets: false, now: NOW / 1000 });
+	const taken = await knex("npmpro_backup_schedule").where({ id: 7 }).first();
+	assert.equal(taken.protection, "instance_key");
+	assert.equal(taken.passphrase, null);
+	assert.equal(Boolean(Number(taken.enabled)), true);
+});

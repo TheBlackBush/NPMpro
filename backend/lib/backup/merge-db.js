@@ -375,14 +375,18 @@ const mergeTypes = async ({
 		};
 
 		// a schedule is added under a new id or written over the instance's schedule of the same name; without secrets
-		// a taken schedule keeps the instance's sealed passphrase
+		// a taken passphrase schedule keeps the instance's sealed passphrase (other protections hold none)
 		const writeSchedule = async (item) => {
 			if (item.action === "keep") return;
 			const source = rowOf(item);
 			const current =
 				item.action === "take" ? await trx(SCHEDULE_TABLE).where({ id: item.target.id }).first() : null;
 			if (item.action === "take" && !current) throw new Error(`${item.key} has no schedule to take over`);
-			const passphrase = secrets ? source.passphrase : (current?.passphrase ?? null);
+			const passphrase = secrets
+				? source.passphrase
+				: source.protection === "passphrase"
+					? (current?.passphrase ?? null)
+					: null;
 			const [prepared] = TYPES[SCHEDULE_TYPE].restoreRows(
 				TYPES[SCHEDULE_TYPE].secrets.seal({ [SCHEDULE_TABLE]: [{ ...source, passphrase }] }, box),
 				{ adminUserId, nowMs: now * 1000 },
