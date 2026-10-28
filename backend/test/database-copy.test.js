@@ -472,3 +472,29 @@ it("SQLite to Postgres and back keeps every value", { skip: pgSkip, timeout: 180
 		await back.cleanup();
 	}
 });
+
+it("a Postgres counter set but not used yet is still kept on the next move (Postgres to SQLite)", {
+	skip: pgSkip,
+	timeout: 120_000,
+}, async () => {
+	const source = await migratedSqlite();
+	const pg = knexFactory(knexConfigOf(pgConnection));
+	const back = await migratedSqlite();
+	try {
+		await seedSource(source.knex);
+		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
+		await resetPg(pg);
+		await runMigrations(pg);
+		// SQLite to Postgres: the sequence is set to 14 and not used before the next move
+		await copyAll(source.knex, pg);
+		await copyAll(pg, back.knex);
+		const info = await back.knex("proxy_host").columnInfo();
+		const [id] = await back.knex("proxy_host").insert(fillRow(info, { domain_names: "[]", meta: "{}" }));
+		assert.equal(id, 14);
+	} finally {
+		await resetPg(pg);
+		await pg.destroy();
+		await back.cleanup();
+		await source.cleanup();
+	}
+});

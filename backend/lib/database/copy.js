@@ -235,17 +235,13 @@ const idCounter = async (knex, table) => {
 		case "postgres": {
 			const seq = await pgSequence(knex, table);
 			if (!seq) return 0n;
-			const [row] = rawRows(
-				knex,
-				await knex.raw(
-					`select s.last_value from pg_sequences s
-					join pg_namespace n on n.nspname = s.schemaname
-					join pg_class c on c.relnamespace = n.oid and c.relname = s.sequencename
-					where c.oid = ?::regclass`,
-					[seq],
-				),
-			);
-			return bigOf(row?.last_value);
+			// the sequence itself (not pg_sequences, whose last_value is null until nextval): after setval(seq, n, false)
+			// the last used id is n - 1; a sequence never used reads its start value with is_called false. The name comes
+			// from pg_get_serial_sequence, which returns it quoted.
+			const [row] = rawRows(knex, await knex.raw(`select last_value, is_called from ${seq}`));
+			if (!row) return 0n;
+			const last = bigOf(row.last_value);
+			return row.is_called ? last : last - 1n;
 		}
 		default: {
 			if (!(await mysqlAutoincrement(knex, table))) return 0n;
