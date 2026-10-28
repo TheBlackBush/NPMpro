@@ -163,7 +163,6 @@
 	"lets-encrypt-via-dns": "Certbot via DNS",
 	"lets-encrypt-via-http": "Certbot via HTTP",
 	"list.sort-by": "Sort by",
-	"list.sort-default": "Default order",
 	"list.sort-desc": "Descending order",
 	"loading": "Memuat…",
 	"login.title": "Masuk ke akun Anda",

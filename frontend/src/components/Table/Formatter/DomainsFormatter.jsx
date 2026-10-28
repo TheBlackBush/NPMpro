@@ -18,7 +18,10 @@ const DomainLink = ({ domain, color }) => {
 			// a long name wraps at its dots inside the badge instead of pushing the row menu off a phone screen
 			className={cn("badge", color ? `bg-${color}-lt` : null, "font-monospace", "me-2 text-wrap text-start")}
 		>
-			<BreakableHost value={domain} />
+			{/* one flex item: .badge is inline-flex with a gap, which would space out the <wbr> pieces */}
+			<span>
+				<BreakableHost value={domain} />
+			</span>
 		</a>
 	);
 };

@@ -174,7 +174,6 @@
 	"lets-encrypt-via-dns": "Certbot DNS-iga",
 	"lets-encrypt-via-http": "Certbot HTTP-ga",
 	"list.sort-by": "Sort by",
-	"list.sort-default": "Default order",
 	"list.sort-desc": "Descending order",
 	"loading": "Laadimine…",
 	"location.advanced-config": "Kohandatud Nginx seadistus olemas",

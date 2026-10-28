@@ -357,7 +357,6 @@
 	"list.no-match": "No items match the filters",
 	"list.shown": "{shown} of {total} shown",
 	"list.sort-by": "Sort by",
-	"list.sort-default": "Default order",
 	"list.sort-desc": "Descending order",
 	"loading": "Loading…",
 	"location": "Location",

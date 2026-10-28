@@ -164,7 +164,6 @@
 	"lets-encrypt-via-dns": "Certbot przez DNS",
 	"lets-encrypt-via-http": "Certbot przez HTTP",
 	"list.sort-by": "Sort by",
-	"list.sort-default": "Default order",
 	"list.sort-desc": "Descending order",
 	"loading": "Ładowanie…",
 	"login.title": "Zaloguj się na swoje konto",

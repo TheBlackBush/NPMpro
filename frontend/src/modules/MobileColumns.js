@@ -1,4 +1,6 @@
-// What a table column does on small screens (spec 2026-10-28-mobile-tables-design): set as meta.mobile on a column
+// What a table column does on small screens (spec 2026-10-28-mobile-tables-design): set as meta.mobile on a column.
+// Cells marked title, title-end or title-below are rendered twice (the phone title block and their own cell, one
+// copy always hidden), so their renderers must not use fixed element ids or one-time side effects.
 export const MOBILE_ROLES = ["title", "title-end", "title-below", "summary", "hide", "hide-lg"];
 
 const PHONE_HIDDEN = new Set(["title-end", "title-below", "summary", "hide"]);

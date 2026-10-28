@@ -59,6 +59,8 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 	if (!total) return null;
 	const sortChoices = sorting ? sortOptions(sorting.columns) : [];
 	const sortValue = sortSelectValue(sorting?.state);
+	// like the headers, the select always names a column; an empty or unknown sort shows a disabled "Sort by"
+	const sortSelected = sortChoices.some((option) => option.id === sortValue.id) ? sortValue.id : "";
 	return (
 		<div className="card-body border-bottom py-3">
 			<div className="row g-2 align-items-center">
@@ -157,12 +159,14 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						<select
 							id={sortSelectId}
 							className="form-select form-select-sm"
-							value={sortValue.id ?? ""}
-							onChange={(e) =>
-								sorting.onChange(e.target.value ? [{ id: e.target.value, desc: sortValue.desc }] : [])
-							}
+							value={sortSelected}
+							onChange={(e) => sorting.onChange([{ id: e.target.value, desc: sortValue.desc }])}
 						>
-							<option value="">{intl.formatMessage({ id: "list.sort-default" })}</option>
+							{sortSelected === "" ? (
+								<option value="" disabled>
+									{intl.formatMessage({ id: "list.sort-by" })}
+								</option>
+							) : null}
 							{sortChoices.map((option) => (
 								<option key={option.id} value={option.id}>
 									{option.label}

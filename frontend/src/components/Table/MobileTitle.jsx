@@ -4,6 +4,9 @@ import { phoneParts, summaryText, titleClass } from "src/modules/MobileColumns";
 /**
  * The phone-only part of a stacked row, inside its title cell: the title, the cells marked title-end on its right,
  * title-below under it and the summary line. Hidden from 768 px, where the original cells show.
+ *
+ * The title, title-end and title-below cells therefore mount twice (here and in their own cells, one copy always
+ * hidden): their renderers must not use fixed element ids or side effects that may only happen once.
  */
 function MobileTitle({ row, titleCell }) {
 	const cells = row.getAllCells();
