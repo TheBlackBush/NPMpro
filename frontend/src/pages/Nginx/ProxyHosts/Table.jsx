@@ -76,7 +76,7 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 			}),
 			columnHelper.accessor(forwardSummary, {
 				id: "forwardHost",
-				meta: { className: "text-break", mobile: "summary", summaryText: (row) => forwardSummary(row) || null },
+				meta: { mobile: "summary", summaryText: (row) => forwardSummary(row) || null },
 				header: intl.formatMessage({ id: "column.destination" }),
 				cell: (info) => {
 					if (info.row.original.forwardScheme === "path" || !info.getValue()) {

@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 import {
+	BreakableHost,
 	CertificateFormatter,
 	EmptyData,
 	GravatarFormatter,
@@ -87,9 +88,9 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 			}),
 			columnHelper.accessor(streamDestination, {
 				id: "destination",
-				meta: { className: "text-break", mobile: "summary", summaryText: streamDestination },
+				meta: { mobile: "summary", summaryText: streamDestination },
 				header: intl.formatMessage({ id: "column.destination" }),
-				cell: (info) => info.getValue(),
+				cell: (info) => <BreakableHost value={info.getValue()} />,
 			}),
 			columnHelper.accessor((row) => streamProtocols(row).join(" "), {
 				id: "protocol",

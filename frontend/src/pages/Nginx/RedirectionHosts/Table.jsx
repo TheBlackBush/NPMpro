@@ -86,7 +86,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 			}),
 			columnHelper.accessor((row) => row.forwardDomainName, {
 				id: "forwardDomainName",
-				meta: { className: "text-break", mobile: "summary", summaryText: redirectSummary },
+				meta: { mobile: "summary", summaryText: redirectSummary },
 				header: intl.formatMessage({ id: "column.destination" }),
 				cell: (info) => info.getValue(),
 			}),
