@@ -5,6 +5,7 @@ import {
 	certificateProviderTranslation,
 	ErrorAlert,
 	HasPermission,
+	ImportExportButtons,
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
@@ -80,6 +81,11 @@ export default function TableWrapper() {
 						>
 							<IconHelp className="icon" aria-hidden="true" />
 						</Button>
+						<ImportExportButtons
+							kind="certificates"
+							permissionSection={CERTIFICATES}
+							hasItems={Boolean(data?.length)}
+						/>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 							{data?.length ? (
 								<div className="dropdown">

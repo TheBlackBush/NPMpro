@@ -1,243 +1,25 @@
 import assert from "node:assert/strict";
 import { existsSync, readlinkSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
-import knexFactory from "knex";
-import { createBackupService, unknownMigrations } from "../internal/backup.js";
+import { unknownMigrations } from "../internal/backup.js";
 import { createSerializer } from "../internal/monitoring-update.js";
 import { writeBackupFile } from "../lib/backup/format.js";
-import { createBackupStore } from "../lib/backup/store.js";
+import { MIGRATIONS, setup } from "./support/backup-service.js";
 
 process.env.TZ = "UTC";
 
 const TIMEOUT = { timeout: 60_000 };
 const PASSPHRASE = "correct horse battery staple";
-const DB_VERSION = "20261026000000";
-const MIGRATIONS = ["20180618015850_initial.js", "20261026000000_base.js"];
 const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
 const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
 const UNKNOWN_DIRECTIVE = /unknown directive/u;
 const AUTO_IN_MESSAGE = /npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro/u;
 const LOCATION_TABLE = /npmpro_location/u;
 const UPLOAD_NAME = /^npmpro-backup-upload-\d{8}-\d{6}\.npmpro$/u;
-const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
 const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
-const silent = { info: () => {}, warn: () => {}, error: () => {} };
-
-const createSchema = async (knex) => {
-	const hostTable = (name, extra = () => {}) =>
-		knex.schema.createTable(name, (t) => {
-			t.increments("id");
-			t.integer("owner_user_id").notNull().defaultTo(1);
-			t.json("domain_names").notNull().defaultTo("[]");
-			t.integer("enabled").notNull().defaultTo(1);
-			t.integer("certificate_id").notNull().defaultTo(0);
-			t.json("meta").notNull().defaultTo("{}");
-			t.integer("npmpro_nginx_online").notNull().defaultTo(1);
-			t.text("npmpro_nginx_err").notNull().defaultTo("");
-			extra(t);
-		});
-	await knex.schema.createTable("user", (t) => {
-		t.increments("id");
-		t.string("email").notNull();
-		t.string("name").notNull();
-		t.json("roles").notNull();
-		t.string("avatar").notNull().defaultTo("");
-		t.integer("npmpro_token_valid_after").notNull().defaultTo(0);
-	});
-	await knex.schema.createTable("auth", (t) => {
-		t.increments("id");
-		t.integer("user_id").notNull();
-		t.string("type").notNull();
-		t.string("secret").notNull();
-		t.json("meta").notNull();
-	});
-	await knex.schema.createTable("user_permission", (t) => {
-		t.increments("id");
-		t.integer("user_id").notNull();
-		t.string("visibility").notNull();
-	});
-	await hostTable("proxy_host", (t) => {
-		t.integer("npmpro_mtls_certificate_id").notNull().defaultTo(0);
-		t.integer("access_list_id").notNull().defaultTo(0);
-	});
-	await hostTable("redirection_host");
-	await hostTable("dead_host");
-	await knex.schema.createTable("stream", (t) => {
-		t.increments("id");
-		t.integer("owner_user_id").notNull().defaultTo(1);
-		t.string("incoming_port").notNull().defaultTo("");
-		t.integer("enabled").notNull().defaultTo(1);
-		t.integer("npmpro_nginx_online").notNull().defaultTo(1);
-		t.text("npmpro_nginx_err").notNull().defaultTo("");
-		t.integer("certificate_id").notNull().defaultTo(0);
-		t.json("meta").notNull().defaultTo("{}");
-	});
-	await knex.schema.createTable("npmpro_location", (t) => {
-		t.increments("id");
-		t.integer("proxy_host_id").notNull();
-		t.text("path").notNull();
-	});
-	await knex.schema.createTable("npmpro_proxy_host_access_list", (t) => {
-		t.integer("proxy_host_id").notNull();
-		t.integer("location_id").notNull().defaultTo(0);
-		t.integer("access_list_id").notNull();
-		t.primary(["proxy_host_id", "location_id", "access_list_id"]);
-	});
-	await knex.schema.createTable("certificate", (t) => {
-		t.increments("id");
-		t.integer("owner_user_id").notNull().defaultTo(1);
-		t.string("provider").notNull();
-		t.string("nice_name").notNull().defaultTo("");
-		t.json("domain_names").notNull().defaultTo("[]");
-		t.json("meta").notNull().defaultTo("{}");
-		t.integer("npmpro_dns_credential_id").nullable();
-	});
-	await knex.schema.createTable("access_list", (t) => {
-		t.increments("id");
-		t.integer("owner_user_id").notNull().defaultTo(1);
-		t.string("name").notNull();
-		t.json("meta").notNull().defaultTo("{}");
-	});
-	for (const table of ["access_list_auth", "access_list_client"]) {
-		await knex.schema.createTable(table, (t) => {
-			t.increments("id");
-			t.integer("access_list_id").notNull();
-			t.string("value").notNull().defaultTo("");
-			t.string("password").notNull().defaultTo("");
-			t.json("meta").notNull().defaultTo("{}");
-		});
-	}
-	await knex.schema.createTable("npmpro_dns_credential", (t) => {
-		t.increments("id");
-		t.integer("owner_user_id").notNull().defaultTo(1);
-		t.string("name").notNull();
-		t.text("values").notNull();
-	});
-	await knex.schema.createTable("setting", (t) => {
-		t.string("id").primary();
-		t.string("name").notNull().defaultTo("");
-		t.json("meta").notNull().defaultTo("{}");
-	});
-	await knex("user").insert({ id: 1, email: "admin@example.com", name: "Admin", roles: '["admin"]' });
-	await knex("auth").insert({ id: 1, user_id: 1, type: "password", secret: "admin-hash", meta: "{}" });
-	await knex("user_permission").insert({ id: 1, user_id: 1, visibility: "all" });
-};
-
-/**
- * A service on a fresh database and folders with spies for everything outside
- *
- * @param {Object}   [options]
- * @param {Function} [options.test]         the fake nginx -t, gets the call number
- * @param {Function} [options.pause]        the fake renewal pause
- * @param {string[]} [options.migrations]   the instance's completed migrations
- * @param {string}   [options.root]         shares the folders of another setup
- * @param {Function} [options.exclusive]    the runtime queue
- * @param {Function} [options.regenerated]  (knex, call) => Promise, runs in the fake host regeneration
- * @param {Object}   [options.failedGroups] what the fake applyAllRuntime reports
- * @param {number}   [options.maxUpload]
- * @param {Function} [options.audited]      (entry) => Promise, runs in the fake audit log write
- */
-const setup = async ({
-	test = async () => {},
-	pause = async () => {},
-	migrations = MIGRATIONS,
-	root,
-	exclusive,
-	regenerated = async () => {},
-	failedGroups = {},
-	maxUpload,
-	audited = async () => {},
-} = {}) => {
-	const base = root ?? (await mkdtemp(path.join(os.tmpdir(), "backup-orchestrator-")));
-	const dataDir = path.join(base, "data");
-	const backupsDir = path.join(base, "backups");
-	await mkdir(dataDir, { recursive: true });
-	await mkdir(backupsDir, { recursive: true, mode: 0o700 });
-	const knex = knexFactory({
-		client: "better-sqlite3",
-		connection: { filename: ":memory:" },
-		useNullAsDefault: true,
-	});
-	await createSchema(knex);
-	const clock = { offset: 0, now: () => Date.now() + clock.offset };
-	const calls = { test: 0, reload: 0, pause: 0, resume: 0, regenerate: 0, applyAll: 0, reloaded: [], audit: [] };
-	let paused = false;
-	const store = createBackupStore({ dir: backupsDir, clock, tokenTtlMs: 60_000 });
-	const service = createBackupService({
-		knex,
-		box,
-		dataDir,
-		store,
-		dbVersion: () => Promise.resolve(DB_VERSION),
-		dbMigrations: () => Promise.resolve(migrations),
-		npmproVersion: "1.0.0",
-		instanceKey: async () => Buffer.alloc(32, 7),
-		audit: (_access, entry) => {
-			calls.audit.push(entry);
-			return audited(entry);
-		},
-		nginx: {
-			test: async () => {
-				calls.test++;
-				await test(calls.test);
-			},
-			reload: () => {
-				calls.reload++;
-				return Promise.resolve();
-			},
-		},
-		renewals: {
-			pause: async () => {
-				calls.pause++;
-				paused = true;
-				await pause();
-			},
-			resume: () => {
-				calls.resume++;
-				paused = false;
-			},
-		},
-		regenerate: {
-			loadEnabledHosts: async () => [],
-			regenerateAllHostsNow: () => {
-				calls.regenerate++;
-				return regenerated(knex, calls.regenerate);
-			},
-			rebuildAccessListFiles: async () => {},
-			regenerateDefaultSite: async () => {},
-		},
-		runtime: {
-			loadRuntimeConfig: async () => {},
-			applyAllRuntime: () => {
-				calls.applyAll++;
-				return Promise.resolve(failedGroups);
-			},
-		},
-		reloadSettings: {
-			oidc: () => {
-				calls.reloaded.push("oidc");
-			},
-			monitoring: () => {
-				calls.reloaded.push("monitoring");
-				return Promise.resolve();
-			},
-		},
-		...(exclusive ? { exclusive } : {}),
-		...(maxUpload ? { maxUpload } : {}),
-		hostname: "test-host",
-		clock,
-		log: silent,
-	});
-	const cleanup = async () => {
-		await knex.destroy();
-		if (!root) await rm(base, { recursive: true, force: true });
-	};
-	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
-};
 
 const hostIds = async (knex) => (await knex("proxy_host").orderBy("id").pluck("id")).map(Number);
 
@@ -883,6 +665,122 @@ it("finishes a restore when the offline hosts cannot be read", TIMEOUT, async ()
 		assert.deepEqual(result.offlineHosts, []);
 		assert.deepEqual(await hostIds(ctx.knex), [1]);
 		assert.equal(ctx.calls.audit.at(-1).action, "restored");
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+// a fake regeneration that takes every enabled proxy host offline while custom_nginx/server_proxy.conf is broken,
+// as nginx -t of each host's config does, and brings them back online otherwise
+const BROKEN_SERVER_FILE = "this_is_not_a_directive on;;\n";
+const BROKEN_HOSTS = /one\.example\.com/u;
+const regenerateWithServerFile = (dataDir) => async (knex) => {
+	const file = path.join(dataDir, "custom_nginx", "server_proxy.conf");
+	const content = existsSync(file) ? await readFile(file, "utf8") : "";
+	const broken = content.includes("this_is_not_a_directive");
+	await knex("proxy_host")
+		.where("enabled", 1)
+		.update(
+			broken
+				? {
+						npmpro_nginx_online: 0,
+						npmpro_nginx_err:
+							'nginx: [emerg] unknown directive "this_is_not_a_directive" in /data/custom_nginx/server_proxy.conf:1',
+					}
+				: { npmpro_nginx_online: 1, npmpro_nginx_err: "" },
+		);
+};
+
+it("rolls back a restore whose custom nginx file takes hosts offline", TIMEOUT, async () => {
+	const holder = {};
+	const ctx = await setup({ regenerated: (knex) => regenerateWithServerFile(holder.dataDir)(knex) });
+	holder.dataDir = ctx.dataDir;
+	const serverFile = path.join(ctx.dataDir, "custom_nginx", "server_proxy.conf");
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+		await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(serverFile, BROKEN_SERVER_FILE);
+		const { entry } = await ctx.service.create(access, {
+			types: ["proxy_hosts", "custom_nginx"],
+			secrets: false,
+			keep: true,
+		});
+		await writeFile(serverFile, "# the instance\n");
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "nginx-failed");
+				assert.match(error.message, BROKEN_HOSTS);
+				assert.match(error.message, UNKNOWN_DIRECTIVE);
+				return true;
+			},
+		);
+		assert.equal(await readFile(serverFile, "utf8"), "# the instance\n");
+		assert.deepEqual(await hostIds(ctx.knex), [1]);
+		assert.equal(Number((await ctx.knex("proxy_host").where({ id: 1 }).first()).npmpro_nginx_online), 1);
+		assert.equal(
+			ctx.calls.audit.some((item) => item.action === "restored"),
+			false,
+		);
+		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("finishes a restore without custom nginx files that leaves a host offline", TIMEOUT, async () => {
+	const ctx = await setup({
+		regenerated: (knex) =>
+			knex("proxy_host").where({ id: 1 }).update({ npmpro_nginx_online: 0, npmpro_nginx_err: "no certificate" }),
+	});
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+		const { entry } = await ctx.service.create(access, { types: ["proxy_hosts"], secrets: false, keep: true });
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		const result = await ctx.service.restore(access, token, { types: ["proxy_hosts"] });
+		assert.deepEqual(result.offlineHosts, [
+			{ type: "proxy_host", id: 1, domain: "one.example.com", error: "no certificate" },
+		]);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("rolls back a restore whose custom nginx file breaks hosts that were not on the instance", TIMEOUT, async () => {
+	const holder = {};
+	const ctx = await setup({ regenerated: (knex) => regenerateWithServerFile(holder.dataDir)(knex) });
+	holder.dataDir = ctx.dataDir;
+	const serverFile = path.join(ctx.dataDir, "custom_nginx", "server_proxy.conf");
+	try {
+		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
+		await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
+		await writeFile(serverFile, BROKEN_SERVER_FILE);
+		const { entry } = await ctx.service.create(access, {
+			types: ["proxy_hosts", "custom_nginx"],
+			secrets: false,
+			keep: true,
+		});
+		// the instance the file is restored on has another host and a good file
+		await ctx.knex("proxy_host").del();
+		await ctx.knex("proxy_host").insert({ id: 2, domain_names: '["two.example.com"]' });
+		await writeFile(serverFile, "# the instance\n");
+		const { token } = await ctx.service.inspect(access, entry.name, {});
+		await assert.rejects(
+			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
+			(error) => {
+				assert.equal(error.code, "nginx-failed");
+				assert.match(error.message, BROKEN_HOSTS);
+				return true;
+			},
+		);
+		assert.equal(await readFile(serverFile, "utf8"), "# the instance\n");
+		assert.deepEqual(await hostIds(ctx.knex), [2]);
+		assert.equal(Number((await ctx.knex("proxy_host").where({ id: 2 }).first()).npmpro_nginx_online), 1);
+		assert.equal(
+			ctx.calls.audit.some((item) => item.action === "restored"),
+			false,
+		);
 	} finally {
 		await ctx.cleanup();
 	}

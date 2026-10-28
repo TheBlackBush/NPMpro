@@ -99,6 +99,11 @@ it("withErrorDetails offers the message of detailed backup errors as output", ()
 	assert.equal(nginx.payload.error.output, undefined);
 	const busy = apiError({ message_i18n: "backup.error.busy", message: "running" });
 	assert.equal(withErrorDetails(busy), busy);
+	const item = apiError({
+		message_i18n: "backup.error.invalid-item",
+		message: "a.example.com (#1): advanced_config",
+	});
+	assert.equal(withErrorDetails(item).payload.error.output, "a.example.com (#1): advanced_config");
 	const withOutput = apiError({ message_i18n: "backup.error.nginx-failed", message: "m", output: "o" });
 	assert.equal(withErrorDetails(withOutput), withOutput);
 	assert.equal(withErrorDetails(null), null);

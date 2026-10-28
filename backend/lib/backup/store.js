@@ -6,7 +6,11 @@ import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
 const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-auto)?\.npmpro$/u;
+// a page export, offered as the name of its pending download
+const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
+const MAX_SESSIONS = 5;
+const PAGE_MARK = "--import";
 const PENDING_TTL_MS = 30 * 60 * 1000;
 const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 // the name without its number; a taken name gets a new number in place of the old one
@@ -36,15 +40,24 @@ const createBackupStore = ({
 	clock = Date,
 	keepAuto = 5,
 	tokenTtlMs = 30 * 60 * 1000,
+	pendingTtlMs = PENDING_TTL_MS,
 	logger = defaultLogger,
 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
-	let current = null; // { token, entry, timer }
+	const sessions = new Map(); // token -> { entry, timer }, oldest first
 	const pending = new Map();
 
-	const fileName = ({ host, date, auto }) =>
-		`npmpro-backup-${cleanHost(host)}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+	// page: the automatic backup before a page import, pruned apart from the Settings ones. "--" never occurs in a
+	// cleaned host name, so the mark cannot be mistaken for one.
+	const fileName = ({ host, date, auto, page = false }) =>
+		`npmpro-backup-${cleanHost(host)}${page ? PAGE_MARK : ""}-${stamp(date)}${auto ? "-auto" : ""}.npmpro`;
+
+	const exportName = ({ kind, host, date }) =>
+		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
+
+	// a name a pending download may be offered under: a backup or a page export
+	const isDownloadName = (name) => typeof name === "string" && (NAME.test(name) || EXPORT_NAME.test(name));
 
 	const pathOf = (name) => {
 		if (typeof name !== "string" || !NAME.test(name)) throw notABackup();
@@ -116,9 +129,13 @@ const createBackupStore = ({
 		}
 	};
 
+	// keeps the newest keepAuto automatic backups of Settings restores and, apart from them, of page imports
 	const pruneAuto = async () => {
 		const items = (await list()).filter((item) => item.auto);
-		for (const item of items.slice(keepAuto)) await remove(item.name);
+		for (const page of [false, true]) {
+			const group = items.filter((item) => item.name.includes(`${PAGE_MARK}-`) === page);
+			for (const item of group.slice(keepAuto)) await remove(item.name);
+		}
 	};
 
 	const tempPath = (prefix) => path.join(dir, `.${prefix}-${randomName()}`);
@@ -145,6 +162,7 @@ const createBackupStore = ({
 					await rm(path.join(folder, entry), { recursive: true, force: true });
 			}
 		}
+		for (const entry of pending.values()) clearTimeout(entry.timer);
 		pending.clear();
 	};
 
@@ -159,65 +177,114 @@ const createBackupStore = ({
 	};
 
 	const dropToken = (token) => {
-		if (current?.token !== token) return;
-		const { timer, entry } = current;
-		clearTimeout(timer);
-		current = null;
+		const session = sessions.get(token);
+		if (!session) return;
+		clearTimeout(session.timer);
+		sessions.delete(token);
 		// runs from a timer too: a stage that cannot be removed is logged, not thrown (it is cleared at the next start)
 		try {
-			rmSync(entry.stageDir, { recursive: true, force: true });
+			rmSync(session.entry.stageDir, { recursive: true, force: true });
 		} catch (err) {
-			logger.warn(`Could not remove the restore stage ${entry.stageDir}: ${err.message}`);
+			logger.warn(`Could not remove the restore stage ${session.entry.stageDir}: ${err.message}`);
 		}
 	};
 
-	const createToken = ({ stageDir, file, manifest }) => {
-		if (current) dropToken(current.token);
+	const createToken = ({ stageDir, file, manifest, owner, kind = null }) => {
+		// one session per owner, and the oldest goes when there are too many
+		for (const [token, session] of sessions) {
+			if (session.entry.owner === owner) dropToken(token);
+		}
+		// a Settings session (an admin's) never goes for the cap, the oldest page session does
+		while (sessions.size >= MAX_SESSIONS) {
+			const oldest = [...sessions].find(([, session]) => session.entry.kind !== null);
+			if (!oldest) break;
+			dropToken(oldest[0]);
+		}
 		const token = randomBytes(24).toString("base64url");
 		// an abandoned restore session does not keep its stage until the next one
 		const timer = setTimeout(() => dropToken(token), tokenTtlMs);
 		timer.unref();
-		current = { token, entry: { stageDir, file, manifest, expires: clock.now() + tokenTtlMs }, timer };
+		sessions.set(token, {
+			entry: { stageDir, file, manifest, owner, kind, expires: clock.now() + tokenTtlMs },
+			timer,
+		});
 		return token;
 	};
 
-	const takeToken = (token, { keep = true } = {}) => {
-		if (!current || current.token !== token) throw expired();
-		if (clock.now() >= current.entry.expires) {
+	const takeToken = (token, { keep = true, owner } = {}) => {
+		const session = sessions.get(token);
+		if (!session || session.entry.owner !== owner) throw expired();
+		if (clock.now() >= session.entry.expires) {
 			dropToken(token);
 			throw expired();
 		}
-		const { entry } = current;
 		if (!keep) {
-			clearTimeout(current.timer);
-			current = null;
+			clearTimeout(session.timer);
+			sessions.delete(token);
+		}
+		return session.entry;
+	};
+
+	// forgets a pending entry and removes its file; runs from a timer too, so a failed removal is logged, not thrown
+	const dropPending = (id) => {
+		const entry = pending.get(id);
+		if (!entry) return;
+		clearTimeout(entry.timer);
+		pending.delete(id);
+		try {
+			rmSync(entry.target, { force: true });
+		} catch (err) {
+			logger.warn(`Could not remove the pending file ${entry.target}: ${err.message}`);
+		}
+	};
+
+	// kind: the page a pending upload is imported on (null for a download). An owner has one pending import: a new one
+	// drops the older one. An entry not taken in time is removed with its file.
+	const addPending = async (file, { owner, kind = null }) => {
+		if (kind !== null) {
+			for (const [other, entry] of pending) {
+				if (entry.owner === owner && entry.kind !== null) dropPending(other);
+			}
+		}
+		const id = randomBytes(18).toString("base64url");
+		const target = path.join(dir, `.pending-${id}.npmpro`);
+		await rename(file, target);
+		const timer = setTimeout(() => dropPending(id), pendingTtlMs);
+		timer.unref();
+		pending.set(id, { target, owner, kind, expires: clock.now() + pendingTtlMs, timer });
+		return id;
+	};
+
+	// the owner's pending entry; an expired one is removed
+	const pendingOf = (id, owner) => {
+		if (typeof id !== "string" || !PENDING_ID.test(id)) throw expired();
+		const entry = pending.get(id);
+		if (!entry || entry.owner !== owner) throw expired();
+		if (clock.now() >= entry.expires) {
+			dropPending(id);
+			throw expired();
 		}
 		return entry;
 	};
 
-	const addPending = async (file) => {
-		const id = randomBytes(18).toString("base64url");
-		const target = path.join(dir, `.pending-${id}.npmpro`);
-		await rename(file, target);
-		pending.set(id, { target, expires: clock.now() + PENDING_TTL_MS });
-		return id;
+	const takePending = (id, { owner }) => {
+		const entry = pendingOf(id, owner);
+		clearTimeout(entry.timer);
+		pending.delete(id);
+		return entry.target;
 	};
 
-	const takePending = (id) => {
-		if (typeof id !== "string" || !PENDING_ID.test(id)) throw expired();
-		const entry = pending.get(id);
-		if (!entry) throw expired();
-		pending.delete(id);
-		if (clock.now() >= entry.expires) {
-			rmSync(entry.target, { force: true });
-			throw expired();
-		}
-		return entry.target;
+	// the pending file and its kind, left in place
+	const peekPending = (id, { owner }) => {
+		const { target, kind } = pendingOf(id, owner);
+		return { file: target, kind };
 	};
 
 	return {
 		NAME,
 		fileName,
+		exportName,
+		isDownloadName,
 		pathOf,
 		list,
 		remove,
@@ -232,6 +299,7 @@ const createBackupStore = ({
 		dropToken,
 		addPending,
 		takePending,
+		peekPending,
 	};
 };
 

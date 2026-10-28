@@ -1,0 +1,182 @@
+{
+	"operationId": "planBackupMerge",
+	"summary": "Plan a merge restore (dry run)",
+	"description": "A Settings session (inspect) is planned by its admin, a page import session (import open) by its importer, who needs manage permission on the page's items. Shows what a merge of the chosen items would do and changes nothing. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "token",
+			"description": "Restore token returned by the inspect call",
+			"schema": {
+				"type": "string",
+				"pattern": "^[A-Za-z0-9_-]{1,128}$"
+			},
+			"required": true
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"mode",
+						"types"
+					],
+					"properties": {
+						"mode": {
+							"type": "string",
+							"enum": [
+								"merge"
+							]
+						},
+						"types": {
+							"type": "array",
+							"items": {
+								"type": "string",
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							},
+							"minItems": 1,
+							"uniqueItems": true,
+							"description": "Backup types"
+						},
+						"items": {
+							"type": "object",
+							"description": "Chosen item ids per type",
+							"additionalProperties": {
+								"type": "array",
+								"items": {
+									"type": "integer",
+									"minimum": 1
+								},
+								"uniqueItems": true
+							},
+							"propertyNames": {
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							}
+						},
+						"choices": {
+							"type": "object",
+							"description": "Choice per item key (for example proxy_hosts:3, setting:oidc, file:custom_nginx/http.conf)",
+							"additionalProperties": {
+								"type": "string",
+								"enum": [
+									"skip",
+									"replace",
+									"existing",
+									"add",
+									"keep",
+									"take",
+									"unticked"
+								]
+							},
+							"propertyNames": {
+								"type": "string",
+								"pattern": "^[a-z_]+:.+$",
+								"maxLength": 512
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../../../components/backup-plan-object.json"
+					}
+				}
+			}
+		},
+		"409": {
+			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"error"
+						],
+						"properties": {
+							"error": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"code",
+									"message",
+									"message_i18n",
+									"plan"
+								],
+								"properties": {
+									"code": {
+										"type": "integer",
+										"enum": [
+											409
+										]
+									},
+									"message": {
+										"type": "string"
+									},
+									"message_i18n": {
+										"type": "string",
+										"enum": [
+											"backup.error.plan-changed"
+										]
+									},
+									"plan": {
+										"$ref": "../../../../../components/backup-plan-object.json"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

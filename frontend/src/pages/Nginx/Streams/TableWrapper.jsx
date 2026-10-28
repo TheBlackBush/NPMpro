@@ -2,7 +2,7 @@ import { IconHelp } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ListToolbar, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useStreams } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
@@ -97,6 +97,11 @@ export default function TableWrapper() {
 						>
 							<IconHelp className="icon" aria-hidden="true" />
 						</Button>
+						<ImportExportButtons
+							kind="streams"
+							permissionSection={STREAMS}
+							hasItems={Boolean(data?.length)}
+						/>
 						<HasPermission section={STREAMS} permission={MANAGE} hideError>
 							{data?.length ? (
 								<Button size="sm" color="blue" onClick={() => showStreamModal("new")}>

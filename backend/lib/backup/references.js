@@ -163,4 +163,4 @@ const applyReferences = async (trx, changes) => {
 	for (const { table, id, values } of updates.values()) await trx(table).where({ id }).update(values);
 };
 
-export { applyReferences, planReferences };
+export { applyReferences, freeName, planReferences };

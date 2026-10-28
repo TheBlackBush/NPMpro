@@ -593,6 +593,31 @@
 				"$ref": "./paths/backups/pending/id/get.json"
 			}
 		},
+		"/backups/export/preview": {
+			"post": {
+				"$ref": "./paths/backups/export/preview/post.json"
+			}
+		},
+		"/backups/export": {
+			"post": {
+				"$ref": "./paths/backups/export/post.json"
+			}
+		},
+		"/backups/import": {
+			"post": {
+				"$ref": "./paths/backups/import/post.json"
+			}
+		},
+		"/backups/import/{id}/open": {
+			"post": {
+				"$ref": "./paths/backups/import/id/open/post.json"
+			}
+		},
+		"/backups/restore/{token}/plan": {
+			"post": {
+				"$ref": "./paths/backups/restore/token/plan/post.json"
+			}
+		},
 		"/backups/restore/{token}/check": {
 			"post": {
 				"$ref": "./paths/backups/restore/token/check/post.json"

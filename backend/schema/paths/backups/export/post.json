@@ -1,0 +1,120 @@
+{
+	"operationId": "exportBackupItems",
+	"summary": "Export items of a page",
+	"description": "Needs view permission on the page's items; secrets need manage permission on every included kind, and ACME account keys only go into an administrator's export with secrets. Creates a partial file with the chosen items and linked items as a pending download (GET /backups/pending/{id}), once. Secrets need a passphrase. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"kind",
+						"ids",
+						"linked",
+						"secrets"
+					],
+					"properties": {
+						"kind": {
+							"type": "string",
+							"enum": [
+								"proxy_hosts",
+								"redirection_hosts",
+								"dead_hosts",
+								"streams",
+								"certificates",
+								"access_lists",
+								"dns_credentials"
+							],
+							"description": "Page kind"
+						},
+						"ids": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"minimum": 1
+							},
+							"uniqueItems": true,
+							"minItems": 1
+						},
+						"linked": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"certificates": {
+									"type": "array",
+									"items": {
+										"type": "integer",
+										"minimum": 1
+									},
+									"uniqueItems": true
+								},
+								"access_lists": {
+									"type": "array",
+									"items": {
+										"type": "integer",
+										"minimum": 1
+									},
+									"uniqueItems": true
+								},
+								"dns_credentials": {
+									"type": "array",
+									"items": {
+										"type": "integer",
+										"minimum": 1
+									},
+									"uniqueItems": true
+								}
+							},
+							"description": "Linked items to include"
+						},
+						"secrets": {
+							"type": "boolean",
+							"description": "Include secrets, encrypted with the passphrase"
+						},
+						"passphrase": {
+							"type": "string",
+							"minLength": 12,
+							"maxLength": 1024,
+							"description": "Passphrase, at least 12 characters, never stored"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"pending",
+							"name"
+						],
+						"properties": {
+							"pending": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

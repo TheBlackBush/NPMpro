@@ -1,7 +1,7 @@
 {
 	"operationId": "restoreBackup",
-	"summary": "Restore a backup (replace)",
-	"description": "Admin only. Replaces the chosen types with the backup's after an automatic backup. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed.",
+	"summary": "Restore a backup (replace or merge)",
+	"description": "A Settings session (inspect) is restored by its admin, a page import session (import open) is merged by its importer, who needs manage permission on the page's items. Replace (default, Settings only) replaces the chosen types with the backup's after an automatic backup. Merge adds the chosen items to the instance and needs the plan_hash of the plan the user confirmed; when the instance changed since, the call fails with 409 plan-changed and the error carries the new plan. The request can take long: a running certificate renewal is waited for. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable, invalid-item.",
 	"tags": [
 		"backups"
 	],
@@ -30,10 +30,17 @@
 					"type": "object",
 					"additionalProperties": false,
 					"required": [
-						"types",
-						"confirm"
+						"types"
 					],
 					"properties": {
+						"mode": {
+							"type": "string",
+							"enum": [
+								"replace",
+								"merge"
+							],
+							"default": "replace"
+						},
 						"types": {
 							"type": "array",
 							"items": {
@@ -59,13 +66,95 @@
 							"uniqueItems": true,
 							"description": "Backup types"
 						},
+						"items": {
+							"type": "object",
+							"description": "Chosen item ids per type",
+							"additionalProperties": {
+								"type": "array",
+								"items": {
+									"type": "integer",
+									"minimum": 1
+								},
+								"uniqueItems": true
+							},
+							"propertyNames": {
+								"enum": [
+									"proxy_hosts",
+									"redirection_hosts",
+									"dead_hosts",
+									"streams",
+									"certificates",
+									"access_lists",
+									"dns_credentials",
+									"users",
+									"settings_runtime",
+									"settings_default_site",
+									"settings_oidc",
+									"settings_monitoring",
+									"custom_nginx",
+									"crowdsec_files"
+								]
+							}
+						},
+						"choices": {
+							"type": "object",
+							"description": "Choice per item key (for example proxy_hosts:3, setting:oidc, file:custom_nginx/http.conf)",
+							"additionalProperties": {
+								"type": "string",
+								"enum": [
+									"skip",
+									"replace",
+									"existing",
+									"add",
+									"keep",
+									"take",
+									"unticked"
+								]
+							},
+							"propertyNames": {
+								"type": "string",
+								"pattern": "^[a-z_]+:.+$",
+								"maxLength": 512
+							}
+						},
+						"plan_hash": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 128,
+							"description": "Hash of the confirmed plan, required for mode merge"
+						},
 						"confirm": {
 							"type": "boolean",
 							"enum": [
 								true
-							]
+							],
+							"description": "Required for mode replace"
 						}
-					}
+					},
+					"allOf": [
+						{
+							"if": {
+								"properties": {
+									"mode": {
+										"const": "merge"
+									}
+								},
+								"required": [
+									"mode"
+								]
+							},
+							"then": {
+								"required": [
+									"plan_hash"
+								]
+							},
+							"else": {
+								"required": [
+									"confirm"
+								]
+							}
+						}
+					]
 				}
 			}
 		}
@@ -77,11 +166,9 @@
 				"application/json": {
 					"schema": {
 						"type": "object",
-						"additionalProperties": false,
+						"additionalProperties": true,
 						"required": [
 							"counts",
-							"references",
-							"skippedUsers",
 							"restartNeeded",
 							"runtimeFailed",
 							"offlineHosts"
@@ -141,6 +228,68 @@
 										"error": {
 											"type": "string"
 										}
+									}
+								}
+							},
+							"cleared": {
+								"type": "array",
+								"description": "Merge only: links that were cleared",
+								"items": {
+									"type": "object",
+									"additionalProperties": true
+								}
+							},
+							"needsSecrets": {
+								"type": "array",
+								"description": "Merge only: keys of items that need secrets the file did not have",
+								"items": {
+									"type": "string"
+								}
+							}
+						},
+						"description": "Replace returns references and skippedUsers; merge returns cleared and needsSecrets"
+					}
+				}
+			}
+		},
+		"409": {
+			"description": "409 plan-changed: the instance changed since the plan was made; the error carries the new plan",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"error"
+						],
+						"properties": {
+							"error": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": [
+									"code",
+									"message",
+									"message_i18n",
+									"plan"
+								],
+								"properties": {
+									"code": {
+										"type": "integer",
+										"enum": [
+											409
+										]
+									},
+									"message": {
+										"type": "string"
+									},
+									"message_i18n": {
+										"type": "string",
+										"enum": [
+											"backup.error.plan-changed"
+										]
+									},
+									"plan": {
+										"$ref": "../../../../components/backup-plan-object.json"
 									}
 								}
 							}

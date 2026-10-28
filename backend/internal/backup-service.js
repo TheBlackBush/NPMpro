@@ -12,6 +12,7 @@ import pjson from "../package.json" with { type: "json" };
 import internalAuditLog from "./audit-log.js";
 import { createBackupService } from "./backup.js";
 import internalCertificate from "./certificate.js";
+import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
 import {
 	loadEnabledHosts,
@@ -50,6 +51,10 @@ const internalBackup = createBackupService({
 	regenerate: { loadEnabledHosts, rebuildAccessListFiles, regenerateAllHostsNow, regenerateDefaultSite },
 	runtime: { loadRuntimeConfig, applyAllRuntime },
 	reloadSettings: { oidc: clearDiscoveryCache, monitoring: () => geoip.reload() },
+	dnsCredentials: {
+		write: (certificate) => internalDnsCredential.writeCertificateFile(certificate),
+		remove: (certificateId) => internalDnsCredential.removeCertificateFile(certificateId),
+	},
 	exclusive: runtimeExclusive,
 	hostname: os.hostname(),
 	log: logger,

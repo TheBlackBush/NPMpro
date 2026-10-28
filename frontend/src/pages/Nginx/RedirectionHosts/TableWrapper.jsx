@@ -2,7 +2,7 @@ import { IconHelp } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteRedirectionHost, toggleRedirectionHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ListToolbar, LoadingPage } from "src/components";
+import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useRedirectionHosts } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showRedirectionHostModal } from "src/modals";
@@ -98,6 +98,11 @@ export default function TableWrapper() {
 						>
 							<IconHelp className="icon" aria-hidden="true" />
 						</Button>
+						<ImportExportButtons
+							kind="redirection_hosts"
+							permissionSection={REDIRECTION_HOSTS}
+							hasItems={Boolean(data?.length)}
+						/>
 						<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 							{data?.length ? (
 								<Button

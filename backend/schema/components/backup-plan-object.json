@@ -1,0 +1,183 @@
+{
+	"type": "object",
+	"description": "The dry run of a merge",
+	"additionalProperties": false,
+	"required": [
+		"items",
+		"counts",
+		"cleared_links",
+		"needs_secrets",
+		"hash"
+	],
+	"properties": {
+		"items": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"key",
+					"type",
+					"id",
+					"label",
+					"action",
+					"reason",
+					"target",
+					"choices",
+					"default",
+					"needed_by",
+					"linked"
+				],
+				"properties": {
+					"key": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"id": {
+						"type": [
+							"integer",
+							"string",
+							"null"
+						]
+					},
+					"label": {
+						"type": "string"
+					},
+					"action": {
+						"type": "string",
+						"description": "What a merge would do with the item"
+					},
+					"reason": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"target": {
+						"type": [
+							"object",
+							"null"
+						],
+						"additionalProperties": true
+					},
+					"choices": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": [
+								"skip",
+								"replace",
+								"existing",
+								"add",
+								"keep",
+								"take",
+								"unticked"
+							]
+						}
+					},
+					"default": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"needed_by": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"linked": {
+						"type": "boolean"
+					},
+					"unticked": {
+						"type": "boolean"
+					}
+				}
+			}
+		},
+		"counts": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"add",
+				"replace",
+				"skip",
+				"existing",
+				"take",
+				"keep"
+			],
+			"properties": {
+				"add": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"replace": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"skip": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"existing": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"take": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"keep": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"description": "Number of items per action"
+		},
+		"cleared_links": {
+			"type": "array",
+			"description": "Links that are cleared because their target is not kept",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"key",
+					"column",
+					"from",
+					"label"
+				],
+				"properties": {
+					"key": {
+						"type": "string"
+					},
+					"column": {
+						"type": "string"
+					},
+					"from": {
+						"type": [
+							"integer",
+							"string"
+						]
+					},
+					"label": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"needs_secrets": {
+			"type": "array",
+			"description": "Keys of the items that need secrets the file does not have",
+			"items": {
+				"type": "string"
+			}
+		},
+		"hash": {
+			"type": "string",
+			"description": "Identifies the plan; send it as plan_hash to apply it"
+		}
+	}
+}

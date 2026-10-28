@@ -1,0 +1,78 @@
+{
+	"operationId": "importBackupUpload",
+	"summary": "Upload a file for a page import",
+	"description": "Needs manage permission on the page's items. The raw file is the request body (streamed, not buffered). It is kept until it is opened. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "query",
+			"name": "kind",
+			"description": "The page kind the file is imported on",
+			"required": true,
+			"schema": {
+				"type": "string",
+				"enum": [
+					"proxy_hosts",
+					"redirection_hosts",
+					"dead_hosts",
+					"streams",
+					"certificates",
+					"access_lists",
+					"dns_credentials"
+				],
+				"description": "Page kind"
+			}
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/octet-stream": {
+				"schema": {
+					"type": "string",
+					"format": "binary"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"id",
+							"summary"
+						],
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"summary": {
+								"type": [
+									"object",
+									"null"
+								],
+								"additionalProperties": true
+							},
+							"encrypted": {
+								"type": "boolean",
+								"description": "The file needs its passphrase to be opened"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

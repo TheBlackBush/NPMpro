@@ -1,12 +1,15 @@
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
-import { cp, lstat, mkdir, readdir, stat, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { BackupError, FORMAT_VERSION } from "./format.js";
+import { namedAccounts } from "./renewal-conf.js";
 import { exportRows } from "./rows.js";
+import { certificateFileFilter, selectRows } from "./select.js";
 import { TYPES } from "./types.js";
 
 const FILES_PREFIX = "files/";
+const NUMERIC = /^\d+$/u;
 
 const sha256 = (file) =>
 	new Promise((resolve, reject) => {
@@ -30,26 +33,28 @@ const listFiles = async (dir, base = dir) => {
 };
 
 // the filter for cp: regular files and folders the type allows; symlinks are never copied
-const copyFilter = (dataDir, type, secrets) => async (src) => {
-	const rel = path.relative(dataDir, src).split(path.sep).join("/");
-	if (!type.files.allow(rel) || (!secrets && type.files.secret(rel))) return false;
-	const info = await lstat(src);
-	return info.isFile() || info.isDirectory();
-};
+const copyFilter =
+	(dataDir, type, secrets, only = () => true) =>
+	async (src) => {
+		const rel = path.relative(dataDir, src).split(path.sep).join("/");
+		if (!type.files.allow(rel) || (!secrets && type.files.secret(rel)) || !only(rel)) return false;
+		const info = await lstat(src);
+		return info.isFile() || info.isDirectory();
+	};
 
-const copyFiles = async ({ dataDir, stageDir, type, secrets }) => {
+const copyFiles = async ({ dataDir, stageDir, type, secrets, only }) => {
 	for (const root of type.files.roots) {
 		const from = path.join(dataDir, root);
 		if (!existsSync(from)) continue;
 		await cp(from, path.join(stageDir, "files", root), {
 			recursive: true,
 			verbatimSymlinks: true,
-			filter: copyFilter(dataDir, type, secrets),
+			filter: copyFilter(dataDir, type, secrets, only),
 		});
 	}
 };
 
-const writeData = async ({ knex, box, stageDir, types, secrets }) => {
+const writeData = async ({ knex, box, stageDir, types, secrets, items }) => {
 	const counts = {};
 	await knex.transaction(async (trx) => {
 		for (const typeId of types) {
@@ -57,6 +62,7 @@ const writeData = async ({ knex, box, stageDir, types, secrets }) => {
 			if (type.tables.length === 0) continue;
 			let rowsByTable = {};
 			for (const { table, where } of type.tables) rowsByTable[table] = await exportRows(trx, table, where);
+			rowsByTable = selectRows(typeId, rowsByTable, items?.[typeId]);
 			rowsByTable = secrets ? type.secrets.export(rowsByTable, box) : type.secrets.strip(rowsByTable);
 			counts[typeId] = rowsByTable[type.tables[0].table].length;
 			await writeFile(path.join(stageDir, "data", `${typeId}.json`), JSON.stringify(rowsByTable), {
@@ -66,6 +72,27 @@ const writeData = async ({ knex, box, stageDir, types, secrets }) => {
 	});
 	return counts;
 };
+
+// the account ids a partial backup holds: undefined for all of them
+const chosenAccounts = async (dataDir, ids, accounts) => {
+	if (accounts === "none") return new Set();
+	if (accounts !== "named") return;
+	const texts = [];
+	for (const id of ids) {
+		const file = path.join(dataDir, "tls/certbot/renewal", `npm-${id}.conf`);
+		if ((await lstat(file).catch(() => null))?.isFile()) texts.push(await readFile(file, "utf8"));
+	}
+	return namedAccounts(texts);
+};
+
+// ids as numbers where they are numeric
+const numericItems = (items) =>
+	Object.fromEntries(
+		Object.entries(items).map(([typeId, ids]) => [
+			typeId,
+			ids.map((id) => (NUMERIC.test(String(id)) ? Number(id) : id)),
+		]),
+	);
 
 /**
  * Writes the chosen types into stageDir: manifest.json, data/<type>.json and files/...
@@ -77,17 +104,25 @@ const writeData = async ({ knex, box, stageDir, types, secrets }) => {
  * @param   {string}   options.stageDir
  * @param   {string[]} options.types     type ids
  * @param   {boolean}  options.secrets   whether secrets go into the backup
+ * @param   {Object}   [options.items]   { [typeId]: ids[] }, only these rows (and their child rows and certificate
+ *                                       files) go in; the backup is then partial
+ * @param   {string}   [options.accounts]  partial backups: the ACME accounts that go in, "named" (those the renewal
+ *                                       confs of the chosen certificates name) or "none"; any other value: all
  * @param   {Object}   options.meta      { npmproVersion, dbVersion, dbMigrations, createdBy: { name, email },
  *                                       createdAt }; dbMigrations: the names of the completed migrations
  * @returns {Promise<{ manifest: Object, summary: Object }>}
  */
-const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, meta }) => {
+const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, items, accounts, meta }) => {
 	await mkdir(path.join(stageDir, "data"), { recursive: true, mode: 0o700 });
 	await mkdir(path.join(stageDir, "files"), { recursive: true, mode: 0o700 });
-	const counts = await writeData({ knex, box, stageDir, types, secrets });
+	const counts = await writeData({ knex, box, stageDir, types, secrets, items });
 	for (const typeId of types) {
 		const type = TYPES[typeId];
-		await copyFiles({ dataDir, stageDir, type, secrets });
+		const only =
+			items?.certificates !== undefined && typeId === "certificates"
+				? certificateFileFilter(items.certificates, await chosenAccounts(dataDir, items.certificates, accounts))
+				: undefined;
+		await copyFiles({ dataDir, stageDir, type, secrets, only });
 		if (type.tables.length === 0) {
 			const copied = await listFiles(path.join(stageDir, "files"));
 			counts[typeId] = copied.filter((rel) => type.files.allow(rel)).length;
@@ -109,10 +144,12 @@ const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, meta 
 		db_version: meta.dbVersion,
 		db_migrations: [...(meta.dbMigrations ?? [])].sort((a, b) => (a < b ? -1 : Number(a > b))),
 		files,
+		...(items === undefined ? {} : { partial: true, items: numericItems(items) }),
 	};
 	await writeFile(path.join(stageDir, "manifest.json"), JSON.stringify(manifest, null, "\t"), { mode: 0o600 });
 	const { format, created_at, npmpro_version } = manifest;
-	return { manifest, summary: { format, types, counts, created_at, npmpro_version, secrets } };
+	const summary = { format, types, counts, created_at, npmpro_version, secrets };
+	return { manifest, summary: items === undefined ? summary : { ...summary, partial: true } };
 };
 
 // the files below a stage folder; the folder itself must be a real directory (or absent)

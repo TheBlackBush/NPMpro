@@ -1,0 +1,88 @@
+{
+	"operationId": "previewBackupExport",
+	"summary": "Preview a page export",
+	"description": "Needs view permission on the page's items. Lists the chosen items and the linked items they need. Errors carry a backup.error.<code> message id: invalid-types, weak-passphrase, wrong-passphrase, not-a-backup (404), invalid-archive, newer-format, too-large (413), busy (409), token-expired (410), name-taken, restore-failed, plan-changed (409), partial-replace, wrong-kind, not-importable.",
+	"tags": [
+		"backups"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"kind"
+					],
+					"properties": {
+						"kind": {
+							"type": "string",
+							"enum": [
+								"proxy_hosts",
+								"redirection_hosts",
+								"dead_hosts",
+								"streams",
+								"certificates",
+								"access_lists",
+								"dns_credentials"
+							],
+							"description": "Page kind"
+						},
+						"ids": {
+							"type": "array",
+							"items": {
+								"type": "integer",
+								"minimum": 1
+							},
+							"uniqueItems": true
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"items",
+							"linked",
+							"secrets_allowed"
+						],
+						"properties": {
+							"items": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": true
+								}
+							},
+							"linked": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": true
+								}
+							},
+							"secrets_allowed": {
+								"type": "boolean",
+								"description": "Whether the user may export the secrets of these items"
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
