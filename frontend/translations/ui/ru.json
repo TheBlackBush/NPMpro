@@ -185,7 +185,6 @@
 	"mfa.regenerate-backup": "Перевыпустить резервные коды",
 	"mfa.regenerate-instructions": "Введите код проверки, чтобы создать новые резервные коды. Прежние перестанут работать.",
 	"mfa.title": "MFA",
-	"monitoring.crowdsec.decisions": "Решения CrowdSec",
 	"nginx-config.label": "Своя Nginx-конфигурация",
 	"nginx-config.placeholder": "# Введите здесь свою Nginx-конфигурацию, будьте осторожны!",
 	"no-permission-error": "У вас нет доступа для просмотра.",

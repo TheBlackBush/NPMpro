@@ -168,7 +168,6 @@
 	"list.sort-desc": "Urutan menurun",
 	"loading": "Memuat…",
 	"login.title": "Masuk ke akun Anda",
-	"monitoring.crowdsec.decisions": "Keputusan CrowdSec",
 	"nginx-config.label": "Konfigurasi Nginx Kustom",
 	"nginx-config.placeholder": "# Masukkan konfigurasi Nginx kustom Anda di sini dengan risiko Anda sendiri!",
 	"no-permission-error": "Anda tidak memiliki akses untuk melihat ini.",

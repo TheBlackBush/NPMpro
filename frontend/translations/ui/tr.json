@@ -188,7 +188,6 @@
 	"mfa.regenerate-backup": "Yedek Kodları Yeniden Oluştur",
 	"mfa.regenerate-instructions": "Yeni yedek kodlar oluşturmak için bir doğrulama kodu girin. Eski kodlarınız geçersiz olacaktır.",
 	"mfa.title": "MFA",
-	"monitoring.crowdsec.decisions": "CrowdSec kararları",
 	"nginx-config.label": "Özel Nginx Yapılandırması",
 	"nginx-config.placeholder": "# Kendi riskinizle özel Nginx yapılandırmanızı buraya girin!",
 	"no-permission-error": "Bunu görüntüleme erişiminiz yok.",

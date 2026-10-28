@@ -207,7 +207,6 @@
 	"mfa.regenerate-backup": "Régénérer les codes de secours",
 	"mfa.regenerate-instructions": "Entrez un code de vérification pour générer de nouveaux codes de secours. Vos anciens codes seront invalidés.",
 	"mfa.title": "MFA",
-	"monitoring.crowdsec.decisions": "Décisions CrowdSec",
 	"nginx-config.label": "Configuration Nginx personnalisée",
 	"nginx-config.placeholder": "# Mettez ici votre configuration Nginx personnalisée à vos risques et périls !",
 	"no-permission-error": "Vous n'avez pas la permission de voir ce contenu.",

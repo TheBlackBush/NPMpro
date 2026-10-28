@@ -188,7 +188,6 @@
 	"mfa.regenerate-backup": "تولید مجدد کدهای پشتیبان",
 	"mfa.regenerate-instructions": "برای تولید کدهای پشتیبان جدید، یک کد تأیید وارد کنید. کدهای قبلی شما باطل خواهند شد.",
 	"mfa.title": "MFA",
-	"monitoring.crowdsec.decisions": "CrowdSec decisions",
 	"nginx-config.label": "پیکربندی سفارشی Nginx",
 	"nginx-config.placeholder": "# پیکربندی سفارشی Nginx را با مسئولیت خودتان اینجا وارد کنید!",
 	"no-permission-error": "شما دسترسی لازم برای مشاهده این مورد را ندارید.",

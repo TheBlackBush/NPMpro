@@ -183,7 +183,6 @@
 	"mfa.regenerate-backup": "Tartalék kódok újragenerálása",
 	"mfa.regenerate-instructions": "Adjon meg egy ellenőrző kódot az új tartalék kódok generálásához. A régi kódok érvénytelenné válnak.",
 	"mfa.title": "MFA",
-	"monitoring.crowdsec.decisions": "CrowdSec döntések",
 	"nginx-config.label": "Egyéni Nginx konfiguráció",
 	"nginx-config.placeholder": "# Adja meg az egyéni Nginx konfigurációját itt, saját felelősségére!",
 	"no-permission-error": "Nincs jogosultsága ennek megtekintéséhez.",

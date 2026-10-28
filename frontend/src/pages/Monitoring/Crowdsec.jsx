@@ -178,7 +178,7 @@ function BansTable({ data }) {
 					<TableLayout
 						tableInstance={tableInstance}
 						layout="scroll"
-						label={intl.formatMessage({ id: "monitoring.crowdsec.decisions" })}
+						label={intl.formatMessage({ id: "monitoring.crowdsec.newest" })}
 					/>
 				</div>
 				{visible.length < displayed.length ? (

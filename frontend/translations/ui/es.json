@@ -172,7 +172,6 @@
 	"list.sort-desc": "Orden descendente",
 	"loading": "Cargando…",
 	"login.title": "Inicia sesión en tu cuenta",
-	"monitoring.crowdsec.decisions": "Decisiones de CrowdSec",
 	"nginx-config.label": "Configuración Personalizada de Nginx",
 	"nginx-config.placeholder": "# ¡Introduce aquí tu configuración personalizada de Nginx bajo tu propio riesgo!",
 	"no-permission-error": "No tienes acceso para ver esto.",

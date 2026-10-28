@@ -172,7 +172,6 @@
 	"list.sort-desc": "내림차순",
 	"loading": "불러오는 중…",
 	"login.title": "로그인",
-	"monitoring.crowdsec.decisions": "CrowdSec 결정",
 	"nginx-config.label": "사용자 지정 Nginx 설정",
 	"nginx-config.placeholder": "# 위험을 감수하고 여기에 사용자 지정 Nginx 설정을 입력하세요!",
 	"no-permission-error": "이 내용을 볼 권한이 없습니다.",
