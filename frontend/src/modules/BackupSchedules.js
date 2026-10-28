@@ -168,6 +168,16 @@ export function scheduleStatus(schedule) {
 }
 
 /**
+ * The size to show next to the last run: the row keeps the previous file's size after a failed run, which is not the
+ * failed run's
+ *
+ * @returns {number | null}
+ */
+export function lastRunSize(schedule) {
+	return schedule.lastStatus === "success" && schedule.lastSize ? schedule.lastSize : null;
+}
+
+/**
  * @returns {Map<number, string>} schedule id to name
  */
 export function scheduleNames(schedules) {

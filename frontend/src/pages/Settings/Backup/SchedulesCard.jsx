@@ -24,7 +24,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { useBackupSchedules, useBackupTypes, useRunBackupSchedule, useSaveBackupSchedule } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showBackupScheduleModal, showDeleteConfirmModal } from "src/modals";
-import { formatInZone, scheduleStatus, timingText } from "src/modules/BackupSchedules";
+import { formatInZone, lastRunSize, scheduleStatus, timingText } from "src/modules/BackupSchedules";
 import { contentLabels } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
@@ -52,7 +52,7 @@ const formatTime = (value, timeZone) => formatInZone(value, intl.locale, timeZon
 
 const lastRunText = (schedule, timeZone) =>
 	schedule.lastRunAt
-		? [schedule.lastSize ? formatBytes(schedule.lastSize) : null, formatTime(schedule.lastRunAt, timeZone)]
+		? [lastRunSize(schedule) ? formatBytes(lastRunSize(schedule)) : null, formatTime(schedule.lastRunAt, timeZone)]
 				.filter(Boolean)
 				.join(", ")
 		: label("settings.backup.schedule.never");
@@ -122,7 +122,9 @@ function LastRun({ schedule, timeZone }) {
 			<div>
 				<WrapBelowLg>{formatTime(schedule.lastRunAt, timeZone)}</WrapBelowLg>
 			</div>
-			{schedule.lastSize ? <div className="small text-secondary">{formatBytes(schedule.lastSize)}</div> : null}
+			{lastRunSize(schedule) ? (
+				<div className="small text-secondary">{formatBytes(lastRunSize(schedule))}</div>
+			) : null}
 			{schedule.lastStatus === "failed" && schedule.lastError ? (
 				<div className="small text-danger text-break">{schedule.lastError}</div>
 			) : null}

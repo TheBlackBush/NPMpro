@@ -6,6 +6,7 @@ import {
 	filterBySchedule,
 	formatInZone,
 	initialValues,
+	lastRunSize,
 	scheduleBadge,
 	scheduleErrors,
 	scheduleNames,
@@ -208,4 +209,12 @@ it("the schedule badge waits for the schedule list", () => {
 	assert.equal(scheduleBadge({ scheduleId: 2 }, null), null);
 	assert.equal(scheduleBadge({ scheduleId: null }, names), null);
 	assert.equal(scheduleBadge({}, names), null);
+});
+
+it("the last run shows a size only when that run made a file", () => {
+	assert.equal(lastRunSize({ lastStatus: "success", lastSize: 2048 }), 2048);
+	// a failed run keeps the size of the previous file in the row; it is not the failed run's
+	assert.equal(lastRunSize({ lastStatus: "failed", lastSize: 2048 }), null);
+	assert.equal(lastRunSize({ lastStatus: null, lastSize: null }), null);
+	assert.equal(lastRunSize({ lastStatus: "success", lastSize: 0 }), null);
 });
