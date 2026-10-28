@@ -59,20 +59,18 @@ const isInUse = (row) =>
 		row.mtlsStreams,
 	].some((hosts) => hosts?.length > 0);
 
-export default function Table({
-	data,
-	isFetching,
-	onDelete,
-	onRenew,
-	onDownload,
-	onTest,
-	onEdit,
-	onChangeDnsCredential,
-	isFiltered,
-	onClearFilters,
-}) {
-	const columnHelper = createColumnHelper();
-	const columns = useMemo(
+const columnHelper = createColumnHelper();
+
+const providerSummary = (row) => {
+	const name = intl.formatMessage({ id: certificateProviderTranslation(row.provider) });
+	return row.provider === "letsencrypt" && row.npmproDnsChallenge ? `${name} \u2013 ${row.npmproDnsProvider}` : name;
+};
+const inUseSummary = (row) =>
+	intl.formatMessage({ id: isInUse(row) ? "certificate.in-use" : "certificate.not-in-use" });
+
+// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
+export function useColumns({ onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential } = {}) {
+	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
@@ -88,10 +86,12 @@ export default function Table({
 				},
 				meta: {
 					className: "text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.accessor((row) => row.domainNames.join(", "), {
 				id: "domainNames",
+				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "column.name" }),
 				cell: (info) => {
 					const value = info.row.original;
@@ -109,6 +109,7 @@ export default function Table({
 				(row) => (row.npmproDnsProvider ? `${row.provider} - ${row.npmproDnsProvider}` : row.provider),
 				{
 					id: "provider",
+					meta: { mobile: "summary", summaryText: providerSummary },
 					header: intl.formatMessage({ id: "column.provider" }),
 					cell: (info) => {
 						const r = info.row.original;
@@ -128,22 +129,26 @@ export default function Table({
 			),
 			columnHelper.accessor((row) => row.expiresOn, {
 				id: "expiresOn",
+				meta: { mobile: "title-below" },
 				header: intl.formatMessage({ id: "column.expires" }),
 				cell: (info) => <ExpiryFormatter value={info.getValue()} provider={info.row.original.provider} />,
 			}),
 			columnHelper.accessor(isInUse, {
 				id: "inUse",
+				meta: { mobile: "summary", summaryText: inUseSummary },
 				header: intl.formatMessage({ id: "column.status" }),
 				cell: (info) => {
 					const r = info.row.original;
 					return (
-						<CertificateInUseFormatter
-							id={r.id}
-							proxyHosts={[...r.proxyHosts, ...r.mtlsProxyHosts]}
-							redirectionHosts={[...r.redirectionHosts, ...r.mtlsRedirectionHosts]}
-							deadHosts={[...r.deadHosts, ...r.mtlsDeadHosts]}
-							streams={[...r.streams, ...r.mtlsStreams]}
-						/>
+						<span className="text-nowrap">
+							<CertificateInUseFormatter
+								id={r.id}
+								proxyHosts={[...r.proxyHosts, ...r.mtlsProxyHosts]}
+								redirectionHosts={[...r.redirectionHosts, ...r.mtlsRedirectionHosts]}
+								deadHosts={[...r.deadHosts, ...r.mtlsDeadHosts]}
+								streams={[...r.streams, ...r.mtlsStreams]}
+							/>
+						</span>
 					);
 				},
 			}),
@@ -153,6 +158,7 @@ export default function Table({
 				cell: (info) => info.getValue(),
 				meta: {
 					className: "w-1 text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.display({
@@ -268,11 +274,29 @@ export default function Table({
 				},
 				meta: {
 					className: "text-end text-nowrap",
+					mobile: "title-end",
 				},
 			}),
 		],
-		[columnHelper, onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential],
+		[onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential],
 	);
+}
+
+export default function Table({
+	data,
+	isFetching,
+	onDelete,
+	onRenew,
+	onDownload,
+	onTest,
+	onEdit,
+	onChangeDnsCredential,
+	isFiltered,
+	onClearFilters,
+	sorting,
+	onSortingChange,
+}) {
+	const columns = useColumns({ onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential });
 
 	const tableInstance = useTable({
 		features,
@@ -283,7 +307,8 @@ export default function Table({
 			isFetching,
 		},
 		enableSortingRemoval: false,
-		initialState: { sorting: [{ id: "expiresOn", desc: false }] },
+		state: { sorting },
+		onSortingChange,
 	});
 
 	const customAddBtn = (

@@ -25,9 +25,11 @@ const features = tableFeatures({
 	},
 });
 
-export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew }) {
-	const columnHelper = createColumnHelper();
-	const columns = useMemo(
+const columnHelper = createColumnHelper();
+
+// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
+export function useColumns({ onEdit, onDelete } = {}) {
+	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
@@ -43,10 +45,12 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				},
 				meta: {
 					className: "text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.accessor((row) => row.name, {
 				id: "name",
+				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "column.name" }),
 				cell: (info) => (
 					<ValueWithDateFormatter value={info.row.original.name} createdOn={info.row.original.createdOn} />
@@ -54,21 +58,37 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			}),
 			columnHelper.accessor((row) => row.items.length, {
 				id: "items",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						intl.formatMessage({ id: "access-list.auth-count" }, { count: row.items.length }),
+				},
 				header: intl.formatMessage({ id: "column.authorization" }),
 				cell: (info) => <T id="access-list.auth-count" data={{ count: info.getValue() }} />,
 			}),
 			columnHelper.accessor((row) => row.clients.length, {
 				id: "clients",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						intl.formatMessage({ id: "access-list.access-count" }, { count: row.clients.length }),
+				},
 				header: intl.formatMessage({ id: "column.access" }),
 				cell: (info) => <T id="access-list.access-count" data={{ count: info.getValue() }} />,
 			}),
 			columnHelper.accessor((row) => row.satisfyAny, {
 				id: "satisfyAny",
+				meta: { mobile: "hide" },
 				header: intl.formatMessage({ id: "column.satisfy" }),
 				cell: (info) => <T id={info.getValue() ? "column.satisfy-any" : "column.satisfy-all"} />,
 			}),
 			columnHelper.accessor((row) => row.proxyHostCount, {
 				id: "proxyHostCount",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						intl.formatMessage({ id: "proxy-hosts.count" }, { count: row.proxyHostCount }),
+				},
 				header: intl.formatMessage({ id: "proxy-hosts" }),
 				cell: (info) => <T id="proxy-hosts.count" data={{ count: info.getValue() }} />,
 			}),
@@ -78,6 +98,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				cell: (info) => info.getValue(),
 				meta: {
 					className: "w-1 text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.display({
@@ -130,21 +151,28 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				),
 				meta: {
 					className: "text-end text-nowrap",
+					mobile: "title-end",
 				},
 			}),
 		],
-		[columnHelper, onEdit, onDelete],
+		[onEdit, onDelete],
 	);
+}
+
+export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
+	const columns = useColumns({ onEdit, onDelete });
 
 	const tableInstance = useTable({
 		features,
-		columns,
+		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
 		meta: {
 			isFetching,
 		},
 		enableSortingRemoval: false,
+		state: { sorting },
+		onSortingChange,
 	});
 
 	return (

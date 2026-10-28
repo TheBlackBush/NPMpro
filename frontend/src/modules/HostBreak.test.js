@@ -23,3 +23,12 @@ it("keeps leading, trailing and repeated separators", () => {
 	assert.equal(hostParts("[::1]:8080").join(""), "[::1]:8080");
 	assert.equal(hostParts("*.example.com").join(""), "*.example.com");
 });
+
+it("splits an e-mail address after the @ and dots", () => {
+	assert.deepEqual(hostParts("max.power@mail.example.com"), ["max.", "power@", "mail.", "example.", "com"]);
+});
+
+it("splits after the given separators only", () => {
+	assert.deepEqual(hostParts("NODE_TLS_REJECT", "_"), ["NODE_", "TLS_", "REJECT"]);
+	assert.deepEqual(hostParts("a.b_c", "_"), ["a.b_", "c"]);
+});

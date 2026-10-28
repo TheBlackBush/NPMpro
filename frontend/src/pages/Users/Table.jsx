@@ -41,10 +41,15 @@ const features = tableFeatures({
 	},
 });
 
-export default function Table({
-	data,
-	isFiltered,
-	isFetching,
+const columnHelper = createColumnHelper();
+
+const rolesSummary = (row) =>
+	(row.roles.length ? row.roles : ["standard-user"])
+		.map((role) => intl.formatMessage({ id: `role.${role}` }))
+		.join(", ");
+
+// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
+export function useColumns({
 	currentUserId,
 	onEditUser,
 	onEditPermissions,
@@ -53,10 +58,8 @@ export default function Table({
 	onRevokeSessions,
 	onDeleteUser,
 	onDisableToggle,
-	onNewUser,
-}) {
-	const columnHelper = createColumnHelper();
-	const columns = useMemo(
+} = {}) {
+	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.name, {
 				id: "avatar",
@@ -67,10 +70,12 @@ export default function Table({
 				},
 				meta: {
 					className: "text-nowrap",
+					mobile: "hide",
 				},
 			}),
 			columnHelper.accessor((row) => row.name, {
 				id: "name",
+				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "column.name" }),
 				cell: (info) => {
 					const value = info.row.original;
@@ -86,16 +91,19 @@ export default function Table({
 			}),
 			columnHelper.accessor((row) => row.email, {
 				id: "email",
+				meta: { mobile: "summary", summaryText: (row) => row.email },
 				header: intl.formatMessage({ id: "column.email" }),
 				cell: (info) => <EmailFormatter email={info.getValue()} />,
 			}),
 			columnHelper.accessor((row) => row.roles.join(", "), {
 				id: "roles",
+				meta: { mobile: "summary", summaryText: rolesSummary },
 				header: intl.formatMessage({ id: "column.roles" }),
 				cell: (info) => <RolesFormatter roles={info.row.original.roles} />,
 			}),
 			columnHelper.accessor((row) => row.isDisabled, {
 				id: "isDisabled",
+				meta: { mobile: "title-below" },
 				header: intl.formatMessage({ id: "column.status" }),
 				cell: (info) => <TrueFalseFormatter value={!info.getValue()} />,
 			}),
@@ -105,6 +113,7 @@ export default function Table({
 				cell: (info) => info.getValue(),
 				meta: {
 					className: "w-1 text-nowrap",
+					mobile: "hide",
 				},
 			}),
 			columnHelper.display({
@@ -209,11 +218,11 @@ export default function Table({
 				),
 				meta: {
 					className: "text-end text-nowrap",
+					mobile: "title-end",
 				},
 			}),
 		],
 		[
-			columnHelper,
 			currentUserId,
 			onEditUser,
 			onDisableToggle,
@@ -224,6 +233,34 @@ export default function Table({
 			onRevokeSessions,
 		],
 	);
+}
+
+export default function Table({
+	data,
+	isFiltered,
+	isFetching,
+	currentUserId,
+	onEditUser,
+	onEditPermissions,
+	onSetPassword,
+	onResetMfa,
+	onRevokeSessions,
+	onDeleteUser,
+	onDisableToggle,
+	onNewUser,
+	sorting,
+	onSortingChange,
+}) {
+	const columns = useColumns({
+		currentUserId,
+		onEditUser,
+		onEditPermissions,
+		onSetPassword,
+		onResetMfa,
+		onRevokeSessions,
+		onDeleteUser,
+		onDisableToggle,
+	});
 
 	const tableInstance = useTable({
 		features,
@@ -234,6 +271,8 @@ export default function Table({
 			isFetching,
 		},
 		enableSortingRemoval: false,
+		state: { sorting },
+		onSortingChange,
 	});
 
 	return (

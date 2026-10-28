@@ -11,6 +11,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import cn from "clsx";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { deleteBackup, downloadBackup } from "src/api/backend";
@@ -41,7 +42,7 @@ function Contents({ categories, types }) {
 	return (
 		<div className="badge-list">
 			{contentLabels(categories, types).map(({ kind, id }) => (
-				<span key={`${kind}-${id}`} className="badge bg-secondary-lt">
+				<span key={`${kind}-${id}`} className="badge bg-secondary-lt text-wrap text-start">
 					<T id={kind === "category" ? `settings.backup.category.${id}` : `settings.backup.type.${id}`} />
 				</span>
 			))}
@@ -49,17 +50,23 @@ function Contents({ categories, types }) {
 	);
 }
 
-function SecretsBadge({ entry }) {
-	if (entry.summary?.secrets) {
-		return (
-			<span className="badge bg-azure-lt">
-				<T id="settings.backup.with-secrets" />
-			</span>
-		);
-	}
+// below lg the content may wrap, so the table fits next to the settings menu on tablets; from lg it stays on one line
+function WrapBelowLg({ children }) {
 	return (
-		<span className="badge bg-secondary-lt">
-			<T id="settings.backup.without-secrets" />
+		<>
+			<span className="d-lg-none">{children}</span>
+			<span className="d-none d-lg-inline text-nowrap">{children}</span>
+		</>
+	);
+}
+
+function SecretsBadge({ entry }) {
+	const secrets = entry.summary?.secrets;
+	return (
+		<span className={cn("badge text-wrap text-start", secrets ? "bg-azure-lt" : "bg-secondary-lt")}>
+			<WrapBelowLg>
+				<T id={secrets ? "settings.backup.with-secrets" : "settings.backup.without-secrets"} />
+			</WrapBelowLg>
 		</span>
 	);
 }
@@ -138,16 +145,22 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 		return [
 			columnHelper.accessor((row) => row.name, {
 				id: "name",
+				meta: { mobile: "title" },
 				header: label("column.name"),
 				cell: (info) => <NameCell entry={info.row.original} />,
 			}),
 			columnHelper.accessor((row) => row.summary?.createdAt ?? row.modified, {
 				id: "created",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) => formatDateTime(row.summary?.createdAt ?? row.modified),
+				},
 				header: label("settings.backup.created"),
-				cell: (info) => <span className="text-nowrap">{formatDateTime(info.getValue())}</span>,
+				cell: (info) => <WrapBelowLg>{formatDateTime(info.getValue())}</WrapBelowLg>,
 			}),
 			columnHelper.accessor((row) => row.size, {
 				id: "size",
+				meta: { mobile: "summary", summaryText: (row) => formatBytes(row.size) },
 				header: label("settings.backup.size"),
 				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
 			}),
@@ -155,17 +168,31 @@ function Table({ data, categories, onDelete, navigate, uploadButton }) {
 				id: "contents",
 				header: label("settings.backup.contents"),
 				enableSorting: false,
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						contentLabels(categories, row.summary?.types ?? [])
+							.map(({ kind, id }) =>
+								label(
+									kind === "category"
+										? `settings.backup.category.${id}`
+										: `settings.backup.type.${id}`,
+								),
+							)
+							.join(", "),
+				},
 				cell: (info) => <Contents categories={categories} types={info.getValue()} />,
 			}),
 			columnHelper.display({
 				id: "secrets",
+				meta: { mobile: "title-below" },
 				header: label("settings.backup.secrets.column"),
 				cell: (info) => (info.row.original.summary ? <SecretsBadge entry={info.row.original} /> : null),
 			}),
 			columnHelper.display({
 				id: "actions",
 				cell: (info) => <Actions entry={info.row.original} onDelete={onDelete} navigate={navigate} />,
-				meta: { className: "text-end text-nowrap" },
+				meta: { className: "text-end text-nowrap", mobile: "title-end" },
 			}),
 		];
 	}, [categories, onDelete, navigate]);
@@ -271,8 +298,8 @@ function StoredTable() {
 
 	return (
 		<div className="card">
-			<div className="card-header">
-				<h3 className="card-title">
+			<div className="card-header flex-wrap gap-2">
+				<h3 className="card-title text-nowrap">
 					<T id="settings.backup.stored" />
 				</h3>
 				<div className="card-actions">

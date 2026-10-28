@@ -1,6 +1,7 @@
 import { IconChevronDown, IconChevronUp, IconSearch } from "@tabler/icons-react";
 import cn from "clsx";
 import { useEffect, useId, useRef, useState } from "react";
+import { BreakableHost } from "src/components";
 import { intl, T } from "src/locale";
 import {
 	changedChoices,
@@ -15,6 +16,7 @@ import {
 	setAllChoices,
 	typeNameId,
 } from "src/modules/BackupMerge";
+import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 
 // the badge colour of each action
 export const ACTION_COLORS = {
@@ -54,7 +56,21 @@ const targetText = (item) => {
 	return item.reason === "same-certificate" ? `#${item.target.id} ${item.target.label}` : item.target.label;
 };
 
-// one item: its name (and what needs it), what it meets here, and Include and its choices as a segmented group
+// the reason badge of an item
+function ReasonBadge({ reason, className = "" }) {
+	return (
+		<span className={cn("badge", REASON_COLORS[reason] ?? "bg-secondary-lt", className)}>
+			<T id={`settings.backup.merge.badge.${reason}`} />
+		</span>
+	);
+}
+
+/**
+ * One item: its name (and what needs it), what it meets here, and Include and its choices as a segmented group.
+ * On phones (table-mobile-md) the item cell also shows the reason badge and, as the grey summary line, what the item
+ * meets here, while the Found cell is hidden; the Action cell stays and stacks as a full-width line under the item,
+ * so Include and the choices are rendered once (no control or accessible name exists twice).
+ */
 function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	const included = isIncluded(item, choice);
 	const value = currentChoice(item, choice);
@@ -62,7 +78,9 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	return (
 		<tr data-key={item.key}>
 			<td>
-				<div className="text-break">{item.label}</div>
+				<div className={titleClass()}>
+					<BreakableHost value={item.label} />
+				</div>
 				{item.neededBy?.length ? (
 					<div className="small text-secondary text-break">
 						<T
@@ -71,17 +89,32 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 						/>
 					</div>
 				) : null}
+				{item.reason || target ? (
+					<div className="d-md-none">
+						{item.reason ? (
+							<div className="mt-1">
+								<ReasonBadge reason={item.reason} />
+							</div>
+						) : null}
+						{target ? (
+							<div className="mt-1 small text-secondary text-break">
+								<BreakableHost value={target} />
+							</div>
+						) : null}
+					</div>
+				) : null}
 			</td>
-			<td>
-				{item.reason ? (
-					<span className={`badge ${REASON_COLORS[item.reason] ?? "bg-secondary-lt"} me-1`}>
-						<T id={`settings.backup.merge.badge.${item.reason}`} />
+			<td className={PHONE_HIDDEN_CELL}>
+				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
+				{target ? (
+					<span className="text-secondary small text-break">
+						<BreakableHost value={target} />
 					</span>
 				) : null}
-				{target ? <span className="text-secondary small text-break">{target}</span> : null}
 			</td>
 			<td>
-				<div className="d-flex align-items-center gap-3 text-nowrap">
+				{/* on phones the line wraps, so the choice group takes its own full-width line when Include does not fit */}
+				<div className="d-flex flex-wrap flex-md-nowrap align-items-center gap-3 text-nowrap">
 					{item.linked ? (
 						<label className="form-check mb-0">
 							<input
@@ -101,8 +134,9 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 						</label>
 					) : null}
 					{item.choices.length > 0 ? (
+						// on phones the group fills the line, its buttons share the width
 						<fieldset
-							className="btn-group btn-group-sm"
+							className="btn-group btn-group-sm flex-fill flex-md-grow-0"
 							aria-label={intl.formatMessage(
 								{ id: "settings.backup.merge.choice-for" },
 								{ label: item.label },
@@ -112,7 +146,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 								<button
 									key={option}
 									type="button"
-									className={cn("btn", value === option && "btn-primary")}
+									className={cn("btn flex-fill", value === option && "btn-primary")}
 									aria-pressed={value === option}
 									onClick={() => onChoice(item.key, option)}
 									disabled={disabled || !included || item.choices.length === 1}
@@ -150,7 +184,8 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 				<div className="d-flex flex-wrap align-items-center gap-2">
 					<button
 						type="button"
-						className="btn btn-sm btn-ghost-secondary btn-icon"
+						// d-inline-flex: table-mobile-md makes every .btn a block on phones
+						className="btn btn-sm btn-ghost-secondary btn-icon d-inline-flex"
 						aria-expanded={open}
 						aria-label={name}
 						onClick={onFold}
@@ -165,7 +200,7 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 					<span className="badge bg-secondary-lt">{group.items.length}</span>
 					<span className="small text-secondary d-none d-sm-inline">{summary}</span>
 					{options.length > 1 ? (
-						// below sm "Set all" takes its own line at the start, where the scrolled table shows it
+						// below sm "Set all" takes its own line
 						<div className="w-100 d-sm-none" />
 					) : null}
 					{options.length > 1 ? (
@@ -295,15 +330,18 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 			) : null}
 			<div className="card">
 				<div className="table-responsive">
-					<table ref={tableRef} className="table table-vcenter card-table" aria-labelledby={titleId}>
+					<table
+						ref={tableRef}
+						className="table table-vcenter table-mobile-md card-table"
+						aria-labelledby={titleId}
+					>
 						<thead>
 							<tr>
-								{/* no Tabler utility sets a minimum width: on a phone the table scrolls sideways instead
-								of breaking every name into single letters */}
-								<th scope="col" style={{ minWidth: "10rem" }}>
+								{/* the item gets at least half the width, so its name does not break mid-label on tablets */}
+								<th scope="col" className="w-50">
 									<T id="settings.backup.merge.column.item" />
 								</th>
-								<th scope="col" style={{ minWidth: "10rem" }}>
+								<th scope="col">
 									<T id="settings.backup.merge.column.found" />
 								</th>
 								<th scope="col" className="w-1">
@@ -346,7 +384,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 											<td colSpan={3} className="text-center py-2">
 												<button
 													type="button"
-													className="btn btn-link btn-sm p-0"
+													className="btn btn-link btn-sm p-0 d-inline-flex"
 													onClick={() => {
 														setExpanded((list) => [...list, group.type]);
 														// the button goes away: focus moves to the first row it showed

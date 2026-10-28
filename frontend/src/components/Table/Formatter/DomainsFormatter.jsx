@@ -38,7 +38,8 @@ export function DomainsFormatter({ domains, createdOn, niceName, provider, color
 	}
 	if (niceName && provider !== "letsencrypt") {
 		elms.push(
-			<span key="nice-name" className="badge bg-info-lt me-2">
+			// a long name wraps between words, like the domain badges, so the row menu stays on a phone screen
+			<span key="nice-name" className="badge bg-info-lt me-2 text-wrap text-start">
 				{niceName}
 			</span>,
 		);

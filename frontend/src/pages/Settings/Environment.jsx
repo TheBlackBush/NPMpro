@@ -1,9 +1,10 @@
 import { IconInfoCircle, IconLock } from "@tabler/icons-react";
 import { Link } from "react-router";
-import { ErrorAlert, Loading } from "src/components";
+import { BreakableHost, ErrorAlert, Loading } from "src/components";
 import { useEnvironment } from "src/hooks";
 import { intl, T } from "src/locale";
-import { LockedBadge, LockReason } from "./Authentication/LockedBadge";
+import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
+import { hasLockReason, LockedBadge, LockReason } from "./Authentication/LockedBadge";
 import { StatusAlert } from "./StatusAlert";
 
 // provider names are product names, shown as they are
@@ -88,6 +89,22 @@ const UPSTREAM_NAME = /^(?<provider>[a-z0-9]+)_upstream$/u;
 
 const label = (id) => intl.formatMessage({ id });
 
+/**
+ * The phone part of a stacked row, inside its title cell: the title with `end` on its right and the grey summary
+ * line. The cells it repeats are PHONE_HIDDEN_CELL, so one copy is always display none and nothing is read twice.
+ */
+function PhoneTitle({ title, end, summary }) {
+	return (
+		<div className="d-md-none">
+			<div className="d-flex align-items-start gap-2">
+				<div className={titleClass()}>{title}</div>
+				{end}
+			</div>
+			{summary ? <div className="mt-1 small text-secondary text-break">{summary}</div> : null}
+		</div>
+	);
+}
+
 function SettingLabel({ group, name }) {
 	const upstream = group === "forward-auth" ? UPSTREAM_NAME.exec(name) : null;
 	if (upstream) {
@@ -125,13 +142,22 @@ function LockedSettings({ locked }) {
 				<tbody>
 					{locked.map(({ group, key, env, reason }) => (
 						<tr key={`${group}/${key}`}>
-							<td data-label={label("settings.environment.setting")}>
-								<SettingLabel group={group} name={key} />
+							<td>
+								<PhoneTitle
+									title={<SettingLabel group={group} name={key} />}
+									end={<LockedBadge env={env} reason={reason} className="" />}
+									summary={
+										hasLockReason(env, reason) ? <LockReason env={env} reason={reason} /> : null
+									}
+								/>
+								<div className="d-none d-md-block">
+									<SettingLabel group={group} name={key} />
+								</div>
 							</td>
-							<td data-label={label("settings.environment.locked-by")}>
+							<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.locked-by")}>
 								{/* the same wording as the badge in the settings section */}
 								<LockedBadge env={env} reason={reason} className="" />
-								{reason ? (
+								{hasLockReason(env, reason) ? (
 									<div className="small text-secondary mt-1">
 										<LockReason env={env} reason={reason} />
 									</div>
@@ -194,13 +220,24 @@ function GroupRows({ group }) {
 			</tr>
 			{group.items.map((item) => (
 				<tr key={item.name}>
-					<td data-label={label("settings.environment.variable")}>
-						<code className="text-nowrap">{item.name}</code>
+					<td>
+						<PhoneTitle
+							title={<code>{item.name}</code>}
+							end={<Status item={item} />}
+							summary={<Value item={item} />}
+						/>
+						<div className="d-none d-md-block">
+							{/* on tablets the name breaks after an underscore, so the table fits next to the settings menu */}
+							<code className="d-lg-none">
+								<BreakableHost value={item.name} separators="_" />
+							</code>
+							<code className="d-none d-lg-inline text-nowrap">{item.name}</code>
+						</div>
 					</td>
-					<td data-label={label("settings.environment.value")}>
+					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.value")}>
 						<Value item={item} />
 					</td>
-					<td data-label={label("settings.environment.status")}>
+					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.status")}>
 						<Status item={item} />
 					</td>
 					<td data-label={label("settings.environment.description")}>
