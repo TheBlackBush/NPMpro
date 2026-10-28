@@ -15,6 +15,7 @@ import {
 	setAllChoices,
 	typeNameId,
 } from "src/modules/BackupMerge";
+import { titleClass } from "src/modules/MobileColumns";
 
 // the badge colour of each action
 export const ACTION_COLORS = {
@@ -54,7 +55,21 @@ const targetText = (item) => {
 	return item.reason === "same-certificate" ? `#${item.target.id} ${item.target.label}` : item.target.label;
 };
 
-// one item: its name (and what needs it), what it meets here, and Include and its choices as a segmented group
+// the reason badge of an item
+function ReasonBadge({ reason, className = "" }) {
+	return (
+		<span className={cn("badge", REASON_COLORS[reason] ?? "bg-secondary-lt", className)}>
+			<T id={`settings.backup.merge.badge.${reason}`} />
+		</span>
+	);
+}
+
+/**
+ * One item: its name (and what needs it), what it meets here, and Include and its choices as a segmented group.
+ * On phones (table-mobile-md) the item cell also shows the reason badge and, as the grey summary line, what the item
+ * meets here, while the Found cell is hidden; the Action cell stays and stacks as a full-width line under the item,
+ * so Include and the choices are rendered once (no control or accessible name exists twice).
+ */
 function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	const included = isIncluded(item, choice);
 	const value = currentChoice(item, choice);
@@ -62,7 +77,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	return (
 		<tr data-key={item.key}>
 			<td>
-				<div className="text-break">{item.label}</div>
+				<div className={titleClass()}>{item.label}</div>
 				{item.neededBy?.length ? (
 					<div className="small text-secondary text-break">
 						<T
@@ -71,13 +86,19 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 						/>
 					</div>
 				) : null}
-			</td>
-			<td>
-				{item.reason ? (
-					<span className={`badge ${REASON_COLORS[item.reason] ?? "bg-secondary-lt"} me-1`}>
-						<T id={`settings.backup.merge.badge.${item.reason}`} />
-					</span>
+				{item.reason || target ? (
+					<div className="d-md-none">
+						{item.reason ? (
+							<div className="mt-1">
+								<ReasonBadge reason={item.reason} />
+							</div>
+						) : null}
+						{target ? <div className="mt-1 small text-secondary text-break">{target}</div> : null}
+					</div>
 				) : null}
+			</td>
+			<td className="d-none d-md-table-cell">
+				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
 				{target ? <span className="text-secondary small text-break">{target}</span> : null}
 			</td>
 			<td>
@@ -101,8 +122,9 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 						</label>
 					) : null}
 					{item.choices.length > 0 ? (
+						// on phones the group fills the line, its buttons share the width
 						<fieldset
-							className="btn-group btn-group-sm"
+							className="btn-group btn-group-sm flex-fill flex-md-grow-0"
 							aria-label={intl.formatMessage(
 								{ id: "settings.backup.merge.choice-for" },
 								{ label: item.label },
@@ -112,7 +134,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 								<button
 									key={option}
 									type="button"
-									className={cn("btn", value === option && "btn-primary")}
+									className={cn("btn flex-fill", value === option && "btn-primary")}
 									aria-pressed={value === option}
 									onClick={() => onChoice(item.key, option)}
 									disabled={disabled || !included || item.choices.length === 1}
@@ -150,7 +172,8 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 				<div className="d-flex flex-wrap align-items-center gap-2">
 					<button
 						type="button"
-						className="btn btn-sm btn-ghost-secondary btn-icon"
+						// d-inline-flex: table-mobile-md makes every .btn a block on phones
+						className="btn btn-sm btn-ghost-secondary btn-icon d-inline-flex"
 						aria-expanded={open}
 						aria-label={name}
 						onClick={onFold}
@@ -165,7 +188,7 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 					<span className="badge bg-secondary-lt">{group.items.length}</span>
 					<span className="small text-secondary d-none d-sm-inline">{summary}</span>
 					{options.length > 1 ? (
-						// below sm "Set all" takes its own line at the start, where the scrolled table shows it
+						// below sm "Set all" takes its own line
 						<div className="w-100 d-sm-none" />
 					) : null}
 					{options.length > 1 ? (
@@ -295,15 +318,17 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 			) : null}
 			<div className="card">
 				<div className="table-responsive">
-					<table ref={tableRef} className="table table-vcenter card-table" aria-labelledby={titleId}>
+					<table
+						ref={tableRef}
+						className="table table-vcenter table-mobile-md card-table"
+						aria-labelledby={titleId}
+					>
 						<thead>
 							<tr>
-								{/* no Tabler utility sets a minimum width: on a phone the table scrolls sideways instead
-								of breaking every name into single letters */}
-								<th scope="col" style={{ minWidth: "10rem" }}>
+								<th scope="col">
 									<T id="settings.backup.merge.column.item" />
 								</th>
-								<th scope="col" style={{ minWidth: "10rem" }}>
+								<th scope="col">
 									<T id="settings.backup.merge.column.found" />
 								</th>
 								<th scope="col" className="w-1">

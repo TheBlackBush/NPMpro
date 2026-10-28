@@ -30,12 +30,15 @@ function LockedBadge({ env, reason, className = "ms-2" }) {
 	);
 }
 
+// whether LockReason has a sentence for this lock
+const hasLockReason = (env, reason) => Boolean(env && Object.hasOwn(REASON_BADGES, reason));
+
 /**
  * Why another setting's env var locks a setting (one sentence), or nothing for a direct lock
  */
 function LockReason({ env, reason }) {
-	if (!(env && Object.hasOwn(REASON_BADGES, reason))) return null;
+	if (!hasLockReason(env, reason)) return null;
 	return <T id={`settings.runtime.locked.reason.${reason}`} data={{ env }} />;
 }
 
-export { LockedBadge, LockReason };
+export { hasLockReason, LockedBadge, LockReason };
