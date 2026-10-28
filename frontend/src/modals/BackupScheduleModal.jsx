@@ -141,6 +141,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 	const { frequency } = values;
 	return (
 		<div className="mb-3">
+			{/* on phones the field next to "When" takes the full row when it is alone and half of it beside a second one */}
 			<div className="row g-2">
 				<SelectField
 					name="frequency"
@@ -159,7 +160,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="everyHours"
 						id={`${baseId}-every-hours`}
 						labelId="settings.backup.schedule.every-hours"
-						className="col-6 col-md-4"
+						className="col-12 col-md-4"
 						type="number"
 						min={1}
 						max={24}
@@ -197,7 +198,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="time"
 						id={`${baseId}-time`}
 						labelId="settings.backup.schedule.time"
-						className="col-6 col-md-4"
+						className={frequency === "daily" ? "col-12 col-md-4" : "col-6 col-md-4"}
 						type="time"
 						required
 					/>
