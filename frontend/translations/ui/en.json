@@ -197,6 +197,7 @@
 	"dns-credentials.select": "Select a credential",
 	"dns-credentials.show-secret": "Show or hide",
 	"dns-credentials.used-by": "Used by",
+	"dns-credentials.used-by-count": "Used by: {count}",
 	"dns-credentials.value.control-chars": "Must not contain a line break or control character",
 	"dns-credentials.value.number": "Enter a number",
 	"dns-credentials.value.url": "Enter an http:// or https:// URL",

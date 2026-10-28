@@ -121,6 +121,8 @@
 	"dead-hosts": "404 ホスト",
 	"dead-hosts.count": "{count} 404 ホスト",
 	"disabled": "無効化",
+	"dns-credentials.used-by": "使用元",
+	"dns-credentials.used-by-count": "使用元: {count}",
 	"domain-names": "ドメイン名",
 	"domain-names.max": "{count}のドメイン名が最大です",
 	"domain-names.placeholder": "追加するドメインを入力...",

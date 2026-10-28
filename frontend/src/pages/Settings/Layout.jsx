@@ -19,9 +19,9 @@ export default function Layout() {
 		<div className="card">
 			<div className="card-status-top bg-teal" />
 			<div className="row g-0">
-				<div className="col-12 col-lg-3 border-end">
+				<div className="col-12 d-lg-none">
 					<div className="card-body">
-						<div className="d-lg-none">
+						<div>
 							<label className="visually-hidden" htmlFor="settings-section">
 								<T id="settings.section" />
 							</label>
@@ -41,8 +41,12 @@ export default function Layout() {
 								))}
 							</select>
 						</div>
+					</div>
+				</div>
+				<div className="d-none d-lg-block col-lg-3 border-end">
+					<div className="card-body">
 						<nav
-							className="d-none d-lg-block list-group list-group-transparent"
+							className="list-group list-group-transparent"
 							aria-label={intl.formatMessage({ id: "settings" })}
 						>
 							{SECTIONS.map(({ id, labelKey, icon: Icon }) => (

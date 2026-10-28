@@ -145,6 +145,8 @@
 	"dead-hosts": "错误页面列表",
 	"dead-hosts.count": "{count} 个错误页面列表",
 	"disabled": "已禁用",
+	"dns-credentials.used-by": "使用者",
+	"dns-credentials.used-by-count": "使用者: {count}",
 	"domain-names": "域名",
 	"domain-names.max": "{count} 个最多域名数量",
 	"domain-names.placeholder": "开始输入以添加域名...",

@@ -112,7 +112,10 @@ export function useColumns({ onEdit, onDelete } = {}) {
 				meta: {
 					mobile: "summary",
 					summaryText: (row) =>
-						`${intl.formatMessage({ id: "dns-credentials.used-by" })}: ${row.certificates?.length ?? 0}`,
+						intl.formatMessage(
+							{ id: "dns-credentials.used-by-count" },
+							{ count: row.certificates?.length ?? 0 },
+						),
 				},
 				header: intl.formatMessage({ id: "dns-credentials.used-by" }),
 				cell: (info) => (

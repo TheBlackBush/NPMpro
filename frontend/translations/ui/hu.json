@@ -126,6 +126,8 @@
 	"dead-hosts": "404-es Kiszolgálók",
 	"dead-hosts.count": "{count} {count, plural, one {404-es Kiszolgáló} other {404-es Kiszolgálók}}",
 	"disabled": "Letiltva",
+	"dns-credentials.used-by": "Használja",
+	"dns-credentials.used-by-count": "Használja: {count}",
 	"domain-names": "Domain nevek",
 	"domain-names.max": "Maximum {count} domain név",
 	"domain-names.placeholder": "Kezdjen el gépelni domain hozzáadásához...",

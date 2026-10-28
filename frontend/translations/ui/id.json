@@ -122,6 +122,8 @@
 	"dead-hosts": "Host 404",
 	"dead-hosts.count": "{count} {count, plural, one {Host 404} other {Host 404}}",
 	"disabled": "Nonaktif",
+	"dns-credentials.used-by": "Digunakan oleh",
+	"dns-credentials.used-by-count": "Digunakan oleh: {count}",
 	"domain-names": "Nama Domain",
 	"domain-names.max": "Maksimum {count} nama domain",
 	"domain-names.placeholder": "Mulai mengetik untuk menambahkan domain...",

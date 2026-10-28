@@ -127,6 +127,8 @@
 	"dead-hosts": "404 Hostlar",
 	"dead-hosts.count": "{count} {count, plural, one {404 host} other {404 host}}",
 	"disabled": "Deaktiv",
+	"dns-credentials.used-by": "Used by",
+	"dns-credentials.used-by-count": "Used by: {count}",
 	"domain-names": "Domen adları",
 	"domain-names.max": "Maksimum {count} domen adı",
 	"domain-names.placeholder": "Domen əlavə etmək üçün yazmağa başlayın...",

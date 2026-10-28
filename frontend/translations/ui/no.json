@@ -126,6 +126,8 @@
 	"dead-hosts": "404 Tjenere ikke funnet",
 	"dead-hosts.count": "{count} {count, plural, one {404 Tjener} other {404 Tjenere}}",
 	"disabled": "Deaktivert",
+	"dns-credentials.used-by": "Brukt av",
+	"dns-credentials.used-by-count": "Brukt av: {count}",
 	"domain-names": "Domener",
 	"domain-names.max": "{count} domener maksimum",
 	"domain-names.placeholder": "Begynn å skrive for å legge til domene...",

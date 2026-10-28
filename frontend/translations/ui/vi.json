@@ -121,6 +121,8 @@
 	"dead-hosts": "Máy chủ 404",
 	"dead-hosts.count": "Số trang lỗi {count}",
 	"disabled": "Đã tắt",
+	"dns-credentials.used-by": "Được dùng bởi",
+	"dns-credentials.used-by-count": "Được dùng bởi: {count}",
 	"domain-names": "Danh sách tên miền",
 	"domain-names.max": "Tối đa {count} tên miền",
 	"domain-names.placeholder": "Nhập tên miền vào đây...",

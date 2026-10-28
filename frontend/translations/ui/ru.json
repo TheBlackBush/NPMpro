@@ -126,6 +126,8 @@
 	"dead-hosts": "404-хосты",
 	"dead-hosts.count": "{count} {count, plural, one {404-хост} few {404-хоста} many {404-хостов} other {404-хоста}}",
 	"disabled": "Выключен",
+	"dns-credentials.used-by": "Используется",
+	"dns-credentials.used-by-count": "Используется: {count}",
 	"domain-names": "Домены",
 	"domain-names.max": "Максимум {count} доменов",
 	"domain-names.placeholder": "Начните ввод, чтобы добавить домен...",

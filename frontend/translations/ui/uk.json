@@ -127,6 +127,8 @@
 	"dead-hosts": "404-хости",
 	"dead-hosts.count": "{count} {count, plural, one {404-хост} few {404-хоста} many {404-хостів} other {404-хоста}}",
 	"disabled": "Вимкнено",
+	"dns-credentials.used-by": "Використовується",
+	"dns-credentials.used-by-count": "Використовується: {count}",
 	"domain-names": "Домени",
 	"domain-names.max": "Максимум {count} доменів",
 	"domain-names.placeholder": "Почніть вводити, щоб додати домен...",

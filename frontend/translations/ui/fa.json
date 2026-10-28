@@ -127,6 +127,8 @@
 	"dead-hosts": "میزبان‌های 404",
 	"dead-hosts.count": "{count} {count, plural, one {میزبان 404} other {میزبان 404}}",
 	"disabled": "غیرفعال",
+	"dns-credentials.used-by": "Used by",
+	"dns-credentials.used-by-count": "Used by: {count}",
 	"domain-names": "نام‌های دامنه",
 	"domain-names.max": "حداکثر {count} نام دامنه",
 	"domain-names.placeholder": "برای افزودن دامنه شروع به تایپ کنید...",

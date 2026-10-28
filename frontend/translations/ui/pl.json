@@ -123,6 +123,8 @@
 	"dead-hosts": "404",
 	"dead-hosts.count": "{count} {count, plural, one {host 404} few {hosty 404} other {hostów 404}}",
 	"disabled": "Wyłączone",
+	"dns-credentials.used-by": "Używane przez",
+	"dns-credentials.used-by-count": "Używane przez: {count}",
 	"domain-names": "Nazwy domen",
 	"domain-names.max": "Maksymalnie {count} nazw domen",
 	"domain-names.placeholder": "Zacznij pisać, aby dodać domenę...",

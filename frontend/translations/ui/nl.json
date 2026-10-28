@@ -145,6 +145,8 @@
 	"dead-hosts": "404-Hosts",
 	"dead-hosts.count": "{count} {count, plural, one {404-Host} other {404-Hosts}}",
 	"disabled": "Uitgeschakeld",
+	"dns-credentials.used-by": "Gebruikt door",
+	"dns-credentials.used-by-count": "Gebruikt door: {count}",
 	"domain-names": "Domeinnamen",
 	"domain-names.max": "{count} domeinnamen toegestaan",
 	"domain-names.placeholder": "Voer een domeinnaam in…",

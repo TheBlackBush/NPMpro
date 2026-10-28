@@ -157,7 +157,7 @@ function LockedSettings({ locked }) {
 							<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.locked-by")}>
 								{/* the same wording as the badge in the settings section */}
 								<LockedBadge env={env} reason={reason} className="" />
-								{reason ? (
+								{hasLockReason(env, reason) ? (
 									<div className="small text-secondary mt-1">
 										<LockReason env={env} reason={reason} />
 									</div>

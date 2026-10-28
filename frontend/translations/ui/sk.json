@@ -126,6 +126,8 @@
 	"dead-hosts": "404 Hostitelia",
 	"dead-hosts.count": "{count} {count, plural, one {404 hostiteľ} few {404 hostitelia} other {404 hostiteľov}}",
 	"disabled": "Deaktivované",
+	"dns-credentials.used-by": "Používa",
+	"dns-credentials.used-by-count": "Používa: {count}",
 	"domain-names": "Doménové mená",
 	"domain-names.max": "Maximálne {count} doménových mien",
 	"domain-names.placeholder": "Začnite písať pre pridanie domény...",

@@ -131,6 +131,8 @@
 	"dead-hosts": "404-hostid",
 	"dead-hosts.count": "{count} {count, plural, one {404-host} other {404-hosti}}",
 	"disabled": "Väljas",
+	"dns-credentials.used-by": "Used by",
+	"dns-credentials.used-by-count": "Used by: {count}",
 	"domain-names": "Domeeninimed",
 	"domain-names.max": "Kuni {count} domeeninime",
 	"domain-names.placeholder": "Kirjuta, et domeen lisada...",

@@ -126,6 +126,8 @@
 	"dead-hosts": "404 хостове",
 	"dead-hosts.count": "{count} {count, plural, one {404 хост} other {404 хостове}}",
 	"disabled": "Деактивиран",
+	"dns-credentials.used-by": "Използва се от",
+	"dns-credentials.used-by-count": "Използва се от: {count}",
 	"domain-names": "Домейн имена",
 	"domain-names.max": "Максимум {count} домейна",
 	"domain-names.placeholder": "Започнете да въвеждате, за да добавите домейн...",
