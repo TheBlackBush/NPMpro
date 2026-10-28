@@ -9,11 +9,13 @@ import { showDeadHostModal, showDeleteConfirmModal, showHelpModal } from "src/mo
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
-import Table from "./Table";
+import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
 	const queryClient = useQueryClient();
 	const [sorting, setSorting] = useState([{ id: "enabled", desc: false }]);
+	// only the ids, headers and sortability are read here; the cells render in Table
+	const columns = useColumns();
 	const { isFetching, isPending, isError, error, data } = useDeadHosts(["owner", "certificate"]);
 	const groups = useDirectorySuggestions(data);
 	const { filters, setFilter, clear } = useListFilters(groups);
@@ -79,8 +81,8 @@ export default function TableWrapper() {
 		<div className="card mt-4">
 			<div className="card-status-top bg-red" />
 			<div className="card-table">
-				<div className="card-header">
-					<h2 className="card-title">
+				<div className="card-header flex-wrap gap-2">
+					<h2 className="card-title text-nowrap">
 						<T id="dead-hosts" />
 					</h2>
 					<div className="card-actions btn-list">
@@ -115,6 +117,7 @@ export default function TableWrapper() {
 					shown={displayedHosts.length}
 					kinds={["status", "tls", "group"]}
 					groups={groups}
+					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
 				<Table
 					data={displayedHosts}

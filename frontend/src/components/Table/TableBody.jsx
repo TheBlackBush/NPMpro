@@ -1,7 +1,10 @@
 import { flexRender } from "@tanstack/react-table";
+import cn from "clsx";
 import { Fragment } from "react";
+import { cellClass, mobileRole } from "src/modules/MobileColumns";
 import { cellLabel } from "src/modules/TableCells";
 import { EmptyRow } from "./EmptyRow";
+import { MobileTitle } from "./MobileTitle";
 
 function TableBody(props) {
 	const { tableInstance, extraStyles, emptyState, groupBy, renderGroupLabel } = props;
@@ -18,10 +21,20 @@ function TableBody(props) {
 	const renderRow = (row) => (
 		<tr key={row.id} {...extraStyles?.row(row.original)}>
 			{row.getAllCells().map((cell) => {
-				const { className } = cell.column.columnDef.meta ?? {};
+				const { columnDef } = cell.column;
+				const { className } = columnDef.meta ?? {};
+				const content = flexRender(columnDef.cell, cell.getContext());
+				if (mobileRole(columnDef) === "title") {
+					return (
+						<td key={cell.id} className={cn(className, cellClass(columnDef))}>
+							<MobileTitle row={row} titleCell={cell} />
+							<div className="d-none d-md-block">{content}</div>
+						</td>
+					);
+				}
 				return (
-					<td key={cell.id} className={className} data-label={cellLabel(cell.column.columnDef)}>
-						{flexRender(cell.column.columnDef.cell, cell.getContext())}
+					<td key={cell.id} className={cn(className, cellClass(columnDef))} data-label={cellLabel(columnDef)}>
+						{content}
 					</td>
 				);
 			})}

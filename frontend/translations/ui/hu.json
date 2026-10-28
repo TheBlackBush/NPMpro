@@ -166,6 +166,8 @@
 	"lets-encrypt": "Certbot",
 	"lets-encrypt-via-dns": "Certbot DNS-en keresztül",
 	"lets-encrypt-via-http": "Certbot HTTP-n keresztül",
+	"list.sort-by": "Sort by",
+	"list.sort-desc": "Descending order",
 	"loading": "Betöltés…",
 	"login.title": "Jelentkezzen be a fiókjába",
 	"login.totp-code": "Ellenőrző kód",

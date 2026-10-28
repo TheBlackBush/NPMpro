@@ -32,23 +32,18 @@ const features = tableFeatures({
 	},
 });
 
-export default function Table({
-	data,
-	isFetching,
-	onEdit,
-	onDelete,
-	onDisableToggle,
-	onNew,
-	isFiltered,
-	onClearFilters,
-	sorting,
-	onSortingChange,
-	showHeader,
-	groupBy,
-	renderGroupLabel,
-}) {
-	const columnHelper = createColumnHelper();
-	const columns = useMemo(
+const columnHelper = createColumnHelper();
+
+const redirectSummary = (row) => {
+	const target =
+		row.forwardScheme === "$scheme" ? row.forwardDomainName : `${row.forwardScheme}://${row.forwardDomainName}`;
+	return [target, row.forwardHttpCode].filter(Boolean).join(" · ");
+};
+const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
+
+// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
+export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
+	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
@@ -64,10 +59,12 @@ export default function Table({
 				},
 				meta: {
 					className: "text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.accessor((row) => row.domainNames.join(", "), {
 				id: "domainNames",
+				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "column.source" }),
 				cell: (info) => {
 					const value = info.row.original;
@@ -76,21 +73,26 @@ export default function Table({
 			}),
 			columnHelper.accessor((row) => row.forwardHttpCode, {
 				id: "forwardHttpCode",
+				// the code and the scheme show inside the target's summary text ("https://target · 301")
+				meta: { mobile: "summary", summaryText: () => null },
 				header: intl.formatMessage({ id: "column.http-code" }),
 				cell: (info) => info.getValue(),
 			}),
 			columnHelper.accessor((row) => row.forwardScheme, {
 				id: "forwardScheme",
+				meta: { mobile: "summary", summaryText: () => null },
 				header: intl.formatMessage({ id: "column.scheme" }),
 				cell: (info) => (info.getValue() === "$scheme" ? "keep" : info.getValue()),
 			}),
 			columnHelper.accessor((row) => row.forwardDomainName, {
 				id: "forwardDomainName",
+				meta: { mobile: "summary", summaryText: redirectSummary },
 				header: intl.formatMessage({ id: "column.destination" }),
 				cell: (info) => info.getValue(),
 			}),
 			columnHelper.accessor((row) => (row.certificate ? row.certificate.provider : "http-only"), {
 				id: "certificate",
+				meta: { mobile: "summary", summaryText: tlsSummary },
 				header: intl.formatMessage({ id: "column.ssl" }),
 				cell: (info) => <CertificateFormatter certificate={info.row.original.certificate} />,
 			}),
@@ -102,6 +104,7 @@ export default function Table({
 				},
 				{
 					id: "enabled",
+					meta: { mobile: "title-below" },
 					header: intl.formatMessage({ id: "column.status" }),
 					cell: (info) => {
 						const value = info.row.original;
@@ -121,6 +124,7 @@ export default function Table({
 				cell: (info) => info.getValue(),
 				meta: {
 					className: "w-1 text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.display({
@@ -183,11 +187,30 @@ export default function Table({
 				),
 				meta: {
 					className: "text-end text-nowrap",
+					mobile: "title-end",
 				},
 			}),
 		],
-		[columnHelper, onEdit, onDisableToggle, onDelete],
+		[onDelete, onDisableToggle, onEdit],
 	);
+}
+
+export default function Table({
+	data,
+	isFetching,
+	onEdit,
+	onDelete,
+	onDisableToggle,
+	onNew,
+	isFiltered,
+	onClearFilters,
+	sorting,
+	onSortingChange,
+	showHeader,
+	groupBy,
+	renderGroupLabel,
+}) {
+	const columns = useColumns({ onDelete, onDisableToggle, onEdit });
 
 	const tableInstance = useTable({
 		features,

@@ -207,6 +207,8 @@
 	"lets-encrypt": "Certbot",
 	"lets-encrypt-via-dns": "Certbot via DNS",
 	"lets-encrypt-via-http": "Certbot via HTTP",
+	"list.sort-by": "Sort by",
+	"list.sort-desc": "Descending order",
 	"loading": "Laden…",
 	"location.advanced-config": "Heeft aangepaste Nginx-configuratie",
 	"location.filter": "Filteren op pad of bestemming",

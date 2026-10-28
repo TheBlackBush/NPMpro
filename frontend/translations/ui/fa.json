@@ -169,6 +169,8 @@
 	"lets-encrypt": "Certbot",
 	"lets-encrypt-via-dns": "Certbot از طریق DNS",
 	"lets-encrypt-via-http": "Certbot از طریق HTTP",
+	"list.sort-by": "Sort by",
+	"list.sort-desc": "Descending order",
 	"loading": "در حال بارگذاری…",
 	"location.advanced-config": "دارای پیکربندی سفارشی Nginx",
 	"location.filter": "فیلتر بر اساس مسیر یا مقصد",

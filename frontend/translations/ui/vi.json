@@ -161,6 +161,8 @@
 	"lets-encrypt": "Certbot",
 	"lets-encrypt-via-dns": "Certbot qua DNS",
 	"lets-encrypt-via-http": "Certbot qua HTTP",
+	"list.sort-by": "Sort by",
+	"list.sort-desc": "Descending order",
 	"loading": "Đang tải...",
 	"login.title": "Đăng nhập vào tài khoản của bạn",
 	"nginx-config.label": "Cấu hình Nginx tùy chỉnh",
