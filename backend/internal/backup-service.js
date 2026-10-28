@@ -11,6 +11,7 @@ import { global as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
 import internalAuditLog from "./audit-log.js";
 import { createBackupService } from "./backup.js";
+import { createScheduleService } from "./backup-schedules.js";
 import internalCertificate from "./certificate.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
@@ -60,5 +61,14 @@ const internalBackup = createBackupService({
 	log: logger,
 });
 
-export { backupStore };
+const internalBackupSchedules = createScheduleService({
+	knex: db(),
+	box: defaultSecretBox,
+	backup: internalBackup,
+	store: backupStore,
+	audit: (access, data) => internalAuditLog.add(access, data),
+	log: logger,
+});
+
+export { backupStore, internalBackupSchedules };
 export default internalBackup;

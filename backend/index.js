@@ -3,7 +3,7 @@
 import { chmod, chown, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
-import { backupStore } from "./internal/backup-service.js";
+import { backupStore, internalBackupSchedules } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
@@ -19,6 +19,7 @@ import { proxyHostsUsingDefault, renderRuntimeHosts } from "./internal/runtime-h
 import { runtimeExclusive } from "./internal/runtime-queue.js";
 import { setRuntimeApply, setRuntimeApplyAll } from "./internal/runtime-setting.js";
 import { recoverStapling, watchOcspResponses } from "./internal/stapling-recovery.js";
+import { createBackupScheduler } from "./lib/backup/scheduler.js";
 import { geoip } from "./lib/geoip/instance.js";
 import { getMonitoringConfig } from "./lib/monitoring-config.js";
 import { createRuntimeApplier } from "./lib/runtime-apply.js";
@@ -31,6 +32,9 @@ import { migrateUp } from "./migrate.js";
 import certificateModel from "./models/certificate.js";
 import { getCompiledSchema } from "./schema/index.js";
 import setup from "./setup.js";
+
+// the backup scheduler is created once, a startup retry calls appStart again
+let backupScheduler = null;
 
 async function appStart() {
 	try {
@@ -80,6 +84,15 @@ async function appStart() {
 		await getCompiledSchema();
 
 		internalCertificate.initTimer();
+
+		// scheduled backups: the first tick 5 minutes after the start runs overdue schedules once
+		backupScheduler ??= createBackupScheduler({
+			dueSchedules: internalBackupSchedules.dueSchedules,
+			runAutomatic: internalBackupSchedules.runAutomatic,
+			giveUp: internalBackupSchedules.giveUp,
+			log: logger,
+		});
+		backupScheduler.start();
 
 		setMonitoringHooks({
 			runGeoipUpdate,
