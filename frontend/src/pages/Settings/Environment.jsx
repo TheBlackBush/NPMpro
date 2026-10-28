@@ -1,6 +1,6 @@
 import { IconInfoCircle, IconLock } from "@tabler/icons-react";
 import { Link } from "react-router";
-import { ErrorAlert, Loading } from "src/components";
+import { BreakableHost, ErrorAlert, Loading } from "src/components";
 import { useEnvironment } from "src/hooks";
 import { intl, T } from "src/locale";
 import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
@@ -227,7 +227,10 @@ function GroupRows({ group }) {
 							summary={<Value item={item} />}
 						/>
 						<div className="d-none d-md-block">
-							<code className="text-nowrap">{item.name}</code>
+							{/* breaks only after an underscore, so the table fits next to the settings menu on tablets */}
+							<code>
+								<BreakableHost value={item.name} separators="_" />
+							</code>
 						</div>
 					</td>
 					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.value")}>
