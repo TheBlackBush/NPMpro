@@ -510,3 +510,10 @@ it("SQLite to SQLite keeps the stored text verbatim", async () => {
 		await Promise.all([from.destroy(), to.destroy()]);
 	}
 });
+
+it("hides text that names a secret even when it does not parse as JSON", () => {
+	assert.equal(
+		describeDifference("meta", { meta: '{"token":"abc"' }, { meta: "{}" }),
+		'meta: <hidden> in use, "{}" in the target',
+	);
+});

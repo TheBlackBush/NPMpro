@@ -233,6 +233,8 @@ const shown = (column, value) => {
 	if (Buffer.isBuffer(value)) return `${value.length} bytes`;
 	if (holdsSecret(parsedIfJson(value))) return "<hidden>";
 	const text = textOf(value);
+	// text that names a secret but does not parse (for example cut JSON) is hidden too
+	if (SECRET_NAME.test(text)) return "<hidden>";
 	return JSON.stringify(text.length > SHOWN_LENGTH ? `${text.slice(0, SHOWN_LENGTH)}...` : text);
 };
 
