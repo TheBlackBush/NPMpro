@@ -29,7 +29,21 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		return row;
 	};
 
-	const view = async (row) => scheduleView(row, (await store.scheduleFiles(row.id)).length);
+	// the stored file counts by schedule id from one listing of the backups folder; null when it cannot be read, so the
+	// schedules still answer (file_count null)
+	const fileCounts = async () => {
+		try {
+			return await store.scheduleCounts();
+		} catch (error) {
+			log.warn(`Could not count the scheduled backup files: ${error?.message ?? error}`);
+			return null;
+		}
+	};
+
+	const view = async (row, counts) => {
+		const known = counts === undefined ? await fileCounts() : counts;
+		return scheduleView(row, known === null ? null : (known.get(row.id) ?? 0));
+	};
 
 	const checkName = async (name, id = null) => {
 		const rows = await knex(TABLE).select("id", "name");
@@ -166,7 +180,8 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		list: async (access) => {
 			access.canAdmin();
 			const rows = await knex(TABLE).orderBy("id", "desc");
-			return Promise.all(rows.map((row) => view(parseRow(row))));
+			const counts = await fileCounts();
+			return Promise.all(rows.map((row) => view(parseRow(row), counts)));
 		},
 
 		get: async (access, id) => {

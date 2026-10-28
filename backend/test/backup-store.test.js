@@ -561,6 +561,23 @@ it("retention never removes keepName, even with keep 1 and an older file time", 
 	}
 });
 
+it("scheduleCounts counts each schedule's files from the names, not automatic or plain ones", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s7.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-130000.npmpro");
+	await writeFile(path.join(dir, "npmpro-backup-npm-20261028-140000-s7.npmpro.part"), "x");
+	await writeNamed(path.join(dir, "auto"), "npmpro-backup-npm-20261026-120000-s5-auto.npmpro");
+	assert.deepEqual(
+		[...(await store.scheduleCounts())].sort(([a], [b]) => a - b),
+		[
+			[5, 2],
+			[7, 1],
+		],
+	);
+});
+
 it("retention skips a file deleted by hand", async () => {
 	const { store, dir } = await make();
 	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");

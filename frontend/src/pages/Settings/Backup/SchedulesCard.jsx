@@ -288,7 +288,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
  * The checkbox of the delete window: also delete the schedule's stored files. Unticked; shown only when it has files.
  *
  * @param {Object} props
- * @param {number} props.count     the schedule's stored files
+ * @param {?number} props.count    the schedule's stored files (null when the folder could not be listed)
  * @param {Object} props.filesRef  { current: boolean }, set while ticked
  */
 function DeleteFiles({ count, filesRef }) {
@@ -392,6 +392,11 @@ function SchedulesCard() {
 			{error ? (
 				<div className="card-body">
 					<ErrorAlert error={error} className="mb-0" />
+				</div>
+			) : null}
+			{data?.some((schedule) => schedule.fileCount === null) ? (
+				<div className="card-body py-2 small text-danger">
+					<T id="settings.backup.schedule.count-error" />
 				</div>
 			) : null}
 			{data ? (

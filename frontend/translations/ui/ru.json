@@ -398,6 +398,7 @@
 	"settings.backup.schedule.column.last-run": "Last run",
 	"settings.backup.schedule.column.protection": "Protection",
 	"settings.backup.schedule.column.timing": "Timing",
+	"settings.backup.schedule.count-error": "The stored backups could not be listed, so the file counts of the schedules are unknown.",
 	"settings.backup.schedule.delete-files": "{count, plural, one {Also delete its stored backup} other {Also delete its # stored backups}}",
 	"settings.backup.schedule.deleted": "Deleted schedule",
 	"settings.backup.schedule.enabled": "Enabled",

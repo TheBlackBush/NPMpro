@@ -168,6 +168,18 @@ const createBackupStore = ({
 			.filter((item) => !item.auto && item.schedule_id === Number(id))
 			.sort((a, b) => b.modified.localeCompare(a.modified) || orderKey(b.name).localeCompare(orderKey(a.name)));
 
+	// the number of files per schedule id, from the names only (no header reads)
+	const scheduleCounts = async () => {
+		const counts = new Map();
+		for (const name of await names(dir)) {
+			const id = name.endsWith("-auto.npmpro")
+				? null
+				: Number(SCHEDULE_PART.exec(name)?.[1] ?? Number.NaN) || null;
+			if (id !== null) counts.set(id, (counts.get(id) ?? 0) + 1);
+		}
+		return counts;
+	};
+
 	// the schedule's files past the newest keep (at least one is always kept, nothing when keep is not an integer); a
 	// file removed meanwhile is skipped. keepName (the file just written) is never removed and counts as kept.
 	const pruneSchedule = async (id, keep, keepName = null) => {
@@ -393,6 +405,7 @@ const createBackupStore = ({
 		remove,
 		pruneAuto,
 		scheduleFiles,
+		scheduleCounts,
 		pruneSchedule,
 		detachSchedule,
 		detachAllSchedules,

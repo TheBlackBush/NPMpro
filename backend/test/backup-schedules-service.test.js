@@ -29,7 +29,16 @@ const busyError = () => Object.assign(new BackupError("busy", "A backup or resto
 const idAsString = (value) =>
 	value && typeof value === "object" && Object.hasOwn(value, "id") ? { ...value, id: String(value.id) } : value;
 
-const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach, stringIds = false } = {}) => {
+const make = async ({
+	run,
+	log = silent,
+	sealer = box,
+	prune,
+	removeFile,
+	detach,
+	stringIds = false,
+	countFails = false,
+} = {}) => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
 		connection: { filename: ":memory:" },
@@ -48,6 +57,7 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach
 	const audits = [];
 	const backupCalls = [];
 	const pruneCalls = [];
+	const listings = { count: 0 };
 	const lock = { held: false };
 	const service = createScheduleService({
 		knex,
@@ -71,6 +81,13 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach
 		},
 		store: {
 			scheduleFiles: async (id) => (files.get(id) ?? []).map((name) => ({ name })),
+			scheduleCounts: async () => {
+				listings.count++;
+				if (countFails) throw Object.assign(new Error("permission denied"), { code: "EACCES" });
+				return new Map(
+					[...files].filter(([id]) => typeof id === "number").map(([id, names]) => [id, names.length]),
+				);
+			},
 			// the detached files move to the "plain" key, under their names without -s<id>
 			detachSchedule: (id) => {
 				try {
@@ -110,7 +127,7 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach
 			},
 		},
 	});
-	return { knex, clock, files, audits, backupCalls, pruneCalls, lock, service };
+	return { knex, clock, files, audits, backupCalls, pruneCalls, listings, lock, service };
 };
 
 it("create sets next_run_at and owner, hides the passphrase and audits", async () => {
@@ -842,4 +859,43 @@ it("the error in the log line is cut to 1000 characters", async () => {
 	const { id } = await service.create(admin(), daily);
 	await service.runNow(admin(), id);
 	assert.equal(lines[0], `Scheduled backup "Nightly": failed, ${"x".repeat(1000)}, 0 ms`);
+});
+
+it("list reads the backups folder once for all schedules", async () => {
+	const { service, clock, listings } = await make();
+	for (const name of ["One", "Two", "Three", "Four"]) await service.create(admin(), { ...daily, name });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	for (const due of await service.dueSchedules(clock.now())) await service.runAutomatic(due);
+	listings.count = 0;
+	const views = await service.list(admin());
+	assert.equal(views.length, 4);
+	assert.deepEqual(
+		views.map((view) => view.file_count),
+		[1, 1, 1, 1],
+	);
+	assert.equal(listings.count, 1);
+	listings.count = 0;
+	await service.get(admin(), views[0].id);
+	await service.update(admin(), views[0].id, { keep: 3 });
+	await service.runNow(admin(), views[0].id);
+	assert.equal(listings.count, 3);
+});
+
+it("a backups folder that cannot be listed gives file_count null and a warning, not an error", async () => {
+	const warnings = [];
+	const { service } = await make({
+		countFails: true,
+		log: { ...silent, warn: (message) => warnings.push(message) },
+	});
+	const created = await service.create(admin(), daily);
+	assert.equal(created.file_count, null);
+	assert.deepEqual(
+		(await service.list(admin())).map((view) => view.file_count),
+		[null],
+	);
+	assert.equal((await service.get(admin(), created.id)).file_count, null);
+	const run = await service.runNow(admin(), created.id);
+	assert.equal(run.last_status, "success");
+	assert.equal(run.file_count, null);
+	assert.ok(warnings.some((message) => message.includes("permission denied")));
 });
