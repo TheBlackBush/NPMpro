@@ -314,7 +314,13 @@ function RecentTable({ rows }) {
 					const { method, path } = info.row.original;
 					if (method === "-" && path === "") return <span className="text-secondary">-</span>;
 					return (
-						<span className="d-block text-truncate font-monospace request-path" title={`${method} ${path}`}>
+						// focus (Tab or tap) shows the whole path: the title tooltip only appears on hover
+						<span
+							className="d-block text-truncate font-monospace request-path"
+							title={`${method} ${path}`}
+							// biome-ignore lint/a11y/noNoninteractiveTabindex: focusing the cell is how touch and keyboard users read a cut path
+							tabIndex={0}
+						>
 							<span className="text-secondary me-2">{method}</span>
 							{path}
 						</span>

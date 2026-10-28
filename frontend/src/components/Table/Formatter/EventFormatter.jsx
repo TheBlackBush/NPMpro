@@ -88,8 +88,7 @@ export function EventFormatter({ row }) {
 		<div className="flex-fill">
 			<div className="fw-medium">
 				{getIcon(row)}
-				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />
-				&nbsp; &mdash;{" "}
+				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />:{" "}
 				<span className="badge text-wrap text-start">
 					<BreakableHost value={String(getEventValue(row) ?? "")} />
 				</span>

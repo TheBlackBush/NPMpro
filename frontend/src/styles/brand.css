@@ -33,7 +33,13 @@
 	}
 }
 
-/* A request path stays on one line in the recent requests table, cut with an ellipsis (full text in its title) */
+/* A request path stays on one line in the recent requests table, cut with an ellipsis (full text in its title);
+   focusing it (Tab or tap) shows the whole path */
 .request-path {
 	max-width: max(15rem, 30vw);
+}
+
+.request-path:focus {
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
