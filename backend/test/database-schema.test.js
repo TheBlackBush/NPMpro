@@ -38,7 +38,7 @@ const KNOWN = [
 	"user",
 ];
 
-it("builds the whole schema on an empty SQLite database without touching /data", async () => {
+it("builds the whole schema on an empty SQLite database", async () => {
 	const db = await migratedSqlite();
 	try {
 		const tables = await dataTables(db.knex);

@@ -3,6 +3,9 @@ import errs from "../error.js";
 import { engineOf, listTables, rawRows } from "./engine.js";
 import { kindOfType } from "./values.js";
 
+// code-unit order: deterministic and independent of the locale
+const byCode = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 // The schema side of a database move: the target gets NPMpro's own migrations, the tables to copy come from the
 // source schema (so a table a later migration adds is copied too), ordered parents first.
 
@@ -67,8 +70,9 @@ const tableOrder = (tables, keys) => {
 	while (pending.size > 0) {
 		const ready = [...pending]
 			.filter((table) => [...parents.get(table)].every((parent) => !pending.has(parent)))
-			.sort();
-		if (ready.length === 0) throw mismatch(`The tables ${[...pending].sort().join(", ")} reference each other`);
+			.sort(byCode);
+		if (ready.length === 0)
+			throw mismatch(`The tables ${[...pending].sort(byCode).join(", ")} reference each other`);
 		for (const table of ready) {
 			order.push(table);
 			pending.delete(table);
@@ -119,7 +123,7 @@ const keyColumns = async (knex, table) => {
 	return Object.entries(info)
 		.filter(([, column]) => !["json", "binary"].includes(kindOfType(column.type)))
 		.map(([name]) => name)
-		.sort();
+		.sort(byCode);
 };
 
 const listed = (names) => (names.length > 0 ? names.join(", ") : "none");
@@ -152,8 +156,8 @@ const compareSchemas = async (source, target) => {
 	for (const table of sourceTables) {
 		const sourceInfo = await source(table).columnInfo();
 		const targetInfo = await target(table).columnInfo();
-		const a = Object.keys(sourceInfo).sort();
-		const b = Object.keys(targetInfo).sort();
+		const a = Object.keys(sourceInfo).sort(byCode);
+		const b = Object.keys(targetInfo).sort(byCode);
 		if (a.join(",") !== b.join(",")) {
 			throw mismatch(`The columns of ${table} differ: ${a.join(", ")} in use, ${b.join(", ")} in the target`);
 		}
