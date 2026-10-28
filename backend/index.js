@@ -85,15 +85,6 @@ async function appStart() {
 
 		internalCertificate.initTimer();
 
-		// scheduled backups: the first tick 5 minutes after the start runs overdue schedules once
-		backupScheduler ??= createBackupScheduler({
-			dueSchedules: internalBackupSchedules.dueSchedules,
-			runAutomatic: internalBackupSchedules.runAutomatic,
-			giveUp: internalBackupSchedules.giveUp,
-			log: logger,
-		});
-		backupScheduler.start();
-
 		setMonitoringHooks({
 			runGeoipUpdate,
 			onGeoipCredentialsChange: runGeoipUpdate,
@@ -106,6 +97,16 @@ async function appStart() {
 		await geoip.reload();
 		await internalNginx.reload();
 		startMonitoringServices();
+
+		// scheduled backups, once every startup step that can fail has passed (a retry cleans the backup folder);
+		// the first tick 5 minutes after the start runs overdue schedules once
+		backupScheduler ??= createBackupScheduler({
+			dueSchedules: internalBackupSchedules.dueSchedules,
+			runAutomatic: internalBackupSchedules.runAutomatic,
+			giveUp: internalBackupSchedules.giveUp,
+			log: logger,
+		});
+		backupScheduler.start();
 
 		await rm("/run/npmpro.sock", { force: true });
 		const server = app.listen("/run/npmpro.sock", async (err) => {
