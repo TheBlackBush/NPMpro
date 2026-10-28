@@ -64,13 +64,24 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 		else log.warn(`Scheduled backup "${row.name}": failed, ${error.message}, ${duration} ms`);
 		const current = await readRow(row.id);
 		let removed = [];
+		let retentionError = null;
 		if (current) {
-			if (result) removed = await store.pruneSchedule(current.id, current.keep);
-			const previous = current.next_run_at?.getTime() ?? 0;
-			const keepPlanned = manual && previous > clock.now();
+			if (result) {
+				// retention is housekeeping: the backup is stored, so the run stays a success
+				try {
+					removed = await store.pruneSchedule(current.id, current.keep);
+				} catch (caught) {
+					retentionError = String(caught?.message ?? caught).slice(0, MAX_ERROR);
+					log.warn(`Scheduled backup "${row.name}": retention failed, ${retentionError}`);
+				}
+			}
+			const previous = current.next_run_at?.getTime() ?? null;
+			// a save during the run (edit, pause, resume) already computed next_run_at
+			const edited = previous !== (row.next_run_at?.getTime() ?? null);
+			const keepPlanned = current.enabled && previous !== null && previous > clock.now() && (manual || edited);
 			const next = keepPlanned
 				? current.next_run_at
-				: nextAfter({ ...current, last_run_at: started }, new Date(Math.max(clock.now(), previous)));
+				: nextAfter({ ...current, last_run_at: started }, new Date(Math.max(clock.now(), previous ?? 0)));
 			await knex(TABLE)
 				.where({ id: current.id })
 				.update({
@@ -84,7 +95,13 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 				});
 		} else log.info(`The schedule "${row.name}" was deleted during its run`);
 		const meta = result
-			? { file: result.name, size: result.size, removed, automatic }
+			? {
+					file: result.name,
+					size: result.size,
+					removed,
+					automatic,
+					...(retentionError === null ? {} : { retention_error: retentionError }),
+				}
 			: { error: String(error.message).slice(0, MAX_ERROR), automatic };
 		await writeAudit(access, result ? "backup-succeeded" : "backup-failed", row, { meta, userId });
 	};

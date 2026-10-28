@@ -22,7 +22,7 @@ const daily = {
 const opened = [];
 after(() => Promise.all(opened.map((knex) => knex.destroy())));
 
-const make = async ({ run, log = silent, sealer = box } = {}) => {
+const make = async ({ run, log = silent, sealer = box, prune } = {}) => {
 	const knex = knexFactory({
 		client: "better-sqlite3",
 		connection: { filename: ":memory:" },
@@ -54,6 +54,7 @@ const make = async ({ run, log = silent, sealer = box } = {}) => {
 			scheduleFiles: async (id) => (files.get(id) ?? []).map((name) => ({ name })),
 			pruneSchedule: async (id, keep) => {
 				pruneCalls.push([id, keep]);
+				if (prune) await prune(id, keep);
 				const all = files.get(id) ?? [];
 				files.set(id, all.slice(0, keep));
 				return all.slice(keep);
@@ -147,7 +148,8 @@ it("edited during a run: the edit stays and retention uses the new keep", async 
 	const view = await service.get(admin(), id);
 	assert.equal(view.keep, 1);
 	assert.equal(view.time, "05:00");
-	assert.equal(view.next_run_at, "2026-11-01T05:00:00.000Z");
+	// the save during the run computed the later slot of the same day, the run keeps it
+	assert.equal(view.next_run_at, "2026-10-31T05:00:00.000Z");
 	assert.equal(files.get(id).length, 1);
 });
 
@@ -450,4 +452,52 @@ it("paused during a run: the run is recorded and next_run_at stays empty", async
 	assert.equal(view.last_status, "success");
 	assert.equal(view.next_run_at, null);
 	assert.deepEqual(await service.dueSchedules(Date.parse("2026-11-30T00:00:00Z")), []);
+});
+
+it("edited during a run to a later time the same day: the run keeps that slot", async () => {
+	let edit;
+	const { service, clock } = await make({ run: async () => edit?.() });
+	const { id } = await service.create(admin(), daily);
+	edit = () => service.update(admin(), id, { time: "15:00" });
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+	const view = await service.get(admin(), id);
+	assert.equal(view.time, "15:00");
+	assert.equal(view.last_status, "success");
+	assert.equal(view.next_run_at, "2026-10-29T15:00:00.000Z");
+});
+
+it("resumed during a run: the run keeps the next run the resume computed", async () => {
+	let resume;
+	const { service, clock } = await make({ run: async () => resume?.() });
+	const { id } = await service.create(admin(), { ...daily, enabled: false });
+	resume = () => service.update(admin(), id, { enabled: true });
+	clock.value = Date.parse("2026-10-29T01:00:00Z");
+	const view = await service.runNow(admin(), id);
+	assert.equal(view.enabled, true);
+	assert.equal(view.next_run_at, "2026-10-29T03:00:00.000Z");
+});
+
+it("a retention failure keeps the run a success and moves next_run_at on", async () => {
+	const lines = [];
+	const log = { info: () => {}, warn: (line) => lines.push(line), error: () => {} };
+	const { service, clock, audits } = await make({
+		log,
+		prune: () => {
+			throw new Error("permission denied");
+		},
+	});
+	const { id } = await service.create(admin(), daily);
+	clock.value = Date.parse("2026-10-29T03:00:00Z");
+	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
+	const view = await service.get(admin(), id);
+	assert.equal(view.last_status, "success");
+	assert.equal(view.last_error, null);
+	assert.equal(view.last_file, "npmpro-backup-npm-1-s1.npmpro");
+	assert.equal(view.next_run_at, "2026-10-30T03:00:00.000Z");
+	const entry = audits.find((item) => item.action === "backup-succeeded");
+	assert.equal(entry.meta.retention_error, "permission denied");
+	assert.deepEqual(entry.meta.removed, []);
+	assert.ok(lines.includes('Scheduled backup "Nightly": retention failed, permission denied'));
+	assert.deepEqual(await service.dueSchedules(clock.now()), []);
 });
