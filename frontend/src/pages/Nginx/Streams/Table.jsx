@@ -90,7 +90,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 				header: intl.formatMessage({ id: "column.description" }),
 				cell: (info) => {
 					const value = info.row.original.npmproDescription;
-					return value || <span className="text-secondary">—</span>;
+					return value || null;
 				},
 			}),
 			columnHelper.accessor(streamDestination, {

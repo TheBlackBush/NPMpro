@@ -1,26 +1,22 @@
-import { IconSearch } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { adminDisableMfa, deleteUser, revokeSessions, toggleUser } from "src/api/backend";
-import { Button, ErrorAlert, LoadingPage } from "src/components";
-import { useUser, useUsers } from "src/hooks";
-import { intl, T } from "src/locale";
+import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
+import { useListFilters, useUser, useUsers } from "src/hooks";
+import { T } from "src/locale";
 import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
+import { activeFilterCount } from "src/modules/ListFilters";
 import { showApiError, showObjectSuccess } from "src/notifications";
-import Table from "./Table";
+import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
 	const queryClient = useQueryClient();
-	const [search, setSearch] = useState("");
+	const [sorting, setSorting] = useState([{ id: "name", desc: false }]);
+	// only the ids, headers and sortability are read here; the cells render in Table
+	const columns = useColumns();
+	const { filters, setFilter, clear } = useListFilters();
 	const { isFetching, isPending, isError, error, data } = useUsers();
-
-	useEffect(() => {
-		// this can happen if someone deletes the last item while searching
-		if (search !== "" && !data?.length) {
-			setSearch("");
-		}
-	});
 	const { data: currentUser } = useUser("me");
 
 	if (isPending) {
@@ -44,17 +40,19 @@ export default function TableWrapper() {
 		}
 	};
 
-	let filtered = null;
-	if (search) {
-		filtered = data?.filter((item) => item.name.toLowerCase().includes(search) || item.email.includes(search));
-	}
+	const needle = filters.q.trim().toLowerCase();
+	const displayed = (data ?? []).filter(
+		(item) =>
+			needle === "" || item.name.toLowerCase().includes(needle) || item.email.toLowerCase().includes(needle),
+	);
+	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
 	return (
 		<div className="card mt-4">
 			<div className="card-status-top bg-orange" />
 			<div className="card-table">
-				<div className="card-header">
-					<h2 className="card-title">
+				<div className="card-header flex-wrap gap-2">
+					<h2 className="card-title text-nowrap">
 						<T id="users" />
 					</h2>
 					<div className="card-actions btn-list">
@@ -71,30 +69,20 @@ export default function TableWrapper() {
 						<T id="users.oidc-hint.link" />
 					</Link>
 				</div>
-				{data?.length ? (
-					<div className="card-body border-bottom py-3">
-						<div className="row g-2 align-items-center">
-							<div className="col-12 col-md">
-								<div className="input-group input-group-flat input-group-sm">
-									<span className="input-group-text">
-										<IconSearch className="icon" aria-hidden="true" />
-									</span>
-									<input
-										type="text"
-										className="form-control"
-										placeholder={intl.formatMessage({ id: "search" })}
-										aria-label={intl.formatMessage({ id: "search" })}
-										autoComplete="off"
-										onChange={(e) => setSearch(e.target.value.toLowerCase().trim())}
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-				) : null}
+				<ListToolbar
+					filters={filters}
+					setFilter={setFilter}
+					clear={clear}
+					total={data?.length ?? 0}
+					shown={displayed.length}
+					kinds={[]}
+					sorting={{ columns, state: sorting, onChange: setSorting }}
+				/>
 				<Table
-					data={filtered ?? data ?? []}
-					isFiltered={search}
+					data={displayed}
+					isFiltered={isFiltered}
+					sorting={sorting}
+					onSortingChange={setSorting}
 					isFetching={isFetching}
 					currentUserId={currentUser?.id}
 					onEditUser={(id) => showUserModal(id)}

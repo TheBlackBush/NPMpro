@@ -1,4 +1,5 @@
 import { IconCloud, IconHelp, IconShieldLock, IconUpload, IconWorld } from "@tabler/icons-react";
+import { useState } from "react";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
 import {
 	Button,
@@ -24,10 +25,13 @@ import {
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
-import Table from "./Table";
+import Table, { useColumns } from "./Table";
 import { Tabs } from "./Tabs";
 
 export default function TableWrapper() {
+	const [sorting, setSorting] = useState([{ id: "expiresOn", desc: false }]);
+	// only the ids, headers and sortability are read here; the cells render in Table
+	const columns = useColumns();
 	const { isFetching, isPending, isError, error, data } = useCertificates([
 		"owner",
 		"dead_hosts",
@@ -67,8 +71,8 @@ export default function TableWrapper() {
 			<div className="card-status-top bg-pink" />
 			<Tabs />
 			<div className="card-table">
-				<div className="card-header">
-					<h2 className="card-title">
+				<div className="card-header flex-wrap gap-2">
+					<h2 className="card-title text-nowrap">
 						<T id="certificates" />
 					</h2>
 					<div className="card-actions btn-list">
@@ -152,11 +156,14 @@ export default function TableWrapper() {
 					total={data?.length ?? 0}
 					shown={displayed.length}
 					kinds={["expiry"]}
+					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
 				<Table
 					data={displayed}
 					isFiltered={isFiltered}
 					onClearFilters={clear}
+					sorting={sorting}
+					onSortingChange={setSorting}
 					isFetching={isFetching}
 					onRenew={showRenewCertificateModal}
 					onChangeDnsCredential={showChangeDnsCredentialModal}

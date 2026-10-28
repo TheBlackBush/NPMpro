@@ -56,10 +56,12 @@ function UsedBy({ id, certificates }) {
 	);
 }
 
-export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew }) {
-	const columnHelper = createColumnHelper();
+const columnHelper = createColumnHelper();
+
+// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
+export function useColumns({ onEdit, onDelete } = {}) {
 	const { data: providers } = useDnsProviders();
-	const columns = useMemo(
+	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
 				id: "owner",
@@ -75,10 +77,12 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				},
 				meta: {
 					className: "text-nowrap",
+					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.accessor((row) => row.name, {
 				id: "name",
+				meta: { mobile: "title" },
 				header: intl.formatMessage({ id: "dns-credentials.name" }),
 				cell: (info) => (
 					<>
@@ -96,11 +100,20 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			}),
 			columnHelper.accessor((row) => row.provider, {
 				id: "provider",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) => providers?.find((p) => p.id === row.provider)?.name ?? row.provider,
+				},
 				header: intl.formatMessage({ id: "certificates.dns.provider" }),
 				cell: (info) => providers?.find((p) => p.id === info.getValue())?.name ?? info.getValue(),
 			}),
 			columnHelper.accessor((row) => row.certificates?.length ?? 0, {
 				id: "usedBy",
+				meta: {
+					mobile: "summary",
+					summaryText: (row) =>
+						`${intl.formatMessage({ id: "dns-credentials.used-by" })}: ${row.certificates?.length ?? 0}`,
+				},
 				header: intl.formatMessage({ id: "dns-credentials.used-by" }),
 				cell: (info) => (
 					<UsedBy id={info.row.original.id} certificates={info.row.original.certificates ?? []} />
@@ -161,21 +174,28 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 				},
 				meta: {
 					className: "text-end text-nowrap",
+					mobile: "title-end",
 				},
 			}),
 		],
-		[columnHelper, onEdit, onDelete, providers],
+		[onEdit, onDelete, providers],
 	);
+}
+
+export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
+	const columns = useColumns({ onEdit, onDelete });
 
 	const tableInstance = useTable({
 		features,
-		columns,
+		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
 		meta: {
 			isFetching,
 		},
 		enableSortingRemoval: false,
+		state: { sorting },
+		onSortingChange,
 	});
 
 	return (
