@@ -9,7 +9,12 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 const DOMAIN_HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts"];
 const HOST_TYPES = [...DOMAIN_HOST_TYPES, "streams"];
 const LINK_TYPES = ["certificates", "access_lists", "dns_credentials"];
-const SETTINGS_TYPES = CATEGORIES.find(({ id }) => id === "settings").types;
+const SCHEDULE_TYPE = "backup_schedules";
+const SCHEDULE_TABLE = "npmpro_backup_schedule";
+// the setting row types; backup schedules are their own rows, planned by scheduleDiffs
+const SETTINGS_TYPES = CATEGORIES.find(({ id }) => id === "settings").types.filter(
+	(typeId) => typeId !== SCHEDULE_TYPE,
+);
 const FILE_TYPES = ["settings_default_site", "custom_nginx", "crowdsec_files"];
 const ACTIONS = ["add", "replace", "skip", "existing", "take", "keep"];
 // actions that write the backup row, and so carry its links
@@ -60,7 +65,8 @@ const compareText = (a, b) => {
 const byId = (a, b) => Number(a.id) - Number(b.id) || compareText(String(a.id), String(b.id));
 const sortedRows = (rows) => [...(Array.isArray(rows) ? rows : [])].sort(byId);
 const domainKey = (row) => [...new Set(domainsOf(row).map(lower))].sort(compareText).join("\n");
-const tableRows = (data, typeId) => sortedRows(data[typeId]?.[ITEM_TYPES[typeId].table]);
+const tableOf = (typeId) => ITEM_TYPES[typeId]?.table ?? (typeId === SCHEDULE_TYPE ? SCHEDULE_TABLE : "setting");
+const tableRows = (data, typeId) => sortedRows(data[typeId]?.[tableOf(typeId)]);
 const instanceRows = (instance, typeId) => sortedRows(instance[ITEM_TYPES[typeId].table]);
 
 const parseJson = (value) => {
@@ -280,6 +286,58 @@ const settingDiffs = (ctx) =>
 		}),
 	);
 
+const SCHEDULE_COMPARED = [
+	"enabled",
+	"frequency",
+	"every_hours",
+	"time",
+	"weekday",
+	"month_day",
+	"types",
+	"protection",
+	"keep",
+];
+const scheduleContent = (row) =>
+	JSON.stringify(
+		SCHEDULE_COMPARED.map((column) => {
+			const value = column === "types" ? parseJson(row.types) : row[column];
+			if (column === "enabled") return Boolean(Number(value));
+			if (column === "types") return [...(Array.isArray(value) ? value : [])].sort(compareText);
+			return value === undefined || value === null ? null : String(value);
+		}),
+	);
+
+// backup schedules by name: new ones are added, ones that differ keep or take the backup's
+const scheduleDiffs = (ctx) => {
+	if (ctx.scope.page || !ctx.types.includes(SCHEDULE_TYPE)) return [];
+	return sortedRows(ctx.data[SCHEDULE_TYPE]?.[SCHEDULE_TABLE]).flatMap((row) => {
+		const current = sortedRows(ctx.instance[SCHEDULE_TABLE]).find((other) => lower(other.name) === lower(row.name));
+		const key = `schedule:${row.id}`;
+		const label = String(row.name);
+		if (!current) {
+			return [
+				{
+					key,
+					type: SCHEDULE_TYPE,
+					id: row.id,
+					label,
+					action: "add",
+					reason: null,
+					target: null,
+					choices: [],
+					default: "add",
+					needed_by: [],
+					linked: false,
+					unticked: false,
+				},
+			];
+		}
+		if (scheduleContent(current) === scheduleContent(row)) return [];
+		const target = { type: SCHEDULE_TYPE, id: current.id, label: String(current.name) };
+		return [listedItem({ key, typeId: SCHEDULE_TYPE, id: row.id, label, target })];
+	});
+};
+
 // staged files of the chosen file types that the instance lacks or holds with other content
 const fileDiffs = (ctx) => {
 	const types = FILE_TYPES.filter((typeId) => ctx.types.includes(typeId));
@@ -345,6 +403,9 @@ const clearedLinks = (items, data) => {
 };
 
 const needsSecret = (item, data) => {
+	if (item.type === SCHEDULE_TYPE) {
+		return ["add", "take"].includes(item.action) && rowOf(data, item)?.protection === "passphrase";
+	}
 	if (!ACTIVE.has(item.action)) return false;
 	if (item.type === "certificates") return rowOf(data, item)?.provider !== "mtls";
 	if (item.type === "access_lists") {
@@ -354,7 +415,7 @@ const needsSecret = (item, data) => {
 };
 
 const itemGroup = (item) => {
-	if (item.key.startsWith("setting:")) return 2;
+	if (item.key.startsWith("setting:") || item.key.startsWith("schedule:")) return 2;
 	return item.key.startsWith("file:") ? 3 : 1;
 };
 
@@ -414,7 +475,11 @@ const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, s
 	planned.push(...planLinked("access_lists", hostLinks.access_lists, ctx));
 	planned.push(...planLinked("dns_credentials", linkedOf(activeData(planned, ctx.data)).dns_credentials, ctx));
 	planned.push(...planRows("users", selectedRows("users", ctx), ctx));
-	planned.push(...[...settingDiffs(ctx), ...fileDiffs(ctx)].map((item) => applyChoice(item, ctx.choices[item.key])));
+	planned.push(
+		...[...settingDiffs(ctx), ...scheduleDiffs(ctx), ...fileDiffs(ctx)].map((item) =>
+			applyChoice(item, ctx.choices[item.key]),
+		),
+	);
 	planned.sort(compareItems);
 	const counts = Object.fromEntries(
 		ACTIONS.map((action) => [action, planned.filter((item) => item.action === action).length]),
@@ -451,6 +516,13 @@ const readInstanceRows = async (knex) => {
 	const settingColumns = Object.keys(await knex("setting").columnInfo());
 	const settings = settingColumns.length > 0 ? await knex("setting").select().orderBy("id") : [];
 	out.setting = settings.map((row) => ({ ...row, meta: parseJson(row.meta) }));
+	// every column but the passphrase, which the planner never needs
+	out[SCHEDULE_TABLE] = (await knex.schema.hasTable(SCHEDULE_TABLE))
+		? (await knex(SCHEDULE_TABLE).orderBy("id")).map(({ passphrase: _passphrase, ...row }) => ({
+				...row,
+				types: parseJson(row.types),
+			}))
+		: [];
 	return out;
 };
 

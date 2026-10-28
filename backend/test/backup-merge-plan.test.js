@@ -410,12 +410,14 @@ it("reads the instance rows with only the columns the planner needs", async () =
 		assert.deepEqual(rows.user, [{ id: 1, email: "admin@example.com", name: "Admin" }]);
 		assert.deepEqual(rows.setting, [{ id: "oidc", name: "OIDC", meta: { enabled: true } }]);
 		assert.deepEqual(rows.stream, []);
+		assert.deepEqual(rows.npmpro_backup_schedule, []);
 		assert.deepEqual(
 			Object.keys(rows).sort((a, b) => a.localeCompare(b)),
 			[
 				"access_list",
 				"certificate",
 				"dead_host",
+				"npmpro_backup_schedule",
 				"npmpro_dns_credential",
 				"proxy_host",
 				"redirection_host",

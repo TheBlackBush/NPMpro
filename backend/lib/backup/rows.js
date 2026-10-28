@@ -16,6 +16,7 @@ const JSON_COLUMNS = {
 	user: ["roles"],
 	auth: ["meta"],
 	setting: ["meta"],
+	npmpro_backup_schedule: ["types"],
 };
 
 // tables without an id column, ordered by their primary key instead

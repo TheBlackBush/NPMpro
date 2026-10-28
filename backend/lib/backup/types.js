@@ -1,5 +1,6 @@
 import path from "node:path";
 import { RUNTIME_GROUPS } from "../runtime-rules.js";
+import { nextRun } from "./schedule-time.js";
 
 // What a backup can hold, by type: the tables, the files under the data folder and how the stored secrets are opened
 // for an archive, stripped from it or sealed again with the target's secret box. Every secret function returns new
@@ -11,7 +12,16 @@ const CATEGORIES = [
 	{ id: "access_lists", types: ["access_lists"] },
 	{ id: "dns_credentials", types: ["dns_credentials"] },
 	{ id: "users", types: ["users"] },
-	{ id: "settings", types: ["settings_runtime", "settings_default_site", "settings_oidc", "settings_monitoring"] },
+	{
+		id: "settings",
+		types: [
+			"settings_runtime",
+			"settings_default_site",
+			"settings_oidc",
+			"settings_monitoring",
+			"backup_schedules",
+		],
+	},
 	{ id: "custom_files", types: ["custom_nginx", "crowdsec_files"] },
 ];
 
@@ -28,6 +38,7 @@ const RESTORE_ORDER = [
 	"settings_default_site",
 	"settings_oidc",
 	"settings_monitoring",
+	"backup_schedules",
 	"custom_nginx",
 	"crowdsec_files",
 ];
@@ -114,6 +125,42 @@ const settingMetaSecret = (id, key) => {
 };
 
 const settingRows = (ids) => [{ table: "setting", where: (qb) => qb.whereIn("id", ids) }];
+
+const SCHEDULE_TABLE = "npmpro_backup_schedule";
+// the run state and owner stay with the instance; a restore starts them anew
+const SCHEDULE_RUN_STATE = [
+	"owner_user_id",
+	"next_run_at",
+	"last_run_at",
+	"last_status",
+	"last_error",
+	"last_file",
+	"last_size",
+	"last_duration_ms",
+];
+
+const withoutRunState = (rowsByTable) =>
+	mapRows(rowsByTable, SCHEDULE_TABLE, (row) =>
+		Object.fromEntries(Object.entries(row).filter(([column]) => !SCHEDULE_RUN_STATE.includes(column))),
+	);
+
+const hasText = (value) => typeof value === "string" && value !== "";
+
+// the schedule passphrase is sealed as { passphrase }
+const scheduleSecrets = {
+	export: (rowsByTable, box) =>
+		mapRows(withoutRunState(rowsByTable), SCHEDULE_TABLE, (row) =>
+			isSealed(row.passphrase) ? { ...row, passphrase: box.decrypt(row.passphrase).passphrase } : row,
+		),
+	strip: (rowsByTable) =>
+		mapRows(withoutRunState(rowsByTable), SCHEDULE_TABLE, (row) => ({ ...row, passphrase: null })),
+	seal: (rowsByTable, box) =>
+		mapRows(rowsByTable, SCHEDULE_TABLE, (row) =>
+			hasText(row.passphrase) && !isSealed(row.passphrase)
+				? { ...row, passphrase: box.encrypt({ passphrase: row.passphrase }) }
+				: row,
+		),
+};
 
 const CERTIFICATE_FILES = [
 	/^tls\/certbot\/archive\/npm-\d+$/u,
@@ -234,7 +281,25 @@ const TYPES = {
 		}),
 		secrets: NO_SECRETS,
 	},
+	backup_schedules: { tables: [{ table: SCHEDULE_TABLE }], files: NO_FILES, secrets: scheduleSecrets },
 };
+
+// restored schedules: the restoring admin owns them, unknown types go, one that cannot run comes back paused
+TYPES.backup_schedules.restoreRows = (rowsByTable, { adminUserId, nowMs }) =>
+	mapRows(rowsByTable, SCHEDULE_TABLE, (row) => {
+		const types = (Array.isArray(row.types) ? row.types : []).filter((typeId) => Object.hasOwn(TYPES, typeId));
+		const missingPassphrase = row.protection === "passphrase" && !hasText(row.passphrase);
+		const enabled = Boolean(Number(row.enabled)) && types.length > 0 && !missingPassphrase;
+		const base = Object.fromEntries(SCHEDULE_RUN_STATE.map((column) => [column, null]));
+		return {
+			...row,
+			...base,
+			types,
+			owner_user_id: adminUserId,
+			enabled,
+			next_run_at: enabled ? nextRun({ ...row, last_run_at: null }, new Date(nowMs)).toISOString() : null,
+		};
+	});
 
 const FILES_PREFIX = "files/";
 
