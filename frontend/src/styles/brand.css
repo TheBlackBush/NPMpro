@@ -32,3 +32,8 @@
 		outline-offset: var(--tblr-focus-ring-offset);
 	}
 }
+
+/* A request path stays on one line in the recent requests table, cut with an ellipsis (full text in its title) */
+.request-path {
+	max-width: max(15rem, 30vw);
+}

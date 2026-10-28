@@ -277,9 +277,6 @@ const recentHostName = (row) =>
  * The newest requests the backend keeps in memory (the selected host's or all), like "Newest bans": search, the
  * first 25 rows (10 below the md breakpoint) with "Show all", the IP column only when the API sends IPs.
  */
-// a request path may break after these characters (path segments, query parameters, file extensions)
-const PATH_SEPARATORS = "/?&=.,;_+%";
-
 function RecentTable({ rows }) {
 	const { filters, setFilter, clear } = useListFilters();
 	const [showAll, setShowAll] = useState(false);
@@ -317,14 +314,12 @@ function RecentTable({ rows }) {
 					const { method, path } = info.row.original;
 					if (method === "-" && path === "") return <span className="text-secondary">-</span>;
 					return (
-						<span className="font-monospace">
+						<span className="d-block text-truncate font-monospace request-path" title={`${method} ${path}`}>
 							<span className="text-secondary me-2">{method}</span>
-							<BreakableHost value={path} separators={PATH_SEPARATORS} />
+							{path}
 						</span>
 					);
 				},
-				// a long path or query string wraps at its separators instead of widening the scroll area
-				meta: { className: "text-wrap" },
 			}),
 			columnHelper.accessor("status", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.status" }),
