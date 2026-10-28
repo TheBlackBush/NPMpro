@@ -96,6 +96,14 @@ const isTypeList = (types) =>
 	Array.isArray(types) && types.length > 0 && types.every((typeId) => Object.hasOwn(TYPES, typeId));
 
 // the chosen types once each, in restore order; an unknown or empty choice is refused
+const SCHEDULE_MODES = { passphrase: "passphrase", instance_key: "instance", none: "none" };
+
+// an instance-key file whose key does not open it was made by another instance
+const otherInstance = (header, error) =>
+	header.kdf === "instance" && error?.code === "wrong-passphrase"
+		? new BackupError("other-instance", "This backup was made with another instance's key", { cause: error })
+		: error;
+
 const chosenTypes = (types, available = ALL_TYPES) => {
 	if (!isTypeList(types)) throw new BackupError("invalid-types", "Choose at least one known type");
 	const missing = types.filter((typeId) => !available.includes(typeId));
@@ -334,8 +342,14 @@ const createBackupService = ({
 			} catch (error) {
 				// an encrypted file is authenticated only at its end, so the garbage of a wrong passphrase or a changed
 				// byte fails the gzip or tar parsing first: an invalid archive counts only once the file proved authentic
-				if (header.kdf !== "none" && error?.code === "invalid-archive") await finished((await open()).resume());
-				throw error;
+				if (header.kdf !== "none" && error?.code === "invalid-archive") {
+					try {
+						await finished((await open()).resume());
+					} catch (authError) {
+						throw otherInstance(header, authError);
+					}
+				}
+				throw otherInstance(header, error);
 			}
 			let manifest;
 			try {
@@ -907,7 +921,41 @@ const createBackupService = ({
 			for (const row of await knex("certificate").select("provider").count({ count: "*" }).groupBy("provider")) {
 				certificateKinds[row.provider] = Number(row.count);
 			}
-			return { categories: CATEGORIES, counts, certificateKinds };
+			return {
+				categories: CATEGORIES,
+				counts,
+				certificateKinds,
+				time_zone: process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+			};
+		},
+
+		/**
+		 * One run of a backup schedule into the backup folder (spec "Scheduler"); the caller checks access
+		 *
+		 * @param   {Object}  options  { scheduleId, types, protection, passphrase, userId }
+		 * @returns {Promise<{ name: string, size: number }>}
+		 */
+		scheduledBackup: async ({ scheduleId, types, protection, passphrase, userId }) => {
+			const chosen = chosenTypes(types);
+			const mode = SCHEDULE_MODES[protection];
+			if (!mode) throw new BackupError("invalid-types", `Unknown protection ${protection}`);
+			if (mode === "passphrase") checkPassphrase(passphrase);
+			return await store.withLock(async () => {
+				const name = store.uniqueName(
+					store.fileName({ host: hostname, date: new Date(clock.now()), scheduleId }),
+				);
+				const file = store.pathOf(name);
+				await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
+				await writeBackup({
+					file,
+					types: chosen,
+					secrets: mode !== "none",
+					mode,
+					passphrase: mode === "passphrase" ? passphrase : undefined,
+					userId,
+				});
+				return { name, size: (await stat(file)).size };
+			});
 		},
 
 		/**

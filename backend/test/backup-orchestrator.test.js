@@ -13,10 +13,10 @@ process.env.TZ = "UTC";
 
 const TIMEOUT = { timeout: 60_000 };
 const PASSPHRASE = "correct horse battery staple";
-const AUTO_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro$/u;
-const PLAIN_NAME = /^npmpro-backup-test-host-\d{8}-\d{6}\.npmpro$/u;
+const AUTO_NAME = /^npmpro-backup-npmpro-\d{8}-\d{6}-auto\.npmpro$/u;
+const PLAIN_NAME = /^npmpro-backup-npmpro-\d{8}-\d{6}\.npmpro$/u;
 const UNKNOWN_DIRECTIVE = /unknown directive/u;
-const AUTO_IN_MESSAGE = /npmpro-backup-test-host-\d{8}-\d{6}-auto\.npmpro/u;
+const AUTO_IN_MESSAGE = /npmpro-backup-npmpro-\d{8}-\d{6}-auto\.npmpro/u;
 const LOCATION_TABLE = /npmpro_location/u;
 const UPLOAD_NAME = /^npmpro-backup-upload-\d{8}-\d{6}\.npmpro$/u;
 const access = { canAdmin: () => true, token: { getUserId: () => 1 } };
@@ -788,5 +788,108 @@ it("rolls back a restore whose custom nginx file breaks hosts that were not on t
 		);
 	} finally {
 		await ctx.cleanup();
+	}
+});
+
+it("a scheduled run writes the file under the schedule's name with its protection", async () => {
+	const { service, store, cleanup } = await setup();
+	try {
+		const one = await service.scheduledBackup({
+			scheduleId: 3,
+			types: ["proxy_hosts"],
+			protection: "instance_key",
+			userId: 1,
+		});
+		assert.match(one.name, /^npmpro-backup-npmpro-\d{8}-\d{6}-s3\.npmpro$/u);
+		assert.ok(one.size > 0);
+		const listed = (await store.list()).find((item) => item.name === one.name);
+		assert.equal(listed.schedule_id, 3);
+		assert.equal(listed.instance_key, true);
+		assert.equal(listed.summary.secrets, true);
+		const none = await service.scheduledBackup({
+			scheduleId: 3,
+			types: ["proxy_hosts"],
+			protection: "none",
+			userId: 1,
+		});
+		const plain = (await store.list()).find((item) => item.name === none.name);
+		assert.equal(plain.encrypted, false);
+		assert.equal(plain.summary.secrets, false);
+		await assert.rejects(
+			service.scheduledBackup({
+				scheduleId: 3,
+				types: ["proxy_hosts"],
+				protection: "passphrase",
+				passphrase: "short",
+				userId: 1,
+			}),
+			(err) => err.code === "weak-passphrase",
+		);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("a scheduled run waits for nobody: the busy lock refuses it", async () => {
+	const { service, store, cleanup } = await setup();
+	try {
+		let release;
+		const held = store.withLock(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		await assert.rejects(
+			service.scheduledBackup({ scheduleId: 1, types: ["proxy_hosts"], protection: "none", userId: 1 }),
+			(err) => err.code === "busy" && err.status === 409,
+		);
+		release();
+		await held;
+	} finally {
+		await cleanup();
+	}
+});
+
+it("a failed scheduled run leaves no file", async () => {
+	const { service, store, backupsDir, cleanup } = await setup();
+	try {
+		await assert.rejects(
+			service.scheduledBackup({ scheduleId: 1, types: ["nope"], protection: "none", userId: 1 }),
+		);
+		assert.equal((await store.list()).length, 0);
+		assert.deepEqual(await readdir(backupsDir), []);
+	} finally {
+		await cleanup();
+	}
+});
+
+it("restoring an instance-key file on another instance fails with other-instance", async () => {
+	const first = await setup({ instanceKey: Buffer.alloc(32, 1) });
+	const second = await setup({ root: first.base, instanceKey: Buffer.alloc(32, 2) });
+	try {
+		const { name } = await first.service.scheduledBackup({
+			scheduleId: 1,
+			types: ["proxy_hosts"],
+			protection: "instance_key",
+			userId: 1,
+		});
+		await assert.rejects(second.service.inspect(access, name), (err) => err.code === "other-instance");
+		// the instance that made it still restores it
+		assert.ok((await first.service.inspect(access, name)).token);
+	} finally {
+		await second.cleanup();
+		await first.cleanup();
+	}
+});
+
+it("types returns the time zone", async () => {
+	const { service, cleanup } = await setup();
+	try {
+		const result = await service.types(access);
+		assert.equal(typeof result.time_zone, "string");
+		assert.ok(result.time_zone.length > 0);
+	} finally {
+		await cleanup();
 	}
 });

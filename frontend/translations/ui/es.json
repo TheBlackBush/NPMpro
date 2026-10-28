@@ -39,6 +39,7 @@
 	"backup.error.nginx-failed": "nginx rejected the restored configuration. Everything was rolled back.",
 	"backup.error.not-a-backup": "This is not an NPMpro backup file, or the file was not found.",
 	"backup.error.not-importable": "Automatic backups can only be restored in Settings on the instance that made them.",
+	"backup.error.other-instance": "This backup was made with another instance's key and can only be restored on the instance that made it. Use a passphrase backup to move data between instances.",
 	"backup.error.partial-replace": "This file holds only some items and can only be merged.",
 	"backup.error.plan-changed": "Something changed on this instance since the preview. Check the changes again.",
 	"backup.error.restore-failed": "The restore failed. Everything was rolled back.",

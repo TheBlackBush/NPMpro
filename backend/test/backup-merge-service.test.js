@@ -17,7 +17,7 @@ process.env.TZ = "UTC";
 const TIMEOUT = { timeout: 60_000 };
 const PASSPHRASE = "correct horse battery staple";
 const ALL_TYPES = CATEGORIES.flatMap((category) => category.types);
-const EXPORT_NAME = /^npmpro-export-proxy-hosts-test-host-\d{8}-\d{6}\.npmpro$/u;
+const EXPORT_NAME = /^npmpro-export-proxy-hosts-npmpro-\d{8}-\d{6}\.npmpro$/u;
 const COPIED_NAME = "npmpro-backup-other-20261027-120000.npmpro";
 const admin = {
 	isAdmin: true,
