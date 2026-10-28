@@ -50,6 +50,7 @@ const createBackupStore = ({
 	tokenTtlMs = 30 * 60 * 1000,
 	pendingTtlMs = PENDING_TTL_MS,
 	logger = defaultLogger,
+	removeFile = rm,
 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
@@ -85,7 +86,14 @@ const createBackupStore = ({
 
 	const describeFile = async (folder, name) => {
 		const file = path.join(folder, name);
-		const info = await stat(file);
+		let info;
+		try {
+			info = await stat(file);
+		} catch (err) {
+			// removed between the directory read and now
+			if (err.code === "ENOENT") return null;
+			throw err;
+		}
 		if (!info.isFile()) return null;
 		let summary = null;
 		let encrypted = null;
@@ -134,7 +142,7 @@ const createBackupStore = ({
 	const remove = async (name) => {
 		const file = pathOf(name);
 		try {
-			await rm(file);
+			await removeFile(file);
 		} catch (err) {
 			if (err.code === "ENOENT") throw notABackup();
 			throw err;
@@ -155,10 +163,10 @@ const createBackupStore = ({
 			.filter((item) => !item.auto && item.schedule_id === Number(id))
 			.sort((a, b) => orderKey(b.name).localeCompare(orderKey(a.name)) || b.modified.localeCompare(a.modified));
 
-	// the schedule's files past the newest keep; a file removed meanwhile is skipped
+	// the schedule's files past the newest keep (at least one is always kept); a file removed meanwhile is skipped
 	const pruneSchedule = async (id, keep) => {
 		const removed = [];
-		for (const item of (await scheduleFiles(id)).slice(keep)) {
+		for (const item of (await scheduleFiles(id)).slice(Math.max(1, keep))) {
 			try {
 				await remove(item.name);
 				removed.push(item.name);

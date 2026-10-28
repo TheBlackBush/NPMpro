@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -516,12 +516,55 @@ it("retention skips a file deleted by hand", async () => {
 	assert.deepEqual(await store.pruneSchedule(5, 1), []);
 });
 
-it("retention ignores a file gone between listing and removal", async () => {
-	const { store, dir } = await make();
+it("retention skips a file that vanishes after the listing and still removes the others", async () => {
+	const doomed = "npmpro-backup-npm-20261026-120000-s5.npmpro";
+	const { store, dir } = await make({
+		removeFile: async (file) => {
+			// the first removal finds its file already gone, like a hand deletion during the run
+			if (path.basename(file) === doomed) await rm(file);
+			return rm(file);
+		},
+	});
 	for (const day of [26, 27, 28]) await writeNamed(dir, `npmpro-backup-npm-202610${day}-120000-s5.npmpro`);
-	const files = await store.scheduleFiles(5);
-	await rm(path.join(dir, files[2].name));
 	assert.deepEqual(await store.pruneSchedule(5, 1), ["npmpro-backup-npm-20261027-120000-s5.npmpro"]);
+	assert.deepEqual(
+		(await store.scheduleFiles(5)).map((item) => item.name),
+		["npmpro-backup-npm-20261028-120000-s5.npmpro"],
+	);
+});
+
+it("retention rethrows a removal error other than a missing file", async () => {
+	const { store, dir } = await make({
+		removeFile: async () => {
+			throw Object.assign(new Error("denied"), { code: "EACCES" });
+		},
+	});
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	await assert.rejects(store.pruneSchedule(5, 1), code("EACCES"));
+});
+
+it("retention always keeps at least one file", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro");
+	for (const keep of [0, -3])
+		assert.deepEqual(
+			await store.pruneSchedule(5, keep),
+			keep === 0 ? ["npmpro-backup-npm-20261027-120000-s5.npmpro"] : [],
+		);
+	assert.equal((await store.scheduleFiles(5)).length, 1);
+});
+
+it("listing skips a file that vanishes between the directory read and its stat", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	// a dangling link is listed by readdir but cannot be stat-ed
+	await symlink(path.join(dir, "missing"), path.join(dir, "npmpro-backup-npm-20261028-120000-s5.npmpro"));
+	assert.deepEqual(
+		(await store.list()).map((item) => item.name),
+		["npmpro-backup-npm-20261027-120000-s5.npmpro"],
+	);
 });
 
 it("an uploaded name from another instance, auto and page files never count for a schedule", async () => {
@@ -536,8 +579,8 @@ it("an uploaded name from another instance, auto and page files never count for 
 		(await store.scheduleFiles(5)).map((item) => item.name),
 		["npmpro-backup-npm-20261028-120000-s5.npmpro"],
 	);
-	assert.deepEqual(await store.pruneSchedule(5, 0), ["npmpro-backup-npm-20261028-120000-s5.npmpro"]);
+	assert.deepEqual(await store.pruneSchedule(5, 1), []);
 	assert.deepEqual(await store.pruneSchedule(7, 0), []);
 	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
-	assert.equal((await store.list()).length, 3);
+	assert.equal((await store.list()).length, 4);
 });
