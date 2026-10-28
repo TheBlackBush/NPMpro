@@ -95,7 +95,7 @@ const invalid = (reason) => new BackupError("invalid-archive", reason);
 const isTypeList = (types) =>
 	Array.isArray(types) && types.length > 0 && types.every((typeId) => Object.hasOwn(TYPES, typeId));
 
-// the chosen types once each, in restore order; an unknown or empty choice is refused
+// the archive mode of each schedule protection
 const SCHEDULE_MODES = { passphrase: "passphrase", instance_key: "instance", none: "none" };
 
 // an instance-key file whose key does not open it was made by another instance
@@ -104,6 +104,7 @@ const otherInstance = (header, error) =>
 		? new BackupError("other-instance", "This backup was made with another instance's key", { cause: error })
 		: error;
 
+// the chosen types once each, in restore order; an unknown or empty choice is refused
 const chosenTypes = (types, available = ALL_TYPES) => {
 	if (!isTypeList(types)) throw new BackupError("invalid-types", "Choose at least one known type");
 	const missing = types.filter((typeId) => !available.includes(typeId));
