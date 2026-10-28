@@ -411,6 +411,7 @@
 	"settings.default-site.html.placeholder": "<!-- Introduce aquí tu contenido HTML personalizado -->",
 	"settings.default-site.redirect": "Redirigir",
 	"settings.default-site.redirect.description": "Envía a los visitantes a otra dirección.",
+	"settings.section": "Sección de ajustes",
 	"setup.create-account": "Crear cuenta",
 	"setup.preamble": "Comienza creando tu cuenta de administrador.",
 	"setup.title": "¡Bienvenido!",

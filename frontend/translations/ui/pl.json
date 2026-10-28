@@ -402,6 +402,7 @@
 	"settings.default-site.html.placeholder": "<!-- Wprowadź tutaj własną zawartość HTML -->",
 	"settings.default-site.redirect": "Przekierowanie",
 	"settings.default-site.redirect.description": "Przekierowuje odwiedzających pod inny adres.",
+	"settings.section": "Sekcja ustawień",
 	"setup.create-account": "Utwórz konto",
 	"setup.preamble": "Zacznij od utworzenia konta administratora.",
 	"setup.title": "Witaj!",

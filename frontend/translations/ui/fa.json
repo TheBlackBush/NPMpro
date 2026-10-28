@@ -427,6 +427,7 @@
 	"settings.default-site.html.placeholder": "<!-- محتوای HTML سفارشی خود را اینجا وارد کنید -->",
 	"settings.default-site.redirect": "تغییر مسیر",
 	"settings.default-site.redirect.description": "بازدیدکنندگان را به نشانی دیگری هدایت می‌کند.",
+	"settings.section": "Settings section",
 	"setup.create-account": "ایجاد حساب",
 	"setup.preamble": "با ساختن حساب مدیر خود شروع کنید.",
 	"setup.title": "خوش آمدید!",

@@ -494,6 +494,7 @@
 	"settings.default-site.redirect": "Omleiden",
 	"settings.default-site.redirect.description": "Stuurt bezoekers door naar een ander adres.",
 	"settings.default-site.status": "HTTP-statuscode (leeg laten voor 200)",
+	"settings.section": "Instellingensectie",
 	"setup.create-account": "Account aanmaken",
 	"setup.preamble": "Begin met het aanmaken van jouw beheerderaccount.",
 	"setup.title": "Welkom!",

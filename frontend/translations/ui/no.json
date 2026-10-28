@@ -424,6 +424,7 @@
 	"settings.default-site.html.placeholder": "<!-- Skriv inn ditt egendefinerte HTML-innhold her -->",
 	"settings.default-site.redirect": "Omdiriger",
 	"settings.default-site.redirect.description": "Sender besøkende til en annen adresse.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Opprett konto",
 	"setup.preamble": "Kom i gang ved å opprette din administratorkonto.",
 	"setup.title": "Velkommen!",

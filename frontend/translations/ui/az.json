@@ -427,6 +427,7 @@
 	"settings.default-site.html.placeholder": "<!-- Fərdi HTML məzmununuzu bura daxil edin -->",
 	"settings.default-site.redirect": "Yönləndirmə",
 	"settings.default-site.redirect.description": "Ziyarətçiləri başqa ünvana yönləndir.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Hesab yarat",
 	"setup.preamble": "Administrator hesabınızı yaradaraq başlayın.",
 	"setup.title": "Xoş gəlmisiniz!",

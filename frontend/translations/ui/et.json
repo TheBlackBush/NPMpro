@@ -446,6 +446,7 @@
 	"settings.default-site.html.placeholder": "<!-- Sisesta siia oma HTML -->",
 	"settings.default-site.redirect": "Ümbersuunamine",
 	"settings.default-site.redirect.description": "Suunab külastajad teisele aadressile.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Loo konto",
 	"setup.preamble": "Alustuseks loo endale administraatori konto.",
 	"setup.title": "Tere tulemast!",

@@ -1,13 +1,11 @@
-import { NavLink, useLocation, useNavigate, useParams } from "react-router";
+import { NavLink, useNavigate, useParams } from "react-router";
 import { ErrorNotFound } from "src/components";
 import { confirmLeave } from "src/hooks";
 import { intl, T } from "src/locale";
-import { selectedSectionId } from "src/modules/SettingsMenu";
 import { SECTIONS } from "./sections";
 
 export default function Layout() {
 	const { section } = useParams();
-	const { pathname } = useLocation();
 	const navigate = useNavigate();
 	const current = SECTIONS.find((s) => s.id === section);
 
@@ -25,16 +23,13 @@ export default function Layout() {
 					<div className="card-body">
 						<div className="d-md-none">
 							<label className="visually-hidden" htmlFor="settings-section">
-								<T id="settings" />
+								<T id="settings.section" />
 							</label>
 							{/* controlled by the route: a refused leave leaves the value on the current section */}
 							<select
 								id="settings-section"
 								className="form-select"
-								value={selectedSectionId(
-									pathname,
-									SECTIONS.map((s) => s.id),
-								)}
+								value={current.id}
 								onChange={(e) => {
 									if (confirmLeave()) void navigate(`/settings/${e.target.value}`);
 								}}

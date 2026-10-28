@@ -400,6 +400,7 @@
 	"settings.default-site.html.placeholder": "<!-- Nhập nội dung HTML tùy chỉnh tại đây -->",
 	"settings.default-site.redirect": "Chuyển hướng",
 	"settings.default-site.redirect.description": "Chuyển hướng khách truy cập đến địa chỉ khác.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Tạo tài khoản",
 	"setup.preamble": "Bắt đầu bằng cách tạo tài khoản quản trị viên.",
 	"setup.title": "Chào mừng!",

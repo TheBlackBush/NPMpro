@@ -2,7 +2,7 @@ import { useFormikContext } from "formik";
 import { useEffect } from "react";
 import { intl } from "src/locale";
 
-let guarding = false;
+let guards = 0;
 
 /**
  * For navigation that is not a link click (a select, a button calling navigate): true when nothing is unsaved
@@ -12,20 +12,21 @@ let guarding = false;
  */
 const confirmLeave = () => {
 	// biome-ignore lint/suspicious/noAlert: a blocking confirm is enough for this guard (as in useUnsavedChangesGuard)
-	return !guarding || window.confirm(intl.formatMessage({ id: "unsaved-changes.leave" }));
+	return guards === 0 || window.confirm(intl.formatMessage({ id: "unsaved-changes.leave" }));
 };
 
 /**
  * Asks before leaving the page while dirty: links inside the app (the click is cancelled before React Router sees it,
  * BrowserRouter has no navigation blocker) and reloading or closing the tab (the browser's own prompt).
- * The browser's back button is not covered.
+ * The browser's back button is not covered. For navigation that is not a link click (a select or button calling
+ * navigate), ask with confirmLeave() first.
  *
  * @param {boolean} dirty
  */
 const useLeaveGuard = (dirty) => {
 	useEffect(() => {
 		if (!dirty) return;
-		guarding = true;
+		guards += 1;
 		const onClick = (event) => {
 			if (event.defaultPrevented || event.button !== 0) return;
 			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -47,7 +48,7 @@ const useLeaveGuard = (dirty) => {
 		document.addEventListener("click", onClick, true);
 		window.addEventListener("beforeunload", onBeforeUnload);
 		return () => {
-			guarding = false;
+			guards -= 1;
 			document.removeEventListener("click", onClick, true);
 			window.removeEventListener("beforeunload", onBeforeUnload);
 		};

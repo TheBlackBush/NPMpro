@@ -427,6 +427,7 @@
 	"settings.default-site.html.placeholder": "",
 	"settings.default-site.redirect": "Перенаправлення",
 	"settings.default-site.redirect.description": "Перенаправляє відвідувачів на іншу адресу.",
+	"settings.section": "Розділ налаштувань",
 	"setup.create-account": "Створити обліковий запис",
 	"setup.preamble": "Почніть із створення облікового запису адміністратора.",
 	"setup.title": "Ласкаво просимо!",

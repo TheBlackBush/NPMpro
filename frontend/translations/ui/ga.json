@@ -407,6 +407,7 @@
 	"settings.default-site.html.placeholder": "<!-- Cuir isteach d’ábhar HTML saincheaptha anseo -->",
 	"settings.default-site.redirect": "Atreorú",
 	"settings.default-site.redirect.description": "Seol cuairteoirí chuig seoladh eile.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Cruthaigh cuntas",
 	"setup.preamble": "Tosaigh trí do chuntas riarthóra a chruthú.",
 	"setup.title": "Fáilte!",

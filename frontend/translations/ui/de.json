@@ -494,6 +494,7 @@
 	"settings.default-site.redirect": "Weiterleitung",
 	"settings.default-site.redirect.description": "Leitet Besucher an eine andere Adresse weiter.",
 	"settings.default-site.status": "HTTP-Statuscode (leer lassen für 200)",
+	"settings.section": "Einstellungsbereich",
 	"setup.create-account": "Konto erstellen",
 	"setup.preamble": "Beginnen Sie mit der Erstellung Ihres Administratorkontos.",
 	"setup.title": "Willkommen!",

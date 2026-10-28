@@ -1085,6 +1085,7 @@
 	"settings.runtime.restart-pending": "Restart the container to apply: {fields}.",
 	"settings.runtime.restart-required": "Restart required",
 	"settings.save.all-locked": "All values are set by environment variables",
+	"settings.section": "Settings section",
 	"setup.create-account": "Create account",
 	"setup.preamble": "Get started by creating your admin account.",
 	"setup.title": "Welcome!",

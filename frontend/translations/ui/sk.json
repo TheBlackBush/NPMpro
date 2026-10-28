@@ -422,6 +422,7 @@
 	"settings.default-site.html.placeholder": "<!-- Sem zadajte vlastný HTML obsah -->",
 	"settings.default-site.redirect": "Presmerovať",
 	"settings.default-site.redirect.description": "Presmeruje návštevníkov na inú adresu.",
+	"settings.section": "Settings section",
 	"setup.create-account": "Vytvoriť účet",
 	"setup.preamble": "Začnite vytvorením administrátorského účtu.",
 	"setup.title": "Vitajte!",
