@@ -1,5 +1,5 @@
 import { IconSearch, IconSortAscending, IconSortDescending } from "@tabler/icons-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
@@ -37,9 +37,10 @@ function FilterSelect({ label, value, onChange, options }) {
  * @param {string[]} props.kinds any of "status", "tls", "group", "expiry"
  * @param {string[]} [props.groups]
  * @param {object} [props.sorting] phone-only "Sort by" control, hidden from 768 px up
- * @param {{ id: string, header: *, enableSorting: boolean }[]} props.sorting.columns resolved columns, built by the
- *   caller as tableInstance.getAllLeafColumns().map((column) => ({ id: column.id, header: column.columnDef.header,
- *   enableSorting: column.getCanSort() })); columnDef.id is undefined for accessorKey columns, so pass column.id
+ * @param {{ id: string, header: *, enableSorting?: boolean }[]} props.sorting.columns the table's columns: either
+ *   resolved ones, tableInstance.getAllLeafColumns().map((column) => ({ id: column.id, header: column.columnDef.header,
+ *   enableSorting: column.getCanSort() })), or column definitions that all set an explicit id (columnDef.id is
+ *   undefined for accessorKey columns); a column is offered unless enableSorting is false or it has no text header
  * @param {{ id: string, desc: boolean }[]} props.sorting.state TanStack SortingState
  * @param {(state: { id: string, desc: boolean }[]) => void} props.sorting.onChange
  */
@@ -47,6 +48,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 	const active = activeFilterCount(filters, kinds) > 0;
 	const [text, setText] = useState(filters.q);
 	const inputRef = useRef(null);
+	const sortSelectId = useId();
 
 	useEffect(() => {
 		// router updates arrive as transitions, so while the box has focus an older q can land after newer
@@ -147,13 +149,13 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 			{sortChoices.length > 0 ? (
 				<div className="row g-2 align-items-center mt-0 d-md-none">
 					<div className="col-auto">
-						<label className="form-label mb-0" htmlFor="list-sort-by">
+						<label className="form-label mb-0" htmlFor={sortSelectId}>
 							<T id="list.sort-by" />
 						</label>
 					</div>
 					<div className="col">
 						<select
-							id="list-sort-by"
+							id={sortSelectId}
 							className="form-select form-select-sm"
 							value={sortValue.id ?? ""}
 							onChange={(e) =>
@@ -172,7 +174,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						<button
 							type="button"
 							className="btn btn-sm btn-icon"
-							aria-label={intl.formatMessage({ id: sortValue.desc ? "list.sort-desc" : "list.sort-asc" })}
+							aria-label={intl.formatMessage({ id: "list.sort-desc" })}
 							aria-pressed={sortValue.desc}
 							disabled={!sortValue.id}
 							onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}

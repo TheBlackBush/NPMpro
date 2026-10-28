@@ -9,11 +9,13 @@ import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/moda
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
-import Table from "./Table";
+import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
 	const queryClient = useQueryClient();
 	const [sorting, setSorting] = useState([{ id: "enabled", desc: false }]);
+	// only the ids, headers and sortability are read here; the cells render in Table
+	const columns = useColumns();
 	const { isFetching, isPending, isError, error, data } = useStreams(["owner", "certificate"]);
 	const groups = useDirectorySuggestions(data);
 	const { filters, setFilter, clear } = useListFilters(groups);
@@ -119,6 +121,7 @@ export default function TableWrapper() {
 					shown={displayedStreams.length}
 					kinds={["status", "tls", "group"]}
 					groups={groups}
+					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
 				<Table
 					data={displayedStreams}
