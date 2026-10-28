@@ -71,7 +71,7 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 			if (result) {
 				// retention is housekeeping: the backup is stored, so the run stays a success
 				try {
-					removed = await store.pruneSchedule(current.id, current.keep);
+					removed = await store.pruneSchedule(current.id, current.keep, result.name);
 				} catch (caught) {
 					retentionError = String(caught?.message ?? caught).slice(0, MAX_ERROR);
 					log.warn(`Scheduled backup "${row.name}": retention failed, ${retentionError}`);

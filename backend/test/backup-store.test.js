@@ -485,6 +485,7 @@ it("retention keeps the newest files of the schedule and touches nothing else", 
 	}
 	await writeNamed(path.join(dir, "auto"), "npmpro-backup-npm-20261019-120000-auto.npmpro");
 	// same mtime for all: the order comes from the name
+	for (const name of await readdir(dir)) await utimes(path.join(dir, name), 500, 500);
 	assert.deepEqual(
 		(await store.scheduleFiles(5)).map((item) => item.name),
 		[
@@ -506,6 +507,58 @@ it("retention keeps the newest files of the schedule and touches nothing else", 
 		"npmpro-backup-npm-20261028-120000-s5.npmpro",
 	]);
 	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
+});
+
+it("retention orders by file time: a new file whose stamp sorts older is kept, the oldest by time go", async () => {
+	const { store, dir } = await make();
+	// after a time zone change (or in the repeated hour when summer time ends) the new stamp is earlier
+	const files = [
+		["npmpro-backup-npm-20261028-120000-s5.npmpro", 100],
+		["npmpro-backup-npm-20261028-130000-s5.npmpro", 200],
+		["npmpro-backup-npm-20261028-140000-s5.npmpro", 300],
+		["npmpro-backup-npm-20261028-110000-s5.npmpro", 400],
+	];
+	for (const [name, time] of files) {
+		await writeNamed(dir, name);
+		await utimes(path.join(dir, name), time, time);
+	}
+	assert.deepEqual(
+		(await store.scheduleFiles(5)).map((item) => item.name),
+		[
+			"npmpro-backup-npm-20261028-110000-s5.npmpro",
+			"npmpro-backup-npm-20261028-140000-s5.npmpro",
+			"npmpro-backup-npm-20261028-130000-s5.npmpro",
+			"npmpro-backup-npm-20261028-120000-s5.npmpro",
+		],
+	);
+	assert.deepEqual(await store.pruneSchedule(5, 2, "npmpro-backup-npm-20261028-110000-s5.npmpro"), [
+		"npmpro-backup-npm-20261028-130000-s5.npmpro",
+		"npmpro-backup-npm-20261028-120000-s5.npmpro",
+	]);
+	assert.deepEqual((await readdir(dir)).filter((name) => name.endsWith(".npmpro")).sort(), [
+		"npmpro-backup-npm-20261028-110000-s5.npmpro",
+		"npmpro-backup-npm-20261028-140000-s5.npmpro",
+	]);
+});
+
+it("retention never removes keepName, even with keep 1 and an older file time", async () => {
+	const { store, dir } = await make();
+	const fresh = "npmpro-backup-npm-20261028-120000-s5.npmpro";
+	for (const [name, time] of [
+		[fresh, 100],
+		["npmpro-backup-npm-20261027-120000-s5.npmpro", 200],
+		["npmpro-backup-npm-20261026-120000-s5.npmpro", 300],
+	]) {
+		await writeNamed(dir, name);
+		await utimes(path.join(dir, name), time, time);
+	}
+	for (const keep of [1, 0]) {
+		await store.pruneSchedule(5, keep, fresh);
+		assert.deepEqual(
+			(await store.scheduleFiles(5)).map((item) => item.name),
+			[fresh],
+		);
+	}
 });
 
 it("retention skips a file deleted by hand", async () => {

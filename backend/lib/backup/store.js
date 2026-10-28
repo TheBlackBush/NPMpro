@@ -161,17 +161,22 @@ const createBackupStore = ({
 		}
 	};
 
+	// newest first by the file time: the stamp in a name is local time, so a time zone change or the repeated hour at
+	// the end of summer time can make a new name sort older. The name order only breaks ties.
 	const scheduleFiles = async (id) =>
 		(await list())
 			.filter((item) => !item.auto && item.schedule_id === Number(id))
-			.sort((a, b) => orderKey(b.name).localeCompare(orderKey(a.name)) || b.modified.localeCompare(a.modified));
+			.sort((a, b) => b.modified.localeCompare(a.modified) || orderKey(b.name).localeCompare(orderKey(a.name)));
 
 	// the schedule's files past the newest keep (at least one is always kept, nothing when keep is not an integer); a
-	// file removed meanwhile is skipped
-	const pruneSchedule = async (id, keep) => {
+	// file removed meanwhile is skipped. keepName (the file just written) is never removed and counts as kept.
+	const pruneSchedule = async (id, keep, keepName = null) => {
 		const removed = [];
 		if (!Number.isInteger(keep)) return removed;
-		for (const item of (await scheduleFiles(id)).slice(Math.max(1, keep))) {
+		const files = await scheduleFiles(id);
+		const kept = files.find((item) => item.name === keepName);
+		const others = files.filter((item) => item !== kept);
+		for (const item of others.slice(Math.max(1, keep) - (kept ? 1 : 0))) {
 			try {
 				await remove(item.name);
 				removed.push(item.name);

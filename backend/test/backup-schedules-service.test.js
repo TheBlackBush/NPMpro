@@ -101,8 +101,8 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, detach
 					lock.held = false;
 				}
 			},
-			pruneSchedule: async (id, keep) => {
-				pruneCalls.push([id, keep]);
+			pruneSchedule: async (id, keep, keepName) => {
+				pruneCalls.push([id, keep, keepName]);
 				if (prune) await prune(id, keep);
 				const all = files.get(id) ?? [];
 				files.set(id, all.slice(0, keep));
@@ -349,11 +349,12 @@ it("a failed run does not prune and keeps the last successful file", async () =>
 	const { id } = await service.create(admin(), { ...daily, keep: 1 });
 	clock.value = Date.parse("2026-10-29T03:00:00Z");
 	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
-	assert.deepEqual(pruneCalls, [[id, 1]]);
+	// the file just written is passed on, so retention never removes it
+	assert.deepEqual(pruneCalls, [[id, 1, "npmpro-backup-npm-1-s1.npmpro"]]);
 	fail = true;
 	clock.value = Date.parse("2026-10-30T03:00:00Z");
 	await service.runAutomatic((await service.dueSchedules(clock.now()))[0]);
-	assert.deepEqual(pruneCalls, [[id, 1]]);
+	assert.deepEqual(pruneCalls, [[id, 1, "npmpro-backup-npm-1-s1.npmpro"]]);
 	assert.equal(files.get(id).length, 1);
 	const view = await service.get(admin(), id);
 	assert.equal(view.last_status, "failed");
