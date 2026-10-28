@@ -15,7 +15,7 @@ import {
 	setAllChoices,
 	typeNameId,
 } from "src/modules/BackupMerge";
-import { titleClass } from "src/modules/MobileColumns";
+import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 
 // the badge colour of each action
 export const ACTION_COLORS = {
@@ -97,12 +97,13 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 					</div>
 				) : null}
 			</td>
-			<td className="d-none d-md-table-cell">
+			<td className={PHONE_HIDDEN_CELL}>
 				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
 				{target ? <span className="text-secondary small text-break">{target}</span> : null}
 			</td>
 			<td>
-				<div className="d-flex align-items-center gap-3 text-nowrap">
+				{/* on phones the line wraps, so the choice group takes its own full-width line when Include does not fit */}
+				<div className="d-flex flex-wrap flex-md-nowrap align-items-center gap-3 text-nowrap">
 					{item.linked ? (
 						<label className="form-check mb-0">
 							<input
@@ -371,7 +372,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 											<td colSpan={3} className="text-center py-2">
 												<button
 													type="button"
-													className="btn btn-link btn-sm p-0"
+													className="btn btn-link btn-sm p-0 d-inline-flex"
 													onClick={() => {
 														setExpanded((list) => [...list, group.type]);
 														// the button goes away: focus moves to the first row it showed

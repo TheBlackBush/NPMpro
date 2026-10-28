@@ -4,6 +4,7 @@ import {
 	cellClass,
 	headerClass,
 	mobileRole,
+	PHONE_HIDDEN_CELL,
 	phoneParts,
 	sortOptions,
 	sortSelectValue,
@@ -24,6 +25,7 @@ it("hides phone-only roles on phones and keeps them on tablets", () => {
 		assert.equal(cellClass(col("a", role)), "d-none d-md-table-cell");
 		assert.equal(headerClass(col("a", role)), "d-none d-md-table-cell");
 	}
+	assert.equal(PHONE_HIDDEN_CELL, "d-none d-md-table-cell");
 	assert.equal(cellClass(col("a", "hide-lg")), "d-none d-lg-table-cell");
 	assert.equal(cellClass(col("a", "title")), "");
 	assert.equal(cellClass({ id: "a" }), "");

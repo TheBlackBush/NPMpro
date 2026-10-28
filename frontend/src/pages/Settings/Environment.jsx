@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { ErrorAlert, Loading } from "src/components";
 import { useEnvironment } from "src/hooks";
 import { intl, T } from "src/locale";
-import { titleClass } from "src/modules/MobileColumns";
+import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 import { hasLockReason, LockedBadge, LockReason } from "./Authentication/LockedBadge";
 import { StatusAlert } from "./StatusAlert";
 
@@ -89,12 +89,9 @@ const UPSTREAM_NAME = /^(?<provider>[a-z0-9]+)_upstream$/u;
 
 const label = (id) => intl.formatMessage({ id });
 
-// cells shown inside the phone title block instead of their own (see components/Table/MobileTitle.jsx)
-const PHONE_HIDDEN = "d-none d-md-table-cell";
-
 /**
  * The phone part of a stacked row, inside its title cell: the title with `end` on its right and the grey summary
- * line. The cells it repeats are PHONE_HIDDEN, so one copy is always display none and nothing is read twice.
+ * line. The cells it repeats are PHONE_HIDDEN_CELL, so one copy is always display none and nothing is read twice.
  */
 function PhoneTitle({ title, end, summary }) {
 	return (
@@ -157,7 +154,7 @@ function LockedSettings({ locked }) {
 									<SettingLabel group={group} name={key} />
 								</div>
 							</td>
-							<td className={PHONE_HIDDEN} data-label={label("settings.environment.locked-by")}>
+							<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.locked-by")}>
 								{/* the same wording as the badge in the settings section */}
 								<LockedBadge env={env} reason={reason} className="" />
 								{reason ? (
@@ -233,10 +230,10 @@ function GroupRows({ group }) {
 							<code className="text-nowrap">{item.name}</code>
 						</div>
 					</td>
-					<td className={PHONE_HIDDEN} data-label={label("settings.environment.value")}>
+					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.value")}>
 						<Value item={item} />
 					</td>
-					<td className={PHONE_HIDDEN} data-label={label("settings.environment.status")}>
+					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.status")}>
 						<Status item={item} />
 					</td>
 					<td data-label={label("settings.environment.description")}>
