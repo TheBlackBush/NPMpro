@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import cn from "clsx";
 import { formatDateTime, T } from "src/locale";
+import { BreakableHost } from "./BreakableHost";
 
 const getEventValue = (event) => {
 	switch (event.objectType) {
@@ -87,8 +88,10 @@ export function EventFormatter({ row }) {
 		<div className="flex-fill">
 			<div className="fw-medium">
 				{getIcon(row)}
-				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />
-				&nbsp; &mdash; <span className="badge">{getEventValue(row)}</span>
+				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />:{" "}
+				<span className="badge text-wrap text-start">
+					<BreakableHost value={String(getEventValue(row) ?? "")} />
+				</span>
 			</div>
 			<div className="text-secondary mt-1">{formatDateTime(row.createdOn)}</div>
 		</div>

@@ -17,7 +17,7 @@ import {
 } from "@tanstack/react-table";
 import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "react-router";
-import { ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
+import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import {
 	CountryName,
 	countryLabel,
@@ -298,10 +298,14 @@ function RecentTable({ rows }) {
 				enableSorting: false,
 				cell: (info) => (
 					<span className="d-inline-flex flex-wrap align-items-center gap-2">
-						<span className="text-break">{info.getValue()}</span>
+						<span>
+							<BreakableHost value={info.getValue()} />
+						</span>
 						<HostBadge badge={hostEntryLabel(info.row.original).badge} />
 					</span>
 				),
+				// a long host name wraps at its dots, so the request column keeps room on tablets
+				meta: { className: "text-wrap" },
 			}),
 			columnHelper.accessor("path", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.request" }),
@@ -310,7 +314,13 @@ function RecentTable({ rows }) {
 					const { method, path } = info.row.original;
 					if (method === "-" && path === "") return <span className="text-secondary">-</span>;
 					return (
-						<span className="font-monospace text-break">
+						// focus (Tab or tap) shows the whole path: the title tooltip only appears on hover
+						<span
+							className="d-block text-truncate font-monospace request-path"
+							title={`${method} ${path}`}
+							// biome-ignore lint/a11y/noNoninteractiveTabindex: focusing the cell is how touch and keyboard users read a cut path
+							tabIndex={0}
+						>
 							<span className="text-secondary me-2">{method}</span>
 							{path}
 						</span>
@@ -328,6 +338,7 @@ function RecentTable({ rows }) {
 				header: intl.formatMessage({ id: "monitoring.recent.column.size" }),
 				enableSorting: false,
 				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
+				meta: { mobile: "hide" },
 			}),
 			columnHelper.accessor((row) => (row.country ? countryLabel(row.country) : ""), {
 				id: "country",
@@ -339,6 +350,7 @@ function RecentTable({ rows }) {
 					) : (
 						<span className="text-secondary">-</span>
 					),
+				meta: { mobile: "hide" },
 			}),
 			...(withIps
 				? [
@@ -389,7 +401,11 @@ function RecentTable({ rows }) {
 								shown={displayed.length}
 								kinds={[]}
 							/>
-							<TableLayout tableInstance={tableInstance} />
+							<TableLayout
+								tableInstance={tableInstance}
+								layout="scroll"
+								label={intl.formatMessage({ id: "monitoring.recent" })}
+							/>
 						</>
 					)}
 				</div>

@@ -115,6 +115,7 @@ function BansTable({ data }) {
 				header: intl.formatMessage({ id: "monitoring.crowdsec.column.origin" }),
 				enableSorting: false,
 				cell: (info) => <span className="text-break">{info.getValue()}</span>,
+				meta: { mobile: "hide" },
 			}),
 			columnHelper.accessor("type", {
 				header: intl.formatMessage({ id: "monitoring.crowdsec.column.type" }),
@@ -174,7 +175,11 @@ function BansTable({ data }) {
 						shown={displayed.length}
 						kinds={[]}
 					/>
-					<TableLayout tableInstance={tableInstance} />
+					<TableLayout
+						tableInstance={tableInstance}
+						layout="scroll"
+						label={intl.formatMessage({ id: "monitoring.crowdsec.newest" })}
+					/>
 				</div>
 				{visible.length < displayed.length ? (
 					<div className="card-footer text-center">

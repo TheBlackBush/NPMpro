@@ -47,6 +47,10 @@ export default function Table({ data, isFetching, onSelectItem }) {
 				id: "log",
 				header: intl.formatMessage({ id: "column.event" }),
 				cell: (info) => <EventFormatter row={info.row.original} />,
+				// long domain lists wrap instead of widening the scroll area
+				meta: {
+					className: "text-wrap",
+				},
 			}),
 			columnHelper.display({
 				id: "details",
@@ -81,5 +85,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 		enableSortingRemoval: false,
 	});
 
-	return <TableLayout tableInstance={tableInstance} />;
+	return (
+		<TableLayout tableInstance={tableInstance} layout="scroll" label={intl.formatMessage({ id: "auditlogs" })} />
+	);
 }
