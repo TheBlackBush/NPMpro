@@ -21,7 +21,7 @@ import { TablePagination } from "src/components/Table/TablePagination";
 import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
-import { filterBySchedule, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
+import { filterBySchedule, formatInZone, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
 import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
@@ -29,6 +29,10 @@ import { showApiError, showObjectSuccess } from "src/notifications";
 import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id) => intl.formatMessage({ id });
+
+// in the server's zone like the schedules card; the browser's until the zone is known
+const createdText = (value, timeZone) =>
+	timeZone ? formatInZone(value, intl.locale, timeZone) : formatDateTime(value);
 
 const PAGE_SIZE = 10;
 
@@ -146,7 +150,7 @@ function Actions({ entry, onDelete, navigate }) {
 	);
 }
 
-function Table({ data, categories, names, filtered, onClearFilter, onDelete, navigate, uploadButton }) {
+function Table({ data, categories, timeZone, names, filtered, onClearFilter, onDelete, navigate, uploadButton }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -160,10 +164,10 @@ function Table({ data, categories, names, filtered, onClearFilter, onDelete, nav
 				id: "created",
 				meta: {
 					mobile: "summary",
-					summaryText: (row) => formatDateTime(row.summary?.createdAt ?? row.modified),
+					summaryText: (row) => createdText(row.summary?.createdAt ?? row.modified, timeZone),
 				},
 				header: label("settings.backup.created"),
-				cell: (info) => <WrapBelowLg>{formatDateTime(info.getValue())}</WrapBelowLg>,
+				cell: (info) => <WrapBelowLg>{createdText(info.getValue(), timeZone)}</WrapBelowLg>,
 			}),
 			columnHelper.accessor((row) => row.size, {
 				id: "size",
@@ -202,7 +206,7 @@ function Table({ data, categories, names, filtered, onClearFilter, onDelete, nav
 				meta: { className: "text-end text-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, names, onDelete, navigate]);
+	}, [categories, timeZone, names, onDelete, navigate]);
 
 	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
 	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
@@ -407,6 +411,7 @@ function StoredTable() {
 				<Table
 					data={shown}
 					categories={types?.categories ?? []}
+					timeZone={types?.timeZone}
 					names={names}
 					filtered={activeFilter}
 					onClearFilter={() => setFilter("")}
