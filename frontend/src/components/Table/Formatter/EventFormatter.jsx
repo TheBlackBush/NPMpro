@@ -88,7 +88,7 @@ export function EventFormatter({ row }) {
 			<div className="fw-medium">
 				{getIcon(row)}
 				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />
-				&nbsp; &mdash; <span className="badge">{getEventValue(row)}</span>
+				&nbsp; &mdash; <span className="badge text-wrap text-start">{getEventValue(row)}</span>
 			</div>
 			<div className="text-secondary mt-1">{formatDateTime(row.createdOn)}</div>
 		</div>
