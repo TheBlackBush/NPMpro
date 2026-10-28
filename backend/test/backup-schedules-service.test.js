@@ -22,6 +22,7 @@ const daily = {
 const opened = [];
 after(() => Promise.all(opened.map((knex) => knex.destroy())));
 
+const SCHEDULE_PART = /-s\d+(?=\.npmpro$)/u;
 const busyError = () => Object.assign(new BackupError("busy", "A backup or restore is running"), { status: 409 });
 
 // MySQL and Postgres can return a bigint id as a string
@@ -70,6 +71,13 @@ const make = async ({ run, log = silent, sealer = box, prune, removeFile, string
 		},
 		store: {
 			scheduleFiles: async (id) => (files.get(id) ?? []).map((name) => ({ name })),
+			// the detached files move to the "plain" key, under their names without -s<id>
+			detachSchedule: (id) => {
+				const moved = (files.get(id) ?? []).map((name) => name.replace(SCHEDULE_PART, ""));
+				files.set(id, []);
+				files.set("plain", [...moved, ...(files.get("plain") ?? [])]);
+				return Promise.resolve(moved);
+			},
 			remove: async (name) => {
 				if (removeFile) await removeFile(name);
 				const [id, list] = [...files].find(([, names]) => names.includes(name)) ?? [];
@@ -432,7 +440,7 @@ it("audits saves, deletes and runs with the right action, user and meta", async 
 		removed: [],
 		automatic: false,
 	});
-	assert.deepEqual(audits[4].meta, { name: "Nightly", files_deleted: 1 });
+	assert.deepEqual(audits[4].meta, { name: "Nightly", files_deleted: 1, files_detached: 0 });
 });
 
 it("a run of a paused schedule keeps next_run_at empty", async () => {
@@ -668,7 +676,7 @@ it("remove still audits the delete when removing a file fails, then throws", asy
 	const entry = audits.at(-1);
 	assert.equal(entry.action, "deleted");
 	assert.equal(entry.by, 3);
-	assert.deepEqual(entry.meta, { name: "Nightly", files_deleted: 0 });
+	assert.deepEqual(entry.meta, { name: "Nightly", files_deleted: 0, files_detached: 0 });
 });
 
 it("remove with files is refused while busy, remove without files works", async () => {
@@ -690,6 +698,17 @@ it("remove with files is refused while busy, remove without files works", async 
 		audits.filter((entry) => entry.action === "deleted").map((entry) => entry.object_id),
 		[second.id],
 	);
+});
+
+it("remove without files detaches the schedule's files", async () => {
+	const { service, files, audits } = await make();
+	const { id } = await service.create(admin(), daily);
+	await service.runNow(admin(), id);
+	const { removedFiles } = await service.remove(admin(), id, { files: false });
+	assert.deepEqual(removedFiles, []);
+	assert.deepEqual(files.get(id), []);
+	assert.deepEqual(files.get("plain"), ["npmpro-backup-npm-1.npmpro"]);
+	assert.deepEqual(audits.at(-1).meta, { name: "Nightly", files_deleted: 0, files_detached: 1 });
 });
 
 it("remove with files deletes every file of the schedule, newest included", async () => {

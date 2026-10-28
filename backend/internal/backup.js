@@ -673,6 +673,16 @@ const createBackupService = ({
 				},
 			}),
 		});
+		if (types.includes("backup_schedules")) {
+			// the restored schedules may hold ids of other schedules: they start their retention with their own new
+			// files only, earlier scheduled files stay as plain stored backups. Runs under the backup lock, so no
+			// scheduled run comes first.
+			try {
+				await store.detachAllSchedules();
+			} catch (error) {
+				log.warn(`Could not detach the stored files from their schedules after the restore: ${error.message}`);
+			}
+		}
 		return {
 			counts: result.counts,
 			references: result.references,

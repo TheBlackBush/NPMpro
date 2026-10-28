@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
-import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
+import { link, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
@@ -17,6 +17,8 @@ const LEFTOVER = [".tmp-", ".upload-", ".restore-", ".pending-"];
 const NAME_PARTS = /^(.+-\d{8}-\d{6})(?:-\d{1,3})?(-s\d{1,9})?(-auto)?\.npmpro$/u;
 // the schedule part and the order of a name: its stamp, then its number (none counts as 1)
 const SCHEDULE_PART = /-s(\d{1,9})(?=(?:-auto)?\.npmpro$)/u;
+// link() errors of a file system without hard links
+const NO_HARD_LINKS = new Set(["EPERM", "ENOTSUP", "EOPNOTSUPP", "EMLINK", "ENOSYS"]);
 const ORDER_PARTS = /-(\d{8}-\d{6})(?:-(\d{1,3}))?(?:-s\d{1,9})?(?:-auto)?\.npmpro$/u;
 
 const orderKey = (name) => {
@@ -51,6 +53,7 @@ const createBackupStore = ({
 	pendingTtlMs = PENDING_TTL_MS,
 	logger = defaultLogger,
 	removeFile = rm,
+	linkFile = link,
 }) => {
 	const autoDir = path.join(dir, "auto");
 	let running = false;
@@ -180,6 +183,58 @@ const createBackupStore = ({
 	};
 
 	const withoutSchedule = (name) => name.replace(SCHEDULE_PART, "");
+
+	// moves a file to a free name: a hard link never replaces a taken name (a name taken between the check and the
+	// link gets the next one); where hard links are not supported, a rename to the name just checked free. Returns the
+	// new name, or null when the file is gone.
+	const moveToFree = async (from, wanted) => {
+		for (let attempt = 0; ; attempt++) {
+			const name = uniqueName(wanted);
+			try {
+				await linkFile(from, pathOf(name));
+			} catch (err) {
+				if (err.code === "ENOENT") return null;
+				if (err.code === "EEXIST" && attempt < 5) continue;
+				if (!NO_HARD_LINKS.has(err.code)) throw err;
+				try {
+					await rename(from, pathOf(name));
+				} catch (renameError) {
+					if (renameError.code === "ENOENT") return null;
+					throw renameError;
+				}
+				return name;
+			}
+			await removeFile(from).catch((err) => {
+				if (err.code !== "ENOENT") throw err;
+			});
+			return name;
+		}
+	};
+
+	// the schedule's files under their names without -s<id>, so a later schedule with the same id never counts or
+	// prunes them; a file removed meanwhile is skipped. Returns the new names.
+	const detachSchedule = async (id) => {
+		const moved = [];
+		for (const item of await scheduleFiles(id)) {
+			const name = await moveToFree(pathOf(item.name), withoutSchedule(item.name));
+			if (name !== null) moved.push(name);
+		}
+		return moved;
+	};
+
+	// every scheduled file (not automatic ones) detached from its schedule; returns the new names
+	const detachAllSchedules = async () => {
+		const ids = [
+			...new Set(
+				(await list())
+					.filter((item) => !item.auto && item.schedule_id !== null)
+					.map((item) => item.schedule_id),
+			),
+		];
+		const moved = [];
+		for (const id of ids) moved.push(...(await detachSchedule(id)));
+		return moved;
+	};
 
 	const tempPath = (prefix) => path.join(dir, `.${prefix}-${randomName()}`);
 
@@ -334,6 +389,8 @@ const createBackupStore = ({
 		pruneAuto,
 		scheduleFiles,
 		pruneSchedule,
+		detachSchedule,
+		detachAllSchedules,
 		withoutSchedule,
 		uniqueName,
 		tempPath,

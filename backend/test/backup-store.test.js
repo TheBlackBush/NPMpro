@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readdir, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -591,4 +591,80 @@ it("an uploaded name from another instance, auto and page files never count for 
 	assert.deepEqual(await store.pruneSchedule(7, 0), []);
 	assert.equal((await readdir(path.join(dir, "auto"))).length, 1);
 	assert.equal((await store.list()).length, 4);
+});
+
+it("detachSchedule renames the schedule's files without -s<id>, keeps their contents and touches nothing else", async () => {
+	const { store, dir } = await make();
+	for (const name of [
+		"npmpro-backup-npm-20261026-120000-s5.npmpro",
+		"npmpro-backup-npm-20261027-120000-2-s5.npmpro",
+		"npmpro-backup-npm-20261027-120000-s6.npmpro",
+	]) {
+		await writeNamed(dir, name);
+	}
+	const before = await readFile(path.join(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro"));
+	assert.deepEqual(
+		(await store.detachSchedule(5)).sort((a, b) => a.localeCompare(b)),
+		["npmpro-backup-npm-20261026-120000.npmpro", "npmpro-backup-npm-20261027-120000-2.npmpro"],
+	);
+	assert.deepEqual(await readFile(path.join(dir, "npmpro-backup-npm-20261026-120000.npmpro")), before);
+	assert.deepEqual(await store.scheduleFiles(5), []);
+	assert.deepEqual(
+		(await readdir(dir)).filter((name) => name.endsWith(".npmpro")).sort((a, b) => a.localeCompare(b)),
+		[
+			"npmpro-backup-npm-20261026-120000.npmpro",
+			"npmpro-backup-npm-20261027-120000-2.npmpro",
+			"npmpro-backup-npm-20261027-120000-s6.npmpro",
+		],
+	);
+});
+
+it("detachSchedule never overwrites a taken name", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261026-120000.npmpro");
+	await writeFile(path.join(dir, "npmpro-backup-npm-20261026-120000-2.npmpro"), "manual");
+	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");
+	assert.deepEqual(await store.detachSchedule(5), ["npmpro-backup-npm-20261026-120000-3.npmpro"]);
+	assert.equal(await readFile(path.join(dir, "npmpro-backup-npm-20261026-120000-2.npmpro"), "utf8"), "manual");
+	assert.equal((await readdir(dir)).filter((name) => name.endsWith(".npmpro")).length, 3);
+});
+
+it("detachSchedule skips a file that vanishes after the listing", async () => {
+	const doomed = "npmpro-backup-npm-20261026-120000-s5.npmpro";
+	const { store, dir } = await make({
+		// detaching the newer file removes the older one, like a hand deletion during the detach
+		removeFile: async (file) => {
+			await rm(file);
+			await rm(path.join(path.dirname(file), doomed), { force: true });
+		},
+	});
+	await writeNamed(dir, doomed);
+	await writeNamed(dir, "npmpro-backup-npm-20261027-120000-s5.npmpro");
+	assert.deepEqual(await store.detachSchedule(5), ["npmpro-backup-npm-20261027-120000.npmpro"]);
+	assert.deepEqual(
+		(await readdir(dir)).filter((name) => name.endsWith(".npmpro")),
+		["npmpro-backup-npm-20261027-120000.npmpro"],
+	);
+});
+
+it("detachAllSchedules detaches every schedule's files and leaves automatic and plain files", async () => {
+	const { store, dir } = await make();
+	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261026-130000-s9.npmpro");
+	await writeNamed(dir, "npmpro-backup-npm-20261026-140000.npmpro");
+	await writeNamed(path.join(dir, "auto"), "npmpro-backup-npm-20261019-120000-auto.npmpro");
+	assert.deepEqual(
+		(await store.detachAllSchedules()).sort((a, b) => a.localeCompare(b)),
+		["npmpro-backup-npm-20261026-120000.npmpro", "npmpro-backup-npm-20261026-130000.npmpro"],
+	);
+	assert.equal((await store.list()).filter((item) => item.schedule_id !== null).length, 0);
+	assert.deepEqual(await readdir(path.join(dir, "auto")), ["npmpro-backup-npm-20261019-120000-auto.npmpro"]);
+});
+
+it("detachSchedule renames where hard links are not supported", async () => {
+	const { store, dir } = await make({
+		linkFile: () => Promise.reject(Object.assign(new Error("no links"), { code: "EPERM" })),
+	});
+	await writeNamed(dir, "npmpro-backup-npm-20261026-120000-s5.npmpro");
+	assert.deepEqual(await store.detachSchedule(5), ["npmpro-backup-npm-20261026-120000.npmpro"]);
 });

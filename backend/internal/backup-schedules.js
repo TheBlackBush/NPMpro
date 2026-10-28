@@ -207,12 +207,17 @@ const createScheduleService = ({ knex, box, backup, store, audit, clock = Date, 
 			access.canAdmin();
 			const row = await mustRead(id);
 			const removedFiles = [];
+			let detachedFiles = [];
 			const drop = async () => {
 				await knex(TABLE).where({ id: row.id }).del();
 				try {
 					if (files) await removeFiles(row.id, removedFiles);
+					// kept files lose -s<id>: a later schedule with the same id never counts or prunes them
+					else detachedFiles = await store.detachSchedule(row.id);
 				} finally {
-					await writeAudit(access, "deleted", row, { meta: { files_deleted: removedFiles.length } });
+					await writeAudit(access, "deleted", row, {
+						meta: { files_deleted: removedFiles.length, files_detached: detachedFiles.length },
+					});
 				}
 			};
 			// with its files under the backup lock: a run in progress would leave its new file behind (busy, 409)

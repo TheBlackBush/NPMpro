@@ -893,3 +893,83 @@ it("types returns the time zone", async () => {
 		await cleanup();
 	}
 });
+
+// a schedule #3 on the instance, a backup of the schedules, and a stored file of schedule #3 made after it
+const schedulesThenFile = async (ctx) => {
+	await ctx.knex("npmpro_backup_schedule").insert({
+		id: 3,
+		created_on: "2026-10-01 00:00:00",
+		modified_on: "2026-10-01 00:00:00",
+		owner_user_id: 1,
+		name: "Nightly",
+		enabled: 1,
+		frequency: "daily",
+		time: "03:00",
+		types: JSON.stringify(["proxy_hosts"]),
+		protection: "none",
+		keep: 2,
+	});
+	const { entry } = await ctx.service.create(access, {
+		types: ["backup_schedules"],
+		secrets: true,
+		passphrase: PASSPHRASE,
+		keep: true,
+	});
+	const scheduled = "npmpro-backup-npmpro-20261020-030000-s3.npmpro";
+	await writeBackupFile({
+		source: Readable.from([Buffer.from("scheduled")]),
+		file: path.join(ctx.backupsDir, scheduled),
+		mode: "none",
+		summary: { format: 1, types: [], counts: {}, created_at: "2026-10-20T03:00:00Z", npmpro_version: "1.0.0" },
+	});
+	return { entry, scheduled };
+};
+
+const storedNames = async (ctx) =>
+	(await readdir(ctx.backupsDir)).filter((name) => name.endsWith(".npmpro")).sort((a, b) => a.localeCompare(b));
+
+it("a replace restore of the schedules detaches the stored files of the schedules before it", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const { entry, scheduled } = await schedulesThenFile(ctx);
+		const content = await readFile(path.join(ctx.backupsDir, scheduled));
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		const result = await ctx.service.restore(access, token, { types: ["backup_schedules"] });
+		assert.deepEqual(result.counts, { backup_schedules: 1 });
+		const names = await storedNames(ctx);
+		assert.equal(
+			names.some((name) => name.includes("-s")),
+			false,
+		);
+		assert.ok(names.includes("npmpro-backup-npmpro-20261020-030000.npmpro"));
+		assert.deepEqual(
+			await readFile(path.join(ctx.backupsDir, "npmpro-backup-npmpro-20261020-030000.npmpro")),
+			content,
+		);
+		assert.deepEqual(await ctx.store.scheduleFiles(3), []);
+	} finally {
+		await ctx.cleanup();
+	}
+});
+
+it("a merge restore of the schedules leaves the stored files with their schedules", TIMEOUT, async () => {
+	const ctx = await setup();
+	try {
+		const { entry, scheduled } = await schedulesThenFile(ctx);
+		await ctx.knex("npmpro_backup_schedule").where({ id: 3 }).update({ keep: 4 });
+		const { token } = await ctx.service.inspect(access, entry.name, { passphrase: PASSPHRASE });
+		const types = ["backup_schedules"];
+		const plan = await ctx.service.plan(access, token, { mode: "merge", types, choices: { "schedule:3": "take" } });
+		assert.equal(plan.items[0].action, "take");
+		await ctx.service.restore(access, token, {
+			mode: "merge",
+			types,
+			choices: { "schedule:3": "take" },
+			planHash: plan.hash,
+		});
+		assert.equal(Number((await ctx.knex("npmpro_backup_schedule").where({ id: 3 }).first()).keep), 2);
+		assert.ok((await storedNames(ctx)).includes(scheduled));
+	} finally {
+		await ctx.cleanup();
+	}
+});
