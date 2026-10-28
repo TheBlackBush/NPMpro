@@ -26,6 +26,8 @@
 	"action.view-details": "Zobrazit podrobnosti",
 	"aria.main-navigation": "Hlavní navigace",
 	"aria.select-language": "Vybrat jazyk",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Záznamy auditu",
 	"auto": "Automaticky",
 	"backup": "Backup",

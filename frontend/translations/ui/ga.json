@@ -26,6 +26,8 @@
 	"action.view-details": "Féach Sonraí",
 	"aria.main-navigation": "Príomh-nascleanúint",
 	"aria.select-language": "Roghnaigh teanga",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Logaí Iniúchta",
 	"auto": "Uath",
 	"backup": "Backup",

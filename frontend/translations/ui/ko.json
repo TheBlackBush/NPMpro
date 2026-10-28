@@ -26,6 +26,8 @@
 	"action.view-details": "자세히 보기",
 	"aria.main-navigation": "기본 탐색",
 	"aria.select-language": "언어 선택",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "감사 로그",
 	"auto": "자동",
 	"backup": "Backup",

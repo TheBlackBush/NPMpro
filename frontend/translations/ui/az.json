@@ -27,6 +27,8 @@
 	"action.view-details": "Ətraflı bax",
 	"aria.main-navigation": "Əsas naviqasiya",
 	"aria.select-language": "Dil seçin",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Audit jurnalları",
 	"auto": "Avtomatik",
 	"backup": "Backup",

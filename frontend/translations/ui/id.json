@@ -26,6 +26,8 @@
 	"action.view-details": "Lihat Detail",
 	"aria.main-navigation": "Navigasi utama",
 	"aria.select-language": "Pilih bahasa",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Log Audit",
 	"auto": "Otomatis",
 	"backup": "Backup",

@@ -23,6 +23,8 @@
 	"action.view-details": "Xem Chi tiết",
 	"aria.main-navigation": "Điều hướng chính",
 	"aria.select-language": "Chọn ngôn ngữ",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Nhật ký kiểm tra",
 	"backup": "Backup",
 	"backup-schedule": "Backup schedule",

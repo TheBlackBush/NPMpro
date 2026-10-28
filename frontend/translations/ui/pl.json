@@ -25,6 +25,8 @@
 	"action.view-details": "Pokaż szczegóły",
 	"aria.main-navigation": "Nawigacja główna",
 	"aria.select-language": "Wybierz język",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Logi",
 	"backup": "Backup",
 	"backup-schedule": "Harmonogram kopii zapasowej",

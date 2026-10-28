@@ -26,6 +26,8 @@
 	"action.view-details": "Преглед на детайли",
 	"aria.main-navigation": "Основна навигация",
 	"aria.select-language": "Избор на език",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Журнали за одит",
 	"auto": "Автоматично",
 	"backup": "Backup",

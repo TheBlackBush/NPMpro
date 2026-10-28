@@ -27,6 +27,8 @@
 	"action.view-details": "مشاهده جزئیات",
 	"aria.main-navigation": "پیمایش اصلی",
 	"aria.select-language": "انتخاب زبان",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "گزارش‌های ممیزی (Audit Logs)",
 	"auto": "خودکار",
 	"backup": "Backup",

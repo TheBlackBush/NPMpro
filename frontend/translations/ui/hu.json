@@ -26,6 +26,8 @@
 	"action.view-details": "Részletek megtekintése",
 	"aria.main-navigation": "Főmenü",
 	"aria.select-language": "Nyelv kiválasztása",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Audit naplók",
 	"auto": "Automatikus",
 	"backup": "Backup",

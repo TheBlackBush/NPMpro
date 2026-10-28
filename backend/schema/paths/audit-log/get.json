@@ -81,7 +81,9 @@
 					"updated",
 					"deleted",
 					"enabled",
-					"disabled"
+					"disabled",
+					"backup-succeeded",
+					"backup-failed"
 				]
 			}
 		},

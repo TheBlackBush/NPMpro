@@ -26,6 +26,8 @@
 	"action.view-details": "Ver Detalles",
 	"aria.main-navigation": "Navegación principal",
 	"aria.select-language": "Seleccionar idioma",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Registros de Auditoría",
 	"auto": "Auto",
 	"backup": "Backup",

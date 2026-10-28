@@ -30,6 +30,8 @@
 	"action.view-details": "Visualizza Dettagli",
 	"aria.main-navigation": "Navigazione principale",
 	"aria.select-language": "Seleziona lingua",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Log di Audit",
 	"auto": "Auto",
 	"backup": "Backup",

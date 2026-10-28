@@ -38,6 +38,8 @@
 	"action.view-details": "查看详情",
 	"aria.main-navigation": "主导航",
 	"aria.select-language": "选择语言",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "审计日志",
 	"auto": "自动",
 	"avatar.remove": "移除头像",

@@ -30,6 +30,8 @@
 	"action.view-details": "Vaata üksikasju",
 	"aria.main-navigation": "Peamenüü",
 	"aria.select-language": "Vali keel",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Auditilogid",
 	"auto": "Automaatne",
 	"backup": "Backup",

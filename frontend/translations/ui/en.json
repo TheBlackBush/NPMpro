@@ -49,6 +49,8 @@
 	"aria.select-language": "Select language",
 	"aria.toggle-navigation": "Toggle navigation",
 	"aria.user-menu": "Open user menu",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"audit-log.action.created": "Created",
 	"audit-log.action.deleted": "Deleted",
 	"audit-log.action.disabled": "Disabled",

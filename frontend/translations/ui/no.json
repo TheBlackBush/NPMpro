@@ -26,6 +26,8 @@
 	"action.view-details": "Vis detaljer",
 	"aria.main-navigation": "Hovednavigasjon",
 	"aria.select-language": "Velg språk",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Revisjonslogger",
 	"auto": "Auto",
 	"backup": "Backup",

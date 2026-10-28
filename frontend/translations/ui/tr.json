@@ -27,6 +27,8 @@
 	"action.view-details": "Detayları Görüntüle",
 	"aria.main-navigation": "Ana gezinme",
 	"aria.select-language": "Dil seçin",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Denetim Kayıtları",
 	"auto": "Otomatik",
 	"backup": "Backup",

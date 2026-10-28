@@ -38,6 +38,8 @@
 	"action.view-details": "Details anzeigen",
 	"aria.main-navigation": "Hauptnavigation",
 	"aria.select-language": "Sprache auswählen",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Protokolle",
 	"auto": "Automatisch",
 	"avatar.remove": "Avatar entfernen",

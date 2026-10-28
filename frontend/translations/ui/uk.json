@@ -27,6 +27,8 @@
 	"action.view-details": "Переглянути відомості",
 	"aria.main-navigation": "Головна навігація",
 	"aria.select-language": "Вибрати мову",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Журнал аудиту",
 	"auto": "Автоматично",
 	"backup": "Backup",

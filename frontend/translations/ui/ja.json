@@ -23,6 +23,8 @@
 	"action.view-details": "詳細",
 	"aria.main-navigation": "メインナビゲーション",
 	"aria.select-language": "言語を選択",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "監査ログ",
 	"backup": "Backup",
 	"backup-schedule": "バックアップスケジュール",

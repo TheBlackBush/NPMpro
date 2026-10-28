@@ -38,6 +38,8 @@
 	"action.view-details": "Details weergeven",
 	"aria.main-navigation": "Hoofdnavigatie",
 	"aria.select-language": "Taal selecteren",
+	"audit-log.action.backup-failed": "Backup failed",
+	"audit-log.action.backup-succeeded": "Backup succeeded",
 	"auditlogs": "Logboeken",
 	"auto": "Automatisch",
 	"avatar.remove": "Gebruikersafbeelding verwijderen",
