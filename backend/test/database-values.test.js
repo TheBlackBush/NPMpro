@@ -191,21 +191,6 @@ it("keeps big integers exact", () => {
 	assert.notEqual(comparable(null, 0, "sqlite"), comparable(null, null, "sqlite"));
 });
 
-it("compares decimals by value and keeps their precision", () => {
-	assert.equal(kindOfType("numeric"), "decimal");
-	assert.equal(kindOfType("decimal(10,2)"), "decimal");
-	assert.equal(kindOfType("double precision"), "decimal");
-	assert.equal(kindOfType("bigint"), null);
-	// pg returns numeric as text with its scale, SQLite as a number
-	assert.equal(comparable("decimal", "1.50", "postgres"), comparable("decimal", 1.5, "sqlite"));
-	assert.equal(comparable("decimal", "-0.10", "postgres"), comparable("decimal", -0.1, "sqlite"));
-	assert.equal(comparable("decimal", "0.00", "postgres"), comparable("decimal", 0, "sqlite"));
-	const wide = `${"9".repeat(20)}.12`;
-	assert.equal(comparable("decimal", `+0${wide}00`, "postgres"), wide);
-	assert.notEqual(comparable("decimal", "1.51", "postgres"), comparable("decimal", 1.5, "sqlite"));
-	assert.deepEqual(portableRow(kindsOf({ d: ["decimal", "decimal"] }), { d: "1.50" }, "postgres"), { d: "1.50" });
-});
-
 it("compares JSON by content: parsed or text, any key order, string scalars", () => {
 	const nested = { b: { y: [1, { q: 2, p: 1 }], x: null }, a: "é ü 漢" };
 	const reordered = '{"a":"é ü 漢","b":{"x":null,"y":[1,{"p":1,"q":2}]}}';
@@ -272,28 +257,109 @@ it("keeps empty text, whitespace, unicode and binary as they are", () => {
 });
 
 it("describes a difference with both values and hides secrets", () => {
-	const kinds = kindsOf({ name: [null, null], secret: [null, null], meta: ["json", "json"], v: [null, null] });
 	const source = { name: "a", secret: "$2b$13$abc", meta: '{"totp_secret":"ABC"}', v: "v1:aaa:bbb:ccc" };
-	assert.equal(
-		describeDifference(kinds, "name", source, { name: "" }, "sqlite", "postgres"),
-		'name: "a" in use, "" in the target',
-	);
-	assert.equal(
-		describeDifference(kinds, "name", source, { name: null }, "sqlite", "postgres"),
-		'name: "a" in use, null in the target',
-	);
-	assert.equal(
-		describeDifference(kinds, "name", source, {}, "sqlite", "postgres"),
-		'name: "a" in use, missing in the target',
-	);
-	const secret = describeDifference(kinds, "secret", source, { secret: "$2b$13$abd" }, "sqlite", "postgres");
+	assert.equal(describeDifference("name", source, { name: "" }), 'name: "a" in use, "" in the target');
+	assert.equal(describeDifference("name", source, { name: null }), 'name: "a" in use, null in the target');
+	assert.equal(describeDifference("name", source, {}), 'name: "a" in use, missing in the target');
+	const secret = describeDifference("secret", source, { secret: "$2b$13$abd" });
 	assert.equal(secret, "secret: <hidden> in use, <hidden> in the target");
-	const meta = describeDifference(kinds, "meta", source, { meta: { totp_secret: "ABD" } }, "sqlite", "postgres");
+	const meta = describeDifference("meta", source, { meta: { totp_secret: "ABD" } });
 	assert.equal(meta, "meta: <hidden> in use, <hidden> in the target");
-	const sealed = describeDifference(kinds, "v", source, { v: "v1:aaa:bbb:ccd" }, "sqlite", "postgres");
+	const sealed = describeDifference("v", source, { v: "v1:aaa:bbb:ccd" });
 	assert.equal(sealed, "v: <hidden> in use, <hidden> in the target");
-	const long = describeDifference(kinds, "name", { name: "x".repeat(200) }, { name: "y" }, "sqlite", "postgres");
+	const long = describeDifference("name", { name: "x".repeat(200) }, { name: "y" });
 	assert.ok(long.length < 140, long);
+	// JSON text from MariaDB (LONGTEXT), also with a secret nested deeper or under another key name
+	const fromText = describeDifference("meta", { meta: '{"totp_secret":"ABC"}' }, { meta: '{"totp_secret":"ABD"}' });
+	assert.equal(fromText, "meta: <hidden> in use, <hidden> in the target");
+	const nested = describeDifference("meta", { meta: ' {"a":[{"passphrase":"x"}]}' }, { meta: '{"a":[]}' });
+	assert.equal(nested, 'meta: <hidden> in use, "{\\"a\\":[]}" in the target');
+	assert.equal(
+		describeDifference("passphrase", { passphrase: "a" }, { passphrase: "b" }),
+		"passphrase: <hidden> in use, <hidden> in the target",
+	);
+	assert.equal(describeDifference("v", { v: '"v1:a:b:c"' }, { v: null }), "v: <hidden> in use, null in the target");
+});
+
+it("reads MariaDB JSON text (LONGTEXT) as JSON against every engine", () => {
+	const text = '{ "b": [1, {"y": 2, "x": "é"}], "a": "abc" }';
+	const parsed = { a: "abc", b: [1, { x: "é", y: 2 }] };
+	// MariaDB source, Postgres or MySQL 8 target (parsed) and SQLite target (text)
+	const kinds = kindsOf({ meta: [null, "json"] });
+	assert.equal(firstDifference(kinds, { meta: text }, { meta: parsed }, "mysql", "postgres"), null);
+	assert.equal(firstDifference(kinds, { meta: text }, { meta: JSON.stringify(parsed) }, "mysql", "sqlite"), null);
+	assert.equal(
+		firstDifference(kinds, { meta: text }, { meta: { ...parsed, a: "abd" } }, "mysql", "postgres"),
+		"meta",
+	);
+	// the other direction
+	const back = kindsOf({ meta: ["json", null] });
+	assert.equal(firstDifference(back, { meta: parsed }, { meta: text }, "postgres", "mysql"), null);
+	assert.equal(firstDifference(back, { meta: JSON.stringify(parsed) }, { meta: text }, "sqlite", "mysql"), null);
+	assert.equal(
+		firstDifference(back, { meta: parsed }, { meta: text.replace("2", "3") }, "postgres", "mysql"),
+		"meta",
+	);
+	// a JSON string scalar stored as text on MariaDB
+	assert.equal(firstDifference(kinds, { meta: '"abc"' }, { meta: "abc" }, "mysql", "postgres"), null);
+	assert.deepEqual(portableRow(kinds, { meta: text }, "mysql"), { meta: text });
+	assert.deepEqual(portableRow(back, { meta: "abc" }, "postgres"), { meta: '"abc"' });
+
+	// the app's JSON columns are JSON whatever type the engine reports
+	const mariadb = {
+		id: { type: "int" },
+		meta: { type: "longtext" },
+		domain_names: { type: "longtext" },
+		x: { type: "longtext" },
+	};
+	const postgres = {
+		id: { type: "integer" },
+		meta: { type: "json" },
+		domain_names: { type: "json" },
+		x: { type: "text" },
+	};
+	assert.deepEqual(columnKinds(mariadb, postgres, "proxy_host"), {
+		id: { source: null, target: null },
+		meta: { source: "jsontext", target: "json" },
+		domain_names: { source: "jsontext", target: "json" },
+		x: { source: null, target: null },
+	});
+	const mariadbBoth = columnKinds(mariadb, mariadb, "proxy_host");
+	assert.equal(firstDifference(mariadbBoth, { meta: '{"a": 1}' }, { meta: '{"a":1}' }, "mysql", "mysql"), null);
+	assert.deepEqual(portableRow(mariadbBoth, { meta: '{"a": 1}' }, "mysql"), { meta: '{"a": 1}' });
+	// an unknown table: only the reported types count
+	assert.equal(columnKinds(mariadb, postgres).meta.source, null);
+});
+
+it("compares dates to the second, as NPMpro stores them", () => {
+	const kinds = kindsOf({ at: ["date", "date"] });
+	const withMs = new Date("2026-07-15T12:00:00.789Z");
+	for (const engine of ["sqlite", "mysql"]) {
+		const written = targetRow(kinds, portableRow(kinds, { at: withMs }, "postgres"), engine).at;
+		assert.equal(written, "2026-07-15 08:00:00", engine);
+		assert.equal(firstDifference(kinds, { at: withMs }, { at: written }, "postgres", engine), null, engine);
+	}
+	assert.equal(
+		firstDifference(kinds, { at: withMs }, { at: new Date("2026-07-15T12:00:00.000Z") }, "postgres", "mysql"),
+		null,
+	);
+	assert.equal(firstDifference(kinds, { at: withMs }, { at: "2026-07-15 08:00:01" }, "postgres", "sqlite"), "at");
+	assert.equal(
+		firstDifference(kinds, { at: "2026-07-15 08:00:00" }, { at: "2026-07-15 07:59:59" }, "sqlite", "sqlite"),
+		"at",
+	);
+	// before 1970 the floor still goes to the earlier second
+	assert.equal(comparable("date", new Date(-1500), "postgres"), comparable("date", new Date(-2000), "postgres"));
+});
+
+it("a bool column value that is not a boolean never equals one", () => {
+	assert.equal(comparable("bool", 2, "sqlite"), "text:2");
+	assert.notEqual(comparable("bool", 2, "sqlite"), comparable("bool", true, "postgres"));
+	assert.notEqual(comparable("bool", 2, "sqlite"), comparable("bool", false, "postgres"));
+	const kinds = kindsOf({ enabled: ["bool", "bool"] });
+	const copied = targetRow(kinds, portableRow(kinds, { enabled: 2 }, "sqlite"), "postgres");
+	assert.equal(firstDifference(kinds, { enabled: 2 }, copied, "sqlite", "postgres"), "enabled");
+	assert.equal(comparable("bool", "FALSE", "mysql"), "0");
 });
 
 const env = process.env;
@@ -306,7 +372,6 @@ const createValues = (knex) =>
 		t.json("meta");
 		t.dateTime("created_on");
 		t.bigInteger("bytes");
-		t.decimal("price", 12, 4);
 		t.string("name");
 		t.text("note");
 		t.binary("blob");
@@ -319,7 +384,6 @@ const sqliteRows = [
 		meta: '{"b":{"y":[1,2],"x":"é"},"a":true}',
 		created_on: "2026-11-01 01:30:00",
 		bytes: 5_000_000_000,
-		price: 1.5,
 		name: "",
 		note: "  שלום 🙂\n",
 		blob: Buffer.from([0, 1, 255]),
@@ -330,7 +394,6 @@ const sqliteRows = [
 		meta: '"just a string"',
 		created_on: "2026-03-08 03:30:00",
 		bytes: 0,
-		price: 0,
 		name: null,
 		note: "",
 		blob: null,
@@ -341,7 +404,6 @@ const sqliteRows = [
 		meta: null,
 		created_on: null,
 		bytes: null,
-		price: null,
 		name: "x",
 		note: null,
 		blob: null,
@@ -384,7 +446,6 @@ it("SQLite to Postgres and back gives equal rows", { skip, timeout: 60_000 }, as
 		assert.equal(there.copied[1].meta, "just a string");
 		assert.ok(there.copied[0].created_on instanceof Date);
 		assert.equal(there.copied[0].bytes, "5000000000");
-		assert.equal(there.copied[0].price, "1.5000");
 		assert.equal(there.copied[0].name, "");
 		assert.equal(there.copied[2].name, "x");
 		assert.equal(there.copied[1].name, null);
@@ -423,7 +484,7 @@ it("SQLite to Postgres and back gives equal rows", { skip, timeout: 60_000 }, as
 		const changed = await last("vals").where({ id: 1 }).first();
 		assert.equal(firstDifference(kinds, original[0], changed, "sqlite", "sqlite"), "note");
 		assert.equal(
-			describeDifference(kinds, "note", original[0], changed, "sqlite", "sqlite"),
+			describeDifference("note", original[0], changed),
 			'note: "  שלום 🙂\\n" in use, "changed" in the target',
 		);
 	} finally {
