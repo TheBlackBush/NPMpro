@@ -210,7 +210,9 @@ function Result({ result, types, plan, onOpen }) {
 const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate, visible, remove }) => {
 	const importing = Boolean(importKind);
 	// an import's file says whether it has a passphrase once it is uploaded
-	const [encrypted, setEncrypted] = useState(!importing && entry.encrypted === true && !entry.auto);
+	const [encrypted, setEncrypted] = useState(
+		!importing && entry.encrypted === true && !entry.auto && !entry.instanceKey,
+	);
 	const needsPassphrase = encrypted;
 	const baseId = useId();
 	// the parts of a Settings backup (administrators only); an import shows its kinds without them

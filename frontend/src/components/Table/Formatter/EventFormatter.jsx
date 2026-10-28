@@ -2,6 +2,7 @@ import {
 	IconArrowsCross,
 	IconBolt,
 	IconBoltOff,
+	IconCalendarTime,
 	IconDisc,
 	IconKey,
 	IconLock,
@@ -16,6 +17,7 @@ import { BreakableHost } from "./BreakableHost";
 const getEventValue = (event) => {
 	switch (event.objectType) {
 		case "access-list":
+		case "backup-schedule":
 		case "dns-credential":
 		case "user":
 			return event.meta?.name;
@@ -37,8 +39,10 @@ const getEventValue = (event) => {
 const getColorForAction = (action) => {
 	switch (action) {
 		case "created":
+		case "backup-succeeded":
 			return "text-lime";
 		case "deleted":
+		case "backup-failed":
 			return "text-red";
 		default:
 			return "text-blue";
@@ -75,6 +79,9 @@ const getIcon = (row) => {
 			break;
 		case "setting":
 			ico = <IconSettings size={16} className={c} />;
+			break;
+		case "backup-schedule":
+			ico = <IconCalendarTime size={16} className={c} />;
 			break;
 		default:
 			break;

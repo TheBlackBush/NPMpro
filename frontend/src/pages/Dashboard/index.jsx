@@ -3,6 +3,7 @@ import {
 	IconArrowsCross,
 	IconBolt,
 	IconBoltOff,
+	IconCalendarExclamation,
 	IconDisc,
 	IconHistory,
 	IconLock,
@@ -48,6 +49,7 @@ const Dashboard = () => {
 	const errorsPath = firstWithErrors ? `${firstWithErrors.path}?status=error` : (viewable[0]?.path ?? "/nginx/proxy");
 	const expiring = hostReport?.certificatesExpiring;
 	const expired = hostReport?.certificatesExpired;
+	const failedSchedules = hostReport?.backupSchedulesFailed ?? [];
 	return (
 		<div>
 			<PageHeader title={<T id="dashboard" />} />
@@ -124,6 +126,19 @@ const Dashboard = () => {
 						)}
 					</DashboardTile>
 				</HasPermission>
+				{failedSchedules.length > 0 ? (
+					<HasPermission section={ADMIN} permission={VIEW} hideError>
+						<DashboardTile to="/settings/backup" icon={IconCalendarExclamation} color="red">
+							<span className="badge bg-red-lt text-wrap text-start">
+								{failedSchedules.length === 1 ? (
+									<T id="dashboard.schedule-failed" data={{ name: failedSchedules[0].name }} />
+								) : (
+									<T id="dashboard.schedules-failed" data={{ count: failedSchedules.length }} />
+								)}
+							</span>
+						</DashboardTile>
+					</HasPermission>
+				) : null}
 				{isAdmin ? (
 					<div className="col-12">
 						<div className="card">
