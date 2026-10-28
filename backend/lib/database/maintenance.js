@@ -78,13 +78,22 @@ const createMaintenance = () => {
 		 */
 		idle: ({ timeoutMs } = {}) => {
 			if (writes === 0) return Promise.resolve();
-			const settled = new Promise((resolve) => waiters.push(resolve));
+			let waiter;
+			const settled = new Promise((resolve) => {
+				waiter = resolve;
+				waiters.push(resolve);
+			});
 			if (timeoutMs === undefined) return settled;
 			let timer;
 			const late = new Promise((_resolve, reject) => {
 				timer = setTimeout(() => reject(writesRunning()), timeoutMs);
 			});
-			return Promise.race([settled, late]).finally(() => clearTimeout(timer));
+			return Promise.race([settled, late]).finally(() => {
+				clearTimeout(timer);
+				// a timed-out wait leaves nothing behind
+				const index = waiters.indexOf(waiter);
+				if (index !== -1) waiters.splice(index, 1);
+			});
 		},
 		/**
 		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused
