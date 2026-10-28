@@ -28,6 +28,7 @@ const listSchema = {
 				"dns-credential",
 				"user",
 				"setting",
+				"backup-schedule",
 			],
 		},
 		action: { type: "string", enum: ["created", "updated", "deleted", "enabled", "disabled"] },
