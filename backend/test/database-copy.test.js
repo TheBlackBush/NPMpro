@@ -35,7 +35,7 @@ const copyAll = async (source, target, { batchSize } = {}) => {
 			onRows: (copied) => progress.push([table, copied]),
 		});
 	}
-	await resetSequences(target, order);
+	await resetSequences(source, target, order);
 	for (const table of order) {
 		const key = await keyColumns(source, table);
 		await verifyTable({
@@ -122,6 +122,120 @@ it("the next insert after the copy gets max id + 1 (SQLite)", async () => {
 		const info = await target.knex("proxy_host").columnInfo();
 		const [id] = await target.knex("proxy_host").insert(fillRow(info, { domain_names: "[]", meta: "{}" }));
 		assert.equal(Number(id), 14);
+	} finally {
+		await source.cleanup();
+		await target.cleanup();
+	}
+});
+
+it("ids of rows deleted in the database in use are not handed out again (SQLite)", async () => {
+	const source = await migratedSqlite();
+	const target = await migratedSqlite();
+	try {
+		await seedSource(source.knex);
+		// the counter is at 13, the highest id left is 11
+		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
+		await copyAll(source.knex, target.knex);
+		const info = await target.knex("proxy_host").columnInfo();
+		const [id] = await target.knex("proxy_host").insert(fillRow(info, { domain_names: "[]", meta: "{}" }));
+		assert.equal(Number(id), 14);
+		// a table without rows left keeps its counter too
+		await source.knex("audit_log").delete();
+		await target.knex("audit_log").delete();
+		await resetSequences(source.knex, target.knex, ["audit_log"]);
+		const [auditId] = await target
+			.knex("audit_log")
+			.insert(fillRow(await target.knex("audit_log").columnInfo(), { meta: "{}" }));
+		assert.equal(Number(auditId), 2);
+	} finally {
+		await source.cleanup();
+		await target.cleanup();
+	}
+});
+
+it("a table that ends on a full page is copied with one more empty read", async () => {
+	const source = await migratedSqlite();
+	const target = await migratedSqlite();
+	try {
+		await seedSource(source.knex);
+		const { progress } = await copyAll(source.knex, target.knex, { batchSize: 7 });
+		// 7 users in a page of 7, then an empty page; 11 proxy hosts in 7 and 4
+		assert.deepEqual(
+			progress.filter(([table]) => table === "user").map(([, copied]) => copied),
+			[7],
+		);
+		assert.deepEqual(
+			progress.filter(([table]) => table === "proxy_host").map(([, copied]) => copied),
+			[7, 11],
+		);
+		assert.equal(await countRows(target.knex, "user"), 7);
+	} finally {
+		await source.cleanup();
+		await target.cleanup();
+	}
+});
+
+// 1203 traffic rows: more than one default page and more than SQLite's 500 terms in one compound SELECT
+const addTrafficRows = async (knex) => {
+	const rows = Array.from({ length: 1203 }, (_, index) => ({
+		bucket: 10 + index,
+		host: `t${index}.example.com`,
+		status_class: "2xx",
+		requests: index,
+		bytes: index * 1000,
+	}));
+	for (let start = 0; start < rows.length; start += 100)
+		await knex("traffic_hour").insert(rows.slice(start, start + 100));
+};
+
+it("copies more than a page with the default page size (SQLite)", async () => {
+	const source = await migratedSqlite();
+	const target = await migratedSqlite();
+	try {
+		await addTrafficRows(source.knex);
+		const kinds = await kindsOf(source.knex, target.knex, "traffic_hour");
+		const progress = [];
+		const copied = await copyTable({
+			source: source.knex,
+			target: target.knex,
+			table: "traffic_hour",
+			key: ["id"],
+			kinds,
+			onRows: (rows) => progress.push(rows),
+		});
+		assert.equal(copied, 1203);
+		assert.deepEqual(progress, [500, 1000, 1203]);
+		assert.deepEqual(
+			await verifyTable({ source: source.knex, target: target.knex, table: "traffic_hour", key: ["id"], kinds }),
+			{ count: 1203 },
+		);
+	} finally {
+		await source.cleanup();
+		await target.cleanup();
+	}
+});
+
+it("a page larger than 500 rows is inserted in SQLite statements of at most 500 rows", async () => {
+	const source = await migratedSqlite();
+	const target = await migratedSqlite();
+	try {
+		await addTrafficRows(source.knex);
+		const kinds = await kindsOf(source.knex, target.knex, "traffic_hour");
+		const statements = [];
+		target.knex.on("query", ({ sql }) => {
+			if (sql.startsWith("insert into `traffic_hour`")) statements.push(sql.split(" union all ").length);
+		});
+		const copied = await copyTable({
+			source: source.knex,
+			target: target.knex,
+			table: "traffic_hour",
+			key: ["id"],
+			kinds,
+			batchSize: 2000,
+		});
+		assert.equal(copied, 1203);
+		assert.deepEqual(statements, [500, 500, 203]);
+		assert.equal(await countRows(target.knex, "traffic_hour"), 1203);
 	} finally {
 		await source.cleanup();
 		await target.cleanup();
@@ -238,6 +352,61 @@ it("a row the target refuses fails the copy with the table and the row key, neve
 	}
 });
 
+it("ids of rows deleted in the database in use are not handed out again (Postgres)", {
+	skip: pgSkip,
+	timeout: 120_000,
+}, async () => {
+	const source = await migratedSqlite();
+	const pg = knexFactory(knexConfigOf(pgConnection));
+	try {
+		await seedSource(source.knex);
+		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
+		await resetPg(pg);
+		await runMigrations(pg);
+		await copyAll(source.knex, pg);
+		const info = await pg("proxy_host").columnInfo();
+		const [{ id }] = await pg("proxy_host")
+			.insert(fillRow(info, { domain_names: "[]", meta: "{}" }))
+			.returning("id");
+		assert.equal(id, 14);
+	} finally {
+		await resetPg(pg);
+		await pg.destroy();
+		await source.cleanup();
+	}
+});
+
+it("a lost connection during the copy is a copy failure, not a refused row", {
+	skip: pgSkip,
+	timeout: 120_000,
+}, async () => {
+	const source = await migratedSqlite();
+	const pg = knexFactory(knexConfigOf(pgConnection));
+	try {
+		await seedSource(source.knex);
+		await resetPg(pg);
+		await runMigrations(pg);
+		// every insert into setting ends the session that runs it
+		await pg.raw(`create function end_session() returns trigger language plpgsql as $$
+			begin perform pg_terminate_backend(pg_backend_pid()); return new; end $$`);
+		await pg.raw("create trigger end_session before insert on setting for each row execute function end_session()");
+		const kinds = await kindsOf(source.knex, pg, "setting");
+		await assert.rejects(
+			copyTable({ source: source.knex, target: pg, table: "setting", key: ["id"], kinds }),
+			(error) => {
+				assert.ok(isMoveError("copy")(error), String(error));
+				assert.equal(error.message, "setting: the copy failed");
+				assert.ok(error.details.length > 0);
+				return true;
+			},
+		);
+	} finally {
+		await resetPg(pg);
+		await pg.destroy();
+		await source.cleanup();
+	}
+});
+
 it("SQLite to Postgres and back keeps every value", { skip: pgSkip, timeout: 180_000 }, async () => {
 	const source = await migratedSqlite();
 	const back = await migratedSqlite();
@@ -288,11 +457,14 @@ it("SQLite to Postgres and back keeps every value", { skip: pgSkip, timeout: 180
 				}
 			}
 		}
-		// SQLite after the copy back: the next id is max id + 1 too
+		// SQLite after the copy back keeps the Postgres counters: ids 14 (proxy host) and 8 (user) were handed out and
+		// deleted there, so they are not handed out again
 		const [nextId] = await back
 			.knex("proxy_host")
 			.insert(fillRow(await back.knex("proxy_host").columnInfo(), { domain_names: "[]", meta: "{}" }));
-		assert.equal(Number(nextId), 14);
+		assert.equal(Number(nextId), 15);
+		const [nextUserId] = await back.knex("user").insert(fillRow(await back.knex("user").columnInfo()));
+		assert.equal(Number(nextUserId), 9);
 	} finally {
 		await resetPg(pg);
 		await pg.destroy();
