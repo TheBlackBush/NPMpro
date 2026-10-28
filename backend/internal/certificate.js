@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew, installPlugin, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
@@ -275,6 +276,8 @@ const internalCertificate = {
 	 */
 	download: async (access, data, dir) => {
 		access.can("certificates:manage");
+		// a GET that writes an audit entry: during a database move that entry could be lost
+		maintenance.refuseWrite();
 		const certificate = await internalCertificate.get(access, data);
 
 		let zipDirectory;

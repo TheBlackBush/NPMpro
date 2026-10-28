@@ -141,6 +141,8 @@
 	"dashboard.recent-changes.empty": "Aún no hay cambios",
 	"dashboard.schedule-failed": "Copia de seguridad programada fallida: {name}",
 	"dashboard.schedules-failed": "{count} copias de seguridad programadas fallidas",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "Host 404",
 	"dead-hosts": "Hosts 404",
 	"dead-hosts.count": "{count} {count, plural, one {Host 404} other {Hosts 404}}",

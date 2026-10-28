@@ -21,6 +21,12 @@
 			"description": "Whether the password login is enabled",
 			"example": true
 		},
+		"maintenance": {
+			"type": "string",
+			"enum": ["database-move"],
+			"description": "Set while a database move runs: writes are refused until the backend restarts",
+			"example": "database-move"
+		},
 		"oidc": {
 			"type": "object",
 			"description": "OIDC login state and button",

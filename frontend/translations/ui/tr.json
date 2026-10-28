@@ -142,6 +142,8 @@
 	"dashboard.recent-changes.empty": "Henüz değişiklik yok",
 	"dashboard.schedule-failed": "Zamanlanmış yedekleme başarısız: {name}",
 	"dashboard.schedules-failed": "{count} zamanlanmış yedekleme başarısız",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404 Host",
 	"dead-hosts": "404 Host'lar",
 	"dead-hosts.count": "{count} {count, plural, one {404 Host} other {404 Host}}",

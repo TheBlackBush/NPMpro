@@ -141,6 +141,8 @@
 	"dashboard.recent-changes.empty": "Все още няма промени",
 	"dashboard.schedule-failed": "Scheduled backup failed: {name}",
 	"dashboard.schedules-failed": "{count} scheduled backups failed",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404 хост",
 	"dead-hosts": "404 хостове",
 	"dead-hosts.count": "{count} {count, plural, one {404 хост} other {404 хостове}}",

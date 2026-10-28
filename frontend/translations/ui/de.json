@@ -158,6 +158,8 @@
 	"dashboard.recent-changes.empty": "Noch keine Änderungen",
 	"dashboard.schedule-failed": "Geplantes Backup fehlgeschlagen: {name}",
 	"dashboard.schedules-failed": "{count} geplante Backups fehlgeschlagen",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404 Host",
 	"dead-host.directory": "Gruppe",
 	"dead-host.no-directory": "Keine Gruppe",

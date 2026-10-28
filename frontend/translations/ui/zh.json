@@ -158,6 +158,8 @@
 	"dashboard.recent-changes.empty": "暂无更改",
 	"dashboard.schedule-failed": "计划备份失败：{name}",
 	"dashboard.schedules-failed": "{count} 个计划备份失败",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "错误页面",
 	"dead-host.directory": "分组",
 	"dead-host.no-directory": "未分组",

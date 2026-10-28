@@ -193,6 +193,8 @@
 	"dashboard.schedule-failed": "Scheduled backup failed: {name}",
 	"dashboard.schedules-failed": "{count} scheduled backups failed",
 	"dashboard.view-all": "View all",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404 Host",
 	"dead-host.directory": "Group",
 	"dead-host.no-directory": "No group",

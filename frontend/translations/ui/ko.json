@@ -141,6 +141,8 @@
 	"dashboard.recent-changes.empty": "아직 변경 사항이 없습니다",
 	"dashboard.schedule-failed": "예약 백업 실패: {name}",
 	"dashboard.schedules-failed": "예약 백업 {count}개 실패",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404 호스트",
 	"dead-hosts": "404 호스트",
 	"dead-hosts.count": "{count}개의 404 호스트",

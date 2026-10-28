@@ -142,6 +142,8 @@
 	"dashboard.recent-changes.empty": "هنوز تغییری وجود ندارد",
 	"dashboard.schedule-failed": "Scheduled backup failed: {name}",
 	"dashboard.schedules-failed": "{count} scheduled backups failed",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "میزبان 404",
 	"dead-hosts": "میزبان‌های 404",
 	"dead-hosts.count": "{count} {count, plural, one {میزبان 404} other {میزبان 404}}",

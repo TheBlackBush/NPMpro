@@ -1,4 +1,5 @@
 import express from "express";
+import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import requireLogin from "../lib/express/require-login.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
@@ -57,6 +58,8 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 		setup: await isSetup(),
 		password: !(cfg.active && cfg.values.disable_password),
 		oidc: oidcHealth(cfg),
+		// every page polls this: the banner, and the move window's sign that the new process answers
+		...(maintenance.active() ? { maintenance: "database-move" } : {}),
 	});
 });
 

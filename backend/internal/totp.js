@@ -1,4 +1,5 @@
 import { createGuardrails, generateSecret, generateURI, verify } from "otplib";
+import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { isSealed, openSecret, sealSecret } from "../lib/totp-secret.js";
 import authModel from "../models/auth.js";
@@ -190,7 +191,8 @@ const internalTotp = {
 		if (!result.valid || (usedSteps.get(enrolled.id) ?? startStep) >= result.timeStep) return false;
 
 		usedSteps.set(enrolled.id, result.timeStep);
-		if (!isSealed(enrolled.secret)) {
+		// not during a database move: the secret is sealed at a later login
+		if (!isSealed(enrolled.secret) && !maintenance.active()) {
 			await authModel
 				.query()
 				.findById(enrolled.id)

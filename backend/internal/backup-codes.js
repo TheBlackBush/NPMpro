@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { hash, verify } from "../lib/argon2.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import authModel from "../models/auth.js";
 
 const codesOf = (userId, trx) => authModel.query(trx).where("user_id", userId).andWhere("type", "backup_code");
@@ -70,6 +71,8 @@ const internalBackupCodes = {
 	 * @returns {Promise<boolean>}
 	 */
 	verify: async (userId, code) => {
+		// a used code is deleted: during a database move the delete could be lost and the code valid again
+		maintenance.refuseWrite();
 		const normalizedCode = code.toUpperCase().replaceAll("O", "0").replace(/[IL]/gu, "1");
 
 		for (const row of await codesOf(userId)) {

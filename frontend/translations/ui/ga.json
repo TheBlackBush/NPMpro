@@ -137,6 +137,8 @@
 	"dashboard.recent-changes.empty": "Gan aon athruithe go fóill",
 	"dashboard.schedule-failed": "Scheduled backup failed: {name}",
 	"dashboard.schedules-failed": "{count} scheduled backups failed",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "Óstach 404",
 	"dead-hosts": "404 Óstaigh",
 	"dead-hosts.count": "{count} {count, plural, one {Óstach 404} other {Óstaigh 404}}",

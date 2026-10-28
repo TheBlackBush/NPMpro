@@ -142,6 +142,8 @@
 	"dashboard.recent-changes.empty": "Змін поки немає",
 	"dashboard.schedule-failed": "Помилка запланованого резервного копіювання: {name}",
 	"dashboard.schedules-failed": "Помилок запланованого резервного копіювання: {count}",
+	"database.error.maintenance": "A database move is in progress. Try again when it is done.",
+	"database.error.move-running": "A database move is running already.",
 	"dead-host": "404-хост",
 	"dead-hosts": "404-хости",
 	"dead-hosts.count": "{count} {count, plural, one {404-хост} few {404-хоста} many {404-хостів} other {404-хоста}}",

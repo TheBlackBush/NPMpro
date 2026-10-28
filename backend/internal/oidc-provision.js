@@ -1,3 +1,4 @@
+import { maintenance } from "../lib/database/maintenance.js";
 import { logValue, newUserPermissions, OidcLoginError } from "../lib/oidc-login.js";
 import { userNameFromClaims } from "../lib/oidc-rules.js";
 import { oidc as logger } from "../logger.js";
@@ -60,6 +61,8 @@ export default {
 	 * @returns {Promise<Object>}      the user row
 	 */
 	createUser: async (claims, permissions) => {
+		// the new user would be missing in the moved database
+		maintenance.refuseWrite();
 		const checked = newUserPermissions(permissions);
 		if (!checked.permissions) {
 			logger.error(`Auto-create refused, the stored default permissions are invalid: ${checked.error}`);

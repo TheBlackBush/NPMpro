@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import cookieParser from "cookie-parser";
 import express from "express";
 import multer from "multer";
+import { maintenance } from "./lib/database/maintenance.js";
 import errs from "./lib/error.js";
 import { jsonReplacer } from "./lib/helpers.js";
 import { express as logger } from "./logger.js";
@@ -50,6 +51,8 @@ app.use((req, res, next) => {
 	});
 });
 
+// a database move refuses writes until the backend restarts on the new database
+app.use(maintenance.guard);
 app.use("/", mainRoutes);
 
 const COMMAND_OUTPUT_MAX = 8000;
@@ -75,6 +78,12 @@ app.use((err, req, res, _) => {
 	if (err instanceof errs.CommandError) {
 		payload.error.output =
 			err.message.length > COMMAND_OUTPUT_MAX ? `…${err.message.slice(-COMMAND_OUTPUT_MAX)}` : err.message;
+	}
+
+	// the driver or verification message of a database move error, shown under the translated message
+	if (exposed && typeof err.details === "string" && err.details !== "") {
+		payload.error.output =
+			err.details.length > COMMAND_OUTPUT_MAX ? `…${err.details.slice(-COMMAND_OUTPUT_MAX)}` : err.details;
 	}
 
 	// Not every error is worth logging - but this is good for now until it gets annoying.
