@@ -57,7 +57,8 @@ const withoutUserinfo = (target) => {
 /**
  * Method and path of the quoted request field: userinfo of an absolute-form target is removed, path parameters
  * (`;jsessionid=...`), the query string and fragment are cut off. `path` is at most 200 characters (the recent
- * requests list), `fullPath` at most 2048 (cleaned before it is cut, for missing pages).
+ * requests list), `fullPath` at most 2048 (cleaned before it is cut, for missing pages; a longer path loses its
+ * partial last segment, everything after the last "/" within the first 2048 characters).
  * Method "-" and paths "" when the field is not a request line.
  */
 const parseRequest = (request) => {
@@ -68,8 +69,14 @@ const parseRequest = (request) => {
 	const { method } = m.groups;
 	const target = withoutUserinfo(m.groups.target);
 	const end = target.search(PATH_END);
-	const fullPath = (end === -1 ? target : target.slice(0, end)).slice(0, MAX_FULL_PATH);
-	return { method, path: fullPath.slice(0, MAX_PATH), fullPath };
+	const uncut = end === -1 ? target : target.slice(0, end);
+	let fullPath = uncut;
+	if (uncut.length > MAX_FULL_PATH) {
+		// the last segment is cut in part (half an email or token the cleanup no longer recognises): drop it
+		fullPath = uncut.slice(0, MAX_FULL_PATH);
+		fullPath = fullPath.slice(0, fullPath.lastIndexOf("/") + 1);
+	}
+	return { method, path: uncut.slice(0, MAX_PATH), fullPath };
 };
 
 export const parseAlogLine = (line) => {

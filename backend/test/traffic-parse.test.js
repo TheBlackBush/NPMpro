@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
+import { cleanPath } from "../lib/traffic/clean-path.js";
 import { isOwnRequest, parseAlogLine, statusClass } from "../lib/traffic/parse.js";
 
 const line = (host, ip, status = 200, bytes = 512, request = "GET /a?b=1 HTTP/2.0", ua = "curl/8") =>
@@ -73,7 +74,9 @@ it("cuts a long path at 200 characters and keeps the full path up to 2048 charac
 	const { path, fullPath } = parse(`/${"a".repeat(300)}`);
 	assert.equal(path, `/${"a".repeat(199)}`);
 	assert.equal(fullPath, `/${"a".repeat(300)}`);
-	assert.equal(parse(`/${"a".repeat(3000)}`).fullPath, `/${"a".repeat(2047)}`);
+	// longer than 2048: cut back to the last "/" within the first 2048 characters
+	assert.equal(parse(`/${"a".repeat(3000)}`).fullPath, "/");
+	assert.equal(parse(`/x/${"a".repeat(3000)}`).fullPath, "/x/");
 });
 
 it("returns method - and an empty path for a malformed request field", () => {
@@ -195,4 +198,20 @@ it("skips the health check from the configured IPv4 binding when the admin port 
 	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
 	assert.equal(isOwnRequest(health, "443"), false);
 	assert.equal(isOwnRequest(health, "443", ["0.0.0.0"]), false);
+});
+
+it("drops the partial last segment of a path cut at 2048 characters, so the cleanup never sees half an email or token", () => {
+	const JWT =
+		"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkphbmUifQ.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+	const stored = (target) =>
+		cleanPath(parseAlogLine(line("example.com", "203.0.113.7", 404, 1, `GET ${target} HTTP/1.1`)).fullPath);
+	const token = (n) => `a1${"b".repeat(n - 2)}`;
+	// a long token becomes :id, so the cleaned path is far under 200 characters and the cleanup does not cut it
+	assert.equal(stored(`/v/${token(2031)}/john.doe@example.com`), "/v/:id/");
+	assert.equal(stored(`/v/${token(2006)}/${JWT}`), "/v/:id/");
+	// repeated slashes collapse the same way
+	assert.equal(stored(`/${"/".repeat(2030)}u/john.doe@example.com`), "/u/");
+	// a path of exactly 2048 characters was not cut and keeps its last segment
+	assert.equal(`/v/${token(2024)}/john.doe@example.com`.length, 2048);
+	assert.equal(stored(`/v/${token(2024)}/john.doe@example.com`), "/v/:id/:email");
 });
