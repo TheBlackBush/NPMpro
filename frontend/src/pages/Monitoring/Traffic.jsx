@@ -16,7 +16,7 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import {
 	CountryName,
@@ -50,12 +50,33 @@ import {
 	hostSelectValue,
 	isCountryCode,
 	OTHER_HOST,
+	OTHER_PATH,
 	rangeOptions,
+	relativeTimeParts,
 	statusColor,
 } from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
+const relativeFormat = new Intl.RelativeTimeFormat(currentLocale, { numeric: "auto" });
+
+/** Top missing pages row: the path in monospace (the full path in the tooltip), the count and when it was last seen. */
+const missingPathItem = (row, nowMs) => {
+	const other = row.path === OTHER_PATH;
+	const label = other ? intl.formatMessage({ id: "monitoring.missing.other" }) : row.path;
+	const parts = relativeTimeParts(row.lastSeen, nowMs);
+	return {
+		key: row.path,
+		label: other ? label : <span className="font-monospace">{label}</span>,
+		title: label,
+		value: row.requests,
+		detail: parts ? (
+			<span title={formatDateTime(row.lastSeen)}>
+				<T id="monitoring.missing.last-seen" data={{ time: relativeFormat.format(parts.value, parts.unit) }} />
+			</span>
+		) : null,
+	};
+};
 
 const BADGES = {
 	proxy: { color: "green", labelKey: "monitoring.host.badge.proxy" },
@@ -187,10 +208,14 @@ function VisitorsCard({ status, totals, range }) {
 		return (
 			<StatCard
 				className={className}
-				to="/settings/monitoring"
 				label={<T id="monitoring.stat.visitors" />}
 				value={<T id="monitoring.stat.visitors.off" />}
-				hint={<T id="monitoring.stat.visitors.off.hint" />}
+				// only the hint links to the settings, like the other stat cards the card itself is not a link
+				hint={
+					<Link to="/settings/monitoring">
+						<T id="monitoring.stat.visitors.off.hint" />
+					</Link>
+				}
 				icon={IconUsers}
 				color="secondary"
 			/>
@@ -581,6 +606,13 @@ function TrafficData({ data, range, params }) {
 								value: i.requests,
 							};
 						})}
+					/>
+				) : null}
+				{data.top404Paths ? (
+					<TopList
+						title={<T id="monitoring.top.missing" />}
+						empty={<T id="monitoring.missing.empty" />}
+						items={data.top404Paths.map((row) => missingPathItem(row, Date.now()))}
 					/>
 				) : null}
 				<RecentTable rows={data.recent ?? []} />

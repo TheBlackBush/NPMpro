@@ -5,6 +5,7 @@ import { ErrorAlert, Loading, SwitchField } from "src/components";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
+import { dataOffConfirm } from "src/modules/Monitoring";
 import { GROUP_KEYS, isEmptyPayload, runtimeSettingsPayload } from "src/modules/RuntimeSettings";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
@@ -23,13 +24,27 @@ import { StatusAlert } from "./StatusAlert";
 
 const RETENTION_MIN = 7;
 const RETENTION_MAX = 365;
-const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
+const EDITABLE = [
+	"traffic_enabled",
+	"retention_days",
+	"show_ips",
+	"unique_visitors",
+	"visitors_cap",
+	"traffic_missing_paths",
+];
 const CAP_MIN = 1000;
 const CAP_MAX = 1_000_000;
 const ROTATIONS = { min: 1, max: 1000 };
 const KEEP_DAYS = { min: 1, max: 366 };
 const ANONYMIZE_LEVELS = ["off", "1", "2", "3"];
-const MONITORING_FIELDS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
+const MONITORING_FIELDS = [
+	"trafficEnabled",
+	"retentionDays",
+	"showIps",
+	"uniqueVisitors",
+	"visitorsCap",
+	"trafficMissingPaths",
+];
 
 function Heading() {
 	return (
@@ -185,32 +200,34 @@ const createDeleteChoice = () => {
 
 const useDeleteChoice = (choice) => useSyncExternalStore(choice.subscribe, choice.get);
 
+// the stored data a save deletes, one line per setting (items: the settings.monitoring.<item> keys)
+function DeletedItems({ items }) {
+	return (
+		<ul className="mt-2 mb-0 text-start">
+			{items.map((item) => (
+				<li key={item}>
+					<T id={`settings.monitoring.${item}.confirm.item`} />
+				</li>
+			))}
+		</ul>
+	);
+}
+
 /**
  * Confirm dialog body for switching traffic statistics off: what stays stored, what the other switches delete, and
  * the unticked "Also delete the stored statistics" checkbox
  */
-function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
+function TrafficOffConfirm({ days, items, choice }) {
 	const checked = useDeleteChoice(choice);
 	return (
 		<>
 			<T id="settings.monitoring.traffic.confirm.body" data={{ days }} />
-			{ipsOff || visitorsOff ? (
+			{items.length > 0 ? (
 				<>
 					<div className="mt-2">
 						<T id="settings.monitoring.traffic.confirm.also" />
 					</div>
-					<ul className="mt-2 mb-0 text-start">
-						{ipsOff ? (
-							<li>
-								<T id="settings.monitoring.show-ips.confirm.item" />
-							</li>
-						) : null}
-						{visitorsOff ? (
-							<li>
-								<T id="settings.monitoring.unique-visitors.confirm.item" />
-							</li>
-						) : null}
-					</ul>
+					<DeletedItems items={items} />
 				</>
 			) : null}
 			<label className="form-check text-start mt-3 mb-0">
@@ -238,20 +255,13 @@ function TrafficOffLabel({ choice, deletesOther }) {
 	);
 }
 
-// the dialog body when only visitor IPs and/or unique visitors are switched off
-function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
-	if (!(ipsOff && visitorsOff)) return <T id={`${confirmKey}.confirm.body`} />;
+// the dialog body when only settings whose stored data is deleted are switched off (confirm: dataOffConfirm)
+function DataOffConfirm({ confirm }) {
+	if (confirm.items.length === 1) return <T id={confirm.bodyKey} />;
 	return (
 		<>
-			<T id="settings.monitoring.both-off.confirm.body" />
-			<ul className="mt-2 mb-0 text-start">
-				<li>
-					<T id="settings.monitoring.show-ips.confirm.item" />
-				</li>
-				<li>
-					<T id="settings.monitoring.unique-visitors.confirm.item" />
-				</li>
-			</ul>
+			<T id={confirm.bodyKey} />
+			<DeletedItems items={confirm.items} />
 		</>
 	);
 }
@@ -335,7 +345,7 @@ function Fields({ isLocked }) {
 					onChange={(e) => setFieldValue("showIps", e.target.checked)}
 				/>
 				<SwitchField
-					className={values.uniqueVisitors ? "py-3" : "pt-3"}
+					className="py-3"
 					id="monitoring-unique-visitors"
 					label={label("uniqueVisitors", "settings.monitoring.unique-visitors")}
 					hint={<T id="settings.monitoring.unique-visitors.hint" />}
@@ -346,7 +356,7 @@ function Fields({ isLocked }) {
 				{values.uniqueVisitors ? (
 					<Field name="visitorsCap">
 						{({ field, meta }) => (
-							<div className="pt-3">
+							<div className="py-3">
 								<label className="form-label" htmlFor="monitoring-visitors-cap">
 									{label("visitorsCap", "settings.monitoring.visitors-cap")}
 								</label>
@@ -380,6 +390,15 @@ function Fields({ isLocked }) {
 						)}
 					</Field>
 				) : null}
+				<SwitchField
+					className="pt-3"
+					id="monitoring-missing-paths"
+					label={label("trafficMissingPaths", "settings.monitoring.missing-paths")}
+					hint={<T id="settings.monitoring.missing-paths.hint" />}
+					disabled={isLocked("trafficMissingPaths")}
+					checked={Boolean(values.trafficMissingPaths)}
+					onChange={(e) => setFieldValue("trafficMissingPaths", e.target.checked)}
+				/>
 			</div>
 		</Part>
 	);
@@ -412,10 +431,6 @@ export default function Monitoring() {
 	const lockedKeys = data.locked ?? [];
 	const locked = new Set(lockedKeys);
 	const isLocked = (key) => locked.has(key.replaceAll(/[A-Z]/gu, (c) => `_${c.toLowerCase()}`));
-	const confirmKey = (ips, visitors) => {
-		if (ips && visitors) return "settings.monitoring.both-off";
-		return ips ? "settings.monitoring.show-ips" : "settings.monitoring.unique-visitors";
-	};
 	const logs = logsQuery.data;
 	const logsCtx = runtimeContextOf("logs", logs);
 	const allLocked = EDITABLE.every((key) => locked.has(key)) && GROUP_KEYS.logs.every((key) => logsCtx.isLocked(key));
@@ -426,6 +441,7 @@ export default function Monitoring() {
 		showIps: Boolean(data.showIps),
 		uniqueVisitors: Boolean(data.uniqueVisitors),
 		visitorsCap: String(data.visitorsCap ?? 100_000),
+		trafficMissingPaths: Boolean(data.trafficMissingPaths),
 		writeLogFiles: Boolean(logs.writeLogFiles),
 		logRotations: String(logs.logRotations),
 		goaccess: Boolean(logs.goaccess),
@@ -470,31 +486,32 @@ export default function Monitoring() {
 			});
 			showObjectSuccess("setting", "saved");
 		};
-		// switching traffic statistics, visitor IPs or unique visitors off: ask first, once for all of them
-		// (visitor IPs and unique visitors delete their stored data, traffic statistics offer to delete theirs)
+		// switching traffic statistics, visitor IPs, unique visitors or missing pages off: ask first, once for all of them
+		// (visitor IPs, unique visitors and missing pages delete their stored data, traffic statistics offer to delete theirs)
 		const trafficOff =
 			monitoringChanged && data.trafficEnabled && !values.trafficEnabled && !isLocked("trafficEnabled");
 		const ipsOff = monitoringChanged && data.showIps && !values.showIps && !isLocked("showIps");
 		const visitorsOff =
 			monitoringChanged && data.uniqueVisitors && !values.uniqueVisitors && !isLocked("uniqueVisitors");
-		if (trafficOff || ipsOff || visitorsOff) {
-			const key = confirmKey(ipsOff, visitorsOff);
+		const pathsOff =
+			monitoringChanged &&
+			data.trafficMissingPaths &&
+			!values.trafficMissingPaths &&
+			!isLocked("trafficMissingPaths");
+		const dataOff = dataOffConfirm({ ipsOff, visitorsOff, pathsOff });
+		if (trafficOff || dataOff) {
+			const items = dataOff?.items ?? [];
 			const choice = createDeleteChoice();
 			setSubmitting(false);
 			showDeleteConfirmModal({
-				title: <T id={trafficOff ? "settings.monitoring.traffic.confirm" : `${key}.confirm`} />,
+				title: <T id={trafficOff ? "settings.monitoring.traffic.confirm" : dataOff.titleKey} />,
 				children: trafficOff ? (
-					<TrafficOffConfirm
-						days={data.retentionDays}
-						ipsOff={ipsOff}
-						visitorsOff={visitorsOff}
-						choice={choice}
-					/>
+					<TrafficOffConfirm days={data.retentionDays} items={items} choice={choice} />
 				) : (
-					<DataOffConfirm ipsOff={ipsOff} visitorsOff={visitorsOff} confirmKey={key} />
+					<DataOffConfirm confirm={dataOff} />
 				),
 				confirmLabel: trafficOff ? (
-					<TrafficOffLabel choice={choice} deletesOther={ipsOff || visitorsOff} />
+					<TrafficOffLabel choice={choice} deletesOther={items.length > 0} />
 				) : (
 					<T id="settings.monitoring.show-ips.confirm.button" />
 				),

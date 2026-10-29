@@ -44,6 +44,7 @@ const LABELS = {
 	"monitoring/show_ips": "settings.monitoring.show-ips",
 	"monitoring/unique_visitors": "settings.monitoring.unique-visitors",
 	"monitoring/visitors_cap": "settings.monitoring.visitors-cap",
+	"monitoring/traffic_missing_paths": "settings.monitoring.missing-paths",
 	"geoip/account_id": "settings.geoip.account-id",
 	"geoip/license_key": "settings.geoip.license-key",
 	"geoip/editions": "settings.geoip.editions",

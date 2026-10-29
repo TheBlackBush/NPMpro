@@ -368,7 +368,14 @@ const rangeOptions = [
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
 
-const MONITORING_KEYS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
+const MONITORING_KEYS = [
+	"trafficEnabled",
+	"retentionDays",
+	"showIps",
+	"uniqueVisitors",
+	"visitorsCap",
+	"trafficMissingPaths",
+];
 const GEOIP_KEYS = ["accountId", "licenseKey", "editions"];
 
 const pickEditable = (values, keys) => {
@@ -426,11 +433,60 @@ const sparklinePoints = (values, width, height, pad = 2) => {
 	return { line, area: `0,${height} ${line} ${last},${height}` };
 };
 
+const OTHER_PATH = "(other)";
+
+const RELATIVE_UNITS = [
+	{ unit: "day", seconds: 86_400 },
+	{ unit: "hour", seconds: 3600 },
+	{ unit: "minute", seconds: 60 },
+];
+
+/**
+ * The time from nowMs to iso as the largest whole unit for Intl.RelativeTimeFormat (negative in the past); seconds
+ * under a minute. Null for an invalid time.
+ */
+const relativeTimeParts = (iso, nowMs) => {
+	const time = Date.parse(iso);
+	if (!Number.isFinite(time)) return null;
+	const seconds = Math.trunc((time - nowMs) / 1000);
+	for (const { unit, seconds: size } of RELATIVE_UNITS) {
+		if (Math.abs(seconds) >= size) return { value: Math.trunc(seconds / size), unit };
+	}
+	// -0 would print as "in 0 seconds"
+	return { value: seconds === 0 ? 0 : seconds, unit: "second" };
+};
+
+// the settings whose stored data a save deletes when they go off, in dialog order
+const DATA_OFF_ITEMS = ["show-ips", "unique-visitors", "missing-paths"];
+
+/**
+ * The confirm dialog for switching off settings whose stored data is deleted: one setting gives its own title and
+ * body, several the shared title, "Saving deletes:" and a list (`items`, the settings.monitoring.<item> keys).
+ */
+const dataOffConfirm = ({ ipsOff = false, visitorsOff = false, pathsOff = false }) => {
+	const flags = [ipsOff, visitorsOff, pathsOff];
+	const items = DATA_OFF_ITEMS.filter((_item, index) => flags[index]);
+	if (items.length === 0) return null;
+	if (items.length === 1) {
+		return {
+			items,
+			titleKey: `settings.monitoring.${items[0]}.confirm`,
+			bodyKey: `settings.monitoring.${items[0]}.confirm.body`,
+		};
+	}
+	return {
+		items,
+		titleKey: "settings.monitoring.data-off.confirm",
+		bodyKey: "settings.monitoring.data-off.confirm.body",
+	};
+};
+
 export {
 	axisLabels,
 	chartData,
 	chartSeries,
 	countryName,
+	dataOffConfirm,
 	errorRateColor,
 	filterBans,
 	filterRecent,
@@ -447,7 +503,9 @@ export {
 	mapScale,
 	monitoringSettingsPayload,
 	OTHER_HOST,
+	OTHER_PATH,
 	rangeOptions,
+	relativeTimeParts,
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,

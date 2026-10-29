@@ -5,6 +5,7 @@ import {
 	chartData,
 	chartSeries,
 	countryName,
+	dataOffConfirm,
 	errorRateColor,
 	filterBans,
 	filterRecent,
@@ -19,7 +20,9 @@ import {
 	hostSelectValue,
 	mapScale,
 	monitoringSettingsPayload,
+	OTHER_PATH,
 	rangeOptions,
+	relativeTimeParts,
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
@@ -479,5 +482,50 @@ it("sends deleteStats only as true together with trafficEnabled false", () => {
 	// locked by TRAFFIC_STATS: trafficEnabled is not sent, so neither is deleteStats
 	assert.deepEqual(monitoringSettingsPayload({ ...off, deleteStats: true, locked: ["traffic_enabled"] }), {
 		showIps: false,
+	});
+});
+
+it("gives the largest whole unit of a past time for Intl.RelativeTimeFormat", () => {
+	const now = Date.UTC(2026, 9, 29, 12, 0, 0);
+	const ago = (ms) => new Date(now - ms).toISOString();
+	assert.deepEqual(relativeTimeParts(ago(20_000), now), { value: -20, unit: "second" });
+	assert.deepEqual(relativeTimeParts(ago(59_400), now), { value: -59, unit: "second" });
+	assert.deepEqual(relativeTimeParts(ago(150_000), now), { value: -2, unit: "minute" });
+	assert.deepEqual(relativeTimeParts(ago(3 * 3_600_000 + 5), now), { value: -3, unit: "hour" });
+	assert.deepEqual(relativeTimeParts(ago(49 * 3_600_000), now), { value: -2, unit: "day" });
+	assert.deepEqual(relativeTimeParts(new Date(now).toISOString(), now), { value: 0, unit: "second" });
+	assert.equal(relativeTimeParts("not a date", now), null);
+});
+
+it("builds one confirm dialog for the settings whose stored data is deleted", () => {
+	assert.equal(dataOffConfirm({}), null);
+	assert.deepEqual(dataOffConfirm({ pathsOff: true }), {
+		items: ["missing-paths"],
+		titleKey: "settings.monitoring.missing-paths.confirm",
+		bodyKey: "settings.monitoring.missing-paths.confirm.body",
+	});
+	assert.deepEqual(dataOffConfirm({ ipsOff: true, visitorsOff: false }), {
+		items: ["show-ips"],
+		titleKey: "settings.monitoring.show-ips.confirm",
+		bodyKey: "settings.monitoring.show-ips.confirm.body",
+	});
+	assert.deepEqual(dataOffConfirm({ ipsOff: true, visitorsOff: true, pathsOff: true }), {
+		items: ["show-ips", "unique-visitors", "missing-paths"],
+		titleKey: "settings.monitoring.data-off.confirm",
+		bodyKey: "settings.monitoring.data-off.confirm.body",
+	});
+	assert.equal(OTHER_PATH, "(other)");
+});
+
+it("sends trafficMissingPaths unless it is locked", () => {
+	const values = { trafficEnabled: true, trafficMissingPaths: true, uniqueVisitors: false, locked: [] };
+	assert.deepEqual(monitoringSettingsPayload(values), {
+		trafficEnabled: true,
+		trafficMissingPaths: true,
+		uniqueVisitors: false,
+	});
+	assert.deepEqual(monitoringSettingsPayload({ ...values, locked: ["traffic_missing_paths"] }), {
+		trafficEnabled: true,
+		uniqueVisitors: false,
 	});
 });
