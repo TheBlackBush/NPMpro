@@ -66,7 +66,8 @@
 					"dns-credential",
 					"user",
 					"setting",
-					"backup-schedule"
+					"backup-schedule",
+					"database"
 				]
 			}
 		},
@@ -83,7 +84,9 @@
 					"enabled",
 					"disabled",
 					"backup-succeeded",
-					"backup-failed"
+					"backup-failed",
+					"moved",
+					"move-failed"
 				]
 			}
 		},
