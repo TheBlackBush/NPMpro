@@ -34,6 +34,8 @@ const traffic = (results, { saveFailures = 0 } = {}) => {
 		deleteVisitors: () => Promise.resolve(),
 		deleteIps: () => Promise.resolve(),
 		visitorDayHashes: () => Promise.resolve([]),
+		deletePaths: () => Promise.resolve(),
+		pathDayHashes: () => Promise.resolve([]),
 	};
 	const saved = [];
 	const service = createTrafficService({

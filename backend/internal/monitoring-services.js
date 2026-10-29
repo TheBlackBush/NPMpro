@@ -13,8 +13,10 @@ import {
 	countVisitors,
 	deleteAll,
 	deleteIps,
+	deletePaths,
 	deleteVisitors,
 	flush,
+	pathDayHashes,
 	queryTraffic,
 	rollUpAndPrune,
 	summary,
@@ -43,13 +45,21 @@ const parseNames = (raw) => {
 	}
 };
 
-/** All proxy, redirection and 404 hosts with their domain names (streams have no HTTP access log). */
+/**
+ * All proxy, redirection and 404 hosts with their domain names (streams have no HTTP access log), with enabled
+ * (missing pages of disabled hosts are not counted).
+ */
 const loadHosts = async () => {
 	const knex = db();
 	const hosts = [];
 	for (const [type, table] of HOST_TABLES) {
-		for (const row of await knex(table).select("id", "domain_names").orderBy("id")) {
-			hosts.push({ id: Number(row.id), type, domain_names: parseNames(row.domain_names) });
+		for (const row of await knex(table).select("id", "domain_names", "enabled").orderBy("id")) {
+			hosts.push({
+				id: Number(row.id),
+				type,
+				domain_names: parseNames(row.domain_names),
+				enabled: Boolean(Number(row.enabled)),
+			});
 		}
 	}
 	return hosts;
@@ -90,6 +100,9 @@ const store = {
 	deleteVisitors,
 	deleteAll,
 	visitorDayHashes,
+	deletePaths,
+	// on SQLite the read worker's read-only connection runs the 48 hour scan, elsewhere the shared pool
+	pathDayHashes: (args) => monitoringReads().pathDayHashes(args),
 	countVisitors,
 	queryTraffic,
 	summary,
@@ -113,7 +126,9 @@ const geoipService = createGeoipService({ geoip, runUpdate: runGeoipUpdate, getC
 // the statistics reads: on SQLite in a worker thread (a slow query would block the API), else on the shared pool
 let reads = null;
 const monitoringReads = () => {
-	reads ??= isSqlite() ? createReadClient({ filename: sqliteFile() }) : { queryTraffic, summary, countVisitors };
+	reads ??= isSqlite()
+		? createReadClient({ filename: sqliteFile() })
+		: { queryTraffic, summary, countVisitors, pathDayHashes };
 	return reads;
 };
 const internalMonitoring = createMonitoring({

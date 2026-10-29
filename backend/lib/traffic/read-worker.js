@@ -5,7 +5,7 @@ import { parentPort, workerData } from "node:worker_threads";
 import knexFactory from "knex";
 import { createStore } from "./store.js";
 
-const READS = new Set(["queryTraffic", "summary", "countVisitors"]);
+const READS = new Set(["queryTraffic", "summary", "countVisitors", "pathDayHashes"]);
 
 const knex = knexFactory({
 	client: "better-sqlite3",

@@ -1,4 +1,5 @@
 import { statusClass } from "./parse.js";
+import { pathHash } from "./path-hash.js";
 
 // the row that counts the missing paths over the per host and day cap
 export const OTHER_PATH = "(other)";
@@ -32,8 +33,10 @@ const packHash = (hex) => Buffer.from(hex, "hex").toString("latin1");
  * @param   {Object}  options
  * @param   {number}  [options.maxPerKey]    distinct ASNs and IPs per host and hour
  * @param   {number}  [options.maxVisitors]  distinct visitors per host and day (changed by setVisitorsCap)
+ * @param   {number}  [options.maxPaths]     distinct missing page paths per host and UTC day
+ * @param   {number}  [options.maxPathsTotal]  distinct missing page paths per UTC day over all hosts
  */
-export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
+export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000, maxPaths = 500, maxPathsTotal = 50000 }) => {
 	let minutes = new Map();
 	let countries = new Map();
 	let asns = new Map();
@@ -48,6 +51,13 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 	let skipped = 0;
 	let newestHour = 0;
 	let newestDay = 0;
+	let paths = new Map();
+	// per `${day}|${host}`: the hashes (pathHash, a number each) of the distinct missing page paths queued in this run or
+	// stored before the start (seedPaths); a number instead of the string keeps 1,000 names at the cap in a few MB
+	const dayPaths = new Map();
+	// per UTC day: distinct paths over all hosts (the safety cap maxPathsTotal)
+	const dayPathTotals = new Map();
+	let newestPathDay = 0;
 
 	const visitorEntry = (day, host) => {
 		newestDay = Math.max(newestDay, day);
@@ -76,6 +86,42 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 		visitors.push({ day, host, hash });
 	};
 
+	const pathSet = (day, host) => {
+		newestPathDay = Math.max(newestPathDay, day);
+		const key = `${day}|${host}`;
+		let set = dayPaths.get(key);
+		if (!set) {
+			set = new Set();
+			dayPaths.set(key, set);
+		}
+		return set;
+	};
+
+	/** Adds a path hash to (day, host) and the day total; false when a cap is reached and it was not there yet. */
+	const admitPath = (day, host, hash) => {
+		const set = pathSet(day, host);
+		if (set.has(hash)) return true;
+		const total = dayPathTotals.get(day) ?? 0;
+		if (set.size >= maxPaths || total >= maxPathsTotal) return false;
+		set.add(hash);
+		dayPathTotals.set(day, total + 1);
+		return true;
+	};
+
+	/** Counts a missing page under its path, or under (other) once a cap of its UTC day is reached. */
+	const addPath = (entry, path) => {
+		const stored = admitPath(Math.floor(entry.time / DAY), entry.host, pathHash(path)) ? path : OTHER_PATH;
+		const hour = Math.floor(entry.time / HOUR);
+		const lastSeen = Math.floor(entry.time / 1000);
+		const row = bump(paths, `${hour}|${entry.host}|${stored}`, () => ({
+			bucket: hour,
+			host: entry.host,
+			path: stored,
+			last_seen: lastSeen,
+		}));
+		row.last_seen = Math.max(row.last_seen, lastSeen);
+	};
+
 	// Adds a value for (hour, host) unless that pair already holds maxPerKey distinct values.
 	// The sets outlive drain() so the cap holds for the whole hour; drain() prunes old hours.
 	const admit = (seen, hour, host, value) => {
@@ -97,7 +143,7 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 	};
 
 	return {
-		add(entry, geo, { showIps, visitorHash }) {
+		add(entry, geo, { showIps, visitorHash, missingPath }) {
 			const minute = Math.floor(entry.time / MINUTE);
 			const hour = Math.floor(entry.time / HOUR);
 			const { host } = entry;
@@ -129,6 +175,8 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 			if (visitorHash) {
 				addVisitor(Math.floor(entry.time / DAY), host, visitorHash);
 			}
+
+			if (missingPath !== undefined) addPath(entry, missingPath);
 		},
 
 		skip() {
@@ -147,6 +195,13 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 			dayVisitors.clear();
 		},
 
+		/** Drops the undrained path rows and the per day path sets ("track missing pages" was switched off). */
+		forgetPaths() {
+			paths = new Map();
+			dayPaths.clear();
+			dayPathTotals.clear();
+		},
+
 		/** Drops everything counted and every admission set: the stored statistics were deleted. */
 		reset() {
 			minutes = new Map();
@@ -157,7 +212,27 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 			seenAsns.clear();
 			seenIps.clear();
 			dayVisitors.clear();
+			paths = new Map();
+			dayPaths.clear();
+			dayPathTotals.clear();
 			skipped = 0;
+		},
+
+		/**
+		 * Starts from the stored paths after a restart, so the caps hold for the whole day (a seeded hash counts once,
+		 * like a path counted in this run).
+		 *
+		 * @param {Array<{day: number, host: string, hashes: number[]}>} rows  without (other)
+		 */
+		seedPaths(rows) {
+			for (const row of rows) {
+				const set = pathSet(row.day, row.host);
+				for (const hash of row.hashes) {
+					if (set.has(hash)) continue;
+					set.add(hash);
+					dayPathTotals.set(row.day, (dayPathTotals.get(row.day) ?? 0) + 1);
+				}
+			}
 		},
 
 		/**
@@ -203,6 +278,7 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 				asns: [...asns.values()],
 				ips: [...ips.values()],
 				visitors,
+				paths: [...paths.values()],
 				skipped,
 			};
 			minutes = new Map();
@@ -210,6 +286,7 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 			asns = new Map();
 			ips = new Map();
 			visitors = [];
+			paths = new Map();
 			// Keep the previous hour too: lines can arrive slightly late around the hour boundary.
 			for (const seen of [seenAsns, seenIps]) {
 				for (const key of seen.keys()) {
@@ -223,6 +300,12 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000 }) => {
 				if (Number(key.slice(0, key.indexOf("|"))) < newestDay - 1) {
 					dayVisitors.delete(key);
 				}
+			}
+			for (const key of dayPaths.keys()) {
+				if (Number(key.slice(0, key.indexOf("|"))) < newestPathDay - 1) dayPaths.delete(key);
+			}
+			for (const day of dayPathTotals.keys()) {
+				if (day < newestPathDay - 1) dayPathTotals.delete(day);
 			}
 			skipped = 0;
 			return out;

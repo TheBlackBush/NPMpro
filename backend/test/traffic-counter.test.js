@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { createCounter } from "../lib/traffic/counter.js";
+import { pathHash } from "../lib/traffic/path-hash.js";
 
 const t = Date.UTC(2026, 9, 24, 8, 15, 30);
 const e = (host, ip, status = 200, bytes = 10, time = t) => ({ time, host, ip, status, bytes });
@@ -235,4 +236,102 @@ it("a stored marker from a lower cap does not block a raised cap after a restart
 		],
 		"admitted until stored + new reaches the cap, and no second marker",
 	);
+});
+
+it("counts missing paths per hour and host with the newest second", () => {
+	const c = createCounter({});
+	c.add(e("a", "1.1.1.1", 404), null, { showIps: false, missingPath: "/x" });
+	c.add(e("a", "1.1.1.1", 404, 10, t + 5000), null, { showIps: false, missingPath: "/x" });
+	c.add(e("a", "1.1.1.1", 200), null, { showIps: false });
+	const hour = Math.floor(t / 3600000);
+	assert.deepEqual(c.drain().paths, [
+		{ bucket: hour, host: "a", path: "/x", requests: 2, last_seen: Math.floor((t + 5000) / 1000) },
+	]);
+	assert.deepEqual(c.drain().paths, []);
+});
+
+it("caps distinct paths per host and UTC day into (other), a path already seen keeps counting", () => {
+	const c = createCounter({ maxPaths: 2 });
+	for (const path of ["/a", "/b", "/c", "/a", "/d"])
+		c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: path });
+	c.add(e("other-host", "1.1.1.1", 404), null, { showIps: false, missingPath: "/c" });
+	const rows = c
+		.drain()
+		.paths.map((r) => [r.host, r.path, r.requests])
+		.sort();
+	assert.deepEqual(rows, [
+		["h", "(other)", 2],
+		["h", "/a", 2],
+		["h", "/b", 1],
+		["other-host", "/c", 1],
+	]);
+	// the next UTC day starts empty, yesterday's set is still used for late lines
+	const nextDay = Date.UTC(2026, 9, 25, 0, 0, 5);
+	c.add(e("h", "1.1.1.1", 404, 10, nextDay), null, { showIps: false, missingPath: "/c" });
+	c.add(e("h", "1.1.1.1", 404, 10, t), null, { showIps: false, missingPath: "/z" });
+	assert.deepEqual(
+		c
+			.drain()
+			.paths.map((r) => r.path)
+			.sort(),
+		["(other)", "/c"],
+	);
+});
+
+it("caps distinct paths per UTC day over all hosts, seeded paths count too", () => {
+	const c = createCounter({ maxPaths: 10, maxPathsTotal: 3 });
+	c.seedPaths([{ day, host: "h1", hashes: [pathHash("/a")] }]);
+	for (const [host, path] of [
+		["h1", "/a"],
+		["h1", "/b"],
+		["h2", "/c"],
+		["h2", "/d"],
+		["h3", "/e"],
+	]) {
+		c.add(e(host, "1.1.1.1", 404), null, { showIps: false, missingPath: path });
+	}
+	assert.deepEqual(
+		c
+			.drain()
+			.paths.map((r) => [r.host, r.path])
+			.sort(),
+		[
+			["h1", "/a"],
+			["h1", "/b"],
+			["h2", "(other)"],
+			["h2", "/c"],
+			["h3", "(other)"],
+		],
+	);
+	// the next UTC day has its own total
+	c.add(e("h3", "1.1.1.1", 404, 10, Date.UTC(2026, 9, 25, 1)), null, { showIps: false, missingPath: "/e" });
+	assert.deepEqual(
+		c.drain().paths.map((r) => r.path),
+		["/e"],
+	);
+});
+
+it("seedPaths counts stored path hashes against the cap, forgetPaths and reset drop paths and sets", () => {
+	const c = createCounter({ maxPaths: 2 });
+	c.seedPaths([{ day, host: "h", hashes: [pathHash("/a"), pathHash("/b")] }]);
+	c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: "/a" });
+	c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: "/new" });
+	assert.deepEqual(
+		c
+			.drain()
+			.paths.map((r) => r.path)
+			.sort(),
+		["(other)", "/a"],
+	);
+	c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: "/new" });
+	c.forgetPaths();
+	assert.deepEqual(c.drain().paths, []);
+	c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: "/new" });
+	assert.deepEqual(
+		c.drain().paths.map((r) => r.path),
+		["/new"],
+	);
+	c.add(e("h", "1.1.1.1", 404), null, { showIps: false, missingPath: "/x" });
+	c.reset();
+	assert.deepEqual(c.drain().paths, []);
 });

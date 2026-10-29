@@ -3,14 +3,15 @@ import { Worker } from "node:worker_threads";
 const WORKER_FILE = new URL("./read-worker.js", import.meta.url);
 
 /**
- * The monitoring reads of lib/traffic/store.js (queryTraffic, summary, countVisitors) run in a worker thread with its
- * own read-only SQLite connection, so a slow statistics query never blocks the API. The worker starts on first use and
- * again after it stopped; a call that was running when it stopped is rejected.
+ * The monitoring reads of lib/traffic/store.js (queryTraffic, summary, countVisitors, pathDayHashes) run in a worker
+ * thread with its own read-only SQLite connection, so a slow statistics query never blocks the API. The worker starts
+ * on first use and again after it stopped; a call that was running when it stopped is rejected.
  *
  * @param   {Object}  options
  * @param   {String}  options.filename  the SQLite database
  * @param   {Function} [options.createWorker]  for tests
- * @returns {{queryTraffic: Function, summary: Function, countVisitors: Function, close: Function}}
+ * @returns {{queryTraffic: Function, summary: Function, countVisitors: Function, pathDayHashes: Function,
+ *           close: Function}}
  */
 const createReadClient = ({ filename, createWorker = (file, opts) => new Worker(file, opts) }) => {
 	let worker = null;
@@ -56,6 +57,7 @@ const createReadClient = ({ filename, createWorker = (file, opts) => new Worker(
 		queryTraffic: call("queryTraffic"),
 		summary: call("summary"),
 		countVisitors: call("countVisitors"),
+		pathDayHashes: call("pathDayHashes"),
 		close: async () => {
 			const running = worker;
 			worker = null;

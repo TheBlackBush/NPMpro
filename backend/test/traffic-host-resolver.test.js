@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createHostResolver } from "../lib/traffic/host-resolver.js";
+import { createHostResolver, pathHostTypes } from "../lib/traffic/host-resolver.js";
 
 const hosts = [
 	{ id: 7, type: "dead", domain_names: ["gone.test"] },
@@ -94,5 +94,19 @@ describe("host resolver", () => {
 	it("an ownerOf result can be changed without affecting the resolver", () => {
 		resolver.ownerOf("example.com").domain_names.push("x");
 		assert.deepEqual(resolver.keysFor("proxy", 1), ["example.com", "www.example.com"]);
+	});
+	it("pathHostTypes lists the names of enabled proxy and redirection hosts, first owner wins", () => {
+		const types = pathHostTypes([
+			{ id: 1, type: "dead", domain_names: ["shared.test", "d.test"] },
+			{ id: 2, type: "proxy", domain_names: ["Example.com ", "*.example.com", "shared.test"] },
+			{ id: 3, type: "redirection", domain_names: ["r.test"], enabled: true },
+			{ id: 4, type: "proxy", domain_names: ["off.test"], enabled: false },
+		]);
+		assert.deepEqual([...types.entries()].sort(), [
+			["*.example.com", "proxy"],
+			["example.com", "proxy"],
+			["r.test", "redirection"],
+			["shared.test", "proxy"],
+		]);
 	});
 });

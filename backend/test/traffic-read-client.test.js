@@ -24,6 +24,7 @@ it("sends the reads to one worker and returns their results", async () => {
 	);
 	const client = createReadClient({ filename: "/data/x.sqlite", createWorker });
 	assert.deepEqual(await client.queryTraffic({ range: "30d" }), { fn: "queryTraffic", args: { range: "30d" } });
+	assert.deepEqual(await client.pathDayHashes({ days: [1, 2] }), { fn: "pathDayHashes", args: { days: [1, 2] } });
 	assert.deepEqual(await client.summary({ now: 1 }), { fn: "summary", args: { now: 1 } });
 	assert.equal(started.length, 1);
 	assert.equal(started[0].workerData.filename, "/data/x.sqlite");

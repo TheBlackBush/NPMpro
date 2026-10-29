@@ -2,8 +2,9 @@ import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { waitWithin, writerRunning } from "../database/pause.js";
+import { cleanPath } from "./clean-path.js";
 import { createCounter } from "./counter.js";
-import { createHostResolver } from "./host-resolver.js";
+import { createHostResolver, pathHostTypes } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
 import { isOwnRequest, parseAlogLine } from "./parse.js";
 import { createRecent } from "./recent.js";
@@ -25,6 +26,10 @@ const PENDING_MAX_MS = 10 * 60000;
 const IPS_OFF_PIN_MS = 5 * 60000;
 // the same for "count unique visitors"
 const VISITORS_OFF_PIN_MS = 5 * 60000;
+// the same for "track missing pages"
+const PATHS_OFF_PIN_MS = 5 * 60000;
+// the statuses counted as a missing page
+const MISSING_STATUSES = new Set([404, 410]);
 const DAY = 86400000;
 // the API reloads the host list when it is older than this (the flush reloads it every minute while counting)
 const HOSTS_MAX_AGE_MS = 60000;
@@ -100,7 +105,8 @@ const hasRows = (data) =>
 	data.countries.length > 0 ||
 	data.asns.length > 0 ||
 	data.ips.length > 0 ||
-	data.visitors.length > 0;
+	data.visitors.length > 0 ||
+	data.paths.length > 0;
 
 const mergeBatches = (batches) => ({
 	minutes: batches.flatMap((b) => b.minutes),
@@ -108,6 +114,7 @@ const mergeBatches = (batches) => ({
 	asns: batches.flatMap((b) => b.asns),
 	ips: batches.flatMap((b) => b.ips),
 	visitors: batches.flatMap((b) => b.visitors),
+	paths: batches.flatMap((b) => b.paths),
 });
 
 /**
@@ -145,15 +152,16 @@ const createStateMeta = ({ read, write }) => ({
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.store        { flush, rollUpAndPrune, deleteIps, deleteVisitors, deleteAll,
- *                                        visitorDayHashes }
+ *                                        visitorDayHashes, deletePaths, pathDayHashes }
  *                                        (lib/traffic/store.js)
  * @param   {Object}    deps.geo          { lookup(ip), available() } (lib/geoip/lookup.js)
  * @param   {Function}  deps.getConfig    () => Promise<{ values: { traffic_enabled, retention_days, show_ips,
- *                                        unique_visitors, visitors_cap } }>
+ *                                        unique_visitors, visitors_cap, traffic_missing_paths } }>
  * @param   {Function}  deps.loadState    () => Promise<{ inode, offset } | null>
  * @param   {Function}  deps.saveState    (state) => Promise
- * @param   {Function}  deps.loadHosts    () => Promise<Array<{id, type, domain_names}>>  the managed hosts
- *                                        (proxy, redirection and dead hosts)
+ * @param   {Function}  deps.loadHosts    () => Promise<Array<{id, type, domain_names, enabled?}>>  the managed
+ *                                        hosts (proxy, redirection and dead hosts; enabled false: missing pages are
+ *                                        not counted)
  * @param   {Function}  [deps.loadVisitorKey]  () => Promise<{ key: Buffer, created: boolean, replaced: boolean }>,
  *                                             called once in start();
  *                                             without it (or when it fails) unique visitors are not counted
@@ -164,6 +172,8 @@ const createStateMeta = ({ read, write }) => ({
  *                                        for a pause with a time limit)
  * @param   {number}    [deps.maxPerKey]
  * @param   {number}    [deps.maxVisitors]  distinct visitors per host and day until the settings give visitors_cap
+ * @param   {number}    [deps.maxPaths]  distinct missing page paths per host and UTC day
+ * @param   {number}    [deps.maxPathsTotal]  distinct missing page paths per UTC day over all hosts
  * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
  * @param   {string[]}  [deps.bindAddresses]  NPM_IPV4_BINDING: the health check may come from it as well as loopback
  * @returns {Object}
@@ -182,17 +192,21 @@ const createTrafficService = ({
 	timers = defaultTimers,
 	maxPerKey = 1000,
 	maxVisitors = 100000,
+	maxPaths = 500,
+	maxPathsTotal = 50000,
 	adminPort = process.env.NPM_PORT || "81",
 	bindAddresses = [process.env.NPM_IPV4_BINDING].filter((address) => address && address !== "0.0.0.0"),
 	log = logger,
 }) => {
 	const queue = createQueue();
-	const counter = createCounter({ maxPerKey, maxVisitors });
+	const counter = createCounter({ maxPerKey, maxVisitors, maxPaths, maxPathsTotal });
 	// the newest requests for the API, in memory only; IPs only while show_ips is on
 	const recent = createRecent();
 	let mapHost = createHostMapper([]);
 	// null until the host list was loaded once; a failed reload keeps the previous one
 	let resolver = null;
+	// stored keys whose missing pages are counted (enabled proxy and redirection hosts)
+	let pathHosts = new Map();
 	// start time of the last successful load, null before it and after a failed one (the next read or API call
 	// retries)
 	let hostsAt = null;
@@ -209,6 +223,8 @@ const createTrafficService = ({
 	let ipsOffUntil = 0;
 	let uniqueVisitors = false;
 	let visitorsOffUntil = 0;
+	let missingPaths = false;
+	let pathsOffUntil = 0;
 	// set from the visitor key in start(); null while no key could be loaded
 	let hashVisitor = null;
 	let visitorKeyFailed = false;
@@ -248,6 +264,10 @@ const createTrafficService = ({
 			if (!values.unique_visitors) visitorsOffUntil = 0;
 			uniqueVisitors = Boolean(values.unique_visitors);
 		}
+		if (!(values.traffic_missing_paths && now() < pathsOffUntil)) {
+			if (!values.traffic_missing_paths) pathsOffUntil = 0;
+			missingPaths = Boolean(values.traffic_missing_paths);
+		}
 		if (values.show_ips && now() < ipsOffUntil) return;
 		if (!values.show_ips) ipsOffUntil = 0;
 		if (showIps && !values.show_ips) recent.forgetIps();
@@ -274,6 +294,7 @@ const createTrafficService = ({
 			const hosts = await loadHosts();
 			mapHost = createHostMapper(hosts.flatMap((host) => host.domain_names ?? []));
 			resolver = createHostResolver(hosts);
+			pathHosts = pathHostTypes(hosts);
 			// per host lists of keys that are no longer counted (host removed or renamed)
 			recent.keepHosts(mapHost.keys);
 			hostsAt = at;
@@ -329,6 +350,11 @@ const createTrafficService = ({
 				counter.forgetVisitors();
 				await store.deleteVisitors().catch(logError("could not delete the stored visitor hashes"));
 			}
+			if (!missingPaths) {
+				// also the per day paths seeded at start, they are the ones deleted here
+				counter.forgetPaths();
+				await store.deletePaths().catch(logError("could not delete the stored missing pages"));
+			}
 		}
 		// the host list is only needed while lines are counted
 		if (enabled) await refreshHosts();
@@ -358,7 +384,13 @@ const createTrafficService = ({
 		});
 		// parseAlogLine() only returns lines with a valid client IP
 		const visitorHash = uniqueVisitors && hashVisitor ? hashVisitor(ip) : undefined;
-		counter.add(entry, found, { showIps, visitorHash });
+		// a missing page of an enabled proxy or redirection host (404 hosts, disabled hosts, the default site and
+		// unknown names are not counted); a line without a request line has no path
+		let missingPath;
+		if (missingPaths && MISSING_STATUSES.has(entry.status) && method !== "-" && pathHosts.has(entry.host)) {
+			missingPath = cleanPath(path);
+		}
+		counter.add(entry, found, { showIps, visitorHash, missingPath });
 	};
 
 	const readOnce = async () => {
@@ -405,6 +437,7 @@ const createTrafficService = ({
 		const data = counter.drain();
 		if (!showIps) data.ips = [];
 		if (!uniqueVisitors) data.visitors = [];
+		if (!missingPaths) data.paths = [];
 		if (hasRows(data)) pending.push({ at: now(), data });
 		const state = lastState;
 		if (pending.length === 0) {
@@ -539,6 +572,16 @@ const createTrafficService = ({
 				// covers TRAFFIC_SHOW_IPS=false set while IPs were stored; only when the setting is known to be off
 				await queue(() => store.deleteIps()).catch(logError("could not delete the stored IPs"));
 			}
+			// the per day caps count the paths stored before this start (the scan runs in the read worker on SQLite, see
+			// internal/monitoring-services.js); known off: the stored ones go
+			if (values !== null && !missingPaths) {
+				await queue(() => store.deletePaths()).catch(logError("could not delete the stored missing pages"));
+			} else {
+				await queue(async () => {
+					const today = Math.floor(now() / DAY);
+					counter.seedPaths(await store.pathDayHashes({ days: [today - 1, today] }));
+				}).catch(logError("could not read the stored missing pages"));
+			}
 			try {
 				lastState = (await loadState()) ?? null;
 				savedState = lastState;
@@ -654,6 +697,15 @@ const createTrafficService = ({
 			await queue(() => store.deleteVisitors());
 		},
 
+		/** Stops counting missing pages at once, drops the undrained paths and deletes the stored ones after a running flush. */
+		missingPathsOff: async () => {
+			missingPaths = false;
+			pathsOffUntil = now() + PATHS_OFF_PIN_MS;
+			counter.forgetPaths();
+			for (const p of pending) p.data.paths = [];
+			await queue(() => store.deletePaths());
+		},
+
 		/**
 		 * Deletes every stored statistic (traffic statistics are being switched off, setEnabled(false) ran first).
 		 * Inside the queue, after a flush or roll-up that was still running: empties the tables, then drops what is
@@ -680,6 +732,12 @@ const createTrafficService = ({
 		uniqueVisitorsOn: () => {
 			visitorsOffUntil = 0;
 			uniqueVisitors = true;
+		},
+
+		/** Counts missing pages again from the next line: the user switched them on and the setting is saved. */
+		missingPathsOn: () => {
+			pathsOffUntil = 0;
+			missingPaths = true;
 		},
 
 		/**
@@ -732,7 +790,8 @@ const createTrafficService = ({
  * @param   {Object}    deps.traffic         createTrafficService() instance
  * @param   {Function}  [deps.clearCaches]   drops the cached API results after the statistics were deleted
  * @returns {{onTrafficEnabledChange: Function, onDeleteStats: Function, onShowIpsOff: Function,
- *            onShowIpsOn: Function, onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function}}
+ *            onShowIpsOn: Function, onUniqueVisitorsOff: Function, onUniqueVisitorsOn: Function,
+ *            onMissingPathsOff: Function, onMissingPathsOn: Function}}
  */
 const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} }) => ({
 	onTrafficEnabledChange: (enabled) => applyAccessLog(enabled, () => traffic.setEnabled(enabled)),
@@ -744,6 +803,8 @@ const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} })
 	onShowIpsOn: () => traffic.showIpsOn(),
 	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),
 	onUniqueVisitorsOn: () => traffic.uniqueVisitorsOn(),
+	onMissingPathsOff: () => traffic.missingPathsOff(),
+	onMissingPathsOn: () => traffic.missingPathsOn(),
 });
 
 export { ACCESS_LOG, createHostMapper, createStateMeta, createTrafficHooks, createTrafficService, OTHER_HOST };

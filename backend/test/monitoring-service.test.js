@@ -9,6 +9,7 @@ import errs from "../lib/error.js";
 import { createGeoipService } from "../lib/geoip/service.js";
 import { createCounter } from "../lib/traffic/counter.js";
 import { createHostResolver } from "../lib/traffic/host-resolver.js";
+import { pathHash } from "../lib/traffic/path-hash.js";
 import { createHostMapper, createStateMeta, createTrafficHooks, createTrafficService } from "../lib/traffic/service.js";
 import { createStore } from "../lib/traffic/store.js";
 import { loadVisitorKey } from "../lib/traffic/visitor-hash.js";
@@ -85,6 +86,17 @@ const fakeStore = () => {
 			calls.push("deleteIps");
 			return Promise.resolve();
 		},
+		pathDeletes: 0,
+		deletePaths() {
+			this.pathDeletes++;
+			return Promise.resolve();
+		},
+		dayPaths: [],
+		pathKeyArgs: [],
+		pathDayHashes(args) {
+			this.pathKeyArgs.push(args);
+			return Promise.resolve(this.dayPaths);
+		},
 		deleteAllFails: false,
 		deleteAll() {
 			calls.push("deleteAll");
@@ -124,6 +136,7 @@ const setup = ({
 	visitorKey = { key: Buffer.alloc(32, 7), created: false },
 	store: givenStore = null,
 	logStat = null,
+	maxPaths,
 } = {}) => {
 	// the access log as statLog() sees it: { ino, size }, or null for a missing file
 	let logFile = logStat;
@@ -174,6 +187,7 @@ const setup = ({
 		now: () => time,
 		timers,
 		adminPort,
+		maxPaths,
 		log: { ...silent, error: (message) => errors.push(message) },
 	});
 	return {
@@ -2082,5 +2096,129 @@ describe("traffic service: delete statistics", () => {
 		t.store.deleteAllFails = true;
 		await assert.rejects(hooks.onDeleteStats(), DB_LOCKED);
 		assert.equal(events.length, 1);
+	});
+});
+
+const pathLine = (host, target, status = 404, time = "24/Oct/2026:10:15:30 +0200") =>
+	`[${time}] ${host} 203.0.113.7 0.012 "GET ${target} HTTP/2.0" ${status} 100 "-" "curl/8" "-" "text/html" TLSv1.3 TLS_AES_128_GCM_SHA256 X25519 -`;
+
+describe("traffic service: missing pages", () => {
+	const hosts = [
+		{ id: 1, type: "proxy", domain_names: ["example.com", "*.example.com"] },
+		{ id: 2, type: "redirection", domain_names: ["r.test"] },
+		{ id: 3, type: "dead", domain_names: ["d.test"] },
+		{ id: 4, type: "proxy", domain_names: ["off.test"], enabled: false },
+	];
+	const paths = (t) =>
+		t.store.flushed
+			.flatMap((b) => b.paths ?? [])
+			.map((r) => [r.host, r.path, r.requests])
+			.sort();
+
+	it("counts cleaned 404 and 410 paths of enabled proxy and redirection hosts only", async () => {
+		const t = setup({
+			hosts,
+			config: { traffic_missing_paths: true },
+			results: [
+				read([
+					pathLine("example.com", "/a%2Fb?x=1"),
+					pathLine("www.example.com", "/user/12345", 410),
+					pathLine("r.test", "/gone", 410),
+					pathLine("d.test", "/dead"),
+					pathLine("off.test", "/disabled"),
+					pathLine("unknown.test", "/unknown"),
+					pathLine("example.com", "/ok", 200),
+					pathLine("example.com", "/error", 500),
+					`[24/Oct/2026:10:15:30 +0200] example.com 203.0.113.7 0.012 "-" 404 0 "-" "-" "-" "-" - - - -`,
+				]),
+			],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(paths(t), [
+			["*.example.com", "/user/:id", 1],
+			["example.com", "/a/b", 1],
+			["r.test", "/gone", 1],
+		]);
+	});
+
+	it("counts no paths while the switch is off and deletes the stored ones at start", async () => {
+		const t = setup({ hosts, results: [read([pathLine("example.com", "/x")])] });
+		await t.service.start();
+		assert.equal(t.store.pathDeletes, 1);
+		assert.deepEqual(t.store.pathKeyArgs, []);
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(paths(t), []);
+	});
+
+	it("the cap holds across a restart and a UTC day change", async () => {
+		const today = Math.floor(Date.UTC(2026, 9, 24, 8, 16, 0) / 86400000);
+		const t = setup({
+			hosts,
+			maxPaths: 2,
+			config: { traffic_missing_paths: true },
+			results: [
+				read([
+					pathLine("example.com", "/c"),
+					pathLine("example.com", "/a"),
+					pathLine("example.com", "/c", 404, "25/Oct/2026:00:00:10 +0000"),
+				]),
+			],
+		});
+		t.store.dayPaths = [{ day: today, host: "example.com", hashes: [pathHash("/a"), pathHash("/b")] }];
+		await t.service.start();
+		assert.deepEqual(t.store.pathKeyArgs, [{ days: [today - 1, today] }]);
+		assert.equal(t.store.pathDeletes, 0);
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(
+			t.store.flushed[0].paths.map((r) => [r.bucket >= (today + 1) * 24 ? "next day" : "today", r.path]).sort(),
+			[
+				["next day", "/c"],
+				["today", "(other)"],
+				["today", "/a"],
+			],
+		);
+	});
+
+	it("missingPathsOff deletes after a running flush and drops pending paths; missingPathsOn counts again at once", async () => {
+		// the fake reader shifts from this array, so pushing to it queues the next read
+		const results = [read([pathLine("example.com", "/one")]), read([pathLine("example.com", "/two")], 200)];
+		const t = setup({ hosts, config: { traffic_missing_paths: true }, results });
+		await t.service.start();
+		await t.service.read();
+		// the batch with /one stays pending
+		t.store.failing = true;
+		await t.service.flush();
+		t.store.failing = false;
+		await t.service.missingPathsOff();
+		assert.equal(t.store.pathDeletes, 1);
+		// the stored value is still true (the hook runs before the save): the pin keeps counting off after the
+		// settings are read again by the flush
+		await t.service.read();
+		await t.service.flush();
+		await t.service.flush();
+		assert.deepEqual(paths(t), []);
+		t.service.missingPathsOn();
+		results.push(read([pathLine("example.com", "/three")], 300));
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(paths(t), [["example.com", "/three", 1]]);
+	});
+
+	it("createTrafficHooks passes the missing pages hooks to the service", async () => {
+		const calls = [];
+		const hooks = createTrafficHooks({
+			applyAccessLog: () => Promise.resolve(),
+			traffic: {
+				missingPathsOff: async () => calls.push("off"),
+				missingPathsOn: () => calls.push("on"),
+			},
+		});
+		await hooks.onMissingPathsOff();
+		hooks.onMissingPathsOn();
+		assert.deepEqual(calls, ["off", "on"]);
 	});
 });

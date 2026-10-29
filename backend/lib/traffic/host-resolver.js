@@ -1,11 +1,35 @@
 const OTHER_KEY = "_other";
 // table order: a name listed by two hosts belongs to the first (nginx rejects duplicates, this keeps it deterministic)
 const TYPE_ORDER = ["proxy", "redirection", "dead"];
+// the host types whose missing pages are counted
+const PATH_TYPES = new Set(["proxy", "redirection"]);
 
 const normalise = (name) =>
 	String(name ?? "")
 		.trim()
 		.toLowerCase();
+
+/**
+ * The hosts in table order with their normalised names and the names each one owns: a name listed by two hosts
+ * belongs to the first.
+ *
+ * @param   {Array<{id: number, type: string, domain_names: string[]}>}  list
+ * @returns {Array<{host: Object, names: string[], owned: string[]}>}
+ */
+const claimNames = (list) => {
+	const taken = new Set();
+	return [...list]
+		.sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type))
+		.map((host) => {
+			const names = (host.domain_names ?? []).map(normalise).filter((name) => name !== "");
+			const owned = names.filter((name) => {
+				if (taken.has(name)) return false;
+				taken.add(name);
+				return true;
+			});
+			return { host, names, owned };
+		});
+};
 
 /**
  * Maps stored traffic host keys to the NPMpro host that owns them. A stored key is a managed domain name or the
@@ -15,11 +39,11 @@ const normalise = (name) =>
  * @returns {{ownerOf: Function, keysFor: Function, hosts: Function}}
  */
 const createHostResolver = (list) => {
-	const hosts = [...list].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
+	const claimed = claimNames(list);
+	const hosts = claimed.map(({ host }) => host);
 	const owners = new Map();
 	const byId = new Map();
-	for (const host of hosts) {
-		const names = (host.domain_names ?? []).map(normalise).filter((name) => name !== "");
+	for (const { host, names, owned } of claimed) {
 		const entry = {
 			host_id: host.id,
 			host_type: host.type,
@@ -27,9 +51,7 @@ const createHostResolver = (list) => {
 			domain_names: names,
 		};
 		byId.set(`${host.type}|${host.id}`, entry);
-		for (const name of names) {
-			if (!owners.has(name)) owners.set(name, entry);
-		}
+		for (const name of owned) owners.set(name, entry);
 	}
 
 	return {
@@ -61,4 +83,22 @@ const createHostResolver = (list) => {
 	};
 };
 
-export { createHostResolver };
+/**
+ * The stored host keys whose missing pages are counted: the names of enabled proxy and redirection hosts, mapped to
+ * the host type. A name listed by two hosts belongs to the first in table order (like ownerOf); a disabled host's
+ * requests reach the default site, so its 404s are not its missing pages. Built once per host list, so the per line
+ * check is one Map lookup.
+ *
+ * @param   {Array<{id: number, type: string, domain_names: string[], enabled?: boolean}>}  list
+ * @returns {Map<string, "proxy"|"redirection">}
+ */
+const pathHostTypes = (list) => {
+	const types = new Map();
+	for (const { host, owned } of claimNames(list)) {
+		if (!PATH_TYPES.has(host.type) || host.enabled === false) continue;
+		for (const name of owned) types.set(name, host.type);
+	}
+	return types;
+};
+
+export { createHostResolver, pathHostTypes };
