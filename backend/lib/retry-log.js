@@ -2,6 +2,9 @@
 // The first failure is logged in full, then one short line every 30 seconds while the same error repeats, and one
 // line when the database answers again; a different error is logged in full again. Driver messages name the host and
 // user, never the password.
+// The throttle is not limited to startup: knex's connection warnings go through it for as long as the process runs,
+// so a database that goes away later is logged the same way. Only the startup calls connected(), so the line for a
+// database that answers again is logged at startup only.
 
 const REPEAT_MS = 30_000;
 // the first line of knex's own connection warnings, without its prefix: the same text as the startup error's message
