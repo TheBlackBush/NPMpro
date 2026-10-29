@@ -49,7 +49,10 @@ const configure = () => {
 		logger.info(`Ignoring ${DATABASE_FILE}: the connection comes from the DB_* environment variables`);
 	}
 	logger.info(`Using ${ENGINE_TEXT[connection.engine]} ${where} from ${SOURCE_TEXT[chosen.source]}`);
-	return { database: { ...chosen, knex: knexConfigOf(connection) }, keys: getKeys() };
+	return {
+		database: { ...chosen, knex: knexConfigOf(connection, { note: (line) => logger.warn(line) }) },
+		keys: getKeys(),
+	};
 };
 
 const getKeys = () => {

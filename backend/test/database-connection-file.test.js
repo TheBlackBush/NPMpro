@@ -267,7 +267,15 @@ it("complete env vars give the same knex config as before (the port as a number)
 	for (const env of envs) {
 		const old = oldKnexConfig(env);
 		old.connection.port = Number(old.connection.port);
-		assert.deepEqual(knexConfigOf(choose(env).connection), old, JSON.stringify(env));
+		const config = knexConfigOf(choose(env).connection);
+		if (config.client === "mysql2") {
+			// added since: dates in the session's zone (database-mysql-zone.test.js)
+			assert.equal(config.connection.timezone, "local");
+			assert.equal(typeof config.pool.afterCreate, "function");
+			delete config.connection.timezone;
+			delete config.pool;
+		}
+		assert.deepEqual(config, old, JSON.stringify(env));
 	}
 });
 
