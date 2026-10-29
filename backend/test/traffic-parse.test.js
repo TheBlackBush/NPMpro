@@ -14,6 +14,7 @@ it("parses a normal line", () => {
 		bytes: 512,
 		method: "GET",
 		path: "/a",
+		fullPath: "/a",
 	});
 });
 
@@ -67,9 +68,12 @@ it("cuts path parameters and removes userinfo from absolute-form targets", () =>
 	assert.equal(path("CONNECT example.com:443 HTTP/1.1"), "example.com:443");
 });
 
-it("cuts a long path at 200 characters", () => {
-	const { path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, `GET /${"a".repeat(300)}?q=1 HTTP/1.1`));
+it("cuts a long path at 200 characters and keeps the full path up to 2048 characters", () => {
+	const parse = (target) => parseAlogLine(line("example.com", "203.0.113.7", 200, 1, `GET ${target}?q=1 HTTP/1.1`));
+	const { path, fullPath } = parse(`/${"a".repeat(300)}`);
 	assert.equal(path, `/${"a".repeat(199)}`);
+	assert.equal(fullPath, `/${"a".repeat(300)}`);
+	assert.equal(parse(`/${"a".repeat(3000)}`).fullPath, `/${"a".repeat(2047)}`);
 });
 
 it("returns method - and an empty path for a malformed request field", () => {
@@ -84,7 +88,11 @@ it("returns method - and an empty path for a malformed request field", () => {
 	]) {
 		const r = parseAlogLine(line("example.com", "203.0.113.7", 400, 0, request));
 		assert.equal(r.status, 400, request);
-		assert.deepEqual({ method: r.method, path: r.path }, { method: "-", path: "" }, request);
+		assert.deepEqual(
+			{ method: r.method, path: r.path, fullPath: r.fullPath },
+			{ method: "-", path: "", fullPath: "" },
+			request,
+		);
 	}
 });
 
@@ -136,6 +144,7 @@ it("parses lines that end with the server port", () => {
 		bytes: 1200,
 		method: "GET",
 		path: "/a",
+		fullPath: "/a",
 	});
 });
 

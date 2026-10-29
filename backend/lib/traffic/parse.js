@@ -15,6 +15,8 @@ const PATH_END = /[;?#]/u;
 // absolute-form target ("GET http://user:pass@host/path"): scheme and authority, the userinfo is removed
 const ABSOLUTE = /^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:\/\/)(?<authority>[^/?#]*)/u;
 const MAX_PATH = 200;
+// the path handed to the missing pages cleanup: long enough that the cleanup sees whole emails and tokens, bounded
+const MAX_FULL_PATH = 2048;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
 const DEFAULT_PORTS = new Set(["80", "443"]);
@@ -54,18 +56,20 @@ const withoutUserinfo = (target) => {
 
 /**
  * Method and path of the quoted request field: userinfo of an absolute-form target is removed, path parameters
- * (`;jsessionid=...`), the query string and fragment are cut off, the path is at most 200 characters.
- * Method "-" and path "" when the field is not a request line.
+ * (`;jsessionid=...`), the query string and fragment are cut off. `path` is at most 200 characters (the recent
+ * requests list), `fullPath` at most 2048 (cleaned before it is cut, for missing pages).
+ * Method "-" and paths "" when the field is not a request line.
  */
 const parseRequest = (request) => {
 	const m = REQUEST.exec(request);
 	if (!m) {
-		return { method: "-", path: "" };
+		return { method: "-", path: "", fullPath: "" };
 	}
 	const { method } = m.groups;
 	const target = withoutUserinfo(m.groups.target);
 	const end = target.search(PATH_END);
-	return { method, path: (end === -1 ? target : target.slice(0, end)).slice(0, MAX_PATH) };
+	const fullPath = (end === -1 ? target : target.slice(0, end)).slice(0, MAX_FULL_PATH);
+	return { method, path: fullPath.slice(0, MAX_PATH), fullPath };
 };
 
 export const parseAlogLine = (line) => {
@@ -79,8 +83,17 @@ export const parseAlogLine = (line) => {
 	}
 	const offset = (m[7] === "-" ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9])) * 60000;
 	const time = Date.UTC(Number(m[3]), month, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])) - offset;
-	const { method, path } = parseRequest(m[12]);
-	return { time, host: cleanHost(m[10]), ip: m[11], status: Number(m[13]), bytes: Number(m[14]), method, path };
+	const { method, path, fullPath } = parseRequest(m[12]);
+	return {
+		time,
+		host: cleanHost(m[10]),
+		ip: m[11],
+		status: Number(m[13]),
+		bytes: Number(m[14]),
+		method,
+		path,
+		fullPath,
+	};
 };
 
 export const statusClass = (status) => {

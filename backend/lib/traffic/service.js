@@ -367,7 +367,7 @@ const createTrafficService = ({
 			skipped++;
 			return;
 		}
-		const { ip, method, path, ...rest } = parsed;
+		const { ip, method, path, fullPath, ...rest } = parsed;
 		const entry = { ...rest, host: mapHost(parsed.host) };
 		if (showIps) entry.ip = ip;
 		const available = geo.available();
@@ -385,10 +385,11 @@ const createTrafficService = ({
 		// parseAlogLine() only returns lines with a valid client IP
 		const visitorHash = uniqueVisitors && hashVisitor ? hashVisitor(ip) : undefined;
 		// a missing page of an enabled proxy or redirection host (404 hosts, disabled hosts, the default site and
-		// unknown names are not counted); a line without a request line has no path
+		// unknown names are not counted); a line without a request line has no path. The full path is cleaned (the
+		// 200 character path could end in a cut email or token that the cleanup no longer recognises)
 		let missingPath;
 		if (missingPaths && MISSING_STATUSES.has(entry.status) && method !== "-" && pathHosts.has(entry.host)) {
-			missingPath = cleanPath(path);
+			missingPath = cleanPath(fullPath);
 		}
 		counter.add(entry, found, { showIps, visitorHash, missingPath });
 	};

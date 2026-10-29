@@ -2165,6 +2165,35 @@ describe("traffic service: missing pages", () => {
 		]);
 	});
 
+	it("cleans the full path, not the path cut for the recent list", async () => {
+		const jwt =
+			"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkphbmUifQ.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+		// the email, the JWT and the escape cross the 200th character of the raw target
+		const email = `/${"g".repeat(185)}/john.doe@example.com`;
+		const token = `/${"h".repeat(170)}/${jwt}`;
+		const encoded = `/${"q".repeat(190)}/caf%C3%A9`;
+		const t = setup({
+			hosts,
+			config: { traffic_missing_paths: true },
+			results: [
+				read([
+					pathLine("example.com", email),
+					pathLine("example.com", token),
+					pathLine("example.com", encoded),
+				]),
+			],
+		});
+		await t.service.start();
+		await t.service.read();
+		await t.service.flush();
+		assert.deepEqual(paths(t), [
+			["example.com", `/${"g".repeat(185)}/:email`, 1],
+			["example.com", `/${"h".repeat(170)}/:id`, 1],
+			["example.com", `/${"q".repeat(190)}/café`, 1],
+		]);
+		assert.ok(t.service.recent({ limit: 3 }).every((e) => e.path.length <= 200));
+	});
+
 	it("counts no paths while the switch is off and deletes the stored ones at start", async () => {
 		const t = setup({ hosts, results: [read([pathLine("example.com", "/x")])] });
 		await t.service.start();
