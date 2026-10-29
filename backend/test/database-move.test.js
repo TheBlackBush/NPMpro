@@ -22,6 +22,7 @@ const LOCAL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 const SQLITE_VERSION = /^3\./u;
 const SEALED = /^v1:/u;
 const LOST_LOGOUTS = /^2 logouts during the database move could not be saved in the new database/u;
+const CLOSE_FAILED = /^Logouts could not be closed before the restart: cannot close$/u;
 const LEFT_TARGET = /The target database npmpro_test_unit on .* was left as it is/u;
 
 // no password key and no text holding the password; the test password may be part of the user or database name, so
@@ -69,6 +70,7 @@ const make = async ({
 	log = silent,
 	maintenance = createMaintenance(),
 	writeRevocations,
+	close,
 } = {}) => {
 	const target = await tempSqlite("unused");
 	const calls = [];
@@ -125,7 +127,10 @@ const make = async ({
 				for (const row of rows) await knex("session_revocation").insert(row).onConflict("sid").ignore();
 				return rows.length;
 			},
-			close: () => calls.push("close sessions"),
+			close: () => {
+				calls.push("close sessions");
+				close?.();
+			},
 		},
 		audit: (_access, data) => {
 			calls.push(`audit ${data.action} ${data.meta.step ?? ""}`.trim());
@@ -314,6 +319,36 @@ it("a failed last logout write is logged with the count, then sessions close and
 		assert.deepEqual(ctx.calls.slice(-2), ["close sessions", "exit"]);
 		assert.equal(lines.length, 1);
 		assert.match(lines[0], LOST_LOGOUTS);
+	} finally {
+		await source.cleanup();
+		await ctx.target.cleanup();
+	}
+});
+
+it("a throw from closing the logouts still closes the target and exits, the move stays done", async () => {
+	const source = await migratedSqlite();
+	const lines = [];
+	const log = { info: () => {}, warn: () => {}, error: (line) => lines.push(line) };
+	const ctx = await make({
+		source,
+		log,
+		close: () => {
+			throw new Error("cannot close");
+		},
+	});
+	try {
+		await ctx.service.move(access, { engine: "sqlite" });
+		await ctx.service.settled();
+		assert.equal(ctx.service.progress(access).move.state, "restarting");
+		assert.deepEqual(ctx.calls.slice(-2), ["close sessions", "exit"]);
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], CLOSE_FAILED);
+		// the move stays done: database.json names the new file, nothing logged "stopped unexpectedly"
+		const saved = parseConnectionFile(await readFile(path.join(ctx.target.dir, "database.json"), "utf8"), {
+			unseal: () => "",
+			dataDir: ctx.target.dir,
+		});
+		assert.ok(existsSync(saved.file));
 	} finally {
 		await source.cleanup();
 		await ctx.target.cleanup();

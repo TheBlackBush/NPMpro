@@ -269,14 +269,20 @@ const createDatabaseService = ({
 				);
 			}
 		} finally {
-			// from here on a logout is refused (the client retries after the restart), so none is taken and lost
+			// right after the last write (no await between): from here on a logout is refused (the client retries
+			// after the restart), so none is taken and lost
 			try {
 				revocations.close();
-			} finally {
-				exit();
+			} catch (error) {
+				note("error", `Logouts could not be closed before the restart: ${error?.message}`);
 			}
+			// this process does not use the new database any more
+			await within(
+				Promise.resolve().then(() => targetKnex.destroy()),
+				closeTimeoutMs,
+			);
+			exit();
 		}
-		await within(targetKnex.destroy(), closeTimeoutMs);
 	};
 
 	const run = async ({ move, target, source, access, userId, lock, sent }) => {
