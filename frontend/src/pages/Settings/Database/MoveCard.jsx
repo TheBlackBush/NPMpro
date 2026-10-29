@@ -205,12 +205,13 @@ function MoveForm({ tested }) {
 							)}
 						</div>
 					) : null}
-					{current?.error ? (
-						<ErrorAlert className="mt-3 mb-0">
-							<ApiErrorContent error={current.error} />
-						</ErrorAlert>
-					) : null}
 				</div>
+				{/* outside the polite region: the alert's own role="alert" announces it once */}
+				{current?.error ? (
+					<ErrorAlert className="mt-3 mb-0">
+						<ApiErrorContent error={current.error} />
+					</ErrorAlert>
+				) : null}
 			</div>
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
 				<FormErrorNote id={noteId} late className="me-2 text-end" />
