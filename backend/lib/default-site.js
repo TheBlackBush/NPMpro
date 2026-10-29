@@ -20,4 +20,32 @@ const assertDefaultSiteMeta = (meta) => {
 	}
 };
 
-export { assertDefaultSiteMeta };
+/**
+ * Writes and loads the default site config of the next setting row before the row is saved. When nginx refuses it,
+ * the previous row's config is put back (or, if that fails too, the default site config is removed, as nginx then
+ * serves its built-in fallback) and a ValidationError is thrown, so the saved row and the running config stay the same.
+ * Run it in the runtime settings queue.
+ *
+ * @param {{ generateConfig: Function, deleteConfig: Function, test: Function, reload: Function }} nginx  internal/nginx.js
+ * @param {Object} next      the setting row to apply
+ * @param {Object} previous  the saved setting row
+ */
+const applyDefaultSite = async (nginx, next, previous) => {
+	try {
+		await nginx.generateConfig("default", next);
+		await nginx.test();
+		await nginx.reload();
+	} catch (err) {
+		try {
+			await nginx.generateConfig("default", previous);
+			await nginx.test();
+		} catch {
+			await nginx.deleteConfig("default");
+			await nginx.test();
+		}
+		await nginx.reload();
+		throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, { cause: err });
+	}
+};
+
+export { applyDefaultSite, assertDefaultSiteMeta };

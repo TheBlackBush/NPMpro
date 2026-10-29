@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import { assertDefaultSiteMeta } from "../lib/default-site.js";
+import { applyDefaultSite, assertDefaultSiteMeta } from "../lib/default-site.js";
 import errs from "../lib/error.js";
 import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
 import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
@@ -35,7 +35,15 @@ const internalSetting = {
 		if (["html", "redirect"].includes(merged.value) && !String(merged.meta?.[merged.value] ?? "").trim()) {
 			throw new errs.ValidationError(`meta.${merged.value} is required for ${merged.value}`);
 		}
-		if (merged.id === "default-site") assertDefaultSiteMeta(merged.meta ?? {});
+		if (merged.id === "default-site") {
+			assertDefaultSiteMeta(merged.meta ?? {});
+			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written.
+			// The new config is loaded before the row is saved; on failure the old one is put back and nothing is saved.
+			await runtimeExclusive(() => applyDefaultSite(internalNginx, merged, existingRow));
+			if (merged.value === "html") {
+				await writeFile("/data/public/html/index.html", merged.meta.html, { encoding: "utf8" });
+			}
+		}
 
 		await settingModel.query().where({ id: data.id }).patch(data);
 
@@ -48,29 +56,6 @@ const internalSetting = {
 			object_type: "setting",
 			meta: row,
 		});
-		if (row.id === "default-site") {
-			// write the html if we need to
-			if (row.value === "html") {
-				await writeFile("/data/public/html/index.html", row.meta.html, { encoding: "utf8" });
-			}
-
-			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written
-			await runtimeExclusive(async () => {
-				try {
-					await internalNginx.deleteConfig("default");
-					await internalNginx.generateConfig("default", row);
-					await internalNginx.test();
-					await internalNginx.reload();
-				} catch (err) {
-					await internalNginx.deleteConfig("default");
-					await internalNginx.test();
-					await internalNginx.reload();
-					throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, {
-						cause: err,
-					});
-				}
-			});
-		}
 		return row;
 	},
 
