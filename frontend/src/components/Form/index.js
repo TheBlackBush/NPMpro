@@ -8,6 +8,7 @@ export * from "./DnsCredentialValuesFields";
 export * from "./DomainNamesField";
 export * from "./FormErrorNote";
 export * from "./FormSubmit";
+export * from "./HookForm";
 export * from "./LocationsFields";
 export * from "./NginxConfigField";
 export * from "./PasswordInput";

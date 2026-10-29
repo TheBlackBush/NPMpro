@@ -1,7 +1,10 @@
 import cn from "clsx";
 import { getIn, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
+import { useFormContext, useFormState } from "react-hook-form";
 import { intl, T } from "src/locale";
+import { errorPaths, orderErrorPaths } from "src/modules/HookForm";
+import { useFieldOrder } from "./HookForm";
 
 const INVALID = '.is-invalid, [aria-invalid="true"], .invalid-feedback.d-block';
 const FOCUSABLE = "input:not([type=hidden]), select, textarea, button";
@@ -50,23 +53,7 @@ const labelInForm = (form, name) => {
 const sameList = (a, b) => a.length === b.length && a.every((item, index) => item === b[index]);
 
 /**
- * The path of every error message in Formik's errors: name, fieldValues.token, locations[0].path
- *
- * @param   {*}       errors
- * @param   {string}  [prefix]
- * @returns {string[]}
- */
-const errorPaths = (errors, prefix = "") => {
-	if (typeof errors === "string") return prefix ? [prefix] : [];
-	if (Array.isArray(errors)) return errors.flatMap((item, index) => errorPaths(item, `${prefix}[${index}]`));
-	if (errors && typeof errors === "object") {
-		return Object.entries(errors).flatMap(([key, value]) => errorPaths(value, prefix ? `${prefix}.${key}` : key));
-	}
-	return [];
-};
-
-/**
- * The fields whose error the form shows. late: only after the field was left (touched) or a submit was tried, for
+ * The fields whose error a Formik form shows. late: only after the field was left (touched) or a submit was tried, for
  * forms that start empty (an add form); else every error at once, for forms that start with saved values.
  *
  * @param   {boolean}  [late]
@@ -79,36 +66,23 @@ const useShownErrors = (late = false) => {
 };
 
 /**
- * Place next to a form's submit button, inside its Formik form, and give the button
- * blocked={useShownErrors(late).length > 0} and aria-describedby={id}. While a shown field has an error it names the
- * fields to fix. After a submit Formik refused (Enter in a field) it also shows the first marked field.
+ * The note naming the fields to fix: their labels, read from the rendered form after the render
  *
- * @param {Object}  props
- * @param {string}  props.id           referenced by the button's aria-describedby
- * @param {Object}  [props.labels]     field name -> translation id of its label, for a field whose label the form
- *                                     does not show next to a control of that name (keep the object stable)
- * @param {boolean} [props.late]       name a field only after it was left or a submit was tried (useShownErrors)
- * @param {string}  [props.messageId]  the note, with {fields}: "Fix before saving: {fields}" by default
- * @param {boolean} [props.block]      its own centred line (under full-width buttons), without height while empty
- * @param {string}  [props.className]
+ * @param {Object}   props
+ * @param {string[]} props.paths       the fields with a shown error, in form order
+ * @param {Object}   props.labels
+ * @param {string}   props.messageId
+ * @param {boolean}  props.block
+ * @param {string}   [props.id]
+ * @param {string}   [props.className]
+ * @param {Object}   props.noteRef
  */
-function FormErrorNote({
-	id,
-	labels = NO_LABELS,
-	late = false,
-	messageId = "form.fix-fields",
-	block = false,
-	className,
-}) {
-	const { submitCount, isSubmitting, isValid } = useFormikContext();
-	const ref = useRef(null);
-	const handled = useRef(0);
+function ErrorNoteText({ id, paths, labels, messageId, block, className, noteRef }) {
 	const [names, setNames] = useState([]);
-	const keysId = useShownErrors(late).join("|");
+	const keysId = paths.join("|");
 
-	// the labels are read from the rendered form, so after the render
 	useEffect(() => {
-		const form = ref.current?.closest("form");
+		const form = noteRef.current?.closest("form");
 		const found = keysId
 			.split("|")
 			.filter(Boolean)
@@ -118,19 +92,13 @@ function FormErrorNote({
 			});
 		const unique = [...new Set(found)];
 		setNames((current) => (sameList(current, unique) ? current : unique));
-	}, [keysId, labels]);
-
-	useEffect(() => {
-		if (isSubmitting || isValid || submitCount === handled.current) return;
-		handled.current = submitCount;
-		showFirstInvalid(ref.current?.closest("form"));
-	}, [submitCount, isSubmitting, isValid]);
+	}, [keysId, labels, noteRef]);
 
 	const show = keysId !== "" && names.length > 0;
 	const Tag = block ? "div" : "span";
 	return (
 		<Tag
-			ref={ref}
+			ref={noteRef}
 			id={id}
 			className={cn("text-danger small", block && "text-center", block && show && "mt-2", className)}
 			role="status"
@@ -138,6 +106,50 @@ function FormErrorNote({
 			{show ? <T id={messageId} data={{ fields: names.join(", ") }} /> : null}
 		</Tag>
 	);
+}
+
+// in a Formik form: the fields named late or at once, and the jump after a submit Formik refused
+function FormikErrorNote({ late, ...props }) {
+	const { submitCount, isSubmitting, isValid } = useFormikContext();
+	const ref = useRef(null);
+	const handled = useRef(0);
+	const paths = useShownErrors(late);
+
+	useEffect(() => {
+		if (isSubmitting || isValid || submitCount === handled.current) return;
+		handled.current = submitCount;
+		showFirstInvalid(ref.current?.closest("form"));
+	}, [submitCount, isSubmitting, isValid]);
+
+	return <ErrorNoteText {...props} paths={paths} noteRef={ref} />;
+}
+
+// in a React Hook Form form: every error it holds shows (onTouched), in form order; HookForm focuses after a save
+function HookFormErrorNote(props) {
+	const { errors } = useFormState();
+	const order = useFieldOrder();
+	const ref = useRef(null);
+	return <ErrorNoteText {...props} paths={orderErrorPaths(errorPaths(errors), order)} noteRef={ref} />;
+}
+
+/**
+ * Place next to a form's submit button, inside its form (React Hook Form or Formik), and give the button
+ * blocked={a shown field has an error} and aria-describedby={id}. While a shown field has an error it names the
+ * fields to fix. In a Formik form it also shows the first marked field after a refused submit (Enter in a field).
+ *
+ * @param {Object}  props
+ * @param {string}  props.id           referenced by the button's aria-describedby
+ * @param {Object}  [props.labels]     field name -> translation id of its label, for a field whose label the form
+ *                                     does not show next to a control of that name (keep the object stable)
+ * @param {boolean} [props.late]       Formik: name a field only after it was left or a submit was tried
+ * @param {string}  [props.messageId]  the note, with {fields}: "Fix before saving: {fields}" by default
+ * @param {boolean} [props.block]      its own centred line (under full-width buttons), without height while empty
+ * @param {string}  [props.className]
+ */
+function FormErrorNote({ labels = NO_LABELS, late = false, messageId = "form.fix-fields", block = false, ...props }) {
+	const shared = { ...props, labels, messageId, block };
+	// A3 removes the Formik branch
+	return useFormContext() ? <HookFormErrorNote {...shared} /> : <FormikErrorNote {...shared} late={late} />;
 }
 
 export { FormErrorNote, showFirstInvalid, useShownErrors };
