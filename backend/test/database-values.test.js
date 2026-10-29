@@ -261,16 +261,16 @@ it("describes a difference with both values and hides secrets", () => {
 	assert.equal(describeDifference("name", source, { name: "" }), 'name: "a" in use, "" in the target');
 	assert.equal(describeDifference("name", source, { name: null }), 'name: "a" in use, null in the target');
 	assert.equal(describeDifference("name", source, {}), 'name: "a" in use, missing in the target');
-	const secret = describeDifference("secret", source, { secret: "$2b$13$abd" });
+	const secret = describeDifference("secret", source, { secret: "$2b$13$abx" });
 	assert.equal(secret, "secret: <hidden> in use, <hidden> in the target");
-	const meta = describeDifference("meta", source, { meta: { totp_secret: "ABD" } });
+	const meta = describeDifference("meta", source, { meta: { totp_secret: "ABX" } });
 	assert.equal(meta, "meta: <hidden> in use, <hidden> in the target");
 	const sealed = describeDifference("v", source, { v: "v1:aaa:bbb:ccd" });
 	assert.equal(sealed, "v: <hidden> in use, <hidden> in the target");
 	const long = describeDifference("name", { name: "x".repeat(200) }, { name: "y" });
 	assert.ok(long.length < 140, long);
 	// JSON text from MariaDB (LONGTEXT), also with a secret nested deeper or under another key name
-	const fromText = describeDifference("meta", { meta: '{"totp_secret":"ABC"}' }, { meta: '{"totp_secret":"ABD"}' });
+	const fromText = describeDifference("meta", { meta: '{"totp_secret":"ABC"}' }, { meta: '{"totp_secret":"ABX"}' });
 	assert.equal(fromText, "meta: <hidden> in use, <hidden> in the target");
 	const nested = describeDifference("meta", { meta: ' {"a":[{"passphrase":"x"}]}' }, { meta: '{"a":[]}' });
 	assert.equal(nested, 'meta: <hidden> in use, "{\\"a\\":[]}" in the target');
@@ -289,7 +289,7 @@ it("reads MariaDB JSON text (LONGTEXT) as JSON against every engine", () => {
 	assert.equal(firstDifference(kinds, { meta: text }, { meta: parsed }, "mysql", "postgres"), null);
 	assert.equal(firstDifference(kinds, { meta: text }, { meta: JSON.stringify(parsed) }, "mysql", "sqlite"), null);
 	assert.equal(
-		firstDifference(kinds, { meta: text }, { meta: { ...parsed, a: "abd" } }, "mysql", "postgres"),
+		firstDifference(kinds, { meta: text }, { meta: { ...parsed, a: "abx" } }, "mysql", "postgres"),
 		"meta",
 	);
 	// the other direction
