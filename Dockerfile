@@ -231,7 +231,6 @@ COPY --from=nginx /usr/local/lib/libcrypto.so                                   
 COPY --from=backend  /app      /app
 
 COPY rootfs  /
-COPY patches/lua-cs-bouncer-appsec-failure-passthrough.patch /src/lua-cs-bouncer-appsec-failure-passthrough.patch
 COPY MIT.LICENSE /MIT.LICENSE
 COPY COPYING /COPYING
 
@@ -262,8 +261,6 @@ RUN apk upgrade --no-cache -a && \
     make -j "$(nproc)" install LUA_LIB_DIR=/usr/local/share/lua/5.1 && \
     \
     git-clone-commit.sh https://github.com/crowdsecurity/lua-cs-bouncer "$LCSB_VER" /src/lua-cs-bouncer && \
-    cd /src/lua-cs-bouncer && \
-    git apply /src/lua-cs-bouncer-appsec-failure-passthrough.patch && \
     mv /src/lua-cs-bouncer/lib/* /usr/local/share/lua/5.1 && \
     mv /src/lua-cs-bouncer/templates/captcha.html /etc/captcha.html.original && \
     mv /src/lua-cs-bouncer/templates/ban.html /etc/ban.html.original && \
