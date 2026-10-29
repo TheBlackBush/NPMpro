@@ -35,17 +35,22 @@ const internalSetting = {
 		if (["html", "redirect"].includes(merged.value) && !String(merged.meta?.[merged.value] ?? "").trim()) {
 			throw new errs.ValidationError(`meta.${merged.value} is required for ${merged.value}`);
 		}
+		const save = () => settingModel.query().where({ id: data.id }).patch(data);
 		if (merged.id === "default-site") {
 			assertDefaultSiteMeta(merged.meta ?? {});
-			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written.
-			// The new config is loaded before the row is saved; on failure the old one is put back and nothing is saved.
-			await runtimeExclusive(() => applyDefaultSite(internalNginx, merged, existingRow));
-			if (merged.value === "html") {
-				await writeFile("/data/public/html/index.html", merged.meta.html, { encoding: "utf8" });
-			}
+			// in the runtime settings queue, like the host configs: a runtime save's nginx -t never sees it half written,
+			// and the row is saved before the next queued change starts. The config is tested and loaded (with the HTML
+			// page written first in html mode) before the row is saved; on any failure the saved row's page and config
+			// are put back and the row is not changed.
+			await runtimeExclusive(() =>
+				applyDefaultSite(internalNginx, merged, existingRow, {
+					writeHtml: (html) => writeFile("/data/public/html/index.html", html, { encoding: "utf8" }),
+					save,
+				}),
+			);
+		} else {
+			await save();
 		}
-
-		await settingModel.query().where({ id: data.id }).patch(data);
 
 		const row = await internalSetting.get(access, {
 			id: data.id,
