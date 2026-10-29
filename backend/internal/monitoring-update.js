@@ -2,7 +2,14 @@ import errs from "../lib/error.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 import { global as logger } from "../logger.js";
 
-const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
+const EDITABLE = [
+	"traffic_enabled",
+	"retention_days",
+	"show_ips",
+	"unique_visitors",
+	"visitors_cap",
+	"traffic_missing_paths",
+];
 
 /**
  * Copies the editable keys of a validated body that are not locked
@@ -37,7 +44,9 @@ const createSerializer = () => {
  *                                      traffic_enabled goes from true to false), onShowIpsOff(),
  *                                      onShowIpsOn() (optional, after the save; a failure is only logged),
  *                                      onUniqueVisitorsOff() (before the save, deletes the stored visitor hashes),
- *                                      onUniqueVisitorsOn() (optional, after the save; a failure is only logged)
+ *                                      onUniqueVisitorsOn() (optional, after the save; a failure is only logged),
+ *                                      onMissingPathsOff() (before the save, deletes the stored missing pages),
+ *                                      onMissingPathsOn() (optional, after the save; a failure is only logged)
  * @param   {Object}   [deps.env]
  * @returns {(body: Object) => Promise<Object>}  resolves to the saved meta
  */
@@ -107,6 +116,19 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 			}
 		}
 
+		if (before.traffic_missing_paths && !after.traffic_missing_paths) {
+			try {
+				await hooks.onMissingPathsOff();
+			} catch (err) {
+				await revertTraffic();
+				throw new errs.ValidationError(
+					`Could not delete the stored missing pages, the setting was not changed: ${err.message}`,
+					undefined,
+					{ cause: err },
+				);
+			}
+		}
+
 		// last step before the save (the reader stopped above): a failed earlier step deletes nothing, a failed delete
 		// saves nothing
 		if (deleteStats) {
@@ -140,6 +162,13 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 				await hooks.onUniqueVisitorsOn();
 			} catch (err) {
 				logger.error(`Could not switch unique visitors on in the traffic reader: ${err.message}`);
+			}
+		}
+		if (!before.traffic_missing_paths && after.traffic_missing_paths && hooks.onMissingPathsOn) {
+			try {
+				await hooks.onMissingPathsOn();
+			} catch (err) {
+				logger.error(`Could not switch missing pages on in the traffic reader: ${err.message}`);
 			}
 		}
 		return next;

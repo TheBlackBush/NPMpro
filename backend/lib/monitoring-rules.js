@@ -4,6 +4,7 @@ const MONITORING_DEFAULTS = {
 	show_ips: false,
 	unique_visitors: false,
 	visitors_cap: 100000,
+	traffic_missing_paths: false,
 };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
@@ -14,6 +15,7 @@ const MONITORING_ENV_KEYS = {
 	show_ips: "TRAFFIC_SHOW_IPS",
 	unique_visitors: "TRAFFIC_UNIQUE_VISITORS",
 	visitors_cap: "TRAFFIC_VISITORS_CAP",
+	traffic_missing_paths: "TRAFFIC_404_PATHS",
 };
 const GEOIP_ENV_KEYS = {
 	account_id: "GEOIP_ACCOUNT_ID",
@@ -63,6 +65,10 @@ const mergeMonitoringConfig = (stored, env) => {
 	if (isSet(env.TRAFFIC_VISITORS_CAP) && DIGITS.test(env.TRAFFIC_VISITORS_CAP.trim())) {
 		values.visitors_cap = Number.parseInt(env.TRAFFIC_VISITORS_CAP, 10);
 		locked.push("visitors_cap");
+	}
+	if (isSet(env.TRAFFIC_404_PATHS)) {
+		values.traffic_missing_paths = env.TRAFFIC_404_PATHS === "true";
+		locked.push("traffic_missing_paths");
 	}
 	// also keeps a stored value that is out of range usable
 	values.visitors_cap = Number.isInteger(values.visitors_cap)

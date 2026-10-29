@@ -22,6 +22,8 @@ const hooks = {
 	onShowIpsOn: noop,
 	onUniqueVisitorsOff: noop,
 	onUniqueVisitorsOn: noop,
+	onMissingPathsOff: noop,
+	onMissingPathsOn: noop,
 	onGeoipCredentialsChange: noop,
 	runGeoipUpdate: async () => ({ ok: false, error: "GeoIP updater not available" }),
 };
@@ -34,7 +36,7 @@ const hooks = {
  * onDeleteStats() deletes all stored statistics: it runs before the save, after onTrafficEnabledChange(false), only
  * when the body has delete_stats: true (a throw saves nothing).
  * onShowIpsOff() runs after the saved IPs were deleted. onShowIpsOn() runs after show_ips was saved as on. onGeoipCredentialsChange() runs after saving.
- * onUniqueVisitorsOff() runs before the save when unique_visitors goes off (a throw saves nothing). onUniqueVisitorsOn() runs after unique_visitors was saved as on.
+ * onUniqueVisitorsOff() runs before the save when unique_visitors goes off (a throw saves nothing). onUniqueVisitorsOn() runs after unique_visitors was saved as on. onMissingPathsOff() runs before the save when traffic_missing_paths goes off (a throw saves nothing). onMissingPathsOn() runs after traffic_missing_paths was saved as on.
  * runGeoipUpdate() returns { ok, updated, error }.
  *
  * @param {Object} next

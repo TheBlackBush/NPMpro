@@ -46,9 +46,13 @@
 							"description": "Distinct visitors counted per host and day; beyond it new visitors are not counted and the day is marked as capped",
 							"example": 100000
 						},
+						"traffic_missing_paths": {
+							"type": "boolean",
+							"description": "Track missing pages: count the paths of 404 and 410 responses of proxy and redirection hosts (up to 500 per host and day); turning it off deletes them"
+						},
 						"delete_stats": {
 							"type": "boolean",
-							"description": "Also delete all stored statistics (counts, top lists, IPs, visitor hashes). Only allowed together with traffic_enabled switching from true to false; refused with 400 otherwise"
+							"description": "Also delete all stored statistics (counts, top lists, missing pages, IPs, visitor hashes). Only allowed together with traffic_enabled switching from true to false; refused with 400 otherwise"
 						}
 					}
 				},
@@ -72,6 +76,7 @@
 								"show_ips": false,
 								"unique_visitors": false,
 								"visitors_cap": 100000,
+								"traffic_missing_paths": false,
 								"locked": []
 							}
 						}

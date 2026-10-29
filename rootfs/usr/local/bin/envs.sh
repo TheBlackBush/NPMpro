@@ -656,6 +656,11 @@ if [ -n "$TRAFFIC_UNIQUE_VISITORS" ] && ! echo "$TRAFFIC_UNIQUE_VISITORS" | grep
     sleep inf
 fi
 
+if [ -n "$TRAFFIC_404_PATHS" ] && ! echo "$TRAFFIC_404_PATHS" | grep -q "^true$\|^false$"; then
+    echo "TRAFFIC_404_PATHS needs to be true or false."
+    sleep inf
+fi
+
 if [ -n "$TRAFFIC_VISITORS_CAP" ] && { ! echo "$TRAFFIC_VISITORS_CAP" | grep -Eq "^[0-9]{4,7}$" || [ "$TRAFFIC_VISITORS_CAP" -lt 1000 ] || [ "$TRAFFIC_VISITORS_CAP" -gt 1000000 ]; }; then
     echo "TRAFFIC_VISITORS_CAP needs to be a number between 1000 and 1000000."
     sleep inf

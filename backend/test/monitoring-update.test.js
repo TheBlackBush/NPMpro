@@ -445,3 +445,67 @@ it("ignores delete_stats: false", async () => {
 	assert.deepEqual(t.events, ["save"]);
 	assert.deepEqual(t.store.get(), { traffic_enabled: true, retention_days: 60 });
 });
+
+it("runs onMissingPathsOff before the save and onMissingPathsOn after it", async () => {
+	const store = fakeStore({ traffic_missing_paths: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		readStored: store.readStored,
+		saveStored: async (next) => {
+			await store.saveStored(next);
+			events.push("save");
+		},
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onMissingPathsOff: async () => events.push("off"),
+			onMissingPathsOn: async () => events.push("on"),
+		},
+	});
+	await update({ traffic_missing_paths: false });
+	await update({ traffic_missing_paths: false });
+	await update({ traffic_missing_paths: true });
+	assert.deepEqual(events, ["off", "save", "save", "save", "on"]);
+	assert.deepEqual(store.get(), { traffic_missing_paths: true });
+});
+
+it("saves nothing and switches the access log back when onMissingPathsOff rejects", async () => {
+	const store = fakeStore({ traffic_enabled: false, traffic_missing_paths: true });
+	const switched = [];
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: ok,
+		env: {},
+		hooks: {
+			onTrafficEnabledChange: async (enabled) => switched.push(enabled),
+			onShowIpsOff: ok,
+			onMissingPathsOff: () => Promise.reject(new Error("disk full")),
+		},
+	});
+	await assert.rejects(update({ traffic_enabled: true, traffic_missing_paths: false }), {
+		name: "ValidationError",
+		message: "Could not delete the stored missing pages, the setting was not changed: disk full",
+	});
+	assert.deepEqual(switched, [true, false]);
+	assert.deepEqual(store.get(), { traffic_enabled: false, traffic_missing_paths: true });
+});
+
+it("ignores traffic_missing_paths and runs no hook while TRAFFIC_404_PATHS locks it", async () => {
+	const store = fakeStore({ traffic_missing_paths: true });
+	const events = [];
+	const update = createMonitoringUpdater({
+		...store,
+		deleteIps: ok,
+		env: { TRAFFIC_404_PATHS: "true" },
+		hooks: {
+			onTrafficEnabledChange: ok,
+			onShowIpsOff: ok,
+			onMissingPathsOff: async () => events.push("off"),
+		},
+	});
+	await update({ traffic_missing_paths: false, retention_days: 60 });
+	assert.deepEqual(events, []);
+	assert.deepEqual(store.get(), { traffic_missing_paths: true, retention_days: 60 });
+});

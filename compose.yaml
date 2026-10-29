@@ -149,6 +149,7 @@ services:
 #      - "TRAFFIC_SHOW_IPS=true" # also store the top visitor IPs, turning it off deletes them, default false
 #      - "TRAFFIC_UNIQUE_VISITORS=true" # count unique visitors per host and day with a keyed hash of the IP (not the IP), turning it off deletes the hashes, default false
 #      - "TRAFFIC_VISITORS_CAP=100000" # visitors counted per host and day, 1000 to 1000000, default 100000
+#      - "TRAFFIC_404_PATHS=true" # track missing pages: paths of 404 and 410 responses of proxy and redirection hosts (no query strings), turning it off deletes them, default false
 
       # GeoIP (NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed)
 #      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id

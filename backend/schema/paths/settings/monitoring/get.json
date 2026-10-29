@@ -22,6 +22,7 @@
 								"show_ips": false,
 								"unique_visitors": false,
 								"visitors_cap": 100000,
+								"traffic_missing_paths": false,
 								"locked": []
 							}
 						}

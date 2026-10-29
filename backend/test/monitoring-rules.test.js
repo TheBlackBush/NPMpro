@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { mergeGeoipConfig, mergeMonitoringConfig } from "../lib/monitoring-rules.js";
+import { MONITORING_ENV_KEYS, mergeGeoipConfig, mergeMonitoringConfig } from "../lib/monitoring-rules.js";
 
 it("monitoring defaults and env locks", () => {
 	assert.deepEqual(mergeMonitoringConfig({}, {}).values, {
@@ -9,6 +9,7 @@ it("monitoring defaults and env locks", () => {
 		show_ips: false,
 		unique_visitors: false,
 		visitors_cap: 100000,
+		traffic_missing_paths: false,
 	});
 	// Write log files (LOGROTATE, also set by GOA) neither turns on nor locks traffic statistics
 	for (const env of [{ LOGROTATE: "true" }, { LOGROTATE: "true", GOA: "true" }]) {
@@ -79,4 +80,18 @@ it("visitors_cap env lock and range", () => {
 	assert.deepEqual(ignored.locked, []);
 	assert.equal(mergeMonitoringConfig({ visitors_cap: 12 }, {}).values.visitors_cap, 1000, "stored value clamped");
 	assert.equal(mergeMonitoringConfig({ visitors_cap: "x" }, {}).values.visitors_cap, 100000);
+});
+
+it("traffic_missing_paths env lock", () => {
+	assert.equal(mergeMonitoringConfig({ traffic_missing_paths: true }, {}).values.traffic_missing_paths, true);
+	const on = mergeMonitoringConfig({}, { TRAFFIC_404_PATHS: "true" });
+	assert.equal(on.values.traffic_missing_paths, true);
+	assert.deepEqual(on.locked, ["traffic_missing_paths"]);
+	const off = mergeMonitoringConfig({ traffic_missing_paths: true }, { TRAFFIC_404_PATHS: "false" });
+	assert.equal(off.values.traffic_missing_paths, false);
+	assert.deepEqual(off.locked, ["traffic_missing_paths"]);
+	const empty = mergeMonitoringConfig({ traffic_missing_paths: true }, { TRAFFIC_404_PATHS: "" });
+	assert.equal(empty.values.traffic_missing_paths, true);
+	assert.deepEqual(empty.locked, []);
+	assert.equal(MONITORING_ENV_KEYS.traffic_missing_paths, "TRAFFIC_404_PATHS");
 });
