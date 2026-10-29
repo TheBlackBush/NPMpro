@@ -1,22 +1,26 @@
-import { Form, Formik, useFormikContext } from "formik";
 import { useEffect, useId, useState } from "react";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { downloadPendingBackup, exportItems, exportPreview } from "src/api/backend";
 import {
 	AppModal,
 	Button,
 	ErrorAlert,
 	FormErrorNote,
+	focusFirstError,
+	HookForm,
 	ItemChecklist,
 	Loading,
+	PASSPHRASE_FIELDS,
 	SecretsFields,
-	showFirstInvalid,
-	useShownErrors,
+	useAppForm,
+	useFieldOrder,
 	validateSecrets,
 } from "src/components";
 import { useExportPreview, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { withErrorDetails } from "src/modules/BackupTypes";
 import EasyModal from "src/modules/easyModal";
+import { errorPaths } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
 
 /**
@@ -123,19 +127,25 @@ function LinkedRow({ item, labelOf, checked, onChange, disabled }) {
 }
 
 function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, setUnticked, reason, error, onClose }) {
-	const { isSubmitting, setFieldValue, values } = useFormikContext();
+	const { setValue, setFocus, clearErrors } = useFormContext();
+	const { isSubmitting, errors } = useFormState();
+	const secrets = useWatch({ name: "secrets" });
+	const order = useFieldOrder();
 	const baseId = useId();
 	const titleId = `${baseId}-title`;
 	const linkedTitleId = `${baseId}-linked`;
 	const noteId = `${baseId}-note`;
 	const reasonId = `${baseId}-reason`;
-	const blocked = useShownErrors(true).length > 0;
+	const blocked = errorPaths(errors).length > 0;
 	const secretsAllowed = linked.preview.secretsAllowed;
 
-	// secrets cannot be included once a chosen item comes from a kind without manage permission
+	// secrets cannot be included once a chosen item comes from a kind without manage permission; the hidden
+	// passphrase fields take their messages with them, so they do not block Download
 	useEffect(() => {
-		if (!secretsAllowed && values.secrets) void setFieldValue("secrets", false);
-	}, [secretsAllowed, values.secrets, setFieldValue]);
+		if (secretsAllowed || !secrets) return;
+		setValue("secrets", false);
+		clearErrors(PASSPHRASE_FIELDS);
+	}, [secretsAllowed, secrets, setValue, clearErrors]);
 
 	const labels = new Map([
 		...base.items.map((item) => [itemKey(kind, item.id), item.label]),
@@ -147,7 +157,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 	const describedBy = blocked ? noteId : showReason ? reasonId : undefined;
 
 	return (
-		<Form noValidate>
+		<>
 			<ExportHeader kind={kind} closable={!isSubmitting} />
 			<AppModal.Body>
 				<div className="card card-sm mb-3">
@@ -236,7 +246,9 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						isLoading={isSubmitting}
 						disabled={reason !== null && !blocked}
 						blocked={blocked}
-						onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+						onBlockedClick={(e) =>
+							focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus)
+						}
 						onMouseDown={(e) => e.preventDefault()}
 						aria-describedby={describedBy}
 					>
@@ -244,7 +256,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 					</Button>
 				</div>
 			</AppModal.Footer>
-		</Form>
+		</>
 	);
 }
 
@@ -254,6 +266,10 @@ function ExportContent({ kind, base, admin, onClose }) {
 	const [unticked, setUnticked] = useState(() => new Set());
 	const [error, setError] = useState(null);
 	const linked = useLinked(kind, ids, base);
+	const methods = useAppForm({
+		defaultValues: { secrets: admin, passphrase: "", passphraseRepeat: "" },
+		validate: validateSecrets,
+	});
 	const shownLinked = ids.length > 0 ? linked.preview.linked : [];
 	let reason = null;
 	if (ids.length === 0) reason = "backup.export.reason.no-items";
@@ -279,11 +295,7 @@ function ExportContent({ kind, base, admin, onClose }) {
 	};
 
 	return (
-		<Formik
-			initialValues={{ secrets: admin, passphrase: "", passphraseRepeat: "" }}
-			validate={validateSecrets}
-			onSubmit={onSubmit}
-		>
+		<HookForm methods={methods} onSubmit={onSubmit}>
 			<ExportForm
 				kind={kind}
 				base={base}
@@ -297,7 +309,7 @@ function ExportContent({ kind, base, admin, onClose }) {
 				error={error}
 				onClose={onClose}
 			/>
-		</Formik>
+		</HookForm>
 	);
 }
 

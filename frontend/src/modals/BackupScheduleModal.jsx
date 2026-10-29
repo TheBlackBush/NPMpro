@@ -1,20 +1,25 @@
 import cn from "clsx";
-import { Field, Form, Formik, useFormikContext } from "formik";
-import { useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
+import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	ApiErrorContent,
 	AppModal,
 	Button,
 	ErrorAlert,
 	FormSubmit,
+	HookForm,
 	Loading,
+	PASSPHRASE_FIELDS,
 	PasswordInput,
 	SwitchField,
 	TypeTree,
+	useAppForm,
+	useRecheckDependent,
 } from "src/components";
 import { DirtyTracker, useBackupTypes, useSaveBackupSchedule, useUnsavedChangesGuard } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
+	hiddenTimingFields,
 	initialValues,
 	PROTECTIONS,
 	scheduleErrors,
@@ -24,6 +29,7 @@ import {
 	weekdayName,
 } from "src/modules/BackupSchedules";
 import EasyModal from "src/modules/easyModal";
+import { translateErrors } from "src/modules/HookForm";
 import { FREQUENCIES, nextRun, zoneOf } from "src/modules/ScheduleTime";
 import { showObjectSuccess } from "src/notifications";
 
@@ -39,80 +45,85 @@ const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 // the labels of the fields the error note names that have no label of their own name in the form
 const NOTE_LABELS = { types: "settings.backup.schedule.include" };
 
-// an error is shown once the field was left or a save was tried
-const shownError = (form, name) =>
-	form.errors[name] && (form.touched[name] || form.submitCount > 0) ? form.errors[name] : null;
+// the fields in form order (the timing fields as the window shows them), for the note and the first-error focus
+const FIELD_ORDER = [
+	"name",
+	"enabled",
+	"frequency",
+	"everyHours",
+	"weekday",
+	"monthDay",
+	"time",
+	"types",
+	"protection",
+	"passphrase",
+	"passphraseRepeat",
+	"keep",
+];
+
+// the message of a field, while React Hook Form holds one (it shows once the field was left or a save was tried)
+const useFieldError = (name) => useFormState({ name }).errors[name]?.message ?? null;
 
 function InputField({ name, id, labelId, hintId, className, ...inputProps }) {
+	const { register } = useFormContext();
+	const error = useFieldError(name);
+	const hint = hintId ? `${id}-hint` : undefined;
 	return (
-		<Field name={name}>
-			{({ field, form }) => {
-				const error = shownError(form, name);
-				const hint = hintId ? `${id}-hint` : undefined;
-				return (
-					<div className={className}>
-						<label htmlFor={id} className="form-label">
-							<T id={labelId} />
-						</label>
-						<input
-							{...field}
-							{...inputProps}
-							id={id}
-							className={cn("form-control", error && "is-invalid")}
-							aria-invalid={error ? "true" : undefined}
-							aria-describedby={cn(error && `${id}-error`, hint) || undefined}
-						/>
-						{error ? (
-							<div className="invalid-feedback" id={`${id}-error`}>
-								{error}
-							</div>
-						) : null}
-						{hintId ? (
-							<div className="form-hint" id={hint}>
-								<T id={hintId} />
-							</div>
-						) : null}
-					</div>
-				);
-			}}
-		</Field>
+		<div className={className}>
+			<label htmlFor={id} className="form-label">
+				<T id={labelId} />
+			</label>
+			<input
+				{...register(name, { valueAsNumber: inputProps.type === "number" })}
+				{...inputProps}
+				id={id}
+				className={cn("form-control", error && "is-invalid")}
+				aria-invalid={error ? "true" : undefined}
+				aria-describedby={cn(error && `${id}-error`, hint) || undefined}
+			/>
+			{error ? (
+				<div className="invalid-feedback" id={`${id}-error`}>
+					{error}
+				</div>
+			) : null}
+			{hintId ? (
+				<div className="form-hint" id={hint}>
+					<T id={hintId} />
+				</div>
+			) : null}
+		</div>
 	);
 }
 
-function SelectField({ name, id, labelId, className, children }) {
+function SelectField({ name, id, labelId, className, registerOptions, children }) {
+	const { register } = useFormContext();
+	const error = useFieldError(name);
 	return (
-		<Field name={name}>
-			{({ field, form }) => {
-				const error = shownError(form, name);
-				return (
-					<div className={className}>
-						<label htmlFor={id} className="form-label">
-							<T id={labelId} />
-						</label>
-						<select
-							{...field}
-							id={id}
-							className={cn("form-select", error && "is-invalid")}
-							aria-invalid={error ? "true" : undefined}
-							aria-describedby={error ? `${id}-error` : undefined}
-						>
-							{children}
-						</select>
-						{error ? (
-							<div className="invalid-feedback" id={`${id}-error`}>
-								{error}
-							</div>
-						) : null}
-					</div>
-				);
-			}}
-		</Field>
+		<div className={className}>
+			<label htmlFor={id} className="form-label">
+				<T id={labelId} />
+			</label>
+			<select
+				{...register(name, registerOptions)}
+				id={id}
+				className={cn("form-select", error && "is-invalid")}
+				aria-invalid={error ? "true" : undefined}
+				aria-describedby={error ? `${id}-error` : undefined}
+			>
+				{children}
+			</select>
+			{error ? (
+				<div className="invalid-feedback" id={`${id}-error`}>
+					{error}
+				</div>
+			) : null}
+		</div>
 	);
 }
 
 // "Next run: Monday, 2 November 2026, 03:00 (Europe/Berlin)", computed with the backend's rules in the server's zone
 function NextRun({ timeZone, lastRunAt }) {
-	const { values } = useFormikContext();
+	const values = useWatch();
 	if (!(values.enabled && timingValid(values))) return null;
 	let when;
 	try {
@@ -137,8 +148,8 @@ function NextRun({ timeZone, lastRunAt }) {
 }
 
 function TimingFields({ baseId, timeZone, lastRunAt }) {
-	const { values } = useFormikContext();
-	const { frequency } = values;
+	const { clearErrors } = useFormContext();
+	const frequency = useWatch({ name: "frequency" });
 	return (
 		<div className="mb-3">
 			{/* on phones the field next to "When" takes the full row when it is alone and half of it beside a second one */}
@@ -148,6 +159,8 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 					id={`${baseId}-frequency`}
 					labelId="settings.backup.schedule.when"
 					className="col-12 col-md-4"
+					// the fields this frequency hides take their messages with them
+					registerOptions={{ onChange: (event) => clearErrors(hiddenTimingFields(event.target.value)) }}
 				>
 					{FREQUENCIES.map((value) => (
 						<option key={value} value={value}>
@@ -210,83 +223,114 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 }
 
 function ProtectionField({ disabled }) {
+	const { register, clearErrors } = useFormContext();
+	const error = useFieldError("protection");
+	const field = register("protection", {
+		onChange: (event) => {
+			if (event.target.value !== "passphrase") clearErrors(PASSPHRASE_FIELDS);
+		},
+	});
 	return (
-		<Field name="protection">
-			{({ field, form }) => {
-				const error = shownError(form, "protection");
-				return (
-					<fieldset className="mb-3">
-						<legend className="form-label">
-							<T id="settings.backup.schedule.protection" />
-						</legend>
-						<div className="form-selectgroup form-selectgroup-boxes d-flex flex-column">
-							{PROTECTIONS.map((protection) => (
-								<label key={protection} className="form-selectgroup-item flex-fill">
-									<input
-										type="radio"
-										name={field.name}
-										value={protection}
-										className="form-selectgroup-input"
-										checked={field.value === protection}
-										onChange={field.onChange}
-										onBlur={field.onBlur}
-										disabled={disabled}
-									/>
-									<span className="form-selectgroup-label d-flex align-items-center p-3 text-start">
-										<span className="me-3">
-											<span className="form-selectgroup-check" />
-										</span>
-										<span>
-											<span className="d-block fw-medium">
-												<T id={`settings.backup.schedule.protection.${protection}`} />
-											</span>
-											<span className="d-block text-secondary small">
-												<T id={`settings.backup.schedule.protection.${protection}.hint`} />
-											</span>
-										</span>
-									</span>
-								</label>
-							))}
-						</div>
-						{error ? <div className="invalid-feedback d-block">{error}</div> : null}
-					</fieldset>
-				);
-			}}
-		</Field>
+		<fieldset className="mb-3">
+			<legend className="form-label">
+				<T id="settings.backup.schedule.protection" />
+			</legend>
+			<div className="form-selectgroup form-selectgroup-boxes d-flex flex-column">
+				{PROTECTIONS.map((protection) => (
+					<label key={protection} className="form-selectgroup-item flex-fill">
+						<input
+							type="radio"
+							{...field}
+							value={protection}
+							className="form-selectgroup-input"
+							disabled={disabled}
+						/>
+						<span className="form-selectgroup-label d-flex align-items-center p-3 text-start">
+							<span className="me-3">
+								<span className="form-selectgroup-check" />
+							</span>
+							<span>
+								<span className="d-block fw-medium">
+									<T id={`settings.backup.schedule.protection.${protection}`} />
+								</span>
+								<span className="d-block text-secondary small">
+									<T id={`settings.backup.schedule.protection.${protection}.hint`} />
+								</span>
+							</span>
+						</span>
+					</label>
+				))}
+			</div>
+			{error ? <div className="invalid-feedback d-block">{error}</div> : null}
+		</fieldset>
 	);
 }
 
+// a new passphrase re-checks the repeat
 function PassphraseField({ name, id, labelId, hintId }) {
-	const { submitCount } = useFormikContext();
+	const { register } = useFormContext();
+	const recheckRepeat = useRecheckDependent("passphraseRepeat");
+	const error = useFieldError(name);
 	return (
-		<Field name={name}>
-			{({ field, meta }) => (
-				<div className="mb-3">
-					<PasswordInput
-						{...field}
-						id={id}
-						label={<T id={labelId} />}
-						autoComplete="new-password"
-						error={meta.touched || submitCount > 0 ? meta.error : undefined}
-						aria-describedby={hintId ? `${id}-hint` : undefined}
-					/>
-					{hintId ? (
-						<div className="form-hint" id={`${id}-hint`}>
-							<T id={hintId} />
-						</div>
-					) : null}
+		<div className="mb-3">
+			<PasswordInput
+				{...register(name, name === "passphrase" ? { onChange: recheckRepeat } : undefined)}
+				id={id}
+				label={<T id={labelId} />}
+				autoComplete="new-password"
+				error={error ?? undefined}
+				aria-describedby={hintId ? `${id}-hint` : undefined}
+			/>
+			{hintId ? (
+				<div className="form-hint" id={`${id}-hint`}>
+					<T id={hintId} />
 				</div>
-			)}
-		</Field>
+			) : null}
+		</div>
+	);
+}
+
+// the types to back up: a controller; a change is checked at once (unticking the last box names the field right
+// away), the field counts as left when the focus leaves the tree
+function TypesField({ types, disabled }) {
+	const { trigger } = useFormContext();
+	const { field, fieldState } = useController({ name: "types" });
+	const typesError = fieldState.error?.message ?? null;
+	return (
+		// a wrapper, so a refused save focuses the first box of the tree and leaving the tree marks the field as left
+		// biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: onBlur only catches the focus leaving the boxes inside
+		<div
+			ref={(element) =>
+				field.ref(element ? { focus: () => element.querySelector("input:not([disabled])")?.focus() } : null)
+			}
+			onBlur={(event) => {
+				if (!event.currentTarget.contains(event.relatedTarget)) field.onBlur();
+			}}
+		>
+			<TypeTree
+				label={<T id="settings.backup.schedule.include" />}
+				categories={types.categories}
+				counts={types.counts}
+				certificateKinds={types.certificateKinds}
+				selected={field.value}
+				onChange={(selected) => {
+					field.onChange(selected);
+					void trigger("types");
+				}}
+				disabled={disabled}
+			/>
+			{typesError ? <div className="invalid-feedback d-block mt-n2 mb-3">{typesError}</div> : null}
+		</div>
 	);
 }
 
 function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
-	const { values, setFieldValue, setFieldTouched, errors, touched, submitCount, isSubmitting } = useFormikContext();
+	const { register } = useFormContext();
+	const { isSubmitting } = useFormState();
+	const protection = useWatch({ name: "protection" });
 	const baseId = useId();
 	// the server's zone; the browser's while the server does not say
 	const timeZone = types.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const typesError = errors.types && (touched.types || submitCount > 0) ? errors.types : null;
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
@@ -306,36 +350,17 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 					autoComplete="off"
 					required
 				/>
-				<Field name="enabled" type="checkbox">
-					{({ field }) => (
-						<SwitchField
-							{...field}
-							id={`${baseId}-enabled`}
-							className="mb-3"
-							label={<T id="settings.backup.schedule.enabled" />}
-							disabled={isSubmitting}
-						/>
-					)}
-				</Field>
+				<SwitchField
+					{...register("enabled")}
+					id={`${baseId}-enabled`}
+					className="mb-3"
+					label={<T id="settings.backup.schedule.enabled" />}
+					disabled={isSubmitting}
+				/>
 				<TimingFields baseId={baseId} timeZone={timeZone} lastRunAt={schedule?.lastRunAt ?? null} />
-				{/* a wrapper, so a blocked save focuses the parts and not the first field of the window */}
-				<div>
-					<TypeTree
-						label={<T id="settings.backup.schedule.include" />}
-						categories={types.categories}
-						counts={types.counts}
-						certificateKinds={types.certificateKinds}
-						selected={values.types}
-						onChange={(selected) => {
-							void setFieldValue("types", selected);
-							void setFieldTouched("types", true, false);
-						}}
-						disabled={isSubmitting}
-					/>
-					{typesError ? <div className="invalid-feedback d-block mt-n2 mb-3">{typesError}</div> : null}
-				</div>
+				<TypesField types={types} disabled={isSubmitting} />
 				<ProtectionField disabled={isSubmitting} />
-				{values.protection === "passphrase" ? (
+				{protection === "passphrase" ? (
 					<div className="row">
 						<div className="col-12 col-md-6">
 							<PassphraseField
@@ -386,6 +411,23 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 	);
 }
 
+// the form, mounted once the types are loaded: its defaultValues are complete from the first render, and a refetch
+// of the types does not reset it
+function ScheduleEditor({ schedule, types, onSubmit, dirtyRef, ...formProps }) {
+	const editingWithPassphrase = Boolean(schedule?.passphraseSet);
+	const validate = useCallback(
+		(values) => translateErrors(scheduleErrors(values, { editingWithPassphrase }), intl),
+		[editingWithPassphrase],
+	);
+	const methods = useAppForm({ defaultValues: initialValues(schedule, types.categories), validate });
+	return (
+		<HookForm methods={methods} onSubmit={onSubmit} fieldOrder={FIELD_ORDER}>
+			<DirtyTracker dirtyRef={dirtyRef} />
+			<ScheduleForm schedule={schedule} types={types} {...formProps} />
+		</HookForm>
+	);
+}
+
 /**
  * The add/edit window of a backup schedule: name, enabled, when it runs (with the next run in the server's time
  * zone), what it includes, its protection and how many files it keeps
@@ -396,13 +438,6 @@ const BackupScheduleModal = EasyModal.create(({ schedule, visible, remove }) => 
 	const save = useSaveBackupSchedule();
 	const [errorMsg, setErrorMsg] = useState(null);
 	const editing = Boolean(schedule);
-
-	const validate = (values) =>
-		Object.fromEntries(
-			Object.entries(scheduleErrors(values, { editingWithPassphrase: Boolean(schedule?.passphraseSet) })).map(
-				([field, id]) => [field, intl.formatMessage({ id })],
-			),
-		);
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
@@ -420,22 +455,15 @@ const BackupScheduleModal = EasyModal.create(({ schedule, visible, remove }) => 
 			{error ? <ErrorAlert error={error} className="m-3" /> : null}
 			{isPending ? <Loading noLogo /> : null}
 			{types ? (
-				<Formik
-					initialValues={initialValues(schedule, types.categories)}
-					validate={validate}
+				<ScheduleEditor
+					schedule={schedule}
+					types={types}
 					onSubmit={onSubmit}
-				>
-					<Form noValidate>
-						<DirtyTracker dirtyRef={dirtyRef} />
-						<ScheduleForm
-							schedule={schedule}
-							types={types}
-							errorMsg={errorMsg}
-							onCloseError={() => setErrorMsg(null)}
-							close={close}
-						/>
-					</Form>
-				</Formik>
+					dirtyRef={dirtyRef}
+					errorMsg={errorMsg}
+					onCloseError={() => setErrorMsg(null)}
+					close={close}
+				/>
 			) : null}
 		</AppModal>
 	);

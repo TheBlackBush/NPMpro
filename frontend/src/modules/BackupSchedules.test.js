@@ -5,6 +5,7 @@ import en from "../../translations/ui/en.json" with { type: "json" };
 import {
 	filterBySchedule,
 	formatInZone,
+	hiddenTimingFields,
 	initialValues,
 	lastRunSize,
 	scheduleBadge,
@@ -123,7 +124,7 @@ it("form values of a new and of a saved schedule", () => {
 	assert.equal(fresh.frequency, "daily");
 	assert.equal(fresh.time, "03:00");
 	assert.equal(fresh.protection, "instance_key");
-	assert.equal(fresh.keep, "7");
+	assert.equal(fresh.keep, 7);
 	assert.ok(fresh.types.length > 0);
 	const saved = {
 		name: "Weekly",
@@ -141,15 +142,15 @@ it("form values of a new and of a saved schedule", () => {
 		name: "Weekly",
 		enabled: false,
 		frequency: "weekly",
-		everyHours: "6",
+		everyHours: 6,
 		time: "04:30",
 		weekday: "6",
-		monthDay: "1",
+		monthDay: 1,
 		types: ["streams"],
 		protection: "passphrase",
 		passphrase: "",
 		passphraseRepeat: "",
-		keep: "3",
+		keep: 3,
 	});
 	// the form gets its own list
 	assert.notEqual(initialValues(saved, categories).types, saved.types);
@@ -217,4 +218,19 @@ it("the last run shows a size only when that run made a file", () => {
 	assert.equal(lastRunSize({ lastStatus: "failed", lastSize: 2048 }), null);
 	assert.equal(lastRunSize({ lastStatus: null, lastSize: null }), null);
 	assert.equal(lastRunSize({ lastStatus: "success", lastSize: 0 }), null);
+});
+
+it("names the timing fields a frequency hides", () => {
+	assert.deepEqual(hiddenTimingFields("daily"), ["everyHours", "weekday", "monthDay"]);
+	assert.deepEqual(hiddenTimingFields("hours"), ["time", "weekday", "monthDay"]);
+	assert.deepEqual(hiddenTimingFields("monthly"), ["everyHours", "weekday"]);
+});
+
+it("takes the number inputs' values: numbers, NaN while empty", () => {
+	assert.deepEqual(scheduleErrors({ ...values, keep: 7, everyHours: 6 }, {}), {});
+	assert.deepEqual(scheduleErrors({ ...values, keep: Number.NaN }, {}), { keep: "backup.schedule.error.keep" });
+	assert.deepEqual(scheduleErrors({ ...values, frequency: "monthly", monthDay: Number.NaN }, {}), {
+		monthDay: "backup.schedule.error.month-day",
+	});
+	assert.equal(toPayload({ ...values, keep: 7 }).keep, 7);
 });

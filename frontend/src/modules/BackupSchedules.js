@@ -1,6 +1,7 @@
 /**
- * Helpers of the backup schedule UI. Form values are strings as the inputs hold them ({ name, enabled, frequency,
- * everyHours, time, weekday, monthDay, types, protection, passphrase, passphraseRepeat, keep }); a schedule is the API
+ * Helpers of the backup schedule UI. Form values are what the inputs give ({ name, enabled, frequency, everyHours,
+ * time, weekday, monthDay, types, protection, passphrase, passphraseRepeat, keep }: the number inputs give numbers,
+ * NaN while empty; the weekday select a string of digits); a schedule is the API
  * row in camelCase (src/api/backend/base.js). Weekday 0 is Monday, as in the API.
  */
 import { DEFAULT_SELECTED, passphraseErrors } from "./BackupTypes.js";
@@ -75,6 +76,17 @@ export function scheduleErrors(values, { editingWithPassphrase = false } = {}) {
 }
 
 /**
+ * The timing fields the frequency does not show (their errors are dropped when the frequency changes)
+ *
+ * @param   {string} frequency
+ * @returns {string[]}
+ */
+export function hiddenTimingFields(frequency) {
+	const shown = new Set(FREQUENCY_FIELDS[frequency] ?? []);
+	return [...new Set(Object.values(FREQUENCY_FIELDS).flat())].filter((field) => !shown.has(field));
+}
+
+/**
  * The request body of a create or update: only the fields of the chosen frequency (the API refuses null for the
  * others), numbers as numbers, the passphrase only when Passphrase is chosen and one is typed (an empty one keeps the
  * stored passphrase on an update).
@@ -113,15 +125,15 @@ export function initialValues(schedule, categories) {
 		name: schedule?.name ?? "",
 		enabled: schedule ? Boolean(schedule.enabled) : true,
 		frequency: schedule?.frequency ?? "daily",
-		everyHours: String(schedule?.everyHours ?? 6),
+		everyHours: schedule?.everyHours ?? 6,
 		time: schedule?.time ?? "03:00",
 		weekday: String(schedule?.weekday ?? 0),
-		monthDay: String(schedule?.monthDay ?? 1),
+		monthDay: schedule?.monthDay ?? 1,
 		types: schedule ? [...(schedule.types ?? [])] : DEFAULT_SELECTED(categories ?? []),
 		protection: schedule?.protection ?? "instance_key",
 		passphrase: "",
 		passphraseRepeat: "",
-		keep: String(schedule?.keep ?? 7),
+		keep: schedule?.keep ?? 7,
 	};
 }
 
