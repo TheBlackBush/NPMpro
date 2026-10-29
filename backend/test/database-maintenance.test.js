@@ -3,7 +3,14 @@ import { EventEmitter } from "node:events";
 import { it } from "node:test";
 import { createMaintenance, maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
-import { isSessionRevoked, revokeSession, takeHeldRevocations, writeHeldRevocations } from "../lib/session.js";
+import {
+	closeSessions,
+	isSessionRevoked,
+	reopenSessions,
+	revokeSession,
+	takeHeldRevocations,
+	writeHeldRevocations,
+} from "../lib/session.js";
 import { migratedSqlite } from "./support/database.js";
 
 const run = (m, method, path, res = {}) => {
@@ -185,5 +192,47 @@ it("writes the held revocations into the database that stays", async () => {
 		takeHeldRevocations();
 		maintenance.end();
 		await db.cleanup();
+	}
+});
+
+it("revocations a failed write kept are written with the next logout after the move", async () => {
+	const db = await migratedSqlite();
+	try {
+		maintenance.start("move-failed-write");
+		try {
+			await revokeSession({ sid: "kept-sid", auth_time: 1_800_000_000 });
+		} finally {
+			maintenance.end();
+		}
+		// the failed move could not write it into the database that stays
+		await assert.rejects(
+			writeHeldRevocations(() => {
+				throw new Error("gone");
+			}),
+		);
+		assert.equal(await isSessionRevoked("kept-sid"), true);
+		await revokeSession({ sid: "next-sid", auth_time: 1_800_000_000 }, { knex: db.knex });
+		assert.deepEqual(takeHeldRevocations(), []);
+		const sids = await db.knex("session_revocation").orderBy("sid").pluck("sid");
+		assert.deepEqual(sids, ["kept-sid", "next-sid"]);
+	} finally {
+		takeHeldRevocations();
+		await db.cleanup();
+	}
+});
+
+it("after the move's last logout write a logout is refused, not held", async () => {
+	maintenance.start("move-closing");
+	closeSessions();
+	try {
+		await assert.rejects(
+			revokeSession({ sid: "too-late", auth_time: 1_800_000_000 }),
+			(error) => error instanceof errs.DatabaseMoveError && error.code === "move-running" && error.status === 409,
+		);
+		assert.deepEqual(takeHeldRevocations(), []);
+	} finally {
+		reopenSessions();
+		takeHeldRevocations();
+		maintenance.end();
 	}
 });

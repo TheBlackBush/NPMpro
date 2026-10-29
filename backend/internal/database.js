@@ -95,7 +95,8 @@ const nowOf = (knex) => {
  * @param   {Object}    deps.backup               { lockForMove(userId) => { safetyBackup(), release() } }, throws busy
  * @param   {Function}  deps.writers              () => [{ name, pause({ timeoutMs }), resume() }]: background writers
  * @param   {Object}    deps.maintenance          createMaintenance()
- * @param   {Object}    deps.revocations          { held() => rows (kept), write(knex) => Promise (takes them) }
+ * @param   {Object}    deps.revocations          { held() => rows (kept), write(knex) => Promise (takes them),
+ *                                                close(): no logout is taken any more (right before the exit) }
  * @param   {Function}  deps.audit                (access, data) => Promise, into the database in use
  * @param   {Function}  deps.writeFile            (file, content) => Promise (writeConnectionFile)
  * @param   {Function}  deps.exit                 () => void, ends the process (dinit starts it again)
@@ -139,6 +140,19 @@ const createDatabaseService = ({
 }) => {
 	let lastMove = null;
 	let running = Promise.resolve();
+	// a move is between its first check and maintenance.start (a target test must not run then)
+	let starting = false;
+	// target tests that are running: a move waits for them, so a probe table of theirs cannot block it
+	const tests = new Set();
+
+	// a log line that can never throw (after database.json is written nothing may reach the failure path)
+	const note = (level, line) => {
+		try {
+			log[level](line);
+		} catch {
+			// nothing to do
+		}
+	};
 
 	const insertRevocations = async (target, rows) => {
 		for (let i = 0; i < rows.length; i += REVOCATION_CHUNK) {
@@ -193,7 +207,8 @@ const createDatabaseService = ({
 			target,
 			leftNote: leftNoteOf(target, { created, touched }),
 		});
-		log.error(
+		note(
+			"error",
 			`The database move to ${labelOf(target)} failed at the ${failure.step} step: ${failure.message}${failure.details ? ` (${failure.details})` : ""}`,
 		);
 		if (targetKnex) await within(targetKnex.destroy(), closeTimeoutMs);
@@ -203,7 +218,10 @@ const createDatabaseService = ({
 			await revocations.write(knex);
 		} catch (revokeError) {
 			// they stay held in memory (still revoked) until a later write
-			log.error(`Logouts during the database move could not be saved: ${revokeError?.message}`);
+			note(
+				"error",
+				`Logouts during the database move could not be saved, they stay revoked in memory and are written with the next logout: ${revokeError?.message}`,
+			);
 		}
 		try {
 			await audit(access, {
@@ -218,7 +236,7 @@ const createDatabaseService = ({
 				},
 			});
 		} catch (auditError) {
-			log.error(`The failed database move could not be logged: ${auditError?.message}`);
+			note("error", `The failed database move could not be logged: ${auditError?.message}`);
 		}
 		await resumeWriters(paused, { log });
 		lock.release();
@@ -229,17 +247,35 @@ const createDatabaseService = ({
 
 	// database.json is written: the new database is the one that stays; the process ends after the move window saw it
 	const restart = async ({ targetKnex, sent }) => {
-		await within(sent, sentTimeoutMs);
-		await new Promise((resolve) => {
-			later(resolve, restartDelayMs);
-		});
 		try {
-			// logouts held since the copy, the last await before the exit
-			await revocations.write(targetKnex);
-		} catch (error) {
-			log.error(`Logouts during the database move could not be saved in the new database: ${error?.message}`);
+			await within(sent, sentTimeoutMs);
+			await new Promise((resolve) => {
+				later(resolve, restartDelayMs);
+			});
+			try {
+				// logouts held since the copy, the last await before the exit
+				await revocations.write(targetKnex);
+			} catch (error) {
+				// they stay held in this process only and are lost with it: say how many
+				let count = "some";
+				try {
+					count = String(revocations.held().length);
+				} catch {
+					// the count stays unknown
+				}
+				note(
+					"error",
+					`${count} logouts during the database move could not be saved in the new database and are lost with the restart, those sessions stay valid: ${error?.message}`,
+				);
+			}
+		} finally {
+			// from here on a logout is refused (the client retries after the restart), so none is taken and lost
+			try {
+				revocations.close();
+			} finally {
+				exit();
+			}
 		}
-		exit();
 		await within(targetKnex.destroy(), closeTimeoutMs);
 	};
 
@@ -326,20 +362,66 @@ const createDatabaseService = ({
 					automatic_backup: move.backup,
 				}),
 			});
-			const movedAt = new Date(clock.now()).toISOString();
+			state.movedAt = new Date(clock.now()).toISOString();
+			// the last statement of the try: once database.json is written nothing can undo the move
 			await writeFile(
 				path.join(dataDir, "database.json"),
-				connectionFileOf(target, { seal: sealWith(box), movedAt, movedFrom: movedFromOf(source) }),
+				connectionFileOf(target, {
+					seal: sealWith(box),
+					movedAt: state.movedAt,
+					movedFrom: movedFromOf(source),
+				}),
 			);
-			move.state = "restarting";
-			move.finished_at = movedAt;
-			log.info(`Database moved to ${labelOf(target)}, restarting on it`);
 		} catch (error) {
 			await fail(error, { move, target, access, lock, ...state });
 			return;
 		}
+		move.state = "restarting";
+		move.finished_at = state.movedAt;
+		note("info", `Database moved to ${labelOf(target)}, restarting on it`);
 		// maintenance and the backup lock stay until the process ends, the writers stay paused
 		await restart({ targetKnex: state.targetKnex, sent });
+	};
+
+	// the checks and the start of a move (one at a time: starting is set)
+	const begin = async ({ access, body, sent, userId, info }) => {
+		// a target test that runs now finishes first: its probe table is gone (or named by the check) before ours
+		await Promise.all([...tests]);
+		const now = new Date(clock.now());
+		const valid = validateTarget(body);
+		const target =
+			valid.engine === "sqlite"
+				? { engine: "sqlite", file: path.join(dataDir, `database-${stamp(now)}.sqlite`) }
+				: valid;
+		if (target.engine === "sqlite" && existsSync(target.file)) throw fileExists(target.file);
+		await testTarget({ target: valid, current: info.connection, createKnex, timeoutMs });
+		if (maintenance.active()) throw moveRunning();
+		// throws busy while a backup or restore runs; a scheduled backup that comes later waits for the lock
+		const lock = backup.lockForMove(userId);
+		const id = randomBytes(8).toString("hex");
+		try {
+			maintenance.start(id);
+		} catch (error) {
+			lock.release();
+			throw error;
+		}
+		lastMove = {
+			id,
+			state: "running",
+			step: "maintenance",
+			started_at: now.toISOString(),
+			finished_at: null,
+			target: publicConnection(target),
+			tables: [],
+			backup: null,
+			error: null,
+		};
+		running = run({ move: lastMove, target, source: info.connection, access, userId, lock, sent }).catch(
+			(error) => {
+				note("error", `The database move stopped unexpectedly: ${scrub(error, target.password)}`);
+			},
+		);
+		return { id };
 	};
 
 	return {
@@ -364,7 +446,24 @@ const createDatabaseService = ({
 			access.canAdmin();
 			const info = current();
 			if (info.source === "env") throw envLocked();
-			return await testTarget({ target: validateTarget(body), current: info.connection, createKnex, timeoutMs });
+			// the move tests its target itself; a test during the move would put a probe table on it
+			if (starting || maintenance.active()) throw moveRunning();
+			const tested = testTarget({
+				target: validateTarget(body),
+				current: info.connection,
+				createKnex,
+				timeoutMs,
+			});
+			const done = tested.then(
+				() => {},
+				() => {},
+			);
+			tests.add(done);
+			try {
+				return await tested;
+			} finally {
+				tests.delete(done);
+			}
 		},
 
 		/**
@@ -383,42 +482,13 @@ const createDatabaseService = ({
 			const userId = access.token.getUserId(0);
 			const info = current();
 			if (info.source === "env") throw envLocked();
-			if (maintenance.active()) throw moveRunning();
-			const now = new Date(clock.now());
-			const valid = validateTarget(body);
-			const target =
-				valid.engine === "sqlite"
-					? { engine: "sqlite", file: path.join(dataDir, `database-${stamp(now)}.sqlite`) }
-					: valid;
-			if (target.engine === "sqlite" && existsSync(target.file)) throw fileExists(target.file);
-			await testTarget({ target: valid, current: info.connection, createKnex, timeoutMs });
-			if (maintenance.active()) throw moveRunning();
-			// throws busy while a backup or restore runs; a scheduled backup that comes later waits for the lock
-			const lock = backup.lockForMove(userId);
-			const id = randomBytes(8).toString("hex");
+			if (starting || maintenance.active()) throw moveRunning();
+			starting = true;
 			try {
-				maintenance.start(id);
-			} catch (error) {
-				lock.release();
-				throw error;
+				return await begin({ access, body, sent, userId, info });
+			} finally {
+				starting = false;
 			}
-			lastMove = {
-				id,
-				state: "running",
-				step: "maintenance",
-				started_at: now.toISOString(),
-				finished_at: null,
-				target: publicConnection(target),
-				tables: [],
-				backup: null,
-				error: null,
-			};
-			running = run({ move: lastMove, target, source: info.connection, access, userId, lock, sent }).catch(
-				(error) => {
-					log.error(`The database move stopped unexpectedly: ${scrub(error, target.password)}`);
-				},
-			);
-			return { id };
 		},
 
 		progress: (access) => {

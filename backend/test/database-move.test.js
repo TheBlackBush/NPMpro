@@ -21,6 +21,7 @@ const LEFT_FILE = /The new database file .*database-\d{8}-\d{6}\.sqlite was left
 const LOCAL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 const SQLITE_VERSION = /^3\./u;
 const SEALED = /^v1:/u;
+const LOST_LOGOUTS = /^2 logouts during the database move could not be saved in the new database/u;
 const LEFT_TARGET = /The target database npmpro_test_unit on .* was left as it is/u;
 
 // no password key and no text holding the password; the test password may be part of the user or database name, so
@@ -67,6 +68,7 @@ const make = async ({
 	later,
 	log = silent,
 	maintenance = createMaintenance(),
+	writeRevocations,
 } = {}) => {
 	const target = await tempSqlite("unused");
 	const calls = [];
@@ -118,10 +120,12 @@ const make = async ({
 		revocations: {
 			held: () => held.map((row) => ({ ...row })),
 			write: async (knex) => {
+				if (writeRevocations) return await writeRevocations(knex, held);
 				const rows = held.splice(0);
 				for (const row of rows) await knex("session_revocation").insert(row).onConflict("sid").ignore();
 				return rows.length;
 			},
+			close: () => calls.push("close sessions"),
 		},
 		audit: (_access, data) => {
 			calls.push(`audit ${data.action} ${data.meta.step ?? ""}`.trim());
@@ -158,7 +162,14 @@ it("moves SQLite to a new SQLite file, writes the file last and exits", async ()
 		assert.equal(move.backup, "npmpro-backup-npmpro-20261029-100000-auto.npmpro");
 		assert.ok(move.tables.length > 0);
 		assert.ok(move.tables.every((table) => table.copied === table.rows));
-		assert.deepEqual(ctx.calls, ["pause renewals", "pause scheduler", "safety backup", "exit in 2000", "exit"]);
+		assert.deepEqual(ctx.calls, [
+			"pause renewals",
+			"pause scheduler",
+			"safety backup",
+			"exit in 2000",
+			"close sessions",
+			"exit",
+		]);
 		// maintenance stays on and the lock stays held until the process exits
 		assert.equal(ctx.maintenance.active(), true);
 		assert.equal(ctx.released(), 0);
@@ -226,7 +237,7 @@ it("exits only after the answer went out and the window saw restarting; a later 
 		ctx.held.push({ sid: "late-logout", expires_at: 1_900_000_000 });
 		tick();
 		await ctx.service.settled();
-		assert.equal(ctx.calls.at(-1), "exit");
+		assert.deepEqual(ctx.calls.slice(-2), ["close sessions", "exit"]);
 		const saved = parseConnectionFile(await readFile(path.join(ctx.target.dir, "database.json"), "utf8"), {
 			unseal: () => "",
 			dataDir: ctx.target.dir,
@@ -238,6 +249,98 @@ it("exits only after the answer went out and the window saw restarting; a later 
 		} finally {
 			await copy.destroy();
 		}
+	} finally {
+		await source.cleanup();
+		await ctx.target.cleanup();
+	}
+});
+
+it("after database.json is written nothing reaches the failure path, a throwing log included", async () => {
+	const source = await migratedSqlite();
+	const lines = [];
+	const log = {
+		info: () => {
+			throw new Error("log is gone");
+		},
+		warn: () => {},
+		error: (line) => lines.push(line),
+	};
+	const ctx = await make({ source, log });
+	try {
+		await seedSource(source.knex);
+		await ctx.service.move(access, { engine: "sqlite" });
+		await ctx.service.settled();
+		const { move } = ctx.service.progress(access);
+		assert.equal(move.state, "restarting", JSON.stringify(move.error));
+		assert.equal(move.error, null);
+		assert.ok(existsSync(path.join(ctx.target.dir, "database.json")));
+		assert.equal(
+			ctx.calls.some((call) => call.startsWith("audit")),
+			false,
+		);
+		assert.equal(
+			ctx.calls.some((call) => call.startsWith("resume")),
+			false,
+		);
+		assert.deepEqual(ctx.calls.slice(-2), ["close sessions", "exit"]);
+		assert.equal(ctx.maintenance.active(), true);
+		assert.equal(ctx.released(), 0);
+		assert.deepEqual(lines, []);
+	} finally {
+		await source.cleanup();
+		await ctx.target.cleanup();
+	}
+});
+
+it("a failed last logout write is logged with the count, then sessions close and the process exits", async () => {
+	const source = await migratedSqlite();
+	const lines = [];
+	const log = { info: () => {}, warn: () => {}, error: (line) => lines.push(line) };
+	let writes = 0;
+	const ctx = await make({
+		source,
+		log,
+		writeRevocations: (_knex, held) => {
+			writes += 1;
+			held.push({ sid: "during-delay", expires_at: 1_900_000_000 });
+			return Promise.reject(new Error("connection lost"));
+		},
+	});
+	try {
+		await ctx.service.move(access, { engine: "sqlite" });
+		await ctx.service.settled();
+		assert.equal(ctx.service.progress(access).move.state, "restarting");
+		assert.equal(writes, 1);
+		assert.deepEqual(ctx.calls.slice(-2), ["close sessions", "exit"]);
+		assert.equal(lines.length, 1);
+		assert.match(lines[0], LOST_LOGOUTS);
+	} finally {
+		await source.cleanup();
+		await ctx.target.cleanup();
+	}
+});
+
+it("a target test is refused while a move starts or runs", async () => {
+	const source = await migratedSqlite();
+	let tick = null;
+	const ctx = await make({
+		source,
+		later: (fn) => {
+			tick = fn;
+		},
+	});
+	try {
+		const starting = ctx.service.move(access, { engine: "sqlite" });
+		// the move is between its checks and maintenance.start
+		await assert.rejects(ctx.service.test(access, { engine: "sqlite" }), (error) => error.code === "move-running");
+		await starting;
+		await assert.rejects(
+			ctx.service.test(access, { engine: "postgres", host: "db", port: 5432, user: "u", name: "n" }),
+			(error) => error.code === "move-running" && error.status === 409,
+		);
+		for (let i = 0; i < 400 && !tick; i += 1) await new Promise((resolve) => setTimeout(resolve, 10));
+		tick();
+		await ctx.service.settled();
 	} finally {
 		await source.cleanup();
 		await ctx.target.cleanup();
@@ -378,7 +481,7 @@ it("refuses from env, during a move, while a backup runs and when the new file e
 
 it("never overwrites an existing SQLite file", async () => {
 	const source = await migratedSqlite();
-	// every second of the next minute is taken, so the name the move picks exists already
+	// the names of the next 5 seconds are taken, so the name the move picks exists already
 	const ctx = await make({ source });
 	try {
 		const now = Date.now();
@@ -466,7 +569,14 @@ it("moves SQLite to Postgres with a sealed password", { skip: pgSkip, timeout: 1
 		assert.equal(moved.id, (await countRows(source.knex, "audit_log")) + 1);
 		assert.equal(await countRows(pg, "proxy_host"), 11);
 		assert.ok(await pg("session_revocation").where("sid", "logged-out").first());
-		assert.deepEqual(ctx.calls, ["pause renewals", "pause scheduler", "safety backup", "exit in 2000", "exit"]);
+		assert.deepEqual(ctx.calls, [
+			"pause renewals",
+			"pause scheduler",
+			"safety backup",
+			"exit in 2000",
+			"close sessions",
+			"exit",
+		]);
 	} finally {
 		await resetPg(pg);
 		await pg.destroy();
@@ -515,6 +625,31 @@ it("a target that is not empty is refused before maintenance starts", { skip: pg
 		assert.equal(ctx.service.progress(access).move, null);
 		assert.deepEqual(await pg("someone_elses").select("*"), []);
 		assert.equal(await pg.schema.hasTable("migrations"), false);
+	} finally {
+		await resetPg(pg);
+		await pg.destroy();
+		await source.cleanup();
+		await ctx.target.cleanup();
+	}
+});
+
+it("a move waits for a target test that is running, its probe table does not block the move", {
+	skip: pgSkip,
+	timeout: 180_000,
+}, async () => {
+	const source = await migratedSqlite();
+	const ctx = await make({ source });
+	const pg = knexFactory(knexConfigOf(pgConnection));
+	try {
+		await resetPg(pg);
+		const tested = ctx.service.test(access, pgConnection);
+		const moved = ctx.service.move(access, pgConnection);
+		assert.equal((await tested).engine, "postgres");
+		await moved;
+		await ctx.service.settled();
+		const { move } = ctx.service.progress(access);
+		assert.equal(move.state, "restarting", JSON.stringify(move.error));
+		assert.equal(await pg.schema.hasTable("npmpro_move_probe"), false);
 	} finally {
 		await resetPg(pg);
 		await pg.destroy();

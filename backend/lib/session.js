@@ -34,9 +34,18 @@ const continueSession = (tokenData, now = nowSeconds()) => {
 	return { sid: tokenData.sid, auth_time: tokenData.auth_time };
 };
 
-// logouts during a database move: written by the move into the database that stays (the source is frozen)
+// logouts during a database move: written by the move into the database that stays (the source is frozen). Rows
+// whose write failed stay held (still revoked) and are written with the next logout.
 const heldRevocations = new Map();
 const REVOCATION_CHUNK = 200;
+// set by a move once the last logouts are in the new database, right before the process exits: no logout is taken
+// any more (the client retries after the restart)
+let closing = false;
+
+const restarting = () =>
+	new errs.DatabaseMoveError("move-running", "NPMpro is restarting on the new database, try again shortly", {
+		status: 409,
+	});
 
 /**
  * @param   {String}  sid
@@ -50,13 +59,17 @@ const isSessionRevoked = async (sid) => {
 
 /**
  * Revokes the session of a token, and forgets revocations of sessions that have expired anyway. During a database
- * move the revocation is held in memory until the move writes it.
+ * move the revocation is held in memory until the move writes it; after the move's last write it is refused.
+ * Revocations still held from a failed write are written along.
  *
- * @param   {Object}  tokenData  the verified token of the session
+ * @param   {Object}  tokenData        the verified token of the session
+ * @param   {Object}  [options]
+ * @param   {Object}  [options.knex]   the database (tests), db() by default
  * @returns {Promise}
  */
-const revokeSession = async (tokenData) => {
+const revokeSession = async (tokenData, { knex } = {}) => {
 	if (typeof tokenData?.sid !== "string") return;
+	if (closing) throw restarting();
 	const authTime = Number.isInteger(tokenData.auth_time) ? tokenData.auth_time : nowSeconds();
 	const expiresAt = authTime + SESSION_MAX_AGE_SECONDS;
 	const release = maintenance.tryBeginWrite();
@@ -65,15 +78,34 @@ const revokeSession = async (tokenData) => {
 		return;
 	}
 	try {
-		const knex = db();
-		await knex("session_revocation").where("expires_at", "<", nowSeconds()).delete();
-		await knex("session_revocation")
+		const target = knex ?? db();
+		await target("session_revocation").where("expires_at", "<", nowSeconds()).delete();
+		await target("session_revocation")
 			.insert({ sid: tokenData.sid, expires_at: expiresAt })
 			.onConflict("sid")
 			.ignore();
+		if (heldRevocations.size > 0) {
+			try {
+				await writeHeldRevocations(target);
+			} catch {
+				// still held and revoked; the next logout tries again
+			}
+		}
 	} finally {
 		release();
 	}
+};
+
+/**
+ * No logout is taken any more (a database move wrote the last ones and the process exits)
+ */
+const closeSessions = () => {
+	closing = true;
+};
+
+// for tests
+const reopenSessions = () => {
+	closing = false;
 };
 
 /**
@@ -126,10 +158,12 @@ const writeHeldRevocations = async (knex) => {
 };
 
 export {
+	closeSessions,
 	continueSession,
 	isSessionRevoked,
 	newSession,
 	peekHeldRevocations,
+	reopenSessions,
 	revokeSession,
 	SESSION_MAX_AGE_SECONDS,
 	takeHeldRevocations,

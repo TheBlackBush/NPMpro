@@ -4,7 +4,7 @@ import { getDatabaseInfo } from "../lib/config.js";
 import { DATA_DIR, writeConnectionFile } from "../lib/database/connection-file.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
-import { peekHeldRevocations, writeHeldRevocations } from "../lib/session.js";
+import { closeSessions, peekHeldRevocations, writeHeldRevocations } from "../lib/session.js";
 import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
 import internalBackup from "./backup-service.js";
@@ -41,7 +41,7 @@ const internalDatabase = createDatabaseService({
 	backup: internalBackup,
 	writers: () => writers,
 	maintenance,
-	revocations: { held: peekHeldRevocations, write: writeHeldRevocations },
+	revocations: { held: peekHeldRevocations, write: writeHeldRevocations, close: closeSessions },
 	audit: (access, data) => internalAuditLog.add(access, data),
 	writeFile: writeConnectionFile,
 	// the SIGTERM handler closes the server and stops the monitoring timers; dinit (restart = yes) starts it again
