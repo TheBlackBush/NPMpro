@@ -24,6 +24,7 @@ const untrimmedPaths = new Set([
 	"/locations/location_type",
 	"/meta/html",
 	"/client_secret",
+	"/password",
 ]);
 
 const trimStrings = (value, path = "", depth = 0) => {

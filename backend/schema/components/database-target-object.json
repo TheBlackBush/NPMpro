@@ -1,0 +1,24 @@
+{
+	"type": "object",
+	"description": "A database move target. SQLite needs only the engine: a new file /data/npmpro/database-<date>.sqlite is created.",
+	"additionalProperties": false,
+	"required": ["engine"],
+	"properties": {
+		"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"], "description": "mysql is MySQL and MariaDB" },
+		"host": { "type": "string", "maxLength": 253, "example": "db.lan" },
+		"port": { "type": "integer", "minimum": 1, "maximum": 65535, "example": 5432 },
+		"name": { "type": "string", "maxLength": 64, "description": "Database name", "example": "npmpro" },
+		"user": { "type": "string", "maxLength": 255, "example": "npmpro" },
+		"password": { "type": "string", "maxLength": 1024, "description": "Taken as typed (not trimmed); never returned" },
+		"ssl": {
+			"type": "object",
+			"additionalProperties": false,
+			"description": "MySQL: enabled, reject_unauthorized, verify_identity. Postgres: enabled.",
+			"properties": {
+				"enabled": { "type": "boolean" },
+				"reject_unauthorized": { "type": "boolean" },
+				"verify_identity": { "type": "boolean" }
+			}
+		}
+	}
+}

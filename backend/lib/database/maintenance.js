@@ -21,7 +21,9 @@ const writesRunning = () =>
 		status: 409,
 	});
 
-const isMovePath = (path) => path === "/api/database" || path.startsWith("/api/database/");
+// exactly the move's own writes: nothing else under /api/database is open during a move
+const MOVE_PATHS = new Set(["/api/database/test", "/api/database/move"]);
+const isMovePath = (path) => MOVE_PATHS.has(path);
 
 const createMaintenance = () => {
 	let moveId = null;
@@ -115,7 +117,7 @@ const createMaintenance = () => {
 			if (READ_METHODS.has(req.method)) return next();
 			const path = req.path.replace(TRAILING_SLASHES, "") || "/";
 			// the move's own requests: the move request itself runs for the whole move
-			if (isMovePath(path)) return next();
+			if (req.method === "POST" && isMovePath(path)) return next();
 			if (moveId !== null && !OPEN.some(([method, open]) => method === req.method && path === open)) {
 				return next(inProgress());
 			}

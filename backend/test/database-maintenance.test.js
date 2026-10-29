@@ -47,6 +47,11 @@ it("refuses writes during a move, allows reads, login, logout and the move endpo
 		["DELETE", "/api/tokens/totp"],
 		["PATCH", "/api/tokens"],
 		["POST", "/api/databases"],
+		["POST", "/api/database"],
+		["POST", "/api/database/other"],
+		["PUT", "/api/database/move"],
+		["DELETE", "/api/database/move"],
+		["POST", "/api/database/move/extra"],
 	]) {
 		assert.ok(refused(run(m, method, path)), `${method} ${path}`);
 	}

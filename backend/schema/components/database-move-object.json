@@ -1,0 +1,53 @@
+{
+	"type": "object",
+	"description": "A database move: running, failed or restarting (kept in memory until the backend restarts)",
+	"additionalProperties": false,
+	"required": ["id", "state", "step", "started_at", "finished_at", "target", "tables", "backup", "error"],
+	"properties": {
+		"id": { "type": "string", "example": "3f2a9c0d1e4b5a68" },
+		"state": { "type": "string", "enum": ["running", "failed", "restarting"] },
+		"step": { "type": "string", "enum": ["maintenance", "backup", "schema", "copy", "verify", "switch"] },
+		"started_at": { "type": "string", "format": "date-time" },
+		"finished_at": { "type": ["string", "null"], "format": "date-time" },
+		"target": {
+			"type": "object",
+			"description": "The target without its password",
+			"additionalProperties": false,
+			"required": ["engine"],
+			"properties": {
+				"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
+				"file": { "type": "string" },
+				"host": { "type": "string" },
+				"port": { "type": "integer" },
+				"name": { "type": "string" },
+				"user": { "type": "string" },
+				"ssl": { "type": "object" }
+			}
+		},
+		"tables": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["name", "rows", "copied"],
+				"properties": {
+					"name": { "type": "string" },
+					"rows": { "type": "integer" },
+					"copied": { "type": "integer" }
+				}
+			}
+		},
+		"backup": { "type": ["string", "null"], "description": "The automatic backup made before the copy" },
+		"error": {
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"properties": {
+				"step": { "type": "string" },
+				"code": { "type": "string" },
+				"message": { "type": "string" },
+				"message_i18n": { "type": ["string", "null"] },
+				"details": { "type": ["string", "null"] }
+			}
+		}
+	}
+}

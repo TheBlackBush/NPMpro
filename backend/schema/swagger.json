@@ -83,6 +83,10 @@
 		{
 			"name": "backups",
 			"description": "Endpoints related to backups and restores"
+		},
+		{
+			"name": "database",
+			"description": "Endpoints related to the database in use and moves"
 		}
 	],
 	"paths": {
@@ -568,6 +572,24 @@
 		"/users/{userID}/permissions": {
 			"put": {
 				"$ref": "./paths/users/userID/permissions/put.json"
+			}
+		},
+		"/database": {
+			"get": {
+				"$ref": "./paths/database/get.json"
+			}
+		},
+		"/database/test": {
+			"post": {
+				"$ref": "./paths/database/test/post.json"
+			}
+		},
+		"/database/move": {
+			"get": {
+				"$ref": "./paths/database/move/get.json"
+			},
+			"post": {
+				"$ref": "./paths/database/move/post.json"
 			}
 		},
 		"/backups/types": {

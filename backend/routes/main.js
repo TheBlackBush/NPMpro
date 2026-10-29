@@ -8,6 +8,7 @@ import { isSetup } from "../setup.js";
 import auditLogRoutes from "./audit-log.js";
 import backupSchedulesRoutes from "./backup-schedules.js";
 import backupsRoutes from "./backups.js";
+import databaseRoutes from "./database.js";
 import docsRoutes from "./docs.js";
 import monitoringRoutes from "./monitoring.js";
 import accessListsRoutes from "./nginx/access_lists.js";
@@ -89,6 +90,7 @@ router.use("/api/audit-log", auditLogRoutes);
 // before /api/backups, whose /:name would take /schedules
 router.use("/api/backups/schedules", backupSchedulesRoutes);
 router.use("/api/backups", backupsRoutes);
+router.use("/api/database", databaseRoutes);
 router.use("/api/reports", reportsRoutes);
 router.use("/api/monitoring", monitoringRoutes);
 router.use("/api/settings", settingsRoutes);

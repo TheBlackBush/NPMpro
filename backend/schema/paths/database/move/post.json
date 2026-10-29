@@ -1,0 +1,27 @@
+{
+	"operationId": "startDatabaseMove",
+	"summary": "Move NPMpro to another database",
+	"description": "Admin only. Tests the target, takes the backup lock and answers with the move id; the steps (maintenance, safety backup, schema, copy, verify, switch) run in the background and the backend restarts on the new database. 409 when a move, backup or restore runs or the connection comes from the DB_* environment variables. Errors carry a database.error.<code> or backup.error.busy message id.",
+	"tags": ["database"],
+	"security": [{ "cookieAuth": [] }],
+	"requestBody": {
+		"description": "Target",
+		"required": true,
+		"content": { "application/json": { "schema": { "$ref": "../../../components/database-target-object.json" } } }
+	},
+	"responses": {
+		"200": {
+			"description": "The move started",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["id"],
+						"properties": { "id": { "type": "string" } }
+					}
+				}
+			}
+		}
+	}
+}
