@@ -77,6 +77,14 @@ const revokeSession = async (tokenData) => {
 };
 
 /**
+ * The revocations held during a database move, left in memory (still revoked): a copy for the new database before the
+ * move commits to it; writeHeldRevocations() writes them for good into the database that stays
+ *
+ * @returns {Array<{ sid: string, expires_at: number }>}
+ */
+const peekHeldRevocations = () => [...heldRevocations].map(([sid, expires_at]) => ({ sid, expires_at }));
+
+/**
  * The revocations held during a database move, removed from memory
  *
  * @returns {Array<{ sid: string, expires_at: number }>}
@@ -121,6 +129,7 @@ export {
 	continueSession,
 	isSessionRevoked,
 	newSession,
+	peekHeldRevocations,
 	revokeSession,
 	SESSION_MAX_AGE_SECONDS,
 	takeHeldRevocations,

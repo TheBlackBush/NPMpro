@@ -5,6 +5,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import app from "./app.js";
 import { backupStore, internalBackupSchedules } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
+import { registerMoveWriter } from "./internal/database-service.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
 	internalMonitoring,
@@ -35,6 +36,8 @@ import setup from "./setup.js";
 
 // the backup scheduler is created once, a startup retry calls appStart again
 let backupScheduler = null;
+// a database move pauses it; registered once
+let moveWriterRegistered = false;
 
 async function appStart() {
 	try {
@@ -106,6 +109,14 @@ async function appStart() {
 			giveUp: internalBackupSchedules.giveUp,
 			log: logger,
 		});
+		if (!moveWriterRegistered) {
+			registerMoveWriter({
+				name: "Backup scheduler",
+				pause: (options) => backupScheduler.pause(options),
+				resume: () => backupScheduler.resume(),
+			});
+			moveWriterRegistered = true;
+		}
 		backupScheduler.start();
 
 		await rm("/run/npmpro.sock", { force: true });
