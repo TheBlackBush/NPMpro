@@ -50,11 +50,20 @@ const createMaintenance = () => {
 		};
 	};
 
+	// a write request counts until its response is ended, not until the connection closes: a client (or nginx) that
+	// drops the connection does not stop the handler, which can still write. A handler that never ends its response
+	// keeps the claim, so the move's wait for running writes times out and the move fails before copying.
 	const track = (res) => {
 		if (typeof res?.once !== "function") return;
 		const release = claim();
 		res.once("finish", release);
-		res.once("close", release);
+		if (typeof res.end === "function") {
+			const end = res.end;
+			res.end = function endAndRelease(...args) {
+				release();
+				return end.apply(this, args);
+			};
+		}
 	};
 
 	const tryBeginWrite = () => (moveId === null ? claim() : null);

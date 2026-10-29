@@ -99,10 +99,56 @@ it("waits for a write request that started before the move", async () => {
 	});
 	await new Promise((resolve) => setImmediate(resolve));
 	assert.equal(settled, false);
-	res.emit("finish");
+	// a dropped connection does not end the handler: the write still counts
 	res.emit("close");
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(settled, false);
+	res.emit("finish");
 	await idle;
 	assert.equal(settled, true);
+	await m.idle();
+	m.end();
+});
+
+it("a write request whose connection closed counts until its response is ended", async () => {
+	const m = createMaintenance();
+	const res = new EventEmitter();
+	let ended = 0;
+	res.end = function end(body) {
+		ended += 1;
+		assert.equal(this, res);
+		return body;
+	};
+	assert.equal(run(m, "POST", "/api/nginx/proxy-hosts", res), "next");
+	m.start("move-end");
+	let settled = false;
+	const idle = m.idle().then(() => {
+		settled = true;
+	});
+	res.emit("close");
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(settled, false);
+	// the handler (or the error handler) ends the response, even on a closed socket where no finish follows
+	assert.equal(res.end("done"), "done");
+	assert.equal(ended, 1);
+	await idle;
+	assert.equal(settled, true);
+	// a later finish or a second end does not release twice
+	res.emit("finish");
+	res.end();
+	await m.idle();
+	m.end();
+});
+
+it("a write request that never ends its response makes the timed wait fail", async () => {
+	const m = createMaintenance();
+	const res = new EventEmitter();
+	res.end = () => undefined;
+	assert.equal(run(m, "DELETE", "/api/users/2", res), "next");
+	m.start("move-stuck");
+	res.emit("close");
+	await assert.rejects(m.idle({ timeoutMs: 20 }), (error) => error.code === "writes-running");
+	res.end();
 	await m.idle();
 	m.end();
 });
