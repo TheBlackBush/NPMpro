@@ -1,8 +1,9 @@
 import { IconX } from "@tabler/icons-react";
 import cn from "clsx";
-import { getIn, useField, useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import { useRef, useState } from "react";
 import { intl, T } from "src/locale";
+import { visibleErrorAt } from "src/modules/FormFields";
 
 // the backend's rule (schema/common.json): an address or CIDR range, or unix:; "all" is only the last rule
 const ADDRESS = /^(?:unix:|[0-9A-Fa-f.:/]{1,255})$/u;
@@ -31,8 +32,7 @@ export function AccessClientFields({ initialValues, name = "clients" }) {
 	const rowsRef = useRef(values);
 	rowsRef.current = values;
 	useField({ name, validate: () => clientErrors(rowsRef.current) });
-	const shownError = (idx) =>
-		getIn(touched, `${name}[${idx}].address`) || submitCount > 0 ? getIn(errors, `${name}[${idx}].address`) : null;
+	const shownError = (idx) => visibleErrorAt({ errors, touched, submitCount }, `${name}[${idx}].address`);
 
 	const blankClient = { directive: "allow", address: "" };
 

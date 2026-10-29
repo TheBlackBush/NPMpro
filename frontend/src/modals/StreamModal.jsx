@@ -196,7 +196,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 														type="text"
 														minLength={1}
 														maxLength={11}
-														pattern="[0-9]{1,5}(-[0-9]{1,5})?"
 														className={`form-control ${form.errors.incomingPort && form.touched.incomingPort ? "is-invalid" : ""}`}
 														required
 														placeholder={intl.formatMessage(
@@ -256,7 +255,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																type="text"
 																className={`form-control ${form.errors.forwardingHost && form.touched.forwardingHost ? "is-invalid" : ""}`}
 																required
-																pattern="\S+"
 																placeholder={intl.formatMessage({
 																	id: "stream.forward-host.placeholder",
 																})}
@@ -285,7 +283,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																id="forwardingPort"
 																type="text"
 																maxLength={12}
-																pattern="[0-9]{0,5}|\$server_port"
 																className={`form-control ${form.errors.forwardingPort && form.touched.forwardingPort ? "is-invalid" : ""}`}
 																placeholder={intl.formatMessage(
 																	{ id: "form.example" },

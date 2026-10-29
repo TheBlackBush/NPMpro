@@ -31,6 +31,7 @@ import {
 } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
+import { joinIds, visibleErrorAt } from "src/modules/FormFields";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
 import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptions";
 import { validateInteger, validateUpstreamUrl } from "src/modules/Validations";
@@ -321,11 +322,8 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 											<div className="col-md-5">
 												<Field name="forwardHost">
 													{({ field, form }) => {
-														const hostError =
-															form.errors.forwardHost &&
-															(form.touched.forwardHost || form.submitCount > 0)
-																? form.errors.forwardHost
-																: null;
+														const hostError = visibleErrorAt(form, "forwardHost");
+														const pathHint = form.values.forwardScheme === "path";
 														return (
 															<div className="mb-3">
 																<label className="form-label" htmlFor="forwardHost">
@@ -338,16 +336,25 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																	placeholder="example.com"
 																	required={form.values.forwardScheme !== "empty"}
 																	aria-invalid={hostError ? "true" : undefined}
+																	aria-describedby={joinIds(
+																		hostError ? "forwardHost-error" : null,
+																		pathHint ? "forwardHost-hint" : null,
+																	)}
 																	{...field}
 																/>
-																{error ? (
-																	<div className="invalid-feedback">{error}</div>
+																{hostError ? (
+																	<div
+																		className="invalid-feedback"
+																		id="forwardHost-error"
+																	>
+																		{hostError}
+																	</div>
 																) : null}
-																{form.values.forwardScheme === "path" && (
-																	<div className="form-hint">
+																{pathHint ? (
+																	<div className="form-hint" id="forwardHost-hint">
 																		<T id="host.forward-host.path-hint" />
 																	</div>
-																)}
+																) : null}
 															</div>
 														);
 													}}
@@ -648,7 +655,6 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 																			id: "host.auth-request-upstream.placeholder",
 																		})}
 																		maxLength={255}
-																		pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
 																		{...field}
 																	/>
 																	{form.errors.npmproAuthRequestUpstream ? (
