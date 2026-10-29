@@ -253,7 +253,11 @@ labels:
 12. It is recommended to block at the earliest possible point, so if possible set up a firewall bouncer: https://docs.crowdsec.net/u/bouncers/firewall, make sure to also include the docker iptables in the firewall bouncer config
 13. Note that when crowdsec appsec is enabled for a host/location, request bodies will always be buffered, so setting `proxy_request_buffering` to off will not work there, response buffering is not affected
 14. Note that appsec blocks requests with a body bigger than 10 MiB by default, so you may want to enable "Disable Crowdsec Appsec" for hosts/locations which receive bigger uploads (like Nextcloud)
-15. The bouncer runs before access lists, so a banned IP gets the ban page instead of a basic auth prompt and can not keep guessing passwords
+15. The bouncer runs before access lists, so a banned IP gets the ban page instead of a basic auth prompt and can not keep guessing passwords. This has some effects:
+    - with AppSec enabled, request bodies to hosts protected by access lists or forward authentication are read and sent to AppSec before authentication, so set a `client_max_body_size` on such hosts or disable AppSec there if that matters
+    - clients let in by an IP allow rule of an access list with "satisfy any" are now checked by CrowdSec too, including bot detection challenges, so apps in your LAN that are not browsers may need a CrowdSec allowlist
+    - `auth_ldap` from the advanced config still runs before the bouncer
+    - custom `access_by_lua` blocks in the advanced config run before allow/deny rules, `auth_basic` and `auth_request` while CrowdSec is enabled, and must not set `access_by_lua_no_postpone` again
 
 ## Bot detection (optional)
 Bot detection challenges every request without a valid cookie, so clients which can not solve it, like apps, get blocked. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable, the short version:
