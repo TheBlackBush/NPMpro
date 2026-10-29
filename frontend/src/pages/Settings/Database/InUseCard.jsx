@@ -65,14 +65,18 @@ function InUseCard({ data }) {
 						)}
 					</Item>
 					{data.movedAt ? (
-						<Item titleId="audit-log.action.moved">
-							<T
-								id="settings.database.moved"
-								data={{
-									engine: data.movedFrom?.engine ? engineLabel(data.movedFrom.engine) : "",
-									date: formatDateTime(data.movedAt),
-								}}
-							/>
+						<Item titleId="settings.database.moved.title">
+							{data.movedFrom?.engine ? (
+								<T
+									id="settings.database.moved"
+									data={{
+										engine: engineLabel(data.movedFrom.engine),
+										date: formatDateTime(data.movedAt),
+									}}
+								/>
+							) : (
+								<T id="settings.database.moved.date" data={{ date: formatDateTime(data.movedAt) }} />
+							)}
 						</Item>
 					) : null}
 				</div>

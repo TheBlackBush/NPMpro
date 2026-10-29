@@ -22,8 +22,9 @@ const useDatabaseMove = (enabled = true) =>
 		refetchInterval: (query) => (query.state.data?.move?.state === "running" ? 1000 : false),
 	});
 
-const useTestDatabase = () => useMutation({ mutationFn: (target) => testDatabase(target) });
+// gcTime 0: the variables hold the password, so they leave the mutation cache as soon as the form is gone
+const useTestDatabase = () => useMutation({ mutationFn: (target) => testDatabase(target), gcTime: 0 });
 
-const useStartDatabaseMove = () => useMutation({ mutationFn: (target) => startDatabaseMove(target) });
+const useStartDatabaseMove = () => useMutation({ mutationFn: (target) => startDatabaseMove(target), gcTime: 0 });
 
 export { useDatabase, useDatabaseMove, useStartDatabaseMove, useTestDatabase };

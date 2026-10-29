@@ -2,16 +2,35 @@ import { IconArrowsExchange, IconPlugConnected } from "@tabler/icons-react";
 import cn from "clsx";
 import { Field, Form, Formik, useFormikContext } from "formik";
 import { useId, useState } from "react";
-import { ApiErrorContent, Button, ErrorAlert, PasswordInput, SwitchField } from "src/components";
+import {
+	ApiErrorContent,
+	Button,
+	ErrorAlert,
+	FormErrorNote,
+	PasswordInput,
+	SwitchField,
+	showFirstInvalid,
+	useShownErrors,
+} from "src/components";
 import { useTestDatabase } from "src/hooks";
 import { intl, T } from "src/locale";
-import { changeEngine, ENGINES, initialTarget, payloadKey, targetErrors, toPayload } from "src/modules/DatabaseMove";
+import {
+	changeEngine,
+	ENGINES,
+	initialTarget,
+	moveHint,
+	canMove as passed,
+	payloadKey,
+	targetErrors,
+	testOfValues,
+	toPayload,
+} from "src/modules/DatabaseMove";
 
 // an error is shown once the field was left or a test was tried
 const shownError = (form, name) =>
 	form.errors[name] && (form.touched[name] || form.submitCount > 0) ? form.errors[name] : null;
 
-function InputField({ name, id, labelId, className, ...inputProps }) {
+function InputField({ name, id, labelId, className, required, ...inputProps }) {
 	return (
 		<Field name={name}>
 			{({ field, form }) => {
@@ -25,6 +44,8 @@ function InputField({ name, id, labelId, className, ...inputProps }) {
 							{...field}
 							{...inputProps}
 							id={id}
+							required={required}
+							aria-required={required ? "true" : undefined}
 							className={cn("form-control", error && "is-invalid")}
 							aria-invalid={error ? "true" : undefined}
 							aria-describedby={error ? `${id}-error` : undefined}
@@ -59,6 +80,7 @@ function ServerFields({ baseId }) {
 					id={`${baseId}-host`}
 					labelId="settings.database.host"
 					className="col-md-8"
+					required
 					autoComplete="off"
 					spellCheck={false}
 				/>
@@ -76,6 +98,7 @@ function ServerFields({ baseId }) {
 					id={`${baseId}-name`}
 					labelId="settings.database.name"
 					className="col-md-6"
+					required
 					autoComplete="off"
 					spellCheck={false}
 				/>
@@ -84,6 +107,7 @@ function ServerFields({ baseId }) {
 					id={`${baseId}-user`}
 					labelId="settings.database.user"
 					className="col-md-6"
+					required
 					autoComplete="off"
 					spellCheck={false}
 				/>
@@ -126,10 +150,14 @@ function ServerFields({ baseId }) {
 function MoveForm({ tested }) {
 	const { values, setValues, isSubmitting } = useFormikContext();
 	const baseId = useId();
-	const reasonId = `${baseId}-reason`;
+	const noteId = `${baseId}-note`;
+	const hintId = `${baseId}-hint`;
+	const testId = `${baseId}-test`;
+	const blocked = useShownErrors(true).length > 0;
 	// a result belongs to the values it was made with: any change hides it and asks for a new test
-	const current = tested?.key === payloadKey(toPayload(values)) ? tested : null;
-	const canMove = Boolean(current?.result) && !isSubmitting;
+	const current = testOfValues(tested, values);
+	const canMove = passed(current) && !isSubmitting;
+	const hint = isSubmitting ? null : moveHint(current);
 
 	return (
 		<Form className="card mb-4" noValidate>
@@ -166,36 +194,56 @@ function MoveForm({ tested }) {
 				) : (
 					<ServerFields baseId={baseId} />
 				)}
-				{current?.result ? (
-					<div className="alert alert-success mt-3 mb-0" role="status">
-						{current.result.engine === "sqlite" ? (
-							<T id="settings.database.test.ok-sqlite" />
-						) : (
-							<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
-						)}
-					</div>
-				) : null}
-				{current?.error ? (
-					<ErrorAlert className="mt-3 mb-0">
-						<ApiErrorContent error={current.error} />
-					</ErrorAlert>
-				) : null}
+				{/* always mounted, so a screen reader announces the result that appears in it */}
+				<div aria-live="polite">
+					{current?.result ? (
+						<div className="alert alert-success mt-3 mb-0">
+							{current.result.engine === "sqlite" ? (
+								<T id="settings.database.test.ok-sqlite" />
+							) : (
+								<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
+							)}
+						</div>
+					) : null}
+					{current?.error ? (
+						<ErrorAlert className="mt-3 mb-0">
+							<ApiErrorContent error={current.error} />
+						</ErrorAlert>
+					) : null}
+				</div>
 			</div>
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
-				{canMove ? null : (
-					<span id={reasonId} className="text-secondary small me-2 text-end">
-						<T id="settings.database.test.first" />
+				<FormErrorNote id={noteId} late className="me-2 text-end" />
+				{hint && !blocked ? (
+					<span id={hintId} className="text-secondary small me-2 text-end">
+						<T id={hint} />
 					</span>
-				)}
-				<Button type="submit" isLoading={isSubmitting}>
+				) : null}
+				<Button
+					type="submit"
+					id={testId}
+					isLoading={isSubmitting}
+					blocked={blocked}
+					onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+					// keeps the focus in the field until the click is done (a blur error would move the button)
+					onMouseDown={(e) => e.preventDefault()}
+					aria-describedby={blocked ? noteId : undefined}
+				>
 					<IconPlugConnected className="icon" aria-hidden="true" />
 					<T id="settings.database.test" />
 				</Button>
 				<Button
 					color="primary"
 					blocked={!canMove}
-					title={canMove ? undefined : intl.formatMessage({ id: "settings.database.test.first" })}
-					aria-describedby={canMove ? undefined : reasonId}
+					// the next step is the test: a click on the blocked Move goes to its button
+					onBlockedClick={(e) =>
+						e.currentTarget
+							.closest("form")
+							?.querySelector(`#${CSS.escape(testId)}`)
+							?.focus()
+					}
+					title={hint ? intl.formatMessage({ id: hint }) : undefined}
+					aria-describedby={hint && !blocked ? hintId : undefined}
 				>
 					<IconArrowsExchange className="icon" aria-hidden="true" />
 					<T id="settings.database.move.button" />

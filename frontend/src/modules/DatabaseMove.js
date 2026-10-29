@@ -64,6 +64,24 @@ export const toPayload = (values) => {
 // Move is enabled only for the values the last passing test used
 export const payloadKey = (payload) => JSON.stringify(payload);
 
+/**
+ * The last test, when it was made with exactly these form values; null once any value changed
+ *
+ * @param   {?{ key: string, result?: Object, error?: unknown }} tested
+ * @param   {Object} values  the form values
+ * @returns {?{ key: string, result?: Object, error?: unknown }}
+ */
+export const testOfValues = (tested, values) => (tested?.key === payloadKey(toPayload(values)) ? tested : null);
+
+// Move can start after a passing test of the current values
+export const canMove = (current) => Boolean(current?.result);
+
+// the hint next to a blocked Move: test first, or the test of these values failed
+export const moveHint = (current) => {
+	if (canMove(current)) return null;
+	return current?.error ? "settings.database.test.failed-hint" : "settings.database.test.first";
+};
+
 export const stepState = (move, step) => {
 	if (!move) return "pending";
 	const at = MOVE_STEPS.indexOf(move.step);

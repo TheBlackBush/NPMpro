@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	canMove,
 	changeEngine,
 	initialTarget,
+	moveHint,
 	payloadKey,
 	sourceBadge,
 	stepState,
 	targetErrors,
+	testOfValues,
 	toPayload,
 	totals,
 	waitForRestart,
@@ -111,4 +114,30 @@ it("waits for a health answer without maintenance, at most the limit", async () 
 		"timeout",
 	);
 	assert.equal(clock, 120_000);
+});
+
+it("changes the key with a TLS switch and sends no MySQL TLS keys for Postgres", () => {
+	const mysql = { ...initialTarget("mysql"), host: "db", sslEnabled: true };
+	const key = payloadKey(toPayload(mysql));
+	assert.notEqual(payloadKey(toPayload({ ...mysql, sslEnabled: false })), key);
+	assert.notEqual(payloadKey(toPayload({ ...mysql, sslRejectUnauthorized: false })), key);
+	assert.notEqual(payloadKey(toPayload({ ...mysql, sslVerifyIdentity: false })), key);
+	assert.deepEqual(toPayload({ ...initialTarget("postgres"), host: "db", sslEnabled: true }).ssl, { enabled: true });
+});
+
+it("keeps a test only for the values it used and names the next step", () => {
+	const values = { ...initialTarget("postgres"), host: "db" };
+	const passed = { key: payloadKey(toPayload(values)), result: { engine: "postgres", version: "16.4" } };
+	const failed = { key: passed.key, error: new Error("database.error.connect") };
+	assert.equal(testOfValues(passed, values), passed);
+	assert.equal(testOfValues(passed, { ...values, password: "x" }), null);
+	assert.equal(testOfValues(null, values), null);
+	assert.equal(canMove(testOfValues(passed, values)), true);
+	assert.equal(canMove(testOfValues(failed, values)), false);
+	assert.equal(moveHint(passed), null);
+	assert.equal(moveHint(failed), "settings.database.test.failed-hint");
+	assert.equal(moveHint(null), "settings.database.test.first");
+	const sqlite = initialTarget("sqlite");
+	const sqliteTest = { key: payloadKey(toPayload(sqlite)), result: { engine: "sqlite", version: null } };
+	assert.equal(canMove(testOfValues(sqliteTest, { ...sqlite, host: "ignored" })), true);
 });
