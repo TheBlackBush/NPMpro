@@ -17,6 +17,20 @@ Nie musisz mieć utworzonego Hosta proxy przed wystąpieniem o ten typ certyfika
 
 Ten proces obsługuje domeny wieloznaczne (wildcard).
 
+#### Zapisane dane uwierzytelniające DNS
+
+Dane uwierzytelniające dostawcy DNS są zapisywane oddzielnie od certyfikatu, na karcie
+_Dane uwierzytelniające DNS_ na stronie Certyfikaty. Certyfikat wybiera potem tylko jeden z
+zapisanych zestawów danych, dzięki czemu kilka certyfikatów może z nich korzystać wspólnie.
+
+Sekrety są przechowywane w postaci zaszyfrowanej i nigdy nie są ponownie wyświetlane. Podczas edycji danych uwierzytelniających
+pozostaw sekret pusty, aby zachować zapisaną wartość. Klucz używany do szyfrowania to plik
+`/data/npmpro/dns-credentials.key`. Twórz jego kopię zapasową razem z bazą danych, w przeciwnym razie
+po przywróceniu zapisanych danych uwierzytelniających nie będzie można odczytać.
+
+Dostawcy bez formularza używają pola tekstowego INI, do którego wklejasz zawartość
+pliku z danymi uwierzytelniającymi tego dostawcy.
+
 ### Własny certyfikat
 
 Użyj tej opcji, aby przesłać własny certyfikat TLS, dostarczony przez twój własny urząd certyfikacji.

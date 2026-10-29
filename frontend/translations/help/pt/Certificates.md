@@ -25,6 +25,20 @@ Também não é necessário que o *Proxy Host* tenha acesso HTTP configurado.
 
 Este processo **suporta** domínios wildcard.
 
+#### Credenciais DNS guardadas
+
+As credenciais do teu fornecedor DNS (*DNS Provider*) são guardadas separadamente do certificado, no
+separador *Credenciais DNS* da página Certificados. Depois, um certificado apenas escolhe uma das
+credenciais guardadas, por isso vários certificados podem partilhá-las.
+
+Os segredos são guardados cifrados e nunca voltam a ser mostrados. Ao editar uma credencial, deixa
+um segredo vazio para manter o valor guardado. A chave usada na cifragem é o ficheiro
+`/data/npmpro/dns-credentials.key`; faz cópia de segurança dele juntamente com a base de dados, caso contrário
+as credenciais guardadas não poderão ser lidas após um restauro.
+
+Os fornecedores sem formulário usam a caixa de texto INI, onde colas o conteúdo do
+ficheiro de credenciais desse fornecedor.
+
 ### Certificado Personalizado
 
 Usa esta opção para carregar o teu próprio Certificado TLS, fornecido pela

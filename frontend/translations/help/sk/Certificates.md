@@ -26,6 +26,20 @@ Tiež nie je potrebné mať _Proxy Host_ nakonfigurovaný pre prístup HTTP.
 
 Tento proces _podporuje_ domény s divokými kartami.
 
+#### Uložené prihlasovacie údaje DNS
+
+Prihlasovacie údaje pre vášho DNS Providera sa ukladajú oddelene od certifikátu, na
+karte _Prihlasovacie údaje DNS_ na stránke Certifikáty. Certifikát potom iba vyberie jeden
+z uložených prihlasovacích údajov, takže ich môže zdieľať viac certifikátov.
+
+Tajné hodnoty sa ukladajú šifrovane a už sa nikdy znova nezobrazia. Pri úprave prihlasovacích údajov
+nechajte tajnú hodnotu prázdnu, ak chcete zachovať uloženú hodnotu. Kľúč použitý na šifrovanie je súbor
+`/data/npmpro/dns-credentials.key`, zálohujte ho spolu s databázou, inak
+uložené prihlasovacie údaje nebude možné po obnovení prečítať.
+
+Provideri bez formulára používajú textové pole INI, do ktorého vložíte obsah
+súboru s prihlasovacími údajmi pre daného providera.
+
 ### Vlastný certifikát
 
 Túto možnosť použite na nahratie vlastného TLS certifikátu, ktorý vám poskytla vaša

@@ -23,6 +23,20 @@ ikke at `Proxy‑host` er konfigurert for HTTP‑tilgang.
 
 Denne prosessen _støtter_ wildcard‑domener.
 
+#### Lagret DNS-påloggingsinformasjon
+
+Legitimasjonen for DNS‑leverandøren din lagres separat fra sertifikatet, i fanen
+_DNS-påloggingsinformasjon_ på siden Sertifikater. Et sertifikat velger deretter bare én av de
+lagrede legitimasjonene, slik at flere sertifikater kan dele dem.
+
+Hemmeligheter lagres kryptert og vises aldri igjen. Når du redigerer en legitimasjon, lar du
+en hemmelighet stå tom for å beholde den lagrede verdien. Nøkkelen som brukes til krypteringen, er filen
+`/data/npmpro/dns-credentials.key`. Ta sikkerhetskopi av den sammen med databasen, ellers
+kan ikke den lagrede legitimasjonen leses etter en gjenoppretting.
+
+Leverandører uten skjema bruker INI‑tekstboksen, der du limer inn innholdet i
+legitimasjonsfilen for den leverandøren.
+
 ### Egendefinert sertifikat
 
 Bruk dette alternativet for å laste opp ditt eget TLS‑sertifikat, levert av din

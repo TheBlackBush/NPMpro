@@ -16,6 +16,20 @@ U heeft geen _Proxy Host_ nodig voordat u dit type certificaat aanvraagt. U hoef
 
 Dit proces ondersteunt _wel_ wildcard-domeinen.
 
+#### Opgeslagen DNS-inloggegevens
+
+De inloggegevens voor uw DNS-provider worden los van het certificaat opgeslagen, op het
+tabblad _DNS-inloggegevens_ van de pagina Certificaten. Een certificaat kiest daarna alleen een van de
+opgeslagen inloggegevens, zodat meerdere certificaten ze kunnen delen.
+
+Geheimen worden versleuteld opgeslagen en nooit meer getoond. Laat bij het bewerken van inloggegevens
+een geheim leeg om de opgeslagen waarde te behouden. De sleutel voor de versleuteling is het bestand
+`/data/npmpro/dns-credentials.key`. Maak hiervan samen met de database een back-up, anders
+kunnen de opgeslagen inloggegevens na een herstel niet worden gelezen.
+
+Providers zonder formulier gebruiken het INI-tekstvak, waarin u de inhoud van het
+inloggegevensbestand voor die provider plakt.
+
 ### Aangepast certificaat
 
 Gebruik deze optie om uw eigen TLS-certificaat te uploaden, zoals verstrekt door uw eigen Certificaatautoriteit.
