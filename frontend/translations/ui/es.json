@@ -180,6 +180,7 @@
 	"empty-search": "No se encontraron resultados",
 	"empty-subtitle": "¿Por qué no creas uno?",
 	"enabled": "Habilitado",
+	"error.access.all-rule-last": "Una Regla de Acceso \"all\" solo puede ser la última regla",
 	"error.access.at-least-one": "Se requiere al menos una Autorización o una Regla de Acceso",
 	"error.access.duplicate-usernames": "Los nombres de usuario de autorización deben ser únicos",
 	"error.invalid-auth": "Correo electrónico o contraseña no válidos",

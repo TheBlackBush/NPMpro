@@ -175,6 +175,7 @@
 	"empty-search": "見つかりませんでした",
 	"empty-subtitle": "作ってみましょう",
 	"enabled": "有効",
+	"error.access.all-rule-last": "\"all\" のアクセスルールは最後のルールにのみ指定できます",
 	"error.access.at-least-one": "少なくとも一つの認証またはアクセスルールが必要です",
 	"error.access.duplicate-usernames": "認証のユーザー名は他と同じ名前は使用できません",
 	"error.invalid-auth": "無効なemailまたはパスワード",

@@ -182,6 +182,7 @@
 	"empty-search": "Ingen resultater funnet",
 	"empty-subtitle": "Hvorfor ikke opprette en?",
 	"enabled": "Aktivert",
+	"error.access.all-rule-last": "En tilgangsregel \"all\" kan bare være den siste regelen",
 	"error.access.at-least-one": "Enten en autorisasjon eller en tilgangsregel er påkrevd",
 	"error.access.duplicate-usernames": "Autorisasjonsbrukernavn må være unike",
 	"error.invalid-auth": "Ugyldig e-post eller passord",

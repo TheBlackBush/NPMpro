@@ -183,6 +183,7 @@
 	"empty-search": "نتیجه‌ای یافت نشد",
 	"empty-subtitle": "چرا یکی ایجاد نمی‌کنید؟",
 	"enabled": "فعال",
+	"error.access.all-rule-last": "قانون دسترسی \"all\" فقط می‌تواند آخرین قانون باشد",
 	"error.access.at-least-one": "حداقل یک کاربر احراز هویت یا یک قانون دسترسی لازم است.",
 	"error.access.duplicate-usernames": "نام‌های کاربری بخش احراز هویت باید یکتا باشند.",
 	"error.invalid-auth": "ایمیل یا رمز عبور نامعتبر است",

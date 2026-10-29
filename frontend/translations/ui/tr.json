@@ -183,6 +183,7 @@
 	"empty-search": "Sonuç bulunamadı",
 	"empty-subtitle": "Neden bir tane oluşturmuyorsunuz?",
 	"enabled": "Etkin",
+	"error.access.all-rule-last": "\"all\" Erişim Kuralı yalnızca son kural olabilir",
 	"error.access.at-least-one": "Ya bir Yetkilendirme ya da bir Erişim Kuralı gereklidir",
 	"error.access.duplicate-usernames": "Yetkilendirme Kullanıcı Adları benzersiz olmalıdır",
 	"error.invalid-auth": "Geçersiz e-posta veya şifre",

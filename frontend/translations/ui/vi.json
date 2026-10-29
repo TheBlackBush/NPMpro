@@ -175,6 +175,7 @@
 	"empty-search": "Không có kết quả nào",
 	"empty-subtitle": "Tại sao bạn không tạo một cái luôn?",
 	"enabled": "Đã bật",
+	"error.access.all-rule-last": "Quy tắc truy cập \"all\" chỉ có thể là quy tắc cuối cùng",
 	"error.access.at-least-one": "Yêu cầu ít nhất một quy tắc ủy quyền hoặc truy cập",
 	"error.access.duplicate-usernames": "Tên người dùng được ủy quyền phải là duy nhất",
 	"error.invalid-auth": "Email hoặc Mật khẩu không hợp lệ",

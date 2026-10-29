@@ -180,6 +180,7 @@
 	"empty-search": "Nincs találat",
 	"empty-subtitle": "Miért nem hoz létre egyet?",
 	"enabled": "Engedélyezve",
+	"error.access.all-rule-last": "Az \"all\" hozzáférési szabály csak az utolsó szabály lehet",
 	"error.access.at-least-one": "Legalább egy jogosultság vagy egy hozzáférési szabály szükséges",
 	"error.access.duplicate-usernames": "A jogosultsági felhasználóneveknek egyedieknek kell lenniük",
 	"error.invalid-auth": "Érvénytelen e-mail vagy jelszó",

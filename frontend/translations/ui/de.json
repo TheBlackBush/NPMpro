@@ -205,6 +205,7 @@
 	"empty-search": "Keine Ergebnisse gefunden",
 	"empty-subtitle": "Warum erstellen Sie nicht eine?",
 	"enabled": "aktiviert",
+	"error.access.all-rule-last": "Eine Zugriffsregel \"all\" kann nur die letzte Regel sein",
 	"error.access.at-least-one": "Entweder eine Genehmigung oder eine Zugriffsregel ist erforderlich.",
 	"error.access.duplicate-usernames": "Autorisierung Benutzernamen müssen eindeutig sein",
 	"error.invalid-auth": "Ungültige E-Mail-Adresse oder Passwort",

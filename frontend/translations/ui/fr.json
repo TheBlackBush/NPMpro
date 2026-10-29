@@ -187,6 +187,7 @@
 	"empty-search": "Aucun résultat trouvé",
 	"empty-subtitle": "Pourquoi n'en créez-vous pas un ?",
 	"enabled": "Activé",
+	"error.access.all-rule-last": "Une règle d'accès \"all\" ne peut être que la dernière règle",
 	"error.access.at-least-one": "Une autorisation ou une règle d'accès est requise.",
 	"error.access.duplicate-usernames": "Les noms d'utilisateurs autorisés doivent être uniques",
 	"error.invalid-auth": "Adresse e-mail ou mot de passe invalide",

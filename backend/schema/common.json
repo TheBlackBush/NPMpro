@@ -221,6 +221,7 @@
 			"example": "192.168.0.11"
 		},
 		"access_items": {
+			"description": "Basic auth users, each username once",
 			"type": "array",
 			"items": {
 				"type": "object",
@@ -254,6 +255,7 @@
 			]
 		},
 		"access_clients": {
+			"description": "Access rules in order: rules without an address are dropped, an all rule can only be the last one",
 			"type": "array",
 			"items": {
 				"type": "object",

@@ -308,6 +308,7 @@
 	"environment.users.PGID": "Group ID NPMpro runs as. 0 runs as root. Set PUID as well.",
 	"environment.users.PUID": "User ID NPMpro runs as. 0 runs as root. Set PGID as well.",
 	"environment.users.TZ": "Time zone of the container, for example Europe/Berlin. Without it, the time zone setting in Advanced applies (UTC by default).",
+	"error.access.all-rule-last": "An \"all\" Access Rule can only be the last rule",
 	"error.access.at-least-one": "Either one Authorization or one Access Rule is required",
 	"error.access.duplicate-usernames": "Authorization Usernames must be unique",
 	"error.advanced-config-admin-only": "Only administrators can change the advanced nginx configuration.",

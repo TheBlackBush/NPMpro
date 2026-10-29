@@ -176,6 +176,7 @@
 	"empty-search": "Níor aimsíodh aon torthaí",
 	"empty-subtitle": "Cén fáth nach gcruthaíonn tú ceann?",
 	"enabled": "Cumasaithe",
+	"error.access.all-rule-last": "Ní féidir le Riail Rochtana \"all\" a bheith ach mar an riail dheireanach",
 	"error.access.at-least-one": "Tá Údarú amháin nó Riail Rochtana amháin ag teastáil",
 	"error.access.duplicate-usernames": "Ní mór d’ainmneacha úsáideora údaraithe a bheith uathúil",
 	"error.invalid-auth": "Ríomhphost nó pasfhocal neamhbhailí",

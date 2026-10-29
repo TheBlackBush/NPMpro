@@ -180,6 +180,7 @@
 	"empty-search": "Nenašli sa žiadne výsledky",
 	"empty-subtitle": "Prečo nevytvoríte nejaký?",
 	"enabled": "Aktivované",
+	"error.access.all-rule-last": "Prístupové pravidlo \"all\" môže byť iba posledným pravidlom",
 	"error.access.at-least-one": "Je vyžadovaná aspoň jedna autorizácia alebo jedno prístupové pravidlo",
 	"error.access.duplicate-usernames": "Používateľské mená pre autorizáciu musia byť jedinečné",
 	"error.invalid-auth": "Neplatný email alebo heslo",

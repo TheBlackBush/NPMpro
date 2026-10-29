@@ -176,6 +176,7 @@
 	"empty-search": "Nenhum resultado encontrado",
 	"empty-subtitle": "Porque não cria um?",
 	"enabled": "Ativado",
+	"error.access.all-rule-last": "Uma Regra de Acesso \"all\" só pode ser a última regra",
 	"error.access.at-least-one": "É necessária pelo menos uma Autorização ou uma Regra de Acesso",
 	"error.access.duplicate-usernames": "Os nomes de utilizador de autorização devem ser únicos",
 	"error.invalid-auth": "Email ou palavra-passe inválidos",

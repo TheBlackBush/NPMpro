@@ -205,6 +205,7 @@
 	"empty-search": "未找到结果",
 	"empty-subtitle": "为什么不由您来创建一个呢？",
 	"enabled": "已启用",
+	"error.access.all-rule-last": "\"all\" 访问规则只能是最后一条规则",
 	"error.access.at-least-one": "需要至少一个授权或访问规则",
 	"error.access.duplicate-usernames": "授权用户名必须唯一",
 	"error.invalid-auth": "无效的邮箱或密码",

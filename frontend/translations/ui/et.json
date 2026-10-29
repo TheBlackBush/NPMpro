@@ -187,6 +187,7 @@
 	"empty-search": "Tulemusi ei leitud",
 	"empty-subtitle": "Miks mitte üks luua?",
 	"enabled": "Sees",
+	"error.access.all-rule-last": "Juurdepääsureegel \"all\" saab olla ainult viimane reegel",
 	"error.access.at-least-one": "Vaja on vähemalt ühte kasutajat või juurdepääsureeglit",
 	"error.access.duplicate-usernames": "Kasutajanimed peavad olema unikaalsed",
 	"error.invalid-auth": "Vale e-post või parool",

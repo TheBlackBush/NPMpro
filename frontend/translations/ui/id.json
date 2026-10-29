@@ -176,6 +176,7 @@
 	"empty-search": "Tidak ada hasil",
 	"empty-subtitle": "Mengapa tidak membuatnya?",
 	"enabled": "Aktif",
+	"error.access.all-rule-last": "Aturan Akses \"all\" hanya boleh menjadi aturan terakhir",
 	"error.access.at-least-one": "Setidaknya satu Otorisasi atau satu Aturan Akses diperlukan",
 	"error.access.duplicate-usernames": "Nama pengguna otorisasi harus unik",
 	"error.invalid-auth": "Email atau kata sandi tidak valid",

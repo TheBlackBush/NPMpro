@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
+import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
 import { writeSecretFile } from "../lib/secret-file.js";
 import { access as logger } from "../logger.js";
@@ -31,6 +32,7 @@ const internalAccessList = {
 		if (hasNoRules(data.items, data.clients)) {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
+		assertAccessListRules(data);
 
 		const row = await accessListModel.transaction(async (trx) => {
 			const insertedRow = await accessListModel.query(trx).insertAndFetch({
@@ -53,7 +55,7 @@ const internalAccessList = {
 
 			// Clients
 			await Promise.all(
-				(data.clients ?? []).map((client) =>
+				clientsWithAddress(data.clients).map((client) =>
 					accessListClientModel.query(trx).insert({
 						access_list_id: insertedRow.id,
 						address: client.address,
@@ -110,6 +112,7 @@ const internalAccessList = {
 		if (hasNoRules(data.items ?? row.items, data.clients ?? row.clients)) {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
+		assertAccessListRules(data);
 
 		await accessListModel.transaction(async (trx) => {
 			// patch name if specified
@@ -151,15 +154,13 @@ const internalAccessList = {
 				await accessListClientModel.query(trx).delete().where("access_list_id", data.id);
 
 				await Promise.all(
-					data.clients
-						.filter((client) => client.address)
-						.map((client) =>
-							accessListClientModel.query(trx).insert({
-								access_list_id: data.id,
-								address: client.address,
-								directive: client.directive,
-							}),
-						),
+					clientsWithAddress(data.clients).map((client) =>
+						accessListClientModel.query(trx).insert({
+							access_list_id: data.id,
+							address: client.address,
+							directive: client.directive,
+						}),
+					),
 				);
 			}
 		});

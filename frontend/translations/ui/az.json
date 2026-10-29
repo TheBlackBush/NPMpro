@@ -183,6 +183,7 @@
 	"empty-search": "Nəticə tapılmadı",
 	"empty-subtitle": "Niyə bir dənə yaratmırsınız?",
 	"enabled": "Aktivdir",
+	"error.access.all-rule-last": "\"all\" Giriş Qaydası yalnız sonuncu qayda ola bilər",
 	"error.access.at-least-one": "Ya bir Səlahiyyət, ya da bir Giriş Qaydası tələb olunur",
 	"error.access.duplicate-usernames": "Səlahiyyət istifadəçi adları unikal olmalıdır",
 	"error.invalid-auth": "Yanlış e-poçt və ya parol",
