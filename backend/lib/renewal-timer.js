@@ -1,4 +1,7 @@
+import { waitWithin } from "./database/pause.js";
+
 const HOUR = 1000 * 60 * 60;
+const POLL_MS = 1000;
 
 const validHours = (hours) => Number.isInteger(hours) && hours > 0;
 
@@ -8,18 +11,26 @@ const validHours = (hours) => Number.isInteger(hours) && hours > 0;
  * @param   {Object}    deps
  * @param   {Function}  deps.run              the renewal run
  * @param   {number}    [deps.hours]          initial interval, 3 when invalid
- * @param   {Object}    [deps.clock]          { setInterval, clearInterval } (tests)
+ * @param   {Function}  [deps.busy]           () => boolean, whether a renewal run is going on
+ * @param   {Object}    [deps.clock]          { setInterval, clearInterval, setTimeout, clearTimeout } (tests)
  * @param   {Object}    [deps.log]            logger with info()
+ * @param   {number}    [deps.pollMs]         how often pauseAndWait() looks at busy()
  */
-const createRenewalTimer = ({ run, hours, clock = globalThis, log } = {}) => {
+const createRenewalTimer = ({ run, hours, busy = () => false, clock = globalThis, log, pollMs = POLL_MS } = {}) => {
 	let intervalHours = validHours(hours) ? hours : 3;
 	let handle = null;
-	let isPaused = false;
+	// a restore and a database move can each pause the timer: it runs again when every pause has ended
+	let pauses = 0;
 
 	// a paused timer keeps its interval but skips the runs
 	const tick = () => {
-		if (isPaused) return;
+		if (pauses > 0) return;
 		return run();
+	};
+
+	// polls until no renewal runs, or until the wait gave up
+	const notBusy = async (wait) => {
+		while (busy() && !wait.over) await new Promise((resolve) => clock.setTimeout(resolve, pollMs));
 	};
 
 	const schedule = () => {
@@ -34,16 +45,35 @@ const createRenewalTimer = ({ run, hours, clock = globalThis, log } = {}) => {
 		running: () => handle !== null,
 
 		/** @returns {boolean} whether the runs are skipped */
-		paused: () => isPaused,
+		paused: () => pauses > 0,
 
 		/** Skips the runs until resume() */
 		pause: () => {
-			isPaused = true;
+			pauses += 1;
 		},
 
 		/** Ends a pause; a run missed meanwhile is not made up, the next interval runs */
 		resume: () => {
-			isPaused = false;
+			if (pauses > 0) pauses -= 1;
+		},
+
+		/**
+		 * Pauses, then waits for a run that is going on. With timeoutMs it rejects with "writer-running" when the run
+		 * takes longer, and this pause is ended again.
+		 *
+		 * @param {{ timeoutMs?: number }} [options]
+		 */
+		pauseAndWait: async ({ timeoutMs } = {}) => {
+			pauses += 1;
+			const wait = { over: false };
+			try {
+				await waitWithin(notBusy(wait), { name: "Certificate renewal", timeoutMs, clock });
+			} catch (error) {
+				if (pauses > 0) pauses -= 1;
+				throw error;
+			} finally {
+				wait.over = true;
+			}
 		},
 
 		/**

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { Model } from "objection";
 import db from "../db.js";
 import { hash, verify } from "../lib/argon2.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import now from "./now_helper.js";
 import User from "./user.js";
 
@@ -45,7 +46,14 @@ class Auth extends Model {
 		if (!this.secret.startsWith("$2")) return verify(password, this.secret);
 		if (!(await bcrypt.compare(password, this.secret))) return false;
 
-		await this.$query().patch({ type: this.type, secret: password });
+		// not during a database move: the hash is replaced at a later login
+		const release = maintenance.tryBeginWrite();
+		if (!release) return true;
+		try {
+			await this.$query().patch({ type: this.type, secret: password });
+		} finally {
+			release();
+		}
 		return true;
 	}
 

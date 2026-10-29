@@ -281,13 +281,24 @@ const createBackupStore = ({
 		pending.clear();
 	};
 
-	const withLock = async (fn) => {
+	// takes the lock at once or throws busy; the returned function releases it (once)
+	const acquire = () => {
 		if (running) throw busy();
 		running = true;
+		let released = false;
+		return () => {
+			if (released) return;
+			released = true;
+			running = false;
+		};
+	};
+
+	const withLock = async (fn) => {
+		const release = acquire();
 		try {
 			return await fn();
 		} finally {
-			running = false;
+			release();
 		}
 	};
 
@@ -414,6 +425,7 @@ const createBackupStore = ({
 		tempPath,
 		createStageDir,
 		cleanup,
+		acquire,
 		withLock,
 		createToken,
 		takeToken,

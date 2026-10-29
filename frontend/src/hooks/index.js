@@ -7,6 +7,7 @@ export * from "./useBackups";
 export * from "./useCertificate";
 export * from "./useCertificates";
 export * from "./useCheckVersion";
+export * from "./useDatabase";
 export * from "./useDeadHost";
 export * from "./useDeadHosts";
 export * from "./useDelayElapsed";

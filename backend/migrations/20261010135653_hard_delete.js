@@ -1,4 +1,3 @@
-import internalUser from "../internal/user.js";
 import { migrate as logger } from "../logger.js";
 
 const migrateName = "hard_delete";
@@ -9,9 +8,10 @@ const migrateName = "hard_delete";
  * @see https://knexjs.org/guide/migrations.html#migration-api
  *
  * @param   {Object} knex
+ * @param   {Object} [options] the user module, replaceable in tests
  * @returns {Promise}
  */
-const up = async (knex) => {
+const up = async (knex, { loadUser = () => import("../internal/user.js") } = {}) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 
 	await knex("npmplus_proxy_host_access_list")
@@ -40,7 +40,11 @@ const up = async (knex) => {
 	const userIds = await knex("user").where("is_deleted", 1).pluck("id");
 	for (const table of ["auth", "user_permission"]) await knex(table).whereIn("user_id", userIds).delete();
 	await knex("user").whereIn("id", userIds).delete();
-	for (const id of userIds) await internalUser.deleteAvatarFiles(id);
+	if (userIds.length > 0) {
+		// imported here: the models connect to the database in use when loaded
+		const { default: internalUser } = await loadUser();
+		for (const id of userIds) await internalUser.deleteAvatarFiles(id);
+	}
 
 	logger.info(`[${migrateName}] removed ${userIds.length} deleted users`);
 

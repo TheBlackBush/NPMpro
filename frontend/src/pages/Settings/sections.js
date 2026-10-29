@@ -2,6 +2,7 @@ import {
 	IconAdjustments,
 	IconCertificate,
 	IconChartBar,
+	IconDatabase,
 	IconDatabaseExport,
 	IconListDetails,
 	IconLock,
@@ -15,6 +16,7 @@ import Advanced from "./Advanced";
 import Authentication from "./Authentication";
 import Backup from "./Backup";
 import Certificates from "./Certificates";
+import Database from "./Database";
 import DefaultSite from "./DefaultSite";
 import Environment from "./Environment";
 import ForwardAuth from "./ForwardAuth";
@@ -35,5 +37,6 @@ export const SECTIONS = [
 	{ id: "geoip", labelKey: "settings.geoip", icon: IconWorldPin, element: Geoip },
 	{ id: "advanced", labelKey: "settings.advanced", icon: IconAdjustments, element: Advanced },
 	{ id: "backup", labelKey: "settings.backup", icon: IconDatabaseExport, element: Backup },
+	{ id: "database", labelKey: "settings.database", icon: IconDatabase, element: Database },
 	{ id: "environment", labelKey: "settings.environment", icon: IconListDetails, element: Environment },
 ];

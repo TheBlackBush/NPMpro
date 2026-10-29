@@ -228,7 +228,15 @@ export default {
 		consumedChallenges.set(tokenData.jti, tokenData.exp);
 
 		// Verify TOTP code
-		if (!(await mfa.verifyForLogin(userId, code))) {
+		let verified;
+		try {
+			verified = await mfa.verifyForLogin(userId, code);
+		} catch (err) {
+			// a backup code refused during a database move used nothing up: the challenge stays valid for a retry
+			if (err instanceof errs.DatabaseMoveError) consumedChallenges.delete(tokenData.jti);
+			throw err;
+		}
+		if (!verified) {
 			consumedChallenges.delete(tokenData.jti);
 			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_CODE, ERROR_MESSAGE_INVALID_CODE_I18N);
 		}

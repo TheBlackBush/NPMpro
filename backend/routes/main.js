@@ -1,4 +1,5 @@
 import express from "express";
+import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import requireLogin from "../lib/express/require-login.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
@@ -7,6 +8,7 @@ import { isSetup } from "../setup.js";
 import auditLogRoutes from "./audit-log.js";
 import backupSchedulesRoutes from "./backup-schedules.js";
 import backupsRoutes from "./backups.js";
+import databaseRoutes from "./database.js";
 import docsRoutes from "./docs.js";
 import monitoringRoutes from "./monitoring.js";
 import accessListsRoutes from "./nginx/access_lists.js";
@@ -57,6 +59,8 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 		setup: await isSetup(),
 		password: !(cfg.active && cfg.values.disable_password),
 		oidc: oidcHealth(cfg),
+		// every page polls this: the banner, and the move window's sign that the new process answers
+		...(maintenance.active() ? { maintenance: "database-move" } : {}),
 	});
 });
 
@@ -86,6 +90,7 @@ router.use("/api/audit-log", auditLogRoutes);
 // before /api/backups, whose /:name would take /schedules
 router.use("/api/backups/schedules", backupSchedulesRoutes);
 router.use("/api/backups", backupsRoutes);
+router.use("/api/database", databaseRoutes);
 router.use("/api/reports", reportsRoutes);
 router.use("/api/monitoring", monitoringRoutes);
 router.use("/api/settings", settingsRoutes);

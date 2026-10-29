@@ -1,0 +1,42 @@
+{
+	"type": "object",
+	"description": "The database in use",
+	"additionalProperties": false,
+	"required": ["engine", "version", "source", "size", "moved_at", "moved_from", "tables", "move"],
+	"properties": {
+		"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
+		"version": { "type": "string", "example": "3.50.4" },
+		"source": {
+			"type": "string",
+			"enum": ["env", "file", "default"],
+			"description": "env: DB_* environment variables (moves are locked); file: /data/npmpro/database.json; default: /data/npmpro/database.sqlite"
+		},
+		"file": { "type": "string", "description": "SQLite only" },
+		"host": { "type": "string" },
+		"port": { "type": "integer" },
+		"name": { "type": "string" },
+		"user": { "type": "string" },
+		"ssl": { "type": "object" },
+		"size": { "type": ["integer", "null"], "description": "Bytes, when the engine reports it" },
+		"moved_at": { "type": ["string", "null"], "format": "date-time" },
+		"moved_from": {
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"properties": {
+				"engine": { "type": "string", "enum": ["sqlite", "mysql", "postgres"] },
+				"host": { "type": "string" },
+				"name": { "type": "string" }
+			}
+		},
+		"tables": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["name", "rows"],
+				"properties": { "name": { "type": "string" }, "rows": { "type": "integer" } }
+			}
+		},
+		"move": { "oneOf": [{ "type": "null" }, { "$ref": "./database-move-object.json" }] }
+	}
+}

@@ -17,8 +17,19 @@ const OBJECT_TYPES = [
 	"user",
 	"setting",
 	"backup-schedule",
+	"database",
 ];
-const ACTIONS = ["created", "updated", "deleted", "enabled", "disabled", "backup-succeeded", "backup-failed"];
+const ACTIONS = [
+	"created",
+	"updated",
+	"deleted",
+	"enabled",
+	"disabled",
+	"backup-succeeded",
+	"backup-failed",
+	"moved",
+	"move-failed",
+];
 
 export default function TableWrapper() {
 	const [search, setSearch] = useState("");

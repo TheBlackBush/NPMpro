@@ -3,6 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import { createLogoutHandler } from "../lib/express/logout.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { revokeSession } from "../lib/session.js";
 import apiValidator from "../lib/validator/api.js";
@@ -90,28 +91,7 @@ router
 	 *
 	 * Delete the Token
 	 */
-	.delete(async (req, res) => {
-		// logout ends the whole session: every other copy of its tokens stops working too
-		const token = req.signedCookies?.["__Host-Http-token"];
-		if (token) {
-			try {
-				await revokeSession(TokenModel().load(token));
-			} catch {
-				// an expired or invalid token has no session left to end
-			}
-		}
-		res.clearCookie("__Host-Http-token", {
-			httpOnly: true,
-			secure: true,
-			sameSite: "Strict",
-		});
-		res.cookie("__Host-npmpro_oidc_no_redirect", "true", {
-			secure: true,
-			sameSite: "Strict",
-			maxAge: 60 * 60 * 1000,
-		});
-		res.status(200).send({ expires: new Date(0).toISOString() });
-	});
+	.delete(createLogoutHandler({ revokeSession, loadToken: (token) => TokenModel().load(token) }));
 
 router
 	.route("/totp")

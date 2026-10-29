@@ -10,6 +10,20 @@ const errs = {
 		}
 	},
 
+	// a database move or its target test; details carries the driver message, shown as the error output
+	DatabaseMoveError: class extends Error {
+		name = this.constructor.name;
+		public = true;
+
+		constructor(code, message, { status = 400, details = null, cause } = {}) {
+			super(message, cause ? { cause } : undefined);
+			this.code = code;
+			this.status = status;
+			this.details = details;
+			this.message_i18n = `database.error.${code}`;
+		}
+	},
+
 	ItemNotFoundError: class extends Error {
 		name = this.constructor.name;
 		public = true;

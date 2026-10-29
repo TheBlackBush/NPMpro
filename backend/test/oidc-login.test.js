@@ -34,6 +34,7 @@ it("error codes are the documented list", () => {
 		"no_user",
 		"domain_not_allowed",
 		"user_disabled",
+		"maintenance",
 	]);
 });
 

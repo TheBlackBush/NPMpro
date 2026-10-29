@@ -14,6 +14,7 @@ export * from "./ListToolbar";
 export * from "./Loading";
 export * from "./LoadingPage";
 export * from "./LocalePicker";
+export * from "./MaintenanceBanner";
 export * from "./NavLink";
 export * from "./NoticeAlert";
 export * from "./OidcButton";

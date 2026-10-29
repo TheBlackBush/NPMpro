@@ -1,98 +1,64 @@
 import crypto from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
+import { chooseDatabase, DATABASE_FILE, unsealWith } from "./database/connection-file.js";
+import { failingKnexConfig, knexConfigOf } from "./database/knex-config.js";
+import { createRetryLog, knexLogOf } from "./retry-log.js";
+import { defaultSecretBox } from "./secret-box.js";
+
+// the startup retry (index.js) and knex's connection warnings share it: one full line per error, then short ones
+const startupRetryLog = createRetryLog({ log: logger });
 
 const keysFile = "/data/npmpro/keys-ec.json";
-const SQLITE_FILE = "/data/npmpro/database.sqlite";
-const sqliteEngine = "better-sqlite3";
-const mysqlEngine = "mysql2";
-const postgresEngine = "pg";
-const truthyPattern = /^(?:1|true|yes|on)$/iu;
 
 let instance = null;
 
+const SOURCE_TEXT = {
+	env: "the DB_* environment variables",
+	file: "/data/npmpro/database.json",
+	default: "the default database file",
+};
+const ENGINE_TEXT = { sqlite: "SQLite", mysql: "MySQL/MariaDB", postgres: "PostgreSQL" };
+
+// configure runs when the first module loads the models (before appStart): an invalid database.json must not throw
+// here. It is logged once, and every query fails with the same message, so the startup retry shows it until the file
+// is deleted or renamed and NPMpro restarted. There is no fallback to SQLite.
 const configure = () => {
-	const toBool = (v) => truthyPattern.test((v || "").trim());
-
-	const envMysqlHost = process.env.DB_MYSQL_HOST || null;
-	const envMysqlUser = process.env.DB_MYSQL_USER || null;
-	const envMysqlName = process.env.DB_MYSQL_NAME || null;
-	const envMysqlSSL = toBool(process.env.DB_MYSQL_SSL);
-	const envMysqlSSLRejectUnauthorized =
-		process.env.DB_MYSQL_SSL_REJECT_UNAUTHORIZED === undefined
-			? true
-			: toBool(process.env.DB_MYSQL_SSL_REJECT_UNAUTHORIZED);
-	const envMysqlSSLVerifyIdentity =
-		process.env.DB_MYSQL_SSL_VERIFY_IDENTITY === undefined
-			? true
-			: toBool(process.env.DB_MYSQL_SSL_VERIFY_IDENTITY);
-	if (envMysqlHost && envMysqlUser && envMysqlName) {
-		// we have enough mysql creds to go with mysql
-		logger.info("Using MySQL configuration");
-		logger.warn(
-			"MariaDB/MySQL is unsupported, has no advantage over SQLite and is not recommended, note that you can't migrate to SQLite without a fresh install",
-		);
+	let chosen;
+	try {
+		chosen = chooseDatabase({
+			env: process.env,
+			exists: existsSync,
+			read: (file) => readFileSync(file, "utf8"),
+			unseal: unsealWith(defaultSecretBox),
+		});
+	} catch (error) {
+		logger.error(error.message);
 		return {
 			database: {
-				engine: mysqlEngine,
-				host: envMysqlHost,
-				port: process.env.DB_MYSQL_PORT || 3306,
-				user: envMysqlUser,
-				password: process.env.DB_MYSQL_PASSWORD,
-				name: envMysqlName,
-				ssl: envMysqlSSL
-					? { rejectUnauthorized: envMysqlSSLRejectUnauthorized, verifyIdentity: envMysqlSSLVerifyIdentity }
-					: false,
+				source: "invalid",
+				connection: { engine: null },
+				moved_at: null,
+				moved_from: null,
+				knex: failingKnexConfig(error),
 			},
 			keys: getKeys(),
 		};
 	}
-
-	const envPostgresHost = process.env.DB_POSTGRES_HOST || null;
-	const envPostgresUser = process.env.DB_POSTGRES_USER || null;
-	const envPostgresName = process.env.DB_POSTGRES_NAME || null;
-	if (envPostgresHost && envPostgresUser && envPostgresName) {
-		// we have enough postgres creds to go with postgres
-		logger.info("Using Postgres configuration");
-		logger.warn(
-			"PostgreSQL is unsupported, has no advantage over SQLite and is not recommended, note that you can't migrate to SQLite without a fresh install",
-		);
-		return {
-			database: {
-				engine: postgresEngine,
-				host: envPostgresHost,
-				port: process.env.DB_POSTGRES_PORT || 5432,
-				user: envPostgresUser,
-				password: process.env.DB_POSTGRES_PASSWORD,
-				name: envPostgresName,
-			},
-			keys: getKeys(),
-		};
+	const { connection } = chosen;
+	const where =
+		connection.engine === "sqlite" ? connection.file : `${connection.host}:${connection.port}/${connection.name}`;
+	if (chosen.source === "env" && existsSync(DATABASE_FILE)) {
+		logger.info(`Ignoring ${DATABASE_FILE}: the connection comes from the DB_* environment variables`);
 	}
-
-	const envSqliteFile = SQLITE_FILE;
-
-	logger.info(`Using Sqlite: ${envSqliteFile}`);
+	logger.info(`Using ${ENGINE_TEXT[connection.engine]} ${where} from ${SOURCE_TEXT[chosen.source]}`);
 	return {
 		database: {
-			engine: "knex-native",
-			knex: {
-				client: sqliteEngine,
-				connection: {
-					filename: envSqliteFile,
-				},
-				useNullAsDefault: true,
-				pool: {
-					afterCreate: (conn, done) => {
-						conn.pragma("synchronous = NORMAL");
-						// deleted rows (old secrets) are overwritten, not left in free pages
-						conn.pragma("secure_delete = FAST");
-						conn.pragma("temp_store = MEMORY");
-						conn.pragma("optimize = 0x10002");
-						done(null, conn);
-					},
-				},
-			},
+			...chosen,
+			knex: knexConfigOf(connection, {
+				note: (line) => logger.warn(line),
+				log: knexLogOf(startupRetryLog, (message) => logger.warn(message)),
+			}),
 		},
 		keys: getKeys(),
 	};
@@ -155,36 +121,6 @@ const configGet = (key) => {
 };
 
 /**
- * Is this a sqlite configuration?
- *
- * @returns {boolean}
- */
-const isSqlite = () => {
-	instance ??= configure();
-	return instance.database.knex?.client === sqliteEngine;
-};
-
-/**
- * Is this a mysql configuration?
- *
- * @returns {boolean}
- */
-const isMysql = () => {
-	instance ??= configure();
-	return instance.database.engine === mysqlEngine;
-};
-
-/**
- * Is this a postgres configuration?
- *
- * @returns {boolean}
- */
-const isPostgres = () => {
-	instance ??= configure();
-	return instance.database.engine === postgresEngine;
-};
-
-/**
  * Returns a public key
  *
  * @returns {string}
@@ -204,4 +140,36 @@ const getPrivateKey = () => {
 	return instance.keys.key;
 };
 
-export { configGet, getPrivateKey, getPublicKey, isMysql, isPostgres, isSqlite, SQLITE_FILE };
+const engine = () => configGet("database").connection.engine;
+const isSqlite = () => engine() === "sqlite";
+const isMysql = () => engine() === "mysql";
+const isPostgres = () => engine() === "postgres";
+
+/**
+ * The SQLite file in use, or null on MySQL/Postgres
+ *
+ * @returns {string|null}
+ */
+const sqliteFile = () => (isSqlite() ? configGet("database").connection.file : null);
+
+/**
+ * Where the connection comes from and what it is (with the password, for the database service only)
+ *
+ * @returns {{ source: string, connection: Object, moved_at: string|null, moved_from: Object|null }}
+ */
+const getDatabaseInfo = () => {
+	const { source, connection, moved_at, moved_from } = configGet("database");
+	return { source, connection, moved_at, moved_from };
+};
+
+export {
+	configGet,
+	getDatabaseInfo,
+	getPrivateKey,
+	getPublicKey,
+	isMysql,
+	isPostgres,
+	isSqlite,
+	sqliteFile,
+	startupRetryLog,
+};

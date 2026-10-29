@@ -55,7 +55,8 @@ const fetchGravatar = async (
 			.join("");
 		const response = await fetch(
 			`https://www.gravatar.com/avatar/${crypto.hash("sha256", email)}?s=64&default=initials&name=${encodeURIComponent(initials)}`,
-			{ headers: { "User-Agent": `NPMpro/${pjson.version}` } },
+			// bounded: a first OIDC login holds a write slot (a database move waits for it) while this runs
+			{ headers: { "User-Agent": `NPMpro/${pjson.version}` }, signal: AbortSignal.timeout(10_000) },
 		);
 
 		if (!response.ok) throw new Error(`Status code: ${response.status}`);

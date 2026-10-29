@@ -35,6 +35,16 @@ const runConfiguredGeoipUpdate = (options) => {
 	return queued;
 };
 
+/**
+ * Resolves when no update is running or queued (a database move waits for the result to be recorded); a failed run
+ * counts as done.
+ *
+ * @returns {Promise<void>}
+ */
+const geoipUpdateSettled = async () => {
+	while (inFlight || queued) await (queued ?? inFlight).catch(() => {});
+};
+
 const runOnce = async ({ geoip, dir, recordResult, getConfig, update = updateGeoip }) => {
 	const { values } = await getConfig();
 	if (!values.account_id || !values.license_key) {
@@ -57,4 +67,4 @@ const runOnce = async ({ geoip, dir, recordResult, getConfig, update = updateGeo
 	return result;
 };
 
-export { runConfiguredGeoipUpdate };
+export { geoipUpdateSettled, runConfiguredGeoipUpdate };

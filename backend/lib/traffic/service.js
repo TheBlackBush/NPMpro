@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
+import { waitWithin, writerRunning } from "../database/pause.js";
 import { createCounter } from "./counter.js";
 import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
@@ -34,6 +35,8 @@ const VISITORS_KEY_REPLACED =
 const defaultTimers = {
 	setInterval: (fn, ms) => setInterval(fn, ms),
 	clearInterval: (t) => clearInterval(t),
+	setTimeout: (fn, ms) => setTimeout(fn, ms),
+	clearTimeout: (t) => clearTimeout(t),
 };
 
 /**
@@ -157,7 +160,8 @@ const createStateMeta = ({ read, write }) => ({
  * @param   {Function}  [deps.createReader]  (state) => { read() }
  * @param   {Function}  [deps.statLog]   () => Promise<{ino, size}>  the access log (rejects with ENOENT when missing)
  * @param   {Function}  [deps.now]
- * @param   {Object}    [deps.timers]     { setInterval, clearInterval }
+ * @param   {Object}    [deps.timers]     { setInterval, clearInterval, setTimeout, clearTimeout } (the timeouts only
+ *                                        for a pause with a time limit)
  * @param   {number}    [deps.maxPerKey]
  * @param   {number}    [deps.maxVisitors]  distinct visitors per host and day until the settings give visitors_cap
  * @param   {string}    [deps.adminPort]  NPM_PORT: requests to the admin UI and the health check are not counted
@@ -215,6 +219,8 @@ const createTrafficService = ({
 	let retryAt = 0;
 	let lastState = null;
 	let savedState = null;
+	// the position of counts that were written while saving it failed (cleared by the next save that works)
+	let unsavedState = null;
 	let pending = [];
 
 	let readError = null;
@@ -227,6 +233,8 @@ const createTrafficService = ({
 	let readTimer = null;
 	let flushTimer = null;
 	let maintainTimer = null;
+	// a database move: nothing is written (the log is still read and counted in memory) until resume()
+	let paused = false;
 
 	const logOnce = (message) => {
 		if (message !== loggedError) log.error(`Traffic statistics: ${message}`);
@@ -422,9 +430,29 @@ const createTrafficService = ({
 			try {
 				await saveState(state);
 				savedState = state;
+				unsavedState = null;
 			} catch (err) {
+				unsavedState = state;
 				log.error(`Traffic statistics: could not save the reader position: ${err.message}`);
 			}
+		}
+	};
+
+	/**
+	 * The final write of a pause: the counts, then the reader position of the counts written. A position that could
+	 * not be saved is tried once more; when that fails too the pause fails, because a move would copy counts whose
+	 * lines the new process reads again.
+	 */
+	const flushForPause = async () => {
+		await flushNow();
+		if (!unsavedState) return;
+		const state = unsavedState;
+		try {
+			await saveState(state);
+			savedState = state;
+			unsavedState = null;
+		} catch (err) {
+			throw writerRunning(`Traffic statistics: the access log position could not be saved (${err.message})`);
 		}
 	};
 
@@ -451,6 +479,8 @@ const createTrafficService = ({
 		try {
 			await saveState(state);
 			savedState = state;
+			// a newer saved position: an older unsaved one must never be written over it
+			unsavedState = null;
 		} catch (err) {
 			log.error(`Traffic statistics: could not save the reader position: ${err.message}`);
 		}
@@ -458,12 +488,14 @@ const createTrafficService = ({
 
 	const flush = () =>
 		queue(async () => {
+			if (paused) return;
 			await flushNow();
 			await refresh();
 		});
 
 	const maintain = () =>
 		queue(async () => {
+			if (paused) return;
 			try {
 				await store.rollUpAndPrune({ now: now(), retentionDays });
 			} catch (err) {
@@ -510,6 +542,7 @@ const createTrafficService = ({
 			try {
 				lastState = (await loadState()) ?? null;
 				savedState = lastState;
+				unsavedState = null;
 			} catch (err) {
 				log.error(`Traffic statistics: could not load the reader position: ${err.message}`);
 			}
@@ -530,14 +563,48 @@ const createTrafficService = ({
 			maintain().catch(logError("roll-up failed"));
 		},
 
-		/** Clears the timers and writes what is still counted. */
+		/**
+		 * Clears the timers and writes what is still counted. While paused it writes nothing: the lines read since the
+		 * pause are read again from the saved reader position at the next start.
+		 */
 		stop: async () => {
 			started = false;
 			stopReading();
 			for (const t of [flushTimer, maintainTimer]) if (t) timers.clearInterval(t);
 			flushTimer = null;
 			maintainTimer = null;
-			await queue(flushNow);
+			await queue(async () => {
+				if (!paused) await flushNow();
+			});
+		},
+
+		/**
+		 * A database move: writes the counts and the reader position of everything read so far (after a flush or
+		 * roll-up that is going on), then the flushes and roll-ups skip until resume(). The access log is still read
+		 * and counted in memory: after a failed move the next flush writes it, after a successful one the new
+		 * process reads it again from the position saved here. The timers keep running.
+		 *
+		 * A pause has one owner (the move): a second pause() resolves at once and one resume() ends the pause.
+		 *
+		 * @param {{ timeoutMs?: number }} [options]  rejects with "writer-running" when the writes take longer or the
+		 *                                            reader position cannot be saved, and the service is not paused then
+		 */
+		pause: async ({ timeoutMs } = {}) => {
+			if (paused) return;
+			const done = queue(flushForPause);
+			// a flush or roll-up queued after this one skips; this one still writes
+			paused = true;
+			try {
+				await waitWithin(done, { name: "Traffic statistics", timeoutMs, clock: timers });
+			} catch (error) {
+				paused = false;
+				throw error;
+			}
+		},
+
+		/** Ends a pause: the next flush writes what was counted meanwhile, nothing runs at once. */
+		resume: () => {
+			paused = false;
 		},
 
 		/** Starts or stops reading the access log (the switch itself is done by applyAccessLog). */

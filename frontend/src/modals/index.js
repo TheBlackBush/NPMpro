@@ -3,6 +3,7 @@ export * from "./BackupScheduleModal";
 export * from "./ChangeDnsCredentialModal";
 export * from "./ChangePasswordModal";
 export * from "./CustomCertificateModal";
+export * from "./DatabaseMoveModal";
 export * from "./DeadHostModal";
 export * from "./DeleteConfirmModal";
 export * from "./DNSCertificateModal";

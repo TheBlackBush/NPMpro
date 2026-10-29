@@ -3,6 +3,7 @@ import {
 	IconBolt,
 	IconBoltOff,
 	IconCalendarTime,
+	IconDatabase,
 	IconDisc,
 	IconKey,
 	IconLock,
@@ -19,6 +20,7 @@ const getEventValue = (event) => {
 		case "access-list":
 		case "backup":
 		case "backup-schedule":
+		case "database":
 		case "dns-credential":
 		case "user":
 			return event.meta?.name;
@@ -41,9 +43,11 @@ const getColorForAction = (action) => {
 	switch (action) {
 		case "created":
 		case "backup-succeeded":
+		case "moved":
 			return "text-lime";
 		case "deleted":
 		case "backup-failed":
+		case "move-failed":
 			return "text-red";
 		default:
 			return "text-blue";
@@ -83,6 +87,9 @@ const getIcon = (row) => {
 			break;
 		case "backup-schedule":
 			ico = <IconCalendarTime size={16} className={c} />;
+			break;
+		case "database":
+			ico = <IconDatabase size={16} className={c} />;
 			break;
 		default:
 			break;

@@ -1,6 +1,6 @@
 import { chmod, mkdir, readdir, rm } from "node:fs/promises";
 import db from "./db.js";
-import { isSqlite, SQLITE_FILE } from "./lib/config.js";
+import { isSqlite, sqliteFile } from "./lib/config.js";
 import { migrate as logger } from "./logger.js";
 
 const migrationConfig = { tableName: "migrations", directory: "migrations" };
@@ -60,7 +60,7 @@ const migrateUp = async () => {
 		// a database created by this start got the default mode; only the backend reads it (SQLite gives the -wal and
 		// -shm files the mode of the database when it creates them again)
 		for (const suffix of ["", "-wal", "-shm"]) {
-			await chmod(`${SQLITE_FILE}${suffix}`, 0o600).catch(() => {});
+			await chmod(`${sqliteFile()}${suffix}`, 0o600).catch(() => {});
 		}
 		await db().raw("PRAGMA optimize");
 	}

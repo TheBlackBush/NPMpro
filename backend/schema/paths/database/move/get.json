@@ -1,0 +1,24 @@
+{
+	"operationId": "getDatabaseMove",
+	"summary": "Progress of the current or last database move",
+	"description": "Admin only. In memory: empty after a restart.",
+	"tags": ["database"],
+	"security": [{ "cookieAuth": [] }],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["move"],
+						"properties": {
+							"move": { "oneOf": [{ "type": "null" }, { "$ref": "../../../components/database-move-object.json" }] }
+						}
+					}
+				}
+			}
+		}
+	}
+}

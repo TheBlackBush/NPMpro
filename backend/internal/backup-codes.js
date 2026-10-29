@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { hash, verify } from "../lib/argon2.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import authModel from "../models/auth.js";
 
 const codesOf = (userId, trx) => authModel.query(trx).where("user_id", userId).andWhere("type", "backup_code");
@@ -70,17 +71,23 @@ const internalBackupCodes = {
 	 * @returns {Promise<boolean>}
 	 */
 	verify: async (userId, code) => {
-		const normalizedCode = code.toUpperCase().replaceAll("O", "0").replace(/[IL]/gu, "1");
+		// a used code is deleted: during a database move the delete could be lost and the code valid again
+		const release = maintenance.beginWrite();
+		try {
+			const normalizedCode = code.toUpperCase().replaceAll("O", "0").replace(/[IL]/gu, "1");
 
-		for (const row of await codesOf(userId)) {
-			const match = row.secret.startsWith("$2")
-				? await bcrypt.compare(normalizedCode, row.secret)
-				: await verify(normalizedCode, row.secret);
-			// Remove used backup code, only the request that removes it counts as used
-			if (match) return (await authModel.query().findById(row.id).delete()) === 1;
+			for (const row of await codesOf(userId)) {
+				const match = row.secret.startsWith("$2")
+					? await bcrypt.compare(normalizedCode, row.secret)
+					: await verify(normalizedCode, row.secret);
+				// Remove used backup code, only the request that removes it counts as used
+				if (match) return (await authModel.query().findById(row.id).delete()) === 1;
+			}
+
+			return false;
+		} finally {
+			release();
 		}
-
-		return false;
 	},
 };
 

@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew, installPlugin, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
@@ -48,6 +49,7 @@ const getNiceName = (domainNames) => {
 const renewalTimer = createRenewalTimer({
 	run: () => internalCertificate.processExpiringHosts(),
 	hours: Number.parseInt(process.env.CERTBOT_RUN_INTERVAL, 10),
+	busy: () => internalCertificate.intervalProcessing,
 	log: logger,
 });
 
@@ -63,12 +65,13 @@ const internalCertificate = {
 	restartTimer: (hours) => renewalTimer.restart(hours),
 
 	/**
-	 * Stops renewals for a restore: waits for a running renewal, then the timer skips its runs until resumeRenewals()
+	 * Stops renewals for a restore or a database move: waits for a running renewal, then the timer skips its runs
+	 * until resumeRenewals(). With timeoutMs (a move) it rejects with "writer-running" when the renewal takes longer
+	 * and leaves the timer as it was.
+	 *
+	 * @param {{ timeoutMs?: number }} [options]
 	 */
-	pauseRenewals: async () => {
-		renewalTimer.pause();
-		while (internalCertificate.intervalProcessing) await new Promise((resolve) => setTimeout(resolve, 1000));
-	},
+	pauseRenewals: (options) => renewalTimer.pauseAndWait(options),
 
 	resumeRenewals: () => renewalTimer.resume(),
 
@@ -275,53 +278,61 @@ const internalCertificate = {
 	 */
 	download: async (access, data, dir) => {
 		access.can("certificates:manage");
-		const certificate = await internalCertificate.get(access, data);
-
-		let zipDirectory;
-		let fileNames;
-		if (certificate.provider === "letsencrypt") {
-			zipDirectory = internalCertificate.getLiveCertPath(data.id);
-			fileNames = ["fullchain.pem", "privkey.pem"];
-		} else if (certificate.provider === "mtls") {
-			const mtlsFile = internalCertificate.getMtlsCertFile(data.id);
-			zipDirectory = path.dirname(mtlsFile);
-			fileNames = [path.basename(mtlsFile)];
-		} else {
-			zipDirectory = internalCertificate.getCustomCertPath(data.id);
-			fileNames = ["fullchain.pem", "privkey.pem"];
-		}
-
+		// a GET that writes an audit entry: during a database move that entry could be lost
+		const release = maintenance.beginWrite();
 		try {
-			await stat(zipDirectory);
-		} catch (err) {
-			throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, { cause: err });
-		}
+			const certificate = await internalCertificate.get(access, data);
 
-		const certFiles = [];
-		for (const fileName of fileNames) {
+			let zipDirectory;
+			let fileNames;
+			if (certificate.provider === "letsencrypt") {
+				zipDirectory = internalCertificate.getLiveCertPath(data.id);
+				fileNames = ["fullchain.pem", "privkey.pem"];
+			} else if (certificate.provider === "mtls") {
+				const mtlsFile = internalCertificate.getMtlsCertFile(data.id);
+				zipDirectory = path.dirname(mtlsFile);
+				fileNames = [path.basename(mtlsFile)];
+			} else {
+				zipDirectory = internalCertificate.getCustomCertPath(data.id);
+				fileNames = ["fullchain.pem", "privkey.pem"];
+			}
+
 			try {
-				certFiles.push([fileName, await realpath(path.join(zipDirectory, fileName))]);
+				await stat(zipDirectory);
 			} catch (err) {
-				throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
+				throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, {
 					cause: err,
 				});
 			}
+
+			const certFiles = [];
+			for (const fileName of fileNames) {
+				try {
+					certFiles.push([fileName, await realpath(path.join(zipDirectory, fileName))]);
+				} catch (err) {
+					throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
+						cause: err,
+					});
+				}
+			}
+
+			const opName = path.join(dir, `npm-${data.id}-${Date.now()}.zip`);
+
+			await internalCertificate.zipFiles(certFiles, opName);
+			logger.debug("zip completed : ", opName);
+			// the zip holds the private key
+			await internalAuditLog.add(access, {
+				action: "downloaded",
+				object_type: "certificate",
+				object_id: certificate.id,
+				meta: { id: certificate.id, nice_name: certificate.nice_name, provider: certificate.provider },
+			});
+			return {
+				fileName: opName,
+			};
+		} finally {
+			release();
 		}
-
-		const opName = path.join(dir, `npm-${data.id}-${Date.now()}.zip`);
-
-		await internalCertificate.zipFiles(certFiles, opName);
-		logger.debug("zip completed : ", opName);
-		// the zip holds the private key
-		await internalAuditLog.add(access, {
-			action: "downloaded",
-			object_type: "certificate",
-			object_id: certificate.id,
-			meta: { id: certificate.id, nice_name: certificate.nice_name, provider: certificate.provider },
-		});
-		return {
-			fileName: opName,
-		};
 	},
 
 	/**

@@ -970,6 +970,29 @@ const createBackupService = ({
 		},
 
 		/**
+		 * The backup lock for a database move (spec "Move steps"): taken at once (busy while a backup or restore runs),
+		 * held until release(); safetyBackup writes the automatic backup of every type with the instance key under
+		 * this same lock (backups/auto, pruned like the restore ones) and returns its name
+		 *
+		 * @param   {number}  userId
+		 * @returns {{ safetyBackup: () => Promise<string>, release: () => void }}
+		 */
+		lockForMove: (userId) => {
+			const release = store.acquire();
+			let released = false;
+			return {
+				safetyBackup: async () => {
+					if (released) throw new Error("The backup lock of the database move was released already");
+					return await automaticBackup(userId);
+				},
+				release: () => {
+					released = true;
+					release();
+				},
+			};
+		},
+
+		/**
 		 * @param   {Access}  access
 		 * @param   {Object}  options   { types, secrets, passphrase, keep }
 		 * @returns {Promise<{ entry: Object } | { pending: string, name: string }>}  keep: the stored backup; else a

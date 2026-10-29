@@ -1,3 +1,4 @@
+import { maintenance } from "../lib/database/maintenance.js";
 import { logValue, newUserPermissions, OidcLoginError } from "../lib/oidc-login.js";
 import { userNameFromClaims } from "../lib/oidc-rules.js";
 import { oidc as logger } from "../logger.js";
@@ -69,6 +70,9 @@ export default {
 		const email = String(claims.email).toLowerCase().trim();
 		const name = (String(userNameFromClaims({ ...claims, email })).trim() || email.split("@")[0]).slice(0, 255);
 
+		// the new user would be missing in the moved database; the claim covers the avatar patch too
+		const release = maintenance.tryBeginWrite();
+		if (!release) throw new OidcLoginError("maintenance", "A database move is in progress");
 		const previous = pending.get(email) ?? Promise.resolve();
 		const run = previous.catch(() => null).then(() => insertUser(email, name, checked.permissions));
 		pending.set(email, run);
@@ -76,6 +80,7 @@ export default {
 			return await run;
 		} finally {
 			if (pending.get(email) === run) pending.delete(email);
+			release();
 		}
 	},
 };
