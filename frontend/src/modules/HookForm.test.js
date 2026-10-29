@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { fieldsValidate, formResolver, mergeErrors, setIn, toHookFormErrors, translateErrors } from "./HookForm.js";
+import {
+	errorPaths,
+	fieldPaths,
+	fieldsValidate,
+	formResolver,
+	mergeErrors,
+	orderErrorPaths,
+	setIn,
+	toHookFormErrors,
+	translateErrors,
+} from "./HookForm.js";
 
 it("sets a value at a path, with lists for numeric parts", () => {
 	assert.deepEqual(setIn({}, "name", "x"), { name: "x" });
@@ -64,4 +74,47 @@ it("resolves to the values when validate finds nothing, else to the errors", asy
 	});
 	const asyncResolver = formResolver(async () => ({ name: "Later" }));
 	assert.deepEqual((await asyncResolver({})).errors, { name: { type: "validate", message: "Later" } });
+});
+
+it("lists the path of every error in either library's shape", () => {
+	assert.deepEqual(errorPaths({ name: "A", fieldValues: { token: "B" }, items: [undefined, { path: "C" }] }), [
+		"name",
+		"fieldValues.token",
+		"items[1].path",
+	]);
+	assert.deepEqual(
+		errorPaths({
+			name: { type: "validate", message: "A" },
+			fieldValues: { type: { type: "validate", message: "B" } },
+			root: { type: "server", message: "C" },
+		}),
+		["name", "fieldValues.type"],
+	);
+	assert.deepEqual(errorPaths({}), []);
+});
+
+it("lists the fields of a form in the order of its defaultValues", () => {
+	assert.deepEqual(
+		fieldPaths({
+			name: "",
+			provider: "",
+			fieldValues: { token: "", zone: "" },
+			domainNames: [],
+			certificate: null,
+			empty: {},
+		}),
+		["name", "provider", "fieldValues.token", "fieldValues.zone", "domainNames", "certificate", "empty"],
+	);
+});
+
+it("orders errors by the form's fields, so the note and the focus follow the form", () => {
+	const order = ["name", "frequency", "monthDay", "time", "types", "keep"];
+	assert.deepEqual(orderErrorPaths(["keep", "types", "name"], order), ["name", "types", "keep"]);
+	assert.deepEqual(orderErrorPaths(["time", "monthDay"], order), ["monthDay", "time"]);
+	assert.deepEqual(orderErrorPaths(["fieldValues.zone", "other", "name"], ["name", "fieldValues"]), [
+		"name",
+		"fieldValues.zone",
+		"other",
+	]);
+	assert.deepEqual(orderErrorPaths([], order), []);
 });

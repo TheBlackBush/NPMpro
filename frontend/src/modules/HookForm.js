@@ -123,3 +123,61 @@ export function formResolver(validate) {
 		return Object.keys(errors).length > 0 ? { values: {}, errors } : { values, errors: {} };
 	};
 }
+
+const isHookFormError = (error) => isPlainObject(error) && typeof error.type === "string";
+
+/**
+ * The path of every error in Formik's errors (text) or React Hook Form's errors ({ type, message }):
+ * name, fieldValues.token, locations[0].path
+ *
+ * @param   {*}       errors
+ * @param   {string}  [prefix]
+ * @returns {string[]}
+ */
+export function errorPaths(errors, prefix = "") {
+	if (typeof errors === "string" || isHookFormError(errors)) return prefix ? [prefix] : [];
+	if (Array.isArray(errors)) return errors.flatMap((item, index) => errorPaths(item, `${prefix}[${index}]`));
+	if (isObject(errors)) {
+		return Object.entries(errors)
+			.filter(([key]) => key !== "root")
+			.flatMap(([key, value]) => errorPaths(value, prefix ? `${prefix}.${key}` : key));
+	}
+	return [];
+}
+
+/**
+ * The field paths of a form in the order of its defaultValues: nested plain objects give their own fields
+ * (fieldValues.token), a list or any other value is one field (domainNames, types, a file)
+ *
+ * @param   {Object}  defaultValues
+ * @param   {string}  [prefix]
+ * @returns {string[]}
+ */
+export function fieldPaths(defaultValues, prefix = "") {
+	return Object.entries(defaultValues ?? {}).flatMap(([key, value]) => {
+		const path = prefix ? `${prefix}.${key}` : key;
+		return isPlainObject(value) && Object.keys(value).length > 0 ? fieldPaths(value, path) : [path];
+	});
+}
+
+const orderIndex = (path, order) => {
+	const index = order.findIndex(
+		(field) => path === field || path.startsWith(`${field}.`) || path.startsWith(`${field}[`),
+	);
+	return index < 0 ? order.length : index;
+};
+
+/**
+ * Error paths in the order of the form's fields (fieldPaths or an explicit list); paths of no listed field last,
+ * in their own order
+ *
+ * @param   {string[]} paths
+ * @param   {string[]} order
+ * @returns {string[]}
+ */
+export function orderErrorPaths(paths, order) {
+	return paths
+		.map((path, position) => ({ path, position, index: orderIndex(path, order) }))
+		.sort((a, b) => a.index - b.index || a.position - b.position)
+		.map(({ path }) => path);
+}
