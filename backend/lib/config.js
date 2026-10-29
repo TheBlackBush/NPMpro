@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
-import { chooseDatabase, DATABASE_FILE, DEFAULT_SQLITE, unsealWith } from "./database/connection-file.js";
+import { chooseDatabase, DATABASE_FILE, unsealWith } from "./database/connection-file.js";
 import { failingKnexConfig, knexConfigOf } from "./database/knex-config.js";
 import { createRetryLog, knexLogOf } from "./retry-log.js";
 import { defaultSecretBox } from "./secret-box.js";
@@ -10,7 +10,6 @@ import { defaultSecretBox } from "./secret-box.js";
 const startupRetryLog = createRetryLog({ log: logger });
 
 const keysFile = "/data/npmpro/keys-ec.json";
-const SQLITE_FILE = DEFAULT_SQLITE;
 
 let instance = null;
 
@@ -171,7 +170,6 @@ export {
 	isMysql,
 	isPostgres,
 	isSqlite,
-	SQLITE_FILE,
 	sqliteFile,
 	startupRetryLog,
 };

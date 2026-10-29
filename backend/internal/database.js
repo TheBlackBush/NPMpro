@@ -31,7 +31,6 @@ import errs from "../lib/error.js";
 // written the database in use stays in use: any failure ends maintenance, writes the held logouts and a "move-failed"
 // audit entry into it, resumes the writers and frees the lock; the target is left as it is to be looked at.
 
-const MOVE_STEPS = ["maintenance", "backup", "schema", "copy", "verify", "switch"];
 const REVOCATION_CHUNK = 200;
 
 const pad = (value) => String(value).padStart(2, "0");
@@ -506,4 +505,4 @@ const createDatabaseService = ({
 	};
 };
 
-export { createDatabaseService, MOVE_STEPS };
+export { createDatabaseService };

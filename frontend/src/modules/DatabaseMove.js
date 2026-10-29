@@ -110,23 +110,6 @@ export const sourceBadge = (source) => SOURCE_BADGES[source] ?? SOURCE_BADGES.de
 export const whereText = (connection) =>
 	connection.engine === "sqlite" ? connection.file : `${connection.host}:${connection.port}/${connection.name}`;
 
-/**
- * After a move: the old process keeps maintenance on until it exits, so a health answer without it is the new process
- */
-export const waitForRestart = async ({ fetchHealth, sleep, now, limitMs = 120_000, intervalMs = 2000 }) => {
-	const start = now();
-	while (now() - start < limitMs) {
-		try {
-			const health = await fetchHealth();
-			if (health?.status === "OK" && !health.maintenance) return "ready";
-		} catch {
-			// the backend is restarting: nginx answers 502 meanwhile
-		}
-		await sleep(intervalMs);
-	}
-	return "timeout";
-};
-
 // a move the window follows until the restart: the section opens the window again for it
 export const isMoveActive = (move) => move?.state === "running" || move?.state === "restarting";
 

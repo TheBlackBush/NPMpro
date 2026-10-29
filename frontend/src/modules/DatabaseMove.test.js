@@ -23,7 +23,6 @@ import {
 	testOfValues,
 	toPayload,
 	totals,
-	waitForRestart,
 	whereText,
 } from "./DatabaseMove.js";
 
@@ -93,38 +92,6 @@ it("sums the tables, names the source and the place", () => {
 	assert.equal(sourceBadge("default").labelId, "settings.database.source.default");
 	assert.equal(whereText({ engine: "sqlite", file: "/data/npmpro/database.sqlite" }), "/data/npmpro/database.sqlite");
 	assert.equal(whereText({ engine: "postgres", host: "db", port: 5432, name: "npmpro" }), "db:5432/npmpro");
-});
-
-it("waits for a health answer without maintenance, at most the limit", async () => {
-	let clock = 0;
-	const answers = [new Error("502"), { status: "OK", maintenance: "database-move" }, { status: "OK" }];
-	const result = await waitForRestart({
-		fetchHealth: async () => {
-			const next = answers.shift();
-			if (next instanceof Error) throw next;
-			return next;
-		},
-		sleep: async (ms) => {
-			clock += ms;
-		},
-		now: () => clock,
-	});
-	assert.equal(result, "ready");
-	assert.equal(clock, 4000);
-	clock = 0;
-	assert.equal(
-		await waitForRestart({
-			fetchHealth: async () => {
-				throw new Error("502");
-			},
-			sleep: async (ms) => {
-				clock += ms;
-			},
-			now: () => clock,
-		}),
-		"timeout",
-	);
-	assert.equal(clock, 120_000);
 });
 
 it("changes the key with a TLS switch and sends no MySQL TLS keys for Postgres", () => {

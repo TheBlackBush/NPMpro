@@ -119,9 +119,6 @@ const createMaintenance = () => {
 		},
 		// the same for a write that can be skipped (done at a later login): null during a move
 		tryBeginWrite,
-		refuseWrite: () => {
-			if (moveId !== null) throw inProgress();
-		},
 		guard: (req, res, next) => {
 			if (READ_METHODS.has(req.method)) return next();
 			const path = req.path.replace(TRAILING_SLASHES, "") || "/";

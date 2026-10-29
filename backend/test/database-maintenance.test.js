@@ -30,7 +30,6 @@ it("lets everything through when no move runs", () => {
 	for (const method of ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]) {
 		assert.equal(run(m, method, "/api/nginx/proxy-hosts"), "next", method);
 	}
-	m.refuseWrite();
 });
 
 it("refuses writes during a move, allows reads, login, logout and the move endpoints", () => {
@@ -70,10 +69,6 @@ it("refuses writes during a move, allows reads, login, logout and the move endpo
 		assert.equal(run(m, method, path), "next", `${method} ${path}`);
 	}
 	assert.throws(
-		() => m.refuseWrite(),
-		(error) => refused(error),
-	);
-	assert.throws(
 		() => m.start("move-2"),
 		(error) => error.code === "move-running" && error.status === 409,
 	);
@@ -81,7 +76,6 @@ it("refuses writes during a move, allows reads, login, logout and the move endpo
 	m.end();
 	assert.equal(m.active(), false);
 	assert.equal(run(m, "POST", "/api/nginx/proxy-hosts"), "next");
-	m.refuseWrite();
 });
 
 it("waits for a write request that started before the move", async () => {
