@@ -68,7 +68,7 @@
 			"example": false
 		},
 		"npmpro_proxy_protocol_forwarding": {
-			"description": "PROXY protocol to the upstream: 0 off, 1 v1, 2 v2. UDP only sends v2, so 1 is saved as 2 there",
+			"description": "PROXY protocol to the upstream: 0 off, 1 v1, 2 v2. UDP only sends v2, so with UDP forwarding 1 is saved as 2, and a stream with TCP and UDP forwarding then sends v2 on TCP too",
 			"type": "integer",
 			"enum": [0, 1, 2],
 			"default": 0,

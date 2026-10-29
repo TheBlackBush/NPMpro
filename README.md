@@ -388,6 +388,7 @@ When `DB_MYSQL_*` or `DB_POSTGRES_*` environment variables are set, they always 
 - Websockets: this button was removed, websockets are now always enabled
 - Reuse Key: this will make the new cert always keep its key unless you force renew it, it is recommended to keep this disabled (not to keep the key), a reason to keep the key would be TLSA/pubkey pinning
 - TLS to upstream (for Streams): This can be used if your stream target already uses tls but you want to override it with a NPMpro cert, do not enable if you don't set a new cert, since this will downgrade the connecting to be unencrypted
+- PROXY protocol (for Streams): sends the client address to the upstream as PROXY protocol v1 or v2. nginx only supports v2 over UDP, so a stream with UDP forwarding saves v1 as v2, and then the TCP side of a stream with both TCP and UDP forwarding also sends v2
 - X-Frame-Options: will control the X-Frame-Options header, none will remove the header, SAMEORIGIN/DENY will set it to these values and upstream will keep what upstream sends
 
 ## Examples of implementing some services using auth_request
