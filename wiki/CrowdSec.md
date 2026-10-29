@@ -141,7 +141,7 @@ APPSEC_URL=http://127.0.0.1:7422
 
 - `ENABLED=true` decides at the start of the container whether the bouncer is loaded (upper or lower case and spaces around `=` are fine). At every start NPMpro removes trailing spaces and Windows (CRLF) line endings from this file, so a file edited on Windows works too.
 - `API_URL` is the address of the LAPI as NPMpro sees it. With the compose file above it stays `http://127.0.0.1:8080`.
-- `APPSEC_URL` is the AppSec listener from step 4. **If you did not set up AppSec, clear it** (`APPSEC_URL=`). The default `APPSEC_FAILURE_ACTION=deny` blocks requests when AppSec cannot be reached, so an `APPSEC_URL` that points to nothing makes every host answer with 403.
+- `APPSEC_URL` is the AppSec listener from step 4. **If you did not set up AppSec, clear it** (`APPSEC_URL=`). The default `APPSEC_FAILURE_ACTION=deny` blocks requests when AppSec cannot be reached, so an `APPSEC_URL` that points to nothing makes every request answer with the ban page: every host, the admin UI and the container health check (the container then reports unhealthy). The same happens while CrowdSec restarts or is down. If you are locked out, start CrowdSec again, or set `ENABLED=false` (or `APPSEC_FAILURE_ACTION=passthrough`) in `/data/crowdsec/crowdsec.conf` and restart the NPMpro container.
 
 Save the file.
 
@@ -177,7 +177,7 @@ All keys of `crowdsec.conf` with their defaults (from `crowdsec.conf.example`):
 | `CAPTCHA_PROVIDER`, `SITE_KEY`, `SECRET_KEY` | empty | the captcha for decisions of type `captcha`: `recaptcha`, `hcaptcha` or `turnstile`, with the keys from that provider |
 | `CAPTCHA_TEMPLATE_PATH`, `CAPTCHA_EXPIRATION` | `/data/crowdsec/captcha.html`, `3600` | the captcha page, and the seconds a solved captcha stays valid |
 | `APPSEC_URL` | `http://127.0.0.1:7422` | the AppSec listener; empty turns AppSec off |
-| `APPSEC_FAILURE_ACTION` | `deny` | what happens when AppSec cannot be reached: `deny` blocks the request, `passthrough` lets it through |
+| `APPSEC_FAILURE_ACTION` | `deny` | what happens when AppSec cannot be reached: `deny` blocks the request (every host, the admin UI and the health check), `passthrough` lets it through |
 | `APPSEC_CONNECT_TIMEOUT`, `APPSEC_SEND_TIMEOUT`, `APPSEC_PROCESS_TIMEOUT` | empty | AppSec timeouts (empty: the defaults of the bouncer) |
 | `ALWAYS_SEND_TO_APPSEC` | `false` | also send requests of IPs that already have a decision to AppSec |
 | `APPSEC_DROP_UNREADABLE_BODY` | `true` | drop requests whose body cannot be read (HTTP/2 or HTTP/3 requests without a content-length header, or gRPC requests) instead of sending them to AppSec without a body |

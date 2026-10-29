@@ -258,6 +258,7 @@ labels:
     - clients let in by an IP allow rule of an access list with "satisfy any" are now checked by CrowdSec too, including bot detection challenges, so apps in your LAN that are not browsers may need a CrowdSec allowlist
     - `auth_ldap` from the advanced config still runs before the bouncer
     - custom `access_by_lua` blocks in the advanced config run before allow/deny rules, `auth_basic` and `auth_request` while CrowdSec is enabled, and must not set `access_by_lua_no_postpone` again
+16. With `APPSEC_FAILURE_ACTION=deny` (the default) an AppSec that can not be reached (not set up, or CrowdSec restarting or down) blocks every request with the ban page: all proxy hosts, the admin UI and the container health check, so the container also reports unhealthy. If you do not use AppSec, clear `APPSEC_URL`; if staying reachable matters more than blocking during an outage, set `APPSEC_FAILURE_ACTION=passthrough`. Locked out: fix or start CrowdSec, or set `ENABLED=false` (or `passthrough`) in `/data/crowdsec/crowdsec.conf` and restart the container
 
 ## Bot detection (optional)
 Bot detection challenges every request without a valid cookie, so clients which can not solve it, like apps, get blocked. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable, the short version:
