@@ -16,7 +16,7 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
 import {
 	CountryName,
@@ -187,10 +187,16 @@ function VisitorsCard({ status, totals, range }) {
 		return (
 			<StatCard
 				className={className}
-				to="/settings/monitoring"
 				label={<T id="monitoring.stat.visitors" />}
 				value={<T id="monitoring.stat.visitors.off" />}
-				hint={<T id="monitoring.stat.visitors.off.hint" />}
+				// the card itself is not a link; only the hint links to the settings
+				hint={
+					<Link to="/settings/monitoring">
+						<T id="monitoring.stat.visitors.off.hint" />
+					</Link>
+				}
+				// the link is the way to the setting: shown in full on a half-width phone card
+				hintWrap
 				icon={IconUsers}
 				color="secondary"
 			/>

@@ -742,7 +742,11 @@ const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} })
 	},
 	onShowIpsOff: () => traffic.showIpsOff(),
 	onShowIpsOn: () => traffic.showIpsOn(),
-	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),
+	// the visitor hashes are deleted: drop cached results so switching on again within the cache time shows no old counts
+	onUniqueVisitorsOff: async () => {
+		await traffic.uniqueVisitorsOff();
+		clearCaches();
+	},
 	onUniqueVisitorsOn: () => traffic.uniqueVisitorsOn(),
 });
 

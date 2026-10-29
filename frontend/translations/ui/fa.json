@@ -20,7 +20,7 @@
 	"access-list.rules-required": "کاربران یا قوانین دسترسی",
 	"access-list.satisfy-any": "کافی بودن یکی از شرایط",
 	"access-list.satisfy-any-warning": "«{name}» از Satisfy Any استفاده می‌کند که روی Auth Request هم اعمال می‌شود: یک قانون منطبق یا یک کاربر معتبر از آن عبور می‌کند.",
-	"access-list.subtitle": "{users} {users, plural, one {کاربر} other {کاربر}}، {rules} {rules, plural, one {قانون دسترسی} other {قانون دسترسی}} — ایجاد: {date}",
+	"access-list.subtitle": "{users} {users, plural, one {کاربر} other {کاربر}}، {rules} {rules, plural, one {قانون دسترسی} other {قانون دسترسی}}، ایجاد: {date}",
 	"access-list.username.invalid": "حداکثر 255 نویسه، بدون : یا نویسه‌های کنترلی",
 	"access-lists": "فهرست‌های دسترسی",
 	"access-lists.count": "{count} {count, plural, one {فهرست دسترسی} other {فهرست دسترسی}}",

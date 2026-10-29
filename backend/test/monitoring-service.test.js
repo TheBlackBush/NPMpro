@@ -451,6 +451,28 @@ describe("traffic service", () => {
 		assert.equal(t.service.status().enabled, false);
 	});
 
+	it("clears the API caches after unique visitors are switched off, not when the delete fails", async () => {
+		const calls = [];
+		const hooks = (fail) =>
+			createTrafficHooks({
+				applyAccessLog: () => Promise.resolve(),
+				traffic: {
+					uniqueVisitorsOff: async () => {
+						calls.push("off");
+						if (fail) {
+							throw new Error("delete failed");
+						}
+					},
+				},
+				clearCaches: () => calls.push("clear"),
+			});
+		await hooks(false).onUniqueVisitorsOff();
+		assert.deepEqual(calls, ["off", "clear"]);
+		calls.length = 0;
+		await assert.rejects(hooks(true).onUniqueVisitorsOff(), /delete failed/u);
+		assert.deepEqual(calls, ["off"]);
+	});
+
 	it("does not start the reader when switching the access log fails", async () => {
 		const t = setup({ config: { traffic_enabled: false } });
 		await t.service.start();
