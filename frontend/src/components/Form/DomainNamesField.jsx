@@ -21,6 +21,11 @@ export function DomainNamesField({
 		onChange?.(doms);
 	};
 
+	const isValidDomain = validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate);
+	// a domain already in the list is not offered again
+	const isValidNewOption = (input, selected) =>
+		isValidDomain(input) && !selected.some(({ value }) => value.toLowerCase() === input.trim().toLowerCase());
+
 	const helperTexts = [];
 	if (!isWildcardPermitted) {
 		helperTexts.push(<T id="domain-names.wildcards-not-permitted" />);
@@ -48,13 +53,10 @@ export function DomainNamesField({
 							unstyled
 							classNames={selectClassNames}
 							name={field.name}
-							id={id}
+							inputId={id}
 							closeMenuOnSelect={true}
 							isClearable={false}
-							isValidNewOption={validateDomain(
-								isWildcardPermitted && dnsProviderWildcardSupported,
-								forCertificate,
-							)}
+							isValidNewOption={isValidNewOption}
 							isMulti
 							required
 							aria-invalid={error ? "true" : undefined}

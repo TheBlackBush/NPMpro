@@ -367,9 +367,12 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		return null;
 	};
 
+	// the backup codes are shown once: that step only ends with Done, not with Escape, a backdrop click or the X
+	const closable = !isSubmitting && step !== "backup";
+
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
-			<AppModal.Header closeButton={!isSubmitting}>
+		<AppModal show={visible} onHide={closable ? remove : undefined} backdrop="static" keyboard={closable}>
+			<AppModal.Header closeButton={closable}>
 				<AppModal.Title>
 					<T id="mfa.title" />
 				</AppModal.Title>
@@ -378,6 +381,13 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 				<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
 				{renderContent()}
 			</AppModal.Body>
+			{["loading", "error", "status"].includes(step) && (
+				<AppModal.Footer>
+					<Button className="ms-auto" onClick={remove} disabled={isSubmitting}>
+						<T id="action.close" />
+					</Button>
+				</AppModal.Footer>
+			)}
 		</AppModal>
 	);
 });

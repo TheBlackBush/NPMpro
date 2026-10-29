@@ -56,7 +56,7 @@
 			"example": 2
 		},
 		"certificate_id": {
-			"description": "Certificate ID",
+			"description": "Certificate ID: a server certificate (not an mTLS CA) with its files present, 0 for none, or new to request one",
 			"anyOf": [
 				{
 					"type": "integer",
@@ -144,7 +144,7 @@
 			"example": "Production"
 		},
 		"npmpro_mtls_certificate_id": {
-			"description": "mTLS Certificate ID",
+			"description": "mTLS Certificate ID: an mTLS CA certificate with its file present, 0 for none",
 			"type": "integer",
 			"minimum": 0,
 			"default": 0,
@@ -221,6 +221,7 @@
 			"example": "192.168.0.11"
 		},
 		"access_items": {
+			"description": "Basic auth users, each username once",
 			"type": "array",
 			"items": {
 				"type": "object",
@@ -254,6 +255,7 @@
 			]
 		},
 		"access_clients": {
+			"description": "Access rules in order: rules without an address are dropped, an all rule can only be the last one",
 			"type": "array",
 			"items": {
 				"type": "object",

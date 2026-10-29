@@ -253,6 +253,11 @@ labels:
 12. It is recommended to block at the earliest possible point, so if possible set up a firewall bouncer: https://docs.crowdsec.net/u/bouncers/firewall, make sure to also include the docker iptables in the firewall bouncer config
 13. Note that when crowdsec appsec is enabled for a host/location, request bodies will always be buffered, so setting `proxy_request_buffering` to off will not work there, response buffering is not affected
 14. Note that appsec blocks requests with a body bigger than 10 MiB by default, so you may want to enable "Disable Crowdsec Appsec" for hosts/locations which receive bigger uploads (like Nextcloud)
+15. The bouncer runs before access lists, so a banned IP gets the ban page instead of a basic auth prompt and can not keep guessing passwords. This has some effects:
+    - with AppSec enabled, request bodies to hosts protected by access lists or forward authentication are read and sent to AppSec before authentication, so set a `client_max_body_size` on such hosts or disable AppSec there if that matters
+    - clients let in by an IP allow rule of an access list with "satisfy any" are now checked by CrowdSec too, including bot detection challenges, so apps in your LAN that are not browsers may need a CrowdSec allowlist
+    - `auth_ldap` from the advanced config still runs before the bouncer
+    - custom `access_by_lua` blocks in the advanced config run before allow/deny rules, `auth_basic` and `auth_request` while CrowdSec is enabled, and must not set `access_by_lua_no_postpone` again
 
 ## Bot detection (optional)
 Bot detection challenges every request without a valid cookie, so clients which can not solve it, like apps, get blocked. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable, the short version:
@@ -270,6 +275,7 @@ labels:
   type: npmplus
 ```
 nginx writes the client IP itself, so bans can not be forged. The request line however is written out as the client sent it, a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert.
+With the error log added, failed basic auth attempts show up in both logs, so `crowdsecurity/http-generic-bf` counts each of them twice and bans after roughly half as many failed attempts (3 instead of 6 in quick succession).
 
 ## Use of external php-fpm (recommended)
 To set it per location: press the gear button, set the scheme to `path`, put in the path and paste the following in the new text field at the bottom, you need to adjust the last line:
@@ -386,6 +392,7 @@ When `DB_MYSQL_*` or `DB_POSTGRES_*` environment variables are set, they always 
 - Websockets: this button was removed, websockets are now always enabled
 - Reuse Key: this will make the new cert always keep its key unless you force renew it, it is recommended to keep this disabled (not to keep the key), a reason to keep the key would be TLSA/pubkey pinning
 - TLS to upstream (for Streams): This can be used if your stream target already uses tls but you want to override it with a NPMpro cert, do not enable if you don't set a new cert, since this will downgrade the connecting to be unencrypted
+- PROXY protocol (for Streams): sends the client address to the upstream as PROXY protocol v1 or v2. nginx only supports v2 over UDP, so a stream with UDP forwarding saves v1 as v2, and then the TCP side of a stream with both TCP and UDP forwarding also sends v2
 - X-Frame-Options: will control the X-Frame-Options header, none will remove the header, SAMEORIGIN/DENY will set it to these values and upstream will keep what upstream sends
 
 ## Examples of implementing some services using auth_request

@@ -203,16 +203,22 @@ const midStream = (gz) => {
 	return source;
 };
 
+// Destroys the source shortly after the extraction starts reading it, not on a fixed timer from creation: on a slow
+// machine a fixed timer could fire before extractTo attached its listeners.
+const destroyAfterStart = (source, error) => {
+	source.once("resume", () => setTimeout(() => source.destroy(error), 50));
+};
+
 it("rethrows a mid-stream source BackupError unchanged", { timeout: 20_000 }, async () => {
 	const wrong = new BackupError("wrong-passphrase", "x");
 	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
-	setTimeout(() => source.destroy(wrong), 50);
+	destroyAfterStart(source, wrong);
 	await rejectsAndStays(source, (err) => assert.equal(err, wrong));
 });
 
 it("wraps a mid-stream plain source error", { timeout: 20_000 }, async () => {
 	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
-	setTimeout(() => source.destroy(new Error("boom")), 50);
+	destroyAfterStart(source, new Error("boom"));
 	await rejectsAndStays(source, invalid);
 });
 
@@ -223,7 +229,7 @@ it("rejects a truncated gzip", { timeout: 20_000 }, async () => {
 
 it("rejects a source that closes silently mid-stream", { timeout: 20_000 }, async () => {
 	const source = midStream(withRefusal(randomBytes(8 * 1024 * 1024)));
-	setTimeout(() => source.destroy(), 50);
+	destroyAfterStart(source);
 	await rejectsAndStays(source, invalid);
 });
 

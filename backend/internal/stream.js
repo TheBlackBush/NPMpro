@@ -1,34 +1,11 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
+import { cleanStreamData } from "../lib/stream-rules.js";
 import streamModel from "../models/stream.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalNginx from "./nginx.js";
-
-const cleanStreamData = (data, existingData) => {
-	const combinedData = { ...existingData, ...data };
-
-	if (!combinedData.tcp_forwarding && !combinedData.udp_forwarding) {
-		throw new errs.ValidationError("TCP or UDP forwarding needs to be enabled");
-	}
-
-	if (combinedData.udp_forwarding) {
-		combinedData.npmpro_proxy_tls = false;
-		if (combinedData.npmpro_proxy_protocol_forwarding === 1) combinedData.npmpro_proxy_protocol_forwarding = 0;
-		combinedData.certificate_id = 0;
-	}
-
-	if (combinedData.certificate_id !== "new" && !(combinedData.certificate_id > 0)) {
-		combinedData.npmpro_mtls_certificate_id = 0;
-	}
-
-	if (!(combinedData.npmpro_mtls_certificate_id > 0)) {
-		combinedData.npmpro_mtls_verify_client_optional = false;
-	}
-
-	return combinedData;
-};
 
 const internalStream = {
 	/**
@@ -43,10 +20,10 @@ const internalStream = {
 		if (createCertificate) {
 			delete thisData.certificate_id;
 		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id });
+			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
 		}
 		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
 		}
 
 		access.can("streams:manage");
@@ -99,10 +76,10 @@ const internalStream = {
 		if (createCertificate) {
 			delete thisData.certificate_id;
 		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id });
+			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
 		}
 		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
 		}
 
 		access.can("streams:manage");

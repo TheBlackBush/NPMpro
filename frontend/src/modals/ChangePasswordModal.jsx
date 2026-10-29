@@ -38,7 +38,7 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<AppModal show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
 			<Formik
 				initialValues={{
 					current: "",

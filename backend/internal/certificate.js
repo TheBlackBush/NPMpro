@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew, installPlugin, runCertbot } from "../lib/certbot.js";
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
+import { assertCertificateUse } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
@@ -252,6 +253,7 @@ const internalCertificate = {
 	 * @param  {Access}   access
 	 * @param  {Object}   data
 	 * @param  {Number}   data.id
+	 * @param  {Boolean}  [data.mtls]  a host's certificate: true for its mTLS CA, false for its server certificate
 	 * @return {Promise}
 	 */
 	get: async (access, data) => {
@@ -266,6 +268,7 @@ const internalCertificate = {
 		if (!row?.id) {
 			throw new error.ItemNotFoundError(data.id);
 		}
+		if (data.mtls !== undefined) assertCertificateUse(row, data.mtls);
 
 		return row;
 	},

@@ -325,7 +325,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																	if (values.npmproProxyProtocolForwarding === 1) {
 																		setFieldValue(
 																			"npmproProxyProtocolForwarding",
-																			0,
+																			2,
 																		);
 																	}
 																	setFieldValue("npmproProxyTls", false);
@@ -354,7 +354,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 																	if (values.npmproProxyProtocolForwarding === 1) {
 																		setFieldValue(
 																			"npmproProxyProtocolForwarding",
-																			0,
+																			2,
 																		);
 																	}
 																	setFieldValue("npmproProxyTls", false);
