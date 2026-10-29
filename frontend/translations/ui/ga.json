@@ -618,7 +618,7 @@
 	"proxy-host.access-lists": "Liostaí Rochtana",
 	"proxy-host.directory": "Grúpa",
 	"proxy-host.forward-host": "Ainm Óstach / IP Ar Aghaidh",
-	"proxy-host.forward-host-path": "Ainm Óstaigh / IP / Cosán Ar Aghaidh",
+	"proxy-host.forward-host-path": "Óstach / IP / Cosán",
 	"proxy-host.global-access-lists": "Liostaí Rochtana Domhanda",
 	"proxy-host.location-no-trailing-slash-warning": "Meaitseáiltear suíomh gan slais ag an deireadh mar réimír bheart, ní mar dheighleog cosáin, rud a d'fhéadfadh ró-mheaitseáil agus/nó path traversal a chruthú. Cuir slais leis ag an deireadh mura bhfuil meaitseáil réimíre uait.",
 	"proxy-host.no-directory": "Gan ghrúpa",
