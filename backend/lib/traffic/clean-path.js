@@ -15,6 +15,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const HEX = /^[0-9a-f]{16,}$/iu;
 // JWTs, dotted, base64 (+ =) and base64url tokens
 const TOKEN = /^[\w.~+=-]{16,}$/u;
+// a token candidate inside a segment, next to characters a token does not use
+const TOKEN_RUN = /[\w.~+=-]{16,}/gu;
 const HAS_DIGIT = /\d/u;
 const HAS_LETTER = /[A-Za-z]/u;
 const EXTENSION = /\.[A-Za-z0-9]{1,8}$/u;
@@ -72,16 +74,23 @@ const isToken = (text) =>
 	HEX.test(text) ||
 	(TOKEN.test(text) && HAS_DIGIT.test(text) && HAS_LETTER.test(text));
 
+/** A token with a file extension becomes ":id.<ext>", a token ":id"; anything else is kept. */
+const maskToken = (text) => {
+	const ext = EXTENSION.exec(text);
+	if (ext && ext.index > 0 && isToken(text.slice(0, ext.index))) return `:id${ext[0]}`;
+	return isToken(text) ? ":id" : text;
+};
+
 /**
- * One path segment: an email becomes ":email"; a token with a file extension ":id.<ext>"; a whole token ":id"; else
- * every run of 6 or more digits inside it ":id".
+ * One path segment: an email becomes ":email"; a whole token ":id" (":id.<ext>" with a file extension); else every
+ * token inside it (a run of 16 or more token characters next to other characters, for example "!" or "%20") and
+ * every run of 6 or more digits ":id".
  */
 const cleanSegment = (segment) => {
 	if (EMAIL.test(segment)) return ":email";
-	const ext = EXTENSION.exec(segment);
-	if (ext && ext.index > 0 && isToken(segment.slice(0, ext.index))) return `:id${ext[0]}`;
-	if (isToken(segment)) return ":id";
-	return segment.replace(DIGIT_RUN, ":id");
+	const whole = maskToken(segment);
+	if (whole !== segment) return whole;
+	return segment.replace(TOKEN_RUN, maskToken).replace(DIGIT_RUN, ":id");
 };
 
 /** Drops a high surrogate or an incomplete escape the 200 character cut left at the end (only when it cut). */

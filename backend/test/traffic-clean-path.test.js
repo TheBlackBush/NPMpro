@@ -80,6 +80,15 @@ it("replaces JWTs, dotted and base64 tokens, tokens with an extension and long d
 	assert.equal(cleanPath("/wp-content/plugins/x.php"), "/wp-content/plugins/x.php");
 });
 
+it("replaces tokens next to other characters inside a segment", () => {
+	assert.equal(cleanPath("/t/a1b2c3d4e5f6a7b8c9!"), "/t/:id!");
+	assert.equal(cleanPath("/t/0123456789abcdef%20"), "/t/:id%20");
+	assert.equal(cleanPath("/p/abc:12345678901234567xyz"), "/p/abc::id");
+	assert.equal(cleanPath("/f/(x)3f9a8c2e7b1d4a6f9e0c.pdf"), "/f/(x):id.pdf");
+	// 16 or more token characters without a digit stay
+	assert.equal(cleanPath("/p/(privacy-policy-and-terms)"), "/p/(privacy-policy-and-terms)");
+});
+
 it("replaces email addresses with :email, also encoded ones", () => {
 	assert.equal(cleanPath("/unsubscribe/jane.doe@example.com"), "/unsubscribe/:email");
 	assert.equal(cleanPath("/u/jane%40example.com/x"), "/u/:email/x");
