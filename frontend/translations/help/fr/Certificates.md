@@ -18,6 +18,20 @@ Il n'est pas non plus nécessaire de configurer votre Hôte Proxy pour l'accès 
 
 Ce processus prend en charge les domaines génériques.
 
+#### Identifiants DNS enregistrés
+
+Les identifiants de votre Fournisseur DNS sont enregistrés séparément du certificat, dans
+l'onglet _Identifiants DNS_ de la page Certificats. Un certificat choisit ensuite simplement l'un des
+identifiants enregistrés, ce qui permet à plusieurs certificats de les partager.
+
+Les secrets sont stockés chiffrés et ne sont plus jamais affichés. Lorsque vous modifiez un identifiant, laissez
+un secret vide pour conserver la valeur enregistrée. La clé utilisée pour le chiffrement est le fichier
+`/data/npmpro/dns-credentials.key` : sauvegardez-le avec la base de données, sinon
+les identifiants enregistrés ne pourront pas être lus après une restauration.
+
+Les fournisseurs sans formulaire utilisent la zone de texte INI, dans laquelle vous collez le contenu du
+fichier d'identifiants de ce fournisseur.
+
 ## Certificat personnalisé
 
 Utilisez cette option pour importer votre propre certificat TLS, fourni par votre autorité de certification.

@@ -23,6 +23,20 @@ Bu tür bir sertifika talep etmeden önce bir _Proxy Host_ oluşturulmasına ger
 
 Bu işlem joker karakter alan adlarını _destekler_.
 
+#### Kayıtlı DNS kimlik bilgileri
+
+DNS Sağlayıcınızın kimlik bilgileri sertifikadan ayrı olarak, Sertifikalar sayfasındaki
+_DNS kimlik bilgileri_ sekmesinde kaydedilir. Bir sertifika daha sonra yalnızca kayıtlı
+kimlik bilgilerinden birini seçer, böylece birden fazla sertifika bunları paylaşabilir.
+
+Gizli değerler şifrelenmiş olarak saklanır ve bir daha asla gösterilmez. Bir kimlik bilgisini düzenlerken,
+kayıtlı değeri korumak için gizli alanı boş bırakın. Şifreleme için kullanılan anahtar
+`/data/npmpro/dns-credentials.key` dosyasıdır; bunu veritabanıyla birlikte yedekleyin, aksi takdirde
+geri yüklemeden sonra kayıtlı kimlik bilgileri okunamaz.
+
+Formu olmayan sağlayıcılar INI metin kutusunu kullanır; buraya o sağlayıcının
+kimlik bilgileri dosyasının içeriğini yapıştırırsınız.
+
 ### Özel Sertifika
 
 Kendi Sertifika Otoriteniz tarafından sağlanan kendi TLS Sertifikanızı yüklemek için bu seçeneği kullanın.

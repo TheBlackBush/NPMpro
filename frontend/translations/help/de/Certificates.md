@@ -26,6 +26,20 @@ Sie müssen Ihren _Proxy-Host_ auch nicht für den HTTP-Zugriff konfigurieren.
 
 Dieser Prozess unterstützt Wildcard-Domains.
 
+#### Gespeicherte DNS-Zugangsdaten
+
+Die Zugangsdaten für Ihren DNS-Provider werden getrennt vom Zertifikat gespeichert, im
+Tab _DNS-Zugangsdaten_ der Zertifikate-Seite. Ein Zertifikat wählt dann nur einen der
+gespeicherten Zugangsdaten aus, sodass mehrere Zertifikate sie gemeinsam nutzen können.
+
+Geheimnisse werden verschlüsselt gespeichert und nie wieder angezeigt. Wenn Sie Zugangsdaten bearbeiten,
+lassen Sie ein Geheimnis leer, um den gespeicherten Wert zu behalten. Der Schlüssel für die Verschlüsselung ist die Datei
+`/data/npmpro/dns-credentials.key`. Sichern Sie sie zusammen mit der Datenbank, sonst
+können die gespeicherten Zugangsdaten nach einer Wiederherstellung nicht gelesen werden.
+
+Provider ohne Formular verwenden das INI-Textfeld, in das Sie den Inhalt der
+Zugangsdaten-Datei für diesen Provider einfügen.
+
 ### Benutzerdefiniertes Zertifikat
 
 Verwenden Sie diese Option, um Ihr eigenes TLS-Zertifikat hochzuladen, das Ihnen von Ihrer eigenen

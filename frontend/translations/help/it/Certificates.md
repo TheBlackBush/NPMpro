@@ -19,6 +19,20 @@ Non è necessario creare un _Proxy Host_ prima di richiedere questo tipo di cert
 
 Questo processo _supporta_ i domini wildcard.
 
+#### Credenziali DNS salvate
+
+Le credenziali per il tuo DNS Provider vengono salvate separatamente dal certificato, nella
+scheda _Credenziali DNS_ della pagina Certificati. Un certificato sceglie poi solo una delle
+credenziali salvate, quindi più certificati possono condividerle.
+
+I segreti vengono memorizzati cifrati e non vengono mai più mostrati. Quando modifichi una credenziale, lascia
+vuoto un segreto per mantenere il valore salvato. La chiave usata per la cifratura è il file
+`/data/npmpro/dns-credentials.key`: esegui il backup insieme al database, altrimenti
+le credenziali salvate non potranno essere lette dopo un ripristino.
+
+I provider senza un modulo usano la casella di testo INI, in cui incolli il contenuto del
+file delle credenziali per quel provider.
+
 ### Certificato personalizzato
 
 Utilizza questa opzione per caricare il tuo certificato TLS, fornito dalla tua autorità di certificazione.

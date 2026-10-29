@@ -26,6 +26,20 @@ Tampoco necesitas tener tu _Host Proxy_ configurado para acceso HTTP.
 
 Este proceso _sí_ admite dominios comodín.
 
+#### Credenciales DNS guardadas
+
+Las credenciales de tu Proveedor de DNS se guardan por separado del certificado, en la
+pestaña _Credenciales DNS_ de la página de Certificados. Un certificado solo elige una de las
+credenciales guardadas, por lo que varios certificados pueden compartirlas.
+
+Los secretos se almacenan cifrados y nunca se vuelven a mostrar. Al editar una credencial, deja
+un secreto vacío para conservar el valor guardado. La clave usada para el cifrado es el archivo
+`/data/npmpro/dns-credentials.key`; haz una copia de seguridad junto con la base de datos, de lo contrario
+las credenciales guardadas no se podrán leer después de una restauración.
+
+Los proveedores sin formulario usan el cuadro de texto INI, donde pegas el contenido del
+archivo de credenciales de ese proveedor.
+
 ### Certificado Personalizado
 
 Usa esta opción para cargar tu propio Certificado TLS, proporcionado por tu propia

@@ -23,6 +23,20 @@ _Proksi Host_-unuzun HTTP girişi üçün konfiqurasiya edilməsinə də ehtiyac
 
 Bu proses wildcard domenləri dəstəkləyir.
 
+#### Saxlanmış DNS giriş məlumatları
+
+DNS Provayderiniz üçün kimlik məlumatları sertifikatdan ayrı, Sertifikatlar səhifəsinin
+_DNS giriş məlumatları_ tabında saxlanılır. Sertifikat sonra saxlanmış kimlik məlumatlarından
+yalnız birini seçir, beləliklə bir neçə sertifikat onları birgə istifadə edə bilər.
+
+Gizli dəyərlər şifrələnmiş şəkildə saxlanılır və bir daha göstərilmir. Kimlik məlumatını redaktə edərkən
+saxlanmış dəyəri saxlamaq üçün gizli sahəni boş buraxın. Şifrələmə üçün istifadə olunan açar
+`/data/npmpro/dns-credentials.key` faylıdır, onu verilənlər bazası ilə birlikdə ehtiyat nüsxəyə çıxarın,
+əks halda bərpadan sonra saxlanmış kimlik məlumatları oxuna bilməz.
+
+Forması olmayan provayderlər INI mətn sahəsindən istifadə edir, ora həmin provayder üçün
+kimlik məlumatları faylının məzmununu yapışdırırsınız.
+
 ### Fərdi sertifikat
 
 Öz Sertifikat Səlahiyyətinizin verdiyi öz TLS Sertifikatınızı yükləmək üçün bu seçimdən istifadə edin.

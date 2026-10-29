@@ -16,6 +16,20 @@ Nem szükséges előzetesen _Proxy Kiszolgáló_-t létrehozni az ilyen típusú
 
 Ez a folyamat _támogatja_ a helyettesítő karakteres domaineket.
 
+#### Mentett DNS hitelesítő adatok
+
+A DNS szolgáltató hitelesítő adatai a tanúsítványtól külön, a Tanúsítványok oldal
+_DNS hitelesítő adatok_ lapján tárolódnak. A tanúsítvány ezután csak kiválaszt egyet a
+mentett hitelesítő adatok közül, így több tanúsítvány is használhatja ugyanazokat.
+
+A titkos értékek titkosítva tárolódnak, és soha többé nem jelennek meg. Hitelesítő adat szerkesztésekor hagyd
+üresen a titkos mezőt, ha meg akarod tartani a mentett értéket. A titkosítás kulcsa a
+`/data/npmpro/dns-credentials.key` fájl, ezt az adatbázissal együtt mentsd, különben
+visszaállítás után a mentett hitelesítő adatok nem olvashatók.
+
+Az űrlap nélküli szolgáltatók az INI szövegmezőt használják, ahová az adott szolgáltató
+hitelesítőadat-fájljának tartalmát kell beilleszteni.
+
 ### Egyéni tanúsítvány
 
 Ezt az opciót használd a saját TLS tanúsítvány feltöltéséhez, amelyet a saját tanúsítványkibocsátód biztosított.

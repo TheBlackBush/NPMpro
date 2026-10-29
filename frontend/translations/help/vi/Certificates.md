@@ -20,6 +20,20 @@ Khi dùng phương thức này: Bạn không cần tạo sẵn Proxy Host trư�
 
 Phương thức DNS _có hỗ trợ_ wildcard domain.
 
+#### Thông tin xác thực DNS đã lưu (Saved DNS credentials)
+
+Thông tin xác thực của DNS Provider được lưu riêng với chứng chỉ, trong tab
+_Thông tin xác thực DNS_ của trang Chứng chỉ. Sau đó, chứng chỉ chỉ cần chọn một trong các
+thông tin xác thực đã lưu, nên nhiều chứng chỉ có thể dùng chung.
+
+Các giá trị bí mật được lưu dưới dạng mã hóa và sẽ không bao giờ được hiển thị lại. Khi chỉnh sửa thông tin xác thực,
+để trống một giá trị bí mật để giữ nguyên giá trị đã lưu. Khóa dùng để mã hóa là tệp
+`/data/npmpro/dns-credentials.key`, hãy sao lưu tệp này cùng với cơ sở dữ liệu, nếu không
+thông tin xác thực đã lưu sẽ không thể đọc được sau khi khôi phục.
+
+Các provider không có biểu mẫu sẽ dùng ô văn bản INI, nơi bạn dán nội dung của
+tệp thông tin xác thực cho provider đó.
+
 ### Chứng chỉ tùy chỉnh (Custom Certificate)
 
 Tùy chọn này cho phép bạn tải lên chứng chỉ TLS của riêng mình, được cung cấp bởi Certificate Authority (CA) mà bạn tự chọn.

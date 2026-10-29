@@ -26,6 +26,20 @@ Anda juga tidak perlu mengonfigurasi _Host Proxy_ untuk akses HTTP.
 
 Proses ini _mendukung_ domain wildcard.
 
+#### Kredensial DNS tersimpan
+
+Kredensial untuk Penyedia DNS Anda disimpan terpisah dari sertifikat, di tab
+_Kredensial DNS_ pada halaman Sertifikat. Sertifikat kemudian hanya memilih salah satu
+kredensial tersimpan, sehingga beberapa sertifikat dapat menggunakannya bersama.
+
+Rahasia disimpan terenkripsi dan tidak akan pernah ditampilkan lagi. Saat Anda mengedit kredensial, biarkan
+rahasia kosong untuk mempertahankan nilai yang tersimpan. Kunci yang digunakan untuk enkripsi adalah file
+`/data/npmpro/dns-credentials.key`, cadangkan file ini bersama database, jika tidak
+kredensial tersimpan tidak dapat dibaca setelah pemulihan.
+
+Penyedia tanpa formulir menggunakan kotak teks INI, tempat Anda menempelkan isi
+file kredensial untuk penyedia tersebut.
+
 ### Sertifikat Kustom
 
 Gunakan opsi ini untuk mengunggah Sertifikat TLS Anda sendiri, sebagaimana disediakan oleh
