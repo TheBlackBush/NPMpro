@@ -48,7 +48,7 @@
 						},
 						"traffic_missing_paths": {
 							"type": "boolean",
-							"description": "Track missing pages: count the paths of 404 and 410 responses of proxy and redirection hosts (up to 500 per host and day); turning it off deletes them"
+							"description": "Track missing pages: count the paths of 404 and 410 responses of proxy and redirection hosts (up to 500 per domain name and day); turning it off deletes them"
 						},
 						"delete_stats": {
 							"type": "boolean",

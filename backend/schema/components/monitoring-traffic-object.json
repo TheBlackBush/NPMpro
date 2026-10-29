@@ -210,7 +210,7 @@
 		"top_404_paths": {
 			"type": "array",
 			"maxItems": 10,
-			"description": "Only present while missing pages are tracked (setting traffic_missing_paths): the most requested paths of 404 and 410 responses of proxy and redirection hosts in the range (1h and 24h: whole hours from the range's first hour, like the other top lists; 7d and 30d: whole UTC days, because rows older than two days are kept per day), sorted by requests. Query strings are never stored; emails read :email, ID and token segments :id; \"(other)\" collects paths over the limit of 500 per host and day or 50,000 per day over all hosts",
+			"description": "Only present while missing pages are tracked (setting traffic_missing_paths): the most requested paths of 404 and 410 responses of proxy and redirection hosts in the range (1h and 24h: whole hours from the range's first hour, like the other top lists; 7d and 30d: whole UTC days, because rows older than two days are kept per day), sorted by requests. Query strings are never stored; emails read :email, ID and token segments :id; \"(other)\" collects paths over the limit of 500 per domain name and day or 50,000 per day over all names",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
