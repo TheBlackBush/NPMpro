@@ -253,6 +253,7 @@ labels:
 12. It is recommended to block at the earliest possible point, so if possible set up a firewall bouncer: https://docs.crowdsec.net/u/bouncers/firewall, make sure to also include the docker iptables in the firewall bouncer config
 13. Note that when crowdsec appsec is enabled for a host/location, request bodies will always be buffered, so setting `proxy_request_buffering` to off will not work there, response buffering is not affected
 14. Note that appsec blocks requests with a body bigger than 10 MiB by default, so you may want to enable "Disable Crowdsec Appsec" for hosts/locations which receive bigger uploads (like Nextcloud)
+15. The bouncer runs before access lists, so a banned IP gets the ban page instead of a basic auth prompt and can not keep guessing passwords
 
 ## Bot detection (optional)
 Bot detection challenges every request without a valid cookie, so clients which can not solve it, like apps, get blocked. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable, the short version:
@@ -270,6 +271,7 @@ labels:
   type: npmplus
 ```
 nginx writes the client IP itself, so bans can not be forged. The request line however is written out as the client sent it, a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert.
+With the error log added, failed basic auth attempts show up in both logs, so `crowdsecurity/http-generic-bf` counts each of them twice and bans after roughly half as many failed attempts (3 instead of 6 in quick succession).
 
 ## Use of external php-fpm (recommended)
 To set it per location: press the gear button, set the scheme to `path`, put in the path and paste the following in the new text field at the bottom, you need to adjust the last line:
