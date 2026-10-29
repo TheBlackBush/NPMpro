@@ -33,20 +33,21 @@ function EnvLock() {
  * Settings > Database: the database in use, its tables, and the form to move everything to another database
  */
 export default function Database() {
-	const { data, isPending, error } = useDatabase();
+	// always fetched on a visit: the check for a running move below must not use a cached answer
+	const { data, isPending, error, isFetchedAfterMount } = useDatabase({ refetchOnMount: "always" });
 	const queryClient = useQueryClient();
 	const checked = useRef(false);
 
 	// a move that runs (started here before a reload, or by another administrator) opens its window on the progress
 	useEffect(() => {
-		if (!data || checked.current) return;
+		if (!(data && isFetchedAfterMount) || checked.current) return;
 		checked.current = true;
 		if (isMoveActive(data.move)) {
 			// the window starts from this answer, so it shows the move even when the old process is already gone
 			queryClient.setQueryData(["database-move"], { move: data.move });
 			showDatabaseMoveModal({ status: data, target: data.move.target, moveId: data.move.id });
 		}
-	}, [data, queryClient]);
+	}, [data, isFetchedAfterMount, queryClient]);
 
 	return (
 		<div className="card-body">

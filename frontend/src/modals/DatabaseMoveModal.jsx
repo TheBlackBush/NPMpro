@@ -7,9 +7,12 @@ import { ApiErrorContent, AppModal, Button, ErrorAlert } from "src/components";
 import { useDatabaseMove, useStartDatabaseMove } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
+	activeStep,
 	canCloseMove,
 	copyProgress,
+	failedStepOf,
 	MOVE_STEPS,
+	moveAsApiError,
 	moveView,
 	stepState,
 	totals,
@@ -123,10 +126,9 @@ function Summary({ status, target }) {
 	return <T id="settings.database.move.summary" data={{ ...values, to }} />;
 }
 
-// the move's error as an API error, so ApiErrorContent shows the translated message and the details behind a toggle
-const moveError = (error) => ({
-	payload: { error: { message: error?.message, message_i18n: error?.messageI18n, output: error?.details } },
-});
+// the name of a step, or the raw step when the backend sends one this build does not know
+const stepLabel = (step) =>
+	MOVE_STEPS.includes(step) ? intl.formatMessage({ id: `settings.database.step.${step}` }) : (step ?? "");
 
 /**
  * The move window: the summary with a typed confirmation, then the steps with the copy progress, the restart wait
@@ -143,7 +145,11 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	// null until the restart, then "waiting" for the new process, then "timeout" after 2 minutes
 	const [restart, setRestart] = useState(null);
 	const waitStarted = useRef(false);
+	// one POST even for a fast double submit, before isPending is rendered
+	const startSent = useRef(false);
 	const wordRef = useRef(null);
+	const titleRef = useRef(null);
+	const actionRef = useRef(null);
 	// no polls once the restart wait runs: the old process is gone
 	const moveQuery = useDatabaseMove(Boolean(moveId) && restart === null);
 	const move = moveQuery.data?.move ?? null;
@@ -151,6 +157,19 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	const closable = canCloseMove(view, restart);
 	const engine = target?.engine ?? move?.target?.engine ?? "";
 	const matches = word.trim() === engine;
+	const active = view === "running" ? activeStep(move) : null;
+	const connectionLost = view === "running" && moveQuery.isError;
+	const ended = view === "failed" || restart === "timeout";
+
+	// after the start the confirmation's field is gone: the focus goes to the title, above the steps
+	useEffect(() => {
+		if (view === "starting") titleRef.current?.focus();
+	}, [view]);
+
+	// the failure and the timeout end with one button: Close or Reload
+	useEffect(() => {
+		if (ended) actionRef.current?.focus();
+	}, [ended]);
 
 	useEffect(() => {
 		if (view !== "restarting" || waitStarted.current) return;
@@ -177,7 +196,8 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 
 	const onStart = async (event) => {
 		event.preventDefault();
-		if (!matches || startMove.isPending) return;
+		if (!matches || startSent.current) return;
+		startSent.current = true;
 		setError(null);
 		try {
 			const { id } = await startMove.mutateAsync(target);
@@ -187,6 +207,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 			void queryClient.invalidateQueries({ queryKey: ["database-move"] });
 		} catch (err) {
 			setError(err);
+			startSent.current = false;
 		}
 	};
 
@@ -244,12 +265,20 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 			</>
 		);
 	} else {
-		const failedStep = view === "failed" ? (move?.error?.step ?? move?.step) : null;
 		body = (
 			<>
 				<div className="mb-3">
 					<StepList move={view === "starting" ? null : move} />
 				</div>
+				{/* the active step's name, for screen readers: the list itself is not a live region */}
+				<div className="visually-hidden" aria-live="polite">
+					{active ? stepLabel(active) : ""}
+				</div>
+				{connectionLost ? (
+					<div className="small text-secondary mb-3" role="status">
+						<T id="settings.database.move.connection-lost" />
+					</div>
+				) : null}
 				{move?.backup && view !== "starting" ? (
 					<div className="small text-secondary text-break mb-3">
 						<T id="settings.database.move.backup-name" data={{ name: move.backup }} />
@@ -279,17 +308,10 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 				{view === "failed" ? (
 					<>
 						<ErrorAlert className="mb-3">
-							<ApiErrorContent error={moveError(move?.error)} />
+							<ApiErrorContent error={moveAsApiError(move?.error)} />
 						</ErrorAlert>
 						<p className="mb-0">
-							<T
-								id="settings.database.move.failed"
-								data={{
-									step: MOVE_STEPS.includes(failedStep)
-										? intl.formatMessage({ id: `settings.database.step.${failedStep}` })
-										: (failedStep ?? ""),
-								}}
-							/>
+							<T id="settings.database.move.failed" data={{ step: stepLabel(failedStepOf(move)) }} />
 						</p>
 					</>
 				) : null}
@@ -297,13 +319,13 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		);
 		if (view === "failed") {
 			footer = (
-				<Button className="ms-auto" onClick={close}>
+				<Button ref={actionRef} className="ms-auto" onClick={close}>
 					<T id="action.close" />
 				</Button>
 			);
 		} else if (restart === "timeout") {
 			footer = (
-				<Button color="primary" className="ms-auto" onClick={() => window.location.reload()}>
+				<Button ref={actionRef} color="primary" className="ms-auto" onClick={() => window.location.reload()}>
 					<IconRefresh className="icon" aria-hidden="true" />
 					<T id="settings.database.move.reload" />
 				</Button>
@@ -317,7 +339,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		<AppModal show={visible} onHide={close} size="lg" backdrop={closable ? true : "static"} keyboard={closable}>
 			<div className={cn("modal-status", view === "failed" ? "bg-danger" : "bg-warning")} />
 			<AppModal.Header closeButton={closable}>
-				<AppModal.Title>
+				<AppModal.Title ref={titleRef} tabIndex={-1}>
 					<T id="settings.database.move.title" />
 				</AppModal.Title>
 			</AppModal.Header>

@@ -145,8 +145,9 @@ export const moveView = ({ moveId, move, pollFailed }) => {
 	if (move?.id !== moveId) return "starting";
 	if (move.state === "failed") return "failed";
 	if (move.state === "restarting") return "restarting";
-	// the old process exits right after the switch, so a poll can miss "restarting" and fail instead
-	return pollFailed ? "restarting" : "running";
+	// the old process exits only after the switch, so a poll can miss "restarting" and fail instead; at any other
+	// step a failed poll is a lost connection, and the polls go on
+	return pollFailed && move.step === "switch" ? "restarting" : "running";
 };
 
 /**
@@ -159,5 +160,16 @@ export const copyProgress = (tables = []) => {
 	return { ...sums, percent, current };
 };
 
+// the active step's name for the screen reader announcement, null when no step is active
+export const activeStep = (move) => (move?.state === "running" ? (move.step ?? null) : null);
+
 // the move window closes only before the start, after a failure and when the restart wait ran out
 export const canCloseMove = (view, restart) => view === "confirm" || view === "failed" || restart === "timeout";
+
+// a move's error as an API error, so ApiErrorContent shows the translated message and the details behind a toggle
+export const moveAsApiError = (error) => ({
+	payload: { error: { message: error?.message, message_i18n: error?.messageI18n, output: error?.details } },
+});
+
+// the step a failed move stopped at
+export const failedStepOf = (move) => move?.error?.step ?? move?.step ?? null;

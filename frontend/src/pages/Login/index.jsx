@@ -1,6 +1,15 @@
 import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { BrandMark, Button, ErrorAlert, LocalePicker, OidcButton, Page, ThemeSwitcher } from "src/components";
+import {
+	BrandMark,
+	Button,
+	ErrorAlert,
+	LocalePicker,
+	MaintenanceBanner,
+	OidcButton,
+	Page,
+	ThemeSwitcher,
+} from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
@@ -233,6 +242,7 @@ export default function Login() {
 					<LocalePicker />
 					<ThemeSwitcher />
 				</div>
+				<MaintenanceBanner />
 				<div className="text-center mb-4">
 					<h1 className="navbar-brand fs-1">
 						<BrandMark variant="stacked" size={160} alt="NPMpro" className="navbar-brand-image" />

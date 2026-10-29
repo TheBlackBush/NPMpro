@@ -3,12 +3,15 @@ import { getDatabase, getDatabaseMove, startDatabaseMove, testDatabase } from "s
 
 /**
  * The database in use, its tables and the last move; administrators only
+ *
+ * @param {Object} [options]  more useQuery options, for example refetchOnMount
  */
-const useDatabase = () =>
+const useDatabase = (options = {}) =>
 	useQuery({
 		queryKey: ["database"],
 		queryFn: () => getDatabase(),
 		staleTime: 10 * 1000,
+		...options,
 	});
 
 /**

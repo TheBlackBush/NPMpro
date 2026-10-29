@@ -18,7 +18,10 @@ import { showDatabaseMoveModal } from "src/modals";
 import {
 	changeEngine,
 	ENGINES,
+	failedStepOf,
 	initialTarget,
+	MOVE_STEPS,
+	moveAsApiError,
 	moveHint,
 	canMove as passed,
 	payloadKey,
@@ -26,6 +29,31 @@ import {
 	testOfValues,
 	toPayload,
 } from "src/modules/DatabaseMove";
+
+/**
+ * The last move failed (kept in memory until the backend restarts): its step and error, so a failure nobody watched
+ * is seen; it can be hidden for this page view
+ */
+function LastFailedMove({ move }) {
+	const [hidden, setHidden] = useState(false);
+	if (hidden || move?.state !== "failed") return null;
+	const step = failedStepOf(move);
+	return (
+		<ErrorAlert className="mb-3" onClose={() => setHidden(true)}>
+			<div className="fw-medium">
+				<T
+					id="settings.database.move.failed"
+					data={{
+						step: MOVE_STEPS.includes(step)
+							? intl.formatMessage({ id: `settings.database.step.${step}` })
+							: (step ?? ""),
+					}}
+				/>
+			</div>
+			<ApiErrorContent error={moveAsApiError(move.error)} />
+		</ErrorAlert>
+	);
+}
 
 // an error is shown once the field was left or a test was tried
 const shownError = (form, name) =>
@@ -169,6 +197,7 @@ function MoveForm({ tested, status }) {
 				</h3>
 			</div>
 			<div className="card-body">
+				<LastFailedMove move={status?.move} />
 				<p className="text-secondary">
 					<T id="settings.database.move.intro" />
 				</p>

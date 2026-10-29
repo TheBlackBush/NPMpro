@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	activeStep,
 	canCloseMove,
 	canMove,
 	changeEngine,
 	copyProgress,
+	failedStepOf,
 	initialTarget,
 	isMoveActive,
+	moveAsApiError,
 	moveHint,
 	moveView,
 	payloadKey,
@@ -159,8 +162,25 @@ it("shows the confirmation, then the move this window follows", () => {
 	assert.equal(moveView({ moveId: "new", move: { id: "new", state: "failed" }, pollFailed: true }), "failed");
 });
 
-it("takes a failed poll of a running move as the restart", () => {
-	assert.equal(moveView({ moveId: "a", move: { id: "a", state: "running" }, pollFailed: true }), "restarting");
+it("takes a failed poll as the restart only at the switch step", () => {
+	assert.equal(
+		moveView({ moveId: "a", move: { id: "a", state: "running", step: "copy" }, pollFailed: true }),
+		"running",
+	);
+	assert.equal(
+		moveView({ moveId: "a", move: { id: "a", state: "running", step: "switch" }, pollFailed: true }),
+		"restarting",
+	);
+	assert.equal(
+		moveView({ moveId: "a", move: { id: "a", state: "running", step: "switch" }, pollFailed: false }),
+		"running",
+	);
+});
+
+it("names the active step only while the move runs", () => {
+	assert.equal(activeStep({ state: "running", step: "copy" }), "copy");
+	assert.equal(activeStep({ state: "failed", step: "copy" }), null);
+	assert.equal(activeStep(null), null);
 });
 
 it("knows which moves the window follows and when it can close", () => {
@@ -192,4 +212,22 @@ it("reports the copy progress and the table being copied", () => {
 	assert.equal(copyProgress([{ name: "user", rows: 0, copied: 0 }]).percent, 100);
 	assert.equal(copyProgress([{ name: "user", rows: 0, copied: 0 }]).current, null);
 	assert.equal(copyProgress([{ name: "user", rows: 3, copied: 3 }]).percent, 100);
+});
+
+it("turns a failed move into an API error with its step", () => {
+	const move = {
+		state: "failed",
+		step: "copy",
+		error: {
+			step: "verify",
+			message: "Rows differ",
+			messageI18n: "database.error.verify",
+			details: "user: 2 != 3",
+		},
+	};
+	assert.deepEqual(moveAsApiError(move.error), {
+		payload: { error: { message: "Rows differ", message_i18n: "database.error.verify", output: "user: 2 != 3" } },
+	});
+	assert.equal(failedStepOf(move), "verify");
+	assert.equal(failedStepOf({ state: "failed", step: "copy", error: null }), "copy");
 });
