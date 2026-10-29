@@ -122,8 +122,8 @@ const groupHosts = (rows, resolver) => {
  * @returns {Object}
  */
 const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Date.now, log = logger }) => {
-	// results per (range, filter, show_ips, unique_visitors), 30 s for 1h and 24h and 5 minutes for 7d and 30d: the
-	// page refreshes every minute per open tab, the counts change once a minute (flush)
+	// results per (range, filter, show_ips, unique_visitors, traffic_missing_paths), 30 s for 1h and 24h and 5 minutes
+	// for 7d and 30d: the page refreshes every minute per open tab, the counts change once a minute (flush)
 	const trafficCache = new Map();
 
 	const cached = (cache, key, compute, ttl = TRAFFIC_CACHE_MS) => {

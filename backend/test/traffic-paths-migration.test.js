@@ -61,6 +61,12 @@ const roundTrip = async (knex) => {
 		assert.equal(Number(r.requests), 2);
 		assert.equal(Number(r.last_seen), 9);
 	}
+	// the top paths read sums the day rows and today's hour rows (the order of equal counts depends on the collation)
+	const { top_404_paths: top } = await store.queryTraffic({ range: "30d", paths: true, now: NOW });
+	assert.deepEqual(
+		top.map((r) => [r.path, r.requests, r.last_seen]).sort(),
+		PATHS.map((path) => [path, 5, new Date(20_000_000_000_000).toISOString()]).sort(),
+	);
 	const [seed] = await store.pathDayHashes({ days: [TODAY - 1, TODAY] });
 	assert.deepEqual([...seed.hashes].sort(), PATHS.map(pathHash).sort());
 	await store.deletePaths();

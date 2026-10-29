@@ -33,7 +33,7 @@ const packHash = (hex) => Buffer.from(hex, "hex").toString("latin1");
  * @param   {Object}  options
  * @param   {number}  [options.maxPerKey]    distinct ASNs and IPs per host and hour
  * @param   {number}  [options.maxVisitors]  distinct visitors per host and day (changed by setVisitorsCap)
- * @param   {number}  [options.maxPaths]     distinct missing page paths per host and UTC day
+ * @param   {number}  [options.maxPaths]     distinct missing page paths per domain name (stored host key) and UTC day
  * @param   {number}  [options.maxPathsTotal]  distinct missing page paths per UTC day over all hosts
  */
 export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000, maxPaths = 500, maxPathsTotal = 50000 }) => {
@@ -52,8 +52,9 @@ export const createCounter = ({ maxPerKey = 1000, maxVisitors = 100000, maxPaths
 	let newestHour = 0;
 	let newestDay = 0;
 	let paths = new Map();
-	// per `${day}|${host}`: the hashes (pathHash, a number each) of the distinct missing page paths queued in this run or
-	// stored before the start (seedPaths); a number instead of the string keeps 1,000 names at the cap in a few MB
+	// per `${day}|${host}`: the hashes (pathHash, a 53-bit number each) of the distinct missing page paths queued in this
+	// run or stored before the start (seedPaths). Up to 500 per domain name and 50,000 per UTC day over all of them;
+	// only today and yesterday are kept, so at most 100,000 numbers (a few MB) instead of path strings
 	const dayPaths = new Map();
 	// per UTC day: distinct paths over all hosts (the safety cap maxPathsTotal)
 	const dayPathTotals = new Map();
