@@ -3,6 +3,7 @@ import { useId } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
 import { passphraseErrors } from "src/modules/BackupTypes";
+import { translateErrors } from "src/modules/HookForm";
 import { PasswordInput, SwitchField, useRecheckDependent } from "./Form";
 
 // the passphrase fields, whose messages go when secrets are off
@@ -11,10 +12,7 @@ const PASSPHRASE_FIELDS = ["passphrase", "passphraseRepeat"];
 /**
  * The validate of the secrets fields (secrets, passphrase, passphraseRepeat): the messages of passphraseErrors
  */
-const validateSecrets = (values) =>
-	Object.fromEntries(
-		Object.entries(passphraseErrors(values)).map(([field, id]) => [field, intl.formatMessage({ id })]),
-	);
+const validateSecrets = (values) => translateErrors(passphraseErrors(values), intl);
 
 function PassphraseInput({ id, labelId, hintId, error, inputProps }) {
 	return (

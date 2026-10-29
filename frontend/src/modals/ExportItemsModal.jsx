@@ -324,7 +324,7 @@ const ExportItemsModal = EasyModal.create(({ kind, visible, remove }) => {
 	return (
 		<AppModal show={visible} onHide={remove} size="lg" backdrop="static">
 			{base && !mePending ? (
-				<ExportContent kind={kind} base={base} admin={isAdmin(me?.roles)} onClose={remove} />
+				<ExportContent kind={kind} base={base} admin={Boolean(isAdmin(me?.roles))} onClose={remove} />
 			) : null}
 			{!base && error ? (
 				<>
