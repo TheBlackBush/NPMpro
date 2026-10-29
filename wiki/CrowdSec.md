@@ -226,6 +226,15 @@ The bouncer supports the captcha remediation. Set `CAPTCHA_PROVIDER` and the `SI
 - The switch only turns off AppSec. Bans from the LAPI still apply to the host.
 - Without `APPSEC_URL` the switch does nothing.
 
+## Access lists and forward authentication
+
+The bouncer runs before access lists and forward authentication. A banned IP gets the ban page instead of a password prompt, so it cannot keep guessing passwords, and an access list with **Satisfy Any** no longer lets a banned IP through with valid credentials or an allowed address. This has some side effects:
+
+- **Uploads to protected hosts:** with AppSec on, request bodies to hosts behind an access list or forward authentication are read and sent to AppSec before the client has signed in. Set a `client_max_body_size` in the advanced config of such hosts, or turn on **Disable Crowdsec Appsec** there, if that matters to you.
+- **Clients let in by an IP rule:** clients allowed by an IP rule of an access list with **Satisfy Any** are checked by CrowdSec too, including the bot detection challenge. Apps in your LAN that are not browsers may need a CrowdSec allowlist entry, or Disable Crowdsec Appsec on that host (which also turns off bot detection there).
+- **LDAP:** `auth_ldap` from the advanced config still runs before the bouncer.
+- **Custom Lua:** your own `access_by_lua` blocks in the advanced config run before allow/deny rules, basic auth and forward authentication while CrowdSec is enabled. They must not set `access_by_lua_no_postpone` themselves.
+
 ## Bot detection (optional)
 
 Bot detection challenges every request without a valid cookie, so clients that cannot solve the challenge, such as mobile apps or API clients, are blocked. Use it only for hosts that are opened in a browser. Full documentation: https://doc.crowdsec.net/docs/next/appsec/bot_detection/enable. The short version:
