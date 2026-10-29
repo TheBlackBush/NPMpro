@@ -11,9 +11,13 @@ import {
 	isMoveActive,
 	moveAsApiError,
 	moveHint,
+	moveLost,
 	moveView,
 	payloadKey,
+	pollStalled,
+	resolveMoveEnd,
 	sourceBadge,
+	stepName,
 	stepState,
 	targetErrors,
 	testOfValues,
@@ -230,4 +234,98 @@ it("turns a failed move into an API error with its step", () => {
 	});
 	assert.equal(failedStepOf(move), "verify");
 	assert.equal(failedStepOf({ state: "failed", step: "copy", error: null }), "copy");
+});
+
+// a fake clock: sleep moves the time on
+const fakeClock = () => {
+	let time = 0;
+	return {
+		now: () => time,
+		sleep: (ms) => {
+			time += ms;
+			return Promise.resolve();
+		},
+	};
+};
+
+it("starts the resolution after 10 seconds of failed polls or when the move is gone", () => {
+	assert.equal(pollStalled({ isError: true, lastAnswerAt: 0, now: 9999 }), false);
+	assert.equal(pollStalled({ isError: true, lastAnswerAt: 0, now: 10_000 }), true);
+	assert.equal(pollStalled({ isError: false, lastAnswerAt: 0, now: 60_000 }), false);
+	assert.equal(moveLost({ seen: true, answered: true, move: null, moveId: "a" }), true);
+	assert.equal(moveLost({ seen: true, answered: true, move: { id: "b" }, moveId: "a" }), true);
+	assert.equal(moveLost({ seen: true, answered: true, move: { id: "a" }, moveId: "a" }), false);
+	assert.equal(moveLost({ seen: false, answered: true, move: { id: "old" }, moveId: "a" }), false);
+});
+
+it("keeps a move at copy running while the health check reports maintenance", async () => {
+	const clock = fakeClock();
+	assert.equal(pollStalled({ isError: true, lastAnswerAt: 0, now: 10_000 }), true);
+	const { result } = await resolveMoveEnd({
+		moveId: "a",
+		expectRestart: false,
+		fetchHealth: async () => ({ status: "OK", maintenance: "database-move" }),
+		fetchDatabase: async () => assert.fail("not asked while the move runs"),
+		...clock,
+	});
+	assert.equal(result, "running");
+});
+
+it("shows the failure when the health check has no maintenance and the move failed", async () => {
+	const failed = { id: "a", state: "failed", step: "copy", error: { message: "x" } };
+	const { result, move } = await resolveMoveEnd({
+		moveId: "a",
+		expectRestart: false,
+		fetchHealth: async () => ({ status: "OK" }),
+		fetchDatabase: async () => ({ move: failed }),
+		...fakeClock(),
+	});
+	assert.equal(result, "failed");
+	assert.deepEqual(move, failed);
+});
+
+it("reloads when the restarted backend has no move or another one", async () => {
+	for (const database of [{ move: null }, { move: { id: "b", state: "failed" } }]) {
+		const { result } = await resolveMoveEnd({
+			moveId: "a",
+			expectRestart: true,
+			fetchHealth: async () => ({ status: "OK" }),
+			fetchDatabase: async () => database,
+			...fakeClock(),
+		});
+		assert.equal(result, "restarted");
+	}
+});
+
+it("waits through maintenance and failed health checks while a restart is expected, up to the limit", async () => {
+	const answers = [new Error("502"), { status: "OK", maintenance: "database-move" }, { status: "OK" }];
+	let asked = 0;
+	const { result } = await resolveMoveEnd({
+		moveId: "a",
+		expectRestart: true,
+		fetchHealth: async () => {
+			const answer = answers[asked++];
+			if (answer instanceof Error) throw answer;
+			return answer;
+		},
+		fetchDatabase: async () => ({ move: null }),
+		...fakeClock(),
+	});
+	assert.equal(result, "restarted");
+	assert.equal(asked, 3);
+	const timedOut = await resolveMoveEnd({
+		moveId: "a",
+		expectRestart: true,
+		fetchHealth: () => Promise.reject(new Error("502")),
+		fetchDatabase: async () => ({ move: null }),
+		...fakeClock(),
+	});
+	assert.equal(timedOut.result, "timeout");
+});
+
+it("names a step through the translation, and an unknown one as it is", () => {
+	const format = (id) => `[${id}]`;
+	assert.equal(stepName("copy", format), "[settings.database.step.copy]");
+	assert.equal(stepName("later", format), "later");
+	assert.equal(stepName(null, format), "");
 });

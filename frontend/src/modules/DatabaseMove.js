@@ -173,3 +173,64 @@ export const moveAsApiError = (error) => ({
 
 // the step a failed move stopped at
 export const failedStepOf = (move) => move?.error?.step ?? move?.step ?? null;
+
+// progress polls that failed this long in a row (since the last answer) start the resolution
+export const STALL_MS = 10_000;
+
+/**
+ * The progress polls failed for STALL_MS in a row: counted from the last answer (or from when the polls resumed), so
+ * TanStack's own retries do not matter
+ */
+export const pollStalled = ({ isError, lastAnswerAt, now, limitMs = STALL_MS }) =>
+	Boolean(isError) && now - lastAnswerAt >= limitMs;
+
+// a poll answered without this window's move although the window saw it: the backend restarted or lost it
+export const moveLost = ({ seen, answered, move, moveId }) => Boolean(seen && answered && move?.id !== moveId);
+
+/**
+ * How a move ended when the progress polls cannot tell: asks the health check, then GET /database
+ * - health with maintenance: the old process still runs the move ("running"; while a restart is expected, wait on)
+ * - health without maintenance: the move ended; GET /database has it as failed ("failed", with the move) or not
+ *   at all, another one or a finished one ("restarted")
+ * - no health answer: wait, up to limitMs ("timeout")
+ *
+ * @returns {Promise<{ result: "running"|"failed"|"restarted"|"timeout", move?: Object }>}
+ */
+export const resolveMoveEnd = async ({
+	moveId,
+	expectRestart,
+	fetchHealth,
+	fetchDatabase,
+	sleep,
+	now,
+	limitMs = 120_000,
+	intervalMs = 2000,
+}) => {
+	const start = now();
+	while (now() - start < limitMs) {
+		let health = null;
+		try {
+			health = await fetchHealth();
+		} catch {
+			// nginx answers 502 while the backend restarts
+		}
+		if (health?.status === "OK" && health.maintenance && !expectRestart) return { result: "running" };
+		if (health?.status === "OK" && !health.maintenance) {
+			try {
+				const database = await fetchDatabase();
+				const move = database?.move;
+				if (move?.id === moveId && move.state === "failed") return { result: "failed", move };
+				if (move?.id === moveId && move.state === "running") return { result: "running" };
+				return { result: "restarted" };
+			} catch {
+				// asked again after the interval (a 401 after the restart reloads the page by itself)
+			}
+		}
+		await sleep(intervalMs);
+	}
+	return { result: "timeout" };
+};
+
+// the name of a step through formatMessage, or the raw step when the backend sends one this build does not know
+export const stepName = (step, formatMessage) =>
+	MOVE_STEPS.includes(step) ? formatMessage(`settings.database.step.${step}`) : (step ?? "");

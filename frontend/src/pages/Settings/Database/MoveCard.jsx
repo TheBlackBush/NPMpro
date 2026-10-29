@@ -20,11 +20,11 @@ import {
 	ENGINES,
 	failedStepOf,
 	initialTarget,
-	MOVE_STEPS,
 	moveAsApiError,
 	moveHint,
 	canMove as passed,
 	payloadKey,
+	stepName,
 	targetErrors,
 	testOfValues,
 	toPayload,
@@ -37,17 +37,12 @@ import {
 function LastFailedMove({ move }) {
 	const [hidden, setHidden] = useState(false);
 	if (hidden || move?.state !== "failed") return null;
-	const step = failedStepOf(move);
 	return (
 		<ErrorAlert className="mb-3" onClose={() => setHidden(true)}>
 			<div className="fw-medium">
 				<T
 					id="settings.database.move.failed"
-					data={{
-						step: MOVE_STEPS.includes(step)
-							? intl.formatMessage({ id: `settings.database.step.${step}` })
-							: (step ?? ""),
-					}}
+					data={{ step: stepName(failedStepOf(move), (id) => intl.formatMessage({ id })) }}
 				/>
 			</div>
 			<ApiErrorContent error={moveAsApiError(move.error)} />

@@ -2,7 +2,7 @@ import { IconCheck, IconRefresh, IconX } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { useEffect, useId, useRef, useState } from "react";
-import { getHealth } from "src/api/backend";
+import { getDatabase, getHealth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert } from "src/components";
 import { useDatabaseMove, useStartDatabaseMove } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -13,10 +13,13 @@ import {
 	failedStepOf,
 	MOVE_STEPS,
 	moveAsApiError,
+	moveLost,
 	moveView,
+	pollStalled,
+	resolveMoveEnd,
+	stepName,
 	stepState,
 	totals,
-	waitForRestart,
 	whereText,
 } from "src/modules/DatabaseMove";
 import EasyModal from "src/modules/easyModal";
@@ -126,9 +129,7 @@ function Summary({ status, target }) {
 	return <T id="settings.database.move.summary" data={{ ...values, to }} />;
 }
 
-// the name of a step, or the raw step when the backend sends one this build does not know
-const stepLabel = (step) =>
-	MOVE_STEPS.includes(step) ? intl.formatMessage({ id: `settings.database.step.${step}` }) : (step ?? "");
+const stepLabel = (step) => stepName(step, (id) => intl.formatMessage({ id }));
 
 /**
  * The move window: the summary with a typed confirmation, then the steps with the copy progress, the restart wait
@@ -142,24 +143,53 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	const [moveId, setMoveId] = useState(followed ?? null);
 	const [word, setWord] = useState("");
 	const [error, setError] = useState(null);
-	// null until the restart, then "waiting" for the new process, then "timeout" after 2 minutes
-	const [restart, setRestart] = useState(null);
-	const waitStarted = useRef(false);
+	// null while the polls tell the state; "resolving" when they cannot (they failed for 10 s, or the move vanished
+	// from them); "restarting" while the new process is awaited; "timeout" after 2 minutes without an answer
+	const [phase, setPhase] = useState(null);
+	// the failed move from GET /database, when the polls could not report the failure
+	const [resolved, setResolved] = useState(null);
+	// the last answer of the polls about this window's move
+	const [seen, setSeen] = useState(null);
+	// failed polls count from the last answer or from when the polls started or resumed
+	const [resumedAt, setResumedAt] = useState(() => Date.now());
+	const [, setTick] = useState(0);
+	const resolving = useRef(false);
 	// one POST even for a fast double submit, before isPending is rendered
 	const startSent = useRef(false);
 	const wordRef = useRef(null);
 	const titleRef = useRef(null);
 	const actionRef = useRef(null);
-	// no polls once the restart wait runs: the old process is gone
-	const moveQuery = useDatabaseMove(Boolean(moveId) && restart === null);
-	const move = moveQuery.data?.move ?? null;
+	// no polls while the end is resolved or awaited
+	const moveQuery = useDatabaseMove(Boolean(moveId) && phase === null && !resolved);
+	const polled = moveQuery.data?.move ?? null;
+	const own = polled?.id === moveId ? polled : null;
+	const move = resolved ?? own ?? seen;
 	const view = moveView({ moveId, move, pollFailed: moveQuery.isError });
-	const closable = canCloseMove(view, restart);
+	const closable = canCloseMove(view, phase);
 	const engine = target?.engine ?? move?.target?.engine ?? "";
 	const matches = word.trim() === engine;
 	const active = view === "running" ? activeStep(move) : null;
-	const connectionLost = view === "running" && moveQuery.isError;
-	const ended = view === "failed" || restart === "timeout";
+	const connectionLost = phase === "resolving" || (view === "running" && moveQuery.isError);
+	const ended = view === "failed" || phase === "timeout";
+	const lost = moveLost({ seen: Boolean(seen), answered: moveQuery.isSuccess, move: polled, moveId });
+	const stalled =
+		(view === "running" || view === "starting") &&
+		pollStalled({
+			isError: moveQuery.isError,
+			lastAnswerAt: Math.max(moveQuery.dataUpdatedAt, resumedAt),
+			now: Date.now(),
+		});
+
+	useEffect(() => {
+		if (own) setSeen(own);
+	}, [own]);
+
+	// while polls fail, render every second so the 10 s without an answer are noticed on time
+	useEffect(() => {
+		if (!moveQuery.isError || phase !== null) return;
+		const timer = setInterval(() => setTick((tick) => tick + 1), 1000);
+		return () => clearInterval(timer);
+	}, [moveQuery.isError, phase]);
 
 	// after the start the confirmation's field is gone: the focus goes to the title, above the steps
 	useEffect(() => {
@@ -171,18 +201,41 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		if (ended) actionRef.current?.focus();
 	}, [ended]);
 
+	// the end of the move, when the polls cannot tell it: the health check, then GET /database decide
 	useEffect(() => {
-		if (view !== "restarting" || waitStarted.current) return;
-		waitStarted.current = true;
-		setRestart("waiting");
-		const wait = async () => {
-			const result = await waitForRestart({ fetchHealth: getHealth, sleep, now: Date.now });
-			// the restart signs everyone out (unless COOKIE_SECRET is set), so the reload usually shows the login
-			if (result === "ready") window.location.reload();
-			else setRestart("timeout");
+		const restarting = view === "restarting";
+		if (!moveId || phase !== null || resolved || resolving.current || !(restarting || stalled || lost)) return;
+		resolving.current = true;
+		setPhase(restarting ? "restarting" : "resolving");
+		const resolve = async () => {
+			const end = await resolveMoveEnd({
+				moveId,
+				expectRestart: restarting,
+				fetchHealth: getHealth,
+				fetchDatabase: getDatabase,
+				sleep,
+				now: Date.now,
+			});
+			if (end.result === "restarted") {
+				// the restart may sign everyone out (unless COOKIE_SECRET is set), so the reload may show the login
+				window.location.reload();
+				return;
+			}
+			if (end.result === "failed") setResolved(end.move);
+			if (end.result === "timeout") {
+				setPhase("timeout");
+				return;
+			}
+			if (end.result === "running") {
+				// the old process still runs the move: the polls go on after a pause, failures count from then
+				await sleep(2000);
+				setResumedAt(Date.now());
+			}
+			resolving.current = false;
+			setPhase(null);
 		};
-		void wait();
-	}, [view]);
+		void resolve();
+	}, [view, moveId, phase, resolved, stalled, lost]);
 
 	const close = () => {
 		if (!closable) return;
@@ -201,6 +254,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		setError(null);
 		try {
 			const { id } = await startMove.mutateAsync(target);
+			setResumedAt(Date.now());
 			setMoveId(id);
 			// the banner on every page, and the first poll of this move
 			void queryClient.invalidateQueries({ queryKey: ["health"] });
@@ -286,7 +340,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 				) : null}
 				{/* always mounted, so the restart and its end are announced */}
 				<div aria-live="polite">
-					{restart === "waiting" ? (
+					{phase === "restarting" ? (
 						<div className="d-flex align-items-start gap-2">
 							<span className="spinner-border spinner-border-sm mt-1 flex-shrink-0" aria-hidden="true" />
 							<div>
@@ -299,7 +353,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 							</div>
 						</div>
 					) : null}
-					{restart === "timeout" ? (
+					{phase === "timeout" ? (
 						<div className="alert alert-warning mb-0">
 							<T id="settings.database.move.restart-timeout" />
 						</div>
@@ -323,7 +377,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 					<T id="action.close" />
 				</Button>
 			);
-		} else if (restart === "timeout") {
+		} else if (phase === "timeout") {
 			footer = (
 				<Button ref={actionRef} color="primary" className="ms-auto" onClick={() => window.location.reload()}>
 					<IconRefresh className="icon" aria-hidden="true" />
