@@ -87,6 +87,7 @@ const applyDefaultSite = async (
 		await nginx.reload();
 		await save();
 	} catch (err) {
+		logger.error(`The default site change failed: ${err.message}`);
 		await restoreDefaultSite(nginx, previous, { wroteHtml, writeHtml, logger });
 		throw new errs.ValidationError("Could not reconfigure Nginx. Please check logs.", undefined, { cause: err });
 	}

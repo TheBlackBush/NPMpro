@@ -116,8 +116,9 @@ it("removes the default site config and logs it when the previous one fails too"
 	});
 	assert.equal(state.written, null);
 	assert.deepEqual(state.steps, ["generate:broken", "test", "generate:broken", "test", "delete", "test", "reload"]);
-	assert.equal(state.logged.length, 1);
-	assert.ok(state.logged[0].startsWith("error:The saved default site config fails too"));
+	assert.equal(state.logged.length, 2);
+	assert.equal(state.logged[0], "error:The default site change failed: nginx: [emerg] broken");
+	assert.ok(state.logged[1].startsWith("error:The saved default site config fails too"));
 });
 
 it("still throws the original failure when the restore fails as well", async () => {
@@ -131,6 +132,7 @@ it("still throws the original failure when the restore fails as well", async () 
 		assert.equal(err.cause.message, "control socket gone");
 		return true;
 	});
-	assert.equal(state.logged.length, 2);
-	assert.ok(state.logged[1].startsWith("error:Could not reload nginx after restoring"));
+	assert.equal(state.logged.length, 3);
+	assert.equal(state.logged[0], "error:The default site change failed: control socket gone");
+	assert.ok(state.logged[2].startsWith("error:Could not reload nginx after restoring"));
 });
