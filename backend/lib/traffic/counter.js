@@ -1,5 +1,8 @@
 import { statusClass } from "./parse.js";
 
+// the row that counts the missing paths over the per host and day cap
+export const OTHER_PATH = "(other)";
+
 const MINUTE = 60000;
 const HOUR = 3600000;
 const DAY = 86400000;

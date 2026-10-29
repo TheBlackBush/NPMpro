@@ -10,6 +10,21 @@ const env = process.env;
 // the Postgres tests run only where the test server is configured (not in CI)
 const pgSkip = env.POSTGRES_NPMPRO_HOST ? false : "POSTGRES_NPMPRO_HOST is not set";
 
+// the MariaDB tests run only against a throwaway server (MARIADB_NPMPRO_TEST_*), never in CI
+const mariaSkip = env.MARIADB_NPMPRO_TEST_HOST ? false : "MARIADB_NPMPRO_TEST_HOST is not set";
+
+const mariaKnex = () =>
+	knexFactory({
+		client: "mysql2",
+		connection: {
+			host: env.MARIADB_NPMPRO_TEST_HOST,
+			port: Number(env.MARIADB_NPMPRO_TEST_PORT ?? 3306),
+			user: env.MARIADB_NPMPRO_TEST_USER,
+			password: env.MARIADB_NPMPRO_TEST_PASS,
+			database: env.MARIADB_NPMPRO_TEST_NAME ?? "npmpro_test_unit",
+		},
+	});
+
 const pgConnection = {
 	engine: "postgres",
 	host: env.POSTGRES_NPMPRO_HOST ?? "",
@@ -135,4 +150,4 @@ const seedSource = async (knex) => {
 	return { counts };
 };
 
-export { fillRow, migratedSqlite, pgConnection, pgSkip, resetPg, seedSource, tempSqlite };
+export { fillRow, mariaKnex, mariaSkip, migratedSqlite, pgConnection, pgSkip, resetPg, seedSource, tempSqlite };

@@ -30,6 +30,7 @@ const KNOWN = [
 	"setting",
 	"stream",
 	"traffic_hour",
+	"traffic_path_hour",
 	"traffic_visitor",
 	"user",
 ];

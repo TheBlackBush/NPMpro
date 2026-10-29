@@ -1,9 +1,15 @@
+import { setImmediate as yieldToLoop } from "node:timers/promises";
 import db from "../../db.js";
+import { OTHER_PATH } from "./counter.js";
+import { pathHash } from "./path-hash.js";
 import { cutoffs, errorRate, fillSeries, minutesToHours } from "./rollup.js";
+import { CHUNK_INSERT, chunks, mergeRows, upsertRows } from "./upsert.js";
 
 const MINUTE = 60000;
 const HOUR = 3600000;
 const DAY = 24 * HOUR;
+// one week of hour buckets per DELETE
+const DELETE_SPAN = 7 * 24;
 
 // unit "minute" reads traffic_minute, unit "hour" reads traffic_hour plus the minute rows not rolled up yet
 const RANGES = {
@@ -19,11 +25,12 @@ const TOP_IPS = 10;
 const num = (v) => Number(v);
 
 const TABLES = {
-	minutes: ["traffic_minute", ["bucket", "host", "status_class"], ["requests", "bytes"]],
-	hours: ["traffic_hour", ["bucket", "host", "status_class"], ["requests", "bytes"]],
-	countries: ["traffic_country_hour", ["bucket", "host", "country"], ["requests"]],
-	asns: ["traffic_asn_hour", ["bucket", "host", "asn"], ["requests"]],
-	ips: ["traffic_ip_hour", ["bucket", "host", "ip"], ["requests"]],
+	minutes: { table: "traffic_minute", keys: ["bucket", "host", "status_class"], adds: ["requests", "bytes"] },
+	hours: { table: "traffic_hour", keys: ["bucket", "host", "status_class"], adds: ["requests", "bytes"] },
+	countries: { table: "traffic_country_hour", keys: ["bucket", "host", "country"], adds: ["requests"] },
+	asns: { table: "traffic_asn_hour", keys: ["bucket", "host", "asn"], adds: ["requests"] },
+	ips: { table: "traffic_ip_hour", keys: ["bucket", "host", "ip"], adds: ["requests"] },
+	paths: { table: "traffic_path_hour", keys: ["bucket", "host", "path"], adds: ["requests"], maxes: ["last_seen"] },
 };
 
 // every table with stored traffic data (deleteAll empties them all)
@@ -33,72 +40,11 @@ const ALL_TABLES = [
 	"traffic_country_hour",
 	"traffic_asn_hour",
 	"traffic_ip_hour",
+	"traffic_path_hour",
 	"traffic_visitor",
 ];
 
-const CHUNK_BUCKETS = 500;
-const CHUNK_INSERT = 200;
-
-const chunks = (list, size) => {
-	const out = [];
-	for (let i = 0; i < list.length; i += size) {
-		out.push(list.slice(i, i + size));
-	}
-	return out;
-};
-
-/**
- * Adds the counters to the stored rows with the same unique key and inserts the rest.
- * One select per bucket chunk, chunked inserts for new rows, one update per existing row
- * (`col = col + ?`). Portable across SQLite, MySQL and Postgres; the caller runs it in a transaction.
- */
-const addRows = async (trx, kind, rows = []) => {
-	const [table, keys, adds] = TABLES[kind];
-	const keyOf = (row) => keys.map((c) => String(row[c])).join("|");
-
-	// merge duplicate keys inside the batch first
-	const merged = new Map();
-	for (const row of rows) {
-		const hit = merged.get(keyOf(row));
-		if (hit) {
-			for (const c of adds) {
-				hit[c] += row[c];
-			}
-		} else {
-			merged.set(keyOf(row), { ...row });
-		}
-	}
-	if (merged.size === 0) {
-		return;
-	}
-
-	const existing = new Map();
-	const buckets = [...new Set([...merged.values()].map((r) => r.bucket))];
-	for (const part of chunks(buckets, CHUNK_BUCKETS)) {
-		for (const found of await trx(table)
-			.whereIn("bucket", part)
-			.select("id", ...keys)) {
-			existing.set(keyOf(found), found.id);
-		}
-	}
-
-	const fresh = [];
-	for (const [key, row] of merged) {
-		const id = existing.get(key);
-		if (id === undefined) {
-			fresh.push(row);
-			continue;
-		}
-		const patch = {};
-		for (const c of adds) {
-			patch[c] = trx.raw("?? + ?", [c, row[c]]);
-		}
-		await trx(table).where({ id }).update(patch);
-	}
-	for (const part of chunks(fresh, CHUNK_INSERT)) {
-		await trx(table).insert(part);
-	}
-};
+const addRows = (trx, kind, rows) => upsertRows(trx, TABLES[kind], rows);
 
 const top = (rows, limit) => rows.slice(0, limit);
 
@@ -110,6 +56,12 @@ const top = (rows, limit) => rows.slice(0, limit);
  * @returns {Object}  store functions
  */
 export const createStore = (knex) => {
+	// the hour of a minute bucket (integer division; bucket is an integer column in every dialect)
+	const client = knex.client?.config?.client;
+	const hourOfMinute = client === "mysql2" || client === "mysql" ? "bucket DIV 60" : "bucket / 60";
+	// the UTC day of an hour bucket (integer division)
+	const dayOfHour = client === "mysql2" || client === "mysql" ? "bucket DIV 24" : "bucket / 24";
+
 	// host: one key (empty = all) or a list of keys (empty list matches nothing)
 	const hostFilter = (query, host) => {
 		if (Array.isArray(host)) {
@@ -119,12 +71,13 @@ export const createStore = (knex) => {
 	};
 
 	/** Adds the drained counters to the stored rows in one transaction. */
-	const flush = ({ minutes, countries, asns, ips, visitors = [] }) =>
+	const flush = ({ minutes, countries, asns, ips, visitors = [], paths = [] }) =>
 		knex.transaction(async (trx) => {
 			await addRows(trx, "minutes", minutes);
 			await addRows(trx, "countries", countries);
 			await addRows(trx, "asns", asns);
 			await addRows(trx, "ips", ips);
+			await mergeRows(trx, TABLES.paths, paths);
 			// duplicates (re-sent after a restart) are ignored by the unique index
 			for (const part of chunks(visitors, CHUNK_INSERT)) {
 				await trx("traffic_visitor").insert(part).onConflict(["day", "host", "hash"]).ignore();
@@ -138,7 +91,35 @@ export const createStore = (knex) => {
 			const old = await trx("traffic_minute").where("bucket", "<", minuteBefore);
 			await addRows(trx, "hours", minutesToHours(old));
 			await trx("traffic_minute").where("bucket", "<", minuteBefore).del();
-			for (const table of ["traffic_hour", "traffic_country_hour", "traffic_asn_hour", "traffic_ip_hour"]) {
+			// path rows of days before yesterday (all at least 48 hours old): one row per (UTC day, host, path) at
+			// bucket = day * 24 (a row of hour 0 already has that key and is merged into)
+			const pathDayBefore = (Math.floor(now / DAY) - 2) * 24;
+			const folded = await trx("traffic_path_hour")
+				.where("bucket", "<", pathDayBefore)
+				.whereRaw("bucket % 24 <> 0")
+				.select(trx.raw(`${dayOfHour} as day`), "host", "path")
+				.sum({ requests: "requests" })
+				.max({ last_seen: "last_seen" })
+				.groupByRaw(`${dayOfHour}, host, path`);
+			await trx("traffic_path_hour").where("bucket", "<", pathDayBefore).whereRaw("bucket % 24 <> 0").del();
+			await mergeRows(
+				trx,
+				TABLES.paths,
+				folded.map((r) => ({
+					bucket: num(r.day) * 24,
+					host: r.host,
+					path: r.path,
+					requests: num(r.requests),
+					last_seen: num(r.last_seen),
+				})),
+			);
+			for (const table of [
+				"traffic_hour",
+				"traffic_country_hour",
+				"traffic_asn_hour",
+				"traffic_ip_hour",
+				"traffic_path_hour",
+			]) {
 				await trx(table).where("bucket", "<", hourBefore).del();
 			}
 			await trx("traffic_visitor")
@@ -151,6 +132,53 @@ export const createStore = (knex) => {
 
 	const deleteVisitors = async () => {
 		await knex("traffic_visitor").del();
+	};
+
+	/**
+	 * Deletes every stored missing page, one week of buckets per statement with a yield in between, so a large table
+	 * never holds the connection (the only one on SQLite) or the event loop for long. Runs inside the traffic queue.
+	 */
+	const deletePaths = async () => {
+		const [range] = await knex("traffic_path_hour").min({ low: "bucket" }).max({ high: "bucket" });
+		if (range?.low === null || range?.low === undefined) return;
+		const high = num(range.high);
+		for (let from = num(range.low); from <= high; from += DELETE_SPAN) {
+			await knex("traffic_path_hour")
+				.where("bucket", "<", from + DELETE_SPAN)
+				.del();
+			await yieldToLoop();
+		}
+	};
+
+	/**
+	 * The hashes (lib/traffic/path-hash.js) of the stored missing page paths per (UTC day, host) of the given days,
+	 * without the "(other)" row, so the counter keeps the per host and day cap across a restart. On SQLite it runs in
+	 * the read worker (internal/monitoring-services.js), so the scan does not block the event loop at start.
+	 *
+	 * @param   {Object}    args
+	 * @param   {Number[]}  args.days  UTC day numbers
+	 * @returns {Promise<Array<{day: Number, host: String, hashes: Number[]}>>}
+	 */
+	const pathDayHashes = async ({ days }) => {
+		const out = new Map();
+		const rows = await knex("traffic_path_hour")
+			.where("bucket", ">=", Math.min(...days) * 24)
+			.where("bucket", "<", (Math.max(...days) + 1) * 24)
+			.whereNot("path", OTHER_PATH)
+			.select(knex.raw(`${dayOfHour} as day`), "host", "path")
+			.groupByRaw(`${dayOfHour}, host, path`);
+		for (const row of rows) {
+			const day = num(row.day);
+			if (!days.includes(day)) continue;
+			const key = `${day}|${row.host}`;
+			let entry = out.get(key);
+			if (!entry) {
+				entry = { day, host: row.host, hashes: [] };
+				out.set(key, entry);
+			}
+			entry.hashes.push(pathHash(row.path));
+		}
+		return [...out.values()];
 	};
 
 	/** Deletes every stored count, top list row, IP row and visitor hash in one transaction. */
@@ -209,10 +237,6 @@ export const createStore = (knex) => {
 		for (const row of markers) entry(row.day, row.host).capped = true;
 		return [...out.values()];
 	};
-
-	// the hour of a minute bucket (integer division; bucket is an integer column in every dialect)
-	const client = knex.client?.config?.client;
-	const hourOfMinute = client === "mysql2" || client === "mysql" ? "bucket DIV 60" : "bucket / 60";
 
 	const toRows = (rows) =>
 		rows.map((r) => ({
@@ -277,7 +301,29 @@ export const createStore = (knex) => {
 		return (await hostFilter(query, host)).map((r) => ({ ...r, requests: num(r.requests) }));
 	};
 
-	const queryTraffic = async ({ range, host = "", showIps = false, now = Date.now() }) => {
+	/**
+	 * The ten most requested missing paths from startHour on, newest time each, sorted and cut in SQL. With wholeDays
+	 * (7d, 30d) the range starts at the first hour of its first UTC day, because rows of days before yesterday are day
+	 * rows: like the other top lists the range can include up to one extra partial day.
+	 */
+	const topPaths = async (startHour, host, { wholeDays = false } = {}) => {
+		const from = wholeDays ? Math.floor(startHour / 24) * 24 : startHour;
+		const query = knex("traffic_path_hour")
+			.where("bucket", ">=", from)
+			.groupBy("path")
+			.select("path")
+			.sum({ requests: "requests" })
+			.max({ last_seen: "last_seen" })
+			.orderByRaw("sum(requests) desc, path asc")
+			.limit(TOP);
+		return (await hostFilter(query, host)).map((r) => ({
+			path: r.path,
+			requests: num(r.requests),
+			last_seen: new Date(num(r.last_seen) * 1000).toISOString(),
+		}));
+	};
+
+	const queryTraffic = async ({ range, host = "", showIps = false, paths = false, now = Date.now() }) => {
 		const spec = RANGES[range];
 		if (!spec) {
 			throw new Error(`Unknown range ${range}`);
@@ -353,6 +399,8 @@ export const createStore = (knex) => {
 					)
 				: [],
 			countries: Object.fromEntries(byCountry.map((r) => [r.country, r.requests])),
+			// 1h and 24h read only the last 25 hours, which are never folded into day rows
+			...(paths ? { top_404_paths: await topPaths(startHour, host, { wholeDays: spec.unit === "hour" }) } : {}),
 		};
 	};
 
@@ -389,9 +437,11 @@ export const createStore = (knex) => {
 		rollUpAndPrune,
 		deleteIps,
 		deleteVisitors,
+		deletePaths,
 		deleteAll,
 		countVisitors,
 		visitorDayHashes,
+		pathDayHashes,
 		queryTraffic,
 		summary,
 	};
@@ -410,8 +460,10 @@ export const flush = lazy("flush");
 export const rollUpAndPrune = lazy("rollUpAndPrune");
 export const deleteIps = lazy("deleteIps");
 export const deleteVisitors = lazy("deleteVisitors");
+export const deletePaths = lazy("deletePaths");
 export const deleteAll = lazy("deleteAll");
 export const countVisitors = lazy("countVisitors");
 export const visitorDayHashes = lazy("visitorDayHashes");
+export const pathDayHashes = lazy("pathDayHashes");
 export const queryTraffic = lazy("queryTraffic");
 export const summary = lazy("summary");

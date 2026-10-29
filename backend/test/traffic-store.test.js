@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import knexFactory from "knex";
+import { pathHash } from "../lib/traffic/path-hash.js";
 import { createStore } from "../lib/traffic/store.js";
 import { up } from "../migrations/20261024120000_monitoring.js";
 import { up as upVisitors } from "../migrations/20261024200000_monitoring_visitors.js";
+import { up as upPaths } from "../migrations/20261029120000_traffic_paths.js";
 
 const NOW = Date.UTC(2026, 9, 24, 12, 30, 0);
 const MIN = Math.floor(NOW / 60000);
@@ -16,6 +18,7 @@ const setup = async () => {
 	});
 	await up(knex);
 	await upVisitors(knex);
+	await upPaths(knex);
 	return { knex, store: createStore(knex) };
 };
 
@@ -259,6 +262,7 @@ it("deleteAll empties every traffic table", async () => {
 		asns: [{ bucket: hour, host: "a", asn: 64500, asn_name: "Net", requests: 1 }],
 		ips: [{ bucket: hour, host: "a", ip: "1.2.3.4", requests: 1 }],
 		visitors: [{ day: Math.floor(NOW / 86400000), host: "a", hash: "abc" }],
+		paths: [{ bucket: hour, host: "a", path: "/x", requests: 1, last_seen: 1 }],
 	});
 	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
 	const tables = [
@@ -268,6 +272,7 @@ it("deleteAll empties every traffic table", async () => {
 		"traffic_asn_hour",
 		"traffic_ip_hour",
 		"traffic_visitor",
+		"traffic_path_hour",
 	];
 	for (const table of tables) assert.ok((await knex(table)).length > 0, table);
 	await store.deleteAll();
@@ -276,5 +281,188 @@ it("deleteAll empties every traffic table", async () => {
 	// later counts start from zero
 	await store.flush({ minutes: [m(MIN, "2xx", 3)] });
 	assert.equal((await store.queryTraffic({ range: "1h", now: NOW })).totals.requests, 3);
+	await knex.destroy();
+});
+
+const p = (path, requests, lastSeen, host = "a", bucket = Math.floor(NOW / 3600000)) => ({
+	bucket,
+	host,
+	path,
+	requests,
+	last_seen: lastSeen,
+});
+
+it("stores missing paths per hour with the newest last_seen and lists the top paths of the range", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({ minutes: [], paths: [p("/x", 2, 100), p("/y", 1, 50)] });
+	await store.flush({ minutes: [], paths: [p("/x", 3, 90), p("/x", 1, 120, "a", hour - 1)] });
+	const rows = await knex("traffic_path_hour").orderBy(["bucket", "path"]);
+	assert.deepEqual(
+		rows.map((r) => [Number(r.bucket) - hour, r.path, Number(r.requests), Number(r.last_seen)]),
+		[
+			[-1, "/x", 1, 120],
+			[0, "/x", 5, 100],
+			[0, "/y", 1, 50],
+		],
+	);
+	const r = await store.queryTraffic({ range: "24h", now: NOW, paths: true });
+	assert.deepEqual(r.top_404_paths, [
+		{ path: "/x", requests: 6, last_seen: new Date(120_000).toISOString() },
+		{ path: "/y", requests: 1, last_seen: new Date(50_000).toISOString() },
+	]);
+	assert.equal("top_404_paths" in (await store.queryTraffic({ range: "24h", now: NOW })), false);
+	await knex.destroy();
+});
+
+it("flushes path rows with set-based upserts: no select, one statement per 200 rows", async () => {
+	const { knex, store } = await setup();
+	const sql = [];
+	knex.on("query", (q) => sql.push(q.sql.toLowerCase()));
+	const many = Array.from({ length: 450 }, (_, i) => p(`/p${i}`, 1, 1));
+	await store.flush({ minutes: [], paths: many });
+	await store.flush({ minutes: [], paths: many });
+	const pathSql = sql.filter((s) => s.includes("traffic_path_hour"));
+	assert.equal(
+		pathSql.some((s) => s.startsWith("select")),
+		false,
+	);
+	assert.equal(pathSql.length, 6);
+	const [{ n }] = await knex("traffic_path_hour").sum({ n: "requests" });
+	assert.equal(Number(n), 900);
+	await knex.destroy();
+});
+
+it("keeps the ten paths with the most requests, ties by path, for the selected host keys", async () => {
+	const { knex, store } = await setup();
+	const paths = Array.from({ length: 12 }, (_, i) => p(`/p${String(i).padStart(2, "0")}`, i < 2 ? 5 : 1, 1));
+	await store.flush({ minutes: [], paths: [...paths, p("/other-host", 50, 1, "b"), p("(other)", 3, 1)] });
+	const r = await store.queryTraffic({ range: "7d", host: ["a"], now: NOW, paths: true });
+	assert.deepEqual(
+		r.top_404_paths.map((row) => [row.path, row.requests]),
+		[
+			["/p00", 5],
+			["/p01", 5],
+			["(other)", 3],
+			["/p02", 1],
+			["/p03", 1],
+			["/p04", 1],
+			["/p05", 1],
+			["/p06", 1],
+			["/p07", 1],
+			["/p08", 1],
+		],
+	);
+	await knex.destroy();
+});
+
+it("rolls path rows of days before yesterday into one row per day, the 7d list stays the same", async () => {
+	const { knex, store } = await setup();
+	const today = Math.floor(NOW / 86400000);
+	const rows = [];
+	for (const d of [1, 2, 3]) {
+		for (const h of [0, 5, 23]) rows.push(p("/x", 1, (today - d) * 86400 + h * 3600, "a", (today - d) * 24 + h));
+	}
+	rows.push(p("/y", 2, 7, "a", today * 24 + 1));
+	await store.flush({ minutes: [], paths: rows });
+	const before = await store.queryTraffic({ range: "7d", now: NOW, paths: true });
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	// a second run folds nothing new
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	const stored = await knex("traffic_path_hour").orderBy("bucket");
+	assert.deepEqual(
+		stored.map((r) => [Number(r.bucket) - today * 24, r.path, Number(r.requests)]),
+		[
+			[-72, "/x", 3],
+			[-48, "/x", 1],
+			[-43, "/x", 1],
+			[-25, "/x", 1],
+			[-24, "/x", 1],
+			[-19, "/x", 1],
+			[-1, "/x", 1],
+			[1, "/y", 2],
+		],
+	);
+	assert.equal(Number(stored[0].last_seen), (today - 3) * 86400 + 23 * 3600);
+	assert.deepEqual(
+		(await store.queryTraffic({ range: "7d", now: NOW, paths: true })).top_404_paths,
+		before.top_404_paths,
+	);
+	await knex.destroy();
+});
+
+it("prunes path rows with the hour tables and deletePaths empties them", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({ minutes: [], paths: [p("/old", 1, 1, "a", hour - 31 * 24), p("/new", 1, 1)] });
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	assert.deepEqual(
+		(await knex("traffic_path_hour")).map((r) => r.path),
+		["/new"],
+	);
+	await store.deletePaths();
+	assert.equal((await knex("traffic_path_hour")).length, 0);
+	await knex.destroy();
+});
+
+it("deletePaths deletes one week of buckets per statement", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({
+		minutes: [],
+		paths: Array.from({ length: 60 }, (_, d) => p(`/d${d}`, 1, 1, "a", hour - d * 24)),
+	});
+	const deletes = [];
+	knex.on("query", (q) => {
+		if (q.sql.toLowerCase().startsWith("delete")) deletes.push(q.sql);
+	});
+	await store.deletePaths();
+	assert.equal((await knex("traffic_path_hour")).length, 0);
+	assert.ok(deletes.length >= 9, String(deletes.length));
+	// an empty table needs no delete
+	deletes.length = 0;
+	await store.deletePaths();
+	assert.equal(deletes.length, 0);
+	await knex.destroy();
+});
+
+it("pathDayHashes gives the hashes of the stored paths per UTC day and host without (other)", async () => {
+	const { knex, store } = await setup();
+	const today = Math.floor(NOW / 86400000);
+	await store.flush({
+		minutes: [],
+		paths: [
+			p("/a", 1, 1, "a", today * 24 + 1),
+			p("/a", 1, 1, "a", today * 24 + 5),
+			p("/b", 1, 1, "a", today * 24 - 1),
+			p("(other)", 1, 1, "a", today * 24 + 1),
+			p("/c", 1, 1, "b", today * 24 - 30),
+		],
+	});
+	const keys = await store.pathDayHashes({ days: [today - 1, today] });
+	assert.deepEqual(
+		keys.map((k) => [k.day - today, k.host, k.hashes]).sort((x, y) => x[0] - y[0]),
+		[
+			[-1, "a", [pathHash("/b")]],
+			[0, "a", [pathHash("/a")]],
+		],
+	);
+	await knex.destroy();
+});
+
+it("keeps paths that differ only in case or accents apart on SQLite", async () => {
+	const { knex, store } = await setup();
+	await store.flush({ minutes: [], paths: ["/Admin", "/admin", "/café", "/cafe"].map((path) => p(path, 1, 1)) });
+	await store.flush({ minutes: [], paths: ["/Admin", "/admin"].map((path) => p(path, 1, 1)) });
+	const rows = await knex("traffic_path_hour").orderBy("path");
+	assert.deepEqual(
+		rows.map((r) => [r.path, Number(r.requests)]),
+		[
+			["/Admin", 2],
+			["/admin", 2],
+			["/cafe", 1],
+			["/café", 1],
+		],
+	);
 	await knex.destroy();
 });
