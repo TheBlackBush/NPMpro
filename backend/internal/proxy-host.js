@@ -64,10 +64,10 @@ const internalProxyHost = {
 		if (createCertificate) {
 			delete thisData.certificate_id;
 		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id });
+			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
 		}
 		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
 		}
 
 		access.can("proxy_hosts:manage");
@@ -136,10 +136,10 @@ const internalProxyHost = {
 		if (createCertificate) {
 			delete thisData.certificate_id;
 		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id });
+			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
 		}
 		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id });
+			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
 		}
 
 		access.can("proxy_hosts:manage");
@@ -160,6 +160,12 @@ const internalProxyHost = {
 			}
 		}
 
+		// everything is checked before a new certificate is requested, so a refused save leaves no certificate behind
+		thisData = internalHost.cleanSslHstsData(createCertificate, thisData, existingRow);
+		thisData = internalProxyHostAccessList.cleanAccessListTypes(thisData);
+		for (const item of [thisData, ...(thisData.locations ?? [])]) cleanForwardOptions(item);
+		await internalProxyHostAccessList.validateAccessLists(access, thisData);
+
 		if (createCertificate) {
 			const cert = await internalCertificate.createQuickCertificate(access, {
 				...thisData,
@@ -169,11 +175,6 @@ const internalProxyHost = {
 			// update host with cert id
 			thisData.certificate_id = cert.id;
 		}
-
-		thisData = internalHost.cleanSslHstsData(createCertificate, thisData, existingRow);
-		thisData = internalProxyHostAccessList.cleanAccessListTypes(thisData);
-		for (const item of [thisData, ...(thisData.locations ?? [])]) cleanForwardOptions(item);
-		await internalProxyHostAccessList.validateAccessLists(access, thisData);
 
 		await proxyHostModel.transaction(async (trx) => {
 			await proxyHostModel.query(trx).where({ id: thisData.id }).patch(thisData);
