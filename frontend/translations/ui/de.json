@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Fehlende Seiten deaktivieren?",
 	"settings.monitoring.missing-paths.confirm.body": "Beim Speichern wird jeder gespeicherte Pfad fehlender Seiten gelöscht. Die Anfragezählungen bleiben erhalten.",
 	"settings.monitoring.missing-paths.confirm.item": "Jeder gespeicherte Pfad fehlender Seiten (die Anfragezählungen bleiben erhalten)",
-	"settings.monitoring.missing-paths.hint": "Zählt die Pfade von 404- und 410-Antworten aktivierter Proxy- und Weiterleitungs-Hosts, bis zu 500 verschiedene Pfade pro Host und Tag, um defekte Links zu finden und zu sehen, was Scanner abtasten. Pfade können personenbezogene Daten enthalten, daher werden Query-Strings nie gespeichert, E-Mail-Adressen erscheinen als :email und Zahlen, IDs und Tokens als :id; anderer Text bleibt unverändert. Beim Deaktivieren werden die gespeicherten Pfade gelöscht.",
+	"settings.monitoring.missing-paths.hint": "Zählt die Pfade von 404- und 410-Antworten aktivierter Proxy- und Weiterleitungs-Hosts, bis zu 500 verschiedene Pfade pro Domainname und Tag, um defekte Links zu finden und zu sehen, was Scanner abtasten. Pfade können personenbezogene Daten enthalten, daher werden Query-Strings nie gespeichert, E-Mail-Adressen erscheinen als :email und Zahlen, IDs und Tokens als :id; anderer Text bleibt unverändert. Beim Deaktivieren werden die gespeicherten Pfade gelöscht.",
 	"settings.monitoring.retention": "Statistiken behalten für",
 	"settings.monitoring.retention.days": "Tage",
 	"settings.monitoring.retention.hint": "{min} bis {max} Tage. Minutendaten werden 24 Stunden lang behalten, Stundendaten so viele Tage.",

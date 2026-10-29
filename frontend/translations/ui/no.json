@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Slå av manglende sider?",
 	"settings.monitoring.missing-paths.confirm.body": "Lagring sletter alle lagrede stier til manglende sider. Antall forespørsler beholdes.",
 	"settings.monitoring.missing-paths.confirm.item": "Alle lagrede stier til manglende sider (antall forespørsler beholdes)",
-	"settings.monitoring.missing-paths.hint": "Teller stiene i 404- og 410-svar fra aktiverte proxy-verter og omdirigeringsverter, opptil 500 forskjellige stier per vert og dag, for å finne ødelagte lenker og se hva skannere sonderer. Stier kan inneholde personopplysninger, så spørrestrenger lagres aldri, e-postadresser vises som :email og tall, ID-er og tokener som :id; annen tekst forblir uendret. Å slå det av sletter de lagrede stiene.",
+	"settings.monitoring.missing-paths.hint": "Teller stiene i 404- og 410-svar fra aktiverte proxy-verter og omdirigeringsverter, opptil 500 forskjellige stier per domenenavn og dag, for å finne ødelagte lenker og se hva skannere sonderer. Stier kan inneholde personopplysninger, så spørrestrenger lagres aldri, e-postadresser vises som :email og tall, ID-er og tokener som :id; annen tekst forblir uendret. Å slå det av sletter de lagrede stiene.",
 	"settings.monitoring.retention": "Behold statistikk i",
 	"settings.monitoring.retention.days": "dager",
 	"settings.monitoring.retention.hint": "{min} til {max} dager. Data per minutt beholdes i 24 timer, data per time i så mange dager.",

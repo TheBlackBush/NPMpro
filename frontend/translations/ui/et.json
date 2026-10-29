@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Lülitada puuduvad lehed välja?",
 	"settings.monitoring.missing-paths.confirm.body": "Salvestamine kustutab kõik salvestatud puuduvate lehtede teed. Päringute arvud jäävad alles.",
 	"settings.monitoring.missing-paths.confirm.item": "Kõik salvestatud puuduvate lehtede teed (päringute arvud jäävad alles)",
-	"settings.monitoring.missing-paths.hint": "Loendab lubatud proksihostide ja ümbersuunamishostide 404- ja 410-vastuste teid, kuni 500 erinevat teed hosti kohta päevas, et leida katkiseid linke ja näha, mida skannerid proovivad. Teed võivad sisaldada isikuandmeid, seega päringustringe ei salvestata kunagi, e-posti aadressid kuvatakse kujul :email ning numbrid, ID-d ja tokenid kujul :id; muu tekst jääb samaks. Väljalülitamine kustutab salvestatud teed.",
+	"settings.monitoring.missing-paths.hint": "Loendab lubatud proksihostide ja ümbersuunamishostide 404- ja 410-vastuste teid, kuni 500 erinevat teed domeeninime kohta päevas, et leida katkiseid linke ja näha, mida skannerid proovivad. Teed võivad sisaldada isikuandmeid, seega päringustringe ei salvestata kunagi, e-posti aadressid kuvatakse kujul :email ning numbrid, ID-d ja tokenid kujul :id; muu tekst jääb samaks. Väljalülitamine kustutab salvestatud teed.",
 	"settings.monitoring.retention": "Hoia statistikat",
 	"settings.monitoring.retention.days": "päeva",
 	"settings.monitoring.retention.hint": "{min} kuni {max} päeva. Minutiandmeid hoitakse 24 tundi, tunniandmeid nii mitu päeva.",

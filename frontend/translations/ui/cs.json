@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Vypnout chybějící stránky?",
 	"settings.monitoring.missing-paths.confirm.body": "Uložením se smažou všechny uložené cesty chybějících stránek. Počty požadavků zůstanou.",
 	"settings.monitoring.missing-paths.confirm.item": "Všechny uložené cesty chybějících stránek (počty požadavků zůstanou)",
-	"settings.monitoring.missing-paths.hint": "Počítá cesty odpovědí 404 a 410 povolených proxy hostitelů a přesměrovacích hostitelů, až 500 různých cest na hostitele a den, aby bylo možné najít nefunkční odkazy a zjistit, co zkoušejí skenery. Cesty mohou obsahovat osobní údaje, proto se řetězce dotazu nikdy neukládají, e-maily se zobrazí jako :email a čísla, ID a tokeny jako :id; ostatní text zůstane beze změny. Vypnutí smaže uložené cesty.",
+	"settings.monitoring.missing-paths.hint": "Počítá cesty odpovědí 404 a 410 povolených proxy hostitelů a přesměrovacích hostitelů, až 500 různých cest na doménové jméno a den, aby bylo možné najít nefunkční odkazy a zjistit, co zkoušejí skenery. Cesty mohou obsahovat osobní údaje, proto se řetězce dotazu nikdy neukládají, e-maily se zobrazí jako :email a čísla, ID a tokeny jako :id; ostatní text zůstane beze změny. Vypnutí smaže uložené cesty.",
 	"settings.monitoring.retention": "Uchovávat statistiky po dobu",
 	"settings.monitoring.retention.days": "dní",
 	"settings.monitoring.retention.hint": "{min} až {max} dní. Minutová data se uchovávají 24 hodin, hodinová data tento počet dní.",

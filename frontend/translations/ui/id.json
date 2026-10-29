@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Nonaktifkan halaman hilang?",
 	"settings.monitoring.missing-paths.confirm.body": "Menyimpan akan menghapus setiap jalur halaman hilang yang tersimpan. Jumlah permintaan tetap disimpan.",
 	"settings.monitoring.missing-paths.confirm.item": "Setiap jalur halaman hilang yang tersimpan (jumlah permintaan tetap disimpan)",
-	"settings.monitoring.missing-paths.hint": "Menghitung jalur dari respons 404 dan 410 pada Host Proxy dan Host Pengalihan yang aktif, hingga 500 jalur berbeda per host per hari, untuk menemukan tautan rusak dan melihat apa yang diperiksa pemindai. Jalur dapat berisi data pribadi, sehingga query string tidak pernah disimpan, email ditampilkan sebagai :email serta angka, ID, dan token sebagai :id; teks lainnya tetap seperti semula. Menonaktifkannya menghapus jalur yang tersimpan.",
+	"settings.monitoring.missing-paths.hint": "Menghitung jalur dari respons 404 dan 410 pada Host Proxy dan Host Pengalihan yang aktif, hingga 500 jalur berbeda per nama domain per hari, untuk menemukan tautan rusak dan melihat apa yang diperiksa pemindai. Jalur dapat berisi data pribadi, sehingga query string tidak pernah disimpan, email ditampilkan sebagai :email serta angka, ID, dan token sebagai :id; teks lainnya tetap seperti semula. Menonaktifkannya menghapus jalur yang tersimpan.",
 	"settings.monitoring.retention": "Simpan statistik selama",
 	"settings.monitoring.retention.days": "hari",
 	"settings.monitoring.retention.hint": "{min} hingga {max} hari. Data per menit disimpan selama 24 jam, data per jam selama jumlah hari ini.",

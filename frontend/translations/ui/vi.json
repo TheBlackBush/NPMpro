@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Tắt trang bị thiếu?",
 	"settings.monitoring.missing-paths.confirm.body": "Khi lưu sẽ xóa mọi đường dẫn trang bị thiếu đã lưu. Số yêu cầu vẫn được giữ.",
 	"settings.monitoring.missing-paths.confirm.item": "Mọi đường dẫn trang bị thiếu đã lưu (số yêu cầu vẫn được giữ)",
-	"settings.monitoring.missing-paths.hint": "Đếm đường dẫn của các phản hồi 404 và 410 từ máy chủ proxy và máy chủ chuyển hướng đang bật, tối đa 500 đường dẫn khác nhau mỗi máy chủ mỗi ngày, để tìm liên kết hỏng và xem trình quét dò những gì. Đường dẫn có thể chứa dữ liệu cá nhân, nên chuỗi truy vấn không bao giờ được lưu, email hiển thị là :email và số, ID, token hiển thị là :id; phần văn bản khác giữ nguyên. Tắt nó sẽ xóa các đường dẫn đã lưu.",
+	"settings.monitoring.missing-paths.hint": "Đếm đường dẫn của các phản hồi 404 và 410 từ máy chủ proxy và máy chủ chuyển hướng đang bật, tối đa 500 đường dẫn khác nhau mỗi tên miền mỗi ngày, để tìm liên kết hỏng và xem trình quét dò những gì. Đường dẫn có thể chứa dữ liệu cá nhân, nên chuỗi truy vấn không bao giờ được lưu, email hiển thị là :email và số, ID, token hiển thị là :id; phần văn bản khác giữ nguyên. Tắt nó sẽ xóa các đường dẫn đã lưu.",
 	"settings.monitoring.retention": "Giữ thống kê trong",
 	"settings.monitoring.retention.days": "ngày",
 	"settings.monitoring.retention.hint": "{min} đến {max} ngày. Dữ liệu theo phút được giữ 24 giờ, dữ liệu theo giờ được giữ trong số ngày này.",

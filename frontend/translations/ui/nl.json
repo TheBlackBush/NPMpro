@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Ontbrekende pagina's uitschakelen?",
 	"settings.monitoring.missing-paths.confirm.body": "Opslaan verwijdert elk opgeslagen pad van ontbrekende pagina's. De aantallen verzoeken blijven bewaard.",
 	"settings.monitoring.missing-paths.confirm.item": "Elk opgeslagen pad van ontbrekende pagina's (de aantallen verzoeken blijven bewaard)",
-	"settings.monitoring.missing-paths.hint": "Telt de paden van 404- en 410-antwoorden van ingeschakelde proxyhosts en omgeleide hosts, tot 500 verschillende paden per host per dag, om kapotte links te vinden en te zien wat scanners aftasten. Paden kunnen persoonsgegevens bevatten, daarom worden querystrings nooit opgeslagen, e-mailadressen worden :email en getallen, ID's en tokens worden :id; overige tekst blijft ongewijzigd. Uitschakelen verwijdert de opgeslagen paden.",
+	"settings.monitoring.missing-paths.hint": "Telt de paden van 404- en 410-antwoorden van ingeschakelde proxyhosts en omgeleide hosts, tot 500 verschillende paden per domeinnaam per dag, om kapotte links te vinden en te zien wat scanners aftasten. Paden kunnen persoonsgegevens bevatten, daarom worden querystrings nooit opgeslagen, e-mailadressen worden :email en getallen, ID's en tokens worden :id; overige tekst blijft ongewijzigd. Uitschakelen verwijdert de opgeslagen paden.",
 	"settings.monitoring.retention": "Statistieken bewaren gedurende",
 	"settings.monitoring.retention.days": "dagen",
 	"settings.monitoring.retention.hint": "{min} tot {max} dagen. Gegevens per minuut worden 24 uur bewaard, gegevens per uur dit aantal dagen.",

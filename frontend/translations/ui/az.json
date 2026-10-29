@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Tapılmayan səhifələr söndürülsün?",
 	"settings.monitoring.missing-paths.confirm.body": "Saxlamaq bütün saxlanılmış tapılmayan səhifə yollarını silir. Sorğu sayları saxlanılır.",
 	"settings.monitoring.missing-paths.confirm.item": "Bütün saxlanılmış tapılmayan səhifə yolları (sorğu sayları saxlanılır)",
-	"settings.monitoring.missing-paths.hint": "Qırıq linkləri tapmaq və skanerlərin nəyi yoxladığını görmək üçün aktiv proksi hostların və yönləndirmə hostlarının 404 və 410 cavablarının yollarını, hər host və gün üçün 500-ə qədər fərqli yol olmaqla sayır. Yollarda şəxsi məlumatlar ola bilər, buna görə sorğu sətirləri heç vaxt saxlanılmır, e-poçtlar :email, rəqəmlər, ID-lər və tokenlər isə :id kimi göstərilir; digər mətn olduğu kimi qalır. Söndürmək saxlanılmış yolları silir.",
+	"settings.monitoring.missing-paths.hint": "Qırıq linkləri tapmaq və skanerlərin nəyi yoxladığını görmək üçün aktiv proksi hostların və yönləndirmə hostlarının 404 və 410 cavablarının yollarını, hər domen adı və gün üçün 500-ə qədər fərqli yol olmaqla sayır. Yollarda şəxsi məlumatlar ola bilər, buna görə sorğu sətirləri heç vaxt saxlanılmır, e-poçtlar :email, rəqəmlər, ID-lər və tokenlər isə :id kimi göstərilir; digər mətn olduğu kimi qalır. Söndürmək saxlanılmış yolları silir.",
 	"settings.monitoring.retention": "Statistikanı saxlama müddəti",
 	"settings.monitoring.retention.days": "gün",
 	"settings.monitoring.retention.hint": "{min} ilə {max} gün. Dəqiqəlik məlumatlar 24 saat, saatlıq məlumatlar bu qədər gün saxlanılır.",

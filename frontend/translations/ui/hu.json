@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Kikapcsolja a hiányzó oldalakat?",
 	"settings.monitoring.missing-paths.confirm.body": "A mentés minden tárolt hiányzó oldal útvonalat töröl. A kérések száma megmarad.",
 	"settings.monitoring.missing-paths.confirm.item": "Minden tárolt hiányzó oldal útvonal (a kérések száma megmarad)",
-	"settings.monitoring.missing-paths.hint": "Megszámolja az engedélyezett proxy kiszolgálók és átirányító kiszolgálók 404-es és 410-es válaszainak útvonalait, kiszolgálónként és naponta legfeljebb 500 különböző útvonalat, hogy megtalálja a hibás hivatkozásokat, és lássa, mit próbálgatnak a szkennerek. Az útvonalak személyes adatokat tartalmazhatnak, ezért a lekérdezési karakterláncok soha nem kerülnek tárolásra, az e-mail-címek :email, a számok, azonosítók és tokenek :id formában jelennek meg; a többi szöveg változatlan marad. Kikapcsoláskor a tárolt útvonalak törlődnek.",
+	"settings.monitoring.missing-paths.hint": "Megszámolja az engedélyezett proxy kiszolgálók és átirányító kiszolgálók 404-es és 410-es válaszainak útvonalait, domainnevenként és naponta legfeljebb 500 különböző útvonalat, hogy megtalálja a hibás hivatkozásokat, és lássa, mit próbálgatnak a szkennerek. Az útvonalak személyes adatokat tartalmazhatnak, ezért a lekérdezési karakterláncok soha nem kerülnek tárolásra, az e-mail-címek :email, a számok, azonosítók és tokenek :id formában jelennek meg; a többi szöveg változatlan marad. Kikapcsoláskor a tárolt útvonalak törlődnek.",
 	"settings.monitoring.retention": "Statisztikák megőrzése",
 	"settings.monitoring.retention.days": "nap",
 	"settings.monitoring.retention.hint": "{min}–{max} nap. A percenkénti adatok 24 óráig, az óránkénti adatok ennyi napig maradnak meg.",

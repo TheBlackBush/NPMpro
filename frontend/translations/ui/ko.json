@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "누락 페이지를 끄시겠습니까?",
 	"settings.monitoring.missing-paths.confirm.body": "저장하면 저장된 모든 누락 페이지 경로가 삭제됩니다. 요청 수는 유지됩니다.",
 	"settings.monitoring.missing-paths.confirm.item": "저장된 모든 누락 페이지 경로(요청 수는 유지됨)",
-	"settings.monitoring.missing-paths.hint": "활성화된 프록시 호스트와 리다이렉션 호스트의 404 및 410 응답 경로를 호스트별 하루 최대 500개의 서로 다른 경로까지 집계하여 깨진 링크를 찾고 스캐너가 무엇을 탐색하는지 확인합니다. 경로에는 개인 데이터가 포함될 수 있으므로 쿼리 문자열은 저장되지 않으며, 이메일은 :email로, 숫자, ID, 토큰은 :id로 표시되고 나머지 텍스트는 그대로 유지됩니다. 끄면 저장된 경로가 삭제됩니다.",
+	"settings.monitoring.missing-paths.hint": "활성화된 프록시 호스트와 리다이렉션 호스트의 404 및 410 응답 경로를 도메인 이름별 하루 최대 500개의 서로 다른 경로까지 집계하여 깨진 링크를 찾고 스캐너가 무엇을 탐색하는지 확인합니다. 경로에는 개인 데이터가 포함될 수 있으므로 쿼리 문자열은 저장되지 않으며, 이메일은 :email로, 숫자, ID, 토큰은 :id로 표시되고 나머지 텍스트는 그대로 유지됩니다. 끄면 저장된 경로가 삭제됩니다.",
 	"settings.monitoring.retention": "통계 보관 기간",
 	"settings.monitoring.retention.days": "일",
 	"settings.monitoring.retention.hint": "{min}~{max}일. 분 단위 데이터는 24시간, 시간 단위 데이터는 이 일수만큼 보관됩니다.",

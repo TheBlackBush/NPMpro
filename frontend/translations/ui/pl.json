@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Wyłączyć nieistniejące strony?",
 	"settings.monitoring.missing-paths.confirm.body": "Zapisanie usunie wszystkie zapisane ścieżki nieistniejących stron. Liczby żądań zostaną zachowane.",
 	"settings.monitoring.missing-paths.confirm.item": "Wszystkie zapisane ścieżki nieistniejących stron (liczby żądań zostaną zachowane)",
-	"settings.monitoring.missing-paths.hint": "Zlicza ścieżki odpowiedzi 404 i 410 włączonych hostów proxy i hostów przekierowań, do 500 różnych ścieżek na host dziennie, aby znaleźć niedziałające linki i zobaczyć, co sprawdzają skanery. Ścieżki mogą zawierać dane osobowe, dlatego ciągi zapytań nigdy nie są zapisywane, adresy e-mail są zapisywane jako :email, a liczby, identyfikatory i tokeny jako :id; pozostały tekst pozostaje bez zmian. Wyłączenie usuwa zapisane ścieżki.",
+	"settings.monitoring.missing-paths.hint": "Zlicza ścieżki odpowiedzi 404 i 410 włączonych hostów proxy i hostów przekierowań, do 500 różnych ścieżek na nazwę domeny dziennie, aby znaleźć niedziałające linki i zobaczyć, co sprawdzają skanery. Ścieżki mogą zawierać dane osobowe, dlatego ciągi zapytań nigdy nie są zapisywane, adresy e-mail są zapisywane jako :email, a liczby, identyfikatory i tokeny jako :id; pozostały tekst pozostaje bez zmian. Wyłączenie usuwa zapisane ścieżki.",
 	"settings.monitoring.retention": "Przechowuj statystyki przez",
 	"settings.monitoring.retention.days": "dni",
 	"settings.monitoring.retention.hint": "Od {min} do {max} dni. Dane minutowe są przechowywane przez 24 godziny, dane godzinowe przez tyle dni.",

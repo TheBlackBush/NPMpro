@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "关闭缺失页面？",
 	"settings.monitoring.missing-paths.confirm.body": "保存将删除所有已存储的缺失页面路径。请求数将保留。",
 	"settings.monitoring.missing-paths.confirm.item": "所有已存储的缺失页面路径（请求数将保留）",
-	"settings.monitoring.missing-paths.hint": "统计已启用的代理主机和重定向主机返回 404 和 410 响应的路径，每个主机每天最多 500 个不同路径，用于发现失效链接并查看扫描器在探测什么。路径可能包含个人数据，因此从不存储查询字符串，电子邮件显示为 :email，数字、ID 和令牌显示为 :id；其他文本保持原样。关闭时将删除已存储的路径。",
+	"settings.monitoring.missing-paths.hint": "统计已启用的代理主机和重定向主机返回 404 和 410 响应的路径，每个域名每天最多 500 个不同路径，用于发现失效链接并查看扫描器在探测什么。路径可能包含个人数据，因此从不存储查询字符串，电子邮件显示为 :email，数字、ID 和令牌显示为 :id；其他文本保持原样。关闭时将删除已存储的路径。",
 	"settings.monitoring.retention": "统计数据保留",
 	"settings.monitoring.retention.days": "天",
 	"settings.monitoring.retention.hint": "{min} 到 {max} 天。每分钟数据保留 24 小时，每小时数据保留此天数。",

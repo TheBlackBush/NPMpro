@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Desativar páginas em falta?",
 	"settings.monitoring.missing-paths.confirm.body": "Guardar elimina todos os caminhos de páginas em falta guardados. As contagens de pedidos são mantidas.",
 	"settings.monitoring.missing-paths.confirm.item": "Todos os caminhos de páginas em falta guardados (as contagens de pedidos são mantidas)",
-	"settings.monitoring.missing-paths.hint": "Conta os caminhos das respostas 404 e 410 dos proxy hosts e hosts de redirecionamento ativados, até 500 caminhos diferentes por host e por dia, para encontrar ligações quebradas e ver o que os scanners sondam. Os caminhos podem conter dados pessoais, por isso as query strings nunca são guardadas, os emails aparecem como :email e os números, IDs e tokens como :id; o restante texto mantém-se igual. Desativá-lo elimina os caminhos guardados.",
+	"settings.monitoring.missing-paths.hint": "Conta os caminhos das respostas 404 e 410 dos proxy hosts e hosts de redirecionamento ativados, até 500 caminhos diferentes por nome de domínio e por dia, para encontrar ligações quebradas e ver o que os scanners sondam. Os caminhos podem conter dados pessoais, por isso as query strings nunca são guardadas, os emails aparecem como :email e os números, IDs e tokens como :id; o restante texto mantém-se igual. Desativá-lo elimina os caminhos guardados.",
 	"settings.monitoring.retention": "Manter estatísticas durante",
 	"settings.monitoring.retention.days": "dias",
 	"settings.monitoring.retention.hint": "{min} a {max} dias. Os dados por minuto são mantidos durante 24 horas, os dados por hora durante este número de dias.",

@@ -1178,7 +1178,7 @@
 	"settings.monitoring.missing-paths.confirm": "Disattivare le pagine mancanti?",
 	"settings.monitoring.missing-paths.confirm.body": "Il salvataggio elimina tutti i percorsi delle pagine mancanti memorizzati. I conteggi delle richieste vengono conservati.",
 	"settings.monitoring.missing-paths.confirm.item": "Tutti i percorsi delle pagine mancanti memorizzati (i conteggi delle richieste vengono conservati)",
-	"settings.monitoring.missing-paths.hint": "Conta i percorsi delle risposte 404 e 410 degli host proxy e host di reindirizzamento abilitati, fino a 500 percorsi diversi per host e giorno, per trovare i link interrotti e vedere cosa sondano gli scanner. I percorsi possono contenere dati personali, quindi le query string non vengono mai memorizzate, gli indirizzi email diventano :email e numeri, ID e token diventano :id; il resto del testo resta invariato. Disattivarlo elimina i percorsi memorizzati.",
+	"settings.monitoring.missing-paths.hint": "Conta i percorsi delle risposte 404 e 410 degli host proxy e host di reindirizzamento abilitati, fino a 500 percorsi diversi per nome di dominio e giorno, per trovare i link interrotti e vedere cosa sondano gli scanner. I percorsi possono contenere dati personali, quindi le query string non vengono mai memorizzate, gli indirizzi email diventano :email e numeri, ID e token diventano :id; il resto del testo resta invariato. Disattivarlo elimina i percorsi memorizzati.",
 	"settings.monitoring.retention": "Conserva le statistiche per",
 	"settings.monitoring.retention.days": "giorni",
 	"settings.monitoring.retention.hint": "Da {min} a {max} giorni. I dati al minuto vengono conservati per 24 ore, quelli orari per questo numero di giorni.",
