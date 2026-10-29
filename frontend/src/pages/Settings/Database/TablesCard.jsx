@@ -1,3 +1,4 @@
+import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -7,10 +8,10 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
-import { totals } from "src/modules/DatabaseMove";
+import { readTablesOpen, tablesSummary, writeTablesOpen } from "src/modules/DatabaseMove";
 
 const label = (id) => intl.formatMessage({ id });
 
@@ -24,7 +25,12 @@ const features = tableFeatures({
  * The tables of the database in use with their row counts, sorted by name
  */
 function TablesCard({ tables }) {
-	const sum = totals(tables);
+	const bodyId = useId();
+	const [open, setOpen] = useState(() => readTablesOpen(globalThis.localStorage));
+	const toggle = () => {
+		writeTablesOpen(globalThis.localStorage, !open);
+		setOpen(!open);
+	};
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -54,20 +60,36 @@ function TablesCard({ tables }) {
 
 	return (
 		<div className="card mb-4">
-			<div className="card-header">
-				<div>
-					<h3 className="card-title">
-						<T id="settings.database.tables" />
-					</h3>
-					<div className="card-subtitle">
-						<T
-							id="settings.database.tables.total"
-							data={{ tables: intl.formatNumber(sum.tables), rows: intl.formatNumber(sum.rows) }}
-						/>
+			<div className={open ? "card-header" : "card-header border-0"}>
+				<button
+					type="button"
+					className="btn btn-link text-reset text-start text-decoration-none d-flex align-items-center gap-2 w-100 p-0"
+					aria-expanded={open}
+					aria-controls={bodyId}
+					onClick={toggle}
+				>
+					<div>
+						<h3 className="card-title">
+							<T id="settings.database.tables" />
+						</h3>
+						<div className="card-subtitle">{tablesSummary(tables, intl.formatMessage)}</div>
 					</div>
-				</div>
+					{open ? (
+						<IconChevronDown className="icon ms-auto" aria-hidden="true" />
+					) : (
+						<IconChevronRight className="icon ms-auto" aria-hidden="true" />
+					)}
+				</button>
 			</div>
-			<TableLayout tableInstance={tableInstance} layout="scroll" label={label("settings.database.tables")} />
+			<div id={bodyId} hidden={!open}>
+				{open ? (
+					<TableLayout
+						tableInstance={tableInstance}
+						layout="scroll"
+						label={label("settings.database.tables")}
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }

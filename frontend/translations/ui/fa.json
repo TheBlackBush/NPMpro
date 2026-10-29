@@ -576,7 +576,7 @@
 	"settings.database.step.verify": "Check the copy",
 	"settings.database.table": "Table",
 	"settings.database.tables": "Tables",
-	"settings.database.tables.total": "{tables} tables, {rows} rows",
+	"settings.database.tables.total": "{tables, plural, one {# table} other {# tables}}, {rows, plural, one {# row} other {# rows}}",
 	"settings.database.test": "Test connection",
 	"settings.database.test.failed-hint": "The test failed. Fix the values and test again.",
 	"settings.database.test.first": "Test the connection with these values first.",

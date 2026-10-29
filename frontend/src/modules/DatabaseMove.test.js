@@ -15,15 +15,19 @@ import {
 	moveView,
 	payloadKey,
 	pollStalled,
+	readTablesOpen,
 	resolveMoveEnd,
 	sourceBadge,
 	stepName,
 	stepState,
+	TABLES_OPEN_KEY,
+	tablesSummary,
 	targetErrors,
 	testOfValues,
 	toPayload,
 	totals,
 	whereText,
+	writeTablesOpen,
 } from "./DatabaseMove.js";
 
 it("starts with the engine's port and keeps a changed port when the engine changes", () => {
@@ -295,4 +299,44 @@ it("names a step through the translation, and an unknown one as it is", () => {
 	assert.equal(stepName("copy", format), "[settings.database.step.copy]");
 	assert.equal(stepName("later", format), "later");
 	assert.equal(stepName(null, format), "");
+});
+
+const memoryStorage = () => {
+	const data = new Map();
+	return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) };
+};
+const blockedStorage = {
+	getItem: () => {
+		throw new Error("blocked");
+	},
+	setItem: () => {
+		throw new Error("blocked");
+	},
+};
+
+it("the tables card starts collapsed and remembers its state", () => {
+	const storage = memoryStorage();
+	assert.equal(readTablesOpen(storage), false);
+	writeTablesOpen(storage, true);
+	assert.equal(storage.getItem(TABLES_OPEN_KEY), "1");
+	assert.equal(readTablesOpen(storage), true);
+	writeTablesOpen(storage, false);
+	assert.equal(readTablesOpen(storage), false);
+});
+
+it("the tables card works when storage is blocked", () => {
+	assert.equal(readTablesOpen(blockedStorage), false);
+	assert.doesNotThrow(() => writeTablesOpen(blockedStorage, true));
+	assert.equal(readTablesOpen(undefined), false);
+	assert.doesNotThrow(() => writeTablesOpen(undefined, true));
+});
+
+it("tablesSummary passes the table count and the total rows", () => {
+	const seen = [];
+	const text = tablesSummary([{ rows: 10 }, { rows: "5" }], (d, v) => {
+		seen.push([d.id, v]);
+		return "x";
+	});
+	assert.equal(text, "x");
+	assert.deepEqual(seen, [["settings.database.tables.total", { tables: 2, rows: 15 }]]);
 });

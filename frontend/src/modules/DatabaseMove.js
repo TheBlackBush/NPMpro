@@ -217,3 +217,35 @@ export const resolveMoveEnd = async ({
 // the name of a step through formatMessage, or the raw step when the backend sends one this build does not know
 export const stepName = (step, formatMessage) =>
 	MOVE_STEPS.includes(step) ? formatMessage(`settings.database.step.${step}`) : (step ?? "");
+
+export const TABLES_OPEN_KEY = "npmpro.settings.database.tables.open";
+
+/**
+ * Whether the tables card was left open in this browser; collapsed when nothing is stored or storage is blocked
+ */
+export const readTablesOpen = (storage) => {
+	try {
+		return storage.getItem(TABLES_OPEN_KEY) === "1";
+	} catch {
+		return false;
+	}
+};
+
+/**
+ * Remember the state of the tables card; a blocked storage is ignored
+ */
+export const writeTablesOpen = (storage, open) => {
+	try {
+		storage.setItem(TABLES_OPEN_KEY, open ? "1" : "0");
+	} catch {
+		// storage is blocked or full: the card still works, it just starts collapsed next time
+	}
+};
+
+/**
+ * The one line under the title of the tables card, for example "24 tables, 1,234 rows"
+ */
+export const tablesSummary = (tables, formatMessage) => {
+	const sum = totals(tables);
+	return formatMessage({ id: "settings.database.tables.total" }, { tables: sum.tables, rows: sum.rows });
+};
