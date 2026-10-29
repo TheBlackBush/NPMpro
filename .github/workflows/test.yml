@@ -61,6 +61,8 @@ jobs:
           git diff --exit-code -- translations
       - name: translation keys exist
         run: ./translations/check-keys.sh
+      - name: every language has every key
+        run: ./translations/check-locale.sh
       - name: unit tests
         run: node --test 'src/**/*.test.js'
       - name: build

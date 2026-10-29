@@ -24,29 +24,31 @@ else
 	done
 fi
 
-for path in "$@"; do
-	file="${path##*/}"
-	code="${file%.json}"
+check() {
+	for path in "$@"; do
+		file="${path##*/}"
+		code="${file%.json}"
 
-	if ! jq -e --arg code "$code" 'has($code)' "$SRC/lang-list.json" >/dev/null; then
-		echo "lang-list.json: missing code: $code"
-	fi
-
-	for key in $(jq -r 'keys[]' "$SRC/ui/en.json"); do
-		if ! jq -e --arg key "$key" '.[$key] | length > 0' "$path" >/dev/null; then
-			echo "ui/$file: missing key: $key"
+		if ! jq -e --arg code "$code" 'has($code)' "$SRC/lang-list.json" >/dev/null; then
+			echo "lang-list.json: missing code: $code"
 		fi
-	done
 
-	for key in $(jq -r 'keys[]' "$path"); do
-		if ! jq -e --arg key "$key" 'has($key)' "$SRC/ui/en.json" >/dev/null; then
-			echo "ui/$file: unknown key: $key"
-		fi
-	done
+		jq -r --arg file "$file" --slurpfile en "$SRC/ui/en.json" '
+			($en[0] | keys) as $ref
+			| ([$ref[] as $key | select((.[$key] // "") | length == 0) | "ui/\($file): missing key: \($key)"]
+				+ [keys[] as $key | select($en[0] | has($key) | not) | "ui/\($file): unknown key: \($key)"])[]
+		' "$path"
 
-	for doc in "$SRC"/help/en/*.md; do
-		if [ ! -s "$SRC/help/$code/${doc##*/}" ]; then
-			echo "help/$code: missing doc: ${doc##*/}"
-		fi
+		for doc in "$SRC"/help/en/*.md; do
+			if [ ! -s "$SRC/help/$code/${doc##*/}" ]; then
+				echo "help/$code: missing doc: ${doc##*/}"
+			fi
+		done
 	done
-done
+}
+
+findings="$(check "$@")"
+if [ -n "$findings" ]; then
+	printf '%s\n' "$findings"
+	exit 1
+fi

@@ -21,7 +21,7 @@ Add the key to `ui/en.json` first, then to the other files in `ui`. Follow the c
 
 ## Checking for missing translations in languages
 
-Run `./check-locale.sh [code]`.
+Run `./check-locale.sh [code]`. It lists missing and unknown keys and missing help docs, and exits with 1 when it finds any; CI runs it for every language, so a new key needs a translation in every `ui/<code>.json`.
 
 ## Adding a whole new language
 
