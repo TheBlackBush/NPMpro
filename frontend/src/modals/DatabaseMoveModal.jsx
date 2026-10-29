@@ -84,10 +84,11 @@ function CopyProgress({ tables }) {
 	);
 }
 
-// the steps of the move, each with its state; the copy step shows the rows copied so far
+// the steps of the move, each with its state; the copy step shows the rows copied so far. No top border: the header
+// border right above is the divider
 function StepList({ move }) {
 	return (
-		<div className="list-group list-group-flush border-top border-bottom">
+		<div className="list-group list-group-flush border-bottom">
 			{MOVE_STEPS.map((step) => {
 				const state = stepState(move, step);
 				const label = intl.formatMessage({ id: `settings.database.step.${step}` });
