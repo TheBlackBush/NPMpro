@@ -44,6 +44,7 @@ Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `d
 - [Monitoring](#monitoring)
 - [GoAccess](#goaccess)
 - [Backup and restore](#backup-and-restore)
+- [Database](#database)
 - [Comments on some buttons](#comments-on-some-buttons)
 - [Forward authentication (auth_request) examples](#examples-of-implementing-some-services-using-auth_request)
 - [Load Balancing](#load-balancing)
@@ -207,7 +208,7 @@ Read the full steps, the checks and how to go back in the wiki: [Upgrading from 
 ## Compatibility (to Upstream)
 - Supported architectures: x86_64-v2/amd64v2 (check with `/lib/ld-linux-x86-64.so.2 --help`, plain x86-64 is not supported only v2 and up) and aarch64/arm64 (other archs (including 64-bit ones) and any 32-bit arch (like armhf/armv7 (dropped), armel/armv6) are not supported, because of the duration to compile).
 - NPMpro is built for docker (CI builds the image and checks that it starts healthy), but podman should also work (running the NPMpro container inside an LXC container is discouraged, it will work, but it works better without, install docker/podman on the host or in a KVM and run NPMpro with this)
-- MariaDB(/MySQL)/PostgreSQL may work as Databases for NPMpro (configuration like in upstream), but are unsupported, have no advantage over SQLite (at least with NPMpro) and are not recommended. Please note that you can't migrate from any of these to SQLite without making a fresh install and/or copying everything yourself.
+- MariaDB(/MySQL)/PostgreSQL may work as Databases for NPMpro (configuration like in upstream), but are unsupported, have no advantage over SQLite (at least with NPMpro) and are not recommended. Settings, Database moves an instance between SQLite, MySQL/MariaDB and PostgreSQL (see [Database](#database)).
 - NPMpro uses https instead of http for the admin interface
 - NPMpro won't trust cloudflare until you turn on Trust Cloudflare (Settings, Network, or `TRUST_CLOUDFLARE=true`), but please read [this](#notes-on-cloudflare) first.
 - route53 is not supported as dns-challenge provider and Amazon CloudFront IPs can't be automatically trusted in NPMpro, even with Trust Cloudflare on.
@@ -356,6 +357,16 @@ Scheduled backups (Settings, Backup and restore, Scheduled backups) make backups
 - Failures show on the schedule (Failed with the error), as a dashboard tile "Scheduled backup failed: <name>" that links to the backup settings, and in the audit log (backup succeeded or failed). The tile clears after the next successful run, or when the schedule is paused or deleted.
 - Deleting a schedule keeps its files as plain stored backups unless "Also delete its stored backups" is ticked.
 - Backup schedules are a part of Settings in a backup. Without secrets their passphrases are left out, and passphrase schedules come back paused until a passphrase is entered. A restore makes the restoring administrator their owner and computes the next runs again; a replace restore of the part turns every scheduled file on the instance into a plain stored backup.
+
+## Database
+
+Administrators see the database in use under Settings, Database (`/settings/database`): engine and version, where the connection comes from, size and the rows of every table.
+
+NPMpro can move itself to another database from there: SQLite, MySQL 8.0 or newer, MariaDB 10.6 or newer, or PostgreSQL 13 or newer, and back. The target must be an empty database the user may create tables in; "Test connection" checks this without changing anything. A move pauses all changes (a banner shows on every page), makes an automatic backup into `/data/backups/auto`, creates the tables with NPMpro's migrations, copies every row of every table (hosts, certificates, users, the audit log, traffic statistics and sessions), checks the copy, writes the new connection to `/data/npmpro/database.json` (the password encrypted with the instance key in `/data/npmpro/dns-credentials.key`) and restarts the backend. Sites keep being served during the move; everyone signs in again after the restart unless `COOKIE_SECRET` is set. If anything fails, NPMpro keeps running on the database in use and the target is left as it was.
+
+The database in use is never changed or deleted, so it is the way back: delete or rename `/data/npmpro/database.json` and restart to return to `/data/npmpro/database.sqlite`. A move to SQLite always creates a new file `/data/npmpro/database-<date>.sqlite`. If `database.json` cannot be read, NPMpro does not start and logs which file to remove.
+
+When `DB_MYSQL_*` or `DB_POSTGRES_*` environment variables are set, they always win and the section is read-only: to move, make a backup, change the variables to the new database, restart and restore the backup.
 
 ## Comments on some buttons
 - Forward Hostname / IP / Path: if the scheme is set to path you can just put here a path in and nginx works as a file server, otherwise you need to input ip/domain, you can also append a path to the ip/domain like `127.0.0.1/path` to proxy to a subpath.
