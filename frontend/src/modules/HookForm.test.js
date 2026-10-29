@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { it } from "node:test";
+import { fieldsValidate, formResolver, mergeErrors, setIn, toHookFormErrors, translateErrors } from "./HookForm.js";
+
+it("sets a value at a path, with lists for numeric parts", () => {
+	assert.deepEqual(setIn({}, "name", "x"), { name: "x" });
+	assert.deepEqual(setIn({ a: { b: 1 } }, "a.c", 2), { a: { b: 1, c: 2 } });
+	const list = setIn({}, "items[1].username", "x");
+	assert.equal(Array.isArray(list.items), true);
+	assert.equal(list.items.length, 2);
+	assert.deepEqual(list.items[1], { username: "x" });
+	const before = { a: { b: 1 } };
+	setIn(before, "a.b", 2);
+	assert.deepEqual(before, { a: { b: 1 } });
+});
+
+it("merges errors with the later one winning a field", () => {
+	assert.deepEqual(mergeErrors({ confirm: "Too short", new: "Too short" }, { confirm: "Must match" }), {
+		confirm: "Must match",
+		new: "Too short",
+	});
+	assert.deepEqual(mergeErrors({ fieldValues: { a: "A" } }, { fieldValues: { b: "B" } }), {
+		fieldValues: { a: "A", b: "B" },
+	});
+	assert.deepEqual(mergeErrors({ a: "A" }, undefined, {}), { a: "A" });
+});
+
+it("builds a validate from field rules and a rule over the form", () => {
+	const required = (value) => (value ? undefined : "Required");
+	const validate = fieldsValidate({ name: required, "fieldValues.token": required, skipped: undefined }, (values) =>
+		values.name === "taken" ? { name: "Taken" } : {},
+	);
+	assert.deepEqual(validate({ name: "", fieldValues: {} }), {
+		name: "Required",
+		fieldValues: { token: "Required" },
+	});
+	assert.deepEqual(validate({ name: "taken", fieldValues: { token: "t" } }), { name: "Taken" });
+	assert.deepEqual(validate({ name: "ok", fieldValues: { token: "t" } }), {});
+	const conditional = fieldsValidate((values) => (values.on ? { extra: required } : {}));
+	assert.deepEqual(conditional({ on: false }), {});
+	assert.deepEqual(conditional({ on: true }), { extra: "Required" });
+});
+
+it("translates message ids", () => {
+	const intl = { formatMessage: ({ id }) => `text of ${id}` };
+	assert.deepEqual(translateErrors({ name: "a.b" }, intl), { name: "text of a.b" });
+});
+
+it("gives React Hook Form's error shape", () => {
+	assert.deepEqual(toHookFormErrors({ name: "Required", fieldValues: { token: "Bad" } }), {
+		name: { type: "validate", message: "Required" },
+		fieldValues: { token: { type: "validate", message: "Bad" } },
+	});
+	assert.equal(toHookFormErrors({}), undefined);
+	assert.equal(toHookFormErrors({ name: "" }), undefined);
+});
+
+it("resolves to the values when validate finds nothing, else to the errors", async () => {
+	const resolver = formResolver((values) => (values.name ? {} : { name: "Required" }));
+	assert.deepEqual(await resolver({ name: "x" }), { values: { name: "x" }, errors: {} });
+	assert.deepEqual(await resolver({ name: "" }), {
+		values: {},
+		errors: { name: { type: "validate", message: "Required" } },
+	});
+	const asyncResolver = formResolver(async () => ({ name: "Later" }));
+	assert.deepEqual((await asyncResolver({})).errors, { name: { type: "validate", message: "Later" } });
+});
