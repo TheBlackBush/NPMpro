@@ -7,6 +7,7 @@ import { selectClassNames } from "src/modules/Select";
 import { validateInteger, validateRequired } from "src/modules/Validations";
 import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
+import { useRecheckDependent } from "./HookForm";
 
 const requiredProvider = validateRequired();
 const validPropagation = validateInteger({ min: 0, max: 7200 });
@@ -151,11 +152,8 @@ function FormikDnsProviderFields({ showBoundaryBox }) {
 
 function HookFormProvider({ providerId }) {
 	const { setValue } = useFormContext();
-	// deps: a provider change re-checks the credential (once the provider was left or a save was tried)
-	const { field, fieldState } = useController({
-		name: "npmproDnsProvider",
-		rules: { deps: ["npmproDnsCredentialId"] },
-	});
+	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
+	const recheckCredential = useRecheckDependent("npmproDnsCredentialId");
 	return (
 		<ProviderSelect
 			providerId={providerId}
@@ -163,9 +161,10 @@ function HookFormProvider({ providerId }) {
 			error={fieldState.error?.message ?? null}
 			onBlur={field.onBlur}
 			onChange={(value) => {
-				// another provider's credential does not fit; cleared before the change, so deps checks the empty one
-				setValue("npmproDnsCredentialId", null, { shouldDirty: true });
 				field.onChange(value);
+				// another provider's credential does not fit; its message shows again once it may
+				setValue("npmproDnsCredentialId", null, { shouldDirty: true });
+				recheckCredential();
 			}}
 		/>
 	);

@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import { FormProvider, useForm, useFormContext, useFormState } from "react-hook-form";
 import { errorPaths, fieldPaths, formResolver, orderErrorPaths } from "src/modules/HookForm";
 
 const FieldOrderContext = createContext([]);
@@ -8,8 +8,7 @@ const FieldOrderContext = createContext([]);
  * useForm for the app's forms: the window's validate function (values => errors of translated messages; the newest
  * one, so it may use data loaded later) as the resolver; an error shows once its field was left and then follows each
  * change, after a save every error shows (onTouched, reValidate onChange); HookForm focuses the first error in the
- * form's field order. A field whose message depends on another one is re-checked through that field's deps option
- * (register(name, { deps: [...] }), or rules: { deps: [...] } on a controller).
+ * form's field order. A field whose message depends on another one is re-checked with useRecheckDependent.
  *
  * @param   {Object}   options
  * @param   {Object}   options.defaultValues  every field of the form, none undefined (isDirty compares with them)
@@ -20,9 +19,10 @@ const FieldOrderContext = createContext([]);
  */
 function useAppForm({ defaultValues, values, validate }) {
 	const validateRef = useRef(validate);
-	useEffect(() => {
+	// before any event handler runs, so the resolver always uses the validate of the last render
+	useLayoutEffect(() => {
 		validateRef.current = validate;
-	});
+	}, [validate]);
 	const [resolver] = useState(() => formResolver((formValues) => validateRef.current?.(formValues) ?? {}));
 	return useForm({
 		defaultValues,
@@ -44,6 +44,27 @@ function useAppForm({ defaultValues, values, validate }) {
  */
 function useFieldOrder() {
 	return useContext(FieldOrderContext);
+}
+
+/**
+ * Re-checks a field whose message depends on another field (a repeat field, the credential of a DNS provider): call
+ * the returned function from the other field's change handler (register's onChange option, or after field.onChange
+ * in a controller). It triggers name only when name's message may already show: name was left, has a message, or a
+ * save was tried. So leaving the other field (Tab to name) shows nothing on name yet. React Hook Form's deps option
+ * is not used, as it also fires when the other field is left (blur), before name was visited.
+ *
+ * @param   {string}   name  the dependent field
+ * @returns {Function} () => void
+ */
+function useRecheckDependent(name) {
+	const { trigger, getFieldState } = useFormContext();
+	// read during render, so this component re-renders when they change (React Hook Form's subscription)
+	const formState = useFormState({ name, exact: true });
+	const { isSubmitted } = formState;
+	const { isTouched, error } = getFieldState(name, formState);
+	return () => {
+		if (isTouched || error || isSubmitted) void trigger(name);
+	};
 }
 
 /**
@@ -72,7 +93,8 @@ function focusFirstError(form, errors, order, setFocus) {
  * @param {Object}   props
  * @param {Object}   props.methods       useAppForm's result
  * @param {Function} props.onSubmit      async (values) => void, the save (isSubmitting lasts until it settles)
- * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs
+ * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
+ *                                      on the first render (as the defaultValues' order)
  * @param {*}        props.children
  */
 function HookForm({ methods, onSubmit, fieldOrder, children }) {
@@ -108,4 +130,4 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 	);
 }
 
-export { focusFirstError, HookForm, useAppForm, useFieldOrder };
+export { focusFirstError, HookForm, useAppForm, useFieldOrder, useRecheckDependent };

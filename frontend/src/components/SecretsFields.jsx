@@ -3,7 +3,7 @@ import { useId } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
 import { passphraseErrors } from "src/modules/BackupTypes";
-import { PasswordInput, SwitchField } from "./Form";
+import { PasswordInput, SwitchField, useRecheckDependent } from "./Form";
 
 // the passphrase fields, whose messages go when secrets are off
 const PASSPHRASE_FIELDS = ["passphrase", "passphraseRepeat"];
@@ -103,12 +103,10 @@ function FormikSecretsFields(props) {
 	);
 }
 
-// a new passphrase re-checks the repeat (deps: once the passphrase was left or a save was tried)
-const PASSPHRASE_RULES = { passphrase: { deps: ["passphraseRepeat"] } };
-
-// in a React Hook Form form: turning secrets off drops the passphrase messages
+// in a React Hook Form form: turning secrets off drops the passphrase messages; a new passphrase re-checks the repeat
 function HookFormSecretsFields(props) {
 	const { register, clearErrors } = useFormContext();
+	const recheckRepeat = useRecheckDependent("passphraseRepeat");
 	const { errors } = useFormState();
 	const secretsOn = useWatch({ name: "secrets" });
 	return (
@@ -125,7 +123,7 @@ function HookFormSecretsFields(props) {
 					id={id}
 					labelId={labelId}
 					hintId={hintId}
-					inputProps={register(name, PASSPHRASE_RULES[name])}
+					inputProps={register(name, name === "passphrase" ? { onChange: recheckRepeat } : undefined)}
 					error={errors[name]?.message}
 				/>
 			)}
