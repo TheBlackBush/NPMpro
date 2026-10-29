@@ -196,6 +196,7 @@
 	"error.minimum": "Minimum je {min}",
 	"error.passwords-must-match": "Hesla se musí shodovat",
 	"error.required": "Toto pole je povinné",
+	"error.stream.new-certificate-dns": "Nové certifikáty pro streamy vyžadují ověření přes DNS",
 	"expires.on": "Platnost do: {date}",
 	"footer.github-fork": "Forkněte mě na GitHubu",
 	"host.flags.block-exploits": "Blokovat běžné exploity",

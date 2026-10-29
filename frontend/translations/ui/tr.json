@@ -199,6 +199,7 @@
 	"error.minimum": "Minimum {min}",
 	"error.passwords-must-match": "Şifreler eşleşmelidir",
 	"error.required": "Bu gereklidir",
+	"error.stream.new-certificate-dns": "Akışlar için yeni sertifikalar DNS doğrulaması gerektirir",
 	"expires.on": "Sona Erer: {date}",
 	"footer.github-fork": "Github'da Fork Yap",
 	"host.flags.block-exploits": "Yaygın Saldırıları Engelle",

@@ -199,6 +199,7 @@
 	"error.minimum": "Minimum {min}",
 	"error.passwords-must-match": "Parollar uyğun gəlməlidir",
 	"error.required": "Bu tələb olunur",
+	"error.stream.new-certificate-dns": "Axınlar üçün yeni sertifikatlar DNS yoxlaması tələb edir",
 	"expires.on": "Bitmə tarixi: {date}",
 	"footer.github-fork": "Github-da fork et",
 	"host.flags.block-exploits": "Ümumi hücumları blokla",

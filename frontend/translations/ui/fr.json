@@ -203,6 +203,7 @@
 	"error.minimum": "Le minimum est {min}",
 	"error.passwords-must-match": "Les mots de passe doivent correspondre",
 	"error.required": "Ceci est obligatoire",
+	"error.stream.new-certificate-dns": "Les nouveaux certificats pour les streams nécessitent le challenge DNS",
 	"expires.on": "Expire le {date}",
 	"footer.github-fork": "Forkez-moi sur GitHub",
 	"host.flags.block-exploits": "Bloquer les exploits courants",

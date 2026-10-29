@@ -191,6 +191,7 @@
 	"error.minimum": "最小値は{min}です",
 	"error.passwords-must-match": "パスワードは一致する必要があります",
 	"error.required": "必須項目です",
+	"error.stream.new-certificate-dns": "ストリームの新しい証明書には DNS チャレンジが必要です",
 	"expires.on": "有効期限: {date}",
 	"footer.github-fork": "Fork me on Github",
 	"host.flags.block-exploits": "一般的なエクスプロイトをブロックする",

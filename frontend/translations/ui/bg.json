@@ -196,6 +196,7 @@
 	"error.minimum": "Минимум e {min}",
 	"error.passwords-must-match": "Паролите трябва да съвпадат",
 	"error.required": "Това поле е задължително",
+	"error.stream.new-certificate-dns": "Новите сертификати за потоци изискват DNS проверка",
 	"expires.on": "Изтича: {date}",
 	"footer.github-fork": "Fork в GitHub",
 	"host.flags.block-exploits": "Блокиране на често срещани експлойти",

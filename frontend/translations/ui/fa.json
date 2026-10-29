@@ -199,6 +199,7 @@
 	"error.minimum": "حداقل {min} است",
 	"error.passwords-must-match": "رمزهای عبور باید مطابقت داشته باشند",
 	"error.required": "این فیلد الزامی است",
+	"error.stream.new-certificate-dns": "گواهی‌های جدید برای استریم‌ها به چالش DNS نیاز دارند",
 	"expires.on": "انقضا: {date}",
 	"footer.github-fork": "Fork در GitHub",
 	"host.flags.block-exploits": "مسدودسازی اکسپلویت‌های رایج",

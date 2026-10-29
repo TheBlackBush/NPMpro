@@ -199,6 +199,7 @@
 	"error.minimum": "Мінімум {min}",
 	"error.passwords-must-match": "Паролі повинні збігатися",
 	"error.required": "Обов'язкове поле",
+	"error.stream.new-certificate-dns": "Новим сертифікатам для потоків потрібна перевірка DNS",
 	"expires.on": "Закінчується: {date}",
 	"footer.github-fork": "Зробити форк на GitHub",
 	"host.flags.block-exploits": "Блокувати відомі експлойти",

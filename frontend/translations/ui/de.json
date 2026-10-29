@@ -225,6 +225,7 @@
 	"error.minimum": "Minimum ist {min}",
 	"error.passwords-must-match": "Passwörter müssen übereinstimmen",
 	"error.required": "Dies ist erforderlich.",
+	"error.stream.new-certificate-dns": "Neue Zertifikate für Streams benötigen die DNS-Challenge",
 	"expires.on": "Ablauf am: {date}",
 	"footer.github": "Repository auf Github",
 	"footer.github-fork": "Fork me on Github",

@@ -196,6 +196,7 @@
 	"error.minimum": "El mínimo es {min}",
 	"error.passwords-must-match": "Las contraseñas deben coincidir",
 	"error.required": "Este campo es obligatorio",
+	"error.stream.new-certificate-dns": "Los certificados nuevos para streams necesitan el desafío DNS",
 	"expires.on": "Expira: {date}",
 	"footer.github-fork": "Bifúrcame en Github",
 	"host.flags.block-exploits": "Bloquear Exploits Comunes",

@@ -225,6 +225,7 @@
 	"error.minimum": "最小值为 {min}",
 	"error.passwords-must-match": "密码必须匹配",
 	"error.required": "此项为必填项",
+	"error.stream.new-certificate-dns": "端口转发的新证书需要 DNS 验证",
 	"expires.on": "过期时间: {date}",
 	"footer.github": "在 Github 上查看代码仓库",
 	"footer.github-fork": "在 Github 上复刻 (Fork) 本项目",

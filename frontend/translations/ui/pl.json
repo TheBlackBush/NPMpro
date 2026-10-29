@@ -193,6 +193,7 @@
 	"error.minimum": "Minimum to {min}",
 	"error.passwords-must-match": "Hasła muszą się zgadzać",
 	"error.required": "To pole jest wymagane",
+	"error.stream.new-certificate-dns": "Nowe certyfikaty dla strumieni wymagają weryfikacji DNS",
 	"expires.on": "Wygasa: {date}",
 	"footer.github-fork": "Forkuj mnie na Github",
 	"host.flags.block-exploits": "Blokuj typowe exploity",

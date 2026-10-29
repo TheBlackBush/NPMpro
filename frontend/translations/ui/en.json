@@ -341,6 +341,7 @@
 	"error.path-scheme-webroot": "Only administrators can serve files from outside /var/www. Use an absolute path inside /var/www.",
 	"error.request-failed": "Request failed (HTTP {status})",
 	"error.required": "This is required",
+	"error.stream.new-certificate-dns": "New certificates for streams need the DNS challenge",
 	"expires.on": "Expires: {date}",
 	"expiry.expired": "Expired",
 	"expiry.in-days": "{days, plural, =0 {Expires today} =1 {Expires tomorrow} other {Expires in # days}}",

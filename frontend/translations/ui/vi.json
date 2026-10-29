@@ -191,6 +191,7 @@
 	"error.minimum": "Tối thiểu là {min}",
 	"error.passwords-must-match": "Mật khẩu phải khớp",
 	"error.required": "Điều này là bắt buộc",
+	"error.stream.new-certificate-dns": "Chứng chỉ mới cho stream cần thử thách DNS",
 	"expires.on": "Hết hạn: {date}",
 	"footer.github-fork": "Fork dự án này trên Github",
 	"host.flags.block-exploits": "Chặn các hoạt động khai thác phổ biến",

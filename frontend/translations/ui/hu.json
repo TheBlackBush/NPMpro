@@ -196,6 +196,7 @@
 	"error.minimum": "A minimum {min}",
 	"error.passwords-must-match": "A jelszavaknak egyezniük kell",
 	"error.required": "Ez kötelező",
+	"error.stream.new-certificate-dns": "A streamek új tanúsítványaihoz DNS ellenőrzés szükséges",
 	"expires.on": "Lejár: {date}",
 	"footer.github-fork": "Fork-olj a GitHub-on",
 	"host.flags.block-exploits": "Gyakori exploitok blokkolása",

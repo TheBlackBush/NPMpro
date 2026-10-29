@@ -192,6 +192,7 @@
 	"error.minimum": "Is é {min} an t-íosmhéid",
 	"error.passwords-must-match": "Ní mór pasfhocail a bheith mar a chéile",
 	"error.required": "Tá sé seo riachtanach",
+	"error.stream.new-certificate-dns": "Teastaíonn an dúshlán DNS ó theastais nua do shruthanna",
 	"expires.on": "Éagaíonn: {date}",
 	"footer.github-fork": "Forc mé ar Github",
 	"host.flags.block-exploits": "Blocáil Easnaimh Choitianta",

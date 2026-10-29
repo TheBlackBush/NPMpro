@@ -192,6 +192,7 @@
 	"error.minimum": "Minimum adalah {min}",
 	"error.passwords-must-match": "Kata sandi harus cocok",
 	"error.required": "Ini wajib diisi",
+	"error.stream.new-certificate-dns": "Sertifikat baru untuk stream memerlukan tantangan DNS",
 	"expires.on": "Kedaluwarsa: {date}",
 	"footer.github-fork": "Fork saya di GitHub",
 	"host.flags.block-exploits": "Blokir Eksploit Umum",

@@ -198,6 +198,7 @@
 	"error.minimum": "Minimum er {min}",
 	"error.passwords-must-match": "Passordene må være like",
 	"error.required": "Dette er påkrevd",
+	"error.stream.new-certificate-dns": "Nye sertifikater for strømmer krever DNS-utfordringen",
 	"expires.on": "Utløper: {date}",
 	"footer.github-fork": "Fork meg på Github",
 	"host.flags.block-exploits": "Blokker vanlige utnyttelser",

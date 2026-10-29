@@ -196,6 +196,7 @@
 	"error.minimum": "최솟값은 {min}입니다.",
 	"error.passwords-must-match": "비밀번호가 일치해야 합니다.",
 	"error.required": "필수 항목입니다.",
+	"error.stream.new-certificate-dns": "스트림의 새 인증서에는 DNS 챌린지가 필요합니다",
 	"expires.on": "만료일: {date}",
 	"footer.github-fork": "GitHub에서 포크하기",
 	"host.flags.block-exploits": "일반적인 공격 차단",

@@ -203,6 +203,7 @@
 	"error.minimum": "Minimo {min}",
 	"error.passwords-must-match": "Le password devono coincidere",
 	"error.required": "Campo obbligatorio",
+	"error.stream.new-certificate-dns": "I nuovi certificati per gli stream richiedono la challenge DNS",
 	"expires.on": "Scade: {date}",
 	"footer.github-fork": "Forkami su GitHub",
 	"host.flags.block-exploits": "Blocca Exploit Comuni",

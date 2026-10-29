@@ -203,6 +203,7 @@
 	"error.minimum": "Miinimum on {min}",
 	"error.passwords-must-match": "Paroolid peavad klappima",
 	"error.required": "See on kohustuslik",
+	"error.stream.new-certificate-dns": "Voogude uued sertifikaadid vajavad DNS-kontrolli",
 	"expires.on": "Aegub: {date}",
 	"footer.github-fork": "Tee GitHubis fork",
 	"host.flags.block-exploits": "Blokeeri levinud ründed",

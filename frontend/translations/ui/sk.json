@@ -196,6 +196,7 @@
 	"error.minimum": "Minimum je {min}",
 	"error.passwords-must-match": "Heslá sa musia zhodovať",
 	"error.required": "Toto pole je povinné",
+	"error.stream.new-certificate-dns": "Nové certifikáty pre streamy vyžadujú overenie cez DNS",
 	"expires.on": "Platnosť do: {date}",
 	"footer.github-fork": "Forknite ma na GitHube",
 	"host.flags.block-exploits": "Blokovať bežné exploity",
