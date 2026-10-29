@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useController } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
 import {
 	ApiErrorContent,
@@ -23,9 +23,10 @@ const showCustomCertificateModal = (cert, provider) => {
 	EasyModal.show(CustomCertificateModal, { cert, provider });
 };
 
-// a required certificate file (a controller: its value is the chosen File); like any field, its message shows once
-// the field was left or a save was tried, and then follows each change
+// a required certificate file (a controller: its value is the chosen File); a chosen file is checked at once, so a
+// file that is too large is named right away
 function FileInput({ name, labelId }) {
+	const { trigger } = useFormContext();
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	return (
@@ -44,7 +45,10 @@ function FileInput({ name, labelId }) {
 				aria-invalid={error ? "true" : undefined}
 				aria-describedby={error ? `${name}-error` : undefined}
 				onBlur={field.onBlur}
-				onChange={(event) => field.onChange(event.currentTarget.files[0] ?? null)}
+				onChange={(event) => {
+					field.onChange(event.currentTarget.files[0] ?? null);
+					void trigger(name);
+				}}
 			/>
 			{error ? (
 				<div className="invalid-feedback" id={`${name}-error`}>
@@ -103,9 +107,11 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 			// Success
 			showObjectSuccess("certificate", "saved");
 			remove();
-			await queryClient.invalidateQueries({ queryKey: ["certificates"] });
 		} catch (err) {
 			setErrorMsg(<ApiErrorContent error={err} />);
+		} finally {
+			// also after a failed upload, as the certificate may already have been created
+			await queryClient.invalidateQueries({ queryKey: ["certificates"] });
 		}
 	};
 
