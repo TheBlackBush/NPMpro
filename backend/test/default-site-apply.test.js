@@ -4,7 +4,7 @@ import { applyDefaultSite } from "../lib/default-site.js";
 
 // a fake internal/nginx.js plus the HTML page and save steps, all recorded in one list; test() fails while a
 // "broken" row is written, reload() fails for a "bad-reload" row
-const fake = ({ failSave = false, failHtml = false } = {}) => {
+const fake = ({ failOnSave = false, failHtml = false } = {}) => {
 	const state = { written: { value: "congratulations" }, html: "old page", saved: false, steps: [], logged: [] };
 	const nginx = {
 		generateConfig: (_type, row) => {
@@ -32,7 +32,7 @@ const fake = ({ failSave = false, failHtml = false } = {}) => {
 		},
 		save: () => {
 			state.steps.push("save");
-			if (failSave) throw new Error("database locked");
+			if (failOnSave) throw new Error("database locked");
 			state.saved = true;
 		},
 		logger: { warn: (msg) => state.logged.push(`warn:${msg}`), error: (msg) => state.logged.push(`error:${msg}`) },
@@ -77,7 +77,7 @@ it("restores the previous page and config when the reload fails", async () => {
 });
 
 it("restores the previous page and config when the save fails after the reload", async () => {
-	const { nginx, steps, state } = fake({ failSave: true });
+	const { nginx, steps, state } = fake({ failOnSave: true });
 	await assert.rejects(applyDefaultSite(nginx, html("new page"), html("old page"), steps), (err) => {
 		assert.equal(err.cause.message, "database locked");
 		return true;
