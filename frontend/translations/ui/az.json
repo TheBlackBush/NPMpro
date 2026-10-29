@@ -266,7 +266,7 @@
 	"object.event.moved": "{object} köçürüldü",
 	"object.event.renewed": "{object} yeniləndi",
 	"object.event.restored": "Restored {object}",
-	"object.event.updated": "{object} yeniləndi",
+	"object.event.updated": "{object} dəyişdirildi",
 	"object.event.uploaded": "Uploaded {object}",
 	"offline": "Oflayn",
 	"online": "Onlayn",

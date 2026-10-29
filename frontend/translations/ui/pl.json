@@ -232,7 +232,7 @@
 	"object.delete": "Usuń {object}",
 	"object.delete.content": "Czy na pewno chcesz usunąć {object}?",
 	"object.edit": "Edytuj {object}",
-	"object.empty": "Brak {objects}",
+	"object.empty": "{objects}: brak",
 	"object.event.backup-failed": "Kopia zapasowa nieudana: {object}",
 	"object.event.backup-succeeded": "Kopia zapasowa wykonana: {object}",
 	"object.event.created": "Utworzono {object}",

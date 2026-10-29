@@ -573,7 +573,7 @@
 	"settings.default-site.404.description": "Responde com uma página 404 Não encontrado.",
 	"settings.default-site.444": "Sem Resposta (444)",
 	"settings.default-site.444.description": "Fecha a ligação sem enviar resposta.",
-	"settings.default-site.congratulations": "Página de Boas-vindas",
+	"settings.default-site.congratulations": "Página de Parabéns",
 	"settings.default-site.congratulations.description": "Mostra a página de boas-vindas do NPMpro.",
 	"settings.default-site.description": "O que apresentar quando o Nginx recebe um Host desconhecido",
 	"settings.default-site.html": "HTML Personalizado",
