@@ -216,6 +216,8 @@ function VisitorsCard({ status, totals, range }) {
 						<T id="monitoring.stat.visitors.off.hint" />
 					</Link>
 				}
+				// the link is the way to the setting: shown in full on a half-width phone card
+				hintWrap
 				icon={IconUsers}
 				color="secondary"
 			/>

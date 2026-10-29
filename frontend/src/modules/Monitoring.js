@@ -442,13 +442,14 @@ const RELATIVE_UNITS = [
 ];
 
 /**
- * The time from nowMs to iso as the largest whole unit for Intl.RelativeTimeFormat (negative in the past); seconds
- * under a minute. Null for an invalid time.
+ * The time from nowMs to iso as the largest whole unit for Intl.RelativeTimeFormat (negative in the past, 0 seconds
+ * for a future time); seconds under a minute. Null for an invalid time.
  */
 const relativeTimeParts = (iso, nowMs) => {
 	const time = Date.parse(iso);
 	if (!Number.isFinite(time)) return null;
-	const seconds = Math.trunc((time - nowMs) / 1000);
+	// a time ahead of the browser clock (clock skew with the server) reads as now, never "in 5 seconds"
+	const seconds = Math.min(0, Math.trunc((time - nowMs) / 1000));
 	for (const { unit, seconds: size } of RELATIVE_UNITS) {
 		if (Math.abs(seconds) >= size) return { value: Math.trunc(seconds / size), unit };
 	}

@@ -7,7 +7,9 @@ import { Link } from "react-router";
  * @param {object} props
  * @param {import("react").ReactNode} props.label     subheader text
  * @param {import("react").ReactNode} props.value     the big value
- * @param {import("react").ReactNode} [props.hint]    small line under the value
+ * @param {import("react").ReactNode} [props.hint]    small line under the value, cut with an ellipsis
+ * @param {boolean} [props.hintWrap]                  wrap the hint instead of cutting it (a hint the user must read
+ *                                                    in full, such as a link)
  * @param {import("react").ElementType} [props.icon]  Tabler icon shown next to the subheader
  * @param {string} [props.color]                      Tabler colour name for the icon, default "secondary"
  * @param {import("react").ReactNode} [props.children]          extra content under the hint (e.g. a sparkline)
@@ -18,6 +20,7 @@ function StatCard({
 	label,
 	value,
 	hint,
+	hintWrap = false,
 	icon: Icon,
 	color = "secondary",
 	to,
@@ -35,7 +38,9 @@ function StatCard({
 				) : null}
 			</div>
 			<div className="h1 mt-2 mb-0 text-truncate">{value}</div>
-			{hint ? <div className="text-secondary small mt-1 text-truncate">{hint}</div> : null}
+			{hint ? (
+				<div className={`text-secondary small mt-1 ${hintWrap ? "text-wrap" : "text-truncate"}`}>{hint}</div>
+			) : null}
 			{children}
 		</div>
 	);

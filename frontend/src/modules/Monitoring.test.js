@@ -497,6 +497,13 @@ it("gives the largest whole unit of a past time for Intl.RelativeTimeFormat", ()
 	assert.equal(relativeTimeParts("not a date", now), null);
 });
 
+it("shows a time ahead of the browser clock (clock skew) as now", () => {
+	const now = Date.UTC(2026, 9, 29, 12, 0, 0);
+	const ahead = (ms) => new Date(now + ms).toISOString();
+	assert.deepEqual(relativeTimeParts(ahead(5_000), now), { value: 0, unit: "second" });
+	assert.deepEqual(relativeTimeParts(ahead(2 * 3_600_000), now), { value: 0, unit: "second" });
+});
+
 it("builds one confirm dialog for the settings whose stored data is deleted", () => {
 	assert.equal(dataOffConfirm({}), null);
 	assert.deepEqual(dataOffConfirm({ pathsOff: true }), {
