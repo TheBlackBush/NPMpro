@@ -1,20 +1,67 @@
 import { IconCopy } from "@tabler/icons-react";
 import cn from "clsx";
-import { Field, Form, Formik } from "formik";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
+import { Controller } from "react-hook-form";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
-import { PasswordInput } from "src/components/Form";
+import { HookForm, PasswordInput, useAppForm } from "src/components/Form";
 import { intl, T } from "src/locale";
+import { mfaCodeValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
-import { validateString, validateText } from "src/modules/Validations";
+import { validations } from "src/modules/Validations";
 
 const showMfaModal = (id) => {
 	EasyModal.show(MfaModal, { id });
 };
 
-const validateSixDigits = validateText({ required: true, pattern: /^\d{6}$/u, messageId: "error.code-six-digits" });
+/**
+ * The code form of a step (setup, disable, verify): the code field (a controller: the field shows its placeholder
+ * as text while empty), Cancel back to the status and the step's button
+ */
+function CodeForm({ step, labelId, inputMode, maxLength, color, submitId, onSubmit, onCancel, isSubmitting }) {
+	const methods = useAppForm({ defaultValues: { code: "" }, validate: mfaCodeValidate(validations, step) });
+	return (
+		<HookForm methods={methods} onSubmit={onSubmit}>
+			<Controller
+				name="code"
+				control={methods.control}
+				render={({ field, fieldState }) => (
+					<div className="mb-3">
+						<PasswordInput
+							{...field}
+							id="mfa-code"
+							label={<T id={labelId} />}
+							textWhenEmpty
+							inputMode={inputMode}
+							autoComplete="one-time-code"
+							required
+							className="text-center font-monospace"
+							placeholder="000000"
+							maxLength={maxLength}
+							error={fieldState.error?.message ?? null}
+						/>
+					</div>
+				)}
+			/>
+			<div className="d-flex gap-2 align-items-start">
+				<Button type="button" fullWidth onClick={onCancel} disabled={isSubmitting}>
+					<T id="cancel" />
+				</Button>
+				<FormSubmit
+					stacked
+					className="w-100"
+					messageId="form.fix-fields.continue"
+					color={color}
+					isLoading={isSubmitting}
+					disabled={isSubmitting}
+				>
+					<T id={submitId} />
+				</FormSubmit>
+			</div>
+		</HookForm>
+	);
+}
 
 const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 	const [error, setError] = useState(null);
@@ -181,51 +228,18 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							</span>
 						</div>
 					</label>
-					<Formik initialValues={{ code: "" }} onSubmit={handleVerify}>
-						{() => (
-							<Form noValidate>
-								<Field name="code" validate={validateSixDigits}>
-									{({ field, form }) => (
-										<div className="mb-3">
-											<PasswordInput
-												{...field}
-												id="mfa-code"
-												label={<T id="totp.enter-code" />}
-												textWhenEmpty
-												inputMode="numeric"
-												autoComplete="one-time-code"
-												required
-												className="text-center font-monospace"
-												placeholder="000000"
-												maxLength={6}
-												error={form.errors.code && form.touched.code ? form.errors.code : null}
-											/>
-										</div>
-									)}
-								</Field>
-								<div className="d-flex gap-2 align-items-start">
-									<Button
-										type="button"
-										fullWidth
-										onClick={() => setStep("status")}
-										disabled={isSubmitting}
-									>
-										<T id="cancel" />
-									</Button>
-									<FormSubmit
-										stacked
-										className="w-100"
-										messageId="form.fix-fields.continue"
-										color="primary"
-										isLoading={isSubmitting}
-										disabled={isSubmitting}
-									>
-										<T id="totp.verify-enable" />
-									</FormSubmit>
-								</div>
-							</Form>
-						)}
-					</Formik>
+					<CodeForm
+						key="setup"
+						step="setup"
+						labelId="totp.enter-code"
+						inputMode="numeric"
+						maxLength={6}
+						color="primary"
+						submitId="totp.verify-enable"
+						onSubmit={handleVerify}
+						onCancel={() => setStep("status")}
+						isSubmitting={isSubmitting}
+					/>
 				</div>
 			);
 		}
@@ -258,50 +272,17 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="totp.disable-warning" />
 					</NoticeAlert>
-					<Formik initialValues={{ code: "" }} onSubmit={handleDisable}>
-						{() => (
-							<Form noValidate>
-								<Field name="code" validate={validateString(6, 8)}>
-									{({ field, form }) => (
-										<div className="mb-3">
-											<PasswordInput
-												{...field}
-												id="mfa-code"
-												label={<T id="totp.enter-code-disable" />}
-												textWhenEmpty
-												autoComplete="one-time-code"
-												required
-												className="text-center font-monospace"
-												placeholder="000000"
-												maxLength={8}
-												error={form.errors.code && form.touched.code ? form.errors.code : null}
-											/>
-										</div>
-									)}
-								</Field>
-								<div className="d-flex gap-2 align-items-start">
-									<Button
-										type="button"
-										fullWidth
-										onClick={() => setStep("status")}
-										disabled={isSubmitting}
-									>
-										<T id="cancel" />
-									</Button>
-									<FormSubmit
-										stacked
-										className="w-100"
-										messageId="form.fix-fields.continue"
-										color="danger"
-										isLoading={isSubmitting}
-										disabled={isSubmitting}
-									>
-										<T id="totp.disable-confirm" />
-									</FormSubmit>
-								</div>
-							</Form>
-						)}
-					</Formik>
+					<CodeForm
+						key="disable"
+						step="disable"
+						labelId="totp.enter-code-disable"
+						maxLength={8}
+						color="danger"
+						submitId="totp.disable-confirm"
+						onSubmit={handleDisable}
+						onCancel={() => setStep("status")}
+						isSubmitting={isSubmitting}
+					/>
 				</div>
 			);
 		}
@@ -315,51 +296,18 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					<p className="text-secondary mb-3">
 						<T id="mfa.regenerate-instructions" />
 					</p>
-					<Formik initialValues={{ code: "" }} onSubmit={handleRegenerateBackup}>
-						{() => (
-							<Form noValidate>
-								<Field name="code" validate={validateSixDigits}>
-									{({ field, form }) => (
-										<div className="mb-3">
-											<PasswordInput
-												{...field}
-												id="mfa-code"
-												label={<T id="totp.enter-code" />}
-												textWhenEmpty
-												inputMode="numeric"
-												autoComplete="one-time-code"
-												required
-												className="text-center font-monospace"
-												placeholder="000000"
-												maxLength={6}
-												error={form.errors.code && form.touched.code ? form.errors.code : null}
-											/>
-										</div>
-									)}
-								</Field>
-								<div className="d-flex gap-2 align-items-start">
-									<Button
-										type="button"
-										fullWidth
-										onClick={() => setStep("status")}
-										disabled={isSubmitting}
-									>
-										<T id="cancel" />
-									</Button>
-									<FormSubmit
-										stacked
-										className="w-100"
-										messageId="form.fix-fields.continue"
-										color="primary"
-										isLoading={isSubmitting}
-										disabled={isSubmitting}
-									>
-										<T id="mfa.regenerate" />
-									</FormSubmit>
-								</div>
-							</Form>
-						)}
-					</Formik>
+					<CodeForm
+						key="verify"
+						step="verify"
+						labelId="totp.enter-code"
+						inputMode="numeric"
+						maxLength={6}
+						color="primary"
+						submitId="mfa.regenerate"
+						onSubmit={handleRegenerateBackup}
+						onCancel={() => setStep("status")}
+						isSubmitting={isSubmitting}
+					/>
 				</div>
 			);
 		}
