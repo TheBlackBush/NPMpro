@@ -55,6 +55,18 @@ const isJsonKind = (kind) => kind === "json" || kind === "jsontext";
 // a string from a JSON column is JSON text unless the driver parsed it (a json type on MySQL 8 or Postgres)
 const isJsonText = (kind, value, engine) => typeof value === "string" && (kind === "jsontext" || engine === "sqlite");
 
+// the kind each side's value is read with: its own, else bool or date from the other side (a MySQL tinyint against a
+// boolean), else JSON text when the other side is a JSON column (a text column holding the JSON)
+const fallbackKind = (own, other) => {
+	if (own) return own;
+	if (other === "bool" || other === "date") return other;
+	return isJsonKind(other) ? "jsontext" : null;
+};
+const sideKinds = (kinds, column) => {
+	const { source = null, target = null } = kinds[column] ?? {};
+	return { source: fallbackKind(source, target), target: fallbackKind(target, source) };
+};
+
 const isTrue = (value) => TRUE_VALUES.has(typeof value === "string" ? value.toLowerCase() : value);
 
 const portableValue = (kind, value, sourceEngine) => {
@@ -63,6 +75,8 @@ const portableValue = (kind, value, sourceEngine) => {
 	if (isJsonKind(kind)) return isJsonText(kind, value, sourceEngine) ? value : JSON.stringify(value);
 	if (value instanceof Date) return value.toISOString();
 	if (typeof value === "bigint") return value.toString();
+	// parsed JSON in a column no side reports as JSON (MariaDB LONGTEXT, which mysql2 may return parsed)
+	if (typeof value === "object") return JSON.stringify(value);
 	return value;
 };
 
@@ -78,7 +92,7 @@ const portableRow = (kinds, row, sourceEngine) =>
 	Object.fromEntries(
 		Object.entries(row).map(([column, value]) => [
 			column,
-			portableValue(kinds[column]?.source, value, sourceEngine),
+			portableValue(sideKinds(kinds, column).source, value, sourceEngine),
 		]),
 	);
 
@@ -106,7 +120,10 @@ const targetValue = (kind, value, targetEngine) => {
  */
 const targetRow = (kinds, row, targetEngine) =>
 	Object.fromEntries(
-		Object.entries(row).map(([column, value]) => [column, targetValue(kinds[column]?.target, value, targetEngine)]),
+		Object.entries(row).map(([column, value]) => [
+			column,
+			targetValue(sideKinds(kinds, column).target, value, targetEngine),
+		]),
 	);
 
 // JSON with object keys sorted at every level: MySQL and Postgres jsonb store keys in their own order
@@ -167,19 +184,9 @@ const comparable = (kind, value, engine) => {
 		return Number.isNaN(ms) ? `text:${value}` : `ms:${ms}`;
 	}
 	if (typeof value === "boolean") return value ? "1" : "0";
+	// parsed JSON in a column no side reports as JSON compares by content
+	if (typeof value === "object") return canonicalJson("json", value, engine);
 	return String(value);
-};
-
-// the kind each side's value is read with: its own, else bool or date from the other side (a MySQL tinyint against a
-// boolean), else JSON text when the other side is a JSON column (a text column holding the JSON)
-const fallbackKind = (own, other) => {
-	if (own) return own;
-	if (other === "bool" || other === "date") return other;
-	return isJsonKind(other) ? "jsontext" : null;
-};
-const sideKinds = (kinds, column) => {
-	const { source = null, target = null } = kinds[column] ?? {};
-	return { source: fallbackKind(source, target), target: fallbackKind(target, source) };
 };
 
 /**

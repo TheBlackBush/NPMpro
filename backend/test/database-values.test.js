@@ -517,3 +517,30 @@ it("hides text that names a secret even when it does not parse as JSON", () => {
 		'meta: <hidden> in use, "{}" in the target',
 	);
 });
+
+it("writes a JSON column MariaDB reports as LONGTEXT but returns parsed as JSON text on every target", () => {
+	// audit_log.meta on MariaDB: LONGTEXT (no app JSON column), mysql2 returns the parsed object
+	const meta = { name: "postgres db.lan:5432/npmpro", tables: 24 };
+	const row = { id: 7, meta };
+	for (const [target, kind] of [
+		["sqlite", "json"],
+		["postgres", "json"],
+		["mysql", null],
+	]) {
+		const kinds = kindsOf({ id: ["integer", "integer"], meta: [null, kind] });
+		const written = targetRow(kinds, portableRow(kinds, row, "mysql"), target);
+		assert.equal(typeof written.meta, "string", target);
+		assert.deepEqual(JSON.parse(written.meta), meta, target);
+		// read back: SQLite gives the text, Postgres and MariaDB give it parsed
+		const copied = { id: 7, meta: target === "sqlite" ? written.meta : JSON.parse(written.meta) };
+		assert.equal(firstDifference(kinds, row, copied, "mysql", target), null, target);
+		assert.equal(
+			firstDifference(kinds, row, { id: 7, meta: { ...meta, tables: 25 } }, "mysql", target),
+			"meta",
+			target,
+		);
+	}
+	// an array too
+	const kinds = kindsOf({ list: [null, null] });
+	assert.equal(targetRow(kinds, portableRow(kinds, { list: ["a", 1] }, "mysql"), "mysql").list, '["a",1]');
+});
