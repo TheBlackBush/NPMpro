@@ -802,9 +802,16 @@ const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} })
 	},
 	onShowIpsOff: () => traffic.showIpsOff(),
 	onShowIpsOn: () => traffic.showIpsOn(),
-	onUniqueVisitorsOff: () => traffic.uniqueVisitorsOff(),
+	// the cached API results may still hold the deleted visitor counts or paths
+	onUniqueVisitorsOff: async () => {
+		await traffic.uniqueVisitorsOff();
+		clearCaches();
+	},
 	onUniqueVisitorsOn: () => traffic.uniqueVisitorsOn(),
-	onMissingPathsOff: () => traffic.missingPathsOff(),
+	onMissingPathsOff: async () => {
+		await traffic.missingPathsOff();
+		clearCaches();
+	},
 	onMissingPathsOn: () => traffic.missingPathsOn(),
 });
 

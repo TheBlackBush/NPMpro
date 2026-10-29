@@ -391,6 +391,42 @@ it("rolls path rows of days before yesterday into one row per day, the 7d list s
 	await knex.destroy();
 });
 
+it("folds path hour rows of the 7 days before the fold window only; older hour rows still count", async () => {
+	const { knex, store } = await setup();
+	const today = Math.floor(NOW / 86400000);
+	// the fold covers buckets from (today - 9) * 24 up to (today - 2) * 24
+	const rows = [
+		p("/in", 1, 10, "a", (today - 9) * 24 + 1),
+		p("/in", 2, 20, "a", (today - 9) * 24 + 5),
+		p("/in", 4, 30, "a", (today - 3) * 24 + 23),
+		p("/out", 3, 40, "a", (today - 10) * 24 + 23),
+		p("/out", 5, 50, "a", (today - 12) * 24 + 7),
+	];
+	await store.flush({ minutes: [], paths: rows });
+	const before = await store.queryTraffic({ range: "30d", now: NOW, paths: true });
+	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
+	const stored = await knex("traffic_path_hour").orderBy(["bucket", "path"]);
+	assert.deepEqual(
+		stored.map((r) => [Number(r.bucket) - today * 24, r.path, Number(r.requests)]),
+		[
+			[-12 * 24 + 7, "/out", 5],
+			[-10 * 24 + 23, "/out", 3],
+			[-9 * 24, "/in", 3],
+			[-3 * 24, "/in", 4],
+		],
+	);
+	const after = await store.queryTraffic({ range: "30d", now: NOW, paths: true });
+	assert.deepEqual(after.top_404_paths, before.top_404_paths);
+	assert.deepEqual(
+		after.top_404_paths.map((r) => [r.path, r.requests]),
+		[
+			["/out", 8],
+			["/in", 7],
+		],
+	);
+	await knex.destroy();
+});
+
 it("prunes path rows with the hour tables and deletePaths empties them", async () => {
 	const { knex, store } = await setup();
 	const hour = Math.floor(NOW / 3600000);

@@ -2259,17 +2259,31 @@ describe("traffic service: missing pages", () => {
 		assert.deepEqual(paths(t), [["example.com", "/three", 1]]);
 	});
 
-	it("createTrafficHooks passes the missing pages hooks to the service", async () => {
+	it("createTrafficHooks passes the missing pages hooks to the service and clears the API caches after off", async () => {
 		const calls = [];
 		const hooks = createTrafficHooks({
 			applyAccessLog: () => Promise.resolve(),
 			traffic: {
 				missingPathsOff: async () => calls.push("off"),
 				missingPathsOn: () => calls.push("on"),
+				uniqueVisitorsOff: async () => calls.push("visitors off"),
 			},
+			clearCaches: () => calls.push("clear"),
 		});
 		await hooks.onMissingPathsOff();
 		hooks.onMissingPathsOn();
-		assert.deepEqual(calls, ["off", "on"]);
+		await hooks.onUniqueVisitorsOff();
+		assert.deepEqual(calls, ["off", "clear", "on", "visitors off", "clear"]);
+	});
+
+	it("a failed missing pages delete does not clear the API caches", async () => {
+		const calls = [];
+		const hooks = createTrafficHooks({
+			applyAccessLog: () => Promise.resolve(),
+			traffic: { missingPathsOff: () => Promise.reject(new Error("database is locked")) },
+			clearCaches: () => calls.push("clear"),
+		});
+		await assert.rejects(hooks.onMissingPathsOff(), DB_LOCKED);
+		assert.deepEqual(calls, []);
 	});
 });

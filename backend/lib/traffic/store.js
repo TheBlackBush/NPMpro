@@ -92,16 +92,24 @@ export const createStore = (knex) => {
 			await addRows(trx, "hours", minutesToHours(old));
 			await trx("traffic_minute").where("bucket", "<", minuteBefore).del();
 			// path rows of days before yesterday (all at least 48 hours old): one row per (UTC day, host, path) at
-			// bucket = day * 24 (a row of hour 0 already has that key and is merged into)
+			// bucket = day * 24 (a row of hour 0 already has that key and is merged into). Only the 7 days before
+			// are scanned, so the hourly run does not walk every older row; hour rows older than that (after a long
+			// downtime) stay and are still summed by topPaths
 			const pathDayBefore = (Math.floor(now / DAY) - 2) * 24;
+			const pathFoldFrom = pathDayBefore - 7 * 24;
 			const folded = await trx("traffic_path_hour")
+				.where("bucket", ">=", pathFoldFrom)
 				.where("bucket", "<", pathDayBefore)
 				.whereRaw("bucket % 24 <> 0")
 				.select(trx.raw(`${dayOfHour} as day`), "host", "path")
 				.sum({ requests: "requests" })
 				.max({ last_seen: "last_seen" })
 				.groupByRaw(`${dayOfHour}, host, path`);
-			await trx("traffic_path_hour").where("bucket", "<", pathDayBefore).whereRaw("bucket % 24 <> 0").del();
+			await trx("traffic_path_hour")
+				.where("bucket", ">=", pathFoldFrom)
+				.where("bucket", "<", pathDayBefore)
+				.whereRaw("bucket % 24 <> 0")
+				.del();
 			await mergeRows(
 				trx,
 				TABLES.paths,
