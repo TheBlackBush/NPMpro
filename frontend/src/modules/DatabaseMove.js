@@ -126,3 +126,38 @@ export const waitForRestart = async ({ fetchHealth, sleep, now, limitMs = 120_00
 	}
 	return "timeout";
 };
+
+// a move the window follows until the restart: the section opens the window again for it
+export const isMoveActive = (move) => move?.state === "running" || move?.state === "restarting";
+
+/**
+ * What the move window shows
+ *
+ * @param   {Object}   options
+ * @param   {?string}  options.moveId      the move this window started or follows; null before the start
+ * @param   {?Object}  options.move        the last answer of GET /database/move
+ * @param   {boolean}  options.pollFailed  the last poll failed
+ * @returns {"confirm"|"starting"|"running"|"restarting"|"failed"}
+ */
+export const moveView = ({ moveId, move, pollFailed }) => {
+	if (!moveId) return "confirm";
+	// an older move stays in the cache until the first poll of this one answers
+	if (move?.id !== moveId) return "starting";
+	if (move.state === "failed") return "failed";
+	if (move.state === "restarting") return "restarting";
+	// the old process exits right after the switch, so a poll can miss "restarting" and fail instead
+	return pollFailed ? "restarting" : "running";
+};
+
+/**
+ * The copy step's progress: the percentage of rows copied and the table being copied
+ */
+export const copyProgress = (tables = []) => {
+	const sums = totals(tables);
+	const percent = sums.rows > 0 ? Math.min(100, Math.floor((sums.copied * 100) / sums.rows)) : 100;
+	const current = tables.find((table) => Number(table.copied ?? 0) < Number(table.rows ?? 0)) ?? null;
+	return { ...sums, percent, current };
+};
+
+// the move window closes only before the start, after a failure and when the restart wait ran out
+export const canCloseMove = (view, restart) => view === "confirm" || view === "failed" || restart === "timeout";

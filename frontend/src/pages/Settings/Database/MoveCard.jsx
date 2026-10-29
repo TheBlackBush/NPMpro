@@ -14,6 +14,7 @@ import {
 } from "src/components";
 import { useTestDatabase } from "src/hooks";
 import { intl, T } from "src/locale";
+import { showDatabaseMoveModal } from "src/modals";
 import {
 	changeEngine,
 	ENGINES,
@@ -146,8 +147,9 @@ function ServerFields({ baseId }) {
 /**
  * @param {Object} props
  * @param {?{ key: string, result?: Object, error?: unknown }} props.tested  the last test and the values it used
+ * @param {Object} props.status  GET /database, for the move window's summary
  */
-function MoveForm({ tested }) {
+function MoveForm({ tested, status }) {
 	const { values, setValues, isSubmitting } = useFormikContext();
 	const baseId = useId();
 	const noteId = `${baseId}-note`;
@@ -243,6 +245,7 @@ function MoveForm({ tested }) {
 							?.querySelector(`#${CSS.escape(testId)}`)
 							?.focus()
 					}
+					onClick={() => showDatabaseMoveModal({ status, target: toPayload(values) })}
 					title={hint ? intl.formatMessage({ id: hint }) : undefined}
 					aria-describedby={hint && !blocked ? hintId : undefined}
 				>
@@ -261,8 +264,11 @@ const validate = (values) =>
 /**
  * Move to another database: the target's engine and connection, "Test connection", and "Move", which needs a passing
  * test of exactly the values in the form
+ *
+ * @param {Object} props
+ * @param {Object} props.status  GET /database: the database in use and its tables
  */
-function MoveCard() {
+function MoveCard({ status }) {
 	const testDatabase = useTestDatabase();
 	const [tested, setTested] = useState(null);
 
@@ -280,7 +286,7 @@ function MoveCard() {
 
 	return (
 		<Formik initialValues={initialTarget()} validate={validate} onSubmit={onSubmit}>
-			<MoveForm tested={tested} />
+			<MoveForm tested={tested} status={status} />
 		</Formik>
 	);
 }

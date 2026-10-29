@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	canCloseMove,
 	canMove,
 	changeEngine,
+	copyProgress,
 	initialTarget,
+	isMoveActive,
 	moveHint,
+	moveView,
 	payloadKey,
 	sourceBadge,
 	stepState,
@@ -140,4 +144,52 @@ it("keeps a test only for the values it used and names the next step", () => {
 	const sqlite = initialTarget("sqlite");
 	const sqliteTest = { key: payloadKey(toPayload(sqlite)), result: { engine: "sqlite", version: null } };
 	assert.equal(canMove(testOfValues(sqliteTest, { ...sqlite, host: "ignored" })), true);
+});
+
+it("shows the confirmation, then the move this window follows", () => {
+	assert.equal(moveView({ moveId: null, move: null, pollFailed: false }), "confirm");
+	const old = { id: "old", state: "failed" };
+	assert.equal(moveView({ moveId: "new", move: old, pollFailed: false }), "starting");
+	assert.equal(moveView({ moveId: "new", move: null, pollFailed: false }), "starting");
+	assert.equal(moveView({ moveId: "new", move: { id: "new", state: "running" }, pollFailed: false }), "running");
+	assert.equal(
+		moveView({ moveId: "new", move: { id: "new", state: "restarting" }, pollFailed: false }),
+		"restarting",
+	);
+	assert.equal(moveView({ moveId: "new", move: { id: "new", state: "failed" }, pollFailed: true }), "failed");
+});
+
+it("takes a failed poll of a running move as the restart", () => {
+	assert.equal(moveView({ moveId: "a", move: { id: "a", state: "running" }, pollFailed: true }), "restarting");
+});
+
+it("knows which moves the window follows and when it can close", () => {
+	assert.equal(isMoveActive({ state: "running" }), true);
+	assert.equal(isMoveActive({ state: "restarting" }), true);
+	assert.equal(isMoveActive({ state: "failed" }), false);
+	assert.equal(isMoveActive(null), false);
+	assert.equal(canCloseMove("confirm", null), true);
+	assert.equal(canCloseMove("failed", null), true);
+	assert.equal(canCloseMove("running", null), false);
+	assert.equal(canCloseMove("starting", null), false);
+	assert.equal(canCloseMove("restarting", "waiting"), false);
+	assert.equal(canCloseMove("restarting", "timeout"), true);
+});
+
+it("reports the copy progress and the table being copied", () => {
+	const tables = [
+		{ name: "user", rows: 2, copied: 2 },
+		{ name: "proxy_host", rows: 6, copied: 1 },
+		{ name: "stream", rows: 2, copied: 0 },
+	];
+	assert.deepEqual(copyProgress(tables), {
+		tables: 3,
+		rows: 10,
+		copied: 3,
+		percent: 30,
+		current: { name: "proxy_host", rows: 6, copied: 1 },
+	});
+	assert.equal(copyProgress([{ name: "user", rows: 0, copied: 0 }]).percent, 100);
+	assert.equal(copyProgress([{ name: "user", rows: 0, copied: 0 }]).current, null);
+	assert.equal(copyProgress([{ name: "user", rows: 3, copied: 3 }]).percent, 100);
 });

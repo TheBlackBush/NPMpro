@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import {
 	ErrorNotFound,
 	LoadingPage,
+	MaintenanceBanner,
 	Page,
 	SiteContainer,
 	SiteFooter,
@@ -60,6 +61,7 @@ function Router() {
 					<SiteMenu />
 				</div>
 				<SiteContainer>
+					<MaintenanceBanner />
 					<Suspense fallback={<LoadingPage noLogo delay={300} />}>
 						<Routes>
 							<Route path="*" element={<ErrorNotFound />} />
