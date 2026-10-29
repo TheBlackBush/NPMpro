@@ -7,7 +7,7 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files
 - Access lists, DNS credentials and users
-- Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP
+- Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP, backup schedules
 - Custom files: everything in `custom_nginx/` and the CrowdSec files `crowdsec.conf`, `ban.html` and `captcha.html`
 
 A backup never holds traffic statistics, logs, the audit log, sessions, the database file itself, the key files in `/data/npmpro` or other backups. Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
@@ -24,9 +24,50 @@ With **Include secrets** off the file is not encrypted and leaves the secrets ou
 
 The list shows the backups in `/data/backups` with their contents. Use the menu of a row to download, restore or delete a backup, and **Upload backup** to add a file from your computer (up to 2 GiB).
 
-Backups marked **Automatic** are made by NPMpro before every restore, merge and page import and are kept in `/data/backups/auto` (the newest 5, and apart from them the newest 5 made before page imports). They are encrypted with this instance's key, need no passphrase and can only be restored on this instance.
+Backups marked **Automatic** are made by NPMpro before every restore, merge, page import and [database move](Database) and are kept in `/data/backups/auto` (the newest 5, and apart from them the newest 5 made before page imports). They are encrypted with this instance's key, need no passphrase and can only be restored on this instance.
 
 `/data/backups/database` holds the copies of the SQLite database that NPMpro makes before it updates the database. They are not shown in the list; see [Troubleshooting](Troubleshooting#database-backup-and-restore).
+
+## Scheduled backups
+
+The **Scheduled backups** card makes backups on its own and stores them in `/data/backups` with the other stored backups. They protect you against bad changes, not against losing the disk: copy the files to another machine if you need that.
+
+Click **Add schedule** and fill in:
+
+- **Name:** shown on the card and as a badge on the schedule's files.
+- **When:** **Every N hours** (1 to 24), **Daily** at a time, **Weekly** on a weekday at a time, or **Monthly** on a day from 1 to 28 at a time. Times use the time zone of the container (`TZ`, or Time zone in Settings, Advanced); the card names it ("Times in Europe/Berlin") and shows the next run. On the day clocks go forward, a time that does not exist runs at the first minute after it; on the day they go back, a time that occurs twice runs once.
+- **What to include:** the same parts as a manual backup.
+- **Protection:**
+  - **Passphrase:** secrets are included and the file is encrypted with the passphrase. The passphrase is stored encrypted on this instance, so the schedule can use it; the files restore anywhere with it. When you edit the schedule, leave the field empty to keep the stored passphrase.
+  - **Instance key:** secrets are included and the file is encrypted with this instance's key. There is nothing to remember, but the file only restores on this instance; another instance refuses it with "This backup was made with another instance's key".
+  - **Without secrets:** not encrypted, private keys, passwords and credentials are left out, as with a manual backup without secrets.
+- **Keep** (1 to 100): after each successful run, older files of this schedule are deleted until this many remain. Only the schedule's own files count: manual, uploaded, automatic and other schedules' files are never deleted.
+
+You can add several schedules, for example a daily one that keeps 7 files and a monthly one with a passphrase that keeps 12.
+
+The card lists each schedule with its timing, protection, the number of files it keeps and its last run. The menu of a row has:
+
+- **Run now:** makes a backup at once; the next planned run stays as it is.
+- **Edit:** changes the schedule.
+- **Pause** and **Resume:** a paused schedule keeps its settings and files and makes no backups.
+- **Delete:** the schedule's files stay as plain stored backups, unless you tick **Also delete its stored backups**.
+
+In **Stored backups**, scheduled files show the schedule's name as a badge, and a **Schedule** filter shows the files of one schedule, or with **Not scheduled** all the others.
+
+When runs happen:
+
+- NPMpro checks the schedules every minute, starting 5 minutes after the container starts.
+- A run that was due while NPMpro was stopped runs once after the start, not once for every missed time.
+- While another backup or restore runs, a due run waits. After 60 minutes it gives up and the schedule shows "Skipped: another backup or restore was running".
+- A failed run leaves no file behind.
+
+When a run fails:
+
+- The schedule shows **Failed** with the error.
+- The dashboard shows "Scheduled backup failed: <name>" with a link to the backup settings. It goes away after the next successful run, or when you pause or delete the schedule.
+- The Audit Logs list every run as **Backup succeeded** or **Backup failed**.
+
+The schedules themselves are part of Settings in a backup (**Backup schedules**). A backup without secrets leaves their passphrases out, so passphrase schedules come back paused until you enter the passphrase again. After a restore the restoring administrator owns the schedules and their next runs are worked out again. A Replace restore of the schedules turns every scheduled file on the instance into a plain stored backup, so a restored schedule never deletes files it did not make.
 
 ## Restoring
 

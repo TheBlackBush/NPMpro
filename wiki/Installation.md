@@ -9,7 +9,7 @@
   - 443/tcp and 443/udp for HTTPS and HTTP/3
   - 81/tcp for the web UI (`NPM_PORT`)
 - **For public certificates:** a domain whose DNS points to your server, and ports 80 and 443 forwarded to it. Without port 80 use the DNS challenge (see [Usage](Usage#certificates)).
-- **Database:** nothing extra. NPMpro uses SQLite in its data folder. MariaDB/MySQL and PostgreSQL may work but are unsupported and not recommended.
+- **Database:** nothing extra. NPMpro uses SQLite in its data folder. MariaDB/MySQL and PostgreSQL may work but are unsupported and not recommended. Settings, Database can move an instance between them later, see [Database](Database).
 
 ## Install with Docker Compose
 

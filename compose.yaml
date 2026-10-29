@@ -79,7 +79,7 @@ services:
 #      - "PHP_APKS=php-pecl-apcu php-pecl-redis" # extra php- packages (names must start with php-, https://pkgs.alpinelinux.org/packages?branch=v3.24&repo=community&arch=x86_64&name=php-*), needs PHP83, PHP84 or PHP85, not recommended: use PHP83_APKS, PHP84_APKS or PHP85_APKS, default none
 
       # Database and first start
-      # MariaDB/MySQL and PostgreSQL may work but are unsupported, have no advantage over SQLite and are not recommended; you cannot move from them to SQLite without a fresh install. Without these variables NPMpro uses SQLite in /data/npmpro/database.sqlite
+      # MariaDB/MySQL and PostgreSQL may work but are unsupported, have no advantage over SQLite and are not recommended; Settings > Database moves between SQLite, MariaDB/MySQL and PostgreSQL (env vars lock that section). Without these variables NPMpro uses SQLite in /data/npmpro/database.sqlite
 #      - "DB_MYSQL_HOST=127.0.0.1" # MariaDB/MySQL host, used when DB_MYSQL_HOST, DB_MYSQL_USER and DB_MYSQL_NAME are set
 #      - "DB_MYSQL_PORT=3306" # default 3306
 #      - "DB_MYSQL_USER=npmpro"

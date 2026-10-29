@@ -10,6 +10,7 @@
 - [CrowdSec](CrowdSec)
 - [Forward authentication](Forward-Authentication)
 - [Backup and restore](Backup-and-restore)
+- [Database](Database)
 - [Troubleshooting](Troubleshooting)
 
 **Reference**
