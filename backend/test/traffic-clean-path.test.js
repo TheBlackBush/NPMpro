@@ -23,7 +23,7 @@ it("decodes once and collapses repeated slashes, also decoded ones", () => {
 });
 
 it("decodes UTF-8 and keeps invalid escapes as they were", () => {
-	assert.equal(cleanPath("/caf%C3%A9"), "/café");
+	assert.equal(cleanPath("/%C3%A9t%C3%A9"), "/été");
 	assert.equal(cleanPath("/%E2%9C%93"), "/✓");
 	assert.equal(cleanPath("/%F0%9F%98%80"), "/😀");
 	assert.equal(cleanPath("/a%zz"), "/a%zz");
@@ -93,6 +93,27 @@ it("replaces email addresses with :email, also encoded ones", () => {
 	assert.equal(cleanPath("/unsubscribe/jane.doe@example.com"), "/unsubscribe/:email");
 	assert.equal(cleanPath("/u/jane%40example.com/x"), "/u/:email/x");
 	assert.equal(cleanPath("/a@b"), "/a@b");
+});
+
+it("replaces every email address inside a segment", () => {
+	assert.equal(cleanPath("/u/a.b@example.com,c.d@example.org"), "/u/:email,:email");
+	assert.equal(cleanPath("/u/to=jane+news@mail.example.co.uk&x=1"), "/u/to=:email&x=1");
+	assert.equal(cleanPath("/u/<j%C3%B6rg@b%C3%BCro.de>"), "/u/<:email>");
+	assert.equal(cleanPath("/u/a@b@example.com"), "/u/a@:email");
+	// no dot in the domain, a trailing dot only, or an empty side: not an email
+	assert.equal(cleanPath("/u/a@b"), "/u/a@b");
+	assert.equal(cleanPath("/u/a@b."), "/u/a@b.");
+	assert.equal(cleanPath("/u/@example.com"), "/u/@example.com");
+	assert.equal(cleanPath("/u/a@.com"), "/u/a@.com");
+});
+
+it("checks emails in linear time, also for a crafted segment with two @", () => {
+	const crafted = `/a@${".".repeat(2040)}@`;
+	assert.equal(cleanPath(crafted).length, 200);
+	const start = performance.now();
+	for (let i = 0; i < 200; i++) cleanPath(crafted);
+	const elapsed = performance.now() - start;
+	assert.ok(elapsed < 50, `200 calls took ${elapsed.toFixed(1)} ms`);
 });
 
 it("keeps only the path of an absolute-form target and other targets as text", () => {

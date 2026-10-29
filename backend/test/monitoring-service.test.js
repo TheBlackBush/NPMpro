@@ -2171,7 +2171,7 @@ describe("traffic service: missing pages", () => {
 		// the email, the JWT and the escape cross the 200th character of the raw target
 		const email = `/${"g".repeat(185)}/john.doe@example.com`;
 		const token = `/${"h".repeat(170)}/${jwt}`;
-		const encoded = `/${"q".repeat(190)}/caf%C3%A9`;
+		const encoded = `/${"q".repeat(190)}/%C3%A9t%C3%A9`;
 		const t = setup({
 			hosts,
 			config: { traffic_missing_paths: true },
@@ -2189,7 +2189,7 @@ describe("traffic service: missing pages", () => {
 		assert.deepEqual(paths(t), [
 			["example.com", `/${"g".repeat(185)}/:email`, 1],
 			["example.com", `/${"h".repeat(170)}/:id`, 1],
-			["example.com", `/${"q".repeat(190)}/café`, 1],
+			["example.com", `/${"q".repeat(190)}/été`, 1],
 		]);
 		assert.ok(t.service.recent({ limit: 3 }).every((e) => e.path.length <= 200));
 	});

@@ -9,7 +9,27 @@ const BROKEN_ESCAPE = /%[0-9A-Fa-f]?$/u;
 // characters that stay percent-encoded after decoding: controls (C0, C1), format characters (bidi overrides, zero
 // width, BOM), every space and separator, and ? # ; (a stored path must never look like it has a query string)
 const UNSAFE = /[\p{Cc}\p{Cf}\p{Z}?#;]/u;
-const EMAIL = /^[^@/]+@[^@/]+\.[^@/]+$/u;
+// characters of the two sides of an email address; neither contains "@", so each side ends at the next "@" and the
+// scan in maskEmails stays linear (a regular expression for "something@something.something" backtracks
+// quadratically on a long segment with two "@"). "=", "&" and "?" are left out of the local part: in a path they
+// separate a key from the address
+const EMAIL_LOCAL = /[\p{L}\p{N}._%+!#$'*^`{|}~-]/u;
+const EMAIL_DOMAIN = /[\p{L}\p{N}.-]/u;
+const DOMAIN_EDGE = /[\p{L}\p{N}]/u;
+// the same tests for ASCII as a lookup table (the scan runs per character)
+const asciiTable = (re) => Array.from({ length: 128 }, (_v, code) => re.test(String.fromCharCode(code)));
+const LOCAL_ASCII = asciiTable(EMAIL_LOCAL);
+const DOMAIN_ASCII = asciiTable(EMAIL_DOMAIN);
+const EDGE_ASCII = asciiTable(DOMAIN_EDGE);
+const charTest = (table, re) => (text, i) => {
+	const code = text.charCodeAt(i);
+	if (code < 128) return table[code];
+	// a surrogate half is tested as the whole character it belongs to
+	return re.test(String.fromCodePoint(text.codePointAt(code >= 0xdc00 && code <= 0xdfff && i > 0 ? i - 1 : i)));
+};
+const isLocal = charTest(LOCAL_ASCII, EMAIL_LOCAL);
+const isDomain = charTest(DOMAIN_ASCII, EMAIL_DOMAIN);
+const isEdge = charTest(EDGE_ASCII, DOMAIN_EDGE);
 const DIGITS = /^\d{4,}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const HEX = /^[0-9a-f]{16,}$/iu;
@@ -74,6 +94,34 @@ const isToken = (text) =>
 	HEX.test(text) ||
 	(TOKEN.test(text) && HAS_DIGIT.test(text) && HAS_LETTER.test(text));
 
+/**
+ * Replaces every email address inside a segment with ":email": a non-empty local part, "@" and a domain with at least
+ * two labels (it starts and ends with a letter or digit). One pass over the "@" signs; each side is scanned up to the
+ * neighbouring "@" at most, so the work is linear in the segment length.
+ */
+const maskEmails = (segment) => {
+	if (!segment.includes("@")) return segment;
+	let out = "";
+	let done = 0;
+	let at = segment.indexOf("@");
+	while (at !== -1) {
+		let start = at;
+		while (start > done && isLocal(segment, start - 1)) start--;
+		let end = at + 1;
+		while (end < segment.length && isDomain(segment, end)) end++;
+		// a domain ends with a letter or digit ("example.com." keeps its dot)
+		while (end > at + 1 && !isEdge(segment, end - 1)) end--;
+		if (start < at && end > at + 1 && isEdge(segment, at + 1) && segment.slice(at + 1, end).includes(".")) {
+			out += `${segment.slice(done, start)}:email`;
+			done = end;
+			at = segment.indexOf("@", end);
+		} else {
+			at = segment.indexOf("@", at + 1);
+		}
+	}
+	return out + segment.slice(done);
+};
+
 /** A token with a file extension becomes ":id.<ext>", a token ":id"; anything else is kept. */
 const maskToken = (text) => {
 	const ext = EXTENSION.exec(text);
@@ -82,12 +130,12 @@ const maskToken = (text) => {
 };
 
 /**
- * One path segment: an email becomes ":email"; a whole token ":id" (":id.<ext>" with a file extension); else every
- * token inside it (a run of 16 or more token characters next to other characters, for example "!" or "%20") and
- * every run of 6 or more digits ":id".
+ * One path segment: every email address in it becomes ":email"; then a whole token ":id" (":id.<ext>" with a file
+ * extension); else every token inside it (a run of 16 or more token characters next to other characters, for
+ * example "!" or "%20") and every run of 6 or more digits ":id".
  */
-const cleanSegment = (segment) => {
-	if (EMAIL.test(segment)) return ":email";
+const cleanSegment = (raw) => {
+	const segment = maskEmails(raw);
 	const whole = maskToken(segment);
 	if (whole !== segment) return whole;
 	return segment.replace(TOKEN_RUN, maskToken).replace(DIGIT_RUN, ":id");
