@@ -85,17 +85,39 @@ The session cookie is signed with `COOKIE_SECRET`. Without it, NPMpro creates a 
 docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]
 ```
 
-The new password is read from stdin (leave it empty to keep the current one). `--disable-mfa` turns off two-factor authentication. This works with SQLite only.
+The new password is read from stdin (leave it empty to keep the current one). `--disable-mfa` turns off two-factor authentication. This works only with the default SQLite file `/data/npmpro/database.sqlite`, not after a [database move](Database).
 
 ## Database backup and restore
 
 With SQLite, NPMpro copies the database to `/data/backups/database` before it runs database migrations (the newest 5 copies are kept). To go back to the previous image:
 
 1. Stop the container.
-2. Replace `/data/npmpro/database.sqlite` with the backup and remove `database.sqlite-wal` and `database.sqlite-shm` next to it.
+2. Replace `/data/npmpro/database.sqlite` (after a move to SQLite: the file named in `/data/npmpro/database.json`) with the backup and remove the `-wal` and `-shm` files of the same name next to it (for example `database.sqlite-wal` and `database.sqlite-shm`).
 3. Start the previous image.
 
 For backups of your hosts, certificates, users and settings use Settings, Backup and restore (see [Backup and restore](Backup-and-restore)). For a copy of everything, stop the container and copy the whole data folder. It includes `/data/npmpro/dns-credentials.key`, which encrypts the saved DNS credentials, the OIDC client secret, the MaxMind license key and the unique visitor key. Without it the credentials, the client secret and the license key have to be entered again.
+
+## The database settings file cannot be used
+
+After a [database move](Database), NPMpro reads its connection from `/data/npmpro/database.json`. If that file is damaged, was edited by hand, or its password cannot be decrypted (for example because `/data/npmpro/dns-credentials.key` is missing or from another instance), NPMpro does not start and logs:
+
+```
+Could not use /data/npmpro/database.json: <reason>. Delete or rename it and restart NPMpro to start on the default SQLite database /data/npmpro/database.sqlite.
+```
+
+NPMpro never falls back to SQLite on its own. Either put back the right `database.json` and `dns-credentials.key` (they belong together), or rename `database.json` and restart to go back to the SQLite database as it was before the move. See [Database](Database#the-connection-file-and-the-way-back).
+
+## A database move fails
+
+The move window names the step that stopped and NPMpro keeps running on the database it was using. Check:
+
+- **"The target database is not empty":** a move only starts on an empty database. A failed earlier move leaves its tables and rows on the target: drop and recreate the target database, then try again.
+- **"The database server is too old":** NPMpro needs MySQL 8.0, MariaDB 10.6 or PostgreSQL 13 or newer.
+- **"The user cannot create and drop tables in the target database":** grant the user these rights on the target database.
+- **"Could not connect to the target database"** or **"The database did not answer within 10 seconds":** check host, port, user, password and TLS, and that the server is reachable from the NPMpro container.
+- **"Changes that started before the database move are still running"** or **"A background task that writes to the database is still running":** try again a moment later.
+
+`docker logs npmpro` has the details. See [Database](Database#when-a-move-fails).
 
 ## NPMplus migration checks fail
 
