@@ -40,7 +40,6 @@ CAPTCHA_TEMPLATE_PATH=/data/crowdsec/captcha.html
 CAPTCHA_EXPIRATION=3600
 
 APPSEC_URL=http://127.0.0.1:7422
-# deny or passthrough, when AppSec fails (unreachable, timeout, error); the admin UI and the health check always pass through then
 APPSEC_FAILURE_ACTION=deny
 APPSEC_CONNECT_TIMEOUT=
 APPSEC_SEND_TIMEOUT=
