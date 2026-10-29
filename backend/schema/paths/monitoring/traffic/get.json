@@ -126,6 +126,13 @@
 										"requests": 700
 									}
 								],
+								"top_404_paths": [
+									{
+										"path": "/wp-login.php",
+										"requests": 42,
+										"last_seen": "2026-10-24T09:58:00.000Z"
+									}
+								],
 								"countries": [
 									{
 										"country": "DE",

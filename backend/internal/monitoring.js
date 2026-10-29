@@ -116,7 +116,7 @@ const groupHosts = (rows, resolver) => {
  * @param   {Object}    deps.crowdsec   CrowdSec service: result()
  * @param   {Object}    deps.geoip      createGeoip() instance: available()
  * @param   {Object}    deps.store      { queryTraffic, summary, countVisitors } (lib/traffic/store.js)
- * @param   {Function}  deps.getConfig  () => Promise<{ values: { traffic_enabled, show_ips, unique_visitors } }>
+ * @param   {Function}  deps.getConfig  () => Promise<{ values: { traffic_enabled, show_ips, unique_visitors, traffic_missing_paths } }>
  * @param   {Function}  [deps.now]
  * @param   {Object}    [deps.log]
  * @returns {Object}
@@ -143,8 +143,8 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 		return hit.result;
 	};
 
-	const computeTraffic = async ({ range, keys, showIps, uniqueVisitors, resolver }, time) => {
-		const data = await store.queryTraffic({ range, host: keys, showIps, now: time });
+	const computeTraffic = async ({ range, keys, showIps, uniqueVisitors, missingPaths, resolver }, time) => {
+		const data = await store.queryTraffic({ range, host: keys, showIps, paths: missingPaths, now: time });
 		const { hosts, ...rest } = data;
 		const entries = groupHosts(hosts, resolver).slice(0, TOP_HOSTS);
 		if (!uniqueVisitors) {
@@ -207,6 +207,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			const { values } = await getConfig();
 			const showIps = Boolean(values.show_ips);
 			const uniqueVisitors = Boolean(values.unique_visitors);
+			const missingPaths = Boolean(values.traffic_missing_paths);
 			const resolver = await traffic.hostResolver();
 			let keys = host;
 			const byHost = hostId !== null && hostType !== null;
@@ -215,16 +216,26 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				if (keys === null) throw new errs.ItemNotFoundError(hostId);
 			}
 			// host is ignored when host_id and host_type select the host
-			const key = JSON.stringify([range, byHost ? null : host, hostType, hostId, keys, showIps, uniqueVisitors]);
+			const key = JSON.stringify([
+				range,
+				byHost ? null : host,
+				hostType,
+				hostId,
+				keys,
+				showIps,
+				uniqueVisitors,
+				missingPaths,
+			]);
 			const {
 				top_ips: topIps,
+				top_404_paths: topPaths,
 				countries,
 				...data
 			} = structuredClone(
 				await cached(
 					trafficCache,
 					key,
-					(time) => computeTraffic({ range, keys, showIps, uniqueVisitors, resolver }, time),
+					(time) => computeTraffic({ range, keys, showIps, uniqueVisitors, missingPaths, resolver }, time),
 					CACHE_MS[range],
 				),
 			);
@@ -240,6 +251,7 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 					.map(([country, requests]) => ({ country, requests }))
 					.sort((a, b) => b.requests - a.requests),
 				...(showIps ? { top_ips: topIps } : {}),
+				...(missingPaths ? { top_404_paths: topPaths ?? [] } : {}),
 				recent: recentRequests(traffic.recent({ keys: recentKeys, limit: RECENT_LIMIT }), resolver, showIps),
 				status: {
 					...status,

@@ -1454,7 +1454,12 @@ describe("monitoring API", () => {
 			store: {
 				queryTraffic: (args) => {
 					queries.push(args);
-					return Promise.resolve(structuredClone(args.showIps ? data : { ...data, top_ips: [] }));
+					const out = structuredClone(args.showIps ? data : { ...data, top_ips: [] });
+					if (args.paths)
+						out.top_404_paths = [
+							{ path: "/wp-login.php", requests: 7, last_seen: "2026-10-24T10:00:00.000Z" },
+						];
+					return Promise.resolve(out);
 				},
 				countVisitors: (args) => {
 					visitorQueries.push(args);
@@ -1494,6 +1499,23 @@ describe("monitoring API", () => {
 		{ id: 1, type: "proxy", domain_names: ["example.com", "www.example.com"] },
 		{ id: 2, type: "dead", domain_names: ["moved.test"] },
 	]);
+
+	it("returns top_404_paths only while missing pages are tracked and caches per setting", async () => {
+		const off = make();
+		const outOff = await off.api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal("top_404_paths" in outOff, false);
+		assert.equal(off.queries[0].paths, false);
+
+		const on = make({ values: { traffic_missing_paths: true } });
+		const outOn = await on.api.getTraffic(admin, { range: "24h", host: "" });
+		assert.ok(validTraffic(outOn), JSON.stringify(validTraffic.errors));
+		assert.deepEqual(outOn.top_404_paths, [
+			{ path: "/wp-login.php", requests: 7, last_seen: "2026-10-24T10:00:00.000Z" },
+		]);
+		assert.equal(on.queries[0].paths, true);
+		await on.api.getTraffic(admin, { range: "24h", host: "" });
+		assert.equal(on.queries.length, 1);
+	});
 
 	it("groups top_hosts per NPMpro host and omits visitor fields while unique visitors are off", async () => {
 		const { api, visitorQueries } = make({ data: groupedData, resolver: groupedResolver });

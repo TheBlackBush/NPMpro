@@ -207,6 +207,35 @@
 				}
 			}
 		},
+		"top_404_paths": {
+			"type": "array",
+			"maxItems": 10,
+			"description": "Only present while missing pages are tracked (setting traffic_missing_paths): the most requested paths of 404 and 410 responses of proxy and redirection hosts in the range (1h and 24h: whole hours from the range's first hour, like the other top lists; 7d and 30d: whole UTC days, because rows older than two days are kept per day), sorted by requests. Query strings are never stored; emails read :email, ID and token segments :id; \"(other)\" collects paths over the limit of 500 per host and day or 50,000 per day over all hosts",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"path",
+					"requests",
+					"last_seen"
+				],
+				"properties": {
+					"path": {
+						"type": "string",
+						"maxLength": 200
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					},
+					"last_seen": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Time of the newest request"
+					}
+				}
+			}
+		},
 		"countries": {
 			"type": "array",
 			"description": "Requests per country code (-- when unknown), all countries of the range, sorted by requests descending, for the map",
