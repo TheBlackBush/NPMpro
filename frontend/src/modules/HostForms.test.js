@@ -18,6 +18,7 @@ import {
 	streamPayload,
 	streamValidate,
 	tlsChanges,
+	tlsQueriesSettled,
 } from "./HostForms.js";
 import { createValidations } from "./ValidationRules.js";
 
@@ -373,4 +374,24 @@ it("checks a forward host with one rule: up to 253 for a domain, a /path and 255
 		forwardHostError(rules, "x".repeat(256), { proxy: true, scheme: "path" }),
 		"Must not contain spaces or the characters ; { } \" ' \\ #",
 	);
+});
+
+it("tlsQueriesSettled: waits for the user and the DNS providers, the certificates only for a user who may read them", () => {
+	const loaded = (data) => ({ isPending: false, failureCount: 0, data });
+	const loading = { isPending: true, failureCount: 0, data: undefined };
+	const retrying = { isPending: true, failureCount: 1, data: undefined };
+	const admin = loaded({ roles: ["admin"], permissions: {} });
+	const viewer = loaded({ roles: [], permissions: { certificates: "view" } });
+	const noCertificates = loaded({ roles: [], permissions: { certificates: "hidden" } });
+	const all = { user: admin, certificates: loaded([]), dnsProviders: loaded([]) };
+	assert.equal(tlsQueriesSettled(all), true);
+	assert.equal(tlsQueriesSettled({ ...all, user: loading }), false);
+	assert.equal(tlsQueriesSettled({ ...all, dnsProviders: loading }), false);
+	assert.equal(tlsQueriesSettled({ ...all, certificates: loading }), false);
+	assert.equal(tlsQueriesSettled({ ...all, user: viewer, certificates: loading }), false);
+	// no wait behind the spinner while a failed read retries, nor for a read the user may not make
+	assert.equal(tlsQueriesSettled({ ...all, certificates: retrying }), true);
+	assert.equal(tlsQueriesSettled({ ...all, dnsProviders: retrying }), true);
+	assert.equal(tlsQueriesSettled({ ...all, user: noCertificates, certificates: loading }), true);
+	assert.equal(tlsQueriesSettled({ ...all, user: retrying, certificates: loading }), true);
 });

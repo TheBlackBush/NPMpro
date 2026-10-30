@@ -5,6 +5,7 @@
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
+import { CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
 import { HOST_PATTERN } from "./ValidationRules.js";
 
 // the backend's rules (schema/components/stream-object.json), plus the port range nothing checked before
@@ -333,3 +334,22 @@ export const streamPayload = (values) => ({
 	domainNames: values.certificateId === "new" ? values.domainNames : undefined,
 	npmproProxyTls: values.npmproProxyTls && isProxyTlsPossible(values),
 });
+
+// a read that loaded, failed, or failed once and retries (the field it feeds shows its placeholder and error)
+const querySettled = (query) => !query.isPending || query.failureCount > 0;
+
+/**
+ * Whether a host window can mount its form: the signed-in user and the DNS providers have settled, and the
+ * certificates too for a user who may read them (a user without certificate access does not wait behind the
+ * spinner for a read that fails)
+ *
+ * @param   {Object} queries
+ * @param   {Object} queries.user          useUser("me")
+ * @param   {Object} queries.certificates  useCertificates()
+ * @param   {Object} queries.dnsProviders  useDnsProviders()
+ * @returns {boolean}
+ */
+export function tlsQueriesSettled({ user, certificates, dnsProviders }) {
+	if (!(querySettled(user) && querySettled(dnsProviders))) return false;
+	return querySettled(certificates) || !hasPermission(CERTIFICATES, VIEW, user.data?.permissions, user.data?.roles);
+}

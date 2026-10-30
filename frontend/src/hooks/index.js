@@ -31,6 +31,7 @@ export * from "./useRuntimeSettings";
 export * from "./useSetting";
 export * from "./useStream";
 export * from "./useStreams";
+export * from "./useTlsQueriesSettled";
 export * from "./useUnsavedChangesGuard";
 export * from "./useUser";
 export * from "./useUsers";
