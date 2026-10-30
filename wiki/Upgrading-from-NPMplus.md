@@ -6,7 +6,7 @@ NPMpro can take over an existing NPMplus data volume. Paths like `/data/...` are
 
 - Make a backup of the data folder (`cp -a` of the stopped container's folder is enough).
 - With an external database (MySQL/MariaDB via `DB_MYSQL_*`, Postgres via `DB_POSTGRES_*`), dump the database. It is renamed in place and is not part of the data folder backup. External databases need MySQL 8.0 or later or MariaDB 10.5.2 or later (any supported Postgres version works).
-- Take the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml) of NPMpro and keep your volume path and variables. Variables that NPMpro no longer supports stop the container with a message: see [Removed variables](https://github.com/TheBlackBush/NPMpro#removed-variables).
+- Take the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml) of NPMpro and keep your volume path and variables. Variables that NPMpro no longer supports stop the container with a message: see [Removed variables](Upgrade-notes#removed-variables).
 
 ## What happens on the first start
 
@@ -19,7 +19,7 @@ NPMpro can take over an existing NPMplus data volume. Paths like `/data/...` are
 ## After the upgrade
 
 - The host path of the volume does not matter to NPMpro. You can keep `/opt/npmplus`, or rename it to `/opt/npmpro` while the container is stopped and change the volume line in `compose.yaml` to match (`/opt/npmpro:/data`).
-- Users stay signed in only if you already set a static `COOKIE_SECRET` for NPMplus and keep it; otherwise everyone signs in again, and without one after every restart too (set one now to avoid that). An OIDC login that is in progress during the upgrade has to be started again.
+- Users stay signed in only if you already set a static `COOKIE_SECRET` for NPMplus and keep it; otherwise everyone signs in again, and without one after every restart too (set one now to avoid that, see [Configuration](Configuration#cookie_secret)). An OIDC login that is in progress during the upgrade has to be started again.
 - Many variables are now settings in the web UI. Your variables keep working and lock their fields; remove them from `compose.yaml` when you prefer to manage the setting in the UI.
 - Once everything works, delete `/data/npmplus.backup-<date>`: it holds the NPMplus database with the DNS provider credentials in plaintext (NPMpro stores them encrypted) and the old signing key. The same goes for the database copies in `/data/backups/database` made before the upgrade. Until then the container log reminds you on every start.
 

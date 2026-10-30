@@ -1,6 +1,6 @@
 # Backup and restore
 
-NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` file and restores them on the same or another instance (SQLite, MySQL/MariaDB or Postgres). You find it under Settings, Backup and restore; only administrators see it. The [README](https://github.com/TheBlackBush/NPMpro#backup-and-restore) has the full reference.
+NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` file and restores them on the same or another instance (SQLite, MySQL/MariaDB or Postgres). You find it under Settings, Backup and restore; only administrators see it. This page has every detail.
 
 ## What a backup holds
 
@@ -10,7 +10,7 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 - Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP, backup schedules
 - Custom files: everything in `custom_nginx/` and the CrowdSec files `crowdsec.conf`, `ban.html` and `captcha.html`
 
-A backup never holds traffic statistics, logs, the audit log, sessions, the database file itself, the key files in `/data/npmpro` or other backups. Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
+A backup never holds traffic statistics (they are not backed up at all), logs, the audit log, sessions, the database file `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, or other backups (`/data/backups`). Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
 
 ## Creating a backup
 
@@ -130,3 +130,14 @@ The Proxy hosts, Redirection hosts, 404 hosts, Streams, Certificates, Access lis
 3. Make the choices as in [Merging](#merging), tick the confirmation and click **Import**.
 
 Added items always belong to you, and a replaced host keeps its owner. If you are not an administrator, an import is refused when an item holds settings only administrators may set: advanced nginx config, or serving files outside `/var/www`. Every import and every merge under Settings, also by an administrator, is refused when an item holds a value the API would refuse, for example a port that is not a number or a domain containing `;`. The renewal settings of imported Let's Encrypt certificates are rebuilt for this instance: its own paths and ACME account, without hooks. Linked items of a kind you cannot manage are not imported: they are matched with an existing item or their link is cleared (for example hosts imported without their certificate are served without TLS until you choose one). **Replace** is offered only for hosts you may edit, and a host you cannot see still blocks its domain, so the clashing item can only be skipped.
+
+## Good to know
+
+- With **Include secrets** the whole file is encrypted with the passphrase (at least 12 characters, AES-256-GCM, key from scrypt). A wrong passphrase or a changed file is refused with "Wrong passphrase or damaged backup file".
+- **Keep on server** stores files in `/data/backups` (folder mode 700, files 600). Scheduled files carry `-s<id>` in their name.
+- In **Replace**, a reference to something that does not exist after the restore (a certificate, an access list, an mTLS CA or a DNS credential that was neither restored nor on the instance) is cleared, never matched by name or domain. The owner of a removed user's items becomes the restoring administrator. The window lists every reference it will clear before you confirm.
+- A merge that finds the instance changed since the dry run stops with "Something changed on this instance since the preview", applies nothing and shows the new dry run.
+- In **Merge** every part has **Choose items** to pick single hosts, certificates, lists, credentials or users. **Replace** and **Create backup** always work on whole parts.
+- One backup or restore runs at a time, and certificate renewal pauses during a restore.
+- A restore or merge also rolls back completely when `nginx -t` fails, for example because of a broken file in `custom_nginx`.
+- Before database migrations NPMpro copies a SQLite database to `/data/backups/database` (see [Upgrade notes](Upgrade-notes#database-copy-before-upgrades)).

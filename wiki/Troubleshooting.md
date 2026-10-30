@@ -10,7 +10,7 @@
 
 When a check fails at startup, the container prints the reason and then waits instead of starting. Read `docker logs npmpro`. The common ones:
 
-- **"... env is not supported"** or **"... is replaced by ..."**: you set a variable that was removed. Remove it from `compose.yaml` (and use its replacement): see [Removed variables](https://github.com/TheBlackBush/NPMpro#removed-variables).
+- **"... env is not supported"** or **"... is replaced by ..."**: you set a variable that was removed. Remove it from `compose.yaml` (and use its replacement): see [Removed variables](Upgrade-notes#removed-variables).
 - **"... needs to be true or false"**, **"... needs to be a number"** and similar: a variable has an invalid value. The compose file lists the allowed values.
 - **"TZ is invalid."**: `TZ` is not a known time zone name. Use a "TZ identifier" such as `Europe/Berlin`, or remove `TZ` and set the time zone in Settings, Advanced.
 - **"This docker container must be run as root, do not specify a user. Please use PUID/PGID instead."**: remove `user:` from the service.
@@ -54,7 +54,7 @@ NPMpro tests the nginx config whenever it writes one. If the test fails, the hos
 If NPMpro sits behind another proxy, load balancer or tunnel, nginx only sees that proxy's IP until you trust it:
 
 - Add the proxy's IP or range to Trusted proxy IPs in Settings, Network (or `TRUST_IP`).
-- Behind Cloudflare, turn on Trust Cloudflare (Settings, Network, or `TRUST_CLOUDFLARE=true`), but read the [notes on Cloudflare](https://github.com/TheBlackBush/NPMpro#notes-on-cloudflare) first.
+- Behind Cloudflare, turn on Trust Cloudflare (Settings, Network, or `TRUST_CLOUDFLARE=true`), but read the [notes on Cloudflare](Security#notes-on-cloudflare) first.
 - A proxy that sends the PROXY protocol needs `LISTEN_PROXY_PROTOCOL` (or the `_HTTP` / `_HTTPS` variant).
 
 ## OIDC sign-in fails
@@ -77,7 +77,7 @@ If password sign-in is turned off and OIDC does not work, set `OIDC_DISABLE_PASS
 
 ## Signed out after every restart
 
-The session cookie is signed with `COOKIE_SECRET`. Without it, NPMpro creates a new random secret at every start, so every restart, recreate and upgrade signs all users out. Set `COOKIE_SECRET` to a long random string in `compose.yaml` and recreate the container.
+The session cookie is signed with `COOKIE_SECRET`. Without it, NPMpro creates a new random secret at every start, so every restart, recreate and upgrade signs all users out. Set `COOKIE_SECRET` to a long random string in `compose.yaml` and recreate the container. How to generate one is on the [Configuration](Configuration#cookie_secret) page.
 
 ## Password or MFA reset
 
