@@ -1,13 +1,11 @@
-import { useFormikContext } from "formik";
+import { useFormContext, useWatch } from "react-hook-form";
 import { useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
+import { certificatesValidate, ECH, RENEWAL } from "src/modules/SettingsForms";
+import { validations } from "src/modules/Validations";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
-
-const RENEWAL = { min: 1, max: 499 };
-const ECH = { min: 1, max: 24 };
-const PROFILE = /^[A-Za-z0-9._-]{0,64}$/u;
 
 const toForm = (data) => ({
 	keyType: data.keyType,
@@ -32,38 +30,21 @@ const toApi = (values) => ({
 	echRotationInterval: Number(values.echRotationInterval),
 });
 
-const rangeError = (value, { min, max }) => {
-	const n = Number(value);
-	return Number.isInteger(n) && n >= min && n <= max
-		? null
-		: intl.formatMessage({ id: "settings.runtime.number.invalid" }, { min, max });
-};
-
-const validate = (values) => {
-	const errors = {};
-	const renewal = rangeError(values.renewalInterval, RENEWAL);
-	if (renewal) errors.renewalInterval = renewal;
-	const ech = rangeError(values.echRotationInterval, ECH);
-	if (ech) errors.echRotationInterval = ech;
-	if (!PROFILE.test(values.profile.trim())) {
-		errors.profile = intl.formatMessage({ id: "settings.certificates.profile.invalid" });
-	}
-	return errors;
-};
+const validate = certificatesValidate(validations);
 
 function RequestFields() {
-	const { values, setFieldValue } = useFormikContext();
+	const { getValues, setValue } = useFormContext();
+	const keyType = useWatch({ name: "keyType" });
 	const { isLocked } = useRuntimeSection();
 	const keyTypes = ["ecdsa", "rsa"].map((value) => ({
 		value,
 		label: intl.formatMessage({ id: `settings.certificates.key-type.${value}` }),
 	}));
-	const sizes = keySizeOptions(values.keyType).map((value) => ({ value, label: value }));
-	const onKeyType = (keyType) => {
-		void setFieldValue("keyType", keyType);
-		// the key size follows the key type (a locked size stays as the environment sets it)
-		if (!(isLocked("keySize") || keySizeOptions(keyType).includes(values.keySize))) {
-			void setFieldValue("keySize", defaultKeySize(keyType));
+	const sizes = keySizeOptions(keyType).map((value) => ({ value, label: value }));
+	// the key size follows the key type (a locked size stays as the environment sets it)
+	const onKeyType = (next) => {
+		if (!(isLocked("keySize") || keySizeOptions(next).includes(getValues("keySize")))) {
+			setValue("keySize", defaultKeySize(next), { shouldDirty: true });
 		}
 	};
 	return (
@@ -103,10 +84,10 @@ function RequestFields() {
 }
 
 function StaplingFields() {
-	const { values } = useFormikContext();
+	const mustStaple = useWatch({ name: "mustStaple" });
 	const { isLocked } = useRuntimeSection();
 	// must-staple forces OCSP stapling on, unless the environment sets stapling itself
-	const forced = values.mustStaple && !isLocked("ocspStapling");
+	const forced = mustStaple && !isLocked("ocspStapling");
 	return (
 		<Part titleId="settings.certificates.stapling">
 			<RuntimeSwitch
@@ -135,7 +116,7 @@ function StaplingFields() {
 }
 
 function DefaultCertificateField() {
-	const { values } = useFormikContext();
+	const defaultCertificateId = useWatch({ name: "defaultCertificateId" });
 	const { data, isError } = useCertificates();
 	const options = [
 		{ value: "0", label: intl.formatMessage({ id: "settings.certificates.default-certificate.builtin" }) },
@@ -145,12 +126,12 @@ function DefaultCertificateField() {
 		if (isServableCertificate(cert)) options.push({ value: String(cert.id), label: cert.niceName });
 	}
 	// the stored certificate while the list loads, failed to load or no longer lists it
-	if (!options.some((option) => option.value === values.defaultCertificateId)) {
+	if (!options.some((option) => option.value === defaultCertificateId)) {
 		options.push({
-			value: values.defaultCertificateId,
+			value: defaultCertificateId,
 			label: intl.formatMessage(
 				{ id: "settings.certificates.default-certificate.unknown" },
-				{ id: values.defaultCertificateId },
+				{ id: defaultCertificateId },
 			),
 		});
 	}

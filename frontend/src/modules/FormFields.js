@@ -1,14 +1,14 @@
 /**
- * Rules of the shared form layer (components/Form/FormField.jsx and friends): when an error shows, how a control is
- * described, the classes of the groups. Pure, so node --test checks them without a DOM.
+ * Rules of the shared form layer (components/Form/FormField.jsx and friends): reading a value at a field path, how a
+ * control is described, the classes of the groups. Pure, so node --test checks them without a DOM.
  */
 import cn from "clsx";
 
-// the parts of a Formik path: "items[0].username" -> items, 0, username
+// the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;
 
 /**
- * The value at a Formik path ("name", "fieldValues.token", "items[0].username") in Formik's errors or touched
+ * The value at a field path ("name", "fieldValues.token", "items[0].username") in the form's values
  *
  * @param   {*}       object
  * @param   {string}  path
@@ -24,29 +24,16 @@ export function valueAt(object, path) {
 }
 
 /**
- * The error a field shows: its message once the field was left (touched) or a save was tried (submitCount > 0).
- * Only a text message counts: the errors of a list field belong to its rows.
+ * The value of a number input kept as a number, as the Formik forms kept it: the number typed, or "" while the input
+ * holds no number (empty). For register's setValueAs, where a field's logic compares it with numbers (a port that
+ * follows the database engine).
  *
- * @param   {Object}  state
- * @param   {*}       state.error
- * @param   {*}       [state.touched]
- * @param   {number}  [state.submitCount]
- * @returns {string|null}
+ * @param   {string}  text  the input's value
+ * @returns {number|""}
  */
-export function visibleError({ error, touched = false, submitCount = 0 }) {
-	if (typeof error !== "string" || error === "") return null;
-	return touched || submitCount > 0 ? error : null;
-}
-
-/**
- * visibleError of the field at path, read from Formik's errors and touched (Formik's form object fits as it is)
- *
- * @param   {{ errors: Object, touched: Object, submitCount: number }} form
- * @param   {string}  path
- * @returns {string|null}
- */
-export function visibleErrorAt({ errors, touched, submitCount }, path) {
-	return visibleError({ error: valueAt(errors, path), touched: Boolean(valueAt(touched, path)), submitCount });
+export function numberInputValue(text) {
+	const number = Number.parseFloat(text);
+	return Number.isNaN(number) ? "" : number;
 }
 
 /**
@@ -67,7 +54,7 @@ export function joinIds(...ids) {
  * @param   {Object}  options
  * @param   {string}  options.id
  * @param   {boolean} [options.hasHint]
- * @param   {string|null} [options.error]  the message that shows (visibleError)
+ * @param   {string|null} [options.error]  the message that shows
  * @param   {string}  [options.describedBy]
  */
 export function controlAria({ id, hasHint = false, error = null, describedBy }) {

@@ -16,6 +16,7 @@ import {
 	restartPendingFields,
 	runtimeSettingsPayload,
 	timeZoneOptions,
+	trustedIpLines,
 } from "./RuntimeSettings.js";
 
 it("keySizeOptions follows the key type", () => {
@@ -221,4 +222,11 @@ it("has a label for every restart setting of the backend, in en.json", async () 
 	for (const id of Object.values(RESTART_LABELS)) assert.ok(en[id], id);
 	assert.ok(en["settings.runtime.restart-required"]);
 	assert.ok(en["settings.runtime.restart-pending"].includes("{fields}"));
+});
+
+it("trustedIpLines keeps every non-blank line, valid or not, so typed text counts as a change", () => {
+	assert.deepEqual(trustedIpLines(" 10.0.0.0/8 \n\nnope\r\nfd00::/8"), ["10.0.0.0/8", "nope", "fd00::/8"]);
+	assert.deepEqual(trustedIpLines(""), []);
+	const valid = "10.0.0.1\n192.168.0.0/16";
+	assert.deepEqual(trustedIpLines(valid), parseTrustedIps(valid).list);
 });

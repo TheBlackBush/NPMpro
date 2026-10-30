@@ -1,6 +1,6 @@
 /**
  * Rules of the forms on React Hook Form: a resolver around the existing validate functions (objects of translated
- * messages, as the Formik forms had them), and the field order that names and focuses the first error. Pure, so
+ * messages), and the field order that names and focuses the first error. Pure, so
  * node --test checks them without a DOM.
  */
 import { valueAt } from "./FormFields.js";
@@ -135,7 +135,7 @@ export function formResolver(validate) {
 const isHookFormError = (error) => isPlainObject(error) && typeof error.type === "string";
 
 /**
- * The path of every error in Formik's errors (text) or React Hook Form's errors ({ type, message }):
+ * The path of every error in an object of text messages or in React Hook Form's errors ({ type, message }):
  * name, fieldValues.token, locations[0].path
  *
  * @param   {*}       errors
@@ -229,4 +229,16 @@ export function applyChanges(setValue, changes, prefix = "") {
 	for (const [key, value] of Object.entries(changes)) {
 		setValue(prefix ? `${prefix}.${key}` : key, value, { shouldDirty: true });
 	}
+}
+
+/**
+ * The resetOptions of useAppForm: what a reset (new loaded values, a reset call) keeps. keepEdits: the fields the user
+ * already changed. Otherwise every field takes the new values, but the form stays submitted: React Hook Form's reset
+ * clears isSubmitted and submitCount, and after a save (refetched values) messages must still follow each change.
+ *
+ * @param   {boolean} keepEdits
+ * @returns {Object}
+ */
+export function resetOptionsOf(keepEdits) {
+	return keepEdits ? { keepDirtyValues: true } : { keepIsSubmitted: true, keepSubmitCount: true };
 }

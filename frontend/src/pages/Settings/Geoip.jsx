@@ -1,28 +1,37 @@
 import { IconAlertCircle, IconCircleCheck, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
-import { Field, Form, Formik, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { ApiErrorContent, Button, ErrorAlert, Loading, PasswordInput, SwitchField } from "src/components";
+import { useController, useFormContext, useFormState } from "react-hook-form";
+import {
+	ApiErrorContent,
+	Button,
+	ErrorAlert,
+	HookForm,
+	Loading,
+	PasswordInput,
+	SwitchField,
+	useAppForm,
+} from "src/components";
 import { useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
+import {
+	GEOIP_EDITIONS,
+	geoipRequest,
+	geoipValidate,
+	geoipValues,
+	lockedIn,
+	toggleEdition,
+} from "src/modules/SettingsForms";
+import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { SaveBar } from "./SaveBar";
 import { StatusAlert } from "./StatusAlert";
 
 const SIGNUP_URL = "https://www.maxmind.com/en/geolite2/signup";
-const EDITIONS = [
-	{ value: "GeoLite2-Country", key: "country" },
-	{ value: "GeoLite2-ASN", key: "asn" },
-	{ value: "GeoLite2-City", key: "city" },
-];
-const ACCOUNT_ID = /^[0-9]{0,10}$/u;
 const EDITABLE = ["account_id", "license_key", "editions"];
 // after a save with new credentials the download runs in the background: look for its outcome this often, this long
 const POLL_MS = 3000;
 const POLL_FOR_MS = 90 * 1000;
-
-const camelToSnake = (key) => key.replaceAll(/[A-Z]/gu, (c) => `_${c.toLowerCase()}`);
-const sameEditions = (a, b) => a.length === b.length && a.every((edition) => b.includes(edition));
 
 function Heading() {
 	return (
@@ -33,10 +42,10 @@ function Heading() {
 }
 
 function SaveButton({ allLocked }) {
-	const { dirty } = useFormikContext();
+	const { isDirty } = useFormState();
 	return (
 		<SaveBar
-			disabled={allLocked || !dirty}
+			disabled={allLocked || !isDirty}
 			reasonId={allLocked ? "settings.save.all-locked" : undefined}
 			labels={FIELD_LABELS}
 		/>
@@ -46,19 +55,10 @@ function SaveButton({ allLocked }) {
 // field name -> label, for the note next to Save (the inputs' ids differ from the field names)
 const FIELD_LABELS = { accountId: "settings.geoip.account-id", licenseKey: "settings.geoip.license-key" };
 
-// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
-const validateWith = (isLocked) => (values) => {
-	const errors = {};
-	if (!isLocked("accountId") && !ACCOUNT_ID.test(values.accountId.trim())) {
-		errors.accountId = intl.formatMessage({ id: "settings.geoip.account-id.invalid" });
-	}
-	if (!isLocked("licenseKey") && values.licenseKey.length > 255) {
-		errors.licenseKey = intl.formatMessage({ id: "error.max-character-length" }, { max: 255 });
-	}
-	return errors;
-};
-
 function AccountFields({ data, isLocked }) {
+	const { register } = useFormContext();
+	const { errors } = useFormState({ name: ["accountId", "licenseKey"] });
+	const accountError = errors.accountId?.message;
 	const keyLocked = isLocked("licenseKey");
 	let keyPlaceholder = "";
 	if (keyLocked) keyPlaceholder = intl.formatMessage({ id: "settings.authentication.locked" });
@@ -70,48 +70,40 @@ function AccountFields({ data, isLocked }) {
 			<h3 className="card-title">
 				<T id="settings.geoip.account" />
 			</h3>
-			<Field name="accountId">
-				{({ field, meta }) => (
-					<div className="mb-3">
-						<label className="form-label" htmlFor="geoip-account-id">
-							<T id="settings.geoip.account-id" />
-							{isLocked("accountId") ? <LockedBadge /> : null}
-						</label>
-						<input
-							{...field}
-							id="geoip-account-id"
-							type="text"
-							inputMode="numeric"
-							autoComplete="off"
-							className={`form-control${meta.error ? " is-invalid" : ""}`}
-							disabled={isLocked("accountId")}
-							aria-invalid={meta.error ? "true" : undefined}
-						/>
-						{meta.error ? <div className="invalid-feedback">{meta.error}</div> : null}
-					</div>
-				)}
-			</Field>
-			<Field name="licenseKey">
-				{({ field, meta }) => (
-					<div className="mb-3">
-						<PasswordInput
-							{...field}
-							id="geoip-license-key"
-							label={
-								<>
-									<T id="settings.geoip.license-key" />
-									{keyLocked ? <LockedBadge /> : null}
-								</>
-							}
-							autoComplete="new-password"
-							disabled={keyLocked}
-							placeholder={keyPlaceholder}
-							error={meta.error}
-							value={keyLocked ? "" : (field.value ?? "")}
-						/>
-					</div>
-				)}
-			</Field>
+			<div className="mb-3">
+				<label className="form-label" htmlFor="geoip-account-id">
+					<T id="settings.geoip.account-id" />
+					{isLocked("accountId") ? <LockedBadge /> : null}
+				</label>
+				<input
+					{...register("accountId")}
+					id="geoip-account-id"
+					type="text"
+					inputMode="numeric"
+					autoComplete="off"
+					className={`form-control${accountError ? " is-invalid" : ""}`}
+					disabled={isLocked("accountId")}
+					aria-invalid={accountError ? "true" : undefined}
+				/>
+				{accountError ? <div className="invalid-feedback">{accountError}</div> : null}
+			</div>
+			<div className="mb-3">
+				{/* a locked key stays empty: the environment's key is never shown */}
+				<PasswordInput
+					{...register("licenseKey")}
+					id="geoip-license-key"
+					label={
+						<>
+							<T id="settings.geoip.license-key" />
+							{keyLocked ? <LockedBadge /> : null}
+						</>
+					}
+					autoComplete="new-password"
+					disabled={keyLocked}
+					placeholder={keyPlaceholder}
+					error={errors.licenseKey?.message}
+				/>
+			</div>
 			<div className="form-hint">
 				<T id="settings.geoip.account.hint" />{" "}
 				<a href={SIGNUP_URL} target="_blank" rel="noopener noreferrer" className="link-primary">
@@ -123,17 +115,10 @@ function AccountFields({ data, isLocked }) {
 	);
 }
 
+// the editions: one field (the chosen list, in the API's order), its switches on a controller
 function EditionFields({ isLocked }) {
-	const { values, setFieldValue } = useFormikContext();
+	const { field } = useController({ name: "editions" });
 	const locked = isLocked("editions");
-	const toggle = (edition, on) => {
-		const next = on ? [...values.editions, edition] : values.editions.filter((e) => e !== edition);
-		// keep the API order, so an unchanged selection is not seen as a change
-		void setFieldValue(
-			"editions",
-			EDITIONS.map((e) => e.value).filter((e) => next.includes(e)),
-		);
-	};
 	return (
 		<div className="mb-4">
 			<h3 className="card-title">
@@ -141,20 +126,22 @@ function EditionFields({ isLocked }) {
 				{locked ? <LockedBadge /> : null}
 			</h3>
 			<div className="divide-y">
-				{EDITIONS.map(({ value, key }) => (
+				{GEOIP_EDITIONS.map(({ value, key }, index) => (
 					<SwitchField
 						key={value}
+						ref={index === 0 ? field.ref : undefined}
 						className="py-2"
 						id={`geoip-edition-${key}`}
 						label={<T id={`settings.geoip.edition.${key}`} />}
 						hint={<T id={`settings.geoip.edition.${key}.hint`} />}
 						disabled={locked}
-						checked={values.editions.includes(value)}
-						onChange={(e) => toggle(value, e.target.checked)}
+						checked={field.value.includes(value)}
+						onBlur={field.onBlur}
+						onChange={(e) => field.onChange(toggleEdition(field.value, value, e.target.checked))}
 					/>
 				))}
 			</div>
-			{values.editions.length === 0 ? (
+			{field.value.length === 0 ? (
 				<div className="form-hint">
 					<T id="settings.geoip.editions.none" />
 				</div>
@@ -235,19 +222,82 @@ function UpdateStatus({ data }) {
 	);
 }
 
-export default function Geoip() {
-	const { data, isPending, error, refetch } = useGeoipSettings();
+/**
+ * The form of the loaded settings: the saved settings are its values, also after a save or a refetch (new settings
+ * replace every field); the key field is emptied after a save, a saved key is never shown
+ */
+function GeoipForm({ data, background, setBackground }) {
 	const { mutateAsync: save } = useSaveGeoipSettings();
 	const [errorMsg, setErrorMsg] = useState(null);
-	// set while a download started by a save runs in the background: { lastUpdate, lastError, until }
-	const [background, setBackground] = useState(null);
 	const errorRef = useRef(null);
+	const lockedKeys = data.locked ?? [];
+	const isLocked = lockedIn(lockedKeys);
+	const allLocked = EDITABLE.every((key) => lockedKeys.includes(key));
+	const saved = geoipValues(data);
+	const methods = useAppForm({
+		defaultValues: saved,
+		values: saved,
+		keepEdits: false,
+		// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
+		validate: geoipValidate(validations, isLocked),
+	});
 
 	useEffect(() => {
 		if (!errorMsg) return;
 		errorRef.current?.scrollIntoView({ block: "nearest" });
 		errorRef.current?.focus();
 	}, [errorMsg]);
+
+	const onSubmit = async (values) => {
+		setErrorMsg(null);
+		// the backend downloads in the background when the account, the key or the editions change
+		const { body, startsDownload } = geoipRequest(values, data);
+		try {
+			await save(body);
+			methods.setValue("licenseKey", "", { shouldDirty: true });
+			showObjectSuccess("setting", "saved");
+			if (startsDownload) {
+				setBackground({
+					lastUpdate: data.lastUpdate,
+					lastError: data.lastError,
+					until: Date.now() + POLL_FOR_MS,
+				});
+			}
+		} catch (err) {
+			setErrorMsg(<ApiErrorContent error={err} />);
+		}
+	};
+
+	return (
+		<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
+			<div className="card-body flex-fill">
+				<Heading />
+				<div ref={errorRef} tabIndex={-1}>
+					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+				</div>
+				<StatusAlert variant="secondary" icon={IconInfoCircle} id="settings.geoip.intro" />
+				{data.secretError ? (
+					<StatusAlert variant="danger" icon={IconAlertCircle} id="settings.geoip.secret-error" />
+				) : null}
+				{lockedKeys.length > 0 ? (
+					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
+				) : null}
+				{background ? (
+					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.geoip.background" />
+				) : null}
+				<AccountFields data={data} isLocked={isLocked} />
+				<EditionFields isLocked={isLocked} />
+				<UpdateStatus data={data} />
+			</div>
+			<SaveButton allLocked={allLocked} />
+		</HookForm>
+	);
+}
+
+export default function Geoip() {
+	const { data, isPending, error, refetch } = useGeoipSettings();
+	// set while a download started by a save runs in the background: { lastUpdate, lastError, until }
+	const [background, setBackground] = useState(null);
 
 	useEffect(() => {
 		if (!background) return;
@@ -284,70 +334,5 @@ export default function Geoip() {
 		);
 	}
 
-	const lockedKeys = data.locked ?? [];
-	const locked = new Set(lockedKeys);
-	const isLocked = (key) => locked.has(camelToSnake(key));
-	const allLocked = EDITABLE.every((key) => locked.has(key));
-
-	const onSubmit = async (values, { setSubmitting, setFieldValue }) => {
-		setErrorMsg(null);
-		const accountId = values.accountId.trim();
-		const licenseKey = values.licenseKey.trim();
-		// the backend downloads in the background when the account, the key or the editions change
-		const startsDownload =
-			(!isLocked("accountId") && accountId !== (data.accountId ?? "")) ||
-			(!isLocked("licenseKey") && licenseKey !== "") ||
-			(!isLocked("editions") && !sameEditions(values.editions, data.editions ?? []));
-		try {
-			await save({ ...values, accountId, licenseKey, locked: lockedKeys });
-			setFieldValue("licenseKey", "");
-			showObjectSuccess("setting", "saved");
-			if (startsDownload) {
-				setBackground({
-					lastUpdate: data.lastUpdate,
-					lastError: data.lastError,
-					until: Date.now() + POLL_FOR_MS,
-				});
-			}
-		} catch (err) {
-			setErrorMsg(<ApiErrorContent error={err} />);
-		}
-		setSubmitting(false);
-	};
-
-	return (
-		<Formik
-			enableReinitialize
-			initialValues={{
-				accountId: data.accountId ?? "",
-				licenseKey: "",
-				editions: EDITIONS.map((e) => e.value).filter((e) => (data.editions ?? []).includes(e)),
-			}}
-			validate={validateWith(isLocked)}
-			onSubmit={onSubmit}
-		>
-			<Form className="d-flex flex-column flex-fill" noValidate>
-				<div className="card-body flex-fill">
-					<Heading />
-					<div ref={errorRef} tabIndex={-1}>
-						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-					</div>
-					<StatusAlert variant="secondary" icon={IconInfoCircle} id="settings.geoip.intro" />
-					{data.secretError ? (
-						<StatusAlert variant="danger" icon={IconAlertCircle} id="settings.geoip.secret-error" />
-					) : null}
-					{locked.size > 0 ? (
-						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
-					) : null}
-					{background ? (
-						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.geoip.background" />
-					) : null}
-					<AccountFields data={data} isLocked={isLocked} />
-					<EditionFields isLocked={isLocked} />
-					<UpdateStatus data={data} />
-				</div>
-				<SaveButton allLocked={allLocked} />
-			</Form>
-		</Formik>
-	);
+	return <GeoipForm data={data} background={background} setBackground={setBackground} />;
 }

@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
 import { setPermissions } from "src/api/backend";
 import {
 	ApiErrorContent,
@@ -29,22 +28,6 @@ const permissionValues = (permissions) => ({
 	visibility: permissions?.visibility ?? "user",
 	...Object.fromEntries(SECTIONS.map((section) => [section, permissions?.[section] ?? "hidden"])),
 });
-
-/**
- * The buttons of one permission. PermissionButtons (shared with the Formik new-user defaults in Settings until A3)
- * takes a field and a form with getFieldProps and setFieldValue; here they read and set this form's values. This
- * Formik-shaped shim is the one deliberate exception to using React Hook Form directly; it goes in A3, when
- * PermissionButtons moves too.
- */
-function PermissionRow({ name, Buttons }) {
-	const { setValue } = useFormContext();
-	const values = useWatch();
-	const form = {
-		getFieldProps: (field) => ({ value: values[field] }),
-		setFieldValue: (field, value) => setValue(field, value, { shouldDirty: true }),
-	};
-	return <Buttons field={{ name, value: values[name] }} form={form} />;
-}
 
 const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -91,7 +74,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 							<div className="form-label">
 								<T id="permissions.visibility.title" />
 							</div>
-							<PermissionRow name="visibility" Buttons={VisibilityButtons} />
+							<VisibilityButtons name="visibility" />
 						</div>
 						{!isAdmin(data?.roles) && (
 							<>
@@ -99,37 +82,37 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 									<div className="form-label">
 										<T id="proxy-hosts" />
 									</div>
-									<PermissionRow name="proxyHosts" Buttons={PermissionButtons} />
+									<PermissionButtons name="proxyHosts" />
 								</div>
 								<div className="mb-3">
 									<div className="form-label">
 										<T id="redirection-hosts" />
 									</div>
-									<PermissionRow name="redirectionHosts" Buttons={PermissionButtons} />
+									<PermissionButtons name="redirectionHosts" />
 								</div>
 								<div className="mb-3">
 									<div className="form-label">
 										<T id="dead-hosts" />
 									</div>
-									<PermissionRow name="deadHosts" Buttons={PermissionButtons} />
+									<PermissionButtons name="deadHosts" />
 								</div>
 								<div className="mb-3">
 									<div className="form-label">
 										<T id="streams" />
 									</div>
-									<PermissionRow name="streams" Buttons={PermissionButtons} />
+									<PermissionButtons name="streams" />
 								</div>
 								<div className="mb-3">
 									<div className="form-label">
 										<T id="access-lists" />
 									</div>
-									<PermissionRow name="accessLists" Buttons={PermissionButtons} />
+									<PermissionButtons name="accessLists" />
 								</div>
 								<div className="mb-3">
 									<div className="form-label">
 										<T id="certificates" />
 									</div>
-									<PermissionRow name="certificates" Buttons={PermissionButtons} />
+									<PermissionButtons name="certificates" />
 								</div>
 							</>
 						)}

@@ -1,29 +1,12 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { useFormikContext } from "formik";
+import { useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
+import { nginxValidate } from "src/modules/SettingsForms";
+import { validations } from "src/modules/Validations";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
 import { StatusAlert } from "./StatusAlert";
 
-// the backend's rules (lib/runtime-rules.js)
-const TIME_VALUE = /^[0-9]+(?:ms|s|m|h|d|w|M|y)?(?:[0-9]+(?:ms|s|m|h|d|w|M|y))*$/u;
-const TIME_TOKEN = /([0-9]+)(ms|s|m|h|d|w|M|y)?/gu;
-const TIME_UNITS = ["y", "M", "w", "d", "h", "m", "s", "ms"];
-// nginx's time parser: "0", or tokens of digits plus a unit with the units strictly decreasing, each at most once;
-// a bare number (seconds) is only valid as the whole value
-const isNginxTime = (value) => {
-	if (value.length > 32 || !TIME_VALUE.test(value)) return false;
-	if (value === "0") return true;
-	const tokens = [...value.matchAll(TIME_TOKEN)];
-	let last = -1;
-	for (const [, , unit] of tokens) {
-		if (unit === undefined) return tokens.length === 1;
-		const index = TIME_UNITS.indexOf(unit);
-		if (index <= last) return false;
-		last = index;
-	}
-	return true;
-};
 const KEYS = [
 	"logNotFound",
 	"tls12",
@@ -47,29 +30,15 @@ const toApi = (values) => ({
 	workerConnections: Number(values.workerConnections),
 });
 
-const validate = (values) => {
-	const errors = {};
-	const connections = Number(values.workerConnections);
-	if (!Number.isInteger(connections) || connections < 64 || connections > 65535) {
-		errors.workerConnections = intl.formatMessage(
-			{ id: "settings.runtime.number.invalid" },
-			{ min: 64, max: 65535 },
-		);
-	}
-	const timeout = String(values.workerShutdownTimeout ?? "").trim();
-	if (!isNginxTime(timeout)) {
-		errors.workerShutdownTimeout = intl.formatMessage({ id: "settings.nginx.shutdown-timeout.invalid" });
-	}
-	return errors;
-};
+const validate = nginxValidate(validations);
 
 function WorkerProcesses() {
 	const { data } = useRuntimeSection();
-	const { values } = useFormikContext();
+	const workerProcesses = useWatch({ name: "workerProcesses" });
 	// cpuCount is optional in the API: without it only "auto" and the current value are offered
 	const counts = Array.from({ length: data.cpuCount ?? 0 }, (_, i) => String(i + 1));
-	if (values.workerProcesses !== "auto" && !counts.includes(values.workerProcesses)) {
-		counts.push(values.workerProcesses);
+	if (workerProcesses !== "auto" && !counts.includes(workerProcesses)) {
+		counts.push(workerProcesses);
 	}
 	const options = [
 		{ value: "auto", label: intl.formatMessage({ id: "settings.nginx.workers.auto" }) },
@@ -86,9 +55,8 @@ function WorkerProcesses() {
 }
 
 function Tls() {
-	const { values } = useFormikContext();
 	// post-quantum only needs TLS 1.3 and X25519MLKEM768, so these two show off as soon as it is switched on
-	const off = Boolean(values.forceMlkem);
+	const off = Boolean(useWatch({ name: "forceMlkem" }));
 	return (
 		<Part titleId="settings.nginx.tls">
 			<StatusAlert variant="warning" icon={IconAlertTriangle} id="settings.nginx.tls.warning" />

@@ -234,7 +234,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 					<T id="cancel" />
 				</Button>
 				<div className="ms-auto d-flex flex-wrap align-items-center justify-content-end gap-2">
-					<FormErrorNote id={noteId} late className="me-2 text-end" />
+					<FormErrorNote id={noteId} className="me-2 text-end" />
 					{showReason ? (
 						<span id={reasonId} className="text-secondary small me-2 text-end">
 							<T id={reason} />

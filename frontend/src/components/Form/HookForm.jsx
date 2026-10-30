@@ -6,6 +6,7 @@ import {
 	fieldPaths,
 	formResolver,
 	orderErrorPaths,
+	resetOptionsOf,
 	rowErrorPaths,
 } from "src/modules/HookForm";
 
@@ -20,11 +21,16 @@ const FieldOrderContext = createContext([]);
  * @param   {Object}   options
  * @param   {Object}   options.defaultValues  every field of the form, none undefined (isDirty compares with them)
  * @param   {Object}   [options.values]       loaded values (a query's data): they become the defaultValues once
- *                                            they arrive; fields the user already changed are kept
+ *                                            they arrive (and whenever they change)
  * @param   {Function} [options.validate]     (values) => errors
+ * @param   {boolean}  [options.keepEdits]    when new values arrive or reset() runs, keep the fields the user
+ *                                            already changed (default); false: every field takes the new values
+ *                                            (as a Settings section shows the saved settings again after its save,
+ *                                            or a form empties its field after a refused code) and the form stays
+ *                                            submitted
  * @returns {Object}   useForm's methods
  */
-function useAppForm({ defaultValues, values, validate }) {
+function useAppForm({ defaultValues, values, validate, keepEdits = true }) {
 	const validateRef = useRef(validate);
 	// before any event handler runs, so the resolver always uses the validate of the last render
 	useLayoutEffect(() => {
@@ -34,7 +40,7 @@ function useAppForm({ defaultValues, values, validate }) {
 	return useForm({
 		defaultValues,
 		values,
-		resetOptions: { keepDirtyValues: true },
+		resetOptions: resetOptionsOf(keepEdits),
 		resolver,
 		mode: "onTouched",
 		reValidateMode: "onChange",
@@ -93,6 +99,26 @@ function focusFirstError(form, errors, order, setFocus) {
 	const pane = control?.closest(".tab-pane:not(.active)");
 	if (pane) form.querySelector(`[data-bs-toggle="tab"][href="#${pane.id}"]`)?.click();
 	setFocus(first);
+}
+
+/**
+ * For a button that is blocked while a message shows: checks the whole form (handleSubmit, which saves nothing here)
+ * and focuses the first error in field order. Only the fields left so far show a message, so the messages on screen
+ * may not hold the first one in the page (Enter in the ACME profile with the renewal interval already refused):
+ * the click handler gets the same answer as a save would.
+ *
+ * @returns {Function} (event) => void, for onBlockedClick
+ */
+function useFocusFirstError() {
+	const { handleSubmit, setFocus } = useFormContext();
+	const order = useFieldOrder();
+	return (event) => {
+		const form = event.currentTarget.closest("form");
+		void handleSubmit(
+			() => undefined,
+			(errors) => focusFirstError(form, errors, order, setFocus),
+		)();
+	};
 }
 
 /**
@@ -156,9 +182,10 @@ function useListRecheck(name) {
  * @param {Function} props.onSubmit      async (values) => void, the save (isSubmitting lasts until it settles)
  * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
  *                                      on the first render (as the defaultValues' order)
+ * @param {string}   [props.className]   of the <form>
  * @param {*}        props.children
  */
-function HookForm({ methods, onSubmit, fieldOrder, children }) {
+function HookForm({ methods, onSubmit, fieldOrder, className, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	const submitting = useRef(false);
 	const formRef = useRef(null);
@@ -174,6 +201,7 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 			<FieldOrderContext.Provider value={order}>
 				<form
 					ref={formRef}
+					className={className}
 					action="#"
 					noValidate
 					onSubmit={(event) => {
@@ -197,4 +225,13 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 	);
 }
 
-export { focusFirstError, HookForm, useAppForm, useFieldOrder, useListRecheck, useRecheckDependent, useResetToSaved };
+export {
+	focusFirstError,
+	HookForm,
+	useAppForm,
+	useFieldOrder,
+	useFocusFirstError,
+	useListRecheck,
+	useRecheckDependent,
+	useResetToSaved,
+};

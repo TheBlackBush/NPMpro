@@ -1,5 +1,5 @@
-import { useFormikContext } from "formik";
 import { useEffect } from "react";
+import { useFormState } from "react-hook-form";
 import { intl } from "src/locale";
 
 let guards = 0;
@@ -56,11 +56,11 @@ const useLeaveGuard = (dirty) => {
 };
 
 /**
- * Place inside a Formik form: asks before leaving the page with unsaved changes (useLeaveGuard)
+ * Place inside a HookForm: asks before leaving the page with unsaved changes (useLeaveGuard), not while a save runs
  */
 function LeaveGuard() {
-	const { dirty, isSubmitting } = useFormikContext();
-	useLeaveGuard(dirty && !isSubmitting);
+	const { isDirty, isSubmitting } = useFormState();
+	useLeaveGuard(isDirty && !isSubmitting);
 	return null;
 }
 

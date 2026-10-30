@@ -1,41 +1,58 @@
-import { Form, Formik, useFormikContext } from "formik";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useController, useFormContext, useFormState } from "react-hook-form";
 import { downloadPendingBackup } from "src/api/backend";
 import {
 	Button,
 	ErrorAlert,
 	FormErrorNote,
+	focusFirstError,
+	HookForm,
 	Loading,
 	SecretsFields,
-	showFirstInvalid,
 	TypeTree,
-	useShownErrors,
+	useAppForm,
+	useFieldOrder,
+	useResetToSaved,
 	validateSecrets,
 } from "src/components";
 import { useBackupTypes, useCreateBackup } from "src/hooks";
 import { T } from "src/locale";
 import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
+import { errorPaths } from "src/modules/HookForm";
 import { showObjectSuccess } from "src/notifications";
 
 function CreateForm({ data, error, keepRef }) {
-	const { values, setFieldValue, isSubmitting, submitForm } = useFormikContext();
+	const { setFocus } = useFormContext();
+	const { isSubmitting, errors } = useFormState();
+	// the parts to include: never a message of their own (no types only disables the buttons), so no ref to focus
+	const { field: types } = useController({ name: "types" });
+	const order = useFieldOrder();
 	const baseId = useId();
 	const noteId = `${baseId}-note`;
 	const reasonId = `${baseId}-reason`;
-	const blocked = useShownErrors(true).length > 0;
-	const noTypes = values.types.length === 0;
+	const blocked = errorPaths(errors).length > 0;
+	const noTypes = types.value.length === 0;
 	const showReason = noTypes && !blocked && !isSubmitting;
 	const describedBy = blocked ? noteId : showReason ? reasonId : undefined;
+	// which button started the save, for its spinner: "Keep on server" submits the form itself, Download (and Enter
+	// in a field) is the submit button
 	const [keepRunning, setKeepRunning] = useState(false);
+	// a submit that ends without running onSubmit (refused) must not leave "Keep on server" armed for a later Enter
+	useEffect(() => {
+		if (isSubmitting) return;
+		setKeepRunning(false);
+		keepRef.current = false;
+	}, [isSubmitting, keepRef]);
+	const onBlocked = (e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus);
 
-	const keepOnServer = () => {
+	const keepOnServer = (e) => {
 		keepRef.current = true;
 		setKeepRunning(true);
-		void submitForm().finally(() => setKeepRunning(false));
+		e.currentTarget.form?.requestSubmit();
 	};
 
 	return (
-		<Form className="card mb-4" noValidate>
+		<>
 			<div className="card-header">
 				<h3 className="card-title">
 					<T id="settings.backup.create" />
@@ -47,15 +64,15 @@ function CreateForm({ data, error, keepRef }) {
 					categories={data.categories}
 					counts={data.counts}
 					certificateKinds={data.certificateKinds}
-					selected={values.types}
-					onChange={(types) => setFieldValue("types", types)}
+					selected={types.value}
+					onChange={types.onChange}
 					disabled={isSubmitting}
 				/>
 				<SecretsFields offNoteId="settings.backup.secrets.off" disabled={isSubmitting} />
 				<ErrorAlert error={error} className="mb-0" />
 			</div>
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
-				<FormErrorNote id={noteId} late className="me-2 text-end" />
+				<FormErrorNote id={noteId} className="me-2 text-end" />
 				{showReason ? (
 					<span id={reasonId} className="text-secondary small me-2 text-end">
 						<T id="settings.backup.reason.no-types" />
@@ -65,7 +82,7 @@ function CreateForm({ data, error, keepRef }) {
 					isLoading={isSubmitting && keepRunning}
 					disabled={(isSubmitting && !keepRunning) || (noTypes && !blocked)}
 					blocked={blocked}
-					onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+					onBlockedClick={onBlocked}
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={keepOnServer}
 					aria-describedby={describedBy}
@@ -78,35 +95,37 @@ function CreateForm({ data, error, keepRef }) {
 					isLoading={isSubmitting && !keepRunning}
 					disabled={(isSubmitting && keepRunning) || (noTypes && !blocked)}
 					blocked={blocked}
-					onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+					onBlockedClick={onBlocked}
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={() => {
 						keepRef.current = false;
+						setKeepRunning(false);
 					}}
 					aria-describedby={describedBy}
 				>
 					<T id="action.download" />
 				</Button>
 			</div>
-		</Form>
+		</>
 	);
 }
 
-/**
- * Create a backup: the parts to include, secrets with a passphrase or none, then download it at once or keep it on
- * the server (it then shows in the stored backups).
- */
-function CreateCard() {
-	const { data, isPending, error: loadError } = useBackupTypes();
+// the form of the loaded backup types: the default parts chosen, secrets on
+function CreateBackupForm({ data }) {
 	const createBackup = useCreateBackup();
 	const [error, setError] = useState(null);
 	// which button submitted: the submit button (Enter in a field too) downloads, "Keep on server" sets it first
 	const keepRef = useRef(false);
+	const [defaultValues] = useState(() => ({
+		types: DEFAULT_SELECTED(data.categories),
+		secrets: true,
+		passphrase: "",
+		passphraseRepeat: "",
+	}));
+	const methods = useAppForm({ defaultValues, validate: validateSecrets });
+	const resetToSaved = useResetToSaved(methods);
 
-	if (isPending) return <Loading noLogo />;
-	if (loadError) return <ErrorAlert error={loadError} />;
-
-	const onSubmit = async (values, { resetForm }) => {
+	const onSubmit = async (values) => {
 		const keep = keepRef.current;
 		keepRef.current = false;
 		if (values.types.length === 0) return;
@@ -123,27 +142,33 @@ function CreateCard() {
 			} else {
 				await downloadPendingBackup(result.pending, result.name);
 			}
-			// the passphrase is not kept around once it was used
-			resetForm({ values: { ...values, passphrase: "", passphraseRepeat: "" } });
+			// the passphrase is not kept around once it was used; the rest is the new starting point
+			methods.setValue("passphrase", "");
+			methods.setValue("passphraseRepeat", "");
+			resetToSaved();
 		} catch (err) {
 			setError(withErrorDetails(err));
 		}
 	};
 
 	return (
-		<Formik
-			initialValues={{
-				types: DEFAULT_SELECTED(data.categories),
-				secrets: true,
-				passphrase: "",
-				passphraseRepeat: "",
-			}}
-			validate={validateSecrets}
-			onSubmit={onSubmit}
-		>
+		<HookForm methods={methods} onSubmit={onSubmit} className="card mb-4">
 			<CreateForm data={data} error={error} keepRef={keepRef} />
-		</Formik>
+		</HookForm>
 	);
+}
+
+/**
+ * Create a backup: the parts to include, secrets with a passphrase or none, then download it at once or keep it on
+ * the server (it then shows in the stored backups).
+ */
+function CreateCard() {
+	const { data, isPending, error: loadError } = useBackupTypes();
+
+	if (isPending) return <Loading noLogo />;
+	if (loadError) return <ErrorAlert error={loadError} />;
+
+	return <CreateBackupForm data={data} />;
 }
 
 export { CreateCard };
