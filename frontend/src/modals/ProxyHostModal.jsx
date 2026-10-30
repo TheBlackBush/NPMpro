@@ -41,7 +41,13 @@ import { joinIds } from "src/modules/FormFields";
 import { applyChanges } from "src/modules/HookForm";
 import { domainNamesOptions } from "src/modules/HostForms";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { namedLocations, proxyHostDefaults, proxyHostPayload, proxyHostValidate } from "src/modules/ProxyHostForms";
+import {
+	hostRecheckOnScheme,
+	namedLocations,
+	proxyHostDefaults,
+	proxyHostPayload,
+	proxyHostValidate,
+} from "src/modules/ProxyHostForms";
 import { getOptionHintId, getOptionsResetByScheme, proxyOptionChanges } from "src/modules/ProxyOptions";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
@@ -194,8 +200,8 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 													getOptionsResetByScheme(getValues(), scheme).length > 0,
 												);
 												applyOption("forwardScheme", scheme);
-												// "empty" needs no forward host
-												recheckHost();
+												// forwardScheme is still the scheme before this change
+												if (hostRecheckOnScheme(forwardScheme, scheme)) recheckHost();
 											},
 										})}
 									>

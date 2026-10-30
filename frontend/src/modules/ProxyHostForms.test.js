@@ -4,6 +4,7 @@ import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import { CERTIFICATE_REQUEST_DEFAULTS } from "./HostForms.js";
 import {
+	hostRecheckOnScheme,
 	insideWebroot,
 	locationErrors,
 	namedLocations,
@@ -231,4 +232,17 @@ it("sends the proxy host as before: public without lists, ports as numbers, rows
 	assert.equal("npmproReuseKey" in payload, false);
 	assert.equal(proxyHostPayload({ ...values, forwardPort: "" }).forwardPort, 0);
 	assert.deepEqual(proxyHostPayload({ ...values, npmproAccessListType: "custom" }).npmproAccessListIds, [2, 4]);
+});
+
+it("hostRecheckOnScheme: the forward host is checked again after a scheme change, except when coming back from empty", () => {
+	// "empty" needs no host, so a shown "This is required" goes
+	assert.equal(hostRecheckOnScheme("http", "empty"), true);
+	assert.equal(hostRecheckOnScheme("path", "empty"), true);
+	// back from "empty" the host stays quiet until it is left or Save is clicked
+	assert.equal(hostRecheckOnScheme("empty", "http"), false);
+	assert.equal(hostRecheckOnScheme("empty", "path"), false);
+	assert.equal(hostRecheckOnScheme("empty", "grpcs"), false);
+	// between schemes that need a host its message follows
+	assert.equal(hostRecheckOnScheme("http", "https"), true);
+	assert.equal(hostRecheckOnScheme("https", "path"), true);
 });

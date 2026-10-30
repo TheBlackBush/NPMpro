@@ -79,6 +79,17 @@ export const newLocation = (location = {}) => ({
 export const namedLocations = (rows) => rows.filter((row) => String(row.path ?? "").trim() !== "");
 
 /**
+ * Whether a forward scheme change checks the proxy host's forward host again: "empty" needs no host, so its message
+ * goes; coming back from "empty" the host stays quiet until it is left or Save is clicked (as the Formik window,
+ * whose check after a scheme change still saw "empty"); between schemes that need a host its message follows.
+ *
+ * @param   {string}  previous  the scheme before the change
+ * @param   {string}  scheme    the chosen scheme
+ * @returns {boolean}
+ */
+export const hostRecheckOnScheme = (previous, scheme) => scheme === "empty" || previous !== "empty";
+
+/**
  * The errors of the location rows (blank ones included), one object per row in the same order, or undefined
  *
  * @param   {Object}   rules  createValidations(intl)
