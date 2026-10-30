@@ -3,6 +3,8 @@ import Modal from "react-bootstrap/Modal";
 
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
+// Dialogs are centred; windows with tabs pass centered={false} so their top edge stays put when a tab changes the
+// height.
 function AppModal({ children, centered = true, ...props }) {
 	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
