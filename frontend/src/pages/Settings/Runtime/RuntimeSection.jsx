@@ -1,7 +1,7 @@
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
-import { Form, Formik, useFormikContext } from "formik";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { ErrorAlert, Loading } from "src/components";
+import { useWatch } from "react-hook-form";
+import { ErrorAlert, HookForm, Loading, useAppForm, useFieldOrder } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -15,6 +15,7 @@ import {
 	restartPendingFields,
 	runtimeSettingsPayload,
 } from "src/modules/RuntimeSettings";
+import { unlockedErrors } from "src/modules/SettingsForms";
 import { showError, showObjectSuccess } from "src/notifications";
 import { SaveBar } from "../SaveBar";
 import { StatusAlert } from "../StatusAlert";
@@ -101,8 +102,14 @@ function SaveErrorContent({ message, lead }) {
 	);
 }
 
+/**
+ * Save: nothing to save while the request would be empty (no changed, unlocked key), so it reads every field of the
+ * section (by name, in form order)
+ */
 function SaveButton({ group, toApi, data }) {
-	const { values } = useFormikContext();
+	const names = useFieldOrder();
+	const list = useWatch({ name: names });
+	const values = Object.fromEntries(names.map((name, index) => [name, list[index]]));
 	const locked = new Set((data.locked ?? []).map(camel));
 	const allLocked = (GROUP_KEYS[group] ?? []).every((key) => locked.has(key));
 	return (
@@ -139,18 +146,66 @@ function useSaveError() {
  * @param {string}    group
  * @param {unknown}   err
  * @param {Object}    show
- * @param {Function}  show.setErrorMsg      the inline alert setter (useSaveError)
- * @param {Function}  [show.setFieldError]  Formik's
- * @param {*}         [show.lead]           shown above the message
+ * @param {Function}  show.setErrorMsg  the inline alert setter (useSaveError)
+ * @param {Function}  [show.setError]   React Hook Form's
+ * @param {*}         [show.lead]       shown above the message
  */
-const reportSaveError = (group, err, { setErrorMsg, setFieldError, lead }) => {
+const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
 	const { message } = formatApiError(err, hasMessage, formatMessage);
 	const field = fieldOfError(group, message);
 	const text = field ? field.message : message;
 	setErrorMsg(<SaveErrorContent message={text} lead={lead} />);
 	showError(<SaveErrorContent message={text} lead={lead} />);
-	if (field && setFieldError) setFieldError(field.key, field.message);
+	if (field && setError) setError(field.key, { type: "server", message: field.message });
 };
+
+/**
+ * The form of a loaded group: the saved settings are its values, also after a save or a refetch (new settings
+ * replace every field)
+ */
+function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }) {
+	const { mutateAsync: save } = useSaveRuntimeSettings(group);
+	const { alert, setErrorMsg } = useSaveError();
+	const ctx = runtimeContextOf(group, data);
+	const saved = toForm(data);
+	const methods = useAppForm({
+		defaultValues: saved,
+		values: saved,
+		keepEdits: false,
+		// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
+		validate: (values) => unlockedErrors(validate?.(values), ctx.isLocked),
+	});
+
+	const onSubmit = async (values) => {
+		setErrorMsg(null);
+		const payload = runtimeSettingsPayload(group, toApi(values), data.locked, data);
+		try {
+			if (!isEmptyPayload(payload)) {
+				await save(payload);
+				showObjectSuccess("setting", "saved");
+			}
+		} catch (err) {
+			reportSaveError(group, err, { setErrorMsg, setError: methods.setError });
+		}
+	};
+
+	return (
+		<RuntimeContext.Provider value={ctx}>
+			<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
+				<div className="card-body flex-fill">
+					<Heading titleId={titleId} />
+					{alert}
+					{ctx.anyLocked ? (
+						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
+					) : null}
+					<RestartPendingAlert data={data} />
+					{children}
+				</div>
+				<SaveButton group={group} toApi={toApi} data={data} />
+			</HookForm>
+		</RuntimeContext.Provider>
+	);
+}
 
 /**
  * One runtime settings section (Settings > Certificates & TLS, Network, Forward authentication, Advanced): heading,
@@ -159,15 +214,13 @@ const reportSaveError = (group, err, { setErrorMsg, setFieldError, lead }) => {
  * @param {Object}    props
  * @param {string}    props.group     runtime settings group
  * @param {string}    props.titleId   heading translation id
- * @param {Function}  props.toForm    (data) => Formik initial values
+ * @param {Function}  props.toForm    (data) => the form's values, in the order the section shows its fields
  * @param {Function}  props.toApi     (form values) => API values (camelCase, comparable with the loaded data)
- * @param {Function}  [props.validate]
+ * @param {Function}  [props.validate]  (values) => errors of translated messages (a locked field's are dropped)
  * @param {*}         props.children  the fields
  */
 function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 	const { data, isPending, error } = useRuntimeSettings(group);
-	const { mutateAsync: save } = useSaveRuntimeSettings(group);
-	const { alert, setErrorMsg } = useSaveError();
 
 	if (error || isPending) {
 		return (
@@ -178,46 +231,10 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 		);
 	}
 
-	const ctx = runtimeContextOf(group, data);
-	// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
-	const validateUnlocked = (values) =>
-		Object.fromEntries(Object.entries(validate?.(values) ?? {}).filter(([key]) => !ctx.isLocked(key)));
-
-	const onSubmit = async (values, { setSubmitting, setFieldError }) => {
-		setErrorMsg(null);
-		const payload = runtimeSettingsPayload(group, toApi(values), data.locked, data);
-		try {
-			if (!isEmptyPayload(payload)) {
-				await save(payload);
-				showObjectSuccess("setting", "saved");
-			}
-		} catch (err) {
-			reportSaveError(group, err, { setErrorMsg, setFieldError });
-		}
-		setSubmitting(false);
-	};
-
 	return (
-		<RuntimeContext.Provider value={ctx}>
-			<Formik enableReinitialize initialValues={toForm(data)} validate={validateUnlocked} onSubmit={onSubmit}>
-				<Form className="d-flex flex-column flex-fill" noValidate>
-					<div className="card-body flex-fill">
-						<Heading titleId={titleId} />
-						{alert}
-						{ctx.anyLocked ? (
-							<StatusAlert
-								variant="info"
-								icon={IconInfoCircle}
-								id="settings.authentication.status.locked"
-							/>
-						) : null}
-						<RestartPendingAlert data={data} />
-						{children}
-					</div>
-					<SaveButton group={group} toApi={toApi} data={data} />
-				</Form>
-			</Formik>
-		</RuntimeContext.Provider>
+		<RuntimeForm group={group} titleId={titleId} data={data} toForm={toForm} toApi={toApi} validate={validate}>
+			{children}
+		</RuntimeForm>
 	);
 }
 

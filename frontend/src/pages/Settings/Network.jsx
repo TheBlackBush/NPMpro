@@ -1,5 +1,7 @@
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import { parseTrustedIps } from "src/modules/RuntimeSettings";
+import { networkValidate } from "src/modules/SettingsForms";
+import { validations } from "src/modules/Validations";
 import { RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { RuntimeSection } from "./Runtime/RuntimeSection";
 
@@ -10,23 +12,7 @@ const toForm = (data) => ({
 
 const toApi = (values) => ({ ...values, trustedIps: parseTrustedIps(values.trustedIps).list });
 
-// the backend accepts at most this many entries (schema/paths/settings/runtime/network/put.json)
-const MAX_TRUSTED_IPS = 1000;
-
-const validate = (values) => {
-	const { list, errors } = parseTrustedIps(values.trustedIps);
-	if (errors.length > 0) {
-		return {
-			trustedIps: errors.map(({ line, message }) => intl.formatMessage({ id: message }, { line })).join(" "),
-		};
-	}
-	if (list.length > MAX_TRUSTED_IPS) {
-		return {
-			trustedIps: intl.formatMessage({ id: "settings.network.trusted-ips.too-many" }, { max: MAX_TRUSTED_IPS }),
-		};
-	}
-	return {};
-};
+const validate = networkValidate(validations);
 
 export default function Network() {
 	return (

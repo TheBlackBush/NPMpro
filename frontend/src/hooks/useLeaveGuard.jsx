@@ -1,5 +1,6 @@
 import { useFormikContext } from "formik";
 import { useEffect } from "react";
+import { useFormContext, useFormState } from "react-hook-form";
 import { intl } from "src/locale";
 
 let guards = 0;
@@ -55,13 +56,24 @@ const useLeaveGuard = (dirty) => {
 	}, [dirty]);
 };
 
-/**
- * Place inside a Formik form: asks before leaving the page with unsaved changes (useLeaveGuard)
- */
-function LeaveGuard() {
+function FormikLeaveGuard() {
 	const { dirty, isSubmitting } = useFormikContext();
 	useLeaveGuard(dirty && !isSubmitting);
 	return null;
+}
+
+function HookFormLeaveGuard() {
+	const { isDirty, isSubmitting } = useFormState();
+	useLeaveGuard(isDirty && !isSubmitting);
+	return null;
+}
+
+/**
+ * Place inside a form (React Hook Form's isDirty, or Formik's dirty until every Settings section moved): asks before
+ * leaving the page with unsaved changes (useLeaveGuard)
+ */
+function LeaveGuard() {
+	return useFormContext() ? <HookFormLeaveGuard /> : <FormikLeaveGuard />;
 }
 
 export { confirmLeave, LeaveGuard, useLeaveGuard };
