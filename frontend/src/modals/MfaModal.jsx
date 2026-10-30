@@ -2,12 +2,11 @@ import { IconCopy } from "@tabler/icons-react";
 import cn from "clsx";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
-import { Controller } from "react-hook-form";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
-import { HookForm, PasswordInput, useAppForm } from "src/components/Form";
+import { CodeEntry, HookForm, useAppForm } from "src/components/Form";
 import { intl, T } from "src/locale";
-import { mfaCodeValidate } from "src/modules/AccountForms";
+import { CODE_VALUES, codeOf, mfaCodeValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
 import { validations } from "src/modules/Validations";
 
@@ -16,34 +15,26 @@ const showMfaModal = (id) => {
 };
 
 /**
- * The code form of a step (setup, disable, verify): the code field (a controller: the field shows its placeholder
- * as text while empty), Cancel back to the status and the step's button
+ * The code form of a step (setup, disable, verify): the code (the six boxes; turning two-factor off also takes a
+ * backup code), Cancel back to the status and the step's button. onSubmit({ code }) returns false when the code was
+ * refused: the field is emptied and gets the focus again.
  */
-function CodeForm({ step, labelId, inputMode, maxLength, color, submitId, onSubmit, onCancel, isSubmitting }) {
-	const methods = useAppForm({ defaultValues: { code: "" }, validate: mfaCodeValidate(validations, step) });
+function CodeForm({ step, labelId, allowBackup = false, color, submitId, onSubmit, onCancel, isSubmitting }) {
+	// keepEdits false: the reset after a refused code empties the field the user typed in
+	const methods = useAppForm({
+		defaultValues: CODE_VALUES,
+		validate: mfaCodeValidate(validations, step),
+		keepEdits: false,
+	});
+	const { setFocus } = methods;
+	const submit = async (values) => {
+		if ((await onSubmit({ code: codeOf(values) })) !== false) return;
+		methods.reset({ ...CODE_VALUES, useBackup: values.useBackup });
+		setFocus(values.useBackup ? "backupCode" : "code");
+	};
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
-			<Controller
-				name="code"
-				control={methods.control}
-				render={({ field, fieldState }) => (
-					<div className="mb-3">
-						<PasswordInput
-							{...field}
-							id="mfa-code"
-							label={<T id={labelId} />}
-							textWhenEmpty
-							inputMode={inputMode}
-							autoComplete="one-time-code"
-							required
-							className="text-center font-monospace"
-							placeholder="000000"
-							maxLength={maxLength}
-							error={fieldState.error?.message ?? null}
-						/>
-					</div>
-				)}
-			/>
+		<HookForm methods={methods} onSubmit={submit}>
+			<CodeEntry idPrefix={`mfa-${step}`} label={<T id={labelId} />} allowBackup={allowBackup} />
 			<div className="d-flex gap-2 align-items-start">
 				<Button type="button" fullWidth onClick={onCancel} disabled={isSubmitting}>
 					<T id="cancel" />
@@ -101,48 +92,45 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		setIsSubmitting(false);
 	};
 
-	const handleVerify = async (values) => {
+	// a code step's request: false when it was refused (the code form empties its field)
+	const submitCode = async (request) => {
 		setError(null);
 		setIsSubmitting(true);
 		try {
-			const result = await enableTotp(id, values);
+			await request();
+			return true;
+		} catch (err) {
+			setError(<ApiErrorContent error={err} />);
+			return false;
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const handleVerify = (payload) =>
+		submitCode(async () => {
+			const result = await enableTotp(id, payload);
 			if (result.backupCodes) {
 				setBackupCodes(result.backupCodes);
 				setStep("backup");
 			} else {
 				await loadStatus();
 			}
-		} catch (err) {
-			setError(<ApiErrorContent error={err} />);
-		}
-		setIsSubmitting(false);
-	};
+		});
 
-	const handleDisable = async (values) => {
-		setError(null);
-		setIsSubmitting(true);
-		try {
-			await disableTotp(id, values);
+	const handleDisable = (payload) =>
+		submitCode(async () => {
+			await disableTotp(id, payload);
 			setIsEnabled(false);
 			setStep("status");
-		} catch (err) {
-			setError(<ApiErrorContent error={err} />);
-		}
-		setIsSubmitting(false);
-	};
+		});
 
-	const handleRegenerateBackup = async (values) => {
-		setError(null);
-		setIsSubmitting(true);
-		try {
-			const result = await regenerateBackupCodes(id, values);
+	const handleRegenerateBackup = (payload) =>
+		submitCode(async () => {
+			const result = await regenerateBackupCodes(id, payload);
 			setBackupCodes(result.backupCodes);
 			setStep("backup");
-		} catch (err) {
-			setError(<ApiErrorContent error={err} />);
-		}
-		setIsSubmitting(false);
-	};
+		});
 
 	const handleBackupDone = () => {
 		setIsEnabled(true);
@@ -232,8 +220,6 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 						key="setup"
 						step="setup"
 						labelId="totp.enter-code"
-						inputMode="numeric"
-						maxLength={6}
 						color="primary"
 						submitId="totp.verify-enable"
 						onSubmit={handleVerify}
@@ -276,7 +262,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 						key="disable"
 						step="disable"
 						labelId="totp.enter-code-disable"
-						maxLength={8}
+						allowBackup
 						color="danger"
 						submitId="totp.disable-confirm"
 						onSubmit={handleDisable}
@@ -300,8 +286,6 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 						key="verify"
 						step="verify"
 						labelId="totp.enter-code"
-						inputMode="numeric"
-						maxLength={6}
 						color="primary"
 						submitId="mfa.regenerate"
 						onSubmit={handleRegenerateBackup}

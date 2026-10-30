@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Controller, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import {
 	BrandMark,
 	Button,
@@ -12,10 +12,11 @@ import {
 	ThemeSwitcher,
 	useAppForm,
 } from "src/components";
-import { PasswordInput } from "src/components/Form";
+import { CodeEntry, PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
+import { CODE_VALUES, codeComplete, codeOf } from "src/modules/AccountForms";
 import { getCookie } from "src/modules/Cookies";
 import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
 import { validateEmail } from "src/modules/Validations";
@@ -26,39 +27,29 @@ const checkEmail = validateEmail();
 // the invalid-address hint once the field was left with something typed in it (an empty field shows nothing)
 const emailHint = (value, touched) => (touched && value.trim() !== "" ? (checkEmail(value.trim()) ?? null) : null);
 
+const CODE_FIELDS = ["code", "backupCode", "useBackup"];
+
 /**
- * The code and the buttons. The code field is a controller: it shows its placeholder as text while empty
- * (PasswordInput reads the value). codeRef gets the input, for the focus.
+ * The code (the six boxes, or a backup code) and the buttons; Verify waits for a complete code. A refused code
+ * empties its field and puts the focus back in it.
  */
-function TotpCodeForm({ codeRef, onSubmit }) {
+function TotpCodeForm({ onSubmit }) {
 	const { cancelTotp } = useAuthState();
-	const methods = useAppForm({ defaultValues: { code: "" }, keepEdits: false });
+	const methods = useAppForm({ defaultValues: CODE_VALUES, keepEdits: false });
 	const { isSubmitting } = methods.formState;
-	const code = useWatch({ control: methods.control, name: "code" });
+	const { setFocus } = methods;
+	const [code, backupCode, useBackup] = useWatch({ control: methods.control, name: CODE_FIELDS });
+	useEffect(() => {
+		setFocus("code");
+	}, [setFocus]);
+	const submit = async (values) => {
+		if (await onSubmit({ code: codeOf(values) })) return;
+		methods.reset({ ...CODE_VALUES, useBackup: values.useBackup });
+		setFocus(values.useBackup ? "backupCode" : "code");
+	};
 	return (
-		<HookForm methods={methods} onSubmit={(values) => onSubmit(values, methods.reset)}>
-			<div className="mb-3">
-				<Controller
-					name="code"
-					control={methods.control}
-					render={({ field }) => (
-						<PasswordInput
-							{...field}
-							ref={(input) => {
-								field.ref(input);
-								codeRef.current = input;
-							}}
-							id="login-totp-code"
-							label={<T id="login.totp-code" />}
-							textWhenEmpty
-							autoComplete="one-time-code"
-							required
-							maxLength={8}
-							placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
-						/>
-					)}
-				/>
-			</div>
+		<HookForm methods={methods} onSubmit={submit}>
+			<CodeEntry idPrefix="login-totp" label={<T id="login.totp-code" />} allowBackup />
 			<div className="form-footer d-flex gap-2 align-items-start">
 				<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
 					<T id="cancel" />
@@ -68,7 +59,7 @@ function TotpCodeForm({ codeRef, onSubmit }) {
 					fullWidth
 					color="azure"
 					isLoading={isSubmitting}
-					disabled={isSubmitting || code.trim() === ""}
+					disabled={isSubmitting || !codeComplete({ code, backupCode, useBackup })}
 				>
 					<T id="login.totp-verify" />
 				</Button>
@@ -78,24 +69,20 @@ function TotpCodeForm({ codeRef, onSubmit }) {
 }
 
 function TotpForm() {
-	const codeRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
 	const { submitTotp } = useAuthState();
 
-	// a refused code empties the field
-	const onSubmit = async (values, reset) => {
+	// true when signed in; a refused code shows why and the form empties the field
+	const onSubmit = async (payload) => {
 		setFormErr(null);
 		try {
-			await submitTotp(values);
+			await submitTotp(payload);
+			return true;
 		} catch (err) {
 			setFormErr(err);
-			reset();
+			return false;
 		}
 	};
-
-	useEffect(() => {
-		codeRef.current?.focus();
-	});
 
 	return (
 		<>
@@ -106,7 +93,7 @@ function TotpForm() {
 				<T id="login.totp-description" />
 			</p>
 			{formErr && <ErrorAlert error={formErr} />}
-			<TotpCodeForm codeRef={codeRef} onSubmit={onSubmit} />
+			<TotpCodeForm onSubmit={onSubmit} />
 		</>
 	);
 }
