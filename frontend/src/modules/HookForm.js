@@ -214,3 +214,17 @@ export function rowErrorPaths(listErrors, name, field) {
 	if (!Array.isArray(listErrors)) return [];
 	return listErrors.flatMap((row, index) => (row?.[field] ? [`${name}.${index}.${field}`] : []));
 }
+
+/**
+ * Sets every field of a change map (tlsChanges, forwardingChanges, proxyOptionChanges) in its order, dirty as a
+ * user's change; under a row's path when prefix is given ("locations.2" -> locations.2.forwardScheme)
+ *
+ * @param   {Function} setValue  React Hook Form's setValue
+ * @param   {Object}   changes   name -> value
+ * @param   {string}   [prefix]  the path of a list row
+ */
+export function applyChanges(setValue, changes, prefix = "") {
+	for (const [key, value] of Object.entries(changes)) {
+		setValue(prefix ? `${prefix}.${key}` : key, value, { shouldDirty: true });
+	}
+}

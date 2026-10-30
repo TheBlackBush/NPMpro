@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	applyChanges,
 	controlNames,
 	errorPaths,
 	fieldPaths,
@@ -146,4 +147,16 @@ it("lists the rows of a list whose field holds a message", () => {
 	assert.deepEqual(rowErrorPaths(errors, "locations", "path"), ["locations.1.path"]);
 	assert.deepEqual(rowErrorPaths(undefined, "locations", "path"), []);
 	assert.deepEqual(rowErrorPaths({ type: "validate" }, "locations", "path"), []);
+});
+
+it("sets every field of a change map in its order, dirty, under a row's path when given", () => {
+	const calls = [];
+	const setValue = (...args) => calls.push(args);
+	applyChanges(setValue, { forwardScheme: "path", npmproFancyindex: false });
+	applyChanges(setValue, { npmproAuthRequestUpstream: "" }, "locations.2");
+	assert.deepEqual(calls, [
+		["forwardScheme", "path", { shouldDirty: true }],
+		["npmproFancyindex", false, { shouldDirty: true }],
+		["locations.2.npmproAuthRequestUpstream", "", { shouldDirty: true }],
+	]);
 });

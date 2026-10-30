@@ -11,6 +11,8 @@ import { HOST_PATTERN } from "./ValidationRules.js";
 const SINGLE_PORT = /^[0-9]{1,5}$/u;
 const PORT_RANGE = /^(?<from>[0-9]{1,5})(?:-(?<to>[0-9]{1,5}))?$/u;
 const isPort = (text) => text !== undefined && Number(text) >= 1 && Number(text) <= 65535;
+// a proxy target: a host with an optional /path (schema/components/proxy-host-object.json)
+const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
 
 /**
  * The fields of a certificate request (certificate "new"), with their starting values. They only exist in the
@@ -152,6 +154,30 @@ export function requestValues(values) {
 }
 
 /**
+ * The message of a forward host (the backend's rules: required, no whitespace or nginx syntax characters): a
+ * redirection host's domain or a stream's host up to 253 characters; a proxy host's or a location's target (proxy)
+ * up to 255 with an optional /path, and none for the "empty" scheme
+ *
+ * @param   {Object}  rules    createValidations(intl)
+ * @param   {*}       value
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.proxy]   a proxy host or location target
+ * @param   {string}  [options.scheme]  the proxy target's forward scheme
+ * @returns {string|undefined}
+ */
+export function forwardHostError(rules, value, { proxy = false, scheme } = {}) {
+	if (!proxy) {
+		return rules.validateText({ required: true, max: 253, pattern: HOST_PATTERN, messageId: "error.invalid-host" })(
+			value,
+		);
+	}
+	if (scheme === "empty") return;
+	const host = String(value ?? "").trim();
+	if (host === "") return rules.message("error.required");
+	if (host.length > 255 || !FORWARD_HOST.test(host)) return rules.message("error.invalid-host");
+}
+
+/**
  * The starting values of a redirection host (a new one has the defaults of useRedirectionHost), in the window's order
  *
  * @param   {Object} data
@@ -181,12 +207,7 @@ export const redirectionHostDefaults = (data) => ({
 export const redirectionHostValidate = (rules) =>
 	fieldsValidate((values) => ({
 		domainNames: domainNamesRule(rules, domainNamesOptions(values)),
-		forwardDomainName: rules.validateText({
-			required: true,
-			max: 253,
-			pattern: HOST_PATTERN,
-			messageId: "error.invalid-host",
-		}),
+		forwardDomainName: (value) => forwardHostError(rules, value),
 		...tlsRules(rules, values),
 	}));
 
@@ -262,12 +283,7 @@ export const streamValidate = (rules) =>
 			return valid ? undefined : rules.message("stream.incoming-port.invalid");
 		},
 		npmproDescription: rules.validateString(0, 255),
-		forwardingHost: rules.validateText({
-			required: true,
-			max: 253,
-			pattern: HOST_PATTERN,
-			messageId: "error.invalid-host",
-		}),
+		forwardingHost: (value) => forwardHostError(rules, value),
 		forwardingPort: (value) => {
 			const text = String(value ?? "").trim();
 			if (text === "" || text === "$server_port" || (SINGLE_PORT.test(text) && isPort(text))) return;

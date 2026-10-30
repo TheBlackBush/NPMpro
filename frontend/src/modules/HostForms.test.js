@@ -7,6 +7,7 @@ import {
 	deadHostDefaults,
 	deadHostValidate,
 	domainNamesOptions,
+	forwardHostError,
 	forwardingChanges,
 	hiddenTlsFields,
 	isProxyTlsPossible,
@@ -354,4 +355,22 @@ it("stream: the request has domain names only for a requested certificate, TLS o
 	assert.deepEqual(requested.domainNames, ["a.com"]);
 	assert.equal(requested.npmproProxyTls, true);
 	assert.equal(requested.npmproDnsCredentialId, 3);
+});
+
+it("checks a forward host with one rule: up to 253 for a domain, a /path and 255 for a proxy target", () => {
+	assert.equal(forwardHostError(rules, ""), "This is required");
+	assert.equal(forwardHostError(rules, "example.com"), undefined);
+	assert.equal(forwardHostError(rules, "x".repeat(254)), "Maximum length is 253 characters");
+	assert.equal(forwardHostError(rules, "a;b"), "Must not contain spaces or the characters ; { } \" ' \\ #");
+	assert.equal(forwardHostError(rules, " ", { proxy: true, scheme: "http" }), "This is required");
+	assert.equal(forwardHostError(rules, "", { proxy: true, scheme: "empty" }), undefined);
+	assert.equal(forwardHostError(rules, "10.0.0.1/app", { proxy: true, scheme: "http" }), undefined);
+	assert.equal(
+		forwardHostError(rules, "a/b/c d", { proxy: true, scheme: "http" }),
+		"Must not contain spaces or the characters ; { } \" ' \\ #",
+	);
+	assert.equal(
+		forwardHostError(rules, "x".repeat(256), { proxy: true, scheme: "path" }),
+		"Must not contain spaces or the characters ; { } \" ' \\ #",
+	);
 });
