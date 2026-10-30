@@ -1,5 +1,5 @@
-import { Form, Formik } from "formik";
 import { useState } from "react";
+import { useFormState, useWatch } from "react-hook-form";
 import {
 	ApiErrorContent,
 	AppModal,
@@ -9,11 +9,14 @@ import {
 	ErrorAlert,
 	FormSubmit,
 	HasPermission,
+	HookForm,
 	Loading,
 	NginxConfigField,
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
+	useAppForm,
+	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
@@ -21,185 +24,183 @@ import {
 	useDeadHosts,
 	useDirectorySuggestions,
 	useSetDeadHost,
+	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
+import { deadHostDefaults, deadHostValidate, domainNamesOptions, requestValues } from "src/modules/HostForms";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
+import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
 const showDeadHostModal = (id) => {
 	EasyModal.show(DeadHostModal, { id });
 };
 
-const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
-	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
-	const { data, isPending, error } = useDeadHost(id);
-	const { mutate: setDeadHost } = useSetDeadHost();
-	const { data: allDeadHosts } = useDeadHosts();
-	const suggestions = useDirectorySuggestions(allDeadHosts);
+const validate = deadHostValidate(validations);
+
+function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
+	const { isSubmitting } = useFormState();
+	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
+		name: ["certificateId", "npmproDnsChallenge", "advancedConfig", "npmproPropagationSeconds"],
+	});
+	return (
+		<>
+			<AppModal.Header closeButton={!isSubmitting}>
+				<AppModal.Title>
+					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "dead-host" }} />
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
+				<ErrorAlert className="mb-3" onClose={onCloseError}>
+					{errorMsg}
+				</ErrorAlert>
+				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
+					<li className="nav-item" role="presentation">
+						<a
+							href="#tab-details"
+							className="nav-link active"
+							data-bs-toggle="tab"
+							aria-selected="true"
+							role="tab"
+						>
+							<T id="column.details" />
+						</a>
+					</li>
+					<li className="nav-item" role="presentation">
+						<a href="#tab-ssl" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
+							<T id="column.ssl" />
+						</a>
+					</li>
+					<li className="nav-item" role="presentation">
+						<a
+							href="#tab-advanced"
+							className="nav-link"
+							data-bs-toggle="tab"
+							aria-selected="false"
+							role="tab"
+						>
+							<T id="domains.advanced" />
+							{advancedConfig?.trim() ? "*" : ""}
+						</a>
+					</li>
+				</ul>
+				<div className="tab-content">
+					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+					</div>
+					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+						<SSLCertificateField label="ssl-certificate" allowNew />
+
+						<SSLOptionsFields />
+					</div>
+					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+						<NginxConfigField />
+						<div className="row mt-3">
+							<div className="col-md-12 mb-3">
+								<DirectoryField
+									labelId="dead-host.directory"
+									datalistId="directory-suggestions-dead"
+									suggestions={suggestions}
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+				<RequestProgress
+					running={isSubmitting && certificateId === "new"}
+					propagationSeconds={npmproPropagationSeconds}
+				/>
+			</AppModal.Body>
+			<AppModal.Footer>
+				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+					<T id="cancel" />
+				</Button>
+				<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
+					<FormSubmit
+						className="ms-auto"
+						edit={Boolean(data.id)}
+						color="primary"
+						isLoading={isSubmitting}
+						disabled={isSubmitting}
+					>
+						<T id="save" />
+					</FormSubmit>
+				</HasPermission>
+			</AppModal.Footer>
+		</>
+	);
+}
+
+// the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
+// complete defaultValues from the first render, no reset on a refetch
+function DeadHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+	const [defaultValues] = useState(() => deadHostDefaults(data));
+	const methods = useAppForm({ defaultValues, validate });
+	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
 	// set once a new host was created but its nginx config failed, so saving again updates it
 	const [savedId, setSavedId] = useState(null);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const onSubmit = (values, { resetForm, setSubmitting }) => {
-		if (isSubmitting) return;
-		setIsSubmitting(true);
+	const onSubmit = async (values) => {
 		setErrorMsg(null);
-
-		const payload = {
-			id: savedId ?? (id === "new" ? undefined : id),
-			...values,
-		};
-
-		setDeadHost(payload, {
-			onError: (err) => {
-				setErrorMsg(<ApiErrorContent error={err} />);
-			},
-			onSuccess: (row) => {
-				const nginxErr = getNginxConfigError(row);
-				if (nginxErr === null) {
-					showObjectSuccess("dead-host", "saved");
-					remove();
-					return;
-				}
-				setSavedId(row.id);
-				// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend
-				// created, otherwise saving again with "new" would request another one
-				resetForm({ values: { ...values, certificateId: row.certificateId } });
-				setErrorMsg(<NginxConfigErrorMsg obj="dead-host" nginxErr={nginxErr} />);
-			},
-			onSettled: () => {
-				setIsSubmitting(false);
-				setSubmitting(false);
-			},
-		});
+		try {
+			const row = await save({ id: savedId ?? (id === "new" ? undefined : id), ...requestValues(values) });
+			const nginxErr = getNginxConfigError(row);
+			if (nginxErr === null) {
+				showObjectSuccess("dead-host", "saved");
+				remove();
+				return;
+			}
+			setSavedId(row.id);
+			// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend created,
+			// otherwise saving again with "new" would request another one
+			methods.setValue("certificateId", row.certificateId);
+			resetToSaved();
+			setErrorMsg(<NginxConfigErrorMsg obj="dead-host" nginxErr={nginxErr} />);
+		} catch (err) {
+			setErrorMsg(<ApiErrorContent error={err} />);
+		}
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
-			{error && <ErrorAlert error={error} className="m-3" />}
-			{isPending && <Loading noLogo />}
-			{data && (
-				<Formik
-					initialValues={{
-						domainNames: data?.domainNames,
-						certificateId: data?.certificateId,
-						sslForced: data?.sslForced,
-						advancedConfig: data?.advancedConfig,
-						npmproHttp3Support: data?.npmproHttp3Support,
-						hstsEnabled: data?.hstsEnabled,
-						hstsSubdomains: data?.hstsSubdomains,
-						npmproDirectory: data?.npmproDirectory,
-						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
-						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
-					}}
-					onSubmit={onSubmit}
-				>
-					{({ values }) => (
-						<Form noValidate>
-							<DirtyTracker dirtyRef={dirtyRef} />
-							<AppModal.Header closeButton={!isSubmitting}>
-								<AppModal.Title>
-									<T
-										id={savedId || data?.id ? "object.edit" : "object.add"}
-										tData={{ object: "dead-host" }}
-									/>
-								</AppModal.Title>
-							</AppModal.Header>
-							<AppModal.Body>
-								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
-									{errorMsg}
-								</ErrorAlert>
-								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-details"
-											className="nav-link active"
-											data-bs-toggle="tab"
-											aria-selected="true"
-											role="tab"
-										>
-											<T id="column.details" />
-										</a>
-									</li>
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-ssl"
-											className="nav-link"
-											data-bs-toggle="tab"
-											aria-selected="false"
-											role="tab"
-										>
-											<T id="column.ssl" />
-										</a>
-									</li>
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-advanced"
-											className="nav-link"
-											data-bs-toggle="tab"
-											aria-selected="false"
-											role="tab"
-										>
-											<T id="domains.advanced" />
-											{values?.advancedConfig?.trim() ? "*" : ""}
-										</a>
-									</li>
-								</ul>
-								<div className="tab-content">
-									<div className="tab-pane active show" id="tab-details" role="tabpanel">
-										<DomainNamesField
-											isWildcardPermitted={
-												values.certificateId !== "new" || values.npmproDnsChallenge
-											}
-											dnsProviderWildcardSupported
-											forCertificate={values.certificateId === "new"}
-										/>
-									</div>
-									<div className="tab-pane" id="tab-ssl" role="tabpanel">
-										<SSLCertificateField name="certificateId" label="ssl-certificate" allowNew />
+		<HookForm methods={methods} onSubmit={onSubmit}>
+			<DirtyTracker dirtyRef={dirtyRef} />
+			<DeadHostForm
+				data={data}
+				savedId={savedId}
+				errorMsg={errorMsg}
+				onCloseError={() => setErrorMsg(null)}
+				{...formProps}
+			/>
+		</HookForm>
+	);
+}
 
-										<SSLOptionsFields />
-									</div>
-									<div className="tab-pane" id="tab-advanced" role="tabpanel">
-										<NginxConfigField />
-										<div className="row mt-3">
-											<div className="col-md-12 mb-3">
-												<DirectoryField
-													labelId="dead-host.directory"
-													datalistId="directory-suggestions-dead"
-													suggestions={suggestions}
-												/>
-											</div>
-										</div>
-									</div>
-								</div>
-								<RequestProgress
-									running={isSubmitting && values.certificateId === "new"}
-									propagationSeconds={values.npmproPropagationSeconds}
-								/>
-							</AppModal.Body>
-							<AppModal.Footer>
-								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-									<T id="cancel" />
-								</Button>
-								<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
-									<FormSubmit
-										className="ms-auto"
-										edit={Boolean(data?.id)}
-										color="primary"
-										isLoading={isSubmitting}
-										disabled={isSubmitting}
-									>
-										<T id="save" />
-									</FormSubmit>
-								</HasPermission>
-							</AppModal.Footer>
-						</Form>
-					)}
-				</Formik>
+const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	const { data, error } = useDeadHost(id);
+	const tlsSettled = useTlsQueriesSettled();
+	const { mutateAsync: save, isPending: isSaving } = useSetDeadHost();
+	const { data: allDeadHosts } = useDeadHosts();
+	const suggestions = useDirectorySuggestions(allDeadHosts);
+	const ready = Boolean(data) && tlsSettled;
+
+	return (
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+			{error && <ErrorAlert error={error} className="m-3" />}
+			{!(ready || error) && <Loading noLogo />}
+			{ready && (
+				<DeadHostEditor
+					id={id}
+					data={data}
+					save={save}
+					remove={remove}
+					dirtyRef={dirtyRef}
+					suggestions={suggestions}
+					close={close}
+				/>
 			)}
 		</AppModal>
 	);
