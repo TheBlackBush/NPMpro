@@ -185,6 +185,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { mutateAsync: save, isPending: isSaving } = useSetDeadHost();
 	const { data: allDeadHosts } = useDeadHosts();
 	const suggestions = useDirectorySuggestions(allDeadHosts);
+	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
 	return (

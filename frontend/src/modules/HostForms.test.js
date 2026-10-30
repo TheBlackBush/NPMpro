@@ -393,5 +393,9 @@ it("tlsQueriesSettled: waits for the user and the DNS providers, the certificate
 	assert.equal(tlsQueriesSettled({ ...all, certificates: retrying }), true);
 	assert.equal(tlsQueriesSettled({ ...all, dnsProviders: retrying }), true);
 	assert.equal(tlsQueriesSettled({ ...all, user: noCertificates, certificates: loading }), true);
+	// a user read that fails once counts as settled (no certificate permission known, so no wait); if it loads later as
+	// a user who may read certificates that are still loading, the result turns false again: useTlsQueriesSettled
+	// latches the first true, so the open form is not unmounted
 	assert.equal(tlsQueriesSettled({ ...all, user: retrying, certificates: loading }), true);
+	assert.equal(tlsQueriesSettled({ ...all, user: viewer, certificates: loading }), false);
 });

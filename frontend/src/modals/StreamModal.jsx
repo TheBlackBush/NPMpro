@@ -337,6 +337,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const { mutateAsync: save, isPending: isSaving } = useSetStream();
 	const { data: allStreams } = useStreams();
 	const suggestions = useDirectorySuggestions(allStreams);
+	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
 	return (

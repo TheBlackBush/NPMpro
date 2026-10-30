@@ -274,6 +274,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
 	const { data: allRedirectionHosts } = useRedirectionHosts();
 	const suggestions = useDirectorySuggestions(allRedirectionHosts);
+	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
