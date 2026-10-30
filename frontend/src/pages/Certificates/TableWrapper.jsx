@@ -24,7 +24,7 @@ import {
 } from "src/modals";
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { stripeClass } from "src/modules/SectionColors";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 import { Tabs } from "./Tabs";
@@ -96,7 +96,7 @@ export default function TableWrapper() {
 								<div className="dropdown">
 									<button
 										type="button"
-										className="btn btn-sm dropdown-toggle btn-pink"
+										className={`btn btn-sm dropdown-toggle btn-${sectionColor("certificates")}`}
 										data-bs-toggle="dropdown"
 									>
 										<T id="object.add" tData={{ object: "certificate" }} />

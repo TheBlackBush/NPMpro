@@ -18,6 +18,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -212,7 +213,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
-					color="pink"
+					color={sectionColor("dnsCredentials")}
 					permissionSection={CERTIFICATES}
 				/>
 			}
