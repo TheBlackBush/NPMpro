@@ -112,6 +112,8 @@ it("gives a dark label exactly where it reads better than white and reaches 4.5:
 	assert.deepEqual(buttonLabelStyle("lime"), {
 		"--tblr-btn-variant-fg": "var(--tblr-dark)",
 		"--tblr-btn-variant-darken": "oklch(from var(--tblr-lime) calc(l - 0.015) c h)",
+		"--tblr-btn-hover-border-color": "var(--tblr-lime-darken)",
+		"--tblr-btn-active-border-color": "var(--tblr-lime-darken)",
 	});
 	assert.equal(buttonLabelStyle("primary"), undefined);
 	assert.equal(buttonLabelStyle(undefined), undefined);

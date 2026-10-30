@@ -96,6 +96,10 @@ function buttonLabelStyle(color) {
 		? {
 				"--tblr-btn-variant-fg": "var(--tblr-dark)",
 				"--tblr-btn-variant-darken": `oklch(from var(--tblr-${color}) calc(l - ${DARK_LABEL_DARKEN}) c h)`,
+				// the light darkening keeps the label readable but is a faint cue: hover and press also get Tabler's
+				// darker edge, which carries no text
+				"--tblr-btn-hover-border-color": `var(--tblr-${color}-darken)`,
+				"--tblr-btn-active-border-color": `var(--tblr-${color}-darken)`,
 			}
 		: undefined;
 }
