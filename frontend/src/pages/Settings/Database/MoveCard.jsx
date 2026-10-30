@@ -9,7 +9,7 @@ import {
 	FormErrorNote,
 	focusFirstError,
 	HookForm,
-	PasswordInput,
+	PasswordField,
 	SwitchField,
 	useAppForm,
 	useFieldOrder,
@@ -95,7 +95,6 @@ function SwitchRow({ name, id, labelId }) {
 }
 
 function ServerFields({ baseId }) {
-	const { register } = useFormContext();
 	const [engine, sslEnabled] = useWatch({ name: ["engine", "sslEnabled"] });
 	return (
 		<>
@@ -138,14 +137,13 @@ function ServerFields({ baseId }) {
 					autoComplete="off"
 					spellCheck={false}
 				/>
-				<div className="col-12">
-					<PasswordInput
-						{...register("password")}
-						id={`${baseId}-password`}
-						label={<T id="settings.database.password" />}
-						autoComplete="new-password"
-					/>
-				</div>
+				<PasswordField
+					name="password"
+					id={`${baseId}-password`}
+					label={<T id="settings.database.password" />}
+					autoComplete="new-password"
+					className="col-12"
+				/>
 			</div>
 			<SwitchRow name="sslEnabled" id={`${baseId}-ssl`} labelId="settings.database.ssl" />
 			{engine === "mysql" && sslEnabled ? (

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
-import { HookForm, PasswordInput, useAppForm } from "src/components/Form";
+import { HookForm, PasswordField, useAppForm } from "src/components/Form";
 import { T } from "src/locale";
 import { setPasswordValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
@@ -17,10 +17,7 @@ const validate = setPasswordValidate(validations);
 const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	const [error, setError] = useState(null);
 	const methods = useAppForm({ defaultValues: { new: "" }, validate });
-	const {
-		register,
-		formState: { errors, isSubmitting },
-	} = methods;
+	const { isSubmitting } = methods.formState;
 
 	const onSubmit = async (values) => {
 		setError(null);
@@ -46,16 +43,12 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="logout-other-devices" />
 					</NoticeAlert>
-					<div className="mb-3">
-						<PasswordInput
-							{...register("new")}
-							id="new"
-							label={<T id="user.new-password" />}
-							autoComplete="new-password"
-							required
-							error={errors.new?.message ?? null}
-						/>
-					</div>
+					<PasswordField
+						name="new"
+						label={<T id="user.new-password" />}
+						autoComplete="new-password"
+						required
+					/>
 				</AppModal.Body>
 				<AppModal.Footer>
 					<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>

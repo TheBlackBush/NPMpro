@@ -7,7 +7,7 @@ import {
 	ErrorAlert,
 	HookForm,
 	Loading,
-	PasswordInput,
+	PasswordField,
 	SwitchField,
 	useAppForm,
 } from "src/components";
@@ -57,7 +57,7 @@ const FIELD_LABELS = { accountId: "settings.geoip.account-id", licenseKey: "sett
 
 function AccountFields({ data, isLocked }) {
 	const { register } = useFormContext();
-	const { errors } = useFormState({ name: ["accountId", "licenseKey"] });
+	const { errors } = useFormState({ name: "accountId", exact: true });
 	const accountError = errors.accountId?.message;
 	const keyLocked = isLocked("licenseKey");
 	let keyPlaceholder = "";
@@ -87,23 +87,20 @@ function AccountFields({ data, isLocked }) {
 				/>
 				{accountError ? <div className="invalid-feedback">{accountError}</div> : null}
 			</div>
-			<div className="mb-3">
-				{/* a locked key stays empty: the environment's key is never shown */}
-				<PasswordInput
-					{...register("licenseKey")}
-					id="geoip-license-key"
-					label={
-						<>
-							<T id="settings.geoip.license-key" />
-							{keyLocked ? <LockedBadge /> : null}
-						</>
-					}
-					autoComplete="new-password"
-					disabled={keyLocked}
-					placeholder={keyPlaceholder}
-					error={errors.licenseKey?.message}
-				/>
-			</div>
+			{/* a locked key stays empty: the environment's key is never shown */}
+			<PasswordField
+				name="licenseKey"
+				id="geoip-license-key"
+				label={
+					<>
+						<T id="settings.geoip.license-key" />
+						{keyLocked ? <LockedBadge /> : null}
+					</>
+				}
+				autoComplete="new-password"
+				disabled={keyLocked}
+				placeholder={keyPlaceholder}
+			/>
 			<div className="form-hint">
 				<T id="settings.geoip.account.hint" />{" "}
 				<a href={SIGNUP_URL} target="_blank" rel="noopener noreferrer" className="link-primary">
