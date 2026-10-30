@@ -5,6 +5,7 @@ import { contrastRatio, cssColor, parseOklch, srgb } from "./ColorContrast.js";
 import {
 	buttonLabelStyle,
 	DARK_LABEL_COLORS,
+	DARK_LABEL_DARKEN,
 	KIND_SECTIONS,
 	kindColor,
 	SECTION_COLORS,
@@ -17,6 +18,12 @@ const TABLER_CSS = readFileSync(
 	new URL("../../node_modules/@tabler/core/dist/css/tabler.css", import.meta.url),
 	"utf8",
 );
+
+// a Tabler colour variable as oklch, or an assertion that names the variable
+function need(color, variable) {
+	if (!color) throw new Error(`${variable} is missing or not an oklch() colour in the installed Tabler CSS`);
+	return color;
+}
 
 // every colour a Button can take
 const BUTTON_COLORS = [
@@ -88,10 +95,10 @@ it("reads Tabler's oklch colours as its rgb variables say", () => {
 });
 
 it("gives a dark label exactly where it reads better than white and reaches 4.5:1", () => {
-	const white = cssColor(TABLER_CSS, "light");
-	const dark = cssColor(TABLER_CSS, "dark");
+	const white = need(cssColor(TABLER_CSS, "light"), "--tblr-light");
+	const dark = need(cssColor(TABLER_CSS, "dark"), "--tblr-dark");
 	const measured = BUTTON_COLORS.filter((name) => {
-		const background = cssColor(TABLER_CSS, name);
+		const background = need(cssColor(TABLER_CSS, name), `--tblr-${name}`);
 		const onDark = contrastRatio(background, dark);
 		return contrastRatio(background, white) < 4.5 && onDark > contrastRatio(background, white) && onDark >= 4.5;
 	});
@@ -102,7 +109,40 @@ it("gives a dark label exactly where it reads better than white and reaches 4.5:
 	for (const color of new Set(Object.values(SECTION_COLORS))) {
 		assert.equal(Boolean(buttonLabelStyle(color)), DARK_LABEL_COLORS.includes(color), color);
 	}
-	assert.deepEqual(buttonLabelStyle("lime"), { "--tblr-btn-variant-fg": "var(--tblr-dark)" });
+	assert.deepEqual(buttonLabelStyle("lime"), {
+		"--tblr-btn-variant-fg": "var(--tblr-dark)",
+		"--tblr-btn-variant-darken": "oklch(from var(--tblr-lime) calc(l - 0.015) c h)",
+	});
 	assert.equal(buttonLabelStyle("primary"), undefined);
 	assert.equal(buttonLabelStyle(undefined), undefined);
+});
+
+it("keeps the dark label at 4.5:1 on hover and active, which Tabler's own darkening does not", () => {
+	const dark = need(cssColor(TABLER_CSS, "dark"), "--tblr-dark");
+	// both states take their background from --tblr-btn-variant-darken, which the style sets
+	for (const state of ["hover", "active"]) {
+		assert.match(
+			TABLER_CSS,
+			new RegExp(`--tblr-btn-${state}-bg:\\s*var\\(--tblr-btn-variant-darken\\)`, "u"),
+			`--tblr-btn-${state}-bg no longer follows --tblr-btn-variant-darken`,
+		);
+	}
+	let tablerFails = 0;
+	for (const name of DARK_LABEL_COLORS) {
+		const background = need(cssColor(TABLER_CSS, name), `--tblr-${name}`);
+		const step = new RegExp(
+			`--tblr-${name}-darken:\\s*oklch\\(from var\\(--tblr-${name}\\) calc\\(l - ([\\d.]+)\\) c h\\)`,
+			"u",
+		).exec(TABLER_CSS);
+		assert.ok(step, `--tblr-${name}-darken is not "oklch(from ... calc(l - step) c h)" any more`);
+		const tabler = contrastRatio({ ...background, l: background.l - Number(step[1]) }, dark);
+		const ours = contrastRatio({ ...background, l: background.l - DARK_LABEL_DARKEN }, dark);
+		if (tabler < 4.5) tablerFails += 1;
+		assert.ok(ours >= 4.5, `${name}: ${ours.toFixed(2)}:1 on hover and active`);
+		assert.match(
+			buttonLabelStyle(name)["--tblr-btn-variant-darken"],
+			new RegExp(`--tblr-${name}\\) calc\\(l - ${DARK_LABEL_DARKEN}\\)`, "u"),
+		);
+	}
+	assert.ok(tablerFails > 0, "Tabler's darkening is fine now: DARK_LABEL_DARKEN may go");
 });

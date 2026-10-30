@@ -46,6 +46,13 @@ const DARK_LABEL_COLORS = Object.freeze([
 ]);
 
 /**
+ * How much darker than the button a dark-label button gets on hover and active. Tabler darkens by 0.06 of the
+ * lightness (--tblr-<colour>-darken), which takes the dark label below 4.5:1 on teal, azure, cyan, info and orange;
+ * this step keeps every DARK_LABEL_COLORS colour at 4.5:1 or more (SectionColors.test.js measures it).
+ */
+const DARK_LABEL_DARKEN = 0.015;
+
+/**
  * The colour of a section; primary for a window without one
  *
  * @param   {string} [section]  a key of SECTION_COLORS
@@ -77,13 +84,29 @@ function stripeClass(section) {
 
 /**
  * The style of a button of this colour: a dark label where Tabler's white one is hard to read (Tabler's own
- * variable for the label of a coloured button, so hover, active, disabled and the loading spinner follow it)
+ * variable for the label of a coloured button, so hover, active, disabled and the loading spinner follow it) and a
+ * gentler hover and active background (Tabler's --tblr-btn-variant-darken, which both states use, in Tabler's own
+ * oklch formula with a smaller step), so the dark label keeps 4.5:1 in every state
  *
  * @param   {string} [color]
  * @returns {Object|undefined}
  */
 function buttonLabelStyle(color) {
-	return DARK_LABEL_COLORS.includes(color) ? { "--tblr-btn-variant-fg": "var(--tblr-dark)" } : undefined;
+	return DARK_LABEL_COLORS.includes(color)
+		? {
+				"--tblr-btn-variant-fg": "var(--tblr-dark)",
+				"--tblr-btn-variant-darken": `oklch(from var(--tblr-${color}) calc(l - ${DARK_LABEL_DARKEN}) c h)`,
+			}
+		: undefined;
 }
 
-export { buttonLabelStyle, DARK_LABEL_COLORS, KIND_SECTIONS, kindColor, SECTION_COLORS, sectionColor, stripeClass };
+export {
+	buttonLabelStyle,
+	DARK_LABEL_COLORS,
+	DARK_LABEL_DARKEN,
+	KIND_SECTIONS,
+	kindColor,
+	SECTION_COLORS,
+	sectionColor,
+	stripeClass,
+};
