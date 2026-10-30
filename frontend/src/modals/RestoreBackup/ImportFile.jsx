@@ -44,7 +44,7 @@ export function Uploading({ progress }) {
 			<div className="text-secondary mb-2" role="status">
 				<T id="settings.backup.uploading" data={{ percent }} />
 			</div>
-			<div className="progress progress-sm">
+			<div className="progress progress-sm progress-brand">
 				<div
 					className="progress-bar"
 					style={{ width: `${percent}%` }}

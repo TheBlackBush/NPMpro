@@ -104,7 +104,11 @@ function Running() {
 					<T id="certificates.request.progress" data={{ elapsed: formatElapsed(elapsed) }} />
 				</span>
 			</div>
-			<div className="progress progress-sm" role="progressbar" aria-label={intl.formatMessage({ id: "loading" })}>
+			<div
+				className="progress progress-sm progress-brand"
+				role="progressbar"
+				aria-label={intl.formatMessage({ id: "loading" })}
+			>
 				<div className="progress-bar progress-bar-indeterminate" />
 			</div>
 			<p className="text-secondary small mt-3 mb-0">
