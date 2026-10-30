@@ -1,4 +1,5 @@
 import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
+import { useCallback } from "react";
 import { useController, useWatch } from "react-hook-form";
 import Select, { components } from "react-select";
 import { ApiErrorContent } from "src/components/ErrorAlert";
@@ -41,6 +42,17 @@ const TypeOption = (props) => (
 export function AccessFields({ name, typeName, location, authRequest }) {
 	const { field: idsField } = useController({ name });
 	const { field: typeField } = useController({ name: typeName });
+	const { ref: idsRef } = idsField;
+	const { ref: typeRef } = typeField;
+	// the type select is the visible control of both fields: a refused save with custom and no lists focuses it
+	// (the hidden required input below only marks the field)
+	const selectRef = useCallback(
+		(select) => {
+			typeRef(select);
+			idsRef(select);
+		},
+		[typeRef, idsRef],
+	);
 	// the host's own lists, which a location of type "global" uses
 	const [hostType, hostIds] = useWatch({ name: ["npmproAccessListType", "npmproAccessListIds"] });
 	// a new type changes whether the ids are required
@@ -179,7 +191,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 									height: "100%",
 								}),
 							}}
-							ref={typeField.ref}
+							ref={selectRef}
 							onChange={(e) => {
 								typeField.onChange(e.type);
 								recheckIds();
@@ -251,14 +263,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 					))}
 					{values.length === 0 ? (
 						<>
-							<input
-								ref={idsField.ref}
-								name={name}
-								className="visually-hidden"
-								tabIndex={-1}
-								required
-								defaultValue=""
-							/>
+							<input name={name} className="visually-hidden" tabIndex={-1} required defaultValue="" />
 							<div className="invalid-feedback d-block">
 								<T id="error.required" />
 							</div>
