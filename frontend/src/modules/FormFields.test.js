@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { controlAria, joinIds, labelClass, numberInputValue, valueAt } from "./FormFields.js";
+import {
+	choiceGroupClass,
+	choiceItemClass,
+	controlAria,
+	joinIds,
+	labelClass,
+	numberInputValue,
+	switchListClass,
+	valueAt,
+} from "./FormFields.js";
 
 it("reads a value at a field path", () => {
 	const errors = { name: "Required", fieldValues: { token: "Bad" }, items: [undefined, { username: "Taken" }] };
@@ -47,4 +56,23 @@ it("marks a required label", () => {
 	assert.equal(labelClass(true), "form-label required");
 	assert.equal(labelClass(false), "form-label");
 	assert.equal(labelClass(), "form-label");
+});
+
+it("builds the classes of a choice group and its options", () => {
+	assert.equal(choiceGroupClass(), "form-selectgroup");
+	assert.equal(choiceGroupClass({ variant: "pills" }), "form-selectgroup form-selectgroup-pills");
+	assert.equal(choiceGroupClass({ fill: true }), "form-selectgroup w-100");
+	assert.equal(
+		choiceGroupClass({ variant: "boxes", vertical: true }),
+		"form-selectgroup form-selectgroup-boxes d-flex flex-column",
+	);
+	assert.equal(choiceItemClass(), "form-selectgroup-item");
+	assert.equal(choiceItemClass({ fill: true }), "form-selectgroup-item flex-fill");
+	assert.equal(choiceItemClass({ disabled: true }), "form-selectgroup-item opacity-50 cursor-not-allowed");
+});
+
+it("lays out a switch list in one or two columns", () => {
+	assert.equal(switchListClass(), "divide-y");
+	assert.equal(switchListClass(1), "divide-y");
+	assert.equal(switchListClass(2), "row row-cols-1 row-cols-md-2 gx-4");
 });
