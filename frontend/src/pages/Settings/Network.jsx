@@ -1,5 +1,5 @@
 import { T } from "src/locale";
-import { parseTrustedIps } from "src/modules/RuntimeSettings";
+import { trustedIpLines } from "src/modules/RuntimeSettings";
 import { networkValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
 import { RuntimeSwitch, RuntimeText } from "./Runtime/fields";
@@ -10,7 +10,7 @@ const toForm = (data) => ({
 	trustCloudflare: Boolean(data.trustCloudflare),
 });
 
-const toApi = (values) => ({ ...values, trustedIps: parseTrustedIps(values.trustedIps).list });
+const toApi = (values) => ({ ...values, trustedIps: trustedIpLines(values.trustedIps) });
 
 const validate = networkValidate(validations);
 

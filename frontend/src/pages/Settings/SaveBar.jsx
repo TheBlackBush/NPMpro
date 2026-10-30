@@ -1,5 +1,5 @@
-import { useFormContext, useFormState } from "react-hook-form";
-import { Button, FormErrorNote, focusFirstError, useFieldOrder } from "src/components";
+import { useFormState } from "react-hook-form";
+import { Button, FormErrorNote, useFocusFirstError } from "src/components";
 import { LeaveGuard } from "src/hooks";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
@@ -19,9 +19,8 @@ const REASON_ID = "settings-save-reason";
  * @param {Object}  [props.labels]     field name -> label translation id (FormErrorNote), a stable object
  */
 function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
-	const { setFocus } = useFormContext();
 	const { isSubmitting, isDirty, errors } = useFormState();
-	const order = useFieldOrder();
+	const focusFirstError = useFocusFirstError();
 	const nothingToSave = disabled ?? !isDirty;
 	const blocked = errorPaths(errors).length > 0;
 	const showReason = nothingToSave && !blocked && !isSubmitting;
@@ -40,7 +39,7 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 				isLoading={isSubmitting}
 				disabled={isSubmitting || (nothingToSave && !blocked)}
 				blocked={blocked}
-				onBlockedClick={(e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus)}
+				onBlockedClick={focusFirstError}
 				onMouseDown={(e) => e.preventDefault()}
 				aria-describedby={blocked ? NOTE_ID : showReason ? REASON_ID : undefined}
 			>

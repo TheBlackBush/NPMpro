@@ -146,6 +146,20 @@ const parseTrustedIps = (text) => {
 };
 
 /**
+ * The entries of the trusted IPs textarea, one per non-blank line, valid or not: a request is only built from values
+ * that passed validation, so the list of typed text compares with the saved one (typed text counts as a change, and
+ * Save is not disabled for text the validation still refuses)
+ *
+ * @param   {string}  text
+ * @returns {string[]}
+ */
+const trustedIpLines = (text) =>
+	String(text ?? "")
+		.split(NEWLINE)
+		.map((line) => line.trim())
+		.filter((line) => line !== "");
+
+/**
  * Allowed key sizes for a key type; an unknown type gives the ECDSA ones (the backend default).
  */
 const keySizeOptions = (keyType) => [...(KEY_SIZES[keyType] ?? KEY_SIZES.ecdsa)];
@@ -270,4 +284,5 @@ export {
 	restartPendingFields,
 	runtimeSettingsPayload,
 	timeZoneOptions,
+	trustedIpLines,
 };

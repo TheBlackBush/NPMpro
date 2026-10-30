@@ -32,7 +32,7 @@ const emailHint = (value, touched) => (touched && value.trim() !== "" ? (checkEm
  */
 function TotpCodeForm({ codeRef, onSubmit }) {
 	const { cancelTotp } = useAuthState();
-	const methods = useAppForm({ defaultValues: { code: "" } });
+	const methods = useAppForm({ defaultValues: { code: "" }, keepEdits: false });
 	const { isSubmitting } = methods.formState;
 	const code = useWatch({ control: methods.control, name: "code" });
 	return (

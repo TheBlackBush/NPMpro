@@ -9,6 +9,7 @@ import {
 	formResolver,
 	mergeErrors,
 	orderErrorPaths,
+	resetOptionsOf,
 	rowErrorPaths,
 	setIn,
 	toHookFormErrors,
@@ -159,4 +160,10 @@ it("sets every field of a change map in its order, dirty, under a row's path whe
 		["npmproFancyindex", false, { shouldDirty: true }],
 		["locations.2.npmproAuthRequestUpstream", "", { shouldDirty: true }],
 	]);
+});
+
+it("keeps the edited fields when new values arrive, unless the form takes every new value", () => {
+	assert.deepEqual(resetOptionsOf(true), { keepDirtyValues: true });
+	// a save that was tried stays tried, so messages follow each change after the refetch of the saved values
+	assert.deepEqual(resetOptionsOf(false), { keepIsSubmitted: true, keepSubmitCount: true });
 });
