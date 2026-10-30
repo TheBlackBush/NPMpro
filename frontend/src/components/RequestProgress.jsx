@@ -24,7 +24,11 @@ function RequestProgress({ running, propagationSeconds, className }) {
 					) : null}
 				</span>
 			</div>
-			<div className="progress progress-sm" role="progressbar" aria-label={intl.formatMessage({ id: "loading" })}>
+			<div
+				className="progress progress-sm progress-brand"
+				role="progressbar"
+				aria-label={intl.formatMessage({ id: "loading" })}
+			>
 				<div className="progress-bar progress-bar-indeterminate" />
 			</div>
 		</div>

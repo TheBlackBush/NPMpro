@@ -58,7 +58,7 @@ function CopyProgress({ tables }) {
 	return (
 		<div className="mt-2">
 			<div
-				className="progress progress-sm"
+				className="progress progress-sm progress-brand"
 				role="progressbar"
 				aria-valuenow={progress.percent}
 				aria-valuemin={0}

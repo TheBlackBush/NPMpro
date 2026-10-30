@@ -1,13 +1,19 @@
 /* NPMpro brand touches on top of Tabler. Bundled by Vite into the app stylesheet, so the strict CSP allows it. */
 
-/* Loading bar in the logo colours: the moving parts of Tabler's indeterminate bar are pseudo-elements */
+/* Progress bars in the logo colours (every loading, request, upload, restore and move bar): the moving parts of
+   Tabler's indeterminate bar are pseudo-elements, a bar with a percentage is the bar itself */
 .progress-brand {
+	--npmpro-brand-gradient: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
 	background-color: color-mix(in srgb, #d91aff 14%, transparent);
 }
 
 .progress-brand .progress-bar-indeterminate::before,
 .progress-brand .progress-bar-indeterminate::after {
-	background-image: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
+	background-image: var(--npmpro-brand-gradient);
+}
+
+.progress-brand .progress-bar:not(.progress-bar-indeterminate) {
+	background-image: var(--npmpro-brand-gradient);
 }
 
 /* Tabler marks a select group item on :focus, so after a mouse click the ring and the selected colours stay until

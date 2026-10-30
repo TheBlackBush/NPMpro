@@ -383,7 +383,7 @@ function StoredTable() {
 							<T id="cancel" />
 						</Button>
 					</div>
-					<div className="progress progress-sm">
+					<div className="progress progress-sm progress-brand">
 						<div
 							className="progress-bar"
 							style={{ width: `${percent}%` }}
