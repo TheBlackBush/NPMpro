@@ -281,7 +281,7 @@ fi
 
 #tmp
 if [ -n "$NGINX_LOAD_GEOIP2_MODULE" ]; then
-    echo "NGINX_LOAD_GEOIP2_MODULE env is not supported. The geoip2 module was replaced by the geoip module, which is always loaded, please check the README for the new config."
+    echo "NGINX_LOAD_GEOIP2_MODULE env is not supported. The geoip2 module was replaced by the geoip module, which is always loaded, see https://github.com/TheBlackBush/NPMpro/wiki/Security#geoblocking for the new config."
     sleep inf
 fi
 

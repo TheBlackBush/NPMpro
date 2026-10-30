@@ -33,7 +33,9 @@ Both are described on the CrowdSec page: [Bot detection](CrowdSec#bot-detection-
 - Do not set HTTPS records for FQDNs which use a CNAME record, but set them for the CNAME target, as only the HTTPS record of the CNAME target will be used by chromium.
 - Deleting/clearing the cron.sh will disable ECH, but you still need to remove ECH from the HTTPS records yourself
 
-## Geoblocking example (mainly community support)
+## Geoblocking
+
+An example, supported mainly by the community.
 
 1. get the GeoLite2 databases: either enter your MaxMind credentials under Settings, GeoIP (see [Monitoring](Monitoring)), or deploy the legacy geoipupdate container (see the compose.yaml for an example, create credentials [here](https://www.maxmind.com/en/geolite2/signup))
 2. open and edit this file: `/opt/npmpro/custom_nginx/http_top.conf`, if you changed /opt/npmpro to a different path make sure to change the path to fit, the database is only reread when nginx reloads

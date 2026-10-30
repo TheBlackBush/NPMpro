@@ -78,4 +78,4 @@ All are welcome to create pull requests for this project, but this does not mean
 
 NPMpro is licensed under the GNU Affero General Public License version 3 or any later version (see COPYING), with parts under MIT (see MIT.LICENSE).
 
-NPMpro is based on [NPMplus](https://github.com/ZoeyVid/NPMplus) by ZoeyVid, which is based on [Nginx Proxy Manager](https://github.com/NginxProxyManager/nginx-proxy-manager) by jc21. NPMpro is licensed under AGPL-3.0, with parts under MIT (see COPYING and MIT.LICENSE).
+NPMpro is based on [NPMplus](https://github.com/ZoeyVid/NPMplus) by ZoeyVid, which is based on [Nginx Proxy Manager](https://github.com/NginxProxyManager/nginx-proxy-manager) by jc21.
