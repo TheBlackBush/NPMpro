@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { controlAria, joinIds, labelClass, valueAt, visibleError, visibleErrorAt } from "./FormFields.js";
+import { controlAria, joinIds, labelClass, numberInputValue, valueAt, visibleError } from "./FormFields.js";
 
 it("reads a value at a Formik path", () => {
 	const errors = { name: "Required", fieldValues: { token: "Bad" }, items: [undefined, { username: "Taken" }] };
@@ -33,16 +33,12 @@ it("shows nothing without a text message", () => {
 	assert.equal(visibleError({ error: [{ path: "Required" }], touched: true, submitCount: 1 }), null);
 });
 
-it("reads the shown error of a nested field from Formik's state", () => {
-	const state = {
-		errors: { items: [{ username: "Required" }] },
-		touched: { items: [{ username: true }] },
-		submitCount: 0,
-	};
-	assert.equal(visibleErrorAt(state, "items[0].username"), "Required");
-	assert.equal(visibleErrorAt({ ...state, touched: {} }, "items[0].username"), null);
-	assert.equal(visibleErrorAt({ ...state, touched: {}, submitCount: 2 }, "items[0].username"), "Required");
-	assert.equal(visibleErrorAt({ errors: {}, touched: {}, submitCount: 1 }, "forwardHost"), null);
+it("keeps a number input's value as a number, or empty while it holds none, as the Formik forms did", () => {
+	assert.equal(numberInputValue("5432"), 5432);
+	assert.equal(numberInputValue("3306.5"), 3306.5);
+	assert.equal(numberInputValue("1e3"), 1000);
+	assert.equal(numberInputValue(""), "");
+	assert.equal(numberInputValue("-"), "");
 });
 
 it("joins ids without empty or repeated ones", () => {

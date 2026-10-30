@@ -39,14 +39,16 @@ export function visibleError({ error, touched = false, submitCount = 0 }) {
 }
 
 /**
- * visibleError of the field at path, read from Formik's errors and touched (Formik's form object fits as it is)
+ * The value of a number input kept as a number, as the Formik forms kept it: the number typed, or "" while the input
+ * holds no number (empty). For register's setValueAs, where a field's logic compares it with numbers (a port that
+ * follows the database engine).
  *
- * @param   {{ errors: Object, touched: Object, submitCount: number }} form
- * @param   {string}  path
- * @returns {string|null}
+ * @param   {string}  text  the input's value
+ * @returns {number|""}
  */
-export function visibleErrorAt({ errors, touched, submitCount }, path) {
-	return visibleError({ error: valueAt(errors, path), touched: Boolean(valueAt(touched, path)), submitCount });
+export function numberInputValue(text) {
+	const number = Number.parseFloat(text);
+	return Number.isNaN(number) ? "" : number;
 }
 
 /**

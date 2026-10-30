@@ -20,11 +20,14 @@ const FieldOrderContext = createContext([]);
  * @param   {Object}   options
  * @param   {Object}   options.defaultValues  every field of the form, none undefined (isDirty compares with them)
  * @param   {Object}   [options.values]       loaded values (a query's data): they become the defaultValues once
- *                                            they arrive; fields the user already changed are kept
+ *                                            they arrive (and whenever they change)
  * @param   {Function} [options.validate]     (values) => errors
+ * @param   {boolean}  [options.keepEdits]    when new values arrive, keep the fields the user already changed
+ *                                            (default); false: every field takes the new values, as a Settings
+ *                                            section shows the saved settings again after its save
  * @returns {Object}   useForm's methods
  */
-function useAppForm({ defaultValues, values, validate }) {
+function useAppForm({ defaultValues, values, validate, keepEdits = true }) {
 	const validateRef = useRef(validate);
 	// before any event handler runs, so the resolver always uses the validate of the last render
 	useLayoutEffect(() => {
@@ -34,7 +37,7 @@ function useAppForm({ defaultValues, values, validate }) {
 	return useForm({
 		defaultValues,
 		values,
-		resetOptions: { keepDirtyValues: true },
+		resetOptions: keepEdits ? { keepDirtyValues: true } : {},
 		resolver,
 		mode: "onTouched",
 		reValidateMode: "onChange",
@@ -156,9 +159,10 @@ function useListRecheck(name) {
  * @param {Function} props.onSubmit      async (values) => void, the save (isSubmitting lasts until it settles)
  * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
  *                                      on the first render (as the defaultValues' order)
+ * @param {string}   [props.className]   of the <form>
  * @param {*}        props.children
  */
-function HookForm({ methods, onSubmit, fieldOrder, children }) {
+function HookForm({ methods, onSubmit, fieldOrder, className, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	const submitting = useRef(false);
 	const formRef = useRef(null);
@@ -174,6 +178,7 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 			<FieldOrderContext.Provider value={order}>
 				<form
 					ref={formRef}
+					className={className}
 					action="#"
 					noValidate
 					onSubmit={(event) => {
