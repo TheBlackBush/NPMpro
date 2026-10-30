@@ -5,16 +5,18 @@ import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
 import { selectClassNames } from "src/modules/Select";
+import { FormField, selectControlProps } from "./FormField";
 
 /**
  * The DNS credential of a provider (a field of the form around it): the label, the select, "+" (a new credential of
- * the provider, chosen once saved) and the error. The form's resolver checks it (CertificateForms.js).
+ * the provider, chosen once saved), the error and the hint. The form's resolver checks it (CertificateForms.js).
  *
  * @param {Object} props
  * @param {string} props.name
  * @param {string} props.provider
+ * @param {*}      [props.hint]
  */
-export function DnsCredentialSelect({ name, provider }) {
+export function DnsCredentialSelect({ name, provider, hint }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
@@ -26,51 +28,43 @@ export function DnsCredentialSelect({ name, provider }) {
 	const addLabel = intl.formatMessage({ id: "dns-credentials.add" });
 
 	return (
-		<div className="mt-3">
-			<label htmlFor="dnsCredential" className="form-label">
-				<T id="dns-credentials.select" />
-			</label>
-			<div className="d-flex gap-2">
-				<div className="flex-fill">
-					<Select
-						ref={field.ref}
-						unstyled
-						classNames={selectClassNames}
-						name={name}
-						inputId="dnsCredential"
-						closeMenuOnSelect={true}
-						isClearable={false}
-						isLoading={isPending}
-						isSearchable
-						required
-						aria-invalid={error ? "true" : undefined}
-						aria-describedby={error ? "dnsCredential-error" : undefined}
-						onBlur={field.onBlur}
-						placeholder={intl.formatMessage({
-							id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
-						})}
-						options={options}
-						value={options.find((o) => o.value === field.value) ?? null}
-						onChange={(o) => field.onChange(o?.value)}
-					/>
+		<FormField id="dnsCredential" label={<T id="dns-credentials.select" />} required hint={hint} error={error}>
+			{(control) => (
+				<div className="d-flex gap-2">
+					<div className="flex-fill">
+						<Select
+							{...selectControlProps(control)}
+							ref={field.ref}
+							unstyled
+							classNames={selectClassNames}
+							name={name}
+							closeMenuOnSelect={true}
+							isClearable={false}
+							isLoading={isPending}
+							isSearchable
+							required
+							onBlur={field.onBlur}
+							placeholder={intl.formatMessage({
+								id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
+							})}
+							options={options}
+							value={options.find((o) => o.value === field.value) ?? null}
+							onChange={(o) => field.onChange(o?.value)}
+						/>
+					</div>
+					<button
+						type="button"
+						className="btn btn-icon"
+						aria-label={addLabel}
+						title={addLabel}
+						onClick={() =>
+							showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
+						}
+					>
+						<IconPlus size={16} />
+					</button>
 				</div>
-				<button
-					type="button"
-					className="btn btn-icon"
-					aria-label={addLabel}
-					title={addLabel}
-					onClick={() =>
-						showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
-					}
-				>
-					<IconPlus size={16} />
-				</button>
-			</div>
-			{error ? (
-				<div className="invalid-feedback d-block" id="dnsCredential-error">
-					{error}
-				</div>
-			) : null}
-		</div>
+			)}
+		</FormField>
 	);
 }

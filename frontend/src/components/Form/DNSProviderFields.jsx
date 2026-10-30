@@ -5,6 +5,7 @@ import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
+import { FormField, selectControlProps } from "./FormField";
 import { useRecheckDependent } from "./HookForm";
 
 // the provider; another provider's credential does not fit, so a change empties it (its message shows again once
@@ -23,40 +24,32 @@ function ProviderSelect({ providerId }) {
 			label: p.name,
 		}));
 	return (
-		<div className="row">
-			<label htmlFor="dnsProvider" className="form-label">
-				<T id="certificates.dns.provider" />
-			</label>
-			<Select
-				ref={field.ref}
-				unstyled
-				classNames={selectClassNames}
-				name="npmproDnsProvider"
-				inputId="dnsProvider"
-				closeMenuOnSelect={true}
-				isClearable={false}
-				placeholder={intl.formatMessage({
-					id: "certificates.dns.provider.placeholder",
-				})}
-				isLoading={isPending}
-				isSearchable
-				required
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={error ? "dnsProvider-error" : undefined}
-				onBlur={field.onBlur}
-				onChange={(newValue) => {
-					field.onChange(newValue?.value);
-					setValue("npmproDnsCredentialId", null, { shouldDirty: true });
-					recheckCredential();
-				}}
-				options={options}
-			/>
-			{error ? (
-				<div className="invalid-feedback d-block" id="dnsProvider-error">
-					{error}
-				</div>
-			) : null}
-		</div>
+		<FormField id="dnsProvider" label={<T id="certificates.dns.provider" />} required error={error}>
+			{(control) => (
+				<Select
+					{...selectControlProps(control)}
+					ref={field.ref}
+					unstyled
+					classNames={selectClassNames}
+					name="npmproDnsProvider"
+					closeMenuOnSelect={true}
+					isClearable={false}
+					placeholder={intl.formatMessage({
+						id: "certificates.dns.provider.placeholder",
+					})}
+					isLoading={isPending}
+					isSearchable
+					required
+					onBlur={field.onBlur}
+					onChange={(newValue) => {
+						field.onChange(newValue?.value);
+						setValue("npmproDnsCredentialId", null, { shouldDirty: true });
+						recheckCredential();
+					}}
+					options={options}
+				/>
+			)}
+		</FormField>
 	);
 }
 
@@ -65,31 +58,30 @@ function PropagationInput() {
 	const { field, fieldState } = useController({ name: "npmproPropagationSeconds" });
 	const error = fieldState.error?.message ?? null;
 	return (
-		<div className="mt-3">
-			<label htmlFor="propagationSeconds" className="form-label">
-				<T id="certificates.dns.propagation-seconds" />
-			</label>
-			<input
-				ref={field.ref}
-				id="propagationSeconds"
-				type="number"
-				className={`form-control ${error ? "is-invalid" : ""}`}
-				aria-invalid={error ? "true" : undefined}
-				min={0}
-				max={7200}
-				placeholder={intl.formatMessage({
-					id: "certificates.dns.propagation-seconds-default",
-				})}
-				name="npmproPropagationSeconds"
-				onBlur={field.onBlur}
-				value={field.value || ""}
-				onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
-			/>
-			{error ? <div className="invalid-feedback">{error}</div> : null}
-			<small className="text-secondary">
-				<T id="certificates.dns.propagation-seconds-note" />
-			</small>
-		</div>
+		<FormField
+			id="propagationSeconds"
+			label={<T id="certificates.dns.propagation-seconds" />}
+			hint={<T id="certificates.dns.propagation-seconds-note" />}
+			error={error}
+		>
+			{(control) => (
+				<input
+					{...control}
+					ref={field.ref}
+					type="number"
+					className={`form-control ${error ? "is-invalid" : ""}`}
+					min={0}
+					max={7200}
+					placeholder={intl.formatMessage({
+						id: "certificates.dns.propagation-seconds-default",
+					})}
+					name="npmproPropagationSeconds"
+					onBlur={field.onBlur}
+					value={field.value || ""}
+					onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+				/>
+			)}
+		</FormField>
 	);
 }
 
@@ -100,19 +92,22 @@ function PropagationInput() {
 export function DNSProviderFields({ showBoundaryBox }) {
 	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
-		<div className={showBoundaryBox ? "py-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined}>
+		<div
+			className={
+				showBoundaryBox ? "py-3 px-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined
+			}
+		>
 			<NoticeAlert>
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
 			<ProviderSelect providerId={providerId} />
 			{providerId ? (
 				<>
-					<DnsCredentialSelect name="npmproDnsCredentialId" provider={providerId} />
-					<p className="mt-2 mb-0">
-						<small className="text-secondary">
-							<T id="certificates.dns.credentials-saved-note" />
-						</small>
-					</p>
+					<DnsCredentialSelect
+						name="npmproDnsCredentialId"
+						provider={providerId}
+						hint={<T id="certificates.dns.credentials-saved-note" />}
+					/>
 					<PropagationInput />
 				</>
 			) : null}
