@@ -96,8 +96,8 @@ services:
 #      - "INITIAL_ADMIN_EMAIL=<initial@email.tld>" # email of the first admin, only with INITIAL_ADMIN_PASSWORD and only on the first start; without both the setup page in the web UI creates the first user
 #      - "INITIAL_ADMIN_PASSWORD=<initial-password>" # password of the first admin (8 to 255 characters), only with INITIAL_ADMIN_EMAIL and only on the first start
 #      - "INITIAL_DEFAULT_PAGE=444" # default site on the first start: 404, 444, redirect, congratulations or html, default congratulations
-#      - "COOKIE_SECRET=some-random-string" # secret that signs the session cookie; without it a new random secret is used at every start, so every restart, recreate and upgrade signs all users out; set a static random string to keep them signed in
-#      - "ENABLE_PRERUN=true" # runs the scripts in /opt/npmpro/prerun/*.sh before NPMpro starts (see README), default false
+#      - "COOKIE_SECRET=some-random-string" # secret that signs the session cookie (generate one: openssl rand -hex 32, see https://github.com/TheBlackBush/NPMpro/wiki/Configuration#cookie_secret); without it a new random secret is used at every start, so every restart, recreate and upgrade signs all users out; set a static random string to keep them signed in
+#      - "ENABLE_PRERUN=true" # runs the scripts in /opt/npmpro/prerun/*.sh before NPMpro starts (see the wiki: https://github.com/TheBlackBush/NPMpro/wiki/Configuration#prerun-scripts-expert-option), default false
 #      - "NC_AIO=true" # Nextcloud All-in-One mode: creates a proxy host for NC_DOMAIN to 127.0.0.1:11000 with a new certificate, and DISABLE_HTTP defaults to true, default false
 #      - "NC_DOMAIN=cloud.example.com" # the Nextcloud domain, required with NC_AIO=true
 #      - "NODE_TLS_REJECT_UNAUTHORIZED=0" # turns off certificate checks for every request the backend makes (not nginx), for example to an OIDC issuer with a self-signed certificate, GitHub version checks, Gravatar, reachability checks and Cloudflare IP updates; avoid it if you can
@@ -127,7 +127,7 @@ services:
 
       # Network
 #      - "TRUST_IP=10.0.0.0/8 192.168.1.5" # space separated IPv4/IPv6 addresses or CIDR ranges of proxies in front of NPMpro that may pass the real client IP, default empty
-#      - "TRUST_CLOUDFLARE=true" # fetch and trust the Cloudflare IP ranges, read the Cloudflare notes in the README first, default false
+#      - "TRUST_CLOUDFLARE=true" # fetch and trust the Cloudflare IP ranges, read the Cloudflare notes first (https://github.com/TheBlackBush/NPMpro/wiki/Security#notes-on-cloudflare), default false
 
       # Forward authentication (default upstreams for the Auth Request option of proxy hosts, unrelated to OIDC)
       # scheme + ip/hostname/domain + port (or scheme + name of a cu_ upstream block), no path; a host's own value wins
@@ -168,7 +168,7 @@ services:
 #      - "DISABLE_NGINX_BEAUTIFIER=true" # do not format the configs NPMpro writes, useful when nginxbeautifier fails on non-standard custom/advanced configs, default false
 #      - "DISABLE_GRAVATAR=true" # no Gravatar profile pictures, applies to a user at their next profile save, default false
 
-# This can be used to enable crowdsec, see README for a guide
+# This can be used to enable crowdsec, see the wiki for a guide: https://github.com/TheBlackBush/NPMpro/wiki/CrowdSec
 #  crowdsec:
 #    container_name: crowdsec
 #    restart: unless-stopped
@@ -187,7 +187,7 @@ services:
 #      - "/opt/crowdsec/data:/var/lib/crowdsec/data"
 #      - "/opt/npmpro/nginx/logs:/opt/npmpro/nginx/logs:ro"
 
-# See the readme on how to configure your proxy hosts to use anubis and what needs to be changes in the botPolicy to make it work
+# See the wiki (https://github.com/TheBlackBush/NPMpro/wiki/Forward-Authentication#anubis) on how to configure your proxy hosts to use anubis and what needs to be changes in the botPolicy to make it work
 #  anubis:
 #    container_name: npmpro-anubis
 #    restart: unless-stopped
