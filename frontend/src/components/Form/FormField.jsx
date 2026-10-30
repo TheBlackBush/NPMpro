@@ -1,4 +1,5 @@
 import cn from "clsx";
+import { useLayoutEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { components } from "react-select";
 import { controlAria, joinIds, labelClass } from "src/modules/FormFields";
@@ -108,6 +109,7 @@ function SelectField({
 	label,
 	required = false,
 	hint,
+	describedBy,
 	className,
 	registerOptions,
 	children,
@@ -116,7 +118,15 @@ function SelectField({
 	const { register } = useFormContext();
 	const error = useFieldError(name);
 	return (
-		<FormField id={id} label={label} required={required} hint={hint} error={error} className={className}>
+		<FormField
+			id={id}
+			label={label}
+			required={required}
+			hint={hint}
+			error={error}
+			describedBy={describedBy}
+			className={className}
+		>
 			{(control) => (
 				<select
 					{...selectProps}
@@ -183,21 +193,35 @@ function DescribedSelectInput(props) {
 	);
 }
 
-const DESCRIBED_SELECT_COMPONENTS = { Input: DescribedSelectInput };
+// With isSearchable={false} react-select renders its own DummyInput, which no component can replace and which
+// takes the same react-select owned aria-describedby. The Control is rendered in both cases: after each render it
+// joins the field's ids onto that input (the same ids, so React and this agree on what is joined).
+function DescribedSelectControl(props) {
+	const { describedBy, inputId, isSearchable } = props.selectProps;
+	useLayoutEffect(() => {
+		if (isSearchable !== false || !describedBy || !inputId) return;
+		const input = document.getElementById(inputId);
+		const joined = joinIds(input?.getAttribute("aria-describedby"), describedBy);
+		if (input && joined) input.setAttribute("aria-describedby", joined);
+	});
+	return <components.Control {...props} />;
+}
 
 /**
  * The props that make a react-select the control of a FormField: its input takes the field's id (the label points
- * at it), invalid and described like any control
+ * at it), invalid and described like any control. The caller's own react-select components are kept (Option,
+ * MenuList, ...); only Input (and Control, unless the caller gives one) are the field's.
  *
- * @param   {Object} control  FormField's control argument
+ * @param   {Object} control       FormField's control argument
+ * @param   {Object} [overrides]   the caller's react-select components
  * @returns {Object}  inputId, aria-invalid, describedBy, components
  */
-function selectControlProps(control) {
+function selectControlProps(control, overrides) {
 	return {
 		inputId: control.id,
 		"aria-invalid": control["aria-invalid"],
 		describedBy: control["aria-describedby"],
-		components: DESCRIBED_SELECT_COMPONENTS,
+		components: { Control: DescribedSelectControl, ...overrides, Input: DescribedSelectInput },
 	};
 }
 

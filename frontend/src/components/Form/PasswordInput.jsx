@@ -10,12 +10,12 @@ import { intl } from "src/locale";
  * @param {Object}  props
  * @param {boolean} [props.invalid]        the red border (is-invalid)
  * @param {string}  [props.className]      of the input
- * @param {boolean} [props.textWhenEmpty]  plain text while empty, so the placeholder shows as typed text
+ * @param {boolean} [props.plain]         shown as plain text, so the placeholder reads as typed text
  * @param {*}       [props.children]
  */
-function PasswordControl({ invalid = false, className, textWhenEmpty, children, ...inputProps }) {
+function PasswordControl({ invalid = false, className, plain = false, children, ...inputProps }) {
 	const [visible, setVisible] = useState(false);
-	const asText = Boolean(visible || (textWhenEmpty && !inputProps.value));
+	const asText = visible || plain;
 	return (
 		<div className={cn("input-group input-group-flat", invalid && children && "has-validation")}>
 			<input
@@ -45,9 +45,9 @@ function PasswordControl({ invalid = false, className, textWhenEmpty, children, 
 
 /**
  * A labelled password input with its error inside the group (login and setup); forms on the layer use
- * PasswordField
+ * PasswordField. textWhenEmpty: plain text while empty (the controlled value), so the placeholder shows as typed text.
  */
-function PasswordInput({ id, label, error, ...inputProps }) {
+function PasswordInput({ id, label, error, textWhenEmpty, ...inputProps }) {
 	return (
 		<>
 			{label ? (
@@ -58,6 +58,7 @@ function PasswordInput({ id, label, error, ...inputProps }) {
 			<PasswordControl
 				{...inputProps}
 				id={id}
+				plain={Boolean(textWhenEmpty && !inputProps.value)}
 				invalid={Boolean(error)}
 				aria-invalid={error ? "true" : undefined}
 				aria-describedby={cn(error && `${id}-error`, inputProps["aria-describedby"]) || undefined}

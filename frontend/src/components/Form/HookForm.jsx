@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { FormProvider, useForm, useFormContext, useFormState } from "react-hook-form";
+import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
 import {
 	controlNames,
 	errorPaths,
@@ -88,10 +88,10 @@ function useRecheckDependent(name) {
  * @returns {string|null}
  */
 function useFieldError(name) {
-	const { getFieldState } = useFormContext();
-	// read during render, so the caller re-renders when the field's error changes (React Hook Form's subscription)
-	const formState = useFormState({ name, exact: true });
-	return getFieldState(name, formState).error?.message ?? null;
+	// only this field's errors are read, so the field re-renders when its error changes, not on its dirty, touched or
+	// validating state (React Hook Form subscribes to what is read from formState)
+	const { errors } = useFormState({ name, exact: true });
+	return get(errors, name)?.message ?? null;
 }
 
 /**

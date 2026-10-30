@@ -1,3 +1,4 @@
+import cn from "clsx";
 import { useId } from "react";
 import { useController } from "react-hook-form";
 import { choiceGroupClass, choiceItemClass, controlAria, joinIds } from "src/modules/FormFields";
@@ -13,7 +14,7 @@ import { choiceGroupClass, choiceItemClass, controlAria, joinIds } from "src/mod
  * @param {Array<{ value: string, label: *, description?: *, disabled?: boolean, describedBy?: string }>} props.options
  * @param {string}   props.value
  * @param {Function} props.onChange            (value) => void
- * @param {Function} [props.onBlur]
+ * @param {Function} [props.onBlur]            once when focus leaves the group
  * @param {Function|Object} [props.inputRef]  the input of the checked option (else the first), for the focus
  * @param {"buttons"|"pills"|"boxes"} [props.variant]  boxes show each option's description
  * @param {boolean}  [props.fill]              the options share the row
@@ -47,8 +48,14 @@ function ChoiceGroup({
 		options.findIndex((option) => option.value === value),
 	);
 	return (
-		<fieldset className={className}>
-			<legend className={hideLegend ? "visually-hidden" : "form-label"}>{legend}</legend>
+		<fieldset
+			className={className}
+			// one blur when focus leaves the group, not for each arrow key move between its options
+			onBlur={(event) => {
+				if (!event.currentTarget.contains(event.relatedTarget)) onBlur?.(event);
+			}}
+		>
+			<legend className={cn("form-label", hideLegend && "visually-hidden")}>{legend}</legend>
 			<div className={choiceGroupClass({ variant, fill, vertical })}>
 				{options.map((option, index) => {
 					const optionDisabled = disabled || Boolean(option.disabled);
@@ -66,7 +73,6 @@ function ChoiceGroup({
 								checked={value === option.value}
 								disabled={optionDisabled}
 								onChange={() => onChange(option.value)}
-								onBlur={onBlur}
 								aria-invalid={aria["aria-invalid"]}
 								aria-describedby={joinIds(aria["aria-describedby"], option.describedBy)}
 							/>

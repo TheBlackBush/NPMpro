@@ -12,7 +12,7 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 		<div className={className}>
 			<label className={cn("row", inputProps.disabled ? null : "cursor-pointer")} htmlFor={id}>
 				<span className="col">
-					{label}
+					<span id={aria.labelId}>{label}</span>
 					{hint ? (
 						<span className="form-hint d-block" id={aria.hintId}>
 							{hint}
@@ -26,6 +26,9 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 							id={id}
 							className={cn("form-check-input", error && "is-invalid")}
 							type="checkbox"
+							// named by the label text alone: the hint sits inside the label element (Tabler's row), so it would be
+							// read twice, in the name and as the description
+							aria-labelledby={aria.labelId}
 							aria-invalid={aria["aria-invalid"]}
 							aria-describedby={aria["aria-describedby"]}
 						/>
