@@ -1,7 +1,7 @@
 import { IconSettings } from "@tabler/icons-react";
 import cn from "clsx";
-import { Field, Form, Formik } from "formik";
 import { useState } from "react";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	AccessFields,
 	ApiErrorContent,
@@ -12,6 +12,7 @@ import {
 	ErrorAlert,
 	FormSubmit,
 	HasPermission,
+	HookForm,
 	Loading,
 	LocationsFields,
 	NginxConfigField,
@@ -19,36 +20,31 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	useAppForm,
+	useRecheckDependent,
+	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useAccessLists,
 	useDirectorySuggestions,
 	useIsAdmin,
 	useProxyHost,
 	useProxyHosts,
 	useSetProxyHost,
+	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
-import { joinIds, visibleErrorAt } from "src/modules/FormFields";
+import { joinIds } from "src/modules/FormFields";
+import { applyChanges } from "src/modules/HookForm";
+import { domainNamesOptions } from "src/modules/HostForms";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { getOptionHintId, getOptionsResetByScheme } from "src/modules/ProxyOptions";
-import { validateInteger, validateUpstreamUrl } from "src/modules/Validations";
+import { namedLocations, proxyHostDefaults, proxyHostPayload, proxyHostValidate } from "src/modules/ProxyHostForms";
+import { getOptionHintId, getOptionsResetByScheme, proxyOptionChanges } from "src/modules/ProxyOptions";
+import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
-
-const PRINTABLE_ASCII = /^[\x21-\x7e]+$/u;
-const NGINX_SYNTAX = /[$;{}"'\\#]/u;
-// the backend's rule for a non-admin "path" target (lib/host-config-guard.js): an absolute path inside /var/www, no ..
-const insideWebroot = (value) =>
-	typeof value === "string" &&
-	(value === "/var/www" || value.startsWith("/var/www/")) &&
-	!value.split("/").includes("..") &&
-	PRINTABLE_ASCII.test(value) &&
-	!NGINX_SYNTAX.test(value);
-
-const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
-const validatePort = validateInteger({ min: 1, max: 65535 });
 
 // field name -> label for the note next to Save (no control has these names)
 const FIELD_LABELS = {
@@ -56,720 +52,528 @@ const FIELD_LABELS = {
 	npmproAccessListIds: "proxy-host.global-access-lists",
 };
 
-// the backend's rules for the forward host (schema/components/proxy-host-object.json) and custom access lists
-const validateHost = (values) => {
-	const errors = {};
-	const host = String(values.forwardHost ?? "").trim();
-	if (values.forwardScheme !== "empty") {
-		if (host === "") errors.forwardHost = intl.formatMessage({ id: "error.required" });
-		else if (host.length > 255 || !FORWARD_HOST.test(host)) {
-			errors.forwardHost = intl.formatMessage({ id: "error.invalid-host" });
-		}
-	}
-	if (values.npmproAccessListType === "custom" && !(values.npmproAccessListIds?.length > 0)) {
-		errors.npmproAccessListIds = intl.formatMessage({ id: "error.required" });
-	}
-	return errors;
+const validate = proxyHostValidate(validations);
+
+// a proxy option switch of the Details tab; a change sets what it turns off or on (ProxyOptions.js)
+function OptionSwitch({ name, labelId, hint, disabled, onOption }) {
+	const { register } = useFormContext();
+	return (
+		<SwitchField
+			id={name}
+			label={<T id={labelId} />}
+			hint={hint}
+			{...register(name, { onChange: (e) => onOption(name, e.target.checked) })}
+			disabled={disabled}
+		/>
+	);
+}
+
+// the hint of an option the forward scheme rules out, or null
+const schemeHint = (option, scheme) => {
+	const hintId = getOptionHintId(option, scheme);
+	return hintId ? (
+		<span className="d-block">
+			<T id={hintId} />
+		</span>
+	) : null;
 };
 
-const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
-	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
-	const { data, isPending, error } = useProxyHost(id);
-	const isAdmin = useIsAdmin();
-	// raw nginx config is admin-only: a non-admin clone starts without it
-	const dropConfig = isClone && !isAdmin;
-	// so does a "path" target outside /var/www (the backend refuses it from a non-admin), the field starts empty
-	const clonedPath = (scheme, host) => (dropConfig && scheme === "path" && !insideWebroot(host) ? "" : host);
-	const { data: allProxyHosts } = useProxyHosts();
-	const suggestions = useDirectorySuggestions(allProxyHosts);
-	const { mutate: setProxyHost } = useSetProxyHost();
+function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close, suggestions }) {
+	const { register, getValues, setValue, clearErrors } = useFormContext();
+	const { errors, isSubmitting } = useFormState();
+	const [
+		certificateId,
+		npmproDnsChallenge,
+		forwardScheme,
+		npmproLocationConfig,
+		npmproProxyRequestBuffering,
+		npmproAuthRequest,
+		locations,
+		advancedConfig,
+		npmproPropagationSeconds,
+	] = useWatch({
+		name: [
+			"certificateId",
+			"npmproDnsChallenge",
+			"forwardScheme",
+			"npmproLocationConfig",
+			"npmproProxyRequestBuffering",
+			"npmproAuthRequest",
+			"locations",
+			"advancedConfig",
+			"npmproPropagationSeconds",
+		],
+	});
+	const recheckHost = useRecheckDependent("forwardHost");
+	const [advVisible, setAdvVisible] = useState(false);
+	const [schemeResetNotice, setSchemeResetNotice] = useState(false);
+	// what a proxy option turns off or on (the option itself is set by register)
+	const applyOption = (name, value) => {
+		const { [name]: _changed, ...others } = proxyOptionChanges(name, value);
+		applyChanges(setValue, others);
+	};
+	const hostError = errors.forwardHost?.message ?? null;
+	const portError = errors.forwardPort?.message ?? null;
+	const upstreamError = errors.npmproAuthRequestUpstream?.message ?? null;
+	const pathHint = forwardScheme === "path";
+	const httpOnly = forwardScheme !== "http" && forwardScheme !== "https";
+
+	return (
+		<>
+			<AppModal.Header closeButton={!isSubmitting}>
+				<AppModal.Title>
+					<T
+						id={savedId || (data.id && !isClone) ? "object.edit" : "object.add"}
+						tData={{ object: "proxy-host" }}
+					/>
+				</AppModal.Title>
+			</AppModal.Header>
+			<AppModal.Body>
+				<ErrorAlert className="mb-3" onClose={onCloseError}>
+					{errorMsg}
+				</ErrorAlert>
+				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
+					<li className="nav-item" role="presentation">
+						<a
+							href="#tab-details"
+							className="nav-link active"
+							data-bs-toggle="tab"
+							aria-selected="true"
+							role="tab"
+						>
+							<T id="column.details" />
+						</a>
+					</li>
+					<li className="nav-item" role="presentation">
+						<a
+							href="#tab-locations"
+							className="nav-link"
+							data-bs-toggle="tab"
+							aria-selected="false"
+							role="tab"
+						>
+							{<T id="column.custom-locations" />}
+							{namedLocations(locations).length > 0 ? "*" : ""}
+						</a>
+					</li>
+					<li className="nav-item" role="presentation">
+						<a href="#tab-ssl" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
+							<T id="column.ssl" />
+						</a>
+					</li>
+					<li className="nav-item" role="presentation">
+						<a
+							href="#tab-advanced"
+							className="nav-link"
+							data-bs-toggle="tab"
+							aria-selected="false"
+							role="tab"
+						>
+							<T id="domains.advanced" />
+							{advancedConfig?.trim() ? "*" : ""}
+						</a>
+					</li>
+				</ul>
+				<div className="tab-content">
+					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+						<div className="row">
+							<div className="col-md-3">
+								<div className="mb-3">
+									<label className="form-label" htmlFor="forwardScheme">
+										<T id="host.forward-scheme" />
+									</label>
+									<select
+										id="forwardScheme"
+										className="form-select"
+										required
+										{...register("forwardScheme", {
+											onChange: (e) => {
+												const scheme = e.target.value;
+												setSchemeResetNotice(
+													getOptionsResetByScheme(getValues(), scheme).length > 0,
+												);
+												applyOption("forwardScheme", scheme);
+												// "empty" needs no forward host
+												recheckHost();
+											},
+										})}
+									>
+										<option value="http">http://</option>
+										<option value="https">https://</option>
+										<option value="path">
+											{intl.formatMessage({
+												id: "host.forward-scheme.path",
+											})}
+										</option>
+										<option value="empty">
+											{intl.formatMessage({
+												id: "host.forward-scheme.empty",
+											})}
+										</option>
+										<option value="grpc">grpc://</option>
+										<option value="grpcs">grpcs://</option>
+									</select>
+									{schemeResetNotice && (
+										<small className="form-hint text-warning">
+											<T id="host.forward-scheme.options-reset" />
+										</small>
+									)}
+								</div>
+							</div>
+							<div className="col-md-5">
+								<div className="mb-3">
+									<label className="form-label" htmlFor="forwardHost">
+										<T id="proxy-host.forward-host-path" />
+									</label>
+									<input
+										id="forwardHost"
+										type="text"
+										className={`form-control ${hostError ? "is-invalid" : ""}`}
+										placeholder="example.com"
+										required={forwardScheme !== "empty"}
+										aria-invalid={hostError ? "true" : undefined}
+										aria-describedby={joinIds(
+											hostError ? "forwardHost-error" : null,
+											pathHint ? "forwardHost-hint" : null,
+										)}
+										{...register("forwardHost")}
+									/>
+									{hostError ? (
+										<div className="invalid-feedback" id="forwardHost-error">
+											{hostError}
+										</div>
+									) : null}
+									{pathHint ? (
+										<div className="form-hint" id="forwardHost-hint">
+											<T id="host.forward-host.path-hint" />
+										</div>
+									) : null}
+								</div>
+							</div>
+							<div className="col-md-4">
+								<div className="mb-3">
+									<label className="form-label" htmlFor="forwardPort">
+										<T id="host.forward-port" />
+									</label>
+									<div className={cn("input-group", { "has-validation": portError })}>
+										<input
+											id="forwardPort"
+											type="text"
+											inputMode="numeric"
+											className={`form-control ${portError ? "is-invalid" : ""}`}
+											placeholder={intl.formatMessage(
+												{ id: "form.example" },
+												{ example: "8081" },
+											)}
+											{...register("forwardPort")}
+										/>
+										{(isAdmin || npmproLocationConfig?.trim()) && (
+											<button
+												type="button"
+												className="btn btn-icon"
+												title={intl.formatMessage({
+													id: "host.location-config.toggle",
+												})}
+												aria-label={intl.formatMessage({
+													id: "host.location-config.toggle",
+												})}
+												aria-expanded={advVisible}
+												onClick={() => setAdvVisible((prev) => !prev)}
+											>
+												<IconSettings size={20} aria-hidden="true" />
+												{npmproLocationConfig?.trim() ? "*" : ""}
+											</button>
+										)}
+
+										{portError ? <div className="invalid-feedback">{portError}</div> : null}
+									</div>
+								</div>
+							</div>
+						</div>
+						<div className="my-3">
+							<h4 className="py-2">
+								<T id="options" />
+							</h4>
+							<div className="divide-y">
+								<OptionSwitch
+									name="npmproNoindex"
+									labelId="host.flags.send-noindex"
+									onOption={applyOption}
+								/>
+								<OptionSwitch
+									name="npmproCrowdsecAppsec"
+									labelId="host.flags.disable-crowdsec-appsec"
+									hint={
+										npmproProxyRequestBuffering && (
+											<span className="d-block">
+												<T id="host.flags.hint.appsec-request-buffering" />
+											</span>
+										)
+									}
+									onOption={applyOption}
+								/>
+								<OptionSwitch
+									name="npmproProxyRequestBuffering"
+									labelId="host.flags.disable-request-buffering"
+									hint={
+										<>
+											<span className="d-block">
+												<T id="host.flags.hint.request-buffering-appsec" />
+											</span>
+											{schemeHint("npmproProxyRequestBuffering", forwardScheme)}
+										</>
+									}
+									disabled={httpOnly}
+									onOption={applyOption}
+								/>
+								<OptionSwitch
+									name="npmproProxyResponseBuffering"
+									labelId="host.flags.disable-response-buffering"
+									hint={schemeHint("npmproProxyResponseBuffering", forwardScheme)}
+									disabled={httpOnly}
+									onOption={applyOption}
+								/>
+								<OptionSwitch
+									name="npmproUpstreamCompression"
+									labelId="host.flags.upstream-compression"
+									hint={schemeHint("npmproUpstreamCompression", forwardScheme)}
+									disabled={["path", "empty"].includes(forwardScheme)}
+									onOption={applyOption}
+								/>
+								<OptionSwitch
+									name="npmproFancyindex"
+									labelId="host.flags.fancyindex"
+									hint={schemeHint("npmproFancyindex", forwardScheme)}
+									disabled={forwardScheme !== "path"}
+									onOption={applyOption}
+								/>
+							</div>
+							<div className="mt-3">
+								<div className="mb-3">
+									<label className="form-label" htmlFor="npmproXFrameOptions">
+										X-Frame-Options
+									</label>
+									<select
+										id="npmproXFrameOptions"
+										className="form-select"
+										required
+										{...register("npmproXFrameOptions")}
+									>
+										<option value="SAMEORIGIN">SAMEORIGIN</option>
+										<option value="DENY">DENY</option>
+										<option value="none">none</option>
+										<option value="upstream">upstream</option>
+									</select>
+								</div>
+								<div className="mb-3">
+									<label className="form-label" htmlFor="npmproAuthRequest">
+										<T id="host.auth-request" />
+									</label>
+									<select
+										id="npmproAuthRequest"
+										className="form-select"
+										required
+										{...register("npmproAuthRequest", {
+											onChange: (e) => {
+												applyOption("npmproAuthRequest", e.target.value);
+												// the upstream is hidden without an auth request
+												if (e.target.value === "none") clearErrors("npmproAuthRequestUpstream");
+											},
+										})}
+									>
+										<option value="none">none</option>
+										<option value="anubis">anubis</option>
+										<option value="tinyauth">tinyauth</option>
+										<option value="oauth2proxy">oauth2proxy</option>
+										<option value="voidauth">voidauth</option>
+										<option value="authelia">authelia (modern)</option>
+										<option value="authentik">authentik</option>
+										<option value="authentik-send-basic-auth">authentik-send-basic-auth</option>
+									</select>
+								</div>
+								{npmproAuthRequest !== "none" && (
+									<div className="mb-3">
+										<label className="form-label" htmlFor="npmproAuthRequestUpstream">
+											<T id="host.auth-request-upstream" />
+										</label>
+										<input
+											id="npmproAuthRequestUpstream"
+											type="text"
+											className={`form-control ${upstreamError ? "is-invalid" : ""}`}
+											placeholder={intl.formatMessage({
+												id: "host.auth-request-upstream.placeholder",
+											})}
+											maxLength={255}
+											{...register("npmproAuthRequestUpstream")}
+										/>
+										{upstreamError ? <div className="invalid-feedback">{upstreamError}</div> : null}
+									</div>
+								)}
+							</div>
+						</div>
+						<div className="my-3">
+							<h4 className="py-2">
+								<T id="proxy-host.global-access-lists" />
+							</h4>
+							<AccessFields
+								name="npmproAccessListIds"
+								typeName="npmproAccessListType"
+								authRequest={npmproAuthRequest}
+							/>
+						</div>
+						{advVisible && (
+							<div className="">
+								<label className="form-label" htmlFor="npmproLocationConfig">
+									<T id="host.location-config.label" />
+								</label>
+								<textarea
+									id="npmproLocationConfig"
+									className="form-control font-monospace"
+									spellCheck={false}
+									placeholder={intl.formatMessage({
+										id: "nginx-config.placeholder",
+									})}
+									rows={8}
+									readOnly={!isAdmin}
+									aria-describedby={isAdmin ? undefined : "npmproLocationConfig-hint"}
+									{...register("npmproLocationConfig")}
+								/>
+								{!isAdmin && (
+									<div className="form-hint" id="npmproLocationConfig-hint">
+										<T id="nginx-config.admin-only" />
+									</div>
+								)}
+							</div>
+						)}
+					</div>
+					<div className="tab-pane" id="tab-locations" role="tabpanel">
+						<LocationsFields />
+					</div>
+					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+						<SSLCertificateField label="ssl-certificate" allowNew />
+
+						<SSLOptionsFields forProxyHost />
+					</div>
+					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+						<NginxConfigField />
+						<div className="row mt-3">
+							<div className="col-md-12 mb-3">
+								<DirectoryField
+									labelId="proxy-host.directory"
+									datalistId="directory-suggestions-proxy"
+									suggestions={suggestions}
+								/>
+							</div>
+						</div>
+					</div>
+				</div>
+				<RequestProgress
+					running={isSubmitting && certificateId === "new"}
+					propagationSeconds={npmproPropagationSeconds}
+				/>
+			</AppModal.Body>
+			<AppModal.Footer>
+				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+					<T id="cancel" />
+				</Button>
+				<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
+					<FormSubmit
+						labels={FIELD_LABELS}
+						className="ms-auto"
+						edit={Boolean(data.id) && !isClone}
+						color="primary"
+						isLoading={isSubmitting}
+						disabled={isSubmitting}
+					>
+						<T id="save" />
+					</FormSubmit>
+				</HasPermission>
+			</AppModal.Footer>
+		</>
+	);
+}
+
+// the form, mounted once the host is loaded and the reads of the TLS tab and the access lists have settled
+// (useTlsQueriesSettled): complete defaultValues from the first render, no reset on a refetch. A user whose role is
+// not known yet (its read failed and retries) starts as a non-admin clone would (no raw nginx config)
+function ProxyHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, ...formProps }) {
+	const [defaultValues] = useState(() => proxyHostDefaults(data, { isClone, isAdmin }));
+	const methods = useAppForm({ defaultValues, validate });
+	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
 	// set once a new host was created but its nginx config failed, so saving again updates it
 	const [savedId, setSavedId] = useState(null);
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [advVisible, setAdvVisible] = useState(false);
-	const [schemeResetNotice, setSchemeResetNotice] = useState(false);
-	const initialLocations = data?.locations.map(({ id: locationId, proxyHostId, accessLists, ...location }) => ({
-		...location,
-		...(dropConfig ? { advancedConfig: "" } : {}),
-		forwardHost: clonedPath(location.forwardScheme, location.forwardHost),
-		npmproAccessListIds: accessLists.map((accessList) => accessList.id),
-	}));
 
-	const onSubmit = (values, { resetForm, setSubmitting }) => {
-		if (isSubmitting) return;
-		setIsSubmitting(true);
+	const onSubmit = async (values) => {
 		setErrorMsg(null);
-
-		// Set the unrestricted acls here (remove any data in their acl lists)
-		const globalType = values.npmproAccessListType;
-		let globalAclIds = values.npmproAccessListIds;
-		if (globalType === "public") {
-			globalAclIds = [];
+		try {
+			const row = await save({
+				id: savedId ?? (id === "new" || isClone ? undefined : id),
+				...proxyHostPayload(values),
+			});
+			const nginxErr = getNginxConfigError(row);
+			if (nginxErr === null) {
+				showObjectSuccess("proxy-host", "saved");
+				remove();
+				return;
+			}
+			setSavedId(row.id);
+			// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend created,
+			// otherwise saving again with "new" would request another one
+			methods.setValue("certificateId", row.certificateId);
+			resetToSaved();
+			setErrorMsg(<NginxConfigErrorMsg obj="proxy-host" nginxErr={nginxErr} />);
+		} catch (err) {
+			setErrorMsg(<ApiErrorContent error={err} />);
 		}
-
-		const payload = {
-			id: savedId ?? (id === "new" || isClone ? undefined : id),
-			...values,
-			npmproAccessListIds: globalAclIds,
-			forwardPort: values.forwardPort || 0,
-			locations: values.locations.map((location) => ({ ...location, forwardPort: location.forwardPort || 0 })),
-		};
-
-		setProxyHost(payload, {
-			onError: (err) => {
-				setErrorMsg(<ApiErrorContent error={err} />);
-			},
-			onSuccess: (row) => {
-				const nginxErr = getNginxConfigError(row);
-				if (nginxErr === null) {
-					showObjectSuccess("proxy-host", "saved");
-					remove();
-					return;
-				}
-				setSavedId(row.id);
-				// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend
-				// created, otherwise saving again with "new" would request another one
-				resetForm({ values: { ...values, certificateId: row.certificateId } });
-				setErrorMsg(<NginxConfigErrorMsg obj="proxy-host" nginxErr={nginxErr} />);
-			},
-			onSettled: () => {
-				setIsSubmitting(false);
-				setSubmitting(false);
-			},
-		});
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<HookForm methods={methods} onSubmit={onSubmit}>
+			<DirtyTracker dirtyRef={dirtyRef} />
+			<ProxyHostForm
+				data={data}
+				isClone={isClone}
+				isAdmin={isAdmin}
+				savedId={savedId}
+				errorMsg={errorMsg}
+				onCloseError={() => setErrorMsg(null)}
+				{...formProps}
+			/>
+		</HookForm>
+	);
+}
+
+const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
+	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	const { data, error } = useProxyHost(id);
+	const isAdmin = useIsAdmin();
+	// the key AccessFields reads, so nothing is fetched twice
+	const accessLists = useAccessLists(["owner", "items", "clients"]);
+	const settled = useTlsQueriesSettled({ accessLists });
+	const { mutateAsync: save, isPending: isSaving } = useSetProxyHost();
+	const { data: allProxyHosts } = useProxyHosts();
+	const suggestions = useDirectorySuggestions(allProxyHosts);
+	// never false again once true: a refetch keeps data (also when it fails), settled is latched
+	const ready = Boolean(data) && settled;
+
+	return (
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
-			{isPending && <Loading noLogo />}
-			{data && isAdmin !== undefined && (
-				<Formik
-					validate={validateHost}
-					initialValues={{
-						// Details tab
-						domainNames: data?.domainNames,
-						forwardScheme: data?.forwardScheme,
-						forwardHost: clonedPath(data?.forwardScheme, data?.forwardHost),
-						forwardPort: data?.forwardPort || "",
-						npmproAccessListIds: data?.accessLists.map((accessList) => accessList.id),
-						npmproAccessListType: data?.npmproAccessListType,
-						// Locations tab
-						locations: initialLocations,
-						// SSL tab
-						certificateId: data?.certificateId,
-						sslForced: data?.sslForced,
-						npmproHttp3Support: data?.npmproHttp3Support,
-						hstsEnabled: data?.hstsEnabled,
-						hstsSubdomains: data?.hstsSubdomains,
-						// Advanced tab
-						advancedConfig: dropConfig ? "" : data?.advancedConfig,
-						npmproLocationConfig: dropConfig ? "" : data?.npmproLocationConfig,
-						npmproDirectory: data?.npmproDirectory,
-						npmproMtlsCertificateId: data?.npmproMtlsCertificateId,
-						npmproMtlsVerifyClientOptional: data?.npmproMtlsVerifyClientOptional,
-						npmproMtlsBypassAuthRequest: data?.npmproMtlsBypassAuthRequest,
-						npmproNoindex: data?.npmproNoindex,
-						npmproCrowdsecAppsec: data?.npmproCrowdsecAppsec,
-						npmproProxyResponseBuffering: data?.npmproProxyResponseBuffering,
-						npmproProxyRequestBuffering: data?.npmproProxyRequestBuffering,
-						npmproUpstreamCompression: data?.npmproUpstreamCompression,
-						npmproFancyindex: data?.npmproFancyindex,
-						npmproXFrameOptions: data?.npmproXFrameOptions,
-						npmproAuthRequest: data?.npmproAuthRequest,
-						npmproAuthRequestUpstream: data?.npmproAuthRequestUpstream,
-					}}
-					onSubmit={onSubmit}
-				>
-					{({ values }) => (
-						<Form noValidate>
-							<DirtyTracker dirtyRef={dirtyRef} />
-							<AppModal.Header closeButton={!isSubmitting}>
-								<AppModal.Title>
-									<T
-										id={savedId || (data?.id && !isClone) ? "object.edit" : "object.add"}
-										tData={{ object: "proxy-host" }}
-									/>
-								</AppModal.Title>
-							</AppModal.Header>
-							<AppModal.Body>
-								<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
-									{errorMsg}
-								</ErrorAlert>
-								<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-details"
-											className="nav-link active"
-											data-bs-toggle="tab"
-											aria-selected="true"
-											role="tab"
-										>
-											<T id="column.details" />
-										</a>
-									</li>
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-locations"
-											className="nav-link"
-											data-bs-toggle="tab"
-											aria-selected="false"
-											role="tab"
-										>
-											{<T id="column.custom-locations" />}
-											{values?.locations?.length > 0 ? "*" : ""}
-										</a>
-									</li>
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-ssl"
-											className="nav-link"
-											data-bs-toggle="tab"
-											aria-selected="false"
-											role="tab"
-										>
-											<T id="column.ssl" />
-										</a>
-									</li>
-									<li className="nav-item" role="presentation">
-										<a
-											href="#tab-advanced"
-											className="nav-link"
-											data-bs-toggle="tab"
-											aria-selected="false"
-											role="tab"
-										>
-											<T id="domains.advanced" />
-											{values?.advancedConfig?.trim() ? "*" : ""}
-										</a>
-									</li>
-								</ul>
-								<div className="tab-content">
-									<div className="tab-pane active show" id="tab-details" role="tabpanel">
-										<DomainNamesField
-											isWildcardPermitted={
-												values.certificateId !== "new" || values.npmproDnsChallenge
-											}
-											dnsProviderWildcardSupported
-											forCertificate={values.certificateId === "new"}
-										/>
-										<div className="row">
-											<div className="col-md-3">
-												<Field name="forwardScheme">
-													{({ field, form }) => (
-														<div className="mb-3">
-															<label className="form-label" htmlFor="forwardScheme">
-																<T id="host.forward-scheme" />
-															</label>
-															<select
-																id="forwardScheme"
-																className="form-select"
-																required
-																{...field}
-																onChange={(e) => {
-																	const scheme = e.target.value;
-																	setSchemeResetNotice(
-																		getOptionsResetByScheme(form.values, scheme)
-																			.length > 0,
-																	);
-																	field.onChange(e);
-																	if (scheme === "empty") return;
-																	if (!["http", "https"].includes(scheme)) {
-																		form.setFieldValue(
-																			"npmproProxyRequestBuffering",
-																			false,
-																		);
-																		form.setFieldValue(
-																			"npmproProxyResponseBuffering",
-																			false,
-																		);
-																	}
-																	if (scheme === "path") {
-																		form.setFieldValue(
-																			"npmproUpstreamCompression",
-																			false,
-																		);
-																	} else {
-																		form.setFieldValue("npmproFancyindex", false);
-																	}
-																}}
-															>
-																<option value="http">http://</option>
-																<option value="https">https://</option>
-																<option value="path">
-																	{intl.formatMessage({
-																		id: "host.forward-scheme.path",
-																	})}
-																</option>
-																<option value="empty">
-																	{intl.formatMessage({
-																		id: "host.forward-scheme.empty",
-																	})}
-																</option>
-																<option value="grpc">grpc://</option>
-																<option value="grpcs">grpcs://</option>
-															</select>
-															{schemeResetNotice && (
-																<small className="form-hint text-warning">
-																	<T id="host.forward-scheme.options-reset" />
-																</small>
-															)}
-														</div>
-													)}
-												</Field>
-											</div>
-											<div className="col-md-5">
-												<Field name="forwardHost">
-													{({ field, form }) => {
-														const hostError = visibleErrorAt(form, "forwardHost");
-														const pathHint = form.values.forwardScheme === "path";
-														return (
-															<div className="mb-3">
-																<label className="form-label" htmlFor="forwardHost">
-																	<T id="proxy-host.forward-host-path" />
-																</label>
-																<input
-																	id="forwardHost"
-																	type="text"
-																	className={`form-control ${hostError ? "is-invalid" : ""}`}
-																	placeholder="example.com"
-																	required={form.values.forwardScheme !== "empty"}
-																	aria-invalid={hostError ? "true" : undefined}
-																	aria-describedby={joinIds(
-																		hostError ? "forwardHost-error" : null,
-																		pathHint ? "forwardHost-hint" : null,
-																	)}
-																	{...field}
-																/>
-																{hostError ? (
-																	<div
-																		className="invalid-feedback"
-																		id="forwardHost-error"
-																	>
-																		{hostError}
-																	</div>
-																) : null}
-																{pathHint ? (
-																	<div className="form-hint" id="forwardHost-hint">
-																		<T id="host.forward-host.path-hint" />
-																	</div>
-																) : null}
-															</div>
-														);
-													}}
-												</Field>
-											</div>
-											<div className="col-md-4">
-												<Field name="forwardPort" validate={validatePort}>
-													{({ field, form }) => (
-														<div className="mb-3">
-															<label className="form-label" htmlFor="forwardPort">
-																<T id="host.forward-port" />
-															</label>
-															<div
-																className={cn("input-group", {
-																	"has-validation":
-																		form.errors.forwardPort &&
-																		(form.touched.forwardPort ||
-																			form.submitCount > 0),
-																})}
-															>
-																<input
-																	id="forwardPort"
-																	type="text"
-																	inputMode="numeric"
-																	className={`form-control ${form.errors.forwardPort && (form.touched.forwardPort || form.submitCount > 0) ? "is-invalid" : ""}`}
-																	placeholder={intl.formatMessage(
-																		{ id: "form.example" },
-																		{ example: "8081" },
-																	)}
-																	{...field}
-																/>
-																{(isAdmin || values?.npmproLocationConfig?.trim()) && (
-																	<button
-																		type="button"
-																		className="btn btn-icon"
-																		title={intl.formatMessage({
-																			id: "host.location-config.toggle",
-																		})}
-																		aria-label={intl.formatMessage({
-																			id: "host.location-config.toggle",
-																		})}
-																		aria-expanded={advVisible}
-																		onClick={() => setAdvVisible((prev) => !prev)}
-																	>
-																		<IconSettings size={20} aria-hidden="true" />
-																		{values?.npmproLocationConfig?.trim()
-																			? "*"
-																			: ""}
-																	</button>
-																)}
-
-																{form.errors.forwardPort &&
-																(form.touched.forwardPort || form.submitCount > 0) ? (
-																	<div className="invalid-feedback">
-																		{form.errors.forwardPort}
-																	</div>
-																) : null}
-															</div>
-														</div>
-													)}
-												</Field>
-											</div>
-										</div>
-										<div className="my-3">
-											<h4 className="py-2">
-												<T id="options" />
-											</h4>
-											<div className="divide-y">
-												<Field name="npmproNoindex" type="checkbox">
-													{({ field }) => (
-														<SwitchField
-															id="npmproNoindex"
-															label={<T id="host.flags.send-noindex" />}
-															{...field}
-														/>
-													)}
-												</Field>
-												<Field name="npmproCrowdsecAppsec" type="checkbox">
-													{({ field, form }) => (
-														<SwitchField
-															id="npmproCrowdsecAppsec"
-															label={<T id="host.flags.disable-crowdsec-appsec" />}
-															hint={
-																values.npmproProxyRequestBuffering && (
-																	<span className="d-block">
-																		<T id="host.flags.hint.appsec-request-buffering" />
-																	</span>
-																)
-															}
-															{...field}
-															onChange={(e) => {
-																field.onChange(e);
-																if (!e.target.checked) {
-																	form.setFieldValue(
-																		"npmproProxyRequestBuffering",
-																		false,
-																	);
-																}
-															}}
-														/>
-													)}
-												</Field>
-												<Field name="npmproProxyRequestBuffering" type="checkbox">
-													{({ field, form }) => (
-														<SwitchField
-															id="npmproProxyRequestBuffering"
-															label={<T id="host.flags.disable-request-buffering" />}
-															hint={
-																<>
-																	<span className="d-block">
-																		<T id="host.flags.hint.request-buffering-appsec" />
-																	</span>
-																	{getOptionHintId(
-																		"npmproProxyRequestBuffering",
-																		values.forwardScheme,
-																	) && (
-																		<span className="d-block">
-																			<T
-																				id={getOptionHintId(
-																					"npmproProxyRequestBuffering",
-																					values.forwardScheme,
-																				)}
-																			/>
-																		</span>
-																	)}
-																</>
-															}
-															{...field}
-															onChange={(e) => {
-																field.onChange(e);
-																if (e.target.checked) {
-																	form.setFieldValue("npmproCrowdsecAppsec", true);
-																}
-															}}
-															disabled={
-																form.values.forwardScheme !== "http" &&
-																form.values.forwardScheme !== "https"
-															}
-														/>
-													)}
-												</Field>
-												<Field name="npmproProxyResponseBuffering" type="checkbox">
-													{({ field, form }) => (
-														<SwitchField
-															id="npmproProxyResponseBuffering"
-															label={<T id="host.flags.disable-response-buffering" />}
-															hint={
-																getOptionHintId(
-																	"npmproProxyResponseBuffering",
-																	values.forwardScheme,
-																) && (
-																	<span className="d-block">
-																		<T
-																			id={getOptionHintId(
-																				"npmproProxyResponseBuffering",
-																				values.forwardScheme,
-																			)}
-																		/>
-																	</span>
-																)
-															}
-															{...field}
-															disabled={
-																form.values.forwardScheme !== "http" &&
-																form.values.forwardScheme !== "https"
-															}
-														/>
-													)}
-												</Field>
-												<Field name="npmproUpstreamCompression" type="checkbox">
-													{({ field, form }) => (
-														<SwitchField
-															id="npmproUpstreamCompression"
-															label={<T id="host.flags.upstream-compression" />}
-															hint={
-																getOptionHintId(
-																	"npmproUpstreamCompression",
-																	values.forwardScheme,
-																) && (
-																	<span className="d-block">
-																		<T
-																			id={getOptionHintId(
-																				"npmproUpstreamCompression",
-																				values.forwardScheme,
-																			)}
-																		/>
-																	</span>
-																)
-															}
-															{...field}
-															disabled={["path", "empty"].includes(
-																form.values.forwardScheme,
-															)}
-														/>
-													)}
-												</Field>
-												<Field name="npmproFancyindex" type="checkbox">
-													{({ field, form }) => (
-														<SwitchField
-															id="npmproFancyindex"
-															label={<T id="host.flags.fancyindex" />}
-															hint={
-																getOptionHintId(
-																	"npmproFancyindex",
-																	values.forwardScheme,
-																) && (
-																	<span className="d-block">
-																		<T
-																			id={getOptionHintId(
-																				"npmproFancyindex",
-																				values.forwardScheme,
-																			)}
-																		/>
-																	</span>
-																)
-															}
-															{...field}
-															disabled={form.values.forwardScheme !== "path"}
-														/>
-													)}
-												</Field>
-											</div>
-											<div className="mt-3">
-												<div className="mb-3">
-													<label className="form-label" htmlFor="npmproXFrameOptions">
-														X-Frame-Options
-													</label>
-													<Field name="npmproXFrameOptions">
-														{({ field }) => (
-															<select
-																id="npmproXFrameOptions"
-																className="form-select"
-																required
-																{...field}
-															>
-																<option value="SAMEORIGIN">SAMEORIGIN</option>
-																<option value="DENY">DENY</option>
-																<option value="none">none</option>
-																<option value="upstream">upstream</option>
-															</select>
-														)}
-													</Field>
-												</div>
-												<div className="mb-3">
-													<label className="form-label" htmlFor="npmproAuthRequest">
-														<T id="host.auth-request" />
-													</label>
-													<Field name="npmproAuthRequest">
-														{({ field, form }) => (
-															<select
-																id="npmproAuthRequest"
-																className="form-select"
-																required
-																{...field}
-																onChange={(e) => {
-																	field.onChange(e);
-																	if (e.target.value === "none") {
-																		form.setFieldValue(
-																			"npmproAuthRequestUpstream",
-																			"",
-																		);
-																	}
-																}}
-															>
-																<option value="none">none</option>
-																<option value="anubis">anubis</option>
-																<option value="tinyauth">tinyauth</option>
-																<option value="oauth2proxy">oauth2proxy</option>
-																<option value="voidauth">voidauth</option>
-																<option value="authelia">authelia (modern)</option>
-																<option value="authentik">authentik</option>
-																<option value="authentik-send-basic-auth">
-																	authentik-send-basic-auth
-																</option>
-															</select>
-														)}
-													</Field>
-												</div>
-												{values.npmproAuthRequest !== "none" && (
-													<div className="mb-3">
-														<label
-															className="form-label"
-															htmlFor="npmproAuthRequestUpstream"
-														>
-															<T id="host.auth-request-upstream" />
-														</label>
-														<Field
-															name="npmproAuthRequestUpstream"
-															validate={validateUpstreamUrl()}
-														>
-															{({ field, form }) => (
-																<>
-																	<input
-																		id="npmproAuthRequestUpstream"
-																		type="text"
-																		className={`form-control ${form.errors.npmproAuthRequestUpstream && form.touched.npmproAuthRequestUpstream ? "is-invalid" : ""}`}
-																		placeholder={intl.formatMessage({
-																			id: "host.auth-request-upstream.placeholder",
-																		})}
-																		maxLength={255}
-																		{...field}
-																	/>
-																	{form.errors.npmproAuthRequestUpstream ? (
-																		<div className="invalid-feedback">
-																			{form.touched.npmproAuthRequestUpstream
-																				? form.errors.npmproAuthRequestUpstream
-																				: null}
-																		</div>
-																	) : null}
-																</>
-															)}
-														</Field>
-													</div>
-												)}
-											</div>
-										</div>
-										<div className="my-3">
-											<h4 className="py-2">
-												<T id="proxy-host.global-access-lists" />
-											</h4>
-											<AccessFields
-												initialAccessListType={data?.npmproAccessListType}
-												initialAccessListIds={data?.accessLists.map(
-													(accessList) => accessList.id,
-												)}
-												name="npmproAccessListIds"
-												typeFieldName="npmproAccessListType"
-												authRequest={values.npmproAuthRequest}
-											/>
-										</div>
-										<Field name="npmproLocationConfig">
-											{({ field }) => (
-												<>
-													{advVisible && (
-														<div className="">
-															<label
-																className="form-label"
-																htmlFor="npmproLocationConfig"
-															>
-																<T id="host.location-config.label" />
-															</label>
-															<textarea
-																id="npmproLocationConfig"
-																className="form-control font-monospace"
-																spellCheck={false}
-																placeholder={intl.formatMessage({
-																	id: "nginx-config.placeholder",
-																})}
-																rows={8}
-																readOnly={!isAdmin}
-																aria-describedby={
-																	isAdmin ? undefined : "npmproLocationConfig-hint"
-																}
-																{...field}
-															/>
-															{!isAdmin && (
-																<div
-																	className="form-hint"
-																	id="npmproLocationConfig-hint"
-																>
-																	<T id="nginx-config.admin-only" />
-																</div>
-															)}
-														</div>
-													)}
-												</>
-											)}
-										</Field>
-									</div>
-									<div className="tab-pane" id="tab-locations" role="tabpanel">
-										<LocationsFields initialValues={initialLocations} />
-									</div>
-									<div className="tab-pane" id="tab-ssl" role="tabpanel">
-										<SSLCertificateField name="certificateId" label="ssl-certificate" allowNew />
-
-										<SSLOptionsFields forProxyHost />
-									</div>
-									<div className="tab-pane" id="tab-advanced" role="tabpanel">
-										<NginxConfigField />
-										<div className="row mt-3">
-											<div className="col-md-12 mb-3">
-												<DirectoryField
-													labelId="proxy-host.directory"
-													datalistId="directory-suggestions-proxy"
-													suggestions={suggestions}
-												/>
-											</div>
-										</div>
-									</div>
-								</div>
-								<RequestProgress
-									running={isSubmitting && values.certificateId === "new"}
-									propagationSeconds={values.npmproPropagationSeconds}
-								/>
-							</AppModal.Body>
-							<AppModal.Footer>
-								<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-									<T id="cancel" />
-								</Button>
-								<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
-									<FormSubmit
-										labels={FIELD_LABELS}
-										className="ms-auto"
-										edit={Boolean(data?.id) && !isClone}
-										color="primary"
-										isLoading={isSubmitting}
-										disabled={isSubmitting}
-									>
-										<T id="save" />
-									</FormSubmit>
-								</HasPermission>
-							</AppModal.Footer>
-						</Form>
-					)}
-				</Formik>
+			{!(ready || error) && <Loading noLogo />}
+			{ready && (
+				<ProxyHostEditor
+					id={id}
+					isClone={isClone}
+					isAdmin={isAdmin}
+					data={data}
+					save={save}
+					remove={remove}
+					dirtyRef={dirtyRef}
+					suggestions={suggestions}
+					close={close}
+				/>
 			)}
 		</AppModal>
 	);

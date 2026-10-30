@@ -1,11 +1,10 @@
-import { Field, useFormikContext } from "formik";
-import { useController, useFormContext } from "react-hook-form";
+import { useController } from "react-hook-form";
 import CreatableSelect from "react-select/creatable";
 import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
-import { validateDomain, validateDomains } from "src/modules/Validations";
+import { validateDomain } from "src/modules/Validations";
 
-// the label, the chips select and the hints or the error, for either form library
+// the label, the chips select and the hints or the error
 function DomainNamesControl({
 	name,
 	id,
@@ -57,31 +56,6 @@ function DomainNamesControl({
 	);
 }
 
-// in a Formik form: the field's own validate; shown once it was left or a submit was tried
-function FormikDomainNames({ control, validate, onChange }) {
-	const { setFieldValue } = useFormikContext();
-	return (
-		<Field name={control.name} validate={validate}>
-			{({ field, form }) => (
-				<DomainNamesControl
-					{...control}
-					value={field.value}
-					error={
-						form.errors[field.name] && (form.touched[field.name] || form.submitCount > 0)
-							? form.errors[field.name]
-							: null
-					}
-					onChange={(doms) => {
-						void setFieldValue(field.name, doms);
-						onChange?.(doms);
-					}}
-					onBlur={() => form.setFieldTouched(field.name, true)}
-				/>
-			)}
-		</Field>
-	);
-}
-
 // in a React Hook Form form: the form's resolver checks it (CertificateForms.js), an error shows as it is held
 function HookFormDomainNames({ control, onChange }) {
 	const { field, fieldState } = useController({ name: control.name });
@@ -122,14 +96,5 @@ export function DomainNamesField({
 		helperTexts,
 		isValidDomain: validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate),
 	};
-	// A3 removes the Formik branch
-	return useFormContext() ? (
-		<HookFormDomainNames control={control} onChange={onChange} />
-	) : (
-		<FormikDomainNames
-			control={control}
-			validate={validateDomains(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate)}
-			onChange={onChange}
-		/>
-	);
+	return <HookFormDomainNames control={control} onChange={onChange} />;
 }

@@ -5,7 +5,7 @@
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
-import { CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
+import { ACCESS_LISTS, CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
 import { HOST_PATTERN } from "./ValidationRules.js";
 
 // the backend's rules (schema/components/stream-object.json), plus the port range nothing checked before
@@ -340,16 +340,21 @@ const querySettled = (query) => !query.isPending || query.failureCount > 0;
 
 /**
  * Whether a host window can mount its form: the signed-in user and the DNS providers have settled, and the
- * certificates too for a user who may read them (a user without certificate access does not wait behind the
- * spinner for a read that fails)
+ * certificates (and the access lists of the proxy host window) too for a user who may read them (a user without
+ * that access does not wait behind the spinner for a read that fails)
  *
  * @param   {Object} queries
- * @param   {Object} queries.user          useUser("me")
- * @param   {Object} queries.certificates  useCertificates()
- * @param   {Object} queries.dnsProviders  useDnsProviders()
+ * @param   {Object} queries.user           useUser("me")
+ * @param   {Object} queries.certificates   useCertificates()
+ * @param   {Object} queries.dnsProviders   useDnsProviders()
+ * @param   {Object} [queries.accessLists]  useAccessLists(...), only for a window with access fields
  * @returns {boolean}
  */
-export function tlsQueriesSettled({ user, certificates, dnsProviders }) {
+export function tlsQueriesSettled({ user, certificates, dnsProviders, accessLists }) {
 	if (!(querySettled(user) && querySettled(dnsProviders))) return false;
-	return querySettled(certificates) || !hasPermission(CERTIFICATES, VIEW, user.data?.permissions, user.data?.roles);
+	const readSettled = (query, section) =>
+		query === undefined ||
+		querySettled(query) ||
+		!hasPermission(section, VIEW, user.data?.permissions, user.data?.roles);
+	return readSettled(certificates, CERTIFICATES) && readSettled(accessLists, ACCESS_LISTS);
 }

@@ -399,3 +399,21 @@ it("tlsQueriesSettled: waits for the user and the DNS providers, the certificate
 	assert.equal(tlsQueriesSettled({ ...all, user: retrying, certificates: loading }), true);
 	assert.equal(tlsQueriesSettled({ ...all, user: viewer, certificates: loading }), false);
 });
+
+it("tlsQueriesSettled: the proxy host window also waits for the access lists, only for a user who may read them", () => {
+	const loaded = (data) => ({ isPending: false, failureCount: 0, data });
+	const loading = { isPending: true, failureCount: 0, data: undefined };
+	const retrying = { isPending: true, failureCount: 1, data: undefined };
+	const admin = loaded({ roles: ["admin"], permissions: {} });
+	const listViewer = loaded({ roles: [], permissions: { certificates: "view", accessLists: "view" } });
+	const noLists = loaded({ roles: [], permissions: { certificates: "view", accessLists: "hidden" } });
+	const all = { user: admin, certificates: loaded([]), dnsProviders: loaded([]), accessLists: loaded([]) };
+	assert.equal(tlsQueriesSettled(all), true);
+	assert.equal(tlsQueriesSettled({ ...all, accessLists: loading }), false);
+	assert.equal(tlsQueriesSettled({ ...all, user: listViewer, accessLists: loading }), false);
+	// a failed read that retries, or a read the user may not make, does not keep the window behind the spinner
+	assert.equal(tlsQueriesSettled({ ...all, accessLists: retrying }), true);
+	assert.equal(tlsQueriesSettled({ ...all, user: noLists, accessLists: loading }), true);
+	// the other windows pass no access lists
+	assert.equal(tlsQueriesSettled({ ...all, accessLists: undefined }), true);
+});
