@@ -16,7 +16,7 @@
 1. Download the [compose.yaml](https://raw.githubusercontent.com/TheBlackBush/NPMpro/refs/heads/develop/compose.yaml) of the repository into an empty folder (or paste its content into a Portainer stack).
 2. Check the volume: `/opt/npmpro:/data` keeps all NPMpro data in `/opt/npmpro` on the host. Change the host path if you want.
 3. Set `TZ` to your time zone. Set in `compose.yaml`, it wins over the Time zone setting (Settings, Advanced), which then shows "Set by TZ". To choose the time zone in the web UI instead (default UTC), comment `TZ` out and keep at least one other active variable (compose refuses an empty `environment:` list), or remove the `environment:` key.
-4. Consider setting `COOKIE_SECRET` to a long random string: without it every restart signs all users out. Leave the other variables commented out for now. Most of them are settings in the web UI; a variable you set wins over the UI and locks the field. The file lists every supported variable with its default.
+4. Set `COOKIE_SECRET` to a long random value and keep it. It signs the session cookie: without it NPMpro makes a new random secret at every start, so every restart, recreate and upgrade signs all users out. Changing it signs everyone out once. Treat it like a password. Generate one with `openssl rand -hex 32`, or, without openssl, `head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; echo`, or after the first start `docker exec npmpro node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` (details: [Configuration](Configuration#cookie_secret)). Leave the other variables commented out for now. Most of them are settings in the web UI; a variable you set wins over the UI and locks the field. The file lists every supported variable with its default.
 5. Start it:
    ```bash
    docker compose up -d
@@ -48,4 +48,5 @@ To open the web UI with a domain and a real certificate, either choose that cert
 - [Usage](Usage) for your first hosts and certificates
 - [CrowdSec](CrowdSec) to block attackers
 - [Forward authentication](Forward-Authentication) to put a login in front of your services
+- [Configuration](Configuration) for the settings and variables
 - [Troubleshooting](Troubleshooting) when the container does not start

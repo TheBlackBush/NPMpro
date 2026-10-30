@@ -13,7 +13,7 @@ NPMpro has the nginx side built in for six providers: [Anubis](#anubis), [Tinyau
 They are unrelated:
 
 - **Forward authentication** (this page) protects **your proxy hosts**, the services behind NPMpro. It is set in Settings, Forward authentication and in each proxy host.
-- **OIDC login** (Settings, Authentication) is the sign-in to the **NPMpro web UI** itself, see [OIDC login](https://github.com/TheBlackBush/NPMpro#oidc-login). It does not protect any proxy host.
+- **OIDC login** (Settings, Authentication) is the sign-in to the **NPMpro web UI** itself, see [OIDC login](Authentication#oidc-login). It does not protect any proxy host.
 
 You can use the same identity provider for both, but each is set up on its own.
 
@@ -28,7 +28,7 @@ Settings, Forward authentication (administrators) has one field per provider und
 The upstream is the address where NPMpro reaches the provider, in one of these forms:
 
 - `scheme://host:port`, for example `http://127.0.0.1:9091`, `http://auth-server.lan:4180` or `http://[fd00::5]:3000`. The scheme is `http` or `https`, the port is required, an IPv6 address is written in brackets.
-- `scheme://cu_name`, the name of your own nginx `upstream` block whose name starts with `cu_`, defined in `/opt/npmpro/custom_nginx/http_top.conf` (see [Load Balancing](https://github.com/TheBlackBush/NPMpro#load-balancing)). Use it to spread the checks over several provider instances.
+- `scheme://cu_name`, the name of your own nginx `upstream` block whose name starts with `cu_`, defined in `/opt/npmpro/custom_nginx/http_top.conf` (see [Load Balancing](Load-balancing)). Use it to spread the checks over several provider instances.
 
 Not allowed: a path (NPMpro adds the path of each provider itself), whitespace and any of `; { } # " ' $ \`.
 
@@ -52,6 +52,7 @@ One host has one upstream per provider. When the host and several custom locatio
 
 ### Things to know for every provider
 
+- **Overrides:** a proxy host can override the default upstream of a provider on its own. A main location's override takes precedence over any custom location's override.
 - **Access lists and Satisfy Any:** an access list on the same host still applies: the visitor needs to pass both. If the first access list uses Satisfy Any, a matching rule or a valid user skips the Auth Request too. The host dialog warns about this.
 - **mTLS:** on the **TLS** tab, with an mTLS certificate and **Make mTLS Optional**, the switch **mTLS bypass Auth Request** lets clients with a valid client certificate skip the forward authentication. Clients without one get the normal login.
 - **Helper paths:** NPMpro adds the paths that the provider needs to the protected host (listed in each section below). They take precedence over your service for these paths, so your service cannot use them.

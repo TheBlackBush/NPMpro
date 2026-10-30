@@ -16,7 +16,7 @@ You can turn on two-factor authentication (TOTP, with one-time backup codes) for
 - **Streams** forward TCP or UDP ports (for example a game server or SSH), optionally with TLS from an NPMpro certificate. A new certificate requested from the stream form needs the DNS challenge. nginx only sends PROXY protocol v2 over UDP, so when UDP forwarding is on the form switches PROXY protocol v1 to v2, and a stream with both TCP and UDP then sends v2 on the TCP side as well.
 - Hosts can be put into groups to keep long lists tidy.
 
-The meaning of several options differs from nginx-proxy-manager, see [Comments on some buttons](https://github.com/TheBlackBush/NPMpro#comments-on-some-buttons). Websockets are always on.
+The meaning of several options differs from nginx-proxy-manager, see [Comments on some buttons](Host-options). Websockets are always on.
 
 When you save a host, NPMpro first checks its certificates: the TLS certificate cannot be an mTLS CA ("An mTLS certificate can not be used as the SSL certificate"), the **mTLS Certificate** must be an mTLS CA certificate, and the certificate files must exist ("The certificate files are missing"). These checks run before a new certificate is requested, so a refused save leaves no unused certificate behind.
 
@@ -39,7 +39,7 @@ Certificates renew automatically; the renewal check interval, key type and size,
 
 ## Access lists
 
-Access lists combine basic auth users and allow/deny rules for IP addresses or ranges. A host or location can use several access lists; they are evaluated top-down in the order shown in the UI, and "Satisfy Any" and "Pass Auth to Upstream" only apply when set on the first one. See [Access Lists](https://github.com/TheBlackBush/NPMpro#access-lists).
+Access lists combine basic auth users and allow/deny rules for IP addresses or ranges. A host or location can use several access lists; they are evaluated top-down in the order shown in the UI, and "Satisfy Any" and "Pass Auth to Upstream" only apply when set on the first one. See [Host options](Host-options#access-lists).
 
 When you save an access list:
 
@@ -62,7 +62,7 @@ Settings (administrators) has these pages: Default Site, Authentication, Certifi
 - **nginx** holds the nginx settings for all hosts. **Workers:** **Worker processes** (**Automatic (one per CPU thread)**, or a number), **Connections per worker** and **Worker shutdown timeout**. **Logging:** **Log file not found errors**. **TLS for all hosts:** **Allow TLS 1.2**, **Post-quantum key exchange only** (which turns TLS 1.2 and the NIST P curves off while it is on), **Allow the NIST P curves** and **Allow RSA PKCS#1 signatures**; turning TLS 1.2 or the P curves off shuts out older browsers and clients. **Modules:** njs, LDAP authentication, NTLM upstreams and virtual host traffic status. Saving tests the config and reloads nginx; if the test fails nothing is applied and the form shows the nginx message (for example when you turn off a module that a custom config still uses). Each field has its `NGINX_*` variable, which wins and locks the field as described above.
 - **Backup and restore** and **Database** are described on their own pages: [Backup and restore](Backup-and-restore) and [Database](Database).
 
-The full table of fields, variables and when they apply is in the README: [Settings and environment variables](https://github.com/TheBlackBush/NPMpro#settings-and-environment-variables).
+The full table of fields, variables and when they apply is on the Configuration page: [Configuration](Configuration).
 
 ## Monitoring
 
@@ -73,15 +73,15 @@ The Monitoring page (administrators) has a Traffic tab and a CrowdSec tab:
 - **CrowdSec** shows the active bans once the CrowdSec bouncer is configured. The setup is described in [CrowdSec](CrowdSec).
 - **GeoIP:** enter a free MaxMind account ID and license key in Settings, GeoIP; NPMpro downloads the GeoLite2 databases itself and updates them every 3 days.
 
-Details and the privacy notes: [Monitoring](https://github.com/TheBlackBush/NPMpro#monitoring) and [Hints for Your Privacy Policy](https://github.com/TheBlackBush/NPMpro#hints-for-your-privacy-policy).
+Details and the privacy notes: [Monitoring](Monitoring) and [Hints for Your Privacy Policy](Privacy).
 
 ## GoAccess
 
-Turn on GoAccess report in Settings, Logs & monitoring and restart the container. The report opens under `/goaccess` of the web UI, for signed-in administrators. Its options (days kept, IP anonymization, query strings, operating system versions, host name lookups) are fields in the same block. See [GoAccess](https://github.com/TheBlackBush/NPMpro#goaccess).
+Turn on GoAccess report in Settings, Logs & monitoring and restart the container. The report opens under `/goaccess` of the web UI, for signed-in administrators. Its options (days kept, IP anonymization, query strings, operating system versions, host name lookups) are fields in the same block. See [GoAccess](Monitoring#goaccess).
 
 ## OIDC sign-in
 
-Settings, Authentication sets up sign-in with an OIDC provider: issuer URL, client ID, client secret and redirect domain, then register the shown callback URL at your provider and enable it. Users can be created on their first sign-in, limited to allowed email domains, and password sign-in can be turned off. See [OIDC login](https://github.com/TheBlackBush/NPMpro#oidc-login).
+Settings, Authentication sets up sign-in with an OIDC provider: issuer URL, client ID, client secret and redirect domain, then register the shown callback URL at your provider and enable it. Users can be created on their first sign-in, limited to allowed email domains, and password sign-in can be turned off. See [OIDC login](Authentication#oidc-login).
 
 ## Users and permissions
 

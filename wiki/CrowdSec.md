@@ -215,7 +215,7 @@ The bouncer supports the captcha remediation. Set `CAPTCHA_PROVIDER` and the `SI
    ```bash
    docker exec crowdsec cscli decisions list
    ```
-6. **In the web UI:** the Monitoring page (administrators) has a **CrowdSec** tab whenever Monitoring is available, that is while traffic statistics are on or the bouncer is configured. Without a configured bouncer the tab says "CrowdSec is not configured". Once the bouncer is enabled with a key, Monitoring appears in the menu even with traffic statistics off, the tab shows the bans and the dashboard shows an **Active bans** card. The tab lists the active bans (total, added in the last 24 hours, by reason, origin and type, a map and the newest bans) and the connection state. NPMpro reads the bans with the key from `crowdsec.conf` and polls the LAPI every 60 seconds, so a new ban can take up to a minute to appear. It is read-only and shows no alerts. See [Monitoring](https://github.com/TheBlackBush/NPMpro#monitoring) in the README.
+6. **In the web UI:** the Monitoring page (administrators) has a **CrowdSec** tab whenever Monitoring is available, that is while traffic statistics are on or the bouncer is configured. Without a configured bouncer the tab says "CrowdSec is not configured". Once the bouncer is enabled with a key, Monitoring appears in the menu even with traffic statistics off, the tab shows the bans and the dashboard shows an **Active bans** card. The tab lists the active bans (total, added in the last 24 hours, by reason, origin and type, a map and the newest bans) and the connection state. NPMpro reads the bans with the key from `crowdsec.conf` and polls the LAPI every 60 seconds, so a new ban can take up to a minute to appear. It is read-only and shows no alerts. See [Monitoring](Monitoring).
 7. **AppSec:** request a path that a virtual patch blocks on one of your proxy hosts, for example `https://app.example.com/.env` (a 404 host does not block it). With AppSec working the answer is 403 from NPMpro, and `docker exec crowdsec cscli metrics` shows the request in the AppSec tables. Repeated hits like this can get your IP banned, so test from the second device or delete the decision afterwards.
 
 ## AppSec and your hosts
@@ -257,7 +257,7 @@ labels:
   type: npmplus
 ```
 
-Then restart CrowdSec. nginx writes the client IP itself, so bans cannot be forged. The request line however is written as the client sent it: a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert.
+Then restart CrowdSec. nginx writes the client IP itself, so bans cannot be forged. The request line however is written as the client sent it: a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert. With the error log added, failed basic auth attempts show up in both logs, so `crowdsecurity/http-generic-bf` counts each of them twice and bans after roughly half as many failed attempts (3 instead of 6 in quick succession).
 
 ## Firewall bouncer
 
@@ -265,7 +265,7 @@ The nginx bouncer blocks banned IPs at the HTTP level: nginx still accepts their
 
 ## Privacy
 
-Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](https://github.com/TheBlackBush/NPMpro#hints-for-your-privacy-policy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too.
+Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](Privacy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too.
 
 ## Troubleshooting
 
