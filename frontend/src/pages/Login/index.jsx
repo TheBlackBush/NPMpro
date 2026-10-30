@@ -1,14 +1,16 @@
-import { Field, Form, Formik } from "formik";
 import { useEffect, useRef, useState } from "react";
+import { Controller, useWatch } from "react-hook-form";
 import {
 	BrandMark,
 	Button,
 	ErrorAlert,
+	HookForm,
 	LocalePicker,
 	MaintenanceBanner,
 	OidcButton,
 	Page,
 	ThemeSwitcher,
+	useAppForm,
 } from "src/components";
 import { PasswordInput } from "src/components/Form";
 import { useAuthState } from "src/context";
@@ -24,20 +26,71 @@ const checkEmail = validateEmail();
 // the invalid-address hint once the field was left with something typed in it (an empty field shows nothing)
 const emailHint = (value, touched) => (touched && value.trim() !== "" ? (checkEmail(value.trim()) ?? null) : null);
 
+/**
+ * The code and the buttons. The code field is a controller: it shows its placeholder as text while empty
+ * (PasswordInput reads the value). codeRef gets the input, for the focus.
+ */
+function TotpCodeForm({ codeRef, onSubmit }) {
+	const { cancelTotp } = useAuthState();
+	const methods = useAppForm({ defaultValues: { code: "" } });
+	const { isSubmitting } = methods.formState;
+	const code = useWatch({ control: methods.control, name: "code" });
+	return (
+		<HookForm methods={methods} onSubmit={(values) => onSubmit(values, methods.reset)}>
+			<div className="mb-3">
+				<Controller
+					name="code"
+					control={methods.control}
+					render={({ field }) => (
+						<PasswordInput
+							{...field}
+							ref={(input) => {
+								field.ref(input);
+								codeRef.current = input;
+							}}
+							id="login-totp-code"
+							label={<T id="login.totp-code" />}
+							textWhenEmpty
+							autoComplete="one-time-code"
+							required
+							maxLength={8}
+							placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
+						/>
+					)}
+				/>
+			</div>
+			<div className="form-footer d-flex gap-2 align-items-start">
+				<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
+					<T id="cancel" />
+				</Button>
+				<Button
+					type="submit"
+					fullWidth
+					color="azure"
+					isLoading={isSubmitting}
+					disabled={isSubmitting || code.trim() === ""}
+				>
+					<T id="login.totp-verify" />
+				</Button>
+			</div>
+		</HookForm>
+	);
+}
+
 function TotpForm() {
 	const codeRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
-	const { submitTotp, cancelTotp } = useAuthState();
+	const { submitTotp } = useAuthState();
 
-	const onSubmit = async (values, { setSubmitting, resetForm }) => {
+	// a refused code empties the field
+	const onSubmit = async (values, reset) => {
 		setFormErr(null);
 		try {
 			await submitTotp(values);
 		} catch (err) {
 			setFormErr(err);
-			resetForm();
+			reset();
 		}
-		setSubmitting(false);
 	};
 
 	useEffect(() => {
@@ -53,43 +106,7 @@ function TotpForm() {
 				<T id="login.totp-description" />
 			</p>
 			{formErr && <ErrorAlert error={formErr} />}
-			<Formik initialValues={{ code: "" }} onSubmit={onSubmit}>
-				{({ isSubmitting, values }) => (
-					<Form noValidate>
-						<div className="mb-3">
-							<Field name="code">
-								{({ field }) => (
-									<PasswordInput
-										{...field}
-										id="login-totp-code"
-										label={<T id="login.totp-code" />}
-										ref={codeRef}
-										textWhenEmpty
-										autoComplete="one-time-code"
-										required
-										maxLength={8}
-										placeholder={intl.formatMessage({ id: "login.totp-code-placeholder" })}
-									/>
-								)}
-							</Field>
-						</div>
-						<div className="form-footer d-flex gap-2 align-items-start">
-							<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
-								<T id="cancel" />
-							</Button>
-							<Button
-								type="submit"
-								fullWidth
-								color="azure"
-								isLoading={isSubmitting}
-								disabled={isSubmitting || values.code.trim() === ""}
-							>
-								<T id="login.totp-verify" />
-							</Button>
-						</div>
-					</Form>
-				)}
-			</Formik>
+			<TotpCodeForm codeRef={codeRef} onSubmit={onSubmit} />
 		</>
 	);
 }
@@ -98,20 +115,82 @@ const redirectToOIDC = () => {
 	window.location.href = "/api/oidc";
 };
 
+/**
+ * Email and password; Sign in waits for a valid address and a password. emailRef gets the email input, for the focus.
+ */
+function PasswordFields({ emailRef, onSubmit }) {
+	const methods = useAppForm({ defaultValues: { email: "", password: "" } });
+	const { register } = methods;
+	const { isSubmitting, touchedFields } = methods.formState;
+	const [email, password] = useWatch({ control: methods.control, name: ["email", "password"] });
+	const hint = emailHint(email, Boolean(touchedFields.email));
+	const { ref: emailFieldRef, ...emailField } = register("email");
+	return (
+		<HookForm methods={methods} onSubmit={onSubmit}>
+			<div className="mb-3">
+				<label className="form-label" htmlFor="login-email">
+					<T id="email-address" />
+				</label>
+				<input
+					{...emailField}
+					ref={(input) => {
+						emailFieldRef(input);
+						emailRef.current = input;
+					}}
+					id="login-email"
+					type="email"
+					autoComplete="username"
+					required
+					className={`form-control ${hint ? "is-invalid" : ""}`}
+					aria-invalid={hint ? "true" : undefined}
+					aria-describedby={hint ? "login-email-error" : undefined}
+					placeholder={intl.formatMessage({ id: "email-address" })}
+				/>
+				{hint ? (
+					<div className="invalid-feedback" id="login-email-error">
+						{hint}
+					</div>
+				) : null}
+			</div>
+			<div className="mb-2">
+				<PasswordInput
+					{...register("password")}
+					id="login-password"
+					label={<T id="password" />}
+					autoComplete="current-password"
+					required
+					maxLength={255}
+					placeholder={intl.formatMessage({ id: "password" })}
+				/>
+			</div>
+			<div className="form-footer">
+				<Button
+					type="submit"
+					fullWidth
+					color="azure"
+					isLoading={isSubmitting}
+					disabled={isSubmitting || Boolean(checkEmail(email.trim())) || password === ""}
+				>
+					<T id="sign-in" />
+				</Button>
+			</div>
+		</HookForm>
+	);
+}
+
 function PasswordForm({ oidcError, noRedirect }) {
 	const emailRef = useRef(null);
 	const [formErr, setFormErr] = useState(null);
 	const { login } = useAuthState();
 	const health = useHealth();
 
-	const onSubmit = async (values, { setSubmitting }) => {
+	const onSubmit = async (values) => {
 		setFormErr(null);
 		try {
 			await login(values.email, values.password);
 		} catch (err) {
 			setFormErr(err);
 		}
-		setSubmitting(false);
 	};
 
 	// Once, when the health check first answers: the check repeats every 15 seconds, and refocusing on each
@@ -148,82 +227,7 @@ function PasswordForm({ oidcError, noRedirect }) {
 					<T id="or" />
 				</div>
 			)}
-			{passwordAllowed && (
-				<Formik
-					initialValues={{
-						email: "",
-						password: "",
-					}}
-					onSubmit={onSubmit}
-				>
-					{({ isSubmitting, values }) => (
-						<Form noValidate>
-							<div className="mb-3">
-								<Field name="email">
-									{({ field, meta }) => (
-										<>
-											<label className="form-label" htmlFor="login-email">
-												<T id="email-address" />
-											</label>
-											<input
-												{...field}
-												id="login-email"
-												ref={emailRef}
-												type="email"
-												autoComplete="username"
-												required
-												className={`form-control ${emailHint(field.value, meta.touched) ? "is-invalid" : ""}`}
-												aria-invalid={emailHint(field.value, meta.touched) ? "true" : undefined}
-												aria-describedby={
-													emailHint(field.value, meta.touched)
-														? "login-email-error"
-														: undefined
-												}
-												placeholder={intl.formatMessage({ id: "email-address" })}
-											/>
-											{emailHint(field.value, meta.touched) ? (
-												<div className="invalid-feedback" id="login-email-error">
-													{emailHint(field.value, meta.touched)}
-												</div>
-											) : null}
-										</>
-									)}
-								</Field>
-							</div>
-							<div className="mb-2">
-								<Field name="password">
-									{({ field }) => (
-										<PasswordInput
-											{...field}
-											id="login-password"
-											label={<T id="password" />}
-											autoComplete="current-password"
-											required
-											maxLength={255}
-											placeholder={intl.formatMessage({ id: "password" })}
-										/>
-									)}
-								</Field>
-							</div>
-							<div className="form-footer">
-								<Button
-									type="submit"
-									fullWidth
-									color="azure"
-									isLoading={isSubmitting}
-									disabled={
-										isSubmitting ||
-										Boolean(checkEmail(values.email.trim())) ||
-										values.password === ""
-									}
-								>
-									<T id="sign-in" />
-								</Button>
-							</div>
-						</Form>
-					)}
-				</Formik>
-			)}
+			{passwordAllowed && <PasswordFields emailRef={emailRef} onSubmit={onSubmit} />}
 		</>
 	);
 }
