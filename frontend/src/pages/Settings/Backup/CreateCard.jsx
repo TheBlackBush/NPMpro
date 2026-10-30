@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useController, useFormContext, useFormState } from "react-hook-form";
 import { downloadPendingBackup } from "src/api/backend";
 import {
@@ -37,6 +37,9 @@ function CreateForm({ data, error, keepRef }) {
 	// which button started the save, for its spinner: "Keep on server" submits the form itself, Download (and Enter
 	// in a field) is the submit button
 	const [keepRunning, setKeepRunning] = useState(false);
+	useEffect(() => {
+		if (!isSubmitting) setKeepRunning(false);
+	}, [isSubmitting]);
 	const onBlocked = (e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus);
 
 	const keepOnServer = (e) => {
