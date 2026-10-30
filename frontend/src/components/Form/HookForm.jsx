@@ -97,9 +97,11 @@ function focusFirstError(form, errors, order, setFocus) {
 
 /**
  * After a save that keeps the window open (saved, but the nginx config needs fixing): call the returned function
- * during the save. Once the save has settled, the current values become the starting values (nothing to save, no
- * messages, no refused save), as Formik's resetForm({ values }) did; list rows keep their keys. React Hook Form
- * marks the form submitted when handleSubmit ends, so the reset waits for that (the documented reset after a submit).
+ * inside the save handler once the save succeeded (the API answered), not before it and not when it failed. It
+ * arms the reset; once handleSubmit has settled (isSubmitting drops), the current values become the starting values
+ * (nothing to save, no messages, no refused save), as Formik's resetForm({ values }) did; list rows keep their keys.
+ * React Hook Form marks the form submitted when handleSubmit ends, so the reset waits for that (the documented reset
+ * after a submit).
  *
  * @param   {Object}   methods  useAppForm's result
  * @returns {Function} () => void
@@ -127,16 +129,18 @@ function useResetToSaved(methods) {
  */
 function useListRecheck(name) {
 	const { trigger, clearErrors, getFieldState } = useFormContext();
-	// read during render, so the caller re-renders when they change
+	// isSubmitted and the list's errors are read during render: useFormState only updates (and re-renders the caller
+	// for) the keys its proxy saw read in a render, so a first read inside a handler would see a stale snapshot
 	const formState = useFormState({ name });
 	const { isSubmitted } = formState;
+	const listError = getFieldState(name, formState).error;
 	return {
 		afterRemove: () => {
 			if (isSubmitted) void trigger(name);
 			else clearErrors(name);
 		},
 		recheckRows: (field) => {
-			const paths = rowErrorPaths(getFieldState(name, formState).error, name, field);
+			const paths = rowErrorPaths(listError, name, field);
 			if (paths.length > 0) void trigger(paths);
 		},
 	};
