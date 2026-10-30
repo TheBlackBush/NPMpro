@@ -217,7 +217,9 @@ export function rowErrorPaths(listErrors, name, field) {
 
 /**
  * Sets every field of a change map (tlsChanges, forwardingChanges, proxyOptionChanges) in its order, dirty as a
- * user's change; under a row's path when prefix is given ("locations.2" -> locations.2.forwardScheme)
+ * user's change; under a row's path when prefix is given ("locations.2" -> locations.2.forwardScheme). Convention:
+ * a caller whose own field was just set (register, a controller) drops that field from changes, or passes it only
+ * when the map sets another value.
  *
  * @param   {Function} setValue  React Hook Form's setValue
  * @param   {Object}   changes   name -> value

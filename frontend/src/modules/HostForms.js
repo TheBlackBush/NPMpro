@@ -87,7 +87,8 @@ export function tlsRules(rules, values, { forHttp = true } = {}) {
  * DNS challenge off empties its box; HTTPS off turns HSTS off; an mTLS certificate without optional verification
  * forces HTTPS (HTTP hosts).
  *
- * @param   {Object}  values   the form's values before the change
+ * @param   {Object}  values   the form's values (getValues() once the changed field is set; the changes are laid
+ *                             over them)
  * @param   {string}  name     certificateId, npmproMtlsCertificateId or a TLS switch
  * @param   {*}       value
  * @param   {Object}  [options]

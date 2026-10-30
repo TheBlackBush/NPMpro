@@ -98,13 +98,16 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { isSubmitting } = useFormState();
-	const values = useWatch();
+	const [udpForwarding, tcpForwarding, certificateId, npmproAdvancedConfig, npmproPropagationSeconds] = useWatch({
+		name: ["udpForwarding", "tcpForwarding", "certificateId", "npmproAdvancedConfig", "npmproPropagationSeconds"],
+	});
 	// TCP or UDP stays on; UDP drops TLS, the certificate and PROXY protocol v1. register has set the switch, the
 	// change map sets the rest; the fields UDP hides lose their messages
 	const onForwardingChange = (e) => {
 		const current = getValues();
 		const changes = forwardingChanges(current, e.target.name, e.target.checked);
-		applyChanges(setValue, changes);
+		const { [e.target.name]: _set, ...others } = changes;
+		applyChanges(setValue, others);
 		clearErrors(hiddenTlsFields({ ...current, ...changes }, { forHttp: false }));
 	};
 	return (
@@ -134,10 +137,10 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 					<li className="nav-item" role="presentation">
 						<a
 							href="#tab-ssl"
-							className={`nav-link ${values.udpForwarding ? "disabled" : ""}`}
-							data-bs-toggle={values.udpForwarding ? undefined : "tab"}
+							className={`nav-link ${udpForwarding ? "disabled" : ""}`}
+							data-bs-toggle={udpForwarding ? undefined : "tab"}
 							aria-selected="false"
-							aria-disabled={values.udpForwarding}
+							aria-disabled={udpForwarding}
 							role="tab"
 						>
 							<T id="column.ssl" />
@@ -152,7 +155,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 							role="tab"
 						>
 							<T id="domains.advanced" />
-							{values.npmproAdvancedConfig?.trim() ? "*" : ""}
+							{npmproAdvancedConfig?.trim() ? "*" : ""}
 						</a>
 					</li>
 				</ul>
@@ -206,8 +209,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 									{...register("udpForwarding", { onChange: onForwardingChange })}
 								/>
 								<ProxyTlsSwitch
-									possible={isProxyTlsPossible(values)}
-									udpForwarding={values.udpForwarding}
+									possible={isProxyTlsPossible({ udpForwarding, certificateId })}
+									udpForwarding={udpForwarding}
 								/>
 							</div>
 							<div className="mt-3 mb-3">
@@ -225,7 +228,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 											id: "streams.pp.off",
 										})}
 									</option>
-									{values.tcpForwarding && !values.udpForwarding ? (
+									{tcpForwarding && !udpForwarding ? (
 										<option value={1}>
 											{intl.formatMessage({
 												id: "streams.pp.v1",
@@ -261,8 +264,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 					</div>
 				</div>
 				<RequestProgress
-					running={isSubmitting && values.certificateId === "new"}
-					propagationSeconds={values.npmproPropagationSeconds}
+					running={isSubmitting && certificateId === "new"}
+					propagationSeconds={npmproPropagationSeconds}
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>

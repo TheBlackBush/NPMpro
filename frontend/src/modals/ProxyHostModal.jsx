@@ -84,6 +84,13 @@ const schemeHint = (option, scheme) => {
 	) : null;
 };
 
+// the "*" of the Custom locations tab: a location with a path. Its own watch, so typing in a location row re-renders
+// this marker, not the whole window
+function LocationsTabMarker() {
+	const locations = useWatch({ name: "locations" });
+	return namedLocations(locations).length > 0 ? "*" : "";
+}
+
 function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close, suggestions }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { errors, isSubmitting } = useFormState();
@@ -94,7 +101,6 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 		npmproLocationConfig,
 		npmproProxyRequestBuffering,
 		npmproAuthRequest,
-		locations,
 		advancedConfig,
 		npmproPropagationSeconds,
 	] = useWatch({
@@ -105,7 +111,6 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 			"npmproLocationConfig",
 			"npmproProxyRequestBuffering",
 			"npmproAuthRequest",
-			"locations",
 			"advancedConfig",
 			"npmproPropagationSeconds",
 		],
@@ -159,7 +164,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 							role="tab"
 						>
 							{<T id="column.custom-locations" />}
-							{namedLocations(locations).length > 0 ? "*" : ""}
+							<LocationsTabMarker />
 						</a>
 					</li>
 					<li className="nav-item" role="presentation">

@@ -433,15 +433,19 @@ export function LocationsFields({ name = "locations" }) {
 	// the documented controlled field array: the keys of fields with the current values of the rows (useWatch may
 	// still hold the list before an append or a removal)
 	const controlledFields = fields.map((field, index) => ({ ...field, ...rows?.[index] }));
-	const { errors, isSubmitted } = useFormState({ name });
+	const { getFieldState } = useFormContext();
+	const formState = useFormState({ name });
+	const { isSubmitted } = formState;
 	const { afterRemove, recheckRows } = useListRecheck(name);
 	const [advVisible, setAdvVisible] = useState([]);
 	const [expanded, setExpanded] = useState([]);
 	const [filter, setFilter] = useState("");
 	const scrollToKey = useRef(null);
 	const added = useRef(false);
+	// the card element of each row, by row key
+	const cards = useRef(new Map());
 
-	// the row Add appended: open it and scroll it into view (its key exists once useFieldArray rendered it)
+	// the row Add appended: open it (its key exists once useFieldArray rendered it)
 	useLayoutEffect(() => {
 		if (!added.current) return;
 		added.current = false;
@@ -450,9 +454,17 @@ export function LocationsFields({ name = "locations" }) {
 		setExpanded((list) => [...list, key]);
 	}, [fields]);
 
+	// then, once it renders open, scroll it into view
+	useLayoutEffect(() => {
+		const key = scrollToKey.current;
+		if (!(key && expanded.includes(key))) return;
+		scrollToKey.current = null;
+		cards.current.get(key)?.scrollIntoView({ block: "nearest" });
+	}, [expanded]);
+
 	const toggle = (key, list, set) => set(list.includes(key) ? list.filter((i) => i !== key) : [...list, key]);
 	// after a refused save a row with an error is open and not filtered away, so its error can be seen
-	const forcedOpen = (index) => isSubmitted && Boolean(errors[name]?.[index]);
+	const forcedOpen = (index) => isSubmitted && Boolean(getFieldState(`${name}.${index}`, formState).error);
 
 	const handleAdd = () => {
 		added.current = true;
@@ -536,10 +548,8 @@ export function LocationsFields({ name = "locations" }) {
 					onRemove={() => handleRemove(index)}
 					recheckPaths={() => recheckRows("path")}
 					cardRef={(node) => {
-						if (node && scrollToKey.current === field.id) {
-							scrollToKey.current = null;
-							node.scrollIntoView({ block: "nearest" });
-						}
+						if (node) cards.current.set(field.id, node);
+						else cards.current.delete(field.id);
 					}}
 				/>
 			))}
