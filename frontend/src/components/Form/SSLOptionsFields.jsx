@@ -1,6 +1,6 @@
 import { Field, useFormikContext } from "formik";
 import { useEffect } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components";
 import { T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
@@ -9,9 +9,9 @@ import { namedLocations } from "src/modules/ProxyHostForms";
 import { useRecheckDependent } from "./HookForm";
 
 /**
- * A change on the TLS tab of a React Hook Form host window: sets the field and what it turns off or on
- * (HostForms.js tlsChanges), drops the messages of the fields it hides, and re-checks the domain names, whose rule
- * follows the certificate and the DNS challenge
+ * A change on the TLS tab of a React Hook Form host window, called after the field's own controller set its value:
+ * sets what it turns off or on (HostForms.js tlsChanges), drops the messages of the fields it hides, and re-checks the
+ * domain names, whose rule follows the certificate and the DNS challenge
  *
  * @param   {Object}  [options]
  * @param   {boolean} [options.forHttp]  false for a stream
@@ -23,7 +23,11 @@ export function useTlsChange({ forHttp = true } = {}) {
 	return (name, value) => {
 		const values = getValues();
 		const changes = tlsChanges(values, name, value, { forHttp });
-		applyChanges(setValue, changes);
+		// the changed field is already set, unless the change overrides it (an mTLS certificate forces HTTPS)
+		const dependents = Object.fromEntries(
+			Object.entries(changes).filter(([key, next]) => key !== name || next !== value),
+		);
+		applyChanges(setValue, dependents);
 		clearErrors(hiddenTlsFields({ ...values, ...changes }, { forHttp }));
 		if ("certificateId" in changes || "npmproDnsChallenge" in changes) recheckDomainNames();
 	};
@@ -32,36 +36,47 @@ export function useTlsChange({ forHttp = true } = {}) {
 const TLS_FIELDS = [
 	"certificateId",
 	"sslForced",
-	"npmproHttp3Support",
 	"hstsEnabled",
-	"hstsSubdomains",
 	"npmproDnsChallenge",
-	"npmproReuseKey",
 	"npmproMtlsCertificateId",
 	"npmproMtlsVerifyClientOptional",
-	"npmproMtlsBypassAuthRequest",
 	"npmproAuthRequest",
 	"locations",
 ];
 
-// in a React Hook Form form: the switches show the form's values, a change goes through useTlsChange
+// a switch of the TLS tab: its controller sets the value, then onTlsChange sets what it turns off or on; shown is
+// what the switch displays when that differs from the value
+function TlsSwitch({ name, onTlsChange, shown, ...props }) {
+	const { field } = useController({ name });
+	return (
+		<SwitchField
+			{...props}
+			id={name}
+			name={field.name}
+			ref={field.ref}
+			checked={shown === undefined ? Boolean(field.value) : shown(field.value)}
+			onChange={(e) => {
+				field.onChange(e.target.checked);
+				onTlsChange(name, e.target.checked);
+			}}
+			onBlur={field.onBlur}
+		/>
+	);
+}
+
+// in a React Hook Form form: each switch is a controller, a change runs useTlsChange
 function HookFormSSLOptionsFields({ forHttp, forProxyHost }) {
 	const [
 		certificateId,
 		sslForced,
-		npmproHttp3Support,
 		hstsEnabled,
-		hstsSubdomains,
 		dnsChallenge,
-		reuseKey,
 		npmproMtlsCertificateId,
 		npmproMtlsVerifyClientOptional,
-		npmproMtlsBypassAuthRequest,
 		npmproAuthRequest,
 		locations,
 	] = useWatch({ name: TLS_FIELDS });
-	const applyTlsChange = useTlsChange({ forHttp });
-	const toggle = (name) => (e) => applyTlsChange(name, e.target.checked);
+	const onTlsChange = useTlsChange({ forHttp });
 
 	const newCertificate = certificateId === "new";
 	const hasCertificate = newCertificate || certificateId > 0;
@@ -75,67 +90,61 @@ function HookFormSSLOptionsFields({ forHttp, forProxyHost }) {
 	return (
 		<div>
 			<div className="divide-y">
-				<SwitchField
-					id="npmproMtlsVerifyClientOptional"
+				<TlsSwitch
+					name="npmproMtlsVerifyClientOptional"
 					label={<T id="domains.mtls-verify-client-optional" />}
-					checked={npmproMtlsVerifyClientOptional}
-					onChange={toggle("npmproMtlsVerifyClientOptional")}
+					onTlsChange={onTlsChange}
 					disabled={!(certificateId > 0 && npmproMtlsCertificateId > 0)}
 				/>
 				{forProxyHost ? (
-					<SwitchField
-						id="npmproMtlsBypassAuthRequest"
+					<TlsSwitch
+						name="npmproMtlsBypassAuthRequest"
 						label={<T id="domains.mtls-bypass-auth-request" />}
-						checked={npmproMtlsBypassAuthRequest === true && mtlsBypassAuthRequestPossible}
-						onChange={toggle("npmproMtlsBypassAuthRequest")}
+						onTlsChange={onTlsChange}
+						shown={(value) => value === true && Boolean(mtlsBypassAuthRequestPossible)}
 						disabled={!mtlsBypassAuthRequestPossible}
 					/>
 				) : null}
 				{forHttp ? (
 					<>
-						<SwitchField
-							id="sslForced"
+						<TlsSwitch
+							name="sslForced"
 							label={<T id="domains.force-ssl" />}
-							checked={sslForced}
-							onChange={toggle("sslForced")}
+							onTlsChange={onTlsChange}
 							disabled={!hasCertificate || mtlsRequired}
 						/>
-						<SwitchField
-							id="npmproHttp3Support"
+						<TlsSwitch
+							name="npmproHttp3Support"
 							label={<T id="domains.http3-support" />}
-							checked={npmproHttp3Support}
-							onChange={toggle("npmproHttp3Support")}
+							onTlsChange={onTlsChange}
 							disabled={!hasCertificate}
 						/>
-						<SwitchField
-							id="hstsEnabled"
+						<TlsSwitch
+							name="hstsEnabled"
 							label={<T id="host.flags.hsts-enabled" />}
-							checked={hstsEnabled}
-							onChange={toggle("hstsEnabled")}
+							onTlsChange={onTlsChange}
 							disabled={!hasCertificate || !sslForced}
 						/>
-						<SwitchField
-							id="hstsSubdomains"
+						<TlsSwitch
+							name="hstsSubdomains"
 							label={<T id="host.flags.hsts-subdomains" />}
-							checked={hstsSubdomains}
-							onChange={toggle("hstsSubdomains")}
+							onTlsChange={onTlsChange}
 							disabled={!hasCertificate || !hstsEnabled}
 						/>
 					</>
 				) : null}
 				{newCertificate ? (
 					<>
-						<SwitchField
-							id="npmproReuseKey"
+						<TlsSwitch
+							name="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
-							checked={Boolean(reuseKey)}
-							onChange={toggle("npmproReuseKey")}
+							onTlsChange={onTlsChange}
 						/>
-						<SwitchField
-							id="npmproDnsChallenge"
+						<TlsSwitch
+							name="npmproDnsChallenge"
 							label={<T id="domains.use-dns" />}
-							checked={!forHttp || Boolean(dnsChallenge)}
-							onChange={toggle("npmproDnsChallenge")}
+							onTlsChange={onTlsChange}
+							shown={(value) => !forHttp || Boolean(value)}
 							disabled={!forHttp}
 						/>
 					</>

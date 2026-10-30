@@ -195,7 +195,7 @@ function FormikSSLCertificateField({ name, label, id, allowNew, forHttp, mtlsNam
 	);
 }
 
-// in a React Hook Form form: two controllers; a choice sets what it turns off (HostForms.js tlsChanges)
+// in a React Hook Form form: two controllers; a choice sets the field, then what it turns off (HostForms.js tlsChanges)
 function HookFormSSLCertificateField({ label, allowNew, forHttp, mtlsLabel }) {
 	const { isPending, isError, error, data } = useCertificates();
 	const { data: user } = useUser("me");
@@ -280,7 +280,12 @@ function HookFormSSLCertificateField({ label, allowNew, forHttp, mtlsLabel }) {
 								height: "100%",
 							}),
 						}}
-						onChange={(newValue) => applyTlsChange(CERTIFICATE, newValue?.value)}
+						ref={field.ref}
+						onChange={(newValue) => {
+							field.onChange(newValue?.value);
+							applyTlsChange(CERTIFICATE, newValue?.value);
+						}}
+						onBlur={field.onBlur}
 						isDisabled={udpForwarding}
 					/>
 				) : null}
@@ -314,7 +319,12 @@ function HookFormSSLCertificateField({ label, allowNew, forHttp, mtlsLabel }) {
 								height: "100%",
 							}),
 						}}
-						onChange={(newValue) => applyTlsChange(MTLS_CERTIFICATE, newValue?.value)}
+						ref={mtlsField.ref}
+						onChange={(newValue) => {
+							mtlsField.onChange(newValue?.value);
+							applyTlsChange(MTLS_CERTIFICATE, newValue?.value);
+						}}
+						onBlur={mtlsField.onBlur}
 						isDisabled={udpForwarding || !(field.value > 0)}
 					/>
 				) : null}
