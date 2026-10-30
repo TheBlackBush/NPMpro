@@ -20,7 +20,7 @@ const MAX_VALUE = 4096;
  * @param   {Object} values
  * @returns {Object}  path -> rule
  */
-const dnsChallengeRules = (rules, values) => ({
+export const dnsChallengeRules = (rules, values) => ({
 	npmproDnsProvider: rules.validateRequired(),
 	...(values.npmproDnsProvider
 		? {

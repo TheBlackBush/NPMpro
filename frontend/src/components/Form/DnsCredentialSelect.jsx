@@ -1,16 +1,12 @@
 import { IconPlus } from "@tabler/icons-react";
-import { Field } from "formik";
-import { useController, useFormContext } from "react-hook-form";
+import { useController } from "react-hook-form";
 import Select from "react-select";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
 import { selectClassNames } from "src/modules/Select";
-import { validateRequired } from "src/modules/Validations";
 
-const required = validateRequired();
-
-// the label, the select, "+" and the error, for either form library
+// the label, the select, "+" and the error
 function CredentialControl({ name, provider, value, error, onChange, onBlur, selectRef }) {
 	const { data, isPending } = useDnsCredentials();
 
@@ -68,24 +64,6 @@ function CredentialControl({ name, provider, value, error, onChange, onBlur, sel
 	);
 }
 
-// in a Formik form: the field's own validate; shown once it was left or a submit was tried
-function FormikCredentialSelect({ name, provider }) {
-	return (
-		<Field name={name} validate={required}>
-			{({ field, form, meta }) => (
-				<CredentialControl
-					name={name}
-					provider={provider}
-					value={field.value}
-					error={meta.error && (meta.touched || form.submitCount > 0) ? meta.error : null}
-					onChange={(value) => form.setFieldValue(name, value)}
-					onBlur={() => form.setFieldTouched(name, true)}
-				/>
-			)}
-		</Field>
-	);
-}
-
 // in a React Hook Form form: the form's resolver checks it (CertificateForms.js)
 function HookFormCredentialSelect({ name, provider }) {
 	const { field, fieldState } = useController({ name });
@@ -103,10 +81,5 @@ function HookFormCredentialSelect({ name, provider }) {
 }
 
 export function DnsCredentialSelect({ name, provider }) {
-	// A3 removes the Formik branch
-	return useFormContext() ? (
-		<HookFormCredentialSelect name={name} provider={provider} />
-	) : (
-		<FormikCredentialSelect name={name} provider={provider} />
-	);
+	return <HookFormCredentialSelect name={name} provider={provider} />;
 }

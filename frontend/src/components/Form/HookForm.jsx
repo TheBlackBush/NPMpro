@@ -1,6 +1,13 @@
-import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FormProvider, useForm, useFormContext, useFormState } from "react-hook-form";
-import { errorPaths, fieldPaths, formResolver, orderErrorPaths } from "src/modules/HookForm";
+import {
+	controlNames,
+	errorPaths,
+	fieldPaths,
+	formResolver,
+	orderErrorPaths,
+	rowErrorPaths,
+} from "src/modules/HookForm";
 
 const FieldOrderContext = createContext([]);
 
@@ -78,11 +85,65 @@ function useRecheckDependent(name) {
 function focusFirstError(form, errors, order, setFocus) {
 	const [first] = orderErrorPaths(errorPaths(errors), order);
 	if (!first) return;
-	// a field on a hidden tab: show the tab first (first exercised in A2, the windows with tabs)
-	const control = form?.querySelector(`[name="${CSS.escape(first)}"]`);
+	// a field on a hidden tab: show the tab first; a list row's control is named locations.0.path, its error
+	// path is locations[0].path
+	const control = controlNames(first)
+		.map((name) => form?.querySelector(`[name="${CSS.escape(name)}"]`))
+		.find(Boolean);
 	const pane = control?.closest(".tab-pane:not(.active)");
 	if (pane) form.querySelector(`[data-bs-toggle="tab"][href="#${pane.id}"]`)?.click();
 	setFocus(first);
+}
+
+/**
+ * After a save that keeps the window open (saved, but the nginx config needs fixing): call the returned function
+ * inside the save handler once the save succeeded (the API answered), not before it and not when it failed. It
+ * arms the reset; once handleSubmit has settled (isSubmitting drops), the current values become the starting values
+ * (nothing to save, no messages, no refused save), as Formik's resetForm({ values }) did; list rows keep their keys.
+ * React Hook Form marks the form submitted when handleSubmit ends, so the reset waits for that (the documented reset
+ * after a submit).
+ *
+ * @param   {Object}   methods  useAppForm's result
+ * @returns {Function} () => void
+ */
+function useResetToSaved(methods) {
+	const [pending, setPending] = useState(false);
+	const { isSubmitting } = useFormState({ control: methods.control });
+	useEffect(() => {
+		if (!pending || isSubmitting) return;
+		setPending(false);
+		methods.reset(methods.getValues(), { keepValues: true });
+	}, [pending, isSubmitting, methods]);
+	return () => setPending(true);
+}
+
+/**
+ * The checks of a list (useFieldArray) after a change that concerns more than one row. afterRemove: the rows
+ * shifted, so before a save was tried the list's messages go (they come back once a field is left, as the Formik
+ * lists cleared their touched rows), after a refused save the list is checked again. recheckRows(field): a value the
+ * other rows are compared with changed (a duplicate path or username), so the rows showing a message for that field
+ * are checked again.
+ *
+ * @param   {string} name  the list
+ * @returns {{ afterRemove: Function, recheckRows: Function }}
+ */
+function useListRecheck(name) {
+	const { trigger, clearErrors, getFieldState } = useFormContext();
+	// isSubmitted and the list's errors are read during render: useFormState only updates (and re-renders the caller
+	// for) the keys its proxy saw read in a render, so a first read inside a handler would see a stale snapshot
+	const formState = useFormState({ name });
+	const { isSubmitted } = formState;
+	const listError = getFieldState(name, formState).error;
+	return {
+		afterRemove: () => {
+			if (isSubmitted) void trigger(name);
+			else clearErrors(name);
+		},
+		recheckRows: (field) => {
+			const paths = rowErrorPaths(listError, name, field);
+			if (paths.length > 0) void trigger(paths);
+		},
+	};
 }
 
 /**
@@ -100,10 +161,19 @@ function focusFirstError(form, errors, order, setFocus) {
 function HookForm({ methods, onSubmit, fieldOrder, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	const submitting = useRef(false);
+	const formRef = useRef(null);
+	// a refused save focuses the first error once the page shows the messages (a list row with an error opens then).
+	// The errors are the ones handleSubmit hands to onInvalid: methods.formState is a snapshot of the root's state,
+	// which React Hook Form only updates for the keys the root read during render
+	const [refused, setRefused] = useState(null);
+	useLayoutEffect(() => {
+		if (refused) focusFirstError(formRef.current, refused.errors, order, methods.setFocus);
+	}, [refused, methods, order]);
 	return (
 		<FormProvider {...methods}>
 			<FieldOrderContext.Provider value={order}>
 				<form
+					ref={formRef}
 					action="#"
 					noValidate
 					onSubmit={(event) => {
@@ -113,11 +183,8 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 							return;
 						}
 						submitting.current = true;
-						const form = event.currentTarget;
 						void methods
-							.handleSubmit(onSubmit, (errors) => focusFirstError(form, errors, order, methods.setFocus))(
-								event,
-							)
+							.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
 							.finally(() => {
 								submitting.current = false;
 							});
@@ -130,4 +197,4 @@ function HookForm({ methods, onSubmit, fieldOrder, children }) {
 	);
 }
 
-export { focusFirstError, HookForm, useAppForm, useFieldOrder, useRecheckDependent };
+export { focusFirstError, HookForm, useAppForm, useFieldOrder, useListRecheck, useRecheckDependent, useResetToSaved };

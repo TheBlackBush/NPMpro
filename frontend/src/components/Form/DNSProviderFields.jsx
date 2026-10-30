@@ -1,19 +1,11 @@
-import { Field, useFormikContext } from "formik";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import Select from "react-select";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
-import { validateInteger, validateRequired } from "src/modules/Validations";
 import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
 import { useRecheckDependent } from "./HookForm";
-
-const requiredProvider = validateRequired();
-const validPropagation = validateInteger({ min: 0, max: 7200 });
-
-// a field's error once it was left or a submit was tried (Formik)
-const shownError = (form, name) => (form.touched[name] || form.submitCount > 0 ? form.errors[name] : null);
 
 function ProviderSelect({ providerId, error, onChange, onBlur, selectRef }) {
 	const { data: dnsProviders, isPending } = useDnsProviders();
@@ -112,44 +104,6 @@ function DnsProviderLayout({ showBoundaryBox, providerId, provider, propagation 
 	);
 }
 
-// in a Formik form: the fields' own validate; shown once left or after a submit
-function FormikDnsProviderFields({ showBoundaryBox }) {
-	const { values, setFieldValue } = useFormikContext();
-	return (
-		<DnsProviderLayout
-			showBoundaryBox={showBoundaryBox}
-			providerId={values.npmproDnsProvider}
-			provider={
-				<Field name="npmproDnsProvider" validate={requiredProvider}>
-					{({ field, form }) => (
-						<ProviderSelect
-							providerId={values.npmproDnsProvider}
-							error={shownError(form, field.name)}
-							onBlur={() => form.setFieldTouched(field.name, true)}
-							onChange={(value) => {
-								void setFieldValue("npmproDnsProvider", value);
-								void setFieldValue("npmproDnsCredentialId", undefined);
-							}}
-						/>
-					)}
-				</Field>
-			}
-			propagation={
-				<Field name="npmproPropagationSeconds" validate={validPropagation}>
-					{({ field, form }) => (
-						<PropagationInput
-							value={field.value}
-							error={shownError(form, field.name)}
-							onBlur={field.onBlur}
-							onChange={(value) => form.setFieldValue(field.name, value)}
-						/>
-					)}
-				</Field>
-			}
-		/>
-	);
-}
-
 function HookFormProvider({ providerId }) {
 	const { setValue } = useFormContext();
 	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
@@ -197,10 +151,5 @@ function HookFormDnsProviderFields({ showBoundaryBox }) {
 }
 
 export function DNSProviderFields({ showBoundaryBox }) {
-	// A3 removes the Formik branch
-	return useFormContext() ? (
-		<HookFormDnsProviderFields showBoundaryBox={showBoundaryBox} />
-	) : (
-		<FormikDnsProviderFields showBoundaryBox={showBoundaryBox} />
-	);
+	return <HookFormDnsProviderFields showBoundaryBox={showBoundaryBox} />;
 }

@@ -1,12 +1,13 @@
 import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
-import { useFormikContext } from "formik";
-import { useState } from "react";
+import { useCallback } from "react";
+import { useController, useWatch } from "react-hook-form";
 import Select, { components } from "react-select";
 import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
+import { useRecheckDependent } from "./HookForm";
 
 const OptionContent = (label, subLabel, icon) => (
 	<div className="flex-fill">
@@ -28,18 +29,36 @@ const TypeOption = (props) => (
 	</components.Option>
 );
 
-export function AccessFields({
-	initialAccessListType,
-	location,
-	initialAccessListIds,
-	name,
-	typeFieldName,
-	onChange,
-	authRequest,
-}) {
-	const [values, setValues] = useState(initialAccessListIds);
-	const [aclValue, setAclValue] = useState(initialAccessListType);
-	const { values: formValues, setFieldValue } = useFormikContext();
+/**
+ * The access of a proxy host or of one of its locations: the type (public, custom lists, or for a location the
+ * host's lists) and the custom lists in order. Two controllers: the type and the list ids.
+ *
+ * @param {Object}  props
+ * @param {string}  props.name         the ids field (npmproAccessListIds, locations.0.npmproAccessListIds)
+ * @param {string}  props.typeName     the type field
+ * @param {string}  [props.location]   a location's path; undefined for the host itself (no "global" type)
+ * @param {string}  [props.authRequest]
+ */
+export function AccessFields({ name, typeName, location, authRequest }) {
+	const { field: idsField } = useController({ name });
+	const { field: typeField } = useController({ name: typeName });
+	const { ref: idsRef } = idsField;
+	const { ref: typeRef } = typeField;
+	// the type select is the visible control of both fields: a refused save with custom and no lists focuses it
+	// (the hidden required input below only marks the field)
+	const selectRef = useCallback(
+		(select) => {
+			typeRef(select);
+			idsRef(select);
+		},
+		[typeRef, idsRef],
+	);
+	// the host's own lists, which a location of type "global" uses
+	const [hostType, hostIds] = useWatch({ name: ["npmproAccessListType", "npmproAccessListIds"] });
+	// a new type changes whether the ids are required
+	const recheckIds = useRecheckDependent(name);
+	const values = idsField.value;
+	const aclValue = typeField.value;
 	const { isPending, isError, error, data } = useAccessLists(["owner", "items", "clients"]);
 
 	const createDefaultItem = (item) => ({
@@ -97,14 +116,7 @@ export function AccessFields({
 		return ret;
 	};
 
-	const applyUpdatedValues = (newValues) => {
-		setValues(newValues);
-		if (onChange) {
-			onChange({ npmproAccessListIds: newValues });
-		} else {
-			void setFieldValue(name, newValues);
-		}
-	};
+	const applyUpdatedValues = (newValues) => idsField.onChange(newValues);
 
 	const onAccessListChange = (acl, idx) => {
 		const newValues = values.map((id, i) => (i === idx ? acl.id : id));
@@ -147,7 +159,7 @@ export function AccessFields({
 	const acls = (
 		{
 			custom: values,
-			global: formValues.npmproAccessListType === "custom" ? formValues.npmproAccessListIds : [],
+			global: hostType === "custom" ? hostIds : [],
 		}[aclValue] ?? []
 	)
 		.map((id) => data?.find((acl) => acl.id === id))
@@ -170,7 +182,7 @@ export function AccessFields({
 							classNames={selectClassNames}
 							isSearchable={false}
 							getOptionValue={(o) => o.type}
-							defaultValue={createOption(initialAccessListType)}
+							value={createOption(aclValue)}
 							options={typeOptions()}
 							components={{ Option: TypeOption }}
 							styles={{
@@ -179,15 +191,12 @@ export function AccessFields({
 									height: "100%",
 								}),
 							}}
+							ref={selectRef}
 							onChange={(e) => {
-								const value = e.type;
-								setAclValue(value);
-								if (onChange) {
-									onChange({ npmproAccessListType: value });
-								} else {
-									void setFieldValue(typeFieldName, value);
-								}
+								typeField.onChange(e.type);
+								recheckIds();
 							}}
+							onBlur={typeField.onBlur}
 						/>
 					</div>
 				</div>
@@ -254,7 +263,7 @@ export function AccessFields({
 					))}
 					{values.length === 0 ? (
 						<>
-							<input className="visually-hidden" tabIndex={-1} required defaultValue="" />
+							<input name={name} className="visually-hidden" tabIndex={-1} required defaultValue="" />
 							<div className="invalid-feedback d-block">
 								<T id="error.required" />
 							</div>

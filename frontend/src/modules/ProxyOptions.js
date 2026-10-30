@@ -31,4 +31,26 @@ const getOptionsResetByScheme = (values, scheme) =>
 		? []
 		: schemeDependentOptions.filter((option) => values[option] && getOptionHintId(option, scheme));
 
-export { getOptionHintId, getOptionsResetByScheme };
+/**
+ * The fields a change of a proxy option sets, on a proxy host or a custom location (as both Formik forms did): a
+ * scheme switches off the options it cannot use, CrowdSec AppSec off turns request buffering off and request
+ * buffering on turns AppSec on, no auth request empties its upstream
+ *
+ * @param   {string} name   the changed field
+ * @param   {*}      value
+ * @returns {Object} name -> value, the changed field first
+ */
+const proxyOptionChanges = (name, value) => {
+	const changes = { [name]: value };
+	if (name === "forwardScheme" && value !== "empty") {
+		for (const option of schemeDependentOptions) {
+			if (getOptionHintId(option, value)) changes[option] = false;
+		}
+	}
+	if (name === "npmproCrowdsecAppsec" && value === false) changes.npmproProxyRequestBuffering = false;
+	if (name === "npmproProxyRequestBuffering" && value === true) changes.npmproCrowdsecAppsec = true;
+	if (name === "npmproAuthRequest" && value === "none") changes.npmproAuthRequestUpstream = "";
+	return changes;
+};
+
+export { getOptionHintId, getOptionsResetByScheme, proxyOptionChanges };

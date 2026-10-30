@@ -1,67 +1,111 @@
 import { IconX } from "@tabler/icons-react";
 import cn from "clsx";
-import { useField, useFormikContext } from "formik";
-import { useRef, useState } from "react";
+import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
-import { visibleErrorAt } from "src/modules/FormFields";
+import { blankRule } from "src/modules/AccessListForms";
+import { useListRecheck, useRecheckDependent } from "./HookForm";
 
-// the backend's rule (schema/common.json): an address or CIDR range, or unix:; "all" is only the last rule
-const ADDRESS = /^(?:unix:|[0-9A-Fa-f.:/]{1,255})$/u;
+// allow on a lime background, deny on orange
+const directiveClass = (directive) =>
+	cn("form-select", "w-auto", "flex-grow-0", directive === "allow" ? "bg-lime-lt" : "bg-orange-lt");
+
+function DirectiveOptions() {
+	return (
+		<>
+			<option value="allow">
+				<T id="action.allow" />
+			</option>
+			<option value="deny">
+				<T id="action.deny" />
+			</option>
+		</>
+	);
+}
+
+// one rule before the last one: allow or deny, and an address (a new address re-checks "at least one rule")
+function RuleRow({ name, index, onRemove, onAddressChange }) {
+	const { register, getFieldState } = useFormContext();
+	const base = `${name}.${index}`;
+	const formState = useFormState({ name: `${base}.address` });
+	const directive = useWatch({ name: `${base}.directive` });
+	const error = getFieldState(`${base}.address`, formState).error?.message ?? null;
+	return (
+		<div className="row mb-1">
+			<div className="col-11">
+				<div className="input-group mb-2">
+					<select className={directiveClass(directive)} {...register(`${base}.directive`)}>
+						<DirectiveOptions />
+					</select>
+					<input
+						type="text"
+						{...register(`${base}.address`, { onChange: onAddressChange })}
+						className={cn("form-control", error && "is-invalid")}
+						autoComplete="off"
+						aria-label={intl.formatMessage({ id: "access-list.address" })}
+						aria-invalid={error ? "true" : undefined}
+						placeholder={intl.formatMessage({
+							id: "access-list.rule-source.placeholder",
+						})}
+					/>
+					{error ? <div className="invalid-feedback">{error}</div> : null}
+				</div>
+			</div>
+			<div className="col-1">
+				<button type="button" className="btn btn-ghost btn-danger p-0" onClick={onRemove}>
+					<IconX size={16} />
+				</button>
+			</div>
+		</div>
+	);
+}
+
+// the last rule: its address is always "all", only allow or deny can change
+function LastRule({ name, index }) {
+	const { register } = useFormContext();
+	const directive = useWatch({ name: `${name}.${index}.directive` });
+	return (
+		<div className="row mb-3">
+			<p className="text-secondary">
+				<T id="access-list.help.rules-last" />
+			</p>
+			<div className="col-11">
+				<div className="input-group mb-2">
+					<select className={directiveClass(directive)} {...register(`${name}.${index}.directive`)}>
+						<DirectiveOptions />
+					</select>
+					<input
+						name="clients[last].address"
+						type="text"
+						className="form-control"
+						autoComplete="off"
+						value="all"
+						disabled
+					/>
+				</div>
+			</div>
+		</div>
+	);
+}
 
 /**
- * The errors of the rules before the last ("all") one, one object per row, or undefined
+ * The access rules of an access list (useFieldArray over the form's clients): the rules in order, then the last
+ * "all" rule; always at least one rule before it, a rule without an address is not sent (AccessListForms.js)
+ *
+ * @param {Object} props
+ * @param {string} [props.name]
  */
-const clientErrors = (rows) => {
-	const errors = rows.slice(0, -1).map((row) => {
-		const address = String(row.address ?? "").trim();
-		return address === "" || ADDRESS.test(address)
-			? undefined
-			: { address: intl.formatMessage({ id: "access-list.address.invalid" }) };
-	});
-	return errors.some(Boolean) ? errors : undefined;
-};
+export function AccessClientFields({ name = "clients" }) {
+	const { fields, insert, remove, update } = useFieldArray({ name });
+	const { afterRemove } = useListRecheck(name);
+	const recheckAccessRules = useRecheckDependent("accessRules");
+	const last = fields.length - 1;
 
-export function AccessClientFields({ initialValues, name = "clients" }) {
-	const [values, setValues] = useState(
-		initialValues.at(-1)?.address?.toLowerCase() === "all"
-			? initialValues
-			: [...initialValues, { directive: "deny", address: "all" }],
-	);
-	const { setFieldValue, setFieldTouched, errors, touched, submitCount } = useFormikContext();
-	// the Formik value leaves out rows without an address, so the rows are checked here
-	const rowsRef = useRef(values);
-	rowsRef.current = values;
-	useField({ name, validate: () => clientErrors(rowsRef.current) });
-	const shownError = (idx) => visibleErrorAt({ errors, touched, submitCount }, `${name}[${idx}].address`);
-
-	const blankClient = { directive: "allow", address: "" };
-
-	if (values?.length === 1) {
-		setValues([blankClient, ...values]);
-	}
-
-	const handleAdd = () => {
-		setValues(values.toSpliced(values.length - 1, 0, blankClient));
-	};
-
-	const handleRemove = (idx) => {
-		const newValues = values.toSpliced(idx, 1);
-		setValues(newValues);
-		void setFieldTouched(name, undefined, false);
-		setFormField(newValues);
-	};
-
-	const handleChange = (idx, field, fieldValue) => {
-		const newValues = values.with(idx, { ...values[idx], [field]: fieldValue });
-		setValues(newValues);
-		void setFieldTouched(`${name}[${idx}].${field}`, true, false);
-		setFormField(newValues);
-	};
-
-	const setFormField = (newValues) => {
-		rowsRef.current = newValues;
-		const filtered = newValues.filter((v) => v?.address?.trim() !== "");
-		void setFieldValue(name, filtered);
+	const handleRemove = (index) => {
+		// the only rule before "all" is emptied instead, as there is always one
+		if (last === 1) update(index, blankRule());
+		else remove(index);
+		afterRemove();
+		recheckAccessRules();
 	};
 
 	return (
@@ -69,95 +113,25 @@ export function AccessClientFields({ initialValues, name = "clients" }) {
 			<p className="text-secondary">
 				<T id="access-list.help.rules-order" />
 			</p>
-			{values.slice(0, -1).map((client, idx) => (
-				<div className="row mb-1" key={idx}>
-					<div className="col-11">
-						<div className="input-group mb-2">
-							<select
-								className={cn(
-									"form-select",
-									"w-auto",
-									"flex-grow-0",
-									client.directive === "allow" ? "bg-lime-lt" : "bg-orange-lt",
-								)}
-								name={`clients[${idx}].directive`}
-								value={client.directive}
-								onChange={(e) => handleChange(idx, "directive", e.target.value)}
-							>
-								<option value="allow">
-									<T id="action.allow" />
-								</option>
-								<option value="deny">
-									<T id="action.deny" />
-								</option>
-							</select>
-							<input
-								name={`${name}[${idx}].address`}
-								type="text"
-								className={cn("form-control", shownError(idx) && "is-invalid")}
-								autoComplete="off"
-								aria-label={intl.formatMessage({ id: "access-list.address" })}
-								aria-invalid={shownError(idx) ? "true" : undefined}
-								value={client.address}
-								onChange={(e) => handleChange(idx, "address", e.target.value)}
-								placeholder={intl.formatMessage({
-									id: "access-list.rule-source.placeholder",
-								})}
-							/>
-							{shownError(idx) ? <div className="invalid-feedback">{shownError(idx)}</div> : null}
-						</div>
-					</div>
-					<div className="col-1">
-						<button
-							type="button"
-							className="btn btn-ghost btn-danger p-0"
-							onClick={() => handleRemove(idx)}
-						>
-							<IconX size={16} />
-						</button>
-					</div>
-				</div>
+			{fields.slice(0, -1).map((field, index) => (
+				<RuleRow
+					key={field.id}
+					name={name}
+					index={index}
+					onRemove={() => handleRemove(index)}
+					onAddressChange={recheckAccessRules}
+				/>
 			))}
 			<div className="mb-3">
-				<button type="button" className="btn btn-sm" onClick={handleAdd}>
+				<button
+					type="button"
+					className="btn btn-sm"
+					onClick={() => insert(last, blankRule(), { shouldFocus: false })}
+				>
 					<T id="action.add" />
 				</button>
 			</div>
-			<div className="row mb-3">
-				<p className="text-secondary">
-					<T id="access-list.help.rules-last" />
-				</p>
-				<div className="col-11">
-					<div className="input-group mb-2">
-						<select
-							className={cn(
-								"form-select",
-								"w-auto",
-								"flex-grow-0",
-								values[values.length - 1].directive === "allow" ? "bg-lime-lt" : "bg-orange-lt",
-							)}
-							name="clients[last].directive"
-							value={values[values.length - 1].directive}
-							onChange={(e) => handleChange(values.length - 1, "directive", e.target.value)}
-						>
-							<option value="allow">
-								<T id="action.allow" />
-							</option>
-							<option value="deny">
-								<T id="action.deny" />
-							</option>
-						</select>
-						<input
-							name="clients[last].address"
-							type="text"
-							className="form-control"
-							autoComplete="off"
-							value="all"
-							disabled
-						/>
-					</div>
-				</div>
-			</div>
+			<LastRule key={fields[last].id} name={name} index={last} />
 		</>
 	);
 }

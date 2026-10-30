@@ -8,6 +8,8 @@ import { valueAt } from "./FormFields.js";
 // the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;
 const INDEX = /^\d+$/u;
+// a list index in an error path: locations[0].path
+const LIST_INDEX = /\[(?<index>\d+)\]/gu;
 
 const isObject = (value) => value !== null && typeof value === "object";
 const isPlainObject = (value) => isObject(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -41,6 +43,12 @@ export function setIn(object, path, value) {
 }
 
 function mergeTwo(target, source) {
+	// the errors of a list's rows: merged row by row, so a rule over the form keeps the rows' own messages
+	if (Array.isArray(target) && Array.isArray(source)) {
+		return Array.from({ length: Math.max(target.length, source.length) }, (_, index) =>
+			source[index] === undefined ? target[index] : mergeTwo(target[index], source[index]),
+		);
+	}
 	if (!(isPlainObject(target) && isPlainObject(source))) return source;
 	const result = { ...target };
 	for (const [key, value] of Object.entries(source)) {
@@ -50,7 +58,7 @@ function mergeTwo(target, source) {
 }
 
 /**
- * Error objects merged field by field; the later one wins a field
+ * Error objects merged field by field (lists row by row); the later one wins a field
  *
  * @param   {...Object} lists
  * @returns {Object}
@@ -180,4 +188,45 @@ export function orderErrorPaths(paths, order) {
 		.map((path, position) => ({ path, position, index: orderIndex(path, order) }))
 		.sort((a, b) => a.index - b.index || a.position - b.position)
 		.map(({ path }) => path);
+}
+
+/**
+ * The names a field's control may carry in the page: the error path (locations[0].path) and React Hook Form's
+ * register name (locations.0.path)
+ *
+ * @param   {string}  path
+ * @returns {string[]}
+ */
+export function controlNames(path) {
+	return [...new Set([path, path.replaceAll(LIST_INDEX, ".$<index>")])];
+}
+
+/**
+ * The paths of the rows of a list whose field holds a message (React Hook Form's errors of the list), for a check
+ * of the other rows when a value they are compared with changes (a duplicate path or username)
+ *
+ * @param   {*}       listErrors  the errors at the list's name: one entry per row
+ * @param   {string}  name        the list
+ * @param   {string}  field       the field of a row
+ * @returns {string[]}  e.g. ["locations.1.path"]
+ */
+export function rowErrorPaths(listErrors, name, field) {
+	if (!Array.isArray(listErrors)) return [];
+	return listErrors.flatMap((row, index) => (row?.[field] ? [`${name}.${index}.${field}`] : []));
+}
+
+/**
+ * Sets every field of a change map (tlsChanges, forwardingChanges, proxyOptionChanges) in its order, dirty as a
+ * user's change; under a row's path when prefix is given ("locations.2" -> locations.2.forwardScheme). Convention:
+ * a caller whose own field was just set (register, a controller) drops that field from changes, or passes it only
+ * when the map sets another value.
+ *
+ * @param   {Function} setValue  React Hook Form's setValue
+ * @param   {Object}   changes   name -> value
+ * @param   {string}   [prefix]  the path of a list row
+ */
+export function applyChanges(setValue, changes, prefix = "") {
+	for (const [key, value] of Object.entries(changes)) {
+		setValue(prefix ? `${prefix}.${key}` : key, value, { shouldDirty: true });
+	}
 }

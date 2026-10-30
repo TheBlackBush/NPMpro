@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
+	applyChanges,
+	controlNames,
 	errorPaths,
 	fieldPaths,
 	fieldsValidate,
 	formResolver,
 	mergeErrors,
 	orderErrorPaths,
+	rowErrorPaths,
 	setIn,
 	toHookFormErrors,
 	translateErrors,
@@ -117,4 +120,43 @@ it("orders errors by the form's fields, so the note and the focus follow the for
 		"other",
 	]);
 	assert.deepEqual(orderErrorPaths([], order), []);
+});
+
+it("merges the errors of a list row by row, so a rule over the form keeps the rows' messages", () => {
+	assert.deepEqual(
+		mergeErrors({ items: [undefined, { username: "Taken" }] }, { items: [{ password: "Required" }], name: "N" }),
+		{ items: [{ password: "Required" }, { username: "Taken" }], name: "N" },
+	);
+	assert.deepEqual(mergeErrors({ items: [{ username: "A" }] }, { items: [{ username: "B" }] }), {
+		items: [{ username: "B" }],
+	});
+	const fromRules = fieldsValidate({ "locations[1].path": () => "Required" }, () => ({
+		locations: [{ forwardHost: "Invalid" }],
+	}));
+	assert.deepEqual(fromRules({}), { locations: [{ forwardHost: "Invalid" }, { path: "Required" }] });
+});
+
+it("names a field's control by its error path and by its register name", () => {
+	assert.deepEqual(controlNames("domainNames"), ["domainNames"]);
+	assert.deepEqual(controlNames("locations[0].path"), ["locations[0].path", "locations.0.path"]);
+	assert.deepEqual(controlNames("clients[10].address"), ["clients[10].address", "clients.10.address"]);
+});
+
+it("lists the rows of a list whose field holds a message", () => {
+	const errors = [undefined, { path: { type: "validate", message: "Duplicate" } }, { forwardHost: {} }];
+	assert.deepEqual(rowErrorPaths(errors, "locations", "path"), ["locations.1.path"]);
+	assert.deepEqual(rowErrorPaths(undefined, "locations", "path"), []);
+	assert.deepEqual(rowErrorPaths({ type: "validate" }, "locations", "path"), []);
+});
+
+it("sets every field of a change map in its order, dirty, under a row's path when given", () => {
+	const calls = [];
+	const setValue = (...args) => calls.push(args);
+	applyChanges(setValue, { forwardScheme: "path", npmproFancyindex: false });
+	applyChanges(setValue, { npmproAuthRequestUpstream: "" }, "locations.2");
+	assert.deepEqual(calls, [
+		["forwardScheme", "path", { shouldDirty: true }],
+		["npmproFancyindex", false, { shouldDirty: true }],
+		["locations.2.npmproAuthRequestUpstream", "", { shouldDirty: true }],
+	]);
 });
