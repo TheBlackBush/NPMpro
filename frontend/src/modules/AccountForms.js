@@ -52,3 +52,14 @@ export const mfaCodeValidate = (rules, step) =>
  */
 export const userValidate = (rules) =>
 	fieldsValidate({ name: rules.validateString(1, 255), email: rules.validateEmail() });
+
+/**
+ * Setup, the first user: full name 1 to 255 characters (trimmed), an email address and a password of 8 to 255
+ * characters (untrimmed)
+ */
+export const setupValidate = (rules) =>
+	fieldsValidate({
+		name: rules.validateString(1, 255),
+		email: rules.validateEmail(),
+		password: rules.validateString(8, 255, false),
+	});

@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
-import { changePasswordValidate, mfaCodeValidate, setPasswordValidate, userValidate } from "./AccountForms.js";
+import {
+	changePasswordValidate,
+	mfaCodeValidate,
+	setPasswordValidate,
+	setupValidate,
+	userValidate,
+} from "./AccountForms.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
@@ -55,4 +61,22 @@ it("user: a name and an email address", () => {
 	assert.deepEqual(validate({ name: "Ann", email: "ab" }), { email: "Invalid email address" });
 	assert.deepEqual(validate({ name: "Ann", email: "a@b" }), {});
 	assert.deepEqual(validate({ name: "x".repeat(256), email: "a@b" }), { name: "Maximum length is 255 characters" });
+});
+
+it("setup: a name, an email address and a password of eight characters or more", () => {
+	const validate = setupValidate(rules);
+	assert.deepEqual(validate({ name: "", email: "", password: "" }), {
+		name: "This is required",
+		email: "This is required",
+		password: "This is required",
+	});
+	assert.deepEqual(validate({ name: " ", email: "ab", password: "1234567" }), {
+		name: "This is required",
+		email: "Invalid email address",
+		password: "Minimum length is 8 characters",
+	});
+	assert.deepEqual(validate({ name: "Ann", email: "a@b", password: "        " }), {});
+	assert.deepEqual(validate({ name: "Ann", email: "a@b", password: "x".repeat(256) }), {
+		password: "Maximum length is 255 characters",
+	});
 });
