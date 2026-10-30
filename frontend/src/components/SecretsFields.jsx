@@ -1,9 +1,9 @@
 import { useId } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
 import { passphraseErrors } from "src/modules/BackupTypes";
 import { translateErrors } from "src/modules/HookForm";
-import { PasswordInput, SwitchField, useRecheckDependent } from "./Form";
+import { PasswordField, SwitchField, useRecheckDependent } from "./Form";
 
 // the passphrase fields, whose messages go when secrets are off
 const PASSPHRASE_FIELDS = ["passphrase", "passphraseRepeat"];
@@ -27,7 +27,6 @@ function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphra
 	const baseId = useId();
 	const { register, clearErrors } = useFormContext();
 	const recheckRepeat = useRecheckDependent("passphraseRepeat");
-	const { errors } = useFormState();
 	const secretsOn = useWatch({ name: "secrets" });
 	return (
 		<>
@@ -46,31 +45,24 @@ function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphra
 			{secretsOn ? (
 				<div className="row">
 					<div className="col-12 col-md-6">
-						<div className="mb-3">
-							<PasswordInput
-								{...register("passphrase", { onChange: recheckRepeat })}
-								id={`${baseId}-passphrase`}
-								label={<T id="settings.backup.passphrase" />}
-								autoComplete="new-password"
-								error={errors.passphrase?.message}
-							/>
-							{passphraseHintId ? (
-								<div className="form-hint">
-									<T id={passphraseHintId} />
-								</div>
-							) : null}
-						</div>
+						<PasswordField
+							name="passphrase"
+							id={`${baseId}-passphrase`}
+							label={<T id="settings.backup.passphrase" />}
+							hint={passphraseHintId ? <T id={passphraseHintId} /> : undefined}
+							required
+							autoComplete="new-password"
+							registerOptions={{ onChange: recheckRepeat }}
+						/>
 					</div>
 					<div className="col-12 col-md-6">
-						<div className="mb-3">
-							<PasswordInput
-								{...register("passphraseRepeat")}
-								id={`${baseId}-passphrase-repeat`}
-								label={<T id="settings.backup.passphrase.repeat" />}
-								autoComplete="new-password"
-								error={errors.passphraseRepeat?.message}
-							/>
-						</div>
+						<PasswordField
+							name="passphraseRepeat"
+							id={`${baseId}-passphrase-repeat`}
+							label={<T id="settings.backup.passphrase.repeat" />}
+							required
+							autoComplete="new-password"
+						/>
 					</div>
 				</div>
 			) : (

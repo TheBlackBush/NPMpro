@@ -2,7 +2,7 @@ import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from "@tabler/ico
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 import { cancelRestore, checkRestore, inspectBackup, openImport } from "src/api/backend";
-import { AppModal, Button, ErrorAlert, Loading, PasswordInput, TypeTree } from "src/components";
+import { AppModal, Button, ErrorAlert, FormField, Loading, PasswordControl, TypeTree } from "src/components";
 import { useBackupTypes, useImportUpload, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
 import { formatDateTime, intl, T } from "src/locale";
@@ -454,16 +454,18 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				<p className="text-secondary">
 					<T id="settings.backup.restore.passphrase.hint" />
 				</p>
-				<div className="mb-3">
-					<PasswordInput
-						id={`${baseId}-passphrase`}
-						name="passphrase"
-						label={<T id="settings.backup.passphrase" />}
-						autoComplete="off"
-						value={passphrase}
-						onChange={(e) => setPassphrase(e.target.value)}
-					/>
-				</div>
+				<FormField id={`${baseId}-passphrase`} label={<T id="settings.backup.passphrase" />} required>
+					{(control) => (
+						<PasswordControl
+							{...control}
+							name="passphrase"
+							required
+							autoComplete="off"
+							value={passphrase}
+							onChange={(e) => setPassphrase(e.target.value)}
+						/>
+					)}
+				</FormField>
 				<ErrorAlert error={openError} className="mb-0" />
 			</form>
 		);
