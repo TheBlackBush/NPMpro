@@ -3,7 +3,9 @@ import Modal from "react-bootstrap/Modal";
 
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
-function AppModal({ children, centered = true, ...props }) {
+// Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
+// A dialog that never changes size (the delete confirmation) may pass `centered`.
+function AppModal({ children, centered = false, ...props }) {
 	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
 	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
