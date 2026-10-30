@@ -1,3 +1,4 @@
+import cn from "clsx";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import Select from "react-select";
 import { useDnsProviders } from "src/hooks";
@@ -69,7 +70,7 @@ function PropagationInput() {
 					{...control}
 					ref={field.ref}
 					type="number"
-					className={`form-control ${error ? "is-invalid" : ""}`}
+					className={cn("form-control", error && "is-invalid")}
 					min={0}
 					max={7200}
 					placeholder={intl.formatMessage({

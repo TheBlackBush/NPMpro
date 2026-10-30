@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import cn from "clsx";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
@@ -41,7 +42,7 @@ function FileInput({ name, labelId }) {
 					type="file"
 					required
 					autoComplete="off"
-					className={`form-control ${error ? "is-invalid" : ""}`}
+					className={cn("form-control", error && "is-invalid")}
 					onBlur={field.onBlur}
 					onChange={(event) => {
 						field.onChange(event.currentTarget.files[0] ?? null);

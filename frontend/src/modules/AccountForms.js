@@ -25,6 +25,36 @@ export const BACKUP_CODE_LENGTH = 8;
 export const CODE_VALUES = Object.freeze({ code: "", backupCode: "", useBackup: false });
 
 /**
+ * The value after a paste into the code input: the pasted text (without spaces and dashes) goes in at the caret or
+ * over the selection. A complete code (as long as the input or longer) replaces the whole value, so pasting a code
+ * over a full box works wherever the caret is.
+ *
+ * @param   {string} current  the value before
+ * @param   {string} text     the clipboard text
+ * @param   {number} start    selectionStart
+ * @param   {number} end      selectionEnd
+ * @param   {number} length   the number of boxes
+ * @returns {string}
+ */
+export const pastedCodeValue = (current, text, start, end, length) => {
+	const cleaned = String(text ?? "").replace(BACKUP_SEPARATORS, "");
+	if (cleaned.length >= length) return cleaned;
+	return current.slice(0, start) + cleaned + current.slice(end);
+};
+
+/**
+ * The first size (Tabler's OTP size classes, largest first) whose boxes fit in the available width; the last one
+ * when none does
+ *
+ * @param   {Array}    sizes      lists of classes, largest first
+ * @param   {Function} widthOf    (size) => the width of the boxes in that size
+ * @param   {number}   available
+ * @returns {Array}
+ */
+export const fittingOtpSize = (sizes, widthOf, available) =>
+	sizes.find((size) => widthOf(size) <= available) ?? sizes[sizes.length - 1];
+
+/**
  * A backup code as typed (spaces, a dash, small letters) in the form the backend checks
  *
  * @param   {string} text

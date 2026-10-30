@@ -12,7 +12,7 @@ import {
 	ThemeSwitcher,
 	useAppForm,
 } from "src/components";
-import { CodeEntry, PasswordInput } from "src/components/Form";
+import { CodeEntry, PasswordInput, useRefusedCodeReset } from "src/components/Form";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -38,14 +38,14 @@ function TotpCodeForm({ onSubmit }) {
 	const methods = useAppForm({ defaultValues: CODE_VALUES, keepEdits: false });
 	const { isSubmitting } = methods.formState;
 	const { setFocus } = methods;
+	const refuse = useRefusedCodeReset(methods);
 	const [code, backupCode, useBackup] = useWatch({ control: methods.control, name: CODE_FIELDS });
 	useEffect(() => {
 		setFocus("code");
 	}, [setFocus]);
 	const submit = async (values) => {
 		if (await onSubmit({ code: codeOf(values) })) return;
-		methods.reset({ ...CODE_VALUES, useBackup: values.useBackup });
-		setFocus(values.useBackup ? "backupCode" : "code");
+		refuse(values.useBackup);
 	};
 	return (
 		<HookForm methods={methods} onSubmit={submit}>

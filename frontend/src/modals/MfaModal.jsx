@@ -4,7 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
-import { CodeEntry, HookForm, useAppForm } from "src/components/Form";
+import { CodeEntry, HookForm, useAppForm, useRefusedCodeReset } from "src/components/Form";
 import { intl, T } from "src/locale";
 import { CODE_VALUES, codeOf, mfaCodeValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
@@ -20,17 +20,15 @@ const showMfaModal = (id) => {
  * refused: the field is emptied and gets the focus again.
  */
 function CodeForm({ step, labelId, allowBackup = false, color, submitId, onSubmit, onCancel, isSubmitting }) {
-	// keepEdits false: the reset after a refused code empties the field the user typed in
 	const methods = useAppForm({
 		defaultValues: CODE_VALUES,
 		validate: mfaCodeValidate(validations, step),
 		keepEdits: false,
 	});
-	const { setFocus } = methods;
+	const refuse = useRefusedCodeReset(methods);
 	const submit = async (values) => {
 		if ((await onSubmit({ code: codeOf(values) })) !== false) return;
-		methods.reset({ ...CODE_VALUES, useBackup: values.useBackup });
-		setFocus(values.useBackup ? "backupCode" : "code");
+		refuse(values.useBackup);
 	};
 	return (
 		<HookForm methods={methods} onSubmit={submit}>

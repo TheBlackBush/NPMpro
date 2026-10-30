@@ -26,8 +26,8 @@ const FieldOrderContext = createContext([]);
  * @param   {boolean}  [options.keepEdits]    when new values arrive or reset() runs, keep the fields the user
  *                                            already changed (default); false: every field takes the new values
  *                                            (as a Settings section shows the saved settings again after its save,
- *                                            or a form empties its field after a refused code) and the form stays
- *                                            submitted
+ *                                            or a code form empties its field after a refused code) and the form
+ *                                            stays submitted unless reset says otherwise
  * @returns {Object}   useForm's methods
  */
 function useAppForm({ defaultValues, values, validate, keepEdits = true }) {
