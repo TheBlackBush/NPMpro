@@ -13,6 +13,7 @@ import {
 	NoticeAlert,
 	RequestProgress,
 	SwitchField,
+	SwitchList,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
@@ -123,13 +124,13 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 					</NoticeAlert>
 					<DomainNamesField forCertificate onChange={() => setTestResults(null)} />
 
-					<div className="divide-y">
+					<SwitchList>
 						<SwitchField
 							id="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
 							{...methods.register("npmproReuseKey")}
 						/>
-					</div>
+					</SwitchList>
 					{testResults ? (
 						<div className="border rounded p-3 mt-3">
 							<h5>
