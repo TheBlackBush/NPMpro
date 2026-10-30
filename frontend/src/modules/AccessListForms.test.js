@@ -166,3 +166,16 @@ it("sends the users with a name and the rules with an address, unchanged rules a
 	);
 	assert.deepEqual(allowAll.clients.at(-1), { directive: "allow", address: "all" });
 });
+
+it("sends the saved rules of a list saved without the all rule when the rules were changed back", () => {
+	const saved = [{ directive: "allow", address: "10.0.0.0/8" }];
+	const values = accessListDefaults({ ...savedList, clients: saved });
+	assert.deepEqual(values.clients, [
+		{ directive: "allow", address: "10.0.0.0/8" },
+		{ directive: "deny", address: "all" },
+	]);
+	// the directive changed and changed back, an empty rule added and left empty
+	const changedBack = [{ ...values.clients[0] }, blankRule(), { directive: "deny", address: "all" }];
+	assert.deepEqual(accessListPayload({ ...values, clients: changedBack }, saved).clients, saved);
+	assert.deepEqual(accessListPayload(values, saved).clients, saved);
+});
