@@ -83,9 +83,16 @@ function CodeInput({
 			wrapper.classList.add(...size);
 		};
 		fit();
-		const observer = new ResizeObserver(fit);
+		// a resize is answered in the next frame: a size switch that changes the container's height then never runs
+		// inside the observer's own delivery (no "ResizeObserver loop" warning)
+		let frame = 0;
+		const observer = new ResizeObserver(() => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(fit);
+		});
 		observer.observe(wrapper.parentElement);
 		return () => {
+			cancelAnimationFrame(frame);
 			observer.disconnect();
 			wrapper.removeEventListener("input.bs.otpInput", onInput);
 			otp.dispose();
