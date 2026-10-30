@@ -174,7 +174,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" centered={false}>
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (

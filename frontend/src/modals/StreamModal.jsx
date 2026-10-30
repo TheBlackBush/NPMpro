@@ -344,7 +344,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" centered={false}>
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
