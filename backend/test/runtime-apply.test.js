@@ -1060,7 +1060,7 @@ it("Gravatar off gives the default avatar at the next profile update without con
 
 // fix round 1
 
-const FRONTEND_UPSTREAM = /const upstreamUrlPattern = \/(?<source>.+)\/u;/u;
+const FRONTEND_UPSTREAM = /(?:export )?const upstreamUrlPattern =\s*\/(?<source>.+)\/u;/u;
 const INJECTIONS = [
 	"http://cu_a;} location ~ x {",
 	"http://a\nb:1",
@@ -1085,7 +1085,7 @@ it("upstream values with whitespace or nginx syntax characters are refused every
 	);
 	const schemaPattern = new RegExp(schema.properties.npmpro_auth_request_upstream.pattern, "u");
 	const frontend = await readFile(
-		path.join(import.meta.dirname, "../../frontend/src/modules/Validations.jsx"),
+		path.join(import.meta.dirname, "../../frontend/src/modules/ValidationRules.js"),
 		"utf8",
 	);
 	const frontendSource = frontend.match(FRONTEND_UPSTREAM).groups.source;

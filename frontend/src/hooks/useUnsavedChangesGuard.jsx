@@ -1,11 +1,9 @@
 import { useFormikContext } from "formik";
 import { useEffect, useRef } from "react";
+import { useFormContext, useFormState } from "react-hook-form";
 import { intl } from "src/locale";
 
-/**
- * Place inside a Formik form, keeps dirtyRef in sync with the form's dirty state
- */
-function DirtyTracker({ dirtyRef }) {
+function FormikDirtyTracker({ dirtyRef }) {
 	const { dirty } = useFormikContext();
 	useEffect(() => {
 		dirtyRef.current = dirty;
@@ -13,9 +11,25 @@ function DirtyTracker({ dirtyRef }) {
 	return null;
 }
 
+function HookFormDirtyTracker({ dirtyRef }) {
+	const { isDirty } = useFormState();
+	useEffect(() => {
+		dirtyRef.current = isDirty;
+	}, [isDirty, dirtyRef]);
+	return null;
+}
+
+/**
+ * Place inside a form, keeps dirtyRef in sync with the form's dirty state (React Hook Form's isDirty, or Formik's
+ * dirty; A3 removes the Formik branch)
+ */
+function DirtyTracker({ dirtyRef }) {
+	return useFormContext() ? <HookFormDirtyTracker dirtyRef={dirtyRef} /> : <FormikDirtyTracker dirtyRef={dirtyRef} />;
+}
+
 /**
  * Returns a close function that asks before discarding unsaved form changes.
- * Render <DirtyTracker dirtyRef={dirtyRef} /> inside the Formik form.
+ * Render <DirtyTracker dirtyRef={dirtyRef} /> inside the form.
  */
 const useUnsavedChangesGuard = (remove) => {
 	const dirtyRef = useRef(false);

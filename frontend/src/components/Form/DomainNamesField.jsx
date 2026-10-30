@@ -1,8 +1,104 @@
 import { Field, useFormikContext } from "formik";
+import { useController, useFormContext } from "react-hook-form";
 import CreatableSelect from "react-select/creatable";
 import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { validateDomain, validateDomains } from "src/modules/Validations";
+
+// the label, the chips select and the hints or the error, for either form library
+function DomainNamesControl({
+	name,
+	id,
+	label,
+	isValidDomain,
+	helperTexts,
+	value,
+	error,
+	onChange,
+	onBlur,
+	selectRef,
+}) {
+	// a domain already in the list is not offered again
+	const isValidNewOption = (input, selected) =>
+		isValidDomain(input) && !selected.some(({ value: v }) => v.toLowerCase() === input.trim().toLowerCase());
+	return (
+		<div className="mb-3">
+			<label className="form-label" htmlFor={id}>
+				<T id={label} />
+			</label>
+			<CreatableSelect
+				ref={selectRef}
+				unstyled
+				classNames={selectClassNames}
+				name={name}
+				inputId={id}
+				closeMenuOnSelect={true}
+				isClearable={false}
+				isValidNewOption={isValidNewOption}
+				isMulti
+				required
+				aria-invalid={error ? "true" : undefined}
+				onBlur={onBlur}
+				placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
+				onChange={(v) => onChange([...new Set(v?.map((i) => i.value.trim()))])}
+				value={value?.map((d) => ({ label: d, value: d }))}
+			/>
+
+			{error ? (
+				<div className="invalid-feedback d-block">{error}</div>
+			) : helperTexts.length ? (
+				helperTexts.map((i, idx) => (
+					<div key={idx} className="form-hint">
+						{i}
+					</div>
+				))
+			) : null}
+		</div>
+	);
+}
+
+// in a Formik form: the field's own validate; shown once it was left or a submit was tried
+function FormikDomainNames({ control, validate, onChange }) {
+	const { setFieldValue } = useFormikContext();
+	return (
+		<Field name={control.name} validate={validate}>
+			{({ field, form }) => (
+				<DomainNamesControl
+					{...control}
+					value={field.value}
+					error={
+						form.errors[field.name] && (form.touched[field.name] || form.submitCount > 0)
+							? form.errors[field.name]
+							: null
+					}
+					onChange={(doms) => {
+						void setFieldValue(field.name, doms);
+						onChange?.(doms);
+					}}
+					onBlur={() => form.setFieldTouched(field.name, true)}
+				/>
+			)}
+		</Field>
+	);
+}
+
+// in a React Hook Form form: the form's resolver checks it (CertificateForms.js), an error shows as it is held
+function HookFormDomainNames({ control, onChange }) {
+	const { field, fieldState } = useController({ name: control.name });
+	return (
+		<DomainNamesControl
+			{...control}
+			value={field.value}
+			error={fieldState.error?.message ?? null}
+			onChange={(doms) => {
+				field.onChange(doms);
+				onChange?.(doms);
+			}}
+			onBlur={field.onBlur}
+			selectRef={field.ref}
+		/>
+	);
+}
 
 export function DomainNamesField({
 	name = "domainNames",
@@ -13,71 +109,27 @@ export function DomainNamesField({
 	forCertificate,
 	onChange,
 }) {
-	const { setFieldValue } = useFormikContext();
-
-	const handleChange = (v, _actionMeta) => {
-		const doms = [...new Set(v?.map((i) => i.value.trim()))];
-		void setFieldValue(name, doms);
-		onChange?.(doms);
-	};
-
-	const isValidDomain = validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate);
-	// a domain already in the list is not offered again
-	const isValidNewOption = (input, selected) =>
-		isValidDomain(input) && !selected.some(({ value }) => value.toLowerCase() === input.trim().toLowerCase());
-
 	const helperTexts = [];
 	if (!isWildcardPermitted) {
 		helperTexts.push(<T id="domain-names.wildcards-not-permitted" />);
 	} else if (!dnsProviderWildcardSupported) {
 		helperTexts.push(<T id="domain-names.wildcards-not-supported" />);
 	}
-
-	return (
-		<Field
-			name={name}
+	const control = {
+		name,
+		id,
+		label,
+		helperTexts,
+		isValidDomain: validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate),
+	};
+	// A3 removes the Formik branch
+	return useFormContext() ? (
+		<HookFormDomainNames control={control} onChange={onChange} />
+	) : (
+		<FormikDomainNames
+			control={control}
 			validate={validateDomains(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate)}
-		>
-			{({ field, form }) => {
-				// shown once the field was left or a submit was tried
-				const error =
-					form.errors[field.name] && (form.touched[field.name] || form.submitCount > 0)
-						? form.errors[field.name]
-						: null;
-				return (
-					<div className="mb-3">
-						<label className="form-label" htmlFor={id}>
-							<T id={label} />
-						</label>
-						<CreatableSelect
-							unstyled
-							classNames={selectClassNames}
-							name={field.name}
-							inputId={id}
-							closeMenuOnSelect={true}
-							isClearable={false}
-							isValidNewOption={isValidNewOption}
-							isMulti
-							required
-							aria-invalid={error ? "true" : undefined}
-							onBlur={() => form.setFieldTouched(field.name, true)}
-							placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
-							onChange={handleChange}
-							value={field.value?.map((d) => ({ label: d, value: d }))}
-						/>
-
-						{error ? (
-							<div className="invalid-feedback d-block">{error}</div>
-						) : helperTexts.length ? (
-							helperTexts.map((i, idx) => (
-								<div key={idx} className="form-hint">
-									{i}
-								</div>
-							))
-						) : null}
-					</div>
-				);
-			}}
-		</Field>
+			onChange={onChange}
+		/>
 	);
 }

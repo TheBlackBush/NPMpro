@@ -13,6 +13,7 @@ import { useRef, useState } from "react";
 import { AccessFields, SwitchField } from "src/components";
 import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
+import { visibleErrorAt } from "src/modules/FormFields";
 import { forwardSummary } from "src/modules/Forward";
 import { getOptionHintId } from "src/modules/ProxyOptions";
 import { upstreamUrlPattern } from "src/modules/Validations";
@@ -98,9 +99,7 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 	// the Formik value leaves out rows without a path, so the rows are checked here (all of them, in UI order)
 	const rowsRef = useRef(values);
 	useField({ name, validate: () => locationErrors(rowsRef.current) });
-	const errorOf = (idx, field) => getIn(errors, `${name}[${idx}].${field}`);
-	const shownError = (idx, field) =>
-		getIn(touched, `${name}[${idx}].${field}`) || submitCount > 0 ? errorOf(idx, field) : null;
+	const shownError = (idx, field) => visibleErrorAt({ errors, touched, submitCount }, `${name}[${idx}].${field}`);
 	// after a refused save a row with an error is open and not filtered away, so its error can be seen
 	const forcedOpen = (idx) => submitCount > 0 && Boolean(getIn(errors, `${name}[${idx}]`));
 	const [advVisible, setAdvVisible] = useState([]);
@@ -585,7 +584,6 @@ export function LocationsFields({ initialValues, name = "locations" }) {
 													id: "host.auth-request-upstream.placeholder",
 												})}
 												maxLength={255}
-												pattern="^https?://(([^\s\/:]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s\/:]+)$"
 												value={item.npmproAuthRequestUpstream}
 												onChange={(e) =>
 													handleChange(idx, "npmproAuthRequestUpstream", e.target.value)

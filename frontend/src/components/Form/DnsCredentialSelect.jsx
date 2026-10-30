@@ -1,5 +1,6 @@
 import { IconPlus } from "@tabler/icons-react";
-import { useField, useFormikContext } from "formik";
+import { Field } from "formik";
+import { useController, useFormContext } from "react-hook-form";
 import Select from "react-select";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -9,10 +10,8 @@ import { validateRequired } from "src/modules/Validations";
 
 const required = validateRequired();
 
-export function DnsCredentialSelect({ name, provider }) {
-	const [field, meta, helpers] = useField({ name, validate: required });
-	const { submitCount } = useFormikContext();
-	const error = meta.error && (meta.touched || submitCount > 0) ? meta.error : null;
+// the label, the select, "+" and the error, for either form library
+function CredentialControl({ name, provider, value, error, onChange, onBlur, selectRef }) {
 	const { data, isPending } = useDnsCredentials();
 
 	const options = (data ?? [])
@@ -29,6 +28,7 @@ export function DnsCredentialSelect({ name, provider }) {
 			<div className="d-flex gap-2">
 				<div className="flex-fill">
 					<Select
+						ref={selectRef}
 						unstyled
 						classNames={selectClassNames}
 						name={name}
@@ -40,13 +40,13 @@ export function DnsCredentialSelect({ name, provider }) {
 						required
 						aria-invalid={error ? "true" : undefined}
 						aria-describedby={error ? "dnsCredential-error" : undefined}
-						onBlur={() => helpers.setTouched(true)}
+						onBlur={onBlur}
 						placeholder={intl.formatMessage({
 							id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
 						})}
 						options={options}
-						value={options.find((o) => o.value === field.value) ?? null}
-						onChange={(o) => helpers.setValue(o?.value)}
+						value={options.find((o) => o.value === value) ?? null}
+						onChange={(o) => onChange(o?.value)}
 					/>
 				</div>
 				<button
@@ -54,9 +54,7 @@ export function DnsCredentialSelect({ name, provider }) {
 					className="btn btn-icon"
 					aria-label={addLabel}
 					title={addLabel}
-					onClick={() =>
-						showDnsCredentialModal("new", { provider, onSaved: (row) => helpers.setValue(row.id) })
-					}
+					onClick={() => showDnsCredentialModal("new", { provider, onSaved: (row) => onChange(row.id) })}
 				>
 					<IconPlus size={16} />
 				</button>
@@ -67,5 +65,48 @@ export function DnsCredentialSelect({ name, provider }) {
 				</div>
 			) : null}
 		</div>
+	);
+}
+
+// in a Formik form: the field's own validate; shown once it was left or a submit was tried
+function FormikCredentialSelect({ name, provider }) {
+	return (
+		<Field name={name} validate={required}>
+			{({ field, form, meta }) => (
+				<CredentialControl
+					name={name}
+					provider={provider}
+					value={field.value}
+					error={meta.error && (meta.touched || form.submitCount > 0) ? meta.error : null}
+					onChange={(value) => form.setFieldValue(name, value)}
+					onBlur={() => form.setFieldTouched(name, true)}
+				/>
+			)}
+		</Field>
+	);
+}
+
+// in a React Hook Form form: the form's resolver checks it (CertificateForms.js)
+function HookFormCredentialSelect({ name, provider }) {
+	const { field, fieldState } = useController({ name });
+	return (
+		<CredentialControl
+			name={name}
+			provider={provider}
+			value={field.value}
+			error={fieldState.error?.message ?? null}
+			onChange={field.onChange}
+			onBlur={field.onBlur}
+			selectRef={field.ref}
+		/>
+	);
+}
+
+export function DnsCredentialSelect({ name, provider }) {
+	// A3 removes the Formik branch
+	return useFormContext() ? (
+		<HookFormCredentialSelect name={name} provider={provider} />
+	) : (
+		<FormikCredentialSelect name={name} provider={provider} />
 	);
 }

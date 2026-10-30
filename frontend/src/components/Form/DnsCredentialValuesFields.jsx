@@ -1,36 +1,14 @@
 import { IconEye, IconEyeOff } from "@tabler/icons-react";
-import { useField, useFormikContext } from "formik";
 import { useState } from "react";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
 
-// the backend's rules (lib/dns-credential-values.js, schema max length); url and number were browser checks
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/u;
-const NUMBER = /^-?\d+(?:\.\d+)?$/u;
-const HTTP_PROTOCOL = /^https?:$/u;
-const MAX_VALUE = 4096;
-
-const message = (id, data) => intl.formatMessage({ id }, data);
-
-const valueError = (definition, saved) => (raw) => {
-	const value = String(raw ?? "").trim();
-	if (value === "") return definition.optional || saved ? undefined : message("error.required");
-	if (value.length > MAX_VALUE) return message("error.max-character-length", { max: MAX_VALUE });
-	if (CONTROL_CHARS.test(value)) return message("dns-credentials.value.control-chars");
-	if (definition.type === "url" && !(URL.canParse(value) && HTTP_PROTOCOL.test(new URL(value).protocol))) {
-		return message("dns-credentials.value.url");
-	}
-	if (definition.type === "number" && !NUMBER.test(value)) return message("dns-credentials.value.number");
-};
-
-// a field's error once it was left or a submit was tried
-const shown = (meta, submitCount) => (meta.error && (meta.touched || submitCount > 0) ? meta.error : null);
+// the rules of these fields are in modules/CertificateForms.js (dnsCredentialValidate), the window's resolver
 
 function ValueInput({ definition, saved }) {
-	const { submitCount } = useFormikContext();
+	const { register } = useFormContext();
 	const name = `fieldValues.${definition.key}`;
-	const [field, meta, helpers] = useField({ name, validate: valueError(definition, saved) });
-	const error = shown(meta, submitCount);
+	const error = useFormState({ name }).errors.fieldValues?.[definition.key]?.message ?? null;
 	const [visible, setVisible] = useState(false);
 	const id = `dnsCredentialField-${definition.key}`;
 	const isSecret = definition.type === "secret";
@@ -50,7 +28,6 @@ function ValueInput({ definition, saved }) {
 			<div className={`input-group ${error ? "has-validation" : ""}`}>
 				<input
 					id={id}
-					name={name}
 					type={inputType}
 					className={`form-control ${error ? "is-invalid" : ""}`}
 					autoComplete="off"
@@ -58,9 +35,7 @@ function ValueInput({ definition, saved }) {
 					aria-invalid={error ? "true" : undefined}
 					aria-describedby={error ? `${id}-error` : undefined}
 					placeholder={placeholder}
-					value={field.value ?? ""}
-					onBlur={() => helpers.setTouched(true)}
-					onChange={(e) => helpers.setValue(e.target.value)}
+					{...register(name)}
 				/>
 				{isSecret ? (
 					<button
@@ -85,13 +60,8 @@ function ValueInput({ definition, saved }) {
 
 // the INI text, required unless one is saved
 function IniInput({ provider, credential }) {
-	const { submitCount, setFieldValue } = useFormikContext();
-	const [field, meta, helpers] = useField({
-		name: "ini",
-		validate: (value) =>
-			String(value ?? "").trim() === "" && !credential?.iniSet ? message("error.required") : undefined,
-	});
-	const error = shown(meta, submitCount);
+	const { register, setValue, clearErrors } = useFormContext();
+	const error = useFormState({ name: "ini" }).errors.ini?.message ?? null;
 	return (
 		<div className="mt-3">
 			<label htmlFor="dnsCredentialIni" className="form-label">
@@ -99,7 +69,6 @@ function IniInput({ provider, credential }) {
 			</label>
 			<textarea
 				id="dnsCredentialIni"
-				name="ini"
 				className={`form-control font-monospace ${error ? "is-invalid" : ""}`}
 				spellCheck={false}
 				rows={6}
@@ -107,9 +76,7 @@ function IniInput({ provider, credential }) {
 				aria-invalid={error ? "true" : undefined}
 				aria-describedby={error ? "dnsCredentialIni-error" : undefined}
 				placeholder={provider.credentials}
-				value={field.value ?? ""}
-				onBlur={() => helpers.setTouched(true)}
-				onChange={(e) => helpers.setValue(e.target.value)}
+				{...register("ini")}
 			/>
 			{error ? (
 				<div className="invalid-feedback" id="dnsCredentialIni-error">
@@ -126,7 +93,10 @@ function IniInput({ provider, credential }) {
 					<button
 						type="button"
 						className="btn btn-link btn-sm p-0"
-						onClick={() => setFieldValue("useIni", false)}
+						onClick={() => {
+							setValue("useIni", false, { shouldDirty: true });
+							clearErrors("ini");
+						}}
 					>
 						<T id="dns-credentials.enter-as-fields" />
 					</button>
@@ -137,12 +107,13 @@ function IniInput({ provider, credential }) {
 }
 
 export function DnsCredentialValuesFields({ provider, credential }) {
-	const { values, setFieldValue } = useFormikContext();
+	const { setValue, clearErrors } = useFormContext();
+	const [useIni, oneOfGroup] = useWatch({ name: ["useIni", "oneOfGroup"] });
 	if (!provider) {
 		return null;
 	}
 
-	const showIni = !provider.fields || values.useIni;
+	const showIni = !provider.fields || useIni;
 
 	if (showIni) {
 		return <IniInput provider={provider} credential={credential} />;
@@ -155,7 +126,7 @@ export function DnsCredentialValuesFields({ provider, credential }) {
 			.filter((f) => f.group === group)
 			.map((f) => f.label)
 			.join(" + ");
-	const visibleFields = provider.fields.filter((f) => !f.group || f.group === values.oneOfGroup);
+	const visibleFields = provider.fields.filter((f) => !f.group || f.group === oneOfGroup);
 
 	return (
 		<>
@@ -167,8 +138,17 @@ export function DnsCredentialValuesFields({ provider, credential }) {
 								type="radio"
 								name="oneOfGroup"
 								className="form-check-input"
-								checked={values.oneOfGroup === group}
-								onChange={() => setFieldValue("oneOfGroup", group)}
+								checked={oneOfGroup === group}
+								onChange={() => {
+									setValue("oneOfGroup", group, { shouldDirty: true });
+									// the other groups' fields are hidden now, so are their messages; the fields
+									// outside any group keep theirs
+									clearErrors(
+										provider.fields
+											.filter((f) => f.group && f.group !== group)
+											.map((f) => `fieldValues.${f.key}`),
+									);
+								}}
 							/>
 							<span className="form-check-label">{groupLabel(group)}</span>
 						</label>

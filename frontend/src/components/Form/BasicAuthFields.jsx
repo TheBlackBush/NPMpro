@@ -1,8 +1,9 @@
 import { IconEye, IconEyeOff, IconX } from "@tabler/icons-react";
 import cn from "clsx";
-import { getIn, useField, useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
 import { intl, T } from "src/locale";
+import { visibleErrorAt } from "src/modules/FormFields";
 
 const blankItem = { username: "", password: "" };
 // the backend's rules (schema/common.json, internal/access-list.js); bcrypt reads at most 72 bytes
@@ -41,10 +42,7 @@ export function BasicAuthFields({ initialValues, name = "items" }) {
 	const rowsRef = useRef(values);
 	const saved = new Set(initialValues.map((iv) => iv.username));
 	useField({ name, validate: () => itemErrors(rowsRef.current, saved) });
-	const shownError = (idx, field) =>
-		getIn(touched, `${name}[${idx}].${field}`) || submitCount > 0
-			? getIn(errors, `${name}[${idx}].${field}`)
-			: null;
+	const shownError = (idx, field) => visibleErrorAt({ errors, touched, submitCount }, `${name}[${idx}].${field}`);
 
 	useEffect(() => {
 		if (values.length === 0) {

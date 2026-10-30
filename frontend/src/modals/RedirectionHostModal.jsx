@@ -211,7 +211,6 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 																type="text"
 																className={`form-control ${form.errors.forwardDomainName && form.touched.forwardDomainName ? "is-invalid" : ""}`}
 																required
-																pattern="\S+"
 																placeholder="example.com"
 																{...field}
 															/>

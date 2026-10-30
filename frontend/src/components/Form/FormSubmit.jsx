@@ -1,41 +1,31 @@
 import cn from "clsx";
 import { useFormikContext } from "formik";
 import { useId } from "react";
+import { useFormContext, useFormState } from "react-hook-form";
 import { Button } from "src/components/Button";
 import { T } from "src/locale";
+import { errorPaths } from "src/modules/HookForm";
 import { FormErrorNote, showFirstInvalid, useShownErrors } from "./FormErrorNote";
+import { focusFirstError, useFieldOrder } from "./HookForm";
 
-/**
- * A form's submit button with the reason next to it whenever it cannot be used: while a shown field has an error it
- * looks disabled (aria-disabled, still reachable) and a red note names the fields; with nothing to save it is
- * disabled and a grey note says so. Errors are named late (useShownErrors): after a field was left or a submit was
- * tried, so an empty add form does not open with errors.
- *
- * @param {Object}   props
- * @param {*}        props.children        the button text
- * @param {boolean}  [props.edit]          an edit form: without changes there is nothing to save (disabled, reason)
- * @param {boolean}  [props.disabled]      not available for another reason (submitting, a test running)
- * @param {Object}   [props.labels]        field name -> label translation id for the note (a stable object)
- * @param {string}   [props.messageId]     the note's text (FormErrorNote)
- * @param {string}   [props.className]     of the wrapper, e.g. "ms-auto" in a modal footer
- * @param {boolean}  [props.stacked]       a full-width button with the note centred under it (login, setup)
- * @param {Object}   props.buttonProps     the rest goes to Button (color, isLoading, ...)
- */
-function FormSubmit({
+// the button and its notes, for the state of either form library
+function SubmitButton({
 	children,
-	edit = false,
-	disabled = false,
+	edit,
+	disabled,
 	labels,
 	messageId,
 	className,
-	stacked = false,
+	stacked,
+	isSubmitting,
+	dirty,
+	blocked,
+	onBlocked,
 	...buttonProps
 }) {
-	const { isSubmitting, dirty } = useFormikContext();
 	const unchanged = edit && !dirty;
 	const noteId = useId();
 	const reasonId = useId();
-	const blocked = useShownErrors(true).length > 0;
 	const showReason = unchanged && !blocked && !isSubmitting;
 	const button = (
 		<Button
@@ -44,7 +34,7 @@ function FormSubmit({
 			fullWidth={stacked || buttonProps.fullWidth}
 			disabled={disabled || (unchanged && !blocked)}
 			blocked={blocked}
-			onBlockedClick={(e) => showFirstInvalid(e.currentTarget.closest("form"))}
+			onBlockedClick={(e) => onBlocked(e.currentTarget.closest("form"))}
 			// keeps the focus in the field until the click is done: a blur error appearing first would move the
 			// button away from under the pointer and the click would be lost
 			onMouseDown={(e) => e.preventDefault()}
@@ -77,6 +67,57 @@ function FormSubmit({
 			{button}
 		</div>
 	);
+}
+
+function FormikSubmit(props) {
+	const { isSubmitting, dirty } = useFormikContext();
+	const blocked = useShownErrors(true).length > 0;
+	return (
+		<SubmitButton
+			{...props}
+			isSubmitting={isSubmitting}
+			dirty={dirty}
+			blocked={blocked}
+			onBlocked={showFirstInvalid}
+		/>
+	);
+}
+
+function HookFormSubmit(props) {
+	const { setFocus } = useFormContext();
+	const { isSubmitting, isDirty, errors } = useFormState();
+	const order = useFieldOrder();
+	return (
+		<SubmitButton
+			{...props}
+			isSubmitting={isSubmitting}
+			dirty={isDirty}
+			blocked={errorPaths(errors).length > 0}
+			onBlocked={(form) => focusFirstError(form, errors, order, setFocus)}
+		/>
+	);
+}
+
+/**
+ * A form's submit button with the reason next to it whenever it cannot be used: while a shown field has an error it
+ * looks disabled (aria-disabled, still reachable) and a red note names the fields; with nothing to save it is
+ * disabled and a grey note says so. In a React Hook Form form an error shows once its field was left or a save was
+ * tried (mode onTouched) and "nothing to save" is !isDirty; in a Formik form the same through touched and dirty.
+ *
+ * @param {Object}   props
+ * @param {*}        props.children        the button text
+ * @param {boolean}  [props.edit]          an edit form: without changes there is nothing to save (disabled, reason)
+ * @param {boolean}  [props.disabled]      not available for another reason (submitting, a test running)
+ * @param {Object}   [props.labels]        field name -> label translation id for the note (a stable object)
+ * @param {string}   [props.messageId]     the note's text (FormErrorNote)
+ * @param {string}   [props.className]     of the wrapper, e.g. "ms-auto" in a modal footer
+ * @param {boolean}  [props.stacked]       a full-width button with the note centred under it (login, setup)
+ * @param {Object}   props.buttonProps     the rest goes to Button (color, isLoading, ...)
+ */
+function FormSubmit({ edit = false, disabled = false, stacked = false, ...props }) {
+	const shared = { ...props, edit, disabled, stacked };
+	// A3 removes the Formik branch
+	return useFormContext() ? <HookFormSubmit {...shared} /> : <FormikSubmit {...shared} />;
 }
 
 export { FormSubmit };
