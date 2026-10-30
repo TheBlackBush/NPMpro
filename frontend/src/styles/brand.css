@@ -12,8 +12,15 @@
 	background-image: var(--npmpro-brand-gradient);
 }
 
+/* A bar with a percentage reveals the gradient laid over the whole track: orange at the start, blue only near 100% */
+.progress-brand:has(> .progress-bar:not(.progress-bar-indeterminate)) {
+	container-type: inline-size;
+}
+
 .progress-brand .progress-bar:not(.progress-bar-indeterminate) {
 	background-image: var(--npmpro-brand-gradient);
+	background-size: 100cqw 100%;
+	background-repeat: no-repeat;
 }
 
 /* Tabler marks a select group item on :focus, so after a mouse click the ring and the selected colours stay until
