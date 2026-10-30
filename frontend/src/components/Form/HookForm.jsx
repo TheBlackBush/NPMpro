@@ -81,6 +81,20 @@ function useRecheckDependent(name) {
 }
 
 /**
+ * The message a field shows (React Hook Form's errors: once the field was left, or after a save was tried), for the
+ * form layer's fields; nested names work too ("fieldValues.token")
+ *
+ * @param   {string} name
+ * @returns {string|null}
+ */
+function useFieldError(name) {
+	const { getFieldState } = useFormContext();
+	// read during render, so the caller re-renders when the field's error changes (React Hook Form's subscription)
+	const formState = useFormState({ name, exact: true });
+	return getFieldState(name, formState).error?.message ?? null;
+}
+
+/**
  * Focuses the first field with an error in field order: opens the tab that holds it, then setFocus
  *
  * @param {HTMLFormElement|null} form
@@ -229,6 +243,7 @@ export {
 	focusFirstError,
 	HookForm,
 	useAppForm,
+	useFieldError,
 	useFieldOrder,
 	useFocusFirstError,
 	useListRecheck,
