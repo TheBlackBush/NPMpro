@@ -37,9 +37,12 @@ function CreateForm({ data, error, keepRef }) {
 	// which button started the save, for its spinner: "Keep on server" submits the form itself, Download (and Enter
 	// in a field) is the submit button
 	const [keepRunning, setKeepRunning] = useState(false);
+	// a submit that ends without running onSubmit (refused) must not leave "Keep on server" armed for a later Enter
 	useEffect(() => {
-		if (!isSubmitting) setKeepRunning(false);
-	}, [isSubmitting]);
+		if (isSubmitting) return;
+		setKeepRunning(false);
+		keepRef.current = false;
+	}, [isSubmitting, keepRef]);
 	const onBlocked = (e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus);
 
 	const keepOnServer = (e) => {

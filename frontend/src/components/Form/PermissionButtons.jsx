@@ -1,5 +1,5 @@
 import cn from "clsx";
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
@@ -37,7 +37,11 @@ function PermissionButtons({ name }) {
 	const { prefix, key } = splitName(name);
 	const { setValue } = useFormContext();
 	const { field } = useController({ name });
-	const siblingNames = PERMISSION_SECTIONS.map((section) => (prefix ? `${prefix}.${section}` : section));
+	// the same array while the prefix stays, so useWatch does not subscribe again on every render
+	const siblingNames = useMemo(
+		() => PERMISSION_SECTIONS.map((section) => (prefix ? `${prefix}.${section}` : section)),
+		[prefix],
+	);
 	const siblingValues = useWatch({ name: siblingNames });
 	const siblings = Object.fromEntries(PERMISSION_SECTIONS.map((section, index) => [section, siblingValues[index]]));
 	const choose = (perm) => {

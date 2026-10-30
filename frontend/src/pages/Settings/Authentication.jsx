@@ -16,7 +16,8 @@ import { SignInRules } from "./Authentication/SignInRules";
 import { SaveBar } from "./SaveBar";
 import { StatusAlert } from "./StatusAlert";
 
-const SUMMARY_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword", "autoCreateEnabled", "autoCreateDomains"];
+const RULE_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword"];
+const NEW_USER_FIELDS = ["autoCreateEnabled", "autoCreateDomains"];
 
 function Heading() {
 	return (
@@ -34,37 +35,42 @@ function Summary({ color = "secondary", id, values }) {
 	);
 }
 
+// the summaries watch their own fields, so typing in one of them does not render the whole accordion
+function RulesSummary({ isLocked }) {
+	const watched = useWatch({ name: RULE_FIELDS });
+	const rulesOn = watched.filter(Boolean).length;
+	if (isLocked("disablePassword")) {
+		return <Summary color="azure" id="settings.authentication.summary.password-locked" />;
+	}
+	if (rulesOn > 0) {
+		return <Summary color="green" id="settings.authentication.summary.rules-on" values={{ count: rulesOn }} />;
+	}
+	return <Summary id="settings.authentication.summary.off" />;
+}
+
+function NewUsersSummary() {
+	const [enabled, domains] = useWatch({ name: NEW_USER_FIELDS });
+	if (!enabled) return <Summary id="settings.authentication.summary.off" />;
+	return (
+		<Summary
+			color="green"
+			id="settings.authentication.summary.new-users-on"
+			values={{ count: parseDomains(domains).length }}
+		/>
+	);
+}
+
 // Collapsible groups below the always visible provider and button settings. A group holding a validation error is
 // opened by a refused save (while rendering, so it is open when the first error gets the focus), so an error is never
 // hidden.
 function AuthAccordion({ data, isLocked }) {
-	const { errors, submitCount } = useFormState();
+	const { errors, submitCount } = useFormState({ name: "autoCreateDomains" });
 	const [openKeys, setOpenKeys] = useState([]);
 	const [seenSubmits, setSeenSubmits] = useState(submitCount);
 	if (submitCount !== seenSubmits) {
 		setSeenSubmits(submitCount);
 		if (errors.autoCreateDomains && !openKeys.includes("new-users")) setOpenKeys([...openKeys, "new-users"]);
 	}
-	const watched = useWatch({ name: SUMMARY_FIELDS });
-	const values = Object.fromEntries(SUMMARY_FIELDS.map((name, index) => [name, watched[index]]));
-
-	const rulesOn = ["requireVerifiedEmail", "skipMfa", "disablePassword"].filter((name) => values[name]).length;
-	let rulesSummary = <Summary id="settings.authentication.summary.off" />;
-	if (isLocked("disablePassword")) {
-		rulesSummary = <Summary color="azure" id="settings.authentication.summary.password-locked" />;
-	} else if (rulesOn > 0) {
-		rulesSummary = (
-			<Summary color="green" id="settings.authentication.summary.rules-on" values={{ count: rulesOn }} />
-		);
-	}
-
-	const domainCount = parseDomains(values.autoCreateDomains).length;
-	const newUsersSummary = values.autoCreateEnabled ? (
-		<Summary color="green" id="settings.authentication.summary.new-users-on" values={{ count: domainCount }} />
-	) : (
-		<Summary id="settings.authentication.summary.off" />
-	);
-
 	const item = (eventKey, titleId, summary, children) => (
 		<Accordion.Item eventKey={eventKey}>
 			<Accordion.Header className="fs-3">
@@ -84,10 +90,10 @@ function AuthAccordion({ data, isLocked }) {
 			{item(
 				"rules",
 				"settings.authentication.rules",
-				rulesSummary,
+				<RulesSummary isLocked={isLocked} />,
 				<SignInRules data={data} isLocked={isLocked} />,
 			)}
-			{item("new-users", "settings.authentication.new-users", newUsersSummary, <NewUsersFields />)}
+			{item("new-users", "settings.authentication.new-users", <NewUsersSummary />, <NewUsersFields />)}
 			{item("permissions", "settings.authentication.default-permissions", null, <DefaultPermissionsFields />)}
 		</Accordion>
 	);

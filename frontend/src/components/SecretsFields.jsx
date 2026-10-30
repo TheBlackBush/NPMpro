@@ -13,64 +13,6 @@ const PASSPHRASE_FIELDS = ["passphrase", "passphraseRepeat"];
  */
 const validateSecrets = (values) => translateErrors(passphraseErrors(values), intl);
 
-function PassphraseInput({ id, labelId, hintId, error, inputProps }) {
-	return (
-		<div className="mb-3">
-			<PasswordInput
-				{...inputProps}
-				id={id}
-				label={<T id={labelId} />}
-				autoComplete="new-password"
-				error={error}
-			/>
-			{hintId ? (
-				<div className="form-hint">
-					<T id={hintId} />
-				</div>
-			) : null}
-		</div>
-	);
-}
-
-// the switch and, while it is on, the passphrase twice; else the note
-function SecretsLayout({ baseId, offNoteId, passphraseHintId, disabled, secretsOn, switchProps, passphrase }) {
-	return (
-		<>
-			<SwitchField
-				{...switchProps}
-				id={`${baseId}-secrets`}
-				className="mt-2 mb-3"
-				label={<T id="settings.backup.secrets" />}
-				hint={<T id="settings.backup.secrets.hint" />}
-				disabled={disabled}
-			/>
-			{secretsOn ? (
-				<div className="row">
-					<div className="col-12 col-md-6">
-						{passphrase(
-							"passphrase",
-							`${baseId}-passphrase`,
-							"settings.backup.passphrase",
-							passphraseHintId,
-						)}
-					</div>
-					<div className="col-12 col-md-6">
-						{passphrase(
-							"passphraseRepeat",
-							`${baseId}-passphrase-repeat`,
-							"settings.backup.passphrase.repeat",
-						)}
-					</div>
-				</div>
-			) : (
-				<p className="text-secondary small mb-3">
-					<T id={offNoteId} />
-				</p>
-			)}
-		</>
-	);
-}
-
 /**
  * "Include secrets" as a switch and, while it is on, the passphrase twice (the fields secrets, passphrase and
  * passphraseRepeat of the form around it); while it is off a note on what is left out. Turning secrets off drops the
@@ -88,27 +30,55 @@ function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphra
 	const { errors } = useFormState();
 	const secretsOn = useWatch({ name: "secrets" });
 	return (
-		<SecretsLayout
-			baseId={baseId}
-			offNoteId={offNoteId}
-			passphraseHintId={passphraseHintId}
-			disabled={disabled}
-			secretsOn={secretsOn}
-			switchProps={register("secrets", {
-				onChange: (event) => {
-					if (!event.target.checked) clearErrors(PASSPHRASE_FIELDS);
-				},
-			})}
-			passphrase={(name, id, labelId, hintId) => (
-				<PassphraseInput
-					id={id}
-					labelId={labelId}
-					hintId={hintId}
-					inputProps={register(name, name === "passphrase" ? { onChange: recheckRepeat } : undefined)}
-					error={errors[name]?.message}
-				/>
+		<>
+			<SwitchField
+				{...register("secrets", {
+					onChange: (event) => {
+						if (!event.target.checked) clearErrors(PASSPHRASE_FIELDS);
+					},
+				})}
+				id={`${baseId}-secrets`}
+				className="mt-2 mb-3"
+				label={<T id="settings.backup.secrets" />}
+				hint={<T id="settings.backup.secrets.hint" />}
+				disabled={disabled}
+			/>
+			{secretsOn ? (
+				<div className="row">
+					<div className="col-12 col-md-6">
+						<div className="mb-3">
+							<PasswordInput
+								{...register("passphrase", { onChange: recheckRepeat })}
+								id={`${baseId}-passphrase`}
+								label={<T id="settings.backup.passphrase" />}
+								autoComplete="new-password"
+								error={errors.passphrase?.message}
+							/>
+							{passphraseHintId ? (
+								<div className="form-hint">
+									<T id={passphraseHintId} />
+								</div>
+							) : null}
+						</div>
+					</div>
+					<div className="col-12 col-md-6">
+						<div className="mb-3">
+							<PasswordInput
+								{...register("passphraseRepeat")}
+								id={`${baseId}-passphrase-repeat`}
+								label={<T id="settings.backup.passphrase.repeat" />}
+								autoComplete="new-password"
+								error={errors.passphraseRepeat?.message}
+							/>
+						</div>
+					</div>
+				</div>
+			) : (
+				<p className="text-secondary small mb-3">
+					<T id={offNoteId} />
+				</p>
 			)}
-		/>
+		</>
 	);
 }
 
