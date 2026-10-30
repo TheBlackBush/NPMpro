@@ -6,8 +6,17 @@ import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
 import { selectClassNames } from "src/modules/Select";
 
-// the label, the select, "+" and the error
-function CredentialControl({ name, provider, value, error, onChange, onBlur, selectRef }) {
+/**
+ * The DNS credential of a provider (a field of the form around it): the label, the select, "+" (a new credential of
+ * the provider, chosen once saved) and the error. The form's resolver checks it (CertificateForms.js).
+ *
+ * @param {Object} props
+ * @param {string} props.name
+ * @param {string} props.provider
+ */
+export function DnsCredentialSelect({ name, provider }) {
+	const { field, fieldState } = useController({ name });
+	const error = fieldState.error?.message ?? null;
 	const { data, isPending } = useDnsCredentials();
 
 	const options = (data ?? [])
@@ -24,7 +33,7 @@ function CredentialControl({ name, provider, value, error, onChange, onBlur, sel
 			<div className="d-flex gap-2">
 				<div className="flex-fill">
 					<Select
-						ref={selectRef}
+						ref={field.ref}
 						unstyled
 						classNames={selectClassNames}
 						name={name}
@@ -36,13 +45,13 @@ function CredentialControl({ name, provider, value, error, onChange, onBlur, sel
 						required
 						aria-invalid={error ? "true" : undefined}
 						aria-describedby={error ? "dnsCredential-error" : undefined}
-						onBlur={onBlur}
+						onBlur={field.onBlur}
 						placeholder={intl.formatMessage({
 							id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
 						})}
 						options={options}
-						value={options.find((o) => o.value === value) ?? null}
-						onChange={(o) => onChange(o?.value)}
+						value={options.find((o) => o.value === field.value) ?? null}
+						onChange={(o) => field.onChange(o?.value)}
 					/>
 				</div>
 				<button
@@ -50,7 +59,9 @@ function CredentialControl({ name, provider, value, error, onChange, onBlur, sel
 					className="btn btn-icon"
 					aria-label={addLabel}
 					title={addLabel}
-					onClick={() => showDnsCredentialModal("new", { provider, onSaved: (row) => onChange(row.id) })}
+					onClick={() =>
+						showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
+					}
 				>
 					<IconPlus size={16} />
 				</button>
@@ -62,24 +73,4 @@ function CredentialControl({ name, provider, value, error, onChange, onBlur, sel
 			) : null}
 		</div>
 	);
-}
-
-// in a React Hook Form form: the form's resolver checks it (CertificateForms.js)
-function HookFormCredentialSelect({ name, provider }) {
-	const { field, fieldState } = useController({ name });
-	return (
-		<CredentialControl
-			name={name}
-			provider={provider}
-			value={field.value}
-			error={fieldState.error?.message ?? null}
-			onChange={field.onChange}
-			onBlur={field.onBlur}
-			selectRef={field.ref}
-		/>
-	);
-}
-
-export function DnsCredentialSelect({ name, provider }) {
-	return <HookFormCredentialSelect name={name} provider={provider} />;
 }

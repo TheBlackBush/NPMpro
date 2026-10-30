@@ -4,19 +4,28 @@ import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { validateDomain } from "src/modules/Validations";
 
-// the label, the chips select and the hints or the error
-function DomainNamesControl({
-	name,
-	id,
-	label,
-	isValidDomain,
-	helperTexts,
-	value,
-	error,
+/**
+ * The domain names of the form around it: the label, the chips select and the hints or the error. The form's
+ * resolver checks the list (domainNamesRule); onChange(domains) runs after the field took the new list.
+ */
+export function DomainNamesField({
+	name = "domainNames",
+	label = "domain-names",
+	id = "domainNames",
+	isWildcardPermitted,
+	dnsProviderWildcardSupported,
+	forCertificate,
 	onChange,
-	onBlur,
-	selectRef,
 }) {
+	const { field, fieldState } = useController({ name });
+	const error = fieldState.error?.message ?? null;
+	const helperTexts = [];
+	if (!isWildcardPermitted) {
+		helperTexts.push(<T id="domain-names.wildcards-not-permitted" />);
+	} else if (!dnsProviderWildcardSupported) {
+		helperTexts.push(<T id="domain-names.wildcards-not-supported" />);
+	}
+	const isValidDomain = validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate);
 	// a domain already in the list is not offered again
 	const isValidNewOption = (input, selected) =>
 		isValidDomain(input) && !selected.some(({ value: v }) => v.toLowerCase() === input.trim().toLowerCase());
@@ -26,7 +35,7 @@ function DomainNamesControl({
 				<T id={label} />
 			</label>
 			<CreatableSelect
-				ref={selectRef}
+				ref={field.ref}
 				unstyled
 				classNames={selectClassNames}
 				name={name}
@@ -37,10 +46,14 @@ function DomainNamesControl({
 				isMulti
 				required
 				aria-invalid={error ? "true" : undefined}
-				onBlur={onBlur}
+				onBlur={field.onBlur}
 				placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
-				onChange={(v) => onChange([...new Set(v?.map((i) => i.value.trim()))])}
-				value={value?.map((d) => ({ label: d, value: d }))}
+				onChange={(v) => {
+					const domains = [...new Set(v?.map((i) => i.value.trim()))];
+					field.onChange(domains);
+					onChange?.(domains);
+				}}
+				value={field.value?.map((d) => ({ label: d, value: d }))}
 			/>
 
 			{error ? (
@@ -54,47 +67,4 @@ function DomainNamesControl({
 			) : null}
 		</div>
 	);
-}
-
-// in a React Hook Form form: the form's resolver checks it (CertificateForms.js), an error shows as it is held
-function HookFormDomainNames({ control, onChange }) {
-	const { field, fieldState } = useController({ name: control.name });
-	return (
-		<DomainNamesControl
-			{...control}
-			value={field.value}
-			error={fieldState.error?.message ?? null}
-			onChange={(doms) => {
-				field.onChange(doms);
-				onChange?.(doms);
-			}}
-			onBlur={field.onBlur}
-			selectRef={field.ref}
-		/>
-	);
-}
-
-export function DomainNamesField({
-	name = "domainNames",
-	label = "domain-names",
-	id = "domainNames",
-	isWildcardPermitted,
-	dnsProviderWildcardSupported,
-	forCertificate,
-	onChange,
-}) {
-	const helperTexts = [];
-	if (!isWildcardPermitted) {
-		helperTexts.push(<T id="domain-names.wildcards-not-permitted" />);
-	} else if (!dnsProviderWildcardSupported) {
-		helperTexts.push(<T id="domain-names.wildcards-not-supported" />);
-	}
-	const control = {
-		name,
-		id,
-		label,
-		helperTexts,
-		isValidDomain: validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate),
-	};
-	return <HookFormDomainNames control={control} onChange={onChange} />;
 }

@@ -7,7 +7,13 @@ import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
 import { useRecheckDependent } from "./HookForm";
 
-function ProviderSelect({ providerId, error, onChange, onBlur, selectRef }) {
+// the provider; another provider's credential does not fit, so a change empties it (its message shows again once
+// it may)
+function ProviderSelect({ providerId }) {
+	const { setValue } = useFormContext();
+	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
+	const recheckCredential = useRecheckDependent("npmproDnsCredentialId");
+	const error = fieldState.error?.message ?? null;
 	const { data: dnsProviders, isPending } = useDnsProviders();
 	// deprecated providers are not offered for new certificates, only kept when already selected
 	const options = dnsProviders
@@ -22,7 +28,7 @@ function ProviderSelect({ providerId, error, onChange, onBlur, selectRef }) {
 				<T id="certificates.dns.provider" />
 			</label>
 			<Select
-				ref={selectRef}
+				ref={field.ref}
 				unstyled
 				classNames={selectClassNames}
 				name="npmproDnsProvider"
@@ -37,8 +43,12 @@ function ProviderSelect({ providerId, error, onChange, onBlur, selectRef }) {
 				required
 				aria-invalid={error ? "true" : undefined}
 				aria-describedby={error ? "dnsProvider-error" : undefined}
-				onBlur={onBlur}
-				onChange={(newValue) => onChange(newValue?.value)}
+				onBlur={field.onBlur}
+				onChange={(newValue) => {
+					field.onChange(newValue?.value);
+					setValue("npmproDnsCredentialId", null, { shouldDirty: true });
+					recheckCredential();
+				}}
 				options={options}
 			/>
 			{error ? (
@@ -50,14 +60,17 @@ function ProviderSelect({ providerId, error, onChange, onBlur, selectRef }) {
 	);
 }
 
-function PropagationInput({ value, error, onChange, onBlur, inputRef }) {
+// the seconds to wait for the DNS records; 0 means the default of the DNS plugin, shown as an empty field
+function PropagationInput() {
+	const { field, fieldState } = useController({ name: "npmproPropagationSeconds" });
+	const error = fieldState.error?.message ?? null;
 	return (
 		<div className="mt-3">
 			<label htmlFor="propagationSeconds" className="form-label">
 				<T id="certificates.dns.propagation-seconds" />
 			</label>
 			<input
-				ref={inputRef}
+				ref={field.ref}
 				id="propagationSeconds"
 				type="number"
 				className={`form-control ${error ? "is-invalid" : ""}`}
@@ -68,10 +81,9 @@ function PropagationInput({ value, error, onChange, onBlur, inputRef }) {
 					id: "certificates.dns.propagation-seconds-default",
 				})}
 				name="npmproPropagationSeconds"
-				onBlur={onBlur}
-				// 0 means the default of the DNS plugin, shown as an empty field
-				value={value || ""}
-				onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+				onBlur={field.onBlur}
+				value={field.value || ""}
+				onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
 			/>
 			{error ? <div className="invalid-feedback">{error}</div> : null}
 			<small className="text-secondary">
@@ -81,14 +93,18 @@ function PropagationInput({ value, error, onChange, onBlur, inputRef }) {
 	);
 }
 
-// the notice, the provider and, with a provider, the credential and the propagation time
-function DnsProviderLayout({ showBoundaryBox, providerId, provider, propagation }) {
+/**
+ * The DNS challenge fields of the form around it: the notice, the provider and, with a provider, the credential and
+ * the propagation time. The form's resolver checks them (CertificateForms.js dnsChallengeRules).
+ */
+export function DNSProviderFields({ showBoundaryBox }) {
+	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
 		<div className={showBoundaryBox ? "py-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined}>
 			<NoticeAlert>
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
-			{provider}
+			<ProviderSelect providerId={providerId} />
 			{providerId ? (
 				<>
 					<DnsCredentialSelect name="npmproDnsCredentialId" provider={providerId} />
@@ -97,59 +113,9 @@ function DnsProviderLayout({ showBoundaryBox, providerId, provider, propagation 
 							<T id="certificates.dns.credentials-saved-note" />
 						</small>
 					</p>
-					{propagation}
+					<PropagationInput />
 				</>
 			) : null}
 		</div>
 	);
-}
-
-function HookFormProvider({ providerId }) {
-	const { setValue } = useFormContext();
-	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
-	const recheckCredential = useRecheckDependent("npmproDnsCredentialId");
-	return (
-		<ProviderSelect
-			providerId={providerId}
-			selectRef={field.ref}
-			error={fieldState.error?.message ?? null}
-			onBlur={field.onBlur}
-			onChange={(value) => {
-				field.onChange(value);
-				// another provider's credential does not fit; its message shows again once it may
-				setValue("npmproDnsCredentialId", null, { shouldDirty: true });
-				recheckCredential();
-			}}
-		/>
-	);
-}
-
-function HookFormPropagation() {
-	const { field, fieldState } = useController({ name: "npmproPropagationSeconds" });
-	return (
-		<PropagationInput
-			inputRef={field.ref}
-			value={field.value}
-			error={fieldState.error?.message ?? null}
-			onBlur={field.onBlur}
-			onChange={field.onChange}
-		/>
-	);
-}
-
-// in a React Hook Form form: the resolver checks the fields (CertificateForms.js dnsChallengeRules)
-function HookFormDnsProviderFields({ showBoundaryBox }) {
-	const providerId = useWatch({ name: "npmproDnsProvider" });
-	return (
-		<DnsProviderLayout
-			showBoundaryBox={showBoundaryBox}
-			providerId={providerId}
-			provider={<HookFormProvider providerId={providerId} />}
-			propagation={<HookFormPropagation />}
-		/>
-	);
-}
-
-export function DNSProviderFields({ showBoundaryBox }) {
-	return <HookFormDnsProviderFields showBoundaryBox={showBoundaryBox} />;
 }

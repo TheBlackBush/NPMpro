@@ -1,30 +1,16 @@
-import { useFormikContext } from "formik";
 import { useEffect, useRef } from "react";
-import { useFormContext, useFormState } from "react-hook-form";
+import { useFormState } from "react-hook-form";
 import { intl } from "src/locale";
 
-function FormikDirtyTracker({ dirtyRef }) {
-	const { dirty } = useFormikContext();
-	useEffect(() => {
-		dirtyRef.current = dirty;
-	}, [dirty, dirtyRef]);
-	return null;
-}
-
-function HookFormDirtyTracker({ dirtyRef }) {
+/**
+ * Place inside a HookForm, keeps dirtyRef in sync with the form's isDirty
+ */
+function DirtyTracker({ dirtyRef }) {
 	const { isDirty } = useFormState();
 	useEffect(() => {
 		dirtyRef.current = isDirty;
 	}, [isDirty, dirtyRef]);
 	return null;
-}
-
-/**
- * Place inside a form, keeps dirtyRef in sync with the form's dirty state (React Hook Form's isDirty, or Formik's
- * dirty; A3 removes the Formik branch)
- */
-function DirtyTracker({ dirtyRef }) {
-	return useFormContext() ? <HookFormDirtyTracker dirtyRef={dirtyRef} /> : <FormikDirtyTracker dirtyRef={dirtyRef} />;
 }
 
 /**
