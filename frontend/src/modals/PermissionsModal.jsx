@@ -124,7 +124,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 						<FormSubmit
 							className="ms-auto"
 							edit={true}
-							color="primary"
+							section="users"
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 						>

@@ -21,15 +21,19 @@ import { isAdmin } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
-const showUserModal = (id) => {
-	EasyModal.show(UserModal, { id });
+/**
+ * @param {number|string} id         a user's id, "new" or "me"
+ * @param {string}        [section]  "users" when opened from the users list (its Save colour), none from the header
+ */
+const showUserModal = (id, section) => {
+	EasyModal.show(UserModal, { id, section });
 };
 
 const validate = userValidate(validations);
 
 const emptyUser = { name: "", email: "", isAdmin: false, isDisabled: false };
 
-const UserModal = EasyModal.create(({ id, visible, remove }) => {
+const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useUser(id);
 	const { data: currentUser, isPending: currentIsPending } = useUser("me");
@@ -197,7 +201,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 						<FormSubmit
 							className="ms-auto"
 							edit={Boolean(data?.id)}
-							color="primary"
+							section={section}
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 						>

@@ -399,7 +399,7 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 				<FormSubmit
 					className="ms-auto"
 					edit={Boolean(schedule)}
-					color="primary"
+					section="settings"
 					labels={NOTE_LABELS}
 					isLoading={isSubmitting}
 					disabled={isSubmitting}

@@ -7,6 +7,7 @@ import { intl, T } from "src/locale";
 import { showAccessListModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -31,7 +32,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-cyan" />
+			<div className={stripeClass("accessLists")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -54,7 +55,11 @@ export default function TableWrapper() {
 						/>
 						<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" color="cyan" onClick={() => showAccessListModal("new")}>
+								<Button
+									size="sm"
+									color={sectionColor("accessLists")}
+									onClick={() => showAccessListModal("new")}
+								>
 									<T id="object.add" tData={{ object: "access-list" }} />
 								</Button>
 							) : null}

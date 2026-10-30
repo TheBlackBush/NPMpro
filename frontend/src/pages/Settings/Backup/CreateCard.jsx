@@ -19,6 +19,7 @@ import { useBackupTypes, useCreateBackup } from "src/hooks";
 import { T } from "src/locale";
 import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
 import { errorPaths } from "src/modules/HookForm";
+import { sectionColor } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
 
 function CreateForm({ data, error, keepRef }) {
@@ -91,7 +92,7 @@ function CreateForm({ data, error, keepRef }) {
 				</Button>
 				<Button
 					type="submit"
-					color="teal"
+					color={sectionColor("settings")}
 					isLoading={isSubmitting && !keepRunning}
 					disabled={(isSubmitting && keepRunning) || (noTypes && !blocked)}
 					blocked={blocked}

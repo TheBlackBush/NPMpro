@@ -24,6 +24,7 @@ import {
 } from "src/modals";
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { stripeClass } from "src/modules/SectionColors";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 import { Tabs } from "./Tabs";
@@ -68,7 +69,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-pink" />
+			<div className={stripeClass("certificates")} />
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">

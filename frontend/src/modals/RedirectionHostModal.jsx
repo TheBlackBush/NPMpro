@@ -210,7 +210,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 					<FormSubmit
 						className="ms-auto"
 						edit={Boolean(data.id)}
-						color="primary"
+						section="redirectionHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

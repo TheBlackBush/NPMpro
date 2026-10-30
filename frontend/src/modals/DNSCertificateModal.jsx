@@ -88,7 +88,12 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit className="ms-auto" color="primary" isLoading={isSubmitting} disabled={isSubmitting}>
+					<FormSubmit
+						className="ms-auto"
+						section="certificates"
+						isLoading={isSubmitting}
+						disabled={isSubmitting}
+					>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

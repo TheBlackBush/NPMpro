@@ -158,7 +158,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 					<FormSubmit
 						className="ms-auto"
 						edit={isEdit}
-						color="primary"
+						section="certificates"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

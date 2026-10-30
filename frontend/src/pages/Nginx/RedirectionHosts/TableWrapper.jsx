@@ -8,6 +8,7 @@ import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showRedirectionHostModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -84,7 +85,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-yellow" />
+			<div className={stripeClass("redirectionHosts")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -109,7 +110,7 @@ export default function TableWrapper() {
 							{data?.length ? (
 								<Button
 									size="sm"
-									className="btn-yellow"
+									color={sectionColor("redirectionHosts")}
 									onClick={() => showRedirectionHostModal("new")}
 								>
 									<T id="object.add" tData={{ object: "redirection-host" }} />

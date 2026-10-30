@@ -7,6 +7,7 @@ import { useListFilters, useUser, useUsers } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -49,7 +50,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-orange" />
+			<div className={stripeClass("users")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -57,7 +58,11 @@ export default function TableWrapper() {
 					</h2>
 					<div className="card-actions btn-list">
 						{data?.length ? (
-							<Button size="sm" color="orange" onClick={() => showUserModal("new")}>
+							<Button
+								size="sm"
+								color={sectionColor("users")}
+								onClick={() => showUserModal("new", "users")}
+							>
 								<T id="object.add" tData={{ object: "user" }} />
 							</Button>
 						) : null}
@@ -85,7 +90,7 @@ export default function TableWrapper() {
 					onSortingChange={setSorting}
 					isFetching={isFetching}
 					currentUserId={currentUser?.id}
-					onEditUser={(id) => showUserModal(id)}
+					onEditUser={(id) => showUserModal(id, "users")}
 					onEditPermissions={(id) => showPermissionsModal(id)}
 					onSetPassword={(id) => showSetPasswordModal(id)}
 					onResetMfa={(id) => {
@@ -131,7 +136,7 @@ export default function TableWrapper() {
 						});
 					}}
 					onDisableToggle={handleDisableToggle}
-					onNewUser={() => showUserModal("new")}
+					onNewUser={() => showUserModal("new", "users")}
 				/>
 			</div>
 		</div>

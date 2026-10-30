@@ -69,7 +69,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 					<FormSubmit
 						className="ms-auto"
 						edit={true}
-						color="primary"
+						section="certificates"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

@@ -22,6 +22,7 @@ import { withErrorDetails } from "src/modules/BackupTypes";
 import EasyModal from "src/modules/easyModal";
 import { errorPaths } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
+import { kindColor } from "src/modules/SectionColors";
 
 /**
  * @param {string} kind  the page's kind of items: proxy_hosts, redirection_hosts, dead_hosts, streams, certificates,
@@ -242,7 +243,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 					) : null}
 					<Button
 						type="submit"
-						color="teal"
+						color={kindColor(kind)}
 						isLoading={isSubmitting}
 						disabled={reason !== null && !blocked}
 						blocked={blocked}
