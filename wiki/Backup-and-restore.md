@@ -1,6 +1,6 @@
 # Backup and restore
 
-NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` file and restores them on the same or another instance (SQLite, MySQL/MariaDB or Postgres). You find it under Settings, Backup and restore; only administrators see it. This page has every detail.
+NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` file and restores them on the same or another instance (SQLite, MySQL/MariaDB or Postgres). Copying the whole `/data` folder is not needed for it. You find it under Settings, Backup and restore; only administrators see it. This page has every detail.
 
 ## What a backup holds
 
@@ -18,7 +18,7 @@ A backup never holds traffic statistics (they are not backed up at all), logs, t
 2. Keep **Include secrets** on for a complete backup and enter a passphrase twice (at least 12 characters). Private keys, password hashes, two-factor secrets, DNS credential values, the OIDC client secret, the GeoIP license key and `crowdsec.conf` are then included, and the whole file is encrypted with the passphrase. NPMpro does not store the passphrase: write it down, without it the backup cannot be restored.
 3. Click **Download** to save the file on your computer, or **Keep on server** to store it in `/data/backups`.
 
-With **Include secrets** off the file is not encrypted and leaves the secrets out. It still contains host names, users and settings, so keep it private as well. After restoring it, enter the passwords, keys and credentials again.
+With **Include secrets** off the file is not encrypted and leaves the secrets out. It still contains host names, users and settings, so keep it private as well. After restoring it, enter the passwords, keys and credentials again (the restore lists the parts that came without them).
 
 ## Stored backups
 

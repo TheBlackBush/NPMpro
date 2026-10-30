@@ -39,4 +39,4 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 - audit log, users with per-section permissions, light and dark theme
 - database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/backups/database` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
 - Alpine based, a much smaller image
-- many other things, see these wiki pages and the [compose.yaml]((https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml))
+- many other things, see these wiki pages and the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml)

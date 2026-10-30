@@ -55,7 +55,7 @@ Changes that need an nginx reload are tested with `nginx -t` first: if the test 
 - **Without it, NPMpro creates a new random secret at every start.** Every restart, recreate and upgrade of the container then signs all users out.
 - **With a static random value, users stay signed in** across restarts, recreates and upgrades. The same holds for a [database move](Database), which restarts NPMpro.
 - **Keep the value.** Changing it signs everyone out once, because the existing cookies no longer match.
-- **Treat it like a password.** Anyone who knows it can forge a session cookie, so do not publish it, do not commit it to a repository and keep it out of screenshots and logs.
+- **Treat it like a password.** It signs the session cookie (the session inside is still checked by NPMpro), so do not publish it, do not commit it to a repository and keep it out of screenshots and logs.
 
 Use a long random value (32 random bytes written as 64 hex characters is plenty). Any of these makes one:
 
