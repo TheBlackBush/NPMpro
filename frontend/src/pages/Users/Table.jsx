@@ -30,6 +30,7 @@ import {
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -286,7 +287,7 @@ export default function Table({
 					tableInstance={tableInstance}
 					onNew={onNewUser}
 					isFiltered={isFiltered}
-					color="orange"
+					color={sectionColor("users")}
 				/>
 			}
 		/>

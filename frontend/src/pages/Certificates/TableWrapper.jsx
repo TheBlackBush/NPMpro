@@ -24,6 +24,7 @@ import {
 } from "src/modals";
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 import { Tabs } from "./Tabs";
@@ -68,7 +69,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-pink" />
+			<div className={stripeClass("certificates")} />
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
@@ -95,7 +96,7 @@ export default function TableWrapper() {
 								<div className="dropdown">
 									<button
 										type="button"
-										className="btn btn-sm dropdown-toggle btn-pink"
+										className={`btn btn-sm dropdown-toggle btn-${sectionColor("certificates")}`}
 										data-bs-toggle="dropdown"
 									>
 										<T id="object.add" tData={{ object: "certificate" }} />

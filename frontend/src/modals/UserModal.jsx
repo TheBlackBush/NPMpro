@@ -6,30 +6,37 @@ import {
 	AppModal,
 	Button,
 	ErrorAlert,
+	FormSection,
 	FormSubmit,
 	GravatarFormatter,
 	HookForm,
 	Loading,
 	SwitchField,
+	SwitchList,
+	TextField,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useSetUser, useUnsavedChangesGuard, useUser } from "src/hooks";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import { userValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
 import { isAdmin } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
-const showUserModal = (id) => {
-	EasyModal.show(UserModal, { id });
+/**
+ * @param {number|string} id         a user's id, "new" or "me"
+ * @param {string}        [section]  "users" when opened from the users list (its Save colour), none from the header
+ */
+const showUserModal = (id, section) => {
+	EasyModal.show(UserModal, { id, section });
 };
 
 const validate = userValidate(validations);
 
 const emptyUser = { name: "", email: "", isAdmin: false, isDisabled: false };
 
-const UserModal = EasyModal.create(({ id, visible, remove }) => {
+const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useUser(id);
 	const { data: currentUser, isPending: currentIsPending } = useUser("me");
@@ -51,7 +58,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	});
 	const {
 		register,
-		formState: { errors, isSubmitting },
+		formState: { isSubmitting },
 	} = methods;
 	const changeAvatar = async (fn) => {
 		setErrorMsg(null);
@@ -135,59 +142,25 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 								)}
 							</div>
 						)}
-						<div className="mb-3">
-							<div className="form-floating mb-3">
-								<input
-									id="name"
-									autoComplete="off"
-									required
-									className={`form-control ${errors.name ? "is-invalid" : ""}`}
-									placeholder={intl.formatMessage({
-										id: "user.full-name",
-									})}
-									{...register("name")}
-								/>
-
-								<label htmlFor="name">
-									<T id="user.full-name" />
-								</label>
-								{errors.name ? <div className="invalid-feedback">{errors.name.message}</div> : null}
-							</div>
-						</div>
-						<div className="mb-3">
-							<div className="form-floating mb-3">
-								<input
-									id="email"
-									type="email"
-									autoComplete="off"
-									required
-									className={`form-control ${errors.email ? "is-invalid" : ""}`}
-									placeholder={intl.formatMessage({
-										id: "email-address",
-									})}
-									{...register("email")}
-								/>
-
-								<label htmlFor="email">
-									<T id="email-address" />
-								</label>
-								{errors.email ? <div className="invalid-feedback">{errors.email.message}</div> : null}
-							</div>
-						</div>
+						<TextField name="name" label={<T id="user.full-name" />} autoComplete="off" required />
+						<TextField
+							name="email"
+							type="email"
+							label={<T id="email-address" />}
+							autoComplete="off"
+							required
+						/>
 						{currentUser?.id !== data?.id ? (
-							<div className="my-3">
-								<h4 className="py-2">
-									<T id="options" />
-								</h4>
-								<div className="divide-y">
+							<FormSection legend={<T id="options" />} className="mb-0">
+								<SwitchList>
 									<SwitchField id="isAdmin" label={<T id="role.admin" />} {...register("isAdmin")} />
 									<SwitchField
 										id="isDisabled"
 										label={<T id="disabled" />}
 										{...register("isDisabled")}
 									/>
-								</div>
-							</div>
+								</SwitchList>
+							</FormSection>
 						) : null}
 					</AppModal.Body>
 					<AppModal.Footer>
@@ -197,7 +170,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 						<FormSubmit
 							className="ms-auto"
 							edit={Boolean(data?.id)}
-							color="primary"
+							section={section}
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 						>

@@ -4,6 +4,7 @@ import { useFormContext, useFormState } from "react-hook-form";
 import { Button } from "src/components/Button";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
+import { sectionColor } from "src/modules/SectionColors";
 import { FormErrorNote } from "./FormErrorNote";
 import { focusFirstError, useFieldOrder } from "./HookForm";
 
@@ -21,6 +22,8 @@ import { focusFirstError, useFieldOrder } from "./HookForm";
  * @param {string}   [props.messageId]     the note's text (FormErrorNote)
  * @param {string}   [props.className]     of the wrapper, e.g. "ms-auto" in a modal footer
  * @param {boolean}  [props.stacked]       a full-width button with the note centred under it (login, setup)
+ * @param {string}   [props.section]       the section of the window (SectionColors.js): the button takes its colour,
+ *                                         primary without one; color overrides it (a destructive action: danger)
  * @param {Object}   props.buttonProps     the rest goes to Button (color, isLoading, ...)
  */
 function FormSubmit({
@@ -31,6 +34,8 @@ function FormSubmit({
 	messageId,
 	className,
 	stacked = false,
+	section,
+	color,
 	...buttonProps
 }) {
 	const { setFocus } = useFormContext();
@@ -44,6 +49,7 @@ function FormSubmit({
 	const button = (
 		<Button
 			{...buttonProps}
+			color={color ?? sectionColor(section)}
 			type="submit"
 			fullWidth={stacked || buttonProps.fullWidth}
 			disabled={disabled || (unchanged && !blocked)}

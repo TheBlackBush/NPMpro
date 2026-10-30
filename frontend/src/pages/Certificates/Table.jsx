@@ -36,6 +36,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { showCustomCertificateModal, showDNSCertificateModal, showHTTPCertificateModal } from "src/modals";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -315,7 +316,7 @@ export default function Table({
 		<div className="dropdown">
 			<button
 				type="button"
-				className="btn dropdown-toggle btn-pink my-3"
+				className={`btn dropdown-toggle btn-${sectionColor("certificates")} my-3`}
 				data-bs-toggle="dropdown"
 				data-bs-popper-config='{"strategy":"fixed"}'
 			>
@@ -379,7 +380,7 @@ export default function Table({
 					tableInstance={tableInstance}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color="pink"
+					color={sectionColor("certificates")}
 					customAddBtn={customAddBtn}
 					permissionSection={CERTIFICATES}
 				/>

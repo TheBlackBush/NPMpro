@@ -121,7 +121,7 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 					<FormSubmit
 						className="ms-auto"
 						edit={Boolean(data.id)}
-						color="primary"
+						section="deadHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

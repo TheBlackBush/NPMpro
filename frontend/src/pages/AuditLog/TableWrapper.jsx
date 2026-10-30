@@ -4,6 +4,7 @@ import { Button, ErrorAlert, LoadingPage } from "src/components";
 import { useAuditLogs, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
+import { stripeClass } from "src/modules/SectionColors";
 import Table from "./Table";
 
 const OBJECT_TYPES = [
@@ -68,7 +69,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-purple" />
+			<div className={stripeClass("auditLog")} />
 			<div className="card-table">
 				<div className="card-header">
 					<h2 className="card-title">

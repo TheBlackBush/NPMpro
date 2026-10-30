@@ -9,6 +9,7 @@ import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/m
 import { forwardSummary } from "src/modules/Forward";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -82,7 +83,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-lime" />
+			<div className={stripeClass("proxyHosts")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -105,7 +106,11 @@ export default function TableWrapper() {
 						/>
 						<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" color="lime" onClick={() => showProxyHostModal("new")}>
+								<Button
+									size="sm"
+									color={sectionColor("proxyHosts")}
+									onClick={() => showProxyHostModal("new")}
+								>
 									<T id="object.add" tData={{ object: "proxy-host" }} />
 								</Button>
 							) : null}

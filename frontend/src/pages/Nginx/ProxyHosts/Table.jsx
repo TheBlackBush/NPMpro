@@ -23,6 +23,7 @@ import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -275,7 +276,7 @@ export default function Table({
 					onNew={onNew}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color="lime"
+					color={sectionColor("proxyHosts")}
 					permissionSection={PROXY_HOSTS}
 				/>
 			}

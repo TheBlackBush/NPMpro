@@ -2,6 +2,7 @@ import { NavLink, useNavigate, useParams } from "react-router";
 import { ErrorNotFound } from "src/components";
 import { confirmLeave } from "src/hooks";
 import { intl, T } from "src/locale";
+import { stripeClass } from "src/modules/SectionColors";
 import { SECTIONS } from "./sections";
 
 export default function Layout() {
@@ -17,7 +18,7 @@ export default function Layout() {
 
 	return (
 		<div className="card">
-			<div className="card-status-top bg-teal" />
+			<div className={stripeClass("settings")} />
 			<div className="row g-0">
 				<div className="col-12 d-lg-none">
 					<div className="card-body">

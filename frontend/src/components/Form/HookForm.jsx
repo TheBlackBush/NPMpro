@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { FormProvider, useForm, useFormContext, useFormState } from "react-hook-form";
+import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
 import {
 	controlNames,
 	errorPaths,
@@ -78,6 +78,20 @@ function useRecheckDependent(name) {
 	return () => {
 		if (isTouched || error || isSubmitted) void trigger(name);
 	};
+}
+
+/**
+ * The message a field shows (React Hook Form's errors: once the field was left, or after a save was tried), for the
+ * form layer's fields; nested names work too ("fieldValues.token")
+ *
+ * @param   {string} name
+ * @returns {string|null}
+ */
+function useFieldError(name) {
+	// only this field's errors are read, so the field re-renders when its error changes, not on its dirty, touched or
+	// validating state (React Hook Form subscribes to what is read from formState)
+	const { errors } = useFormState({ name, exact: true });
+	return get(errors, name)?.message ?? null;
 }
 
 /**
@@ -229,6 +243,7 @@ export {
 	focusFirstError,
 	HookForm,
 	useAppForm,
+	useFieldError,
 	useFieldOrder,
 	useFocusFirstError,
 	useListRecheck,

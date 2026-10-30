@@ -493,7 +493,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 						labels={FIELD_LABELS}
 						className="ms-auto"
 						edit={Boolean(data.id) && !isClone}
-						color="primary"
+						section="proxyHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

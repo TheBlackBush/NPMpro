@@ -8,6 +8,7 @@ import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -83,7 +84,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-blue" />
+			<div className={stripeClass("streams")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -106,7 +107,11 @@ export default function TableWrapper() {
 						/>
 						<HasPermission section={STREAMS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" color="blue" onClick={() => showStreamModal("new")}>
+								<Button
+									size="sm"
+									color={sectionColor("streams")}
+									onClick={() => showStreamModal("new")}
+								>
 									<T id="object.add" tData={{ object: "stream" }} />
 								</Button>
 							) : null}

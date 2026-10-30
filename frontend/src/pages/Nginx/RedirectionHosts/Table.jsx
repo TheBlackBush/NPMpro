@@ -21,6 +21,7 @@ import {
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -240,7 +241,7 @@ export default function Table({
 					onNew={onNew}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color="yellow"
+					color={sectionColor("redirectionHosts")}
 					permissionSection={REDIRECTION_HOSTS}
 				/>
 			}

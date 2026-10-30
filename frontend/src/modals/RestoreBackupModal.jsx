@@ -10,6 +10,7 @@ import { emptyItemType } from "src/modules/BackupMerge";
 import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetails } from "src/modules/BackupTypes";
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
+import { kindColor, sectionColor } from "src/modules/SectionColors";
 import { importCategories, isTooLarge, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
 import { ItemList } from "./RestoreBackup/ItemList";
 import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
@@ -480,7 +481,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 					<Button
 						type="submit"
 						form={formId}
-						color="teal"
+						color={importing ? kindColor(importKind) : sectionColor("settings")}
 						disabled={passphraseShort}
 						aria-describedby={passphraseShort ? reasonId : undefined}
 					>
@@ -585,7 +586,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 						</span>
 					) : null}
 					<Button
-						color="danger"
+						color={importing ? kindColor(importKind) : "danger"}
 						disabled={restoreReason !== null}
 						aria-describedby={restoreReason ? reasonId : undefined}
 						onClick={run}

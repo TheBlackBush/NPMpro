@@ -14,6 +14,7 @@ import { EmptyData, GravatarFormatter, HasPermission, ValueWithDateFormatter } f
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -186,7 +187,7 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
-					color="cyan"
+					color={sectionColor("accessLists")}
 					permissionSection={ACCESS_LISTS}
 				/>
 			}

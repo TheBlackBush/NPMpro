@@ -1,16 +1,9 @@
-import cn from "clsx";
-import { Fragment, useMemo } from "react";
+import { useMemo } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
 import { hiddenRuledOut, PERMISSION_SECTIONS, permissionChanges } from "src/modules/Permissions";
-
-const getClasses = (active) =>
-	cn("btn", {
-		active,
-		"bg-orange-lt": active,
-		"border-orange": active,
-	});
+import { ChoiceGroup } from "./ChoiceGroup";
 
 // The field name may be nested (for example "autoCreatePermissions.proxyHosts"); the rules look at its siblings.
 const splitName = (name) => {
@@ -25,15 +18,28 @@ const PERMS = [
 ];
 
 /**
+ * The permission sections in the order the windows show them, with the translation of their name (the legend)
+ */
+const PERMISSION_ROWS = [
+	["proxyHosts", "proxy-hosts"],
+	["redirectionHosts", "redirection-hosts"],
+	["deadHosts", "dead-hosts"],
+	["streams", "streams"],
+	["accessLists", "access-lists"],
+	["certificates", "certificates"],
+];
+
+/**
  * Manage, View or Hidden for one section of a user's permissions (a field of the form around it, e.g.
- * "proxyHosts" or "autoCreatePermissions.proxyHosts"). A choice also turns on what the section needs (the access
- * lists for proxy hosts, the certificates for hosts and streams), and Hidden is ruled out while another section needs
- * this one.
+ * "proxyHosts" or "autoCreatePermissions.proxyHosts"), as a choice group named by legend. A choice also turns on
+ * what the section needs (the access lists for proxy hosts, the certificates for hosts and streams), and Hidden is
+ * ruled out while another section needs this one.
  *
  * @param {Object} props
  * @param {string} props.name
+ * @param {*}      props.legend
  */
-function PermissionButtons({ name }) {
+function PermissionButtons({ name, legend }) {
 	const { prefix, key } = splitName(name);
 	const { setValue } = useFormContext();
 	const { field } = useController({ name });
@@ -49,35 +55,30 @@ function PermissionButtons({ name }) {
 		field.onChange(perm);
 	};
 	return (
-		<div>
-			<fieldset className="btn-group w-100">
-				{PERMS.map(([perm, labelId], index) => (
-					<Fragment key={perm}>
-						<input
-							ref={index === 0 ? field.ref : undefined}
-							type="radio"
-							className="btn-check"
-							name={field.name}
-							id={`${field.name}-${perm}`}
-							autoComplete="off"
-							value={perm}
-							checked={field.value === perm}
-							disabled={perm === "hidden" && hiddenRuledOut(siblings, key)}
-							onBlur={field.onBlur}
-							onChange={() => choose(perm)}
-						/>
-						<label htmlFor={`${field.name}-${perm}`} className={getClasses(field.value === perm)}>
-							<T id={labelId} />
-						</label>
-					</Fragment>
-				))}
-			</fieldset>
-		</div>
+		<ChoiceGroup
+			name={field.name}
+			legend={legend}
+			fill
+			value={field.value}
+			inputRef={field.ref}
+			onBlur={field.onBlur}
+			onChange={choose}
+			options={PERMS.map(([perm, labelId]) => ({
+				value: perm,
+				label: <T id={labelId} />,
+				disabled: perm === "hidden" && hiddenRuledOut(siblings, key),
+			}))}
+		/>
 	);
 }
 
+const VISIBILITY_OPTIONS = [
+	{ value: "user", label: <T id="permissions.visibility.user" /> },
+	{ value: "all", label: <T id="permissions.visibility.all" /> },
+];
+
 /**
- * Who a user sees items of: the user's own or all (a field of the form around it)
+ * Who a user sees items of: the user's own or all (a field of the form around it), as a choice group
  *
  * @param {Object} props
  * @param {string} props.name
@@ -85,40 +86,17 @@ function PermissionButtons({ name }) {
 function VisibilityButtons({ name }) {
 	const { field } = useController({ name });
 	return (
-		<fieldset className="btn-group w-100">
-			<input
-				ref={field.ref}
-				type="radio"
-				className="btn-check"
-				name={field.name}
-				id={`${field.name}-user`}
-				autoComplete="off"
-				value="user"
-				checked={field.value === "user"}
-				onBlur={field.onBlur}
-				onChange={() => field.onChange("user")}
-			/>
-
-			<label htmlFor={`${field.name}-user`} className={getClasses(field.value === "user")}>
-				<T id="permissions.visibility.user" />
-			</label>
-			<input
-				type="radio"
-				className="btn-check"
-				name={field.name}
-				id={`${field.name}-all`}
-				autoComplete="off"
-				value="all"
-				checked={field.value === "all"}
-				onBlur={field.onBlur}
-				onChange={() => field.onChange("all")}
-			/>
-
-			<label htmlFor={`${field.name}-all`} className={getClasses(field.value === "all")}>
-				<T id="permissions.visibility.all" />
-			</label>
-		</fieldset>
+		<ChoiceGroup
+			name={field.name}
+			legend={<T id="permissions.visibility.title" />}
+			fill
+			value={field.value}
+			inputRef={field.ref}
+			onBlur={field.onBlur}
+			onChange={field.onChange}
+			options={VISIBILITY_OPTIONS}
+		/>
 	);
 }
 
-export { PermissionButtons, VisibilityButtons };
+export { PERMISSION_ROWS, PermissionButtons, VisibilityButtons };

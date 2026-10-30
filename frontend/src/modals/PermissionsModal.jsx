@@ -11,7 +11,7 @@ import {
 	Loading,
 	useAppForm,
 } from "src/components";
-import { PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
+import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { DirtyTracker, useUnsavedChangesGuard, useUser } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -70,52 +70,12 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-						<div className="mb-3">
-							<div className="form-label">
-								<T id="permissions.visibility.title" />
-							</div>
-							<VisibilityButtons name="visibility" />
-						</div>
-						{!isAdmin(data?.roles) && (
-							<>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="proxy-hosts" />
-									</div>
-									<PermissionButtons name="proxyHosts" />
-								</div>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="redirection-hosts" />
-									</div>
-									<PermissionButtons name="redirectionHosts" />
-								</div>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="dead-hosts" />
-									</div>
-									<PermissionButtons name="deadHosts" />
-								</div>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="streams" />
-									</div>
-									<PermissionButtons name="streams" />
-								</div>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="access-lists" />
-									</div>
-									<PermissionButtons name="accessLists" />
-								</div>
-								<div className="mb-3">
-									<div className="form-label">
-										<T id="certificates" />
-									</div>
-									<PermissionButtons name="certificates" />
-								</div>
-							</>
-						)}
+						<VisibilityButtons name="visibility" />
+						{isAdmin(data?.roles)
+							? null
+							: PERMISSION_ROWS.map(([section, labelId]) => (
+									<PermissionButtons key={section} name={section} legend={<T id={labelId} />} />
+								))}
 					</AppModal.Body>
 					<AppModal.Footer>
 						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
@@ -124,7 +84,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 						<FormSubmit
 							className="ms-auto"
 							edit={true}
-							color="primary"
+							section="users"
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 						>

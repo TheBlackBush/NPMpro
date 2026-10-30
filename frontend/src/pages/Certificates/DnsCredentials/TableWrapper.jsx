@@ -7,6 +7,7 @@ import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showDnsCredentialModal, showHelpModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
 import { Tabs } from "../Tabs";
 import Table, { useColumns } from "./Table";
@@ -32,7 +33,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-pink" />
+			<div className={stripeClass("dnsCredentials")} />
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
@@ -56,7 +57,11 @@ export default function TableWrapper() {
 						/>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" color="pink" onClick={() => showDnsCredentialModal("new")}>
+								<Button
+									size="sm"
+									color={sectionColor("dnsCredentials")}
+									onClick={() => showDnsCredentialModal("new")}
+								>
 									<T id="dns-credentials.add" />
 								</Button>
 							) : null}

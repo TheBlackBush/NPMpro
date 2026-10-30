@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
-import { HookForm, PasswordInput, useAppForm, useRecheckDependent } from "src/components/Form";
+import { HookForm, PasswordField, useAppForm, useRecheckDependent } from "src/components/Form";
 import { T } from "src/locale";
 import { changePasswordValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
@@ -19,20 +18,15 @@ const validate = changePasswordValidate(validations);
  * The new password: a change re-checks the repeat once its message may show (useRecheckDependent reads the form
  * around it, so this is a child of HookForm)
  */
-function NewPasswordInput() {
-	const {
-		register,
-		formState: { errors },
-	} = useFormContext();
+function NewPasswordField() {
 	const recheckConfirm = useRecheckDependent("confirm");
 	return (
-		<PasswordInput
-			{...register("new", { onChange: recheckConfirm })}
-			id="new"
+		<PasswordField
+			name="new"
 			label={<T id="user.new-password" />}
 			autoComplete="new-password"
 			required
-			error={errors.new?.message ?? null}
+			registerOptions={{ onChange: recheckConfirm }}
 		/>
 	);
 }
@@ -40,10 +34,7 @@ function NewPasswordInput() {
 const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	const [error, setError] = useState(null);
 	const methods = useAppForm({ defaultValues: { current: "", new: "", confirm: "" }, validate });
-	const {
-		register,
-		formState: { errors, isSubmitting },
-	} = methods;
+	const { isSubmitting } = methods.formState;
 
 	const onSubmit = async (values) => {
 		setError(null);
@@ -69,35 +60,25 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="logout-other-devices" />
 					</NoticeAlert>
-					<div className="mb-3">
-						<PasswordInput
-							{...register("current")}
-							id="current"
-							label={<T id="user.current-password" />}
-							autoComplete="current-password"
-							required
-							error={errors.current?.message ?? null}
-						/>
-					</div>
-					<div className="mb-3">
-						<NewPasswordInput />
-					</div>
-					<div className="mb-3">
-						<PasswordInput
-							{...register("confirm")}
-							id="confirm"
-							label={<T id="user.confirm-password" />}
-							autoComplete="new-password"
-							required
-							error={errors.confirm?.message ?? null}
-						/>
-					</div>
+					<PasswordField
+						name="current"
+						label={<T id="user.current-password" />}
+						autoComplete="current-password"
+						required
+					/>
+					<NewPasswordField />
+					<PasswordField
+						name="confirm"
+						label={<T id="user.confirm-password" />}
+						autoComplete="new-password"
+						required
+					/>
 				</AppModal.Body>
 				<AppModal.Footer>
 					<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit className="ms-auto" color="primary" isLoading={isSubmitting} disabled={isSubmitting}>
+					<FormSubmit className="ms-auto" isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

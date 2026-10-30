@@ -21,6 +21,7 @@ import {
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
+import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -216,7 +217,7 @@ export default function Table({
 					onNew={onNew}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color="red"
+					color={sectionColor("deadHosts")}
 					permissionSection={DEAD_HOSTS}
 				/>
 			}

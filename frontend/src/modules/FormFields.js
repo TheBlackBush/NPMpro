@@ -78,3 +78,46 @@ export function controlAria({ id, hasHint = false, error = null, describedBy }) 
 export function labelClass(required = false) {
 	return cn("form-label", required && "required");
 }
+
+/**
+ * The classes of a ChoiceGroup's list (Tabler's form-selectgroup): buttons, pills or described boxes. fill: the
+ * options share the whole row; vertical: one option per line, as Tabler's described boxes (d-flex flex-column)
+ *
+ * @param   {Object}  [options]
+ * @param   {"buttons"|"pills"|"boxes"} [options.variant]
+ * @param   {boolean} [options.fill]
+ * @param   {boolean} [options.vertical]
+ * @returns {string}
+ */
+export function choiceGroupClass({ variant = "buttons", fill = false, vertical = false } = {}) {
+	return cn(
+		"form-selectgroup",
+		variant === "pills" && "form-selectgroup-pills",
+		variant === "boxes" && "form-selectgroup-boxes",
+		vertical && "d-flex flex-column",
+		fill && !vertical && "w-100",
+	);
+}
+
+/**
+ * The classes of one option of a ChoiceGroup: it takes its share of a filled row (or the width of a vertical
+ * list); a disabled option looks disabled (Tabler styles no disabled select group input)
+ *
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.fill]
+ * @param   {boolean} [options.disabled]
+ * @returns {string}
+ */
+export function choiceItemClass({ fill = false, disabled = false } = {}) {
+	return cn("form-selectgroup-item", fill && "flex-fill", disabled && "opacity-50 cursor-not-allowed");
+}
+
+/**
+ * The classes of a SwitchList: settings rows divided by a line in one column, or two columns from the md breakpoint
+ *
+ * @param   {1|2} [columns]
+ * @returns {string}
+ */
+export function switchListClass(columns = 1) {
+	return columns === 2 ? "row row-cols-1 row-cols-md-2 gx-4" : "divide-y";
+}

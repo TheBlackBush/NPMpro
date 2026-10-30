@@ -1,16 +1,7 @@
 import { useFormContext, useFormState } from "react-hook-form";
 import { NoticeAlert, SwitchField } from "src/components";
-import { PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
+import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { intl, T } from "src/locale";
-
-const PERMISSION_ROWS = [
-	["proxyHosts", "proxy-hosts"],
-	["redirectionHosts", "redirection-hosts"],
-	["deadHosts", "dead-hosts"],
-	["streams", "streams"],
-	["accessLists", "access-lists"],
-	["certificates", "certificates"],
-];
 
 function NewUsersFields() {
 	const { register } = useFormContext();
@@ -58,19 +49,9 @@ function NewUsersFields() {
 function DefaultPermissionsFields() {
 	return (
 		<>
-			<div className="mb-3">
-				<div className="form-label">
-					<T id="permissions.visibility.title" />
-				</div>
-				<VisibilityButtons name="autoCreatePermissions.visibility" />
-			</div>
+			<VisibilityButtons name="autoCreatePermissions.visibility" />
 			{PERMISSION_ROWS.map(([name, labelId]) => (
-				<div className="mb-3" key={name}>
-					<div className="form-label">
-						<T id={labelId} />
-					</div>
-					<PermissionButtons name={`autoCreatePermissions.${name}`} />
-				</div>
+				<PermissionButtons key={name} name={`autoCreatePermissions.${name}`} legend={<T id={labelId} />} />
 			))}
 			<NoticeAlert variant="info" className="mb-0">
 				<T id="settings.authentication.new-users.never-admin" />

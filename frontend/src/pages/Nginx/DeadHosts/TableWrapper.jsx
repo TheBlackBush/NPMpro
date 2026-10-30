@@ -8,6 +8,7 @@ import { intl, T } from "src/locale";
 import { showDeadHostModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
+import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -79,7 +80,7 @@ export default function TableWrapper() {
 
 	return (
 		<div className="card mt-4">
-			<div className="card-status-top bg-red" />
+			<div className={stripeClass("deadHosts")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title text-nowrap">
@@ -102,7 +103,11 @@ export default function TableWrapper() {
 						/>
 						<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
 							{data?.length ? (
-								<Button size="sm" color="red" onClick={() => showDeadHostModal("new")}>
+								<Button
+									size="sm"
+									color={sectionColor("deadHosts")}
+									onClick={() => showDeadHostModal("new")}
+								>
 									<T id="object.add" tData={{ object: "dead-host" }} />
 								</Button>
 							) : null}

@@ -276,7 +276,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 					<FormSubmit
 						className="ms-auto"
 						edit={Boolean(data.id)}
-						color="primary"
+						section="streams"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

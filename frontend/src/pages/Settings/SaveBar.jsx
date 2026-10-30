@@ -3,6 +3,7 @@ import { Button, FormErrorNote, useFocusFirstError } from "src/components";
 import { LeaveGuard } from "src/hooks";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
+import { sectionColor } from "src/modules/SectionColors";
 
 const NOTE_ID = "settings-save-note";
 const REASON_ID = "settings-save-reason";
@@ -35,7 +36,7 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 			) : null}
 			<Button
 				type="submit"
-				color="teal"
+				color={sectionColor("settings")}
 				isLoading={isSubmitting}
 				disabled={isSubmitting || (nothingToSave && !blocked)}
 				blocked={blocked}

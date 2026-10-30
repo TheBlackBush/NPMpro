@@ -1,8 +1,14 @@
 import cn from "clsx";
 
 export const selectClassNames = {
-	control: ({ isFocused, isDisabled }) =>
-		cn("form-control", isFocused && "border-primary", isDisabled && "bg-surface-tertiary text-secondary"),
+	// red while its field shows an error (aria-invalid, from selectControlProps), as Tabler's invalid controls
+	control: ({ isFocused, isDisabled, selectProps }) =>
+		cn(
+			"form-control",
+			isFocused && "border-primary",
+			isDisabled && "bg-surface-tertiary text-secondary",
+			selectProps["aria-invalid"] === "true" && "is-invalid",
+		),
 	valueContainer: ({ isMulti, hasValue }) => cn("gap-1", isMulti && hasValue && "my-n1"),
 	placeholder: () => "text-secondary",
 	indicatorsContainer: () => "gap-1",

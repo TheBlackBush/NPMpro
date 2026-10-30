@@ -1,7 +1,7 @@
 import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { Button, ErrorAlert, PasswordInput, SwitchField, useRecheckDependent } from "src/components";
+import { Button, ErrorAlert, PasswordField, SwitchField, useRecheckDependent } from "src/components";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { AUTHENTICATION_RECHECKS } from "src/modules/AuthenticationForms";
@@ -67,8 +67,6 @@ function useRecheckAfter() {
 }
 
 function ProviderFields({ data, isLocked }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name: "clientSecret", exact: true });
 	const { field: enabledField } = useController({ name: "enabled" });
 	const watched = useWatch({ name: WATCHED });
 	const values = Object.fromEntries(WATCHED.map((name, index) => [name, watched[index]]));
@@ -165,23 +163,21 @@ function ProviderFields({ data, isLocked }) {
 				locked={isLocked("clientId")}
 				onChange={recheckAfter("clientId")}
 			/>
-			<div className="mb-3">
-				{/* a locked secret stays empty: the environment's secret is never shown */}
-				<PasswordInput
-					{...register("clientSecret", { onChange: recheckAfter("clientSecret") })}
-					id="oidc-clientSecret"
-					label={
-						<>
-							<T id="settings.authentication.client-secret" />
-							{secretLocked ? <LockedBadge /> : null}
-						</>
-					}
-					autoComplete="new-password"
-					disabled={secretLocked}
-					placeholder={secretPlaceholder}
-					error={errors.clientSecret?.message}
-				/>
-			</div>
+			{/* a locked secret stays empty: the environment's secret is never shown */}
+			<PasswordField
+				name="clientSecret"
+				id="oidc-clientSecret"
+				label={
+					<>
+						<T id="settings.authentication.client-secret" />
+						{secretLocked ? <LockedBadge /> : null}
+					</>
+				}
+				autoComplete="new-password"
+				disabled={secretLocked}
+				placeholder={secretPlaceholder}
+				registerOptions={{ onChange: recheckAfter("clientSecret") }}
+			/>
 			<TextField
 				name="redirectDomain"
 				label={<T id="settings.authentication.redirect-domain" />}
