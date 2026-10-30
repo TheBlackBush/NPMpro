@@ -1,10 +1,11 @@
-import { useFormikContext } from "formik";
+import { useFormContext, useFormState } from "react-hook-form";
 import { SwitchField } from "src/components";
 import { T } from "src/locale";
 import { LockedBadge } from "./LockedBadge";
 
 function SignInRules({ data, isLocked }) {
-	const { values, errors, setFieldValue } = useFormikContext();
+	const { register, trigger } = useFormContext();
+	const { errors } = useFormState({ name: "disablePassword", exact: true });
 	// Turning password login off from a password session is refused by the backend; an already-on value may stay
 	const passwordLockedOut = data.sessionAuthMethod !== "oidc" && !data.disablePassword;
 
@@ -14,8 +15,10 @@ function SignInRules({ data, isLocked }) {
 			? "settings.authentication.disable-password.locked"
 			: "settings.authentication.disable-password.hint";
 
+	// "Disable password login" has a rule of its own: its message shows as soon as it is switched
 	const rule = (name, labelId, hintId, extra = {}) => (
 		<SwitchField
+			{...register(name, name === "disablePassword" ? { onChange: () => void trigger(name) } : undefined)}
 			className="py-3"
 			id={`oidc-${name}`}
 			label={
@@ -26,9 +29,7 @@ function SignInRules({ data, isLocked }) {
 			}
 			hint={hintId ? <T id={hintId} /> : null}
 			disabled={isLocked(name) || extra.disabled}
-			error={errors[name]}
-			checked={Boolean(values[name])}
-			onChange={(e) => setFieldValue(name, e.target.checked)}
+			error={errors[name]?.message}
 		/>
 	);
 

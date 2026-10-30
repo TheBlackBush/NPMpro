@@ -1,58 +1,78 @@
 import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
-import { Field, useFormikContext } from "formik";
 import { useEffect, useRef, useState } from "react";
-import { Button, ErrorAlert, PasswordInput, SwitchField } from "src/components";
+import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { Button, ErrorAlert, PasswordInput, SwitchField, useRecheckDependent } from "src/components";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
+import { AUTHENTICATION_RECHECKS } from "src/modules/AuthenticationForms";
 import { LockedBadge } from "./LockedBadge";
 
 const CONNECTION_KEYS = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
+const WATCHED = ["issuerUrl", "clientId", "clientSecret"];
 
-function TextField({ name, label, hint, locked, type = "text", placeholder, ...rest }) {
+function TextField({ name, label, hint, locked, type = "text", placeholder, onChange, ...rest }) {
+	const { register } = useFormContext();
+	const { errors } = useFormState({ name, exact: true });
+	const error = errors[name]?.message;
 	const id = `oidc-${name}`;
 	const hintId = `${id}-hint`;
 	return (
-		<Field name={name}>
-			{({ field, meta }) => (
-				<div className="mb-3">
-					<label className="form-label" htmlFor={id}>
-						{label}
-						{locked ? <LockedBadge /> : null}
-					</label>
-					<input
-						{...field}
-						id={id}
-						type={type}
-						className={`form-control ${meta.error ? "is-invalid" : ""}`}
-						autoComplete="off"
-						placeholder={placeholder}
-						disabled={locked}
-						aria-invalid={meta.error ? "true" : undefined}
-						aria-describedby={
-							[meta.error ? `${id}-error` : null, hint ? hintId : null].filter(Boolean).join(" ") ||
-							undefined
-						}
-						value={field.value ?? ""}
-						{...rest}
-					/>
-					{meta.error ? (
-						<div className="invalid-feedback" id={`${id}-error`}>
-							{meta.error}
-						</div>
-					) : null}
-					{hint ? (
-						<div className="form-hint" id={hintId}>
-							{hint}
-						</div>
-					) : null}
+		<div className="mb-3">
+			<label className="form-label" htmlFor={id}>
+				{label}
+				{locked ? <LockedBadge /> : null}
+			</label>
+			<input
+				{...register(name, { onChange })}
+				id={id}
+				type={type}
+				className={`form-control ${error ? "is-invalid" : ""}`}
+				autoComplete="off"
+				placeholder={placeholder}
+				disabled={locked}
+				aria-invalid={error ? "true" : undefined}
+				aria-describedby={
+					[error ? `${id}-error` : null, hint ? hintId : null].filter(Boolean).join(" ") || undefined
+				}
+				{...rest}
+			/>
+			{error ? (
+				<div className="invalid-feedback" id={`${id}-error`}>
+					{error}
 				</div>
-			)}
-		</Field>
+			) : null}
+			{hint ? (
+				<div className="form-hint" id={hintId}>
+					{hint}
+				</div>
+			) : null}
+		</div>
 	);
 }
 
+/**
+ * The checks of the messages that follow a changed field (AUTHENTICATION_RECHECKS): the secret again after the issuer
+ * or the client moved, "Disable password login" after the connection changed
+ *
+ * @returns {Function} (name) => () => void, for a field's onChange
+ */
+function useRecheckAfter() {
+	const rechecks = {
+		clientSecret: useRecheckDependent("clientSecret"),
+		disablePassword: useRecheckDependent("disablePassword"),
+	};
+	return (name) => () => {
+		for (const field of AUTHENTICATION_RECHECKS[name]) rechecks[field]();
+	};
+}
+
 function ProviderFields({ data, isLocked }) {
-	const { values, setFieldValue } = useFormikContext();
+	const { register } = useFormContext();
+	const { errors } = useFormState({ name: "clientSecret", exact: true });
+	const { field: enabledField } = useController({ name: "enabled" });
+	const watched = useWatch({ name: WATCHED });
+	const values = Object.fromEntries(WATCHED.map((name, index) => [name, watched[index]]));
+	const recheckAfter = useRecheckAfter();
 	const { mutate: testConnection, isPending: isTesting, reset } = useTestOidcSettings();
 	const [result, setResult] = useState(null);
 
@@ -120,9 +140,15 @@ function ProviderFields({ data, isLocked }) {
 						{enabledLocked ? <LockedBadge /> : null}
 					</>
 				}
+				name={enabledField.name}
+				ref={enabledField.ref}
+				onBlur={enabledField.onBlur}
 				disabled={enabledLocked}
-				checked={envOnly || Boolean(values.enabled)}
-				onChange={(e) => setFieldValue("enabled", e.target.checked)}
+				checked={envOnly || Boolean(enabledField.value)}
+				onChange={(e) => {
+					enabledField.onChange(e.target.checked);
+					recheckAfter("enabled")();
+				}}
 			/>
 			<TextField
 				name="issuerUrl"
@@ -131,38 +157,37 @@ function ProviderFields({ data, isLocked }) {
 				hint={<T id="settings.authentication.issuer-url.hint" />}
 				locked={isLocked("issuerUrl")}
 				placeholder="https://"
+				onChange={recheckAfter("issuerUrl")}
 			/>
 			<TextField
 				name="clientId"
 				label={<T id="settings.authentication.client-id" />}
 				locked={isLocked("clientId")}
+				onChange={recheckAfter("clientId")}
 			/>
-			<Field name="clientSecret">
-				{({ field, meta }) => (
-					<div className="mb-3">
-						<PasswordInput
-							{...field}
-							id="oidc-clientSecret"
-							label={
-								<>
-									<T id="settings.authentication.client-secret" />
-									{secretLocked ? <LockedBadge /> : null}
-								</>
-							}
-							autoComplete="new-password"
-							disabled={secretLocked}
-							placeholder={secretPlaceholder}
-							error={meta.error}
-							value={secretLocked ? "" : (field.value ?? "")}
-						/>
-					</div>
-				)}
-			</Field>
+			<div className="mb-3">
+				{/* a locked secret stays empty: the environment's secret is never shown */}
+				<PasswordInput
+					{...register("clientSecret", { onChange: recheckAfter("clientSecret") })}
+					id="oidc-clientSecret"
+					label={
+						<>
+							<T id="settings.authentication.client-secret" />
+							{secretLocked ? <LockedBadge /> : null}
+						</>
+					}
+					autoComplete="new-password"
+					disabled={secretLocked}
+					placeholder={secretPlaceholder}
+					error={errors.clientSecret?.message}
+				/>
+			</div>
 			<TextField
 				name="redirectDomain"
 				label={<T id="settings.authentication.redirect-domain" />}
 				hint={<T id="settings.authentication.redirect-domain.hint" />}
 				locked={isLocked("redirectDomain")}
+				onChange={recheckAfter("redirectDomain")}
 			/>
 			<div className="mb-3">
 				<label className="form-label" htmlFor="oidc-callbackUrl">

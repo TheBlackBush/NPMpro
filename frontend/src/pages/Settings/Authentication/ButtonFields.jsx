@@ -1,6 +1,6 @@
 import { IconCircleCheck } from "@tabler/icons-react";
-import { useFormikContext } from "formik";
 import { useId, useState } from "react";
+import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { ApiErrorContent, Button, ErrorAlert, OIDC_ICON_COMPONENTS, OidcButton } from "src/components";
 import { useDeleteOidcIcon, useDownloadOidcIcon, useUploadOidcIcon } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -25,11 +25,17 @@ const effectiveIcon = (pick, stored) => {
 	return stored ?? { type: "builtin", name: "key" };
 };
 
+// the colour: presets, a picker and the hex text on one controller; a change shows its message at once
 function ColorFields() {
-	const { values, setFieldValue, errors } = useFormikContext();
+	const { trigger } = useFormContext();
+	const { field, fieldState } = useController({ name: "buttonColor" });
 	const groupId = useId();
-	const color = values.buttonColor ?? "";
+	const color = field.value ?? "";
 	const invalid = !isOidcColor(color);
+	const setColor = (value) => {
+		field.onChange(value);
+		void trigger("buttonColor");
+	};
 	return (
 		<div className="mb-3">
 			<div className="form-label" id={`${groupId}-label`}>
@@ -47,7 +53,7 @@ function ColorFields() {
 								id: `settings.authentication.button.color.${preset.name}`,
 							})}
 							checked={color.toLowerCase() === preset.value}
-							onChange={() => setFieldValue("buttonColor", preset.value)}
+							onChange={() => setColor(preset.value)}
 						/>
 						{/* inline because the preset colours are data (Tabler palette values), not classes */}
 						<span className="form-colorinput-color" style={{ backgroundColor: preset.value }} />
@@ -61,11 +67,13 @@ function ColorFields() {
 						className="form-control form-control-color"
 						aria-label={intl.formatMessage({ id: "settings.authentication.button.color.custom" })}
 						value={validOidcColor(color).toLowerCase()}
-						onChange={(e) => setFieldValue("buttonColor", e.target.value)}
+						onChange={(e) => setColor(e.target.value)}
 					/>
 				</div>
 				<div className="col">
 					<input
+						ref={field.ref}
+						name={field.name}
 						type="text"
 						className={`form-control${invalid ? " is-invalid" : ""}`}
 						aria-label={intl.formatMessage({ id: "settings.authentication.button.color.hex" })}
@@ -76,11 +84,12 @@ function ColorFields() {
 						maxLength={7}
 						placeholder="#rrggbb"
 						value={color}
-						onChange={(e) => setFieldValue("buttonColor", e.target.value.trim())}
+						onBlur={field.onBlur}
+						onChange={(e) => setColor(e.target.value.trim())}
 					/>
 					{invalid ? (
 						<div className="invalid-feedback" id={`${groupId}-hex-error`}>
-							{errors.buttonColor}
+							{fieldState.error?.message}
 						</div>
 					) : null}
 				</div>
@@ -89,8 +98,10 @@ function ColorFields() {
 	);
 }
 
+// the icon: a built-in pick is a field of the form (null keeps the stored icon); an upload, a download or a removal
+// saves at once and drops the pick
 function IconFields({ storedIcon }) {
-	const { values, setFieldValue } = useFormikContext();
+	const { field } = useController({ name: "buttonIcon" });
 	const [source, setSource] = useState(storedIcon?.type === "file" ? "upload" : "builtin");
 	const [url, setUrl] = useState("");
 	// the backend's rule (schema/paths/settings/oidc/icon/url/post.json)
@@ -104,7 +115,7 @@ function IconFields({ storedIcon }) {
 
 	const callbacks = (messageId) => ({
 		onSuccess: () => {
-			void setFieldValue("buttonIcon", null);
+			field.onChange(null);
 			setResult({ ok: true, messageId });
 		},
 		onError: (err) => setResult({ ok: false, error: err }),
@@ -136,7 +147,7 @@ function IconFields({ storedIcon }) {
 		remove.mutate(undefined, callbacks("settings.authentication.button.icon.removed"));
 	};
 
-	const selected = values.buttonIcon ?? (storedIcon?.type === "builtin" ? storedIcon.name : null);
+	const selected = field.value ?? (storedIcon?.type === "builtin" ? storedIcon.name : null);
 
 	return (
 		<div className="mb-3">
@@ -171,11 +182,12 @@ function IconFields({ storedIcon }) {
 			</div>
 			{source === "builtin" ? (
 				<div className="form-selectgroup" role="radiogroup" aria-labelledby={`${groupId}-label`}>
-					{OIDC_BUILTIN_ICONS.map((name) => {
+					{OIDC_BUILTIN_ICONS.map((name, index) => {
 						const Icon = OIDC_ICON_COMPONENTS[name];
 						return (
 							<label className="form-selectgroup-item" key={name}>
 								<input
+									ref={index === 0 ? field.ref : undefined}
 									type="radio"
 									name={`${groupId}-builtin`}
 									value={name}
@@ -184,8 +196,9 @@ function IconFields({ storedIcon }) {
 										id: `settings.authentication.button.icon.${name}`,
 									})}
 									checked={selected === name}
+									onBlur={field.onBlur}
 									onChange={() => {
-										void setFieldValue("buttonIcon", name);
+										field.onChange(name);
 										setResult(null);
 									}}
 								/>
@@ -283,11 +296,16 @@ function IconFields({ storedIcon }) {
 	);
 }
 
+const PREVIEW_FIELDS = ["buttonLabel", "buttonColor", "buttonIcon"];
+
 function ButtonFields({ data }) {
-	const { values, handleChange, handleBlur, errors } = useFormikContext();
+	const { register } = useFormContext();
+	const { errors } = useFormState({ name: "buttonLabel", exact: true });
+	const watched = useWatch({ name: PREVIEW_FIELDS });
+	const [buttonLabel, buttonColor, buttonIcon] = watched;
 	const labelInvalid = Boolean(errors.buttonLabel);
 	const labelId = "oidc-buttonLabel";
-	const icon = effectiveIcon(values.buttonIcon, data.button?.icon);
+	const icon = effectiveIcon(buttonIcon, data.button?.icon);
 	return (
 		<div className="mb-4">
 			<h3 className="card-title">
@@ -298,19 +316,16 @@ function ButtonFields({ data }) {
 					<T id="settings.authentication.button.label" />
 				</label>
 				<input
+					{...register("buttonLabel")}
 					id={labelId}
-					name="buttonLabel"
 					type="text"
 					className={`form-control${labelInvalid ? " is-invalid" : ""}`}
 					maxLength={40}
 					autoComplete="off"
 					aria-invalid={labelInvalid}
 					aria-describedby={`${labelId}-hint`}
-					value={values.buttonLabel ?? ""}
-					onChange={handleChange}
-					onBlur={handleBlur}
 				/>
-				{labelInvalid ? <div className="invalid-feedback">{errors.buttonLabel}</div> : null}
+				{labelInvalid ? <div className="invalid-feedback">{errors.buttonLabel.message}</div> : null}
 				<div className="form-hint" id={`${labelId}-hint`}>
 					<T id="settings.authentication.button.label.hint" />
 				</div>
@@ -324,7 +339,7 @@ function ButtonFields({ data }) {
 					</div>
 					{/* inert: the preview is not interactive and stays out of the tab order */}
 					<div inert>
-						<OidcButton label={values.buttonLabel} color={values.buttonColor} icon={icon} />
+						<OidcButton label={buttonLabel} color={buttonColor} icon={icon} />
 					</div>
 				</div>
 			</div>
