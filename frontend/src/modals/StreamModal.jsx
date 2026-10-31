@@ -10,11 +10,13 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	TabPane,
 	useAppForm,
 	useResetToSaved,
 } from "src/components";
@@ -34,6 +36,7 @@ import {
 	forwardingChanges,
 	hiddenTlsFields,
 	isProxyTlsPossible,
+	STREAM_TABS,
 	streamDefaults,
 	streamPayload,
 	streamValidate,
@@ -122,45 +125,12 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 					{errorMsg}
 				</ErrorAlert>
 
-				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-details"
-							className="nav-link active"
-							data-bs-toggle="tab"
-							aria-selected="true"
-							role="tab"
-						>
-							<T id="column.details" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-ssl"
-							className={`nav-link ${udpForwarding ? "disabled" : ""}`}
-							data-bs-toggle={udpForwarding ? undefined : "tab"}
-							aria-selected="false"
-							aria-disabled={udpForwarding}
-							role="tab"
-						>
-							<T id="column.ssl" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-advanced"
-							className="nav-link"
-							data-bs-toggle="tab"
-							aria-selected="false"
-							role="tab"
-						>
-							<T id="domains.advanced" />
-							{npmproAdvancedConfig?.trim() ? "*" : ""}
-						</a>
-					</li>
-				</ul>
-				<div className="tab-content">
-					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+				<ModalTabs
+					tabs={STREAM_TABS}
+					markers={{ advanced: npmproAdvancedConfig?.trim() ? "*" : null }}
+					disabled={{ tls: udpForwarding }}
+				>
+					<TabPane id="details">
 						<TextField
 							name="incomingPort"
 							labelId="stream.incoming-port"
@@ -243,13 +213,13 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 								</select>
 							</div>
 						</div>
-					</div>
-					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+					</TabPane>
+					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew forHttp={false} />
 
 						<SSLOptionsFields forHttp={false} />
-					</div>
-					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+					</TabPane>
+					<TabPane id="advanced">
 						<NginxConfigField name="npmproAdvancedConfig" id="npmproAdvancedConfig" />
 
 						<div className="row mt-3">
@@ -261,8 +231,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 								/>
 							</div>
 						</div>
-					</div>
-				</div>
+					</TabPane>
+				</ModalTabs>
 				<RequestProgress
 					running={isSubmitting && certificateId === "new"}
 					propagationSeconds={npmproPropagationSeconds}
