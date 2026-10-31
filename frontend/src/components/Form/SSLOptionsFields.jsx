@@ -46,9 +46,9 @@ function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
 }
 
 /**
- * The TLS options of a host window, under its certificate (SSLCertificateField), in the order of the choices: the
- * request of a new certificate (its key, the DNS challenge, for a stream its domain names, the DNS challenge box),
- * the HTTPS options (HTTP hosts), and the client certificates (mTLS). The switches sit in two columns from the md
+ * The TLS options of a host window, under its certificate (SSLCertificateField): the mTLS CA certificate select, the
+ * client certificate switches (mTLS), the HTTPS options (HTTP hosts) and, while a new certificate is requested, its
+ * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in two columns from the md
  * breakpoint, one on phones. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
  * says why in its hint.
  */
@@ -58,31 +58,36 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 	const reasons = tlsDisabledReasons(values, { forHttp, forProxyHost });
 	const onTlsChange = useTlsChange({ forHttp });
 	const newCertificate = values.certificateId === "new";
+	// the last section ends the tab, without the gap under it
+	const lastSection = newCertificate ? "request" : forHttp ? "https" : "mtls";
 
 	return (
 		<>
-			{newCertificate ? (
-				<FormSection legend={<T id="certificates.request.title" />}>
-					<SwitchList columns={2}>
+			<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
+			<FormSection legend={<T id="tls.section.mtls" />} className={lastSection === "mtls" ? "mb-0" : undefined}>
+				<SwitchList columns={2}>
+					<TlsSwitch
+						name="npmproMtlsVerifyClientOptional"
+						label={<T id="domains.mtls-verify-client-optional" />}
+						onTlsChange={onTlsChange}
+						reason={reasons.npmproMtlsVerifyClientOptional}
+					/>
+					{forProxyHost ? (
 						<TlsSwitch
-							name="npmproReuseKey"
-							label={<T id="domains.reuse-key" />}
+							name="npmproMtlsBypassAuthRequest"
+							label={<T id="domains.mtls-bypass-auth-request" />}
 							onTlsChange={onTlsChange}
+							shown={(value) => value === true && !reasons.npmproMtlsBypassAuthRequest}
+							reason={reasons.npmproMtlsBypassAuthRequest}
 						/>
-						<TlsSwitch
-							name="npmproDnsChallenge"
-							label={<T id="domains.use-dns" />}
-							onTlsChange={onTlsChange}
-							shown={(value) => !forHttp || Boolean(value)}
-							reason={reasons.npmproDnsChallenge}
-						/>
-					</SwitchList>
-					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
-					{values.npmproDnsChallenge ? <DNSProviderFields className="mb-0" /> : null}
-				</FormSection>
-			) : null}
+					) : null}
+				</SwitchList>
+			</FormSection>
 			{forHttp ? (
-				<FormSection legend={<T id="tls.section.https" />}>
+				<FormSection
+					legend={<T id="tls.section.https" />}
+					className={lastSection === "https" ? "mb-0" : undefined}
+				>
 					<SwitchList columns={2}>
 						<TlsSwitch
 							name="sslForced"
@@ -111,26 +116,26 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 					</SwitchList>
 				</FormSection>
 			) : null}
-			<FormSection legend={<T id="tls.section.mtls" />} className="mb-0">
-				<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
-				<SwitchList columns={2}>
-					<TlsSwitch
-						name="npmproMtlsVerifyClientOptional"
-						label={<T id="domains.mtls-verify-client-optional" />}
-						onTlsChange={onTlsChange}
-						reason={reasons.npmproMtlsVerifyClientOptional}
-					/>
-					{forProxyHost ? (
+			{newCertificate ? (
+				<FormSection legend={<T id="certificates.request.title" />} className="mb-0">
+					<SwitchList columns={2}>
 						<TlsSwitch
-							name="npmproMtlsBypassAuthRequest"
-							label={<T id="domains.mtls-bypass-auth-request" />}
+							name="npmproReuseKey"
+							label={<T id="domains.reuse-key" />}
 							onTlsChange={onTlsChange}
-							shown={(value) => value === true && !reasons.npmproMtlsBypassAuthRequest}
-							reason={reasons.npmproMtlsBypassAuthRequest}
 						/>
-					) : null}
-				</SwitchList>
-			</FormSection>
+						<TlsSwitch
+							name="npmproDnsChallenge"
+							label={<T id="domains.use-dns" />}
+							onTlsChange={onTlsChange}
+							shown={(value) => !forHttp || Boolean(value)}
+							reason={reasons.npmproDnsChallenge}
+						/>
+					</SwitchList>
+					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
+					{values.npmproDnsChallenge ? <DNSProviderFields className="mb-0" /> : null}
+				</FormSection>
+			) : null}
 		</>
 	);
 }

@@ -21,6 +21,7 @@ import {
 	streamDefaults,
 	streamPayload,
 	streamValidate,
+	TLS_TAB_FIELDS,
 	tlsChanges,
 	tlsQueriesSettled,
 } from "./HostForms.js";
@@ -446,4 +447,30 @@ it("tlsQueriesSettled: the proxy host window also waits for the access lists, on
 	assert.equal(tlsQueriesSettled({ ...all, user: noLists, accessLists: loading }), true);
 	// the other windows pass no access lists
 	assert.equal(tlsQueriesSettled({ ...all, accessLists: undefined }), true);
+});
+
+it("the TLS tab lists its fields in the order they show: certificate, mTLS, HTTPS options, certificate request", () => {
+	assert.deepEqual(TLS_TAB_FIELDS, [
+		"certificateId",
+		"npmproMtlsCertificateId",
+		"npmproMtlsVerifyClientOptional",
+		"npmproMtlsBypassAuthRequest",
+		"sslForced",
+		"npmproHttp3Support",
+		"hstsEnabled",
+		"hstsSubdomains",
+		"npmproReuseKey",
+		"npmproDnsChallenge",
+		"npmproDnsProvider",
+		"npmproDnsCredentialId",
+		"npmproPropagationSeconds",
+	]);
+	const stream = STREAM_TABS.find((tab) => tab.id === "tls").fields;
+	assert.deepEqual(
+		stream.filter((name) => ["npmproDnsChallenge", "domainNames", "npmproDnsProvider"].includes(name)),
+		["npmproDnsChallenge", "domainNames", "npmproDnsProvider"],
+	);
+	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS]) {
+		assert.deepEqual(tabs.find((tab) => tab.id === "tls").fields, TLS_TAB_FIELDS);
+	}
 });

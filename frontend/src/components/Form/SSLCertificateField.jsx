@@ -121,8 +121,8 @@ export function SSLCertificateField({ label, allowNew, forHttp = true }) {
 }
 
 /**
- * The mTLS CA certificate of a host (the field npmproMtlsCertificateId, a controller), in the TLS tab's mTLS
- * section. reason is the TLS rule that turns it off (TlsOptions.js tlsDisabledReasons, a constant object): the hint says
+ * The mTLS CA certificate of a host (the field npmproMtlsCertificateId, a controller), directly under the certificate
+ * select (SSLOptionsFields renders it). reason is the TLS rule that turns it off (TlsOptions.js tlsDisabledReasons, a constant object): the hint says
  * why. A memo component, so a change elsewhere on the TLS tab (a location path) does not render the select again.
  */
 export const MtlsCertificateField = memo(({ forHttp = true, label = "mtls-certificate", reason }) => {
