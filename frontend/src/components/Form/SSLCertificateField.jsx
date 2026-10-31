@@ -1,4 +1,5 @@
 import { IconShield } from "@tabler/icons-react";
+import { memo } from "react";
 import { useController, useWatch } from "react-hook-form";
 import Select, { components } from "react-select";
 import { certificateProviderTranslation } from "src/components";
@@ -8,7 +9,7 @@ import { formatDateTime, intl, T } from "src/locale";
 import { CERTIFICATES, hasPermission, MANAGE } from "src/modules/Permissions";
 import { selectClassNames } from "src/modules/Select";
 import { FormField, selectControlProps } from "./FormField";
-import { useTlsChange } from "./SSLOptionsFields";
+import { useTlsChange } from "./useTlsChange";
 
 // the fields of the certificate and of the mTLS CA certificate (HostForms.js tlsChanges works on these names)
 const CERTIFICATE = "certificateId";
@@ -121,9 +122,10 @@ export function SSLCertificateField({ label, allowNew, forHttp = true }) {
 
 /**
  * The mTLS CA certificate of a host (the field npmproMtlsCertificateId, a controller), in the TLS tab's mTLS
- * section. disabled and hint come from the TLS rules (TlsOptions.js tlsDisabledReasons): the hint says why it is off.
+ * section. reason is the TLS rule that turns it off (TlsOptions.js tlsDisabledReasons, a constant object): the hint says
+ * why. A memo component, so a change elsewhere on the TLS tab (a location path) does not render the select again.
  */
-export function MtlsCertificateField({ forHttp = true, label = "mtls-certificate", disabled = false, hint }) {
+export const MtlsCertificateField = memo(({ forHttp = true, label = "mtls-certificate", reason }) => {
 	const { data } = useCertificates();
 	const { field } = useController({ name: MTLS_CERTIFICATE });
 	const udpForwarding = useWatch({ name: "udpForwarding" });
@@ -138,11 +140,11 @@ export function MtlsCertificateField({ forHttp = true, label = "mtls-certificate
 		<CertificateSelect
 			id="mtlsCertificate"
 			label={label}
-			hint={hint}
+			hint={reason ? <T id={reason.id} tData={reason.tData} /> : undefined}
 			field={field}
 			options={options}
-			disabled={udpForwarding || disabled}
+			disabled={udpForwarding || Boolean(reason)}
 			onChoose={(value) => applyTlsChange(MTLS_CERTIFICATE, value)}
 		/>
 	);
-}
+});

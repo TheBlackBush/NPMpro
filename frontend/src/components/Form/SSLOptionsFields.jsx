@@ -1,38 +1,12 @@
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useWatch } from "react-hook-form";
 import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components";
 import { T } from "src/locale";
-import { applyChanges } from "src/modules/HookForm";
-import { domainNamesOptions, hiddenTlsFields, tlsChanges } from "src/modules/HostForms";
+import { domainNamesOptions } from "src/modules/HostForms";
 import { tlsDisabledReasons } from "src/modules/TlsOptions";
 import { FormSection } from "./FormSection";
-import { useRecheckDependent } from "./HookForm";
 import { MtlsCertificateField } from "./SSLCertificateField";
 import { SwitchList } from "./SwitchList";
-
-/**
- * A change on the TLS tab of a React Hook Form host window, called after the field's own controller set its value:
- * sets what it turns off or on (HostForms.js tlsChanges), drops the messages of the fields it hides, and re-checks the
- * domain names, whose rule follows the certificate and the DNS challenge
- *
- * @param   {Object}  [options]
- * @param   {boolean} [options.forHttp]  false for a stream
- * @returns {Function} (name, value) => void
- */
-export function useTlsChange({ forHttp = true } = {}) {
-	const { getValues, setValue, clearErrors } = useFormContext();
-	const recheckDomainNames = useRecheckDependent("domainNames");
-	return (name, value) => {
-		const values = getValues();
-		const changes = tlsChanges(values, name, value, { forHttp });
-		// the changed field is already set, unless the change overrides it (an mTLS certificate forces HTTPS)
-		const dependents = Object.fromEntries(
-			Object.entries(changes).filter(([key, next]) => key !== name || next !== value),
-		);
-		applyChanges(setValue, dependents);
-		clearErrors(hiddenTlsFields({ ...values, ...changes }, { forHttp }));
-		if ("certificateId" in changes || "npmproDnsChallenge" in changes) recheckDomainNames();
-	};
-}
+import { useTlsChange } from "./useTlsChange";
 
 // the values the TLS rules read (TlsOptions.js tlsDisabledReasons), and the DNS challenge
 const TLS_FIELDS = [
@@ -104,7 +78,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 						/>
 					</SwitchList>
 					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
-					{values.npmproDnsChallenge ? <DNSProviderFields /> : null}
+					{values.npmproDnsChallenge ? <DNSProviderFields className="mb-0" /> : null}
 				</FormSection>
 			) : null}
 			{forHttp ? (
@@ -138,11 +112,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 				</FormSection>
 			) : null}
 			<FormSection legend={<T id="tls.section.mtls" />} className="mb-0">
-				<MtlsCertificateField
-					forHttp={forHttp}
-					disabled={Boolean(reasons.npmproMtlsCertificateId)}
-					hint={reasonHint(reasons.npmproMtlsCertificateId)}
-				/>
+				<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
 				<SwitchList columns={2}>
 					<TlsSwitch
 						name="npmproMtlsVerifyClientOptional"

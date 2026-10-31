@@ -98,11 +98,15 @@ function PropagationInput() {
  * The DNS challenge fields of the form around it, in Tabler's form-fieldset box named "DNS challenge": the notice, the
  * provider and, with a provider, the credential and the propagation time. The form's resolver checks them
  * (CertificateForms.js dnsChallengeRules). The same box in the host windows' TLS tab and the DNS certificate window.
+ *
+ * @param {Object}  [props]
+ * @param {string}  [props.className]  of the box, instead of form-fieldset's own bottom margin (the TLS tab passes
+ *                                     "mb-0" because its request section has the margin below)
  */
-export function DNSProviderFields() {
+export function DNSProviderFields({ className }) {
 	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
-		<FormSection boxed legend={<T id="certificates.dns.section" />}>
+		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
 			<NoticeAlert>
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
