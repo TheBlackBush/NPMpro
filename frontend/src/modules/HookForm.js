@@ -8,8 +8,6 @@ import { valueAt } from "./FormFields.js";
 // the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;
 const INDEX = /^\d+$/u;
-// a list index in an error path: locations[0].path
-const LIST_INDEX = /\[(?<index>\d+)\]/gu;
 
 const isObject = (value) => value !== null && typeof value === "object";
 const isPlainObject = (value) => isObject(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -188,17 +186,6 @@ export function orderErrorPaths(paths, order) {
 		.map((path, position) => ({ path, position, index: orderIndex(path, order) }))
 		.sort((a, b) => a.index - b.index || a.position - b.position)
 		.map(({ path }) => path);
-}
-
-/**
- * The names a field's control may carry in the page: the error path (locations[0].path) and React Hook Form's
- * register name (locations.0.path)
- *
- * @param   {string}  path
- * @returns {string[]}
- */
-export function controlNames(path) {
-	return [...new Set([path, path.replaceAll(LIST_INDEX, ".$<index>")])];
 }
 
 /**

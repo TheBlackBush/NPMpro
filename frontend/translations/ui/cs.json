@@ -354,6 +354,8 @@
 	"form.fix-fields": "Před uložením opravte: {fields}",
 	"form.fix-fields.continue": "Před pokračováním opravte: {fields}",
 	"form.no-changes": "Žádné změny k uložení",
+	"form.tabs.errors": "{count, plural, one {# chyba} few {# chyby} many {# chyby} other {# chyb}}",
+	"form.tabs.more": "Další",
 	"help": "Nápověda",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream pro Auth Request",

@@ -11,12 +11,19 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	ModalTabs,
 	SwitchField,
+	TabPane,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
-import { accessListDefaults, accessListPayload, accessListValidate } from "src/modules/AccessListForms";
+import {
+	ACCESS_LIST_TABS,
+	accessListDefaults,
+	accessListPayload,
+	accessListValidate,
+} from "src/modules/AccessListForms";
 import EasyModal from "src/modules/easyModal";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -49,31 +56,8 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 						{errors.accessRules.message}
 					</div>
 				) : null}
-				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-details"
-							className="nav-link active"
-							data-bs-toggle="tab"
-							aria-selected="true"
-							role="tab"
-						>
-							<T id="column.details" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a href="#tab-auth" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-							<T id="column.authorizations" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a href="#tab-rules" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-							<T id="column.rules" />
-						</a>
-					</li>
-				</ul>
-				<div className="tab-content">
-					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+				<ModalTabs tabs={ACCESS_LIST_TABS}>
+					<TabPane id="details">
 						<div>
 							<label htmlFor="name" className="form-label">
 								<T id="column.name" />
@@ -106,14 +90,14 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 								/>
 							</div>
 						</div>
-					</div>
-					<div className="tab-pane" id="tab-auth" role="tabpanel">
+					</TabPane>
+					<TabPane id="auth">
 						<BasicAuthFields savedUsers={savedUsers} />
-					</div>
-					<div className="tab-pane" id="tab-rules" role="tabpanel">
+					</TabPane>
+					<TabPane id="rules">
 						<AccessClientFields />
-					</div>
-				</div>
+					</TabPane>
+				</ModalTabs>
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>

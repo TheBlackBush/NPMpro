@@ -6,7 +6,7 @@ import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
 import { sectionColor } from "src/modules/SectionColors";
 import { FormErrorNote } from "./FormErrorNote";
-import { focusFirstError, useFieldOrder } from "./HookForm";
+import { focusFirstError, useFieldOrder, useFormTabs } from "./HookForm";
 
 /**
  * A form's submit button with the reason next to it whenever it cannot be used: while a field shows an error it
@@ -41,6 +41,7 @@ function FormSubmit({
 	const { setFocus } = useFormContext();
 	const { isSubmitting, isDirty, errors } = useFormState();
 	const order = useFieldOrder();
+	const tabs = useFormTabs();
 	const blocked = errorPaths(errors).length > 0;
 	const unchanged = edit && !isDirty;
 	const noteId = useId();
@@ -54,7 +55,7 @@ function FormSubmit({
 			fullWidth={stacked || buttonProps.fullWidth}
 			disabled={disabled || (unchanged && !blocked)}
 			blocked={blocked}
-			onBlockedClick={(e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus)}
+			onBlockedClick={() => focusFirstError(errors, order, setFocus, tabs?.current)}
 			// keeps the focus in the field until the click is done: a blur error appearing first would move the
 			// button away from under the pointer and the click would be lost
 			onMouseDown={(e) => e.preventDefault()}

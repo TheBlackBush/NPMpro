@@ -11,11 +11,13 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	TabPane,
 	useAppForm,
 	useResetToSaved,
 } from "src/components";
@@ -32,6 +34,7 @@ import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import {
 	domainNamesOptions,
+	REDIRECTION_HOST_TABS,
 	redirectionHostDefaults,
 	redirectionHostValidate,
 	requestValues,
@@ -64,38 +67,8 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 				<ErrorAlert className="mb-3" onClose={onCloseError}>
 					{errorMsg}
 				</ErrorAlert>
-				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-details"
-							className="nav-link active"
-							data-bs-toggle="tab"
-							aria-selected="true"
-							role="tab"
-						>
-							<T id="column.details" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a href="#tab-ssl" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-							<T id="column.ssl" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-advanced"
-							className="nav-link"
-							data-bs-toggle="tab"
-							aria-selected="false"
-							role="tab"
-						>
-							<T id="domains.advanced" />
-							{advancedConfig?.trim() ? "*" : ""}
-						</a>
-					</li>
-				</ul>
-				<div className="tab-content">
-					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+				<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
+					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
 						<div className="row">
 							<div className="col-md-6">
@@ -178,13 +151,13 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 								/>
 							</div>
 						</div>
-					</div>
-					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+					</TabPane>
+					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
 
 						<SSLOptionsFields />
-					</div>
-					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+					</TabPane>
+					<TabPane id="advanced">
 						<NginxConfigField />
 						<div className="row mt-3">
 							<div className="col-md-12 mb-3">
@@ -195,8 +168,8 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 								/>
 							</div>
 						</div>
-					</div>
-				</div>
+					</TabPane>
+				</ModalTabs>
 				<RequestProgress
 					running={isSubmitting && certificateId === "new"}
 					propagationSeconds={npmproPropagationSeconds}

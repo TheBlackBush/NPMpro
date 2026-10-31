@@ -14,6 +14,7 @@ export * from "./FormSection";
 export * from "./FormSubmit";
 export * from "./HookForm";
 export * from "./LocationsFields";
+export * from "./ModalTabs";
 export * from "./NginxConfigField";
 export * from "./PasswordInput";
 export * from "./SSLCertificateField";

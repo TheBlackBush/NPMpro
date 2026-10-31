@@ -354,6 +354,8 @@
 	"form.fix-fields": "Corrigeer vóór het opslaan: {fields}",
 	"form.fix-fields.continue": "Corrigeer voordat je verdergaat: {fields}",
 	"form.no-changes": "Geen wijzigingen om op te slaan",
+	"form.tabs.errors": "{count, plural, one {# fout} other {# fouten}}",
+	"form.tabs.more": "Meer",
 	"help": "Hulp",
 	"host.auth-request": "Auth-verzoeken",
 	"host.auth-request-upstream": "Upstream Auth-verzoeken",

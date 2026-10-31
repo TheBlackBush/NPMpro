@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 
+// the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
+const HideContext = createContext(undefined);
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
 // Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
@@ -11,9 +13,11 @@ function AppModal({ children, centered = false, ...props }) {
 	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
 	return (
 		<TitleContext.Provider value={value}>
-			<Modal centered={centered} aria-labelledby={hasTitle ? id : undefined} {...props}>
-				{children}
-			</Modal>
+			<HideContext.Provider value={props.onHide}>
+				<Modal centered={centered} aria-labelledby={hasTitle ? id : undefined} {...props}>
+					{children}
+				</Modal>
+			</HideContext.Provider>
 		</TitleContext.Provider>
 	);
 }
@@ -31,9 +35,11 @@ function AppModalTitle({ children, ...props }) {
 	);
 }
 
+const useModalHide = () => useContext(HideContext);
+
 AppModal.Header = Modal.Header;
 AppModal.Title = AppModalTitle;
 AppModal.Body = Modal.Body;
 AppModal.Footer = Modal.Footer;
 
-export { AppModal };
+export { AppModal, useModalHide };

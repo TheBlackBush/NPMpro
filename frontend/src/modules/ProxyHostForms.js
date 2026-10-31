@@ -5,11 +5,13 @@
  */
 import { fieldsValidate, mergeErrors } from "./HookForm.js";
 import {
+	advancedTab,
 	CERTIFICATE_REQUEST_DEFAULTS,
 	domainNamesOptions,
 	domainNamesRule,
 	forwardHostError,
 	requestValues,
+	TLS_TAB_FIELDS,
 	tlsRules,
 } from "./HostForms.js";
 
@@ -178,6 +180,37 @@ export function proxyHostDefaults(data, { isClone = false, isAdmin = false } = {
 		npmproDirectory: data.npmproDirectory,
 	};
 }
+
+/**
+ * The tabs of the proxy host window (ModalTabs)
+ */
+export const PROXY_HOST_TABS = Object.freeze([
+	{
+		id: "details",
+		labelId: "column.details",
+		fields: [
+			"domainNames",
+			"forwardScheme",
+			"forwardHost",
+			"forwardPort",
+			"npmproNoindex",
+			"npmproCrowdsecAppsec",
+			"npmproProxyRequestBuffering",
+			"npmproProxyResponseBuffering",
+			"npmproUpstreamCompression",
+			"npmproFancyindex",
+			"npmproXFrameOptions",
+			"npmproAuthRequest",
+			"npmproAuthRequestUpstream",
+			"npmproAccessListType",
+			"npmproAccessListIds",
+			"npmproLocationConfig",
+		],
+	},
+	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },
+	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
+	advancedTab("advancedConfig"),
+]);
 
 /**
  * Proxy host: the domain names, the forward host (required unless the scheme is "empty", the backend's rule), the

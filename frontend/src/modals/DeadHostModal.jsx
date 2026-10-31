@@ -11,10 +11,12 @@ import {
 	HasPermission,
 	HookForm,
 	Loading,
+	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
+	TabPane,
 	useAppForm,
 	useResetToSaved,
 } from "src/components";
@@ -29,7 +31,13 @@ import {
 } from "src/hooks";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
-import { deadHostDefaults, deadHostValidate, domainNamesOptions, requestValues } from "src/modules/HostForms";
+import {
+	DEAD_HOST_TABS,
+	deadHostDefaults,
+	deadHostValidate,
+	domainNamesOptions,
+	requestValues,
+} from "src/modules/HostForms";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
@@ -56,46 +64,16 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 				<ErrorAlert className="mb-3" onClose={onCloseError}>
 					{errorMsg}
 				</ErrorAlert>
-				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-details"
-							className="nav-link active"
-							data-bs-toggle="tab"
-							aria-selected="true"
-							role="tab"
-						>
-							<T id="column.details" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a href="#tab-ssl" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-							<T id="column.ssl" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-advanced"
-							className="nav-link"
-							data-bs-toggle="tab"
-							aria-selected="false"
-							role="tab"
-						>
-							<T id="domains.advanced" />
-							{advancedConfig?.trim() ? "*" : ""}
-						</a>
-					</li>
-				</ul>
-				<div className="tab-content">
-					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+				<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
+					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-					</div>
-					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+					</TabPane>
+					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
 
 						<SSLOptionsFields />
-					</div>
-					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+					</TabPane>
+					<TabPane id="advanced">
 						<NginxConfigField />
 						<div className="row mt-3">
 							<div className="col-md-12 mb-3">
@@ -106,8 +84,8 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 								/>
 							</div>
 						</div>
-					</div>
-				</div>
+					</TabPane>
+				</ModalTabs>
 				<RequestProgress
 					running={isSubmitting && certificateId === "new"}
 					propagationSeconds={npmproPropagationSeconds}

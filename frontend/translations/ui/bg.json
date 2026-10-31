@@ -354,6 +354,8 @@
 	"form.fix-fields": "Поправете преди запазване: {fields}",
 	"form.fix-fields.continue": "Поправете, преди да продължите: {fields}",
 	"form.no-changes": "Няма промени за запазване",
+	"form.tabs.errors": "{count, plural, one {# грешка} other {# грешки}}",
+	"form.tabs.more": "Още",
 	"help": "Помощ",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream за Auth Request",

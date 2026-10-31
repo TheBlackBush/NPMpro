@@ -354,6 +354,8 @@
 	"form.fix-fields": "Perbaiki sebelum menyimpan: {fields}",
 	"form.fix-fields.continue": "Perbaiki sebelum melanjutkan: {fields}",
 	"form.no-changes": "Tidak ada perubahan untuk disimpan",
+	"form.tabs.errors": "{count, plural, other {# kesalahan}}",
+	"form.tabs.more": "Lainnya",
 	"help": "Bantuan",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream Auth Request",

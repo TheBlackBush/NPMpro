@@ -247,9 +247,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						isLoading={isSubmitting}
 						disabled={reason !== null && !blocked}
 						blocked={blocked}
-						onBlockedClick={(e) =>
-							focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus)
-						}
+						onBlockedClick={() => focusFirstError(errors, order, setFocus)}
 						onMouseDown={(e) => e.preventDefault()}
 						aria-describedby={describedBy}
 					>

@@ -116,6 +116,15 @@ export const accessListDefaults = (data) => ({
 });
 
 /**
+ * The tabs of the access list window (ModalTabs); the message that asks for a user or a rule shows above them
+ */
+export const ACCESS_LIST_TABS = Object.freeze([
+	{ id: "details", labelId: "column.details", fields: ["name", "satisfyAny", "passAuth"] },
+	{ id: "auth", labelId: "column.authorizations", fields: ["items"] },
+	{ id: "rules", labelId: "column.rules", fields: ["clients"] },
+]);
+
+/**
  * Access list: a name of 1 to 255 characters, the user rows, the rule rows, and at least one user or one rule that is
  * not "all" (accessRules, the message at the top of the window)
  *

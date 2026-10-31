@@ -1,16 +1,11 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
-import {
-	controlNames,
-	errorPaths,
-	fieldPaths,
-	formResolver,
-	orderErrorPaths,
-	resetOptionsOf,
-	rowErrorPaths,
-} from "src/modules/HookForm";
+import { fieldPaths, formResolver, resetOptionsOf, rowErrorPaths } from "src/modules/HookForm";
+import { firstErrorOf } from "src/modules/ModalTabs";
 
 const FieldOrderContext = createContext([]);
+// the ModalTabs of the form: { current: { tabs, open(id, then) } | null }, so the first error's tab opens
+const FormTabsContext = createContext(null);
 
 /**
  * useForm for the app's forms: the window's validate function (values => errors of translated messages; the newest
@@ -95,24 +90,28 @@ function useFieldError(name) {
 }
 
 /**
- * Focuses the first field with an error in field order: opens the tab that holds it, then setFocus
+ * The tabs of the form around the caller (its ModalTabs registers here), for focusFirstError
  *
- * @param {HTMLFormElement|null} form
+ * @returns {{ current: Object|null }|null}  null outside a HookForm
+ */
+function useFormTabs() {
+	return useContext(FormTabsContext);
+}
+
+/**
+ * Focuses the first field with an error in field order: a field on another tab opens that tab first (ModalTabs,
+ * also a tab in its More menu), then setFocus
+ *
  * @param {Object}   errors    React Hook Form's errors
  * @param {string[]} order     useFieldOrder()
  * @param {Function} setFocus  React Hook Form's setFocus
+ * @param {Object}   [tabs]    useFormTabs().current: the form's ModalTabs, null without tabs
  */
-function focusFirstError(form, errors, order, setFocus) {
-	const [first] = orderErrorPaths(errorPaths(errors), order);
+function focusFirstError(errors, order, setFocus, tabs = null) {
+	const first = firstErrorOf(errors, order, tabs?.tabs);
 	if (!first) return;
-	// a field on a hidden tab: show the tab first; a list row's control is named locations.0.path, its error
-	// path is locations[0].path
-	const control = controlNames(first)
-		.map((name) => form?.querySelector(`[name="${CSS.escape(name)}"]`))
-		.find(Boolean);
-	const pane = control?.closest(".tab-pane:not(.active)");
-	if (pane) form.querySelector(`[data-bs-toggle="tab"][href="#${pane.id}"]`)?.click();
-	setFocus(first);
+	if (first.tabId === null) setFocus(first.path);
+	else tabs.open(first.tabId, () => setFocus(first.path));
 }
 
 /**
@@ -121,16 +120,16 @@ function focusFirstError(form, errors, order, setFocus) {
  * may not hold the first one in the page (Enter in the ACME profile with the renewal interval already refused):
  * the click handler gets the same answer as a save would.
  *
- * @returns {Function} (event) => void, for onBlockedClick
+ * @returns {Function} () => void, for onBlockedClick
  */
 function useFocusFirstError() {
 	const { handleSubmit, setFocus } = useFormContext();
 	const order = useFieldOrder();
-	return (event) => {
-		const form = event.currentTarget.closest("form");
+	const tabs = useFormTabs();
+	return () => {
 		void handleSubmit(
 			() => undefined,
-			(errors) => focusFirstError(form, errors, order, setFocus),
+			(errors) => focusFirstError(errors, order, setFocus, tabs?.current),
 		)();
 	};
 }
@@ -202,38 +201,39 @@ function useListRecheck(name) {
 function HookForm({ methods, onSubmit, fieldOrder, className, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	const submitting = useRef(false);
-	const formRef = useRef(null);
+	const tabsRef = useRef(null);
 	// a refused save focuses the first error once the page shows the messages (a list row with an error opens then).
 	// The errors are the ones handleSubmit hands to onInvalid: methods.formState is a snapshot of the root's state,
 	// which React Hook Form only updates for the keys the root read during render
 	const [refused, setRefused] = useState(null);
 	useLayoutEffect(() => {
-		if (refused) focusFirstError(formRef.current, refused.errors, order, methods.setFocus);
+		if (refused) focusFirstError(refused.errors, order, methods.setFocus, tabsRef.current);
 	}, [refused, methods, order]);
 	return (
 		<FormProvider {...methods}>
 			<FieldOrderContext.Provider value={order}>
-				<form
-					ref={formRef}
-					className={className}
-					action="#"
-					noValidate
-					onSubmit={(event) => {
-						event.stopPropagation();
-						if (submitting.current) {
-							event.preventDefault();
-							return;
-						}
-						submitting.current = true;
-						void methods
-							.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
-							.finally(() => {
-								submitting.current = false;
-							});
-					}}
-				>
-					{children}
-				</form>
+				<FormTabsContext.Provider value={tabsRef}>
+					<form
+						className={className}
+						action="#"
+						noValidate
+						onSubmit={(event) => {
+							event.stopPropagation();
+							if (submitting.current) {
+								event.preventDefault();
+								return;
+							}
+							submitting.current = true;
+							void methods
+								.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
+								.finally(() => {
+									submitting.current = false;
+								});
+						}}
+					>
+						{children}
+					</form>
+				</FormTabsContext.Provider>
 			</FieldOrderContext.Provider>
 		</FormProvider>
 	);
@@ -246,6 +246,7 @@ export {
 	useFieldError,
 	useFieldOrder,
 	useFocusFirstError,
+	useFormTabs,
 	useListRecheck,
 	useRecheckDependent,
 	useResetToSaved,

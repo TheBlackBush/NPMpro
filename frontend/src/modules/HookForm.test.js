@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	applyChanges,
-	controlNames,
 	errorPaths,
 	fieldPaths,
 	fieldsValidate,
@@ -135,12 +134,6 @@ it("merges the errors of a list row by row, so a rule over the form keeps the ro
 		locations: [{ forwardHost: "Invalid" }],
 	}));
 	assert.deepEqual(fromRules({}), { locations: [{ forwardHost: "Invalid" }, { path: "Required" }] });
-});
-
-it("names a field's control by its error path and by its register name", () => {
-	assert.deepEqual(controlNames("domainNames"), ["domainNames"]);
-	assert.deepEqual(controlNames("locations[0].path"), ["locations[0].path", "locations.0.path"]);
-	assert.deepEqual(controlNames("clients[10].address"), ["clients[10].address", "clients.10.address"]);
 });
 
 it("lists the rows of a list whose field holds a message", () => {

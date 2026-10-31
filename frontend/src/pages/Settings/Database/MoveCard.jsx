@@ -262,7 +262,7 @@ function MoveForm({ tested, status }) {
 					id={testId}
 					isLoading={isSubmitting}
 					blocked={blocked}
-					onBlockedClick={(e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus)}
+					onBlockedClick={() => focusFirstError(errors, order, setFocus)}
 					// keeps the focus in the field until the click is done (a blur error would move the button)
 					onMouseDown={(e) => e.preventDefault()}
 					aria-describedby={blocked ? noteId : undefined}

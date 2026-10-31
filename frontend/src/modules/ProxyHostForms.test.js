@@ -2,13 +2,16 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
+import { fieldPaths } from "./HookForm.js";
 import { CERTIFICATE_REQUEST_DEFAULTS } from "./HostForms.js";
+import { tabOfPath } from "./ModalTabs.js";
 import {
 	hostRecheckOnScheme,
 	insideWebroot,
 	locationErrors,
 	namedLocations,
 	newLocation,
+	PROXY_HOST_TABS,
 	proxyHostDefaults,
 	proxyHostPayload,
 	proxyHostValidate,
@@ -245,4 +248,24 @@ it("hostRecheckOnScheme: the forward host is checked again after a scheme change
 	// between schemes that need a host its message follows
 	assert.equal(hostRecheckOnScheme("http", "https"), true);
 	assert.equal(hostRecheckOnScheme("https", "path"), true);
+});
+
+it("puts every field of the proxy host window on exactly one tab, the location rows on Custom Locations", () => {
+	const misplaced = fieldPaths(proxyHostDefaults(savedHost)).filter(
+		(path) => PROXY_HOST_TABS.filter((tab) => tabOfPath([tab], path) !== null).length !== 1,
+	);
+	assert.deepEqual(misplaced, []);
+	assert.deepEqual(
+		PROXY_HOST_TABS.map((tab) => [tab.id, tab.labelId, Boolean(tab.end)]),
+		[
+			["details", "column.details", false],
+			["locations", "column.custom-locations", false],
+			["tls", "column.ssl", false],
+			["advanced", "domains.advanced", true],
+		],
+	);
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "locations[1].forwardHost"), "locations");
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproAccessListIds"), "details");
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproMtlsBypassAuthRequest"), "tls");
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproDirectory"), "advanced");
 });
