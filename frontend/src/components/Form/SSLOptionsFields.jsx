@@ -153,7 +153,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 				) : null}
 			</div>
 			{newCertificate && !forHttp ? <DomainNamesField {...domainNamesOptions({}, { forHttp })} /> : null}
-			{newCertificate && dnsChallenge ? <DNSProviderFields showBoundaryBox /> : null}
+			{newCertificate && dnsChallenge ? <DNSProviderFields /> : null}
 		</div>
 	);
 }
