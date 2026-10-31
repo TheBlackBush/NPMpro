@@ -119,5 +119,5 @@ export function choiceItemClass({ fill = false, disabled = false } = {}) {
  * @returns {string}
  */
 export function switchListClass(columns = 1) {
-	return columns === 2 ? "row row-cols-1 row-cols-md-2 gx-4" : "divide-y";
+	return columns === 2 ? "row row-cols-1 row-cols-md-2 gx-4" : "vstack gap-3";
 }

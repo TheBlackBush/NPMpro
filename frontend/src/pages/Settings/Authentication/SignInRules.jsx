@@ -34,7 +34,7 @@ function SignInRules({ data, isLocked }) {
 	);
 
 	return (
-		<div className="divide-y">
+		<div className="vstack gap-3">
 			{rule(
 				"requireVerifiedEmail",
 				"settings.authentication.require-verified-email",

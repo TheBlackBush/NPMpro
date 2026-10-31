@@ -270,7 +270,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 							<h4 className="py-2">
 								<T id="options" />
 							</h4>
-							<div className="divide-y">
+							<div className="vstack gap-3">
 								<OptionSwitch
 									name="npmproNoindex"
 									labelId="host.flags.send-noindex"

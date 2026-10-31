@@ -49,7 +49,7 @@ function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
  * The TLS options of a host window, under its certificate (SSLCertificateField): the mTLS CA certificate select, the
  * client certificate switches (mTLS), the HTTPS options (HTTP hosts) and, while a new certificate is requested, its
  * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in one
- * column, divided by lines. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
+ * column. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
  * says why in its hint.
  */
 export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
@@ -118,7 +118,8 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 			) : null}
 			{newCertificate ? (
 				<FormSection legend={<T id="certificates.request.title" />} className="mb-0">
-					<SwitchList>
+					{/* a gap before the domain names (streams) or the DNS challenge box under the switches */}
+					<SwitchList className={!forHttp || values.npmproDnsChallenge ? "mb-3" : undefined}>
 						<TlsSwitch
 							name="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}

@@ -143,7 +143,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 							<h4 className="py-2">
 								<T id="options" />
 							</h4>
-							<div className="divide-y">
+							<div className="vstack gap-3">
 								<SwitchField
 									id="preservePath"
 									label={<T id="host.flags.preserve-path" />}

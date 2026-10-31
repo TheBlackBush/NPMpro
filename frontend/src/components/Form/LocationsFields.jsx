@@ -228,7 +228,7 @@ function LocationRow({
 						<h4 className="py-2">
 							<T id="options" />
 						</h4>
-						<div className="divide-y">
+						<div className="vstack gap-3">
 							<SwitchField
 								id={`npmproNoindex-${rowKey}`}
 								label={<T id="host.flags.send-noindex" />}

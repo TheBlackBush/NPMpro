@@ -276,10 +276,9 @@ function Fields({ isLocked }) {
 	);
 	return (
 		<Part titleId="settings.monitoring.statistics" last>
-			<div className="divide-y">
+			<div className="vstack gap-3">
 				<SwitchField
 					{...register("trafficEnabled")}
-					className="pb-3"
 					id="monitoring-traffic-enabled"
 					label={label("trafficEnabled", "settings.monitoring.traffic")}
 					hint={<T id="settings.monitoring.traffic.hint" />}
@@ -297,11 +296,9 @@ function Fields({ isLocked }) {
 						</span>
 					}
 					isLocked={isLocked}
-					className="py-3"
 				/>
 				<SwitchField
 					{...register("showIps")}
-					className="pt-3"
 					id="monitoring-show-ips"
 					label={label("showIps", "settings.monitoring.show-ips")}
 					hint={<T id="settings.monitoring.show-ips.hint" />}
@@ -314,7 +311,6 @@ function Fields({ isLocked }) {
 							if (!event.target.checked) clearErrors("visitorsCap");
 						},
 					})}
-					className={uniqueVisitors ? "py-3" : "pt-3"}
 					id="monitoring-unique-visitors"
 					label={label("uniqueVisitors", "settings.monitoring.unique-visitors")}
 					hint={<T id="settings.monitoring.unique-visitors.hint" />}
@@ -328,7 +324,6 @@ function Fields({ isLocked }) {
 						hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
 						range={VISITORS_CAP}
 						isLocked={isLocked}
-						className="pt-3"
 					/>
 				) : null}
 			</div>

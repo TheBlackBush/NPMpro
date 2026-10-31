@@ -167,7 +167,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 							<h3 className="py-2">
 								<T id="host.flags.protocols" />
 							</h3>
-							<div className="divide-y">
+							<div className="vstack gap-3">
 								<SwitchField
 									id="tcpForwarding"
 									label={<T id="streams.tcp" />}
