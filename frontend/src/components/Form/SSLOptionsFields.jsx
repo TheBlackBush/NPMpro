@@ -3,8 +3,11 @@ import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components
 import { T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
 import { domainNamesOptions, hiddenTlsFields, tlsChanges } from "src/modules/HostForms";
-import { namedLocations } from "src/modules/ProxyHostForms";
+import { tlsDisabledReasons } from "src/modules/TlsOptions";
+import { FormSection } from "./FormSection";
 import { useRecheckDependent } from "./HookForm";
+import { MtlsCertificateField } from "./SSLCertificateField";
+import { SwitchList } from "./SwitchList";
 
 /**
  * A change on the TLS tab of a React Hook Form host window, called after the field's own controller set its value:
@@ -31,6 +34,7 @@ export function useTlsChange({ forHttp = true } = {}) {
 	};
 }
 
+// the values the TLS rules read (TlsOptions.js tlsDisabledReasons), and the DNS challenge
 const TLS_FIELDS = [
 	"certificateId",
 	"sslForced",
@@ -42,9 +46,12 @@ const TLS_FIELDS = [
 	"locations",
 ];
 
+// why a control is off (a reason of tlsDisabledReasons), as its hint
+const reasonHint = (reason) => (reason ? <T id={reason.id} tData={reason.tData} /> : null);
+
 // a switch of the TLS tab: its controller sets the value, then onTlsChange sets what it turns off or on; shown is
-// what the switch displays when that differs from the value
-function TlsSwitch({ name, onTlsChange, shown, ...props }) {
+// what the switch displays when that differs from the value. With a reason it is off and its hint says why.
+function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
 	const { field } = useController({ name });
 	return (
 		<SwitchField
@@ -53,6 +60,8 @@ function TlsSwitch({ name, onTlsChange, shown, ...props }) {
 			name={field.name}
 			ref={field.ref}
 			checked={shown === undefined ? Boolean(field.value) : shown(field.value)}
+			disabled={Boolean(reason)}
+			hint={reasonHint(reason)}
 			onChange={(e) => {
 				field.onChange(e.target.checked);
 				onTlsChange(name, e.target.checked);
@@ -63,80 +72,24 @@ function TlsSwitch({ name, onTlsChange, shown, ...props }) {
 }
 
 /**
- * The TLS options of a host window: mTLS, HTTPS options (HTTP hosts), and for a requested certificate its key, the
- * DNS challenge (always for a stream, with the certificate's domain names) and the DNS provider fields. Each switch
- * is a controller, a change runs useTlsChange.
+ * The TLS options of a host window, under its certificate (SSLCertificateField), in the order of the choices: the
+ * request of a new certificate (its key, the DNS challenge, for a stream its domain names, the DNS challenge box),
+ * the HTTPS options (HTTP hosts), and the client certificates (mTLS). The switches sit in two columns from the md
+ * breakpoint, one on phones. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
+ * says why in its hint.
  */
-export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
-	const [
-		certificateId,
-		sslForced,
-		hstsEnabled,
-		dnsChallenge,
-		npmproMtlsCertificateId,
-		npmproMtlsVerifyClientOptional,
-		npmproAuthRequest,
-		locations,
-	] = useWatch({ name: TLS_FIELDS });
+export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
+	const watched = useWatch({ name: TLS_FIELDS });
+	const values = Object.fromEntries(TLS_FIELDS.map((name, index) => [name, watched[index]]));
+	const reasons = tlsDisabledReasons(values, { forHttp, forProxyHost });
 	const onTlsChange = useTlsChange({ forHttp });
-
-	const newCertificate = certificateId === "new";
-	const hasCertificate = newCertificate || certificateId > 0;
-	const mtlsBypassAuthRequestPossible =
-		npmproMtlsVerifyClientOptional &&
-		[{ npmproAuthRequest }, ...namedLocations(locations ?? [])].some(
-			({ npmproAuthRequest: authRequest = "none" }) => authRequest !== "none",
-		);
-	const mtlsRequired = npmproMtlsCertificateId > 0 && !npmproMtlsVerifyClientOptional;
+	const newCertificate = values.certificateId === "new";
 
 	return (
-		<div>
-			<div className="divide-y">
-				<TlsSwitch
-					name="npmproMtlsVerifyClientOptional"
-					label={<T id="domains.mtls-verify-client-optional" />}
-					onTlsChange={onTlsChange}
-					disabled={!(certificateId > 0 && npmproMtlsCertificateId > 0)}
-				/>
-				{forProxyHost ? (
-					<TlsSwitch
-						name="npmproMtlsBypassAuthRequest"
-						label={<T id="domains.mtls-bypass-auth-request" />}
-						onTlsChange={onTlsChange}
-						shown={(value) => value === true && Boolean(mtlsBypassAuthRequestPossible)}
-						disabled={!mtlsBypassAuthRequestPossible}
-					/>
-				) : null}
-				{forHttp ? (
-					<>
-						<TlsSwitch
-							name="sslForced"
-							label={<T id="domains.force-ssl" />}
-							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || mtlsRequired}
-						/>
-						<TlsSwitch
-							name="npmproHttp3Support"
-							label={<T id="domains.http3-support" />}
-							onTlsChange={onTlsChange}
-							disabled={!hasCertificate}
-						/>
-						<TlsSwitch
-							name="hstsEnabled"
-							label={<T id="host.flags.hsts-enabled" />}
-							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || !sslForced}
-						/>
-						<TlsSwitch
-							name="hstsSubdomains"
-							label={<T id="host.flags.hsts-subdomains" />}
-							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || !hstsEnabled}
-						/>
-					</>
-				) : null}
-				{newCertificate ? (
-					<>
+		<>
+			{newCertificate ? (
+				<FormSection legend={<T id="certificates.request.title" />}>
+					<SwitchList columns={2}>
 						<TlsSwitch
 							name="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
@@ -147,13 +100,67 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 							label={<T id="domains.use-dns" />}
 							onTlsChange={onTlsChange}
 							shown={(value) => !forHttp || Boolean(value)}
-							disabled={!forHttp}
+							reason={reasons.npmproDnsChallenge}
 						/>
-					</>
-				) : null}
-			</div>
-			{newCertificate && !forHttp ? <DomainNamesField {...domainNamesOptions({}, { forHttp })} /> : null}
-			{newCertificate && dnsChallenge ? <DNSProviderFields /> : null}
-		</div>
+					</SwitchList>
+					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
+					{values.npmproDnsChallenge ? <DNSProviderFields /> : null}
+				</FormSection>
+			) : null}
+			{forHttp ? (
+				<FormSection legend={<T id="tls.section.https" />}>
+					<SwitchList columns={2}>
+						<TlsSwitch
+							name="sslForced"
+							label={<T id="domains.force-ssl" />}
+							onTlsChange={onTlsChange}
+							reason={reasons.sslForced}
+						/>
+						<TlsSwitch
+							name="npmproHttp3Support"
+							label={<T id="domains.http3-support" />}
+							onTlsChange={onTlsChange}
+							reason={reasons.npmproHttp3Support}
+						/>
+						<TlsSwitch
+							name="hstsEnabled"
+							label={<T id="host.flags.hsts-enabled" />}
+							onTlsChange={onTlsChange}
+							reason={reasons.hstsEnabled}
+						/>
+						<TlsSwitch
+							name="hstsSubdomains"
+							label={<T id="host.flags.hsts-subdomains" />}
+							onTlsChange={onTlsChange}
+							reason={reasons.hstsSubdomains}
+						/>
+					</SwitchList>
+				</FormSection>
+			) : null}
+			<FormSection legend={<T id="tls.section.mtls" />} className="mb-0">
+				<MtlsCertificateField
+					forHttp={forHttp}
+					disabled={Boolean(reasons.npmproMtlsCertificateId)}
+					hint={reasonHint(reasons.npmproMtlsCertificateId)}
+				/>
+				<SwitchList columns={2}>
+					<TlsSwitch
+						name="npmproMtlsVerifyClientOptional"
+						label={<T id="domains.mtls-verify-client-optional" />}
+						onTlsChange={onTlsChange}
+						reason={reasons.npmproMtlsVerifyClientOptional}
+					/>
+					{forProxyHost ? (
+						<TlsSwitch
+							name="npmproMtlsBypassAuthRequest"
+							label={<T id="domains.mtls-bypass-auth-request" />}
+							onTlsChange={onTlsChange}
+							shown={(value) => value === true && !reasons.npmproMtlsBypassAuthRequest}
+							reason={reasons.npmproMtlsBypassAuthRequest}
+						/>
+					) : null}
+				</SwitchList>
+			</FormSection>
+		</>
 	);
 }
