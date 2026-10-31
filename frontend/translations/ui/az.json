@@ -354,6 +354,8 @@
 	"form.fix-fields": "Saxlamadan əvvəl düzəldin: {fields}",
 	"form.fix-fields.continue": "Davam etməzdən əvvəl düzəldin: {fields}",
 	"form.no-changes": "Saxlanılacaq dəyişiklik yoxdur",
+	"form.tabs.errors": "{count, plural, one {# xəta} other {# xəta}}",
+	"form.tabs.more": "Daha çox",
 	"help": "Kömək",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request upstream",

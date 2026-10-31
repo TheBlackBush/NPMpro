@@ -354,6 +354,8 @@
 	"form.fix-fields": "Ceartaigh roimh shábháil: {fields}",
 	"form.fix-fields.continue": "Ceartaigh roimh leanúint ar aghaidh: {fields}",
 	"form.no-changes": "Níl aon athruithe le sábháil",
+	"form.tabs.errors": "{count, plural, one {# earráid} two {# earráid} few {# earráid} many {# n-earráid} other {# earráid}}",
+	"form.tabs.more": "Tuilleadh",
 	"help": "Cabhair",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream Auth Request",

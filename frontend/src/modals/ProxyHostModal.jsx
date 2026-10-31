@@ -15,11 +15,13 @@ import {
 	HookForm,
 	Loading,
 	LocationsFields,
+	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	TabPane,
 	useAppForm,
 	useRecheckDependent,
 	useResetToSaved,
@@ -44,6 +46,7 @@ import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
 import {
 	hostRecheckOnScheme,
 	namedLocations,
+	PROXY_HOST_TABS,
 	proxyHostDefaults,
 	proxyHostPayload,
 	proxyHostValidate,
@@ -143,50 +146,11 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 				<ErrorAlert className="mb-3" onClose={onCloseError}>
 					{errorMsg}
 				</ErrorAlert>
-				<ul className="nav nav-tabs mb-3" data-bs-toggle="tabs">
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-details"
-							className="nav-link active"
-							data-bs-toggle="tab"
-							aria-selected="true"
-							role="tab"
-						>
-							<T id="column.details" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-locations"
-							className="nav-link"
-							data-bs-toggle="tab"
-							aria-selected="false"
-							role="tab"
-						>
-							{<T id="column.custom-locations" />}
-							<LocationsTabMarker />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a href="#tab-ssl" className="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-							<T id="column.ssl" />
-						</a>
-					</li>
-					<li className="nav-item" role="presentation">
-						<a
-							href="#tab-advanced"
-							className="nav-link"
-							data-bs-toggle="tab"
-							aria-selected="false"
-							role="tab"
-						>
-							<T id="domains.advanced" />
-							{advancedConfig?.trim() ? "*" : ""}
-						</a>
-					</li>
-				</ul>
-				<div className="tab-content">
-					<div className="tab-pane active show" id="tab-details" role="tabpanel">
+				<ModalTabs
+					tabs={PROXY_HOST_TABS}
+					markers={{ locations: <LocationsTabMarker />, advanced: advancedConfig?.trim() ? "*" : null }}
+				>
+					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
 						<div className="row">
 							<div className="col-md-3">
@@ -457,16 +421,16 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 								)}
 							</div>
 						)}
-					</div>
-					<div className="tab-pane" id="tab-locations" role="tabpanel">
+					</TabPane>
+					<TabPane id="locations">
 						<LocationsFields />
-					</div>
-					<div className="tab-pane" id="tab-ssl" role="tabpanel">
+					</TabPane>
+					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
 
 						<SSLOptionsFields forProxyHost />
-					</div>
-					<div className="tab-pane" id="tab-advanced" role="tabpanel">
+					</TabPane>
+					<TabPane id="advanced">
 						<NginxConfigField />
 						<div className="row mt-3">
 							<div className="col-md-12 mb-3">
@@ -477,8 +441,8 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 								/>
 							</div>
 						</div>
-					</div>
-				</div>
+					</TabPane>
+				</ModalTabs>
 				<RequestProgress
 					running={isSubmitting && certificateId === "new"}
 					propagationSeconds={npmproPropagationSeconds}

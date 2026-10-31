@@ -354,6 +354,8 @@
 	"form.fix-fields": "Исправьте перед сохранением: {fields}",
 	"form.fix-fields.continue": "Исправьте, чтобы продолжить: {fields}",
 	"form.no-changes": "Нет изменений для сохранения",
+	"form.tabs.errors": "{count, plural, one {# ошибка} few {# ошибки} many {# ошибок} other {# ошибки}}",
+	"form.tabs.more": "Ещё",
 	"help": "Справка",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream для Auth Request",

@@ -354,6 +354,8 @@
 	"form.fix-fields": "Kaydetmeden önce düzeltin: {fields}",
 	"form.fix-fields.continue": "Devam etmeden önce düzeltin: {fields}",
 	"form.no-changes": "Kaydedilecek değişiklik yok",
+	"form.tabs.errors": "{count, plural, one {# hata} other {# hata}}",
+	"form.tabs.more": "Daha fazla",
 	"help": "Yardım",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request yukarı akışı",

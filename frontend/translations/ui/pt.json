@@ -354,6 +354,8 @@
 	"form.fix-fields": "Corrija antes de guardar: {fields}",
 	"form.fix-fields.continue": "Corrija antes de continuar: {fields}",
 	"form.no-changes": "Não há alterações para guardar",
+	"form.tabs.errors": "{count, plural, one {# erro} other {# erros}}",
+	"form.tabs.more": "Mais",
 	"help": "Ajuda",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream do Auth Request",

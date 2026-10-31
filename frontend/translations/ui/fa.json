@@ -354,6 +354,8 @@
 	"form.fix-fields": "پیش از ذخیره اصلاح کنید: {fields}",
 	"form.fix-fields.continue": "پیش از ادامه اصلاح کنید: {fields}",
 	"form.no-changes": "تغییری برای ذخیره وجود ندارد",
+	"form.tabs.errors": "{count, plural, one {# خطا} other {# خطا}}",
+	"form.tabs.more": "بیشتر",
 	"help": "راهنما",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream مربوط به Auth Request",

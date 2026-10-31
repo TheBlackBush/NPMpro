@@ -354,6 +354,8 @@
 	"form.fix-fields": "Виправте перед збереженням: {fields}",
 	"form.fix-fields.continue": "Виправте, щоб продовжити: {fields}",
 	"form.no-changes": "Немає змін для збереження",
+	"form.tabs.errors": "{count, plural, one {# помилка} few {# помилки} many {# помилок} other {# помилки}}",
+	"form.tabs.more": "Ще",
 	"help": "Довідка",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream для Auth Request",

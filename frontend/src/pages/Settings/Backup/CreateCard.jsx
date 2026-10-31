@@ -44,7 +44,7 @@ function CreateForm({ data, error, keepRef }) {
 		setKeepRunning(false);
 		keepRef.current = false;
 	}, [isSubmitting, keepRef]);
-	const onBlocked = (e) => focusFirstError(e.currentTarget.closest("form"), errors, order, setFocus);
+	const onBlocked = () => focusFirstError(errors, order, setFocus);
 
 	const keepOnServer = (e) => {
 		keepRef.current = true;

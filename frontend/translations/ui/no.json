@@ -354,6 +354,8 @@
 	"form.fix-fields": "Rett før lagring: {fields}",
 	"form.fix-fields.continue": "Rett før du fortsetter: {fields}",
 	"form.no-changes": "Ingen endringer å lagre",
+	"form.tabs.errors": "{count, plural, one {# feil} other {# feil}}",
+	"form.tabs.more": "Mer",
 	"help": "Hjelp",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request-upstream",

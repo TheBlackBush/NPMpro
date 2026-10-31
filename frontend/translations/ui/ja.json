@@ -354,6 +354,8 @@
 	"form.fix-fields": "保存する前に修正してください: {fields}",
 	"form.fix-fields.continue": "続行する前に修正してください: {fields}",
 	"form.no-changes": "保存する変更はありません",
+	"form.tabs.errors": "{count, plural, other {# 件のエラー}}",
+	"form.tabs.more": "その他",
 	"help": "ヘルプ",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request アップストリーム",

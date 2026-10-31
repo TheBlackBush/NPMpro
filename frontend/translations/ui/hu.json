@@ -354,6 +354,8 @@
 	"form.fix-fields": "Mentés előtt javítsa: {fields}",
 	"form.fix-fields.continue": "Folytatás előtt javítsa: {fields}",
 	"form.no-changes": "Nincs mentendő változás",
+	"form.tabs.errors": "{count, plural, one {# hiba} other {# hiba}}",
+	"form.tabs.more": "Továbbiak",
 	"help": "Súgó",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request upstream",

@@ -354,6 +354,8 @@
 	"form.fix-fields": "Paranda enne salvestamist: {fields}",
 	"form.fix-fields.continue": "Paranda enne jätkamist: {fields}",
 	"form.no-changes": "Salvestamata muudatusi pole",
+	"form.tabs.errors": "{count, plural, one {# viga} other {# viga}}",
+	"form.tabs.more": "Veel",
 	"help": "Abi",
 	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Requesti sihtserver",
