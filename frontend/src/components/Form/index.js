@@ -2,6 +2,7 @@ export * from "./AccessClientFields";
 export * from "./AccessFields";
 export * from "./BasicAuthFields";
 export * from "./ChoiceGroup";
+export * from "./CodeInput";
 export * from "./DirectoryField";
 export * from "./DNSProviderFields";
 export * from "./DnsCredentialSelect";

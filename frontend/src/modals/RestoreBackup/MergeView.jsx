@@ -1,7 +1,7 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
-import { ErrorAlert, TypeTree } from "src/components";
+import { ChoiceGroup, ErrorAlert, TypeTree } from "src/components";
 import { intl, T } from "src/locale";
 import {
 	ACTIONS,
@@ -409,7 +409,8 @@ export function MergeView({
 }
 
 /**
- * Replace or Merge, as a segmented radio group; Replace is disabled for a file of single items (partial).
+ * Replace or Merge, as a choice group named by its legend; Replace is disabled for a file of single items (partial),
+ * and the hint under the group says why.
  *
  * @param {Object}   props
  * @param {string}   props.mode      "replace" or "merge"
@@ -418,40 +419,17 @@ export function MergeView({
  */
 export function ModeSwitch({ mode, partial, onChange }) {
 	const baseId = useId();
-	const hintId = `${baseId}-hint`;
-	const option = (value, labelId, disabled = false) => (
-		<>
-			<input
-				type="radio"
-				className="btn-check"
-				name={`${baseId}-mode`}
-				id={`${baseId}-${value}`}
-				autoComplete="off"
-				checked={mode === value}
-				onChange={() => onChange(value)}
-				disabled={disabled}
-				aria-describedby={disabled ? hintId : undefined}
-			/>
-			<label className="btn" htmlFor={`${baseId}-${value}`}>
-				<T id={labelId} />
-			</label>
-		</>
-	);
 	return (
-		<div className="mb-3">
-			<div
-				className="btn-group"
-				role="radiogroup"
-				aria-label={intl.formatMessage({ id: "settings.backup.mode" })}
-			>
-				{option("replace", "settings.backup.mode.replace", partial)}
-				{option("merge", "settings.backup.mode.merge")}
-			</div>
-			{partial ? (
-				<div id={hintId} className="form-hint mt-1">
-					<T id="settings.backup.mode.partial-only" />
-				</div>
-			) : null}
-		</div>
+		<ChoiceGroup
+			name={`${baseId}-mode`}
+			legend={<T id="settings.backup.mode" />}
+			value={mode}
+			onChange={onChange}
+			options={[
+				{ value: "replace", label: <T id="settings.backup.mode.replace" />, disabled: partial },
+				{ value: "merge", label: <T id="settings.backup.mode.merge" /> },
+			]}
+			hint={partial ? <T id="settings.backup.mode.partial-only" /> : undefined}
+		/>
 	);
 }

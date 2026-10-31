@@ -1,17 +1,19 @@
-import cn from "clsx";
 import { useCallback, useId, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	ChoiceField,
 	ErrorAlert,
 	FormSubmit,
 	HookForm,
 	Loading,
 	PASSPHRASE_FIELDS,
-	PasswordInput,
+	PasswordField,
+	SelectField,
 	SwitchField,
+	TextField,
 	TypeTree,
 	useAppForm,
 	useRecheckDependent,
@@ -61,66 +63,6 @@ const FIELD_ORDER = [
 	"keep",
 ];
 
-// the message of a field, while React Hook Form holds one (it shows once the field was left or a save was tried)
-const useFieldError = (name) => useFormState({ name }).errors[name]?.message ?? null;
-
-function InputField({ name, id, labelId, hintId, className, ...inputProps }) {
-	const { register } = useFormContext();
-	const error = useFieldError(name);
-	const hint = hintId ? `${id}-hint` : undefined;
-	return (
-		<div className={className}>
-			<label htmlFor={id} className="form-label">
-				<T id={labelId} />
-			</label>
-			<input
-				{...register(name, { valueAsNumber: inputProps.type === "number" })}
-				{...inputProps}
-				id={id}
-				className={cn("form-control", error && "is-invalid")}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={cn(error && `${id}-error`, hint) || undefined}
-			/>
-			{error ? (
-				<div className="invalid-feedback" id={`${id}-error`}>
-					{error}
-				</div>
-			) : null}
-			{hintId ? (
-				<div className="form-hint" id={hint}>
-					<T id={hintId} />
-				</div>
-			) : null}
-		</div>
-	);
-}
-
-function SelectField({ name, id, labelId, className, registerOptions, children }) {
-	const { register } = useFormContext();
-	const error = useFieldError(name);
-	return (
-		<div className={className}>
-			<label htmlFor={id} className="form-label">
-				<T id={labelId} />
-			</label>
-			<select
-				{...register(name, registerOptions)}
-				id={id}
-				className={cn("form-select", error && "is-invalid")}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={error ? `${id}-error` : undefined}
-			>
-				{children}
-			</select>
-			{error ? (
-				<div className="invalid-feedback" id={`${id}-error`}>
-					{error}
-				</div>
-			) : null}
-		</div>
-	);
-}
-
 // "Next run: Monday, 2 November 2026, 03:00 (Europe/Berlin)", computed with the backend's rules in the server's zone
 function NextRun({ timeZone, lastRunAt }) {
 	const values = useWatch();
@@ -157,7 +99,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 				<SelectField
 					name="frequency"
 					id={`${baseId}-frequency`}
-					labelId="settings.backup.schedule.when"
+					label={<T id="settings.backup.schedule.when" />}
 					className="col-12 col-md-4"
 					// the fields this frequency hides take their messages with them
 					registerOptions={{ onChange: (event) => clearErrors(hiddenTimingFields(event.target.value)) }}
@@ -169,11 +111,12 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 					))}
 				</SelectField>
 				{frequency === "hours" ? (
-					<InputField
+					<TextField
 						name="everyHours"
 						id={`${baseId}-every-hours`}
-						labelId="settings.backup.schedule.every-hours"
+						label={<T id="settings.backup.schedule.every-hours" />}
 						className="col-12 col-md-4"
+						registerOptions={{ valueAsNumber: true }}
 						type="number"
 						min={1}
 						max={24}
@@ -184,7 +127,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 					<SelectField
 						name="weekday"
 						id={`${baseId}-weekday`}
-						labelId="settings.backup.schedule.weekday"
+						label={<T id="settings.backup.schedule.weekday" />}
 						className="col-6 col-md-4"
 					>
 						{WEEKDAYS.map((weekday) => (
@@ -195,11 +138,12 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 					</SelectField>
 				) : null}
 				{frequency === "monthly" ? (
-					<InputField
+					<TextField
 						name="monthDay"
 						id={`${baseId}-month-day`}
-						labelId="settings.backup.schedule.month-day"
+						label={<T id="settings.backup.schedule.month-day" />}
 						className="col-6 col-md-4"
+						registerOptions={{ valueAsNumber: true }}
 						type="number"
 						min={1}
 						max={28}
@@ -207,10 +151,10 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 					/>
 				) : null}
 				{frequency === "hours" ? null : (
-					<InputField
+					<TextField
 						name="time"
 						id={`${baseId}-time`}
-						labelId="settings.backup.schedule.time"
+						label={<T id="settings.backup.schedule.time" />}
 						className={frequency === "daily" ? "col-12 col-md-4" : "col-6 col-md-4"}
 						type="time"
 						required
@@ -222,71 +166,43 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 	);
 }
 
+const PROTECTION_OPTIONS = PROTECTIONS.map((protection) => ({
+	value: protection,
+	label: <T id={`settings.backup.schedule.protection.${protection}`} />,
+	description: <T id={`settings.backup.schedule.protection.${protection}.hint`} />,
+}));
+
+// how the files are protected: described boxes; a choice without a passphrase drops the passphrase messages
 function ProtectionField({ disabled }) {
-	const { register, clearErrors } = useFormContext();
-	const error = useFieldError("protection");
-	const field = register("protection", {
-		onChange: (event) => {
-			if (event.target.value !== "passphrase") clearErrors(PASSPHRASE_FIELDS);
-		},
-	});
+	const { clearErrors } = useFormContext();
 	return (
-		<fieldset className="mb-3">
-			<legend className="form-label">
-				<T id="settings.backup.schedule.protection" />
-			</legend>
-			<div className="form-selectgroup form-selectgroup-boxes d-flex flex-column">
-				{PROTECTIONS.map((protection) => (
-					<label key={protection} className="form-selectgroup-item flex-fill">
-						<input
-							type="radio"
-							{...field}
-							value={protection}
-							className="form-selectgroup-input"
-							disabled={disabled}
-						/>
-						<span className="form-selectgroup-label d-flex align-items-center p-3 text-start">
-							<span className="me-3">
-								<span className="form-selectgroup-check" />
-							</span>
-							<span>
-								<span className="d-block fw-medium">
-									<T id={`settings.backup.schedule.protection.${protection}`} />
-								</span>
-								<span className="d-block text-secondary small">
-									<T id={`settings.backup.schedule.protection.${protection}.hint`} />
-								</span>
-							</span>
-						</span>
-					</label>
-				))}
-			</div>
-			{error ? <div className="invalid-feedback d-block">{error}</div> : null}
-		</fieldset>
+		<ChoiceField
+			name="protection"
+			legend={<T id="settings.backup.schedule.protection" />}
+			variant="boxes"
+			vertical
+			disabled={disabled}
+			options={PROTECTION_OPTIONS}
+			onChange={(protection) => {
+				if (protection !== "passphrase") clearErrors(PASSPHRASE_FIELDS);
+			}}
+		/>
 	);
 }
 
-// a new passphrase re-checks the repeat
-function PassphraseField({ name, id, labelId, hintId }) {
-	const { register } = useFormContext();
+// a new passphrase re-checks the repeat; both are required unless the stored passphrase is kept
+function PassphraseField({ name, id, labelId, hintId, required }) {
 	const recheckRepeat = useRecheckDependent("passphraseRepeat");
-	const error = useFieldError(name);
 	return (
-		<div className="mb-3">
-			<PasswordInput
-				{...register(name, name === "passphrase" ? { onChange: recheckRepeat } : undefined)}
-				id={id}
-				label={<T id={labelId} />}
-				autoComplete="new-password"
-				error={error ?? undefined}
-				aria-describedby={hintId ? `${id}-hint` : undefined}
-			/>
-			{hintId ? (
-				<div className="form-hint" id={`${id}-hint`}>
-					<T id={hintId} />
-				</div>
-			) : null}
-		</div>
+		<PasswordField
+			name={name}
+			id={id}
+			label={<T id={labelId} />}
+			hint={hintId ? <T id={hintId} /> : undefined}
+			required={required}
+			autoComplete="new-password"
+			registerOptions={name === "passphrase" ? { onChange: recheckRepeat } : undefined}
+		/>
 	);
 }
 
@@ -340,11 +256,10 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 			</AppModal.Header>
 			<AppModal.Body>
 				<ErrorAlert onClose={onCloseError}>{errorMsg}</ErrorAlert>
-				<InputField
+				<TextField
 					name="name"
 					id={`${baseId}-name`}
-					labelId="settings.backup.schedule.name"
-					className="mb-3"
+					label={<T id="settings.backup.schedule.name" />}
 					type="text"
 					maxLength={60}
 					autoComplete="off"
@@ -370,6 +285,7 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 								hintId={
 									schedule?.passphraseSet ? "settings.backup.schedule.passphrase.keep" : undefined
 								}
+								required={!schedule?.passphraseSet}
 							/>
 						</div>
 						<div className="col-12 col-md-6">
@@ -377,15 +293,17 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 								name="passphraseRepeat"
 								id={`${baseId}-passphrase-repeat`}
 								labelId="settings.backup.passphrase.repeat"
+								required={!schedule?.passphraseSet}
 							/>
 						</div>
 					</div>
 				) : null}
-				<InputField
+				<TextField
 					name="keep"
 					id={`${baseId}-keep`}
-					labelId="settings.backup.schedule.keep"
-					hintId="settings.backup.schedule.keep.hint"
+					label={<T id="settings.backup.schedule.keep" />}
+					hint={<T id="settings.backup.schedule.keep.hint" />}
+					registerOptions={{ valueAsNumber: true }}
 					type="number"
 					min={1}
 					max={100}

@@ -1,111 +1,74 @@
-import { IconEye, IconEyeOff } from "@tabler/icons-react";
-import { useState } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
+import { ChoiceGroup } from "./ChoiceGroup";
+import { PasswordField, TextField } from "./FormField";
 
 // the rules of these fields are in modules/CertificateForms.js (dnsCredentialValidate), the window's resolver
 
-function ValueInput({ definition, saved }) {
-	const { register } = useFormContext();
-	const name = `fieldValues.${definition.key}`;
-	const error = useFormState({ name }).errors.fieldValues?.[definition.key]?.message ?? null;
-	const [visible, setVisible] = useState(false);
-	const id = `dnsCredentialField-${definition.key}`;
-	const isSecret = definition.type === "secret";
-	const placeholder = saved ? intl.formatMessage({ id: "dns-credentials.saved-keep" }) : definition.placeholder;
-	let inputType = "text";
-	if (isSecret) {
-		inputType = visible ? "text" : "password";
-	} else if (definition.type === "url" || definition.type === "number") {
-		inputType = definition.type;
-	}
+const ENTRY_OPTIONS = [
+	{ value: "fields", label: <T id="dns-credentials.entry.fields" /> },
+	{ value: "ini", label: <T id="dns-credentials.entry.ini" /> },
+];
 
-	return (
-		<div className="mt-3">
-			<label htmlFor={id} className="form-label">
-				{definition.label}
-			</label>
-			<div className={`input-group ${error ? "has-validation" : ""}`}>
-				<input
-					id={id}
-					type={inputType}
-					className={`form-control ${error ? "is-invalid" : ""}`}
-					autoComplete="off"
-					required={!definition.optional && !saved}
-					aria-invalid={error ? "true" : undefined}
-					aria-describedby={error ? `${id}-error` : undefined}
-					placeholder={placeholder}
-					{...register(name)}
-				/>
-				{isSecret ? (
-					<button
-						type="button"
-						className="btn btn-icon"
-						aria-label={intl.formatMessage({ id: "dns-credentials.show-secret" })}
-						title={intl.formatMessage({ id: "dns-credentials.show-secret" })}
-						onClick={() => setVisible(!visible)}
-					>
-						{visible ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-					</button>
-				) : null}
-				{error ? (
-					<div className="invalid-feedback" id={`${id}-error`}>
-						{error}
-					</div>
-				) : null}
-			</div>
-		</div>
-	);
+// one field of the provider: a secret with the eye button, a URL, a number or text; a saved secret may stay empty
+function ValueInput({ definition, saved }) {
+	const props = {
+		name: `fieldValues.${definition.key}`,
+		id: `dnsCredentialField-${definition.key}`,
+		label: definition.label,
+		required: !definition.optional && !saved,
+		autoComplete: "off",
+		placeholder: saved ? intl.formatMessage({ id: "dns-credentials.saved-keep" }) : definition.placeholder,
+	};
+	if (definition.type === "secret") return <PasswordField {...props} />;
+	const type = definition.type === "url" || definition.type === "number" ? definition.type : "text";
+	return <TextField {...props} type={type} />;
 }
 
 // the INI text, required unless one is saved
 function IniInput({ provider, credential }) {
-	const { register, setValue, clearErrors } = useFormContext();
-	const error = useFormState({ name: "ini" }).errors.ini?.message ?? null;
 	return (
-		<div className="mt-3">
-			<label htmlFor="dnsCredentialIni" className="form-label">
-				<T id="dns-credentials.ini" />
-			</label>
-			<textarea
-				id="dnsCredentialIni"
-				className={`form-control font-monospace ${error ? "is-invalid" : ""}`}
-				spellCheck={false}
-				rows={6}
-				required={!credential?.iniSet}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={error ? "dnsCredentialIni-error" : undefined}
-				placeholder={provider.credentials}
-				{...register("ini")}
-			/>
-			{error ? (
-				<div className="invalid-feedback" id="dnsCredentialIni-error">
-					{error}
-				</div>
-			) : null}
-			{credential?.iniSet ? (
-				<small className="text-secondary">
-					<T id="dns-credentials.saved-keep" />
-				</small>
-			) : null}
-			{provider.fields && credential?.iniSet ? (
-				<div>
-					<button
-						type="button"
-						className="btn btn-link btn-sm p-0"
-						onClick={() => {
-							setValue("useIni", false, { shouldDirty: true });
-							clearErrors("ini");
-						}}
-					>
-						<T id="dns-credentials.enter-as-fields" />
-					</button>
-				</div>
-			) : null}
-		</div>
+		<TextField
+			name="ini"
+			id="dnsCredentialIni"
+			as="textarea"
+			label={<T id="dns-credentials.ini" />}
+			required={!credential?.iniSet}
+			hint={credential?.iniSet ? <T id="dns-credentials.saved-keep" /> : undefined}
+			controlClassName="font-monospace"
+			spellCheck={false}
+			rows={6}
+			placeholder={provider.credentials}
+		/>
 	);
 }
 
+// Fields or INI text, for a provider with field definitions; the hidden side's messages go
+function EntryChoice() {
+	const { clearErrors } = useFormContext();
+	const { field } = useController({ name: "useIni" });
+	return (
+		<ChoiceGroup
+			name="useIni"
+			legend={<T id="dns-credentials.entry" />}
+			variant="pills"
+			value={field.value ? "ini" : "fields"}
+			inputRef={field.ref}
+			onBlur={field.onBlur}
+			options={ENTRY_OPTIONS}
+			onChange={(value) => {
+				field.onChange(value === "ini");
+				clearErrors(value === "ini" ? "fieldValues" : "ini");
+			}}
+		/>
+	);
+}
+
+/**
+ * The credential values of a provider (the fields of the form around it): Fields or INI text when the provider has
+ * field definitions, then the INI text or the fields (with the choice of a group when the provider takes one of
+ * several sets)
+ */
 export function DnsCredentialValuesFields({ provider, credential }) {
 	const { setValue, clearErrors } = useFormContext();
 	const [useIni, oneOfGroup] = useWatch({ name: ["useIni", "oneOfGroup"] });
@@ -113,10 +76,15 @@ export function DnsCredentialValuesFields({ provider, credential }) {
 		return null;
 	}
 
-	const showIni = !provider.fields || useIni;
+	const entry = provider.fields ? <EntryChoice /> : null;
 
-	if (showIni) {
-		return <IniInput provider={provider} credential={credential} />;
+	if (!provider.fields || useIni) {
+		return (
+			<>
+				{entry}
+				<IniInput provider={provider} credential={credential} />
+			</>
+		);
 	}
 
 	const savedKeys = new Set((credential?.fields ?? []).filter((f) => f.isSet).map((f) => f.key));
@@ -130,30 +98,24 @@ export function DnsCredentialValuesFields({ provider, credential }) {
 
 	return (
 		<>
+			{entry}
 			{groups.length > 0 ? (
-				<div className="mt-3">
-					{groups.map((group) => (
-						<label key={group} className="form-check">
-							<input
-								type="radio"
-								name="oneOfGroup"
-								className="form-check-input"
-								checked={oneOfGroup === group}
-								onChange={() => {
-									setValue("oneOfGroup", group, { shouldDirty: true });
-									// the other groups' fields are hidden now, so are their messages; the fields
-									// outside any group keep theirs
-									clearErrors(
-										provider.fields
-											.filter((f) => f.group && f.group !== group)
-											.map((f) => `fieldValues.${f.key}`),
-									);
-								}}
-							/>
-							<span className="form-check-label">{groupLabel(group)}</span>
-						</label>
-					))}
-				</div>
+				<ChoiceGroup
+					name="oneOfGroup"
+					legend={<T id="dns-credentials.group" />}
+					value={oneOfGroup}
+					options={groups.map((group) => ({ value: group, label: groupLabel(group) }))}
+					onChange={(group) => {
+						setValue("oneOfGroup", group, { shouldDirty: true });
+						// the other groups' fields are hidden now, so are their messages; the fields outside any
+						// group keep theirs
+						clearErrors(
+							provider.fields
+								.filter((f) => f.group && f.group !== group)
+								.map((f) => `fieldValues.${f.key}`),
+						);
+					}}
+				/>
 			) : null}
 			{visibleFields.map((definition) => (
 				<ValueInput

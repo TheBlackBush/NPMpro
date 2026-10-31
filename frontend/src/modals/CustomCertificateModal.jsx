@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import cn from "clsx";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
@@ -7,9 +8,11 @@ import {
 	AppModal,
 	Button,
 	ErrorAlert,
+	FormField,
 	FormSubmit,
 	HookForm,
 	NoticeAlert,
+	TextField,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
@@ -30,32 +33,24 @@ function FileInput({ name, labelId }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
 	return (
-		<div className="mb-3">
-			<label htmlFor={name} className="form-label">
-				<T id={labelId} />
-			</label>
-			<input
-				ref={field.ref}
-				id={name}
-				name={name}
-				type="file"
-				required
-				autoComplete="off"
-				className={`form-control ${error ? "is-invalid" : ""}`}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={error ? `${name}-error` : undefined}
-				onBlur={field.onBlur}
-				onChange={(event) => {
-					field.onChange(event.currentTarget.files[0] ?? null);
-					void trigger(name);
-				}}
-			/>
-			{error ? (
-				<div className="invalid-feedback" id={`${name}-error`}>
-					{error}
-				</div>
-			) : null}
-		</div>
+		<FormField id={name} label={<T id={labelId} />} required error={error}>
+			{(control) => (
+				<input
+					{...control}
+					ref={field.ref}
+					name={name}
+					type="file"
+					required
+					autoComplete="off"
+					className={cn("form-control", error && "is-invalid")}
+					onBlur={field.onBlur}
+					onChange={(event) => {
+						field.onChange(event.currentTarget.files[0] ?? null);
+						void trigger(name);
+					}}
+				/>
+			)}
+		</FormField>
 	);
 }
 
@@ -70,10 +65,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 		defaultValues: { niceName: cert?.niceName || "", certificate: null, certificateKey: null },
 		validate,
 	});
-	const {
-		register,
-		formState: { errors, isSubmitting },
-	} = methods;
+	const { isSubmitting } = methods.formState;
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
@@ -131,23 +123,14 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 					<NoticeAlert>
 						<T id="certificates.custom.warning" />
 					</NoticeAlert>
-					<div className="mb-3">
-						<label htmlFor="niceName" className="form-label">
-							<T id="column.name" />
-						</label>
-						<input
-							id="niceName"
-							type="text"
-							required
-							autoComplete="off"
-							// Disable name editing in edit mode as we only update files
-							disabled={isEdit}
-							className={`form-control ${errors.niceName ? "is-invalid" : ""}`}
-							{...register("niceName")}
-						/>
-
-						{errors.niceName ? <div className="invalid-feedback">{errors.niceName.message}</div> : null}
-					</div>
+					<TextField
+						name="niceName"
+						label={<T id="column.name" />}
+						autoComplete="off"
+						// the name cannot be changed once created: an edit only uploads new files
+						required={!isEdit}
+						disabled={isEdit}
+					/>
 					<FileInput name="certificate" labelId="certificate.custom-certificate" />
 					{!isMtls && <FileInput name="certificateKey" labelId="certificate.custom-certificate-key" />}
 				</AppModal.Body>

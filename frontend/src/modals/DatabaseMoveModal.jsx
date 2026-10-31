@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
 import { useEffect, useId, useRef, useState } from "react";
 import { getDatabase, getHealth } from "src/api/backend";
-import { ApiErrorContent, AppModal, Button, ErrorAlert } from "src/components";
+import { ApiErrorContent, AppModal, Button, ErrorAlert, FormField } from "src/components";
 import { useDatabaseMove, useStartDatabaseMove } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -274,25 +274,32 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 				<p className="text-secondary">
 					<Summary status={status} target={target} />
 				</p>
-				<label htmlFor={wordId} id={`${wordId}-label`} className="form-label">
-					{intl.formatMessage(
+				<FormField
+					id={wordId}
+					label={intl.formatMessage(
 						{ id: "settings.database.move.confirm" },
 						{ word: <code key="word">{engine}</code> },
 					)}
-				</label>
-				<input
-					id={wordId}
-					ref={wordRef}
-					className="form-control"
-					value={word}
-					onChange={(event) => setWord(event.target.value)}
-					autoComplete="off"
-					autoCapitalize="none"
-					autoCorrect="off"
-					spellCheck={false}
-					// biome-ignore lint/a11y/noAutofocus: the only field of a confirmation window
-					autoFocus
-				/>
+					required
+					className="mb-0"
+				>
+					{(control) => (
+						<input
+							{...control}
+							ref={wordRef}
+							className="form-control"
+							value={word}
+							onChange={(event) => setWord(event.target.value)}
+							required
+							autoComplete="off"
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
+							// biome-ignore lint/a11y/noAutofocus: the only field of a confirmation window
+							autoFocus
+						/>
+					)}
+				</FormField>
 				{error ? (
 					<ErrorAlert className="mt-3 mb-0" onClose={() => setError(null)}>
 						<ApiErrorContent error={error} />

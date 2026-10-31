@@ -7,11 +7,14 @@ import {
 	Button,
 	DnsCredentialValuesFields,
 	ErrorAlert,
+	FormField,
 	FormSubmit,
 	HasPermission,
 	HookForm,
 	Loading,
 	NoticeAlert,
+	selectControlProps,
+	TextField,
 	useAppForm,
 } from "src/components";
 import {
@@ -58,52 +61,44 @@ const emptyCredential = { name: "", provider: "", useIni: false, fieldValues: {}
 function ProviderSelect({ providers, options, locked }) {
 	const { setValue, clearErrors } = useFormContext();
 	const { field, fieldState } = useController({ name: "provider" });
-	const providerError = fieldState.error?.message ?? null;
 	return (
-		<div className="mt-3">
-			<label htmlFor="dnsCredentialProvider" className="form-label">
-				<T id="certificates.dns.provider" />
-			</label>
-			<Select
-				ref={field.ref}
-				unstyled
-				classNames={selectClassNames}
-				name="provider"
-				inputId="dnsCredentialProvider"
-				aria-invalid={providerError ? "true" : undefined}
-				aria-describedby={providerError ? "dnsCredentialProvider-error" : undefined}
-				onBlur={field.onBlur}
-				closeMenuOnSelect={true}
-				isClearable={false}
-				isDisabled={locked}
-				placeholder={intl.formatMessage({
-					id: "certificates.dns.provider.placeholder",
-				})}
-				isSearchable
-				required
-				value={options?.find((o) => o.value === field.value) ?? null}
-				options={options}
-				onChange={(newValue) => {
-					const next = providers.find((p) => p.id === newValue?.value);
-					field.onChange(newValue?.value);
-					setValue("fieldValues", credentialFieldValues(next, null), { shouldDirty: true });
-					setValue("ini", "", { shouldDirty: true });
-					setValue("useIni", !next?.fields, { shouldDirty: true });
-					setValue("oneOfGroup", defaultGroup(next, null), { shouldDirty: true });
-					clearErrors(["fieldValues", "ini"]);
-				}}
-			/>
-			{providerError ? (
-				<div className="invalid-feedback d-block" id="dnsCredentialProvider-error">
-					{providerError}
-				</div>
-			) : null}
-			{locked ? (
-				<small className="text-secondary">
-					<T id="dns-credentials.provider-locked" />
-				</small>
-			) : null}
-		</div>
+		<FormField
+			id="dnsCredentialProvider"
+			label={<T id="certificates.dns.provider" />}
+			required
+			hint={locked ? <T id="dns-credentials.provider-locked" /> : undefined}
+			error={fieldState.error?.message ?? null}
+		>
+			{(control) => (
+				<Select
+					{...selectControlProps(control)}
+					ref={field.ref}
+					unstyled
+					classNames={selectClassNames}
+					name="provider"
+					onBlur={field.onBlur}
+					closeMenuOnSelect={true}
+					isClearable={false}
+					isDisabled={locked}
+					placeholder={intl.formatMessage({
+						id: "certificates.dns.provider.placeholder",
+					})}
+					isSearchable
+					required
+					value={options?.find((o) => o.value === field.value) ?? null}
+					options={options}
+					onChange={(newValue) => {
+						const next = providers.find((p) => p.id === newValue?.value);
+						field.onChange(newValue?.value);
+						setValue("fieldValues", credentialFieldValues(next, null), { shouldDirty: true });
+						setValue("ini", "", { shouldDirty: true });
+						setValue("useIni", !next?.fields, { shouldDirty: true });
+						setValue("oneOfGroup", defaultGroup(next, null), { shouldDirty: true });
+						clearErrors(["fieldValues", "ini"]);
+					}}
+				/>
+			)}
+		</FormField>
 	);
 }
 
@@ -151,10 +146,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 		validate: (values) =>
 			dnsCredentialValidate(validations, { providers: providers ?? [], credential: data })(values),
 	});
-	const {
-		register,
-		formState: { errors, isSubmitting },
-	} = methods;
+	const { isSubmitting } = methods.formState;
 
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
@@ -190,20 +182,13 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 								<T id="dns-credentials.decrypt-error" />
 							</NoticeAlert>
 						) : null}
-						<div>
-							<label htmlFor="dnsCredentialName" className="form-label">
-								<T id="dns-credentials.name" />
-							</label>
-							<input
-								id="dnsCredentialName"
-								type="text"
-								required
-								autoComplete="off"
-								className={`form-control ${errors.name ? "is-invalid" : ""}`}
-								{...register("name")}
-							/>
-							{errors.name ? <div className="invalid-feedback">{errors.name.message}</div> : null}
-						</div>
+						<TextField
+							name="name"
+							id="dnsCredentialName"
+							label={<T id="dns-credentials.name" />}
+							autoComplete="off"
+							required
+						/>
 						<ProviderSelect providers={providers} options={options} locked={locked} />
 						<CredentialValues providers={providers} data={data} />
 					</AppModal.Body>

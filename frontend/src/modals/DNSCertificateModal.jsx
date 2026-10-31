@@ -13,6 +13,7 @@ import {
 	HookForm,
 	RequestProgress,
 	SwitchField,
+	SwitchList,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
@@ -75,13 +76,13 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					</ErrorAlert>
 					<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 					<DNSProviderFields />
-					<div className="divide-y">
+					<SwitchList>
 						<SwitchField
 							id="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
 							{...methods.register("npmproReuseKey")}
 						/>
-					</div>
+					</SwitchList>
 					<RequestProgress running={isSubmitting} propagationSeconds={propagationSeconds} />
 				</AppModal.Body>
 				<AppModal.Footer>
