@@ -3,6 +3,7 @@ import { IconDots } from "@tabler/icons-react";
 import cn from "clsx";
 import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormState } from "react-hook-form";
+import { useModalHide } from "src/components/AppModal";
 import { intl, T } from "src/locale";
 import { errorCountOf, nextTabId, tabErrorCounts, tabStopId } from "src/modules/ModalTabs";
 import { useFormTabs } from "./HookForm";
@@ -50,10 +51,19 @@ function syncMenu(menu, nav) {
 	}
 }
 
-// a change inside a tab button (label, marker, badge, open, disabled), not in the More menu or on the items
+// the element a mutation record is about
+const elementOf = (record) =>
+	record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+
+// a change that can alter the width of the row, so the tabs are measured again: inside a tab button (label, marker,
+// badge, disabled) or in the content of the More toggle (its badge), not in the More menu, on the items, or the class
+// of a tab button (opening another tab changes no width)
 const isTabChange = (record, menu) => {
-	const element = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
-	return Boolean(element) && !menu.contains(element) && element.closest('[role="tab"]') !== null;
+	const element = elementOf(record);
+	if (!element || menu.contains(element)) return false;
+	if (element.closest(".nav-overflow-toggle") !== null) return record.type !== "attributes";
+	if (element.closest('[role="tab"]') === null) return false;
+	return !(record.type === "attributes" && record.attributeName === "class" && element.matches('[role="tab"]'));
 };
 
 /**
@@ -100,6 +110,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 	const [moved, setMoved] = useState([]);
 	const { errors } = useFormState();
 	const registry = useFormTabs();
+	const hide = useModalHide();
 	const wrapperRef = useRef(null);
 	const navRef = useRef(null);
 	const menuRef = useRef(null);
@@ -213,6 +224,15 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 		toggleRef.current.focus();
 	};
 
+	// Bootstrap's dropdown prevents the default of every Escape on its toggle, even with the menu closed, and the window
+	// then ignores the key. With the menu closed (the focus goes back to More after a pick) Escape closes the window
+	// (when it can close); with the menu open Bootstrap closes only the menu
+	const onToggleKeyDown = (event) => {
+		if (event.key !== "Escape" || event.currentTarget.getAttribute("aria-expanded") !== "false") return;
+		event.stopPropagation();
+		hide?.();
+	};
+
 	return (
 		<PaneContext.Provider value={pane}>
 			<div ref={wrapperRef} className="nav-overflow mb-3">
@@ -247,6 +267,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 							className="nav-link nav-overflow-toggle"
 							data-bs-toggle="dropdown"
 							aria-expanded="false"
+							onKeyDown={onToggleKeyDown}
 							aria-describedby={moreCount > 0 ? ids.errors("more") : undefined}
 						>
 							<span className="nav-overflow-icon">
