@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Esta conta está desativada.",
 	"login.oidc-sign-in": "Iniciar sessão com {label}",
 	"login.title": "Iniciar sessão na sua conta",
+	"login.totp-backup-description": "Introduza um dos seus códigos de segurança",
 	"login.totp-code": "Código de Verificação",
 	"login.totp-description": "Introduza o código da sua aplicação de autenticação",
 	"login.totp-title": "MFA",

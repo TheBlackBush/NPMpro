@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "此账户已被禁用。",
 	"login.oidc-sign-in": "使用 {label} 登录",
 	"login.title": "登录您的账户",
+	"login.totp-backup-description": "请输入一个备用验证码",
 	"login.totp-code": "验证码",
 	"login.totp-description": "请输入身份验证器应用中的验证码",
 	"login.totp-title": "MFA",

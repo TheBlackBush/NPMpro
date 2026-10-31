@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Dieses Konto ist deaktiviert.",
 	"login.oidc-sign-in": "Mit {label} anmelden",
 	"login.title": "Anmelden",
+	"login.totp-backup-description": "Gib einen deiner Backup-Codes ein",
 	"login.totp-code": "Verifizierungscode",
 	"login.totp-description": "Gib den Code aus deiner Authenticator-App ein",
 	"login.totp-title": "MFA",

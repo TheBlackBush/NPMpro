@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "See konto on keelatud.",
 	"login.oidc-sign-in": "Logi sisse: {label}",
 	"login.title": "Logi kontole sisse",
+	"login.totp-backup-description": "Sisesta üks oma varukoodidest",
 	"login.totp-code": "Kinnituskood",
 	"login.totp-description": "Sisesta kood autentimisäpist",
 	"login.totp-title": "MFA",

@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Akun ini dinonaktifkan.",
 	"login.oidc-sign-in": "Masuk dengan {label}",
 	"login.title": "Masuk ke akun Anda",
+	"login.totp-backup-description": "Masukkan salah satu kode cadangan Anda",
 	"login.totp-code": "Kode Verifikasi",
 	"login.totp-description": "Masukkan kode dari aplikasi autentikator Anda",
 	"login.totp-title": "MFA",

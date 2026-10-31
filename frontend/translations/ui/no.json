@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Denne kontoen er deaktivert.",
 	"login.oidc-sign-in": "Logg på med {label}",
 	"login.title": "Logg på kontoen din",
+	"login.totp-backup-description": "Skriv inn en av reservekodene dine",
 	"login.totp-code": "Verifikasjonskode",
 	"login.totp-description": "Skriv inn koden fra autentiseringsappen din",
 	"login.totp-title": "MFA",

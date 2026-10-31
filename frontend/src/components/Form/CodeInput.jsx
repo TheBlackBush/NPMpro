@@ -128,22 +128,24 @@ function CodeInput({
 	return (
 		<FormField id={id} label={label} hint={hint} error={error} className={className}>
 			{(control) => (
-				<div ref={wrapperRef} className={cn("otp", type === "alphanumeric" && "text-uppercase")}>
-					<input
-						{...control}
-						ref={field.ref}
-						name={field.name}
-						type="text"
-						defaultValue={field.value}
-						onBlur={field.onBlur}
-						onPaste={onPaste}
-						inputMode={type === "numeric" ? "numeric" : "text"}
-						autoComplete={type === "numeric" ? "one-time-code" : "off"}
-						autoCapitalize={type === "numeric" ? undefined : "characters"}
-						spellCheck={type === "numeric" ? undefined : false}
-						maxLength={length}
-						required
-					/>
+				<div className="d-flex justify-content-center">
+					<div ref={wrapperRef} className={cn("otp", type === "alphanumeric" && "text-uppercase")}>
+						<input
+							{...control}
+							ref={field.ref}
+							name={field.name}
+							type="text"
+							defaultValue={field.value}
+							onBlur={field.onBlur}
+							onPaste={onPaste}
+							inputMode={type === "numeric" ? "numeric" : "text"}
+							autoComplete={type === "numeric" ? "one-time-code" : "off"}
+							autoCapitalize={type === "numeric" ? undefined : "characters"}
+							spellCheck={type === "numeric" ? undefined : false}
+							maxLength={length}
+							required
+						/>
+					</div>
 				</div>
 			)}
 		</FormField>

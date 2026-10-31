@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Tento účet je deaktivovaný.",
 	"login.oidc-sign-in": "Prihlásiť sa cez {label}",
 	"login.title": "Prihláste sa do svojho účtu",
+	"login.totp-backup-description": "Vložte jeden zo svojich záložných kódov",
 	"login.totp-code": "Overovací kód",
 	"login.totp-description": "Vložte kód z vašej overovacej aplikácie",
 	"login.totp-title": "MFA",

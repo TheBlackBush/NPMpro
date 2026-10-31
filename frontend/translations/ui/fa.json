@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "این حساب غیرفعال است.",
 	"login.oidc-sign-in": "ورود با {label}",
 	"login.title": "ورود به حساب کاربری",
+	"login.totp-backup-description": "یکی از کدهای پشتیبان خود را وارد کنید",
 	"login.totp-code": "کد تأیید",
 	"login.totp-description": "کد را از اپلیکیشن احراز هویت خود وارد کنید",
 	"login.totp-title": "MFA",

@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Tá an cuntas seo díchumasaithe.",
 	"login.oidc-sign-in": "Logáil isteach le {label}",
 	"login.title": "Logáil isteach i do chuntas",
+	"login.totp-backup-description": "Cuir isteach ceann de do chóid chúltaca",
 	"login.totp-code": "Cód Fíoraithe",
 	"login.totp-description": "Cuir isteach an cód ó d'aip fíordheimhnithe",
 	"login.totp-title": "MFA",

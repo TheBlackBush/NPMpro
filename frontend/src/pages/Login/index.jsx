@@ -30,10 +30,11 @@ const emailHint = (value, touched) => (touched && value.trim() !== "" ? (checkEm
 const CODE_FIELDS = ["code", "backupCode", "useBackup"];
 
 /**
- * The code (the six boxes, or a backup code) and the buttons; Verify waits for a complete code. A refused code
+ * The title, the line that says which code to enter (the app's, or one of the backup codes), the refusal, the code
+ * (the six boxes, or a backup code) and the buttons; Verify waits for a complete code. A refused code
  * empties its field and puts the focus back in it.
  */
-function TotpCodeForm({ onSubmit }) {
+function TotpCodeForm({ onSubmit, error }) {
 	const { cancelTotp } = useAuthState();
 	const methods = useAppForm({ defaultValues: CODE_VALUES, keepEdits: false });
 	const { isSubmitting } = methods.formState;
@@ -49,6 +50,13 @@ function TotpCodeForm({ onSubmit }) {
 	};
 	return (
 		<HookForm methods={methods} onSubmit={submit}>
+			<h2 className="h2 text-center mb-4">
+				<T id="login.totp-title" />
+			</h2>
+			<p className="text-secondary text-center mb-4">
+				<T id={useBackup ? "login.totp-backup-description" : "login.totp-description"} />
+			</p>
+			{error && <ErrorAlert error={error} />}
 			<CodeEntry idPrefix="login-totp" label={<T id="login.totp-code" />} allowBackup />
 			<div className="form-footer d-flex gap-2 align-items-start">
 				<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
@@ -84,18 +92,7 @@ function TotpForm() {
 		}
 	};
 
-	return (
-		<>
-			<h2 className="h2 text-center mb-4">
-				<T id="login.totp-title" />
-			</h2>
-			<p className="text-secondary text-center mb-4">
-				<T id="login.totp-description" />
-			</p>
-			{formErr && <ErrorAlert error={formErr} />}
-			<TotpCodeForm onSubmit={onSubmit} />
-		</>
-	);
+	return <TotpCodeForm onSubmit={onSubmit} error={formErr} />;
 }
 
 const redirectToOIDC = () => {

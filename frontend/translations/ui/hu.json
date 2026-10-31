@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Ez a fiók le van tiltva.",
 	"login.oidc-sign-in": "Bejelentkezés ezzel: {label}",
 	"login.title": "Jelentkezzen be a fiókjába",
+	"login.totp-backup-description": "Adja meg az egyik biztonsági mentési kódját",
 	"login.totp-code": "Ellenőrző kód",
 	"login.totp-description": "Adja meg a kódot a hitelesítő alkalmazásából",
 	"login.totp-title": "MFA",

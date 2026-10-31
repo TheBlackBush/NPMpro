@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "このアカウントは無効化されています。",
 	"login.oidc-sign-in": "{label} でサインイン",
 	"login.title": "アカウントにログイン",
+	"login.totp-backup-description": "バックアップコードのいずれかを入力してください",
 	"login.totp-code": "確認コード",
 	"login.totp-description": "認証アプリのコードを入力してください",
 	"login.totp-title": "多要素認証",

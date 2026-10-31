@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Bu hesap devre dışı.",
 	"login.oidc-sign-in": "{label} ile oturum aç",
 	"login.title": "Hesabınıza giriş yapın",
+	"login.totp-backup-description": "Yedek kodlarınızdan birini girin",
 	"login.totp-code": "Doğrulama Kodu",
 	"login.totp-description": "Kimlik doğrulama uygulamanızdaki kodu girin",
 	"login.totp-title": "MFA",

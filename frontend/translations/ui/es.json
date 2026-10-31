@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Esta cuenta está deshabilitada.",
 	"login.oidc-sign-in": "Iniciar sesión con {label}",
 	"login.title": "Inicia sesión en tu cuenta",
+	"login.totp-backup-description": "Introduce uno de tus códigos de respaldo",
 	"login.totp-code": "Código de verificación",
 	"login.totp-description": "Introduce el código de tu aplicación de autenticación",
 	"login.totp-title": "Autenticación multifactor",

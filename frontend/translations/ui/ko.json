@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "이 계정은 비활성화되었습니다.",
 	"login.oidc-sign-in": "{label}(으)로 로그인",
 	"login.title": "로그인",
+	"login.totp-backup-description": "백업 코드 중 하나를 입력하세요",
 	"login.totp-code": "인증 코드",
 	"login.totp-description": "인증 앱의 코드를 입력하세요",
 	"login.totp-title": "다단계 인증",

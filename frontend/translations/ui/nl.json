@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Dit account is uitgeschakeld.",
 	"login.oidc-sign-in": "Inloggen met {label}",
 	"login.title": "Log in op je account",
+	"login.totp-backup-description": "Voer een van je back-upcodes in",
 	"login.totp-code": "Verificatiecode",
 	"login.totp-description": "Voer de code in vanuit je Authenticator-app",
 	"login.totp-title": "MFA",

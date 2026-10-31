@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Този акаунт е деактивиран.",
 	"login.oidc-sign-in": "Вход с {label}",
 	"login.title": "Вход в акаунта",
+	"login.totp-backup-description": "Въведете един от резервните си кодове",
 	"login.totp-code": "Код за потвърждение",
 	"login.totp-description": "Въведете кода от приложението си за удостоверяване",
 	"login.totp-title": "MFA",

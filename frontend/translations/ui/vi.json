@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Tài khoản này đã bị vô hiệu hóa.",
 	"login.oidc-sign-in": "Đăng nhập bằng {label}",
 	"login.title": "Đăng nhập vào tài khoản của bạn",
+	"login.totp-backup-description": "Nhập một trong các mã dự phòng của bạn",
 	"login.totp-code": "Mã xác minh",
 	"login.totp-description": "Nhập mã từ ứng dụng xác thực của bạn",
 	"login.totp-title": "Xác thực đa yếu tố (MFA)",

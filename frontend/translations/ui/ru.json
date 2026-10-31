@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Эта учётная запись выключена.",
 	"login.oidc-sign-in": "Войти через {label}",
 	"login.title": "Авторизация",
+	"login.totp-backup-description": "Введите один из резервных кодов",
 	"login.totp-code": "Код проверки",
 	"login.totp-description": "Введите код из приложения для аутентификации",
 	"login.totp-title": "MFA",

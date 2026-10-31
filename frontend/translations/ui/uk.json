@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Цей обліковий запис вимкнено.",
 	"login.oidc-sign-in": "Увійти через {label}",
 	"login.title": "Авторизація",
+	"login.totp-backup-description": "Введіть один зі своїх резервних кодів",
 	"login.totp-code": "Код підтвердження",
 	"login.totp-description": "Введіть код із застосунку-автентифікатора",
 	"login.totp-title": "MFA",

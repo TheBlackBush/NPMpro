@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Bu hesab deaktiv edilib.",
 	"login.oidc-sign-in": "{label} ilə daxil ol",
 	"login.title": "Hesabınıza daxil olun",
+	"login.totp-backup-description": "Ehtiyat kodlarınızdan birini daxil edin",
 	"login.totp-code": "Doğrulama kodu",
 	"login.totp-description": "Doğrulama tətbiqinizdəki kodu daxil edin",
 	"login.totp-title": "MFA",

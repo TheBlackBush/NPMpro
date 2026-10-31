@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "To konto jest wyłączone.",
 	"login.oidc-sign-in": "Zaloguj się przez {label}",
 	"login.title": "Zaloguj się na swoje konto",
+	"login.totp-backup-description": "Wpisz jeden ze swoich kodów zapasowych",
 	"login.totp-code": "Kod weryfikacyjny",
 	"login.totp-description": "Wpisz kod z aplikacji uwierzytelniającej",
 	"login.totp-title": "MFA",

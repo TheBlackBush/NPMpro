@@ -424,6 +424,7 @@
 	"login.oidc-error.user_disabled": "Questo account è disabilitato.",
 	"login.oidc-sign-in": "Accedi con {label}",
 	"login.title": "Accedi al tuo account",
+	"login.totp-backup-description": "Inserisci uno dei tuoi codici di backup",
 	"login.totp-code": "Codice di Verifica",
 	"login.totp-description": "Inserisci il codice della tua app di autenticazione",
 	"login.totp-title": "MFA",
