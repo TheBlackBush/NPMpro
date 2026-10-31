@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
+import { fieldPaths } from "./HookForm.js";
 import {
 	CERTIFICATE_REQUEST_DEFAULTS,
+	DEAD_HOST_TABS,
 	deadHostDefaults,
 	deadHostValidate,
 	domainNamesOptions,
@@ -11,15 +13,18 @@ import {
 	forwardingChanges,
 	hiddenTlsFields,
 	isProxyTlsPossible,
+	REDIRECTION_HOST_TABS,
 	redirectionHostDefaults,
 	redirectionHostValidate,
 	requestValues,
+	STREAM_TABS,
 	streamDefaults,
 	streamPayload,
 	streamValidate,
 	tlsChanges,
 	tlsQueriesSettled,
 } from "./HostForms.js";
+import { tabOfPath } from "./ModalTabs.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
@@ -198,6 +203,31 @@ it("starts every window with complete values in the window's order", () => {
 		"npmproDnsCredentialId",
 		"npmproPropagationSeconds",
 	]);
+});
+
+// the fields of the starting values that sit on no tab or on more than one
+const misplacedFields = (tabs, values) =>
+	fieldPaths(values).filter((path) => tabs.filter((tab) => tabOfPath([tab], path) !== null).length !== 1);
+
+it("puts every field of the redirection host, 404 host and stream windows on exactly one tab, Advanced last", () => {
+	assert.deepEqual(misplacedFields(REDIRECTION_HOST_TABS, redirectionHostDefaults(newRedirection)), []);
+	assert.deepEqual(misplacedFields(DEAD_HOST_TABS, deadHostDefaults(newRedirection)), []);
+	assert.deepEqual(misplacedFields(STREAM_TABS, streamDefaults(newStream)), []);
+	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
+		assert.deepEqual(
+			tabs.map((tab) => [tab.id, tab.labelId, Boolean(tab.end)]),
+			[
+				["details", "column.details", false],
+				["tls", "column.ssl", false],
+				["advanced", "domains.advanced", true],
+			],
+		);
+	}
+	// a stream's domain names belong to its requested certificate, a redirection host's to its details
+	assert.equal(tabOfPath(STREAM_TABS, "domainNames"), "tls");
+	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "domainNames"), "details");
+	assert.equal(tabOfPath(STREAM_TABS, "npmproAdvancedConfig"), "advanced");
+	assert.equal(tabOfPath(DEAD_HOST_TABS, "npmproDnsCredentialId"), "tls");
 });
 
 it("sets what a certificate choice turns off, as the Formik certificate field did", () => {

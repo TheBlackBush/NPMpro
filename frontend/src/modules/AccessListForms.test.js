@@ -3,6 +3,7 @@ import { it } from "node:test";
 import { createIntl } from "react-intl";
 import en from "../../translations/ui/en.json" with { type: "json" };
 import {
+	ACCESS_LIST_TABS,
 	accessListDefaults,
 	accessListPayload,
 	accessListValidate,
@@ -13,6 +14,8 @@ import {
 	userErrors,
 	userRows,
 } from "./AccessListForms.js";
+import { fieldPaths } from "./HookForm.js";
+import { tabOfPath } from "./ModalTabs.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
@@ -178,4 +181,22 @@ it("sends the saved rules of a list saved without the all rule when the rules we
 	const changedBack = [{ ...values.clients[0] }, blankRule(), { directive: "deny", address: "all" }];
 	assert.deepEqual(accessListPayload({ ...values, clients: changedBack }, saved).clients, saved);
 	assert.deepEqual(accessListPayload(values, saved).clients, saved);
+});
+
+it("puts every field of the access list window on exactly one tab, the message asking for a rule on none", () => {
+	const misplaced = fieldPaths(accessListDefaults(savedList)).filter(
+		(path) => ACCESS_LIST_TABS.filter((tab) => tabOfPath([tab], path) !== null).length !== 1,
+	);
+	assert.deepEqual(misplaced, []);
+	assert.deepEqual(
+		ACCESS_LIST_TABS.map((tab) => tab.id),
+		["details", "auth", "rules"],
+	);
+	assert.equal(
+		ACCESS_LIST_TABS.some((tab) => tab.end),
+		false,
+	);
+	assert.equal(tabOfPath(ACCESS_LIST_TABS, "items[0].password"), "auth");
+	assert.equal(tabOfPath(ACCESS_LIST_TABS, "clients[1].address"), "rules");
+	assert.equal(tabOfPath(ACCESS_LIST_TABS, "accessRules"), null);
 });

@@ -27,6 +27,31 @@ export const CERTIFICATE_REQUEST_DEFAULTS = Object.freeze({
 	npmproPropagationSeconds: 0,
 });
 
+/**
+ * The fields of the TLS tab of a host window (SSLCertificateField and SSLOptionsFields); a stream adds its domain
+ * names, which belong to a requested certificate
+ */
+export const TLS_TAB_FIELDS = Object.freeze([
+	"certificateId",
+	"npmproMtlsCertificateId",
+	"npmproMtlsVerifyClientOptional",
+	"npmproMtlsBypassAuthRequest",
+	"sslForced",
+	"npmproHttp3Support",
+	"hstsEnabled",
+	"hstsSubdomains",
+	...Object.keys(CERTIFICATE_REQUEST_DEFAULTS),
+]);
+
+/**
+ * The Advanced tab of a host window, on the right: the raw nginx config and the directory
+ *
+ * @param   {string} config  the field of the nginx config
+ * @returns {Object}
+ */
+export const advancedTab = (config) =>
+	Object.freeze({ id: "advanced", labelId: "domains.advanced", fields: [config, "npmproDirectory"], end: true });
+
 // the DNS challenge box: provider, credential, propagation time
 const DNS_FIELDS = ["npmproDnsProvider", "npmproDnsCredentialId", "npmproPropagationSeconds"];
 
@@ -204,6 +229,19 @@ export const redirectionHostDefaults = (data) => ({
 });
 
 /**
+ * The tabs of the redirection host window (ModalTabs)
+ */
+export const REDIRECTION_HOST_TABS = Object.freeze([
+	{
+		id: "details",
+		labelId: "column.details",
+		fields: ["domainNames", "forwardScheme", "forwardDomainName", "forwardHttpCode", "preservePath"],
+	},
+	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
+	advancedTab("advancedConfig"),
+]);
+
+/**
  * Redirection host: the domain names, the forward domain (required, at most 253, the backend's host rule), the TLS tab
  */
 export const redirectionHostValidate = (rules) =>
@@ -232,6 +270,15 @@ export const deadHostDefaults = (data) => ({
 	advancedConfig: data.advancedConfig,
 	npmproDirectory: data.npmproDirectory,
 });
+
+/**
+ * The tabs of the 404 host window (ModalTabs)
+ */
+export const DEAD_HOST_TABS = Object.freeze([
+	{ id: "details", labelId: "column.details", fields: ["domainNames"] },
+	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
+	advancedTab("advancedConfig"),
+]);
 
 /**
  * 404 host: the domain names and the TLS tab
@@ -269,6 +316,28 @@ export const streamDefaults = (data) => ({
 	npmproAdvancedConfig: data.npmproAdvancedConfig,
 	npmproDirectory: data.npmproDirectory,
 });
+
+/**
+ * The tabs of the stream window (ModalTabs); the domain names of a requested certificate sit on the TLS tab
+ */
+export const STREAM_TABS = Object.freeze([
+	{
+		id: "details",
+		labelId: "column.details",
+		fields: [
+			"incomingPort",
+			"npmproDescription",
+			"forwardingHost",
+			"forwardingPort",
+			"tcpForwarding",
+			"udpForwarding",
+			"npmproProxyTls",
+			"npmproProxyProtocolForwarding",
+		],
+	},
+	{ id: "tls", labelId: "column.ssl", fields: ["domainNames", ...TLS_TAB_FIELDS] },
+	advancedTab("npmproAdvancedConfig"),
+]);
 
 /**
  * Stream: the incoming port (a port or a range), the description (at most 255), the forward host, the forward port
