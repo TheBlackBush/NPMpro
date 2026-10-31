@@ -48,8 +48,8 @@ function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
 /**
  * The TLS options of a host window, under its certificate (SSLCertificateField): the mTLS CA certificate select, the
  * client certificate switches (mTLS), the HTTPS options (HTTP hosts) and, while a new certificate is requested, its
- * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in two columns from the md
- * breakpoint, one on phones. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
+ * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in one
+ * column, divided by lines. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
  * says why in its hint.
  */
 export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
@@ -65,7 +65,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 		<>
 			<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
 			<FormSection legend={<T id="tls.section.mtls" />} className={lastSection === "mtls" ? "mb-0" : undefined}>
-				<SwitchList columns={2}>
+				<SwitchList>
 					<TlsSwitch
 						name="npmproMtlsVerifyClientOptional"
 						label={<T id="domains.mtls-verify-client-optional" />}
@@ -88,7 +88,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 					legend={<T id="tls.section.https" />}
 					className={lastSection === "https" ? "mb-0" : undefined}
 				>
-					<SwitchList columns={2}>
+					<SwitchList>
 						<TlsSwitch
 							name="sslForced"
 							label={<T id="domains.force-ssl" />}
@@ -118,7 +118,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 			) : null}
 			{newCertificate ? (
 				<FormSection legend={<T id="certificates.request.title" />} className="mb-0">
-					<SwitchList columns={2}>
+					<SwitchList>
 						<TlsSwitch
 							name="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
