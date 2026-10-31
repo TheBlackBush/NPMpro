@@ -55,14 +55,20 @@ function syncMenu(menu, nav) {
 const elementOf = (record) =>
 	record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
 
-// a change that can alter the width of the row, so the tabs are measured again: inside a tab button (label, marker,
-// badge, disabled) or in the content of the More toggle (its badge), not in the More menu, on the items, or the class
-// of a tab button (opening another tab changes no width)
-const isTabChange = (record, menu) => {
+// a change inside a tab button (label, marker, badge, disabled, the open tab's class): the More menu copies it
+const touchesTab = (record, menu) => {
+	const element = elementOf(record);
+	return Boolean(element) && !menu.contains(element) && element.closest('[role="tab"]') !== null;
+};
+
+// a change that can alter the width of the row, so the tabs are measured again: inside a tab button or in the content
+// of the More toggle (its badge), not in the More menu, on the items, or the class of a tab button (opening another tab
+// changes no width)
+const changesWidth = (record, menu) => {
 	const element = elementOf(record);
 	if (!element || menu.contains(element)) return false;
 	if (element.closest(".nav-overflow-toggle") !== null) return record.type !== "attributes";
-	if (element.closest('[role="tab"]') === null) return false;
+	if (!touchesTab(record, menu)) return false;
 	return !(record.type === "attributes" && record.attributeName === "class" && element.matches('[role="tab"]'));
 };
 
@@ -183,10 +189,8 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 		};
 		const onOverflow = () => syncMenu(menu, nav);
 		const observer = new MutationObserver((records) => {
-			if (records.some((record) => isTabChange(record, menu))) {
-				overflow.update();
-				syncMenu(menu, nav);
-			}
+			if (records.some((record) => changesWidth(record, menu))) overflow.update();
+			if (records.some((record) => touchesTab(record, menu))) syncMenu(menu, nav);
 			readMoved();
 		});
 		wrapper.addEventListener("overflow.bs.navoverflow", onOverflow);
