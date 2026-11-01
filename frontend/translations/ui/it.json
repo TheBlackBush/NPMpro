@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Predefinita",
 	"settings.database.source.env": "Ambiente",
 	"settings.database.source.file": "File delle impostazioni del database",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Usa TLS",
 	"settings.database.ssl.reject-unauthorized": "Verifica il certificato del server",
 	"settings.database.ssl.verify-identity": "Verifica il nome del server",
 	"settings.database.step.backup": "Backup di sicurezza",

@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Varsayılan",
 	"settings.database.source.env": "Ortam",
 	"settings.database.source.file": "Veritabanı ayarları dosyası",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "TLS kullan",
 	"settings.database.ssl.reject-unauthorized": "Sunucu sertifikasını kontrol et",
 	"settings.database.ssl.verify-identity": "Sunucu adını kontrol et",
 	"settings.database.step.backup": "Güvenlik yedeği",

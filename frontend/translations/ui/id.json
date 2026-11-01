@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Default",
 	"settings.database.source.env": "Lingkungan",
 	"settings.database.source.file": "File pengaturan database",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Gunakan TLS",
 	"settings.database.ssl.reject-unauthorized": "Periksa sertifikat server",
 	"settings.database.ssl.verify-identity": "Periksa nama server",
 	"settings.database.step.backup": "Backup pengaman",

@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "По умолчанию",
 	"settings.database.source.env": "Окружение",
 	"settings.database.source.file": "Файл настроек базы данных",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Использовать TLS",
 	"settings.database.ssl.reject-unauthorized": "Проверять сертификат сервера",
 	"settings.database.ssl.verify-identity": "Проверять имя сервера",
 	"settings.database.step.backup": "Страховочная резервная копия",

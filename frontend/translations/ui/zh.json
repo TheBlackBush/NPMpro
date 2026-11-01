@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "默认",
 	"settings.database.source.env": "环境变量",
 	"settings.database.source.file": "数据库设置文件",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "使用 TLS",
 	"settings.database.ssl.reject-unauthorized": "检查服务器证书",
 	"settings.database.ssl.verify-identity": "检查服务器名称",
 	"settings.database.step.backup": "安全备份",

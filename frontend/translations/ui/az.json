@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Standart",
 	"settings.database.source.env": "Mühit",
 	"settings.database.source.file": "Verilənlər bazası parametrləri faylı",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "TLS istifadə et",
 	"settings.database.ssl.reject-unauthorized": "Server sertifikatını yoxla",
 	"settings.database.ssl.verify-identity": "Server adını yoxla",
 	"settings.database.step.backup": "Təhlükəsizlik ehtiyat nüsxəsi",

@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Standard",
 	"settings.database.source.env": "Miljø",
 	"settings.database.source.file": "Fil med databaseinnstillinger",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Bruk TLS",
 	"settings.database.ssl.reject-unauthorized": "Kontroller serversertifikatet",
 	"settings.database.ssl.verify-identity": "Kontroller servernavnet",
 	"settings.database.step.backup": "Sikkerhetskopi før flytting",

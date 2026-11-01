@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "デフォルト",
 	"settings.database.source.env": "環境変数",
 	"settings.database.source.file": "データベース設定ファイル",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "TLS を使用",
 	"settings.database.ssl.reject-unauthorized": "サーバー証明書を確認",
 	"settings.database.ssl.verify-identity": "サーバー名を確認",
 	"settings.database.step.backup": "安全用バックアップ",

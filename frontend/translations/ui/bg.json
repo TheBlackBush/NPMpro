@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "По подразбиране",
 	"settings.database.source.env": "Среда",
 	"settings.database.source.file": "Файл с настройки на базата данни",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Използване на TLS",
 	"settings.database.ssl.reject-unauthorized": "Проверка на сертификата на сървъра",
 	"settings.database.ssl.verify-identity": "Проверка на името на сървъра",
 	"settings.database.step.backup": "Предпазно резервно копие",

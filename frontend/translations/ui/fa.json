@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "پیش‌فرض",
 	"settings.database.source.env": "محیط",
 	"settings.database.source.file": "فایل تنظیمات پایگاه داده",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "استفاده از TLS",
 	"settings.database.ssl.reject-unauthorized": "بررسی گواهی سرور",
 	"settings.database.ssl.verify-identity": "بررسی نام سرور",
 	"settings.database.step.backup": "پشتیبان ایمنی",

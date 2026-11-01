@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Mặc định",
 	"settings.database.source.env": "Môi trường",
 	"settings.database.source.file": "Tệp cài đặt cơ sở dữ liệu",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Dùng TLS",
 	"settings.database.ssl.reject-unauthorized": "Kiểm tra chứng chỉ máy chủ",
 	"settings.database.ssl.verify-identity": "Kiểm tra tên máy chủ",
 	"settings.database.step.backup": "Bản sao lưu an toàn",

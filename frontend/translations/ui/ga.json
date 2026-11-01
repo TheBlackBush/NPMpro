@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Réamhshocrú",
 	"settings.database.source.env": "Timpeallacht",
 	"settings.database.source.file": "Comhad socruithe an bhunachair sonraí",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Úsáid TLS",
 	"settings.database.ssl.reject-unauthorized": "Seiceáil teastas an fhreastalaí",
 	"settings.database.ssl.verify-identity": "Seiceáil ainm an fhreastalaí",
 	"settings.database.step.backup": "Cúltaca sábháilteachta",

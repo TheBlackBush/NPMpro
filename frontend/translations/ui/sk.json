@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Predvolené",
 	"settings.database.source.env": "Prostredie",
 	"settings.database.source.file": "Súbor nastavení databázy",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Použiť TLS",
 	"settings.database.ssl.reject-unauthorized": "Kontrolovať certifikát servera",
 	"settings.database.ssl.verify-identity": "Kontrolovať názov servera",
 	"settings.database.step.backup": "Bezpečnostná záloha",

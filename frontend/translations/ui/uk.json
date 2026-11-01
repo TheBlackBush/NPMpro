@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "За замовчуванням",
 	"settings.database.source.env": "Середовище",
 	"settings.database.source.file": "Файл налаштувань бази даних",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Використовувати TLS",
 	"settings.database.ssl.reject-unauthorized": "Перевіряти сертифікат сервера",
 	"settings.database.ssl.verify-identity": "Перевіряти ім'я сервера",
 	"settings.database.step.backup": "Страхова резервна копія",

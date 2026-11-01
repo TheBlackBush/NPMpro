@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "기본값",
 	"settings.database.source.env": "환경 변수",
 	"settings.database.source.file": "데이터베이스 설정 파일",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "TLS 사용",
 	"settings.database.ssl.reject-unauthorized": "서버 인증서 확인",
 	"settings.database.ssl.verify-identity": "서버 이름 확인",
 	"settings.database.step.backup": "안전 백업",

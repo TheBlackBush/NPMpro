@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Alapértelmezett",
 	"settings.database.source.env": "Környezet",
 	"settings.database.source.file": "Adatbázis-beállítási fájl",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "TLS használata",
 	"settings.database.ssl.reject-unauthorized": "A szerver tanúsítványának ellenőrzése",
 	"settings.database.ssl.verify-identity": "A szerver nevének ellenőrzése",
 	"settings.database.step.backup": "Biztonsági mentés",

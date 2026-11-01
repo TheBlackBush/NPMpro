@@ -1026,7 +1026,7 @@
 	"settings.database.source.default": "Vaikimisi",
 	"settings.database.source.env": "Keskkond",
 	"settings.database.source.file": "Andmebaasi seadete fail",
-	"settings.database.ssl": "Use TLS",
+	"settings.database.ssl": "Kasuta TLS-i",
 	"settings.database.ssl.reject-unauthorized": "Kontrolli serveri sertifikaati",
 	"settings.database.ssl.verify-identity": "Kontrolli serveri nime",
 	"settings.database.step.backup": "Turvavarukoopia",
