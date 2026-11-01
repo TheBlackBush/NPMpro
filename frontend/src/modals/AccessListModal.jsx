@@ -7,13 +7,16 @@ import {
 	BasicAuthFields,
 	Button,
 	ErrorAlert,
+	FormSection,
 	FormSubmit,
 	HasPermission,
 	HookForm,
 	Loading,
 	ModalTabs,
 	SwitchField,
+	SwitchList,
 	TabPane,
+	TextField,
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
@@ -39,7 +42,6 @@ const FIELD_LABELS = { accessRules: "access-list.rules-required" };
 function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { errors, isSubmitted, isSubmitting } = useFormState();
-	const nameError = errors.name?.message ?? null;
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
@@ -58,26 +60,9 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 				) : null}
 				<ModalTabs tabs={ACCESS_LIST_TABS}>
 					<TabPane id="details">
-						<div>
-							<label htmlFor="name" className="form-label">
-								<T id="column.name" />
-							</label>
-							<input
-								id="name"
-								type="text"
-								required
-								autoComplete="off"
-								className={`form-control ${nameError ? "is-invalid" : ""}`}
-								{...register("name")}
-							/>
-
-							{nameError ? <div className="invalid-feedback">{nameError}</div> : null}
-						</div>
-						<div className="my-3">
-							<h3 className="py-2">
-								<T id="options" />
-							</h3>
-							<div className="vstack gap-3">
+						<TextField name="name" label={<T id="column.name" />} required type="text" autoComplete="off" />
+						<FormSection heading legend={<T id="options" />} className="mb-0">
+							<SwitchList>
 								<SwitchField
 									id="satisfyAny"
 									label={<T id="access-list.satisfy-any" />}
@@ -88,8 +73,8 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 									label={<T id="access-list.pass-auth" />}
 									{...register("passAuth")}
 								/>
-							</div>
-						</div>
+							</SwitchList>
+						</FormSection>
 					</TabPane>
 					<TabPane id="auth">
 						<BasicAuthFields savedUsers={savedUsers} />
@@ -158,7 +143,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{isPending && <Loading noLogo />}
 			{data && (

@@ -125,6 +125,11 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 								) : null
 							}
 						/>
+						<DirectoryField
+							labelId="proxy-host.directory"
+							datalistId="directory-suggestions-proxy"
+							suggestions={suggestions}
+						/>
 						<ProxyOptionsFields />
 						<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
 							<AccessFields
@@ -168,15 +173,6 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 					</TabPane>
 					<TabPane id="advanced">
 						<NginxConfigField />
-						<div className="row mt-3">
-							<div className="col-md-12 mb-3">
-								<DirectoryField
-									labelId="proxy-host.directory"
-									datalistId="directory-suggestions-proxy"
-									suggestions={suggestions}
-								/>
-							</div>
-						</div>
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress
@@ -270,7 +266,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const ready = Boolean(data) && settled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (

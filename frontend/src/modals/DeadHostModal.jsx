@@ -67,6 +67,12 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 				<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+						<DirectoryField
+							labelId="dead-host.directory"
+							datalistId="directory-suggestions-dead"
+							suggestions={suggestions}
+							className="mb-0"
+						/>
 					</TabPane>
 					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
@@ -75,15 +81,6 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 					</TabPane>
 					<TabPane id="advanced">
 						<NginxConfigField />
-						<div className="row mt-3">
-							<div className="col-md-12 mb-3">
-								<DirectoryField
-									labelId="dead-host.directory"
-									datalistId="directory-suggestions-dead"
-									suggestions={suggestions}
-								/>
-							</div>
-						</div>
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress
@@ -167,7 +164,7 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
