@@ -1,9 +1,15 @@
+import cn from "clsx";
+import { Fragment } from "react";
 import { NavLink, useNavigate, useParams } from "react-router";
 import { ErrorNotFound } from "src/components";
 import { confirmLeave } from "src/hooks";
 import { intl, T } from "src/locale";
 import { stripeClass } from "src/modules/SectionColors";
+import { groupSections } from "src/modules/SettingsSections";
 import { SECTIONS } from "./sections";
+
+// the menu's categories, each with its sections (fixed, so grouped once)
+const CATEGORIES = groupSections(SECTIONS);
 
 export default function Layout() {
 	const { section } = useParams();
@@ -35,32 +41,47 @@ export default function Layout() {
 									if (confirmLeave()) void navigate(`/settings/${e.target.value}`);
 								}}
 							>
-								{SECTIONS.map(({ id, labelKey }) => (
-									<option key={id} value={id}>
-										{intl.formatMessage({ id: labelKey })}
-									</option>
+								{CATEGORIES.map((category) => (
+									<optgroup key={category.id} label={intl.formatMessage({ id: category.labelKey })}>
+										{category.sections.map(({ id, labelKey }) => (
+											<option key={id} value={id}>
+												{intl.formatMessage({ id: labelKey })}
+											</option>
+										))}
+									</optgroup>
 								))}
 							</select>
 						</div>
 					</div>
 				</div>
 				<div className="d-none d-lg-block col-lg-3 border-end">
+					{/* Tabler's settings menu: a subheader per category, each with its own list (nav) named by it */}
 					<div className="card-body">
-						<nav
-							className="list-group list-group-transparent"
-							aria-label={intl.formatMessage({ id: "settings" })}
-						>
-							{SECTIONS.map(({ id, labelKey, icon: Icon }) => (
-								<NavLink
-									key={id}
-									to={`/settings/${id}`}
-									className="list-group-item list-group-item-action d-flex align-items-center"
+						{CATEGORIES.map((category, index) => (
+							<Fragment key={category.id}>
+								<h2
+									className={cn("subheader", index > 0 && "mt-4")}
+									id={`settings-category-${category.id}`}
 								>
-									<Icon className="icon me-2" aria-hidden="true" />
-									<T id={labelKey} />
-								</NavLink>
-							))}
-						</nav>
+									<T id={category.labelKey} />
+								</h2>
+								<nav
+									className="list-group list-group-transparent"
+									aria-labelledby={`settings-category-${category.id}`}
+								>
+									{category.sections.map(({ id, labelKey, icon: Icon }) => (
+										<NavLink
+											key={id}
+											to={`/settings/${id}`}
+											className="list-group-item list-group-item-action d-flex align-items-center"
+										>
+											<Icon className="icon me-2" aria-hidden="true" />
+											<T id={labelKey} />
+										</NavLink>
+									))}
+								</nav>
+							</Fragment>
+						))}
 					</div>
 				</div>
 				<div className="col-12 col-lg-9 d-flex flex-column">
