@@ -1,5 +1,5 @@
 // The colour theme: the user's choice (light, dark or "auto" for the system's) and the theme it shows. Kept in
-// localStorage under Tabler's key and values (tabler-theme: light, dark, auto), so Tabler's ?theme= links agree.
+// localStorage under Tabler's key and values (tabler-theme: light, dark, auto), as Tabler's own theme script does.
 
 export const THEME_KEY = "tabler-theme";
 // set once the stored theme went through the one-time reset to System (UX-34): before B6 the first visit stored the
