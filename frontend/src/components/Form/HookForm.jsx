@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
+import { useModalFrame } from "src/components/AppModal";
 import { fieldPaths, formResolver, resetOptionsOf, rowErrorPaths } from "src/modules/HookForm";
 import { firstErrorOf } from "src/modules/ModalTabs";
 
@@ -213,6 +214,9 @@ function useListRecheck(name) {
  */
 function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
+	// directly inside a window (around its header, body and footer): a flex column capped at the content box, so on a
+	// phone (full screen window, fixed height) the header and footer stay put and .modal-body scrolls
+	const frame = useModalFrame();
 	const submitting = useRef(false);
 	const tabsRef = useRef(null);
 	// a refused save focuses the first error once the page shows the messages (a list row with an error opens then).
@@ -228,7 +232,9 @@ function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, 
 				<FormTabsContext.Provider value={tabsRef}>
 					<ReadOnlyContext.Provider value={readOnly}>
 						<form
-							className={className}
+							className={
+								frame ? ["d-flex flex-column mh-100", className].filter(Boolean).join(" ") : className
+							}
 							action="#"
 							noValidate
 							onSubmit={(event) => {
