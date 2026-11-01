@@ -1,4 +1,4 @@
-import { IconBolt, IconCopy, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconBolt, IconCopy, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -14,6 +14,7 @@ import {
 	AccessListFormatter,
 	CertificateFormatter,
 	DomainsFormatter,
+	EditMenuItem,
 	EmptyData,
 	GravatarFormatter,
 	HasPermission,
@@ -174,16 +175,7 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 									data={{ id: info.row.original.id }}
 								/>
 							</span>
-							<button
-								type="button"
-								className="dropdown-item"
-								onClick={() => {
-									onEdit?.(info.row.original.id);
-								}}
-							>
-								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-								<T id="action.edit" />
-							</button>
+							<EditMenuItem section={PROXY_HOSTS} onClick={() => onEdit?.(info.row.original.id)} />
 							<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 								<button
 									type="button"

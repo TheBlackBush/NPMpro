@@ -17,7 +17,7 @@ import { forwardSummary } from "src/modules/Forward";
 import { newLocation } from "src/modules/ProxyHostForms";
 import { NoticeAlert } from "../NoticeAlert";
 import { FormSection } from "./FormSection";
-import { useListRecheck, useRecheckDependent } from "./HookForm";
+import { useListRecheck, useReadOnly, useRecheckDependent } from "./HookForm";
 import { ForwardFields, ProxyOptionsFields } from "./ProxyOptionsFields";
 
 const locationLabel = (row) => `${row.locationType}${row.path}`;
@@ -30,6 +30,7 @@ function LocationRow({
 	rowKey,
 	row,
 	isAdmin,
+	readOnly,
 	open,
 	hidden,
 	advOpen,
@@ -72,116 +73,120 @@ function LocationRow({
 						</span>
 					)}
 				</button>
-				<button
-					type="button"
-					className="btn btn-action ms-2"
-					title={intl.formatMessage({ id: "action.delete" })}
-					aria-label={intl.formatMessage({ id: "action.delete" })}
-					onClick={onRemove}
-				>
-					<IconTrash size={16} className="icon" />
-				</button>
+				{readOnly ? null : (
+					<button
+						type="button"
+						className="btn btn-action ms-2"
+						title={intl.formatMessage({ id: "action.delete" })}
+						aria-label={intl.formatMessage({ id: "action.delete" })}
+						onClick={onRemove}
+					>
+						<IconTrash size={16} className="icon" />
+					</button>
+				)}
 			</div>
 			<div className={cn("card-body", !open && "d-none")} id={`location-body-${rowKey}`}>
-				<div className="row mb-3">
-					<SwitchField
-						id={`npmproEnabled-${rowKey}`}
-						label={<T id="enabled" />}
-						{...register(`${base}.npmproEnabled`)}
-					/>
-				</div>
-				<div className="row">
-					<div className="col-md-10">
-						<div className="input-group mb-3">
-							<span className="input-group-text">
-								<T id="location" />
-							</span>
-							<select
-								id={`locationType-${rowKey}`}
-								className="form-select w-auto flex-grow-0"
-								{...register(`${base}.locationType`, {
-									// the type and the path together must be unique
-									onChange: () => {
-										recheckPath();
-										recheckPaths();
-									},
-								})}
-							>
-								<option value="" />
-								<option value="@">@</option>
-								<option value="= ">=</option>
-								<option value="~ ">~</option>
-								<option value="~* ">~*</option>
-								<option value="^~ ">^~</option>
-							</select>
-							<input
-								type="text"
-								{...register(`${base}.path`, { onChange: recheckPaths })}
-								className={cn("form-control", pathError && "is-invalid")}
-								placeholder="/path"
-								autoComplete="off"
-								required
-								aria-label={intl.formatMessage({ id: "location.path" })}
-								aria-invalid={pathError ? "true" : undefined}
-							/>
-							{pathError ? <div className="invalid-feedback">{pathError}</div> : null}
+				<fieldset disabled={readOnly}>
+					<div className="row mb-3">
+						<SwitchField
+							id={`npmproEnabled-${rowKey}`}
+							label={<T id="enabled" />}
+							{...register(`${base}.npmproEnabled`)}
+						/>
+					</div>
+					<div className="row">
+						<div className="col-md-10">
+							<div className="input-group mb-3">
+								<span className="input-group-text">
+									<T id="location" />
+								</span>
+								<select
+									id={`locationType-${rowKey}`}
+									className="form-select w-auto flex-grow-0"
+									{...register(`${base}.locationType`, {
+										// the type and the path together must be unique
+										onChange: () => {
+											recheckPath();
+											recheckPaths();
+										},
+									})}
+								>
+									<option value="" />
+									<option value="@">@</option>
+									<option value="= ">=</option>
+									<option value="~ ">~</option>
+									<option value="~* ">~*</option>
+									<option value="^~ ">^~</option>
+								</select>
+								<input
+									type="text"
+									{...register(`${base}.path`, { onChange: recheckPaths })}
+									className={cn("form-control", pathError && "is-invalid")}
+									placeholder="/path"
+									autoComplete="off"
+									required
+									aria-label={intl.formatMessage({ id: "location.path" })}
+									aria-invalid={pathError ? "true" : undefined}
+								/>
+								{pathError ? <div className="invalid-feedback">{pathError}</div> : null}
+							</div>
+						</div>
+						<div className="col-md-2 text-end">
+							{(isAdmin || row.advancedConfig?.trim()) && (
+								<button
+									type="button"
+									className="btn p-0"
+									title={intl.formatMessage({ id: "location.config.toggle" })}
+									aria-label={intl.formatMessage({ id: "location.config.toggle" })}
+									aria-expanded={advOpen}
+									onClick={onToggleAdv}
+								>
+									<IconSettings size={20} />
+									{row.advancedConfig?.trim() ? "*" : ""}
+								</button>
+							)}
 						</div>
 					</div>
-					<div className="col-md-2 text-end">
-						{(isAdmin || row.advancedConfig?.trim()) && (
-							<button
-								type="button"
-								className="btn p-0"
-								title={intl.formatMessage({ id: "location.config.toggle" })}
-								aria-label={intl.formatMessage({ id: "location.config.toggle" })}
-								aria-expanded={advOpen}
-								onClick={onToggleAdv}
-							>
-								<IconSettings size={20} />
-								{row.advancedConfig?.trim() ? "*" : ""}
-							</button>
-						)}
-					</div>
-				</div>
-				{!row.path?.endsWith("/") && (row.locationType === "" || row.locationType === "^~ ") && (
-					<NoticeAlert role="status">
-						<T id="proxy-host.location-no-trailing-slash-warning" />
-					</NoticeAlert>
-				)}
-				<ForwardFields base={base} idSuffix={rowKey} />
-				<ProxyOptionsFields base={base} idSuffix={rowKey} />
-				<FormSection heading legend={<T id="proxy-host.access-lists" />} className="mb-0">
-					<AccessFields
-						name={`${base}.npmproAccessListIds`}
-						typeName={`${base}.npmproAccessListType`}
-						location={row.path}
-						authRequest={row.npmproAuthRequest}
-					/>
-				</FormSection>
-				{advOpen && (
-					<div className="">
-						<label className="form-label" htmlFor={`advancedConfig-${rowKey}`}>
-							<T id="location.config.label" />
-						</label>
-						<textarea
-							id={`advancedConfig-${rowKey}`}
-							className="form-control font-monospace"
-							spellCheck={false}
-							placeholder={intl.formatMessage({
-								id: "nginx-config.placeholder",
-							})}
-							{...register(`${base}.advancedConfig`)}
-							rows={8}
-							readOnly={!isAdmin}
-							aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${rowKey}`}
+					{!row.path?.endsWith("/") && (row.locationType === "" || row.locationType === "^~ ") && (
+						<NoticeAlert role="status">
+							<T id="proxy-host.location-no-trailing-slash-warning" />
+						</NoticeAlert>
+					)}
+					<ForwardFields base={base} idSuffix={rowKey} />
+					<ProxyOptionsFields base={base} idSuffix={rowKey} />
+					<FormSection heading legend={<T id="proxy-host.access-lists" />} className="mb-0">
+						<AccessFields
+							name={`${base}.npmproAccessListIds`}
+							typeName={`${base}.npmproAccessListType`}
+							location={row.path}
+							authRequest={row.npmproAuthRequest}
 						/>
-						{!isAdmin && (
-							<div className="form-hint" id={`advancedConfig-hint-${rowKey}`}>
-								<T id="nginx-config.admin-only" />
-							</div>
-						)}
-					</div>
-				)}
+					</FormSection>
+					{advOpen && (
+						<div className="">
+							<label className="form-label" htmlFor={`advancedConfig-${rowKey}`}>
+								<T id="location.config.label" />
+							</label>
+							<textarea
+								id={`advancedConfig-${rowKey}`}
+								className="form-control font-monospace"
+								spellCheck={false}
+								placeholder={intl.formatMessage({
+									id: "nginx-config.placeholder",
+								})}
+								{...register(`${base}.advancedConfig`)}
+								rows={8}
+								readOnly={!isAdmin}
+								aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${rowKey}`}
+							/>
+							{!isAdmin && (
+								<div className="form-hint" id={`advancedConfig-hint-${rowKey}`}>
+									<T id="nginx-config.admin-only" />
+								</div>
+							)}
+						</div>
+					)}
+				</fieldset>
 			</div>
 		</div>
 	);
@@ -190,13 +195,15 @@ function LocationRow({
 /**
  * The custom locations of a proxy host (useFieldArray over the form's locations): a filter, Add, and one card per
  * location. A new card opens and scrolls into view; after a refused save a card with a message is open and shown
- * whatever the filter.
+ * whatever the filter. In a View window (useReadOnly) the cards still open and close, their fields are disabled and
+ * a custom nginx config shows without its button; nothing can be added or removed.
  *
  * @param {Object} props
  * @param {string} [props.name]
  */
 export function LocationsFields({ name = "locations" }) {
 	const isAdmin = useIsAdmin();
+	const readOnly = useReadOnly();
 	const { fields, append, remove } = useFieldArray({ name });
 	const rows = useWatch({ name });
 	// the documented controlled field array: the keys of fields with the current values of the rows (useWatch may
@@ -250,6 +257,13 @@ export function LocationsFields({ name = "locations" }) {
 		`${locationLabel(row)} ${forwardSummary(row)}`.toLowerCase().includes(filter.trim().toLowerCase());
 
 	if (fields.length === 0) {
+		if (readOnly) {
+			return (
+				<div className="text-secondary text-center my-3">
+					<T id="location.none" />
+				</div>
+			);
+		}
 		return (
 			<div className="text-center">
 				<button type="button" className="btn my-3" onClick={handleAdd}>
@@ -289,12 +303,14 @@ export function LocationsFields({ name = "locations" }) {
 						</button>
 					</div>
 				</div>
-				<div className="col-auto">
-					<button type="button" className="btn" onClick={handleAdd}>
-						<IconPlus size={16} className="me-1" />
-						<T id="action.add-location" />
-					</button>
-				</div>
+				{readOnly ? null : (
+					<div className="col-auto">
+						<button type="button" className="btn" onClick={handleAdd}>
+							<IconPlus size={16} className="me-1" />
+							<T id="action.add-location" />
+						</button>
+					</div>
+				)}
 			</div>
 			{!controlledFields.some(matchesFilter) && (
 				<div className="text-secondary text-center my-3">
@@ -309,9 +325,10 @@ export function LocationsFields({ name = "locations" }) {
 					rowKey={field.id}
 					row={field}
 					isAdmin={isAdmin}
+					readOnly={readOnly}
 					open={expanded.includes(field.id) || forcedOpen(index)}
 					hidden={!matchesFilter(field) && !forcedOpen(index)}
-					advOpen={advVisible.includes(field.id)}
+					advOpen={advVisible.includes(field.id) || (readOnly && Boolean(field.advancedConfig?.trim()))}
 					onToggle={() => toggle(field.id, expanded, setExpanded)}
 					onToggleAdv={() => toggle(field.id, advVisible, setAdvVisible)}
 					onRemove={() => handleRemove(index)}

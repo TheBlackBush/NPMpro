@@ -24,11 +24,13 @@ import {
 	SSLOptionsFields,
 	TabPane,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
 	useAccessLists,
+	useCanManage,
 	useDirectorySuggestions,
 	useIsAdmin,
 	useProxyHost,
@@ -39,7 +41,7 @@ import {
 } from "src/hooks";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
-import { domainNamesOptions } from "src/modules/HostForms";
+import { domainNamesOptions, windowTitleId } from "src/modules/HostForms";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
 import {
 	namedLocations,
@@ -69,6 +71,7 @@ function LocationsTabMarker() {
 function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close, suggestions }) {
 	const { register } = useFormContext();
 	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [
 		certificateId,
 		npmproDnsChallenge,
@@ -86,14 +89,15 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 			"npmproPropagationSeconds",
 		],
 	});
-	const [advVisible, setAdvVisible] = useState(false);
+	// a View window shows a saved location config (its button is disabled there)
+	const [advVisible, setAdvVisible] = useState(() => readOnly && Boolean(data.npmproLocationConfig?.trim()));
 
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
 					<T
-						id={savedId || (data.id && !isClone) ? "object.edit" : "object.add"}
+						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "proxy-host" }}
 					/>
 				</AppModal.Title>
@@ -163,7 +167,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 							</div>
 						)}
 					</TabPane>
-					<TabPane id="locations">
+					<TabPane id="locations" selfReadOnly>
 						<LocationsFields />
 					</TabPane>
 					<TabPane id="tls">
@@ -182,7 +186,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -204,7 +208,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 // the form, mounted once the host is loaded and the reads of the TLS tab and the access lists have settled
 // (useTlsQueriesSettled): complete defaultValues from the first render, no reset on a refetch. A user whose role is
 // not known yet (its read failed and retries) starts as a non-admin clone would (no raw nginx config)
-function ProxyHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, ...formProps }) {
+function ProxyHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => proxyHostDefaults(data, { isClone, isAdmin }));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -237,7 +241,7 @@ function ProxyHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, .
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<ProxyHostForm
 				data={data}
@@ -254,6 +258,8 @@ function ProxyHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, .
 
 const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(PROXY_HOSTS);
 	const { data, error } = useProxyHost(id);
 	const isAdmin = useIsAdmin();
 	// the key AccessFields reads, so nothing is fetched twice
@@ -271,6 +277,7 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<ProxyHostEditor
+					readOnly={readOnly}
 					id={id}
 					isClone={isClone}
 					isAdmin={isAdmin}

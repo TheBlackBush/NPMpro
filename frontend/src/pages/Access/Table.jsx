@@ -1,4 +1,4 @@
-import { IconDotsVertical, IconEdit, IconLock, IconTrash } from "@tabler/icons-react";
+import { IconDotsVertical, IconLock, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -10,7 +10,7 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
-import { EmptyData, GravatarFormatter, HasPermission, ValueWithDateFormatter } from "src/components";
+import { EditMenuItem, EmptyData, GravatarFormatter, HasPermission, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
@@ -124,16 +124,7 @@ export function useColumns({ onEdit, onDelete } = {}) {
 									data={{ id: info.row.original.id }}
 								/>
 							</span>
-							<button
-								type="button"
-								className="dropdown-item"
-								onClick={() => {
-									onEdit?.(info.row.original.id);
-								}}
-							>
-								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-								<T id="action.edit" />
-							</button>
+							<EditMenuItem section={ACCESS_LISTS} onClick={() => onEdit?.(info.row.original.id)} />
 							<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 								<div className="dropdown-divider" />
 								<button

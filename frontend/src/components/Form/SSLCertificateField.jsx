@@ -9,6 +9,7 @@ import { formatDateTime, intl, T } from "src/locale";
 import { CERTIFICATES, hasPermission, MANAGE } from "src/modules/Permissions";
 import { selectClassNames } from "src/modules/Select";
 import { FormField, selectControlProps } from "./FormField";
+import { useReadOnly } from "./HookForm";
 import { useTlsChange } from "./useTlsChange";
 
 // the fields of the certificate and of the mTLS CA certificate (HostForms.js tlsChanges works on these names)
@@ -45,6 +46,7 @@ const noneOption = (subtitle) => ({
 // a certificate select on FormField: the placeholder while the certificates load, their error, or the select
 function CertificateSelect({ id, label, hint, field, options, disabled, onChoose }) {
 	const { isPending, isError, error } = useCertificates();
+	const readOnly = useReadOnly();
 	return (
 		<FormField id={id} label={<T id={label} />} hint={hint}>
 			{(control) => (
@@ -72,7 +74,7 @@ function CertificateSelect({ id, label, hint, field, options, disabled, onChoose
 								onChoose(newValue?.value);
 							}}
 							onBlur={field.onBlur}
-							isDisabled={disabled}
+							isDisabled={readOnly || disabled}
 						/>
 					) : null}
 				</>

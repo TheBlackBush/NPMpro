@@ -23,10 +23,12 @@ import {
 	TabPane,
 	TextField,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDirectorySuggestions,
 	useRedirectionHost,
 	useRedirectionHosts,
@@ -42,6 +44,7 @@ import {
 	redirectionHostDefaults,
 	redirectionHostValidate,
 	requestValues,
+	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -59,6 +62,7 @@ const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
 function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
 		name: ["certificateId", "npmproDnsChallenge", "advancedConfig", "npmproPropagationSeconds"],
 	});
@@ -66,7 +70,10 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "redirection-host" }} />
+					<T
+						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						tData={{ object: "redirection-host" }}
+					/>
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -138,7 +145,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -158,7 +165,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 
 // the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => redirectionHostDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -188,7 +195,7 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps 
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<RedirectionHostForm
 				data={data}
@@ -203,6 +210,8 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps 
 
 const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(REDIRECTION_HOSTS);
 	const { data, error } = useRedirectionHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
@@ -217,6 +226,7 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<RedirectionHostEditor
+					readOnly={readOnly}
 					id={id}
 					data={data}
 					save={save}

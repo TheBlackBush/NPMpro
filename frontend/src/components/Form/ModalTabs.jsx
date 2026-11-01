@@ -6,7 +6,7 @@ import { useFormState } from "react-hook-form";
 import { useModalHide } from "src/components/AppModal";
 import { intl, T } from "src/locale";
 import { errorCountOf, nextTabId, tabErrorCounts, tabStopId } from "src/modules/ModalTabs";
-import { useFormTabs } from "./HookForm";
+import { useFormTabs, useReadOnly } from "./HookForm";
 
 const PaneContext = createContext({ active: null, ids: null });
 const NO_ENTRIES = {};
@@ -304,8 +304,18 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
  * @param {string} props.id  the tab's id
  * @param {*}      props.children
  */
-function TabPane({ id, children }) {
+/**
+ * One tab's pane. In a read-only form (a View window) its fields sit in a disabled fieldset; selfReadOnly: the
+ * pane's fields handle that themselves (the custom locations, whose cards still open and close)
+ *
+ * @param {Object}  props
+ * @param {string}  props.id
+ * @param {boolean} [props.selfReadOnly]
+ * @param {*}       props.children
+ */
+function TabPane({ id, selfReadOnly = false, children }) {
 	const { active, ids } = useContext(PaneContext);
+	const readOnly = useReadOnly();
 	return (
 		<div
 			className={cn("tab-pane", id === active && "active show")}
@@ -313,7 +323,7 @@ function TabPane({ id, children }) {
 			role="tabpanel"
 			aria-labelledby={ids?.tab(id)}
 		>
-			{children}
+			{readOnly && !selfReadOnly ? <fieldset disabled>{children}</fieldset> : children}
 		</div>
 	);
 }

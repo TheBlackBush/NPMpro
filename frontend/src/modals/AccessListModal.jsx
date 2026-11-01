@@ -18,8 +18,9 @@ import {
 	TabPane,
 	TextField,
 	useAppForm,
+	useReadOnly,
 } from "src/components";
-import { DirtyTracker, useAccessList, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
+import { DirtyTracker, useAccessList, useCanManage, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
 import { T } from "src/locale";
 import {
 	ACCESS_LIST_TABS,
@@ -28,6 +29,7 @@ import {
 	accessListValidate,
 } from "src/modules/AccessListForms";
 import EasyModal from "src/modules/easyModal";
+import { windowTitleId } from "src/modules/HostForms";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
@@ -42,11 +44,12 @@ const FIELD_LABELS = { accessRules: "access-list.rules-required" };
 function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { errors, isSubmitted, isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={data.id ? "object.edit" : "object.add"} tData={{ object: "access-list" }} />
+					<T id={windowTitleId({ editing: Boolean(data.id), readOnly })} tData={{ object: "access-list" }} />
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -86,7 +89,7 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -108,7 +111,7 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 // the form, mounted once the list is loaded: complete defaultValues from the first render, no reset on a refetch.
 // The saved users and rules are taken from the same data as the defaults, so a refetch while the window is open
 // changes neither the rules of the form nor the request
-function AccessListEditor({ data, onSubmit, dirtyRef, ...formProps }) {
+function AccessListEditor({ data, onSubmit, dirtyRef, readOnly, ...formProps }) {
 	const [saved] = useState(() => ({
 		users: new Set(data.items.map((item) => item.username)),
 		clients: data.clients,
@@ -117,7 +120,7 @@ function AccessListEditor({ data, onSubmit, dirtyRef, ...formProps }) {
 	const [defaultValues] = useState(() => accessListDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	return (
-		<HookForm methods={methods} onSubmit={(values) => onSubmit(values, saved.clients)}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={(values) => onSubmit(values, saved.clients)}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<AccessListForm data={data} savedUsers={saved.users} {...formProps} />
 		</HookForm>
@@ -126,6 +129,8 @@ function AccessListEditor({ data, onSubmit, dirtyRef, ...formProps }) {
 
 const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(ACCESS_LISTS);
 	const { data, isPending, error } = useAccessList(id);
 	const { mutateAsync: setAccessList, isPending: isSaving } = useSetAccessList();
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -148,6 +153,7 @@ const AccessListModal = EasyModal.create(({ id, visible, remove }) => {
 			{isPending && <Loading noLogo />}
 			{data && (
 				<AccessListEditor
+					readOnly={readOnly}
 					data={data}
 					onSubmit={onSubmit}
 					dirtyRef={dirtyRef}

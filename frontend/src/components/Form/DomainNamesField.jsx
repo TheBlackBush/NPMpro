@@ -4,6 +4,7 @@ import { intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { validateDomain } from "src/modules/Validations";
 import { FormField, selectControlProps } from "./FormField";
+import { useReadOnly } from "./HookForm";
 
 /**
  * The domain names of the form around it: the label (required), the chips select, the error and the hint about
@@ -20,6 +21,7 @@ export function DomainNamesField({
 	onChange,
 }) {
 	const { field, fieldState } = useController({ name });
+	const readOnly = useReadOnly();
 	const error = fieldState.error?.message ?? null;
 	let hint = null;
 	if (!isWildcardPermitted) {
@@ -44,6 +46,7 @@ export function DomainNamesField({
 					isClearable={false}
 					isValidNewOption={isValidNewOption}
 					isMulti
+					isDisabled={readOnly}
 					required
 					onBlur={field.onBlur}
 					placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}

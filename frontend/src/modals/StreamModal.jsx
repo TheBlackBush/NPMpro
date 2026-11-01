@@ -22,10 +22,12 @@ import {
 	TabPane,
 	TextField,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDirectorySuggestions,
 	useSetStream,
 	useStream,
@@ -44,6 +46,7 @@ import {
 	streamDefaults,
 	streamPayload,
 	streamValidate,
+	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -82,6 +85,7 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [udpForwarding, tcpForwarding, certificateId, npmproAdvancedConfig, npmproPropagationSeconds] = useWatch({
 		name: ["udpForwarding", "tcpForwarding", "certificateId", "npmproAdvancedConfig", "npmproPropagationSeconds"],
 	});
@@ -98,7 +102,10 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "stream" }} />
+					<T
+						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						tData={{ object: "stream" }}
+					/>
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -200,7 +207,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={STREAMS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -220,7 +227,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 
 // the form, mounted once the stream is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => streamDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -250,7 +257,7 @@ function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<StreamForm
 				data={data}
@@ -265,6 +272,8 @@ function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 
 const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(STREAMS);
 	const { data, error } = useStream(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetStream();
@@ -279,6 +288,7 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<StreamEditor
+					readOnly={readOnly}
 					id={id}
 					data={data}
 					save={save}

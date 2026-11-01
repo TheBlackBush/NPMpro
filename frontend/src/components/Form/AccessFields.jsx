@@ -7,7 +7,7 @@ import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
-import { useRecheckDependent } from "./HookForm";
+import { useReadOnly, useRecheckDependent } from "./HookForm";
 
 const OptionContent = (label, subLabel, icon) => (
 	<div className="flex-fill">
@@ -57,6 +57,8 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const [hostType, hostIds] = useWatch({ name: ["npmproAccessListType", "npmproAccessListIds"] });
 	// a new type changes whether the ids are required
 	const recheckIds = useRecheckDependent(name);
+	// a View window: the selects are disabled too (a disabled fieldset does not reach react-select)
+	const readOnly = useReadOnly();
 	const values = idsField.value;
 	const aclValue = typeField.value;
 	const { isPending, isError, error, data } = useAccessLists(["owner", "items", "clients"]);
@@ -181,6 +183,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 							unstyled
 							classNames={selectClassNames}
 							isSearchable={false}
+							isDisabled={readOnly}
 							getOptionValue={(o) => o.type}
 							value={createOption(aclValue)}
 							options={typeOptions()}
@@ -213,6 +216,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 									defaultOptions.find((o) => o.value === item) ?? { value: item, label: `#${item}` }
 								}
 								options={options}
+								isDisabled={readOnly}
 								components={{ Option }}
 								styles={{
 									option: (base) => ({
@@ -269,13 +273,14 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 							</div>
 						</>
 					) : null}
-					{options.length > 0 && ( // only show add button if there are more acls that can be added
-						<div className="text-center">
-							<button type="button" className="btn my-3" onClick={handleAdd}>
-								<T id="action.add" />
-							</button>
-						</div>
-					)}
+					{!readOnly &&
+						options.length > 0 && ( // only show add button if there are more acls that can be added
+							<div className="text-center">
+								<button type="button" className="btn my-3" onClick={handleAdd}>
+									<T id="action.add" />
+								</button>
+							</div>
+						)}
 				</>
 			) : null}
 			{authRequest !== "none" &&
