@@ -162,31 +162,32 @@ function LocationRow({
 							authRequest={row.npmproAuthRequest}
 						/>
 					</FormSection>
-					{advOpen && (
-						<div className="">
-							<label className="form-label" htmlFor={`advancedConfig-${rowKey}`}>
-								<T id="location.config.label" />
-							</label>
-							<textarea
-								id={`advancedConfig-${rowKey}`}
-								className="form-control font-monospace"
-								spellCheck={false}
-								placeholder={intl.formatMessage({
-									id: "nginx-config.placeholder",
-								})}
-								{...register(`${base}.advancedConfig`)}
-								rows={8}
-								readOnly={!isAdmin}
-								aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${rowKey}`}
-							/>
-							{!isAdmin && (
-								<div className="form-hint" id={`advancedConfig-hint-${rowKey}`}>
-									<T id="nginx-config.admin-only" />
-								</div>
-							)}
-						</div>
-					)}
 				</fieldset>
+				{/* outside the disabled fieldset of a View window: read-only, so it can still be focused and scrolled */}
+				{advOpen && (
+					<div className="">
+						<label className="form-label" htmlFor={`advancedConfig-${rowKey}`}>
+							<T id="location.config.label" />
+						</label>
+						<textarea
+							id={`advancedConfig-${rowKey}`}
+							className="form-control font-monospace"
+							spellCheck={false}
+							placeholder={intl.formatMessage({
+								id: "nginx-config.placeholder",
+							})}
+							{...register(`${base}.advancedConfig`)}
+							rows={8}
+							readOnly={!isAdmin || readOnly}
+							aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${rowKey}`}
+						/>
+						{!isAdmin && (
+							<div className="form-hint" id={`advancedConfig-hint-${rowKey}`}>
+								<T id="nginx-config.admin-only" />
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	);

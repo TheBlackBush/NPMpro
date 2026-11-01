@@ -128,7 +128,8 @@ function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 
 						<SSLOptionsFields />
 					</TabPane>
-					<TabPane id="advanced">
+					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+					<TabPane id="advanced" selfReadOnly>
 						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>

@@ -190,7 +190,8 @@ function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
 
 						<SSLOptionsFields forHttp={false} />
 					</TabPane>
-					<TabPane id="advanced">
+					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+					<TabPane id="advanced" selfReadOnly>
 						<NginxConfigField
 							name="npmproAdvancedConfig"
 							id="npmproAdvancedConfig"

@@ -1,10 +1,12 @@
 import { useFormContext, useWatch } from "react-hook-form";
 import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
+import { useReadOnly } from "./HookForm";
 
 /**
  * Raw nginx config is admin-only: other users see a stored value read-only and, when it is empty, a hint that the
- * config is for administrators. A window with two of these fields passes emptyHint={false} to both and shows the hint
+ * config is for administrators. Read-only, not disabled, also in a View window (keep its TabPane selfReadOnly): the
+ * value can be focused, selected and scrolled by keyboard, but not changed. A window with two of these fields passes emptyHint={false} to both and shows the hint
  * once itself when both are empty.
  *
  * @param {Object}  props
@@ -24,6 +26,7 @@ export function NginxConfigField({
 	emptyHint = true,
 }) {
 	const isAdmin = useIsAdmin();
+	const viewOnly = useReadOnly();
 	const { register } = useFormContext();
 	const value = useWatch({ name });
 	if (!isAdmin && !value?.trim()) {
@@ -45,7 +48,7 @@ export function NginxConfigField({
 				spellCheck={false}
 				placeholder={intl.formatMessage({ id: "nginx-config.placeholder" })}
 				rows={9}
-				readOnly={!isAdmin}
+				readOnly={!isAdmin || viewOnly}
 				aria-describedby={describedBy.length ? describedBy.join(" ") : undefined}
 				{...register(name)}
 			/>

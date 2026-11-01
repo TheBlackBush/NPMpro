@@ -131,7 +131,8 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 
 						<SSLOptionsFields forProxyHost />
 					</TabPane>
-					<TabPane id="advanced">
+					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+					<TabPane id="advanced" selfReadOnly>
 						<NginxConfigField
 							label="nginx-config.server.label"
 							hint="proxy-host.server-config.hint"
