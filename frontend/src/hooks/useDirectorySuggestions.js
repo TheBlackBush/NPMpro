@@ -13,8 +13,9 @@ const useDirectorySuggestions = (items) =>
 		[items],
 	);
 
-// the lists of the four host types, with the query keys of useProxyHosts() and its siblings (no expand), so a host
-// window and its list page share them
+// the lists of the four host types, with the query keys of useProxyHosts() and its siblings without expand. The list
+// pages ask with expand (owner, certificate, ...), so their cache entries differ: only Monitoring > Traffic shares
+// these. A later distinct-groups endpoint could replace the four requests
 const HOST_LISTS = [
 	{ key: "proxy-hosts", fetch: getProxyHosts, section: PROXY_HOSTS },
 	{ key: "redirection-hosts", fetch: getRedirectionHosts, section: REDIRECTION_HOSTS },

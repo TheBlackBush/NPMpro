@@ -8,7 +8,9 @@ const FrameContext = createContext(false);
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
 // Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
-// A dialog that never changes size (the delete confirmation) may pass `centered`. Below the md breakpoint (phones) a
+// A small dialog that never changes size may pass `centered` (it is still full screen on phones unless it also passes
+// `fullscreen={false}`). The delete and disable confirmation is not an AppModal: it is a plain react-bootstrap Modal and
+// stays a small centered dialog on phones. Below the md breakpoint (phones) a
 // window fills the screen (Bootstrap's modal-fullscreen-md-down, UX-33); `fullscreen` sets another breakpoint, or
 // false for a window that stays a dialog.
 function AppModal({ children, centered = false, fullscreen = "md-down", ...props }) {
