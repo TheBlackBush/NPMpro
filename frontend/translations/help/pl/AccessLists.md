@@ -1,7 +1,27 @@
 ## Czym jest lista dostępu?
 
-Listy dostępu zapewniają czarną lub białą listę określonych adresów IP klientów wraz z uwierzytelnianiem dla hostów proxy za pomocą podstawowego uwierzytelniania HTTP.
+Lista dostępu chroni hosty proxy. Może pytać odwiedzających o nazwę użytkownika i hasło (uwierzytelnianie Basic), zezwalać lub odmawiać dostępu według adresu IP albo robić jedno i drugie. Przydaje się dla usług, które nie mają własnego logowania, lub gdy chcesz trzymać z dala nieznanych klientów.
 
-Możesz skonfigurować wiele reguł klienta, nazw użytkowników i haseł dla pojedynczej listy dostępu, a następnie zastosować ją do jednego lub więcej hostów proxy.
+Jedna lista może być używana przez wiele hostów proxy i lokalizacji.
 
-Jest to najbardziej przydatne w przypadku przekierowywanych usług internetowych, które nie mają wbudowanych mechanizmów uwierzytelniania lub gdy chcesz zabezpieczyć się przed nieznanymi klientami.
+### Szczegóły
+
+- **Nazwa**: wymagana.
+- **Spełnij dowolny warunek** (domyślnie wyłączone): odwiedzający wchodzi, gdy spełni dowolną jedną kontrolę, regułę lub poprawnego użytkownika. Wyłączone oznacza, że musi przejść obie. Pomija też Auth Request na tym hoście.
+- **Przekaż uwierzytelnienie do serwera docelowego** (domyślnie wyłączone): przekazuje nagłówek `Authorization` odwiedzającego do usługi. Wyłączone zachowuje logowanie wyłącznie w NPMpro.
+
+### Autoryzacje
+
+Dodaj nazwy użytkowników i hasła. Nazwy użytkowników muszą być unikalne w obrębie listy i nie mogą zawierać `:`. Podczas edycji listy pozostaw zapisane hasło puste, aby je zachować.
+
+### Reguły
+
+Reguły zezwalają lub odmawiają dostępu dla adresu IP, zakresu CIDR (`192.168.1.0/24`, `2001:db8::/32`) lub `unix:`. Są stosowane w kolejności, w jakiej je wypiszesz, a wygrywa pierwsza pasująca. Konkretne reguły umieść na początku. Końcowa reguła `all` zamyka listę, ustawiona na zezwalaj lub odmawiaj; jest dodawana tylko wtedy, gdy jest co najmniej jedna inna reguła. Lista wymaga co najmniej jednego użytkownika lub jednej reguły.
+
+### Użycie w hostach proxy
+
+W hoście proxy wybierz listę w polu **Globalne listy dostępu** na karcie Szczegóły: **Publicznie dostępne** (bez listy) lub **Własna**. Własna lokalizacja może używać **Globalna** (listy hosta), **Publicznie dostępne** lub własnych list **Własna**.
+
+Do jednego hosta lub lokalizacji możesz dołączyć kilka list. Są sprawdzane od góry do dołu, w pokazanej kolejności, i możesz je przesuwać w górę i w dół. **Spełnij dowolny warunek** i **Przekaż uwierzytelnienie do serwera docelowego** liczą się tylko na pierwszej liście. Przy CrowdSec zablokowane adresy IP widzą stronę blokady przed monitem o hasło.
+
+Więcej w wiki: Host options.
