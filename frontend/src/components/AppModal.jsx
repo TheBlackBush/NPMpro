@@ -1,4 +1,3 @@
-import cn from "clsx";
 import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 
@@ -23,15 +22,15 @@ function AppModal({ children, centered = false, ...props }) {
 	);
 }
 
-// The window's title as a page title (h2: 20px), not react-bootstrap's default div styled as h4
-function AppModalTitle({ children, className, ...props }) {
+// The window's title as a heading (h2) in Tabler's modal-title size (16px), not react-bootstrap's div styled as h4
+function AppModalTitle({ children, ...props }) {
 	const { id, setMounted } = useContext(TitleContext);
 	useEffect(() => {
 		setMounted(true);
 		return () => setMounted(false);
 	}, [setMounted]);
 	return (
-		<Modal.Title as="h2" id={id} className={cn("h2", className)} {...props}>
+		<Modal.Title as="h2" id={id} {...props}>
 			{children}
 		</Modal.Title>
 	);

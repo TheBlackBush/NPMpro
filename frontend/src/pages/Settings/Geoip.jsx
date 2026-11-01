@@ -161,7 +161,7 @@ function UpdateStatus({ data }) {
 	return (
 		<div>
 			{/* not a group of fields: a heading that looks like the FormSection headings above it */}
-			<h3 className="py-2">
+			<h3 className="fw-medium py-2">
 				<T id="settings.geoip.status" />
 			</h3>
 			<dl className="row mb-3">
