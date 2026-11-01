@@ -3,13 +3,18 @@ import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
 
 /**
- * Raw nginx config is admin-only: other users see a stored value read-only and nothing when it is empty.
+ * Raw nginx config is admin-only: other users see a stored value read-only and, when it is empty, a hint that the
+ * config is for administrators.
  */
 export function NginxConfigField({ name = "advancedConfig", label = "nginx-config.label", id = "advancedConfig" }) {
 	const isAdmin = useIsAdmin();
 	const { register } = useFormContext();
 	const value = useWatch({ name });
-	return !isAdmin && !value?.trim() ? null : (
+	return !isAdmin && !value?.trim() ? (
+		<div className="text-secondary text-center my-3">
+			<T id="nginx-config.admin-only" />
+		</div>
+	) : (
 		<div className="mt-3">
 			<label htmlFor={id} className="form-label">
 				<T id={label} />

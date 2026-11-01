@@ -298,13 +298,6 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 }
 
 /**
- * The pane of one tab of a ModalTabs; it stays mounted while another tab is open
- *
- * @param {Object} props
- * @param {string} props.id  the tab's id
- * @param {*}      props.children
- */
-/**
  * One tab's pane. In a read-only form (a View window) its fields sit in a disabled fieldset; selfReadOnly: the
  * pane's fields handle that themselves (the custom locations, whose cards still open and close)
  *
