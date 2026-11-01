@@ -2,7 +2,7 @@ import { IconAlertTriangle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import Modal from "react-bootstrap/Modal";
-import { ApiErrorContent, Button, ErrorAlert } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -10,8 +10,24 @@ const showDeleteConfirmModal = (props) => {
 	EasyModal.show(DeleteConfirmModal, props);
 };
 
+/**
+ * A confirmation of a destructive action (delete, disable, reset): title, text, the item (subject, details), an
+ * optional warning under them (Tabler's warning alert) and the red confirm button
+ */
 const DeleteConfirmModal = EasyModal.create(
-	({ title, tTitle, confirmLabel, children, subject, details, onConfirm, invalidations, visible, remove }) => {
+	({
+		title,
+		tTitle,
+		confirmLabel,
+		children,
+		subject,
+		details,
+		warning,
+		onConfirm,
+		invalidations,
+		visible,
+		remove,
+	}) => {
 		const queryClient = useQueryClient();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +72,7 @@ const DeleteConfirmModal = EasyModal.create(
 						{subject ? <div className="mt-2 fw-bold text-break">{subject}</div> : null}
 						{details ? <div className="mt-1 small text-break">{details}</div> : null}
 					</div>
+					{warning ? <NoticeAlert className="mt-3 mb-0 text-start">{warning}</NoticeAlert> : null}
 					<ErrorAlert className="mt-3 mb-0 text-start" onClose={() => setError(null)}>
 						{error}
 					</ErrorAlert>

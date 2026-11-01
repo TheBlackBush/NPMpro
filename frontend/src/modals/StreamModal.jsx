@@ -6,6 +6,7 @@ import {
 	Button,
 	DirectoryField,
 	ErrorAlert,
+	FormSection,
 	FormSubmit,
 	HasPermission,
 	HookForm,
@@ -13,15 +14,20 @@ import {
 	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
+	SelectField,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	SwitchList,
 	TabPane,
+	TextField,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDirectorySuggestions,
 	useSetStream,
 	useStream,
@@ -40,6 +46,7 @@ import {
 	streamDefaults,
 	streamPayload,
 	streamValidate,
+	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -50,29 +57,6 @@ const showStreamModal = (id) => {
 };
 
 const validate = streamValidate(validations);
-
-// a text field of the Details tab, its message once it was left or a save was tried
-function TextField({ name, labelId, className = "mb-3", ...inputProps }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name });
-	const error = errors[name]?.message ?? null;
-	return (
-		<div className={className}>
-			<label className="form-label" htmlFor={name}>
-				<T id={labelId} />
-			</label>
-			<input
-				id={name}
-				type="text"
-				{...inputProps}
-				className={`form-control ${error ? "is-invalid" : ""}`}
-				{...register(name)}
-			/>
-
-			{error ? <div className="invalid-feedback">{error}</div> : null}
-		</div>
-	);
-}
 
 // "TLS to upstream": shown off and disabled while it is not possible (no certificate, or UDP), its value kept
 function ProxyTlsSwitch({ possible, udpForwarding }) {
@@ -101,6 +85,7 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [udpForwarding, tcpForwarding, certificateId, npmproAdvancedConfig, npmproPropagationSeconds] = useWatch({
 		name: ["udpForwarding", "tcpForwarding", "certificateId", "npmproAdvancedConfig", "npmproPropagationSeconds"],
 	});
@@ -117,7 +102,10 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "stream" }} />
+					<T
+						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						tData={{ object: "stream" }}
+					/>
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -133,7 +121,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 					<TabPane id="details">
 						<TextField
 							name="incomingPort"
-							labelId="stream.incoming-port"
+							label={<T id="stream.incoming-port" />}
+							type="text"
 							minLength={1}
 							maxLength={11}
 							required
@@ -141,7 +130,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 						/>
 						<TextField
 							name="npmproDescription"
-							labelId="stream.description"
+							label={<T id="stream.description" />}
+							type="text"
 							maxLength={255}
 							placeholder={intl.formatMessage({ id: "stream.description.placeholder" })}
 						/>
@@ -149,7 +139,8 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 							<div className="col-md-8">
 								<TextField
 									name="forwardingHost"
-									labelId="stream.forward-host"
+									label={<T id="stream.forward-host" />}
+									type="text"
 									required
 									placeholder={intl.formatMessage({ id: "stream.forward-host.placeholder" })}
 								/>
@@ -157,17 +148,20 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 							<div className="col-md-4">
 								<TextField
 									name="forwardingPort"
-									labelId="host.forward-port"
+									label={<T id="host.forward-port" />}
+									type="text"
 									maxLength={12}
 									placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
 								/>
 							</div>
 						</div>
-						<div className="my-3">
-							<h3 className="py-2">
-								<T id="host.flags.protocols" />
-							</h3>
-							<div className="vstack gap-3">
+						<DirectoryField
+							labelId="stream.directory"
+							datalistId="directory-suggestions-stream"
+							suggestions={suggestions}
+						/>
+						<FormSection heading legend={<T id="host.flags.protocols" />} className="mb-0">
+							<SwitchList className="mb-3">
 								<SwitchField
 									id="tcpForwarding"
 									label={<T id="streams.tcp" />}
@@ -182,37 +176,20 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 									possible={isProxyTlsPossible({ udpForwarding, certificateId })}
 									udpForwarding={udpForwarding}
 								/>
-							</div>
-							<div className="mt-3 mb-3">
-								<label className="form-label" htmlFor="npmproProxyProtocolForwarding">
-									<T id="streams.pp" />
-								</label>
-								<select
-									id="npmproProxyProtocolForwarding"
-									className="form-select"
-									required
-									{...register("npmproProxyProtocolForwarding", { valueAsNumber: true })}
-								>
-									<option value={0}>
-										{intl.formatMessage({
-											id: "streams.pp.off",
-										})}
-									</option>
-									{tcpForwarding && !udpForwarding ? (
-										<option value={1}>
-											{intl.formatMessage({
-												id: "streams.pp.v1",
-											})}
-										</option>
-									) : null}
-									<option value={2}>
-										{intl.formatMessage({
-											id: "streams.pp.v2",
-										})}
-									</option>
-								</select>
-							</div>
-						</div>
+							</SwitchList>
+							<SelectField
+								name="npmproProxyProtocolForwarding"
+								label={<T id="streams.pp" />}
+								className="mb-0"
+								registerOptions={{ valueAsNumber: true }}
+							>
+								<option value={0}>{intl.formatMessage({ id: "streams.pp.off" })}</option>
+								{tcpForwarding && !udpForwarding ? (
+									<option value={1}>{intl.formatMessage({ id: "streams.pp.v1" })}</option>
+								) : null}
+								<option value={2}>{intl.formatMessage({ id: "streams.pp.v2" })}</option>
+							</SelectField>
+						</FormSection>
 					</TabPane>
 					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew forHttp={false} />
@@ -220,17 +197,12 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 						<SSLOptionsFields forHttp={false} />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField name="npmproAdvancedConfig" id="npmproAdvancedConfig" />
-
-						<div className="row mt-3">
-							<div className="col-md-12 mb-3">
-								<DirectoryField
-									labelId="stream.directory"
-									datalistId="directory-suggestions-stream"
-									suggestions={suggestions}
-								/>
-							</div>
-						</div>
+						<NginxConfigField
+							name="npmproAdvancedConfig"
+							id="npmproAdvancedConfig"
+							label="nginx-config.server.label"
+							hint="nginx-config.stream.hint"
+						/>
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress
@@ -240,7 +212,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={STREAMS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -260,7 +232,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 
 // the form, mounted once the stream is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => streamDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -290,7 +262,7 @@ function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<StreamForm
 				data={data}
@@ -305,6 +277,8 @@ function StreamEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 
 const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(STREAMS);
 	const { data, error } = useStream(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetStream();
@@ -314,11 +288,12 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<StreamEditor
+					readOnly={readOnly}
 					id={id}
 					data={data}
 					save={save}

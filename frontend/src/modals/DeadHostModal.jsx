@@ -18,10 +18,12 @@ import {
 	SSLOptionsFields,
 	TabPane,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDeadHost,
 	useDeadHosts,
 	useDirectorySuggestions,
@@ -37,6 +39,7 @@ import {
 	deadHostValidate,
 	domainNamesOptions,
 	requestValues,
+	windowTitleId,
 } from "src/modules/HostForms";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -50,6 +53,7 @@ const validate = deadHostValidate(validations);
 
 function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
 		name: ["certificateId", "npmproDnsChallenge", "advancedConfig", "npmproPropagationSeconds"],
 	});
@@ -57,7 +61,10 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "dead-host" }} />
+					<T
+						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						tData={{ object: "dead-host" }}
+					/>
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -67,6 +74,12 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 				<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+						<DirectoryField
+							labelId="dead-host.directory"
+							datalistId="directory-suggestions-dead"
+							suggestions={suggestions}
+							className="mb-0"
+						/>
 					</TabPane>
 					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
@@ -74,16 +87,7 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 						<SSLOptionsFields />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField />
-						<div className="row mt-3">
-							<div className="col-md-12 mb-3">
-								<DirectoryField
-									labelId="dead-host.directory"
-									datalistId="directory-suggestions-dead"
-									suggestions={suggestions}
-								/>
-							</div>
-						</div>
+						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress
@@ -93,7 +97,7 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -113,7 +117,7 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 
 // the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function DeadHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+function DeadHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => deadHostDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -143,7 +147,7 @@ function DeadHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<DeadHostForm
 				data={data}
@@ -158,6 +162,8 @@ function DeadHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
 
 const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(DEAD_HOSTS);
 	const { data, error } = useDeadHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetDeadHost();
@@ -167,11 +173,12 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<DeadHostEditor
+					readOnly={readOnly}
 					id={id}
 					data={data}
 					save={save}

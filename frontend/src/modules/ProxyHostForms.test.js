@@ -267,5 +267,7 @@ it("puts every field of the proxy host window on exactly one tab, the location r
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "locations[1].forwardHost"), "locations");
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproAccessListIds"), "details");
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproMtlsBypassAuthRequest"), "tls");
-	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproDirectory"), "advanced");
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproDirectory"), "details");
+	assert.deepEqual(PROXY_HOST_TABS.at(-1).fields, ["advancedConfig", "npmproLocationConfig"]);
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproLocationConfig"), "advanced");
 });

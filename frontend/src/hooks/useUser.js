@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createUser, getUser, updateUser } from "src/api/backend";
-import { isAdmin } from "src/modules/Permissions";
+import { hasPermission, isAdmin, MANAGE } from "src/modules/Permissions";
 
 const fetchUser = (id) => {
 	if (id === "new") {
@@ -35,6 +35,18 @@ const useIsAdmin = () => {
 	return data ? isAdmin(data.roles) === true : undefined;
 };
 
+/**
+ * Whether the signed-in user may manage a section (create, change, delete); false while the user is loading or its
+ * read failed, as HasPermission hides the Save buttons then
+ *
+ * @param   {string} section  Permissions.js PROXY_HOSTS, ...
+ * @returns {boolean}
+ */
+const useCanManage = (section) => {
+	const { data } = useUser("me");
+	return hasPermission(section, MANAGE, data?.permissions, data?.roles);
+};
+
 const useSetUser = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -49,4 +61,4 @@ const useSetUser = () => {
 	});
 };
 
-export { useIsAdmin, useSetUser, useUser };
+export { useCanManage, useIsAdmin, useSetUser, useUser };

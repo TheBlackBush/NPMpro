@@ -1,4 +1,4 @@
-import { IconDisc, IconDotsVertical, IconEdit, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconDisc, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import {
 	BreakableHost,
 	CertificateFormatter,
+	EditMenuItem,
 	EmptyData,
 	GravatarFormatter,
 	HasPermission,
@@ -197,16 +198,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 									data={{ id: info.row.original.id }}
 								/>
 							</span>
-							<button
-								type="button"
-								className="dropdown-item"
-								onClick={() => {
-									onEdit?.(info.row.original.id);
-								}}
-							>
-								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-								<T id="action.edit" />
-							</button>
+							<EditMenuItem section={STREAMS} onClick={() => onEdit?.(info.row.original.id)} />
 							<HasPermission section={STREAMS} permission={MANAGE} hideError>
 								<button
 									type="button"

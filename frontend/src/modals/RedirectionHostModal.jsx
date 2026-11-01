@@ -7,6 +7,7 @@ import {
 	DirectoryField,
 	DomainNamesField,
 	ErrorAlert,
+	FormSection,
 	FormSubmit,
 	HasPermission,
 	HookForm,
@@ -14,15 +15,20 @@ import {
 	ModalTabs,
 	NginxConfigField,
 	RequestProgress,
+	SelectField,
 	SSLCertificateField,
 	SSLOptionsFields,
 	SwitchField,
+	SwitchList,
 	TabPane,
+	TextField,
 	useAppForm,
+	useReadOnly,
 	useResetToSaved,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDirectorySuggestions,
 	useRedirectionHost,
 	useRedirectionHosts,
@@ -38,6 +44,7 @@ import {
 	redirectionHostDefaults,
 	redirectionHostValidate,
 	requestValues,
+	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
@@ -49,18 +56,24 @@ const showRedirectionHostModal = (id) => {
 
 const validate = redirectionHostValidate(validations);
 
+// the redirect status codes, in the select's order
+const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
+
 function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
-	const { errors, isSubmitting } = useFormState();
+	const { isSubmitting } = useFormState();
+	const readOnly = useReadOnly();
 	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
 		name: ["certificateId", "npmproDnsChallenge", "advancedConfig", "npmproPropagationSeconds"],
 	});
-	const forwardDomainError = errors.forwardDomainName?.message ?? null;
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
-					<T id={savedId || data.id ? "object.edit" : "object.add"} tData={{ object: "redirection-host" }} />
+					<T
+						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						tData={{ object: "redirection-host" }}
+					/>
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
@@ -72,85 +85,49 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
 						<div className="row">
 							<div className="col-md-6">
-								<div className="mb-3">
-									<label className="form-label" htmlFor="forwardScheme">
-										<T id="host.forward-scheme" />
-									</label>
-									<select
-										id="forwardScheme"
-										className="form-select"
-										required
-										{...register("forwardScheme")}
-									>
-										<option value="$scheme">
-											{intl.formatMessage({
-												id: "redirection.scheme.keep",
-											})}
-										</option>
-										<option value="http">http</option>
-										<option value="https">https</option>
-									</select>
-								</div>
+								<SelectField name="forwardScheme" label={<T id="host.forward-scheme" />}>
+									<option value="$scheme">
+										{intl.formatMessage({ id: "redirection.scheme.keep" })}
+									</option>
+									<option value="http">http</option>
+									<option value="https">https</option>
+								</SelectField>
 							</div>
 							<div className="col-md-6">
-								<div className="mb-3">
-									<label className="form-label" htmlFor="forwardDomainName">
-										<T id="redirection-host.forward-domain" />
-									</label>
-									<input
-										id="forwardDomainName"
-										type="text"
-										className={`form-control ${forwardDomainError ? "is-invalid" : ""}`}
-										required
-										placeholder="example.com"
-										{...register("forwardDomainName")}
-									/>
-
-									{forwardDomainError ? (
-										<div className="invalid-feedback">{forwardDomainError}</div>
-									) : null}
-								</div>
+								<TextField
+									name="forwardDomainName"
+									label={<T id="redirection-host.forward-domain" />}
+									required
+									type="text"
+									placeholder="example.com"
+								/>
 							</div>
 						</div>
-						<div className="mb-3">
-							<label className="form-label" htmlFor="forwardHttpCode">
-								<T id="redirection-host.forward-http-code" />
-							</label>
-							<select
-								id="forwardHttpCode"
-								className="form-select"
-								required
-								{...register("forwardHttpCode", { valueAsNumber: true })}
-							>
-								<option value="301">
-									<T id="redirection-hosts.http-code.301" />
+						<SelectField
+							name="forwardHttpCode"
+							label={<T id="redirection-host.forward-http-code" />}
+							registerOptions={{ valueAsNumber: true }}
+						>
+							{REDIRECTION_HTTP_CODES.map((code) => (
+								<option key={code} value={code}>
+									{intl.formatMessage({ id: `redirection-hosts.http-code.${code}` })}
 								</option>
-								<option value="302">
-									<T id="redirection-hosts.http-code.302" />
-								</option>
-								<option value="303">
-									<T id="redirection-hosts.http-code.303" />
-								</option>
-								<option value="307">
-									<T id="redirection-hosts.http-code.307" />
-								</option>
-								<option value="308">
-									<T id="redirection-hosts.http-code.308" />
-								</option>
-							</select>
-						</div>
-						<div className="my-3">
-							<h4 className="py-2">
-								<T id="options" />
-							</h4>
-							<div className="vstack gap-3">
+							))}
+						</SelectField>
+						<DirectoryField
+							labelId="redirection-host.directory"
+							datalistId="directory-suggestions-redirection"
+							suggestions={suggestions}
+						/>
+						<FormSection heading legend={<T id="options" />} className="mb-0">
+							<SwitchList>
 								<SwitchField
 									id="preservePath"
 									label={<T id="host.flags.preserve-path" />}
 									{...register("preservePath")}
 								/>
-							</div>
-						</div>
+							</SwitchList>
+						</FormSection>
 					</TabPane>
 					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
@@ -158,16 +135,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 						<SSLOptionsFields />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField />
-						<div className="row mt-3">
-							<div className="col-md-12 mb-3">
-								<DirectoryField
-									labelId="redirection-host.directory"
-									datalistId="directory-suggestions-redirection"
-									suggestions={suggestions}
-								/>
-							</div>
-						</div>
+						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress
@@ -177,7 +145,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 			</AppModal.Body>
 			<AppModal.Footer>
 				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
-					<T id="cancel" />
+					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
@@ -197,7 +165,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 
 // the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps }) {
+function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
 	const [defaultValues] = useState(() => redirectionHostDefaults(data));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
@@ -227,7 +195,7 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps 
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit}>
+		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<RedirectionHostForm
 				data={data}
@@ -242,6 +210,8 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, ...formProps 
 
 const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(REDIRECTION_HOSTS);
 	const { data, error } = useRedirectionHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
@@ -251,11 +221,12 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const ready = Boolean(data) && tlsSettled;
 
 	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static">
+		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{!(ready || error) && <Loading noLogo />}
 			{ready && (
 				<RedirectionHostEditor
+					readOnly={readOnly}
 					id={id}
 					data={data}
 					save={save}

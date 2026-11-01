@@ -6,6 +6,7 @@ import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, Lo
 import { getDirectory, useDirectorySuggestions, useListFilters, useProxyHosts } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/modals";
+import { servesCurrentPage } from "src/modules/CurrentPage";
 import { forwardSummary } from "src/modules/Forward";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
@@ -30,19 +31,44 @@ export default function TableWrapper() {
 		return <ErrorAlert error={error} />;
 	}
 
+	// the host with this id, and whether it serves the page the browser is on (disabling or deleting it may lock the
+	// user out of NPMpro)
+	const hostOf = (id) => data?.find((item) => item.id === id);
+	const servesThisPage = (host) => servesCurrentPage(host?.domainNames, window.location.hostname);
+
+	// turns the host on or off and says how it went; throws when the request fails
+	const toggle = async (id, enabled) => {
+		const row = await toggleProxyHost(id, enabled);
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: ["proxy-hosts"] }),
+			queryClient.invalidateQueries({ queryKey: ["proxy-host", id] }),
+		]);
+		const nginxErr = getNginxConfigError(row);
+		if (nginxErr === null) {
+			showObjectSuccess("proxy-host", enabled ? "enabled" : "disabled");
+		} else {
+			showNginxConfigError("proxy-host", nginxErr);
+		}
+	};
+
 	const handleDisableToggle = async (id, enabled) => {
+		const host = hostOf(id);
+		// disabling the host that serves this page asks first; the dialog shows a failure itself
+		if (!enabled && servesThisPage(host)) {
+			showDeleteConfirmModal({
+				title: <T id="object.disable" tData={{ object: "proxy-host" }} />,
+				children: <T id="object.disable.content" tData={{ object: "proxy-host" }} />,
+				subject: host.domainNames.join(", "),
+				details: forwardSummary(host),
+				warning: <T id="proxy-host.serves-this-page" />,
+				confirmLabel: <T id="action.disable" />,
+				onConfirm: () => toggle(id, false),
+				invalidations: [],
+			});
+			return;
+		}
 		try {
-			const row = await toggleProxyHost(id, enabled);
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["proxy-hosts"] }),
-				queryClient.invalidateQueries({ queryKey: ["proxy-host", id] }),
-			]);
-			const nginxErr = getNginxConfigError(row);
-			if (nginxErr === null) {
-				showObjectSuccess("proxy-host", enabled ? "enabled" : "disabled");
-			} else {
-				showNginxConfigError("proxy-host", nginxErr);
-			}
+			await toggle(id, enabled);
 		} catch (err) {
 			showApiError(err);
 		}
@@ -64,7 +90,7 @@ export default function TableWrapper() {
 		onEdit: (id) => showProxyHostModal(id),
 		onClone: (id) => showProxyHostModal(id, true),
 		onDelete: (id) => {
-			const host = data?.find((item) => item.id === id);
+			const host = hostOf(id);
 			showDeleteConfirmModal({
 				title: <T id="object.delete" tData={{ object: "proxy-host" }} />,
 				onConfirm: async () => {
@@ -75,6 +101,7 @@ export default function TableWrapper() {
 				children: <T id="object.delete.content" tData={{ object: "proxy-host" }} />,
 				subject: host?.domainNames.join(", "),
 				details: host && forwardSummary(host),
+				warning: servesThisPage(host) ? <T id="proxy-host.serves-this-page" /> : null,
 			});
 		},
 		onDisableToggle: handleDisableToggle,

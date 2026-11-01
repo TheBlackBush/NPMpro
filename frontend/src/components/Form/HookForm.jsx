@@ -4,6 +4,8 @@ import { fieldPaths, formResolver, resetOptionsOf, rowErrorPaths } from "src/mod
 import { firstErrorOf } from "src/modules/ModalTabs";
 
 const FieldOrderContext = createContext([]);
+// a window opened by a user who may only view: its tabs disable their fields and nothing is saved
+const ReadOnlyContext = createContext(false);
 // the ModalTabs of the form: { current: { tabs, open(id, then) } | null }, so the first error's tab opens
 const FormTabsContext = createContext(null);
 
@@ -87,6 +89,15 @@ function useFieldError(name) {
 	// validating state (React Hook Form subscribes to what is read from formState)
 	const { errors } = useFormState({ name, exact: true });
 	return get(errors, name)?.message ?? null;
+}
+
+/**
+ * Whether the form around the caller is read-only (HookForm's readOnly): a View window
+ *
+ * @returns {boolean}
+ */
+function useReadOnly() {
+	return useContext(ReadOnlyContext);
 }
 
 /**
@@ -196,9 +207,11 @@ function useListRecheck(name) {
  * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
  *                                      on the first render (as the defaultValues' order)
  * @param {string}   [props.className]   of the <form>
+ * @param {boolean}  [props.readOnly]    a View window: TabPane disables the fields (a disabled fieldset), react-select
+ *                                      fields read useReadOnly, and a submit saves nothing
  * @param {*}        props.children
  */
-function HookForm({ methods, onSubmit, fieldOrder, className, children }) {
+function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	const submitting = useRef(false);
 	const tabsRef = useRef(null);
@@ -213,26 +226,28 @@ function HookForm({ methods, onSubmit, fieldOrder, className, children }) {
 		<FormProvider {...methods}>
 			<FieldOrderContext.Provider value={order}>
 				<FormTabsContext.Provider value={tabsRef}>
-					<form
-						className={className}
-						action="#"
-						noValidate
-						onSubmit={(event) => {
-							event.stopPropagation();
-							if (submitting.current) {
-								event.preventDefault();
-								return;
-							}
-							submitting.current = true;
-							void methods
-								.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
-								.finally(() => {
-									submitting.current = false;
-								});
-						}}
-					>
-						{children}
-					</form>
+					<ReadOnlyContext.Provider value={readOnly}>
+						<form
+							className={className}
+							action="#"
+							noValidate
+							onSubmit={(event) => {
+								event.stopPropagation();
+								if (readOnly || submitting.current) {
+									event.preventDefault();
+									return;
+								}
+								submitting.current = true;
+								void methods
+									.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
+									.finally(() => {
+										submitting.current = false;
+									});
+							}}
+						>
+							{children}
+						</form>
+					</ReadOnlyContext.Provider>
 				</FormTabsContext.Provider>
 			</FieldOrderContext.Provider>
 		</FormProvider>
@@ -248,6 +263,7 @@ export {
 	useFocusFirstError,
 	useFormTabs,
 	useListRecheck,
+	useReadOnly,
 	useRecheckDependent,
 	useResetToSaved,
 };

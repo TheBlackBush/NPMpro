@@ -193,6 +193,7 @@ export const PROXY_HOST_TABS = Object.freeze([
 			"forwardScheme",
 			"forwardHost",
 			"forwardPort",
+			"npmproDirectory",
 			"npmproNoindex",
 			"npmproCrowdsecAppsec",
 			"npmproProxyRequestBuffering",
@@ -204,12 +205,11 @@ export const PROXY_HOST_TABS = Object.freeze([
 			"npmproAuthRequestUpstream",
 			"npmproAccessListType",
 			"npmproAccessListIds",
-			"npmproLocationConfig",
 		],
 	},
 	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
-	advancedTab("advancedConfig"),
+	advancedTab("advancedConfig", "npmproLocationConfig"),
 ]);
 
 /**

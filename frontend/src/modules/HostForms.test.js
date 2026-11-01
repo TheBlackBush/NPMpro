@@ -24,6 +24,7 @@ import {
 	TLS_TAB_FIELDS,
 	tlsChanges,
 	tlsQueriesSettled,
+	windowTitleId,
 } from "./HostForms.js";
 import { tabOfPath } from "./ModalTabs.js";
 import { createValidations } from "./ValidationRules.js";
@@ -228,6 +229,10 @@ it("puts every field of the redirection host, 404 host and stream windows on exa
 	assert.equal(tabOfPath(STREAM_TABS, "domainNames"), "tls");
 	assert.equal(tabOfPath(REDIRECTION_HOST_TABS, "domainNames"), "details");
 	assert.equal(tabOfPath(STREAM_TABS, "npmproAdvancedConfig"), "advanced");
+	// the group sits on the Details tab of every host window (UX-03)
+	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
+		assert.equal(tabOfPath(tabs, "npmproDirectory"), "details");
+	}
 	assert.equal(tabOfPath(DEAD_HOST_TABS, "npmproDnsCredentialId"), "tls");
 });
 
@@ -473,4 +478,11 @@ it("the TLS tab lists its fields in the order they show: certificate, mTLS, HTTP
 	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS]) {
 		assert.deepEqual(tabs.find((tab) => tab.id === "tls").fields, TLS_TAB_FIELDS);
 	}
+});
+
+it("titles a window View for a user who may only view, Edit for a saved item, Add otherwise", () => {
+	assert.equal(windowTitleId({ editing: true, readOnly: true }), "object.view");
+	assert.equal(windowTitleId({ editing: false, readOnly: true }), "object.view");
+	assert.equal(windowTitleId({ editing: true, readOnly: false }), "object.edit");
+	assert.equal(windowTitleId({ editing: false, readOnly: false }), "object.add");
 });
