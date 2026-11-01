@@ -7,11 +7,12 @@ import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
 import { FormField, selectControlProps } from "./FormField";
+import { FormSection } from "./FormSection";
 import { useRecheckDependent } from "./HookForm";
 
 // the provider; another provider's credential does not fit, so a change empties it (its message shows again once
-// it may)
-function ProviderSelect({ providerId }) {
+// it may). className: of the field, "mb-0" while it is the last one in the box
+function ProviderSelect({ providerId, className }) {
 	const { setValue } = useFormContext();
 	const { field, fieldState } = useController({ name: "npmproDnsProvider" });
 	const recheckCredential = useRecheckDependent("npmproDnsCredentialId");
@@ -25,7 +26,13 @@ function ProviderSelect({ providerId }) {
 			label: p.name,
 		}));
 	return (
-		<FormField id="dnsProvider" label={<T id="certificates.dns.provider" />} required error={error}>
+		<FormField
+			id="dnsProvider"
+			label={<T id="certificates.dns.provider" />}
+			required
+			error={error}
+			className={className}
+		>
 			{(control) => (
 				<Select
 					{...selectControlProps(control)}
@@ -64,6 +71,7 @@ function PropagationInput() {
 			label={<T id="certificates.dns.propagation-seconds" />}
 			hint={<T id="certificates.dns.propagation-seconds-note" />}
 			error={error}
+			className="mb-0"
 		>
 			{(control) => (
 				<input
@@ -87,21 +95,22 @@ function PropagationInput() {
 }
 
 /**
- * The DNS challenge fields of the form around it: the notice, the provider and, with a provider, the credential and
- * the propagation time. The form's resolver checks them (CertificateForms.js dnsChallengeRules).
+ * The DNS challenge fields of the form around it, in Tabler's form-fieldset box named "DNS challenge": the notice, the
+ * provider and, with a provider, the credential and the propagation time. The form's resolver checks them
+ * (CertificateForms.js dnsChallengeRules). The same box in the host windows' TLS tab and the DNS certificate window.
+ *
+ * @param {Object}  [props]
+ * @param {string}  [props.className]  of the box, instead of form-fieldset's own bottom margin (the TLS tab passes
+ *                                     "mb-0" because its request section has the margin below)
  */
-export function DNSProviderFields({ showBoundaryBox }) {
+export function DNSProviderFields({ className }) {
 	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
-		<div
-			className={
-				showBoundaryBox ? "py-3 px-3 border border-orange border-opacity-10 rounded bg-cyan-lt" : undefined
-			}
-		>
+		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
 			<NoticeAlert>
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
-			<ProviderSelect providerId={providerId} />
+			<ProviderSelect providerId={providerId} className={providerId ? undefined : "mb-0"} />
 			{providerId ? (
 				<>
 					<DnsCredentialSelect
@@ -112,6 +121,6 @@ export function DNSProviderFields({ showBoundaryBox }) {
 					<PropagationInput />
 				</>
 			) : null}
-		</div>
+		</FormSection>
 	);
 }

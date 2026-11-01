@@ -72,7 +72,7 @@ it("builds the classes of a choice group and its options", () => {
 });
 
 it("lays out a switch list in one or two columns", () => {
-	assert.equal(switchListClass(), "divide-y");
-	assert.equal(switchListClass(1), "divide-y");
+	assert.equal(switchListClass(), "vstack gap-3");
+	assert.equal(switchListClass(1), "vstack gap-3");
 	assert.equal(switchListClass(2), "row row-cols-1 row-cols-md-2 gx-4");
 });

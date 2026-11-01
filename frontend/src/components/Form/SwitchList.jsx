@@ -3,7 +3,7 @@ import { Children } from "react";
 import { switchListClass } from "src/modules/FormFields";
 
 /**
- * Tabler settings rows of switches (SwitchField): one column divided by lines, or two columns from the md
+ * Tabler settings rows of switches (SwitchField): one column with a gap between rows, or two columns from the md
  * breakpoint. Put it in a FormSection to name the group.
  *
  * @param {Object} props

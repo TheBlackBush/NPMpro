@@ -122,12 +122,11 @@ function EditionFields({ isLocked }) {
 				<T id="settings.geoip.editions" />
 				{locked ? <LockedBadge /> : null}
 			</h3>
-			<div className="divide-y">
+			<div className="vstack gap-3">
 				{GEOIP_EDITIONS.map(({ value, key }, index) => (
 					<SwitchField
 						key={value}
 						ref={index === 0 ? field.ref : undefined}
-						className="py-2"
 						id={`geoip-edition-${key}`}
 						label={<T id={`settings.geoip.edition.${key}`} />}
 						hint={<T id={`settings.geoip.edition.${key}.hint`} />}

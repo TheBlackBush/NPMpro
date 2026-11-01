@@ -27,11 +27,10 @@ export const CERTIFICATE_REQUEST_DEFAULTS = Object.freeze({
 	npmproPropagationSeconds: 0,
 });
 
-/**
- * The fields of the TLS tab of a host window (SSLCertificateField and SSLOptionsFields); a stream adds its domain
- * names, which belong to a requested certificate
- */
-export const TLS_TAB_FIELDS = Object.freeze([
+// the fields of a certificate request that come before and after a stream's domain names
+const REQUEST_BEFORE_DOMAINS = ["npmproReuseKey", "npmproDnsChallenge"];
+const REQUEST_AFTER_DOMAINS = ["npmproDnsProvider", "npmproDnsCredentialId", "npmproPropagationSeconds"];
+const TLS_TAB_HEAD = [
 	"certificateId",
 	"npmproMtlsCertificateId",
 	"npmproMtlsVerifyClientOptional",
@@ -40,8 +39,18 @@ export const TLS_TAB_FIELDS = Object.freeze([
 	"npmproHttp3Support",
 	"hstsEnabled",
 	"hstsSubdomains",
-	...Object.keys(CERTIFICATE_REQUEST_DEFAULTS),
-]);
+	...REQUEST_BEFORE_DOMAINS,
+];
+
+/**
+ * The fields of the TLS tab of a host window (SSLCertificateField and SSLOptionsFields), in the order they show, so a
+ * refused save focuses the first error top to bottom: the certificate, the mTLS CA certificate and switches, the HTTPS
+ * options, the certificate request
+ */
+export const TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, ...REQUEST_AFTER_DOMAINS]);
+
+// a stream's TLS tab: its domain names belong to a requested certificate, between the DNS challenge and its box
+const STREAM_TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, "domainNames", ...REQUEST_AFTER_DOMAINS]);
 
 /**
  * The Advanced tab of a host window, on the right: the raw nginx config and the directory
@@ -335,7 +344,7 @@ export const STREAM_TABS = Object.freeze([
 			"npmproProxyProtocolForwarding",
 		],
 	},
-	{ id: "tls", labelId: "column.ssl", fields: ["domainNames", ...TLS_TAB_FIELDS] },
+	{ id: "tls", labelId: "column.ssl", fields: STREAM_TLS_TAB_FIELDS },
 	advancedTab("npmproAdvancedConfig"),
 ]);
 

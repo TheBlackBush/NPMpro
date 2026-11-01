@@ -77,7 +77,7 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 							<h3 className="py-2">
 								<T id="options" />
 							</h3>
-							<div className="divide-y">
+							<div className="vstack gap-3">
 								<SwitchField
 									id="satisfyAny"
 									label={<T id="access-list.satisfy-any" />}

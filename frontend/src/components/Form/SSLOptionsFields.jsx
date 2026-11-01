@@ -1,36 +1,14 @@
-import { useController, useFormContext, useWatch } from "react-hook-form";
+import { useController, useWatch } from "react-hook-form";
 import { DNSProviderFields, DomainNamesField, SwitchField } from "src/components";
 import { T } from "src/locale";
-import { applyChanges } from "src/modules/HookForm";
-import { domainNamesOptions, hiddenTlsFields, tlsChanges } from "src/modules/HostForms";
-import { namedLocations } from "src/modules/ProxyHostForms";
-import { useRecheckDependent } from "./HookForm";
+import { domainNamesOptions } from "src/modules/HostForms";
+import { tlsDisabledReasons } from "src/modules/TlsOptions";
+import { FormSection } from "./FormSection";
+import { MtlsCertificateField } from "./SSLCertificateField";
+import { SwitchList } from "./SwitchList";
+import { useTlsChange } from "./useTlsChange";
 
-/**
- * A change on the TLS tab of a React Hook Form host window, called after the field's own controller set its value:
- * sets what it turns off or on (HostForms.js tlsChanges), drops the messages of the fields it hides, and re-checks the
- * domain names, whose rule follows the certificate and the DNS challenge
- *
- * @param   {Object}  [options]
- * @param   {boolean} [options.forHttp]  false for a stream
- * @returns {Function} (name, value) => void
- */
-export function useTlsChange({ forHttp = true } = {}) {
-	const { getValues, setValue, clearErrors } = useFormContext();
-	const recheckDomainNames = useRecheckDependent("domainNames");
-	return (name, value) => {
-		const values = getValues();
-		const changes = tlsChanges(values, name, value, { forHttp });
-		// the changed field is already set, unless the change overrides it (an mTLS certificate forces HTTPS)
-		const dependents = Object.fromEntries(
-			Object.entries(changes).filter(([key, next]) => key !== name || next !== value),
-		);
-		applyChanges(setValue, dependents);
-		clearErrors(hiddenTlsFields({ ...values, ...changes }, { forHttp }));
-		if ("certificateId" in changes || "npmproDnsChallenge" in changes) recheckDomainNames();
-	};
-}
-
+// the values the TLS rules read (TlsOptions.js tlsDisabledReasons), and the DNS challenge
 const TLS_FIELDS = [
 	"certificateId",
 	"sslForced",
@@ -42,9 +20,12 @@ const TLS_FIELDS = [
 	"locations",
 ];
 
+// why a control is off (a reason of tlsDisabledReasons), as its hint
+const reasonHint = (reason) => (reason ? <T id={reason.id} tData={reason.tData} /> : null);
+
 // a switch of the TLS tab: its controller sets the value, then onTlsChange sets what it turns off or on; shown is
-// what the switch displays when that differs from the value
-function TlsSwitch({ name, onTlsChange, shown, ...props }) {
+// what the switch displays when that differs from the value. With a reason it is off and its hint says why.
+function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
 	const { field } = useController({ name });
 	return (
 		<SwitchField
@@ -53,6 +34,8 @@ function TlsSwitch({ name, onTlsChange, shown, ...props }) {
 			name={field.name}
 			ref={field.ref}
 			checked={shown === undefined ? Boolean(field.value) : shown(field.value)}
+			disabled={Boolean(reason)}
+			hint={reasonHint(reason)}
 			onChange={(e) => {
 				field.onChange(e.target.checked);
 				onTlsChange(name, e.target.checked);
@@ -63,80 +46,85 @@ function TlsSwitch({ name, onTlsChange, shown, ...props }) {
 }
 
 /**
- * The TLS options of a host window: mTLS, HTTPS options (HTTP hosts), and for a requested certificate its key, the
- * DNS challenge (always for a stream, with the certificate's domain names) and the DNS provider fields. Each switch
- * is a controller, a change runs useTlsChange.
+ * The TLS options of a host window, under its certificate (SSLCertificateField): the mTLS CA certificate select, the
+ * client certificate switches (mTLS), the HTTPS options (HTTP hosts) and, while a new certificate is requested, its
+ * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in one
+ * column. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
+ * says why in its hint.
  */
-export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
-	const [
-		certificateId,
-		sslForced,
-		hstsEnabled,
-		dnsChallenge,
-		npmproMtlsCertificateId,
-		npmproMtlsVerifyClientOptional,
-		npmproAuthRequest,
-		locations,
-	] = useWatch({ name: TLS_FIELDS });
+export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
+	const watched = useWatch({ name: TLS_FIELDS });
+	const values = Object.fromEntries(TLS_FIELDS.map((name, index) => [name, watched[index]]));
+	const reasons = tlsDisabledReasons(values, { forHttp, forProxyHost });
 	const onTlsChange = useTlsChange({ forHttp });
-
-	const newCertificate = certificateId === "new";
-	const hasCertificate = newCertificate || certificateId > 0;
-	const mtlsBypassAuthRequestPossible =
-		npmproMtlsVerifyClientOptional &&
-		[{ npmproAuthRequest }, ...namedLocations(locations ?? [])].some(
-			({ npmproAuthRequest: authRequest = "none" }) => authRequest !== "none",
-		);
-	const mtlsRequired = npmproMtlsCertificateId > 0 && !npmproMtlsVerifyClientOptional;
+	const newCertificate = values.certificateId === "new";
+	// the last section ends the tab, without the gap under it
+	const lastSection = newCertificate ? "request" : forHttp ? "https" : "mtls";
 
 	return (
-		<div>
-			<div className="divide-y">
-				<TlsSwitch
-					name="npmproMtlsVerifyClientOptional"
-					label={<T id="domains.mtls-verify-client-optional" />}
-					onTlsChange={onTlsChange}
-					disabled={!(certificateId > 0 && npmproMtlsCertificateId > 0)}
-				/>
-				{forProxyHost ? (
+		<>
+			<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
+			<FormSection
+				heading
+				legend={<T id="tls.section.mtls" />}
+				className={lastSection === "mtls" ? "mb-0" : undefined}
+			>
+				<SwitchList>
 					<TlsSwitch
-						name="npmproMtlsBypassAuthRequest"
-						label={<T id="domains.mtls-bypass-auth-request" />}
+						name="npmproMtlsVerifyClientOptional"
+						label={<T id="domains.mtls-verify-client-optional" />}
 						onTlsChange={onTlsChange}
-						shown={(value) => value === true && Boolean(mtlsBypassAuthRequestPossible)}
-						disabled={!mtlsBypassAuthRequestPossible}
+						reason={reasons.npmproMtlsVerifyClientOptional}
 					/>
-				) : null}
-				{forHttp ? (
-					<>
+					{forProxyHost ? (
+						<TlsSwitch
+							name="npmproMtlsBypassAuthRequest"
+							label={<T id="domains.mtls-bypass-auth-request" />}
+							onTlsChange={onTlsChange}
+							shown={(value) => value === true && !reasons.npmproMtlsBypassAuthRequest}
+							reason={reasons.npmproMtlsBypassAuthRequest}
+						/>
+					) : null}
+				</SwitchList>
+			</FormSection>
+			{forHttp ? (
+				<FormSection
+					heading
+					legend={<T id="tls.section.https" />}
+					className={lastSection === "https" ? "mb-0" : undefined}
+				>
+					<SwitchList>
 						<TlsSwitch
 							name="sslForced"
 							label={<T id="domains.force-ssl" />}
 							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || mtlsRequired}
+							reason={reasons.sslForced}
 						/>
 						<TlsSwitch
 							name="npmproHttp3Support"
 							label={<T id="domains.http3-support" />}
 							onTlsChange={onTlsChange}
-							disabled={!hasCertificate}
+							reason={reasons.npmproHttp3Support}
 						/>
 						<TlsSwitch
 							name="hstsEnabled"
 							label={<T id="host.flags.hsts-enabled" />}
 							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || !sslForced}
+							reason={reasons.hstsEnabled}
 						/>
 						<TlsSwitch
 							name="hstsSubdomains"
 							label={<T id="host.flags.hsts-subdomains" />}
 							onTlsChange={onTlsChange}
-							disabled={!hasCertificate || !hstsEnabled}
+							reason={reasons.hstsSubdomains}
 						/>
-					</>
-				) : null}
-				{newCertificate ? (
-					<>
+					</SwitchList>
+				</FormSection>
+			) : null}
+			{newCertificate ? (
+				<FormSection heading legend={<T id="certificates.request.title" />} className="mb-0">
+					{/* a gap before the domain names (streams) or the DNS challenge box under the switches */}
+					<SwitchList className={!forHttp || values.npmproDnsChallenge ? "mb-3" : undefined}>
 						<TlsSwitch
 							name="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}
@@ -147,13 +135,13 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost }) {
 							label={<T id="domains.use-dns" />}
 							onTlsChange={onTlsChange}
 							shown={(value) => !forHttp || Boolean(value)}
-							disabled={!forHttp}
+							reason={reasons.npmproDnsChallenge}
 						/>
-					</>
-				) : null}
-			</div>
-			{newCertificate && !forHttp ? <DomainNamesField {...domainNamesOptions({}, { forHttp })} /> : null}
-			{newCertificate && dnsChallenge ? <DNSProviderFields showBoundaryBox /> : null}
-		</div>
+					</SwitchList>
+					{forHttp ? null : <DomainNamesField {...domainNamesOptions({}, { forHttp })} />}
+					{values.npmproDnsChallenge ? <DNSProviderFields className="mb-0" /> : null}
+				</FormSection>
+			) : null}
+		</>
 	);
 }
