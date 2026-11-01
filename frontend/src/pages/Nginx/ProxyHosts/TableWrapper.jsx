@@ -113,7 +113,7 @@ export default function TableWrapper() {
 			<div className={stripeClass("proxyHosts")} />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title text-nowrap">
+					<h2 className="card-title fs-2 fw-semibold text-nowrap">
 						<T id="proxy-hosts" />
 					</h2>
 					<div className="card-actions btn-list">

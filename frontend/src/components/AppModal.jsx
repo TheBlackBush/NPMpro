@@ -1,3 +1,4 @@
+import cn from "clsx";
 import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
 
@@ -22,14 +23,15 @@ function AppModal({ children, centered = false, ...props }) {
 	);
 }
 
-function AppModalTitle({ children, ...props }) {
+// The window's title as a page title (h2: 20px), not react-bootstrap's default div styled as h4
+function AppModalTitle({ children, className, ...props }) {
 	const { id, setMounted } = useContext(TitleContext);
 	useEffect(() => {
 		setMounted(true);
 		return () => setMounted(false);
 	}, [setMounted]);
 	return (
-		<Modal.Title id={id} {...props}>
+		<Modal.Title as="h2" id={id} className={cn("h2", className)} {...props}>
 			{children}
 		</Modal.Title>
 	);

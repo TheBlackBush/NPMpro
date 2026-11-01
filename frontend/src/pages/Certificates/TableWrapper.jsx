@@ -73,7 +73,7 @@ export default function TableWrapper() {
 			<Tabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title text-nowrap">
+					<h2 className="card-title fs-2 fw-semibold text-nowrap">
 						<T id="certificates" />
 					</h2>
 					<div className="card-actions btn-list">

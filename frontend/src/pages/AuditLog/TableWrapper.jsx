@@ -72,7 +72,7 @@ export default function TableWrapper() {
 			<div className={stripeClass("auditLog")} />
 			<div className="card-table">
 				<div className="card-header">
-					<h2 className="card-title">
+					<h2 className="card-title fs-2 fw-semibold">
 						<T id="auditlogs" />
 					</h2>
 				</div>
