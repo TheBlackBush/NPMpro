@@ -1,31 +1,52 @@
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { IconDeviceDesktop, IconMoon, IconSun } from "@tabler/icons-react";
 import cn from "clsx";
 import { useThemeState } from "src/context";
 import { intl } from "src/locale";
 
+// the choices in the menu's order: the stored value, its name and its icon
+const CHOICES = [
+	{ value: "light", labelId: "theme.light", Icon: IconSun },
+	{ value: "dark", labelId: "theme.dark", Icon: IconMoon },
+	{ value: "auto", labelId: "theme.system", Icon: IconDeviceDesktop },
+];
+
+/**
+ * The theme menu: Light, Dark or System (follows the operating system). The button shows the chosen one's icon; the
+ * menu opens to the left, as the switch sits at the right edge of the header, the login and the setup page.
+ *
+ * @param {Object} props
+ * @param {string} [props.className]
+ */
 function ThemeSwitcher({ className }) {
-	const { setTheme } = useThemeState();
+	const { preference, setPreference } = useThemeState();
+	const current = CHOICES.find((choice) => choice.value === preference) ?? CHOICES[2];
+	const label = intl.formatMessage({ id: "theme.label" }, { theme: intl.formatMessage({ id: current.labelId }) });
 
 	return (
-		<div className={cn("d-print-none", "d-inline-block", className)}>
+		<div className={cn("dropdown d-print-none d-inline-block", className)}>
 			<button
 				type="button"
-				className="btn btn-sm btn-ghost hide-theme-dark"
-				title={intl.formatMessage({ id: "user.switch-dark" })}
-				aria-label={intl.formatMessage({ id: "user.switch-dark" })}
-				onClick={() => setTheme("dark")}
+				className="btn dropdown-toggle btn-sm btn-ghost"
+				data-bs-toggle="dropdown"
+				title={label}
+				aria-label={label}
 			>
-				<IconMoon className="icon" aria-hidden="true" />
+				<current.Icon className="icon" aria-hidden="true" />
 			</button>
-			<button
-				type="button"
-				className="btn btn-sm btn-ghost hide-theme-light"
-				title={intl.formatMessage({ id: "user.switch-light" })}
-				aria-label={intl.formatMessage({ id: "user.switch-light" })}
-				onClick={() => setTheme("light")}
-			>
-				<IconSun className="icon" aria-hidden="true" />
-			</button>
+			<div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+				{CHOICES.map(({ value, labelId, Icon }) => (
+					<button
+						type="button"
+						key={value}
+						className={cn("dropdown-item", { active: value === preference })}
+						aria-current={value === preference ? "true" : undefined}
+						onClick={() => setPreference(value)}
+					>
+						<Icon className="icon dropdown-item-icon" aria-hidden="true" />
+						{intl.formatMessage({ id: labelId })}
+					</button>
+				))}
+			</div>
 		</div>
 	);
 }
