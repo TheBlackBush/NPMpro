@@ -6,6 +6,7 @@ import { confirmLeave } from "src/hooks";
 import { intl, T } from "src/locale";
 import { stripeClass } from "src/modules/SectionColors";
 import { groupSections } from "src/modules/SettingsSections";
+import { SettingsSectionContext } from "./SettingsHeading";
 import { SECTIONS } from "./sections";
 
 // the menu's categories, each with its sections (fixed, so grouped once)
@@ -85,7 +86,9 @@ export default function Layout() {
 					</div>
 				</div>
 				<div className="col-12 col-lg-9 d-flex flex-column">
-					<Section />
+					<SettingsSectionContext.Provider value={current.id}>
+						<Section />
+					</SettingsSectionContext.Provider>
 				</div>
 			</div>
 		</div>

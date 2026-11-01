@@ -71,6 +71,9 @@ Everything else is printed:
 
 ## New upstream languages
 
+Persian (`fa`) is skipped: NPMpro does not ship it.
+
+
 The script handles a new upstream language like an update with an empty old version. It:
 
 - creates `ui/<code>.json` from the upstream file, without the keys NPMpro rewords (they are printed)

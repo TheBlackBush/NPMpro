@@ -1,4 +1,4 @@
-import { IconHelp } from "@tabler/icons-react";
+import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useState } from "react";
 import { deleteAccessList } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
@@ -46,7 +46,7 @@ export default function TableWrapper() {
 							title={intl.formatMessage({ id: "help" })}
 							onClick={() => showHelpModal("AccessLists")}
 						>
-							<IconHelp className="icon" aria-hidden="true" />
+							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
 						</Button>
 						<ImportExportButtons
 							kind="access_lists"

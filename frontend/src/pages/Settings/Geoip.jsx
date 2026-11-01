@@ -28,6 +28,7 @@ import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { SaveBar } from "./SaveBar";
+import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
 const SIGNUP_URL = "https://www.maxmind.com/en/geolite2/signup";
@@ -37,11 +38,7 @@ const POLL_MS = 3000;
 const POLL_FOR_MS = 90 * 1000;
 
 function Heading() {
-	return (
-		<h2 className="mb-3">
-			<T id="settings.geoip" />
-		</h2>
-	);
+	return <SettingsHeading titleId="settings.geoip" />;
 }
 
 function SaveButton({ allLocked }) {

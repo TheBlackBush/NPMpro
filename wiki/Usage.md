@@ -93,7 +93,7 @@ Audit Logs lists who created, updated, enabled, disabled or deleted which object
 
 ## Languages
 
-The web UI is available in 24 languages: English, Azərbaycanca, Български, Čeština, Deutsch, Español, Eesti, Français, Gaeilge, Magyar, Bahasa Indonesia, Italiano, 日本語, 한국어, Nederlands, Norsk, Polski, Português (Europeu), Русский, Slovenčina, Türkçe, Українська, Tiếng Việt and 中文. A Persian translation exists too, but it cannot be chosen yet because the UI does not support right-to-left layout.
+The web UI is available in 24 languages: English, Azərbaycanca, Български, Čeština, Deutsch, Español, Eesti, Français, Gaeilge, Magyar, Bahasa Indonesia, Italiano, 日本語, 한국어, Nederlands, Norsk, Polski, Português (Europeu), Русский, Slovenčina, Türkçe, Українська, Tiếng Việt and 中文.
 
 Choose the language with the flag button in the header, or on the login and setup pages. The choice is stored in your browser (not in your account), and the page reloads in the new language. English is used until you choose another one.
 

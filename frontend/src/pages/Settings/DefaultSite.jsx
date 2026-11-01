@@ -22,15 +22,12 @@ import {
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { SaveBar } from "./SaveBar";
+import { SettingsHeading } from "./SettingsHeading";
 
 const validate = defaultSiteValidate(validations);
 
 function Heading() {
-	return (
-		<h2 className="mb-3">
-			<T id="settings.default-site" />
-		</h2>
-	);
+	return <SettingsHeading titleId="settings.default-site" />;
 }
 
 const OPTIONS = DEFAULT_SITE_OPTIONS.map((value) => ({

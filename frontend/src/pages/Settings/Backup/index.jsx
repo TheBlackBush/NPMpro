@@ -1,4 +1,5 @@
 import { T } from "src/locale";
+import { SettingsHeading } from "../SettingsHeading";
 import { CreateCard } from "./CreateCard";
 import { SchedulesCard } from "./SchedulesCard";
 import { StoredTable } from "./StoredTable";
@@ -6,9 +7,7 @@ import { StoredTable } from "./StoredTable";
 export default function Backup() {
 	return (
 		<div className="card-body">
-			<h2 className="mb-2">
-				<T id="settings.backup" />
-			</h2>
+			<SettingsHeading titleId="settings.backup" className="mb-2" />
 			<p className="text-secondary mb-4">
 				<T id="settings.backup.intro" />
 			</p>

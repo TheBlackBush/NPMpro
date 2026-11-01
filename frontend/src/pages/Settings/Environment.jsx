@@ -5,6 +5,7 @@ import { useEnvironment } from "src/hooks";
 import { intl, T } from "src/locale";
 import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 import { hasLockReason, LockedBadge, LockReason } from "./Authentication/LockedBadge";
+import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
 // provider names are product names, shown as they are
@@ -282,9 +283,7 @@ export default function Environment() {
 
 	return (
 		<div className="card-body">
-			<h2 className="mb-3">
-				<T id="settings.environment" />
-			</h2>
+			<SettingsHeading titleId="settings.environment" />
 			{error ? <ErrorAlert error={error} /> : null}
 			{isPending ? <Loading noLogo /> : null}
 			{data ? (

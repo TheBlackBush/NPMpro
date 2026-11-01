@@ -1,4 +1,4 @@
-import { IconHelp } from "@tabler/icons-react";
+import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
@@ -99,7 +99,7 @@ export default function TableWrapper() {
 							title={intl.formatMessage({ id: "help" })}
 							onClick={() => showHelpModal("Streams")}
 						>
-							<IconHelp className="icon" aria-hidden="true" />
+							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
 						</Button>
 						<ImportExportButtons
 							kind="streams"
