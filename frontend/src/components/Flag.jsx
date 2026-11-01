@@ -1,4 +1,5 @@
 import { IconWorld } from "@tabler/icons-react";
+import cn from "clsx";
 // @ts-expect-error Creating a typing for a subfolder is not easily possible
 import Flags from "country-flag-icons/react/3x2";
 
@@ -12,7 +13,8 @@ function Flag({ className, countryCode }) {
 	if (!FlagElement) {
 		return null;
 	}
-	return <FlagElement title={countryCode} className={className} width={20} />;
+	// a thin themable edge (Tabler's border colour), so a white flag (Japan) does not melt into a light background
+	return <FlagElement title={countryCode} className={cn("border rounded-1", className)} width={20} />;
 }
 
 export { Flag };

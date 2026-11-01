@@ -6,15 +6,22 @@ const HideContext = createContext(undefined);
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
 // Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
-// A dialog that never changes size (the delete confirmation) may pass `centered`.
-function AppModal({ children, centered = false, ...props }) {
+// A dialog that never changes size (the delete confirmation) may pass `centered`. Below the md breakpoint (phones) a
+// window fills the screen (Bootstrap's modal-fullscreen-md-down, UX-33); `fullscreen` sets another breakpoint, or
+// false for a window that stays a dialog.
+function AppModal({ children, centered = false, fullscreen = "md-down", ...props }) {
 	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
 	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
 	return (
 		<TitleContext.Provider value={value}>
 			<HideContext.Provider value={props.onHide}>
-				<Modal centered={centered} aria-labelledby={hasTitle ? id : undefined} {...props}>
+				<Modal
+					centered={centered}
+					fullscreen={fullscreen}
+					aria-labelledby={hasTitle ? id : undefined}
+					{...props}
+				>
 					{children}
 				</Modal>
 			</HideContext.Provider>

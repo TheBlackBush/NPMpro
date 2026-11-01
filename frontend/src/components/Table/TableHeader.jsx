@@ -21,10 +21,13 @@ function TableHeader({ tableInstance }) {
 						const sorted = column.getIsSorted();
 						return (
 							<th key={header.id} className={className} aria-sort={ariaSort(sorted)}>
-								{/* bg-transparent: the header background is translucent and .table-sort inherits it, which would paint it twice */}
+								{/* bg-transparent: the header background is translucent and .table-sort inherits it, which would paint it twice.
+								w-auto: Tabler's width 100% with its negative margins leaves the button 1.5rem narrower than the
+								label in a column that shrinks to its content (the ID column), so the label and the sort icon
+								overflowed it; at auto width the button spans the whole cell, padding included */}
 								<button
 									type="button"
-									className={cn("table-sort bg-transparent", sorted)}
+									className={cn("table-sort bg-transparent w-auto", sorted)}
 									onClick={column.getToggleSortingHandler()}
 								>
 									{label}
