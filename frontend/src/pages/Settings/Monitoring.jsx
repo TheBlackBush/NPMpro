@@ -75,6 +75,7 @@ function LogFields() {
 				label={<T id="settings.logs.rotations" />}
 				hint={<T id="settings.logs.rotations.hint" data={ROTATIONS} />}
 				{...ROTATIONS}
+				className=""
 			/>
 		</Part>
 	);
@@ -88,7 +89,7 @@ function GoAccessOptions() {
 		label: intl.formatMessage({ id: `settings.logs.goaccess.anonymize.${value}` }),
 	}));
 	return (
-		<>
+		<div className="mt-3">
 			<RuntimeNumber
 				name="goaccessKeepDays"
 				label={<T id="settings.logs.goaccess.keep-days" />}
@@ -102,7 +103,7 @@ function GoAccessOptions() {
 				hint={<T id="settings.logs.goaccess.anonymize.hint" />}
 				options={anonymize}
 			/>
-			<SwitchList className="mb-3">
+			<SwitchList>
 				<RuntimeSwitch
 					name="goaccessDropQueryStrings"
 					label={<T id="settings.logs.goaccess.drop-query-strings" />}
@@ -119,7 +120,7 @@ function GoAccessOptions() {
 					hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
 				/>
 			</SwitchList>
-		</>
+		</div>
 	);
 }
 
@@ -129,7 +130,7 @@ function GoAccessFields() {
 	const { isLocked } = useRuntimeSection();
 	return (
 		<Part titleId="settings.logs.goaccess.title">
-			<SwitchList className="mb-3">
+			<SwitchList>
 				<RuntimeSwitch
 					name="goaccess"
 					label={<T id="settings.logs.goaccess" />}
@@ -138,7 +139,12 @@ function GoAccessFields() {
 			</SwitchList>
 			{goaccess || isLocked("goaccess") ? <GoAccessOptions /> : null}
 			{user?.goaccess ? (
-				<a href="/goaccess" target="_blank" rel="noopener noreferrer" className="link-primary">
+				<a
+					href="/goaccess"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="link-primary d-inline-block mt-3"
+				>
 					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
 					<T id="settings.logs.goaccess.open" />
 				</a>

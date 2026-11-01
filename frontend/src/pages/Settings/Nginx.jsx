@@ -108,6 +108,7 @@ export default function Nginx() {
 					name="workerShutdownTimeout"
 					label={<T id="settings.nginx.shutdown-timeout" />}
 					hint={<T id="settings.nginx.shutdown-timeout.hint" />}
+					className=""
 				/>
 			</Part>
 			<Part titleId="settings.nginx.logging">

@@ -94,9 +94,10 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
  * @param {*}        props.label
  * @param {*}        [props.hint]
  * @param {boolean}  [props.narrow]
+ * @param {string}   [props.className]  the field's wrapper class, `mb-3` by default; "" for the last field of a group
  * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
  */
-function RuntimeControl({ name, label, hint, narrow = false, children }) {
+function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
 	const error = useFieldError(name);
 	return (
 		<FormField
@@ -104,6 +105,7 @@ function RuntimeControl({ name, label, hint, narrow = false, children }) {
 			label={<FieldLabel name={name}>{label}</FieldLabel>}
 			hint={<FieldHint name={name} hint={hint} />}
 			error={error}
+			className={className}
 		>
 			{(control) =>
 				narrow ? (
@@ -121,11 +123,11 @@ function RuntimeControl({ name, label, hint, narrow = false, children }) {
 /**
  * Whole number with an optional unit (input group); the value stays text, as the input holds it
  */
-function RuntimeNumber({ name, label, hint, min, max, unit }) {
+function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 	const { register } = useFormContext();
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow>
+		<RuntimeControl name={name} label={label} hint={hint} narrow className={className}>
 			{(control, error) => (
 				<div className="input-group">
 					<input
@@ -149,11 +151,12 @@ function RuntimeNumber({ name, label, hint, min, max, unit }) {
 /**
  * Text input, or a textarea with rows (the form layer's TextField)
  */
-function RuntimeText({ name, label, hint, placeholder, rows, type = "text" }) {
+function RuntimeText({ name, label, hint, placeholder, rows, type = "text", className }) {
 	const { isLocked } = useRuntimeSection();
 	return (
 		<TextField
 			name={name}
+			className={className}
 			id={idOf(name)}
 			label={<FieldLabel name={name}>{label}</FieldLabel>}
 			hint={<FieldHint name={name} hint={hint} />}
@@ -174,11 +177,11 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text" }) {
  * follow it). A controller: the options may change while the form is open (key sizes follow the key type, the
  * certificates load later), and the shown option must follow the value.
  */
-function RuntimeSelect({ name, label, hint, options, onChange, narrow = true }) {
+function RuntimeSelect({ name, label, hint, options, onChange, narrow = true, className }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow}>
+		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow} className={className}>
 			{(control, error) => (
 				<select
 					{...control}

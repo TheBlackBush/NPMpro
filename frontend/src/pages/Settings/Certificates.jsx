@@ -155,6 +155,7 @@ function DefaultCertificateField() {
 					</>
 				}
 				options={options}
+				className=""
 			/>
 		</Part>
 	);
@@ -171,6 +172,7 @@ function Fields() {
 					hint={<T id="settings.certificates.renewal-interval.hint" data={RENEWAL} />}
 					unit={<T id="settings.runtime.hours" />}
 					{...RENEWAL}
+					className=""
 				/>
 			</Part>
 			<StaplingFields />

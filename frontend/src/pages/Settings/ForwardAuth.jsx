@@ -30,9 +30,10 @@ export default function ForwardAuth() {
 				<T id="settings.forward-auth.intro" />
 			</p>
 			<Part titleId="settings.forward-auth.upstreams">
-				{FORWARD_AUTH_PROVIDERS.map(({ name, provider, example }) => (
+				{FORWARD_AUTH_PROVIDERS.map(({ name, provider, example }, index) => (
 					<RuntimeText
 						key={name}
+						className={index === FORWARD_AUTH_PROVIDERS.length - 1 ? "" : undefined}
 						name={name}
 						type="url"
 						label={<T id="settings.forward-auth.upstream" data={{ provider }} />}
