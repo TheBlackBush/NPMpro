@@ -228,28 +228,67 @@ export function forwardHostError(rules, value, { proxy = false, scheme } = {}) {
 }
 
 /**
- * The starting values of a redirection host (a new one has the defaults of useRedirectionHost), in the window's order
+ * A clone's starting values: the source's values with the fields that must be unique emptied (the backend refuses a
+ * domain name an enabled host already uses; nginx refuses a second stream on the same port) and, for a non-admin, the
+ * raw nginx config left out (admin-only: the backend refuses a non-admin who sets it)
  *
- * @param   {Object} data
+ * @param   {Object}   values
+ * @param   {Object}   rule
+ * @param   {Object}   rule.empty         the fields that must be unique, with their empty value
+ * @param   {string[]} rule.configFields  the raw nginx config fields
+ * @param   {Object}   [options]
+ * @param   {boolean}  [options.isClone]
+ * @param   {boolean}  [options.isAdmin]
  * @returns {Object}
  */
-export const redirectionHostDefaults = (data) => ({
-	domainNames: data.domainNames,
-	forwardScheme: data.forwardScheme,
-	forwardDomainName: data.forwardDomainName,
-	forwardHttpCode: data.forwardHttpCode,
-	preservePath: data.preservePath,
-	certificateId: data.certificateId,
-	npmproMtlsCertificateId: data.npmproMtlsCertificateId,
-	npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
-	sslForced: data.sslForced,
-	npmproHttp3Support: data.npmproHttp3Support,
-	hstsEnabled: data.hstsEnabled,
-	hstsSubdomains: data.hstsSubdomains,
-	...CERTIFICATE_REQUEST_DEFAULTS,
-	advancedConfig: data.advancedConfig,
-	npmproDirectory: data.npmproDirectory,
+export function cloneValues(values, { empty, configFields }, { isClone = false, isAdmin = false } = {}) {
+	if (!isClone) return values;
+	const cloned = { ...values, ...empty };
+	if (!isAdmin) for (const name of configFields) cloned[name] = "";
+	return cloned;
+}
+
+/**
+ * What a clone of each host type empties and which raw nginx config a non-admin's clone leaves out (cloneValues)
+ */
+export const CLONE_RULES = Object.freeze({
+	redirectionHost: { empty: { domainNames: [] }, configFields: ["advancedConfig"] },
+	deadHost: { empty: { domainNames: [] }, configFields: ["advancedConfig"] },
+	stream: { empty: { incomingPort: "" }, configFields: ["npmproAdvancedConfig"] },
 });
+
+/**
+ * The starting values of a redirection host (a new one has the defaults of useRedirectionHost), in the window's order;
+ * a clone's as cloneValues makes them
+ *
+ * @param   {Object}  data
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.isClone]
+ * @param   {boolean} [options.isAdmin]
+ * @returns {Object}
+ */
+export const redirectionHostDefaults = (data, options) =>
+	cloneValues(
+		{
+			domainNames: data.domainNames,
+			forwardScheme: data.forwardScheme,
+			forwardDomainName: data.forwardDomainName,
+			forwardHttpCode: data.forwardHttpCode,
+			preservePath: data.preservePath,
+			certificateId: data.certificateId,
+			npmproMtlsCertificateId: data.npmproMtlsCertificateId,
+			npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
+			sslForced: data.sslForced,
+			npmproHttp3Support: data.npmproHttp3Support,
+			hstsEnabled: data.hstsEnabled,
+			hstsSubdomains: data.hstsSubdomains,
+			...CERTIFICATE_REQUEST_DEFAULTS,
+			advancedConfig: data.advancedConfig,
+			npmproDirectory: data.npmproDirectory,
+		},
+		CLONE_RULES.redirectionHost,
+		options,
+	);
 
 /**
  * The tabs of the redirection host window (ModalTabs)
@@ -282,24 +321,32 @@ export const redirectionHostValidate = (rules) =>
 	}));
 
 /**
- * The starting values of a 404 host
+ * The starting values of a 404 host; a clone's as cloneValues makes them
  *
- * @param   {Object} data
+ * @param   {Object}  data
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.isClone]
+ * @param   {boolean} [options.isAdmin]
  * @returns {Object}
  */
-export const deadHostDefaults = (data) => ({
-	domainNames: data.domainNames,
-	certificateId: data.certificateId,
-	npmproMtlsCertificateId: data.npmproMtlsCertificateId,
-	npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
-	sslForced: data.sslForced,
-	npmproHttp3Support: data.npmproHttp3Support,
-	hstsEnabled: data.hstsEnabled,
-	hstsSubdomains: data.hstsSubdomains,
-	...CERTIFICATE_REQUEST_DEFAULTS,
-	advancedConfig: data.advancedConfig,
-	npmproDirectory: data.npmproDirectory,
-});
+export const deadHostDefaults = (data, options) =>
+	cloneValues(
+		{
+			domainNames: data.domainNames,
+			certificateId: data.certificateId,
+			npmproMtlsCertificateId: data.npmproMtlsCertificateId,
+			npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
+			sslForced: data.sslForced,
+			npmproHttp3Support: data.npmproHttp3Support,
+			hstsEnabled: data.hstsEnabled,
+			hstsSubdomains: data.hstsSubdomains,
+			...CERTIFICATE_REQUEST_DEFAULTS,
+			advancedConfig: data.advancedConfig,
+			npmproDirectory: data.npmproDirectory,
+		},
+		CLONE_RULES.deadHost,
+		options,
+	);
 
 /**
  * The tabs of the 404 host window (ModalTabs)
@@ -320,32 +367,41 @@ export const deadHostValidate = (rules) =>
 	}));
 
 /**
- * The starting values of a stream; its domain names only belong to a requested certificate
+ * The starting values of a stream; its domain names only belong to a requested certificate; a clone's as cloneValues
+ * makes them
  *
- * @param   {Object} data
+ * @param   {Object}  data
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.isClone]
+ * @param   {boolean} [options.isAdmin]
  * @returns {Object}
  */
-export const streamDefaults = (data) => ({
-	incomingPort: data.incomingPort,
-	npmproDescription: data.npmproDescription,
-	forwardingHost: data.forwardingHost,
-	forwardingPort: data.forwardingPort,
-	tcpForwarding: data.tcpForwarding,
-	udpForwarding: data.udpForwarding,
-	npmproProxyTls: data.npmproProxyTls,
-	npmproProxyProtocolForwarding: data.npmproProxyProtocolForwarding,
-	certificateId: data.certificateId,
-	npmproMtlsCertificateId: data.npmproMtlsCertificateId,
-	npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
-	npmproReuseKey: false,
-	npmproDnsChallenge: false,
-	domainNames: [],
-	npmproDnsProvider: "",
-	npmproDnsCredentialId: null,
-	npmproPropagationSeconds: 0,
-	npmproAdvancedConfig: data.npmproAdvancedConfig,
-	npmproDirectory: data.npmproDirectory,
-});
+export const streamDefaults = (data, options) =>
+	cloneValues(
+		{
+			incomingPort: data.incomingPort,
+			npmproDescription: data.npmproDescription,
+			forwardingHost: data.forwardingHost,
+			forwardingPort: data.forwardingPort,
+			tcpForwarding: data.tcpForwarding,
+			udpForwarding: data.udpForwarding,
+			npmproProxyTls: data.npmproProxyTls,
+			npmproProxyProtocolForwarding: data.npmproProxyProtocolForwarding,
+			certificateId: data.certificateId,
+			npmproMtlsCertificateId: data.npmproMtlsCertificateId,
+			npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
+			npmproReuseKey: false,
+			npmproDnsChallenge: false,
+			domainNames: [],
+			npmproDnsProvider: "",
+			npmproDnsCredentialId: null,
+			npmproPropagationSeconds: 0,
+			npmproAdvancedConfig: data.npmproAdvancedConfig,
+			npmproDirectory: data.npmproDirectory,
+		},
+		CLONE_RULES.stream,
+		options,
+	);
 
 /**
  * The tabs of the stream window (ModalTabs); the domain names of a requested certificate sit on the TLS tab

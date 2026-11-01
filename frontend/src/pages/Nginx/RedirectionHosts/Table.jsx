@@ -1,4 +1,4 @@
-import { IconArrowsCross, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
+import { IconArrowsCross, IconCopy, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -44,7 +44,7 @@ const redirectSummary = (row) => {
 const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
 
 // shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
+export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
@@ -157,6 +157,16 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 									type="button"
 									className="dropdown-item"
 									onClick={() => {
+										onClone?.(info.row.original.id);
+									}}
+								>
+									<IconCopy className="icon dropdown-item-icon" aria-hidden="true" />
+									<T id="action.clone" />
+								</button>
+								<button
+									type="button"
+									className="dropdown-item"
+									onClick={() => {
 										onDisableToggle?.(info.row.original.id, !info.row.original.enabled);
 									}}
 								>
@@ -184,7 +194,7 @@ export function useColumns({ onDelete, onDisableToggle, onEdit } = {}) {
 				},
 			}),
 		],
-		[onDelete, onDisableToggle, onEdit],
+		[onClone, onDelete, onDisableToggle, onEdit],
 	);
 }
 
@@ -192,6 +202,7 @@ export default function Table({
 	data,
 	isFetching,
 	onEdit,
+	onClone,
 	onDelete,
 	onDisableToggle,
 	onNew,
@@ -203,7 +214,7 @@ export default function Table({
 	groupBy,
 	renderGroupLabel,
 }) {
-	const columns = useColumns({ onDelete, onDisableToggle, onEdit });
+	const columns = useColumns({ onClone, onDelete, onDisableToggle, onEdit });
 
 	const tableInstance = useTable({
 		features,

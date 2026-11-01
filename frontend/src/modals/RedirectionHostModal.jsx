@@ -29,6 +29,7 @@ import {
 import {
 	DirtyTracker,
 	useCanManage,
+	useIsAdmin,
 	useRedirectionHost,
 	useSetRedirectionHost,
 	useTlsQueriesSettled,
@@ -48,8 +49,9 @@ import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
-const showRedirectionHostModal = (id) => {
-	EasyModal.show(RedirectionHostModal, { id });
+// isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
+const showRedirectionHostModal = (id, isClone = false) => {
+	EasyModal.show(RedirectionHostModal, { id, isClone });
 };
 
 const validate = redirectionHostValidate(validations);
@@ -57,7 +59,7 @@ const validate = redirectionHostValidate(validations);
 // the redirect status codes, in the select's order
 const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
 
-function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
+function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
@@ -69,7 +71,7 @@ function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
 					<T
-						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "redirection-host" }}
 					/>
 				</AppModal.Title>
@@ -145,7 +147,7 @@ function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
 						className="ms-auto"
-						edit={Boolean(data.id)}
+						edit={Boolean(data.id) && !isClone}
 						section="redirectionHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
@@ -160,8 +162,8 @@ function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 
 // the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
-	const [defaultValues] = useState(() => redirectionHostDefaults(data));
+function RedirectionHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, ...formProps }) {
+	const [defaultValues] = useState(() => redirectionHostDefaults(data, { isClone, isAdmin }));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -171,7 +173,10 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			const row = await save({ id: savedId ?? (id === "new" ? undefined : id), ...requestValues(values) });
+			const row = await save({
+				id: savedId ?? (id === "new" || isClone ? undefined : id),
+				...requestValues(values),
+			});
 			const nginxErr = getNginxConfigError(row);
 			if (nginxErr === null) {
 				showObjectSuccess("redirection-host", "saved");
@@ -194,6 +199,7 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<RedirectionHostForm
 				data={data}
+				isClone={isClone}
 				savedId={savedId}
 				errorMsg={errorMsg}
 				onCloseError={() => setErrorMsg(null)}
@@ -203,10 +209,12 @@ function RedirectionHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...
 	);
 }
 
-const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
+const RedirectionHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	// a user who may only view the section gets a View window
 	const readOnly = !useCanManage(REDIRECTION_HOSTS);
+	// a non-admin's clone leaves out the raw nginx config
+	const isAdmin = useIsAdmin();
 	const { data, error } = useRedirectionHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
@@ -221,6 +229,8 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 				<RedirectionHostEditor
 					readOnly={readOnly}
 					id={id}
+					isClone={isClone}
+					isAdmin={isAdmin}
 					data={data}
 					save={save}
 					remove={remove}

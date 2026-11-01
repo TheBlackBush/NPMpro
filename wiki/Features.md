@@ -3,7 +3,7 @@
 What NPMpro offers, grouped by topic. Each group links to the page that explains it.
 
 ## Proxy and hosts
-- Proxy hosts, redirection hosts, 404 hosts and streams (TCP/UDP), managed in the web UI
+- Proxy hosts, redirection hosts, 404 hosts and streams (TCP/UDP), managed in the web UI; Clone in a host's menu opens a new host with its settings (without the domain names, or a stream's incoming port, which must be unique)
 - HTTP/3 (QUIC), needs the https port exposed over udp
 - more ways to serve a host: gRPC, proxy protocol, load balancing over several upstreams (see [Load Balancing](Load-balancing)), and serving files or PHP directly with fancyindex support
 - zstd and brotli compression in addition to gzip
@@ -36,7 +36,7 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 ## Web UI and operations
 - most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](Configuration))
 - an Environment page (Settings, Environment) that lists the startup variables read-only, secrets never shown
-- audit log, users with per-section permissions, light and dark theme
+- audit log, users with per-section permissions, a light, dark or system theme (System follows the operating system)
 - database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/backups/database` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
 - Alpine based, a much smaller image
 - many other things, see these wiki pages and the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml)

@@ -136,8 +136,10 @@ it("starts a saved proxy host with its access lists, its locations completed, po
 	assert.equal("id" in values.locations[0], false);
 });
 
-it("starts a non-admin clone without raw nginx config and without a path target outside /var/www", () => {
+it("starts a clone without domain names, a non-admin clone also without raw nginx config or a path outside /var/www", () => {
 	const clone = proxyHostDefaults(savedHost, { isClone: true, isAdmin: false });
+	assert.deepEqual(clone.domainNames, []);
+	assert.deepEqual(savedHost.domainNames, ["example.com"]);
 	assert.equal(clone.advancedConfig, "");
 	assert.equal(clone.npmproLocationConfig, "");
 	assert.equal(clone.forwardHost, "/var/www/site");

@@ -129,8 +129,9 @@ export function locationErrors(rules, rows) {
 }
 
 /**
- * The starting values of a proxy host in the window's order. A clone by a non-admin starts without the raw nginx
- * config (admin-only) and without a "path" target outside /var/www (the backend refuses it from a non-admin).
+ * The starting values of a proxy host in the window's order. A clone starts without domain names (the backend refuses
+ * a domain name an enabled host already uses); a clone by a non-admin also without the raw nginx config (admin-only)
+ * and without a "path" target outside /var/www (the backend refuses it from a non-admin).
  *
  * @param   {Object}  data
  * @param   {Object}  [options]
@@ -142,7 +143,7 @@ export function proxyHostDefaults(data, { isClone = false, isAdmin = false } = {
 	const dropConfig = isClone && !isAdmin;
 	const clonedPath = (scheme, host) => (dropConfig && scheme === "path" && !insideWebroot(host) ? "" : host);
 	return {
-		domainNames: data.domainNames,
+		domainNames: isClone ? [] : data.domainNames,
 		forwardScheme: data.forwardScheme,
 		forwardHost: clonedPath(data.forwardScheme, data.forwardHost),
 		forwardPort: portText(data.forwardPort),
