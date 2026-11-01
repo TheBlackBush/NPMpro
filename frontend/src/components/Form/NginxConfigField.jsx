@@ -6,8 +6,8 @@ import { useReadOnly } from "./HookForm";
 /**
  * Raw nginx config is admin-only: other users see a stored value read-only and, when it is empty, a hint that the
  * config is for administrators. Read-only, not disabled, also in a View window (keep its TabPane selfReadOnly): the
- * value can be focused, selected and scrolled by keyboard, but not changed. A window with two of these fields passes emptyHint={false} to both and shows the hint
- * once itself when both are empty.
+ * value can be focused, selected and scrolled by keyboard, but not changed. A window with two of these fields passes
+ * emptyHint={false} to both and shows the hint once itself when both are empty.
  *
  * @param {Object}  props
  * @param {string}  [props.name]       the form field
