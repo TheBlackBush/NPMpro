@@ -3,20 +3,33 @@ import Modal from "react-bootstrap/Modal";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
 const HideContext = createContext(undefined);
+// true between the window's content box and its body: a <form> there must take part in the content's flex column
+const FrameContext = createContext(false);
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
 
 // Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
-// A dialog that never changes size (the delete confirmation) may pass `centered`.
-function AppModal({ children, centered = false, ...props }) {
+// A small dialog that never changes size may pass `centered` (it is still full screen on phones unless it also passes
+// `fullscreen={false}`). The delete and disable confirmation is not an AppModal: it is a plain react-bootstrap Modal and
+// stays a small centered dialog on phones. Below the md breakpoint (phones) a
+// window fills the screen (Bootstrap's modal-fullscreen-md-down, UX-33); `fullscreen` sets another breakpoint, or
+// false for a window that stays a dialog.
+function AppModal({ children, centered = false, fullscreen = "md-down", ...props }) {
 	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
 	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
 	return (
 		<TitleContext.Provider value={value}>
 			<HideContext.Provider value={props.onHide}>
-				<Modal centered={centered} aria-labelledby={hasTitle ? id : undefined} {...props}>
-					{children}
-				</Modal>
+				<FrameContext.Provider value={true}>
+					<Modal
+						centered={centered}
+						fullscreen={fullscreen}
+						aria-labelledby={hasTitle ? id : undefined}
+						{...props}
+					>
+						{children}
+					</Modal>
+				</FrameContext.Provider>
 			</HideContext.Provider>
 		</TitleContext.Provider>
 	);
@@ -36,11 +49,25 @@ function AppModalTitle({ children, ...props }) {
 	);
 }
 
+// The body ends the frame: a form inside it (not around header, body and footer) needs no flex classes
+function AppModalBody({ children, ...props }) {
+	return (
+		<Modal.Body {...props}>
+			<FrameContext.Provider value={false}>{children}</FrameContext.Provider>
+		</Modal.Body>
+	);
+}
+
+// True for a part placed directly in a window's content box, above its header, body and footer. A form there wraps
+// them, so it must be a flex column no taller than the content box (the full screen window of a phone has a fixed
+// height): the header and footer stay in view and the body scrolls (HookForm does this).
+const useModalFrame = () => useContext(FrameContext);
+
 const useModalHide = () => useContext(HideContext);
 
 AppModal.Header = Modal.Header;
 AppModal.Title = AppModalTitle;
-AppModal.Body = Modal.Body;
+AppModal.Body = AppModalBody;
 AppModal.Footer = Modal.Footer;
 
-export { AppModal, useModalHide };
+export { AppModal, useModalFrame, useModalHide };

@@ -30,10 +30,8 @@ import {
 	DirtyTracker,
 	useAccessLists,
 	useCanManage,
-	useDirectorySuggestions,
 	useIsAdmin,
 	useProxyHost,
-	useProxyHosts,
 	useSetProxyHost,
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
@@ -67,7 +65,7 @@ function LocationsTabMarker() {
 	return namedLocations(locations).length > 0 ? "*" : "";
 }
 
-function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close, suggestions }) {
+function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close }) {
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
 	const [
@@ -115,11 +113,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
 						<ForwardFields />
-						<DirectoryField
-							labelId="proxy-host.directory"
-							datalistId="directory-suggestions-proxy"
-							suggestions={suggestions}
-						/>
+						<DirectoryField labelId="proxy-host.directory" />
 						<ProxyOptionsFields />
 						<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
 							<AccessFields
@@ -137,7 +131,8 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 
 						<SSLOptionsFields forProxyHost />
 					</TabPane>
-					<TabPane id="advanced">
+					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+					<TabPane id="advanced" selfReadOnly>
 						<NginxConfigField
 							label="nginx-config.server.label"
 							hint="proxy-host.server-config.hint"
@@ -244,8 +239,6 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const accessLists = useAccessLists(["owner", "items", "clients"]);
 	const settled = useTlsQueriesSettled({ accessLists });
 	const { mutateAsync: save, isPending: isSaving } = useSetProxyHost();
-	const { data: allProxyHosts } = useProxyHosts();
-	const suggestions = useDirectorySuggestions(allProxyHosts);
 	// never false again once true: a refetch keeps data (also when it fails), settled is latched
 	const ready = Boolean(data) && settled;
 
@@ -263,7 +256,6 @@ const ProxyHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 					save={save}
 					remove={remove}
 					dirtyRef={dirtyRef}
-					suggestions={suggestions}
 					close={close}
 				/>
 			)}

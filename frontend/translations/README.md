@@ -23,6 +23,10 @@ Add the key to `ui/en.json` first, then to the other files in `ui`. Follow the c
 
 Run `./check-locale.sh [code]`. It lists missing and unknown keys and missing help docs, and exits with 1 when it finds any; CI runs it for every language, so a new key needs a translation in every `ui/<code>.json`.
 
+## Checking for unused keys
+
+Run `node translations/check-unused.js` from `frontend/`. It lists every key of `ui/en.json` that no code in `frontend/src` or `backend` uses (tests do not count) and exits with 1 when it finds any; CI runs it. A key counts as used when the code holds it as a whole string, or when a template literal can build it (`` `settings.default-site.${value}` `` covers every `settings.default-site.*` key). A key built any other way, such as by joining strings, must be written out whole in the code. Remove an unused key from every `ui/<code>.json`.
+
 ## Adding a whole new language
 
 - `lang-list.json`: add `<code>` with the native language name and the flag code shown in the picker

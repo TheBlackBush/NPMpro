@@ -25,8 +25,6 @@ import {
 	DirtyTracker,
 	useCanManage,
 	useDeadHost,
-	useDeadHosts,
-	useDirectorySuggestions,
 	useSetDeadHost,
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
@@ -51,7 +49,7 @@ const showDeadHostModal = (id) => {
 
 const validate = deadHostValidate(validations);
 
-function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
+function DeadHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
 	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
@@ -74,19 +72,15 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 				<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-						<DirectoryField
-							labelId="dead-host.directory"
-							datalistId="directory-suggestions-dead"
-							suggestions={suggestions}
-							className="mb-0"
-						/>
+						<DirectoryField labelId="dead-host.directory" className="mb-0" />
 					</TabPane>
 					<TabPane id="tls">
 						<SSLCertificateField label="ssl-certificate" allowNew />
 
 						<SSLOptionsFields />
 					</TabPane>
-					<TabPane id="advanced">
+					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+					<TabPane id="advanced" selfReadOnly>
 						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>
@@ -167,8 +161,6 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data, error } = useDeadHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetDeadHost();
-	const { data: allDeadHosts } = useDeadHosts();
-	const suggestions = useDirectorySuggestions(allDeadHosts);
 	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
@@ -184,7 +176,6 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 					save={save}
 					remove={remove}
 					dirtyRef={dirtyRef}
-					suggestions={suggestions}
 					close={close}
 				/>
 			)}

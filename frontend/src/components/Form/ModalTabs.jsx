@@ -299,7 +299,8 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 
 /**
  * One tab's pane. In a read-only form (a View window) its fields sit in a disabled fieldset; selfReadOnly: the
- * pane's fields handle that themselves (the custom locations, whose cards still open and close)
+ * pane's fields handle that themselves (the custom locations, whose cards still open and close; the nginx config
+ * fields, read-only textareas that can still be focused and scrolled)
  *
  * @param {Object}  props
  * @param {string}  props.id
