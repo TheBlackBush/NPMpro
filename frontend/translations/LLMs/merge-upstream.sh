@@ -20,7 +20,8 @@ EOF
 
 git show "$NEW:$UP/en.json" > "$TMP/en.json" || exit 1
 
-for code in en $(git ls-tree --full-tree --name-only "$NEW:$UP" | sed -n 's/\.json$//p' | grep -vx -e en -e lang-list); do
+# Persian (fa) is not taken over: NPMpro does not ship it
+for code in en $(git ls-tree --full-tree --name-only "$NEW:$UP" | sed -n 's/\.json$//p' | grep -vx -e en -e lang-list -e fa); do
 	ui="$SRC/ui/$code.json"
 
 	if [ ! -s "$ui" ]; then
