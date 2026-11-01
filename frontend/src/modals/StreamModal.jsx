@@ -28,10 +28,8 @@ import {
 import {
 	DirtyTracker,
 	useCanManage,
-	useDirectorySuggestions,
 	useSetStream,
 	useStream,
-	useStreams,
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
@@ -82,7 +80,7 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 	);
 }
 
-function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
+function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
@@ -155,11 +153,7 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 								/>
 							</div>
 						</div>
-						<DirectoryField
-							labelId="stream.directory"
-							datalistId="directory-suggestions-stream"
-							suggestions={suggestions}
-						/>
+						<DirectoryField labelId="stream.directory" />
 						<FormSection heading legend={<T id="host.flags.protocols" />} className="mb-0">
 							<SwitchList className="mb-3">
 								<SwitchField
@@ -282,8 +276,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data, error } = useStream(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetStream();
-	const { data: allStreams } = useStreams();
-	const suggestions = useDirectorySuggestions(allStreams);
 	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
@@ -299,7 +291,6 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 					save={save}
 					remove={remove}
 					dirtyRef={dirtyRef}
-					suggestions={suggestions}
 					close={close}
 				/>
 			)}

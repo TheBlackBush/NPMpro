@@ -29,9 +29,7 @@ import {
 import {
 	DirtyTracker,
 	useCanManage,
-	useDirectorySuggestions,
 	useRedirectionHost,
-	useRedirectionHosts,
 	useSetRedirectionHost,
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
@@ -59,7 +57,7 @@ const validate = redirectionHostValidate(validations);
 // the redirect status codes, in the select's order
 const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
 
-function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseError, close }) {
+function RedirectionHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
@@ -114,11 +112,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 								</option>
 							))}
 						</SelectField>
-						<DirectoryField
-							labelId="redirection-host.directory"
-							datalistId="directory-suggestions-redirection"
-							suggestions={suggestions}
-						/>
+						<DirectoryField labelId="redirection-host.directory" />
 						<FormSection heading legend={<T id="options" />} className="mb-0">
 							<SwitchList>
 								<SwitchField
@@ -215,8 +209,6 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 	const { data, error } = useRedirectionHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
-	const { data: allRedirectionHosts } = useRedirectionHosts();
-	const suggestions = useDirectorySuggestions(allRedirectionHosts);
 	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
 	const ready = Boolean(data) && tlsSettled;
 
@@ -232,7 +224,6 @@ const RedirectionHostModal = EasyModal.create(({ id, visible, remove }) => {
 					save={save}
 					remove={remove}
 					dirtyRef={dirtyRef}
-					suggestions={suggestions}
 					close={close}
 				/>
 			)}
