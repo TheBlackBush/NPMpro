@@ -1,10 +1,9 @@
-import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useState } from "react";
 import { deleteAccessList } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { useAccessLists, useListFilters } from "src/hooks";
-import { intl, T } from "src/locale";
-import { showAccessListModal, showDeleteConfirmModal, showHelpModal } from "src/modals";
+import { T } from "src/locale";
+import { HelpButton, showAccessListModal, showDeleteConfirmModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
 import { sectionColor, stripeClass } from "src/modules/SectionColors";
@@ -39,15 +38,7 @@ export default function TableWrapper() {
 						<T id="access-lists" />
 					</h2>
 					<div className="card-actions btn-list">
-						<Button
-							size="sm"
-							className="btn-icon"
-							aria-label={intl.formatMessage({ id: "help" })}
-							title={intl.formatMessage({ id: "help" })}
-							onClick={() => showHelpModal("AccessLists")}
-						>
-							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-						</Button>
+						<HelpButton doc="AccessLists" />
 						<ImportExportButtons
 							kind="access_lists"
 							permissionSection={ACCESS_LISTS}

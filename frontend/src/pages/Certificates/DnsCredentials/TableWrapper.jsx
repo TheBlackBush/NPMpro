@@ -1,10 +1,9 @@
-import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useState } from "react";
 import { deleteDnsCredential } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { useDnsCredentials, useListFilters } from "src/hooks";
-import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showDnsCredentialModal, showHelpModal } from "src/modals";
+import { T } from "src/locale";
+import { HelpButton, showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionColor, stripeClass } from "src/modules/SectionColors";
@@ -41,15 +40,7 @@ export default function TableWrapper() {
 						<T id="dns-credentials" />
 					</h2>
 					<div className="card-actions btn-list">
-						<Button
-							size="sm"
-							className="btn-icon"
-							aria-label={intl.formatMessage({ id: "help" })}
-							title={intl.formatMessage({ id: "help" })}
-							onClick={() => showHelpModal("Certificates")}
-						>
-							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-						</Button>
+						<HelpButton doc="Certificates" />
 						<ImportExportButtons
 							kind="dns_credentials"
 							permissionSection={CERTIFICATES}

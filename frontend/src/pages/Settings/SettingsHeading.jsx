@@ -1,9 +1,7 @@
-import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import cn from "clsx";
 import { createContext, useContext } from "react";
-import { Button } from "src/components";
-import { intl, T } from "src/locale";
-import { showHelpModal } from "src/modals";
+import { T } from "src/locale";
+import { HelpButton } from "src/modals";
 import { settingsHelpDoc } from "src/modules/SettingsSections";
 
 // the id of the Settings section on screen (Layout provides it), so its heading opens the section's help document
@@ -24,17 +22,7 @@ function SettingsHeading({ titleId, className = "mb-3" }) {
 			<h2 className="mb-0">
 				<T id={titleId} />
 			</h2>
-			{section ? (
-				<Button
-					size="sm"
-					className="btn-icon ms-auto"
-					aria-label={intl.formatMessage({ id: "help" })}
-					title={intl.formatMessage({ id: "help" })}
-					onClick={() => showHelpModal(settingsHelpDoc(section))}
-				>
-					<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-				</Button>
-			) : null}
+			{section ? <HelpButton doc={settingsHelpDoc(section)} className="ms-auto" /> : null}
 		</div>
 	);
 }
