@@ -1,11 +1,10 @@
-import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useStreams } from "src/hooks";
-import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showHelpModal, showStreamModal } from "src/modals";
+import { T } from "src/locale";
+import { HelpButton, showDeleteConfirmModal, showStreamModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { sectionColor, stripeClass } from "src/modules/SectionColors";
@@ -92,15 +91,7 @@ export default function TableWrapper() {
 						<T id="streams" />
 					</h2>
 					<div className="card-actions btn-list">
-						<Button
-							size="sm"
-							className="btn-icon"
-							aria-label={intl.formatMessage({ id: "help" })}
-							title={intl.formatMessage({ id: "help" })}
-							onClick={() => showHelpModal("Streams")}
-						>
-							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-						</Button>
+						<HelpButton doc="Streams" />
 						<ImportExportButtons
 							kind="streams"
 							permissionSection={STREAMS}

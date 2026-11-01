@@ -1,8 +1,7 @@
-import { IconCloud, IconHelpSquareRoundedFilled, IconShieldLock, IconUpload, IconWorld } from "@tabler/icons-react";
+import { IconCloud, IconShieldLock, IconUpload, IconWorld } from "@tabler/icons-react";
 import { useState } from "react";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
 import {
-	Button,
 	certificateProviderTranslation,
 	ErrorAlert,
 	HasPermission,
@@ -11,13 +10,13 @@ import {
 	LoadingPage,
 } from "src/components";
 import { useCertificates, useListFilters } from "src/hooks";
-import { formatDateTime, intl, T } from "src/locale";
+import { formatDateTime, T } from "src/locale";
 import {
+	HelpButton,
 	showChangeDnsCredentialModal,
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
 	showDNSCertificateModal,
-	showHelpModal,
 	showHTTPCertificateModal,
 	showReachabilityModal,
 	showRenewCertificateModal,
@@ -77,15 +76,7 @@ export default function TableWrapper() {
 						<T id="certificates" />
 					</h2>
 					<div className="card-actions btn-list">
-						<Button
-							size="sm"
-							className="btn-icon"
-							aria-label={intl.formatMessage({ id: "help" })}
-							title={intl.formatMessage({ id: "help" })}
-							onClick={() => showHelpModal("Certificates")}
-						>
-							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-						</Button>
+						<HelpButton doc="Certificates" />
 						<ImportExportButtons
 							kind="certificates"
 							permissionSection={CERTIFICATES}

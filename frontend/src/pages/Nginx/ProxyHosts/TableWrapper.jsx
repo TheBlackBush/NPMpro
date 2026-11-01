@@ -1,11 +1,10 @@
-import { IconHelpSquareRoundedFilled } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteProxyHost, toggleProxyHost } from "src/api/backend";
 import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useProxyHosts } from "src/hooks";
-import { intl, T } from "src/locale";
-import { showDeleteConfirmModal, showHelpModal, showProxyHostModal } from "src/modals";
+import { T } from "src/locale";
+import { HelpButton, showDeleteConfirmModal, showProxyHostModal } from "src/modals";
 import { servesCurrentPage } from "src/modules/CurrentPage";
 import { forwardSummary } from "src/modules/Forward";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
@@ -117,15 +116,7 @@ export default function TableWrapper() {
 						<T id="proxy-hosts" />
 					</h2>
 					<div className="card-actions btn-list">
-						<Button
-							size="sm"
-							className="btn-icon"
-							aria-label={intl.formatMessage({ id: "help" })}
-							title={intl.formatMessage({ id: "help" })}
-							onClick={() => showHelpModal("ProxyHosts")}
-						>
-							<IconHelpSquareRoundedFilled className="icon" aria-hidden="true" />
-						</Button>
+						<HelpButton doc="ProxyHosts" />
 						<ImportExportButtons
 							kind="proxy_hosts"
 							permissionSection={PROXY_HOSTS}

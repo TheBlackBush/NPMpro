@@ -1,7 +1,9 @@
+import { IconHelp } from "@tabler/icons-react";
+import cn from "clsx";
 import Markdown from "markdown-to-jsx";
 import { useEffect, useState } from "react";
-import { AppModal, ErrorAlert, Loading } from "src/components";
-import { getHelpFile, T } from "src/locale";
+import { AppModal, Button, ErrorAlert, Loading } from "src/components";
+import { getHelpFile, intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
 const showHelpModal = (section) => {
@@ -46,4 +48,27 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 	);
 });
 
-export { showHelpModal };
+/**
+ * The "?" button that opens a help document in the help window (list page headers, Settings section headings). The
+ * outline help icon with a bolder stroke stays crisp in the small button.
+ *
+ * @param {Object} props
+ * @param {string} props.doc          the help document (translations/help/<language>/<doc>.md)
+ * @param {string} [props.className]
+ */
+function HelpButton({ doc, className }) {
+	const label = intl.formatMessage({ id: "help" });
+	return (
+		<Button
+			size="sm"
+			className={cn("btn-icon", className)}
+			aria-label={label}
+			title={label}
+			onClick={() => showHelpModal(doc)}
+		>
+			<IconHelp className="icon" stroke={2.5} aria-hidden="true" />
+		</Button>
+	);
+}
+
+export { HelpButton, showHelpModal };
