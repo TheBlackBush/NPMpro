@@ -1,7 +1,15 @@
 import { IconCircleCheck } from "@tabler/icons-react";
 import { useId, useState } from "react";
-import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { ApiErrorContent, Button, ErrorAlert, OIDC_ICON_COMPONENTS, OidcButton } from "src/components";
+import { useController, useFormContext, useWatch } from "react-hook-form";
+import {
+	ApiErrorContent,
+	Button,
+	ErrorAlert,
+	FormSection,
+	OIDC_ICON_COMPONENTS,
+	OidcButton,
+	TextField,
+} from "src/components";
 import { useDeleteOidcIcon, useDownloadOidcIcon, useUploadOidcIcon } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -299,37 +307,20 @@ function IconFields({ storedIcon }) {
 const PREVIEW_FIELDS = ["buttonLabel", "buttonColor", "buttonIcon"];
 
 function ButtonFields({ data }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name: "buttonLabel", exact: true });
 	const watched = useWatch({ name: PREVIEW_FIELDS });
 	const [buttonLabel, buttonColor, buttonIcon] = watched;
-	const labelInvalid = Boolean(errors.buttonLabel);
-	const labelId = "oidc-buttonLabel";
 	const icon = effectiveIcon(buttonIcon, data.button?.icon);
 	return (
-		<div className="mb-4">
-			<h3 className="card-title">
-				<T id="settings.authentication.button" />
-			</h3>
-			<div className="mb-3">
-				<label className="form-label" htmlFor={labelId}>
-					<T id="settings.authentication.button.label" />
-				</label>
-				<input
-					{...register("buttonLabel")}
-					id={labelId}
-					type="text"
-					className={`form-control${labelInvalid ? " is-invalid" : ""}`}
-					maxLength={40}
-					autoComplete="off"
-					aria-invalid={labelInvalid}
-					aria-describedby={`${labelId}-hint`}
-				/>
-				{labelInvalid ? <div className="invalid-feedback">{errors.buttonLabel.message}</div> : null}
-				<div className="form-hint" id={`${labelId}-hint`}>
-					<T id="settings.authentication.button.label.hint" />
-				</div>
-			</div>
+		<FormSection heading legend={<T id="settings.authentication.button" />} className="mb-4">
+			<TextField
+				name="buttonLabel"
+				id="oidc-buttonLabel"
+				label={<T id="settings.authentication.button.label" />}
+				hint={<T id="settings.authentication.button.label.hint" />}
+				type="text"
+				maxLength={40}
+				autoComplete="off"
+			/>
 			<ColorFields />
 			<IconFields storedIcon={data.button?.icon} />
 			<div className="card card-sm">
@@ -343,7 +334,7 @@ function ButtonFields({ data }) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</FormSection>
 	);
 }
 

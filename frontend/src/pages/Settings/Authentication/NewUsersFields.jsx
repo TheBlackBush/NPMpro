@@ -1,47 +1,30 @@
-import { useFormContext, useFormState } from "react-hook-form";
-import { NoticeAlert, SwitchField } from "src/components";
+import { useFormContext } from "react-hook-form";
+import { NoticeAlert, SwitchField, SwitchList, TextField } from "src/components";
 import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { intl, T } from "src/locale";
 
 function NewUsersFields() {
 	const { register } = useFormContext();
-	const { errors } = useFormState({ name: "autoCreateDomains", exact: true });
-	const domainsError = errors.autoCreateDomains?.message;
 
 	return (
 		<>
-			<SwitchField
-				{...register("autoCreateEnabled")}
-				className="py-3"
-				id="oidc-autoCreateEnabled"
-				label={<T id="settings.authentication.auto-create" />}
-				hint={<T id="settings.authentication.auto-create.hint" />}
-			/>
-			<div className="mb-3">
-				<label className="form-label" htmlFor="oidc-autoCreateDomains">
-					<T id="settings.authentication.allowed-domains" />
-				</label>
-				<input
-					{...register("autoCreateDomains")}
-					id="oidc-autoCreateDomains"
-					type="text"
-					className={`form-control${domainsError ? " is-invalid" : ""}`}
-					autoComplete="off"
-					placeholder={intl.formatMessage({
-						id: "settings.authentication.allowed-domains.placeholder",
-					})}
-					aria-invalid={domainsError ? "true" : undefined}
-					aria-describedby={domainsError ? "oidc-autoCreateDomains-error" : "oidc-autoCreateDomains-hint"}
+			<SwitchList className="mb-3">
+				<SwitchField
+					{...register("autoCreateEnabled")}
+					id="oidc-autoCreateEnabled"
+					label={<T id="settings.authentication.auto-create" />}
+					hint={<T id="settings.authentication.auto-create.hint" />}
 				/>
-				{domainsError ? (
-					<div className="invalid-feedback" id="oidc-autoCreateDomains-error">
-						{domainsError}
-					</div>
-				) : null}
-				<small id="oidc-autoCreateDomains-hint" className="form-hint">
-					<T id="settings.authentication.allowed-domains.hint" />
-				</small>
-			</div>
+			</SwitchList>
+			<TextField
+				name="autoCreateDomains"
+				id="oidc-autoCreateDomains"
+				label={<T id="settings.authentication.allowed-domains" />}
+				hint={<T id="settings.authentication.allowed-domains.hint" />}
+				type="text"
+				autoComplete="off"
+				placeholder={intl.formatMessage({ id: "settings.authentication.allowed-domains.placeholder" })}
+			/>
 		</>
 	);
 }

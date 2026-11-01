@@ -1,14 +1,17 @@
 import { IconAlertCircle, IconCircleCheck, IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
-import { useController, useFormContext, useFormState } from "react-hook-form";
+import { useController, useFormState } from "react-hook-form";
 import {
 	ApiErrorContent,
 	Button,
 	ErrorAlert,
+	FormSection,
 	HookForm,
 	Loading,
 	PasswordField,
 	SwitchField,
+	SwitchList,
+	TextField,
 	useAppForm,
 } from "src/components";
 import { useGeoipSettings, useSaveGeoipSettings, useUpdateGeoipNow } from "src/hooks";
@@ -56,9 +59,6 @@ function SaveButton({ allLocked }) {
 const FIELD_LABELS = { accountId: "settings.geoip.account-id", licenseKey: "settings.geoip.license-key" };
 
 function AccountFields({ data, isLocked }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name: "accountId", exact: true });
-	const accountError = errors.accountId?.message;
 	const keyLocked = isLocked("licenseKey");
 	let keyPlaceholder = "";
 	if (keyLocked) keyPlaceholder = intl.formatMessage({ id: "settings.authentication.locked" });
@@ -66,27 +66,21 @@ function AccountFields({ data, isLocked }) {
 		keyPlaceholder = intl.formatMessage({ id: "settings.authentication.client-secret.saved" });
 	}
 	return (
-		<div className="mb-4">
-			<h3 className="card-title">
-				<T id="settings.geoip.account" />
-			</h3>
-			<div className="mb-3">
-				<label className="form-label" htmlFor="geoip-account-id">
-					<T id="settings.geoip.account-id" />
-					{isLocked("accountId") ? <LockedBadge /> : null}
-				</label>
-				<input
-					{...register("accountId")}
-					id="geoip-account-id"
-					type="text"
-					inputMode="numeric"
-					autoComplete="off"
-					className={`form-control${accountError ? " is-invalid" : ""}`}
-					disabled={isLocked("accountId")}
-					aria-invalid={accountError ? "true" : undefined}
-				/>
-				{accountError ? <div className="invalid-feedback">{accountError}</div> : null}
-			</div>
+		<FormSection heading legend={<T id="settings.geoip.account" />} className="mb-4">
+			<TextField
+				name="accountId"
+				id="geoip-account-id"
+				label={
+					<>
+						<T id="settings.geoip.account-id" />
+						{isLocked("accountId") ? <LockedBadge /> : null}
+					</>
+				}
+				type="text"
+				inputMode="numeric"
+				autoComplete="off"
+				disabled={isLocked("accountId")}
+			/>
 			{/* a locked key stays empty: the environment's key is never shown */}
 			<PasswordField
 				name="licenseKey"
@@ -108,7 +102,7 @@ function AccountFields({ data, isLocked }) {
 					<IconExternalLink className="icon ms-1" aria-hidden="true" />
 				</a>
 			</div>
-		</div>
+		</FormSection>
 	);
 }
 
@@ -117,12 +111,17 @@ function EditionFields({ isLocked }) {
 	const { field } = useController({ name: "editions" });
 	const locked = isLocked("editions");
 	return (
-		<div className="mb-4">
-			<h3 className="card-title">
-				<T id="settings.geoip.editions" />
-				{locked ? <LockedBadge /> : null}
-			</h3>
-			<div className="vstack gap-3">
+		<FormSection
+			heading
+			legend={
+				<>
+					<T id="settings.geoip.editions" />
+					{locked ? <LockedBadge /> : null}
+				</>
+			}
+			className="mb-4"
+		>
+			<SwitchList>
 				{GEOIP_EDITIONS.map(({ value, key }, index) => (
 					<SwitchField
 						key={value}
@@ -136,13 +135,13 @@ function EditionFields({ isLocked }) {
 						onChange={(e) => field.onChange(toggleEdition(field.value, value, e.target.checked))}
 					/>
 				))}
-			</div>
+			</SwitchList>
 			{field.value.length === 0 ? (
 				<div className="form-hint">
 					<T id="settings.geoip.editions.none" />
 				</div>
 			) : null}
-		</div>
+		</FormSection>
 	);
 }
 
@@ -161,7 +160,8 @@ function UpdateStatus({ data }) {
 
 	return (
 		<div>
-			<h3 className="card-title">
+			{/* not a group of fields: a heading that looks like the FormSection headings above it */}
+			<h3 className="h4 py-2">
 				<T id="settings.geoip.status" />
 			</h3>
 			<dl className="row mb-3">

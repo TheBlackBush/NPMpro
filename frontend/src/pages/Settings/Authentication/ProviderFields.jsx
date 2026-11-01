@@ -1,7 +1,17 @@
 import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
-import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { Button, ErrorAlert, PasswordField, SwitchField, useRecheckDependent } from "src/components";
+import { useController, useWatch } from "react-hook-form";
+import {
+	Button,
+	ErrorAlert,
+	FormField,
+	FormSection,
+	PasswordField,
+	SwitchField,
+	SwitchList,
+	TextField,
+	useRecheckDependent,
+} from "src/components";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { AUTHENTICATION_RECHECKS } from "src/modules/AuthenticationForms";
@@ -10,43 +20,27 @@ import { LockedBadge } from "./LockedBadge";
 const CONNECTION_KEYS = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
 const WATCHED = ["issuerUrl", "clientId", "clientSecret"];
 
-function TextField({ name, label, hint, locked, type = "text", placeholder, onChange, ...rest }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name, exact: true });
-	const error = errors[name]?.message;
-	const id = `oidc-${name}`;
-	const hintId = `${id}-hint`;
+/**
+ * A text setting of the provider on the form layer's TextField: the lock badge in its label, disabled while locked
+ */
+function ProviderText({ name, label, hint, locked, type = "text", placeholder, onChange }) {
 	return (
-		<div className="mb-3">
-			<label className="form-label" htmlFor={id}>
-				{label}
-				{locked ? <LockedBadge /> : null}
-			</label>
-			<input
-				{...register(name, { onChange })}
-				id={id}
-				type={type}
-				className={`form-control ${error ? "is-invalid" : ""}`}
-				autoComplete="off"
-				placeholder={placeholder}
-				disabled={locked}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={
-					[error ? `${id}-error` : null, hint ? hintId : null].filter(Boolean).join(" ") || undefined
-				}
-				{...rest}
-			/>
-			{error ? (
-				<div className="invalid-feedback" id={`${id}-error`}>
-					{error}
-				</div>
-			) : null}
-			{hint ? (
-				<div className="form-hint" id={hintId}>
-					{hint}
-				</div>
-			) : null}
-		</div>
+		<TextField
+			name={name}
+			id={`oidc-${name}`}
+			label={
+				<>
+					{label}
+					{locked ? <LockedBadge /> : null}
+				</>
+			}
+			hint={hint}
+			registerOptions={onChange ? { onChange } : undefined}
+			type={type}
+			autoComplete="off"
+			placeholder={placeholder}
+			disabled={locked}
+		/>
 	);
 }
 
@@ -125,30 +119,28 @@ function ProviderFields({ data, isLocked }) {
 	const secretPlaceholder = data.secretError && !secretLocked ? "" : intl.formatMessage({ id: secretKey() });
 
 	return (
-		<div className="mb-4">
-			<h3 className="card-title">
-				<T id="settings.authentication.provider" />
-			</h3>
-			<SwitchField
-				className="mb-3"
-				id="oidc-enabled"
-				label={
-					<>
-						<T id="settings.authentication.enabled" />
-						{enabledLocked ? <LockedBadge /> : null}
-					</>
-				}
-				name={enabledField.name}
-				ref={enabledField.ref}
-				onBlur={enabledField.onBlur}
-				disabled={enabledLocked}
-				checked={envOnly || Boolean(enabledField.value)}
-				onChange={(e) => {
-					enabledField.onChange(e.target.checked);
-					recheckAfter("enabled")();
-				}}
-			/>
-			<TextField
+		<FormSection heading legend={<T id="settings.authentication.provider" />} className="mb-4">
+			<SwitchList className="mb-3">
+				<SwitchField
+					id="oidc-enabled"
+					label={
+						<>
+							<T id="settings.authentication.enabled" />
+							{enabledLocked ? <LockedBadge /> : null}
+						</>
+					}
+					name={enabledField.name}
+					ref={enabledField.ref}
+					onBlur={enabledField.onBlur}
+					disabled={enabledLocked}
+					checked={envOnly || Boolean(enabledField.value)}
+					onChange={(e) => {
+						enabledField.onChange(e.target.checked);
+						recheckAfter("enabled")();
+					}}
+				/>
+			</SwitchList>
+			<ProviderText
 				name="issuerUrl"
 				type="url"
 				label={<T id="settings.authentication.issuer-url" />}
@@ -157,7 +149,7 @@ function ProviderFields({ data, isLocked }) {
 				placeholder="https://"
 				onChange={recheckAfter("issuerUrl")}
 			/>
-			<TextField
+			<ProviderText
 				name="clientId"
 				label={<T id="settings.authentication.client-id" />}
 				locked={isLocked("clientId")}
@@ -178,48 +170,41 @@ function ProviderFields({ data, isLocked }) {
 				placeholder={secretPlaceholder}
 				registerOptions={{ onChange: recheckAfter("clientSecret") }}
 			/>
-			<TextField
+			<ProviderText
 				name="redirectDomain"
 				label={<T id="settings.authentication.redirect-domain" />}
 				hint={<T id="settings.authentication.redirect-domain.hint" />}
 				locked={isLocked("redirectDomain")}
 				onChange={recheckAfter("redirectDomain")}
 			/>
-			<div className="mb-3">
-				<label className="form-label" htmlFor="oidc-callbackUrl">
-					<T id="settings.authentication.callback-url" />
-				</label>
-				<div className="input-group">
-					<input
-						id="oidc-callbackUrl"
-						type="text"
-						className="form-control"
-						readOnly
-						aria-describedby="oidc-callbackUrl-hint"
-						value={callbackUrl}
-					/>
-					<button
-						type="button"
-						className="btn btn-icon"
-						aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
-						disabled={!callbackUrl}
-						onClick={onCopy}
-					>
-						{copied ? (
-							<IconCheck className="icon" aria-hidden="true" />
-						) : (
-							<IconCopy className="icon" aria-hidden="true" />
-						)}
-					</button>
-				</div>
-				<div className="form-hint" id="oidc-callbackUrl-hint">
-					<T id="settings.authentication.callback-url.hint" />
-				</div>
-				<div className="visually-hidden" aria-live="polite">
-					{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
-				</div>
+			<FormField
+				id="oidc-callbackUrl"
+				label={<T id="settings.authentication.callback-url" />}
+				hint={<T id="settings.authentication.callback-url.hint" />}
+			>
+				{(control) => (
+					<div className="input-group">
+						<input {...control} type="text" className="form-control" readOnly value={callbackUrl} />
+						<button
+							type="button"
+							className="btn btn-icon"
+							aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+							disabled={!callbackUrl}
+							onClick={onCopy}
+						>
+							{copied ? (
+								<IconCheck className="icon" aria-hidden="true" />
+							) : (
+								<IconCopy className="icon" aria-hidden="true" />
+							)}
+						</button>
+					</div>
+				)}
+			</FormField>
+			<div className="visually-hidden" aria-live="polite">
+				{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
 			</div>
-			<TextField name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
+			<ProviderText name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
 			<Button
 				outline
 				color="secondary"
@@ -246,7 +231,7 @@ function ProviderFields({ data, isLocked }) {
 					</ErrorAlert>
 				) : null}
 			</div>
-		</div>
+		</FormSection>
 	);
 }
 

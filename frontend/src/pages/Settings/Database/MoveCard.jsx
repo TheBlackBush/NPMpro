@@ -1,5 +1,4 @@
 import { IconArrowsExchange, IconPlugConnected } from "@tabler/icons-react";
-import cn from "clsx";
 import { useId, useState } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
@@ -10,7 +9,10 @@ import {
 	focusFirstError,
 	HookForm,
 	PasswordField,
+	SelectField,
 	SwitchField,
+	SwitchList,
+	TextField,
 	useAppForm,
 	useFieldOrder,
 	useRecheckDependent,
@@ -60,38 +62,24 @@ function LastFailedMove({ move }) {
 	);
 }
 
-// an error shows once the field was left or a test was tried
+// a field of the target on the form layer's TextField (its error shows once the field was left or a test was tried)
 function InputField({ name, id, labelId, className, required, registerOptions, ...inputProps }) {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name, exact: true });
-	const error = errors[name]?.message ?? null;
 	return (
-		<div className={className}>
-			<label htmlFor={id} className="form-label">
-				<T id={labelId} />
-			</label>
-			<input
-				{...register(name, registerOptions)}
-				{...inputProps}
-				id={id}
-				required={required}
-				aria-required={required ? "true" : undefined}
-				className={cn("form-control", error && "is-invalid")}
-				aria-invalid={error ? "true" : undefined}
-				aria-describedby={error ? `${id}-error` : undefined}
-			/>
-			{error ? (
-				<div className="invalid-feedback" id={`${id}-error`}>
-					{error}
-				</div>
-			) : null}
-		</div>
+		<TextField
+			{...inputProps}
+			name={name}
+			id={id}
+			label={<T id={labelId} />}
+			required={required}
+			className={className}
+			registerOptions={registerOptions}
+		/>
 	);
 }
 
 function SwitchRow({ name, id, labelId }) {
 	const { register } = useFormContext();
-	return <SwitchField {...register(name)} id={id} className="mb-2" label={<T id={labelId} />} />;
+	return <SwitchField {...register(name)} id={id} label={<T id={labelId} />} />;
 }
 
 function ServerFields({ baseId }) {
@@ -145,21 +133,23 @@ function ServerFields({ baseId }) {
 					className="col-12"
 				/>
 			</div>
-			<SwitchRow name="sslEnabled" id={`${baseId}-ssl`} labelId="settings.database.ssl" />
-			{engine === "mysql" && sslEnabled ? (
-				<>
+			<SwitchList>
+				<SwitchRow name="sslEnabled" id={`${baseId}-ssl`} labelId="settings.database.ssl" />
+				{engine === "mysql" && sslEnabled ? (
 					<SwitchRow
 						name="sslRejectUnauthorized"
 						id={`${baseId}-ssl-reject`}
 						labelId="settings.database.ssl.reject-unauthorized"
 					/>
+				) : null}
+				{engine === "mysql" && sslEnabled ? (
 					<SwitchRow
 						name="sslVerifyIdentity"
 						id={`${baseId}-ssl-identity`}
 						labelId="settings.database.ssl.verify-identity"
 					/>
-				</>
-			) : null}
+				) : null}
+			</SwitchList>
 		</>
 	);
 }
@@ -170,7 +160,7 @@ function ServerFields({ baseId }) {
  * @param {Object} props.status  GET /database, for the move window's summary
  */
 function MoveForm({ tested, status }) {
-	const { register, getValues, setValue, clearErrors, setFocus } = useFormContext();
+	const { getValues, setValue, clearErrors, setFocus } = useFormContext();
 	const { isSubmitting, errors } = useFormState();
 	const order = useFieldOrder();
 	const recheckPort = useRecheckDependent("port");
@@ -208,22 +198,18 @@ function MoveForm({ tested, status }) {
 				<p className="text-secondary">
 					<T id="settings.database.move.intro" />
 				</p>
-				<div className="mb-3">
-					<label htmlFor={`${baseId}-engine`} className="form-label">
-						<T id="settings.database.engine" />
-					</label>
-					<select
-						{...register("engine", { onChange: onEngine })}
-						id={`${baseId}-engine`}
-						className="form-select"
-					>
-						{ENGINES.map((engine) => (
-							<option key={engine} value={engine}>
-								{intl.formatMessage({ id: `settings.database.engine.${engine}` })}
-							</option>
-						))}
-					</select>
-				</div>
+				<SelectField
+					name="engine"
+					id={`${baseId}-engine`}
+					label={<T id="settings.database.engine" />}
+					registerOptions={{ onChange: onEngine }}
+				>
+					{ENGINES.map((engine) => (
+						<option key={engine} value={engine}>
+							{intl.formatMessage({ id: `settings.database.engine.${engine}` })}
+						</option>
+					))}
+				</SelectField>
 				{values.engine === "sqlite" ? (
 					<div className="alert alert-info">
 						<T id="settings.database.move.sqlite-note" />
