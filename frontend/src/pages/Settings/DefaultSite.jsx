@@ -1,6 +1,15 @@
 import { useState } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
-import { ApiErrorContent, ErrorAlert, HookForm, Loading, useAppForm, useResetToSaved } from "src/components";
+import { useFormContext, useWatch } from "react-hook-form";
+import {
+	ApiErrorContent,
+	ChoiceField,
+	ErrorAlert,
+	HookForm,
+	Loading,
+	TextField,
+	useAppForm,
+	useResetToSaved,
+} from "src/components";
 import { useSetSetting, useSetting } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -24,104 +33,61 @@ function Heading() {
 	);
 }
 
-// the choices; another choice hides the fields of the last one, and their messages go with them
+const OPTIONS = DEFAULT_SITE_OPTIONS.map((value) => ({
+	value,
+	label: <T id={`settings.default-site.${value}`} />,
+	description: <T id={`settings.default-site.${value}.description`} />,
+}));
+
+// the choices as the form layer's described boxes; another choice hides the fields of the last one, and their
+// messages go with them
 function OptionField() {
-	const { register, clearErrors } = useFormContext();
-	const option = register("value", {
-		onChange: (event) => clearErrors(defaultSiteHiddenFields(event.target.value)),
-	});
+	const { clearErrors } = useFormContext();
 	return (
-		<div className="mb-3">
-			<div className="form-label">
-				<T id="settings.default-site.description" />
-			</div>
-			<div className="form-selectgroup-boxes row">
-				{DEFAULT_SITE_OPTIONS.map((value) => (
-					<div className="col-12" key={value}>
-						<label className="form-selectgroup-item mb-2">
-							<input {...option} type="radio" value={value} className="form-selectgroup-input" />
-							<span className="form-selectgroup-label d-flex align-items-center p-3">
-								<span className="me-3">
-									<span className="form-selectgroup-check" />
-								</span>
-								<span className="form-selectgroup-label-content">
-									<span className="form-selectgroup-title strong mb-1">
-										<T id={`settings.default-site.${value}`} />
-									</span>
-									<span className="d-block text-secondary">
-										<T id={`settings.default-site.${value}.description`} />
-									</span>
-								</span>
-							</span>
-						</label>
-					</div>
-				))}
-			</div>
-		</div>
+		<ChoiceField
+			name="value"
+			legend={<T id="settings.default-site.description" />}
+			variant="boxes"
+			vertical
+			options={OPTIONS}
+			onChange={(value) => clearErrors(defaultSiteHiddenFields(value))}
+		/>
 	);
 }
 
 function RedirectField() {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name: "redirect", exact: true });
-	const error = errors.redirect?.message;
 	return (
-		<div className="mt-5 mb-3">
-			<label className="form-label" htmlFor="redirect">
-				<T id="settings.default-site.redirect" />
-			</label>
-			<div>
-				<input
-					{...register("redirect")}
-					id="redirect"
-					type="text"
-					placeholder="https://"
-					autoComplete="off"
-					className={`form-control ${error ? "is-invalid" : ""}`}
-				/>
-				{error ? <div className="invalid-feedback">{error}</div> : null}
-			</div>
-		</div>
+		<TextField
+			name="redirect"
+			label={<T id="settings.default-site.redirect" />}
+			type="text"
+			placeholder="https://"
+			autoComplete="off"
+		/>
 	);
 }
 
 function HtmlFields() {
-	const { register } = useFormContext();
-	const { errors } = useFormState({ name: ["html", "status"] });
 	return (
 		<>
-			<div className="mt-5 mb-3">
-				<label className="form-label" htmlFor="html">
-					<T id="settings.default-site.html" />
-				</label>
-				<div>
-					<textarea
-						{...register("html")}
-						id="html"
-						className={`form-control font-monospace ${errors.html ? "is-invalid" : ""}`}
-						spellCheck={false}
-						placeholder={intl.formatMessage({ id: "settings.default-site.html.placeholder" })}
-						rows={14}
-					/>
-					{errors.html ? <div className="invalid-feedback">{errors.html.message}</div> : null}
-				</div>
-			</div>
-			<div className="mb-3">
-				<label className="form-label" htmlFor="status">
-					<T id="settings.default-site.status" />
-				</label>
-				<input
-					{...register("status")}
-					id="status"
-					type="number"
-					min={400}
-					max={599}
-					placeholder="200"
-					autoComplete="off"
-					className={`form-control ${errors.status ? "is-invalid" : ""}`}
-				/>
-				{errors.status ? <div className="invalid-feedback">{errors.status.message}</div> : null}
-			</div>
+			<TextField
+				name="html"
+				label={<T id="settings.default-site.html" />}
+				as="textarea"
+				controlClassName="font-monospace"
+				spellCheck={false}
+				placeholder={intl.formatMessage({ id: "settings.default-site.html.placeholder" })}
+				rows={14}
+			/>
+			<TextField
+				name="status"
+				label={<T id="settings.default-site.status" />}
+				type="number"
+				min={400}
+				max={599}
+				placeholder="200"
+				autoComplete="off"
+			/>
 		</>
 	);
 }

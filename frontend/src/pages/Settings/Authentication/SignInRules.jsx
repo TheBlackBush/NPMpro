@@ -1,5 +1,5 @@
 import { useFormContext, useFormState } from "react-hook-form";
-import { SwitchField } from "src/components";
+import { SwitchField, SwitchList } from "src/components";
 import { T } from "src/locale";
 import { LockedBadge } from "./LockedBadge";
 
@@ -19,7 +19,6 @@ function SignInRules({ data, isLocked }) {
 	const rule = (name, labelId, hintId, extra = {}) => (
 		<SwitchField
 			{...register(name, name === "disablePassword" ? { onChange: () => void trigger(name) } : undefined)}
-			className="py-3"
 			id={`oidc-${name}`}
 			label={
 				<>
@@ -34,7 +33,7 @@ function SignInRules({ data, isLocked }) {
 	);
 
 	return (
-		<div className="vstack gap-3">
+		<SwitchList>
 			{rule(
 				"requireVerifiedEmail",
 				"settings.authentication.require-verified-email",
@@ -44,7 +43,7 @@ function SignInRules({ data, isLocked }) {
 			{rule("disablePassword", "settings.authentication.disable-password", disablePasswordHint, {
 				disabled: passwordLockedOut,
 			})}
-		</div>
+		</SwitchList>
 	);
 }
 

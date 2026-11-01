@@ -1,7 +1,17 @@
 import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
+import cn from "clsx";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
-import { ErrorAlert, HookForm, Loading, SwitchField, useAppForm } from "src/components";
+import {
+	ErrorAlert,
+	FormField,
+	HookForm,
+	Loading,
+	SwitchField,
+	SwitchList,
+	useAppForm,
+	useFieldError,
+} from "src/components";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
@@ -53,16 +63,19 @@ function SaveButton({ allLocked }) {
 function LogFields() {
 	return (
 		<Part titleId="settings.logs.files">
-			<RuntimeSwitch
-				name="writeLogFiles"
-				label={<T id="settings.logs.write" />}
-				hint={<T id="settings.logs.write.hint" />}
-			/>
+			<SwitchList className="mb-3">
+				<RuntimeSwitch
+					name="writeLogFiles"
+					label={<T id="settings.logs.write" />}
+					hint={<T id="settings.logs.write.hint" />}
+				/>
+			</SwitchList>
 			<RuntimeNumber
 				name="logRotations"
 				label={<T id="settings.logs.rotations" />}
 				hint={<T id="settings.logs.rotations.hint" data={ROTATIONS} />}
 				{...ROTATIONS}
+				className=""
 			/>
 		</Part>
 	);
@@ -76,7 +89,7 @@ function GoAccessOptions() {
 		label: intl.formatMessage({ id: `settings.logs.goaccess.anonymize.${value}` }),
 	}));
 	return (
-		<>
+		<div className="mt-3">
 			<RuntimeNumber
 				name="goaccessKeepDays"
 				label={<T id="settings.logs.goaccess.keep-days" />}
@@ -90,22 +103,24 @@ function GoAccessOptions() {
 				hint={<T id="settings.logs.goaccess.anonymize.hint" />}
 				options={anonymize}
 			/>
-			<RuntimeSwitch
-				name="goaccessDropQueryStrings"
-				label={<T id="settings.logs.goaccess.drop-query-strings" />}
-				hint={<T id="settings.logs.goaccess.drop-query-strings.hint" />}
-			/>
-			<RuntimeSwitch
-				name="goaccessRealOs"
-				label={<T id="settings.logs.goaccess.real-os" />}
-				hint={<T id="settings.logs.goaccess.real-os.hint" />}
-			/>
-			<RuntimeSwitch
-				name="goaccessResolveHosts"
-				label={<T id="settings.logs.goaccess.resolve-hosts" />}
-				hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
-			/>
-		</>
+			<SwitchList>
+				<RuntimeSwitch
+					name="goaccessDropQueryStrings"
+					label={<T id="settings.logs.goaccess.drop-query-strings" />}
+					hint={<T id="settings.logs.goaccess.drop-query-strings.hint" />}
+				/>
+				<RuntimeSwitch
+					name="goaccessRealOs"
+					label={<T id="settings.logs.goaccess.real-os" />}
+					hint={<T id="settings.logs.goaccess.real-os.hint" />}
+				/>
+				<RuntimeSwitch
+					name="goaccessResolveHosts"
+					label={<T id="settings.logs.goaccess.resolve-hosts" />}
+					hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
+				/>
+			</SwitchList>
+		</div>
 	);
 }
 
@@ -115,14 +130,21 @@ function GoAccessFields() {
 	const { isLocked } = useRuntimeSection();
 	return (
 		<Part titleId="settings.logs.goaccess.title">
-			<RuntimeSwitch
-				name="goaccess"
-				label={<T id="settings.logs.goaccess" />}
-				hint={<T id="settings.logs.goaccess.hint" />}
-			/>
+			<SwitchList>
+				<RuntimeSwitch
+					name="goaccess"
+					label={<T id="settings.logs.goaccess" />}
+					hint={<T id="settings.logs.goaccess.hint" />}
+				/>
+			</SwitchList>
 			{goaccess || isLocked("goaccess") ? <GoAccessOptions /> : null}
 			{user?.goaccess ? (
-				<a href="/goaccess" target="_blank" rel="noopener noreferrer" className="link-primary">
+				<a
+					href="/goaccess"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="link-primary d-inline-block mt-3"
+				>
 					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
 					<T id="settings.logs.goaccess.open" />
 				</a>
@@ -225,43 +247,46 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 }
 
 /**
- * A number of the traffic statistics with its label, the lock badge and its hint
+ * A number of the traffic statistics on the form layer's FormField: its label with the lock badge, the input (with
+ * an optional unit), the error and the hint
  */
-function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, className }) {
+function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 	const { register } = useFormContext();
-	const { errors } = useFormState({ name, exact: true });
-	const error = errors[name]?.message ?? null;
+	const error = useFieldError(name);
 	return (
-		<div className={className}>
-			<label className="form-label" htmlFor={id}>
-				<T id={labelId} />
-				{isLocked(name) ? <LockedBadge /> : null}
-			</label>
-			<div className="row">
-				<div className="col-12 col-sm-6 col-lg-4">
-					<div className={`input-group${error ? " has-validation" : ""}`}>
-						<input
-							{...register(name)}
-							id={id}
-							type="number"
-							inputMode="numeric"
-							min={range.min}
-							max={range.max}
-							step={1}
-							className={`form-control${error ? " is-invalid" : ""}`}
-							disabled={isLocked(name)}
-							aria-invalid={error ? "true" : undefined}
-							aria-describedby={`${id}-hint`}
-						/>
-						{unit}
-						{error ? <div className="invalid-feedback">{error}</div> : null}
+		<FormField
+			id={id}
+			className=""
+			label={
+				<>
+					<T id={labelId} />
+					{isLocked(name) ? <LockedBadge /> : null}
+				</>
+			}
+			hint={hint}
+			error={error}
+		>
+			{(control) => (
+				<div className="row">
+					<div className="col-12 col-sm-6 col-lg-4">
+						<div className="input-group">
+							<input
+								{...register(name)}
+								{...control}
+								type="number"
+								inputMode="numeric"
+								min={range.min}
+								max={range.max}
+								step={1}
+								className={cn("form-control", error && "is-invalid")}
+								disabled={isLocked(name)}
+							/>
+							{unit}
+						</div>
 					</div>
 				</div>
-			</div>
-			<div className="form-hint" id={`${id}-hint`}>
-				{hint}
-			</div>
-		</div>
+			)}
+		</FormField>
 	);
 }
 
@@ -276,7 +301,7 @@ function Fields({ isLocked }) {
 	);
 	return (
 		<Part titleId="settings.monitoring.statistics" last>
-			<div className="vstack gap-3">
+			<SwitchList>
 				<SwitchField
 					{...register("trafficEnabled")}
 					id="monitoring-traffic-enabled"
@@ -326,7 +351,7 @@ function Fields({ isLocked }) {
 						isLocked={isLocked}
 					/>
 				) : null}
-			</div>
+			</SwitchList>
 		</Part>
 	);
 }

@@ -1,4 +1,5 @@
 import { useFormContext, useWatch } from "react-hook-form";
+import { SwitchList } from "src/components";
 import { useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
@@ -68,17 +69,18 @@ function RequestFields() {
 				hint={<T id="settings.certificates.profile.hint" />}
 				placeholder={intl.formatMessage({ id: "settings.certificates.profile.placeholder" })}
 			/>
-			<RuntimeSwitch
-				name="mustStaple"
-				label={<T id="settings.certificates.must-staple" />}
-				hint={<T id="settings.certificates.must-staple.hint" />}
-			/>
-			<RuntimeSwitch
-				name="serverTlsVerify"
-				className=""
-				label={<T id="settings.certificates.server-tls-verify" />}
-				hint={<T id="settings.certificates.server-tls-verify.hint" />}
-			/>
+			<SwitchList>
+				<RuntimeSwitch
+					name="mustStaple"
+					label={<T id="settings.certificates.must-staple" />}
+					hint={<T id="settings.certificates.must-staple.hint" />}
+				/>
+				<RuntimeSwitch
+					name="serverTlsVerify"
+					label={<T id="settings.certificates.server-tls-verify" />}
+					hint={<T id="settings.certificates.server-tls-verify.hint" />}
+				/>
+			</SwitchList>
 		</Part>
 	);
 }
@@ -90,27 +92,28 @@ function StaplingFields() {
 	const forced = mustStaple && !isLocked("ocspStapling");
 	return (
 		<Part titleId="settings.certificates.stapling">
-			<RuntimeSwitch
-				name="ocspStapling"
-				forced={forced}
-				label={<T id="settings.certificates.ocsp-stapling" />}
-				hint={
-					<>
-						<T id="settings.certificates.ocsp-stapling.hint" />
-						{forced ? (
-							<span className="d-block">
-								<T id="settings.certificates.ocsp-stapling.forced" />
-							</span>
-						) : null}
-					</>
-				}
-			/>
-			<RuntimeSwitch
-				name="customOcspStapling"
-				className=""
-				label={<T id="settings.certificates.custom-ocsp-stapling" />}
-				hint={<T id="settings.certificates.custom-ocsp-stapling.hint" />}
-			/>
+			<SwitchList>
+				<RuntimeSwitch
+					name="ocspStapling"
+					forced={forced}
+					label={<T id="settings.certificates.ocsp-stapling" />}
+					hint={
+						<>
+							<T id="settings.certificates.ocsp-stapling.hint" />
+							{forced ? (
+								<span className="d-block">
+									<T id="settings.certificates.ocsp-stapling.forced" />
+								</span>
+							) : null}
+						</>
+					}
+				/>
+				<RuntimeSwitch
+					name="customOcspStapling"
+					label={<T id="settings.certificates.custom-ocsp-stapling" />}
+					hint={<T id="settings.certificates.custom-ocsp-stapling.hint" />}
+				/>
+			</SwitchList>
 		</Part>
 	);
 }
@@ -152,6 +155,7 @@ function DefaultCertificateField() {
 					</>
 				}
 				options={options}
+				className=""
 			/>
 		</Part>
 	);
@@ -168,6 +172,7 @@ function Fields() {
 					hint={<T id="settings.certificates.renewal-interval.hint" data={RENEWAL} />}
 					unit={<T id="settings.runtime.hours" />}
 					{...RENEWAL}
+					className=""
 				/>
 			</Part>
 			<StaplingFields />

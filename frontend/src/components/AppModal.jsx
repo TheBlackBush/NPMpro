@@ -22,6 +22,7 @@ function AppModal({ children, centered = false, ...props }) {
 	);
 }
 
+// The window's title as a heading (h2) in Tabler's modal-title size (16px), not react-bootstrap's div styled as h4
 function AppModalTitle({ children, ...props }) {
 	const { id, setMounted } = useContext(TitleContext);
 	useEffect(() => {
@@ -29,7 +30,7 @@ function AppModalTitle({ children, ...props }) {
 		return () => setMounted(false);
 	}, [setMounted]);
 	return (
-		<Modal.Title id={id} {...props}>
+		<Modal.Title as="h2" id={id} {...props}>
 			{children}
 		</Modal.Title>
 	);

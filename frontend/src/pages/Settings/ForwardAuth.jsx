@@ -1,3 +1,4 @@
+import { SwitchList } from "src/components";
 import { intl, T } from "src/locale";
 import { FORWARD_AUTH_PROVIDERS, forwardAuthValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -29,9 +30,10 @@ export default function ForwardAuth() {
 				<T id="settings.forward-auth.intro" />
 			</p>
 			<Part titleId="settings.forward-auth.upstreams">
-				{FORWARD_AUTH_PROVIDERS.map(({ name, provider, example }) => (
+				{FORWARD_AUTH_PROVIDERS.map(({ name, provider, example }, index) => (
 					<RuntimeText
 						key={name}
+						className={index === FORWARD_AUTH_PROVIDERS.length - 1 ? "" : undefined}
 						name={name}
 						type="url"
 						label={<T id="settings.forward-auth.upstream" data={{ provider }} />}
@@ -44,12 +46,13 @@ export default function ForwardAuth() {
 				))}
 			</Part>
 			<Part titleId="settings.forward-auth.anubis" last>
-				<RuntimeSwitch
-					name="anubisCustomImages"
-					className=""
-					label={<T id="settings.forward-auth.anubis-images" />}
-					hint={<T id="settings.forward-auth.anubis-images.hint" />}
-				/>
+				<SwitchList>
+					<RuntimeSwitch
+						name="anubisCustomImages"
+						label={<T id="settings.forward-auth.anubis-images" />}
+						hint={<T id="settings.forward-auth.anubis-images.hint" />}
+					/>
+				</SwitchList>
 			</Part>
 		</RuntimeSection>
 	);

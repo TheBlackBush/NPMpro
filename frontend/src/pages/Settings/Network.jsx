@@ -1,3 +1,4 @@
+import { SwitchList } from "src/components";
 import { T } from "src/locale";
 import { trustedIpLines } from "src/modules/RuntimeSettings";
 import { networkValidate } from "src/modules/SettingsForms";
@@ -24,12 +25,13 @@ export default function Network() {
 				hint={<T id="settings.network.trusted-ips.hint" />}
 				placeholder={"10.0.0.0/8\n192.168.1.5\nfd00::/8"}
 			/>
-			<RuntimeSwitch
-				name="trustCloudflare"
-				className=""
-				label={<T id="settings.network.trust-cloudflare" />}
-				hint={<T id="settings.network.trust-cloudflare.hint" />}
-			/>
+			<SwitchList>
+				<RuntimeSwitch
+					name="trustCloudflare"
+					label={<T id="settings.network.trust-cloudflare" />}
+					hint={<T id="settings.network.trust-cloudflare.hint" />}
+				/>
+			</SwitchList>
 		</RuntimeSection>
 	);
 }

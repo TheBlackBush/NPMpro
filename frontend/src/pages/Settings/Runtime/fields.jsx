@@ -1,7 +1,7 @@
 import { IconRefresh } from "@tabler/icons-react";
 import cn from "clsx";
-import { useController, useFormContext, useFormState } from "react-hook-form";
-import { SwitchField } from "src/components";
+import { useController, useFormContext } from "react-hook-form";
+import { FormField, SwitchField, TextField, useFieldError } from "src/components";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
 import { useRuntimeSection } from "./RuntimeSection";
@@ -63,16 +63,15 @@ function FieldHint({ name, hint }) {
 }
 
 /**
- * A boolean setting as a Tabler settings switch row. `forced` shows it on and read-only (another setting needs it),
- * `forcedOff` shows it off and read-only (another setting rules it out); a controller, as the switch may show another
- * state than the field holds.
+ * A boolean setting as a Tabler settings switch row, for a SwitchList. `forced` shows it on and read-only (another
+ * setting needs it), `forcedOff` shows it off and read-only (another setting rules it out); a controller, as the
+ * switch may show another state than the field holds.
  */
-function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false, className = "mb-3" }) {
+function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
 		<SwitchField
-			className={className}
 			id={idOf(name)}
 			label={<FieldLabel name={name}>{label}</FieldLabel>}
 			hint={<FieldHint name={name} hint={hint} />}
@@ -87,89 +86,89 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false, c
 }
 
 /**
- * The message a setting shows (React Hook Form's error of the field) and the attributes of its control: id, disabled
- * while locked, the invalid class and the aria attributes
+ * One setting on the form layer's FormField: the label with its lock or restart badge, the control (narrow: a third
+ * of the row from lg, half from sm), the error and the hint with when the change applies
  *
- * @param   {string} name
- * @param   {string} className  the control's class (form-control, form-select)
- * @returns {{ error: ?string, props: Object }}
+ * @param {Object}   props
+ * @param {string}   props.name
+ * @param {*}        props.label
+ * @param {*}        [props.hint]
+ * @param {boolean}  [props.narrow]
+ * @param {string}   [props.className]  the field's wrapper class, `mb-3` by default; "" for the last field of a group
+ * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
  */
-function useControlProps(name, className) {
-	const { isLocked } = useRuntimeSection();
-	const { errors } = useFormState({ name, exact: true });
-	const error = errors[name]?.message ?? null;
-	const id = idOf(name);
-	return {
-		error,
-		props: {
-			id,
-			disabled: isLocked(name),
-			className: cn(className, error && "is-invalid"),
-			"aria-invalid": error ? "true" : undefined,
-			"aria-describedby": `${id}-hint`,
-		},
-	};
-}
-
-/**
- * Label, control, validation message and hint for one setting (children: the control and its message)
- */
-function RuntimeControl({ name, label, hint, narrow = false, className = "mb-3", children }) {
-	const id = idOf(name);
+function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
+	const error = useFieldError(name);
 	return (
-		<div className={className}>
-			<label className="form-label" htmlFor={id}>
-				<FieldLabel name={name}>{label}</FieldLabel>
-			</label>
-			<div className="row">
-				<div className={narrow ? "col-12 col-sm-6 col-lg-4" : "col-12"}>{children}</div>
-			</div>
-			<div className="form-hint" id={`${id}-hint`}>
-				<FieldHint name={name} hint={hint} />
-			</div>
-		</div>
+		<FormField
+			id={idOf(name)}
+			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			hint={<FieldHint name={name} hint={hint} />}
+			error={error}
+			className={className}
+		>
+			{(control) =>
+				narrow ? (
+					<div className="row">
+						<div className="col-12 col-sm-6 col-lg-4">{children(control, error)}</div>
+					</div>
+				) : (
+					children(control, error)
+				)
+			}
+		</FormField>
 	);
 }
 
 /**
  * Whole number with an optional unit (input group); the value stays text, as the input holds it
  */
-function RuntimeNumber({ name, label, hint, min, max, unit }) {
+function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 	const { register } = useFormContext();
-	const { error, props } = useControlProps(name, "form-control");
+	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow>
-			<div className={cn("input-group", error && "has-validation")}>
-				<input {...register(name)} {...props} type="number" inputMode="numeric" min={min} max={max} step={1} />
-				{unit ? <span className="input-group-text">{unit}</span> : null}
-				{error ? <div className="invalid-feedback">{error}</div> : null}
-			</div>
+		<RuntimeControl name={name} label={label} hint={hint} narrow className={className}>
+			{(control, error) => (
+				<div className="input-group">
+					<input
+						{...register(name)}
+						{...control}
+						className={cn("form-control", error && "is-invalid")}
+						disabled={isLocked(name)}
+						type="number"
+						inputMode="numeric"
+						min={min}
+						max={max}
+						step={1}
+					/>
+					{unit ? <span className="input-group-text">{unit}</span> : null}
+				</div>
+			)}
 		</RuntimeControl>
 	);
 }
 
 /**
- * Text input, or a textarea with rows
+ * Text input, or a textarea with rows (the form layer's TextField)
  */
-function RuntimeText({ name, label, hint, placeholder, rows, type = "text" }) {
-	const { register } = useFormContext();
-	const { error, props } = useControlProps(name, rows ? "form-control font-monospace" : "form-control");
+function RuntimeText({ name, label, hint, placeholder, rows, type = "text", className }) {
+	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint}>
-			{rows ? (
-				<textarea {...register(name)} {...props} rows={rows} placeholder={placeholder} spellCheck={false} />
-			) : (
-				<input
-					{...register(name)}
-					{...props}
-					type={type}
-					autoComplete="off"
-					spellCheck={false}
-					placeholder={placeholder}
-				/>
-			)}
-			{error ? <div className="invalid-feedback">{error}</div> : null}
-		</RuntimeControl>
+		<TextField
+			name={name}
+			className={className}
+			id={idOf(name)}
+			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			hint={<FieldHint name={name} hint={hint} />}
+			as={rows ? "textarea" : "input"}
+			controlClassName={rows ? "font-monospace" : undefined}
+			disabled={isLocked(name)}
+			rows={rows}
+			type={rows ? undefined : type}
+			autoComplete={rows ? undefined : "off"}
+			spellCheck={false}
+			placeholder={placeholder}
+		/>
 	);
 }
 
@@ -178,29 +177,32 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text" }) {
  * follow it). A controller: the options may change while the form is open (key sizes follow the key type, the
  * certificates load later), and the shown option must follow the value.
  */
-function RuntimeSelect({ name, label, hint, options, onChange, narrow = true }) {
+function RuntimeSelect({ name, label, hint, options, onChange, narrow = true, className }) {
 	const { field } = useController({ name });
-	const { error, props } = useControlProps(name, "form-select");
+	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow}>
-			<select
-				{...props}
-				name={field.name}
-				ref={field.ref}
-				value={field.value}
-				onBlur={field.onBlur}
-				onChange={(e) => {
-					field.onChange(e.target.value);
-					onChange?.(e.target.value);
-				}}
-			>
-				{options.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
-			{error ? <div className="invalid-feedback">{error}</div> : null}
+		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow} className={className}>
+			{(control, error) => (
+				<select
+					{...control}
+					className={cn("form-select", error && "is-invalid")}
+					disabled={isLocked(name)}
+					name={field.name}
+					ref={field.ref}
+					value={field.value}
+					onBlur={field.onBlur}
+					onChange={(e) => {
+						field.onChange(e.target.value);
+						onChange?.(e.target.value);
+					}}
+				>
+					{options.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</select>
+			)}
 		</RuntimeControl>
 	);
 }

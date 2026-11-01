@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { it } from "node:test";
+import { groupSections, SETTINGS_CATEGORIES } from "./SettingsSections.js";
+
+// a section entry of sections.js: its id, then its category
+const ENTRY = /\bid: "(?<id>[^"]+)",\s+category: "(?<category>[^"]+)"/gu;
+const ID = /\bid: "/gu;
+const NAMES_SECTION = /"new-section"/u;
+const NAMES_CATEGORY = /"other"/u;
+
+it("groups the sections by category in the categories' order, keeping each section's place", () => {
+	const sections = [
+		{ id: "geoip", category: "monitoring" },
+		{ id: "default-site", category: "sites" },
+		{ id: "network", category: "sites" },
+		{ id: "environment", category: "system" },
+	];
+	assert.deepEqual(
+		groupSections(sections).map(({ id, sections: list }) => [id, list.map((section) => section.id)]),
+		[
+			["sites", ["default-site", "network"]],
+			["monitoring", ["geoip"]],
+			["system", ["environment"]],
+		],
+	);
+	assert.equal(groupSections(sections)[0].labelKey, "settings.category.sites");
+});
+
+it("refuses a section without a known category, naming it", () => {
+	assert.throws(() => groupSections([{ id: "new-section" }]), NAMES_SECTION);
+	assert.throws(() => groupSections([{ id: "x", category: "other" }]), NAMES_CATEGORY);
+});
+
+it("gives every section in sections.js one of the categories, in the menu's order", () => {
+	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
+	const entries = [...source.matchAll(ENTRY)].map(({ groups }) => groups);
+	// every section entry has its category right after its id
+	assert.equal(entries.length, [...source.matchAll(ID)].length);
+	assert.deepEqual(
+		groupSections(entries).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
+		[
+			["sites", ["default-site", "network", "nginx"]],
+			["security", ["authentication", "forward-auth", "certificates"]],
+			["monitoring", ["monitoring", "geoip"]],
+			["data", ["backup", "database"]],
+			["system", ["advanced", "environment"]],
+		],
+	);
+	// the menu lists the sections category by category, so sections.js keeps that order too
+	assert.deepEqual(
+		entries.map(({ id }) => id),
+		groupSections(entries).flatMap(({ sections }) => sections.map((section) => section.id)),
+	);
+	assert.equal(SETTINGS_CATEGORIES.length, 5);
+});

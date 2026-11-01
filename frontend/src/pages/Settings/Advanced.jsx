@@ -1,4 +1,5 @@
 import { IconShieldLock } from "@tabler/icons-react";
+import { SwitchList } from "src/components";
 import { T } from "src/locale";
 import { timeZoneOptions } from "src/modules/RuntimeSettings";
 import { RuntimeSelect, RuntimeSwitch } from "./Runtime/fields";
@@ -29,16 +30,18 @@ function TimeZoneField() {
 export default function Advanced() {
 	return (
 		<RuntimeSection group="advanced" titleId="settings.advanced" toForm={toForm} toApi={toApi}>
-			<RuntimeSwitch
-				name="configBeautifier"
-				label={<T id="settings.advanced.beautifier" />}
-				hint={<T id="settings.advanced.beautifier.hint" />}
-			/>
-			<RuntimeSwitch
-				name="gravatar"
-				label={<T id="settings.advanced.gravatar" />}
-				hint={<T id="settings.advanced.gravatar.hint" />}
-			/>
+			<SwitchList className="mb-3">
+				<RuntimeSwitch
+					name="configBeautifier"
+					label={<T id="settings.advanced.beautifier" />}
+					hint={<T id="settings.advanced.beautifier.hint" />}
+				/>
+				<RuntimeSwitch
+					name="gravatar"
+					label={<T id="settings.advanced.gravatar" />}
+					hint={<T id="settings.advanced.gravatar.hint" />}
+				/>
+			</SwitchList>
 			<StatusAlert variant="secondary" icon={IconShieldLock} id="settings.advanced.gravatar.privacy" />
 			<TimeZoneField />
 		</RuntimeSection>
