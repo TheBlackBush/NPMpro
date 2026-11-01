@@ -63,6 +63,8 @@ jobs:
         run: ./translations/check-keys.sh
       - name: every language has every key
         run: ./translations/check-locale.sh
+      - name: every translation key is used
+        run: node translations/check-unused.js
       - name: unit tests
         run: node --test 'src/**/*.test.js'
       - name: build
