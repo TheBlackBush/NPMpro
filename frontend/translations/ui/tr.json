@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Bu şemayla çalışmayan seçenekler kapatıldı.",
 	"host.forward-scheme.path": "path: (dosya veya PHP sunma)",
 	"host.location-config.label": "Özel nginx yapılandırması, location / '{' '}' bloğunun içine eklenir",
-	"host.location-config.toggle": "location / bloğu için özel nginx yapılandırmasını göster",
 	"hosts": "Host'lar",
 	"http-only": "Sadece HTTP",
 	"lets-encrypt": "Certbot",

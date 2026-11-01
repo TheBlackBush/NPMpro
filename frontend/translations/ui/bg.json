@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Опциите, които не работят с тази схема, бяха изключени.",
 	"host.forward-scheme.path": "path: (обслужване на файлове или PHP)",
 	"host.location-config.label": "Персонализирана nginx конфигурация, добавена в блока location / '{' '}'",
-	"host.location-config.toggle": "Показване на персонализираната nginx конфигурация за блока location /",
 	"hosts": "Хостове",
 	"http-only": "Само HTTP",
 	"lets-encrypt": "Certbot",

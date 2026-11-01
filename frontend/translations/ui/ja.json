@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "このスキームで動作しないオプションはオフになりました。",
 	"host.forward-scheme.path": "path: (ファイルまたは PHP を配信)",
 	"host.location-config.label": "カスタム nginx 設定(location / '{' '}' ブロック内に追加)",
-	"host.location-config.toggle": "location / ブロックのカスタム nginx 設定を表示",
 	"hosts": "ホスト",
 	"http-only": "HTTP のみ",
 	"lets-encrypt": "Certbot",

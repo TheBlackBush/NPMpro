@@ -1,6 +1,5 @@
-import { IconSettings } from "@tabler/icons-react";
 import { useState } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useFormState, useWatch } from "react-hook-form";
 import {
 	AccessFields,
 	ApiErrorContent,
@@ -39,7 +38,7 @@ import {
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { domainNamesOptions, windowTitleId } from "src/modules/HostForms";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
@@ -69,7 +68,6 @@ function LocationsTabMarker() {
 }
 
 function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError, close, suggestions }) {
-	const { register } = useFormContext();
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
 	const [
@@ -89,8 +87,9 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 			"npmproPropagationSeconds",
 		],
 	});
-	// a View window shows a saved location config (its button is disabled there)
-	const [advVisible, setAdvVisible] = useState(() => readOnly && Boolean(data.npmproLocationConfig?.trim()));
+
+	// a non-admin with no config at all gets the one hint, not one per field
+	const isEmptyBoth = !(isAdmin || advancedConfig?.trim() || npmproLocationConfig?.trim());
 
 	return (
 		<>
@@ -108,27 +107,14 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 				</ErrorAlert>
 				<ModalTabs
 					tabs={PROXY_HOST_TABS}
-					markers={{ locations: <LocationsTabMarker />, advanced: advancedConfig?.trim() ? "*" : null }}
+					markers={{
+						locations: <LocationsTabMarker />,
+						advanced: advancedConfig?.trim() || npmproLocationConfig?.trim() ? "*" : null,
+					}}
 				>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-						<ForwardFields
-							portAddon={
-								isAdmin || npmproLocationConfig?.trim() ? (
-									<button
-										type="button"
-										className="btn btn-icon"
-										title={intl.formatMessage({ id: "host.location-config.toggle" })}
-										aria-label={intl.formatMessage({ id: "host.location-config.toggle" })}
-										aria-expanded={advVisible}
-										onClick={() => setAdvVisible((prev) => !prev)}
-									>
-										<IconSettings size={20} aria-hidden="true" />
-										{npmproLocationConfig?.trim() ? "*" : ""}
-									</button>
-								) : null
-							}
-						/>
+						<ForwardFields />
 						<DirectoryField
 							labelId="proxy-host.directory"
 							datalistId="directory-suggestions-proxy"
@@ -142,30 +128,6 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 								authRequest={npmproAuthRequest}
 							/>
 						</FormSection>
-						{advVisible && (
-							<div className="">
-								<label className="form-label" htmlFor="npmproLocationConfig">
-									<T id="host.location-config.label" />
-								</label>
-								<textarea
-									id="npmproLocationConfig"
-									className="form-control font-monospace"
-									spellCheck={false}
-									placeholder={intl.formatMessage({
-										id: "nginx-config.placeholder",
-									})}
-									rows={8}
-									readOnly={!isAdmin}
-									aria-describedby={isAdmin ? undefined : "npmproLocationConfig-hint"}
-									{...register("npmproLocationConfig")}
-								/>
-								{!isAdmin && (
-									<div className="form-hint" id="npmproLocationConfig-hint">
-										<T id="nginx-config.admin-only" />
-									</div>
-								)}
-							</div>
-						)}
 					</TabPane>
 					<TabPane id="locations" selfReadOnly>
 						<LocationsFields />
@@ -176,7 +138,18 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 						<SSLOptionsFields forProxyHost />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField />
+						<NginxConfigField emptyHint={!isEmptyBoth} />
+						<NginxConfigField
+							name="npmproLocationConfig"
+							id="npmproLocationConfig"
+							label="host.location-config.label"
+							emptyHint={!isEmptyBoth}
+						/>
+						{isEmptyBoth && (
+							<div className="text-secondary text-center my-3">
+								<T id="nginx-config.admin-only" />
+							</div>
+						)}
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress

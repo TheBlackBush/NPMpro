@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Options that do not work with this scheme were turned off.",
 	"host.forward-scheme.path": "path: (serve files or PHP)",
 	"host.location-config.label": "Custom nginx config, added inside the location / '{' '}' block",
-	"host.location-config.toggle": "Show custom nginx config for the location / block",
 	"hosts": "Hosts",
 	"http-only": "HTTP Only",
 	"lets-encrypt": "Certbot",

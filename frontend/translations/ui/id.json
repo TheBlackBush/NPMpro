@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Opsi yang tidak berfungsi dengan skema ini telah dinonaktifkan.",
 	"host.forward-scheme.path": "path: (sajikan file atau PHP)",
 	"host.location-config.label": "Konfigurasi nginx kustom, ditambahkan di dalam blok location / '{' '}'",
-	"host.location-config.toggle": "Tampilkan konfigurasi nginx kustom untuk blok location /",
 	"hosts": "Host",
 	"http-only": "HTTP Saja",
 	"lets-encrypt": "Certbot",

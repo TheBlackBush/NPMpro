@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "이 스킴에서 작동하지 않는 옵션은 꺼졌습니다.",
 	"host.forward-scheme.path": "path: (파일 또는 PHP 제공)",
 	"host.location-config.label": "location / '{' '}' 블록 안에 추가되는 사용자 지정 nginx 설정",
-	"host.location-config.toggle": "location / 블록의 사용자 지정 nginx 설정 표시",
 	"hosts": "호스트 목록",
 	"http-only": "HTTP 전용",
 	"lets-encrypt": "Certbot",

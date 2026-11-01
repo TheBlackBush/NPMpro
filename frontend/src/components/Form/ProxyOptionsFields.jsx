@@ -38,9 +38,8 @@ function useApplyOption(base) {
  * @param {Object} props
  * @param {string} [props.base]       the row's path ("locations.2"), "" for the host
  * @param {string} [props.idSuffix]   the row's key, "" for the host
- * @param {*}      [props.portAddon]  a button at the end of the port's input group
  */
-export function ForwardFields({ base = "", idSuffix = "", portAddon = null }) {
+export function ForwardFields({ base = "", idSuffix = "" }) {
 	const { register, getValues } = useFormContext();
 	const field = (name) => optionField(base, name);
 	const id = (name) => optionId(name, idSuffix);
@@ -140,7 +139,6 @@ export function ForwardFields({ base = "", idSuffix = "", portAddon = null }) {
 						aria-describedby={portAria["aria-describedby"]}
 						{...register(field("forwardPort"))}
 					/>
-					{portAddon}
 					{portError ? (
 						<div className="invalid-feedback d-block" id={portAria.errorId}>
 							{portError}

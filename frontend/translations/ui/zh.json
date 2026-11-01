@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "已关闭不适用于此协议的选项。",
 	"host.forward-scheme.path": "path:（提供文件或 PHP）",
 	"host.location-config.label": "自定义 nginx 配置，添加到 location / '{' '}' 块内",
-	"host.location-config.toggle": "显示 location / 块的自定义 nginx 配置",
 	"hosts": "主机列表",
 	"http-only": "仅 HTTP",
 	"lets-encrypt": "Certbot",

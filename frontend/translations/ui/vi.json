@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Các tùy chọn không hoạt động với scheme này đã được tắt.",
 	"host.forward-scheme.path": "path: (phục vụ tệp hoặc PHP)",
 	"host.location-config.label": "Cấu hình nginx tùy chỉnh, được thêm vào bên trong khối location / '{' '}'",
-	"host.location-config.toggle": "Hiện cấu hình nginx tùy chỉnh cho khối location /",
 	"hosts": "Máy chủ",
 	"http-only": "Chỉ HTTP",
 	"lets-encrypt": "Certbot",

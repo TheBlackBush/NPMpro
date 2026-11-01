@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Se desactivaron las opciones que no funcionan con este esquema.",
 	"host.forward-scheme.path": "path: (servir archivos o PHP)",
 	"host.location-config.label": "Configuración personalizada de nginx, añadida dentro del bloque location / '{' '}'",
-	"host.location-config.toggle": "Mostrar la configuración personalizada de nginx del bloque location /",
 	"hosts": "Hosts",
 	"http-only": "Solo HTTP",
 	"lets-encrypt": "Certbot",

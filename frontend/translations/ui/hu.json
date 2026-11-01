@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Az ezzel a sémával nem működő beállítások ki lettek kapcsolva.",
 	"host.forward-scheme.path": "path: (fájlok vagy PHP kiszolgálása)",
 	"host.location-config.label": "Egyéni nginx konfiguráció, a location / '{' '}' blokkon belülre kerül",
-	"host.location-config.toggle": "Egyéni nginx konfiguráció megjelenítése a location / blokkhoz",
 	"hosts": "Kiszolgálók",
 	"http-only": "Csak HTTP",
 	"lets-encrypt": "Certbot",

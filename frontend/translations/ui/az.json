@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Bu sxemlə işləməyən seçimlər söndürüldü.",
 	"host.forward-scheme.path": "path: (fayllar və ya PHP təqdim et)",
 	"host.location-config.label": "Fərdi nginx konfiqurasiyası, location / '{' '}' blokunun içinə əlavə olunur",
-	"host.location-config.toggle": "location / bloku üçün fərdi nginx konfiqurasiyasını göstər",
 	"hosts": "Hostlar",
 	"http-only": "Yalnız HTTP",
 	"lets-encrypt": "Certbot",

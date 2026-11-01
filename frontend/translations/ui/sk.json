@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Voľby, ktoré s touto schémou nefungujú, boli vypnuté.",
 	"host.forward-scheme.path": "path: (poskytovanie súborov alebo PHP)",
 	"host.location-config.label": "Vlastná konfigurácia nginx, pridaná do bloku location / '{' '}'",
-	"host.location-config.toggle": "Zobraziť vlastnú konfiguráciu nginx pre blok location /",
 	"hosts": "Hostitelia",
 	"http-only": "Len HTTP",
 	"lets-encrypt": "Certbot",

@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Параметры, не работающие с этой схемой, были выключены.",
 	"host.forward-scheme.path": "path: (раздача файлов или PHP)",
 	"host.location-config.label": "Своя конфигурация nginx, добавляется внутри блока location / '{' '}'",
-	"host.location-config.toggle": "Показать свою конфигурацию nginx для блока location /",
 	"hosts": "Хосты",
 	"http-only": "Только HTTP",
 	"lets-encrypt": "Certbot",

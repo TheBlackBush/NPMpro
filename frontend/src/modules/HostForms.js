@@ -53,13 +53,13 @@ export const TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, ...REQUEST_AFTER_D
 const STREAM_TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, "domainNames", ...REQUEST_AFTER_DOMAINS]);
 
 /**
- * The Advanced tab of a host window, on the right: the raw nginx config (the group is on the Details tab)
+ * The Advanced tab of a host window, on the right: the raw nginx configs (the group is on the Details tab)
  *
- * @param   {string} config  the field of the nginx config
+ * @param   {...string} configs  the fields of the nginx configs, in the order shown
  * @returns {Object}
  */
-export const advancedTab = (config) =>
-	Object.freeze({ id: "advanced", labelId: "domains.advanced", fields: [config], end: true });
+export const advancedTab = (...configs) =>
+	Object.freeze({ id: "advanced", labelId: "domains.advanced", fields: configs, end: true });
 
 /**
  * The title of a host or access list window: View for a user who may only view the section, Edit for a saved item

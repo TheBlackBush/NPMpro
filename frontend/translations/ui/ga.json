@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Múchadh roghanna nach n-oibríonn leis an scéim seo.",
 	"host.forward-scheme.path": "path: (comhaid nó PHP a fhreastal)",
 	"host.location-config.label": "Cumraíocht nginx shaincheaptha, curtha isteach sa bhloc location / '{' '}'",
-	"host.location-config.toggle": "Taispeáin cumraíocht nginx shaincheaptha don bhloc location /",
 	"hosts": "Óstaigh",
 	"http-only": "HTTP Amháin",
 	"lets-encrypt": "Certbot",

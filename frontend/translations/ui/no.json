@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Alternativer som ikke fungerer med dette skjemaet, ble slått av.",
 	"host.forward-scheme.path": "path: (server filer eller PHP)",
 	"host.location-config.label": "Egendefinert nginx-konfigurasjon, lagt til i blokken location / '{' '}'",
-	"host.location-config.toggle": "Vis egendefinert nginx-konfigurasjon for blokken location /",
 	"hosts": "Vertsnavn",
 	"http-only": "Kun HTTP",
 	"lets-encrypt": "Certbot",

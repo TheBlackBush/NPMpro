@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Opties die niet werken met dit schema zijn uitgeschakeld.",
 	"host.forward-scheme.path": "path: (bestanden of PHP serveren)",
 	"host.location-config.label": "Aangepaste nginx-configuratie, toegevoegd binnen het blok location / '{' '}'",
-	"host.location-config.toggle": "Aangepaste nginx-configuratie voor het blok location / tonen",
 	"hosts": "Hosts",
 	"http-only": "Alleen HTTP",
 	"lets-encrypt": "Certbot",

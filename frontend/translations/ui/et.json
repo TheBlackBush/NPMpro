@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "Selle skeemiga mittetöötavad valikud lülitati välja.",
 	"host.forward-scheme.path": "path: (failide või PHP serveerimine)",
 	"host.location-config.label": "Kohandatud nginxi konfiguratsioon, lisatakse plokki location / '{' '}'",
-	"host.location-config.toggle": "Kuva kohandatud nginxi konfiguratsioon ploki location / jaoks",
 	"hosts": "Hostid",
 	"http-only": "Ainult HTTP",
 	"lets-encrypt": "Certbot",

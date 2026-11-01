@@ -387,7 +387,6 @@
 	"host.forward-scheme.options-reset": "گزینه‌هایی که با این scheme کار نمی‌کنند غیرفعال شدند.",
 	"host.forward-scheme.path": "path: (ارائه فایل‌ها یا PHP)",
 	"host.location-config.label": "پیکربندی سفارشی nginx، که داخل بلوک location / '{' '}' اضافه می‌شود",
-	"host.location-config.toggle": "نمایش پیکربندی سفارشی nginx برای بلوک location /",
 	"hosts": "میزبان‌ها",
 	"http-only": "فقط HTTP",
 	"lets-encrypt": "Certbot",
