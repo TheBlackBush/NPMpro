@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Sisesta täisarv vahemikus {min} kuni {max}",
 	"settings.network": "Võrk",
 	"settings.network.trust-cloudflare": "Usalda Cloudflare'i",
-	"settings.network.trust-cloudflare.hint": "Laadib alla Cloudflare'i IP-vahemikud, värskendab neid regulaarselt ja usaldab neid, nii et nginx näeb Cloudflare'i taga olevaid tegelikke kliendi IP-sid. Loe esmalt README Cloudflare'i märkusi.",
+	"settings.network.trust-cloudflare.hint": "Laadib alla Cloudflare'i IP-vahemikud, värskendab neid regulaarselt ja usaldab neid, nii et nginx näeb Cloudflare'i taga olevaid tegelikke kliendi IP-sid. Loe esmalt viki (Security) Cloudflare'i märkusi.",
 	"settings.network.trusted-ips": "Usaldatud proksi IP-d",
 	"settings.network.trusted-ips.hint": "Üks IPv4/IPv6-aadress või CIDR-vahemik rea kohta. Nendelt aadressidelt tulevad päringud võivad edastada tegeliku kliendi IP päises X-Forwarded-For, näiteks NPMpro ees olevast koormusjaoturist või tunnelist.",
 	"settings.network.trusted-ips.invalid": "Rida {line}: pole kehtiv IPv4/IPv6-aadress ega CIDR-vahemik.",

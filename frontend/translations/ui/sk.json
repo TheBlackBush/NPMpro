@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Zadajte celé číslo od {min} do {max}",
 	"settings.network": "Sieť",
 	"settings.network.trust-cloudflare": "Dôverovať Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Stiahne rozsahy IP Cloudflare, pravidelne ich obnovuje a dôveruje im, takže nginx vidí skutočné IP klientov za Cloudflare. Najprv si prečítajte poznámky o Cloudflare v README.",
+	"settings.network.trust-cloudflare.hint": "Stiahne rozsahy IP Cloudflare, pravidelne ich obnovuje a dôveruje im, takže nginx vidí skutočné IP klientov za Cloudflare. Najprv si prečítajte poznámky o Cloudflare na wiki (Security).",
 	"settings.network.trusted-ips": "Dôveryhodné IP proxy",
 	"settings.network.trusted-ips.hint": "Jedna adresa IPv4/IPv6 alebo rozsah CIDR na riadok. Požiadavky z týchto adries môžu odovzdávať skutočnú IP klienta v X-Forwarded-For, napríklad z load balancera alebo tunela pred NPMpro.",
 	"settings.network.trusted-ips.invalid": "Riadok {line}: neplatná adresa IPv4/IPv6 alebo rozsah CIDR.",

@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "{min} から {max} までの整数を入力してください",
 	"settings.network": "ネットワーク",
 	"settings.network.trust-cloudflare": "Cloudflare を信頼",
-	"settings.network.trust-cloudflare.hint": "Cloudflare の IP 範囲を取得して定期的に更新し、信頼することで、nginx が Cloudflare の背後にある実際のクライアント IP を認識できるようにします。まず README の Cloudflare に関する注意をお読みください。",
+	"settings.network.trust-cloudflare.hint": "Cloudflare の IP 範囲を取得して定期的に更新し、信頼することで、nginx が Cloudflare の背後にある実際のクライアント IP を認識できるようにします。まず wiki (Security) の Cloudflare に関する注意をお読みください。",
 	"settings.network.trusted-ips": "信頼するプロキシ IP",
 	"settings.network.trusted-ips.hint": "1 行に 1 つの IPv4/IPv6 アドレスまたは CIDR 範囲。これらのアドレスからのリクエストは、X-Forwarded-For で実際のクライアント IP を渡すことができます(例: NPMpro の前段にあるロードバランサーやトンネル)。",
 	"settings.network.trusted-ips.invalid": "{line} 行目: 有効な IPv4/IPv6 アドレスまたは CIDR 範囲ではありません。",

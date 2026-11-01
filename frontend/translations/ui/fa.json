@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "یک عدد صحیح از {min} تا {max} وارد کنید",
 	"settings.network": "شبکه",
 	"settings.network.trust-cloudflare": "اعتماد به Cloudflare",
-	"settings.network.trust-cloudflare.hint": "محدوده‌های IP مربوط به Cloudflare را دریافت می‌کند، به طور منظم به‌روز می‌کند و به آن‌ها اعتماد می‌کند تا nginx IP واقعی کلاینت‌ها را پشت Cloudflare ببیند. ابتدا نکات Cloudflare در README را بخوانید.",
+	"settings.network.trust-cloudflare.hint": "محدوده‌های IP مربوط به Cloudflare را دریافت می‌کند، به طور منظم به‌روز می‌کند و به آن‌ها اعتماد می‌کند تا nginx IP واقعی کلاینت‌ها را پشت Cloudflare ببیند. ابتدا نکات Cloudflare در ویکی (Security) را بخوانید.",
 	"settings.network.trusted-ips": "IPهای پراکسی مورد اعتماد",
 	"settings.network.trusted-ips.hint": "در هر خط یک آدرس IPv4/IPv6 یا محدوده CIDR. درخواست‌های این آدرس‌ها می‌توانند IP واقعی کلاینت را در X-Forwarded-For ارسال کنند، برای مثال از یک load balancer یا تونل در جلوی NPMpro.",
 	"settings.network.trusted-ips.invalid": "خط {line}: آدرس IPv4/IPv6 یا محدوده CIDR معتبر نیست.",

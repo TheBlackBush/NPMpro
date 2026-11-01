@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Adjon meg egy egész számot {min} és {max} között",
 	"settings.network": "Hálózat",
 	"settings.network.trust-cloudflare": "Cloudflare megbízhatónak tekintése",
-	"settings.network.trust-cloudflare.hint": "Letölti a Cloudflare IP-tartományait, rendszeresen frissíti és megbízhatónak tekinti őket, így az nginx a Cloudflare mögötti valódi kliens IP-ket látja. Előbb olvassa el a README Cloudflare-ről szóló megjegyzéseit.",
+	"settings.network.trust-cloudflare.hint": "Letölti a Cloudflare IP-tartományait, rendszeresen frissíti és megbízhatónak tekinti őket, így az nginx a Cloudflare mögötti valódi kliens IP-ket látja. Előbb olvassa el a wiki (Security) Cloudflare-ről szóló megjegyzéseit.",
 	"settings.network.trusted-ips": "Megbízható proxy IP-k",
 	"settings.network.trusted-ips.hint": "Soronként egy IPv4/IPv6 cím vagy CIDR tartomány. Az ezekről a címekről érkező kérések az X-Forwarded-For fejlécben átadhatják a valódi kliens IP-t, például egy NPMpro előtti terheléselosztóról vagy alagútról.",
 	"settings.network.trusted-ips.invalid": "{line}. sor: nem érvényes IPv4/IPv6 cím vagy CIDR tartomány.",

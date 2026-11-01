@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Skriv inn et heltall fra {min} til {max}",
 	"settings.network": "Nettverk",
 	"settings.network.trust-cloudflare": "Stol på Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Henter IP-områdene til Cloudflare, oppdaterer dem jevnlig og stoler på dem, slik at nginx ser de virkelige klient-IP-ene bak Cloudflare. Les Cloudflare-merknadene i README først.",
+	"settings.network.trust-cloudflare.hint": "Henter IP-områdene til Cloudflare, oppdaterer dem jevnlig og stoler på dem, slik at nginx ser de virkelige klient-IP-ene bak Cloudflare. Les Cloudflare-merknadene i wikien (Security) først.",
 	"settings.network.trusted-ips": "Klarerte proxy-IP-er",
 	"settings.network.trusted-ips.hint": "Én IPv4/IPv6-adresse eller ett CIDR-område per linje. Forespørsler fra disse adressene kan sende den virkelige klient-IP-en i X-Forwarded-For, for eksempel fra en lastbalanserer eller tunnel foran NPMpro.",
 	"settings.network.trusted-ips.invalid": "Linje {line}: ikke en gyldig IPv4/IPv6-adresse eller et gyldig CIDR-område.",

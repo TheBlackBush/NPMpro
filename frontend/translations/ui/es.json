@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Introduce un número entero de {min} a {max}",
 	"settings.network": "Red",
 	"settings.network.trust-cloudflare": "Confiar en Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Obtiene los rangos de IP de Cloudflare, los actualiza periódicamente y confía en ellos, para que nginx vea las IP reales de los clientes detrás de Cloudflare. Lee primero las notas sobre Cloudflare del README.",
+	"settings.network.trust-cloudflare.hint": "Obtiene los rangos de IP de Cloudflare, los actualiza periódicamente y confía en ellos, para que nginx vea las IP reales de los clientes detrás de Cloudflare. Lee primero las notas sobre Cloudflare en la wiki (Security).",
 	"settings.network.trusted-ips": "IP de proxy de confianza",
 	"settings.network.trusted-ips.hint": "Una dirección IPv4/IPv6 o un rango CIDR por línea. Las solicitudes desde estas direcciones pueden pasar la IP real del cliente en X-Forwarded-For, por ejemplo desde un balanceador de carga o un túnel delante de NPMpro.",
 	"settings.network.trusted-ips.invalid": "Línea {line}: no es una dirección IPv4/IPv6 ni un rango CIDR válido.",

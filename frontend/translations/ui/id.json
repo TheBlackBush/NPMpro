@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Masukkan bilangan bulat dari {min} hingga {max}",
 	"settings.network": "Jaringan",
 	"settings.network.trust-cloudflare": "Percayai Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Mengambil rentang IP Cloudflare, memperbaruinya secara berkala, dan memercayainya, sehingga nginx melihat IP klien asli di balik Cloudflare. Baca catatan Cloudflare di README terlebih dahulu.",
+	"settings.network.trust-cloudflare.hint": "Mengambil rentang IP Cloudflare, memperbaruinya secara berkala, dan memercayainya, sehingga nginx melihat IP klien asli di balik Cloudflare. Baca catatan Cloudflare di wiki (Security) terlebih dahulu.",
 	"settings.network.trusted-ips": "IP proxy tepercaya",
 	"settings.network.trusted-ips.hint": "Satu alamat IPv4/IPv6 atau rentang CIDR per baris. Permintaan dari alamat ini boleh meneruskan IP klien asli di X-Forwarded-For, misalnya dari load balancer atau tunnel di depan NPMpro.",
 	"settings.network.trusted-ips.invalid": "Baris {line}: bukan alamat IPv4/IPv6 atau rentang CIDR yang valid.",

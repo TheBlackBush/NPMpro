@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Въведете цяло число от {min} до {max}",
 	"settings.network": "Мрежа",
 	"settings.network.trust-cloudflare": "Доверяване на Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Изтегля IP диапазоните на Cloudflare, редовно ги обновява и им се доверява, така че nginx да вижда истинските IP адреси на клиентите зад Cloudflare. Първо прочетете бележките за Cloudflare в README.",
+	"settings.network.trust-cloudflare.hint": "Изтегля IP диапазоните на Cloudflare, редовно ги обновява и им се доверява, така че nginx да вижда истинските IP адреси на клиентите зад Cloudflare. Първо прочетете бележките за Cloudflare в уикито (Security).",
 	"settings.network.trusted-ips": "Доверени IP адреси на проксита",
 	"settings.network.trusted-ips.hint": "Един IPv4/IPv6 адрес или CIDR диапазон на ред. Заявките от тези адреси могат да предават истинския IP адрес на клиента в X-Forwarded-For, например от балансьор на натоварването или тунел пред NPMpro.",
 	"settings.network.trusted-ips.invalid": "Ред {line}: невалиден IPv4/IPv6 адрес или CIDR диапазон.",

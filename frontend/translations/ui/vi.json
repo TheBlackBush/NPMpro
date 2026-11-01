@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Nhập một số nguyên từ {min} đến {max}",
 	"settings.network": "Mạng",
 	"settings.network.trust-cloudflare": "Tin cậy Cloudflare",
-	"settings.network.trust-cloudflare.hint": "Lấy các dải IP của Cloudflare, làm mới chúng định kỳ và tin cậy chúng, để nginx thấy IP thực của máy khách phía sau Cloudflare. Hãy đọc ghi chú về Cloudflare trong README trước.",
+	"settings.network.trust-cloudflare.hint": "Lấy các dải IP của Cloudflare, làm mới chúng định kỳ và tin cậy chúng, để nginx thấy IP thực của máy khách phía sau Cloudflare. Hãy đọc ghi chú về Cloudflare trong wiki (Security) trước.",
 	"settings.network.trusted-ips": "IP proxy tin cậy",
 	"settings.network.trusted-ips.hint": "Mỗi dòng một địa chỉ IPv4/IPv6 hoặc dải CIDR. Yêu cầu từ các địa chỉ này có thể truyền IP thực của máy khách trong X-Forwarded-For, ví dụ từ bộ cân bằng tải hoặc tunnel phía trước NPMpro.",
 	"settings.network.trusted-ips.invalid": "Dòng {line}: không phải địa chỉ IPv4/IPv6 hoặc dải CIDR hợp lệ.",

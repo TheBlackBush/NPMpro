@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "{min} ile {max} arasında bir tam sayı girin",
 	"settings.network": "Ağ",
 	"settings.network.trust-cloudflare": "Cloudflare'e güven",
-	"settings.network.trust-cloudflare.hint": "Cloudflare IP aralıklarını indirir, düzenli olarak yeniler ve onlara güvenir; böylece nginx, Cloudflare arkasındaki gerçek istemci IP'lerini görür. Önce README'deki Cloudflare notlarını okuyun.",
+	"settings.network.trust-cloudflare.hint": "Cloudflare IP aralıklarını indirir, düzenli olarak yeniler ve onlara güvenir; böylece nginx, Cloudflare arkasındaki gerçek istemci IP'lerini görür. Önce wiki'deki (Security) Cloudflare notlarını okuyun.",
 	"settings.network.trusted-ips": "Güvenilen proxy IP'leri",
 	"settings.network.trusted-ips.hint": "Satır başına bir IPv4/IPv6 adresi veya CIDR aralığı. Bu adreslerden gelen istekler, gerçek istemci IP'sini X-Forwarded-For içinde iletebilir; örneğin NPMpro'nun önündeki bir yük dengeleyici veya tünelden.",
 	"settings.network.trusted-ips.invalid": "Satır {line}: geçerli bir IPv4/IPv6 adresi veya CIDR aralığı değil.",

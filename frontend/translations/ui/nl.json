@@ -1185,7 +1185,7 @@
 	"settings.monitoring.visitors-cap.invalid": "Voer een geheel getal van {min} tot {max} in",
 	"settings.network": "Netwerk",
 	"settings.network.trust-cloudflare": "Cloudflare vertrouwen",
-	"settings.network.trust-cloudflare.hint": "Haalt de IP-bereiken van Cloudflare op, ververst ze regelmatig en vertrouwt ze, zodat nginx de echte client-IP's achter Cloudflare ziet. Lees eerst de Cloudflare-opmerkingen in de README.",
+	"settings.network.trust-cloudflare.hint": "Haalt de IP-bereiken van Cloudflare op, ververst ze regelmatig en vertrouwt ze, zodat nginx de echte client-IP's achter Cloudflare ziet. Lees eerst de Cloudflare-opmerkingen in de wiki (Security).",
 	"settings.network.trusted-ips": "Vertrouwde proxy-IP's",
 	"settings.network.trusted-ips.hint": "Eén IPv4/IPv6-adres of CIDR-bereik per regel. Verzoeken van deze adressen mogen het echte client-IP doorgeven in X-Forwarded-For, bijvoorbeeld van een load balancer of tunnel vóór NPMpro.",
 	"settings.network.trusted-ips.invalid": "Regel {line}: geen geldig IPv4/IPv6-adres of CIDR-bereik.",
