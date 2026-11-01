@@ -87,7 +87,7 @@ function DeadHostForm({ data, savedId, suggestions, errorMsg, onCloseError, clos
 						<SSLOptionsFields />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField />
+						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress

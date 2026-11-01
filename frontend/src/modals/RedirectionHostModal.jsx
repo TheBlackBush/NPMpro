@@ -135,7 +135,7 @@ function RedirectionHostForm({ data, savedId, suggestions, errorMsg, onCloseErro
 						<SSLOptionsFields />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField />
+						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress

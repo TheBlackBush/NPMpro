@@ -197,7 +197,12 @@ function StreamForm({ data, savedId, suggestions, errorMsg, onCloseError, close 
 						<SSLOptionsFields forHttp={false} />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField name="npmproAdvancedConfig" id="npmproAdvancedConfig" />
+						<NginxConfigField
+							name="npmproAdvancedConfig"
+							id="npmproAdvancedConfig"
+							label="nginx-config.server.label"
+							hint="nginx-config.stream.hint"
+						/>
 					</TabPane>
 				</ModalTabs>
 				<RequestProgress

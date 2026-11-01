@@ -11,6 +11,8 @@ import { intl, T } from "src/locale";
  * @param {string}  [props.name]       the form field
  * @param {string}  [props.label]      the translation id of the label
  * @param {string}  [props.id]         the textarea id
+ * @param {string}  [props.hint]       the translation id of a hint under the textarea, shown to every user; for a
+ *                                     non-admin the admin-only hint follows it
  * @param {boolean} [props.emptyHint]  show the admin-only hint in place of an empty field for a non-admin; when false
  *                                     the empty field renders nothing
  */
@@ -18,6 +20,7 @@ export function NginxConfigField({
 	name = "advancedConfig",
 	label = "nginx-config.label",
 	id = "advancedConfig",
+	hint,
 	emptyHint = true,
 }) {
 	const isAdmin = useIsAdmin();
@@ -30,6 +33,7 @@ export function NginxConfigField({
 			</div>
 		) : null;
 	}
+	const describedBy = [hint && `${id}-hint`, !isAdmin && `${id}-admin-hint`].filter(Boolean);
 	return (
 		<div className="mt-3">
 			<label htmlFor={id} className="form-label">
@@ -42,11 +46,16 @@ export function NginxConfigField({
 				placeholder={intl.formatMessage({ id: "nginx-config.placeholder" })}
 				rows={9}
 				readOnly={!isAdmin}
-				aria-describedby={isAdmin ? undefined : `${id}-hint`}
+				aria-describedby={describedBy.length ? describedBy.join(" ") : undefined}
 				{...register(name)}
 			/>
-			{!isAdmin && (
+			{hint && (
 				<div className="form-hint" id={`${id}-hint`}>
+					<T id={hint} />
+				</div>
+			)}
+			{!isAdmin && (
+				<div className="form-hint" id={`${id}-admin-hint`}>
 					<T id="nginx-config.admin-only" />
 				</div>
 			)}

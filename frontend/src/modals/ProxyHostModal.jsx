@@ -138,11 +138,16 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 						<SSLOptionsFields forProxyHost />
 					</TabPane>
 					<TabPane id="advanced">
-						<NginxConfigField emptyHint={!isEmptyBoth} />
+						<NginxConfigField
+							label="nginx-config.server.label"
+							hint="proxy-host.server-config.hint"
+							emptyHint={!isEmptyBoth}
+						/>
 						<NginxConfigField
 							name="npmproLocationConfig"
 							id="npmproLocationConfig"
-							label="host.location-config.label"
+							label="nginx-config.location.label"
+							hint="nginx-config.location.hint"
 							emptyHint={!isEmptyBoth}
 						/>
 						{isEmptyBoth && (
