@@ -53,13 +53,27 @@ export const TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, ...REQUEST_AFTER_D
 const STREAM_TLS_TAB_FIELDS = Object.freeze([...TLS_TAB_HEAD, "domainNames", ...REQUEST_AFTER_DOMAINS]);
 
 /**
- * The Advanced tab of a host window, on the right: the raw nginx config and the directory
+ * The Advanced tab of a host window, on the right: the raw nginx config (the group is on the Details tab)
  *
  * @param   {string} config  the field of the nginx config
  * @returns {Object}
  */
 export const advancedTab = (config) =>
-	Object.freeze({ id: "advanced", labelId: "domains.advanced", fields: [config, "npmproDirectory"], end: true });
+	Object.freeze({ id: "advanced", labelId: "domains.advanced", fields: [config], end: true });
+
+/**
+ * The title of a host or access list window: View for a user who may only view the section, Edit for a saved item
+ * (or one saved while the window stayed open), Add otherwise
+ *
+ * @param   {Object}  options
+ * @param   {boolean} options.editing   a saved item, not a clone
+ * @param   {boolean} options.readOnly  the user may not manage the section
+ * @returns {string}  the translation id, with {object}
+ */
+export const windowTitleId = ({ editing, readOnly }) => {
+	if (readOnly) return "object.view";
+	return editing ? "object.edit" : "object.add";
+};
 
 // the DNS challenge box: provider, credential, propagation time
 const DNS_FIELDS = ["npmproDnsProvider", "npmproDnsCredentialId", "npmproPropagationSeconds"];
@@ -244,7 +258,14 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 	{
 		id: "details",
 		labelId: "column.details",
-		fields: ["domainNames", "forwardScheme", "forwardDomainName", "forwardHttpCode", "preservePath"],
+		fields: [
+			"domainNames",
+			"forwardScheme",
+			"forwardDomainName",
+			"forwardHttpCode",
+			"npmproDirectory",
+			"preservePath",
+		],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),
@@ -284,7 +305,7 @@ export const deadHostDefaults = (data) => ({
  * The tabs of the 404 host window (ModalTabs)
  */
 export const DEAD_HOST_TABS = Object.freeze([
-	{ id: "details", labelId: "column.details", fields: ["domainNames"] },
+	{ id: "details", labelId: "column.details", fields: ["domainNames", "npmproDirectory"] },
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),
 ]);
@@ -338,6 +359,7 @@ export const STREAM_TABS = Object.freeze([
 			"npmproDescription",
 			"forwardingHost",
 			"forwardingPort",
+			"npmproDirectory",
 			"tcpForwarding",
 			"udpForwarding",
 			"npmproProxyTls",

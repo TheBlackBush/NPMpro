@@ -193,6 +193,7 @@ export const PROXY_HOST_TABS = Object.freeze([
 			"forwardScheme",
 			"forwardHost",
 			"forwardPort",
+			"npmproDirectory",
 			"npmproNoindex",
 			"npmproCrowdsecAppsec",
 			"npmproProxyRequestBuffering",
