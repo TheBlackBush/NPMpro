@@ -41,17 +41,14 @@ import {
 	useSaveError,
 } from "./Runtime/RuntimeSection";
 import { SaveBar } from "./SaveBar";
+import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
 const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
 const ANONYMIZE_LEVELS = ["off", "1", "2", "3"];
 
 function Heading() {
-	return (
-		<h2 className="mb-3">
-			<T id="settings.monitoring" />
-		</h2>
-	);
+	return <SettingsHeading titleId="settings.monitoring" />;
 }
 
 function SaveButton({ allLocked }) {

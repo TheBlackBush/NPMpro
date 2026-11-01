@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
-import { groupSections, SETTINGS_CATEGORIES } from "./SettingsSections.js";
+import { groupSections, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
 
 // a section entry of sections.js: its id, then its category
 const ENTRY = /\bid: "(?<id>[^"]+)",\s+category: "(?<category>[^"]+)"/gu;
@@ -53,4 +53,25 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 		groupSections(entries).flatMap(({ sections }) => sections.map((section) => section.id)),
 	);
 	assert.equal(SETTINGS_CATEGORIES.length, 5);
+});
+
+it("names a section's help document after its id", () => {
+	assert.equal(settingsHelpDoc("default-site"), "SettingsDefaultSite");
+	assert.equal(settingsHelpDoc("forward-auth"), "SettingsForwardAuth");
+	assert.equal(settingsHelpDoc("geoip"), "SettingsGeoip");
+});
+
+it("has a help document in every language for every section in sections.js", () => {
+	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
+	const ids = [...source.matchAll(ENTRY)].map(({ groups }) => groups.id);
+	assert.ok(ids.length > 10);
+	const help = new URL("../../translations/help/", import.meta.url);
+	const languages = readdirSync(help, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+		.map((entry) => entry.name);
+	assert.ok(languages.includes("en"));
+	const missing = languages.flatMap((language) =>
+		ids.map((id) => `${language}/${settingsHelpDoc(id)}.md`).filter((path) => !existsSync(new URL(path, help))),
+	);
+	assert.deepEqual(missing, []);
 });

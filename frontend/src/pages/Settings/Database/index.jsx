@@ -6,6 +6,7 @@ import { useDatabase } from "src/hooks";
 import { T } from "src/locale";
 import { showDatabaseMoveModal } from "src/modals";
 import { isMoveActive } from "src/modules/DatabaseMove";
+import { SettingsHeading } from "../SettingsHeading";
 import { InUseCard } from "./InUseCard";
 import { MoveCard } from "./MoveCard";
 import { TablesCard } from "./TablesCard";
@@ -51,9 +52,7 @@ export default function Database() {
 
 	return (
 		<div className="card-body">
-			<h2 className="mb-2">
-				<T id="settings.database" />
-			</h2>
+			<SettingsHeading titleId="settings.database" className="mb-2" />
 			<p className="text-secondary mb-4">
 				<T id="settings.database.intro" />
 			</p>

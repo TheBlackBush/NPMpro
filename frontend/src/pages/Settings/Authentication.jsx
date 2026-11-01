@@ -14,17 +14,14 @@ import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUs
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 import { SaveBar } from "./SaveBar";
+import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
 const RULE_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword"];
 const NEW_USER_FIELDS = ["autoCreateEnabled", "autoCreateDomains"];
 
 function Heading() {
-	return (
-		<h2 className="mb-3">
-			<T id="settings.authentication" />
-		</h2>
-	);
+	return <SettingsHeading titleId="settings.authentication" />;
 }
 
 function Summary({ color = "secondary", id, values }) {

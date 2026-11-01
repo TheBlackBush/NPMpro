@@ -27,3 +27,16 @@ export function groupSections(sections, categories = SETTINGS_CATEGORIES) {
 		.map((category) => ({ ...category, sections: sections.filter((section) => section.category === category.id) }))
 		.filter((category) => category.sections.length > 0);
 }
+
+/**
+ * The help document of a Settings section (translations/help/<language>/<name>.md): "Settings" and the section id in
+ * PascalCase, for example default-site: SettingsDefaultSite. The section heading's "?" opens it (SettingsHeading).
+ *
+ * @param   {string} id  the section id of sections.js
+ * @returns {string}
+ */
+export const settingsHelpDoc = (id) =>
+	`Settings${id
+		.split("-")
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join("")}`;

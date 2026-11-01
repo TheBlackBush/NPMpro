@@ -18,6 +18,7 @@ import {
 import { unlockedErrors } from "src/modules/SettingsForms";
 import { showError, showObjectSuccess } from "src/notifications";
 import { SaveBar } from "../SaveBar";
+import { SettingsHeading } from "../SettingsHeading";
 import { StatusAlert } from "../StatusAlert";
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
@@ -76,11 +77,7 @@ function RestartPendingAlert({ data }) {
 }
 
 function Heading({ titleId }) {
-	return (
-		<h2 className="mb-3">
-			<T id={titleId} />
-		</h2>
-	);
+	return <SettingsHeading titleId={titleId} />;
 }
 
 /**
