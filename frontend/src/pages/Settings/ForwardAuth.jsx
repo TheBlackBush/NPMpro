@@ -1,3 +1,4 @@
+import { SwitchList } from "src/components";
 import { intl, T } from "src/locale";
 import { FORWARD_AUTH_PROVIDERS, forwardAuthValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -44,12 +45,13 @@ export default function ForwardAuth() {
 				))}
 			</Part>
 			<Part titleId="settings.forward-auth.anubis" last>
-				<RuntimeSwitch
-					name="anubisCustomImages"
-					className=""
-					label={<T id="settings.forward-auth.anubis-images" />}
-					hint={<T id="settings.forward-auth.anubis-images.hint" />}
-				/>
+				<SwitchList>
+					<RuntimeSwitch
+						name="anubisCustomImages"
+						label={<T id="settings.forward-auth.anubis-images" />}
+						hint={<T id="settings.forward-auth.anubis-images.hint" />}
+					/>
+				</SwitchList>
 			</Part>
 		</RuntimeSection>
 	);

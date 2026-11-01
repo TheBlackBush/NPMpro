@@ -1,7 +1,7 @@
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-import { ErrorAlert, HookForm, Loading, useAppForm, useFieldOrder } from "src/components";
+import { ErrorAlert, FormSection, HookForm, Loading, useAppForm, useFieldOrder } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -239,16 +239,14 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 }
 
 /**
- * A titled group of fields inside a section
+ * A titled group of fields inside a section: the form layer's FormSection with its heading (a fieldset named by
+ * its legend), the switches of the group in a SwitchList
  */
 function Part({ titleId, children, last = false }) {
 	return (
-		<div className={last ? undefined : "mb-4"}>
-			<h3 className="card-title">
-				<T id={titleId} />
-			</h3>
+		<FormSection heading legend={<T id={titleId} />} className={last ? "mb-0" : "mb-4"}>
 			{children}
-		</div>
+		</FormSection>
 	);
 }
 

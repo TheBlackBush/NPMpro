@@ -1,5 +1,6 @@
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useWatch } from "react-hook-form";
+import { SwitchList } from "src/components";
 import { intl, T } from "src/locale";
 import { nginxValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -60,28 +61,30 @@ function Tls() {
 	return (
 		<Part titleId="settings.nginx.tls">
 			<StatusAlert variant="warning" icon={IconAlertTriangle} id="settings.nginx.tls.warning" />
-			<RuntimeSwitch
-				name="tls12"
-				forcedOff={off}
-				label={<T id="settings.nginx.tls12" />}
-				hint={<T id="settings.nginx.tls12.hint" />}
-			/>
-			<RuntimeSwitch
-				name="forceMlkem"
-				label={<T id="settings.nginx.force-mlkem" />}
-				hint={<T id="settings.nginx.force-mlkem.hint" />}
-			/>
-			<RuntimeSwitch
-				name="secpCurves"
-				forcedOff={off}
-				label={<T id="settings.nginx.secp-curves" />}
-				hint={<T id="settings.nginx.secp-curves.hint" />}
-			/>
-			<RuntimeSwitch
-				name="rsaPkcs1"
-				label={<T id="settings.nginx.rsa-pkcs1" />}
-				hint={<T id="settings.nginx.rsa-pkcs1.hint" />}
-			/>
+			<SwitchList>
+				<RuntimeSwitch
+					name="tls12"
+					forcedOff={off}
+					label={<T id="settings.nginx.tls12" />}
+					hint={<T id="settings.nginx.tls12.hint" />}
+				/>
+				<RuntimeSwitch
+					name="forceMlkem"
+					label={<T id="settings.nginx.force-mlkem" />}
+					hint={<T id="settings.nginx.force-mlkem.hint" />}
+				/>
+				<RuntimeSwitch
+					name="secpCurves"
+					forcedOff={off}
+					label={<T id="settings.nginx.secp-curves" />}
+					hint={<T id="settings.nginx.secp-curves.hint" />}
+				/>
+				<RuntimeSwitch
+					name="rsaPkcs1"
+					label={<T id="settings.nginx.rsa-pkcs1" />}
+					hint={<T id="settings.nginx.rsa-pkcs1.hint" />}
+				/>
+			</SwitchList>
 		</Part>
 	);
 }
@@ -108,34 +111,38 @@ export default function Nginx() {
 				/>
 			</Part>
 			<Part titleId="settings.nginx.logging">
-				<RuntimeSwitch
-					name="logNotFound"
-					label={<T id="settings.nginx.log-not-found" />}
-					hint={<T id="settings.nginx.log-not-found.hint" />}
-				/>
+				<SwitchList>
+					<RuntimeSwitch
+						name="logNotFound"
+						label={<T id="settings.nginx.log-not-found" />}
+						hint={<T id="settings.nginx.log-not-found.hint" />}
+					/>
+				</SwitchList>
 			</Part>
 			<Tls />
 			<Part titleId="settings.nginx.modules" last>
-				<RuntimeSwitch
-					name="moduleNjs"
-					label={<T id="settings.nginx.module.njs" />}
-					hint={<T id="settings.nginx.module.njs.hint" />}
-				/>
-				<RuntimeSwitch
-					name="moduleLdap"
-					label={<T id="settings.nginx.module.ldap" />}
-					hint={<T id="settings.nginx.module.ldap.hint" />}
-				/>
-				<RuntimeSwitch
-					name="moduleNtlm"
-					label={<T id="settings.nginx.module.ntlm" />}
-					hint={<T id="settings.nginx.module.ntlm.hint" />}
-				/>
-				<RuntimeSwitch
-					name="moduleVts"
-					label={<T id="settings.nginx.module.vts" />}
-					hint={<T id="settings.nginx.module.vts.hint" />}
-				/>
+				<SwitchList>
+					<RuntimeSwitch
+						name="moduleNjs"
+						label={<T id="settings.nginx.module.njs" />}
+						hint={<T id="settings.nginx.module.njs.hint" />}
+					/>
+					<RuntimeSwitch
+						name="moduleLdap"
+						label={<T id="settings.nginx.module.ldap" />}
+						hint={<T id="settings.nginx.module.ldap.hint" />}
+					/>
+					<RuntimeSwitch
+						name="moduleNtlm"
+						label={<T id="settings.nginx.module.ntlm" />}
+						hint={<T id="settings.nginx.module.ntlm.hint" />}
+					/>
+					<RuntimeSwitch
+						name="moduleVts"
+						label={<T id="settings.nginx.module.vts" />}
+						hint={<T id="settings.nginx.module.vts.hint" />}
+					/>
+				</SwitchList>
 			</Part>
 		</RuntimeSection>
 	);
