@@ -28,6 +28,7 @@ import {
 import {
 	DirtyTracker,
 	useCanManage,
+	useIsAdmin,
 	useSetStream,
 	useStream,
 	useTlsQueriesSettled,
@@ -50,8 +51,9 @@ import { MANAGE, STREAMS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
-const showStreamModal = (id) => {
-	EasyModal.show(StreamModal, { id });
+// isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
+const showStreamModal = (id, isClone = false) => {
+	EasyModal.show(StreamModal, { id, isClone });
 };
 
 const validate = streamValidate(validations);
@@ -80,7 +82,7 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 	);
 }
 
-function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
+function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 	const { register, getValues, setValue, clearErrors } = useFormContext();
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
@@ -101,7 +103,7 @@ function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
 					<T
-						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "stream" }}
 					/>
 				</AppModal.Title>
@@ -212,7 +214,7 @@ function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
 				<HasPermission section={STREAMS} permission={MANAGE} hideError>
 					<FormSubmit
 						className="ms-auto"
-						edit={Boolean(data.id)}
+						edit={Boolean(data.id) && !isClone}
 						section="streams"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
@@ -227,8 +229,8 @@ function StreamForm({ data, savedId, errorMsg, onCloseError, close }) {
 
 // the form, mounted once the stream is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
-	const [defaultValues] = useState(() => streamDefaults(data));
+function StreamEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, ...formProps }) {
+	const [defaultValues] = useState(() => streamDefaults(data, { isClone, isAdmin }));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -238,7 +240,10 @@ function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			const row = await save({ id: savedId ?? (id === "new" ? undefined : id), ...streamPayload(values) });
+			const row = await save({
+				id: savedId ?? (id === "new" || isClone ? undefined : id),
+				...streamPayload(values),
+			});
 			const nginxErr = getNginxConfigError(row);
 			if (nginxErr === null) {
 				showObjectSuccess("stream", "saved");
@@ -261,6 +266,7 @@ function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<StreamForm
 				data={data}
+				isClone={isClone}
 				savedId={savedId}
 				errorMsg={errorMsg}
 				onCloseError={() => setErrorMsg(null)}
@@ -270,10 +276,12 @@ function StreamEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps
 	);
 }
 
-const StreamModal = EasyModal.create(({ id, visible, remove }) => {
+const StreamModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	// a user who may only view the section gets a View window
 	const readOnly = !useCanManage(STREAMS);
+	// a non-admin's clone leaves out the raw nginx config
+	const isAdmin = useIsAdmin();
 	const { data, error } = useStream(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetStream();
@@ -288,6 +296,8 @@ const StreamModal = EasyModal.create(({ id, visible, remove }) => {
 				<StreamEditor
 					readOnly={readOnly}
 					id={id}
+					isClone={isClone}
+					isAdmin={isAdmin}
 					data={data}
 					save={save}
 					remove={remove}

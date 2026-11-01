@@ -5,6 +5,8 @@ import en from "../../translations/ui/en.json" with { type: "json" };
 import { fieldPaths } from "./HookForm.js";
 import {
 	CERTIFICATE_REQUEST_DEFAULTS,
+	CLONE_RULES,
+	cloneValues,
 	DEAD_HOST_TABS,
 	deadHostDefaults,
 	deadHostValidate,
@@ -485,4 +487,44 @@ it("titles a window View for a user who may only view, Edit for a saved item, Ad
 	assert.equal(windowTitleId({ editing: false, readOnly: true }), "object.view");
 	assert.equal(windowTitleId({ editing: true, readOnly: false }), "object.edit");
 	assert.equal(windowTitleId({ editing: false, readOnly: false }), "object.add");
+});
+
+it("clone: empties what must be unique, keeps the rest, drops the raw nginx config only for a non-admin", () => {
+	const redirection = {
+		...newRedirection,
+		id: 3,
+		domainNames: ["a.example.com"],
+		forwardDomainName: "b.example.com",
+	};
+	const withConfig = { ...redirection, advancedConfig: "add_header X-A 1;", npmproDirectory: "Lab" };
+	assert.deepEqual(redirectionHostDefaults(withConfig), redirectionHostDefaults(withConfig, { isClone: false }));
+	const byUser = redirectionHostDefaults(withConfig, { isClone: true });
+	assert.deepEqual(byUser.domainNames, []);
+	assert.equal(byUser.forwardDomainName, "b.example.com");
+	assert.equal(byUser.npmproDirectory, "Lab");
+	assert.equal(byUser.advancedConfig, "");
+	assert.equal(
+		redirectionHostDefaults(withConfig, { isClone: true, isAdmin: true }).advancedConfig,
+		"add_header X-A 1;",
+	);
+	const dead = deadHostDefaults({ ...withConfig, domainNames: ["c.example.com"] }, { isClone: true, isAdmin: true });
+	assert.deepEqual(dead.domainNames, []);
+	assert.equal(dead.advancedConfig, "add_header X-A 1;");
+	const stream = {
+		...newStream,
+		id: 4,
+		incomingPort: "8080",
+		forwardingHost: "10.0.0.1",
+		npmproAdvancedConfig: "x;",
+	};
+	const streamClone = streamDefaults(stream, { isClone: true });
+	assert.equal(streamClone.incomingPort, "");
+	assert.equal(streamClone.forwardingHost, "10.0.0.1");
+	assert.equal(streamClone.npmproAdvancedConfig, "");
+	assert.deepEqual(Object.keys(streamClone), Object.keys(streamDefaults(stream)));
+	// the source's values are never changed
+	assert.deepEqual(withConfig.domainNames, ["a.example.com"]);
+	// not a clone: the values as they are
+	const plain = { incomingPort: "80" };
+	assert.equal(cloneValues(plain, CLONE_RULES.stream), plain);
 });

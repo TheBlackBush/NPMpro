@@ -25,6 +25,7 @@ import {
 	DirtyTracker,
 	useCanManage,
 	useDeadHost,
+	useIsAdmin,
 	useSetDeadHost,
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
@@ -43,13 +44,14 @@ import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
 
-const showDeadHostModal = (id) => {
-	EasyModal.show(DeadHostModal, { id });
+// isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
+const showDeadHostModal = (id, isClone = false) => {
+	EasyModal.show(DeadHostModal, { id, isClone });
 };
 
 const validate = deadHostValidate(validations);
 
-function DeadHostForm({ data, savedId, errorMsg, onCloseError, close }) {
+function DeadHostForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 	const { isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
 	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
@@ -60,7 +62,7 @@ function DeadHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 			<AppModal.Header closeButton={!isSubmitting}>
 				<AppModal.Title>
 					<T
-						id={windowTitleId({ editing: Boolean(savedId || data.id), readOnly })}
+						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "dead-host" }}
 					/>
 				</AppModal.Title>
@@ -96,7 +98,7 @@ function DeadHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 				<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
 						className="ms-auto"
-						edit={Boolean(data.id)}
+						edit={Boolean(data.id) && !isClone}
 						section="deadHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
@@ -111,8 +113,8 @@ function DeadHostForm({ data, savedId, errorMsg, onCloseError, close }) {
 
 // the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
 // complete defaultValues from the first render, no reset on a refetch
-function DeadHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formProps }) {
-	const [defaultValues] = useState(() => deadHostDefaults(data));
+function DeadHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, ...formProps }) {
+	const [defaultValues] = useState(() => deadHostDefaults(data, { isClone, isAdmin }));
 	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
@@ -122,7 +124,10 @@ function DeadHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formPro
 	const onSubmit = async (values) => {
 		setErrorMsg(null);
 		try {
-			const row = await save({ id: savedId ?? (id === "new" ? undefined : id), ...requestValues(values) });
+			const row = await save({
+				id: savedId ?? (id === "new" || isClone ? undefined : id),
+				...requestValues(values),
+			});
 			const nginxErr = getNginxConfigError(row);
 			if (nginxErr === null) {
 				showObjectSuccess("dead-host", "saved");
@@ -145,6 +150,7 @@ function DeadHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formPro
 			<DirtyTracker dirtyRef={dirtyRef} />
 			<DeadHostForm
 				data={data}
+				isClone={isClone}
 				savedId={savedId}
 				errorMsg={errorMsg}
 				onCloseError={() => setErrorMsg(null)}
@@ -154,10 +160,12 @@ function DeadHostEditor({ id, data, save, remove, dirtyRef, readOnly, ...formPro
 	);
 }
 
-const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
+const DeadHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	// a user who may only view the section gets a View window
 	const readOnly = !useCanManage(DEAD_HOSTS);
+	// a non-admin's clone leaves out the raw nginx config
+	const isAdmin = useIsAdmin();
 	const { data, error } = useDeadHost(id);
 	const tlsSettled = useTlsQueriesSettled();
 	const { mutateAsync: save, isPending: isSaving } = useSetDeadHost();
@@ -172,6 +180,8 @@ const DeadHostModal = EasyModal.create(({ id, visible, remove }) => {
 				<DeadHostEditor
 					readOnly={readOnly}
 					id={id}
+					isClone={isClone}
+					isAdmin={isAdmin}
 					data={data}
 					save={save}
 					remove={remove}

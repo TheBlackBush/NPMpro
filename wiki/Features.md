@@ -3,7 +3,7 @@
 What NPMpro offers, grouped by topic. Each group links to the page that explains it.
 
 ## Proxy and hosts
-- Proxy hosts, redirection hosts, 404 hosts and streams (TCP/UDP), managed in the web UI
+- Proxy hosts, redirection hosts, 404 hosts and streams (TCP/UDP), managed in the web UI; Clone in a host's menu opens a new host with its settings (without the domain names, or a stream's incoming port, which must be unique)
 - HTTP/3 (QUIC), needs the https port exposed over udp
 - more ways to serve a host: gRPC, proxy protocol, load balancing over several upstreams (see [Load Balancing](Load-balancing)), and serving files or PHP directly with fancyindex support
 - zstd and brotli compression in addition to gzip
