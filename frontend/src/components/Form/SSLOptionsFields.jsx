@@ -64,7 +64,11 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 	return (
 		<>
 			<MtlsCertificateField forHttp={forHttp} reason={reasons.npmproMtlsCertificateId} />
-			<FormSection legend={<T id="tls.section.mtls" />} className={lastSection === "mtls" ? "mb-0" : undefined}>
+			<FormSection
+				heading
+				legend={<T id="tls.section.mtls" />}
+				className={lastSection === "mtls" ? "mb-0" : undefined}
+			>
 				<SwitchList>
 					<TlsSwitch
 						name="npmproMtlsVerifyClientOptional"
@@ -85,6 +89,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 			</FormSection>
 			{forHttp ? (
 				<FormSection
+					heading
 					legend={<T id="tls.section.https" />}
 					className={lastSection === "https" ? "mb-0" : undefined}
 				>
@@ -117,7 +122,7 @@ export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 				</FormSection>
 			) : null}
 			{newCertificate ? (
-				<FormSection legend={<T id="certificates.request.title" />} className="mb-0">
+				<FormSection heading legend={<T id="certificates.request.title" />} className="mb-0">
 					{/* a gap before the domain names (streams) or the DNS challenge box under the switches */}
 					<SwitchList className={!forHttp || values.npmproDnsChallenge ? "mb-3" : undefined}>
 						<TlsSwitch
