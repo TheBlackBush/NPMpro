@@ -8,15 +8,15 @@ import cn from "clsx";
  * @param {*}       props.legend
  * @param {boolean} [props.boxed]
  * @param {boolean} [props.hideLegend]  the legend only for screen readers
- * @param {boolean} [props.heading]     the legend as a heading (h4, as the Options heading of the host windows), with
- *                                      space above it: for sections of switches whose names would blend in
+ * @param {boolean} [props.heading]     the legend as a heading, spaced like the Options heading of the host
+ *                                      windows (h4 py-2): for sections of switches whose names would blend in
  * @param {string}  [props.className]   of the fieldset, "mb-3" when not boxed (form-fieldset has its own margin)
  * @param {*}       props.children
  */
 function FormSection({ legend, boxed = false, hideLegend = false, heading = false, className, children }) {
 	return (
 		<fieldset className={cn(boxed && "form-fieldset", className ?? (boxed ? null : "mb-3"))}>
-			<legend className={cn(heading ? "h4 pt-3 mb-2" : "form-label", hideLegend && "visually-hidden")}>
+			<legend className={cn(heading ? "h4 py-2" : "form-label", hideLegend && "visually-hidden")}>
 				{legend}
 			</legend>
 			{children}
