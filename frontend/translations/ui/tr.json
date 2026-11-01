@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "İletilen kimlik doğrulama",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Özel Anubis resimleri",
-	"settings.forward-auth.anubis-images.hint": "Anubis doğrulama sayfalarında /data/anubis içindeki kendi resimlerinizi (happy.webp, reject.webp ve pensive.webp) gösterir.",
+	"settings.forward-auth.anubis-images.hint": "Anubis doğrulama sayfalarında /data/public/anubis içindeki kendi resimlerinizi (happy.webp, reject.webp ve pensive.webp) gösterir.",
 	"settings.forward-auth.intro": "İletilen kimlik doğrulama kullanan proxy host'lar için varsayılan yukarı akışlar (host'un Ayrıntılar sekmesindeki Seçenekler altında Auth Request).",
 	"settings.forward-auth.upstream": "{provider} yukarı akışı",
 	"settings.forward-auth.upstream.hint": "Kendi yukarı akışı olmayan {provider} kullanan proxy host'lar tarafından kullanılır; host'un kendi değeri önceliklidir. scheme://host:port veya scheme://cu_name, yol olmadan. Yoksa boş bırakın.",

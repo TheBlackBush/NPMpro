@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "전달 인증",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "사용자 지정 Anubis 이미지",
-	"settings.forward-auth.anubis-images.hint": "/data/anubis의 사용자 이미지(happy.webp, reject.webp, pensive.webp)를 Anubis 챌린지 페이지에 표시합니다.",
+	"settings.forward-auth.anubis-images.hint": "/data/public/anubis의 사용자 이미지(happy.webp, reject.webp, pensive.webp)를 Anubis 챌린지 페이지에 표시합니다.",
 	"settings.forward-auth.intro": "전달 인증(호스트 세부 정보 탭의 옵션에 있는 Auth Request)을 사용하는 프록시 호스트의 기본 업스트림입니다.",
 	"settings.forward-auth.upstream": "{provider} 업스트림",
 	"settings.forward-auth.upstream.hint": "자체 업스트림이 없는 {provider} 사용 프록시 호스트에서 사용됩니다. 호스트 자체 값이 우선합니다. 경로 없이 scheme://host:port 또는 scheme://cu_name 형식입니다. 사용하지 않으려면 비워 두세요.",

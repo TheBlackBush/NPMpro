@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Videresendt autentisering",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Egne Anubis-bilder",
-	"settings.forward-auth.anubis-images.hint": "Viser dine egne bilder fra /data/anubis (happy.webp, reject.webp og pensive.webp) på Anubis-utfordringssidene.",
+	"settings.forward-auth.anubis-images.hint": "Viser dine egne bilder fra /data/public/anubis (happy.webp, reject.webp og pensive.webp) på Anubis-utfordringssidene.",
 	"settings.forward-auth.intro": "Standard-upstreams for proxy-verter som bruker videresendt autentisering (Auth Request under Alternativer på fanen Detaljer for verten).",
 	"settings.forward-auth.upstream": "{provider}-upstream",
 	"settings.forward-auth.upstream.hint": "Brukes av proxy-verter med {provider} som ikke har sin egen upstream; vertens egen verdi går foran. scheme://host:port eller scheme://cu_name, uten sti. La stå tomt for ingen.",

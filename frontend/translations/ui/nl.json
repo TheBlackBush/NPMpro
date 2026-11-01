@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Forward-authenticatie",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Eigen Anubis-afbeeldingen",
-	"settings.forward-auth.anubis-images.hint": "Toont je eigen afbeeldingen uit /data/anubis (happy.webp, reject.webp en pensive.webp) op de Anubis-challengepagina's.",
+	"settings.forward-auth.anubis-images.hint": "Toont je eigen afbeeldingen uit /data/public/anubis (happy.webp, reject.webp en pensive.webp) op de Anubis-challengepagina's.",
 	"settings.forward-auth.intro": "Standaard-upstreams voor proxyhosts die forward-authenticatie gebruiken (Auth Request onder Opties op het tabblad Details van de host).",
 	"settings.forward-auth.upstream": "{provider}-upstream",
 	"settings.forward-auth.upstream.hint": "Gebruikt door proxyhosts met {provider} die geen eigen upstream hebben; de eigen waarde van een host gaat voor. scheme://host:port of scheme://cu_name, zonder pad. Laat leeg voor geen.",

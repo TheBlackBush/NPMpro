@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Xác thực chuyển tiếp",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Ảnh Anubis tùy chỉnh",
-	"settings.forward-auth.anubis-images.hint": "Hiển thị ảnh của riêng bạn từ /data/anubis (happy.webp, reject.webp và pensive.webp) trên các trang thử thách của Anubis.",
+	"settings.forward-auth.anubis-images.hint": "Hiển thị ảnh của riêng bạn từ /data/public/anubis (happy.webp, reject.webp và pensive.webp) trên các trang thử thách của Anubis.",
 	"settings.forward-auth.intro": "Upstream mặc định cho các máy chủ proxy dùng xác thực chuyển tiếp (Auth Request trong Tùy chọn ở thẻ Chi tiết của máy chủ).",
 	"settings.forward-auth.upstream": "Upstream {provider}",
 	"settings.forward-auth.upstream.hint": "Được dùng bởi các máy chủ proxy có {provider} mà không có upstream riêng; giá trị riêng của máy chủ được ưu tiên. scheme://host:port hoặc scheme://cu_name, không có đường dẫn. Để trống nếu không dùng.",

@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Továbbított hitelesítés",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Egyéni Anubis képek",
-	"settings.forward-auth.anubis-images.hint": "A saját képeit mutatja a /data/anubis mappából (happy.webp, reject.webp és pensive.webp) az Anubis ellenőrző oldalain.",
+	"settings.forward-auth.anubis-images.hint": "A saját képeit mutatja a /data/public/anubis mappából (happy.webp, reject.webp és pensive.webp) az Anubis ellenőrző oldalain.",
 	"settings.forward-auth.intro": "Alapértelmezett upstreamek a továbbított hitelesítést használó proxy kiszolgálókhoz (Auth Request a kiszolgáló Részletek lapjának Beállítások részében).",
 	"settings.forward-auth.upstream": "{provider} upstream",
 	"settings.forward-auth.upstream.hint": "A {provider} szolgáltatót használó, saját upstream nélküli proxy kiszolgálók használják; a kiszolgáló saját értéke elsőbbséget élvez. scheme://host:port vagy scheme://cu_name, útvonal nélkül. Hagyja üresen, ha nincs.",

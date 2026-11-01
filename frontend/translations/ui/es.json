@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Autenticación delegada",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Imágenes personalizadas de Anubis",
-	"settings.forward-auth.anubis-images.hint": "Muestra tus propias imágenes de /data/anubis (happy.webp, reject.webp y pensive.webp) en las páginas de desafío de Anubis.",
+	"settings.forward-auth.anubis-images.hint": "Muestra tus propias imágenes de /data/public/anubis (happy.webp, reject.webp y pensive.webp) en las páginas de desafío de Anubis.",
 	"settings.forward-auth.intro": "Upstreams predeterminados para los hosts proxy que usan autenticación delegada (Auth Request en Opciones, en la pestaña Detalles del host).",
 	"settings.forward-auth.upstream": "Upstream de {provider}",
 	"settings.forward-auth.upstream.hint": "Lo usan los hosts proxy con {provider} que no tienen upstream propio; el valor propio de un host tiene prioridad. scheme://host:port o scheme://cu_name, sin ruta. Déjalo vacío para ninguno.",

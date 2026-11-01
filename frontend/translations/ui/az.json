@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Yönləndirilmiş autentifikasiya",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Fərdi Anubis şəkilləri",
-	"settings.forward-auth.anubis-images.hint": "Anubis yoxlama səhifələrində /data/anubis qovluğundakı öz şəkillərinizi (happy.webp, reject.webp və pensive.webp) göstərir.",
+	"settings.forward-auth.anubis-images.hint": "Anubis yoxlama səhifələrində /data/public/anubis qovluğundakı öz şəkillərinizi (happy.webp, reject.webp və pensive.webp) göstərir.",
 	"settings.forward-auth.intro": "Yönləndirilmiş autentifikasiyadan istifadə edən proksi hostlar üçün standart upstream-lər (hostun Təfərrüatlar tabında Seçimlər altında Auth Request).",
 	"settings.forward-auth.upstream": "{provider} upstream",
 	"settings.forward-auth.upstream.hint": "Öz upstream-i olmayan {provider} istifadə edən proksi hostlar tərəfindən istifadə olunur; hostun öz dəyəri üstündür. scheme://host:port və ya scheme://cu_name, yol olmadan. Heç biri üçün boş buraxın.",

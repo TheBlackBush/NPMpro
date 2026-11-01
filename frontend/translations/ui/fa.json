@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "احراز هویت ارجاعی",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "تصاویر سفارشی Anubis",
-	"settings.forward-auth.anubis-images.hint": "تصاویر خودتان از /data/anubis (happy.webp، reject.webp و pensive.webp) را در صفحات چالش Anubis نمایش می‌دهد.",
+	"settings.forward-auth.anubis-images.hint": "تصاویر خودتان از /data/public/anubis (happy.webp، reject.webp و pensive.webp) را در صفحات چالش Anubis نمایش می‌دهد.",
 	"settings.forward-auth.intro": "upstreamهای پیش‌فرض برای میزبان‌های پراکسی که از احراز هویت ارجاعی استفاده می‌کنند (Auth Request در بخش گزینه‌ها در زبانه جزئیات میزبان).",
 	"settings.forward-auth.upstream": "upstream مربوط به {provider}",
 	"settings.forward-auth.upstream.hint": "توسط میزبان‌های پراکسی با {provider} که upstream مخصوص خود ندارند استفاده می‌شود؛ مقدار خود میزبان اولویت دارد. scheme://host:port یا scheme://cu_name، بدون مسیر. برای هیچ، خالی بگذارید.",

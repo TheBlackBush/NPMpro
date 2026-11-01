@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Зовнішня автентифікація",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Власні зображення Anubis",
-	"settings.forward-auth.anubis-images.hint": "Показує ваші зображення з /data/anubis (happy.webp, reject.webp і pensive.webp) на сторінках перевірки Anubis.",
+	"settings.forward-auth.anubis-images.hint": "Показує ваші зображення з /data/public/anubis (happy.webp, reject.webp і pensive.webp) на сторінках перевірки Anubis.",
 	"settings.forward-auth.intro": "Upstream за замовчуванням для проксі-хостів, що використовують зовнішню автентифікацію (Auth Request у розділі «Параметри» на вкладці «Подробиці» хоста).",
 	"settings.forward-auth.upstream": "Upstream {provider}",
 	"settings.forward-auth.upstream.hint": "Використовується проксі-хостами з {provider}, які не мають власного upstream; власне значення хоста має пріоритет. scheme://host:port або scheme://cu_name, без шляху. Залиште порожнім, якщо не потрібен.",

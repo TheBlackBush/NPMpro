@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "转发认证",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "自定义 Anubis 图片",
-	"settings.forward-auth.anubis-images.hint": "在 Anubis 验证页面上显示 /data/anubis 中您自己的图片（happy.webp、reject.webp 和 pensive.webp）。",
+	"settings.forward-auth.anubis-images.hint": "在 Anubis 验证页面上显示 /data/public/anubis 中您自己的图片（happy.webp、reject.webp 和 pensive.webp）。",
 	"settings.forward-auth.intro": "使用转发认证（主机“详情”选项卡中“选项”下的认证请求）的代理主机的默认上游。",
 	"settings.forward-auth.upstream": "{provider} 上游",
 	"settings.forward-auth.upstream.hint": "供使用 {provider} 但没有自己上游的代理主机使用；主机自身的值优先。格式为 scheme://host:port 或 scheme://cu_name，不含路径。留空表示不使用。",

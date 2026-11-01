@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Edastatud autentimine",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Kohandatud Anubise pildid",
-	"settings.forward-auth.anubis-images.hint": "Kuvab Anubise kontrolllehtedel sinu enda pilte kaustast /data/anubis (happy.webp, reject.webp ja pensive.webp).",
+	"settings.forward-auth.anubis-images.hint": "Kuvab Anubise kontrolllehtedel sinu enda pilte kaustast /data/public/anubis (happy.webp, reject.webp ja pensive.webp).",
 	"settings.forward-auth.intro": "Vaikimisi sihtserverid edastatud autentimist kasutavatele proksihostidele (Auth Request hosti vahekaardi Üksikasjad jaotises Valikud).",
 	"settings.forward-auth.upstream": "{provider} sihtserver",
 	"settings.forward-auth.upstream.hint": "Kasutavad proksihostid teenusega {provider}, millel pole oma sihtserverit; hosti enda väärtus on eelistatum. scheme://host:port või scheme://cu_name, ilma teeta. Jäta tühjaks, kui pole vaja.",

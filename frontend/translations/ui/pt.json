@@ -1095,7 +1095,7 @@
 	"settings.forward-auth": "Autenticação encaminhada",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Imagens Anubis personalizadas",
-	"settings.forward-auth.anubis-images.hint": "Mostra as suas próprias imagens de /data/anubis (happy.webp, reject.webp e pensive.webp) nas páginas de desafio do Anubis.",
+	"settings.forward-auth.anubis-images.hint": "Mostra as suas próprias imagens de /data/public/anubis (happy.webp, reject.webp e pensive.webp) nas páginas de desafio do Anubis.",
 	"settings.forward-auth.intro": "Upstreams predefinidos para proxy hosts que usam autenticação encaminhada (Auth Request em Opções no separador Detalhes do host).",
 	"settings.forward-auth.upstream": "Upstream {provider}",
 	"settings.forward-auth.upstream.hint": "Usado por proxy hosts com {provider} que não têm upstream próprio; o valor do próprio host tem prioridade. scheme://host:port ou scheme://cu_name, sem caminho. Deixe vazio para nenhum.",
