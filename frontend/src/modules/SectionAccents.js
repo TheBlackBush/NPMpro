@@ -110,4 +110,17 @@ function navAccent(navId) {
 	return sectionAccent(NAV_SECTIONS[navId]);
 }
 
-export { NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent };
+/**
+ * The accent for a Tabler colour name as SectionColors.js gives it (older callers still pass color={sectionColor(..)}):
+ * the first section with that colour, so pink (certificates and dnsCredentials) is the certificates accent; the
+ * primary look for primary, settings' teal or an unknown colour
+ *
+ * @param   {string} [color]
+ * @returns {{ text: string, bg: string, border: string, underline: string, marker: string }}
+ */
+function colorAccent(color) {
+	const section = Object.keys(SECTION_COLORS).find((key) => SECTION_COLORS[key] === color);
+	return sectionAccent(section);
+}
+
+export { colorAccent, NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent };

@@ -127,7 +127,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						/>
 					) : null}
 					{active && shown > 0 ? (
-						<div className="flex w-full items-center gap-2 md:w-auto">
+						<div className="flex w-full items-center justify-end gap-2 md:w-auto">
 							<span className="text-sm text-muted-foreground">
 								<T id="list.shown" data={{ shown, total }} />
 							</span>

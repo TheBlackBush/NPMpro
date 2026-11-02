@@ -5,10 +5,10 @@ import { TableCell, TableRow } from "src/components/ui/table";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
-import { sectionAccent } from "src/modules/SectionAccents";
+import { colorAccent, PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
 
-// The color prop is still accepted by the callers and ignored: every button uses the one primary colour. The section
-// key tints the icon circle in the section's accent.
+// Buttons use the one primary colour. The section key (or an older caller's Tabler colour) gives the icon circle
+// its section accent.
 function EmptyData({
 	tableInstance,
 	onNew,
@@ -21,11 +21,13 @@ function EmptyData({
 	permission,
 	icon: Icon,
 	section,
+	color,
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
-	const accent = sectionAccent(section);
-	const tinted = Boolean(section) && !isFiltered;
+	// the section key wins; older callers pass the Tabler colour of their section
+	const accent = section ? sectionAccent(section) : colorAccent(color);
+	const tinted = accent !== PRIMARY_ACCENT && !isFiltered;
 	// role row and cell keep the row valid inside the stacked phone layout's role="rowgroup"
 	return (
 		<TableRow className={cn("hover:bg-transparent", stacked && STACKED_EMPTY_ROW)} role="row">
@@ -38,7 +40,10 @@ function EmptyData({
 					<div
 						className={cn(
 							"mb-1 flex rounded-full p-3",
-							tinted ? cn(accent.bg, accent.text) : "bg-muted text-muted-foreground",
+							// the icon sits on the plain card (a tint would take it under 3:1) inside an accent ring
+							tinted
+								? cn("border bg-card", accent.border, accent.text)
+								: "bg-muted text-muted-foreground",
 						)}
 					>
 						<ShownIcon className="size-6" aria-hidden="true" />

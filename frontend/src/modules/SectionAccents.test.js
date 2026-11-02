@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { contrastRatio, parseHex } from "./ColorContrast.js";
 import { NAV_ITEMS } from "./Navigation.js";
-import { navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent } from "./SectionAccents.js";
+import { colorAccent, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent } from "./SectionAccents.js";
 import { SECTION_COLORS } from "./SectionColors.js";
 
 const CSS = readFileSync(new URL("../styles/globals.css", import.meta.url), "utf8");
@@ -72,4 +72,13 @@ it("has a token pair in globals.css for every accent class, 3:1 against page and
 			}
 		}
 	}
+});
+
+it("maps the old Tabler section colours to the accents", () => {
+	for (const key of Object.keys(SECTION_ACCENTS)) {
+		if (key === "dnsCredentials") assert.equal(colorAccent(SECTION_COLORS[key]), sectionAccent("certificates"));
+		else if (key === "auditLog") continue;
+		else assert.equal(colorAccent(SECTION_COLORS[key]), sectionAccent(key), key);
+	}
+	for (const color of ["primary", "teal", "nope", undefined]) assert.equal(colorAccent(color), PRIMARY_ACCENT);
 });

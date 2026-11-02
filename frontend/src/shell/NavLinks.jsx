@@ -12,7 +12,7 @@ const INLINE =
 const ROW_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:-bottom-1.5 after:h-0.5 after:rounded-full";
 const INLINE_ACTIVE = ROW_ACTIVE.replace("inset-x-3", "inset-x-2.5");
 const COLUMN = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted";
-const COLUMN_ACTIVE = "bg-primary/10 text-primary hover:bg-primary/10";
+const COLUMN_ACTIVE = "text-foreground";
 
 /** Whether a nav item is the current page: "/" matches exactly, the others by prefix; external items never */
 export function isActivePath(pathname, { to, external }) {
@@ -44,6 +44,8 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 						active && (column ? COLUMN_ACTIVE : inline ? INLINE_ACTIVE : ROW_ACTIVE),
 						// the underline of the top bar in the page's accent (the brand gradient without one)
 						active && !column && accent.underline,
+						// the phone menu row: tinted in the page's accent, the icon in the accent colour
+						active && column && cn(accent.bg, "hover:bg-muted"),
 					);
 					return (
 						<li key={id}>
@@ -61,7 +63,12 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 									aria-current={active ? "page" : undefined}
 									onClick={onNavigate}
 								>
-									{inline ? null : <Icon className="size-4" aria-hidden="true" />}
+									{inline ? null : (
+										<Icon
+											className={cn("size-4", active && column && accent.text)}
+											aria-hidden="true"
+										/>
+									)}
 									{label}
 								</NavLink>
 							)}
