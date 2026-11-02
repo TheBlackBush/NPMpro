@@ -51,7 +51,10 @@ export function AppSidebar() {
 												<a href={to} target="_blank" rel="noopener" onClick={closeSheet}>
 													<Icon aria-hidden="true" />
 													<span>{label}</span>
-													<ExternalLink className="ml-auto" aria-hidden="true" />
+													<ExternalLink
+														className="ml-auto group-data-[collapsible=icon]:hidden"
+														aria-hidden="true"
+													/>
 												</a>
 											) : (
 												<NavLink
