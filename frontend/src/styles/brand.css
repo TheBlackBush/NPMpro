@@ -1,5 +1,13 @@
 /* NPMpro brand touches on top of Tabler. Bundled by Vite into the app stylesheet, so the strict CSP allows it. */
 
+/* The app's font (fonts.css), through Tabler's variable so the old pages and the new parts share it: Geist, Inter for
+   Greek, then the system font (Tabler's own stack, for Chinese, Japanese and Korean) */
+:root {
+	--tblr-font-sans-serif:
+		"Geist Variable", "Inter Variable", system-ui, -apple-system, BlinkMacSystemFont, "San Francisco", "Segoe UI",
+		Roboto, "Helvetica Neue", sans-serif;
+}
+
 /* Progress bars in the logo colours (every loading, request, upload, restore and move bar): the moving parts of
    Tabler's indeterminate bar are pseudo-elements, a bar with a percentage is the bar itself */
 .progress-brand {

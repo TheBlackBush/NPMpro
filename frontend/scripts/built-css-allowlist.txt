@@ -42,3 +42,8 @@ unlayered: @keyframes pulse
 unlayered: @keyframes spin
 unlayered: @keyframes enter
 unlayered: @keyframes exit
+
+# styles/fonts.css: the app's font faces (Geist, and Inter's two Greek faces). A font face only defines a family name
+# ("Geist Variable", "Inter Variable", names Tabler does not use); it changes a page only where a font-family names it,
+# which brand.css does on purpose for the whole app through Tabler's --tblr-font-sans-serif
+unlayered: @font-face

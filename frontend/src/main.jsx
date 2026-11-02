@@ -4,6 +4,7 @@ import App from "src/App.jsx";
 import { Page } from "src/components";
 
 import "@tabler/core";
+import "src/styles/fonts.css";
 import "src/styles/tabler.css";
 import "src/styles/tailwind.css";
 
