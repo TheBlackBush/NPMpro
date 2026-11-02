@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { Search } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { intl } from "src/locale";
 import { breadcrumbs, helpDocOf, sidebarOpenFromCookie } from "src/modules/Navigation";
@@ -11,11 +12,14 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "src/ui/breadcrumb";
+import { Button } from "src/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "src/ui/dropdown-menu";
+import { Kbd } from "src/ui/kbd";
 import { Separator } from "src/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "src/ui/sidebar";
 import { TooltipProvider } from "src/ui/tooltip";
 import { AppSidebar, LogoMark } from "./AppSidebar";
+import { CommandPalette } from "./CommandPalette";
 import { PhoneExtraItems, UserItems, UserLabel } from "./menus";
 import { PhoneNav } from "./PhoneNav";
 import { useNavigation } from "./useNavigation";
@@ -32,7 +36,7 @@ function PhoneUserMenu({ user, helpDoc }) {
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				aria-label={text("aria.user-menu")}
-				className="tw:ms-auto tw:rounded-lg tw:outline-none tw:focus-visible:ring-2 tw:focus-visible:ring-ring"
+				className="tw:rounded-lg tw:outline-none tw:focus-visible:ring-2 tw:focus-visible:ring-ring"
 			>
 				<Avatar className="tw:size-8 tw:rounded-lg">
 					<AvatarImage src={user?.avatar || "/images/default-avatar.jpg"} alt="" />
@@ -50,10 +54,10 @@ function PhoneUserMenu({ user, helpDoc }) {
 }
 
 /**
- * The header above the page: the button that folds the panel (when a panel shows) and the breadcrumbs; on a phone the
- * page's title and the avatar menu
+ * The header above the page: the button that folds the panel (when a panel shows), the breadcrumbs and the search; on
+ * a phone the page's title, the search and the avatar menu
  */
-function ShellHeader({ trail, user, helpDoc, canFold }) {
+function ShellHeader({ trail, user, helpDoc, canFold, onSearch }) {
 	const { isMobile } = useSidebar();
 	if (isMobile) {
 		const title = trail.at(-1);
@@ -65,6 +69,16 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 				<p className="tw:min-w-0 tw:truncate tw:text-base tw:font-medium">
 					{title ? text(title.titleKey) : "NPMpro"}
 				</p>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="tw:ms-auto"
+					aria-label={text("search")}
+					aria-keyshortcuts="Control+K"
+					onClick={onSearch}
+				>
+					<Search aria-hidden="true" />
+				</Button>
 				<PhoneUserMenu user={user} helpDoc={helpDoc} />
 			</header>
 		);
@@ -100,12 +114,36 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 					))}
 				</BreadcrumbList>
 			</Breadcrumb>
+			<Button
+				variant="outline"
+				className="tw:ms-auto tw:w-56 tw:justify-start tw:gap-2 tw:text-muted-foreground tw:shadow-none"
+				aria-keyshortcuts="Control+K"
+				onClick={onSearch}
+			>
+				<Search aria-hidden="true" />
+				<span className="tw:flex-1 tw:text-left">{text("search")}</span>
+				<Kbd>{text("palette.shortcut")}</Kbd>
+			</Button>
 		</header>
 	);
 }
 
 function ShellFrame({ nav, shown, setShown, children }) {
 	const { isMobile } = useSidebar();
+	const [searching, setSearching] = useState(false);
+	// Ctrl+K (Cmd+K) opens and closes the palette, except while one of the old pages' windows is open
+	useEffect(() => {
+		const onKeyDown = (event) => {
+			// the physical key too, so layouts whose key is not a Latin "k" (Cyrillic, Greek) work; a held key does not repeat
+			const isK = event.key.toLowerCase() === "k" || event.code === "KeyK";
+			if (!isK || event.repeat || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+			if (document.querySelector(".modal.show")) return;
+			event.preventDefault();
+			setSearching((open) => !open);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, []);
 	const { groups, current, report, user, pathname } = nav;
 	const helpDoc = helpDocOf(pathname, groups);
 	return (
@@ -133,6 +171,7 @@ function ShellFrame({ nav, shown, setShown, children }) {
 					user={user}
 					helpDoc={helpDoc}
 					canFold={Boolean(shown?.panel)}
+					onSearch={() => setSearching(true)}
 				/>
 				{/* the existing pages, in Tabler's page frame: Tailwind's reset stops here (data-legacy-ui) */}
 				<div id="content" tabIndex={-1} data-legacy-ui="" className="page tw:flex-1 tw:outline-none">
@@ -140,6 +179,7 @@ function ShellFrame({ nav, shown, setShown, children }) {
 				</div>
 			</SidebarInset>
 			{isMobile && <PhoneNav groups={groups} current={current} report={report} />}
+			<CommandPalette open={searching} onOpenChange={setSearching} groups={groups} />
 		</>
 	);
 }

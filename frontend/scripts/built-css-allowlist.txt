@@ -34,9 +34,11 @@ unprefixed: properties: *,:before,:after,::backdrop
 # reads only --tblr-* and --bs-*
 unprefixed: theme: :root,:host
 
-# Tailwind and tw-animate-css: keyframes of tw:animate-pulse (the skeleton) and the enter/exit
-# animations, emitted outside the layers. Tabler also has @keyframes pulse (a scale bounce), which this one replaces;
-# only Tabler's .icon-pulse and .btn-animate-icon-pulse use it, and the app uses neither
+# Tailwind and tw-animate-css: keyframes of tw:animate-pulse (the skeleton), tw:animate-spin (the command palette's
+# loading row) and the enter/exit animations, emitted outside the layers. Tabler also has @keyframes pulse (a scale
+# bounce), which this one replaces; only Tabler's .icon-pulse and .btn-animate-icon-pulse use it, and the app uses
+# neither. Tabler has no @keyframes spin (its spinners use spinner-border and spinner-grow), so spin replaces nothing
 unlayered: @keyframes pulse
+unlayered: @keyframes spin
 unlayered: @keyframes enter
 unlayered: @keyframes exit

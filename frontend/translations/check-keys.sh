@@ -6,8 +6,8 @@ fi
 
 SRC="$(dirname "$0")"
 
-# static keys only: <T id="..."> and formatMessage({ id: "..." }), dynamic ids are not checked
-missing=$(grep -rhoE '(<T id="|formatMessage\(\{ id: ")[a-z0-9][a-z0-9._-]*"' "$SRC/../src" | sed -E 's/.*"([^"]+)"$/\1/' | sort -u | while read -r key; do
+# static keys only: <T id="...">, formatMessage({ id: "..." }) and the shell's text("...") helper, dynamic ids are not checked
+missing=$(grep -rhoE '((<T id="|formatMessage\(\{ id: "|(^|[^A-Za-z0-9_.])text\("))[a-z0-9][a-z0-9._-]*"' "$SRC/../src" | sed -E 's/.*"([^"]+)"$/\1/' | sort -u | while read -r key; do
 	if ! jq -e --arg key "$key" 'has($key)' "$SRC/ui/en.json" > /dev/null; then
 		echo "ui/en.json: missing key: $key"
 	fi

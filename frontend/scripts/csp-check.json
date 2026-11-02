@@ -20,6 +20,24 @@
 	],
 	"actions": [
 		{
+			"name": "command palette",
+			"route": "/",
+			"steps": [
+				{
+					"press": "Control+k"
+				},
+				{
+					"waitFor": "[data-slot=command]"
+				},
+				{
+					"waitFor": "[data-slot=command-item]"
+				},
+				{
+					"press": "Escape"
+				}
+			]
+		},
+		{
 			"name": "language menu",
 			"route": "/",
 			"steps": [
