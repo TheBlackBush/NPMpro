@@ -213,6 +213,15 @@ export function locate(pathname, groups = NAV_GROUPS) {
 }
 
 /**
+ * The group of a route among all groups, whatever the user may see: while the user loads, the shell draws this
+ * group's frame (its panel with placeholder rows, or none), so nothing moves once the user's own groups arrive
+ *
+ * @param   {string} pathname
+ * @returns {Object|null}  null for a route of no page
+ */
+export const loadingGroupOf = (pathname) => locate(pathname, NAV_GROUPS)?.group ?? null;
+
+/**
  * The page a group's tab or crumb opens: its first page with an internal route, else its first page (an external
  * link such as GoAccess, with href and no to)
  *

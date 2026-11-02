@@ -1,7 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListToolbar,
+	LoadingPage,
+	PageHeader,
+} from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useStreams } from "src/hooks";
 import { T } from "src/locale";
 import { HelpButton, showDeleteConfirmModal, showStreamModal } from "src/modals";
@@ -83,14 +91,11 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("streams")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="streams" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="streams" />}
+				actions={
+					<>
 						<HelpButton doc="Streams" />
 						<ImportExportButtons
 							kind="streams"
@@ -108,25 +113,30 @@ export default function TableWrapper() {
 								</Button>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("streams")} />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayedStreams.length}
+						kinds={["status", "tls", "group"]}
+						groups={groups}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayedStreams}
+						groupBy={groupingActive ? getDirectory : undefined}
+						renderGroupLabel={(key) => (key === "" ? <T id="stream.no-directory" /> : key)}
+						{...sharedTableProps}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayedStreams.length}
-					kinds={["status", "tls", "group"]}
-					groups={groups}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayedStreams}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="stream.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

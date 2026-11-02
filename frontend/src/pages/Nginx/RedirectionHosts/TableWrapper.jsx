@@ -1,7 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteRedirectionHost, toggleRedirectionHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListToolbar,
+	LoadingPage,
+	PageHeader,
+} from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useRedirectionHosts } from "src/hooks";
 import { T } from "src/locale";
 import { HelpButton, showDeleteConfirmModal, showRedirectionHostModal } from "src/modals";
@@ -84,14 +92,11 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("redirectionHosts")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="redirection-hosts" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="redirection-hosts" />}
+				actions={
+					<>
 						<HelpButton doc="RedirectionHosts" />
 						<ImportExportButtons
 							kind="redirection_hosts"
@@ -109,25 +114,30 @@ export default function TableWrapper() {
 								</Button>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("redirectionHosts")} />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayedHosts.length}
+						kinds={["status", "tls", "group"]}
+						groups={groups}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayedHosts}
+						groupBy={groupingActive ? getDirectory : undefined}
+						renderGroupLabel={(key) => (key === "" ? <T id="redirection-host.no-directory" /> : key)}
+						{...sharedTableProps}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayedHosts.length}
-					kinds={["status", "tls", "group"]}
-					groups={groups}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayedHosts}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="redirection-host.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

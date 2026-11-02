@@ -1,7 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { deleteDeadHost, toggleDeadHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListToolbar,
+	LoadingPage,
+	PageHeader,
+} from "src/components";
 import { getDirectory, useDeadHosts, useDirectorySuggestions, useListFilters } from "src/hooks";
 import { T } from "src/locale";
 import { HelpButton, showDeadHostModal, showDeleteConfirmModal } from "src/modals";
@@ -79,14 +87,11 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("deadHosts")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="dead-hosts" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="dead-hosts" />}
+				actions={
+					<>
 						<HelpButton doc="DeadHosts" />
 						<ImportExportButtons
 							kind="dead_hosts"
@@ -104,25 +109,30 @@ export default function TableWrapper() {
 								</Button>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("deadHosts")} />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayedHosts.length}
+						kinds={["status", "tls", "group"]}
+						groups={groups}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayedHosts}
+						groupBy={groupingActive ? getDirectory : undefined}
+						renderGroupLabel={(key) => (key === "" ? <T id="dead-host.no-directory" /> : key)}
+						{...sharedTableProps}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayedHosts.length}
-					kinds={["status", "tls", "group"]}
-					groups={groups}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayedHosts}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="dead-host.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

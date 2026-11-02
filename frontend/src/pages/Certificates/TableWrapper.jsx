@@ -8,6 +8,7 @@ import {
 	ImportExportButtons,
 	ListToolbar,
 	LoadingPage,
+	PageHeader,
 } from "src/components";
 import { useCertificates, useListFilters } from "src/hooks";
 import { formatDateTime, T } from "src/locale";
@@ -67,15 +68,11 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("certificates")} />
-			<Tabs />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="certificates" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="certificates" />}
+				actions={
+					<>
 						<HelpButton doc="Certificates" />
 						<ImportExportButtons
 							kind="certificates"
@@ -139,64 +136,72 @@ export default function TableWrapper() {
 								</div>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("certificates")} />
+				<Tabs />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayed.length}
+						kinds={["expiry"]}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayed}
+						isFiltered={isFiltered}
+						onClearFilters={clear}
+						sorting={sorting}
+						onSortingChange={setSorting}
+						isFetching={isFetching}
+						onRenew={showRenewCertificateModal}
+						onChangeDnsCredential={showChangeDnsCredentialModal}
+						onDownload={handleDownload}
+						onEdit={(cert) => showCustomCertificateModal(cert)}
+						onTest={(domains) => showReachabilityModal(domains)}
+						onDelete={(id) => {
+							const certificate = data?.find((item) => item.id === id);
+							const domainNames = certificate?.domainNames.join(", ");
+							showDeleteConfirmModal({
+								title: <T id="object.delete" tData={{ object: "certificate" }} />,
+								onConfirm: async () => {
+									await deleteCertificate(id);
+									showObjectSuccess("certificate", "deleted");
+								},
+								invalidations: [["certificates"], ["certificate", id]],
+								children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
+								subject: domainNames || certificate?.niceName,
+								details: certificate ? (
+									<>
+										{domainNames && certificate.niceName !== domainNames ? (
+											<div>{certificate.niceName}</div>
+										) : null}
+										<div>
+											<T id={certificateProviderTranslation(certificate.provider)} />
+											{certificate.npmproDnsProvider
+												? ` – ${certificate.npmproDnsProvider}`
+												: null}
+										</div>
+										<div>
+											<T
+												id="expires.on"
+												data={{
+													date: formatDateTime(certificate.expiresOn),
+												}}
+											/>
+										</div>
+									</>
+								) : null,
+							});
+						}}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayed.length}
-					kinds={["expiry"]}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayed}
-					isFiltered={isFiltered}
-					onClearFilters={clear}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					isFetching={isFetching}
-					onRenew={showRenewCertificateModal}
-					onChangeDnsCredential={showChangeDnsCredentialModal}
-					onDownload={handleDownload}
-					onEdit={(cert) => showCustomCertificateModal(cert)}
-					onTest={(domains) => showReachabilityModal(domains)}
-					onDelete={(id) => {
-						const certificate = data?.find((item) => item.id === id);
-						const domainNames = certificate?.domainNames.join(", ");
-						showDeleteConfirmModal({
-							title: <T id="object.delete" tData={{ object: "certificate" }} />,
-							onConfirm: async () => {
-								await deleteCertificate(id);
-								showObjectSuccess("certificate", "deleted");
-							},
-							invalidations: [["certificates"], ["certificate", id]],
-							children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
-							subject: domainNames || certificate?.niceName,
-							details: certificate ? (
-								<>
-									{domainNames && certificate.niceName !== domainNames ? (
-										<div>{certificate.niceName}</div>
-									) : null}
-									<div>
-										<T id={certificateProviderTranslation(certificate.provider)} />
-										{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
-									</div>
-									<div>
-										<T
-											id="expires.on"
-											data={{
-												date: formatDateTime(certificate.expiresOn),
-											}}
-										/>
-									</div>
-								</>
-							) : null,
-						});
-					}}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

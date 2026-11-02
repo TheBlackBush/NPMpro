@@ -1,4 +1,4 @@
-import cn from "clsx";
+import { cn } from "cn";
 import { useEffect, useRef, useState } from "react";
 import { useFormState } from "react-hook-form";
 import { intl, T } from "src/locale";
@@ -23,11 +23,18 @@ const labelInForm = (form, name) => {
 	if (!control) return null;
 	const own = control.getAttribute("aria-label");
 	if (own) return own.trim();
+	// a choice group is named by its legend, not by the label of its first option
+	if (control.closest("[role=radiogroup]")) {
+		const legend = control.closest("fieldset")?.querySelector(":scope > legend");
+		const text = legend?.textContent?.trim();
+		if (text) return text;
+	}
 	const byFor = control.id ? form.querySelector(`label[for="${CSS.escape(control.id)}"]`) : null;
 	if (byFor) return byFor.textContent?.trim() || null;
-	// else the nearest form label above the control (custom selects keep their input in nested wrappers)
+	// else the nearest label above the control (custom selects keep their input in nested wrappers): an old form label,
+	// a legend, or a field label of the new layer
 	for (let node = control.parentElement; node && node !== form; node = node.parentElement) {
-		const label = node.querySelector(".form-label, legend");
+		const label = node.querySelector(".form-label, legend, [data-slot=field-label]");
 		if (label) return label.textContent?.trim() || null;
 	}
 	return null;
@@ -70,7 +77,12 @@ function ErrorNoteText({ id, paths, labels, messageId, block, className, noteRef
 		<Tag
 			ref={noteRef}
 			id={id}
-			className={cn("text-danger small", block && "text-center", block && show && "mt-2", className)}
+			className={cn(
+				"tw:text-sm tw:text-destructive",
+				block && "tw:block tw:text-center",
+				block && show && "tw:mt-2",
+				className,
+			)}
 			role="status"
 		>
 			{show ? <T id={messageId} data={{ fields: names.join(", ") }} /> : null}

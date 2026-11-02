@@ -1,15 +1,27 @@
-import cn from "clsx";
+import { cn } from "cn";
 import { useLayoutEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { components } from "react-select";
-import { controlAria, joinIds, labelClass } from "src/modules/FormFields";
+import { controlAria, joinIds } from "src/modules/FormFields";
+import { Field, FieldDescription, FieldLabel } from "src/ui/field";
+import { Input } from "src/ui/input";
+import { NativeSelect } from "src/ui/native-select";
+import { Textarea } from "src/ui/textarea";
+import { FieldMessage } from "./FieldMessage";
 import { useFieldError } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 
+// the red asterisk of a required field, drawn by CSS (as Tabler's required label did), so the label's text, which the
+// "fix the marked fields" note reads, stays the name alone; the control carries the required attribute
+const REQUIRED_MARK = "tw:after:ms-0.5 tw:after:text-destructive tw:after:content-['*']";
+
 /**
- * One field as Tabler's form elements: the label (Tabler's red asterisk when required), the control, the error
- * (invalid-feedback) and the hint (form-hint), with stable ids. The control is described by the error and the hint
- * together (the error never replaces the hint) and marked invalid while the error shows.
+ * One field on shadcn's Field: the label (a red asterisk when required), the control, the error and the hint
+ * (FieldDescription), with stable ids. The control is described by the error and the hint together (the error never
+ * replaces the hint) and marked invalid while the error shows (aria-invalid on the control, data-invalid on the field).
+ * The caller's className (margins, Bootstrap's grid columns) stays on an outer wrapper, outside the new part. A control
+ * that is not one of ours (react-select, Tabler markup) sits in an old part again (data-legacy-ui), so Tailwind's reset
+ * does not reach it and it keeps Tabler's look.
  *
  * @param {Object}      props
  * @param {string}      props.id             the control's id
@@ -18,36 +30,53 @@ import { PasswordControl } from "./PasswordInput";
  * @param {*}           [props.hint]
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
- * @param {string}      [props.className]    of the wrapper, "mb-3" by default
+ * @param {string}      [props.className]    of the wrapper, a 1rem bottom margin by default
+ * @param {boolean}     [props.ownControl]   the control is a shadcn part of this layer (TextField, SelectField,
+ *                                           PasswordField, CodeInput): no old-part wrapper around it
  * @param {Function}    props.children       (control) => the control, with control = { id, aria-invalid,
  *                                           aria-describedby } to spread on it
  */
-function FormField({ id, label, required = false, hint, error = null, describedBy, className = "mb-3", children }) {
+function FormField({
+	id,
+	label,
+	required = false,
+	hint,
+	error = null,
+	describedBy,
+	className = "tw:mb-4",
+	ownControl = false,
+	children,
+}) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
+	const control = children({
+		id,
+		"aria-invalid": aria["aria-invalid"],
+		"aria-describedby": aria["aria-describedby"],
+	});
 	return (
 		<div className={className}>
-			{label ? (
-				<label className={labelClass(required)} htmlFor={id} id={aria.labelId}>
-					{label}
-				</label>
-			) : null}
-			{children({ id, "aria-invalid": aria["aria-invalid"], "aria-describedby": aria["aria-describedby"] })}
-			{error ? (
-				<div className="invalid-feedback d-block" id={aria.errorId}>
-					{error}
-				</div>
-			) : null}
-			{hint ? (
-				<div className="form-hint" id={aria.hintId}>
-					{hint}
-				</div>
-			) : null}
+			<Field data-invalid={error ? true : undefined}>
+				{label ? (
+					<FieldLabel htmlFor={id} id={aria.labelId} className={required ? REQUIRED_MARK : undefined}>
+						{label}
+					</FieldLabel>
+				) : null}
+				{ownControl ? (
+					control
+				) : (
+					<div data-legacy-ui="" className="tw:w-full">
+						{control}
+					</div>
+				)}
+				{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
+				{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
+			</Field>
 		</div>
 	);
 }
 
 /**
- * A text input or textarea of the form around it (register), on FormField
+ * A text input or textarea of the form around it (register), on FormField: shadcn's Input or Textarea
  *
  * @param {Object}  props
  * @param {string}  props.name
@@ -60,7 +89,7 @@ function FormField({ id, label, required = false, hint, error = null, describedB
  * @param {Object}  [props.registerOptions]    register's options (onChange, setValueAs)
  * @param {"input"|"textarea"} [props.as]
  * @param {string}  [props.controlClassName]   more classes of the control (font-monospace)
- * @param {Object}  props.controlProps         the rest goes to the control (type, autoComplete, placeholder, ...)
+ * @param {Object}  props.controlProps         the rest goes to the control (type, autoComplete, placeholder, rows, ...)
  */
 function TextField({
 	name,
@@ -71,12 +100,13 @@ function TextField({
 	describedBy,
 	className,
 	registerOptions,
-	as: Control = "input",
+	as = "input",
 	controlClassName,
 	...controlProps
 }) {
 	const { register } = useFormContext();
 	const error = useFieldError(name);
+	const Control = as === "textarea" ? Textarea : Input;
 	return (
 		<FormField
 			id={id}
@@ -86,6 +116,7 @@ function TextField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			ownControl
 		>
 			{(control) => (
 				<Control
@@ -93,7 +124,8 @@ function TextField({
 					{...register(name, registerOptions)}
 					{...control}
 					required={required}
-					className={cn("form-control", error && "is-invalid", controlClassName)}
+					// a textarea keeps the height of its rows, as before (shadcn's grows with its content)
+					className={cn(as === "textarea" && "tw:field-sizing-fixed", controlClassName)}
 				/>
 			)}
 		</FormField>
@@ -101,7 +133,7 @@ function TextField({
 }
 
 /**
- * A native select of the form around it (register), on FormField; children are its options
+ * A native select of the form around it (register), on FormField: shadcn's NativeSelect; children are its options
  */
 function SelectField({
 	name,
@@ -126,17 +158,18 @@ function SelectField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			ownControl
 		>
 			{(control) => (
-				<select
+				<NativeSelect
 					{...selectProps}
 					{...register(name, registerOptions)}
 					{...control}
 					required={required}
-					className={cn("form-select", error && "is-invalid")}
+					className="tw:w-full"
 				>
 					{children}
-				</select>
+				</NativeSelect>
 			)}
 		</FormField>
 	);
@@ -168,6 +201,7 @@ function PasswordField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			ownControl
 		>
 			{(control) => (
 				<PasswordControl

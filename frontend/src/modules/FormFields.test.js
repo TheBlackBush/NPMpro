@@ -7,6 +7,7 @@ import {
 	joinIds,
 	labelClass,
 	numberInputValue,
+	SWITCH_CLASS,
 	switchListClass,
 	valueAt,
 } from "./FormFields.js";
@@ -58,21 +59,31 @@ it("marks a required label", () => {
 	assert.equal(labelClass(), "form-label");
 });
 
-it("builds the classes of a choice group and its options", () => {
-	assert.equal(choiceGroupClass(), "form-selectgroup");
-	assert.equal(choiceGroupClass({ variant: "pills" }), "form-selectgroup form-selectgroup-pills");
-	assert.equal(choiceGroupClass({ fill: true }), "form-selectgroup w-100");
-	assert.equal(
-		choiceGroupClass({ variant: "boxes", vertical: true }),
-		"form-selectgroup form-selectgroup-boxes d-flex flex-column",
-	);
-	assert.equal(choiceItemClass(), "form-selectgroup-item");
-	assert.equal(choiceItemClass({ fill: true }), "form-selectgroup-item flex-fill");
-	assert.equal(choiceItemClass({ disabled: true }), "form-selectgroup-item opacity-50 cursor-not-allowed");
+it("lays out a choice group in a row (filled: sharing it) or a column, its options as cards", () => {
+	assert.equal(choiceGroupClass(), "tw:flex tw:flex-wrap tw:gap-2");
+	assert.equal(choiceGroupClass({ variant: "pills" }), "tw:flex tw:flex-wrap tw:gap-2");
+	assert.equal(choiceGroupClass({ fill: true }), "tw:flex tw:flex-wrap tw:gap-2 tw:w-full");
+	assert.equal(choiceGroupClass({ variant: "boxes", vertical: true }), "tw:flex tw:flex-col tw:gap-2");
+	assert.equal(choiceGroupClass({ fill: true, vertical: true }), "tw:flex tw:flex-col tw:gap-2");
+	assert.equal(choiceItemClass(), "tw:min-w-0");
+	assert.equal(choiceItemClass({ fill: true }), "tw:min-w-0 tw:flex-1");
+	assert.equal(choiceItemClass({ disabled: true }), "tw:min-w-0 tw:cursor-not-allowed");
 });
 
 it("lays out a switch list in one or two columns", () => {
-	assert.equal(switchListClass(), "vstack gap-3");
-	assert.equal(switchListClass(1), "vstack gap-3");
-	assert.equal(switchListClass(2), "row row-cols-1 row-cols-md-2 gx-4");
+	assert.equal(switchListClass(), "tw:flex tw:flex-col tw:gap-3");
+	assert.equal(switchListClass(1), "tw:flex tw:flex-col tw:gap-3");
+	assert.equal(switchListClass(2), "tw:grid tw:grid-cols-1 tw:gap-x-6 tw:gap-y-3 tw:md:grid-cols-2");
+});
+
+it("draws a native checkbox as shadcn's switch, its state from the input itself", () => {
+	for (const part of [
+		"tw:appearance-none",
+		"tw:checked:bg-primary",
+		"tw:disabled:opacity-50",
+		"tw:aria-invalid:border-destructive",
+		"tw:checked:before:translate-x-[calc(100%-2px)]",
+	]) {
+		assert.ok(SWITCH_CLASS.split(" ").includes(part), part);
+	}
 });

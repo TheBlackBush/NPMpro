@@ -3,7 +3,7 @@ import { ChevronsUpDown, CircleHelp, ExternalLink, Languages } from "lucide-reac
 import { Link } from "react-router";
 import { intl } from "src/locale";
 import { showHelpModal } from "src/modals";
-import { groupAlert, pageBadge, pageSections } from "src/modules/Navigation";
+import { groupAlert, NAV_GROUPS, pageBadge, pageSections } from "src/modules/Navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "src/ui/avatar";
 import {
 	DropdownMenu,
@@ -26,8 +26,10 @@ import {
 	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuSkeleton,
 	useSidebar,
 } from "src/ui/sidebar";
+import { Skeleton } from "src/ui/skeleton";
 import { LanguageItems, ThemeItems, UserItems, UserLabel, useThemeChoice } from "./menus";
 import { NavIcon } from "./NavIcon";
 
@@ -281,6 +283,39 @@ function RailTools({ helpDoc }) {
 	);
 }
 
+/** The rail's group icons while the user loads: one placeholder per group, in the icons' place */
+function RailSkeleton() {
+	return NAV_GROUPS.map((group) => (
+		<SidebarMenuItem key={group.id} className="tw:flex tw:h-8 tw:items-center tw:justify-center">
+			<Skeleton className="tw:size-6 tw:rounded-md" />
+		</SidebarMenuItem>
+	));
+}
+
+/** The panel of the route's group while the user loads: its title and a placeholder row per page */
+function PanelSkeleton({ group }) {
+	return (
+		<Sidebar collapsible="none" className="tw:hidden tw:flex-1 tw:md:flex">
+			<SidebarHeader className="tw:h-12 tw:justify-center tw:border-b tw:px-4">
+				<h2 className="tw:truncate tw:text-base tw:font-medium tw:text-foreground">{text(group.titleKey)}</h2>
+			</SidebarHeader>
+			<SidebarContent>
+				<SidebarGroup>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{group.pages.map((page) => (
+								<SidebarMenuItem key={page.id}>
+									<SidebarMenuSkeleton showIcon />
+								</SidebarMenuItem>
+							))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+			</SidebarContent>
+		</Sidebar>
+	);
+}
+
 /** The pages of the shown group, a Settings category under its title */
 function Panel({ group, current, report }) {
 	return (
@@ -330,13 +365,19 @@ function Panel({ group, current, report }) {
  * @param {Object} [props.user]
  * @param {string|null} props.helpDoc  the current page's help document
  * @param {Function} props.onShow      shows a group's pages in the panel (its id)
+ * @param {boolean} [props.loading]    the user is not known yet: placeholders for the group icons and, when shown (the
+ *                                     route's group) has a panel, for its pages
  */
-export function AppSidebar({ groups, current, shown, report, user, helpDoc, onShow }) {
+export function AppSidebar({ groups, current, shown, report, user, helpDoc, onShow, loading = false }) {
 	const { state } = useSidebar();
 	const collapsed = state === "collapsed";
 	return (
 		<Sidebar collapsible="icon" className="tw:overflow-hidden">
-			<nav aria-label={text("aria.main-navigation")} className="tw:flex tw:h-full tw:w-full tw:flex-row">
+			<nav
+				aria-label={text("aria.main-navigation")}
+				aria-busy={loading || undefined}
+				className="tw:flex tw:h-full tw:w-full tw:flex-row"
+			>
 				<Sidebar collapsible="none" className="tw:w-[calc(var(--sidebar-width-icon)+1px)]! tw:border-r">
 					<SidebarHeader>
 						<SidebarMenu>
@@ -353,17 +394,21 @@ export function AppSidebar({ groups, current, shown, report, user, helpDoc, onSh
 						<SidebarGroup>
 							<SidebarGroupContent className="tw:px-1.5 tw:md:px-0">
 								<SidebarMenu className="tw:gap-1">
-									{groups.map((group) => (
-										<RailItem
-											key={group.id}
-											group={group}
-											isRouteGroup={current?.group.id === group.id}
-											isShown={shown?.id === group.id}
-											collapsed={collapsed}
-											report={report}
-											onShow={onShow}
-										/>
-									))}
+									{loading ? (
+										<RailSkeleton />
+									) : (
+										groups.map((group) => (
+											<RailItem
+												key={group.id}
+												group={group}
+												isRouteGroup={current?.group.id === group.id}
+												isShown={shown?.id === group.id}
+												collapsed={collapsed}
+												report={report}
+												onShow={onShow}
+											/>
+										))
+									)}
 								</SidebarMenu>
 							</SidebarGroupContent>
 						</SidebarGroup>
@@ -373,7 +418,12 @@ export function AppSidebar({ groups, current, shown, report, user, helpDoc, onSh
 						<NavUser user={user} />
 					</SidebarFooter>
 				</Sidebar>
-				{shown?.panel && <Panel group={shown} current={current} report={report} />}
+				{shown?.panel &&
+					(loading ? (
+						<PanelSkeleton group={shown} />
+					) : (
+						<Panel group={shown} current={current} report={report} />
+					))}
 			</nav>
 		</Sidebar>
 	);

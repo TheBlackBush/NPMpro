@@ -8,6 +8,7 @@ import {
 	firstPage,
 	groupAlert,
 	helpDocOf,
+	loadingGroupOf,
 	locate,
 	NAV_GROUPS,
 	pageBadge,
@@ -206,4 +207,18 @@ it("starts the sidebar open unless its cookie says folded", () => {
 	assert.equal(sidebarOpenFromCookie("a=1; sidebar_state=false; b=2"), false);
 	assert.equal(sidebarOpenFromCookie("a=1; sidebar_state=true"), true);
 	assert.equal(sidebarOpenFromCookie("other_sidebar_state=false"), true);
+});
+
+it("keeps the frame of the route's group while the user loads (its panel's room, no shift once the user arrives)", () => {
+	const groupOf = (path) => loadingGroupOf(path)?.id ?? null;
+	assert.equal(groupOf("/"), "overview");
+	assert.equal(loadingGroupOf("/").panel, false);
+	assert.equal(groupOf("/nginx/proxy"), "hosts");
+	assert.equal(groupOf("/certificates/dns-credentials/"), "security");
+	assert.equal(groupOf("/settings/nginx"), "admin");
+	assert.equal(groupOf("/monitoring/goaccess"), null);
+	assert.equal(groupOf("/nope"), null);
+	// every page of the group, whatever the user may see: the panel's placeholder rows
+	assert.equal(loadingGroupOf("/users").pages.length, 1 + SETTINGS_SECTIONS.length);
+	assert.equal(loadingGroupOf("/nginx/404").panel, true);
 });

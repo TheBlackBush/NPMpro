@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { errorCountOf, firstErrorOf, nextTabId, tabErrorCounts, tabOfPath, tabStopId } from "./ModalTabs.js";
+import { errorCountOf, firstErrorOf, tabErrorCounts, tabOfPath, tabsInMenu } from "./ModalTabs.js";
 
 const error = (message = "Required") => ({ type: "validate", message });
 
@@ -59,25 +59,23 @@ it("names the first error in field order and its tab, also when it sits in a lat
 	assert.equal(firstErrorOf({}, order, tabs), null);
 });
 
-it("moves with the arrow keys as Tabler's tabs do, wrapping around; Home and End; other keys do nothing", () => {
-	const ids = ["details", "locations", "tls"];
-	assert.equal(nextTabId(ids, "details", "ArrowRight"), "locations");
-	assert.equal(nextTabId(ids, "details", "ArrowDown"), "locations");
-	assert.equal(nextTabId(ids, "tls", "ArrowRight"), "details");
-	assert.equal(nextTabId(ids, "details", "ArrowLeft"), "tls");
-	assert.equal(nextTabId(ids, "locations", "ArrowUp"), "details");
-	assert.equal(nextTabId(ids, "tls", "Home"), "details");
-	assert.equal(nextTabId(ids, "details", "End"), "tls");
-	assert.equal(nextTabId(ids, "details", "Enter"), null);
-	assert.equal(nextTabId(ids, "details", " "), null);
-	assert.equal(nextTabId(ids, "details", "Tab"), null);
-	// the focused tab is no longer reachable (it moved into More): start at the first
-	assert.equal(nextTabId(ids, "advanced", "ArrowRight"), "details");
-	assert.equal(nextTabId([], "details", "ArrowRight"), null);
-});
-
-it("keeps the open tab in the Tab order, or the first reachable tab while the open one sits in More", () => {
-	assert.equal(tabStopId(["details", "locations", "tls", "advanced"], "tls"), "tls");
-	assert.equal(tabStopId(["details", "locations"], "advanced"), "details");
-	assert.equal(tabStopId([], "advanced"), null);
+it("moves the tabs that do not fit into More, from the end, keeping room for More itself", () => {
+	const row = [
+		{ id: "details", width: 80 },
+		{ id: "locations", width: 140 },
+		{ id: "tls", width: 50 },
+		{ id: "advanced", width: 90 },
+	];
+	// every tab fits (three gaps of 4): nothing moves, More does not show
+	assert.deepEqual(tabsInMenu(row, 372, 70, 4), []);
+	assert.deepEqual(tabsInMenu(row, 500, 70, 4), []);
+	// one pixel short: More takes the room of the last tabs
+	assert.deepEqual(tabsInMenu(row, 371, 70, 4), ["advanced"]);
+	assert.deepEqual(tabsInMenu(row, 300, 70, 4), ["tls", "advanced"]);
+	assert.deepEqual(tabsInMenu(row, 228, 70, 4), ["locations", "tls", "advanced"]);
+	// not even the first tab fits next to More: everything is in More
+	assert.deepEqual(tabsInMenu(row, 120, 70, 4), ["details", "locations", "tls", "advanced"]);
+	// not measured yet (a hidden window): nothing moves
+	assert.deepEqual(tabsInMenu(row, 0, 70, 4), []);
+	assert.deepEqual(tabsInMenu([], 300, 70, 4), []);
 });

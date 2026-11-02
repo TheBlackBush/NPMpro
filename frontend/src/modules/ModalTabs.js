@@ -1,6 +1,6 @@
 /**
  * The rules of the windows with tabs (ModalTabs): which tab holds a field, how many shown errors each tab holds, the
- * first error and its tab, and the keyboard moves between the tabs. A window's tabs are a list of
+ * first error and its tab, and which tabs move into the "More" menu. A window's tabs are a list of
  * { id, labelId, fields, end? }: fields are the top-level form fields of the tab (a list such as "locations" holds
  * its rows), end puts the tab on the right (Advanced). Pure, so node --test checks them without a DOM.
  */
@@ -8,9 +8,6 @@ import { errorPaths, orderErrorPaths } from "./HookForm.js";
 
 // a field path inside a tab field: the field itself, a nested field (fieldValues.token) or a list row (locations[0])
 const inField = (path, field) => path === field || path.startsWith(`${field}.`) || path.startsWith(`${field}[`);
-
-// the arrow keys of Tabler's tabs (Bootstrap's Tab): right and down go to the next tab, left and up to the one before
-const STEPS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
 /**
  * The tab that holds a field
@@ -63,31 +60,25 @@ export function firstErrorOf(errors, order, tabs = []) {
 }
 
 /**
- * The tab a key moves to, as in Tabler's tabs: the arrow keys go to the next or the previous tab and wrap around,
- * Home and End to the first and the last
+ * The tabs that move into the "More" menu: the row keeps its tabs from the start while they fit next to More (and
+ * the gaps between them); when every tab fits, More does not show and nothing moves
  *
- * @param   {string[]} ids      the tabs the keyboard can reach (shown in the row, not disabled), in order
- * @param   {string}   current  the focused tab
- * @param   {string}   key      KeyboardEvent.key
- * @returns {string|null}       null for any other key
+ * @param   {Array<{ id: string, width: number }>} tabs  the row's tabs in order, as wide as they render
+ * @param   {number} available  the row's width; 0 while it is not laid out (nothing moves then)
+ * @param   {number} moreWidth  the width of the More button
+ * @param   {number} gap        the gap between two buttons of the row
+ * @returns {string[]}  the ids of the tabs in More, in order
  */
-export function nextTabId(ids, current, key) {
-	if (ids.length === 0) return null;
-	if (key === "Home") return ids[0];
-	if (key === "End") return ids.at(-1);
-	const step = STEPS[key];
-	if (step === undefined) return null;
-	const index = ids.indexOf(current);
-	if (index < 0) return ids[0];
-	return ids[(index + step + ids.length) % ids.length];
+export function tabsInMenu(tabs, available, moreWidth, gap) {
+	const total = tabs.reduce((sum, tab, index) => sum + tab.width + (index > 0 ? gap : 0), 0);
+	if (available <= 0 || total <= available) return [];
+	let used = 0;
+	let kept = 0;
+	for (const tab of tabs) {
+		const next = used + (kept > 0 ? gap : 0) + tab.width;
+		if (next + gap + moreWidth > available) break;
+		used = next;
+		kept += 1;
+	}
+	return tabs.slice(kept).map((tab) => tab.id);
 }
-
-/**
- * The tab that Tab reaches in the row (the others are reached with the arrow keys): the open tab, or the first one
- * the keyboard can reach while the open tab sits in the "More" menu
- *
- * @param   {string[]} ids     the tabs the keyboard can reach, in order
- * @param   {string}   active  the open tab
- * @returns {string|null}
- */
-export const tabStopId = (ids, active) => (ids.includes(active) ? active : (ids[0] ?? null));

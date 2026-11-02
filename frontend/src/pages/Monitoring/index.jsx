@@ -38,26 +38,28 @@ const Monitoring = () => {
 	const Tab = current?.element;
 
 	// HasPermission shows the loading state until the user is loaded, so no tab mounts (and fetches) before the
-	// monitoring flag is known
+	// monitoring flag is known; the title shows for every user, also above the no-permission message
 	return (
-		<HasPermission section={ADMIN} permission={VIEW} pageLoading loadingNoLogo>
+		<>
 			<PageHeader title={<T id="monitoring" />} />
-			{user?.monitoring ? (
-				<>
-					<nav className="nav nav-tabs mb-3" aria-label={intl.formatMessage({ id: "monitoring" })}>
-						{TABS.map(({ id, labelKey, icon: Icon }) => (
-							<NavLink key={id} to={`/monitoring/${id}`} className="nav-link">
-								<Icon className="icon me-2" aria-hidden="true" />
-								<T id={labelKey} />
-							</NavLink>
-						))}
-					</nav>
-					{Tab ? <Tab /> : <ErrorNotFound />}
-				</>
-			) : (
-				<MonitoringOff />
-			)}
-		</HasPermission>
+			<HasPermission section={ADMIN} permission={VIEW} pageLoading loadingNoLogo>
+				{user?.monitoring ? (
+					<>
+						<nav className="nav nav-tabs mb-3" aria-label={intl.formatMessage({ id: "monitoring" })}>
+							{TABS.map(({ id, labelKey, icon: Icon }) => (
+								<NavLink key={id} to={`/monitoring/${id}`} className="nav-link">
+									<Icon className="icon me-2" aria-hidden="true" />
+									<T id={labelKey} />
+								</NavLink>
+							))}
+						</nav>
+						{Tab ? <Tab /> : <ErrorNotFound />}
+					</>
+				) : (
+					<MonitoringOff />
+				)}
+			</HasPermission>
+		</>
 	);
 };
 

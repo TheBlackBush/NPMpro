@@ -53,7 +53,7 @@ function Router() {
 							<MaintenanceBanner />
 							<Suspense fallback={<LoadingPage noLogo delay={300} />}>
 								<Routes>
-									<Route path="*" element={<ErrorNotFound />} />
+									<Route path="*" element={<ErrorNotFound page />} />
 									<Route path="/certificates" element={<Certificates />} />
 									<Route path="/certificates/dns-credentials" element={<DnsCredentials />} />
 									<Route path="/access" element={<Access />} />
