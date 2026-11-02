@@ -401,6 +401,7 @@
 	"list.filter.with": "인증서 있음",
 	"list.filter.without": "인증서 없음",
 	"list.no-match": "필터와 일치하는 항목이 없습니다",
+	"list.row-actions": "{name} 작업",
 	"list.shown": "{total}개 중 {shown}개 표시",
 	"list.sort-by": "정렬 기준",
 	"list.sort-desc": "내림차순",

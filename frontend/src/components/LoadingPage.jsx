@@ -1,8 +1,16 @@
 import { Loading } from "src/components";
+import { cn } from "src/lib/utils";
 
-export function LoadingPage({ label, noLogo, delay }) {
+/**
+ * A centred loading indicator for a whole page.
+ *
+ * @param {Object}  props
+ * @param {boolean} [props.fullScreen]  the full viewport height (the app start before the shell exists); without it
+ *   the indicator fills a page area under the top bar
+ */
+export function LoadingPage({ label, noLogo, delay, fullScreen = false }) {
 	return (
-		<div className="flex min-h-svh items-center justify-center p-4">
+		<div className={cn("flex items-center justify-center p-4", fullScreen ? "min-h-svh" : "min-h-[50vh]")}>
 			<div className="w-full max-w-sm">
 				<Loading label={label} noLogo={noLogo} delay={delay} />
 			</div>

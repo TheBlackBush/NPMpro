@@ -401,6 +401,7 @@
 	"list.filter.with": "有证书",
 	"list.filter.without": "无证书",
 	"list.no-match": "没有符合筛选条件的项目",
+	"list.row-actions": "{name} 的操作",
 	"list.shown": "显示 {shown} / {total}",
 	"list.sort-by": "排序方式",
 	"list.sort-desc": "降序",

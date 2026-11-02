@@ -401,6 +401,7 @@
 	"list.filter.with": "証明書あり",
 	"list.filter.without": "証明書なし",
 	"list.no-match": "フィルターに一致する項目はありません",
+	"list.row-actions": "{name} の操作",
 	"list.shown": "{total} 件中 {shown} 件を表示",
 	"list.sort-by": "並べ替え",
 	"list.sort-desc": "降順",

@@ -10,11 +10,12 @@ import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
 
+// two filters per row on phones (half the row minus half the gap-2), their own width from md
 function FilterSelect({ label, value, onChange, options }) {
 	return (
 		<NativeSelect
 			size="sm"
-			className="w-full md:w-auto"
+			className="min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none"
 			aria-label={intl.formatMessage({ id: label })}
 			value={value}
 			onChange={(e) => onChange(e.target.value)}

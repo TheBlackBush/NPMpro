@@ -55,15 +55,15 @@ const DeleteConfirmModal = EasyModal.create(
 			setIsSubmitting(false);
 		};
 
-		// Escape, overlay click and Cancel all end here; nothing closes while the action runs
+		// Escape and Cancel end here (an alert dialog ignores clicks outside it); nothing closes while the action runs
 		const onOpenChange = (open) => {
 			if (!open && !isSubmitting) remove();
 		};
 
 		return (
 			<AlertDialog open={visible} onOpenChange={onOpenChange}>
-				<AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
-					<AlertDialogHeader className="place-items-center text-center sm:place-items-center sm:text-center">
+				<AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+					<AlertDialogHeader>
 						<div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
 							<TriangleAlertIcon className="size-5" aria-hidden="true" />
 						</div>

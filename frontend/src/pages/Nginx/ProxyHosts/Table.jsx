@@ -49,7 +49,8 @@ function ProxyHostActions({ host, onClone, onDelete, onDisableToggle, onEdit }) 
 	const canManage = useCanManage(PROXY_HOSTS);
 	return (
 		<RowActions
-			label={intl.formatMessage({ id: "actions" })}
+			// names the row, so the buttons of a list are told apart (the first domain is what the row shows)
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: host.domainNames[0] ?? `#${host.id}` })}
 			focusKey={`proxy-host-${host.id}`}
 			title={<T id="object.actions-title" tData={{ object: "proxy-host" }} data={{ id: host.id }} />}
 			items={[

@@ -40,7 +40,7 @@ function EmptyData({
 							</p>
 							{onClearFilters ? (
 								<div className="mt-2">
-									<Button color="primary" onClick={onClearFilters}>
+									<Button onClick={onClearFilters}>
 										<T id="list.clear-filters" />
 									</Button>
 								</div>

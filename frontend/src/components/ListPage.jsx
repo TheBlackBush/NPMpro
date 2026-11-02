@@ -24,8 +24,10 @@ function ListPage({ title, count, help, actions, toolbar, children }) {
 						{title}
 					</h1>
 					{count !== undefined ? (
-						<Badge variant="secondary" aria-label={intl.formatMessage({ id: "list.count" }, { count })}>
-							{count}
+						// the number is shown, the full text ("6 items") is what screen readers read
+						<Badge variant="secondary">
+							<span aria-hidden="true">{count}</span>
+							<span className="sr-only">{intl.formatMessage({ id: "list.count" }, { count })}</span>
 						</Badge>
 					) : null}
 					{help ? <HelpButton doc={help} /> : null}

@@ -3,7 +3,7 @@ import Markdown from "markdown-to-jsx";
 import { useEffect, useState } from "react";
 import { ErrorAlert, Loading } from "src/components";
 import { Button } from "src/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "src/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "src/components/ui/sheet";
 import { cn } from "src/lib/utils";
 import { getHelpFile, intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
@@ -47,14 +47,16 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 
 	return (
 		<Sheet open={visible} onOpenChange={(open) => !open && remove()}>
-			<SheetContent side="right" className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
+			{/* No description: it would only repeat the title; undefined tells Radix it is left out on purpose */}
+			<SheetContent
+				side="right"
+				className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
+				aria-describedby={undefined}
+			>
 				<SheetHeader className="border-b pr-12">
 					<SheetTitle>
 						<T id="help" />
 					</SheetTitle>
-					<SheetDescription className="sr-only">
-						<T id="help" />
-					</SheetDescription>
 				</SheetHeader>
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
 					{error ? <ErrorAlert>{error}</ErrorAlert> : null}

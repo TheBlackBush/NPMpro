@@ -3,6 +3,11 @@ import { Spinner } from "src/components/ui/spinner";
 import { cn } from "src/lib/utils";
 import { buttonVariant } from "src/modules/ButtonVariants";
 
+// The destructive look puts the red text on a light red tint: in light mode the token red reaches only about 4:1
+// there, so the text is darkened like StatusBadge (7.2:1 on the tint, 6.0:1 on the hover tint); dark mode keeps the
+// token (4.6:1 on the popover)
+const DESTRUCTIVE_TEXT = "text-[color-mix(in_oklab,var(--destructive)_75%,black)] dark:text-destructive";
+
 /**
  * The button of the old pages on the shadcn Button: colour, outline, size and Bootstrap classes are mapped by
  * buttonVariant (one primary colour; an uncoloured button is the outline look).
@@ -36,6 +41,7 @@ function Button({
 			variant={variant}
 			size={uiSize}
 			className={cn(
+				variant === "destructive" && DESTRUCTIVE_TEXT,
 				classes,
 				fullWidth && "w-full",
 				blocked && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
