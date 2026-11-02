@@ -388,6 +388,7 @@
 	"lets-encrypt-via-dns": "Certbot (DNS 방식)",
 	"lets-encrypt-via-http": "Certbot (HTTP 방식)",
 	"list.clear-filters": "필터 지우기",
+	"list.count": "{count}개 항목",
 	"list.filter.all": "전체",
 	"list.filter.disabled": "비활성화됨",
 	"list.filter.error": "설정 오류",

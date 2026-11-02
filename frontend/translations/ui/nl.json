@@ -388,6 +388,7 @@
 	"lets-encrypt-via-dns": "Certbot via DNS",
 	"lets-encrypt-via-http": "Certbot via HTTP",
 	"list.clear-filters": "Filters wissen",
+	"list.count": "{count} items",
 	"list.filter.all": "Alle",
 	"list.filter.disabled": "Uitgeschakeld",
 	"list.filter.error": "Configuratiefout",

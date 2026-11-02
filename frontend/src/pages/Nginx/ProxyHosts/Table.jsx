@@ -58,12 +58,14 @@ function ProxyHostActions({ host, onClone, onDelete, onDisableToggle, onEdit }) 
 					label: <T id={canManage ? "action.edit" : "action.view"} />,
 					icon: canManage ? Pencil : Eye,
 					onSelect: () => onEdit?.(host.id),
+					opensWindow: true,
 				},
 				{
 					key: "clone",
 					label: <T id="action.clone" />,
 					icon: Copy,
 					onSelect: () => onClone?.(host.id),
+					opensWindow: true,
 					hidden: !canManage,
 				},
 				{
@@ -78,6 +80,7 @@ function ProxyHostActions({ host, onClone, onDelete, onDisableToggle, onEdit }) 
 					label: <T id="action.delete" />,
 					icon: Trash2,
 					onSelect: () => onDelete?.(host.id),
+					opensWindow: true,
 					destructive: true,
 					separatorBefore: true,
 					hidden: !canManage,

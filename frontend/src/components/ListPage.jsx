@@ -1,4 +1,5 @@
 import { Badge } from "src/components/ui/badge";
+import { intl } from "src/locale";
 import { HelpButton } from "src/modals";
 
 /**
@@ -16,10 +17,14 @@ import { HelpButton } from "src/modals";
 function ListPage({ title, count, help, actions, toolbar, children }) {
 	return (
 		<section className="flex flex-col gap-4">
-			<div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex min-w-0 items-center gap-2">
 					<h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-					{count !== undefined ? <Badge variant="secondary">{count}</Badge> : null}
+					{count !== undefined ? (
+						<Badge variant="secondary" aria-label={intl.formatMessage({ id: "list.count" }, { count })}>
+							{count}
+						</Badge>
+					) : null}
 					{help ? <HelpButton doc={help} /> : null}
 				</div>
 				{actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

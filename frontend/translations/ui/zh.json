@@ -388,6 +388,7 @@
 	"lets-encrypt-via-dns": "Certbot DNS 验证",
 	"lets-encrypt-via-http": "Certbot HTTP 验证",
 	"list.clear-filters": "清除筛选",
+	"list.count": "{count} 项",
 	"list.filter.all": "全部",
 	"list.filter.disabled": "已禁用",
 	"list.filter.error": "配置错误",

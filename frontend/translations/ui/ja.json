@@ -388,6 +388,7 @@
 	"lets-encrypt-via-dns": "DNS 経由の Certbot",
 	"lets-encrypt-via-http": "HTTP 経由の Certbot",
 	"list.clear-filters": "フィルターをクリア",
+	"list.count": "{count} 件",
 	"list.filter.all": "すべて",
 	"list.filter.disabled": "無効",
 	"list.filter.error": "設定エラー",

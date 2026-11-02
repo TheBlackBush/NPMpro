@@ -388,6 +388,7 @@
 	"lets-encrypt-via-dns": "Certbot через DNS",
 	"lets-encrypt-via-http": "Certbot через HTTP",
 	"list.clear-filters": "Скинути фільтри",
+	"list.count": "Елементів: {count}",
 	"list.filter.all": "Усі",
 	"list.filter.disabled": "Вимкнені",
 	"list.filter.error": "Помилка конфігурації",
