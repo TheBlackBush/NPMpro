@@ -3,7 +3,8 @@ import { getHostsReport } from "src/api/backend";
 
 const fetchHostReport = () => getHostsReport();
 
-const useHostReport = () => {
+// options override the defaults for one user of the report (the shell's badges refresh less often)
+const useHostReport = (options = {}) => {
 	return useQuery({
 		queryKey: ["host-report"],
 		queryFn: fetchHostReport,
@@ -11,6 +12,7 @@ const useHostReport = () => {
 		retry: 5,
 		refetchInterval: 15 * 1000, // 15 seconds
 		staleTime: 14 * 1000, // 14 seconds
+		...options,
 	});
 };
 

@@ -33,3 +33,10 @@ unprefixed: properties: *,:before,:after,::backdrop
 # Tailwind's `theme` layer: the design tokens it generates as --tw-* custom properties (--tw-font-sans, ...); Tabler
 # reads only --tblr-* and --bs-*
 unprefixed: theme: :root,:host
+
+# Tailwind and tw-animate-css: keyframes of tw:animate-pulse (the skeleton) and the enter/exit
+# animations, emitted outside the layers. Tabler also has @keyframes pulse (a scale bounce), which this one replaces;
+# only Tabler's .icon-pulse and .btn-animate-icon-pulse use it, and the app uses neither
+unlayered: @keyframes pulse
+unlayered: @keyframes enter
+unlayered: @keyframes exit
