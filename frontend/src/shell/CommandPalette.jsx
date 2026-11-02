@@ -31,7 +31,7 @@ export function CommandPaletteButton() {
 			type="button"
 			variant="outline"
 			size="icon"
-			className="sm:w-auto sm:px-2.5"
+			className="gap-2 sm:w-auto sm:px-2.5"
 			aria-label={label}
 			aria-keyshortcuts="Control+K Meta+K"
 			onClick={() => setOpen(true)}

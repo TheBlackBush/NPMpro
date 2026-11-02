@@ -1,5 +1,5 @@
 import { useCheckVersion } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 
 const repoUrl = "https://github.com/TheBlackBush/NPMpro";
 // release builds are "<MAJOR.MINOR.PATCH>-<commit>", beta and develop builds end with "-<commit>"
@@ -48,7 +48,10 @@ export function AppFooter() {
 						<ExternalA
 							href={`${repoUrl}/releases/tag/${versionData.latest}`}
 							className="font-medium text-primary underline-offset-4 hover:underline"
-							title={`New version ${versionData.latest} is available`}
+							title={intl.formatMessage(
+								{ id: "update-available" },
+								{ latestVersion: versionData.latest },
+							)}
 						>
 							<T id="update-available" data={{ latestVersion: versionData.latest }} />
 						</ExternalA>

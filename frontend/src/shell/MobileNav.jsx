@@ -33,8 +33,7 @@ export function MobileNav() {
 			<SheetContent side="left" className="md:hidden">
 				<SheetHeader>
 					<SheetTitle className="flex items-center">
-						<Logo variant="horizontal" alt="" />
-						<span className="sr-only">NPMpro</span>
+						<Logo variant="horizontal" />
 					</SheetTitle>
 					<SheetDescription className="sr-only">
 						{intl.formatMessage({ id: "aria.main-navigation" })}

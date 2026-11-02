@@ -31,7 +31,6 @@ export function AppSidebar() {
 			<SidebarHeader>
 				<div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
 					<Logo variant="horizontal" />
-					{/* The command palette button goes here */}
 				</div>
 				<div className="hidden justify-center group-data-[collapsible=icon]:flex">
 					<Logo variant="mark" />
