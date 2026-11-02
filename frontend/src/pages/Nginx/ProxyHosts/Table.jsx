@@ -257,6 +257,7 @@ export default function Table({
 			emptyState={
 				<EmptyData
 					icon={Zap}
+					section="proxyHosts"
 					object="proxy-host"
 					objects="proxy-hosts"
 					tableInstance={tableInstance}

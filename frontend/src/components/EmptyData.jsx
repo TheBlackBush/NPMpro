@@ -5,8 +5,10 @@ import { TableCell, TableRow } from "src/components/ui/table";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 
-// The color prop is still accepted by the callers; every button now uses the one primary colour.
+// The color prop is still accepted by the callers and ignored: every button uses the one primary colour. The section
+// key tints the icon circle in the section's accent.
 function EmptyData({
 	tableInstance,
 	onNew,
@@ -18,9 +20,12 @@ function EmptyData({
 	permissionSection,
 	permission,
 	icon: Icon,
+	section,
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
+	const accent = sectionAccent(section);
+	const tinted = Boolean(section) && !isFiltered;
 	// role row and cell keep the row valid inside the stacked phone layout's role="rowgroup"
 	return (
 		<TableRow className={cn("hover:bg-transparent", stacked && STACKED_EMPTY_ROW)} role="row">
@@ -30,7 +35,12 @@ function EmptyData({
 				className={cn("whitespace-normal", stacked && STACKED_EMPTY_CELL)}
 			>
 				<div className="flex flex-col items-center gap-2 py-10 text-center">
-					<div className="mb-1 flex rounded-full bg-muted p-3 text-muted-foreground">
+					<div
+						className={cn(
+							"mb-1 flex rounded-full p-3",
+							tinted ? cn(accent.bg, accent.text) : "bg-muted text-muted-foreground",
+						)}
+					>
 						<ShownIcon className="size-6" aria-hidden="true" />
 					</div>
 					{isFiltered ? (

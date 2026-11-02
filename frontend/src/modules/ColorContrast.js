@@ -87,3 +87,27 @@ export function contrastRatio(first, second) {
 	const [light, dark] = [luminance(first), luminance(second)].sort((x, y) => y - x);
 	return (light + 0.05) / (dark + 0.05);
 }
+
+/**
+ * A #rrggbb colour as oklch (Björn Ottosson's matrices), for contrast checks of the hex tokens
+ *
+ * @param   {string} text
+ * @returns {{ l: number, c: number, h: number }|null}
+ */
+export function parseHex(text) {
+	if (!/^#[\da-f]{6}$/iu.test(text)) return null;
+	const [r, g, b] = [1, 3, 5].map((index) => {
+		const channel = Number.parseInt(text.slice(index, index + 2), 16) / 255;
+		return channel <= 0.040_45 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+	});
+	const l = Math.cbrt(0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b);
+	const m = Math.cbrt(0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b);
+	const s = Math.cbrt(0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b);
+	const a = 1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s;
+	const bb = 0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s;
+	return {
+		l: 0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s,
+		c: Math.hypot(a, bb),
+		h: ((Math.atan2(bb, a) * 180) / Math.PI + 360) % 360,
+	};
+}

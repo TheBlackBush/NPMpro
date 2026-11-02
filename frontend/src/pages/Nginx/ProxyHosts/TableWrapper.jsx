@@ -118,6 +118,7 @@ export default function TableWrapper() {
 	return (
 		<ListPage
 			title={<T id="proxy-hosts" />}
+			section="proxyHosts"
 			count={data.length}
 			help="ProxyHosts"
 			actions={
