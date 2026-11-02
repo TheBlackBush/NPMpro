@@ -43,7 +43,7 @@ export function AppFooter() {
 				</div>
 				<div className="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
 					<span>&copy; {new Date().getFullYear()} AGPL-3.0 (and MIT)</span>
-					<ExternalA href={versionUrl}>{version}</ExternalA>
+					{version ? <ExternalA href={versionUrl}>{version}</ExternalA> : null}
 					{versionData?.updateAvailable ? (
 						<ExternalA
 							href={`${repoUrl}/releases/tag/${versionData.latest}`}

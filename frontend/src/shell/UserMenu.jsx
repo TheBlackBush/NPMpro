@@ -1,4 +1,5 @@
 import { ChevronsUpDown, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
+import { useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -52,6 +53,13 @@ export function UserMenu({ variant = "topbar" }) {
 	const { navLayout, setNavLayout, editorStyle, setEditorStyle } = usePreferences();
 	const { logout, logoutEverywhere } = useAuthState();
 	const sidebar = variant === "sidebar";
+	const openedModal = useRef(false);
+	// The modals are not Radix: open them once the menu has closed, so its pointer lock and focus return do not
+	// compete with the modal's focus.
+	const openModal = (show) => () => {
+		openedModal.current = true;
+		setTimeout(() => show("me"), 0);
+	};
 	const role = isAdmin(user?.roles) ? "role.admin" : "role.standard-user";
 
 	const signOut = (action) => async () => {
@@ -83,16 +91,26 @@ export function UserMenu({ variant = "topbar" }) {
 				</span>
 				{sidebar ? <ChevronsUpDown className="size-4 text-muted-foreground" aria-hidden="true" /> : null}
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align={sidebar ? "start" : "end"} side={sidebar ? "top" : "bottom"} className="w-56">
-				<DropdownMenuItem onSelect={() => showUserModal("me")}>
+			<DropdownMenuContent
+				align={sidebar ? "start" : "end"}
+				side={sidebar ? "top" : "bottom"}
+				className="w-56"
+				onCloseAutoFocus={(e) => {
+					if (openedModal.current) {
+						e.preventDefault();
+						openedModal.current = false;
+					}
+				}}
+			>
+				<DropdownMenuItem onSelect={openModal(showUserModal)}>
 					<User aria-hidden="true" />
 					<T id="user.edit-profile" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => showChangePasswordModal("me")}>
+				<DropdownMenuItem onSelect={openModal(showChangePasswordModal)}>
 					<Lock aria-hidden="true" />
 					<T id="user.change-password" />
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => showMfaModal("me")}>
+				<DropdownMenuItem onSelect={openModal(showMfaModal)}>
 					<ShieldCheck aria-hidden="true" />
 					<T id="user.mfa" />
 				</DropdownMenuItem>

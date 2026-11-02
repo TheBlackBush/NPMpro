@@ -9,17 +9,14 @@ const FILE = { mark: "logo-mark", horizontal: "logo-horizontal" };
  * @param {Object} props
  * @param {"mark"|"horizontal"} [props.variant]
  * @param {string} [props.className]  extra classes for both images
+ * @param {string} [props.alt]        text alternative; empty where the name is written next to the logo
  */
-export function Logo({ variant = "horizontal", className }) {
+export function Logo({ variant = "horizontal", className, alt = "NPMpro" }) {
 	const file = FILE[variant];
 	return (
 		<Link to="/" className="inline-flex shrink-0 items-center rounded-md">
-			<img src={`/images/${file}-light.svg`} className={cn("h-8 w-auto dark:hidden", className)} alt="NPMpro" />
-			<img
-				src={`/images/${file}-dark.svg`}
-				className={cn("hidden h-8 w-auto dark:block", className)}
-				alt="NPMpro"
-			/>
+			<img src={`/images/${file}-light.svg`} className={cn("h-8 w-auto dark:hidden", className)} alt={alt} />
+			<img src={`/images/${file}-dark.svg`} className={cn("hidden h-8 w-auto dark:block", className)} alt={alt} />
 		</Link>
 	);
 }
