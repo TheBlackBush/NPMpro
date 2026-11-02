@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import { it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { isUnprefixedUtility, unprefixedClasses } from "./TailwindPrefix.js";
+import { isUnprefixedUtility, NEW_UI_PATHS, unprefixedClasses } from "./TailwindPrefix.js";
 
 // source text with template literals: #{x} stands for a substitution, so no test string holds a real one
 const code = (text) => text.replaceAll("#{", "${");
@@ -211,4 +211,13 @@ it("the script skips *.test.js and *.test.jsx files, reports line numbers, honor
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+it("checks the new UI by default, and the new UI passes", () => {
+	assert.ok(NEW_UI_PATHS.includes("src/components/PageHeader.jsx"));
+	const frontend = fileURLToPath(new URL("../..", import.meta.url));
+	for (const path of NEW_UI_PATHS) assert.ok(existsSync(join(frontend, path)), `${path} exists`);
+	const script = fileURLToPath(new URL("../../scripts/check-tw-prefix.js", import.meta.url));
+	const run = spawnSync(process.execPath, [script], { cwd: frontend, encoding: "utf8" });
+	assert.equal(run.status, 0, run.stdout);
 });
