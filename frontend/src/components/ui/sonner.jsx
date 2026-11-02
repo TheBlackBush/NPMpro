@@ -1,5 +1,6 @@
 import { useThemeState } from "src/context"; // NPMpro: the app's theme context instead of next-themes
 import { Toaster as Sonner } from "sonner";
+import { intl } from "src/locale"; // NPMpro: translated labels
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({
@@ -36,7 +37,9 @@ const Toaster = ({
           "--border-radius": "var(--radius)"
         }
       }
+      containerAriaLabel={intl.formatMessage({ id: "aria.notifications" })} // NPMpro: translated
       toastOptions={{
+        closeButtonAriaLabel: intl.formatMessage({ id: "aria.close-notification" }), // NPMpro: translated
         classNames: {
           toast: "cn-toast",
         },

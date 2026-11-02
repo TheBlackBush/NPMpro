@@ -6,6 +6,7 @@ import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Button } from "src/components/ui/button"
 import { XIcon } from "lucide-react"
+import { intl } from "src/locale" // NPMpro: translated labels
 
 function Sheet({
   ...props
@@ -76,7 +77,8 @@ function SheetContent({
             >
               <XIcon
               />
-              <span className="sr-only">Close</span>
+              {/* NPMpro: translated */}
+              <span className="sr-only">{intl.formatMessage({ id: "aria.close" })}</span>
             </Button>
           </SheetPrimitive.Close>
         )}
