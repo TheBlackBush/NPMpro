@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
-import { groupSections, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
+import { groupSections, SETTINGS_CATEGORIES, SETTINGS_SECTIONS, settingsHelpDoc } from "./SettingsSections.js";
 
-// a section entry of sections.js: its id, then its category
-const ENTRY = /\bid: "(?<id>[^"]+)",\s+category: "(?<category>[^"]+)"/gu;
-const ID = /\bid: "/gu;
+// a key of PARTS in sections.js: a section id and its icon
+const PART = /^\t"?(?<id>[a-z-]+)"?: \{ icon:/gmu;
 const NAMES_SECTION = /"new-section"/u;
 const NAMES_CATEGORY = /"other"/u;
 
@@ -32,13 +31,9 @@ it("refuses a section without a known category, naming it", () => {
 	assert.throws(() => groupSections([{ id: "x", category: "other" }]), NAMES_CATEGORY);
 });
 
-it("gives every section in sections.js one of the categories, in the menu's order", () => {
-	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
-	const entries = [...source.matchAll(ENTRY)].map(({ groups }) => groups);
-	// every section entry has its category right after its id
-	assert.equal(entries.length, [...source.matchAll(ID)].length);
+it("gives every section one of the categories, in the menu's order, and sections.js its icon and page", () => {
 	assert.deepEqual(
-		groupSections(entries).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
+		groupSections(SETTINGS_SECTIONS).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
 		[
 			["sites", ["default-site", "network", "nginx"]],
 			["security", ["authentication", "forward-auth", "certificates"]],
@@ -47,12 +42,17 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 			["system", ["advanced", "environment"]],
 		],
 	);
-	// the menu lists the sections category by category, so sections.js keeps that order too
+	// the menu lists the sections category by category, so the list keeps that order too
 	assert.deepEqual(
-		entries.map(({ id }) => id),
-		groupSections(entries).flatMap(({ sections }) => sections.map((section) => section.id)),
+		SETTINGS_SECTIONS.map(({ id }) => id),
+		groupSections(SETTINGS_SECTIONS).flatMap(({ sections }) => sections.map((section) => section.id)),
 	);
 	assert.equal(SETTINGS_CATEGORIES.length, 5);
+	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
+	assert.deepEqual(
+		[...source.matchAll(PART)].map(({ groups }) => groups.id),
+		SETTINGS_SECTIONS.map(({ id }) => id),
+	);
 });
 
 it("names a section's help document after its id", () => {
@@ -61,9 +61,8 @@ it("names a section's help document after its id", () => {
 	assert.equal(settingsHelpDoc("geoip"), "SettingsGeoip");
 });
 
-it("has a help document in every language for every section in sections.js", () => {
-	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
-	const ids = [...source.matchAll(ENTRY)].map(({ groups }) => groups.id);
+it("has a help document in every language for every section", () => {
+	const ids = SETTINGS_SECTIONS.map(({ id }) => id);
 	assert.ok(ids.length > 10);
 	const help = new URL("../../translations/help/", import.meta.url);
 	const languages = readdirSync(help, { withFileTypes: true })

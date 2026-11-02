@@ -11,6 +11,9 @@ export default defineConfig({
 		alias: {
 			src: "/src",
 			translations: "/translations",
+			// Radix's scroll lock adds its styles with this package as a <style> element, which the CSP refuses: the same
+			// API on constructed stylesheets
+			"react-style-singleton": "/src/modules/StyleSingleton.js",
 		},
 	},
 });

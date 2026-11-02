@@ -88,6 +88,32 @@
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["src/ui/**"],
+			"formatter": {
+				"enabled": false
+			},
+			"linter": {
+				"rules": {
+					"preset": "recommended",
+					"a11y": {
+						"useFocusableInteractive": "off",
+						"useSemanticElements": "off"
+					},
+					"correctness": {
+						"noUnusedImports": "off"
+					},
+					"suspicious": {
+						"noDocumentCookie": "off"
+					}
+				}
+			},
+			"assist": {
+				"enabled": false
+			}
+		}
+	],
 	"css": {
 		"parser": {
 			"tailwindDirectives": true

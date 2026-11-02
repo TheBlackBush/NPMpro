@@ -1,5 +1,5 @@
 /**
- * The categories of the Settings menu (pages/Settings/sections.js): every section names one, the menu shows them in
+ * The categories of the Settings menu (SETTINGS_SECTIONS): every section names one, the menu shows them in
  * this order with the category's subheader (and an optgroup in the phone select). Pure, so node --test checks them.
  */
 export const SETTINGS_CATEGORIES = [
@@ -8,6 +8,27 @@ export const SETTINGS_CATEGORIES = [
 	{ id: "monitoring", labelKey: "settings.category.monitoring" },
 	{ id: "data", labelKey: "settings.category.data" },
 	{ id: "system", labelKey: "settings.category.system" },
+];
+
+/**
+ * The Settings sections in the menu's order, category by category: the id is the URL (/settings/<id>) and does not
+ * change with the category. pages/Settings/sections.js adds each section's icon and page; the shell's navigation
+ * (modules/Navigation.js) and the command palette list them from here, without loading the Settings pages.
+ */
+export const SETTINGS_SECTIONS = [
+	{ id: "default-site", category: "sites", labelKey: "settings.default-site" },
+	{ id: "network", category: "sites", labelKey: "settings.network" },
+	{ id: "nginx", category: "sites", labelKey: "settings.nginx" },
+	{ id: "authentication", category: "security", labelKey: "settings.authentication" },
+	{ id: "forward-auth", category: "security", labelKey: "settings.forward-auth" },
+	{ id: "certificates", category: "security", labelKey: "settings.certificates" },
+	// the route stays /settings/monitoring so existing links keep working
+	{ id: "monitoring", category: "monitoring", labelKey: "settings.monitoring" },
+	{ id: "geoip", category: "monitoring", labelKey: "settings.geoip" },
+	{ id: "backup", category: "data", labelKey: "settings.backup" },
+	{ id: "database", category: "data", labelKey: "settings.database" },
+	{ id: "advanced", category: "system", labelKey: "settings.advanced" },
+	{ id: "environment", category: "system", labelKey: "settings.environment" },
 ];
 
 /**
