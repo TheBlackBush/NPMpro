@@ -36,6 +36,8 @@ async function watchedPage(browserContext) {
 	const watched = await browserContext.newPage();
 	// a missing button fails its action in 10 s, not 30
 	watched.setDefaultTimeout(10_000);
+	// navigations get 30 s on a cold runner (the page's own default would shadow a context setting)
+	watched.setDefaultNavigationTimeout(30_000);
 	watched.step = "start";
 	watched.on("console", (message) => {
 		if (VIOLATION.test(message.text())) problems.push(`${watched.step}: ${message.text()}`);
@@ -62,7 +64,6 @@ async function appLinks(target) {
 // setup on a fresh instance, then the login page itself in a context without a session
 try {
 	const setupContext = await browser.newContext(options);
-	setupContext.setDefaultNavigationTimeout(30_000);
 	const setupPage = await watchedPage(setupContext);
 	await open(setupPage, "/");
 	// a page that polls or loads late may not show a form yet: wait for either form before choosing
@@ -78,7 +79,6 @@ try {
 	await setupContext.close();
 
 	const context = await browser.newContext(options);
-	context.setDefaultNavigationTimeout(30_000);
 	const page = await watchedPage(context);
 	await open(page, "/");
 	page.step = "login";
@@ -122,12 +122,17 @@ try {
 	console.error(`${engine}: the run stopped: ${error.message.split("\n")[0]}`);
 	process.exitCode = 1;
 } finally {
-	await browser.close();
 	console.log(`${engine}: ${visited.size} paths, ${actions.length} actions`);
 	console.log([...visited].sort((a, b) => a.localeCompare(b)).join(" "));
 	for (const problem of problems) console.log(problem);
 	if (problems.length > 0) {
 		console.log(`${problems.length} problems`);
 		process.exitCode = 1;
+	}
+	// the findings are printed first; a browser that does not close only gets logged
+	try {
+		await browser.close();
+	} catch (error) {
+		console.error(`${engine}: the browser did not close: ${error.message.split("\n")[0]}`);
 	}
 }
