@@ -1,8 +1,16 @@
+import { forwardSummary } from "./Forward.js";
+
 /**
  * The command palette (Ctrl+K): the pages and Settings sections of modules/Navigation.js, and the items of the list
  * endpoints (hosts, streams, certificates, access lists, users), each type only when the user may see its page. Plain
  * data and pure functions, so node --test checks them; the shell's CommandPalette.jsx renders them with cmdk.
  */
+
+// the redirection and stream list pages' destination texts (their helpers are not exported): a "$scheme" redirect
+// shows the bare domain, and a stream shows its port only when it has one
+const redirectDestination = (row) =>
+	row.forwardScheme === "$scheme" ? row.forwardDomainName : `${row.forwardScheme}://${row.forwardDomainName}`;
+const streamDestination = (row) => `${row.forwardingHost}${row.forwardingPort ? `:${row.forwardingPort}` : ""}`;
 
 /**
  * The item types: the page that lists them (a type shows only when the user may see that page), the list query (key
@@ -18,7 +26,7 @@ export const PALETTE_TYPES = [
 		queryKey: "proxy-hosts",
 		fetch: "getProxyHosts",
 		label: (row) => row.domainNames.join(", "),
-		detail: (row) => `${row.forwardScheme}://${row.forwardHost}${row.forwardPort ? `:${row.forwardPort}` : ""}`,
+		detail: forwardSummary,
 		open: { modal: "showProxyHostModal" },
 	},
 	{
@@ -29,7 +37,7 @@ export const PALETTE_TYPES = [
 		queryKey: "redirection-hosts",
 		fetch: "getRedirectionHosts",
 		label: (row) => row.domainNames.join(", "),
-		detail: (row) => `${row.forwardScheme}://${row.forwardDomainName}`,
+		detail: redirectDestination,
 		open: { modal: "showRedirectionHostModal" },
 	},
 	{
@@ -51,7 +59,7 @@ export const PALETTE_TYPES = [
 		queryKey: "streams",
 		fetch: "getStreams",
 		label: (row) => String(row.incomingPort),
-		detail: (row) => `${row.forwardingHost}:${row.forwardingPort}`,
+		detail: streamDestination,
 		open: { modal: "showStreamModal" },
 	},
 	{

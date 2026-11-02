@@ -74,6 +74,23 @@ it("turns rows into items found by domain, port, name and email", () => {
 	assert.deepEqual(itemsOf(typeOf("users"), undefined), []);
 });
 
+it("shows a destination as the list pages do: path, empty, a path in the host, $scheme and no port", () => {
+	const destination = (type, row) => itemsOf(typeOf(type), [{ id: 1, ...row }])[0].detail;
+	const proxy = { domainNames: ["a.example.com"], forwardScheme: "http", forwardPort: 8080 };
+	assert.equal(destination("proxy-hosts", { ...proxy, forwardHost: "10.0.0.2" }), "http://10.0.0.2:8080");
+	assert.equal(destination("proxy-hosts", { ...proxy, forwardHost: "10.0.0.2/app" }), "http://10.0.0.2:8080/app");
+	assert.equal(destination("proxy-hosts", { ...proxy, forwardScheme: "path", forwardHost: "/srv/www" }), "/srv/www");
+	assert.equal(destination("proxy-hosts", { ...proxy, forwardScheme: "empty", forwardHost: "10.0.0.2" }), "");
+	assert.equal(destination("proxy-hosts", { ...proxy, forwardHost: undefined }), "");
+	const redirection = { domainNames: ["a.example.com"], forwardDomainName: "b.example.com" };
+	assert.equal(destination("redirection-hosts", { ...redirection, forwardScheme: "$scheme" }), "b.example.com");
+	assert.equal(destination("redirection-hosts", { ...redirection, forwardScheme: "https" }), "https://b.example.com");
+	const stream = { incomingPort: 2222, forwardingHost: "10.0.0.5" };
+	assert.equal(destination("streams", { ...stream, forwardingPort: undefined }), "10.0.0.5");
+	assert.equal(destination("streams", { ...stream, forwardingPort: 22 }), "10.0.0.5:22");
+	assert.deepEqual(itemsOf(typeOf("streams"), [{ id: 4, ...stream }])[0].keywords, ["2222", "10.0.0.5"]);
+});
+
 it("lists every visible page with its group", () => {
 	const items = pageItems(visibleGroups(viewer));
 	assert.deepEqual(
