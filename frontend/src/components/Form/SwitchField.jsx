@@ -1,8 +1,7 @@
-import cn from "clsx";
-import { FieldError } from "src/components/ui/field";
 import { controlAria } from "src/modules/FormFields";
+import { FieldMessage } from "./FieldMessage";
 
-// A native checkbox drawn as a switch with the tokens of ui/switch.jsx. Not Radix's Switch: that is a button, and the
+// A native checkbox drawn as a switch with the tokens of the shadcn switch. Not Radix's Switch: that is a button, and the
 // callers hand this field a register() result (ref, name, onChange with event.target.checked, onBlur), which needs
 // a real checkbox.
 const SWITCH_INPUT =
@@ -16,10 +15,7 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy: inputProps["aria-describedby"] });
 	return (
 		<div className={className}>
-			<label
-				className={cn("flex items-start justify-between gap-4", inputProps.disabled && "opacity-50")}
-				htmlFor={id}
-			>
+			<label className="flex items-start justify-between gap-4 has-[:disabled]:opacity-50" htmlFor={id}>
 				<span className="flex min-w-0 flex-col gap-0.5 text-sm leading-snug">
 					<span className="font-medium" id={aria.labelId}>
 						{label}
@@ -45,9 +41,9 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 				/>
 			</label>
 			{error ? (
-				<FieldError id={aria.errorId} className="mt-1">
+				<FieldMessage id={aria.errorId} className="mt-1">
 					{error}
-				</FieldError>
+				</FieldMessage>
 			) : null}
 		</div>
 	);

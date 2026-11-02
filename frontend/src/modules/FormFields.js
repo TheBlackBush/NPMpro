@@ -125,14 +125,15 @@ export function choiceGroupClass({ vertical = false } = {}) {
  * @param   {Object}  [options]
  * @param   {"buttons"|"pills"|"boxes"} [options.variant]
  * @param   {boolean} [options.fill]
- * @param   {boolean} [options.disabled]
  * @returns {string}
  */
-export function choiceItemClass({ variant = "buttons", fill = false, disabled = false } = {}) {
+export function choiceItemClass({ variant = "buttons", fill = false } = {}) {
 	return cn(
 		variant === "pills" ? "rounded-full" : "rounded-lg",
-		fill && (variant === "boxes" ? "w-full" : "min-w-0 flex-1"),
-		disabled && "cursor-not-allowed opacity-50",
+		// FieldLabel makes a card full width; an option that is not filling the row sits inline
+		fill ? (variant === "boxes" ? "w-full" : "min-w-0 flex-1") : "has-[>[data-slot=field]]:w-fit",
+		// also disabled by a fieldset (View windows), not only by the option's own prop
+		"has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
 	);
 }
 

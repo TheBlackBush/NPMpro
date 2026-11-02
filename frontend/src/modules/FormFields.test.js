@@ -78,11 +78,12 @@ it("builds the classes of a choice group and its options", () => {
 	assert.equal(choiceGroupClass(), "flex flex-row flex-wrap gap-2");
 	assert.equal(choiceGroupClass({ fill: true }), "flex flex-row flex-wrap gap-2");
 	assert.equal(choiceGroupClass({ variant: "boxes", vertical: true }), "flex flex-col gap-2");
-	assert.equal(choiceItemClass(), "rounded-lg");
-	assert.equal(choiceItemClass({ variant: "pills" }), "rounded-full");
-	assert.equal(choiceItemClass({ fill: true }), "rounded-lg min-w-0 flex-1");
-	assert.equal(choiceItemClass({ disabled: true }), "rounded-lg cursor-not-allowed opacity-50");
-	assert.equal(choiceItemClass({ variant: "boxes", fill: true }), "rounded-lg w-full");
+	const DISABLED = "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50";
+	const INLINE = "has-[>[data-slot=field]]:w-fit";
+	assert.equal(choiceItemClass(), `rounded-lg ${INLINE} ${DISABLED}`);
+	assert.equal(choiceItemClass({ variant: "pills" }), `rounded-full ${INLINE} ${DISABLED}`);
+	assert.equal(choiceItemClass({ fill: true }), `rounded-lg min-w-0 flex-1 ${DISABLED}`);
+	assert.equal(choiceItemClass({ variant: "boxes", fill: true }), `rounded-lg w-full ${DISABLED}`);
 });
 
 it("lays out a switch list in one or two columns", () => {

@@ -1,9 +1,10 @@
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useState } from "react";
-import { Field, FieldError, FieldLabel } from "src/components/ui/field";
+import { Field, FieldLabel } from "src/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { intl } from "src/locale";
 import { joinIds } from "src/modules/FormFields";
+import { FieldMessage } from "./FieldMessage";
 
 /**
  * A password input in an input group with an eye button that shows or hides the text.
@@ -49,7 +50,7 @@ function PasswordInput({ id, label, error, ...inputProps }) {
 				invalid={Boolean(error)}
 				aria-describedby={joinIds(error ? `${id}-error` : null, inputProps["aria-describedby"])}
 			/>
-			{error ? <FieldError id={`${id}-error`}>{error}</FieldError> : null}
+			{error ? <FieldMessage id={`${id}-error`}>{error}</FieldMessage> : null}
 		</Field>
 	);
 }

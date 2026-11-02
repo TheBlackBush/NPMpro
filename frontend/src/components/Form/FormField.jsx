@@ -1,11 +1,12 @@
 import { useLayoutEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { components } from "react-select";
-import { Field, FieldDescription, FieldError, FieldLabel } from "src/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
 import { NativeSelect } from "src/components/ui/native-select";
 import { Textarea } from "src/components/ui/textarea";
 import { controlAria, joinIds } from "src/modules/FormFields";
+import { FieldMessage } from "./FieldMessage";
 import { useFieldError } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 
@@ -45,7 +46,7 @@ function FormField({ id, label, required = false, hint, error = null, describedB
 				"aria-describedby": aria["aria-describedby"],
 				"aria-required": required ? "true" : undefined,
 			})}
-			{error ? <FieldError id={aria.errorId}>{error}</FieldError> : null}
+			{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
 			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
 		</Field>
 	);

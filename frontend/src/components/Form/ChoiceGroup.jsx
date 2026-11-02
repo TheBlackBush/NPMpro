@@ -1,9 +1,10 @@
 import cn from "clsx";
 import { useId } from "react";
 import { useController } from "react-hook-form";
-import { Field, FieldDescription, FieldError, FieldLabel } from "src/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "src/components/ui/radio-group";
 import { choiceGroupClass, choiceItemClass, controlAria, joinIds, legendClass } from "src/modules/FormFields";
+import { FieldMessage } from "./FieldMessage";
 
 /**
  * A small set of exclusive choices as a radio group of cards: a fieldset whose legend names the question, one radio
@@ -75,7 +76,7 @@ function ChoiceGroup({
 					return (
 						<FieldLabel
 							key={option.value}
-							className={choiceItemClass({ variant, fill: fill || vertical, disabled: optionDisabled })}
+							className={choiceItemClass({ variant, fill: fill || vertical })}
 							htmlFor={itemId}
 						>
 							<Field data-disabled={optionDisabled ? true : undefined} orientation="horizontal">
@@ -98,7 +99,7 @@ function ChoiceGroup({
 					);
 				})}
 			</RadioGroup>
-			{error ? <FieldError id={aria.errorId}>{error}</FieldError> : null}
+			{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
 			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
 		</fieldset>
 	);
