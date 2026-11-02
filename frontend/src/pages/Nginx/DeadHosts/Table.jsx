@@ -55,7 +55,7 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
@@ -101,7 +101,7 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "w-1 text-nowrap",
+					className: "w-px whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
@@ -165,7 +165,7 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 					</span>
 				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),

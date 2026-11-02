@@ -203,7 +203,7 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, onD
 			columnHelper.display({
 				id: "actions",
 				cell: (info) => <Actions entry={info.row.original} onDelete={onDelete} navigate={navigate} />,
-				meta: { className: "text-end text-nowrap", mobile: "title-end" },
+				meta: { className: "text-right whitespace-nowrap", mobile: "title-end" },
 			}),
 		];
 	}, [categories, timeZone, names, onDelete, navigate]);

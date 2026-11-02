@@ -1,17 +1,13 @@
 function PageHeader({ title, pretitle, actions }) {
 	return (
-		<div className="page-header d-print-none mt-0 mb-3">
-			<div className="row g-2 align-items-center">
-				<div className="col">
-					{pretitle ? <div className="page-pretitle">{pretitle}</div> : null}
-					<h2 className="page-title">{title}</h2>
-				</div>
-				{actions ? (
-					<div className="col-auto ms-auto d-print-none">
-						<div className="btn-list">{actions}</div>
-					</div>
+		<div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
+			<div className="min-w-0">
+				{pretitle ? (
+					<div className="text-xs font-medium text-muted-foreground uppercase">{pretitle}</div>
 				) : null}
+				<h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
 			</div>
+			{actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
 		</div>
 	);
 }

@@ -11,12 +11,12 @@ export const mobileRole = (columnDef) => {
 };
 
 // a cell hidden on phones, where its content shows in the phone title block
-export const PHONE_HIDDEN_CELL = "d-none d-md-table-cell";
+export const PHONE_HIDDEN_CELL = "hidden md:table-cell";
 
 const hiddenClass = (columnDef) => {
 	const role = mobileRole(columnDef);
 	if (PHONE_HIDDEN.has(role)) return PHONE_HIDDEN_CELL;
-	if (role === "hide-lg") return "d-none d-lg-table-cell";
+	if (role === "hide-lg") return "hidden lg:table-cell";
 	return "";
 };
 
@@ -24,7 +24,7 @@ export const cellClass = hiddenClass;
 export const headerClass = hiddenClass;
 
 // the title wraps inside the stacked card instead of pushing the menu off screen
-export const titleClass = () => "flex-fill text-break";
+export const titleClass = () => "min-w-0 flex-1 break-words";
 
 export const summaryText = (columns, row) =>
 	columns

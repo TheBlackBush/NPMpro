@@ -1,15 +1,23 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteProxyHost, toggleProxyHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useProxyHosts } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeleteConfirmModal, showProxyHostModal } from "src/modals";
+import { showDeleteConfirmModal, showProxyHostModal } from "src/modals";
 import { servesCurrentPage } from "src/modules/CurrentPage";
 import { forwardSummary } from "src/modules/Forward";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -108,33 +116,29 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("proxyHosts")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="proxy-hosts" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="ProxyHosts" />
-						<ImportExportButtons
-							kind="proxy_hosts"
-							permissionSection={PROXY_HOSTS}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("proxyHosts")}
-									onClick={() => showProxyHostModal("new")}
-								>
-									<T id="object.add" tData={{ object: "proxy-host" }} />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="proxy-hosts" />}
+			section="proxyHosts"
+			count={data.length}
+			help="ProxyHosts"
+			actions={
+				<>
+					<ImportExportButtons
+						kind="proxy_hosts"
+						permissionSection={PROXY_HOSTS}
+						hasItems={Boolean(data?.length)}
+					/>
+					<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showProxyHostModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="object.add" tData={{ object: "proxy-host" }} />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -145,13 +149,14 @@ export default function TableWrapper() {
 					groups={groups}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayedHosts}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="proxy-host.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayedHosts}
+				groupBy={groupingActive ? getDirectory : undefined}
+				renderGroupLabel={(key) => (key === "" ? <T id="proxy-host.no-directory" /> : key)}
+				{...sharedTableProps}
+			/>
+		</ListPage>
 	);
 }

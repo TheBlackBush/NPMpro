@@ -40,7 +40,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.createdOn, {
@@ -49,7 +49,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 				cell: (info) => <EventFormatter row={info.row.original} />,
 				// long domain lists wrap instead of widening the scroll area
 				meta: {
-					className: "text-wrap",
+					className: "whitespace-normal",
 				},
 			}),
 			columnHelper.display({
@@ -67,7 +67,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					</button>
 				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 				},
 			}),
 		],

@@ -42,7 +42,7 @@ function TablesCard({ tables }) {
 			}),
 			columnHelper.accessor((row) => row.rows, {
 				id: "rows",
-				meta: { className: "text-end" },
+				meta: { className: "text-right" },
 				header: label("settings.database.rows"),
 				cell: (info) => intl.formatNumber(info.getValue()),
 			}),

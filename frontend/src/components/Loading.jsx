@@ -1,5 +1,6 @@
+import { Spinner } from "src/components/ui/spinner";
 import { useDelayElapsed } from "src/hooks";
-import { intl, T } from "src/locale";
+import { T } from "src/locale";
 import { BrandMark } from "./BrandMark";
 
 /**
@@ -11,29 +12,13 @@ export function Loading({ label, noLogo, delay = 0 }) {
 	if (!visible) {
 		return null;
 	}
-	if (noLogo) {
-		return (
-			<div className="empty">
-				<div className="spinner-border text-secondary" aria-hidden="true" />
-				<p className="empty-subtitle text-secondary mt-3" role="status">
-					{label || <T id="loading" />}
-				</p>
-			</div>
-		);
-	}
 	return (
-		<div className="empty">
-			<div className="empty-img">
-				<BrandMark size={100} />
-			</div>
-			<div className="text-secondary mb-3">{label || <T id="loading" />}</div>
-			<div
-				className="progress progress-sm progress-brand"
-				role="progressbar"
-				aria-label={intl.formatMessage({ id: "loading" })}
-			>
-				<div className="progress-bar progress-bar-indeterminate" />
-			</div>
+		<div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+			{noLogo ? null : <BrandMark size={100} />}
+			<Spinner className="size-6" role="presentation" aria-hidden="true" />
+			<p className="m-0 text-sm" role="status">
+				{label || <T id="loading" />}
+			</p>
 		</div>
 	);
 }

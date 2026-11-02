@@ -1,5 +1,4 @@
-import OverlayTrigger from "react-bootstrap/OverlayTrigger";
-import Popover from "react-bootstrap/Popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { intl } from "src/locale";
 import { showAccessListModal, showProxyHostModal } from "src/modals";
 
@@ -14,22 +13,11 @@ export function AccessListFormatter({ proxyHostId, access, type, locations }) {
 	if (access.length === 1) {
 		triggerLabel = access[0].name;
 	}
-	const popover = (
-		<Popover id={`access-list-popover-${proxyHostId}`}>
-			<Popover.Body>
-				{access.map((acl) => (
-					<div key={acl.id}>{acl.name}</div>
-				))}
-			</Popover.Body>
-		</Popover>
-	);
 
 	const button = (
 		<button
 			type="button"
-			className="btn btn-link d-inline-block p-0 border-0 text-decoration-none text-start align-baseline"
-			// Tabler .btn sets a minimum size, which would centre and pad the text like a button
-			style={{ minWidth: 0, minHeight: 0 }}
+			className="inline-block rounded-sm p-0 text-left align-baseline underline-offset-4 hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
 			aria-label={triggerLabel}
 			onClick={(e) => {
 				e.preventDefault();
@@ -45,9 +33,14 @@ export function AccessListFormatter({ proxyHostId, access, type, locations }) {
 	);
 	if (access.length > 1) {
 		return (
-			<OverlayTrigger trigger={["hover", "focus"]} placement="bottom" overlay={popover}>
-				{button}
-			</OverlayTrigger>
+			<Tooltip>
+				<TooltipTrigger asChild>{button}</TooltipTrigger>
+				<TooltipContent side="bottom" className="flex-col items-start gap-0.5">
+					{access.map((acl) => (
+						<div key={acl.id}>{acl.name}</div>
+					))}
+				</TooltipContent>
+			</Tooltip>
 		);
 	}
 	return button;

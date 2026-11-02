@@ -1,5 +1,6 @@
-import cn from "clsx";
 import { useEffect } from "react";
+import { Table } from "src/components/ui/table";
+import { cn } from "src/lib/utils";
 import { TableBody } from "./TableBody";
 import { TableHeader } from "./TableHeader";
 
@@ -17,17 +18,21 @@ function TableLayout(props) {
 			console.warn("TableLayout: a scroll layout needs a label, otherwise its region has no name");
 		}
 	}, [scroll, props.label]);
-	// a scroll area must be reachable by keyboard (Tabler issue #3330)
-	const scrollArea = scroll ? { tabIndex: 0, role: "region", "aria-label": props.label } : {};
+	// a scroll area must be reachable by keyboard
+	const scrollArea = scroll ? { tabIndex: 0, role: "region", "aria-label": props.label } : undefined;
+	// stacked layout: block/flex display makes some browsers (WebKit) drop the table semantics, so roles are explicit
+	const tableRole = scroll ? undefined : { role: "table" };
 	return (
-		<div className="table-responsive" {...scrollArea}>
-			<table
-				className={cn("table table-vcenter table-selectable mb-0", scroll ? "table-nowrap" : "table-mobile-md")}
-			>
-				{hasRows && showHeader ? <TableHeader tableInstance={props.tableInstance} /> : null}
-				<TableBody {...props} />
-			</table>
-		</div>
+		<Table
+			{...tableRole}
+			containerProps={scrollArea}
+			// below md a stacked table, its body and rows are blocks (the rows are flex columns, see TableBody) so
+			// each row can be a card; plain display values keep this working in iPhone Safari
+			className={cn(!scroll && "max-md:block max-md:[&>tbody]:block")}
+		>
+			{hasRows && showHeader ? <TableHeader tableInstance={props.tableInstance} scroll={scroll} /> : null}
+			<TableBody {...props} scroll={scroll} />
+		</Table>
 	);
 }
 

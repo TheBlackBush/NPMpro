@@ -1,3 +1,4 @@
+import { StatusBadge } from "src/components/StatusBadge";
 import { formatDateTime, T } from "src/locale";
 import { expiryInfo } from "src/modules/Expiry";
 
@@ -9,14 +10,14 @@ export function ExpiryFormatter({ value, provider }) {
 	}
 	if (state === "soon") {
 		return (
-			<span className="badge bg-orange-lt" title={formatDateTime(value)}>
+			<StatusBadge tone="warning" title={formatDateTime(value)}>
 				<T id="expiry.in-days" data={{ days }} />
-			</span>
+			</StatusBadge>
 		);
 	}
 	return (
-		<span className="badge bg-red-lt" title={formatDateTime(value)}>
+		<StatusBadge tone="destructive" title={formatDateTime(value)}>
 			<T id="expiry.expired" />
-		</span>
+		</StatusBadge>
 	);
 }

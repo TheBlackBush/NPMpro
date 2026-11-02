@@ -25,7 +25,7 @@ function Router() {
 	const { authenticated } = useAuthState();
 
 	if (health.isPending) {
-		return <LoadingPage />;
+		return <LoadingPage fullScreen />;
 	}
 
 	if (health.isError || health.data?.status !== "OK") {
@@ -38,7 +38,7 @@ function Router() {
 
 	if (!authenticated) {
 		return (
-			<Suspense fallback={<LoadingPage />}>
+			<Suspense fallback={<LoadingPage fullScreen />}>
 				<Login />
 			</Suspense>
 		);

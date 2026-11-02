@@ -1,9 +1,17 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
-import Modal from "react-bootstrap/Modal";
+import { TriangleAlertIcon } from "lucide-react";
+import { useState } from "react";
 import { ApiErrorContent, Button, ErrorAlert, NoticeAlert } from "src/components";
-import { intl, T } from "src/locale";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "src/components/ui/alert-dialog";
+import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
 const showDeleteConfirmModal = (props) => {
@@ -12,7 +20,7 @@ const showDeleteConfirmModal = (props) => {
 
 /**
  * A confirmation of a destructive action (delete, disable, reset): title, text, the item (subject, details), an
- * optional warning under them (Tabler's warning alert) and the red confirm button
+ * optional warning under them and the red confirm button
  */
 const DeleteConfirmModal = EasyModal.create(
 	({
@@ -31,7 +39,6 @@ const DeleteConfirmModal = EasyModal.create(
 		const queryClient = useQueryClient();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
-		const titleId = useId();
 
 		const onSubmit = async () => {
 			if (isSubmitting) return;
@@ -48,59 +55,51 @@ const DeleteConfirmModal = EasyModal.create(
 			setIsSubmitting(false);
 		};
 
+		// Escape and Cancel end here (an alert dialog ignores clicks outside it); nothing closes while the action runs
+		const onOpenChange = (open) => {
+			if (!open && !isSubmitting) remove();
+		};
+
 		return (
-			<Modal
-				aria-labelledby={titleId}
-				show={visible}
-				onHide={isSubmitting ? undefined : remove}
-				size="sm"
-				centered
-			>
-				<button
-					type="button"
-					className="btn-close"
-					aria-label={intl.formatMessage({ id: "cancel" })}
-					onClick={remove}
-					disabled={isSubmitting}
-				/>
-				<div className="modal-status bg-danger" />
-				<Modal.Body className="text-center py-4">
-					<IconAlertTriangle className="icon mb-2 text-danger icon-lg" aria-hidden="true" />
-					<h3 id={titleId}>{tTitle ? <T id={tTitle} /> : title}</h3>
-					<div className="text-secondary">
-						{children}
-						{subject ? <div className="mt-2 fw-bold text-break">{subject}</div> : null}
-						{details ? <div className="mt-1 small text-break">{details}</div> : null}
-					</div>
-					{warning ? <NoticeAlert className="mt-3 mb-0 text-start">{warning}</NoticeAlert> : null}
-					<ErrorAlert className="mt-3 mb-0 text-start" onClose={() => setError(null)}>
-						{error}
-					</ErrorAlert>
-				</Modal.Body>
-				<Modal.Footer>
-					<div className="w-100">
-						<div className="row">
-							<div className="col">
-								<Button fullWidth onClick={remove} disabled={isSubmitting}>
-									<T id="cancel" />
-								</Button>
-							</div>
-							<div className="col">
-								<Button
-									type="submit"
-									color="danger"
-									fullWidth
-									isLoading={isSubmitting}
-									disabled={isSubmitting}
-									onClick={onSubmit}
-								>
-									{confirmLabel ?? <T id={tTitle ?? "action.delete"} />}
-								</Button>
-							</div>
+			<AlertDialog open={visible} onOpenChange={onOpenChange}>
+				<AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+					<AlertDialogHeader>
+						<div className="flex size-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+							<TriangleAlertIcon className="size-5" aria-hidden="true" />
 						</div>
-					</div>
-				</Modal.Footer>
-			</Modal>
+						<AlertDialogTitle>{tTitle ? <T id={tTitle} /> : title}</AlertDialogTitle>
+						{/* A div: the texts passed in may contain block elements */}
+						<AlertDialogDescription asChild>
+							<div>
+								{children}
+								{subject ? (
+									<div className="mt-2 font-semibold break-words text-foreground">{subject}</div>
+								) : null}
+								{details ? (
+									<div className="mt-1 text-sm break-words text-muted-foreground">{details}</div>
+								) : null}
+							</div>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					{warning ? <NoticeAlert>{warning}</NoticeAlert> : null}
+					<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isSubmitting}>
+							<T id="cancel" />
+						</AlertDialogCancel>
+						{/* Not AlertDialogAction: that closes the dialog before onConfirm has finished */}
+						<Button
+							type="button"
+							color="danger"
+							isLoading={isSubmitting}
+							disabled={isSubmitting}
+							onClick={onSubmit}
+						>
+							{confirmLabel ?? <T id={tTitle ?? "action.delete"} />}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		);
 	},
 );
