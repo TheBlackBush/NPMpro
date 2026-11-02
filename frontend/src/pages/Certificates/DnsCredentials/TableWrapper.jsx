@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { deleteDnsCredential } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListToolbar,
+	LoadingPage,
+	PageHeader,
+} from "src/components";
 import { useDnsCredentials, useListFilters } from "src/hooks";
 import { T } from "src/locale";
 import { HelpButton, showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
@@ -31,15 +39,11 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("dnsCredentials")} />
-			<Tabs />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="dns-credentials" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="dns-credentials" />}
+				actions={
+					<>
 						<HelpButton doc="Certificates" />
 						<ImportExportButtons
 							kind="dns_credentials"
@@ -57,40 +61,46 @@ export default function TableWrapper() {
 								</Button>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("dnsCredentials")} />
+				<Tabs />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayed.length}
+						kinds={[]}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayed}
+						isFetching={isFetching}
+						isFiltered={isFiltered}
+						sorting={sorting}
+						onSortingChange={setSorting}
+						onEdit={(id) => showDnsCredentialModal(id)}
+						onDelete={(id) => {
+							const credential = data?.find((item) => item.id === id);
+							showDeleteConfirmModal({
+								title: <T id="object.delete" tData={{ object: "dns-credential" }} />,
+								onConfirm: async () => {
+									await deleteDnsCredential(id);
+									showObjectSuccess("dns-credential", "deleted");
+								},
+								invalidations: [["dns-credentials"], ["dns-credential", id], ["certificates"]],
+								children: <T id="object.delete.content" tData={{ object: "dns-credential" }} />,
+								subject: credential?.name,
+							});
+						}}
+						onNew={() => showDnsCredentialModal("new")}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayed.length}
-					kinds={[]}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayed}
-					isFetching={isFetching}
-					isFiltered={isFiltered}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					onEdit={(id) => showDnsCredentialModal(id)}
-					onDelete={(id) => {
-						const credential = data?.find((item) => item.id === id);
-						showDeleteConfirmModal({
-							title: <T id="object.delete" tData={{ object: "dns-credential" }} />,
-							onConfirm: async () => {
-								await deleteDnsCredential(id);
-								showObjectSuccess("dns-credential", "deleted");
-							},
-							invalidations: [["dns-credentials"], ["dns-credential", id], ["certificates"]],
-							children: <T id="object.delete.content" tData={{ object: "dns-credential" }} />,
-							subject: credential?.name,
-						});
-					}}
-					onNew={() => showDnsCredentialModal("new")}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { deleteAccessList } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListToolbar,
+	LoadingPage,
+	PageHeader,
+} from "src/components";
 import { useAccessLists, useListFilters } from "src/hooks";
 import { T } from "src/locale";
 import { HelpButton, showAccessListModal, showDeleteConfirmModal } from "src/modals";
@@ -30,14 +38,11 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("accessLists")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="access-lists" />
-					</h2>
-					<div className="card-actions btn-list">
+		<>
+			<PageHeader
+				title={<T id="access-lists" />}
+				actions={
+					<>
 						<HelpButton doc="AccessLists" />
 						<ImportExportButtons
 							kind="access_lists"
@@ -55,43 +60,48 @@ export default function TableWrapper() {
 								</Button>
 							) : null}
 						</HasPermission>
-					</div>
+					</>
+				}
+			/>
+			<div className="card mt-4">
+				<div className={stripeClass("accessLists")} />
+				<div className="card-table">
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayed.length}
+						kinds={[]}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+					<Table
+						data={displayed}
+						isFetching={isFetching}
+						isFiltered={isFiltered}
+						sorting={sorting}
+						onSortingChange={setSorting}
+						onEdit={(id) => showAccessListModal(id)}
+						onDelete={(id) => {
+							const accessList = data?.find((item) => item.id === id);
+							showDeleteConfirmModal({
+								title: <T id="object.delete" tData={{ object: "access-list" }} />,
+								onConfirm: async () => {
+									await deleteAccessList(id);
+									showObjectSuccess("access-list", "deleted");
+								},
+								invalidations: [["access-lists"], ["access-list", id], ["proxy-hosts"], ["proxy-host"]],
+								children: <T id="object.delete.content" tData={{ object: "access-list" }} />,
+								subject: accessList?.name,
+								details: accessList?.proxyHostCount ? (
+									<T id="proxy-hosts.count" data={{ count: accessList.proxyHostCount }} />
+								) : null,
+							});
+						}}
+						onNew={() => showAccessListModal("new")}
+					/>
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayed.length}
-					kinds={[]}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
-				<Table
-					data={displayed}
-					isFetching={isFetching}
-					isFiltered={isFiltered}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					onEdit={(id) => showAccessListModal(id)}
-					onDelete={(id) => {
-						const accessList = data?.find((item) => item.id === id);
-						showDeleteConfirmModal({
-							title: <T id="object.delete" tData={{ object: "access-list" }} />,
-							onConfirm: async () => {
-								await deleteAccessList(id);
-								showObjectSuccess("access-list", "deleted");
-							},
-							invalidations: [["access-lists"], ["access-list", id], ["proxy-hosts"], ["proxy-host"]],
-							children: <T id="object.delete.content" tData={{ object: "access-list" }} />,
-							subject: accessList?.name,
-							details: accessList?.proxyHostCount ? (
-								<T id="proxy-hosts.count" data={{ count: accessList.proxyHostCount }} />
-							) : null,
-						});
-					}}
-					onNew={() => showAccessListModal("new")}
-				/>
 			</div>
-		</div>
+		</>
 	);
 }

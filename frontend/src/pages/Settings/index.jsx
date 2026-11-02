@@ -3,11 +3,14 @@ import { T } from "src/locale";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import Layout from "./Layout";
 
+// the title shows for every user, also above the no-permission message
 const Settings = () => (
-	<HasPermission section={ADMIN} permission={VIEW} pageLoading loadingNoLogo>
+	<>
 		<PageHeader title={<T id="settings" />} />
-		<Layout />
-	</HasPermission>
+		<HasPermission section={ADMIN} permission={VIEW} pageLoading loadingNoLogo>
+			<Layout />
+		</HasPermission>
+	</>
 );
 
 export default Settings;

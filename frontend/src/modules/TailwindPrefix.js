@@ -7,6 +7,10 @@
 // the utility lists below against Tailwind's own class list, so a Tailwind upgrade cannot open a gap unnoticed.
 import { parse } from "@babel/parser";
 
+// the new UI's source, which scripts/check-tw-prefix.js checks by default (relative to frontend/): shadcn's components,
+// the shell, and the shared parts of the old pages that are already new
+export const NEW_UI_PATHS = ["src/ui", "src/shell", "src/components/PageHeader.jsx"];
+
 // utilities that are a whole class on their own (flex, hidden, border, rounded...); a modifier (`/name`) may follow
 const BARE = new Set(
 	"@container absolute antialiased block blur border capitalize collapse container contents fixed flex grayscale grid grow hidden inline invert invisible isolate italic lowercase ordinal outline overline paused relative resize ring rounded running sepia shadow shimmer shrink static sticky table transform transition truncate underline uppercase visible".split(
