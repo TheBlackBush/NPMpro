@@ -106,7 +106,8 @@
 						"noUnusedImports": "off"
 					},
 					"suspicious": {
-						"noDocumentCookie": "off"
+						"noDocumentCookie": "off",
+						"noDoubleEquals": "off"
 					}
 				}
 			},
