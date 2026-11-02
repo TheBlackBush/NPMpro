@@ -1,5 +1,4 @@
 import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
-import { TooltipProvider } from "src/components/ui/tooltip";
 import { usePreferences } from "src/context";
 import { intl } from "src/locale";
 import { AppFooter } from "./AppFooter";
@@ -33,24 +32,23 @@ function Layout({ children }) {
 	);
 
 	if (navLayout === "sidebar") {
+		// The TooltipProvider for the sidebar's tooltips is in App.jsx (one for the whole app).
+		// Controlled, so the collapse is kept in the preference; the provider's own cookie write is not read
 		return (
-			<TooltipProvider>
-				{/* Controlled, so the collapse is kept in the preference; the provider's own cookie write is not read */}
-				<SidebarProvider open={!sidebarCollapsed} onOpenChange={(open) => setSidebarCollapsed(!open)}>
-					<AppSidebar />
-					{/* Not SidebarInset: it renders a main element, and the page already has one */}
-					<div className="relative flex min-h-dvh w-full min-w-0 flex-1 flex-col bg-background text-foreground">
-						<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-5">
-							<SidebarTrigger aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })} />
-							<div className="ml-auto flex items-center gap-1">
-								<CommandPaletteButton />
-							</div>
-							<LoadingBar />
-						</header>
-						{page}
-					</div>
-				</SidebarProvider>
-			</TooltipProvider>
+			<SidebarProvider open={!sidebarCollapsed} onOpenChange={(open) => setSidebarCollapsed(!open)}>
+				<AppSidebar />
+				{/* Not SidebarInset: it renders a main element, and the page already has one */}
+				<div className="relative flex min-h-dvh w-full min-w-0 flex-1 flex-col bg-background text-foreground">
+					<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-5">
+						<SidebarTrigger aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })} />
+						<div className="ml-auto flex items-center gap-1">
+							<CommandPaletteButton />
+						</div>
+						<LoadingBar />
+					</header>
+					{page}
+				</div>
+			</SidebarProvider>
 		);
 	}
 	return (
