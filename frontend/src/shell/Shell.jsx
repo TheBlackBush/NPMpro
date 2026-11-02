@@ -62,9 +62,9 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 				<Link to="/" aria-label="NPMpro" className="tw:shrink-0">
 					<LogoMark className="tw:size-7" />
 				</Link>
-				<h1 className="tw:min-w-0 tw:truncate tw:text-base tw:font-medium">
+				<p className="tw:min-w-0 tw:truncate tw:text-base tw:font-medium">
 					{title ? text(title.titleKey) : "NPMpro"}
-				</h1>
+				</p>
 				<PhoneUserMenu user={user} helpDoc={helpDoc} />
 			</header>
 		);
