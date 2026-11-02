@@ -22,6 +22,7 @@ export * from "./Page";
 export * from "./PageHeader";
 export * from "./RequestProgress";
 export * from "./SecretsFields";
+export * from "./StatusBadge";
 export * from "./Table";
 export * from "./ThemeSwitcher";
 export * from "./Unhealthy";

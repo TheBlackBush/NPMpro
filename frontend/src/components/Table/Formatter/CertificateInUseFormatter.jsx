@@ -1,6 +1,6 @@
-import OverlayTrigger from "react-bootstrap/OverlayTrigger";
-import Popover from "react-bootstrap/Popover";
+import { useState } from "react";
 import { TrueFalseFormatter } from "src/components";
+import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { T } from "src/locale";
 
 const getSection = (title, items) => {
@@ -15,7 +15,7 @@ const getSection = (title, items) => {
 				</strong>
 			</div>
 			{items.map((host) => (
-				<div key={host.id} className="ms-1">
+				<div key={host.id} className="ml-1">
 					{host.domainNames.join(", ")}
 				</div>
 			))}
@@ -35,7 +35,7 @@ const getSectionStream = (items) => {
 				</strong>
 			</div>
 			{items.map((stream) => (
-				<div key={stream.id} className="ms-1">
+				<div key={stream.id} className="ml-1">
 					{`${stream.forwardingHost}${stream.forwardingPort ? `:${stream.forwardingPort}` : ""}`}
 				</div>
 			))}
@@ -43,33 +43,31 @@ const getSectionStream = (items) => {
 	);
 };
 
-export function CertificateInUseFormatter({ id, proxyHosts, redirectionHosts, deadHosts, streams }) {
+export function CertificateInUseFormatter({ proxyHosts, redirectionHosts, deadHosts, streams }) {
+	const [open, setOpen] = useState(false);
 	const totalCount = proxyHosts.length + redirectionHosts.length + deadHosts.length + streams.length;
 	if (totalCount === 0) {
 		return <TrueFalseFormatter value={false} falseLabel="certificate.not-in-use" falseColor="secondary" />;
 	}
 
-	const popover = (
-		<Popover id={`popover-cert-in-use-${id}`}>
-			<Popover.Body>
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className="inline-block rounded-4xl p-0 text-left align-baseline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
+					onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
+				>
+					<TrueFalseFormatter value trueLabel="certificate.in-use" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent side="bottom" className="w-auto max-w-sm gap-0">
 				{getSection("proxy-hosts", proxyHosts)}
 				{getSection("redirection-hosts", redirectionHosts)}
 				{getSection("dead-hosts", deadHosts)}
 				{getSectionStream(streams)}
-			</Popover.Body>
+			</PopoverContent>
 		</Popover>
-	);
-
-	return (
-		<OverlayTrigger trigger={["hover", "click", "focus"]} placement="bottom" overlay={popover}>
-			<button
-				type="button"
-				className="btn btn-link d-inline-block p-0 text-reset text-decoration-none text-start align-baseline"
-				// Tabler .btn sets a minimum size, which would centre and pad the text like a button
-				style={{ minWidth: 0, minHeight: 0 }}
-			>
-				<TrueFalseFormatter value trueLabel="certificate.in-use" />
-			</button>
-		</OverlayTrigger>
 	);
 }

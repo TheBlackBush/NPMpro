@@ -1,17 +1,18 @@
 import {
-	IconArrowsCross,
-	IconBolt,
-	IconBoltOff,
-	IconCalendarTime,
-	IconDatabase,
-	IconDisc,
-	IconKey,
-	IconLock,
-	IconSettings,
-	IconShield,
-	IconUser,
-} from "@tabler/icons-react";
-import cn from "clsx";
+	CalendarClock,
+	Database,
+	Disc,
+	KeyRound,
+	Lock,
+	Settings,
+	Shield,
+	Shuffle,
+	User,
+	Zap,
+	ZapOff,
+} from "lucide-react";
+import { Badge } from "src/components/ui/badge";
+import { cn } from "src/lib/utils";
 import { formatDateTime, T } from "src/locale";
 import { BreakableHost } from "./BreakableHost";
 
@@ -44,52 +45,52 @@ const getColorForAction = (action) => {
 		case "created":
 		case "backup-succeeded":
 		case "moved":
-			return "text-lime";
+			return "text-success";
 		case "deleted":
 		case "backup-failed":
 		case "move-failed":
-			return "text-red";
+			return "text-destructive";
 		default:
-			return "text-blue";
+			return "text-primary";
 	}
 };
 
 const getIcon = (row) => {
-	const c = cn(getColorForAction(row.action), "me-1");
+	const c = cn(getColorForAction(row.action), "mr-1 inline-block size-4 align-text-bottom");
 	let ico = null;
 	switch (row.objectType) {
 		case "user":
-			ico = <IconUser size={16} className={c} />;
+			ico = <User className={c} aria-hidden="true" />;
 			break;
 		case "proxy-host":
-			ico = <IconBolt size={16} className={c} />;
+			ico = <Zap className={c} aria-hidden="true" />;
 			break;
 		case "redirection-host":
-			ico = <IconArrowsCross size={16} className={c} />;
+			ico = <Shuffle className={c} aria-hidden="true" />;
 			break;
 		case "dead-host":
-			ico = <IconBoltOff size={16} className={c} />;
+			ico = <ZapOff className={c} aria-hidden="true" />;
 			break;
 		case "stream":
-			ico = <IconDisc size={16} className={c} />;
+			ico = <Disc className={c} aria-hidden="true" />;
 			break;
 		case "access-list":
-			ico = <IconLock size={16} className={c} />;
+			ico = <Lock className={c} aria-hidden="true" />;
 			break;
 		case "dns-credential":
-			ico = <IconKey size={16} className={c} />;
+			ico = <KeyRound className={c} aria-hidden="true" />;
 			break;
 		case "certificate":
-			ico = <IconShield size={16} className={c} />;
+			ico = <Shield className={c} aria-hidden="true" />;
 			break;
 		case "setting":
-			ico = <IconSettings size={16} className={c} />;
+			ico = <Settings className={c} aria-hidden="true" />;
 			break;
 		case "backup-schedule":
-			ico = <IconCalendarTime size={16} className={c} />;
+			ico = <CalendarClock className={c} aria-hidden="true" />;
 			break;
 		case "database":
-			ico = <IconDatabase size={16} className={c} />;
+			ico = <Database className={c} aria-hidden="true" />;
 			break;
 		default:
 			break;
@@ -100,15 +101,15 @@ const getIcon = (row) => {
 
 export function EventFormatter({ row }) {
 	return (
-		<div className="flex-fill">
-			<div className="fw-medium">
+		<div className="flex-1">
+			<div className="font-medium">
 				{getIcon(row)}
 				<T id={`object.event.${row.action}`} tData={{ object: row.objectType }} />:{" "}
-				<span className="badge text-wrap text-start">
+				<Badge variant="secondary" className="h-auto py-0.5 text-left whitespace-normal">
 					<BreakableHost value={String(getEventValue(row) ?? "")} />
-				</span>
+				</Badge>
 			</div>
-			<div className="text-secondary mt-1">{formatDateTime(row.createdOn)}</div>
+			<div className="mt-1 text-muted-foreground">{formatDateTime(row.createdOn)}</div>
 		</div>
 	);
 }
