@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { intl } from "src/locale";
-import { breadcrumbs, helpDocOf, sidebarOpenFromCookie } from "src/modules/Navigation";
+import { breadcrumbs, helpDocOf, loadingGroupOf, sidebarOpenFromCookie } from "src/modules/Navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "src/ui/avatar";
 import {
 	Breadcrumb,
@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuT
 import { Kbd } from "src/ui/kbd";
 import { Separator } from "src/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "src/ui/sidebar";
+import { Skeleton } from "src/ui/skeleton";
 import { TooltipProvider } from "src/ui/tooltip";
 import { AppSidebar, LogoMark } from "./AppSidebar";
 import { CommandPalette } from "./CommandPalette";
@@ -55,20 +56,24 @@ function PhoneUserMenu({ user, helpDoc }) {
 
 /**
  * The header above the page: the button that folds the panel (when a panel shows), the breadcrumbs and the search; on
- * a phone the page's title, the search and the avatar menu
+ * a phone the page's title, the search and the avatar menu. While the user loads (loading) a placeholder stands where
+ * the breadcrumbs or the phone's title will be.
  */
-function ShellHeader({ trail, user, helpDoc, canFold, onSearch }) {
+function ShellHeader({ trail, user, helpDoc, canFold, onSearch, loading }) {
 	const { isMobile } = useSidebar();
 	if (isMobile) {
 		const title = trail.at(-1);
+		const shownTitle = title ? text(title.titleKey) : "NPMpro";
 		return (
 			<header className="tw:sticky tw:top-0 tw:z-20 tw:flex tw:h-12 tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:bg-background tw:px-3 tw:text-foreground tw:print:hidden">
 				<Link to="/" aria-label="NPMpro" className="tw:shrink-0">
 					<LogoMark className="tw:size-7" />
 				</Link>
-				<p className="tw:min-w-0 tw:truncate tw:text-base tw:font-medium">
-					{title ? text(title.titleKey) : "NPMpro"}
-				</p>
+				{loading ? (
+					<Skeleton className="tw:h-5 tw:w-32" />
+				) : (
+					<p className="tw:min-w-0 tw:truncate tw:text-base tw:font-medium">{shownTitle}</p>
+				)}
 				<Button
 					variant="ghost"
 					size="icon"
@@ -94,6 +99,7 @@ function ShellHeader({ trail, user, helpDoc, canFold, onSearch }) {
 					/>
 				</>
 			)}
+			{loading ? <Skeleton className="tw:h-4 tw:w-48" /> : null}
 			<Breadcrumb aria-label={text("nav.breadcrumb")}>
 				<BreadcrumbList>
 					{trail.map((crumb, index) => (
@@ -144,7 +150,7 @@ function ShellFrame({ nav, shown, setShown, children }) {
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 	}, []);
-	const { groups, current, report, user, pathname } = nav;
+	const { groups, current, report, user, pathname, loading } = nav;
 	const helpDoc = helpDocOf(pathname, groups);
 	return (
 		<>
@@ -163,6 +169,7 @@ function ShellFrame({ nav, shown, setShown, children }) {
 					user={user}
 					helpDoc={helpDoc}
 					onShow={setShown}
+					loading={loading}
 				/>
 			)}
 			<SidebarInset className="tw:min-w-0 tw:bg-transparent tw:pb-16 tw:md:pb-0 tw:print:pb-0">
@@ -172,13 +179,14 @@ function ShellFrame({ nav, shown, setShown, children }) {
 					helpDoc={helpDoc}
 					canFold={Boolean(shown?.panel)}
 					onSearch={() => setSearching(true)}
+					loading={loading}
 				/>
 				{/* the existing pages, in Tabler's page frame: Tailwind's reset stops here (data-legacy-ui) */}
 				<div id="content" tabIndex={-1} data-legacy-ui="" className="page tw:flex-1 tw:outline-none">
 					{children}
 				</div>
 			</SidebarInset>
-			{isMobile && <PhoneNav groups={groups} current={current} report={report} />}
+			{isMobile && <PhoneNav groups={groups} current={current} report={report} loading={loading} />}
 			<CommandPalette open={searching} onOpenChange={setSearching} groups={groups} />
 		</>
 	);
@@ -187,7 +195,8 @@ function ShellFrame({ nav, shown, setShown, children }) {
 /**
  * The app's frame for a signed-in user: the rail and its panel on a desktop, the tab bar and its sheet on a phone,
  * the header with the breadcrumbs, and the existing pages inside unchanged. The route decides the active group and
- * page; a rail icon shows another group's pages in the panel until the next navigation.
+ * page; a rail icon shows another group's pages in the panel until the next navigation. While the user loads, the frame
+ * of the route's group stands with placeholders (its panel too), so nothing moves when the user's groups arrive.
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children  the pages in Tabler's page frame (page-wrapper, page-body, footer)
@@ -197,7 +206,9 @@ export function Shell({ children }) {
 	// a group picked on the rail, for the route it was picked on
 	const [picked, setPicked] = useState(null);
 	const shownId = picked?.pathname === nav.pathname ? picked.id : nav.current?.group.id;
-	const shown = nav.groups.find((group) => group.id === shownId) ?? null;
+	const shown = nav.loading
+		? loadingGroupOf(nav.pathname)
+		: (nav.groups.find((group) => group.id === shownId) ?? null);
 	const [defaultOpen] = useState(() => sidebarOpenFromCookie(document.cookie));
 
 	return (

@@ -3,9 +3,10 @@ import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { intl } from "src/locale";
-import { firstPage, groupAlert, pageBadge, pageSections } from "src/modules/Navigation";
+import { firstPage, groupAlert, NAV_GROUPS, pageBadge, pageSections } from "src/modules/Navigation";
 import { Button } from "src/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "src/ui/sheet";
+import { Skeleton } from "src/ui/skeleton";
 import { NavIcon } from "./NavIcon";
 
 const text = (id, values) => intl.formatMessage({ id }, values);
@@ -45,6 +46,16 @@ function TabBody({ item, current, alert }) {
 			<TabMarks current={current} alert={alert} />
 		</>
 	);
+}
+
+/** The tabs while the user loads: one placeholder per group, in the tabs' place */
+function TabsSkeleton() {
+	return NAV_GROUPS.map((group) => (
+		<div key={group.id} className={TAB}>
+			<Skeleton className="tw:size-5 tw:rounded-md" />
+			<Skeleton className="tw:h-2.5 tw:w-10" />
+		</div>
+	));
 }
 
 /** One page of the sheet: icon, title, count */
@@ -101,16 +112,18 @@ function SheetPage({ page, active, report, onClose }) {
  * @param {Object|null} props.current
  * @param {Object} [props.report]
  */
-export function PhoneNav({ groups, current, report }) {
+export function PhoneNav({ groups, current, report, loading = false }) {
 	const [open, setOpen] = useState(false);
 	const group = current?.group;
 	return (
 		<>
 			<nav
 				aria-label={text("aria.main-navigation")}
+				aria-busy={loading || undefined}
 				className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-30 tw:flex tw:border-t tw:bg-sidebar tw:pb-[env(safe-area-inset-bottom)] tw:text-sidebar-foreground tw:md:hidden tw:print:hidden"
 			>
-				{groups.map((item) => {
+				{loading ? <TabsSkeleton /> : null}
+				{(loading ? [] : groups).map((item) => {
 					const isCurrent = group?.id === item.id;
 					const alert = groupAlert(item, report);
 					if (isCurrent && item.panel) {
