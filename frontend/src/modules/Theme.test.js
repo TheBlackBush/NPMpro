@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { parsePreference, resolveTheme, startPreference, THEME_PREFERENCES } from "./Theme.js";
+import { applyTheme, parsePreference, resolveTheme, startPreference, THEME_PREFERENCES } from "./Theme.js";
 
 it("reads a stored theme choice, System for a missing or unknown value", () => {
 	assert.deepEqual(THEME_PREFERENCES, ["light", "dark", "auto"]);
@@ -25,4 +25,23 @@ it("shows the chosen theme, or the system's for System", () => {
 	assert.equal(resolveTheme("auto", true), "dark");
 	assert.equal(resolveTheme("auto", false), "light");
 	assert.equal(resolveTheme("bogus", true), "dark");
+});
+
+it("marks the shown theme on <html> for both UIs: data-bs-theme for Tabler, the dark class for Tailwind", () => {
+	const root = {
+		attributes: {},
+		classes: new Set(["keep"]),
+		setAttribute(name, value) {
+			this.attributes[name] = value;
+		},
+		classList: {
+			toggle: (name, on) => (on ? root.classes.add(name) : root.classes.delete(name)),
+		},
+	};
+	applyTheme(root, "dark");
+	assert.deepEqual(root.attributes, { "data-bs-theme": "dark" });
+	assert.deepEqual([...root.classes], ["keep", "dark"]);
+	applyTheme(root, "light");
+	assert.deepEqual(root.attributes, { "data-bs-theme": "light" });
+	assert.deepEqual([...root.classes], ["keep"]);
 });

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { resolveTheme, startPreference, THEME_KEY, THEME_RESET_KEY } from "src/modules/Theme";
+import { applyTheme, resolveTheme, startPreference, THEME_KEY, THEME_RESET_KEY } from "src/modules/Theme";
 
 const SYSTEM_DARK = "(prefers-color-scheme: dark)";
 
@@ -52,7 +52,7 @@ export const ThemeProvider = ({ children }) => {
 			meta.media = meta.dataset.theme === theme ? "all" : "not all";
 	}, [theme]);
 
-	document.documentElement.setAttribute("data-bs-theme", theme);
+	applyTheme(document.documentElement, theme);
 	return <ThemeContext.Provider value={{ theme, preference, setPreference }}>{children}</ThemeContext.Provider>;
 };
 

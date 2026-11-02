@@ -35,3 +35,15 @@ export const resolveTheme = (preference, systemDark) => {
 	if (preference === "light" || preference === "dark") return preference;
 	return systemDark ? "dark" : "light";
 };
+
+/**
+ * Shows a theme in both UIs on the root element (<html>): data-bs-theme for Tabler, the dark class for Tailwind and
+ * shadcn/ui (their dark: variant and the .dark design tokens)
+ *
+ * @param {{ setAttribute: Function, classList: { toggle: Function } }} root
+ * @param {"light"|"dark"} theme
+ */
+export const applyTheme = (root, theme) => {
+	root.setAttribute("data-bs-theme", theme);
+	root.classList.toggle("dark", theme === "dark");
+};
