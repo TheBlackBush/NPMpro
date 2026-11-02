@@ -77,7 +77,7 @@ export function useColumns({ onEdit, onDelete } = {}) {
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
@@ -177,7 +177,7 @@ export function useColumns({ onEdit, onDelete } = {}) {
 					);
 				},
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),

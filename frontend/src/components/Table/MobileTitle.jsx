@@ -18,17 +18,15 @@ function MobileTitle({ row, titleCell }) {
 	};
 	const summary = summaryText(columns, row.original);
 	return (
-		<div className="d-md-none">
-			<div className="d-flex align-items-start gap-2">
+		<div className="md:hidden">
+			<div className="flex items-start gap-2">
 				<div className={titleClass()}>
 					{flexRender(titleCell.column.columnDef.cell, titleCell.getContext())}
 				</div>
 				{parts.end.map(render)}
 			</div>
-			{parts.below.length > 0 ? (
-				<div className="mt-1 d-flex flex-wrap gap-1">{parts.below.map(render)}</div>
-			) : null}
-			{summary ? <div className="mt-1 small text-secondary text-break">{summary}</div> : null}
+			{parts.below.length > 0 ? <div className="mt-1 flex flex-wrap gap-1">{parts.below.map(render)}</div> : null}
+			{summary ? <div className="mt-1 break-words text-xs text-muted-foreground">{summary}</div> : null}
 		</div>
 	);
 }

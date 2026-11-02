@@ -70,7 +70,7 @@ export function useColumns({
 					return <GravatarFormatter url={value.avatar} name={value.name} decorative />;
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 					mobile: "hide",
 				},
 			}),
@@ -113,7 +113,7 @@ export function useColumns({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "w-1 text-nowrap",
+					className: "w-px whitespace-nowrap",
 					mobile: "hide",
 				},
 			}),
@@ -218,7 +218,7 @@ export function useColumns({
 					</span>
 				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),

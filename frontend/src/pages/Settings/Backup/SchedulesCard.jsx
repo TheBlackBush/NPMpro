@@ -249,7 +249,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 			columnHelper.accessor((row) => row.keep, {
 				id: "keep",
 				// phones show the count in the Protection summary
-				meta: { className: "d-none d-xl-table-cell" },
+				meta: { className: "hidden xl:table-cell" },
 				header: label("settings.backup.schedule.column.keep"),
 				cell: (info) => info.getValue(),
 			}),
@@ -271,7 +271,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 						onDelete={onDelete}
 					/>
 				),
-				meta: { className: "text-end text-nowrap", mobile: "title-end" },
+				meta: { className: "text-right whitespace-nowrap", mobile: "title-end" },
 			}),
 		];
 	}, [categories, timeZone, running, onRun, onEdit, onToggle, onDelete]);

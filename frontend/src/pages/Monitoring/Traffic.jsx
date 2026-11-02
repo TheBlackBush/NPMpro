@@ -311,7 +311,7 @@ function RecentTable({ rows }) {
 					</span>
 				),
 				// a long host name wraps at its dots, so the request column keeps room on tablets
-				meta: { className: "text-wrap" },
+				meta: { className: "whitespace-normal" },
 			}),
 			columnHelper.accessor("path", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.request" }),

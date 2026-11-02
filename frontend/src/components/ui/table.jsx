@@ -3,12 +3,15 @@ import { cn } from "cn"
 
 function Table({
   className,
+  containerClassName, // NPMpro: the caller can style the container
+  containerProps, // NPMpro: the scroll layout makes the container a keyboard-reachable region
   ...props
 }) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className={cn("relative w-full overflow-x-auto", containerClassName)} // NPMpro: containerClassName
+      {...containerProps}
     >
       <table
         data-slot="table"

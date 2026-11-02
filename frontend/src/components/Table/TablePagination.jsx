@@ -1,28 +1,29 @@
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
-import cn from "clsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "src/components/ui/button";
 import { intl, T } from "src/locale";
 import { pageNumbers } from "src/modules/Pagination";
 
 function PageLink({ page, current, onPage }) {
 	const active = page === current;
 	return (
-		<li className={cn("page-item", active && "active")}>
-			<button
+		<li>
+			<Button
 				type="button"
-				className="page-link"
+				variant={active ? "default" : "ghost"}
+				size="icon"
 				onClick={() => onPage(page)}
 				aria-current={active ? "page" : undefined}
 				aria-label={intl.formatMessage({ id: "pagination.page" }, { page: page + 1 })}
 			>
 				{page + 1}
-			</button>
+			</Button>
 		</li>
 	);
 }
 
 /**
- * Tabler pagination for a client-side paginated table, in a card footer with "Showing 1 to 10 of 23". Renders
- * nothing when everything fits on one page.
+ * Pagination for a client-side paginated table, in a card footer with "Showing 1 to 10 of 23". Renders nothing when
+ * everything fits on one page.
  *
  * @param {Object}   props
  * @param {number}   props.pageIndex  zero-based current page
@@ -36,43 +37,45 @@ function TablePagination({ pageIndex, pageSize, total, onPage }) {
 	const from = pageIndex * pageSize + 1;
 	const to = Math.min(total, from + pageSize - 1);
 	return (
-		<div className="card-footer d-flex flex-wrap align-items-center gap-2">
-			<p className="m-0 text-secondary">
+		<div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
+			<p className="m-0 text-sm text-muted-foreground">
 				<T id="pagination.showing" data={{ from, to, total }} />
 			</p>
-			<nav className="ms-auto" aria-label={intl.formatMessage({ id: "pagination.label" })}>
-				<ul className="pagination m-0">
-					<li className={cn("page-item", pageIndex === 0 && "disabled")}>
-						<button
+			<nav className="ml-auto" aria-label={intl.formatMessage({ id: "pagination.label" })}>
+				<ul className="m-0 flex list-none flex-wrap items-center gap-1 p-0">
+					<li>
+						<Button
 							type="button"
-							className="page-link"
+							variant="ghost"
+							size="icon"
 							onClick={() => onPage(pageIndex - 1)}
 							disabled={pageIndex === 0}
 							aria-label={intl.formatMessage({ id: "pagination.previous" })}
 						>
-							<IconChevronLeft className="icon" aria-hidden="true" />
-						</button>
+							<ChevronLeft aria-hidden="true" />
+						</Button>
 					</li>
 					{pageNumbers(pageIndex, count).map((page, index) =>
 						page === null ? (
 							// biome-ignore lint/suspicious/noArrayIndexKey: a gap has no identity of its own
-							<li key={`gap-${index}`} className="page-item disabled">
-								<span className="page-link">…</span>
+							<li key={`gap-${index}`} className="px-2 text-muted-foreground" aria-hidden="true">
+								…
 							</li>
 						) : (
 							<PageLink key={page} page={page} current={pageIndex} onPage={onPage} />
 						),
 					)}
-					<li className={cn("page-item", pageIndex >= count - 1 && "disabled")}>
-						<button
+					<li>
+						<Button
 							type="button"
-							className="page-link"
+							variant="ghost"
+							size="icon"
 							onClick={() => onPage(pageIndex + 1)}
 							disabled={pageIndex >= count - 1}
 							aria-label={intl.formatMessage({ id: "pagination.next" })}
 						>
-							<IconChevronRight className="icon" aria-hidden="true" />
-						</button>
+							<ChevronRight aria-hidden="true" />
+						</Button>
 					</li>
 				</ul>
 			</nav>
