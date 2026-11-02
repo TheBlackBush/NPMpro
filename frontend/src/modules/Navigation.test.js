@@ -5,6 +5,7 @@ import en from "../../translations/ui/en.json" with { type: "json" };
 import {
 	breadcrumbs,
 	canSeePage,
+	firstPage,
 	groupAlert,
 	helpDocOf,
 	locate,
@@ -60,7 +61,7 @@ it("hides Traffic and CrowdSec while monitoring is off, GoAccess while it is off
 	assert.equal(canSeePage(goaccessPage, { ...admin, goaccess: false }), false);
 });
 
-it("finds the group and page of a route: the longest route wins, Settings belongs to Admin", () => {
+it("finds the group and page of a route: an exact route, Settings belongs to Admin", () => {
 	const at = (path) => {
 		const found = locate(path);
 		return found && [found.group.id, found.page.id];
@@ -73,6 +74,10 @@ it("finds the group and page of a route: the longest route wins, Settings belong
 	assert.deepEqual(at("/settings/nginx"), ["admin", "settings-nginx"]);
 	assert.deepEqual(at("/monitoring/crowdsec"), ["monitoring", "crowdsec"]);
 	assert.deepEqual(at("/users"), ["admin", "users"]);
+	// no page has child routes: a route below a page belongs to none (the not-found page)
+	assert.equal(at("/certificates/foo"), null);
+	assert.equal(at("/users/x"), null);
+	assert.equal(at("/nginx/proxy/1"), null);
 	// not a page: nothing is active
 	assert.equal(at("/nope"), null);
 	assert.equal(at("/settings/unknown"), null);
@@ -147,6 +152,26 @@ it("covers every route of Router.jsx with a page, and every page's title has a t
 	assert.equal(new Set(allPages.map((page) => page.id)).size, allPages.length);
 });
 
+it("does not throw for a group whose first visible page is an external link", () => {
+	const group = {
+		id: "ext",
+		titleKey: "monitoring",
+		panel: true,
+		pages: [
+			{ id: "goaccess", href: "/goaccess", titleKey: "nav.goaccess" },
+			{ id: "dashboard", to: "/", titleKey: "dashboard" },
+		],
+	};
+	assert.equal(firstPage(group).id, "dashboard");
+	const onlyExternal = { ...group, pages: [group.pages[0]] };
+	assert.equal(firstPage(onlyExternal).href, "/goaccess");
+	assert.equal(locate("/goaccess", [onlyExternal]), null);
+	assert.deepEqual(
+		breadcrumbs("/", [{ ...group, pages: [group.pages[0], { ...group.pages[1], id: "b" }, group.pages[1]] }]),
+		[{ titleKey: "monitoring", to: "/" }, { titleKey: "dashboard" }],
+	);
+});
+
 it("reads a page's badge and a group's mark from the host report", () => {
 	const report = {
 		proxy: 4,
@@ -154,10 +179,10 @@ it("reads a page's badge and a group's mark from the host report", () => {
 		dead: 0,
 		stream: 2,
 		certificate: 3,
-		access_list: 1,
+		accessList: 1,
 		errors: { proxy: 1, redirection: 0, dead: 0, stream: 0 },
-		certificates_expiring: 1,
-		certificates_expired: 1,
+		certificatesExpiring: 1,
+		certificatesExpired: 1,
 	};
 	const page = (id) => allPages.find((item) => item.id === id);
 	assert.deepEqual(pageBadge(page("proxy-hosts"), report), { count: 4, errors: 1, expiring: 0 });
@@ -169,7 +194,7 @@ it("reads a page's badge and a group's mark from the host report", () => {
 	const group = (id) => NAV_GROUPS.find((item) => item.id === id);
 	assert.equal(groupAlert(group("hosts"), report), "error");
 	assert.equal(groupAlert(group("security"), report), "warning");
-	assert.equal(groupAlert(group("security"), { ...report, certificates_expiring: 0, certificates_expired: 0 }), null);
+	assert.equal(groupAlert(group("security"), { ...report, certificatesExpiring: 0, certificatesExpired: 0 }), null);
 	assert.equal(groupAlert(group("admin"), report), null);
 	assert.equal(groupAlert(group("hosts"), undefined), null);
 });

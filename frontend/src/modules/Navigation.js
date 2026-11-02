@@ -118,7 +118,7 @@ export const NAV_GROUPS = [
 				icon: "Lock",
 				section: ACCESS_LISTS,
 				help: "AccessLists",
-				badge: "access_list",
+				badge: "accessList",
 			},
 		],
 	},
@@ -195,12 +195,9 @@ export const visibleGroups = (user, groups = NAV_GROUPS) =>
 // trailing slashes of a route
 const TRAILING_SLASHES = /\/+$/u;
 
-// a route and the pages below it: /certificates covers /certificates/x, "/" only itself
-const covers = (to, pathname) => to === pathname || (to !== "/" && pathname.startsWith(`${to}/`));
-
 /**
- * The group and page a route belongs to: the page with the longest route that covers it (/certificates/dns-credentials
- * is DNS credentials, not Certificates); null for a route of no page (the not-found page)
+ * The group and page a route belongs to: the page whose route it is exactly (no page has child routes, so
+ * /certificates/foo belongs to none); null for a route of no page (the not-found page)
  *
  * @param   {string}   pathname
  * @param   {Object[]} [groups]
@@ -208,16 +205,21 @@ const covers = (to, pathname) => to === pathname || (to !== "/" && pathname.star
  */
 export function locate(pathname, groups = NAV_GROUPS) {
 	const path = pathname.length > 1 ? pathname.replace(TRAILING_SLASHES, "") : pathname;
-	let found = null;
 	for (const group of groups) {
-		for (const page of group.pages) {
-			if (page.to && covers(page.to, path) && (!found || page.to.length > found.page.to.length)) {
-				found = { group, page };
-			}
-		}
+		const page = group.pages.find((item) => item.to === path);
+		if (page) return { group, page };
 	}
-	return found;
+	return null;
 }
+
+/**
+ * The page a group's tab or crumb opens: its first page with an internal route, else its first page (an external
+ * link such as GoAccess, with href and no to)
+ *
+ * @param   {Object} group
+ * @returns {Object}
+ */
+export const firstPage = (group) => group.pages.find((page) => page.to) ?? group.pages[0];
 
 /**
  * The breadcrumb trail of a route: the group, a Settings section's category, the page (titleKey each; to on the
@@ -232,8 +234,8 @@ export function breadcrumbs(pathname, groups = NAV_GROUPS) {
 	if (!found) return [];
 	const { group, page } = found;
 	if (group.pages.length === 1) return [{ titleKey: page.titleKey }];
-	const first = group.pages.find((item) => item.to);
-	const trail = [{ titleKey: group.titleKey, to: first.to }];
+	const first = firstPage(group);
+	const trail = [{ titleKey: group.titleKey, ...(first.to && { to: first.to }) }];
 	if (page.category) {
 		trail.push({ titleKey: SETTINGS_CATEGORIES.find(({ id }) => id === page.category).labelKey });
 	}
@@ -280,7 +282,7 @@ export function pageBadge(page, report) {
 		count: report[page.badge],
 		errors: report.errors?.[page.badge] ?? 0,
 		expiring:
-			page.badge === "certificate" ? (report.certificates_expiring ?? 0) + (report.certificates_expired ?? 0) : 0,
+			page.badge === "certificate" ? (report.certificatesExpiring ?? 0) + (report.certificatesExpired ?? 0) : 0,
 	};
 }
 
