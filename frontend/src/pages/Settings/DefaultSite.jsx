@@ -71,7 +71,7 @@ function HtmlFields() {
 				name="html"
 				label={<T id="settings.default-site.html" />}
 				as="textarea"
-				controlClassName="font-monospace"
+				controlClassName="font-mono"
 				spellCheck={false}
 				placeholder={intl.formatMessage({ id: "settings.default-site.html.placeholder" })}
 				rows={14}

@@ -6,7 +6,9 @@ import {
 	controlAria,
 	joinIds,
 	labelClass,
+	legendClass,
 	numberInputValue,
+	sectionClass,
 	switchListClass,
 	valueAt,
 } from "./FormFields.js";
@@ -52,27 +54,39 @@ it("keeps the hint without an error and adds the caller's ids", () => {
 	assert.equal(controlAria({ id: "x" })["aria-describedby"], undefined);
 });
 
-it("marks a required label", () => {
-	assert.equal(labelClass(true), "form-label required");
-	assert.equal(labelClass(false), "form-label");
-	assert.equal(labelClass(), "form-label");
+it("classes a bare label; a required one gets a drawn asterisk", () => {
+	assert.equal(labelClass(), "text-sm font-medium leading-snug");
+	assert.equal(
+		labelClass(true),
+		"text-sm font-medium leading-snug after:ml-1 after:text-destructive after:content-['*']",
+	);
+});
+
+it("classes the legend of a section", () => {
+	assert.equal(legendClass(), "mb-1.5 font-medium text-sm");
+	assert.equal(legendClass({ heading: true }), "mb-1.5 font-medium text-base");
+	assert.equal(legendClass({ hideLegend: true }), "sr-only");
+	assert.equal(legendClass({ heading: true, hideLegend: true }), "sr-only");
+});
+
+it("classes a section's fieldset: boxed is a bordered panel", () => {
+	assert.equal(sectionClass(), "flex min-w-0 flex-col gap-3");
+	assert.equal(sectionClass({ boxed: true }), "flex min-w-0 flex-col gap-3 rounded-lg border bg-muted/30 p-4");
 });
 
 it("builds the classes of a choice group and its options", () => {
-	assert.equal(choiceGroupClass(), "form-selectgroup");
-	assert.equal(choiceGroupClass({ variant: "pills" }), "form-selectgroup form-selectgroup-pills");
-	assert.equal(choiceGroupClass({ fill: true }), "form-selectgroup w-100");
-	assert.equal(
-		choiceGroupClass({ variant: "boxes", vertical: true }),
-		"form-selectgroup form-selectgroup-boxes d-flex flex-column",
-	);
-	assert.equal(choiceItemClass(), "form-selectgroup-item");
-	assert.equal(choiceItemClass({ fill: true }), "form-selectgroup-item flex-fill");
-	assert.equal(choiceItemClass({ disabled: true }), "form-selectgroup-item opacity-50 cursor-not-allowed");
+	assert.equal(choiceGroupClass(), "flex flex-row flex-wrap gap-2");
+	assert.equal(choiceGroupClass({ fill: true }), "flex flex-row flex-wrap gap-2");
+	assert.equal(choiceGroupClass({ variant: "boxes", vertical: true }), "flex flex-col gap-2");
+	assert.equal(choiceItemClass(), "rounded-lg");
+	assert.equal(choiceItemClass({ variant: "pills" }), "rounded-full");
+	assert.equal(choiceItemClass({ fill: true }), "rounded-lg min-w-0 flex-1");
+	assert.equal(choiceItemClass({ disabled: true }), "rounded-lg cursor-not-allowed opacity-50");
+	assert.equal(choiceItemClass({ variant: "boxes", fill: true }), "rounded-lg w-full");
 });
 
 it("lays out a switch list in one or two columns", () => {
-	assert.equal(switchListClass(), "vstack gap-3");
-	assert.equal(switchListClass(1), "vstack gap-3");
-	assert.equal(switchListClass(2), "row row-cols-1 row-cols-md-2 gx-4");
+	assert.equal(switchListClass(), "flex flex-col gap-3");
+	assert.equal(switchListClass(1), "flex flex-col gap-3");
+	assert.equal(switchListClass(2), "grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2");
 });

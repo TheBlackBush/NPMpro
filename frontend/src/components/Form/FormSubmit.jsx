@@ -72,16 +72,13 @@ function FormSubmit({
 			</div>
 		);
 	}
-	// takes the room left next to the other footer buttons without asking for more (a zero flex basis, which no
-	// Bootstrap utility sets), so a long note wraps inside it instead of pushing the footer onto two lines
+	// takes the room left next to the other footer buttons without asking for more (a zero flex basis: flex-1), so a
+	// long note wraps inside it instead of pushing the footer onto two lines
 	return (
-		<div
-			className={cn("d-flex align-items-center justify-content-end", className)}
-			style={{ flex: "1 1 0", minWidth: 0 }}
-		>
-			<FormErrorNote id={noteId} labels={labels} messageId={messageId} className="me-3 text-end" />
+		<div className={cn("flex min-w-0 flex-1 items-center justify-end", className)}>
+			<FormErrorNote id={noteId} labels={labels} messageId={messageId} className="mr-3 text-right" />
 			{showReason ? (
-				<span id={reasonId} className="text-secondary small me-3 text-end">
+				<span id={reasonId} className="mr-3 text-right text-muted-foreground text-sm">
 					<T id="form.no-changes" />
 				</span>
 			) : null}

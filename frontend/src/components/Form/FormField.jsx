@@ -1,15 +1,18 @@
-import cn from "clsx";
 import { useLayoutEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { components } from "react-select";
-import { controlAria, joinIds, labelClass } from "src/modules/FormFields";
+import { Field, FieldDescription, FieldError, FieldLabel } from "src/components/ui/field";
+import { Input } from "src/components/ui/input";
+import { NativeSelect } from "src/components/ui/native-select";
+import { Textarea } from "src/components/ui/textarea";
+import { controlAria, joinIds } from "src/modules/FormFields";
 import { useFieldError } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 
 /**
- * One field as Tabler's form elements: the label (Tabler's red asterisk when required), the control, the error
- * (invalid-feedback) and the hint (form-hint), with stable ids. The control is described by the error and the hint
- * together (the error never replaces the hint) and marked invalid while the error shows.
+ * One field on shadcn's Field: the label (a red asterisk, hidden from screen readers, when required), the control,
+ * the error and the hint, with stable ids. The control is described by the error and the hint together (the error
+ * never replaces the hint), marked invalid while the error shows and aria-required when required.
  *
  * @param {Object}      props
  * @param {string}      props.id             the control's id
@@ -20,29 +23,31 @@ import { PasswordControl } from "./PasswordInput";
  * @param {string}      [props.describedBy]  more ids that describe the control
  * @param {string}      [props.className]    of the wrapper, "mb-3" by default
  * @param {Function}    props.children       (control) => the control, with control = { id, aria-invalid,
- *                                           aria-describedby } to spread on it
+ *                                           aria-describedby, aria-required } to spread on it
  */
 function FormField({ id, label, required = false, hint, error = null, describedBy, className = "mb-3", children }) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
 	return (
-		<div className={className}>
+		<Field className={className} data-invalid={error ? true : undefined}>
 			{label ? (
-				<label className={labelClass(required)} htmlFor={id} id={aria.labelId}>
+				<FieldLabel htmlFor={id} id={aria.labelId}>
 					{label}
-				</label>
+					{required ? (
+						<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
+							*
+						</span>
+					) : null}
+				</FieldLabel>
 			) : null}
-			{children({ id, "aria-invalid": aria["aria-invalid"], "aria-describedby": aria["aria-describedby"] })}
-			{error ? (
-				<div className="invalid-feedback d-block" id={aria.errorId}>
-					{error}
-				</div>
-			) : null}
-			{hint ? (
-				<div className="form-hint" id={aria.hintId}>
-					{hint}
-				</div>
-			) : null}
-		</div>
+			{children({
+				id,
+				"aria-invalid": aria["aria-invalid"],
+				"aria-describedby": aria["aria-describedby"],
+				"aria-required": required ? "true" : undefined,
+			})}
+			{error ? <FieldError id={aria.errorId}>{error}</FieldError> : null}
+			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
+		</Field>
 	);
 }
 
@@ -59,7 +64,7 @@ function FormField({ id, label, required = false, hint, error = null, describedB
  * @param {string}  [props.className]          of the field
  * @param {Object}  [props.registerOptions]    register's options (onChange, setValueAs)
  * @param {"input"|"textarea"} [props.as]
- * @param {string}  [props.controlClassName]   more classes of the control (font-monospace)
+ * @param {string}  [props.controlClassName]   more classes of the control (font-mono)
  * @param {Object}  props.controlProps         the rest goes to the control (type, autoComplete, placeholder, ...)
  */
 function TextField({
@@ -71,12 +76,13 @@ function TextField({
 	describedBy,
 	className,
 	registerOptions,
-	as: Control = "input",
+	as = "input",
 	controlClassName,
 	...controlProps
 }) {
 	const { register } = useFormContext();
 	const error = useFieldError(name);
+	const Control = as === "textarea" ? Textarea : Input;
 	return (
 		<FormField
 			id={id}
@@ -93,7 +99,7 @@ function TextField({
 					{...register(name, registerOptions)}
 					{...control}
 					required={required}
-					className={cn("form-control", error && "is-invalid", controlClassName)}
+					className={controlClassName}
 				/>
 			)}
 		</FormField>
@@ -128,15 +134,16 @@ function SelectField({
 			className={className}
 		>
 			{(control) => (
-				<select
+				<NativeSelect
 					{...selectProps}
 					{...register(name, registerOptions)}
 					{...control}
 					required={required}
-					className={cn("form-select", error && "is-invalid")}
+					// the wrapper of NativeSelect is shrink-to-fit; a field's select fills its row
+					className="w-full"
 				>
 					{children}
-				</select>
+				</NativeSelect>
 			)}
 		</FormField>
 	);
