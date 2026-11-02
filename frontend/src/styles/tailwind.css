@@ -6,13 +6,13 @@
 @import "tailwindcss/theme.css" layer(theme) prefix(tw);
 @import "tailwindcss/utilities.css" layer(utilities) prefix(tw);
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn-tailwind.css";
 
 /* Tailwind's reset (preflight) and shadcn's base styles reach only the new parts: shadcn components (every one has a
    data-slot, their pop-ups too) and what they contain, down to an old page ([data-legacy-ui]), which keeps Tabler's
    look exactly. Inside the layers Tailwind comes after Tabler (tabler.css), so it wins whatever the specificity. */
 @layer base {
-	/* biome-ignore lint/suspicious/useBaseline: @scope is in every browser the app supports (Chrome 118, Safari 17.4, Firefox 146) */
+	/* biome-ignore lint/suspicious/useBaseline: @scope needs Chrome 118, Safari 17.4, Firefox 146; older browsers skip the reset of the new parts only, the old pages are unaffected */
 	@scope ([data-slot]) to ([data-legacy-ui]) {
 		@import "tailwindcss/preflight.css";
 
@@ -75,7 +75,7 @@
 }
 
 /* shadcn's neutral theme with the logo's violet as the primary colour: #7a3bff carries white text at 5.4:1 (AA), the
-   dark theme's #a98bff dark text at about 8:1. The brand gradient is for small accents only (the active rail marker,
+   dark theme's #a98bff dark text at 7.3:1. The brand gradient is for small accents only (the active rail marker,
    the loading bar). */
 :root {
 	--brand-gradient: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
