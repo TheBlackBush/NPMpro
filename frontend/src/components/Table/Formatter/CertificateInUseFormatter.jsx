@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { TrueFalseFormatter } from "src/components";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { T } from "src/locale";
@@ -44,20 +43,17 @@ const getSectionStream = (items) => {
 };
 
 export function CertificateInUseFormatter({ proxyHosts, redirectionHosts, deadHosts, streams }) {
-	const [open, setOpen] = useState(false);
 	const totalCount = proxyHosts.length + redirectionHosts.length + deadHosts.length + streams.length;
 	if (totalCount === 0) {
 		return <TrueFalseFormatter value={false} falseLabel="certificate.not-in-use" falseColor="secondary" />;
 	}
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover>
 			<PopoverTrigger asChild>
 				<button
 					type="button"
 					className="inline-block rounded-4xl p-0 text-left align-baseline focus-visible:ring-[3px] focus-visible:ring-ring/50"
-					onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
-					onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
 				>
 					<TrueFalseFormatter value trueLabel="certificate.in-use" />
 				</button>

@@ -6,19 +6,19 @@ import { cn } from "src/lib/utils";
 // light theme, which is darkened (6.6:1). The dot is the token colour itself (at least 4.7:1 against the page).
 const tones = {
 	success: {
-		badge: "border-success/30 bg-success/15 text-success hover:bg-success/15",
+		badge: "border-success/30 bg-success/15 text-success",
 		dot: "bg-success",
 	},
 	warning: {
-		badge: "border-warning/30 bg-warning/15 text-warning hover:bg-warning/15",
+		badge: "border-warning/30 bg-warning/15 text-warning",
 		dot: "bg-warning",
 	},
 	destructive: {
-		badge: "border-destructive/30 bg-destructive/15 text-[color-mix(in_oklab,var(--destructive)_75%,black)] hover:bg-destructive/15 dark:text-destructive",
+		badge: "border-destructive/30 bg-destructive/15 text-[color-mix(in_oklab,var(--destructive)_75%,black)] dark:text-destructive",
 		dot: "bg-destructive",
 	},
 	muted: {
-		badge: "border-border bg-muted text-foreground hover:bg-muted",
+		badge: "border-border bg-muted text-foreground",
 		dot: "bg-muted-foreground",
 	},
 };
