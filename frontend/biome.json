@@ -99,6 +99,7 @@
 					"preset": "recommended",
 					"a11y": {
 						"useFocusableInteractive": "off",
+						"useKeyWithClickEvents": "off",
 						"useSemanticElements": "off"
 					},
 					"correctness": {
