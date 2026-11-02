@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { Ellipsis } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFormState } from "react-hook-form";
 import { intl, T } from "src/locale";
 import { errorCountOf, tabErrorCounts, tabsInMenu } from "src/modules/ModalTabs";
@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/ui/tabs";
 import { useFormTabs, useReadOnly } from "./HookForm";
 
 const NO_ENTRIES = {};
+// tab id -> label id, for the panes (a pane whose tab sits in More has no visible trigger to name it)
+const PaneLabels = createContext(NO_ENTRIES);
 // the gap between two tabs of the row (TabsList, variant line: tw:gap-1)
 const ROW_GAP = 4;
 // the tabs' own box: the same in the row and in the measuring copy, so the copy measures what the row shows
@@ -90,6 +92,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 	const errorsId = (id) => `${baseId}-errors-${id}`;
 	const counts = tabErrorCounts(tabs, errors);
 	const moreCount = errorCountOf(counts, moved);
+	const labelIds = useMemo(() => Object.fromEntries(tabs.map((tab) => [tab.id, tab.labelId])), [tabs]);
 	const shown = tabs.filter((tab) => !moved.includes(tab.id));
 	const inMenu = tabs.filter((tab) => moved.includes(tab.id));
 
@@ -215,7 +218,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 				))}
 				<ErrorDescription id={errorsId("more")} count={moreCount} />
 			</div>
-			{children}
+			<PaneLabels.Provider value={labelIds}>{children}</PaneLabels.Provider>
 		</Tabs>
 	);
 }
@@ -234,8 +237,16 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
  */
 function TabPane({ id, selfReadOnly = false, children }) {
 	const readOnly = useReadOnly();
+	const labelId = useContext(PaneLabels)[id];
+	// Radix names the pane through its tab (aria-labelledby, which wins); with the tab in More that id points at
+	// nothing, so the label is the name
 	return (
-		<TabsContent value={id} forceMount className="tw:data-[state=inactive]:hidden">
+		<TabsContent
+			value={id}
+			forceMount
+			aria-label={labelId ? intl.formatMessage({ id: labelId }) : undefined}
+			className="tw:data-[state=inactive]:hidden"
+		>
 			<div data-legacy-ui="">
 				{readOnly && !selfReadOnly ? <fieldset disabled>{children}</fieldset> : children}
 			</div>

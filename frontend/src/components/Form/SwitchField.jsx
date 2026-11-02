@@ -16,6 +16,7 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 				orientation="horizontal"
 				data-invalid={error ? true : undefined}
 				data-disabled={inputProps.disabled ? true : undefined}
+				className="tw:[&:has(input:disabled)>[data-slot=field-content]]:opacity-50"
 			>
 				<FieldContent>
 					<FieldLabel htmlFor={id} id={aria.labelId} className="tw:font-normal">

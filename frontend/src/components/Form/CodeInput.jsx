@@ -69,7 +69,14 @@ function CodeInput({
 		return value;
 	};
 	return (
-		<FormField id={id} label={label} hint={hint} error={error} className={className} ownControl>
+		<FormField
+			id={id}
+			label={label}
+			hint={hint}
+			error={error}
+			className={cn("tw:@container", className)}
+			ownControl
+		>
 			{(control) => (
 				<InputOTP
 					{...control}
@@ -97,7 +104,9 @@ function CodeInput({
 										index={slot}
 										aria-invalid={control["aria-invalid"]}
 										className={cn(
-											"tw:size-10 tw:text-lg",
+											length > CODE_LENGTH
+												? "tw:size-7 tw:text-base tw:@min-[18rem]:size-8 tw:@min-[22rem]:size-10 tw:@min-[22rem]:text-lg"
+												: "tw:size-10 tw:text-lg",
 											type === "alphanumeric" && "tw:uppercase",
 										)}
 									/>
@@ -130,7 +139,7 @@ function useRefusedCodeReset(methods) {
 		if (submitCount === 0 || !refused.current) return;
 		const { useBackup } = refused.current;
 		refused.current = null;
-		reset({ ...CODE_VALUES, useBackup }, { keepIsSubmitted: false, keepSubmitCount: false });
+		reset({ ...CODE_VALUES, useBackup }, { keepIsSubmitted: false, keepSubmitCount: false, keepFieldsRef: true });
 		setFocus(useBackup ? "backupCode" : "code");
 	}, [submitCount, reset, setFocus]);
 	return useCallback((useBackup) => {

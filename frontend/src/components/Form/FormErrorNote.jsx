@@ -23,6 +23,12 @@ const labelInForm = (form, name) => {
 	if (!control) return null;
 	const own = control.getAttribute("aria-label");
 	if (own) return own.trim();
+	// a choice group is named by its legend, not by the label of its first option
+	if (control.closest("[role=radiogroup]")) {
+		const legend = control.closest("fieldset")?.querySelector(":scope > legend");
+		const text = legend?.textContent?.trim();
+		if (text) return text;
+	}
 	const byFor = control.id ? form.querySelector(`label[for="${CSS.escape(control.id)}"]`) : null;
 	if (byFor) return byFor.textContent?.trim() || null;
 	// else the nearest label above the control (custom selects keep their input in nested wrappers): an old form label,

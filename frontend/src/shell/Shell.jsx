@@ -99,27 +99,30 @@ function ShellHeader({ trail, user, helpDoc, canFold, onSearch, loading }) {
 					/>
 				</>
 			)}
-			{loading ? <Skeleton className="tw:h-4 tw:w-48" /> : null}
-			<Breadcrumb aria-label={text("nav.breadcrumb")}>
-				<BreadcrumbList>
-					{trail.map((crumb, index) => (
-						<Fragment key={crumb.titleKey}>
-							{index > 0 && <BreadcrumbSeparator />}
-							<BreadcrumbItem>
-								{index === trail.length - 1 ? (
-									<BreadcrumbPage>{text(crumb.titleKey)}</BreadcrumbPage>
-								) : crumb.to ? (
-									<BreadcrumbLink asChild>
-										<Link to={crumb.to}>{text(crumb.titleKey)}</Link>
-									</BreadcrumbLink>
-								) : (
-									<span>{text(crumb.titleKey)}</span>
-								)}
-							</BreadcrumbItem>
-						</Fragment>
-					))}
-				</BreadcrumbList>
-			</Breadcrumb>
+			{loading ? (
+				<Skeleton className="tw:h-4 tw:w-48" />
+			) : (
+				<Breadcrumb aria-label={text("nav.breadcrumb")}>
+					<BreadcrumbList>
+						{trail.map((crumb, index) => (
+							<Fragment key={crumb.titleKey}>
+								{index > 0 && <BreadcrumbSeparator />}
+								<BreadcrumbItem>
+									{index === trail.length - 1 ? (
+										<BreadcrumbPage>{text(crumb.titleKey)}</BreadcrumbPage>
+									) : crumb.to ? (
+										<BreadcrumbLink asChild>
+											<Link to={crumb.to}>{text(crumb.titleKey)}</Link>
+										</BreadcrumbLink>
+									) : (
+										<span>{text(crumb.titleKey)}</span>
+									)}
+								</BreadcrumbItem>
+							</Fragment>
+						))}
+					</BreadcrumbList>
+				</Breadcrumb>
+			)}
 			<Button
 				variant="outline"
 				className="tw:ms-auto tw:w-56 tw:justify-start tw:gap-2 tw:text-muted-foreground tw:shadow-none"

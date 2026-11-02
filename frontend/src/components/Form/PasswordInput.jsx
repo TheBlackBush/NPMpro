@@ -27,6 +27,7 @@ function PasswordControl({ invalid = false, className, ...inputProps }) {
 					size="icon-xs"
 					aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
 					aria-pressed={visible}
+					onMouseDown={(event) => event.preventDefault()}
 					onClick={() => setVisible((v) => !v)}
 				>
 					{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
