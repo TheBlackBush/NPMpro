@@ -1,0 +1,5 @@
+/* The Tabler UI (and the brand touches on top of it) in the lowest cascade layer: the new UI's Tailwind layers
+   (tailwind.css) come after it, so inside the new parts Tailwind wins over Tabler's element rules (a:hover,
+   :focus-visible) whatever their specificity. Inside the layer Tabler and brand.css keep their order. */
+@import "@tabler/core/dist/css/tabler.min.css" layer(tabler);
+@import "./brand.css" layer(tabler);
