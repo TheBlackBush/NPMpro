@@ -9,10 +9,12 @@ const SORT_ICON = { asc: ArrowUp, desc: ArrowDown };
 
 // scroll tables are not stacked: they keep their header on every width
 function TableHeader({ tableInstance, scroll = false }) {
+	// stacked layout: explicit roles, see TableLayout
+	const role = (name) => (scroll ? undefined : name);
 	return (
-		<UiTableHeader className={cn(!scroll && "max-md:hidden")}>
+		<UiTableHeader className={cn(!scroll && "max-md:hidden")} role={role("rowgroup")}>
 			{tableInstance.getHeaderGroups().map((headerGroup) => (
-				<TableRow key={headerGroup.id} className="hover:bg-transparent">
+				<TableRow key={headerGroup.id} className="hover:bg-transparent" role={role("row")}>
 					{headerGroup.headers.map((header) => {
 						const { column } = header;
 						const className = cn(
@@ -23,7 +25,7 @@ function TableHeader({ tableInstance, scroll = false }) {
 						const label = typeof column.columnDef.header === "string" ? column.columnDef.header : null;
 						if (!label || !column.getCanSort()) {
 							return (
-								<TableHead key={header.id} className={className}>
+								<TableHead key={header.id} className={className} role={role("columnheader")}>
 									{label}
 								</TableHead>
 							);
@@ -31,7 +33,12 @@ function TableHeader({ tableInstance, scroll = false }) {
 						const sorted = column.getIsSorted();
 						const Icon = SORT_ICON[sorted] ?? ArrowUpDown;
 						return (
-							<TableHead key={header.id} className={className} aria-sort={ariaSort(sorted)}>
+							<TableHead
+								key={header.id}
+								className={className}
+								aria-sort={ariaSort(sorted)}
+								role={role("columnheader")}
+							>
 								<Button
 									type="button"
 									variant="ghost"

@@ -20,8 +20,11 @@ function TableLayout(props) {
 	}, [scroll, props.label]);
 	// a scroll area must be reachable by keyboard
 	const scrollArea = scroll ? { tabIndex: 0, role: "region", "aria-label": props.label } : undefined;
+	// stacked layout: block/flex display makes some browsers (WebKit) drop the table semantics, so roles are explicit
+	const tableRole = scroll ? undefined : { role: "table" };
 	return (
 		<Table
+			{...tableRole}
 			containerProps={scrollArea}
 			// below md a stacked table, its body and rows are blocks (the rows are flex columns, see TableBody) so
 			// each row can be a card; plain display values keep this working in iPhone Safari
