@@ -6,6 +6,7 @@ import { headerClass } from "src/modules/MobileColumns";
 import { ariaSort } from "src/modules/TableSort";
 
 const SORT_ICON = { asc: ArrowUp, desc: ArrowDown };
+const WHITESPACE = /\s+/u;
 
 // scroll tables are not stacked: they keep their header on every width
 function TableHeader({ tableInstance, scroll = false }) {
@@ -32,10 +33,14 @@ function TableHeader({ tableInstance, scroll = false }) {
 						}
 						const sorted = column.getIsSorted();
 						const Icon = SORT_ICON[sorted] ?? ArrowUpDown;
+						// the button fills the whole header cell, so a click anywhere in it sorts
+						const alignEnd = (column.columnDef.meta?.className ?? "")
+							.split(WHITESPACE)
+							.includes("text-right");
 						return (
 							<TableHead
 								key={header.id}
-								className={className}
+								className={cn(className, "p-0")}
 								aria-sort={ariaSort(sorted)}
 								role={role("columnheader")}
 							>
@@ -43,7 +48,10 @@ function TableHeader({ tableInstance, scroll = false }) {
 									type="button"
 									variant="ghost"
 									size="sm"
-									className="-ml-2 text-xs font-semibold uppercase tracking-wide"
+									className={cn(
+										"h-10 w-full justify-start rounded-none px-2 text-xs font-semibold uppercase tracking-wide focus-visible:ring-inset",
+										alignEnd && "justify-end",
+									)}
 									onClick={column.getToggleSortingHandler()}
 								>
 									{label}
