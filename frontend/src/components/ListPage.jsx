@@ -47,7 +47,7 @@ function ListPage({ title, section, count, help, actions, toolbar, children }) {
 					{help ? <HelpButton doc={help} /> : null}
 				</div>
 				{actions ? (
-					<div className="flex flex-wrap items-center gap-2">{actions}</div>
+					<div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>
 				) : null}
 			</div>
 			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
