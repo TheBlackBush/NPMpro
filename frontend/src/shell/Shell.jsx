@@ -80,7 +80,7 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 					/>
 				</>
 			)}
-			<Breadcrumb>
+			<Breadcrumb aria-label={text("nav.breadcrumb")}>
 				<BreadcrumbList>
 					{trail.map((crumb, index) => (
 						<Fragment key={crumb.titleKey}>

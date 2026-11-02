@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import { intl } from "src/locale";
 import { groupAlert, pageBadge, pageSections } from "src/modules/Navigation";
 import { Button } from "src/ui/button";
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "src/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "src/ui/sheet";
 import { NavIcon } from "./NavIcon";
 
 const text = (id, values) => intl.formatMessage({ id }, values);
@@ -20,7 +20,7 @@ function TabMarks({ current, alert }) {
 			{current && (
 				<span
 					aria-hidden="true"
-					className="tw:absolute tw:inset-x-3 tw:top-0 tw:h-[3px] tw:rounded-b-full tw:bg-linear-to-r tw:from-[#ff8a00] tw:via-[#d91aff] tw:to-[#00d1ff]"
+					className="tw:absolute tw:inset-x-3 tw:top-0 tw:h-[3px] tw:rounded-b-full tw:bg-(image:--brand-gradient)"
 				/>
 			)}
 			{alert && (
@@ -28,7 +28,7 @@ function TabMarks({ current, alert }) {
 					aria-hidden="true"
 					className={cn(
 						"tw:absolute tw:top-1.5 tw:left-[calc(50%+0.4rem)] tw:size-2 tw:rounded-full",
-						alert === "error" ? "tw:bg-destructive" : "tw:bg-amber-500",
+						alert === "error" ? "tw:bg-destructive" : "tw:bg-warning",
 					)}
 				/>
 			)}
@@ -49,7 +49,7 @@ function SheetPage({ page, active, report, onClose }) {
 					className={cn(
 						"tw:rounded-md tw:px-1.5 tw:text-xs tw:font-medium tw:tabular-nums tw:text-muted-foreground",
 						tone === "error" && "tw:bg-destructive/10 tw:text-destructive",
-						tone === "warning" && "tw:bg-amber-500/15 tw:text-amber-700 tw:dark:text-amber-300",
+						tone === "warning" && "tw:bg-warning/15 tw:text-warning-foreground",
 					)}
 				>
 					{badge.count}
@@ -135,11 +135,11 @@ export function PhoneNav({ groups, current, report }) {
 					<SheetContent
 						side="bottom"
 						showCloseButton={false}
-						aria-describedby={undefined}
 						className="tw:max-h-[80svh] tw:gap-0 tw:rounded-t-xl"
 					>
 						<SheetHeader className="tw:flex-row tw:items-center tw:justify-between tw:pb-1">
 							<SheetTitle>{text(group.titleKey)}</SheetTitle>
+							<SheetDescription className="tw:sr-only">{text("nav.sheet-description")}</SheetDescription>
 							<SheetClose asChild>
 								<Button variant="ghost" size="icon-sm" aria-label={text("action.close")}>
 									<XIcon aria-hidden="true" />
