@@ -6,6 +6,7 @@ import { cellClass, mobileRole } from "src/modules/MobileColumns";
 import { cellLabel } from "src/modules/TableCells";
 import { EmptyRow } from "./EmptyRow";
 import { MobileTitle } from "./MobileTitle";
+import { StackedContext } from "./StackedContext";
 
 // Below md a stacked row is a card: the row is a flex column (its cells become blocks without touching their own
 // display, so the hidden-on-phone cells stay hidden) and each cell shows its header as a small label above the value.
@@ -22,9 +23,12 @@ function TableBody(props) {
 	const bodyClass = scroll ? undefined : "max-md:[&_tr:last-child]:border!";
 
 	if (rows.length === 0) {
+		// no bodyClass: the empty state is not a card and keeps no border of its own (the list card has one)
 		return (
-			<UiTableBody className={bodyClass} role={role("rowgroup")}>
-				{emptyState ? emptyState : <EmptyRow tableInstance={tableInstance} stacked={!scroll} />}
+			<UiTableBody role={role("rowgroup")}>
+				<StackedContext.Provider value={!scroll}>
+					{emptyState ? emptyState : <EmptyRow tableInstance={tableInstance} stacked={!scroll} />}
+				</StackedContext.Provider>
 			</UiTableBody>
 		);
 	}
@@ -90,12 +94,19 @@ function TableBody(props) {
 		<UiTableBody className={bodyClass} role={role("rowgroup")}>
 			{orderedKeys.map((key) => (
 				<Fragment key={key}>
-					<TableRow className="max-md:border-0 hover:bg-transparent" role={role("row")}>
+					{/* below md a block at full width, like the cards (a table row there shrinks to its content) */}
+					<TableRow
+						className={cn("max-md:border-0 hover:bg-transparent", !scroll && "max-md:block")}
+						role={role("row")}
+					>
 						<th
 							scope="rowgroup"
 							role={role("rowheader")}
 							colSpan={colSpan}
-							className="bg-muted/50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+							className={cn(
+								"bg-muted/50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+								!scroll && "max-md:block max-md:w-full",
+							)}
 						>
 							{renderGroupLabel(key)}
 						</th>
