@@ -68,12 +68,11 @@ export function UserMenu({ variant = "topbar" }) {
 	const { navLayout, setNavLayout, editorStyle, setEditorStyle } = usePreferences();
 	const { logout, logoutEverywhere } = useAuthState();
 	const sidebar = variant === "sidebar";
-	const openedModal = useRef(false);
-	// The modals are not Radix: open them once the menu has closed, so its pointer lock and focus return do not
-	// compete with the modal's focus.
+	// The windows are not Radix: they open once the menu has closed and returned focus to its button (in
+	// onCloseAutoFocus), so the menu's pointer lock is gone and each window returns focus to the button (as RowActions)
+	const pendingWindow = useRef(null);
 	const openModal = (show) => () => {
-		openedModal.current = true;
-		setTimeout(() => show("me"), 0);
+		pendingWindow.current = show;
 	};
 	const role = isAdmin(user?.roles) ? "role.admin" : "role.standard-user";
 
@@ -120,11 +119,11 @@ export function UserMenu({ variant = "topbar" }) {
 				align={sidebar ? "start" : "end"}
 				side={sidebar ? "top" : "bottom"}
 				className="w-56"
-				onCloseAutoFocus={(e) => {
-					if (openedModal.current) {
-						e.preventDefault();
-						openedModal.current = false;
-					}
+				onCloseAutoFocus={() => {
+					// no preventDefault: Radix focuses the button right after this handler, then the window opens
+					const show = pendingWindow.current;
+					pendingWindow.current = null;
+					if (show) setTimeout(() => show("me"), 0);
 				}}
 			>
 				<DropdownMenuItem onSelect={openModal(showUserModal)}>

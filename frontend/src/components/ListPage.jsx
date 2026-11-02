@@ -19,7 +19,10 @@ function ListPage({ title, count, help, actions, toolbar, children }) {
 		<section className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex min-w-0 items-center gap-2">
-					<h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+					{/* Focusable from code: focus returns here when a closed window's row is gone (FocusReturn) */}
+					<h1 className="text-2xl font-semibold tracking-tight outline-none" tabIndex={-1} data-list-heading>
+						{title}
+					</h1>
 					{count !== undefined ? (
 						<Badge variant="secondary" aria-label={intl.formatMessage({ id: "list.count" }, { count })}>
 							{count}

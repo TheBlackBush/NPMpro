@@ -9,51 +9,54 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
+import { restoreRowFocus } from "src/modules/FocusReturn";
 
 /**
  * The action menu of a table row: a ghost icon button that opens a menu aligned to its end.
  *
- * The windows the items open are not Radix: an item marked opensWindow runs once the menu has closed (deferred), and
- * the menu does not return focus to its button afterwards, so neither its pointer lock nor its focus return compete
- * with the window.
+ * A chosen item runs once the menu has closed and returned focus to its button (in onCloseAutoFocus): the windows the
+ * items open (not Radix) then record the button as the element to return focus to, and the menu's pointer lock is
+ * already gone. When the item's work settles (its promise, if it returns one) and focus fell to the page body (the
+ * row re-rendered or moved after a re-sort), focus goes back to this row's visible button, found by focusKey.
  * The menu holds no fixed ids: a row action cell may mount twice (phone layout).
  *
  * @param {Object} props
  * @param {string} props.label  aria-label of the button
+ * @param {string} [props.focusKey]  unique per row (for instance proxy-host-12), set as data-row-actions on the button
  * @param {React.ReactNode} [props.title]  the menu heading
- * @param {Array<{key: string, label: React.ReactNode, icon?: React.ElementType, onSelect: () => void,
- *   destructive?: boolean, hidden?: boolean, separatorBefore?: boolean, opensWindow?: boolean}>} props.items
- *   hidden items and a separator before a first visible item are left out; opensWindow marks an item that opens a
- *   window: it runs deferred and the menu does not return focus to its button (other items run at once and focus
- *   returns as usual)
+ * @param {Array<{key: string, label: React.ReactNode, icon?: React.ElementType, onSelect: () => (void|Promise),
+ *   destructive?: boolean, hidden?: boolean, separatorBefore?: boolean}>} props.items
+ *   hidden items and a separator before a first visible item are left out
  */
-function RowActions({ label, title, items }) {
-	// set when the chosen item opens a window, so the menu does not return focus to its button over that window
-	const skipFocusReturn = useRef(false);
+function RowActions({ label, focusKey, title, items }) {
+	// the chosen item's action, run after the menu has returned focus to its button
+	const pending = useRef(null);
 	const visible = items.filter((item) => !item.hidden);
 	if (visible.length === 0) {
 		return null;
 	}
 	return (
-		<DropdownMenu
-			onOpenChange={(open) => {
-				if (open) {
-					skipFocusReturn.current = false;
-				}
-			}}
-		>
+		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button type="button" variant="ghost" size="icon-sm" aria-label={label}>
+				<Button type="button" variant="ghost" size="icon-sm" aria-label={label} data-row-actions={focusKey}>
 					<EllipsisVertical aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="end"
 				className="w-48"
-				onCloseAutoFocus={(e) => {
-					if (skipFocusReturn.current) {
-						e.preventDefault();
-						skipFocusReturn.current = false;
+				onCloseAutoFocus={() => {
+					// no preventDefault: Radix focuses the button right after this handler, then the action runs
+					const run = pending.current;
+					pending.current = null;
+					if (run) {
+						setTimeout(async () => {
+							try {
+								await run();
+							} finally {
+								restoreRowFocus(focusKey);
+							}
+						}, 0);
 					}
 				}}
 			>
@@ -66,12 +69,7 @@ function RowActions({ label, title, items }) {
 							<DropdownMenuItem
 								variant={item.destructive ? "destructive" : "default"}
 								onSelect={() => {
-									if (item.opensWindow) {
-										skipFocusReturn.current = true;
-										setTimeout(item.onSelect, 0);
-									} else {
-										item.onSelect();
-									}
+									pending.current = item.onSelect;
 								}}
 							>
 								{Icon ? <Icon aria-hidden="true" /> : null}
