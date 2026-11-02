@@ -46,12 +46,19 @@ async function watchedPage(browserContext) {
 	return watched;
 }
 
+// the app's error page (main.jsx's crash page, components/Unhealthy.jsx) renders without a page error or console error
+async function checkErrorPage(target, where) {
+	if (await target.locator('img[src="/images/unhealthy.svg"]').isVisible())
+		problems.push(`error page shown ${where}`);
+}
+
 async function open(target, route) {
 	target.step = route;
 	await target.goto(new URL(route, base).href, { waitUntil: "load" });
 	// pages that poll never go idle: wait at most 5 s, then a moment for effects that run late
 	await target.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
 	await target.waitForTimeout(300);
+	await checkErrorPage(target, `on ${route}`);
 	visited.add(route);
 	visited.add(new URL(target.url()).pathname);
 }
@@ -116,6 +123,7 @@ try {
 				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
 			);
 		}
+		await checkErrorPage(page, `on ${action.route} (after ${action.name})`);
 	}
 } catch (error) {
 	// a throw (login, navigation) is a failure too; the findings collected so far are printed below
