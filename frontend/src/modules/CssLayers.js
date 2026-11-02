@@ -1,7 +1,7 @@
 // Reads a built stylesheet and lists what could reach the old Tabler pages from outside Tabler's cascade layer: every
-// rule that is in no cascade layer (it beats every layered rule, Tabler's too) and every class selector of the new
-// UI's layers that looks like a Tailwind utility without the tw: prefix (it would style Bootstrap's or Tabler's class
-// of the same name). Used by scripts/check-built-css.js after `vite build`.
+// rule that is in no cascade layer (it beats every layered rule, Tabler's too) and every rule of the new
+// UI's layers (outside an @scope block) whose selector has no tw: class, or that is a layered @keyframes, @font-face or
+// @property (they all beat Tabler's layer on the old pages). Used by scripts/check-built-css.js after `vite build`.
 import { isUnprefixedUtility } from "./TailwindPrefix.js";
 
 const TABLER_LAYER = "tabler";
@@ -90,6 +90,27 @@ export const subjectsOf = (selectorList) => {
 	return subjects.filter(Boolean);
 };
 
+/** The selectors of a selector list, split at the commas outside brackets and parentheses */
+const splitSelectors = (selectorList) => {
+	const selectors = [];
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i <= selectorList.length; i++) {
+		const char = selectorList[i];
+		if (char === "\\") {
+			i++;
+		} else if (char === "(" || char === "[") {
+			depth++;
+		} else if (char === ")" || char === "]") {
+			depth--;
+		} else if (depth === 0 && (char === "," || char === undefined)) {
+			selectors.push(selectorList.slice(start, i).trim());
+			start = i + 1;
+		}
+	}
+	return selectors.filter(Boolean);
+};
+
 // a rule reaches an old page's element when the element it styles needs no tw: class, only an unprefixed utility one
 const leaks = (selectorList) =>
 	subjectsOf(selectorList).some((subject) => {
@@ -102,38 +123,50 @@ const GROUPING = /^@(?:media|supports|container|scope|starting-style|document)\b
 
 /**
  * Every finding of a built stylesheet, one line each, in the order of the stylesheet, without repeats:
- * `unlayered: <context > selector or at-rule>` and `unprefixed: <layer>: <selector>`
+ * `unlayered: <context > selector or at-rule>`, `unprefixed: <layer>: <selector>` (a rule of a layer other than
+ * Tabler's, outside an @scope block, with a selector that has no tw: class, or an unprefixed utility class as the
+ * element it styles) and `layered: <layer>: <at-rule>` (@keyframes, @font-face, @property ... in such a layer)
  *
  * @param {string} css
  * @returns {string[]}
  */
 export const cssFindings = (css) => {
 	const findings = new Set();
-	const walk = (nodes, layer, context) => {
+	const hasPrefix = (selector) => classesOf(selector).some((name) => name.startsWith("tw:"));
+	// a selector list needs a tw: class in each of its selectors: the others reach the elements of the old pages
+	const denied = (selectorList) => splitSelectors(selectorList).some((selector) => !hasPrefix(selector));
+	// `nested`: inside a style rule (`&:hover`, `@media`), whose own selector was already checked
+	const walk = (nodes, layer, context, scoped, nested) => {
 		// statements (`@layer a, b;`, `@import`) and declarations style nothing on their own
 		for (const node of nodes.filter((child) => child.children)) {
 			const where = [...context, node.prelude].join(" > ");
+			const outside = layer && layer.split(".")[0] !== TABLER_LAYER;
 			if (node.prelude.startsWith("@layer")) {
 				const name = node.prelude.slice("@layer".length).trim() || "(anonymous)";
-				walk(node.children, layer ? `${layer}.${name}` : name, context);
+				walk(node.children, layer ? `${layer}.${name}` : name, context, scoped, nested);
 			} else if (GROUPING.test(node.prelude)) {
 				// outside the layers the rules inside are reported with their context (`@media (...) > .x`)
-				walk(node.children, layer, layer ? context : [...context, node.prelude]);
+				const inScope = scoped || node.prelude.startsWith("@scope");
+				walk(node.children, layer, layer ? context : [...context, node.prelude], inScope, nested);
 			} else if (node.prelude.startsWith("@")) {
 				// @keyframes, @font-face, @property, @page: a whole rule of its own. Tailwind registers its own custom
 				// properties (--tw-*) outside the layers, one per utility in use; Tabler's are --tblr-* and --bs-*.
-				if (!(layer || node.prelude.startsWith("@property --tw-"))) findings.add(`unlayered: ${where}`);
+				if (!layer) {
+					if (!node.prelude.startsWith("@property --tw-")) findings.add(`unlayered: ${where}`);
+				} else if (outside) {
+					findings.add(`layered: ${layer}: ${node.prelude}`);
+				}
 			} else if (layer) {
-				if (layer.split(".")[0] !== TABLER_LAYER && leaks(node.prelude)) {
+				if (outside && ((!(nested || scoped) && denied(node.prelude)) || leaks(node.prelude))) {
 					findings.add(`unprefixed: ${layer}: ${node.prelude}`);
 				}
-				walk(node.children, layer, context);
+				walk(node.children, layer, context, scoped, true);
 			} else {
 				findings.add(`unlayered: ${where}`);
 			}
 		}
 	};
-	walk(parseCss(css), "", []);
+	walk(parseCss(css), "", [], false, false);
 	return [...findings];
 };
 

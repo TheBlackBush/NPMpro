@@ -2,7 +2,8 @@
 # which unprefixed Tailwind-looking classes the new UI's layers may style. scripts/check-built-css.js compares this
 # list with the build after `vite build`; a new line fails CI, and so does a line the build no longer has.
 # Before adding a line: check that it cannot change an old page (a Tabler or Bootstrap class or keyframes name, an
-# element selector, a custom property Tabler reads). Tailwind's own @property --tw-* are not listed.
+# element selector, a custom property Tabler reads). Tailwind's own @property --tw-* are not listed. Outside Tabler's
+# layer and outside @scope every rule must name a tw: class; layered @keyframes, @font-face and @property are findings.
 # Format: one finding per line as the check prints it, a comment above each group with its source and why it is safe.
 
 # shadcn/tailwind.css (shadcn package): custom properties of its scroll-fade and shimmer utilities, names Tabler
@@ -22,3 +23,13 @@ unlayered: @media (prefers-reduced-motion:reduce) > .shimmer
 # --tblr-* and --bs-* properties
 unlayered: :root
 unlayered: .dark
+
+# Tailwind's `properties` layer (inside its @supports fallback): initial values of the custom properties the utilities
+# in use register, all --tw-* plus shadcn's --scroll-fade-*, --shimmer-* and --shimmer-text-* (names Tabler does not
+# use); no element property is set
+unprefixed: properties: :root,:host
+unprefixed: properties: *,:before,:after,::backdrop
+
+# Tailwind's `theme` layer: the design tokens it generates as --tw-* custom properties (--tw-font-sans, ...); Tabler
+# reads only --tblr-* and --bs-*
+unprefixed: theme: :root,:host

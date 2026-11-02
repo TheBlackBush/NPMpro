@@ -1,13 +1,14 @@
 // The built stylesheet may not reach the old Tabler pages in new ways (src/modules/CssLayers.js): every rule outside
-// a cascade layer and every unprefixed Tailwind-looking class of the new UI's layers must be in
+// a cascade layer and every rule of the new UI's layers (outside @scope) without a tw: class must be in
 // scripts/built-css-allowlist.txt. A shadcn, tw-animate-css or Tailwind update that adds one fails here; so does an
 // allowlisted line the build no longer has (remove it). Run after `vite build`: node scripts/check-built-css.js [dir]
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { compareWithAllowlist, cssFindings } from "../src/modules/CssLayers.js";
 
-const FRONTEND = new URL("..", import.meta.url).pathname;
+const FRONTEND = fileURLToPath(new URL("..", import.meta.url));
 const dir = process.argv[2] ?? join(FRONTEND, "dist/assets");
 const sheets = readdirSync(dir).filter((name) => name.endsWith(".css"));
 if (sheets.length === 0) {

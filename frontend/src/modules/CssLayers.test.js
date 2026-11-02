@@ -25,7 +25,6 @@ it("passes a stylesheet whose rules are all in layers and whose utilities all ca
 	const css = [
 		"@layer tabler,theme,base,components,utilities;",
 		"@layer tabler{.flex{display:flex}.border{border:1px solid}a:hover{color:red}}",
-		"@layer theme{:root,:host{--tw-font-sans:x}}",
 		"@layer base{@scope ([data-slot]) to ([data-legacy-ui]){*{margin:0}}}",
 		"@layer utilities{.tw\\:flex{display:flex}.tw\\:hover\\:bg-accent{@media (hover:hover){&:hover{color:red}}}}",
 		"@property --tw-translate-x{syntax:'*';inherits:false}",
@@ -47,6 +46,7 @@ it("reports a rule outside every layer, inside a media query too, and unlayered 
 		"unlayered: @media (prefers-reduced-motion:reduce) > .shimmer",
 		"unlayered: @keyframes pulse",
 		"unlayered: @property --shimmer-angle",
+		"layered: utilities: @keyframes spin",
 	]);
 });
 
@@ -58,7 +58,44 @@ it("reports an unprefixed utility class the new UI's layers style, but not Table
 		"@layer utilities{.tw\\:\\[\\.border-b\\]\\:pb-2.border-b{padding:0}.tw\\:group:hover .tw\\:flex{display:flex}}",
 		"@layer base{.app-scroll-area{scrollbar-width:none}}",
 	].join("");
-	assert.deepEqual(cssFindings(css), ["unprefixed: utilities: .hidden", "unprefixed: components: .card .rounded-md"]);
+	assert.deepEqual(cssFindings(css), [
+		"unprefixed: utilities: .hidden",
+		"unprefixed: components: .card .rounded-md",
+		"unprefixed: base: .app-scroll-area",
+	]);
+});
+
+it("denies by default: a rule of a layer other than Tabler's needs a tw: class in each selector", () => {
+	assert.deepEqual(cssFindings("@layer tabler,base;@layer base{*{margin:0}button{color:red}}"), [
+		"unprefixed: base: *",
+		"unprefixed: base: button",
+	]);
+	assert.deepEqual(cssFindings("@layer components{.btn{color:red}}"), ["unprefixed: components: .btn"]);
+	assert.deepEqual(cssFindings("@layer theme{:root,:host{--tw-x:1}}"), ["unprefixed: theme: :root,:host"]);
+	assert.deepEqual(cssFindings("@layer base{@supports (a:b){.tw\\:a,.b{color:red}}}"), [
+		"unprefixed: base: .tw\\:a,.b",
+	]);
+});
+
+it("reports layered keyframes, font faces and properties outside Tabler's layer", () => {
+	const css = [
+		"@layer utilities{@keyframes pulse{50%{opacity:.5}}}",
+		"@layer base{@font-face{font-family:x}@property --a{syntax:'*';inherits:false}}",
+		"@layer tabler{@keyframes spinner-border{to{rotate:1turn}}}",
+	].join("");
+	assert.deepEqual(cssFindings(css), [
+		"layered: utilities: @keyframes pulse",
+		"layered: base: @font-face",
+		"layered: base: @property --a",
+	]);
+});
+
+it("accepts rules inside @scope and tw: rules with nested selectors", () => {
+	const css = [
+		"@layer base{@scope ([data-slot]) to ([data-legacy-ui]){*{margin:0}button{color:red}}}",
+		"@layer utilities{.tw\\:hover\\:bg-a{&:hover{color:red}@media (hover:hover){&:hover{color:red}}}}",
+	].join("");
+	assert.deepEqual(cssFindings(css), []);
 });
 
 it("names nested layers by their path", () => {
