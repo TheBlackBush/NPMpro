@@ -10,12 +10,12 @@ import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
 
-// two filters per row on phones (half the row minus half the gap-2), their own width from md
+// two filters per row on phones (half the row minus half the gap-2; a lone one stays on the right), their own width from md
 function FilterSelect({ label, value, onChange, options }) {
 	return (
 		<NativeSelect
 			size="sm"
-			className="min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none"
+			className="w-[calc(50%-0.25rem)] flex-none md:w-fit"
 			aria-label={intl.formatMessage({ id: label })}
 			value={value}
 			onChange={(e) => onChange(e.target.value)}
@@ -86,62 +86,65 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						}}
 					/>
 				</InputGroup>
-				{kinds.includes("status") ? (
-					<FilterSelect
-						label="list.filter.status"
-						value={filters.status}
-						onChange={(v) => setFilter("status", v)}
-						options={STATUS_OPTIONS.map((value) => ({
-							value,
-							label: intl.formatMessage({ id: `list.filter.${value}` }),
-						}))}
-					/>
-				) : null}
-				{kinds.includes("tls") ? (
-					<FilterSelect
-						label="list.filter.tls"
-						value={filters.tls}
-						onChange={(v) => setFilter("tls", v)}
-						options={TLS_OPTIONS.map((value) => ({
-							value,
-							label: intl.formatMessage({ id: `list.filter.${value}` }),
-						}))}
-					/>
-				) : null}
-				{kinds.includes("group") && groups.length > 0 ? (
-					<FilterSelect
-						label="list.filter.group"
-						value={filters.group ?? "all"}
-						onChange={(v) => setFilter("group", v)}
-						options={groups.map((value) => ({ value, label: value }))}
-					/>
-				) : null}
-				{kinds.includes("expiry") ? (
-					<FilterSelect
-						label="list.filter.expiry"
-						value={filters.expiry}
-						onChange={(v) => setFilter("expiry", v)}
-						options={[{ value: "soon", label: intl.formatMessage({ id: "list.filter.soon" }) }]}
-					/>
-				) : null}
-				{active && shown > 0 ? (
-					<div className="flex w-full items-center gap-2 md:w-auto">
-						<span className="text-sm text-muted-foreground">
-							<T id="list.shown" data={{ shown, total }} />
-						</span>
-						<Button
-							variant="link"
-							size="sm"
-							className="h-auto p-0"
-							onClick={() => {
-								setText("");
-								clear();
-							}}
-						>
-							<T id="list.clear-filters" />
-						</Button>
-					</div>
-				) : null}
+				{/* the filters, their count and Clear sit on the right (search on the left) */}
+				<div className="flex w-full flex-wrap items-center justify-end gap-2 md:ml-auto md:w-auto">
+					{kinds.includes("status") ? (
+						<FilterSelect
+							label="list.filter.status"
+							value={filters.status}
+							onChange={(v) => setFilter("status", v)}
+							options={STATUS_OPTIONS.map((value) => ({
+								value,
+								label: intl.formatMessage({ id: `list.filter.${value}` }),
+							}))}
+						/>
+					) : null}
+					{kinds.includes("tls") ? (
+						<FilterSelect
+							label="list.filter.tls"
+							value={filters.tls}
+							onChange={(v) => setFilter("tls", v)}
+							options={TLS_OPTIONS.map((value) => ({
+								value,
+								label: intl.formatMessage({ id: `list.filter.${value}` }),
+							}))}
+						/>
+					) : null}
+					{kinds.includes("group") && groups.length > 0 ? (
+						<FilterSelect
+							label="list.filter.group"
+							value={filters.group ?? "all"}
+							onChange={(v) => setFilter("group", v)}
+							options={groups.map((value) => ({ value, label: value }))}
+						/>
+					) : null}
+					{kinds.includes("expiry") ? (
+						<FilterSelect
+							label="list.filter.expiry"
+							value={filters.expiry}
+							onChange={(v) => setFilter("expiry", v)}
+							options={[{ value: "soon", label: intl.formatMessage({ id: "list.filter.soon" }) }]}
+						/>
+					) : null}
+					{active && shown > 0 ? (
+						<div className="flex w-full items-center gap-2 md:w-auto">
+							<span className="text-sm text-muted-foreground">
+								<T id="list.shown" data={{ shown, total }} />
+							</span>
+							<Button
+								variant="link"
+								size="sm"
+								className="h-auto p-0"
+								onClick={() => {
+									setText("");
+									clear();
+								}}
+							>
+								<T id="list.clear-filters" />
+							</Button>
+						</div>
+					) : null}
+				</div>
 			</div>
 			{sortChoices.length > 0 ? (
 				<div className="flex items-center gap-2 md:hidden">
