@@ -67,8 +67,12 @@ jobs:
         run: node translations/check-unused.js
       - name: unit tests
         run: node --test 'src/**/*.test.js'
+      - name: every Tailwind class of the new UI has the tw prefix
+        run: node scripts/check-tw-prefix.js
       - name: build
         run: pnpm vite build
+      - name: the built CSS reaches the old pages only as allowlisted
+        run: node scripts/check-built-css.js
 
   lint:
     runs-on: ubuntu-latest

@@ -1,0 +1,215 @@
+{
+	"routes": [
+		"/",
+		"/nginx/proxy",
+		"/nginx/redirection",
+		"/nginx/404",
+		"/nginx/stream",
+		"/certificates",
+		"/certificates/dns-credentials",
+		"/access",
+		"/audit-log",
+		"/users",
+		"/settings",
+		"/settings/default-site",
+		"/monitoring",
+		"/monitoring/traffic",
+		"/monitoring/crowdsec",
+		"/login",
+		"/no-such-page"
+	],
+	"actions": [
+		{
+			"name": "language menu",
+			"route": "/",
+			"steps": [
+				{
+					"click": "role=button[name='Select language']"
+				},
+				{
+					"waitFor": ".dropdown-menu.show"
+				}
+			]
+		},
+		{
+			"name": "theme menu",
+			"route": "/",
+			"steps": [
+				{
+					"click": "role=button[name=/^Theme/]"
+				},
+				{
+					"waitFor": ".dropdown-menu.show"
+				}
+			]
+		},
+		{
+			"name": "user menu",
+			"route": "/",
+			"steps": [
+				{
+					"click": "role=button[name='Open user menu']"
+				},
+				{
+					"waitFor": ".dropdown-menu.show"
+				}
+			]
+		},
+		{
+			"name": "settings menu",
+			"route": "/",
+			"steps": [
+				{
+					"click": "nav >> role=button[name='Settings']"
+				},
+				{
+					"waitFor": ".dropdown-menu.show"
+				}
+			]
+		},
+		{
+			"name": "help window",
+			"route": "/nginx/proxy",
+			"steps": [
+				{
+					"click": "role=button[name='Help']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new proxy host window with a select open",
+			"route": "/nginx/proxy",
+			"steps": [
+				{
+					"click": "role=button[name='Add Proxy Host']"
+				},
+				{
+					"waitFor": ".modal.show"
+				},
+				{
+					"click": ".modal.show [class*=indicatorContainer]"
+				}
+			]
+		},
+		{
+			"name": "new redirection host window",
+			"route": "/nginx/redirection",
+			"steps": [
+				{
+					"click": "role=button[name='Add Redirection Host']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new 404 host window",
+			"route": "/nginx/404",
+			"steps": [
+				{
+					"click": "role=button[name='Add 404 Host']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new stream window",
+			"route": "/nginx/stream",
+			"steps": [
+				{
+					"click": "role=button[name='Add Stream']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new HTTP certificate window",
+			"route": "/certificates",
+			"steps": [
+				{
+					"click": "role=button[name='Add Certificate']"
+				},
+				{
+					"click": ".dropdown-menu.show .dropdown-item >> nth=0"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new DNS certificate window",
+			"route": "/certificates",
+			"steps": [
+				{
+					"click": "role=button[name='Add Certificate']"
+				},
+				{
+					"click": ".dropdown-menu.show .dropdown-item >> nth=1"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new custom certificate window",
+			"route": "/certificates",
+			"steps": [
+				{
+					"click": "role=button[name='Add Certificate']"
+				},
+				{
+					"click": ".dropdown-menu.show .dropdown-item >> nth=2"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new DNS credential window",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{
+					"click": "role=button[name=/^Add/]"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new access list window",
+			"route": "/access",
+			"steps": [
+				{
+					"click": "role=button[name='Add Access List']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		},
+		{
+			"name": "new user window",
+			"route": "/users",
+			"steps": [
+				{
+					"click": "role=button[name='Add User']"
+				},
+				{
+					"waitFor": ".modal.show"
+				}
+			]
+		}
+	]
+}
