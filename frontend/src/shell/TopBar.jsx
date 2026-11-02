@@ -1,4 +1,5 @@
 import { Separator } from "src/components/ui/separator";
+import { CommandPaletteButton } from "./CommandPalette";
 import { LanguageMenu } from "./LanguageMenu";
 import { LoadingBar } from "./LoadingBar";
 import { Logo } from "./Logo";
@@ -17,6 +18,7 @@ export function TopBar() {
 					<NavLinks orientation="row" />
 				</div>
 				<div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+					<CommandPaletteButton />
 					<LanguageMenu />
 					<Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 					<UserMenu variant="topbar" />

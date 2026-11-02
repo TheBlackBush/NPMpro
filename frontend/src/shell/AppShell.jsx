@@ -4,12 +4,23 @@ import { usePreferences } from "src/context";
 import { intl } from "src/locale";
 import { AppFooter } from "./AppFooter";
 import { AppSidebar } from "./AppSidebar";
+import { CommandPalette, CommandPaletteButton, CommandPaletteProvider } from "./CommandPalette";
 import { LoadingBar } from "./LoadingBar";
 import { MaintenanceBanner } from "./MaintenanceBanner";
 import { TopBar } from "./TopBar";
 
-/** The signed-in layout: the top bar or the sidebar (a per-user choice), content area, footer */
+/** The signed-in layout: the top bar or the sidebar (a per-user choice), content area, footer, command palette */
 export default function AppShell({ children }) {
+	return (
+		<CommandPaletteProvider>
+			{/* Once for both layouts, so Ctrl+K works on every page */}
+			<CommandPalette />
+			<Layout>{children}</Layout>
+		</CommandPaletteProvider>
+	);
+}
+
+function Layout({ children }) {
 	const { navLayout, sidebarCollapsed, setSidebarCollapsed } = usePreferences();
 	const page = (
 		<>
@@ -32,7 +43,7 @@ export default function AppShell({ children }) {
 						<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-5">
 							<SidebarTrigger aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })} />
 							<div className="ml-auto flex items-center gap-1">
-								{/* The command palette button goes here */}
+								<CommandPaletteButton />
 							</div>
 							<LoadingBar />
 						</header>
