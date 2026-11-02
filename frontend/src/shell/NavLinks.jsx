@@ -11,6 +11,11 @@ const ROW_ACTIVE =
 const COLUMN = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted";
 const COLUMN_ACTIVE = "bg-primary/10 text-primary hover:bg-primary/10";
 
+/** Whether a nav item is the current page: "/" matches exactly, the others by prefix; external items never */
+export function isActivePath(pathname, { to, external }) {
+	return !external && (to === "/" ? pathname === "/" : pathname.startsWith(to));
+}
+
 /**
  * The main links as a nav landmark.
  *
@@ -26,8 +31,9 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 	return (
 		<nav aria-label={intl.formatMessage({ id: "aria.main-navigation" })}>
 			<ul className={cn("flex gap-1", row ? "flex-row items-center" : "flex-col")}>
-				{items.map(({ id, to, label, Icon, external }) => {
-					const active = !external && (to === "/" ? pathname === "/" : pathname.startsWith(to));
+				{items.map((item) => {
+					const { id, to, label, Icon, external } = item;
+					const active = isActivePath(pathname, item);
 					const className = cn(row ? ROW : COLUMN, active && (row ? ROW_ACTIVE : COLUMN_ACTIVE));
 					return (
 						<li key={id}>

@@ -83,13 +83,23 @@ export function UserMenu({ variant = "topbar" }) {
 					<AvatarImage src={user?.avatar || "/images/default-avatar.jpg"} alt="" />
 					<AvatarFallback>{user?.name?.trim().charAt(0).toUpperCase()}</AvatarFallback>
 				</Avatar>
-				<span className={cn("min-w-0 flex-col leading-tight", sidebar ? "flex flex-1" : "hidden md:flex")}>
+				<span
+					className={cn(
+						"min-w-0 flex-col leading-tight",
+						sidebar ? "flex flex-1 group-data-[collapsible=icon]:hidden" : "hidden md:flex",
+					)}
+				>
 					<span className="truncate text-sm font-medium">{user?.name}</span>
 					<span className="truncate text-xs text-muted-foreground">
 						<T id={role} />
 					</span>
 				</span>
-				{sidebar ? <ChevronsUpDown className="size-4 text-muted-foreground" aria-hidden="true" /> : null}
+				{sidebar ? (
+					<ChevronsUpDown
+						className="size-4 text-muted-foreground group-data-[collapsible=icon]:hidden"
+						aria-hidden="true"
+					/>
+				) : null}
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align={sidebar ? "start" : "end"}
