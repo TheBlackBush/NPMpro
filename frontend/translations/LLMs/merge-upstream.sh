@@ -22,6 +22,12 @@ git show "$NEW:$UP/en.json" > "$TMP/en.json" || exit 1
 
 # Persian (fa) is not taken over: NPMpro does not ship it
 for code in en $(git ls-tree --full-tree --name-only "$NEW:$UP" | sed -n 's/\.json$//p' | grep -vx -e en -e lang-list -e fa); do
+	# Only languages listed in lang-list.json are merged, adding one is a deliberate edit of that file
+	if ! jq -e --arg code "$code" 'has($code)' "$SRC/lang-list.json" >/dev/null; then
+		echo "skipped $code: not in lang-list.json"
+		continue
+	fi
+
 	ui="$SRC/ui/$code.json"
 
 	if [ ! -s "$ui" ]; then
