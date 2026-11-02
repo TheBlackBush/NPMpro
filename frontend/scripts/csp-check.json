@@ -255,6 +255,72 @@
 					"waitFor": ".modal.show"
 				}
 			]
+		},
+		{
+			"name": "new stream window with a validation error",
+			"route": "/nginx/stream",
+			"steps": [
+				{
+					"click": "role=button[name='Add Stream']"
+				},
+				{
+					"waitFor": ".modal.show"
+				},
+				{
+					"click": ".modal.show button[type=submit]"
+				},
+				{
+					"waitFor": ".modal.show [data-slot=field-error]"
+				}
+			]
+		},
+		{
+			"name": "change password window (password fields)",
+			"route": "/",
+			"steps": [
+				{
+					"click": "nav >> role=button[name='Open user menu']"
+				},
+				{
+					"click": "role=menuitem[name='Change Password']"
+				},
+				{
+					"waitFor": ".modal.show [data-slot=input-group]"
+				},
+				{
+					"click": ".modal.show >> role=button[name='Show or hide password'] >> nth=0"
+				}
+			]
+		},
+		{
+			"name": "MFA window (code boxes)",
+			"route": "/",
+			"steps": [
+				{
+					"click": "nav >> role=button[name='Open user menu']"
+				},
+				{
+					"click": "role=menuitem[name='MFA']"
+				},
+				{
+					"click": ".modal.show >> role=button[name='Enable TOTP']"
+				},
+				{
+					"waitFor": ".modal.show [data-slot=input-otp-slot]"
+				}
+			]
+		},
+		{
+			"name": "default site settings (choice cards)",
+			"route": "/settings/default-site",
+			"steps": [
+				{
+					"waitFor": "[data-slot=radio-group-item]"
+				},
+				{
+					"click": "[data-slot=radio-group-item] >> nth=1"
+				}
+			]
 		}
 	]
 }
