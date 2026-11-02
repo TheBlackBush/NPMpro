@@ -215,7 +215,7 @@ function useListRecheck(name) {
 function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	// directly inside a window (around its header, body and footer): a flex column capped at the content box, so on a
-	// phone (full screen window, fixed height) the header and footer stay put and .modal-body scrolls
+	// phone (full screen window, fixed height) the header and footer stay put and the window body scrolls
 	const frame = useModalFrame();
 	const submitting = useRef(false);
 	const tabsRef = useRef(null);
@@ -233,7 +233,9 @@ function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, 
 					<ReadOnlyContext.Provider value={readOnly}>
 						<form
 							className={
-								frame ? ["d-flex flex-column mh-100", className].filter(Boolean).join(" ") : className
+								frame
+									? ["flex min-h-0 flex-1 flex-col", className].filter(Boolean).join(" ")
+									: className
 							}
 							action="#"
 							noValidate

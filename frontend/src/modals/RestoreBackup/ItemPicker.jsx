@@ -34,7 +34,7 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 		const measure = () => {
 			const menu = ref.current;
 			if (!menu) return;
-			const box = (menu.closest(".modal-body") ?? document.body).getBoundingClientRect();
+			const box = (menu.closest("[data-window-body]") ?? document.body).getBoundingClientRect();
 			const rect = menu.getBoundingClientRect();
 			const left = rect.left - shiftRef.current;
 			const right = rect.right - shiftRef.current;

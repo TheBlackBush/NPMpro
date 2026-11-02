@@ -1,60 +1,191 @@
+import { XIcon } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
-import Modal from "react-bootstrap/Modal";
+import { Button } from "src/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
+import { usePreferences } from "src/context/PreferencesContext";
+import { useIsMobile } from "src/hooks/use-mobile";
+import { cn } from "src/lib/utils";
+import { intl } from "src/locale";
+import { useWindowFocusReturn } from "src/modules/easyModal";
+import { canClose, dialogWidthClass, sheetWidthClass, windowMode } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
 const HideContext = createContext(undefined);
 // true between the window's content box and its body: a <form> there must take part in the content's flex column
 const FrameContext = createContext(false);
 const TitleContext = createContext({ id: undefined, setMounted: () => {} });
+// which element renders the title (a dialog's or a sheet's), and whether the header shows a close button
+const ModeContext = createContext("dialog");
 
-// Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
-// A small dialog that never changes size may pass `centered` (it is still full screen on phones unless it also passes
-// `fullscreen={false}`). The delete and disable confirmation is not an AppModal: it is a plain react-bootstrap Modal and
-// stays a small centered dialog on phones. Below the md breakpoint (phones) a
-// window fills the screen (Bootstrap's modal-fullscreen-md-down, UX-33); `fullscreen` sets another breakpoint, or
-// false for a window that stays a dialog.
-function AppModal({ children, centered = false, fullscreen = "md-down", ...props }) {
+// A target the window must not treat as "outside": toasts and other windows stacked on top of it
+const STACKED = '[data-sonner-toaster], [role="dialog"], .modal';
+
+// Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
+// put when a tab, a step, a choice or a result changes their height. On phones, and for sizes that are not "sm", the
+// preference is ignored where it says so (WindowFrame.windowMode): phones always get a full screen window.
+// Props follow the old react-bootstrap window: show, onHide (undefined: the window cannot close, it is saving),
+// size ("sm", "lg", "xl"), backdrop ("static" ignores clicks outside), keyboard (false ignores Escape).
+// `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls between a fixed header and
+// footer, windows open at the top, and phones always get a full screen window.
+function AppModal({
+	children,
+	show,
+	onHide,
+	size,
+	backdrop,
+	keyboard = true,
+	scrollable: _scrollable,
+	centered: _centered,
+	fullscreen: _fullscreen,
+	className,
+	...props
+}) {
 	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
 	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
+	const { editorStyle } = usePreferences();
+	const isPhone = useIsMobile();
+	const mode = windowMode({ editorStyle, size, isPhone });
+	const giveFocusBack = useWindowFocusReturn();
+
+	const request = (reason) => canClose({ onHide, backdrop, reason });
+	const guards = {
+		// Escape, a click outside, or focus that moved to a toast or a stacked window must not close a window that cannot
+		onEscapeKeyDown: (event) => {
+			if (keyboard === false || !request("escape")) event.preventDefault();
+		},
+		onPointerDownOutside: (event) => {
+			const target = event.detail.originalEvent.target;
+			if (!request("outside") || target?.closest?.(STACKED)) event.preventDefault();
+		},
+		onFocusOutside: (event) => event.preventDefault(),
+		// Radix would focus what was focused when the window mounted (the page body on Safari): the opener instead
+		onCloseAutoFocus: (event) => {
+			event.preventDefault();
+			giveFocusBack?.();
+		},
+		"aria-labelledby": hasTitle ? id : undefined,
+		"aria-describedby": undefined,
+		...props,
+	};
+	// Radix reports Escape, outside clicks and the close button as one change; the first two were filtered above
+	const onOpenChange = (open) => {
+		if (!open && request("close-button")) onHide?.();
+	};
+
+	const frame = "flex min-h-0 flex-col gap-0 p-0";
 	return (
 		<TitleContext.Provider value={value}>
-			<HideContext.Provider value={props.onHide}>
+			<HideContext.Provider value={onHide}>
 				<FrameContext.Provider value={true}>
-					<Modal
-						centered={centered}
-						fullscreen={fullscreen}
-						aria-labelledby={hasTitle ? id : undefined}
-						{...props}
-					>
-						{children}
-					</Modal>
+					<ModeContext.Provider value={mode}>
+						{mode === "sheet" ? (
+							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
+								<SheetContent
+									side="right"
+									showCloseButton={false}
+									className={cn(frame, "w-full gap-0", sheetWidthClass(size), className)}
+									{...guards}
+								>
+									{children}
+								</SheetContent>
+							</Sheet>
+						) : (
+							<Dialog open={Boolean(show)} onOpenChange={onOpenChange}>
+								<DialogContent
+									showCloseButton={false}
+									className={cn(
+										frame,
+										"top-4 max-h-[calc(100dvh-2rem)] -translate-y-0 overflow-hidden",
+										mode === "fullscreen"
+											? "top-0 left-0 h-dvh max-h-none w-full max-w-none translate-x-0 rounded-none sm:max-w-none"
+											: dialogWidthClass(size),
+										className,
+									)}
+									{...guards}
+								>
+									{children}
+								</DialogContent>
+							</Dialog>
+						)}
+					</ModeContext.Provider>
 				</FrameContext.Provider>
 			</HideContext.Provider>
 		</TitleContext.Provider>
 	);
 }
 
-// The window's title as a heading (h2) in Tabler's modal-title size (16px), not react-bootstrap's div styled as h4
-function AppModalTitle({ children, ...props }) {
+// Title row; with closeButton a translated X that closes through the window's onHide
+function AppModalHeader({ children, closeButton = false, className, ...props }) {
+	const onHide = useContext(HideContext);
+	return (
+		<div
+			data-slot="window-header"
+			className={cn("flex shrink-0 items-center gap-2 border-b px-4 py-3", className)}
+			{...props}
+		>
+			<div className="min-w-0 flex-1">{children}</div>
+			{closeButton && onHide ? (
+				<DialogClose asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-sm"
+						aria-label={intl.formatMessage({ id: "aria.close" })}
+					>
+						<XIcon />
+					</Button>
+				</DialogClose>
+			) : null}
+		</div>
+	);
+}
+
+// The window's title as a heading (Radix renders an h2), labelling the window
+function AppModalTitle({ children, className, ...props }) {
 	const { id, setMounted } = useContext(TitleContext);
+	const mode = useContext(ModeContext);
 	useEffect(() => {
 		setMounted(true);
 		return () => setMounted(false);
 	}, [setMounted]);
+	const Title = mode === "sheet" ? SheetTitle : DialogTitle;
 	return (
-		<Modal.Title as="h2" id={id} {...props}>
+		<Title id={id} className={cn("text-base font-medium leading-snug", className)} {...props}>
 			{children}
-		</Modal.Title>
+		</Title>
 	);
 }
 
-// The body ends the frame: a form inside it (not around header, body and footer) needs no flex classes
-function AppModalBody({ children, ...props }) {
+// The body ends the frame: a form inside it (not around header, body and footer) needs no flex classes. It scrolls
+// between the fixed header and footer.
+function AppModalBody({ children, className, ...props }) {
 	return (
-		<Modal.Body {...props}>
+		<div
+			data-slot="window-body"
+			data-window-body=""
+			className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4", className)}
+			{...props}
+		>
 			<FrameContext.Provider value={false}>{children}</FrameContext.Provider>
-		</Modal.Body>
+		</div>
+	);
+}
+
+// Fixed at the bottom, buttons on the right
+function AppModalFooter({ children, className, ...props }) {
+	return (
+		<div
+			data-slot="window-footer"
+			className={cn(
+				"flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/50 px-4 py-3",
+				className,
+			)}
+			{...props}
+		>
+			{children}
+		</div>
 	);
 }
 
@@ -65,9 +196,9 @@ const useModalFrame = () => useContext(FrameContext);
 
 const useModalHide = () => useContext(HideContext);
 
-AppModal.Header = Modal.Header;
+AppModal.Header = AppModalHeader;
 AppModal.Title = AppModalTitle;
 AppModal.Body = AppModalBody;
-AppModal.Footer = Modal.Footer;
+AppModal.Footer = AppModalFooter;
 
 export { AppModal, useModalFrame, useModalHide };
