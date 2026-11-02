@@ -34,10 +34,11 @@ function DropdownMenuContent({
   className,
   align = "start",
   sideOffset = 4,
+  container, // NPMpro: where the menu is portalled (inside an old react-bootstrap window, whose focus trap pulls the focus back from the body)
   ...props
 }) {
   return (
-    <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Portal container={container}>{/* NPMpro: container */}
       <DropdownMenuPrimitive.Content
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}

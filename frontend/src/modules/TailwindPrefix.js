@@ -18,6 +18,7 @@ const FORM_LAYER = [
 	"FormSection",
 	"FormSubmit",
 	"HookForm",
+	"ModalTabs",
 	"NginxConfigField",
 	"PasswordInput",
 	"SwitchField",
