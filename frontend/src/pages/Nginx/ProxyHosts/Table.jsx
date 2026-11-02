@@ -1,4 +1,3 @@
-import { IconBolt, IconCopy, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,22 +8,22 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Copy, Eye, Pencil, Power, Trash2, Zap } from "lucide-react";
 import { useMemo } from "react";
 import {
 	AccessListFormatter,
 	CertificateFormatter,
 	DomainsFormatter,
-	EditMenuItem,
 	EmptyData,
 	GravatarFormatter,
-	HasPermission,
+	RowActions,
 	StatusFormatter,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
-import { MANAGE, PROXY_HOSTS } from "src/modules/Permissions";
-import { sectionColor } from "src/modules/SectionColors";
+import { PROXY_HOSTS } from "src/modules/Permissions";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -45,6 +44,48 @@ const accessSummary = (row) =>
 				id: row.npmproAccessListType === "custom" ? "access-list.custom" : "access-list.public",
 			});
 const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
+
+function ProxyHostActions({ host, onClone, onDelete, onDisableToggle, onEdit }) {
+	const canManage = useCanManage(PROXY_HOSTS);
+	return (
+		<RowActions
+			label={intl.formatMessage({ id: "actions" })}
+			title={<T id="object.actions-title" tData={{ object: "proxy-host" }} data={{ id: host.id }} />}
+			items={[
+				{
+					key: "edit",
+					// a user who may only view gets the View window
+					label: <T id={canManage ? "action.edit" : "action.view"} />,
+					icon: canManage ? Pencil : Eye,
+					onSelect: () => onEdit?.(host.id),
+				},
+				{
+					key: "clone",
+					label: <T id="action.clone" />,
+					icon: Copy,
+					onSelect: () => onClone?.(host.id),
+					hidden: !canManage,
+				},
+				{
+					key: "toggle",
+					label: <T id={host.enabled ? "action.disable" : "action.enable"} />,
+					icon: Power,
+					onSelect: () => onDisableToggle?.(host.id, !host.enabled),
+					hidden: !canManage,
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					onSelect: () => onDelete?.(host.id),
+					destructive: true,
+					separatorBefore: true,
+					hidden: !canManage,
+				},
+			]}
+		/>
+	);
+}
 
 // shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
 export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) {
@@ -156,61 +197,13 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 			columnHelper.display({
 				id: "actions",
 				cell: (info) => (
-					<span className="dropdown">
-						<button
-							type="button"
-							className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-							aria-label={intl.formatMessage({ id: "actions" })}
-							data-bs-boundary="viewport"
-							data-bs-toggle="dropdown"
-							data-bs-popper-config='{"strategy":"fixed"}'
-						>
-							<IconDotsVertical />
-						</button>
-						<div className="dropdown-menu dropdown-menu-end">
-							<span className="dropdown-header">
-								<T
-									id="object.actions-title"
-									tData={{ object: "proxy-host" }}
-									data={{ id: info.row.original.id }}
-								/>
-							</span>
-							<EditMenuItem section={PROXY_HOSTS} onClick={() => onEdit?.(info.row.original.id)} />
-							<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
-								<button
-									type="button"
-									className="dropdown-item"
-									onClick={() => {
-										onClone?.(info.row.original.id);
-									}}
-								>
-									<IconCopy className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.clone" />
-								</button>
-								<button
-									type="button"
-									className="dropdown-item"
-									onClick={() => {
-										onDisableToggle?.(info.row.original.id, !info.row.original.enabled);
-									}}
-								>
-									<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id={info.row.original.enabled ? "action.disable" : "action.enable"} />
-								</button>
-								<div className="dropdown-divider" />
-								<button
-									type="button"
-									className="dropdown-item text-danger"
-									onClick={() => {
-										onDelete?.(info.row.original.id);
-									}}
-								>
-									<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.delete" />
-								</button>
-							</HasPermission>
-						</div>
-					</span>
+					<ProxyHostActions
+						host={info.row.original}
+						onClone={onClone}
+						onDelete={onDelete}
+						onDisableToggle={onDisableToggle}
+						onEdit={onEdit}
+					/>
 				),
 				meta: {
 					className: "text-right whitespace-nowrap",
@@ -261,14 +254,13 @@ export default function Table({
 			renderGroupLabel={renderGroupLabel}
 			emptyState={
 				<EmptyData
-					icon={IconBolt}
+					icon={Zap}
 					object="proxy-host"
 					objects="proxy-hosts"
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color={sectionColor("proxyHosts")}
 					permissionSection={PROXY_HOSTS}
 				/>
 			}
