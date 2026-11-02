@@ -134,7 +134,9 @@ function ShellFrame({ nav, shown, setShown, children }) {
 	// Ctrl+K (Cmd+K) opens and closes the palette, except while one of the old pages' windows is open
 	useEffect(() => {
 		const onKeyDown = (event) => {
-			if (event.key.toLowerCase() !== "k" || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+			// the physical key too, so layouts whose key is not a Latin "k" (Cyrillic, Greek) work; a held key does not repeat
+			const isK = event.key.toLowerCase() === "k" || event.code === "KeyK";
+			if (!isK || event.repeat || !(event.ctrlKey || event.metaKey) || event.altKey) return;
 			if (document.querySelector(".modal.show")) return;
 			event.preventDefault();
 			setSearching((open) => !open);
