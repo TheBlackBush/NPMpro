@@ -6,7 +6,8 @@ function Spinner({
   ...props
 }) {
   return (
-    <Loader2Icon data-slot="spinner" role="status" aria-label="Loading" className={cn("tw:size-4 tw:animate-spin", className)} {...props} />
+    // NPMpro: no hard-coded English label ("Loading"): the caller passes a translated aria-label, or aria-hidden inside a labelled button
+    <Loader2Icon data-slot="spinner" role="status" className={cn("tw:size-4 tw:animate-spin", className)} {...props} />
   )
 }
 

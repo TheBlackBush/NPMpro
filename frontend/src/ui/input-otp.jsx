@@ -12,7 +12,8 @@ function InputOTP({
     <OTPInput
       data-slot="input-otp"
       containerClassName={cn(
-        "cn-input-otp flex items-center has-disabled:opacity-50",
+        // NPMpro: the CLI left this string without the tw: prefix
+        "cn-input-otp tw:flex tw:items-center tw:has-disabled:opacity-50",
         containerClassName
       )}
       spellCheck={false}

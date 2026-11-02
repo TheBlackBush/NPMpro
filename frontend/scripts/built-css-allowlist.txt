@@ -47,3 +47,11 @@ unlayered: @keyframes exit
 # ("Geist Variable", "Inter Variable", names Tabler does not use); it changes a page only where a font-family names it,
 # which brand.css does on purpose for the whole app through Tabler's --tblr-font-sans-serif
 unlayered: @font-face
+
+# shadcn's field (src/ui/field.jsx): a label hidden with Tailwind's unprefixed sr-only class keeps its own width in a
+# vertical field. Here the class is tw:sr-only, so the rule finds no element; neither Tabler nor Bootstrap has .sr-only
+unprefixed: utilities: .tw\:\[\&\>\.sr-only\]\:w-auto>.sr-only
+
+# tw-animate-css: the blinking caret of shadcn's input-otp (tw:animate-caret-blink), emitted outside the layers;
+# Tabler has no keyframes of that name
+unlayered: @keyframes caret-blink
