@@ -1,32 +1,22 @@
 import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
 import { useCallback } from "react";
 import { useController, useWatch } from "react-hook-form";
-import Select, { components } from "react-select";
+import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
-import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
 import { useReadOnly, useRecheckDependent } from "./HookForm";
 
-const OptionContent = (label, subLabel, icon) => (
-	<div className="flex-fill">
-		<div className="fw-medium">
-			{icon}
-			<strong className="ms-1">{label}</strong>
+// a row of the list: the icon (the type options have one), the name and the details under it
+const renderOption = (option) => (
+	<div className="flex-1">
+		<div className="font-medium">
+			{option.icon}
+			<strong className="ms-1">{option.label}</strong>
 		</div>
-		<div className="text-secondary mt-1 ps-3">{subLabel}</div>
+		<div className="mt-1 ps-3 text-muted-foreground">{option.subLabel}</div>
 	</div>
-);
-
-const Option = (props) => (
-	<components.Option {...props}>{OptionContent(props.data.label, props.data.subLabel)}</components.Option>
-);
-
-const TypeOption = (props) => (
-	<components.Option {...props}>
-		{OptionContent(props.data.label, props.data.subLabel, props.data.icon)}
-	</components.Option>
 );
 
 /**
@@ -57,7 +47,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const [hostType, hostIds] = useWatch({ name: ["npmproAccessListType", "npmproAccessListIds"] });
 	// a new type changes whether the ids are required
 	const recheckIds = useRecheckDependent(name);
-	// a View window: the selects are disabled too (a disabled fieldset does not reach react-select)
+	// a View window: the selects are disabled too (a disabled fieldset does not reach the comboboxes)
 	const readOnly = useReadOnly();
 	const values = idsField.value;
 	const aclValue = typeField.value;
@@ -81,7 +71,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		if (type === "global") {
 			return {
 				icon: <IconWorld size={14} className="text-cyan" />,
-				type,
+				value: type,
 				label: intl.formatMessage({ id: "access-list.global" }),
 				subLabel: intl.formatMessage({ id: "access-list.global.subtitle" }),
 			};
@@ -89,14 +79,14 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		if (type === "custom") {
 			return {
 				icon: <IconLock size={14} className="text-lime" />,
-				type,
+				value: type,
 				label: intl.formatMessage({ id: "access-list.custom" }),
 				subLabel: intl.formatMessage({ id: "access-list.custom.subtitle" }),
 			};
 		}
 		return {
 			icon: <IconLockOpen2 size={14} className="text-red" />,
-			type,
+			value: type,
 			label: intl.formatMessage({ id: "access-list.public" }),
 			subLabel: intl.formatMessage({ id: "access-list.public.subtitle" }),
 		};
@@ -116,6 +106,21 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 			ret.push(createOption("custom"));
 		}
 		return ret;
+	};
+
+	// the current type shows even when the list does not offer it (a type that needs lists not loaded yet)
+	const shownTypes = typeOptions();
+	const typeSelectOptions = shownTypes.some((o) => o.value === aclValue)
+		? shownTypes
+		: [...shownTypes, createOption(aclValue)];
+	// a row offers the lists not used yet and its own; a list that is gone shows as "#id"
+	const rowOptions = (item) => {
+		const current = defaultOptions.find((o) => o.value === item) ?? {
+			value: item,
+			label: `#${item}`,
+			meta: { id: item },
+		};
+		return [current, ...options.filter((o) => o.value !== item)];
 	};
 
 	const applyUpdatedValues = (newValues) => idsField.onChange(newValues);
@@ -178,25 +183,17 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 			<div className="row">
 				<div className="col-md-10">
 					<div className="input-group mb-3 shadow-none">
-						<Select
+						<Combobox
+							aria-label={intl.formatMessage({ id: "access-list" })}
 							className="col-md-8"
-							unstyled
-							classNames={selectClassNames}
-							isSearchable={false}
-							isDisabled={readOnly}
-							getOptionValue={(o) => o.type}
-							value={createOption(aclValue)}
-							options={typeOptions()}
-							components={{ Option: TypeOption }}
-							styles={{
-								option: (base) => ({
-									...base,
-									height: "100%",
-								}),
-							}}
+							searchable={false}
+							disabled={readOnly}
+							value={aclValue}
+							options={typeSelectOptions}
+							renderOption={renderOption}
 							ref={selectRef}
-							onChange={(e) => {
-								typeField.onChange(e.type);
+							onChange={(type) => {
+								typeField.onChange(type);
 								recheckIds();
 							}}
 							onBlur={typeField.onBlur}
@@ -208,24 +205,15 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 				<>
 					{values.map((item, idx) => (
 						<div key={item} className="input-group mb-1 shadow-none">
-							<Select
+							<Combobox
 								className="col-md-8 mb-1"
-								unstyled
-								classNames={selectClassNames}
-								value={
-									defaultOptions.find((o) => o.value === item) ?? { value: item, label: `#${item}` }
-								}
-								options={options}
-								isDisabled={readOnly}
-								components={{ Option }}
-								styles={{
-									option: (base) => ({
-										...base,
-										height: "100%",
-									}),
-								}}
-								onChange={(e) => {
-									onAccessListChange(e.meta, idx);
+								aria-label={intl.formatMessage({ id: "access-list" })}
+								value={item}
+								options={rowOptions(item)}
+								renderOption={renderOption}
+								disabled={readOnly}
+								onChange={(_value, option) => {
+									onAccessListChange(option.meta, idx);
 								}}
 							/>
 

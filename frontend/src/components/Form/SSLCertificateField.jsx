@@ -1,14 +1,13 @@
 import { IconShield } from "@tabler/icons-react";
 import { memo } from "react";
 import { useController, useWatch } from "react-hook-form";
-import Select, { components } from "react-select";
 import { certificateProviderTranslation } from "src/components";
+import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
 import { useCertificates, useUser } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { CERTIFICATES, hasPermission, MANAGE } from "src/modules/Permissions";
-import { selectClassNames } from "src/modules/Select";
-import { FormField, selectControlProps } from "./FormField";
+import { FormField } from "./FormField";
 import { useReadOnly } from "./HookForm";
 import { useTlsChange } from "./useTlsChange";
 
@@ -16,18 +15,15 @@ import { useTlsChange } from "./useTlsChange";
 const CERTIFICATE = "certificateId";
 const MTLS_CERTIFICATE = "npmproMtlsCertificateId";
 
-const Option = (props) => (
-	<components.Option {...props}>
-		<div className="flex-fill">
-			<div className="fw-medium">
-				{props.data.icon} <strong>{props.data.label}</strong>
-			</div>
-			<div className="text-secondary mt-1 ps-3">{props.data.subLabel}</div>
+// a certificate row in the list: the icon and name, the provider and expiry under it
+const renderOption = (option) => (
+	<div className="flex-1">
+		<div className="font-medium">
+			{option.icon} <strong>{option.label}</strong>
 		</div>
-	</components.Option>
+		<div className="mt-1 ps-3 text-muted-foreground">{option.subLabel}</div>
+	</div>
 );
-
-const optionStyles = { option: (base) => ({ ...base, height: "100%" }) };
 
 const certificateOption = (cert) => ({
 	value: cert.id,
@@ -47,6 +43,9 @@ const noneOption = (subtitle) => ({
 function CertificateSelect({ id, label, hint, field, options, disabled, onChoose }) {
 	const { isPending, isError, error } = useCertificates();
 	const readOnly = useReadOnly();
+	// no certificate is the first option (value 0); a certificate the list does not hold shows as "#id"
+	const value = field.value || options[0].value;
+	const knownOptions = options.some((o) => o.value === value) ? options : [...options, { value, label: `#${value}` }];
 	return (
 		<FormField id={id} label={<T id={label} />} hint={hint}>
 			{(control) => (
@@ -58,23 +57,18 @@ function CertificateSelect({ id, label, hint, field, options, disabled, onChoose
 						</div>
 					) : null}
 					{!isPending && !isError ? (
-						<Select
-							{...selectControlProps(control, { Option })}
-							unstyled
-							classNames={selectClassNames}
-							value={
-								options.find((o) => o.value === field.value) ??
-								(field.value ? { value: field.value, label: `#${field.value}` } : options[0])
-							}
-							options={options}
-							styles={optionStyles}
+						<Combobox
+							{...control}
 							ref={field.ref}
+							value={value}
+							options={knownOptions}
+							renderOption={renderOption}
 							onChange={(newValue) => {
-								field.onChange(newValue?.value);
-								onChoose(newValue?.value);
+								field.onChange(newValue);
+								onChoose(newValue);
 							}}
 							onBlur={field.onBlur}
-							isDisabled={readOnly || disabled}
+							disabled={readOnly || disabled}
 						/>
 					) : null}
 				</>

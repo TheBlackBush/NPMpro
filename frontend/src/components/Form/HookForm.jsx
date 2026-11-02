@@ -208,8 +208,8 @@ function useListRecheck(name) {
  * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
  *                                      on the first render (as the defaultValues' order)
  * @param {string}   [props.className]   of the <form>
- * @param {boolean}  [props.readOnly]    a View window: TabPane disables the fields (a disabled fieldset), react-select
- *                                      fields read useReadOnly, and a submit saves nothing
+ * @param {boolean}  [props.readOnly]    a View window: TabPane disables the fields (a disabled fieldset), the
+ *                                      comboboxes read useReadOnly, and a submit saves nothing
  * @param {*}        props.children
  */
 function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, children }) {

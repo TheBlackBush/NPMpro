@@ -1,9 +1,8 @@
 import { useController } from "react-hook-form";
-import CreatableSelect from "react-select/creatable";
+import { Combobox } from "src/components/Combobox";
 import { intl, T } from "src/locale";
-import { selectClassNames } from "src/modules/Select";
 import { validateDomain } from "src/modules/Validations";
-import { FormField, selectControlProps } from "./FormField";
+import { FormField } from "./FormField";
 import { useReadOnly } from "./HookForm";
 
 /**
@@ -30,32 +29,24 @@ export function DomainNamesField({
 		hint = <T id="domain-names.wildcards-not-supported" />;
 	}
 	const isValidDomain = validateDomain(isWildcardPermitted && dnsProviderWildcardSupported, forCertificate);
-	// a domain already in the list is not offered again
-	const isValidNewOption = (input, selected) =>
-		isValidDomain(input) && !selected.some(({ value: v }) => v.toLowerCase() === input.trim().toLowerCase());
 	return (
 		<FormField id={id} label={<T id={label} />} required hint={hint} error={error}>
 			{(control) => (
-				<CreatableSelect
-					{...selectControlProps(control)}
+				<Combobox
+					{...control}
 					ref={field.ref}
-					unstyled
-					classNames={selectClassNames}
 					name={name}
-					closeMenuOnSelect={true}
-					isClearable={false}
-					isValidNewOption={isValidNewOption}
-					isMulti
-					isDisabled={readOnly}
-					required
+					multiple
+					creatable
+					disabled={readOnly}
+					isValidNew={isValidDomain}
+					value={field.value ?? []}
 					onBlur={field.onBlur}
 					placeholder={intl.formatMessage({ id: "domain-names.placeholder" })}
-					onChange={(v) => {
-						const domains = [...new Set(v?.map((i) => i.value.trim()))];
+					onChange={(domains) => {
 						field.onChange(domains);
 						onChange?.(domains);
 					}}
-					value={field.value?.map((d) => ({ label: d, value: d }))}
 				/>
 			)}
 		</FormField>

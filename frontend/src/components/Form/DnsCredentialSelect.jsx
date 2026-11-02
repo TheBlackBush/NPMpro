@@ -1,11 +1,10 @@
 import { IconPlus } from "@tabler/icons-react";
 import { useController } from "react-hook-form";
-import Select from "react-select";
+import { Combobox } from "src/components/Combobox";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDnsCredentialModal } from "src/modals";
-import { selectClassNames } from "src/modules/Select";
-import { FormField, selectControlProps } from "./FormField";
+import { FormField } from "./FormField";
 
 /**
  * The DNS credential of a provider (a field of the form around it): the label, the select, "+" (a new credential of
@@ -23,7 +22,7 @@ export function DnsCredentialSelect({ name, provider, hint }) {
 
 	const options = (data ?? [])
 		.filter((c) => c.provider === provider)
-		.map((c) => ({ value: c.id, label: c.name, isDisabled: Boolean(c.decryptError) }));
+		.map((c) => ({ value: c.id, label: c.name, disabled: Boolean(c.decryptError) }));
 
 	const addLabel = intl.formatMessage({ id: "dns-credentials.add" });
 
@@ -32,24 +31,18 @@ export function DnsCredentialSelect({ name, provider, hint }) {
 			{(control) => (
 				<div className="d-flex gap-2">
 					<div className="flex-fill">
-						<Select
-							{...selectControlProps(control)}
+						<Combobox
+							{...control}
 							ref={field.ref}
-							unstyled
-							classNames={selectClassNames}
 							name={name}
-							closeMenuOnSelect={true}
-							isClearable={false}
-							isLoading={isPending}
-							isSearchable
-							required
+							loading={isPending}
 							onBlur={field.onBlur}
 							placeholder={intl.formatMessage({
 								id: options.length ? "dns-credentials.select" : "dns-credentials.none-for-provider",
 							})}
 							options={options}
-							value={options.find((o) => o.value === field.value) ?? null}
-							onChange={(o) => field.onChange(o?.value)}
+							value={options.some((o) => o.value === field.value) ? field.value : null}
+							onChange={(value) => field.onChange(value ?? undefined)}
 						/>
 					</div>
 					<button
