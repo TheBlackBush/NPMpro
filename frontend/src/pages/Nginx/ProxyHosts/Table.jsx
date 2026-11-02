@@ -90,8 +90,14 @@ function ProxyHostActions({ host, onClone, onDelete, onDisableToggle, onEdit }) 
 	);
 }
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) {
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+//
+// The columns must keep their identity between renders: flexRender renders a column's `cell` function as a React
+// component, so a new function (columns rebuilt on every render) remounts every cell, which drops focus and open
+// popovers on each refetch or search keystroke. So the memo has no dependencies (a language change reloads the page)
+// and the row handlers reach the cells through the table meta (`meta.actions`, read in the cell from
+// info.table.options.meta), never through the column definitions. Later list pages follow the same pattern.
+export function useColumns() {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
@@ -199,22 +205,14 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => (
-					<ProxyHostActions
-						host={info.row.original}
-						onClone={onClone}
-						onDelete={onDelete}
-						onDisableToggle={onDisableToggle}
-						onEdit={onEdit}
-					/>
-				),
+				cell: (info) => <ProxyHostActions host={info.row.original} {...info.table.options.meta?.actions} />,
 				meta: {
 					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[onClone, onDelete, onDisableToggle, onEdit],
+		[],
 	);
 }
 
@@ -234,15 +232,17 @@ export default function Table({
 	groupBy,
 	renderGroupLabel,
 }) {
-	const columns = useColumns({ onClone, onDelete, onDisableToggle, onEdit });
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: { onClone, onDelete, onDisableToggle, onEdit },
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
