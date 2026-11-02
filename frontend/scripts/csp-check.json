@@ -57,6 +57,16 @@
 			]
 		},
 		{
+			"name": "help sheet",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "role=button[name='Help']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "waitFor": "[data-slot=sheet-content] .prose" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "sidebar layout",
 			"route": "/",
 			"steps": [

@@ -1,4 +1,4 @@
-import { IconDownload, IconUpload } from "@tabler/icons-react";
+import { Download, Upload } from "lucide-react";
 import { useRef } from "react";
 import { useNavigate } from "react-router";
 import { intl, T } from "src/locale";
@@ -10,7 +10,7 @@ import { HasPermission } from "./HasPermission";
 /**
  * Export and Import of a list page, for the card header's button list before Add: Export (view permission, when the
  * page has items) opens the export window, Import (manage permission) picks a .npmpro file and opens the import.
- * Below the sm breakpoint both show only their icon.
+ * Below the sm breakpoint both show only their icon (the label stays for screen readers).
  *
  * @param {Object}  props
  * @param {string}  props.kind               the page's kind of items: proxy_hosts, redirection_hosts, dead_hosts,
@@ -41,8 +41,8 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 						aria-label={exportLabel}
 						title={exportLabel}
 					>
-						<IconDownload className="icon" aria-hidden="true" />
-						<span className="d-none d-sm-inline">
+						<Download aria-hidden="true" />
+						<span className="sr-only sm:not-sr-only">
 							<T id="backup.export" />
 						</span>
 					</Button>
@@ -53,7 +53,7 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 					ref={inputRef}
 					type="file"
 					accept=".npmpro"
-					className="d-none"
+					className="hidden"
 					tabIndex={-1}
 					aria-hidden="true"
 					onChange={onFile}
@@ -64,8 +64,8 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 					aria-label={importLabel}
 					title={importLabel}
 				>
-					<IconUpload className="icon" aria-hidden="true" />
-					<span className="d-none d-sm-inline">
+					<Upload aria-hidden="true" />
+					<span className="sr-only sm:not-sr-only">
 						<T id="backup.import" />
 					</span>
 				</Button>

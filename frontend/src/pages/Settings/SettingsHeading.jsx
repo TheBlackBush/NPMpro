@@ -22,7 +22,7 @@ function SettingsHeading({ titleId, className = "mb-3" }) {
 			<h2 className="mb-0">
 				<T id={titleId} />
 			</h2>
-			{section ? <HelpButton doc={settingsHelpDoc(section)} className="ms-auto" /> : null}
+			{section ? <HelpButton doc={settingsHelpDoc(section)} className="ml-auto" /> : null}
 		</div>
 	);
 }
