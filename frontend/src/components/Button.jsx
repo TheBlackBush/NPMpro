@@ -1,12 +1,15 @@
-import cn from "clsx";
-import { buttonClassName } from "src/modules/ButtonClasses";
-import { buttonLabelStyle } from "src/modules/SectionColors";
+import { Button as UiButton } from "src/components/ui/button";
+import { Spinner } from "src/components/ui/spinner";
+import { cn } from "src/lib/utils";
+import { buttonVariant } from "src/modules/ButtonVariants";
 
 /**
+ * The button of the old pages on the shadcn Button: colour, outline, size and Bootstrap classes are mapped by
+ * buttonVariant (one primary colour; an uncoloured button is the outline look).
+ *
  * blocked: looks disabled and does nothing when clicked, but stays focusable and announced (aria-disabled), so its
  * reason (aria-describedby) can be reached; use it when the button waits for the user to fix something, disabled
- * when it is simply not available; onBlockedClick runs instead of onClick while blocked. A colour whose white label
- * is hard to read gets a dark one (SectionColors.js).
+ * when it is simply not available; onBlockedClick runs instead of onClick while blocked.
  */
 function Button({
 	children,
@@ -24,21 +27,19 @@ function Button({
 	style,
 	...rest
 }) {
-	const labelStyle = buttonLabelStyle(color);
+	const { variant, size: uiSize, rest: classes } = buttonVariant({ color, outline, size, className });
 	return (
-		<button
+		<UiButton
 			{...rest}
-			style={labelStyle ? { ...labelStyle, ...style } : style}
+			style={style}
 			type={type || "button"}
-			className={buttonClassName({
-				color,
-				outline,
-				size,
-				fullWidth,
-				isLoading,
-				// the disabled look, but still clickable (to show what to fix) with a not-allowed cursor
-				className: cn(className, blocked && "disabled pe-auto cursor-not-allowed"),
-			})}
+			variant={variant}
+			size={uiSize}
+			className={cn(
+				classes,
+				fullWidth && "w-full",
+				blocked && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+			)}
 			onClick={(e) => {
 				if (blocked) {
 					// also stops the form submit of a submit button (keyboard activation ignores pointer-events)
@@ -52,8 +53,9 @@ function Button({
 			aria-disabled={blocked || undefined}
 			aria-busy={isLoading || undefined}
 		>
+			{isLoading ? <Spinner role="presentation" aria-hidden="true" data-icon="inline-start" /> : null}
 			{children}
-		</button>
+		</UiButton>
 	);
 }
 

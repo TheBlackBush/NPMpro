@@ -1,11 +1,11 @@
-import { Loading, Page } from "src/components";
+import { Loading } from "src/components";
 
 export function LoadingPage({ label, noLogo, delay }) {
 	return (
-		<Page className="page-center">
-			<div className="container-tight py-4">
+		<div className="flex min-h-svh items-center justify-center p-4">
+			<div className="w-full max-w-sm">
 				<Loading label={label} noLogo={noLogo} delay={delay} />
 			</div>
-		</Page>
+		</div>
 	);
 }
