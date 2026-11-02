@@ -10,12 +10,12 @@ import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
 
-// two filters per row on phones (half the row minus half the gap-2; a lone one stays on the right), their own width from md
+// two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
 function FilterSelect({ label, value, onChange, options }) {
 	return (
 		<NativeSelect
 			size="sm"
-			className="w-[calc(50%-0.25rem)] flex-none md:w-fit"
+			className="min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none md:w-fit"
 			aria-label={intl.formatMessage({ id: label })}
 			value={value}
 			onChange={(e) => onChange(e.target.value)}
@@ -69,7 +69,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 	return (
 		<div className="flex flex-col gap-2 border-b p-3">
 			<div className="flex flex-wrap items-center gap-2">
-				<InputGroup className="w-full md:max-w-sm">
+				<InputGroup className="w-full md:min-w-64 md:flex-1">
 					<InputGroupAddon>
 						<Search aria-hidden="true" />
 					</InputGroupAddon>
