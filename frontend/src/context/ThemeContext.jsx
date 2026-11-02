@@ -47,12 +47,11 @@ export const ThemeProvider = ({ children }) => {
 	}, [preference]);
 
 	useEffect(() => {
-		document.body.dataset.theme = theme;
 		for (const meta of document.querySelectorAll('meta[name="theme-color"]'))
 			meta.media = meta.dataset.theme === theme ? "all" : "not all";
 	}, [theme]);
 
-	document.documentElement.setAttribute("data-bs-theme", theme);
+	document.documentElement.classList.toggle("dark", theme === "dark");
 	return <ThemeContext.Provider value={{ theme, preference, setPreference }}>{children}</ThemeContext.Provider>;
 };
 

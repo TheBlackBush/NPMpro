@@ -178,6 +178,7 @@ ARG NODE_ENV=production
 ARG NODE_OPTIONS=--use-openssl-ca
 WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /app/
+COPY frontend/patches /app/patches/
 RUN apk upgrade --no-cache -a && \
     apk add --no-cache nodejs pnpm llvm file brotli && \
     pnpm install --frozen-lockfile && \

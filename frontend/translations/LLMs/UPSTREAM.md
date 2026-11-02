@@ -58,7 +58,6 @@ Everything else is printed:
 | `changed by NPMpro and upstream, merge manually: <text>` | NPMpro changed the text and upstream too, the NPMpro text was kept | Compare both and keep the better one |
 | `removed upstream` | Upstream deleted the key | Delete it if NPMpro does not use it anymore |
 | `help/<code>/<doc>: conflicts, merge manually` | The file contains conflict markers | Resolve the conflict markers |
-| `New language: <code>` | Upstream has a language NPMpro does not have | See [New upstream languages](#new-upstream-languages) |
 
 ## Updated upstream translations
 
@@ -69,22 +68,17 @@ Everything else is printed:
 5. Remove the upstream files again: `git rm -r :/frontend/src/locale/src`
 6. Check the result with `check-locale.sh`
 
-## New upstream languages
+## Languages NPMpro does not ship
 
 Persian (`fa`) is skipped: NPMpro does not ship it.
 
+Only the languages in lang-list.json are merged. For every other language upstream has, the script prints `skipped <code>: not in lang-list.json`. Adding a language is a deliberate edit, the script never adds one by itself:
 
-The script handles a new upstream language like an update with an empty old version. It:
+1. Add `<code>` to `lang-list.json`: `flag` is the region of the upstream key `locale-<code>-<REGION>`, `name` is the native name (upstream sometimes uses the English one, for example `German`), and `"rtl": true` if upstream lists the language in `rtlLocales`.
+2. Run the script again. It creates `ui/<code>.json` from the upstream file, without the keys NPMpro rewords (they are printed), and `help/<code>/` from the upstream help docs.
+3. Check by hand, then translate the printed keys and the keys only NPMpro has (`check-locale.sh <code>` lists them):
 
-- creates `ui/<code>.json` from the upstream file, without the keys NPMpro rewords (they are printed)
-- creates `help/<code>/` from the upstream help docs
-- adds `<code>` to `lang-list.json`: `flag` is the region of the upstream key `locale-<code>-<REGION>`, `name` is its `defaultMessage` and `rtl` is set if upstream lists the language in `rtlLocales`
-
-Check by hand:
-
-- `name` in `lang-list.json` must be the native name, upstream sometimes uses the English one (for example `German`)
 - `flag` in `lang-list.json`
-- translate the printed keys and the keys only NPMpro has, `check-locale.sh <code>` lists them
 - translated product names are not replaced, for example `Bainisteoir Proxy Nginx` or `Nginx 代理管理器`
 - grammar around replaced names, for example `du NPMpro` instead of `de NPMpro` in French
 

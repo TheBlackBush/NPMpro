@@ -88,6 +88,39 @@
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["src/components/ui/**", "src/lib/utils.js"],
+			"formatter": {
+				"enabled": false
+			},
+			"linter": {
+				"rules": {
+					"preset": "recommended",
+					"a11y": {
+						"useFocusableInteractive": "off",
+						"useKeyWithClickEvents": "off",
+						"useSemanticElements": "off"
+					},
+					"correctness": {
+						"noUnusedImports": "off"
+					},
+					"suspicious": {
+						"noDocumentCookie": "off",
+						"noDoubleEquals": "off"
+					}
+				}
+			},
+			"assist": {
+				"enabled": false
+			}
+		}
+	],
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"

@@ -1,0 +1,26 @@
+/* The app's font, served by NPMpro itself (Vite copies the files into the build, so font-src 'self' covers them):
+   Geist for Latin, Cyrillic and Vietnamese, Inter for Greek (Geist has no Greek letters; only Inter's two Greek files
+   are included, and their unicode-range makes the browser fetch them only for a page that shows Greek text), then the
+   system font (Chinese, Japanese, Korean). Geist Mono is the code font. globals.css puts the stacks into
+   --font-sans and --font-mono. */
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
+/* Inter (variable), its greek-ext and greek faces only */
+@font-face {
+	font-family: "Inter Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("@fontsource-variable/inter/files/inter-greek-ext-wght-normal.woff2") format("woff2-variations");
+	unicode-range: U+1F00-1FFF;
+}
+
+@font-face {
+	font-family: "Inter Variable";
+	font-style: normal;
+	font-display: swap;
+	font-weight: 100 900;
+	src: url("@fontsource-variable/inter/files/inter-greek-wght-normal.woff2") format("woff2-variations");
+	unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}

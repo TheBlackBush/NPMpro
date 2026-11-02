@@ -1,28 +1,13 @@
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { ApiErrorContent } from "src/components/ErrorAlert";
 import { intl } from "src/locale";
-import { Msg } from "./Msg";
 
 const showSuccess = (message) => {
-	toast(Msg, {
-		className: "bg-transparent shadow-none border-0",
-		data: {
-			type: "success",
-			title: intl.formatMessage({ id: "notification.success" }),
-			message,
-		},
-	});
+	toast.success(intl.formatMessage({ id: "notification.success" }), { description: message });
 };
 
 const showError = (message) => {
-	toast(Msg, {
-		className: "bg-transparent shadow-none border-0",
-		data: {
-			type: "error",
-			title: intl.formatMessage({ id: "notification.error" }),
-			message,
-		},
-	});
+	toast.error(intl.formatMessage({ id: "notification.error" }), { description: message, duration: 10_000 });
 };
 
 const showApiError = (err) => {
@@ -50,24 +35,14 @@ const getNginxConfigError = (row) =>
 const NginxConfigErrorMsg = ({ obj, nginxErr }) => (
 	<>
 		{intl.formatMessage({ id: "notification.object-nginx-error" }, { object: intl.formatMessage({ id: obj }) })}
-		{nginxErr && (
-			// Tabler's .text-wrap is white-space: normal, which would collapse the nginx output
-			<pre className="mt-2 mb-0" style={{ whiteSpace: "pre-wrap" }}>
-				{nginxErr}
-			</pre>
-		)}
+		{nginxErr && <pre className="mt-2 whitespace-pre-wrap font-mono text-xs">{nginxErr}</pre>}
 	</>
 );
 
 const showNginxConfigError = (obj, nginxErr) => {
-	toast(Msg, {
-		className: "bg-transparent shadow-none border-0",
-		autoClose: false,
-		data: {
-			type: "error",
-			title: intl.formatMessage({ id: "notification.nginx-config-error" }),
-			message: <NginxConfigErrorMsg obj={obj} nginxErr={nginxErr} />,
-		},
+	toast.error(intl.formatMessage({ id: "notification.nginx-config-error" }), {
+		description: <NginxConfigErrorMsg obj={obj} nginxErr={nginxErr} />,
+		duration: Number.POSITIVE_INFINITY,
 	});
 };
 

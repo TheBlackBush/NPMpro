@@ -1,0 +1,36 @@
+diff --git a/dist/index.js b/dist/index.js
+index 394dbc2272f43b84642b0f9d5cc7eb1eacb0ffb3..cd8bdc20fc557e843c0f81b1cb1970a6e95c6976 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1,11 +1,7 @@
+ 'use client';
+ function __insertCSS(code) {
+-  if (!code || typeof document == 'undefined') return
+-  let head = document.head || document.getElementsByTagName('head')[0]
+-  let style = document.createElement('style')
+-  style.type = 'text/css'
+-  head.appendChild(style)
+-  ;style.styleSheet ? (style.styleSheet.cssText = code) : style.appendChild(document.createTextNode(code))
++  // NPMpro: styles come from sonner/dist/styles.css (CSP: no runtime style)
++  return
+ }
+ 
+ Object.defineProperty(exports, '__esModule', { value: true });
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c124f821a68f7070647a5a04441d0caa53689662..1f4baecec159fc2acbe08ce5943049a931644eb8 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -1,11 +1,7 @@
+ 'use client';
+ function __insertCSS(code) {
+-  if (!code || typeof document == 'undefined') return
+-  let head = document.head || document.getElementsByTagName('head')[0]
+-  let style = document.createElement('style')
+-  style.type = 'text/css'
+-  head.appendChild(style)
+-  ;style.styleSheet ? (style.styleSheet.cssText = code) : style.appendChild(document.createTextNode(code))
++  // NPMpro: styles come from sonner/dist/styles.css (CSP: no runtime style)
++  return
+ }
+ 
+ import React from 'react';
