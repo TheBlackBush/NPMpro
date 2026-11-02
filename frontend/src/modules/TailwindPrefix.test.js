@@ -215,7 +215,7 @@ it("the script skips *.test.js and *.test.jsx files, reports line numbers, honor
 
 it("checks the new UI by default, and the new UI passes", () => {
 	const layer = ["FormField", "FormSection", "SwitchList", "SwitchField", "ChoiceGroup", "PasswordInput"];
-	layer.push("NginxConfigField", "FormSubmit", "FormErrorNote", "HookForm");
+	layer.push("NginxConfigField", "FormSubmit", "FormErrorNote", "HookForm", "CodeInput");
 	for (const path of ["src/components/PageHeader.jsx", ...layer.map((name) => `src/components/Form/${name}.jsx`)]) {
 		assert.ok(NEW_UI_PATHS.includes(path), path);
 	}

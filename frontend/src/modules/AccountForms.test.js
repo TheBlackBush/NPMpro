@@ -8,7 +8,8 @@ import {
 	codeComplete,
 	codeModeChanges,
 	codeOf,
-	fittingOtpSize,
+	codePattern,
+	codeSlotGroups,
 	mfaCodeValidate,
 	normalizeBackupCode,
 	pastedCodeValue,
@@ -117,12 +118,21 @@ it("pastedCodeValue puts a partial paste at the caret and a complete code over t
 	assert.equal(pastedCodeValue("", "98 76-54", 0, 0, 6), "987654");
 });
 
-it("fittingOtpSize takes the largest size that fits, the smallest when none does", () => {
-	const widths = { lg: 400, md: 340, sm: 300 };
-	const sizes = [["lg"], ["md"], ["sm"]];
-	const widthOf = ([name]) => widths[name];
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 500), ["lg"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 340), ["md"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 310), ["sm"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 100), ["sm"]);
+it("codeSlotGroups numbers the boxes of each group in order", () => {
+	assert.deepEqual(codeSlotGroups([3, 3]), [
+		[0, 1, 2],
+		[3, 4, 5],
+	]);
+	assert.deepEqual(codeSlotGroups([4, 4]), [
+		[0, 1, 2, 3],
+		[4, 5, 6, 7],
+	]);
+	assert.deepEqual(codeSlotGroups([6]), [[0, 1, 2, 3, 4, 5]]);
+});
+
+it("codePattern takes digits for an app code, letters and digits for a backup code", () => {
+	assert.ok(codePattern("numeric").test("012345"));
+	assert.ok(!codePattern("numeric").test("01234a"));
+	assert.ok(codePattern("alphanumeric").test("abCD1234"));
+	assert.ok(!codePattern("alphanumeric").test("abcd-123"));
 });
