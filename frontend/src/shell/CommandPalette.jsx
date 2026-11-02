@@ -53,8 +53,10 @@ const OPEN = {
 	showUserModal,
 };
 
-// the lists stay fresh for a minute, as the list pages' own queries (hooks/useProxyHosts.js and the others)
+// the lists stay fresh for a minute (as the list pages' own queries) and are kept for half an hour after the palette
+// closes, so reopening shows them at once (the default 5 minutes would drop them)
 const STALE = 60 * 1000;
+const KEEP = 30 * 60 * 1000;
 
 /** An item's two lines: what it is called and, muted, where it leads */
 function ItemText({ label, detail }) {
@@ -78,7 +80,9 @@ function StatusRow({ value, icon: Icon, spin, children }) {
 
 /**
  * The palette's content, mounted while it is open: the pages at once, every item type the user may see from its list
- * endpoint (one request each, on the first opening; cached, refreshed in the background when reopened)
+ * endpoint (one request each, on the first opening; cached, refreshed in the background when reopened). The queries use
+ * the same keys as the hooks without `expand`; the list pages query with an `expand` array, so they keep their own entries
+ * (invalidating by key prefix after a save still refreshes both)
  */
 function PaletteContent({ groups, onDone }) {
 	const navigate = useNavigate();
@@ -88,10 +92,13 @@ function PaletteContent({ groups, onDone }) {
 			queryKey: [type.queryKey, { expand: undefined }],
 			queryFn: () => FETCH[type.fetch](),
 			staleTime: STALE,
+			gcTime: KEEP,
 			retry: 1,
 		})),
 	});
 	const pages = pageItems(groups);
+	// "no results" is true only once every type has its data (a loading or failed type may hold the match)
+	const settled = lists.every(({ isPending, isError, data }) => !isPending && !(isError && !data));
 
 	// close first, then go: the window opens over the page, not under the closing palette
 	const choose = (action) => {
@@ -106,10 +113,10 @@ function PaletteContent({ groups, onDone }) {
 		);
 
 	return (
-		<Command filter={paletteFilter} loop>
+		<Command filter={paletteFilter} loop label={text("palette.label")}>
 			<CommandInput placeholder={text("palette.placeholder")} aria-label={text("search")} />
-			<CommandList className="tw:max-h-[min(24rem,60svh)]">
-				<CommandEmpty>{text("empty-search")}</CommandEmpty>
+			<CommandList className="tw:max-h-[min(24rem,60svh)]" label={text("palette.results")}>
+				{settled && <CommandEmpty>{text("empty-search")}</CommandEmpty>}
 				<CommandGroup heading={text("palette.pages")}>
 					{pages.map(({ value, page, group }) => {
 						const title = text(page.titleKey);
@@ -136,8 +143,10 @@ function PaletteContent({ groups, onDone }) {
 				{types.map((type, index) => {
 					const { data, isPending, isError } = lists[index];
 					const heading = text(type.titleKey);
+					// while searching, cmdk hides a group without matching items: keep the one that shows a status row
+					const status = isPending || (isError && !data);
 					return (
-						<CommandGroup key={type.id} heading={heading}>
+						<CommandGroup key={type.id} heading={heading} forceMount={status}>
 							{isPending && (
 								<StatusRow value={`${type.id}:loading`} icon={LoaderCircle} spin>
 									{text("loading")}
