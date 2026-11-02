@@ -71,6 +71,8 @@ jobs:
         run: node scripts/check-tw-prefix.js
       - name: build
         run: pnpm vite build
+      - name: the built CSS reaches the old pages only as allowlisted
+        run: node scripts/check-built-css.js
 
   lint:
     runs-on: ubuntu-latest

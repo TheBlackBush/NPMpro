@@ -1,0 +1,24 @@
+# What the built stylesheet may have outside a cascade layer (it beats every layered rule, Tabler's included) and
+# which unprefixed Tailwind-looking classes the new UI's layers may style. scripts/check-built-css.js compares this
+# list with the build after `vite build`; a new line fails CI, and so does a line the build no longer has.
+# Before adding a line: check that it cannot change an old page (a Tabler or Bootstrap class or keyframes name, an
+# element selector, a custom property Tabler reads). Tailwind's own @property --tw-* are not listed.
+# Format: one finding per line as the check prints it, a comment above each group with its source and why it is safe.
+
+# shadcn/tailwind.css (shadcn package): custom properties of its scroll-fade and shimmer utilities, names Tabler
+# does not use
+unlayered: @property --scroll-fade-t
+unlayered: @property --scroll-fade-b
+unlayered: @property --scroll-fade-s
+unlayered: @property --scroll-fade-e
+unlayered: @property --scroll-fade-mask
+unlayered: @property --shimmer-angle
+unlayered: @property --shimmer-image
+unlayered: @property --shimmer-text-fill
+# shadcn/tailwind.css: turns its .shimmer animation off for reduced motion; Tabler has no .shimmer class
+unlayered: @media (prefers-reduced-motion:reduce) > .shimmer
+
+# styles/tailwind.css: shadcn's design tokens (--background, --primary, ...) and their dark values; Tabler reads only
+# --tblr-* and --bs-* properties
+unlayered: :root
+unlayered: .dark
