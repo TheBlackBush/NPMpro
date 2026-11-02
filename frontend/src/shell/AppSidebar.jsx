@@ -71,7 +71,7 @@ export function PageBadge({ badge, className }) {
 		<>
 			<SidebarMenuBadge
 				className={cn(
-					tone === "error" && "tw:bg-destructive/10 tw:text-destructive",
+					tone === "error" && "tw:bg-destructive/10 tw:text-destructive-text",
 					tone === "warning" && "tw:bg-warning/15 tw:text-warning-foreground",
 					className,
 				)}
