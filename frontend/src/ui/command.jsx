@@ -41,10 +41,6 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="tw:sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
       <DialogContent
         className={cn(
           "tw:top-1/3 tw:translate-y-0 tw:overflow-hidden tw:rounded-xl! tw:p-0",
@@ -52,6 +48,11 @@ function CommandDialog({
         )}
         showCloseButton={showCloseButton}
       >
+        {/* NPMpro: the title and description inside the content, so they exist only while the dialog is open (shadcn renders them beside it) */}
+        <DialogHeader className="tw:sr-only">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>
