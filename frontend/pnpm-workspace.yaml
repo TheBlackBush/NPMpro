@@ -1,3 +1,5 @@
 minimumReleaseAge: 0
 allowBuilds:
   '@parcel/watcher': false
+patchedDependencies:
+  sonner@2.0.8: patches/sonner@2.0.8.patch

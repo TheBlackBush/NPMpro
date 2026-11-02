@@ -1,11 +1,11 @@
-import { useTheme } from "next-themes"
+import { useThemeState } from "src/context"; // NPMpro: the app's theme context instead of next-themes
 import { Toaster as Sonner } from "sonner";
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({
   ...props
 }) => {
-  const { theme = "system" } = useTheme()
+  const { theme } = useThemeState(); // NPMpro: the app's theme context instead of next-themes
 
   return (
     <Sonner
