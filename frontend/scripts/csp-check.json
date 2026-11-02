@@ -24,10 +24,10 @@
 			"route": "/",
 			"steps": [
 				{
-					"click": "role=button[name='Select language']"
+					"click": "nav >> role=button[name='Select language']"
 				},
 				{
-					"waitFor": ".dropdown-menu.show"
+					"waitFor": "[data-slot=dropdown-menu-content]"
 				}
 			]
 		},
@@ -36,10 +36,10 @@
 			"route": "/",
 			"steps": [
 				{
-					"click": "role=button[name=/^Theme/]"
+					"click": "nav >> role=button[name=/^Theme/]"
 				},
 				{
-					"waitFor": ".dropdown-menu.show"
+					"waitFor": "[data-slot=dropdown-menu-content]"
 				}
 			]
 		},
@@ -48,22 +48,49 @@
 			"route": "/",
 			"steps": [
 				{
-					"click": "role=button[name='Open user menu']"
+					"click": "nav >> role=button[name='Open user menu']"
 				},
 				{
-					"waitFor": ".dropdown-menu.show"
+					"waitFor": "[data-slot=dropdown-menu-content]"
 				}
 			]
 		},
 		{
-			"name": "settings menu",
+			"name": "admin group",
 			"route": "/",
 			"steps": [
 				{
-					"click": "nav >> role=button[name='Settings']"
+					"click": "nav >> role=button[name=/^Admin$/]"
 				},
 				{
-					"waitFor": ".dropdown-menu.show"
+					"waitFor": "nav >> role=link[name='Default Site']"
+				}
+			]
+		},
+		{
+			"name": "folded rail pop-out",
+			"route": "/",
+			"steps": [
+				{
+					"press": "Control+b"
+				},
+				{
+					"waitFor": "[data-slot=sidebar][data-state=collapsed]"
+				},
+				{
+					"click": "nav >> role=button[name=/^Hosts$/]"
+				},
+				{
+					"waitFor": "[data-slot=dropdown-menu-content]"
+				},
+				{
+					"waitFor": "[data-slot=dropdown-menu-content] >> role=menuitem[name='Proxy Hosts']"
+				},
+				{
+					"press": "Escape"
+				},
+				{
+					"press": "Control+b"
 				}
 			]
 		},
@@ -72,7 +99,7 @@
 			"route": "/nginx/proxy",
 			"steps": [
 				{
-					"click": "role=button[name='Help']"
+					"click": "nav >> role=button[name='Help']"
 				},
 				{
 					"waitFor": ".modal.show"
