@@ -3,7 +3,7 @@ import { XIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { intl } from "src/locale";
-import { groupAlert, pageBadge, pageSections } from "src/modules/Navigation";
+import { firstPage, groupAlert, pageBadge, pageSections } from "src/modules/Navigation";
 import { Button } from "src/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "src/ui/sheet";
 import { NavIcon } from "./NavIcon";
@@ -36,6 +36,17 @@ function TabMarks({ current, alert }) {
 	);
 }
 
+/** A tab's content: icon, label and marks */
+function TabBody({ item, current, alert }) {
+	return (
+		<>
+			<NavIcon name={item.icon} className="tw:size-5" />
+			<span className="tw:max-w-full tw:truncate">{text(item.titleKey)}</span>
+			<TabMarks current={current} alert={alert} />
+		</>
+	);
+}
+
 /** One page of the sheet: icon, title, count */
 function SheetPage({ page, active, report, onClose }) {
 	const badge = pageBadge(page, report);
@@ -48,7 +59,7 @@ function SheetPage({ page, active, report, onClose }) {
 				<span
 					className={cn(
 						"tw:rounded-md tw:px-1.5 tw:text-xs tw:font-medium tw:tabular-nums tw:text-muted-foreground",
-						tone === "error" && "tw:bg-destructive/10 tw:text-destructive",
+						tone === "error" && "tw:bg-destructive/10 tw:text-destructive-text",
 						tone === "warning" && "tw:bg-warning/15 tw:text-warning-foreground",
 					)}
 				>
@@ -97,12 +108,11 @@ export function PhoneNav({ groups, current, report }) {
 		<>
 			<nav
 				aria-label={text("aria.main-navigation")}
-				className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-30 tw:flex tw:border-t tw:bg-sidebar tw:pb-[env(safe-area-inset-bottom)] tw:text-sidebar-foreground tw:md:hidden"
+				className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-30 tw:flex tw:border-t tw:bg-sidebar tw:pb-[env(safe-area-inset-bottom)] tw:text-sidebar-foreground tw:md:hidden tw:print:hidden"
 			>
 				{groups.map((item) => {
 					const isCurrent = group?.id === item.id;
-					const label = text(item.titleKey);
-					const marks = <TabMarks current={isCurrent} alert={groupAlert(item, report)} />;
+					const alert = groupAlert(item, report);
 					if (isCurrent && item.panel) {
 						return (
 							<button
@@ -114,19 +124,25 @@ export function PhoneNav({ groups, current, report }) {
 								aria-expanded={open}
 								onClick={() => setOpen(true)}
 							>
-								<NavIcon name={item.icon} className="tw:size-5" />
-								<span className="tw:max-w-full tw:truncate">{label}</span>
-								{marks}
+								<TabBody item={item} current={isCurrent} alert={alert} />
 							</button>
 						);
 					}
-					const first = item.pages.find((page) => page.to);
-					return (
+					const first = firstPage(item);
+					// a group whose first page is an external link opens it with a plain anchor
+					return first.to ? (
 						<Link key={item.id} to={first.to} className={TAB} aria-current={isCurrent ? "true" : undefined}>
-							<NavIcon name={item.icon} className="tw:size-5" />
-							<span className="tw:max-w-full tw:truncate">{label}</span>
-							{marks}
+							<TabBody item={item} current={isCurrent} alert={alert} />
 						</Link>
+					) : (
+						<a
+							key={item.id}
+							href={first.href}
+							className={TAB}
+							aria-current={isCurrent ? "true" : undefined}
+						>
+							<TabBody item={item} current={isCurrent} alert={alert} />
+						</a>
 					);
 				})}
 			</nav>

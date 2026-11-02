@@ -184,7 +184,7 @@ function Sidebar({
 
   return (
     <div
-      className="tw:group tw:peer tw:hidden tw:text-sidebar-foreground tw:md:block"
+      className="tw:group tw:peer tw:hidden tw:text-sidebar-foreground tw:md:block tw:print:hidden" // NPMpro: not printed, with its gap
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}

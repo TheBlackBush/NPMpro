@@ -58,7 +58,7 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 	if (isMobile) {
 		const title = trail.at(-1);
 		return (
-			<header className="tw:sticky tw:top-0 tw:z-20 tw:flex tw:h-12 tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:bg-background tw:px-3 tw:text-foreground">
+			<header className="tw:sticky tw:top-0 tw:z-20 tw:flex tw:h-12 tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:bg-background tw:px-3 tw:text-foreground tw:print:hidden">
 				<Link to="/" aria-label="NPMpro" className="tw:shrink-0">
 					<LogoMark className="tw:size-7" />
 				</Link>
@@ -70,7 +70,7 @@ function ShellHeader({ trail, user, helpDoc, canFold }) {
 		);
 	}
 	return (
-		<header className="tw:sticky tw:top-0 tw:z-20 tw:flex tw:h-12 tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:bg-background tw:px-4 tw:text-foreground">
+		<header className="tw:sticky tw:top-0 tw:z-20 tw:flex tw:h-12 tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:bg-background tw:px-4 tw:text-foreground tw:print:hidden">
 			{canFold && (
 				<>
 					<SidebarTrigger className="tw:-ml-1" aria-label={text("aria.toggle-navigation")} />
@@ -127,7 +127,7 @@ function ShellFrame({ nav, shown, setShown, children }) {
 					onShow={setShown}
 				/>
 			)}
-			<SidebarInset className="tw:min-w-0 tw:bg-transparent tw:pb-16 tw:md:pb-0">
+			<SidebarInset className="tw:min-w-0 tw:bg-transparent tw:pb-16 tw:md:pb-0 tw:print:pb-0">
 				<ShellHeader
 					trail={breadcrumbs(pathname, groups)}
 					user={user}
