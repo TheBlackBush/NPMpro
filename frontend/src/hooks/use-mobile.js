@@ -1,10 +1,10 @@
-// NPMpro: formatted with Biome; unchanged otherwise
+// NPMpro: formatted with Biome; the initial state is read synchronously so a phone has no first frame in the desktop variant
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
-	const [isMobile, setIsMobile] = React.useState(undefined);
+	const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < MOBILE_BREAKPOINT);
 
 	React.useEffect(() => {
 		const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
