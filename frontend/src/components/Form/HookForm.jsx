@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
 import { useModalFrame } from "src/components/AppModal";
@@ -232,9 +233,7 @@ function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, 
 				<FormTabsContext.Provider value={tabsRef}>
 					<ReadOnlyContext.Provider value={readOnly}>
 						<form
-							className={
-								frame ? ["d-flex flex-column mh-100", className].filter(Boolean).join(" ") : className
-							}
+							className={frame ? cn("tw:flex tw:max-h-full tw:flex-col", className) : className}
 							action="#"
 							noValidate
 							onSubmit={(event) => {

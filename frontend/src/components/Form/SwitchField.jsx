@@ -1,44 +1,41 @@
-import cn from "clsx";
-import { controlAria } from "src/modules/FormFields";
+import { controlAria, SWITCH_CLASS } from "src/modules/FormFields";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "src/ui/field";
+import { FieldMessage } from "./FieldMessage";
 
 /**
- * Tabler settings row: text (and an optional hint) on the left, a switch on the right
- * (https://preview.tabler.io/form-elements.html, "Notification" fieldset). The switch is described by its error and
- * its hint; the error shows under the row. A list of rows is a SwitchList.
+ * A settings row on shadcn's horizontal Field: the name (and an optional hint) on the left, a switch on the right. The
+ * switch is a native checkbox drawn as shadcn's Switch (SWITCH_CLASS), so the caller's props (register(), checked and
+ * onChange(event), disabled) work as before, and screen readers read it as the checkbox it was. It is described by its error and its hint; the error shows under the row.
+ * A list of rows is a SwitchList.
  */
 function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy: inputProps["aria-describedby"] });
 	return (
 		<div className={className}>
-			<label className={cn("row", inputProps.disabled ? null : "cursor-pointer")} htmlFor={id}>
-				<span className="col">
-					<span id={aria.labelId}>{label}</span>
-					{hint ? (
-						<span className="form-hint d-block" id={aria.hintId}>
-							{hint}
-						</span>
-					) : null}
-				</span>
-				<span className="col-auto">
-					<span className="form-check form-check-single form-switch">
-						<input
-							{...inputProps}
-							id={id}
-							className={cn("form-check-input", error && "is-invalid")}
-							type="checkbox"
-							// named by the label text alone: the hint sits inside the label element (Tabler's row), so it would be
-							// read twice, in the name and as the description
-							aria-labelledby={aria.labelId}
-							aria-invalid={aria["aria-invalid"]}
-							aria-describedby={aria["aria-describedby"]}
-						/>
-					</span>
-				</span>
-			</label>
+			<Field
+				orientation="horizontal"
+				data-invalid={error ? true : undefined}
+				data-disabled={inputProps.disabled ? true : undefined}
+			>
+				<FieldContent>
+					<FieldLabel htmlFor={id} id={aria.labelId} className="tw:font-normal">
+						{label}
+					</FieldLabel>
+					{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
+				</FieldContent>
+				<input
+					{...inputProps}
+					id={id}
+					type="checkbox"
+					className={SWITCH_CLASS}
+					aria-invalid={aria["aria-invalid"]}
+					aria-describedby={aria["aria-describedby"]}
+				/>
+			</Field>
 			{error ? (
-				<div className="invalid-feedback d-block" id={aria.errorId}>
+				<FieldMessage id={aria.errorId} className="tw:mt-1">
 					{error}
-				</div>
+				</FieldMessage>
 			) : null}
 		</div>
 	);
