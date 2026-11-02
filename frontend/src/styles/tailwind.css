@@ -8,6 +8,11 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* the CI checks and their tests hold tw: classes as test data, which Tailwind would otherwise generate */
+@source not "../modules/TailwindPrefix*.js";
+@source not "../modules/CssLayers*.js";
+@source not "../../scripts";
+
 /* Tailwind's reset (preflight) and shadcn's base styles reach only the new parts: shadcn components (every one has a
    data-slot, their pop-ups too) and what they contain, down to an old page ([data-legacy-ui]), which keeps Tabler's
    look exactly. Inside the layers Tailwind comes after Tabler (tabler.css), so it wins whatever the specificity. */
