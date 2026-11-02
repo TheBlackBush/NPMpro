@@ -26,9 +26,10 @@ function dialogWidthClass(size) {
 
 /** Sheet width from the size prop */
 function sheetWidthClass(size) {
-	if (size === "lg") return "sm:max-w-2xl";
-	if (size === "xl") return "sm:max-w-4xl";
-	return "sm:max-w-xl";
+	// the sheet base sets data-[side=right]:sm:max-w-sm, which tailwind-merge only replaces with the same variant set
+	if (size === "lg") return "data-[side=right]:sm:max-w-2xl";
+	if (size === "xl") return "data-[side=right]:sm:max-w-4xl";
+	return "data-[side=right]:sm:max-w-xl";
 }
 
 export { canClose, dialogWidthClass, sheetWidthClass, windowMode };

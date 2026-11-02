@@ -68,14 +68,18 @@ it("falls back to the list heading when the row is gone or nothing was captured"
 });
 
 it("sees a stale activeElement inside a closed window as lost focus", () => {
-	const stale = { closest: (selector) => (selector === '[data-state="closed"]' ? {} : null) };
+	const stale = { closest: (selector) => (selector.includes('[role="dialog"][data-state="closed"]') ? {} : null) };
 	assert.equal(focusLost(fakeDoc({ active: stale })), true);
 });
 
 it("takes the last pressed control as the opener when Safari left the body focused", () => {
-	const pressed = element();
-	assert.equal(pickOpener(fakeDoc({ active: "body" }), pressed), pressed);
-	assert.equal(pickOpener(fakeDoc({ active: "body" }), element({ connected: false })).isBody, true);
+	const pressed = { element: element(), at: 1000 };
+	assert.equal(pickOpener(fakeDoc({ active: "body" }), pressed, 1500), pressed.element);
+	assert.equal(
+		pickOpener(fakeDoc({ active: "body" }), { element: element({ connected: false }), at: 1000 }, 1500).isBody,
+		true,
+	);
+	assert.equal(pickOpener(fakeDoc({ active: "body" }), pressed, 4000).isBody, true);
 	const focused = element();
-	assert.equal(pickOpener(fakeDoc({ active: focused }), pressed), focused);
+	assert.equal(pickOpener(fakeDoc({ active: focused }), pressed, 1500), focused);
 });

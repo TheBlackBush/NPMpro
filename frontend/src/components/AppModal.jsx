@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react";
-import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
@@ -14,12 +14,12 @@ import { canClose, dialogWidthClass, sheetWidthClass, windowMode } from "src/mod
 const HideContext = createContext(undefined);
 // true between the window's content box and its body: a <form> there must take part in the content's flex column
 const FrameContext = createContext(false);
-const TitleContext = createContext({ id: undefined, setMounted: () => {} });
+const TitleContext = createContext({ setMounted: () => {} });
 // which element renders the title (a dialog's or a sheet's), and whether the header shows a close button
 const ModeContext = createContext("dialog");
 
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
-const STACKED = '[data-sonner-toaster], [role="dialog"], .modal';
+const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
 // put when a tab, a step, a choice or a result changes their height. On phones, and for sizes that are not "sm", the
@@ -41,9 +41,8 @@ function AppModal({
 	className,
 	...props
 }) {
-	const id = useId();
 	const [hasTitle, setHasTitle] = useState(false);
-	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
+	const value = useMemo(() => ({ setMounted: setHasTitle }), []);
 	const { editorStyle } = usePreferences();
 	const isPhone = useIsMobile();
 	const mode = windowMode({ editorStyle, size, isPhone });
@@ -59,13 +58,13 @@ function AppModal({
 			const target = event.detail.originalEvent.target;
 			if (!request("outside") || target?.closest?.(STACKED)) event.preventDefault();
 		},
+		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
 		onFocusOutside: (event) => event.preventDefault(),
 		// Radix would focus what was focused when the window mounted (the page body on Safari): the opener instead
 		onCloseAutoFocus: (event) => {
 			event.preventDefault();
 			giveFocusBack?.();
 		},
-		"aria-labelledby": hasTitle ? id : undefined,
 		"aria-describedby": undefined,
 		...props,
 	};
@@ -74,6 +73,16 @@ function AppModal({
 		if (!open && request("close-button")) onHide?.();
 	};
 
+	// a window without an AppModal.Title yet (loading) still needs a name for Radix and screen readers
+	const fallbackTitle = hasTitle ? null : (
+		<span className="sr-only">
+			{mode === "sheet" ? (
+				<SheetTitle>{intl.formatMessage({ id: "loading" })}</SheetTitle>
+			) : (
+				<DialogTitle>{intl.formatMessage({ id: "loading" })}</DialogTitle>
+			)}
+		</span>
+	);
 	const frame = "flex min-h-0 flex-col gap-0 p-0";
 	return (
 		<TitleContext.Provider value={value}>
@@ -88,6 +97,7 @@ function AppModal({
 									className={cn(frame, "w-full gap-0", sheetWidthClass(size), className)}
 									{...guards}
 								>
+									{fallbackTitle}
 									{children}
 								</SheetContent>
 							</Sheet>
@@ -105,6 +115,7 @@ function AppModal({
 									)}
 									{...guards}
 								>
+									{fallbackTitle}
 									{children}
 								</DialogContent>
 							</Dialog>
@@ -144,7 +155,7 @@ function AppModalHeader({ children, closeButton = false, className, ...props }) 
 
 // The window's title as a heading (Radix renders an h2), labelling the window
 function AppModalTitle({ children, className, ...props }) {
-	const { id, setMounted } = useContext(TitleContext);
+	const { setMounted } = useContext(TitleContext);
 	const mode = useContext(ModeContext);
 	useEffect(() => {
 		setMounted(true);
@@ -152,7 +163,7 @@ function AppModalTitle({ children, className, ...props }) {
 	}, [setMounted]);
 	const Title = mode === "sheet" ? SheetTitle : DialogTitle;
 	return (
-		<Title id={id} className={cn("text-base font-medium leading-snug", className)} {...props}>
+		<Title className={cn("text-base font-medium leading-snug", className)} {...props}>
 			{children}
 		</Title>
 	);

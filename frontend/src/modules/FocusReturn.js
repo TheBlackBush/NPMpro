@@ -20,13 +20,16 @@ function isVisible(element) {
 	return element.checkVisibility?.() ?? element.offsetParent !== null;
 }
 
+// a Radix dialog or sheet during its exit animation (not a closed trigger or menu)
+const CLOSED_WINDOW = '[role="dialog"][data-state="closed"], [data-slot$="-content"][data-state="closed"]';
+
 /**
  * True when nothing useful has focus: the focused element was removed or moved so the browser fell back to the body,
  * or WebKit still reports an element of a window that has already closed (stale activeElement).
  */
 function focusLost(doc) {
 	const active = doc.activeElement;
-	return !active || active === doc.body || Boolean(active.closest?.('[data-state="closed"]'));
+	return !active || active === doc.body || Boolean(active.closest?.(CLOSED_WINDOW));
 }
 
 /**
@@ -34,21 +37,25 @@ function focusLost(doc) {
  * document.activeElement is the body when a window opens from a click. The last pressed control (lastPressed) is the
  * opener then.
  */
-function pickOpener(doc, lastPressed) {
+// older presses are not the opener of a window opened by something else (a timer, a route)
+const PRESS_MAX_AGE = 2000;
+
+function pickOpener(doc, lastPressed, now = Date.now()) {
 	const active = doc.activeElement;
 	if (active && active !== doc.body) return active;
-	return lastPressed?.isConnected ? lastPressed : active;
+	return lastPressed?.element?.isConnected && now - lastPressed.at < PRESS_MAX_AGE ? lastPressed.element : active;
 }
 
 const PRESSABLE = 'button, a[href], [role="button"], [role="menuitem"], [tabindex]';
 
-/** Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader */
+/** Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader of { element, at } */
 function trackPressed(doc) {
 	let last = null;
 	doc.addEventListener(
 		"pointerdown",
 		(event) => {
-			last = event.target?.closest?.(PRESSABLE) ?? null;
+			const element = event.target?.closest?.(PRESSABLE);
+			last = element ? { element, at: Date.now() } : null;
 		},
 		true,
 	);
