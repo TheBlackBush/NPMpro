@@ -16,6 +16,7 @@ import {
 } from "src/components/ui/dropdown-menu";
 import { useAuthState, usePreferences, useThemeState } from "src/context";
 import { useUser } from "src/hooks";
+import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
@@ -23,20 +24,34 @@ import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
 
 function Choice({ label, value, options, onChange }) {
+	const isMobile = useIsMobile();
+	const group = (
+		<DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+			{options.map(([optionValue, optionLabel]) => (
+				<DropdownMenuRadioItem key={optionValue} value={optionValue}>
+					<T id={optionLabel} />
+				</DropdownMenuRadioItem>
+			))}
+		</DropdownMenuRadioGroup>
+	);
+
+	// A submenu opens beside the menu and does not fit on a phone: there the choices are listed inline.
+	if (isMobile) {
+		return (
+			<>
+				<DropdownMenuLabel className="pt-2 font-normal">
+					<T id={label} />
+				</DropdownMenuLabel>
+				{group}
+			</>
+		);
+	}
 	return (
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>
 				<T id={label} />
 			</DropdownMenuSubTrigger>
-			<DropdownMenuSubContent className="w-44">
-				<DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-					{options.map(([optionValue, optionLabel]) => (
-						<DropdownMenuRadioItem key={optionValue} value={optionValue}>
-							<T id={optionLabel} />
-						</DropdownMenuRadioItem>
-					))}
-				</DropdownMenuRadioGroup>
-			</DropdownMenuSubContent>
+			<DropdownMenuSubContent className="w-44">{group}</DropdownMenuSubContent>
 		</DropdownMenuSub>
 	);
 }
