@@ -214,7 +214,11 @@ it("the script skips *.test.js and *.test.jsx files, reports line numbers, honor
 });
 
 it("checks the new UI by default, and the new UI passes", () => {
-	assert.ok(NEW_UI_PATHS.includes("src/components/PageHeader.jsx"));
+	const layer = ["FormField", "FormSection", "SwitchList", "SwitchField", "ChoiceGroup", "PasswordInput"];
+	layer.push("NginxConfigField", "FormSubmit", "FormErrorNote", "HookForm");
+	for (const path of ["src/components/PageHeader.jsx", ...layer.map((name) => `src/components/Form/${name}.jsx`)]) {
+		assert.ok(NEW_UI_PATHS.includes(path), path);
+	}
 	const frontend = fileURLToPath(new URL("../..", import.meta.url));
 	for (const path of NEW_UI_PATHS) assert.ok(existsSync(join(frontend, path)), `${path} exists`);
 	const script = fileURLToPath(new URL("../../scripts/check-tw-prefix.js", import.meta.url));
