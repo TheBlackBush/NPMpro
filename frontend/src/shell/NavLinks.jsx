@@ -5,7 +5,7 @@ import { intl } from "src/locale";
 import { useNavItems } from "./useNavItems";
 
 const ROW =
-	"relative inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground";
+	"relative inline-flex h-9 whitespace-nowrap items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground";
 const ROW_ACTIVE =
 	"text-foreground after:absolute after:inset-x-3 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-[image:var(--brand-gradient)]";
 const COLUMN = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted";
