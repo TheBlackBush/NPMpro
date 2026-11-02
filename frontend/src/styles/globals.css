@@ -132,3 +132,12 @@
 		@apply font-sans;
 	}
 }
+
+@keyframes npmpro-loader {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(250%);
+	}
+}
