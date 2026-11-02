@@ -73,6 +73,8 @@ Everything else is printed:
 
 Persian (`fa`) is skipped: NPMpro does not ship it.
 
+Only the languages in lang-list.json are merged; others are skipped.
+
 
 The script handles a new upstream language like an update with an empty old version. It:
 
