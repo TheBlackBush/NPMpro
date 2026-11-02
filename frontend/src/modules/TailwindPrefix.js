@@ -11,6 +11,7 @@ import { parse } from "@babel/parser";
 // the shell, and the shared parts of the old pages that are already new (the page header, the form layer)
 const FORM_LAYER = [
 	"ChoiceGroup",
+	"CodeInput",
 	"FieldMessage",
 	"FormErrorNote",
 	"FormField",

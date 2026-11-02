@@ -43,16 +43,26 @@ export const pastedCodeValue = (current, text, start, end, length) => {
 };
 
 /**
- * The first size (Tabler's OTP size classes, largest first) whose boxes fit in the available width; the last one
- * when none does
+ * The boxes of a code input by group: [3, 3] -> [[0, 1, 2], [3, 4, 5]] (the indexes of InputOTP's slots)
  *
- * @param   {Array}    sizes      lists of classes, largest first
- * @param   {Function} widthOf    (size) => the width of the boxes in that size
- * @param   {number}   available
- * @returns {Array}
+ * @param   {number[]} groups  boxes per group
+ * @returns {number[][]}
  */
-export const fittingOtpSize = (sizes, widthOf, available) =>
-	sizes.find((size) => widthOf(size) <= available) ?? sizes[sizes.length - 1];
+export const codeSlotGroups = (groups) => {
+	let next = 0;
+	return groups.map((size) => Array.from({ length: size }, () => next++));
+};
+
+const DIGITS = /^\d+$/u;
+const LETTERS_AND_DIGITS = /^[a-zA-Z0-9]+$/u;
+
+/**
+ * What a code input accepts (InputOTP's pattern: a typed or pasted character outside it is refused)
+ *
+ * @param   {"numeric"|"alphanumeric"} type
+ * @returns {RegExp}
+ */
+export const codePattern = (type) => (type === "numeric" ? DIGITS : LETTERS_AND_DIGITS);
 
 /**
  * A backup code as typed (spaces, a dash, small letters) in the form the backend checks

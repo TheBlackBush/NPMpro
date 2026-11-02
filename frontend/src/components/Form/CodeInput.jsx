@@ -1,6 +1,5 @@
-import { OtpInput } from "@tabler/core";
-import cn from "clsx";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { cn } from "cn";
+import { Fragment, useCallback, useEffect, useMemo, useRef } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { T } from "src/locale";
 import {
@@ -8,26 +7,25 @@ import {
 	CODE_LENGTH,
 	CODE_VALUES,
 	codeModeChanges,
-	fittingOtpSize,
+	codePattern,
+	codeSlotGroups,
 	pastedCodeValue,
 } from "src/modules/AccountForms";
+import { Button } from "src/ui/button";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "src/ui/input-otp";
 import { FormField } from "./FormField";
 
-// Tabler's two-step verification page: six digit boxes in two groups of three, large; a backup code is eight letters
-// and digits in two groups of four (constants: the boxes are drawn again when the options change)
+// six digit boxes in two groups of three; a backup code is eight letters and digits in two groups of four (constants:
+// the boxes are drawn again when the groups change)
 const CODE_GROUPS = [3, 3];
 const BACKUP_GROUPS = [4, 4];
-// Tabler's OTP sizes, largest first: the largest that fits the field is used (Tabler has no responsive size)
-const OTP_SIZES = [["otp-lg"], [], ["otp-sm"], ["otp-sm", "otp-connected"]];
-const OTP_SIZE_CLASSES = ["otp-lg", "otp-sm", "otp-connected"];
 
 /**
- * A code (by default the six digits of an authenticator app; a backup code uses eight letters and digits) as Tabler's
- * OTP input (its two-step verification pattern): one real input that Tabler draws as boxes, so typing moves on,
- * Backspace moves back, a pasted or autofilled code fills every box, and screen readers, password managers and SMS
- * autofill see one ordinary field with its label. A field of the form around it (a controller): Tabler's input event
- * sets the value, a new value (an emptied code) redraws the boxes. The boxes use the largest of Tabler's sizes that
- * fits the width of the field (large, default, small, small and connected), also when the window is resized.
+ * A code (by default the six digits of an authenticator app; a backup code uses eight letters and digits) as shadcn's
+ * InputOTP: one real input drawn as boxes, so typing moves on, Backspace moves back, a pasted or autofilled code
+ * fills every box, and screen readers, password managers and SMS autofill see one ordinary field with its label. A
+ * field of the form around it (a controller). A character the code cannot hold is refused (codePattern); a pasted code
+ * loses its spaces and dash, and a complete one replaces the value wherever the caret is (pastedCodeValue).
  *
  * @param {Object}   props
  * @param {string}   [props.name]       "code" by default
@@ -51,102 +49,63 @@ function CodeInput({
 }) {
 	const { field, fieldState } = useController({ name });
 	const error = fieldState.error?.message ?? null;
-	const wrapperRef = useRef(null);
-	const onChangeRef = useRef(field.onChange);
-	useLayoutEffect(() => {
-		onChangeRef.current = field.onChange;
-	});
-	// the values typed that the form has not shown yet: a render of an older one is not a new value to draw (an entry
-	// that is never matched is dropped by the next value that is not typed, so a stale one does no harm)
-	const typedRef = useRef([]);
-	const emit = useCallback((value) => {
-		typedRef.current.push(value);
-		onChangeRef.current(value);
-	}, []);
-	// before the first paint, so the boxes never show in a size that overflows
-	useLayoutEffect(() => {
-		const wrapper = wrapperRef.current;
-		const otp = OtpInput.getOrCreateInstance(wrapper, { length, type, groups });
-		const onInput = (event) => emit(event.value);
-		wrapper.addEventListener("input.bs.otpInput", onInput);
-		// the boxes in each size are measured in turn (nothing is painted between), the largest that fits is kept
-		const fit = () => {
-			const slots = wrapper.querySelector(".otp-slots");
-			if (!slots) return;
-			const widthOf = (size) => {
-				wrapper.classList.remove(...OTP_SIZE_CLASSES);
-				wrapper.classList.add(...size);
-				return slots.getBoundingClientRect().width;
-			};
-			const size = fittingOtpSize(OTP_SIZES, widthOf, wrapper.parentElement.clientWidth);
-			wrapper.classList.remove(...OTP_SIZE_CLASSES);
-			wrapper.classList.add(...size);
-		};
-		fit();
-		// a resize is answered in the next frame: a size switch that changes the container's height then never runs
-		// inside the observer's own delivery (no "ResizeObserver loop" warning)
-		let frame = 0;
-		const observer = new ResizeObserver(() => {
-			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(fit);
-		});
-		observer.observe(wrapper.parentElement);
-		return () => {
-			cancelAnimationFrame(frame);
-			observer.disconnect();
-			wrapper.removeEventListener("input.bs.otpInput", onInput);
-			otp.dispose();
-		};
-	}, [length, type, groups, emit]);
-	useEffect(() => {
-		const otp = OtpInput.getInstance(wrapperRef.current);
-		const typed = typedRef.current.indexOf(field.value);
-		if (typed >= 0) {
-			typedRef.current.splice(0, typed + 1);
-			return;
-		}
-		typedRef.current = [];
-		if (otp && otp.getValue() !== field.value) otp.setValue(field.value);
-	}, [field.value]);
-	// a pasted code: the paste is handled here (preventDefault), as the browser would cut the text at maxlength before
-	// Tabler's setValue drops what a code does not hold (the dash of "ABCD-1234"); a complete code replaces the value
-	const onPaste = (event) => {
-		const otp = OtpInput.getInstance(wrapperRef.current);
-		if (!otp) return;
-		event.preventDefault();
-		const input = event.currentTarget;
-		const { value, selectionStart, selectionEnd } = input;
-		otp.setValue(pastedCodeValue(value, event.clipboardData.getData("text"), selectionStart, selectionEnd, length));
-		emit(otp.getValue());
-		otp.focus();
+	const inputRef = useRef(null);
+	const slots = useMemo(() => codeSlotGroups(groups), [groups]);
+	const { ref: fieldRef } = field;
+	const setRef = useCallback(
+		(element) => {
+			inputRef.current = element;
+			fieldRef(element);
+		},
+		[fieldRef],
+	);
+	// InputOTP puts the returned text in at the selection, which it reads after this: the whole value is selected, so
+	// the result of pastedCodeValue (the paste at the caret, or a complete code alone) becomes the value
+	const pasteTransformer = (text) => {
+		const input = inputRef.current;
+		if (!input) return text;
+		const value = pastedCodeValue(input.value, text, input.selectionStart ?? 0, input.selectionEnd ?? 0, length);
+		input.setSelectionRange(0, input.value.length);
+		return value;
 	};
-	// the red boxes: set on the element, as Tabler adds its own class (otp-rendered) that a className from React
-	// would remove
-	useEffect(() => {
-		wrapperRef.current.classList.toggle("is-invalid", Boolean(error));
-	}, [error]);
 	return (
-		<FormField id={id} label={label} hint={hint} error={error} className={className}>
+		<FormField id={id} label={label} hint={hint} error={error} className={className} ownControl>
 			{(control) => (
-				<div className="d-flex justify-content-center">
-					<div ref={wrapperRef} className={cn("otp", type === "alphanumeric" && "text-uppercase")}>
-						<input
-							{...control}
-							ref={field.ref}
-							name={field.name}
-							type="text"
-							defaultValue={field.value}
-							onBlur={field.onBlur}
-							onPaste={onPaste}
-							inputMode={type === "numeric" ? "numeric" : "text"}
-							autoComplete={type === "numeric" ? "one-time-code" : "off"}
-							autoCapitalize={type === "numeric" ? undefined : "characters"}
-							spellCheck={type === "numeric" ? undefined : false}
-							maxLength={length}
-							required
-						/>
-					</div>
-				</div>
+				<InputOTP
+					{...control}
+					ref={setRef}
+					name={field.name}
+					value={field.value}
+					onChange={field.onChange}
+					onBlur={field.onBlur}
+					maxLength={length}
+					pattern={codePattern(type).source}
+					pasteTransformer={pasteTransformer}
+					inputMode={type === "numeric" ? "numeric" : "text"}
+					autoComplete={type === "numeric" ? "one-time-code" : "off"}
+					autoCapitalize={type === "numeric" ? undefined : "characters"}
+					containerClassName="tw:justify-center tw:gap-2"
+					required
+				>
+					{slots.map((group, index) => (
+						<Fragment key={group[0]}>
+							{index > 0 ? <InputOTPSeparator /> : null}
+							<InputOTPGroup>
+								{group.map((slot) => (
+									<InputOTPSlot
+										key={slot}
+										index={slot}
+										aria-invalid={control["aria-invalid"]}
+										className={cn(
+											"tw:size-10 tw:text-lg",
+											type === "alphanumeric" && "tw:uppercase",
+										)}
+									/>
+								))}
+							</InputOTPGroup>
+						</Fragment>
+					))}
+				</InputOTP>
 			)}
 		</FormField>
 	);
@@ -206,25 +165,30 @@ function CodeEntry({ idPrefix, label, allowBackup = false }) {
 	};
 	const backupShown = allowBackup && useBackup;
 	return (
-		<div className="mb-3">
+		<div className="tw:mb-4">
 			{backupShown ? (
 				<CodeInput
 					key="backup"
 					name="backupCode"
 					id={`${idPrefix}-backup`}
 					label={<T id="mfa.backup-code" />}
-					className="mb-2"
+					className="tw:mb-2"
 					length={BACKUP_CODE_LENGTH}
 					type="alphanumeric"
 					groups={BACKUP_GROUPS}
 				/>
 			) : (
-				<CodeInput key="code" id={`${idPrefix}-code`} label={label} className="mb-2" />
+				<CodeInput key="code" id={`${idPrefix}-code`} label={label} className="tw:mb-2" />
 			)}
 			{allowBackup ? (
-				<button type="button" className="btn btn-link p-0" onClick={() => switchTo(!backupShown)}>
+				<Button
+					type="button"
+					variant="link"
+					className="tw:h-auto tw:p-0"
+					onClick={() => switchTo(!backupShown)}
+				>
 					<T id={backupShown ? "mfa.use-app-code" : "mfa.use-backup-code"} />
-				</button>
+				</Button>
 			) : null}
 		</div>
 	);
