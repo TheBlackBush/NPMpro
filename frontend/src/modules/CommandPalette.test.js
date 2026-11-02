@@ -40,3 +40,16 @@ it("Ctrl+K and Cmd+K open the palette, plain K does not", () => {
 	assert.equal(isPaletteShortcut({ key: "K", ctrlKey: false, metaKey: true }), true);
 	assert.equal(isPaletteShortcut({ key: "k", ctrlKey: false, metaKey: false }), false);
 });
+
+it("Ctrl+K works on a non-Latin layout, where the key is not a k", () => {
+	assert.equal(isPaletteShortcut({ key: "л", code: "KeyK", ctrlKey: true, metaKey: false }), true);
+});
+
+it("an event without key and code (browser autofill) is not the shortcut and does not throw", () => {
+	assert.equal(isPaletteShortcut({ key: undefined, code: undefined, ctrlKey: true }), false);
+});
+
+it("Ctrl+Shift+K and Ctrl+Alt+K are not the shortcut", () => {
+	assert.equal(isPaletteShortcut({ key: "K", code: "KeyK", ctrlKey: true, shiftKey: true }), false);
+	assert.equal(isPaletteShortcut({ key: "k", code: "KeyK", ctrlKey: true, altKey: true }), false);
+});

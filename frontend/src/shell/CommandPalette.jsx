@@ -2,14 +2,8 @@ import { ExternalLink, Search } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "src/components/ui/button";
-import {
-	CommandDialog,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "src/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "src/components/ui/command";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "src/components/ui/dialog";
 import { Kbd } from "src/components/ui/kbd";
 import { useUser } from "src/hooks";
 import { intl } from "src/locale";
@@ -77,35 +71,40 @@ export function CommandPalette() {
 	};
 
 	return (
-		<CommandDialog
-			open={open}
-			onOpenChange={setOpen}
-			title={intl.formatMessage({ id: "palette.title" })}
-			description={intl.formatMessage({ id: "palette.description" })}
-		>
-			<CommandInput placeholder={intl.formatMessage({ id: "palette.placeholder" })} />
-			<CommandList>
-				<CommandEmpty>{intl.formatMessage({ id: "palette.empty" })}</CommandEmpty>
-				{groups.map((group) => (
-					<CommandGroup key={group.id} heading={intl.formatMessage({ id: `palette.${group.id}` })}>
-						{group.items.map((item) => {
-							const label = intl.formatMessage({ id: item.labelKey });
-							return (
-								// The id keeps equal labels in different groups apart; the label is what the search matches
-								<CommandItem
-									key={item.id}
-									value={`${group.id}:${item.id}`}
-									keywords={[label]}
-									onSelect={() => select(item)}
-								>
-									{label}
-									{item.external && <ExternalLink className="ml-auto" aria-hidden="true" />}
-								</CommandItem>
-							);
-						})}
-					</CommandGroup>
-				))}
-			</CommandList>
-		</CommandDialog>
+		// Composed here instead of CommandDialog, which renders its title and description outside the dialog content
+		// (they would sit in the page while the palette is closed); the classes are CommandDialog's
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent className="top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0" showCloseButton={false}>
+				<DialogTitle className="sr-only">{intl.formatMessage({ id: "palette.title" })}</DialogTitle>
+				<DialogDescription className="sr-only">
+					{intl.formatMessage({ id: "palette.description" })}
+				</DialogDescription>
+				<Command>
+					<CommandInput placeholder={intl.formatMessage({ id: "palette.placeholder" })} />
+					<CommandList>
+						<CommandEmpty>{intl.formatMessage({ id: "palette.empty" })}</CommandEmpty>
+						{groups.map((group) => (
+							<CommandGroup key={group.id} heading={intl.formatMessage({ id: `palette.${group.id}` })}>
+								{group.items.map((item) => {
+									const label = intl.formatMessage({ id: item.labelKey });
+									return (
+										// The id keeps equal labels in different groups apart; the label is what the search matches
+										<CommandItem
+											key={item.id}
+											value={`${group.id}:${item.id}`}
+											keywords={[label]}
+											onSelect={() => select(item)}
+										>
+											{label}
+											{item.external && <ExternalLink className="ml-auto" aria-hidden="true" />}
+										</CommandItem>
+									);
+								})}
+							</CommandGroup>
+						))}
+					</CommandList>
+				</Command>
+			</DialogContent>
+		</Dialog>
 	);
 }

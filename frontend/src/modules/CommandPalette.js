@@ -35,5 +35,12 @@ export function paletteGroups(user, settingsSections) {
 	return [pages, settings];
 }
 
-/** Ctrl+K, or Cmd+K on a Mac */
-export const isPaletteShortcut = (event) => event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey);
+/**
+ * Ctrl+K, or Cmd+K on a Mac. The physical key counts too: on a Cyrillic or other non-Latin layout Ctrl+K reports
+ * another character. Browser autofill dispatches keydown events without key and code.
+ */
+export const isPaletteShortcut = (event) =>
+	(event.key?.toLowerCase() === "k" || event.code === "KeyK") &&
+	Boolean(event.ctrlKey || event.metaKey) &&
+	!event.altKey &&
+	!event.shiftKey;
