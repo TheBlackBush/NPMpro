@@ -30,6 +30,9 @@
 					"waitFor": "[data-slot=command]"
 				},
 				{
+					"waitFor": "[data-slot=command-item]"
+				},
+				{
 					"press": "Escape"
 				}
 			]
