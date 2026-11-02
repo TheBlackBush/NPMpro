@@ -60,62 +60,74 @@ async function appLinks(target) {
 }
 
 // setup on a fresh instance, then the login page itself in a context without a session
-const setupContext = await browser.newContext(options);
-const setupPage = await watchedPage(setupContext);
-await open(setupPage, "/");
-if ((await setupPage.locator("#password").count()) > 0) {
-	setupPage.step = "setup";
-	await setupPage.locator("#name").fill("Admin");
-	await setupPage.locator("#email").fill(EMAIL);
-	await setupPage.locator("#password").fill(password);
-	await setupPage.locator("form button[type=submit]").click();
-	await setupPage.locator("#login-email").or(setupPage.getByRole("navigation")).first().waitFor();
-}
-await setupContext.close();
-
-const context = await browser.newContext(options);
-const page = await watchedPage(context);
-await open(page, "/");
-page.step = "login";
-await page.locator("#login-email").fill(EMAIL);
-await page.locator("#login-password").fill(password);
-await page.locator("form button[type=submit]").click();
-await page.locator("#login-email").waitFor({ state: "detached" });
-
-// every listed route, then every app link found on the way that is not listed (one page at a time)
-const queue = [...routes];
-while (queue.length > 0) {
-	const route = queue.shift();
-	if (!visited.has(route)) {
-		// biome-ignore lint/performance/noAwaitInLoops: one page, one route after another
-		await open(page, route);
-		for (const href of await appLinks(page)) if (!(visited.has(href) || queue.includes(href))) queue.push(href);
+try {
+	const setupContext = await browser.newContext(options);
+	setupContext.setDefaultNavigationTimeout(30_000);
+	const setupPage = await watchedPage(setupContext);
+	await open(setupPage, "/");
+	// a page that polls or loads late may not show a form yet: wait for either form before choosing
+	await setupPage.locator("#password, #login-email").first().waitFor();
+	if ((await setupPage.locator("#password").count()) > 0) {
+		setupPage.step = "setup";
+		await setupPage.locator("#name").fill("Admin");
+		await setupPage.locator("#email").fill(EMAIL);
+		await setupPage.locator("#password").fill(password);
+		await setupPage.locator("form button[type=submit]").click();
+		await setupPage.locator("#login-email").or(setupPage.getByRole("navigation")).first().waitFor();
 	}
-}
+	await setupContext.close();
 
-for (const action of actions) {
-	// biome-ignore lint/performance/noAwaitInLoops: one page, one action after another
-	await open(page, action.route);
-	page.step = `${action.route}: ${action.name}`;
-	try {
-		for (const step of action.steps) {
-			// biome-ignore lint/performance/noAwaitInLoops: the steps of an action run in order
-			if (step.click) await page.locator(step.click).first().click();
-			if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
-			if (step.press) await page.keyboard.press(step.press);
+	const context = await browser.newContext(options);
+	context.setDefaultNavigationTimeout(30_000);
+	const page = await watchedPage(context);
+	await open(page, "/");
+	page.step = "login";
+	await page.locator("#login-email").fill(EMAIL);
+	await page.locator("#login-password").fill(password);
+	await page.locator("form button[type=submit]").click();
+	await page.locator("#login-email").waitFor({ state: "detached" });
+
+	// every listed route, then every app link found on the way that is not listed (one page at a time)
+	const queue = [...routes];
+	while (queue.length > 0) {
+		const route = queue.shift();
+		if (!visited.has(route)) {
+			// biome-ignore lint/performance/noAwaitInLoops: one page, one route after another
+			await open(page, route);
+			for (const href of await appLinks(page)) if (!(visited.has(href) || queue.includes(href))) queue.push(href);
 		}
-		// biome-ignore lint/suspicious/noPlaywrightWaitForTimeout: what opened may still add its styles
-		await page.waitForTimeout(500);
-	} catch (error) {
-		problems.push(`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`);
 	}
-}
 
-await browser.close();
-console.log(`${engine}: ${visited.size} paths, ${actions.length} actions`);
-console.log([...visited].sort((a, b) => a.localeCompare(b)).join(" "));
-for (const problem of problems) console.log(problem);
-if (problems.length > 0) {
-	console.log(`${problems.length} problems`);
+	for (const action of actions) {
+		// biome-ignore lint/performance/noAwaitInLoops: one page, one action after another
+		await open(page, action.route);
+		page.step = `${action.route}: ${action.name}`;
+		try {
+			for (const step of action.steps) {
+				// biome-ignore lint/performance/noAwaitInLoops: the steps of an action run in order
+				if (step.click) await page.locator(step.click).first().click();
+				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
+				if (step.press) await page.keyboard.press(step.press);
+			}
+			// biome-ignore lint/suspicious/noPlaywrightWaitForTimeout: what opened may still add its styles
+			await page.waitForTimeout(500);
+		} catch (error) {
+			problems.push(
+				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
+			);
+		}
+	}
+} catch (error) {
+	// a throw (login, navigation) is a failure too; the findings collected so far are printed below
+	console.error(`${engine}: the run stopped: ${error.message.split("\n")[0]}`);
 	process.exitCode = 1;
+} finally {
+	await browser.close();
+	console.log(`${engine}: ${visited.size} paths, ${actions.length} actions`);
+	console.log([...visited].sort((a, b) => a.localeCompare(b)).join(" "));
+	for (const problem of problems) console.log(problem);
+	if (problems.length > 0) {
+		console.log(`${problems.length} problems`);
+		process.exitCode = 1;
+	}
 }
