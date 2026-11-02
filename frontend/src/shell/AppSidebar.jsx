@@ -61,7 +61,7 @@ export function PageLink({ page, active, children, ...props }) {
 }
 
 /**
- * A page's count from the host report, red when hosts of it have config errors, amber when certificates expire; the
+ * A page's count from the host report, red when hosts of it have config errors, warning-coloured when certificates expire; the
  * screen reader hears the reason
  */
 export function PageBadge({ badge, className }) {
@@ -72,7 +72,7 @@ export function PageBadge({ badge, className }) {
 			<SidebarMenuBadge
 				className={cn(
 					tone === "error" && "tw:bg-destructive/10 tw:text-destructive",
-					tone === "warning" && "tw:bg-amber-500/15 tw:text-amber-700 tw:dark:text-amber-300",
+					tone === "warning" && "tw:bg-warning/15 tw:text-warning-foreground",
 					className,
 				)}
 			>
@@ -91,7 +91,7 @@ export function PageBadge({ badge, className }) {
 // the mark of a rail icon: a dot when a page of the group needs attention (the panel's badges say why)
 const ALERT_DOT = {
 	error: "tw:bg-destructive",
-	warning: "tw:bg-amber-500",
+	warning: "tw:bg-warning",
 };
 
 /** A group's icon on the rail: its link (a group of one page), its pop-out (folded) or the switch of the panel */
@@ -103,7 +103,7 @@ function RailItem({ group, isRouteGroup, isShown, collapsed, report, onShow }) {
 			{isRouteGroup && (
 				<span
 					aria-hidden="true"
-					className="tw:pointer-events-none tw:absolute tw:inset-y-1.5 tw:-left-1.5 tw:w-[3px] tw:rounded-full tw:bg-linear-to-b tw:from-[#ff8a00] tw:via-[#d91aff] tw:to-[#00d1ff]"
+					className="tw:pointer-events-none tw:absolute tw:inset-y-1.5 tw:-left-1.5 tw:w-[3px] tw:rounded-full tw:bg-(image:--brand-gradient-vertical)"
 				/>
 			)}
 			{alert && (
