@@ -76,10 +76,10 @@ function CertificateActions({ certificate, ...handlers }) {
 	const keys = certificateActionKeys({ ...certificate, inUse: isInUse(certificate) }, { canManage });
 	return (
 		<RowActions
-			// names the row, so the buttons of a list are told apart (the first domain, else the nice name, as the Name column)
+			// names the row, so the buttons of a list are told apart (the nice name, else the first domain, as the Name column)
 			label={intl.formatMessage(
 				{ id: "list.row-actions" },
-				{ name: certificate.domainNames[0] ?? (certificate.niceName || `#${certificate.id}`) },
+				{ name: certificate.niceName || certificate.domainNames[0] || `#${certificate.id}` },
 			)}
 			focusKey={`certificate-${certificate.id}`}
 			title={<T id="object.actions-title" tData={{ object: "certificate" }} data={{ id: certificate.id }} />}

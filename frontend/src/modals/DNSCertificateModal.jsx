@@ -82,7 +82,7 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					</ErrorAlert>
 					<DomainNamesField isWildcardPermitted dnsProviderWildcardSupported forCertificate />
 					<DNSProviderFields />
-					<SwitchList>
+					<SwitchList className="mt-3">
 						<SwitchField
 							id="npmproReuseKey"
 							label={<T id="domains.reuse-key" />}

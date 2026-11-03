@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Nie używany",
 	"certificate.renew": "Odnów certyfikat",
 	"certificates": "Certyfikaty",
+	"certificates-dns": "Certyfikaty i DNS",
 	"certificates.count": "{count} {count, plural, one {certyfikat} few {certyfikaty} many {certyfikatów} other {certyfikatu}}",
 	"certificates.custom": "Własny certyfikat",
 	"certificates.custom.warning": "Pliki kluczy chronione hasłem nie są obsługiwane.",

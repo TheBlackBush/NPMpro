@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Не використовується",
 	"certificate.renew": "Продовжити сертифікат",
 	"certificates": "Сертифікати",
+	"certificates-dns": "Сертифікати та DNS",
 	"certificates.count": "{count} {count, plural, one {сертифікат} few {сертифікати} many {сертифікатів} other {сертифіката}}",
 	"certificates.custom": "Власний сертифікат",
 	"certificates.custom.warning": "Файли ключів, захищені паролем, не підтримуються.",

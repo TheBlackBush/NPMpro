@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Sin Usar",
 	"certificate.renew": "Renovar Certificado",
 	"certificates": "Certificados",
+	"certificates-dns": "Certificados y DNS",
 	"certificates.count": "{count} {count, plural, one {certificado} other {certificados}}",
 	"certificates.custom": "Certificado Personalizado",
 	"certificates.custom.warning": "No se admiten archivos de claves protegidos con contraseña.",

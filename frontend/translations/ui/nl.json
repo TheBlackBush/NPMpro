@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Niet gebruikt",
 	"certificate.renew": "Certificaat vernieuwen",
 	"certificates": "Certificaten",
+	"certificates-dns": "Certificaten & DNS",
 	"certificates.count": "{count} {count, plural, one {Certificaat} other {Certificaten}}",
 	"certificates.custom": "Aangepast certificaat",
 	"certificates.custom.warning": "Sleutels met een wachtwoordzin zijn niet ondersteund.",

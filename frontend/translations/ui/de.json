@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Nicht in Benutzung",
 	"certificate.renew": "Zertifikat erneuern",
 	"certificates": "Zertifikate",
+	"certificates-dns": "Zertifikate & DNS",
 	"certificates.count": "{count} {count, plural, one {Zertifikat} other {Zertifikate}}",
 	"certificates.custom": "Benutzerdefiniertes Zertifikat",
 	"certificates.custom.warning": "Mit einem Passwort geschützte Schlüsseldateien werden nicht unterstützt.",

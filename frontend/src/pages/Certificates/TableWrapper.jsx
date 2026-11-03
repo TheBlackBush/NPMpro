@@ -64,7 +64,7 @@ export default function TableWrapper() {
 
 	return (
 		<ListPage
-			title={<T id="certificates" />}
+			title={<T id="certificates-dns" />}
 			section="certificates"
 			count={data.length}
 			help="Certificates"

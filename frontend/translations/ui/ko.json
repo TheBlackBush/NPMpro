@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "사용 안 함",
 	"certificate.renew": "인증서 갱신",
 	"certificates": "인증서",
+	"certificates-dns": "인증서 및 DNS",
 	"certificates.count": "{count} {count, plural, other {인증서}}",
 	"certificates.custom": "사용자 지정 인증서",
 	"certificates.custom.warning": "비밀번호로 보호된 키 파일은 지원되지 않습니다.",

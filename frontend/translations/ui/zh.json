@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "未使用",
 	"certificate.renew": "续期证书",
 	"certificates": "证书列表",
+	"certificates-dns": "证书和 DNS",
 	"certificates.count": "{count} 个证书",
 	"certificates.custom": "自定义证书",
 	"certificates.custom.warning": "不支持受密码保护的密钥文件。",

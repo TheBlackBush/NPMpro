@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Не используется",
 	"certificate.renew": "Продлить сертификат",
 	"certificates": "Сертификаты",
+	"certificates-dns": "Сертификаты и DNS",
 	"certificates.count": "{count} {count, plural, one {сертификат} few {сертификата} many {сертификатов} other {сертификата}}",
 	"certificates.custom": "Свой сертификат",
 	"certificates.custom.warning": "Файлы ключей, защищённые паролем, не поддерживаются.",

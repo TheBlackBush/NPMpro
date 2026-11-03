@@ -15,9 +15,11 @@ import {
 	NoticeAlert,
 	TextField,
 	useAppForm,
+	useReadOnly,
 } from "src/components";
 import {
 	DirtyTracker,
+	useCanManage,
 	useDnsCredential,
 	useDnsProviders,
 	useSetDnsCredential,
@@ -27,6 +29,7 @@ import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { credentialFieldValues, dnsCredentialValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
+import { windowTitleId } from "src/modules/HostForms";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
@@ -66,6 +69,7 @@ const emptyCredential = { name: "", provider: "", useIni: false, fieldValues: {}
 function ProviderSelect({ providers, options, locked }) {
 	const { setValue, clearErrors } = useFormContext();
 	const { field, fieldState } = useController({ name: "provider" });
+	const readOnly = useReadOnly();
 	return (
 		<FormField
 			id="dnsCredentialProvider"
@@ -80,7 +84,7 @@ function ProviderSelect({ providers, options, locked }) {
 					ref={field.ref}
 					name="provider"
 					onBlur={field.onBlur}
-					disabled={locked}
+					disabled={locked || readOnly}
 					placeholder={intl.formatMessage({
 						id: "certificates.dns.provider.placeholder",
 					})}
@@ -115,6 +119,8 @@ function CredentialValues({ providers, data }) {
 
 const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onSaved, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
+	// a user who may only view the section gets a View window
+	const readOnly = !useCanManage(CERTIFICATES);
 	const { data, isPending, error } = useDnsCredential(id);
 	const { data: providers, isPending: providersPending } = useDnsProviders();
 	const { mutateAsync: setDnsCredential } = useSetDnsCredential();
@@ -168,12 +174,12 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 			{error && <ErrorAlert error={error} className="m-3" />}
 			{(isPending || providersPending) && <Loading noLogo />}
 			{ready && (
-				<HookForm methods={methods} onSubmit={onSubmit}>
+				<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
 						<AppModal.Title className="flex items-center gap-2">
 							{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-							<T id={isNew ? "object.add" : "object.edit"} tData={{ object: "dns-credential" }} />
+							<T id={windowTitleId({ editing: !isNew, readOnly })} tData={{ object: "dns-credential" }} />
 						</AppModal.Title>
 					</AppModal.Header>
 					<AppModal.Body>
@@ -183,19 +189,22 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 								<T id="dns-credentials.decrypt-error" />
 							</NoticeAlert>
 						) : null}
-						<TextField
-							name="name"
-							id="dnsCredentialName"
-							label={<T id="dns-credentials.name" />}
-							autoComplete="off"
-							required
-						/>
-						<ProviderSelect providers={providers} options={options} locked={locked} />
-						<CredentialValues providers={providers} data={data} />
+						{/* a View window: the fields sit in a disabled fieldset */}
+						<fieldset disabled={readOnly} className="m-0 min-w-0 border-0 p-0">
+							<TextField
+								name="name"
+								id="dnsCredentialName"
+								label={<T id="dns-credentials.name" />}
+								autoComplete="off"
+								required
+							/>
+							<ProviderSelect providers={providers} options={options} locked={locked} />
+							<CredentialValues providers={providers} data={data} />
+						</fieldset>
 					</AppModal.Body>
 					<AppModal.Footer>
 						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
-							<T id="cancel" />
+							<T id={readOnly ? "action.close" : "cancel"} />
 						</Button>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
 							<FormSubmit edit={!isNew} isLoading={isSubmitting} disabled={isSubmitting}>

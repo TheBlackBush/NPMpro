@@ -38,6 +38,7 @@ export function AddCertificateMenu({ size = "default" }) {
 				</DropdownMenuTrigger>
 				<DropdownMenuContent
 					align="end"
+					className="min-w-56"
 					collisionPadding={8}
 					onCloseAutoFocus={() => {
 						const show = pendingWindow.current;

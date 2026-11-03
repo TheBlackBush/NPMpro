@@ -137,6 +137,7 @@
 	"certificate.not-in-use": "Non in Uso",
 	"certificate.renew": "Rinnova Certificato",
 	"certificates": "Certificati",
+	"certificates-dns": "Certificati e DNS",
 	"certificates.count": "{count} {count, plural, one {certificato} other {certificati}}",
 	"certificates.custom": "Certificato Personalizzato",
 	"certificates.custom.warning": "I file di chiave protetti da passphrase non sono supportati.",
