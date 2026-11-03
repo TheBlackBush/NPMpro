@@ -66,8 +66,9 @@ function AccordionContent({
     >
       <div
         className={cn(
-          // NPMpro: no fixed height, so content that grows while open (a validation message) is not clipped
-          "pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+          // NPMpro: no fixed height, so content that grows while open (a validation message) is not clipped; px-1 -mx-1
+          // gives focus rings and borders at the edges room inside the overflow-hidden wrapper
+          "-mx-1 px-1 pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
           className
         )}
       >
@@ -77,4 +78,24 @@ function AccordionContent({
   )
 }
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent }
+// NPMpro: Radix renders the children of a closed item only while it is open (even with forceMount), so fields would
+// leave the DOM. This panel stays mounted and is hidden while closed (the old Bootstrap behaviour); `id` is what the
+// trigger's aria-controls points to. No height animation, and no overflow clipping of focus rings.
+function AccordionPanel({
+  className,
+  open,
+  ...props
+}) {
+  return (
+    <div
+      data-slot="accordion-content"
+      data-state={open ? "open" : "closed"}
+      role="region"
+      hidden={!open}
+      className={cn("pt-0 pb-2.5 text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+export { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionPanel }

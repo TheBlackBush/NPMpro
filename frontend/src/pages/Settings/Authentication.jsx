@@ -2,7 +2,7 @@ import { CircleAlert, CircleCheck, CircleDashed, Info, Lock } from "lucide-react
 import { useEffect, useRef, useState } from "react";
 import { useFormState, useWatch } from "react-hook-form";
 import { ApiErrorContent, ErrorAlert, HookForm, Loading, StatusBadge, useAppForm } from "src/components";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "src/components/ui/accordion";
+import { Accordion, AccordionItem, AccordionPanel, AccordionTrigger } from "src/components/ui/accordion";
 import { Badge } from "src/components/ui/badge";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { T } from "src/locale";
@@ -88,7 +88,11 @@ function AuthAccordion({ data, isLocked }) {
 	}
 	const item = (key, titleId, summary, children) => (
 		<AccordionItem value={key}>
-			<AccordionTrigger className="items-center hover:no-underline">
+			<AccordionTrigger
+				className="items-center hover:no-underline"
+				id={`auth-${key}-trigger`}
+				aria-controls={`auth-${key}-panel`}
+			>
 				<span className="flex flex-1 flex-wrap items-center justify-between gap-2 pe-2">
 					<span className="text-base font-medium">
 						<T id={titleId} />
@@ -96,7 +100,15 @@ function AuthAccordion({ data, isLocked }) {
 					{summary}
 				</span>
 			</AccordionTrigger>
-			<AccordionContent className="space-y-4">{children}</AccordionContent>
+			{/* closed groups stay mounted, as before: their fields keep their values and registration */}
+			<AccordionPanel
+				id={`auth-${key}-panel`}
+				aria-labelledby={`auth-${key}-trigger`}
+				open={openKeys.includes(key)}
+				className="space-y-4"
+			>
+				{children}
+			</AccordionPanel>
 		</AccordionItem>
 	);
 
