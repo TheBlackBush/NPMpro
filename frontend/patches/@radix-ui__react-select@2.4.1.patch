@@ -1,0 +1,42 @@
+diff --git a/dist/index.js b/dist/index.js
+index cbf979150635ccf619d7e74f7681d92b7564eb8b..f6c82ee971ddef206a153e88ddd1d3575b03cd14 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -832,15 +832,7 @@ var SelectViewport = /* @__PURE__ */ React.forwardRef(
+     const composedRefs = (0, import_react_compose_refs.useComposedRefs)(forwardedRef, contentContext.onViewportChange);
+     const prevScrollTopRef = React.useRef(0);
+     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+-        "style",
+-        {
+-          dangerouslySetInnerHTML: {
+-            __html: `[data-radix-select-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-select-viewport]::-webkit-scrollbar{display:none}`
+-          },
+-          nonce
+-        }
+-      ),
++      /* NPMpro: no runtime <style> (CSP); the rules are in src/styles/globals.css */ null,
+       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Collection.Slot, { scope: __scopeSelect, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+         import_react_primitive.Primitive.div,
+         {
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c36cf353eb4fd8b223a19d1ad340341add6ab453..6a0b1bf3873771d963752b23863a0339767c4b7c 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -762,15 +762,7 @@ var SelectViewport = /* @__PURE__ */ React.forwardRef(
+     const composedRefs = useComposedRefs(forwardedRef, contentContext.onViewportChange);
+     const prevScrollTopRef = React.useRef(0);
+     return /* @__PURE__ */ jsxs(Fragment2, { children: [
+-      /* @__PURE__ */ jsx(
+-        "style",
+-        {
+-          dangerouslySetInnerHTML: {
+-            __html: `[data-radix-select-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-select-viewport]::-webkit-scrollbar{display:none}`
+-          },
+-          nonce
+-        }
+-      ),
++      /* NPMpro: no runtime <style> (CSP); the rules are in src/styles/globals.css */ null,
+       /* @__PURE__ */ jsx(Collection.Slot, { scope: __scopeSelect, children: /* @__PURE__ */ jsx(
+         Primitive.div,
+         {

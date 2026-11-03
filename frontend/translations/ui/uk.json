@@ -1303,7 +1303,6 @@
 	"theme.label": "Тема: {theme}",
 	"theme.light": "Світла",
 	"theme.system": "Системна",
-	"theme.title": "Тема",
 	"tls.disabled.auth-request": "Спочатку задайте «{option}» для хоста або одного з власних маршрутів.",
 	"tls.disabled.mtls-required": "Обов'язково для mTLS, поки його не зроблено необов'язковим.",
 	"tls.disabled.needs-option": "Спочатку увімкніть «{option}».",

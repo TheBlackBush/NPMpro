@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
@@ -8,6 +8,7 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
+import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR, START_SKIP_ATTRIBUTE } from "src/modules/StartField";
 import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
@@ -21,17 +22,58 @@ const ModeContext = createContext("dialog");
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
-// the controls a window may start in: the first one in its body that can take the focus and shows (not on a hidden
-// tab, not in a disabled fieldset)
-const FIELD =
-	'input:not([type="hidden"]), select, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])';
 function firstField(content) {
 	const body = content.querySelector("[data-window-body]");
 	if (!body) return null;
-	for (const element of body.querySelectorAll(FIELD)) {
-		if (!element.matches(":disabled") && element.checkVisibility()) return element;
+	for (const element of body.querySelectorAll(START_FIELD_SELECTOR)) {
+		const control = {
+			role: element.getAttribute("role"),
+			disabled: element.matches(":disabled"),
+			visible: element.checkVisibility(),
+			tabIndex: element.tabIndex,
+			// a focusable container (a Radix tab panel has tabIndex 0) comes before its fields: never start on it
+			containsField: element.querySelector(START_FIELD_SELECTOR) !== null,
+			// a chip's remove button or a clear button: Enter there would delete a value
+			skip: element.closest(`[${START_SKIP_ATTRIBUTE}]`) !== null,
+		};
+		if (isStartField(control)) return element;
 	}
 	return null;
+}
+
+// A body that mounts after the window opened (an editor that loads its data first): its first field takes the focus
+// once it shows, as long as the focus is still on the window element itself. Stops after the first move, on close,
+// or after 10 seconds. It decides once per opening: the phone state is read when the window opens (through a ref), so
+// crossing the phone breakpoint while the window is open never moves the focus; a later opening decides again.
+function useLateStartField(content, open, isPhone) {
+	const isPhoneRef = useRef(isPhone);
+	isPhoneRef.current = isPhone;
+	useEffect(() => {
+		if (!(open && content)) return;
+		const isPhoneAtOpen = isPhoneRef.current;
+		const settle = () => {
+			const activeIsWindow = content.ownerDocument.activeElement === content;
+			if (keepsWindowFocus({ isPhone: isPhoneAtOpen, activeIsWindow })) return true;
+			const target = firstField(content);
+			target?.focus({ preventScroll: true });
+			return Boolean(target);
+		};
+		if (settle()) return;
+		const observer = new MutationObserver(() => {
+			if (settle()) observer.disconnect();
+		});
+		observer.observe(content, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["data-state"],
+		});
+		const timer = setTimeout(() => observer.disconnect(), 10_000);
+		return () => {
+			observer.disconnect();
+			clearTimeout(timer);
+		};
+	}, [content, open]);
 }
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
@@ -63,6 +105,9 @@ function AppModal({
 	const mode = windowMode({ editorStyle, size, isPhone });
 	const primitive = windowPrimitive({ editorStyle, size });
 	const giveFocusBack = useWindowFocusReturn();
+	// a state, not a ref object: the portal mounts the content after the first effects, and the hook must rerun then
+	const [windowElement, setWindowElement] = useState(null);
+	useLateStartField(windowElement, Boolean(show), isPhone);
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
 	const guards = {
@@ -117,6 +162,7 @@ function AppModal({
 						{primitive === "sheet" ? (
 							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
 								<SheetContent
+									ref={setWindowElement}
 									side="right"
 									showCloseButton={false}
 									className={cn(
@@ -134,6 +180,7 @@ function AppModal({
 						) : (
 							<Dialog open={Boolean(show)} onOpenChange={onOpenChange}>
 								<DialogContent
+									ref={setWindowElement}
 									showCloseButton={false}
 									className={cn(
 										frame,

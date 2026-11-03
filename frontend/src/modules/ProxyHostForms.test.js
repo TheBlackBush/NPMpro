@@ -263,7 +263,7 @@ it("puts every field of the proxy host window on exactly one tab, the location r
 			["details", "column.details", false],
 			["locations", "column.custom-locations", false],
 			["tls", "column.ssl", false],
-			["advanced", "domains.advanced", true],
+			["advanced", "domains.advanced", false],
 		],
 	);
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "locations[1].forwardHost"), "locations");

@@ -141,37 +141,40 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 					/>
 				))}
 			</SwitchList>
-			<SelectField
-				name={field("npmproXFrameOptions")}
-				id={id("npmproXFrameOptions")}
-				label="X-Frame-Options"
-				className="mb-0"
-			>
-				{X_FRAME_OPTIONS.map((value) => (
-					<option key={value} value={value}>
-						{value}
-					</option>
-				))}
-			</SelectField>
-			<SelectField
-				name={field("npmproAuthRequest")}
-				id={id("npmproAuthRequest")}
-				label={<T id="host.auth-request" />}
-				className="mb-0"
-				registerOptions={{
-					onChange: (e) => {
-						applyOption("npmproAuthRequest", e.target.value);
-						// the upstream is hidden without an auth request
-						if (e.target.value === "none") clearErrors(field("npmproAuthRequestUpstream"));
-					},
-				}}
-			>
-				{AUTH_REQUEST_OPTIONS.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</SelectField>
+			{/* two narrow selects side by side from sm up */}
+			<div className="grid items-start gap-3 sm:grid-cols-2">
+				<SelectField
+					name={field("npmproXFrameOptions")}
+					id={id("npmproXFrameOptions")}
+					label="X-Frame-Options"
+					className="mb-0"
+				>
+					{X_FRAME_OPTIONS.map((value) => (
+						<option key={value} value={value}>
+							{value}
+						</option>
+					))}
+				</SelectField>
+				<SelectField
+					name={field("npmproAuthRequest")}
+					id={id("npmproAuthRequest")}
+					label={<T id="host.auth-request" />}
+					className="mb-0"
+					registerOptions={{
+						onChange: (e) => {
+							applyOption("npmproAuthRequest", e.target.value);
+							// the upstream is hidden without an auth request
+							if (e.target.value === "none") clearErrors(field("npmproAuthRequestUpstream"));
+						},
+					}}
+				>
+					{AUTH_REQUEST_OPTIONS.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</SelectField>
+			</div>
 			{npmproAuthRequest === "none" ? null : (
 				<TextField
 					name={field("npmproAuthRequestUpstream")}

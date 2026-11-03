@@ -5,7 +5,7 @@ import { FieldMessage } from "./FieldMessage";
 // callers hand this field a register() result (ref, name, onChange with event.target.checked, onBlur), which needs
 // a real checkbox.
 const SWITCH_INPUT =
-	"relative h-[18.4px] w-8 shrink-0 cursor-pointer appearance-none rounded-full border border-transparent bg-input outline-none transition-colors before:absolute before:top-1/2 before:left-0 before:size-4 before:-translate-y-1/2 before:rounded-full before:bg-background before:transition-transform before:content-[''] checked:bg-primary checked:before:translate-x-3.5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/80 dark:before:bg-foreground dark:checked:before:bg-primary-foreground";
+	"relative h-[18.4px] w-8 shrink-0 cursor-pointer appearance-none rounded-full border border-transparent bg-input outline-none transition-colors before:absolute before:top-1/2 before:left-0 before:size-4 before:-translate-y-1/2 before:rounded-full before:bg-background before:transition-transform before:content-[''] checked:bg-primary checked:before:translate-x-3.5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/80 dark:before:bg-foreground dark:checked:bg-primary dark:checked:before:bg-primary-foreground";
 
 /**
  * A settings row: text (and an optional hint) on the left, a switch on the right. The switch is described by its

@@ -34,6 +34,7 @@ import {
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { applyChanges } from "src/modules/HookForm";
@@ -48,8 +49,10 @@ import {
 	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 // isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
 const showStreamModal = (id, isClone = false) => {
@@ -57,6 +60,8 @@ const showStreamModal = (id, isClone = false) => {
 };
 
 const validate = streamValidate(validations);
+const accent = sectionAccent("streams");
+const Icon = sectionIcon("streams");
 
 // "TLS to upstream": shown off and disabled while it is not possible (no certificate, or UDP), its value kept
 function ProxyTlsSwitch({ possible, udpForwarding }) {
@@ -65,13 +70,7 @@ function ProxyTlsSwitch({ possible, udpForwarding }) {
 		<SwitchField
 			id="npmproProxyTls"
 			label={<T id="streams.tls" />}
-			hint={
-				!(udpForwarding || possible) && (
-					<span className="d-block">
-						<T id="streams.tls.requires-certificate" />
-					</span>
-				)
-			}
+			hint={!(udpForwarding || possible) && <T id="streams.tls.requires-certificate" />}
 			name={field.name}
 			ref={field.ref}
 			checked={Boolean(field.value) && possible}
@@ -101,7 +100,8 @@ function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T
 						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "stream" }}
@@ -135,25 +135,23 @@ function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 							maxLength={255}
 							placeholder={intl.formatMessage({ id: "stream.description.placeholder" })}
 						/>
-						<div className="row">
-							<div className="col-md-8">
-								<TextField
-									name="forwardingHost"
-									label={<T id="stream.forward-host" />}
-									type="text"
-									required
-									placeholder={intl.formatMessage({ id: "stream.forward-host.placeholder" })}
-								/>
-							</div>
-							<div className="col-md-4">
-								<TextField
-									name="forwardingPort"
-									label={<T id="host.forward-port" />}
-									type="text"
-									maxLength={12}
-									placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
-								/>
-							</div>
+						<div className="mb-3 grid items-start gap-3 sm:grid-cols-[2fr_1fr]">
+							<TextField
+								className="mb-0"
+								name="forwardingHost"
+								label={<T id="stream.forward-host" />}
+								type="text"
+								required
+								placeholder={intl.formatMessage({ id: "stream.forward-host.placeholder" })}
+							/>
+							<TextField
+								className="mb-0"
+								name="forwardingPort"
+								label={<T id="host.forward-port" />}
+								type="text"
+								maxLength={12}
+								placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
+							/>
 						</div>
 						<DirectoryField labelId="stream.directory" />
 						<FormSection heading legend={<T id="host.flags.protocols" />} className="mb-0">
@@ -208,17 +206,11 @@ function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={STREAMS} permission={MANAGE} hideError>
-					<FormSubmit
-						className="ms-auto"
-						edit={Boolean(data.id) && !isClone}
-						section="streams"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

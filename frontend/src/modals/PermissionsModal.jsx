@@ -81,13 +81,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
-						<FormSubmit
-							className="ms-auto"
-							edit={true}
-							section="users"
-							isLoading={isSubmitting}
-							disabled={isSubmitting}
-						>
+						<FormSubmit className="ms-auto" edit={true} isLoading={isSubmitting} disabled={isSubmitting}>
 							<T id="save" />
 						</FormSubmit>
 					</AppModal.Footer>

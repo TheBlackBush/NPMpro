@@ -156,11 +156,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 						>
 							<T id="test" />
 						</Button>
-						<FormSubmit
-							section="certificates"
-							isLoading={isSubmitting}
-							disabled={isSubmitting || isTesting}
-						>
+						<FormSubmit isLoading={isSubmitting} disabled={isSubmitting || isTesting}>
 							<T id="save" />
 						</FormSubmit>
 					</div>

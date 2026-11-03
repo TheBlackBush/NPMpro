@@ -223,7 +223,7 @@ it("puts every field of the redirection host, 404 host and stream windows on exa
 			[
 				["details", "column.details", false],
 				["tls", "column.ssl", false],
-				["advanced", "domains.advanced", true],
+				["advanced", "domains.advanced", false],
 			],
 		);
 	}

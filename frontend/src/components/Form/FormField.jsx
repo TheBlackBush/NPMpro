@@ -1,10 +1,12 @@
+import { Children } from "react";
 import { useFormContext } from "react-hook-form";
+import { FormSelect } from "src/components/AppSelect";
 import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
-import { NativeSelect } from "src/components/ui/native-select";
 import { Textarea } from "src/components/ui/textarea";
 import { cn } from "src/lib/utils";
 import { controlAria } from "src/modules/FormFields";
+import { optionsFromElements } from "src/modules/SelectOptions";
 import { FieldMessage } from "./FieldMessage";
 import { useFieldError } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
@@ -109,7 +111,8 @@ function TextField({
 }
 
 /**
- * A native select of the form around it (register), on FormField; children are its options
+ * A select of the form around it (shadcn Select bound with useController), on FormField; children are <option>
+ * elements as for a native select. registerOptions: valueAsNumber and onChange as with register
  */
 function SelectField({
 	name,
@@ -123,8 +126,9 @@ function SelectField({
 	children,
 	...selectProps
 }) {
-	const { register } = useFormContext();
 	const error = useFieldError(name);
+	// callers write <option> children as for a native select; the Select draws them as its items
+	const options = optionsFromElements(Children.toArray(children));
 	return (
 		<FormField
 			id={id}
@@ -136,16 +140,14 @@ function SelectField({
 			className={className}
 		>
 			{(control) => (
-				<NativeSelect
+				<FormSelect
 					{...selectProps}
-					{...register(name, registerOptions)}
 					{...control}
-					required={required}
-					// the wrapper of NativeSelect is shrink-to-fit; a field's select fills its row
-					className="w-full"
-				>
-					{children}
-				</NativeSelect>
+					name={name}
+					registerOptions={registerOptions}
+					options={options}
+					aria-required={required || undefined}
+				/>
 			)}
 		</FormField>
 	);

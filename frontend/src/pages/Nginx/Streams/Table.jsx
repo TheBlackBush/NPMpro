@@ -1,4 +1,3 @@
-import { IconCopy, IconDisc, IconDotsVertical, IconPower, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,21 +8,22 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Copy, Disc3, Eye, Pencil, Power, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
 	BreakableHost,
 	CertificateFormatter,
-	EditMenuItem,
 	EmptyData,
 	GravatarFormatter,
-	HasPermission,
+	RowActions,
 	StatusFormatter,
 	ValueWithDateFormatter,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { Badge } from "src/components/ui/badge";
+import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
-import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { sectionColor } from "src/modules/SectionColors";
+import { STREAMS } from "src/modules/Permissions";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -56,8 +56,56 @@ const protocolSummary = (row) => {
 };
 const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) {
+function StreamActions({ stream, onClone, onDelete, onDisableToggle, onEdit }) {
+	const canManage = useCanManage(STREAMS);
+	return (
+		<RowActions
+			// names the row by what it shows first: its incoming port
+			label={intl.formatMessage(
+				{ id: "list.row-actions" },
+				{ name: String(stream.incomingPort ?? `#${stream.id}`) },
+			)}
+			focusKey={`stream-${stream.id}`}
+			title={<T id="object.actions-title" tData={{ object: "stream" }} data={{ id: stream.id }} />}
+			items={[
+				{
+					key: "edit",
+					// a user who may only view gets the View window
+					label: <T id={canManage ? "action.edit" : "action.view"} />,
+					icon: canManage ? Pencil : Eye,
+					onSelect: () => onEdit?.(stream.id),
+				},
+				{
+					key: "clone",
+					label: <T id="action.clone" />,
+					icon: Copy,
+					onSelect: () => onClone?.(stream.id),
+					hidden: !canManage,
+				},
+				{
+					key: "toggle",
+					label: <T id={stream.enabled ? "action.disable" : "action.enable"} />,
+					icon: Power,
+					onSelect: () => onDisableToggle?.(stream.id, !stream.enabled),
+					hidden: !canManage,
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					onSelect: () => onDelete?.(stream.id),
+					destructive: true,
+					separatorBefore: true,
+					hidden: !canManage,
+				},
+			]}
+		/>
+	);
+}
+
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+// Stable columns, row handlers through the table meta: see ProxyHosts/Table.jsx.
+export function useColumns() {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
@@ -108,14 +156,14 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 				cell: (info) => {
 					const value = info.row.original;
 					return (
-						<>
+						<div className="flex flex-wrap gap-1">
 							{value.tcpForwarding ? (
-								<span className="badge badge-lg font-monospace text-wrap text-start">
+								<Badge variant="outline" className="font-mono">
 									<T id="streams.tcp" />
-								</span>
+								</Badge>
 							) : null}
 							{value.npmproProxyProtocolForwarding ? (
-								<span className="badge badge-lg font-monospace text-wrap text-start">
+								<Badge variant="outline" className="font-mono">
 									<T
 										id={
 											value.npmproProxyProtocolForwarding === 1
@@ -123,19 +171,19 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 												: "streams.pp.v2"
 										}
 									/>
-								</span>
+								</Badge>
 							) : null}
 							{value.npmproProxyTls ? (
-								<span className="badge badge-lg font-monospace text-wrap text-start">
+								<Badge variant="outline" className="font-mono">
 									<T id="streams.tls" />
-								</span>
+								</Badge>
 							) : null}
 							{value.udpForwarding ? (
-								<span className="badge badge-lg font-monospace text-wrap text-start">
+								<Badge variant="outline" className="font-mono">
 									<T id="streams.udp" />
-								</span>
+								</Badge>
 							) : null}
-						</>
+						</div>
 					);
 				},
 			}),
@@ -178,70 +226,14 @@ export function useColumns({ onClone, onDelete, onDisableToggle, onEdit } = {}) 
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => (
-					<span className="dropdown">
-						<button
-							type="button"
-							className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-							aria-label={intl.formatMessage({ id: "actions" })}
-							data-bs-boundary="viewport"
-							data-bs-toggle="dropdown"
-							data-bs-popper-config='{"strategy":"fixed"}'
-						>
-							<IconDotsVertical />
-						</button>
-						<div className="dropdown-menu dropdown-menu-end">
-							<span className="dropdown-header">
-								<T
-									id="object.actions-title"
-									tData={{ object: "stream" }}
-									data={{ id: info.row.original.id }}
-								/>
-							</span>
-							<EditMenuItem section={STREAMS} onClick={() => onEdit?.(info.row.original.id)} />
-							<HasPermission section={STREAMS} permission={MANAGE} hideError>
-								<button
-									type="button"
-									className="dropdown-item"
-									onClick={() => {
-										onClone?.(info.row.original.id);
-									}}
-								>
-									<IconCopy className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.clone" />
-								</button>
-								<button
-									type="button"
-									className="dropdown-item"
-									onClick={() => {
-										onDisableToggle?.(info.row.original.id, !info.row.original.enabled);
-									}}
-								>
-									<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id={info.row.original.enabled ? "action.disable" : "action.enable"} />
-								</button>
-								<div className="dropdown-divider" />
-								<button
-									type="button"
-									className="dropdown-item text-danger"
-									onClick={() => {
-										onDelete?.(info.row.original.id);
-									}}
-								>
-									<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.delete" />
-								</button>
-							</HasPermission>
-						</div>
-					</span>
-				),
+				cell: (info) => <StreamActions stream={info.row.original} {...info.table.options.meta?.actions} />,
 				meta: {
 					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[onClone, onDelete, onDisableToggle, onEdit],
+		[],
 	);
 }
 
@@ -261,15 +253,17 @@ export default function Table({
 	groupBy,
 	renderGroupLabel,
 }) {
-	const columns = useColumns({ onClone, onDelete, onDisableToggle, onEdit });
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: { onClone, onDelete, onDisableToggle, onEdit },
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
@@ -284,14 +278,14 @@ export default function Table({
 			renderGroupLabel={renderGroupLabel}
 			emptyState={
 				<EmptyData
-					icon={IconDisc}
+					icon={Disc3}
+					section="streams"
 					object="stream"
 					objects="streams"
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color={sectionColor("streams")}
 					permissionSection={STREAMS}
 				/>
 			}

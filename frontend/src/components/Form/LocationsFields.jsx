@@ -3,10 +3,10 @@ import { ChevronDownIcon, ChevronRightIcon, PlusIcon, SearchIcon, SettingsIcon, 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { AccessFields, Button, SwitchField } from "src/components";
+import { FormSelect } from "src/components/AppSelect";
 import { DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
-import { NativeSelect } from "src/components/ui/native-select";
 import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
@@ -16,6 +16,9 @@ import { FormField, TextField } from "./FormField";
 import { FormSection } from "./FormSection";
 import { useListRecheck, useReadOnly, useRecheckDependent } from "./HookForm";
 import { ForwardFields, ProxyOptionsFields } from "./ProxyOptionsFields";
+
+// the nginx location modifiers; the empty one is a plain prefix match
+const LOCATION_TYPES = ["", "@", "= ", "~ ", "~* ", "^~ "].map((value) => ({ value, label: value.trim() || "\u00a0" }));
 
 const locationLabel = (row) => `${row.locationType}${row.path}`;
 
@@ -95,25 +98,20 @@ function LocationRow({
 					<FormField id={pathId} label={<T id="location" />} required error={pathError} className="mb-0">
 						{(control) => (
 							<div className="flex gap-2">
-								<NativeSelect
+								<FormSelect
 									id={`locationType-${rowKey}`}
+									name={`${base}.locationType`}
+									options={LOCATION_TYPES}
 									className="w-auto shrink-0"
 									aria-label={intl.formatMessage({ id: "location.type" })}
-									{...register(`${base}.locationType`, {
+									registerOptions={{
 										// the type and the path together must be unique
 										onChange: () => {
 											recheckPath();
 											recheckPaths();
 										},
-									})}
-								>
-									<option value="" />
-									<option value="@">@</option>
-									<option value="= ">=</option>
-									<option value="~ ">~</option>
-									<option value="~* ">~*</option>
-									<option value="^~ ">^~</option>
-								</NativeSelect>
+									}}
+								/>
 								<Input
 									type="text"
 									{...register(`${base}.path`, { onChange: recheckPaths })}

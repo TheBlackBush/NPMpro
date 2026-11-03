@@ -1,13 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteRedirectionHost, toggleRedirectionHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useRedirectionHosts } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeleteConfirmModal, showRedirectionHostModal } from "src/modals";
+import { showDeleteConfirmModal, showRedirectionHostModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -84,33 +92,29 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("redirectionHosts")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="redirection-hosts" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="RedirectionHosts" />
-						<ImportExportButtons
-							kind="redirection_hosts"
-							permissionSection={REDIRECTION_HOSTS}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("redirectionHosts")}
-									onClick={() => showRedirectionHostModal("new")}
-								>
-									<T id="object.add" tData={{ object: "redirection-host" }} />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="redirection-hosts" />}
+			section="redirectionHosts"
+			count={data.length}
+			help="RedirectionHosts"
+			actions={
+				<>
+					<ImportExportButtons
+						kind="redirection_hosts"
+						permissionSection={REDIRECTION_HOSTS}
+						hasItems={Boolean(data?.length)}
+					/>
+					<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showRedirectionHostModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="object.add" tData={{ object: "redirection-host" }} />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -121,13 +125,14 @@ export default function TableWrapper() {
 					groups={groups}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayedHosts}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="redirection-host.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayedHosts}
+				groupBy={groupingActive ? getDirectory : undefined}
+				renderGroupLabel={(key) => (key === "" ? <T id="redirection-host.no-directory" /> : key)}
+				{...sharedTableProps}
+			/>
+		</ListPage>
 	);
 }

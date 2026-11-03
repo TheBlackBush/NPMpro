@@ -1303,7 +1303,6 @@
 	"theme.label": "Theme: {theme}",
 	"theme.light": "Light",
 	"theme.system": "System",
-	"theme.title": "Theme",
 	"tls.disabled.auth-request": "Set \"{option}\" on the host or on one of its custom locations first.",
 	"tls.disabled.mtls-required": "Required by mTLS while it is not optional.",
 	"tls.disabled.needs-option": "Turn on \"{option}\" first.",

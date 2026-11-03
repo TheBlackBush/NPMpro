@@ -1303,7 +1303,6 @@
 	"theme.label": "Tema: {theme}",
 	"theme.light": "Claro",
 	"theme.system": "Sistema",
-	"theme.title": "Tema",
 	"tls.disabled.auth-request": "Defina primeiro “{option}” no host ou num dos seus Locations personalizados.",
 	"tls.disabled.mtls-required": "Exigido pelo mTLS enquanto não for opcional.",
 	"tls.disabled.needs-option": "Ative primeiro “{option}”.",

@@ -18,6 +18,7 @@ import { navAccent } from "src/modules/SectionAccents";
 import { LanguageMenu } from "./LanguageMenu";
 import { Logo } from "./Logo";
 import { isActivePath } from "./NavLinks";
+import { ThemeMenu } from "./ThemeMenu";
 import { UserMenu } from "./UserMenu";
 import { useNavItems } from "./useNavItems";
 
@@ -25,12 +26,41 @@ import { useNavItems } from "./useNavItems";
 const MARKER =
 	"relative data-[active=true]:before:absolute data-[active=true]:before:inset-y-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-0.5 data-[active=true]:before:rounded-full";
 
-/** The sidebar layout's navigation: icon rail when collapsed, a sheet on phones (drawn by the sidebar itself) */
+// one link of the sidebar, with the active marker in the page's accent
+function SidebarLink({ item, active, onNavigate }) {
+	const { id, to, label, Icon, external } = item;
+	return (
+		<SidebarMenuItem>
+			<SidebarMenuButton asChild isActive={active} tooltip={label} className={cn(MARKER, navAccent(id).marker)}>
+				{external ? (
+					<a href={to} target="_blank" rel="noopener" onClick={onNavigate}>
+						<Icon aria-hidden="true" />
+						<span>{label}</span>
+						<ExternalLink className="ml-auto group-data-[collapsible=icon]:hidden" aria-hidden="true" />
+					</a>
+				) : (
+					<NavLink to={to} end={to === "/"} aria-current={active ? "page" : undefined} onClick={onNavigate}>
+						<Icon aria-hidden="true" />
+						<span>{label}</span>
+					</NavLink>
+				)}
+			</SidebarMenuButton>
+		</SidebarMenuItem>
+	);
+}
+
+/**
+ * The sidebar layout's navigation: icon rail when collapsed, a sheet on phones (drawn by the sidebar itself). The
+ * bottom holds the language and theme menus, then Settings, then the user menu (user decision 2026-11-03)
+ */
 export function AppSidebar() {
 	const items = useNavItems();
 	const { pathname } = useLocation();
 	const { setOpenMobile } = useSidebar();
 	const closeSheet = () => setOpenMobile(false);
+	const main = items.filter((item) => item.id !== "settings");
+	const settings = items.find((item) => item.id === "settings");
+	const label = intl.formatMessage({ id: "aria.main-navigation" });
 
 	return (
 		<Sidebar collapsible="icon">
@@ -44,51 +74,36 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarContent>
 				<SidebarGroup>
-					<nav aria-label={intl.formatMessage({ id: "aria.main-navigation" })}>
+					<nav aria-label={label}>
 						<SidebarMenu>
-							{items.map((item) => {
-								const { id, to, label, Icon, external } = item;
-								const active = isActivePath(pathname, item);
-								return (
-									<SidebarMenuItem key={id}>
-										<SidebarMenuButton
-											asChild
-											isActive={active}
-											tooltip={label}
-											className={cn(MARKER, navAccent(id).marker)}
-										>
-											{external ? (
-												<a href={to} target="_blank" rel="noopener" onClick={closeSheet}>
-													<Icon aria-hidden="true" />
-													<span>{label}</span>
-													<ExternalLink
-														className="ml-auto group-data-[collapsible=icon]:hidden"
-														aria-hidden="true"
-													/>
-												</a>
-											) : (
-												<NavLink
-													to={to}
-													end={to === "/"}
-													aria-current={active ? "page" : undefined}
-													onClick={closeSheet}
-												>
-													<Icon aria-hidden="true" />
-													<span>{label}</span>
-												</NavLink>
-											)}
-										</SidebarMenuButton>
-									</SidebarMenuItem>
-								);
-							})}
+							{main.map((item) => (
+								<SidebarLink
+									key={item.id}
+									item={item}
+									active={isActivePath(pathname, item)}
+									onNavigate={closeSheet}
+								/>
+							))}
 						</SidebarMenu>
 					</nav>
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
-				<div className="flex justify-center">
+				{/* side by side, stacked in the icon rail */}
+				<div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
 					<LanguageMenu />
+					<ThemeMenu />
 				</div>
+				{settings ? (
+					// a second landmark with the same name would be ambiguous: Settings is a plain list in the footer
+					<SidebarMenu>
+						<SidebarLink
+							item={settings}
+							active={isActivePath(pathname, settings)}
+							onNavigate={closeSheet}
+						/>
+					</SidebarMenu>
+				) : null}
 				<UserMenu variant="sidebar" />
 			</SidebarFooter>
 			<SidebarRail />

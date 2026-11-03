@@ -1303,7 +1303,6 @@
 	"theme.label": "Motyw: {theme}",
 	"theme.light": "Jasny",
 	"theme.system": "Systemowy",
-	"theme.title": "Motyw",
 	"tls.disabled.auth-request": "Najpierw ustaw „{option}” na hoście lub w jednej z jego własnych lokalizacji.",
 	"tls.disabled.mtls-required": "Wymagane przez mTLS, dopóki nie jest opcjonalne.",
 	"tls.disabled.needs-option": "Najpierw włącz „{option}”.",

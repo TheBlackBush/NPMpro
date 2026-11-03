@@ -1,8 +1,8 @@
 /**
  * The rules of the windows with tabs (ModalTabs): which tab holds a field, how many shown errors each tab holds, the
  * first error and its tab (the keyboard moves between the tabs are Radix's). A window's tabs are a list of
- * { id, labelId, fields, end? }: fields are the top-level form fields of the tab (a list such as "locations" holds
- * its rows), end puts the tab on the right (Advanced). Pure, so node --test checks them without a DOM.
+ * { id, labelId, fields }: fields are the top-level form fields of the tab (a list such as "locations" holds
+ * its rows). Pure, so node --test checks them without a DOM.
  */
 import { errorPaths, orderErrorPaths } from "./HookForm.js";
 

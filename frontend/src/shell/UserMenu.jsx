@@ -14,12 +14,13 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
-import { useAuthState, usePreferences, useThemeState } from "src/context";
+import { useAuthState, usePreferences } from "src/context";
 import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
+import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
 
@@ -64,7 +65,6 @@ function Choice({ label, value, options, onChange }) {
  */
 export function UserMenu({ variant = "topbar" }) {
 	const { data: user } = useUser("me");
-	const { preference, setPreference } = useThemeState();
 	const { navLayout, setNavLayout, editorStyle, setEditorStyle } = usePreferences();
 	const { logout, logoutEverywhere } = useAuthState();
 	const sidebar = variant === "sidebar";
@@ -119,9 +119,12 @@ export function UserMenu({ variant = "topbar" }) {
 				align={sidebar ? "start" : "end"}
 				side={sidebar ? "top" : "bottom"}
 				className="w-56"
-				onCloseAutoFocus={() => {
-					// no preventDefault: Radix focuses the button right after this handler, then the window opens
+				onCloseAutoFocus={(event) => {
 					const show = pendingWindow.current;
+					// a window needs the focus back on the button (it returns there on close): no preventDefault, Radix
+					// focuses the button right after this handler, then the window opens. Without one, a pointer close
+					// leaves the focus alone (no keyboard focus ring on a clicked button)
+					if (!show) returnFocusOnlyForKeyboard(event);
 					pendingWindow.current = null;
 					if (show) setTimeout(() => show("me"), 0);
 				}}
@@ -142,16 +145,6 @@ export function UserMenu({ variant = "topbar" }) {
 				<DropdownMenuLabel>
 					<T id="appearance" />
 				</DropdownMenuLabel>
-				<Choice
-					label="theme.title"
-					value={preference}
-					onChange={setPreference}
-					options={[
-						["light", "theme.light"],
-						["dark", "theme.dark"],
-						["auto", "theme.system"],
-					]}
-				/>
 				<Choice
 					label="appearance.navigation"
 					value={navLayout}

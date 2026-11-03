@@ -266,6 +266,7 @@ function SingleCombobox({
 						variant="ghost"
 						size="icon-xs"
 						className="absolute top-1/2 right-7 -translate-y-1/2"
+						data-window-start-skip=""
 						aria-label={intl.formatMessage({ id: "action.clear" })}
 						onClick={() => {
 							onChange(null, null);
@@ -510,6 +511,7 @@ function MultipleCombobox({
 											variant="ghost"
 											size="icon-xs"
 											className="size-5 rounded-full"
+											data-window-start-skip=""
 											aria-label={intl.formatMessage({ id: "combobox.remove" }, { value: label })}
 											onClick={() => remove(index)}
 										>

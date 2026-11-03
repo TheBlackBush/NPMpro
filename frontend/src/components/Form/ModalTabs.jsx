@@ -2,7 +2,6 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { useFormState } from "react-hook-form";
 import { Badge } from "src/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs";
-import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { tabErrorCounts } from "src/modules/ModalTabs";
 import { useFormTabs, useReadOnly } from "./HookForm";
@@ -35,13 +34,13 @@ function ErrorDescription({ id, count }) {
 
 /**
  * The tabs of a window's form (shadcn Tabs on Radix): one row that never wraps and scrolls sideways when the tabs do
- * not fit (phones), a tab with end set sits on the right (Advanced), every tab with a shown error gets a red badge
+ * not fit (phones), every tab with a shown error gets a red badge
  * with the count. Inside a HookForm, "jump to the first error" opens the tab that holds it and keeps it in view.
  * Every pane stays mounted, so its fields keep their values and can be focused. Keyboard (Radix): Tab reaches the
  * open tab, the arrow keys (and Home, End) move between the tabs and open them.
  *
  * @param {Object}   props
- * @param {Object[]} props.tabs        { id, labelId, fields, end? } (modules/ModalTabs.js), in order
+ * @param {Object[]} props.tabs        { id, labelId, fields } (modules/ModalTabs.js), in order
  * @param {Object}   [props.markers]   tab id -> what follows the label (the "*" of a tab that holds settings)
  * @param {Object}   [props.disabled]  tab id -> true while the tab cannot be opened
  * @param {*}        props.children    a TabPane for every tab
@@ -99,7 +98,9 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 			<TabsList
 				ref={listRef}
 				variant="line"
-				className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0"
+				// shadcn sets the row to h-8 for horizontal tabs (a group variant that outranks a plain h-auto); the tabs are h-9, so
+				// the scrolling row clipped their active underline
+				className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0 group-data-[orientation=horizontal]/tabs:h-auto"
 			>
 				{tabs.map((tab) => (
 					<TabsTrigger
@@ -108,10 +109,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 						data-tab={tab.id}
 						disabled={Boolean(disabled[tab.id])}
 						aria-describedby={counts[tab.id] > 0 ? errorIds.of(tab.id) : undefined}
-						className={cn(
-							"h-9 flex-none rounded-none px-3 after:bottom-0! after:h-0.5 after:bg-primary",
-							tab.end && "ms-auto",
-						)}
+						className="h-9 flex-none rounded-none px-3 after:bottom-0! after:h-0.5 after:bg-primary"
 					>
 						<T id={tab.labelId} />
 						{markers[tab.id]}
