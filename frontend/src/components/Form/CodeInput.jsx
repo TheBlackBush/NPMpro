@@ -119,7 +119,8 @@ function useRefusedCodeReset(methods) {
 		if (submitCount === 0 || !refused.current) return;
 		const { useBackup } = refused.current;
 		refused.current = null;
-		reset({ ...CODE_VALUES, useBackup }, { keepIsSubmitted: false, keepSubmitCount: false });
+		// keepFieldsRef: a plain reset forgets the registered fields, and setFocus would find nothing to focus
+		reset({ ...CODE_VALUES, useBackup }, { keepIsSubmitted: false, keepSubmitCount: false, keepFieldsRef: true });
 		setFocus(useBackup ? "backupCode" : "code");
 	}, [submitCount, reset, setFocus]);
 	return useCallback((useBackup) => {
