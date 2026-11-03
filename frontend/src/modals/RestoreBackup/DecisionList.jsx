@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { BreakableHost } from "src/components";
 import { Badge } from "src/components/ui/badge";
@@ -64,6 +64,9 @@ export function ActionBadge({ action, children }) {
 	);
 }
 
+// the pressed look of a choice or filter button: not the primary colour, a ring and a check mark instead
+const PRESSED = "ring-1 ring-primary/50";
+
 // search and the reason filters are shown from this many items
 const TOOLS_FROM = 11;
 
@@ -85,7 +88,7 @@ const targetText = (item) => {
 function ReasonBadge({ reason, className }) {
 	const look = REASON_LOOKS[reason] ?? { variant: "secondary" };
 	return (
-		<Badge variant={look.variant} className={cn(look.className, className)}>
+		<Badge variant={look.variant} className={cn("h-auto whitespace-normal", look.className, className)}>
 			<T id={`settings.backup.merge.badge.${reason}`} />
 		</Badge>
 	);
@@ -172,12 +175,13 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 									key={option}
 									type="button"
 									size="sm"
-									variant={value === option ? "default" : "outline"}
-									className="flex-1"
+									variant={value === option ? "secondary" : "outline"}
+									className={cn("flex-1", value === option && PRESSED)}
 									aria-pressed={value === option}
 									onClick={() => onChoice(item.key, option)}
 									disabled={disabled || !included || item.choices.length === 1}
 								>
+									{value === option ? <CheckIcon aria-hidden="true" /> : null}
 									{optionLabel(option)}
 								</Button>
 							))}
@@ -310,11 +314,12 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 			key={value ?? "all"}
 			type="button"
 			size="sm"
-			variant={activeReason === value ? "default" : "outline"}
-			className="rounded-full"
+			variant={activeReason === value ? "secondary" : "outline"}
+			className={cn("rounded-full", activeReason === value && PRESSED)}
 			aria-pressed={activeReason === value}
 			onClick={() => setReason(value)}
 		>
+			{activeReason === value ? <CheckIcon aria-hidden="true" /> : null}
 			{children}
 		</Button>
 	);

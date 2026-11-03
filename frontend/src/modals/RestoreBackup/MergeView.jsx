@@ -1,9 +1,7 @@
-import { TriangleAlertIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
-import { ChoiceGroup, ErrorAlert, TypeTree } from "src/components";
+import { ChoiceGroup, ErrorAlert, NoticeAlert, TypeTree } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
-import { Alert } from "src/components/ui/alert";
 import { Button } from "src/components/ui/button";
 import { Checkbox } from "src/components/ui/checkbox";
 import { cn } from "src/lib/utils";
@@ -340,12 +338,9 @@ export function MergeView({
 			/>
 			<ErrorAlert error={merge.error} />
 			{merge.changed ? (
-				<Alert role="alert" className="mb-3 border-warning/50 bg-warning/10 text-foreground">
-					<TriangleAlertIcon className="text-warning" aria-hidden="true" />
-					<div className="text-sm break-words">
-						<T id="settings.backup.merge.plan-changed" />
-					</div>
-				</Alert>
+				<NoticeAlert role="alert" className="mb-3">
+					<T id="settings.backup.merge.plan-changed" />
+				</NoticeAlert>
 			) : null}
 			{plan && selected.length > 0 ? (
 				<>
@@ -356,7 +351,7 @@ export function MergeView({
 						<div className="flex flex-wrap gap-2">
 							{ACTIONS.filter((action) => plan.counts[action] > 0).map((action) => (
 								<ActionBadge key={action} action={action}>
-									<span className="ml-1">{plan.counts[action]}</span>
+									<span>{plan.counts[action]}</span>
 								</ActionBadge>
 							))}
 						</div>
@@ -388,7 +383,7 @@ export function MergeView({
 									<div key={action} className="mb-3">
 										<div className="mb-1">
 											<ActionBadge action={action}>
-												<span className="ml-1">{list.length}</span>
+												<span>{list.length}</span>
 											</ActionBadge>
 										</div>
 										<ItemRows items={list} {...rowProps} capped />
