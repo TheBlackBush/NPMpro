@@ -81,7 +81,9 @@ function TopList({
 												</div>
 											</div>
 											{item.detail ? (
-												<div className="text-muted-foreground small text-truncate">{item.detail}</div>
+												<div className="text-muted-foreground small text-truncate">
+													{item.detail}
+												</div>
 											) : null}
 											<div
 												className="progress progress-sm mt-1"
