@@ -1,7 +1,17 @@
-import { IconChevronDown, IconChevronUp, IconSearch } from "@tabler/icons-react";
-import cn from "clsx";
+import { ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { BreakableHost } from "src/components";
+import { Badge } from "src/components/ui/badge";
+import { Button } from "src/components/ui/button";
+import { Checkbox } from "src/components/ui/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "src/components/ui/dropdown-menu";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
 	changedChoices,
@@ -18,26 +28,41 @@ import {
 } from "src/modules/BackupMerge";
 import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 
-// the badge colour of each action
-export const ACTION_COLORS = {
-	add: "bg-green-lt",
-	replace: "bg-orange-lt",
-	existing: "bg-azure-lt",
-	take: "bg-azure-lt",
-	skip: "bg-secondary-lt",
-	keep: "bg-secondary-lt",
+// the badge look of each action, by tokens (an outline badge tinted by the token, or the secondary look)
+const TINT = {
+	success: "bg-success/10 border-success/40 text-foreground",
+	warning: "bg-warning/10 border-warning/40 text-foreground",
+};
+const ACTION_LOOKS = {
+	add: { variant: "outline", className: TINT.success },
+	replace: { variant: "outline", className: TINT.warning },
+	existing: { variant: "secondary" },
+	take: { variant: "secondary" },
+	skip: { variant: "outline" },
+	keep: { variant: "outline" },
 };
 
-// the badge colour of each reason an item meets an instance row
-const REASON_COLORS = {
-	"domain-in-use": "bg-orange-lt",
-	"domain-in-use-several": "bg-orange-lt",
-	"port-in-use": "bg-orange-lt",
-	"same-certificate": "bg-azure-lt",
-	"same-name": "bg-purple-lt",
-	"same-email": "bg-teal-lt",
-	differs: "bg-yellow-lt",
+// the badge look of each reason an item meets an instance row
+const REASON_LOOKS = {
+	"domain-in-use": { variant: "outline", className: TINT.warning },
+	"domain-in-use-several": { variant: "outline", className: TINT.warning },
+	"port-in-use": { variant: "outline", className: TINT.warning },
+	"same-certificate": { variant: "secondary" },
+	"same-name": { variant: "secondary" },
+	"same-email": { variant: "secondary" },
+	differs: { variant: "outline" },
 };
+
+// the badge of an action ("Add", "Replace" and so on); children follow the name (a count)
+export function ActionBadge({ action, children }) {
+	const look = ACTION_LOOKS[action] ?? { variant: "secondary" };
+	return (
+		<Badge variant={look.variant} className={look.className}>
+			<T id={`settings.backup.merge.action.${action}`} />
+			{children}
+		</Badge>
+	);
+}
 
 // search and the reason filters are shown from this many items
 const TOOLS_FROM = 11;
@@ -57,32 +82,33 @@ const targetText = (item) => {
 };
 
 // the reason badge of an item
-function ReasonBadge({ reason, className = "" }) {
+function ReasonBadge({ reason, className }) {
+	const look = REASON_LOOKS[reason] ?? { variant: "secondary" };
 	return (
-		<span className={cn("badge", REASON_COLORS[reason] ?? "bg-secondary-lt", className)}>
+		<Badge variant={look.variant} className={cn(look.className, className)}>
 			<T id={`settings.backup.merge.badge.${reason}`} />
-		</span>
+		</Badge>
 	);
 }
 
 /**
  * One item: its name (and what needs it), what it meets here, and Include and its choices as a segmented group.
- * On phones (table-mobile-md) the item cell also shows the reason badge and, as the grey summary line, what the item
- * meets here, while the Found cell is hidden; the Action cell stays and stacks as a full-width line under the item,
- * so Include and the choices are rendered once (no control or accessible name exists twice).
+ * On phones the row is a stacked block: the item cell also shows the reason badge and, as the grey summary line, what
+ * the item meets here, while the Found cell is hidden; the Action cell stays and stacks as a full-width line under
+ * the item, so Include and the choices are rendered once (no control or accessible name exists twice).
  */
 function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 	const included = isIncluded(item, choice);
 	const value = currentChoice(item, choice);
 	const target = targetText(item);
 	return (
-		<tr data-key={item.key}>
-			<td>
+		<tr data-key={item.key} className="block border-t md:table-row">
+			<td className="block px-3 py-2 align-middle md:table-cell">
 				<div className={titleClass()}>
 					<BreakableHost value={item.label} />
 				</div>
 				{item.neededBy?.length ? (
-					<div className="small text-muted-foreground text-break">
+					<div className="text-sm break-words text-muted-foreground">
 						<T
 							id="settings.backup.merge.needed-by"
 							data={{ names: item.neededBy.map(labelOf).join(", ") }}
@@ -90,45 +116,44 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 					</div>
 				) : null}
 				{item.reason || target ? (
-					<div className="d-md-none">
+					<div className="md:hidden">
 						{item.reason ? (
 							<div className="mt-1">
 								<ReasonBadge reason={item.reason} />
 							</div>
 						) : null}
 						{target ? (
-							<div className="mt-1 small text-muted-foreground text-break">
+							<div className="mt-1 text-sm break-words text-muted-foreground">
 								<BreakableHost value={target} />
 							</div>
 						) : null}
 					</div>
 				) : null}
 			</td>
-			<td className={PHONE_HIDDEN_CELL}>
-				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
+			<td className={cn(PHONE_HIDDEN_CELL, "px-3 py-2 align-middle")}>
+				{item.reason ? <ReasonBadge reason={item.reason} className="mr-1" /> : null}
 				{target ? (
-					<span className="text-muted-foreground small text-break">
+					<span className="text-sm break-words text-muted-foreground">
 						<BreakableHost value={target} />
 					</span>
 				) : null}
 			</td>
-			<td>
+			<td className="block px-3 py-2 align-middle md:table-cell md:w-px md:whitespace-nowrap">
 				{/* on phones the line wraps, so the choice group takes its own full-width line when Include does not fit */}
-				<div className="d-flex flex-wrap flex-md-nowrap align-items-center gap-3 text-nowrap">
+				<div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
 					{item.linked ? (
-						<label className="form-check mb-0">
-							<input
-								className="form-check-input"
-								type="checkbox"
+						// biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the row
+						<label className="flex cursor-pointer items-center gap-2 text-sm has-[:disabled]:cursor-not-allowed">
+							<Checkbox
 								checked={included}
-								onChange={(e) => onChoice(item.key, e.target.checked ? item.default : "unticked")}
+								onCheckedChange={(on) => onChoice(item.key, on === true ? item.default : "unticked")}
 								disabled={disabled}
 								aria-label={intl.formatMessage(
 									{ id: "settings.backup.merge.include-item" },
 									{ label: item.label },
 								)}
 							/>
-							<span className="form-check-label" aria-hidden="true">
+							<span aria-hidden="true">
 								<T id="settings.backup.merge.include" />
 							</span>
 						</label>
@@ -136,29 +161,29 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 					{item.choices.length > 0 ? (
 						// on phones the group fills the line, its buttons share the width
 						<fieldset
-							className="btn-group btn-group-sm flex-fill flex-md-grow-0"
+							className="m-0 flex min-w-0 flex-1 gap-1 border-0 p-0 md:flex-none"
 							aria-label={intl.formatMessage(
 								{ id: "settings.backup.merge.choice-for" },
 								{ label: item.label },
 							)}
 						>
 							{item.choices.map((option) => (
-								<button
+								<Button
 									key={option}
 									type="button"
-									className={cn("btn flex-fill", value === option && "btn-primary")}
+									size="sm"
+									variant={value === option ? "default" : "outline"}
+									className="flex-1"
 									aria-pressed={value === option}
 									onClick={() => onChoice(item.key, option)}
 									disabled={disabled || !included || item.choices.length === 1}
 								>
 									{optionLabel(option)}
-								</button>
+								</Button>
 							))}
 						</fieldset>
 					) : (
-						<span className={`badge ${ACTION_COLORS[item.action] ?? "bg-secondary-lt"}`}>
-							<T id={`settings.backup.merge.action.${item.action}`} />
-						</span>
+						<ActionBadge action={item.action} />
 					)}
 				</div>
 			</td>
@@ -179,54 +204,54 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 		.join(", ");
 	const options = groupChoices(group.items);
 	return (
-		<tr>
-			<th scope="rowgroup" colSpan={3} className="py-2 bg-secondary-lt fw-normal">
-				<div className="d-flex flex-wrap align-items-center gap-2">
-					<button
+		<tr className="block bg-muted/50 md:table-row">
+			<th scope="rowgroup" colSpan={3} className="block px-3 py-2 text-left font-normal md:table-cell">
+				<div className="flex flex-wrap items-center gap-2">
+					<Button
 						type="button"
-						// d-inline-flex: table-mobile-md makes every .btn a block on phones
-						className="btn btn-sm btn-ghost-secondary btn-icon d-inline-flex"
+						variant="ghost"
+						size="icon-sm"
 						aria-expanded={open}
 						aria-label={name}
 						onClick={onFold}
 					>
-						{open ? (
-							<IconChevronUp className="icon" aria-hidden="true" />
-						) : (
-							<IconChevronDown className="icon" aria-hidden="true" />
-						)}
-					</button>
-					<span className="small fw-bold text-uppercase text-muted-foreground">{name}</span>
-					<span className="badge bg-secondary-lt">{group.items.length}</span>
-					<span className="small text-muted-foreground d-none d-sm-inline">{summary}</span>
+						{open ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
+					</Button>
+					<span className="text-sm font-bold text-muted-foreground uppercase">{name}</span>
+					<Badge variant="secondary">{group.items.length}</Badge>
+					<span className="hidden text-sm text-muted-foreground sm:inline">{summary}</span>
 					{options.length > 1 ? (
 						// below sm "Set all" takes its own line
-						<div className="w-100 d-sm-none" />
+						<div className="w-full sm:hidden" />
 					) : null}
 					{options.length > 1 ? (
-						<div className="d-flex align-items-center gap-2 ms-sm-auto">
-							<span className="small text-muted-foreground" aria-hidden="true">
-								<T id="settings.backup.merge.set-all" />
-							</span>
-							<fieldset
-								className="btn-group btn-group-sm"
-								aria-label={intl.formatMessage(
-									{ id: "settings.backup.merge.set-all-for" },
-									{ type: inSentence(name, intl.locale) },
-								)}
-							>
-								{options.map((option) => (
-									<button
-										key={option}
+						<div className="flex items-center sm:ml-auto">
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button
 										type="button"
-										className="btn"
-										onClick={() => onSetAll(option)}
+										variant="outline"
+										size="sm"
 										disabled={disabled}
+										aria-label={intl.formatMessage(
+											{ id: "settings.backup.merge.set-all-for" },
+											{ type: inSentence(name, intl.locale) },
+										)}
 									>
-										{optionLabel(option)}
-									</button>
-								))}
-							</fieldset>
+										<span aria-hidden="true">
+											<T id="settings.backup.merge.set-all" />
+										</span>
+										<ChevronDownIcon aria-hidden="true" />
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-auto">
+									{options.map((option) => (
+										<DropdownMenuItem key={option} onSelect={() => onSetAll(option)}>
+											{optionLabel(option)}
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
 						</div>
 					) : null}
 				</div>
@@ -281,46 +306,47 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 	const searchLabel = intl.formatMessage({ id: "settings.backup.merge.search" });
 
 	const chip = (value, children) => (
-		<button
+		<Button
 			key={value ?? "all"}
 			type="button"
-			className={cn("btn btn-sm btn-pill", activeReason === value && "btn-primary")}
+			size="sm"
+			variant={activeReason === value ? "default" : "outline"}
+			className="rounded-full"
 			aria-pressed={activeReason === value}
 			onClick={() => setReason(value)}
 		>
 			{children}
-		</button>
+		</Button>
 	);
 
 	return (
 		<div className="mb-3">
-			<div className="d-flex align-items-baseline gap-2">
-				<h4 id={titleId} className="m-0">
+			<div className="flex items-baseline gap-2">
+				<h4 id={titleId} className="m-0 text-base font-medium">
 					<T id="settings.backup.merge.decisions" />
 				</h4>
-				<span className="badge bg-secondary-lt">{items.length}</span>
+				<Badge variant="secondary">{items.length}</Badge>
 			</div>
-			<p className="text-muted-foreground small mb-2">
+			<p className="mb-2 text-sm text-muted-foreground">
 				<T id="settings.backup.merge.decisions-hint" />
 			</p>
 			{tools ? (
-				<div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-					{/* no Tabler utility sets a minimum width: the search keeps 12rem before the chips wrap */}
-					<div className="input-icon flex-fill" style={{ minWidth: "12rem" }}>
-						<span className="input-icon-addon">
-							<IconSearch className="icon" aria-hidden="true" />
-						</span>
-						<input
+				<div className="mb-2 flex flex-wrap items-center gap-2">
+					{/* the search keeps 12rem before the chips wrap */}
+					<InputGroup className="h-8 min-w-48 flex-1">
+						<InputGroupAddon>
+							<SearchIcon aria-hidden="true" />
+						</InputGroupAddon>
+						<InputGroupInput
 							type="search"
-							className="form-control form-control-sm"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 							placeholder={searchLabel}
 							aria-label={searchLabel}
 						/>
-					</div>
+					</InputGroup>
 					<fieldset
-						className="d-flex flex-wrap gap-1"
+						className="m-0 flex min-w-0 flex-wrap gap-1 border-0 p-0"
 						aria-label={intl.formatMessage({ id: "settings.backup.merge.filter" })}
 					>
 						{chip(null, <T id="list.filter.all" />)}
@@ -328,100 +354,96 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 					</fieldset>
 				</div>
 			) : null}
-			<div className="card">
-				<div className="table-responsive">
-					<table
-						ref={tableRef}
-						className="table table-vcenter table-mobile-md card-table"
-						aria-labelledby={titleId}
-					>
-						<thead>
-							<tr>
-								{/* the item gets at least half the width, so its name does not break mid-label on tablets */}
-								<th scope="col" className="w-50">
-									<T id="settings.backup.merge.column.item" />
-								</th>
-								<th scope="col">
-									<T id="settings.backup.merge.column.found" />
-								</th>
-								<th scope="col" className="w-1">
-									<T id="settings.backup.merge.column.action" />
-								</th>
-							</tr>
-						</thead>
-						{groups.map((group) => {
-							const open = !folded.includes(group.type);
-							return (
-								<tbody key={group.type}>
-									<GroupHeader
-										group={group}
-										choices={choices}
-										open={open}
-										onFold={() => setFolded((list) => toggle(list, group.type))}
-										onSetAll={(option) => {
-											for (const [key, choice] of Object.entries(
-												setAllChoices(group.items, option, choices),
-											)) {
-												onChoice(key, choice);
-											}
-										}}
-										disabled={disabled}
-									/>
-									{open
-										? group.rows.map((item) => (
-												<DecisionRow
-													key={item.key}
-													item={item}
-													choice={choices[item.key]}
-													onChoice={onChoice}
-													labelOf={labelOf}
-													disabled={disabled}
-												/>
-											))
-										: null}
-									{open && group.more > 0 ? (
-										<tr>
-											<td colSpan={3} className="text-center py-2">
-												<button
-													type="button"
-													className="btn btn-link btn-sm p-0 d-inline-flex"
-													onClick={() => {
-														setExpanded((list) => [...list, group.type]);
-														// the button goes away: focus moves to the first row it showed
-														setFocusKey(group.items[group.rows.length].key);
+			<div className="overflow-hidden rounded-lg border">
+				<table ref={tableRef} className="block w-full text-sm md:table" aria-labelledby={titleId}>
+					<thead className="hidden md:table-header-group">
+						<tr className="border-b">
+							{/* the item gets at least half the width, so its name does not break mid-label on tablets */}
+							<th scope="col" className="w-1/2 px-3 py-2 text-left font-medium text-muted-foreground">
+								<T id="settings.backup.merge.column.item" />
+							</th>
+							<th scope="col" className="px-3 py-2 text-left font-medium text-muted-foreground">
+								<T id="settings.backup.merge.column.found" />
+							</th>
+							<th scope="col" className="w-px px-3 py-2 text-left font-medium text-muted-foreground">
+								<T id="settings.backup.merge.column.action" />
+							</th>
+						</tr>
+					</thead>
+					{groups.map((group) => {
+						const open = !folded.includes(group.type);
+						return (
+							<tbody key={group.type} className="block border-t first:border-t-0 md:table-row-group">
+								<GroupHeader
+									group={group}
+									choices={choices}
+									open={open}
+									onFold={() => setFolded((list) => toggle(list, group.type))}
+									onSetAll={(option) => {
+										for (const [key, choice] of Object.entries(
+											setAllChoices(group.items, option, choices),
+										)) {
+											onChoice(key, choice);
+										}
+									}}
+									disabled={disabled}
+								/>
+								{open
+									? group.rows.map((item) => (
+											<DecisionRow
+												key={item.key}
+												item={item}
+												choice={choices[item.key]}
+												onChoice={onChoice}
+												labelOf={labelOf}
+												disabled={disabled}
+											/>
+										))
+									: null}
+								{open && group.more > 0 ? (
+									<tr className="block border-t md:table-row">
+										<td colSpan={3} className="block px-3 py-2 text-center md:table-cell">
+											<Button
+												type="button"
+												variant="link"
+												size="sm"
+												className="h-auto p-0"
+												onClick={() => {
+													setExpanded((list) => [...list, group.type]);
+													// the button goes away: focus moves to the first row it showed
+													setFocusKey(group.items[group.rows.length].key);
+												}}
+											>
+												<T
+													id="settings.backup.merge.show-more"
+													data={{
+														count: group.more,
+														one: inSentence(typeName(group.type, group.more), intl.locale),
+														type: inSentence(typeName(group.type), intl.locale),
 													}}
-												>
-													<T
-														id="settings.backup.merge.show-more"
-														data={{
-															count: group.more,
-															one: inSentence(
-																typeName(group.type, group.more),
-																intl.locale,
-															),
-															type: inSentence(typeName(group.type), intl.locale),
-														}}
-													/>
-												</button>
-											</td>
-										</tr>
-									) : null}
-								</tbody>
-							);
-						})}
-						{groups.length === 0 ? (
-							<tbody>
-								<tr>
-									<td colSpan={3} className="text-muted-foreground text-center py-3">
-										<T id="list.no-match" />
-									</td>
-								</tr>
+												/>
+											</Button>
+										</td>
+									</tr>
+								) : null}
 							</tbody>
-						) : null}
-					</table>
-				</div>
+						);
+					})}
+					{groups.length === 0 ? (
+						<tbody className="block md:table-row-group">
+							<tr className="block md:table-row">
+								<td
+									colSpan={3}
+									className="block px-3 py-3 text-center text-muted-foreground md:table-cell"
+								>
+									<T id="list.no-match" />
+								</td>
+							</tr>
+						</tbody>
+					) : null}
+				</table>
 			</div>
-			<div className="small text-muted-foreground mt-2">
+			<div className="mt-2 text-sm text-muted-foreground">
 				<T id="settings.backup.merge.summary" data={{ shown: shown.length, total: items.length, changed }} />
 			</div>
 		</div>
