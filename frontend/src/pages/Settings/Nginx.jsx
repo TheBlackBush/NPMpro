@@ -1,4 +1,4 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { TriangleAlert } from "lucide-react";
 import { useWatch } from "react-hook-form";
 import { SwitchList } from "src/components";
 import { intl, T } from "src/locale";
@@ -60,7 +60,7 @@ function Tls() {
 	const off = Boolean(useWatch({ name: "forceMlkem" }));
 	return (
 		<Part titleId="settings.nginx.tls">
-			<StatusAlert variant="warning" icon={IconAlertTriangle} id="settings.nginx.tls.warning" />
+			<StatusAlert variant="warning" icon={TriangleAlert} id="settings.nginx.tls.warning" />
 			<SwitchList>
 				<RuntimeSwitch
 					name="tls12"
@@ -121,7 +121,7 @@ export default function Nginx() {
 				</SwitchList>
 			</Part>
 			<Tls />
-			<Part titleId="settings.nginx.modules" last>
+			<Part titleId="settings.nginx.modules">
 				<SwitchList>
 					<RuntimeSwitch
 						name="moduleNjs"

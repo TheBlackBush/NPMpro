@@ -1,10 +1,24 @@
 import { useCallback, useRef } from "react";
 import { useController } from "react-hook-form";
 import { useReadOnly } from "src/components/Form/HookForm";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "src/components/ui/select";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "src/components/ui/select";
 import { cn } from "src/lib/utils";
 import { lastInput } from "src/modules/InputModality";
-import { fromItemValue, toItemValue } from "src/modules/SelectOptions";
+import { flattenOptions, fromItemValue, toItemValue } from "src/modules/SelectOptions";
+
+const renderItem = (option) => (
+	<SelectItem key={option.value} value={toItemValue(option.value)} disabled={option.disabled}>
+		{option.label}
+	</SelectItem>
+);
 
 /**
  * A select on shadcn Select (Radix): the trigger looks like the other fields and the list is drawn by the app in the
@@ -14,7 +28,8 @@ import { fromItemValue, toItemValue } from "src/modules/SelectOptions";
  * @param {Object}   props
  * @param {string|number} props.value
  * @param {(value: string) => void} props.onValueChange  the chosen option's value ("" for an empty one)
- * @param {{ value: string, label: *, disabled?: boolean }[]} props.options
+ * @param {({ value: string, label: *, disabled?: boolean } | { label: *, options: { value: string, label: *, disabled?: boolean }[] })[]} props.options
+ *   an item with `options` is a group: a labelled SelectGroup
  * @param {string}   [props.id]           of the trigger (a label's htmlFor)
  * @param {boolean}  [props.disabled]
  * @param {"default"|"sm"} [props.size]
@@ -41,7 +56,7 @@ function AppSelect({
 }) {
 	// a value without an option (an unknown or empty sort) shows the placeholder: Radix shows it for ""
 	const item = toItemValue(value);
-	const selected = options.some((option) => toItemValue(option.value) === item) ? item : "";
+	const selected = flattenOptions(options).some((option) => toItemValue(option.value) === item) ? item : "";
 	const trigger = useRef(null);
 	const setTrigger = useCallback(
 		(element) => {
@@ -82,11 +97,16 @@ function AppSelect({
 			</SelectTrigger>
 			{/* below the trigger and at least as wide, like a native select's list */}
 			<SelectContent position="popper" onCloseAutoFocus={onCloseAutoFocus}>
-				{options.map((option) => (
-					<SelectItem key={option.value} value={toItemValue(option.value)} disabled={option.disabled}>
-						{option.label}
-					</SelectItem>
-				))}
+				{options.map((option) =>
+					Array.isArray(option.options) ? (
+						<SelectGroup key={String(option.key ?? option.label)}>
+							<SelectLabel>{option.label}</SelectLabel>
+							{option.options.map(renderItem)}
+						</SelectGroup>
+					) : (
+						renderItem(option)
+					),
+				)}
 			</SelectContent>
 		</Select>
 	);

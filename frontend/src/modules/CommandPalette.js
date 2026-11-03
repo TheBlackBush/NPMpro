@@ -1,14 +1,8 @@
 import { visibleNavItems } from "./Navigation.js";
 import { isAdmin } from "./Permissions.js";
 
-// Until PR 5 moves them into Settings, Users and Audit Log are reached through the palette (admins only).
-const ADMIN_PAGES = Object.freeze([
-	{ id: "users", to: "/users", labelKey: "users", external: false },
-	{ id: "audit-log", to: "/audit-log", labelKey: "auditlogs", external: false },
-]);
-
 /**
- * What the command palette offers: the pages the user may open, then (admins) every Settings section
+ * What the command palette offers: the pages the user may open, then (admins) every Settings section, Users and Audit Log among them
  *
  * @param   {Object|undefined} user
  * @param   {Array<{ id: string, labelKey: string }>} settingsSections
@@ -21,7 +15,7 @@ export function paletteGroups(user, settingsSections) {
 		user?.goaccess && !nav.some((i) => i.to === "/goaccess")
 			? [{ id: "goaccess", to: "/goaccess", labelKey: "goaccess", external: true }]
 			: [];
-	const pages = { id: "pages", items: [...nav, ...(admin ? ADMIN_PAGES : []), ...goaccess] };
+	const pages = { id: "pages", items: [...nav, ...goaccess] };
 	if (!admin) return [pages];
 	const settings = {
 		id: "settings",

@@ -101,4 +101,4 @@ jobs:
           check_filenames: true
           check_hidden: true
           skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches
-          ignore_words_list: afterAll,alog,clen,Nd,hasTable
+          ignore_words_list: afterAll,alog,clen,Nd,hasTable,MapPin

@@ -6,8 +6,9 @@ import { navAccent } from "src/modules/SectionAccents";
 import { useNavItems } from "./useNavItems";
 
 const ROW =
-	"relative inline-flex h-9 whitespace-nowrap items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground";
-const ROW_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:-bottom-1.5 after:h-0.5 after:rounded-full";
+	"relative inline-flex h-9 whitespace-nowrap items-center gap-2 rounded-md px-2 xl:px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground";
+const ROW_ACTIVE =
+	"text-foreground after:absolute after:inset-x-2 xl:after:inset-x-3 after:-bottom-1.5 after:h-0.5 after:rounded-full";
 const COLUMN = "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted";
 const COLUMN_ACTIVE = "text-foreground";
 
@@ -48,7 +49,7 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 						<li key={id} className={cn(!column && id === "settings" && "ms-auto")}>
 							{external ? (
 								<a href={to} target="_blank" rel="noopener" className={className} onClick={onNavigate}>
-									<Icon className="size-4" aria-hidden="true" />
+									<Icon className={cn("size-4", !column && "hidden xl:block")} aria-hidden="true" />
 									{label}
 									<ExternalLink className="size-3.5" aria-hidden="true" />
 								</a>
@@ -61,7 +62,11 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 									onClick={onNavigate}
 								>
 									<Icon
-										className={cn("size-4", active && column && accent.text)}
+										className={cn(
+											"size-4",
+											!column && "hidden xl:block",
+											active && column && accent.text,
+										)}
 										aria-hidden="true"
 									/>
 									{label}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
-import { groupSections, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
+import { groupSections, SECTIONS_WITHOUT_HELP, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
 
 // a section entry of sections.js: its id, then its category
 const ENTRY = /\bid: "(?<id>[^"]+)",\s+category: "(?<category>[^"]+)"/gu;
@@ -27,6 +27,17 @@ it("groups the sections by category in the categories' order, keeping each secti
 	assert.equal(groupSections(sections)[0].labelKey, "settings.category.sites");
 });
 
+it("puts the Administration sections last", () => {
+	const sections = [
+		{ id: "users", category: "administration" },
+		{ id: "geoip", category: "monitoring" },
+	];
+	assert.deepEqual(
+		groupSections(sections).map(({ id }) => id),
+		["monitoring", "administration"],
+	);
+});
+
 it("refuses a section without a known category, naming it", () => {
 	assert.throws(() => groupSections([{ id: "new-section" }]), NAMES_SECTION);
 	assert.throws(() => groupSections([{ id: "x", category: "other" }]), NAMES_CATEGORY);
@@ -45,6 +56,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 			["monitoring", ["monitoring", "geoip"]],
 			["data", ["backup", "database"]],
 			["system", ["advanced", "environment"]],
+			["administration", ["users", "audit-log"]],
 		],
 	);
 	// the menu lists the sections category by category, so sections.js keeps that order too
@@ -52,7 +64,9 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 		entries.map(({ id }) => id),
 		groupSections(entries).flatMap(({ sections }) => sections.map((section) => section.id)),
 	);
-	assert.equal(SETTINGS_CATEGORIES.length, 5);
+	assert.equal(SETTINGS_CATEGORIES.length, 6);
+	assert.equal(SETTINGS_CATEGORIES.at(-1).id, "administration");
+	assert.equal(SETTINGS_CATEGORIES.at(-1).labelKey, "settings.category.administration");
 });
 
 it("names a section's help document after its id", () => {
@@ -63,7 +77,9 @@ it("names a section's help document after its id", () => {
 
 it("has a help document in every language for every section in sections.js", () => {
 	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
-	const ids = [...source.matchAll(ENTRY)].map(({ groups }) => groups.id);
+	const ids = [...source.matchAll(ENTRY)]
+		.map(({ groups }) => groups.id)
+		.filter((id) => !SECTIONS_WITHOUT_HELP.includes(id));
 	assert.ok(ids.length > 10);
 	const help = new URL("../../translations/help/", import.meta.url);
 	const languages = readdirSync(help, { withFileTypes: true })

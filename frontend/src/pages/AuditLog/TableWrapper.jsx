@@ -1,10 +1,12 @@
-import { IconSearch } from "@tabler/icons-react";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, ErrorAlert, LoadingPage } from "src/components";
+import { AppSelect } from "src/components/AppSelect";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
 import { useAuditLogs, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
-import { stripeClass } from "src/modules/SectionColors";
+import { SettingsHeading } from "../Settings/SettingsHeading";
 import Table from "./Table";
 
 const OBJECT_TYPES = [
@@ -32,6 +34,24 @@ const ACTIONS = [
 	"move-failed",
 ];
 
+// two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
+const FILTER_CLASS = "w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:max-w-56 md:flex-none";
+
+// the empty string means "all" in the query; the select needs a non-empty value for it
+function FilterSelect({ label, value, onChange, options }) {
+	const name = intl.formatMessage({ id: label });
+	return (
+		<AppSelect
+			size="sm"
+			className={FILTER_CLASS}
+			aria-label={name}
+			value={value || "all"}
+			onValueChange={(v) => onChange(v === "all" ? "" : v)}
+			options={[{ value: "all", label: `${name}: ${intl.formatMessage({ id: "list.filter.all" })}` }, ...options]}
+		/>
+	);
+}
+
 export default function TableWrapper() {
 	const [search, setSearch] = useState("");
 	const [query, setQuery] = useState("");
@@ -58,100 +78,58 @@ export default function TableWrapper() {
 		fetchNextPage,
 	} = useAuditLogs(["user"], { query, objectType, action, userId });
 
-	if (isPending) {
-		return <LoadingPage noLogo delay={300} />;
-	}
-
 	// A failed next page keeps the loaded rows, a failed first load shows the error under the toolbar
-	const firstPageFailed = isError && !isFetchNextPageError && !rows.length;
+	const firstPageFailed = !isPending && isError && !isFetchNextPageError && !rows.length;
 
 	const filtered = Boolean(query || objectType || action || userId);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("auditLog")} />
-			<div className="card-table">
-				<div className="card-header">
-					<h2 className="card-title fs-2 fw-semibold">
-						<T id="auditlogs" />
-					</h2>
-				</div>
-				<div className="card-body border-bottom py-3">
-					<div className="row g-2 align-items-center">
-						<div className="col-12 col-md">
-							<div className="input-group input-group-flat input-group-sm">
-								<span className="input-group-text">
-									<IconSearch className="icon" aria-hidden="true" />
-								</span>
-								<input
-									type="text"
-									className="form-control"
-									placeholder={intl.formatMessage({ id: "search" })}
-									aria-label={intl.formatMessage({ id: "search" })}
-									autoComplete="off"
-									maxLength={255}
-									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-								/>
-							</div>
-						</div>
-						<div className="col-6 col-md-auto">
-							<select
-								className="form-select form-select-sm w-100"
-								aria-label={intl.formatMessage({ id: "audit-log.filter.type" })}
-								value={objectType}
-								onChange={(e) => setObjectType(e.target.value)}
-							>
-								<option value="">
-									{intl.formatMessage({ id: "audit-log.filter.type" })}:{" "}
-									{intl.formatMessage({ id: "list.filter.all" })}
-								</option>
-								{OBJECT_TYPES.map((t) => (
-									<option key={t} value={t}>
-										{intl.formatMessage({ id: t })}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className="col-6 col-md-auto">
-							<select
-								className="form-select form-select-sm w-100"
-								aria-label={intl.formatMessage({ id: "audit-log.filter.action" })}
-								value={action}
-								onChange={(e) => setAction(e.target.value)}
-							>
-								<option value="">
-									{intl.formatMessage({ id: "audit-log.filter.action" })}:{" "}
-									{intl.formatMessage({ id: "list.filter.all" })}
-								</option>
-								{ACTIONS.map((a) => (
-									<option key={a} value={a}>
-										{intl.formatMessage({ id: `audit-log.action.${a}` })}
-									</option>
-								))}
-							</select>
-						</div>
-						<div className="col-6 col-md-auto">
-							<select
-								className="form-select form-select-sm w-100"
-								aria-label={intl.formatMessage({ id: "audit-log.filter.user" })}
-								value={userId}
-								onChange={(e) => setUserId(e.target.value)}
-							>
-								<option value="">
-									{intl.formatMessage({ id: "audit-log.filter.user" })}:{" "}
-									{intl.formatMessage({ id: "list.filter.all" })}
-								</option>
-								{(users ?? []).map((u) => (
-									<option key={u.id} value={u.id}>
-										{u.name}
-									</option>
-								))}
-							</select>
-						</div>
+		<section>
+			<SettingsHeading titleId="auditlogs" />
+			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
+				<div className="flex flex-wrap items-center gap-2 border-b p-3">
+					<InputGroup className="w-full md:min-w-64 md:flex-1">
+						<InputGroupAddon>
+							<Search aria-hidden="true" />
+						</InputGroupAddon>
+						<InputGroupInput
+							type="text"
+							placeholder={intl.formatMessage({ id: "search" })}
+							aria-label={intl.formatMessage({ id: "search" })}
+							autoComplete="off"
+							maxLength={255}
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+						/>
+					</InputGroup>
+					{/* the filters sit on the right (search on the left), two per row on phones */}
+					<div className="flex w-full flex-wrap items-center justify-end gap-2 md:ml-auto md:w-auto">
+						<FilterSelect
+							label="audit-log.filter.type"
+							value={objectType}
+							onChange={setObjectType}
+							options={OBJECT_TYPES.map((t) => ({ value: t, label: intl.formatMessage({ id: t }) }))}
+						/>
+						<FilterSelect
+							label="audit-log.filter.action"
+							value={action}
+							onChange={setAction}
+							options={ACTIONS.map((a) => ({
+								value: a,
+								label: intl.formatMessage({ id: `audit-log.action.${a}` }),
+							}))}
+						/>
+						<FilterSelect
+							label="audit-log.filter.user"
+							value={userId}
+							onChange={setUserId}
+							options={(users ?? []).map((u) => ({ value: `${u.id}`, label: u.name }))}
+						/>
 					</div>
 				</div>
-				{firstPageFailed ? (
+				{isPending ? (
+					<LoadingPage noLogo delay={300} />
+				) : firstPageFailed ? (
 					<ErrorAlert error={error} className="m-3" />
 				) : (
 					<Table
@@ -162,20 +140,20 @@ export default function TableWrapper() {
 				)}
 				{isFetchNextPageError ? <ErrorAlert error={error} className="m-3" /> : null}
 				{rows.length && (hasNextPage || filtered || total !== null) ? (
-					<div className="card-footer d-flex align-items-center">
+					<div className="flex items-center gap-3 border-t px-4 py-3">
 						{total !== null ? (
-							<p className="m-0 text-muted-foreground">
+							<p className="m-0 text-sm text-muted-foreground">
 								<T id="audit-log.loaded" data={{ loaded: rows.length, total }} />
 							</p>
 						) : null}
 						{hasNextPage ? (
-							<Button className="ms-auto" isLoading={isFetchingNextPage} onClick={() => fetchNextPage()}>
+							<Button className="ml-auto" isLoading={isFetchingNextPage} onClick={() => fetchNextPage()}>
 								<T id="audit-log.load-more" />
 							</Button>
 						) : null}
 					</div>
 				) : null}
 			</div>
-		</div>
+		</section>
 	);
 }

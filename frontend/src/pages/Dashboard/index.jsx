@@ -170,7 +170,7 @@ const Dashboard = () => {
 								</div>
 							)}
 							<div className="card-footer">
-								<Link to="/audit-log" className="link-primary">
+								<Link to="/settings/audit-log" className="link-primary">
 									<T id="dashboard.view-all" />
 								</Link>
 							</div>

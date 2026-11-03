@@ -15,7 +15,7 @@ import { LanguageMenu } from "./LanguageMenu";
 import { Logo } from "./Logo";
 import { NavLinks } from "./NavLinks";
 
-/** The main links in a left sheet below the md breakpoint */
+/** The main links in a left sheet below the lg breakpoint */
 export function MobileNav() {
 	const [open, setOpen] = useState(false);
 	return (
@@ -24,13 +24,13 @@ export function MobileNav() {
 				<Button
 					variant="ghost"
 					size="icon"
-					className="md:hidden"
+					className="lg:hidden"
 					aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })}
 				>
 					<Menu aria-hidden="true" />
 				</Button>
 			</SheetTrigger>
-			<SheetContent side="left" className="md:hidden">
+			<SheetContent side="left" className="lg:hidden">
 				<SheetHeader>
 					<SheetTitle className="flex items-center">
 						<Logo variant="horizontal" />

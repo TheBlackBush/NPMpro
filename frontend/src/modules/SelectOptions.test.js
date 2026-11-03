@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { EMPTY_ITEM, fromItemValue, optionsFromElements, toItemValue } from "./SelectOptions.js";
+import { EMPTY_ITEM, flattenOptions, fromItemValue, optionsFromElements, toItemValue } from "./SelectOptions.js";
 
 describe("toItemValue", () => {
 	it("keeps strings, turns numbers into strings", () => {
@@ -51,5 +51,28 @@ describe("optionsFromElements", () => {
 			{ value: "1", label: "v1", disabled: true },
 			{ value: "2", label: "v2", disabled: false },
 		]);
+	});
+});
+
+describe("flattenOptions", () => {
+	it("keeps flat options as they are", () => {
+		const options = [{ value: "a", label: "A" }];
+		assert.deepEqual(flattenOptions(options), options);
+	});
+	it("opens the groups, keeping the order", () => {
+		const options = [
+			{ value: "a", label: "A" },
+			{
+				label: "Group",
+				options: [
+					{ value: "b", label: "B" },
+					{ value: "c", label: "C" },
+				],
+			},
+		];
+		assert.deepEqual(
+			flattenOptions(options).map((option) => option.value),
+			["a", "b", "c"],
+		);
 	});
 });

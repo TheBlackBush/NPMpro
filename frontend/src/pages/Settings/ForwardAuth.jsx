@@ -45,7 +45,7 @@ export default function ForwardAuth() {
 					/>
 				))}
 			</Part>
-			<Part titleId="settings.forward-auth.anubis" last>
+			<Part titleId="settings.forward-auth.anubis">
 				<SwitchList>
 					<RuntimeSwitch
 						name="anubisCustomImages"

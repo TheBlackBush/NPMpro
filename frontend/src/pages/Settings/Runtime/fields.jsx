@@ -1,7 +1,9 @@
-import { IconRefresh } from "@tabler/icons-react";
-import cn from "clsx";
+import { RefreshCw } from "lucide-react";
 import { useController, useFormContext } from "react-hook-form";
 import { FormField, SwitchField, TextField, useFieldError } from "src/components";
+import { AppSelect } from "src/components/AppSelect";
+import { Badge } from "src/components/ui/badge";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
 import { useRuntimeSection } from "./RuntimeSection";
@@ -13,10 +15,10 @@ const idOf = (name) => `runtime-${name}`;
  */
 function RestartBadge() {
 	return (
-		<span className="badge bg-orange-lt ms-2 text-wrap">
-			<IconRefresh className="icon me-1" aria-hidden="true" />
+		<Badge variant="outline" className="ms-2 h-auto whitespace-normal py-0.5 text-left">
+			<RefreshCw aria-hidden="true" />
 			<T id="settings.runtime.restart-required" />
-		</span>
+		</Badge>
 	);
 }
 
@@ -49,12 +51,12 @@ function FieldHint({ name, hint }) {
 		<>
 			{hint}
 			{reason ? (
-				<span className="d-block">
+				<span className="block text-sm text-muted-foreground">
 					<LockReason env={envOf(name)} reason={reason} />
 				</span>
 			) : null}
 			{applies ? (
-				<span className="d-block">
+				<span className="block text-sm text-muted-foreground">
 					<T id={applies} />
 				</span>
 			) : null}
@@ -96,6 +98,7 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
  * @param {boolean}  [props.narrow]
  * @param {string}   [props.className]  the field's wrapper class, `mb-3` by default; "" for the last field of a group
  * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
+ *   (aria-invalid gives it the red border)
  */
 function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
 	const error = useFieldError(name);
@@ -108,32 +111,25 @@ function RuntimeControl({ name, label, hint, narrow = false, className, children
 			className={className}
 		>
 			{(control) =>
-				narrow ? (
-					<div className="row">
-						<div className="col-12 col-sm-6 col-lg-4">{children(control, error)}</div>
-					</div>
-				) : (
-					children(control, error)
-				)
+				narrow ? <div className="w-full sm:w-1/2 lg:w-1/3">{children(control)}</div> : children(control)
 			}
 		</FormField>
 	);
 }
 
 /**
- * Whole number with an optional unit (input group); the value stays text, as the input holds it
+ * Whole number with an optional unit (input group addon); the value stays text, as the input holds it
  */
 function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 	const { register } = useFormContext();
 	const { isLocked } = useRuntimeSection();
 	return (
 		<RuntimeControl name={name} label={label} hint={hint} narrow className={className}>
-			{(control, error) => (
-				<div className="input-group">
-					<input
+			{(control) => (
+				<InputGroup data-disabled={isLocked(name) || undefined}>
+					<InputGroupInput
 						{...register(name)}
 						{...control}
-						className={cn("form-control", error && "is-invalid")}
 						disabled={isLocked(name)}
 						type="number"
 						inputMode="numeric"
@@ -141,8 +137,12 @@ function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 						max={max}
 						step={1}
 					/>
-					{unit ? <span className="input-group-text">{unit}</span> : null}
-				</div>
+					{unit ? (
+						<InputGroupAddon align="inline-end">
+							<InputGroupText>{unit}</InputGroupText>
+						</InputGroupAddon>
+					) : null}
+				</InputGroup>
 			)}
 		</RuntimeControl>
 	);
@@ -173,35 +173,30 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", clas
 }
 
 /**
- * Select of { value, label } options; onChange(value) runs after the field took the new value (for fields that
- * follow it). A controller: the options may change while the form is open (key sizes follow the key type, the
- * certificates load later), and the shown option must follow the value.
+ * Select of { value, label } options on AppSelect; onChange(value) runs after the field took the new value (for
+ * fields that follow it), the value a string as a native select gives it. A controller: the options may change while
+ * the form is open (key sizes follow the key type, the certificates load later), and the shown option must follow the
+ * value.
  */
 function RuntimeSelect({ name, label, hint, options, onChange, narrow = true, className }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
 		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow} className={className}>
-			{(control, error) => (
-				<select
+			{(control) => (
+				<AppSelect
 					{...control}
-					className={cn("form-select", error && "is-invalid")}
 					disabled={isLocked(name)}
 					name={field.name}
-					ref={field.ref}
+					triggerRef={field.ref}
 					value={field.value}
 					onBlur={field.onBlur}
-					onChange={(e) => {
-						field.onChange(e.target.value);
-						onChange?.(e.target.value);
+					onValueChange={(value) => {
+						field.onChange(value);
+						onChange?.(value);
 					}}
-				>
-					{options.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label}
-						</option>
-					))}
-				</select>
+					options={options}
+				/>
 			)}
 		</RuntimeControl>
 	);

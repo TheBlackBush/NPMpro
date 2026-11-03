@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
 import {
@@ -109,21 +110,22 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 				<HookForm methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
-						<AppModal.Title>
+						<AppModal.Title className="flex items-center gap-2">
+							<Users className="size-5 shrink-0" aria-hidden="true" />
 							<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "user" }} />
 						</AppModal.Title>
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						{id !== "new" && (
-							<div className="d-flex align-items-center mb-3">
+							<div className="mb-3 flex items-center gap-2">
 								<GravatarFormatter url={data?.avatar} name={data?.name} size="lg" />
 
 								<input
 									ref={fileInput}
 									type="file"
 									accept="image/png,image/jpeg,image/gif,image/webp"
-									className="d-none"
+									className="hidden"
 									onChange={(e) => {
 										const file = e.target.files?.[0];
 										void changeAvatar(() => uploadAvatar(id, file));
@@ -131,7 +133,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 									}}
 								/>
 
-								<Button className="me-2" onClick={() => fileInput.current?.click()}>
+								<Button onClick={() => fileInput.current?.click()}>
 									<T id="avatar.upload" />
 								</Button>
 								{data?.avatar?.startsWith("/images/avatar/") && (
@@ -163,7 +165,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 						) : null}
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
 						<FormSubmit

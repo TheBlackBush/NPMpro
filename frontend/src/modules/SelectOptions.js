@@ -31,3 +31,11 @@ export function optionsFromElements(elements) {
 			disabled: Boolean(element.props.disabled),
 		}));
 }
+
+/**
+ * The flat list of options of an AppSelect's options, which may hold groups ({ label, options }): the options in
+ * order, for the check that a value has an option
+ */
+export function flattenOptions(options) {
+	return options.flatMap((option) => (Array.isArray(option.options) ? option.options : [option]));
+}
