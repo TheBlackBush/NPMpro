@@ -24,7 +24,7 @@ export function TopBar() {
 				</div>
 			</div>
 			{/* the separating line spans the whole width, like the header's bottom border; the links stay in the page width */}
-			<div className="hidden border-t md:block">
+			<div className="hidden border-t lg:block">
 				<div className="mx-auto max-w-screen-2xl px-5 py-1.5">
 					<NavLinks orientation="row" />
 				</div>

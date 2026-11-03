@@ -24,13 +24,13 @@ export function MobileNav() {
 				<Button
 					variant="ghost"
 					size="icon"
-					className="md:hidden"
+					className="lg:hidden"
 					aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })}
 				>
 					<Menu aria-hidden="true" />
 				</Button>
 			</SheetTrigger>
-			<SheetContent side="left" className="md:hidden">
+			<SheetContent side="left" className="lg:hidden">
 				<SheetHeader>
 					<SheetTitle className="flex items-center">
 						<Logo variant="horizontal" />
