@@ -30,7 +30,7 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 
 	return (
 		<nav aria-label={intl.formatMessage({ id: "aria.main-navigation" })}>
-			<ul className={cn("flex gap-1", column ? "flex-col" : "flex-row items-center")}>
+			<ul className={cn("flex gap-1", column ? "flex-col" : "w-full flex-row items-center")}>
 				{items.map((item) => {
 					const { id, to, label, Icon, external } = item;
 					const active = isActivePath(pathname, item);
@@ -44,7 +44,8 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 						active && column && cn(accent.bg, "hover:bg-muted"),
 					);
 					return (
-						<li key={id}>
+						// the row ends with Settings on the right (user decision 2026-11-03)
+						<li key={id} className={cn(!column && id === "settings" && "ms-auto")}>
 							{external ? (
 								<a href={to} target="_blank" rel="noopener" className={className} onClick={onNavigate}>
 									<Icon className="size-4" aria-hidden="true" />

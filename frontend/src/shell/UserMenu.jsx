@@ -14,7 +14,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
-import { useAuthState, usePreferences, useThemeState } from "src/context";
+import { useAuthState, usePreferences } from "src/context";
 import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
@@ -64,7 +64,6 @@ function Choice({ label, value, options, onChange }) {
  */
 export function UserMenu({ variant = "topbar" }) {
 	const { data: user } = useUser("me");
-	const { preference, setPreference } = useThemeState();
 	const { navLayout, setNavLayout, editorStyle, setEditorStyle } = usePreferences();
 	const { logout, logoutEverywhere } = useAuthState();
 	const sidebar = variant === "sidebar";
@@ -142,16 +141,6 @@ export function UserMenu({ variant = "topbar" }) {
 				<DropdownMenuLabel>
 					<T id="appearance" />
 				</DropdownMenuLabel>
-				<Choice
-					label="theme.title"
-					value={preference}
-					onChange={setPreference}
-					options={[
-						["light", "theme.light"],
-						["dark", "theme.dark"],
-						["auto", "theme.system"],
-					]}
-				/>
 				<Choice
 					label="appearance.navigation"
 					value={navLayout}

@@ -1303,7 +1303,6 @@
 	"theme.label": "テーマ: {theme}",
 	"theme.light": "ライト",
 	"theme.system": "システム",
-	"theme.title": "テーマ",
 	"tls.disabled.auth-request": "先にホストまたはそのカスタムロケーションのいずれかで「{option}」を設定してください。",
 	"tls.disabled.mtls-required": "mTLS が任意でない間は必須です。",
 	"tls.disabled.needs-option": "先に「{option}」をオンにしてください。",

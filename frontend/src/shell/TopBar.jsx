@@ -5,9 +5,10 @@ import { LoadingBar } from "./LoadingBar";
 import { Logo } from "./Logo";
 import { MobileNav } from "./MobileNav";
 import { NavLinks } from "./NavLinks";
+import { ThemeMenu } from "./ThemeMenu";
 import { UserMenu } from "./UserMenu";
 
-/** Sticky top bar: logo, language and user menus, request progress; the main links in their own row below from md up (the phone menu below md) */
+/** Sticky top bar: logo, language, theme and user menus, request progress; the main links in their own row below from md up (the phone menu below md) */
 export function TopBar() {
 	return (
 		<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -17,6 +18,7 @@ export function TopBar() {
 				<div className="ml-auto flex items-center gap-0.5 sm:gap-1">
 					<CommandPaletteButton />
 					<LanguageMenu />
+					<ThemeMenu />
 					<Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
 					<UserMenu variant="topbar" />
 				</div>

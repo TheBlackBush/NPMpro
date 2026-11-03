@@ -1303,7 +1303,6 @@
 	"theme.label": "테마: {theme}",
 	"theme.light": "라이트",
 	"theme.system": "시스템",
-	"theme.title": "테마",
 	"tls.disabled.auth-request": "먼저 호스트 또는 사용자 지정 경로 중 하나에 ‘{option}’을(를) 설정하세요.",
 	"tls.disabled.mtls-required": "mTLS가 선택 사항이 아닌 동안 필수입니다.",
 	"tls.disabled.needs-option": "먼저 ‘{option}’을(를) 켜세요.",

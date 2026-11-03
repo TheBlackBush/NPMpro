@@ -1303,7 +1303,6 @@
 	"theme.label": "Design: {theme}",
 	"theme.light": "Hell",
 	"theme.system": "System",
-	"theme.title": "Design",
 	"tls.disabled.auth-request": "Setze zuerst „{option}“ beim Host oder bei einem seiner benutzerdefinierten Pfade.",
 	"tls.disabled.mtls-required": "Von mTLS vorgeschrieben, solange es nicht optional ist.",
 	"tls.disabled.needs-option": "Aktiviere zuerst „{option}“.",
