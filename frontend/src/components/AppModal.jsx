@@ -21,6 +21,19 @@ const ModeContext = createContext("dialog");
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
+// the controls a window may start in: the first one in its body that can take the focus and shows (not on a hidden
+// tab, not in a disabled fieldset)
+const FIELD =
+	'input:not([type="hidden"]), select, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])';
+function firstField(content) {
+	const body = content.querySelector("[data-window-body]");
+	if (!body) return null;
+	for (const element of body.querySelectorAll(FIELD)) {
+		if (!element.matches(":disabled") && element.checkVisibility()) return element;
+	}
+	return null;
+}
+
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
 // put when a tab, a step, a choice or a result changes their height. Small windows ("sm") are always dialogs, phones
 // always get a full screen window (WindowFrame.windowMode). The primitive (Dialog or Sheet) never depends on the
@@ -63,6 +76,15 @@ function AppModal({
 		},
 		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
 		onFocusOutside: (event) => event.preventDefault(),
+		// Radix would focus the first tabbable element, the header's X: the first field of the body instead, or the
+		// window itself (it has tabIndex -1) when the body has none yet (loading) or on a phone, where a focused text
+		// field would open the on-screen keyboard over the window
+		onOpenAutoFocus: (event) => {
+			event.preventDefault();
+			const content = event.currentTarget;
+			const target = isPhone ? null : firstField(content);
+			(target ?? content).focus({ preventScroll: true });
+		},
 		// Radix would focus what was focused when the window mounted (the page body on Safari): the opener instead
 		onCloseAutoFocus: (event) => {
 			event.preventDefault();
