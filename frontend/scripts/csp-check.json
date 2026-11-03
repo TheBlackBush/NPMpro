@@ -105,9 +105,9 @@
 		},
 		{
 			"name": "runtime select list",
-			"route": "/settings/advanced",
+			"route": "/settings/nginx",
 			"steps": [
-				{ "click": "#runtime-timeZone" },
+				{ "click": "#runtime-workerProcesses" },
 				{ "waitFor": "[data-slot=select-content]" },
 				{ "press": "Escape" }
 			]
