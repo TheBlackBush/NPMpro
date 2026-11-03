@@ -87,6 +87,42 @@
 			]
 		},
 		{
+			"name": "redirection host window",
+			"route": "/nginx/redirection",
+			"steps": [
+				{ "click": "role=button[name='Add Redirection Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "404 host window",
+			"route": "/nginx/404",
+			"steps": [
+				{ "click": "role=button[name='Add 404 Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "stream window",
+			"route": "/nginx/stream",
+			"steps": [
+				{ "click": "role=button[name='Add Stream']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "proxy host side sheet",
 			"route": "/nginx/proxy",
 			"steps": [
