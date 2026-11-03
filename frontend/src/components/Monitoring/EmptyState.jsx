@@ -13,8 +13,9 @@ import { Button } from "src/components/ui/button";
  * @param {string} [props.to]                       route of the action button
  * @param {string} [props.href]                     external address of the action button, instead of `to`
  * @param {import("react").ReactNode} [props.action] text of the action button
+ * @param {import("react").ReactNode} [props.children] a second action, shown after the first
  */
-function EmptyState({ icon: Icon, title, subtitle, to, href, action }) {
+function EmptyState({ icon: Icon, title, subtitle, to, href, action, children }) {
 	return (
 		<div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
 			<div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -22,9 +23,9 @@ function EmptyState({ icon: Icon, title, subtitle, to, href, action }) {
 			</div>
 			<p className="m-0 text-base font-medium">{title}</p>
 			{subtitle ? <p className="m-0 max-w-prose text-sm text-muted-foreground">{subtitle}</p> : null}
-			{(to || href) && action ? (
-				<div className="mt-2">
-					{href ? (
+			{((to || href) && action) || children ? (
+				<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+					{!(to || href) || !action ? null : href ? (
 						<Button asChild>
 							<a href={href} target="_blank" rel="noopener noreferrer">
 								{action}
@@ -36,6 +37,7 @@ function EmptyState({ icon: Icon, title, subtitle, to, href, action }) {
 							<Link to={to}>{action}</Link>
 						</Button>
 					)}
+					{children}
 				</div>
 			) : null}
 		</div>

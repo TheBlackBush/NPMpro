@@ -10,11 +10,8 @@ import { isAdmin } from "./Permissions.js";
 export function paletteGroups(user, settingsSections) {
 	const admin = Boolean(user && isAdmin(user.roles));
 	const nav = visibleNavItems(user);
-	// GoAccess has no link of its own until the Monitoring tabs (PR 6); the nav model only uses it as a stand-in
-	const goaccess =
-		user?.goaccess && !nav.some((i) => i.to === "/goaccess")
-			? [{ id: "goaccess", to: "/goaccess", labelKey: "goaccess", external: true }]
-			: [];
+	// a quick way to the GoAccess report, next to the Monitoring page (where it is also the last tab)
+	const goaccess = user?.goaccess ? [{ id: "goaccess", to: "/goaccess", labelKey: "goaccess", external: true }] : [];
 	const pages = { id: "pages", items: [...nav, ...goaccess] };
 	if (!admin) return [pages];
 	const settings = {

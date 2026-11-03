@@ -33,6 +33,11 @@ it("GoAccess alone keeps the Monitoring link, pointing at /goaccess in a new tab
 	assert.deepEqual([item.to, item.external], ["/goaccess", true]);
 });
 
+it("monitoring on with GoAccess on: the Monitoring link opens the page, not GoAccess", () => {
+	const item = visibleNavItems({ ...admin, monitoring: true, goaccess: true }).find((i) => i.id === "monitoring");
+	assert.deepEqual([item.to, item.external], ["/monitoring", false]);
+});
+
 it("no user yet (loading) shows only the dashboard", () => {
 	assert.deepEqual(ids(undefined), ["dashboard"]);
 });
