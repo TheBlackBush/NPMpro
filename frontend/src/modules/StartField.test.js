@@ -10,6 +10,7 @@ it("a visible, enabled field can start the window", () => {
 
 it("tabs, disabled and hidden controls never start the window", () => {
 	assert.equal(isStartField({ role: "tab", disabled: false, visible: true }), false);
+	assert.equal(isStartField({ role: "tablist", disabled: false, visible: true }), false);
 	assert.equal(isStartField({ role: null, disabled: true, visible: true }), false);
 	assert.equal(isStartField({ role: null, disabled: false, visible: false }), false);
 });
@@ -24,4 +25,10 @@ it("phones and a focus that already moved keep the focus where it is", () => {
 	assert.equal(keepsWindowFocus({ isPhone: true, activeIsWindow: true }), true);
 	assert.equal(keepsWindowFocus({ isPhone: false, activeIsWindow: false }), true);
 	assert.equal(keepsWindowFocus({ isPhone: false, activeIsWindow: true }), false);
+});
+
+it("a roving focus container is never a start field, its first control is", () => {
+	assert.equal(isStartField({ role: "radiogroup", disabled: false, visible: true }), false);
+	assert.equal(isStartField({ role: "toolbar", disabled: false, visible: true }), false);
+	assert.equal(isStartField({ role: "radio", disabled: false, visible: true }), true);
 });
