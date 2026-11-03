@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
@@ -39,9 +39,8 @@ function firstField(content) {
 // A body that mounts after the window opened (an editor that loads its data first): its first field takes the focus
 // once it shows, as long as the focus is still on the window element itself. Stops after the first move, on close,
 // or after 10 seconds.
-function useLateStartField(contentRef, open, isPhone) {
+function useLateStartField(content, open, isPhone) {
 	useEffect(() => {
-		const content = contentRef.current;
 		if (!(open && content)) return;
 		const settle = () => {
 			const activeIsWindow = content.ownerDocument.activeElement === content;
@@ -65,7 +64,7 @@ function useLateStartField(contentRef, open, isPhone) {
 			observer.disconnect();
 			clearTimeout(timer);
 		};
-	}, [contentRef, open, isPhone]);
+	}, [content, open, isPhone]);
 }
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
@@ -97,8 +96,9 @@ function AppModal({
 	const mode = windowMode({ editorStyle, size, isPhone });
 	const primitive = windowPrimitive({ editorStyle, size });
 	const giveFocusBack = useWindowFocusReturn();
-	const contentRef = useRef(null);
-	useLateStartField(contentRef, Boolean(show), isPhone);
+	// a state, not a ref object: the portal mounts the content after the first effects, and the hook must rerun then
+	const [windowElement, setWindowElement] = useState(null);
+	useLateStartField(windowElement, Boolean(show), isPhone);
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
 	const guards = {
@@ -153,7 +153,7 @@ function AppModal({
 						{primitive === "sheet" ? (
 							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
 								<SheetContent
-									ref={contentRef}
+									ref={setWindowElement}
 									side="right"
 									showCloseButton={false}
 									className={cn(
@@ -171,7 +171,7 @@ function AppModal({
 						) : (
 							<Dialog open={Boolean(show)} onOpenChange={onOpenChange}>
 								<DialogContent
-									ref={contentRef}
+									ref={setWindowElement}
 									showCloseButton={false}
 									className={cn(
 										frame,
