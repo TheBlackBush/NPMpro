@@ -8,10 +8,12 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Eye } from "lucide-react";
 import { useMemo } from "react";
 import { EventFormatter, GravatarFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { intl, T } from "src/locale";
+import { Button } from "src/components/ui/button";
+import { intl } from "src/locale";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -55,16 +57,19 @@ export default function Table({ data, isFetching, onSelectItem }) {
 			columnHelper.display({
 				id: "details",
 				cell: (info) => (
-					<button
+					<Button
 						type="button"
-						className="btn btn-action btn-sm px-1"
+						variant="ghost"
+						size="icon-sm"
+						aria-label={intl.formatMessage({ id: "action.view-details" })}
+						title={intl.formatMessage({ id: "action.view-details" })}
 						onClick={(e) => {
 							e.preventDefault();
 							onSelectItem?.(info.row.original.id);
 						}}
 					>
-						<T id="action.view-details" />
-					</button>
+						<Eye aria-hidden="true" />
+					</Button>
 				),
 				meta: {
 					className: "text-right whitespace-nowrap",
