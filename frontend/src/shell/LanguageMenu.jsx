@@ -8,6 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
 import { changeLocale, currentLocale, intl, localeOptions } from "src/locale";
+import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import localeList from "translations/lang-list.json" with { type: "json" };
 
 /** Picks the interface language; changeLocale stores it and reloads the page */
@@ -19,7 +20,11 @@ export function LanguageMenu() {
 					<Languages aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="max-h-[50vh] w-48 overflow-y-auto">
+			<DropdownMenuContent
+				onCloseAutoFocus={returnFocusOnlyForKeyboard}
+				align="end"
+				className="max-h-[50vh] w-48 overflow-y-auto"
+			>
 				<DropdownMenuRadioGroup value={currentLocale} onValueChange={changeLocale}>
 					{localeOptions.map((code) => (
 						<DropdownMenuRadioItem key={code} value={code}>

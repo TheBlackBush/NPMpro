@@ -9,6 +9,7 @@ import {
 } from "src/components/ui/dropdown-menu";
 import { useThemeState } from "src/context";
 import { intl } from "src/locale";
+import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 
 // the choices in the menu's order: the stored value, its name and its icon
 const CHOICES = [
@@ -30,7 +31,7 @@ export function ThemeMenu() {
 					<current.Icon aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-40">
+			<DropdownMenuContent onCloseAutoFocus={returnFocusOnlyForKeyboard} align="end" className="w-40">
 				<DropdownMenuRadioGroup value={preference} onValueChange={setPreference}>
 					{CHOICES.map(({ value, labelId, Icon }) => (
 						<DropdownMenuRadioItem key={value} value={value}>
