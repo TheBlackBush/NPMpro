@@ -70,17 +70,6 @@ export function controlAria({ id, hasHint = false, error = null, describedBy }) 
 }
 
 /**
- * The classes of a bare label, for a layout that places label and control itself (a row of labels over controls);
- * a required one draws its asterisk. Fields on FormField use shadcn's FieldLabel instead.
- *
- * @param   {boolean} [required]
- * @returns {string}
- */
-export function labelClass(required = false) {
-	return cn("text-sm font-medium leading-snug", required && "after:ml-1 after:text-destructive after:content-['*']");
-}
-
-/**
  * The classes of a section's legend: the group heading style (text-base) for a heading, the label style otherwise;
  * hidden, it stays for screen readers
  *

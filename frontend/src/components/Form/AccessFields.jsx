@@ -1,11 +1,15 @@
-import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
+import { IconLock, IconLockOpen2, IconWorld } from "@tabler/icons-react";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
 import { useController, useWatch } from "react-hook-form";
+import { Button } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
+import { Skeleton } from "src/components/ui/skeleton";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { NoticeAlert } from "../NoticeAlert";
+import { FieldMessage } from "./FieldMessage";
 import { useReadOnly, useRecheckDependent } from "./HookForm";
 
 // a row of the list: the icon (the type options have one), the name and the details under it
@@ -173,40 +177,33 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		.filter(Boolean);
 
 	return (
-		<div className="mb-3">
-			{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
+		<div className="flex flex-col gap-3">
+			{isPending ? <Skeleton className="h-8 w-full" /> : null}
 			{isError ? (
-				<div className="invalid-feedback d-block">
+				<FieldMessage>
 					<ApiErrorContent error={error} />
-				</div>
+				</FieldMessage>
 			) : null}
-			<div className="row">
-				<div className="col-md-10">
-					<div className="input-group mb-3 shadow-none">
-						<Combobox
-							aria-label={intl.formatMessage({ id: "access-list" })}
-							className="col-md-8"
-							searchable={false}
-							disabled={readOnly}
-							value={aclValue}
-							options={typeSelectOptions}
-							renderOption={renderOption}
-							ref={selectRef}
-							onChange={(type) => {
-								typeField.onChange(type);
-								recheckIds();
-							}}
-							onBlur={typeField.onBlur}
-						/>
-					</div>
-				</div>
-			</div>
+			<Combobox
+				aria-label={intl.formatMessage({ id: "access-list" })}
+				searchable={false}
+				disabled={readOnly}
+				value={aclValue}
+				options={typeSelectOptions}
+				renderOption={renderOption}
+				ref={selectRef}
+				onChange={(type) => {
+					typeField.onChange(type);
+					recheckIds();
+				}}
+				onBlur={typeField.onBlur}
+			/>
 			{!isPending && !isError && aclValue === "custom" ? (
 				<>
 					{values.map((item, idx) => (
-						<div key={item} className="input-group mb-1 shadow-none">
+						<div key={item} className="flex items-center gap-1">
 							<Combobox
-								className="col-md-8 mb-1"
+								className="min-w-0 flex-1"
 								aria-label={intl.formatMessage({ id: "access-list" })}
 								value={item}
 								options={rowOptions(item)}
@@ -216,58 +213,56 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 									onAccessListChange(option.meta, idx);
 								}}
 							/>
-
 							{idx > 0 ? (
-								<button
-									type="button"
+								<Button
+									className="btn-ghost"
+									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-up" })}
-									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveUp(idx);
 									}}
 								>
-									<IconArrowUp size={16} />
-								</button>
+									<ArrowUpIcon aria-hidden="true" />
+								</Button>
 							) : null}
 							{idx < values.length - 1 ? (
-								<button
-									type="button"
+								<Button
+									className="btn-ghost"
+									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-down" })}
-									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveDown(idx);
 									}}
 								>
-									<IconArrowDown size={16} />
-								</button>
+									<ArrowDownIcon aria-hidden="true" />
+								</Button>
 							) : null}
-							<button
-								type="button"
+							<Button
+								className="btn-ghost text-destructive hover:text-destructive"
+								size="icon-sm"
 								aria-label={intl.formatMessage({ id: "aria.remove" })}
-								className="btn btn-ghost btn-danger p-0 mb-1"
 								onClick={() => {
 									handleRemove(item);
 								}}
 							>
-								<IconX size={16} />
-							</button>
+								<XIcon aria-hidden="true" />
+							</Button>
 						</div>
 					))}
 					{values.length === 0 ? (
 						<>
-							<input name={name} className="visually-hidden" tabIndex={-1} required defaultValue="" />
-							<div className="invalid-feedback d-block">
+							<input name={name} className="sr-only" tabIndex={-1} required defaultValue="" />
+							<FieldMessage>
 								<T id="error.required" />
-							</div>
+							</FieldMessage>
 						</>
 					) : null}
 					{!readOnly &&
 						options.length > 0 && ( // only show add button if there are more acls that can be added
-							<div className="text-center">
-								<button type="button" className="btn my-3" onClick={handleAdd}>
-									<T id="action.add" />
-								</button>
-							</div>
+							<Button className="self-start" onClick={handleAdd}>
+								<PlusIcon data-icon="inline-start" aria-hidden="true" />
+								<T id="action.add" />
+							</Button>
 						)}
 				</>
 			) : null}

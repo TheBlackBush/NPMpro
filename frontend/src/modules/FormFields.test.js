@@ -5,7 +5,6 @@ import {
 	choiceItemClass,
 	controlAria,
 	joinIds,
-	labelClass,
 	legendClass,
 	numberInputValue,
 	sectionClass,
@@ -52,14 +51,6 @@ it("keeps the hint without an error and adds the caller's ids", () => {
 	assert.equal(aria["aria-invalid"], undefined);
 	assert.equal(aria["aria-describedby"], "name-hint name-note");
 	assert.equal(controlAria({ id: "x" })["aria-describedby"], undefined);
-});
-
-it("classes a bare label; a required one gets a drawn asterisk", () => {
-	assert.equal(labelClass(), "text-sm font-medium leading-snug");
-	assert.equal(
-		labelClass(true),
-		"text-sm font-medium leading-snug after:ml-1 after:text-destructive after:content-['*']",
-	);
 });
 
 it("classes the legend of a section", () => {

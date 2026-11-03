@@ -1,5 +1,6 @@
-import { IconPlus } from "@tabler/icons-react";
+import { PlusIcon } from "lucide-react";
 import { useController } from "react-hook-form";
+import { Button } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
 import { useDnsCredentials } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -29,8 +30,8 @@ export function DnsCredentialSelect({ name, provider, hint }) {
 	return (
 		<FormField id="dnsCredential" label={<T id="dns-credentials.select" />} required hint={hint} error={error}>
 			{(control) => (
-				<div className="d-flex gap-2">
-					<div className="flex-fill">
+				<div className="flex gap-2">
+					<div className="min-w-0 flex-1">
 						<Combobox
 							{...control}
 							ref={field.ref}
@@ -45,17 +46,16 @@ export function DnsCredentialSelect({ name, provider, hint }) {
 							onChange={(value) => field.onChange(value ?? undefined)}
 						/>
 					</div>
-					<button
-						type="button"
-						className="btn btn-icon"
+					<Button
+						size="icon"
 						aria-label={addLabel}
 						title={addLabel}
 						onClick={() =>
 							showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
 						}
 					>
-						<IconPlus size={16} />
-					</button>
+						<PlusIcon aria-hidden="true" />
+					</Button>
 				</div>
 			)}
 		</FormField>

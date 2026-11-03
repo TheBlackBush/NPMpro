@@ -1,6 +1,6 @@
-import cn from "clsx";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { Combobox } from "src/components/Combobox";
+import { Input } from "src/components/ui/input";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { NoticeAlert } from "../NoticeAlert";
@@ -68,11 +68,10 @@ function PropagationInput() {
 			className="mb-0"
 		>
 			{(control) => (
-				<input
+				<Input
 					{...control}
 					ref={field.ref}
 					type="number"
-					className={cn("form-control", error && "is-invalid")}
 					min={0}
 					max={7200}
 					placeholder={intl.formatMessage({

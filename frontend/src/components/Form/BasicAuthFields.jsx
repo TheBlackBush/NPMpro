@@ -1,14 +1,22 @@
-import { IconEye, IconEyeOff, IconX } from "@tabler/icons-react";
-import cn from "clsx";
-import { useState } from "react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { Button } from "src/components/Button";
+import { FieldLabel } from "src/components/ui/field";
+import { Input } from "src/components/ui/input";
 import { intl, T } from "src/locale";
 import { blankUser } from "src/modules/AccessListForms";
+import { FieldMessage } from "./FieldMessage";
 import { useListRecheck, useRecheckDependent } from "./HookForm";
+import { PasswordControl } from "./PasswordInput";
+
+// username, password and the remove button: a grid with the remove button beside the two fields on phones (stacked),
+// all three in a row from sm
+const ROW = "grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-2 sm:grid-cols-[1fr_1fr_auto]";
 
 // one user: a new name re-checks its password (a saved user may keep it), the other rows' names (duplicates) and
-// the "at least one user or rule" message
-function UserRow({ name, index, savedUsers, revealed, onToggleReveal, onRemove, recheckRows, recheckAccessRules }) {
+// the "at least one user or rule" message. The column headings of the list label the fields from sm; on phones
+// each row names its own fields.
+function UserRow({ name, index, rowKey, savedUsers, onRemove, recheckRows, recheckAccessRules }) {
 	const { register, getFieldState } = useFormContext();
 	const base = `${name}.${index}`;
 	const formState = useFormState({ name: base });
@@ -17,10 +25,16 @@ function UserRow({ name, index, savedUsers, revealed, onToggleReveal, onRemove, 
 	const usernameError = getFieldState(`${base}.username`, formState).error?.message ?? null;
 	const passwordError = getFieldState(`${base}.password`, formState).error?.message ?? null;
 	const saved = savedUsers.has(username);
+	const usernameId = `basicAuthUsername-${rowKey}`;
+	const passwordId = `basicAuthPassword-${rowKey}`;
 	return (
-		<div className="row mb-3">
-			<div className="col-6">
-				<input
+		<div className={ROW}>
+			<div className="flex min-w-0 flex-col gap-1 sm:col-start-1">
+				<FieldLabel htmlFor={usernameId} className="sm:sr-only">
+					<T id="username" />
+				</FieldLabel>
+				<Input
+					id={usernameId}
 					type="text"
 					{...register(`${base}.username`, {
 						onChange: () => {
@@ -30,48 +44,34 @@ function UserRow({ name, index, savedUsers, revealed, onToggleReveal, onRemove, 
 						},
 					})}
 					autoComplete="off"
-					className={cn("form-control input-sm", usernameError && "is-invalid")}
-					aria-label={intl.formatMessage({ id: "username" })}
 					aria-invalid={usernameError ? "true" : undefined}
+					aria-describedby={usernameError ? `${usernameId}-error` : undefined}
 				/>
-				{usernameError ? <div className="invalid-feedback">{usernameError}</div> : null}
+				{usernameError ? <FieldMessage id={`${usernameId}-error`}>{usernameError}</FieldMessage> : null}
 			</div>
-			<div className="col-5">
-				<div className={cn("input-group input-group-flat", passwordError && "has-validation")}>
-					<input
-						type={revealed ? "text" : "password"}
-						{...register(`${base}.password`)}
-						autoComplete="new-password"
-						className={cn("form-control", passwordError && "is-invalid")}
-						aria-label={intl.formatMessage({ id: "password" })}
-						aria-invalid={passwordError ? "true" : undefined}
-						required={username.trim() !== "" && !saved}
-						placeholder={saved ? "••••••••" : ""}
-					/>
-
-					<span className="input-group-text py-0">
-						<button
-							type="button"
-							aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
-							aria-pressed={revealed}
-							className="btn btn-icon btn-ghost btn-sm"
-							onClick={onToggleReveal}
-						>
-							{revealed ? (
-								<IconEyeOff className="icon" aria-hidden="true" />
-							) : (
-								<IconEye className="icon" aria-hidden="true" />
-							)}
-						</button>
-					</span>
-					{passwordError ? <div className="invalid-feedback">{passwordError}</div> : null}
-				</div>
+			<div className="flex min-w-0 flex-col gap-1 sm:col-start-2 sm:row-start-1">
+				<FieldLabel htmlFor={passwordId} className="sm:sr-only">
+					<T id="password" />
+				</FieldLabel>
+				<PasswordControl
+					id={passwordId}
+					{...register(`${base}.password`)}
+					autoComplete="new-password"
+					invalid={Boolean(passwordError)}
+					aria-describedby={passwordError ? `${passwordId}-error` : undefined}
+					required={username.trim() !== "" && !saved}
+					placeholder={saved ? "••••••••" : ""}
+				/>
+				{passwordError ? <FieldMessage id={`${passwordId}-error`}>{passwordError}</FieldMessage> : null}
 			</div>
-			<div className="col-1">
-				<button type="button" className="btn btn-ghost btn-danger p-0" onClick={onRemove}>
-					<IconX size={16} />
-				</button>
-			</div>
+			<Button
+				className="btn-ghost row-span-2 self-center text-destructive hover:text-destructive sm:col-start-3 sm:row-span-1 sm:row-start-1 sm:self-start"
+				size="icon"
+				aria-label={intl.formatMessage({ id: "aria.remove" })}
+				onClick={onRemove}
+			>
+				<XIcon aria-hidden="true" />
+			</Button>
 		</div>
 	);
 }
@@ -86,7 +86,6 @@ function UserRow({ name, index, savedUsers, revealed, onToggleReveal, onRemove, 
  */
 export function BasicAuthFields({ savedUsers, name = "items" }) {
 	const { fields, append, remove, update } = useFieldArray({ name });
-	const [revealed, setRevealed] = useState([]);
 	const { afterRemove, recheckRows } = useListRecheck(name);
 	const recheckAccessRules = useRecheckDependent("accessRules");
 
@@ -99,17 +98,13 @@ export function BasicAuthFields({ savedUsers, name = "items" }) {
 	};
 
 	return (
-		<>
-			<div className="row">
-				<div className="col-6">
-					<div className="form-label">
-						<T id="username" />
-					</div>
+		<div className="flex flex-col gap-3">
+			<div className="hidden gap-x-2 font-medium text-sm sm:grid sm:grid-cols-[1fr_1fr_2rem]" aria-hidden="true">
+				<div>
+					<T id="username" />
 				</div>
-				<div className="col-6">
-					<div className="form-label">
-						<T id="password" />
-					</div>
+				<div>
+					<T id="password" />
 				</div>
 			</div>
 			{fields.map((field, index) => (
@@ -117,27 +112,17 @@ export function BasicAuthFields({ savedUsers, name = "items" }) {
 					key={field.id}
 					name={name}
 					index={index}
+					rowKey={field.id}
 					savedUsers={savedUsers}
-					revealed={revealed.includes(field.id)}
-					onToggleReveal={() =>
-						setRevealed((list) =>
-							list.includes(field.id) ? list.filter((id) => id !== field.id) : [...list, field.id],
-						)
-					}
 					onRemove={() => handleRemove(index)}
 					recheckRows={recheckRows}
 					recheckAccessRules={recheckAccessRules}
 				/>
 			))}
-			<div>
-				<button
-					type="button"
-					className="btn btn-sm"
-					onClick={() => append(blankUser(), { shouldFocus: false })}
-				>
-					<T id="action.add" />
-				</button>
-			</div>
-		</>
+			<Button className="self-start" size="sm" onClick={() => append(blankUser(), { shouldFocus: false })}>
+				<PlusIcon data-icon="inline-start" aria-hidden="true" />
+				<T id="action.add" />
+			</Button>
+		</div>
 	);
 }
