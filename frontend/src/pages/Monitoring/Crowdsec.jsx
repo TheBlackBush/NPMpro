@@ -251,7 +251,7 @@ function CrowdsecData({ data }) {
 								<div className="card-body">
 									<WorldMap
 										countries={data.countries}
-										tone="destructive"
+										color="red"
 										label={intl.formatMessage({ id: "monitoring.crowdsec.map" })}
 									/>
 									{data.total > 0 && data.countries.length === 0 ? (
@@ -266,7 +266,7 @@ function CrowdsecData({ data }) {
 							className="col-lg-4"
 							title={<T id="monitoring.crowdsec.by-scenario" />}
 							total={data.total}
-							tone="destructive"
+							color="red"
 							empty={noBans}
 							items={data.byScenario.slice(0, TOP_LIST).map((s) => ({
 								key: s.scenario,
@@ -279,7 +279,7 @@ function CrowdsecData({ data }) {
 							className="col-md-6"
 							title={<T id="monitoring.crowdsec.by-origin" />}
 							total={data.total}
-							tone="destructive"
+							color="red"
 							empty={noBans}
 							items={data.byOrigin.slice(0, TOP_LIST).map((o) => ({
 								key: o.origin,
@@ -292,7 +292,7 @@ function CrowdsecData({ data }) {
 							className="col-md-6"
 							title={<T id="monitoring.crowdsec.by-country" />}
 							total={data.total}
-							tone="destructive"
+							color="red"
 							empty={noBans}
 							items={data.countries.slice(0, TOP_LIST).map((c) => ({
 								key: c.country,
