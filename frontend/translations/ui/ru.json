@@ -967,6 +967,7 @@
 	"settings.backup.uploading": "Загрузка… {percent}%",
 	"settings.backup.with-secrets": "С секретами, зашифровано",
 	"settings.backup.without-secrets": "Без секретов",
+	"settings.category.administration": "Администрирование",
 	"settings.category.data": "Данные",
 	"settings.category.monitoring": "Мониторинг",
 	"settings.category.security": "Безопасность и доступ",

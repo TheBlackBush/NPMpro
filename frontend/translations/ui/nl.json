@@ -967,6 +967,7 @@
 	"settings.backup.uploading": "Uploaden… {percent}%",
 	"settings.backup.with-secrets": "Geheimen, versleuteld",
 	"settings.backup.without-secrets": "Zonder geheimen",
+	"settings.category.administration": "Beheer",
 	"settings.category.data": "Gegevens",
 	"settings.category.monitoring": "Monitoring",
 	"settings.category.security": "Beveiliging en toegang",

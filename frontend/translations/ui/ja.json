@@ -967,6 +967,7 @@
 	"settings.backup.uploading": "アップロード中… {percent}%",
 	"settings.backup.with-secrets": "シークレット(暗号化)",
 	"settings.backup.without-secrets": "シークレットなし",
+	"settings.category.administration": "管理",
 	"settings.category.data": "データ",
 	"settings.category.monitoring": "モニタリング",
 	"settings.category.security": "セキュリティとアクセス",

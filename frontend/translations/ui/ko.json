@@ -967,6 +967,7 @@
 	"settings.backup.uploading": "업로드 중… {percent}%",
 	"settings.backup.with-secrets": "시크릿 포함(암호화됨)",
 	"settings.backup.without-secrets": "시크릿 제외",
+	"settings.category.administration": "관리",
 	"settings.category.data": "데이터",
 	"settings.category.monitoring": "모니터링",
 	"settings.category.security": "보안 및 액세스",

@@ -5,17 +5,19 @@ import { isPaletteShortcut, paletteGroups } from "./CommandPalette.js";
 const sections = [
 	{ id: "default-site", labelKey: "settings.default-site" },
 	{ id: "nginx", labelKey: "settings.nginx" },
+	{ id: "users", labelKey: "users" },
+	{ id: "audit-log", labelKey: "auditlogs" },
 ];
 const admin = { roles: ["admin"], permissions: {}, monitoring: true };
 
-it("an admin gets the pages, Users and Audit Log, and every Settings section", () => {
+it("an admin gets the pages and every Settings section, Users and Audit Log among them", () => {
 	const [pages, settings] = paletteGroups(admin, sections);
 	assert.equal(pages.id, "pages");
-	assert.ok(pages.items.some((i) => i.to === "/users"));
-	assert.ok(pages.items.some((i) => i.to === "/audit-log"));
+	assert.ok(!pages.items.some((i) => i.to === "/users"));
+	assert.ok(!pages.items.some((i) => i.to === "/audit-log"));
 	assert.deepEqual(
 		settings.items.map((i) => i.to),
-		["/settings/default-site", "/settings/nginx"],
+		["/settings/default-site", "/settings/nginx", "/settings/users", "/settings/audit-log"],
 	);
 });
 

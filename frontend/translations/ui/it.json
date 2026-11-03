@@ -967,6 +967,7 @@
 	"settings.backup.uploading": "Caricamento… {percent}%",
 	"settings.backup.with-secrets": "Segreti, cifrati",
 	"settings.backup.without-secrets": "Senza segreti",
+	"settings.category.administration": "Amministrazione",
 	"settings.category.data": "Dati",
 	"settings.category.monitoring": "Monitoraggio",
 	"settings.category.security": "Sicurezza e accesso",
