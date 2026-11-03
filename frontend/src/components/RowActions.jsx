@@ -60,7 +60,7 @@ function RowActions({ label, focusKey, title, items }) {
 					}
 				}}
 			>
-				{title ? <DropdownMenuLabel>{title}</DropdownMenuLabel> : null}
+				{title ? <DropdownMenuLabel className="wrap-anywhere">{title}</DropdownMenuLabel> : null}
 				{visible.map((item, index) => {
 					const Icon = item.icon;
 					return (

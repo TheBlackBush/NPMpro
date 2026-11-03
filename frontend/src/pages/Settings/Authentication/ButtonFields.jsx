@@ -246,8 +246,6 @@ function IconFields({ storedIcon }) {
 							onChange={(e) => setUrl(e.target.value)}
 						/>
 						<Button
-							outline
-							color="secondary"
 							isLoading={download.isPending}
 							disabled={busy || !url.trim() || urlInvalid}
 							onClick={onDownload}
@@ -277,10 +275,12 @@ function IconFields({ storedIcon }) {
 				</div>
 			) : null}
 			<div role="status">
-				{result?.ok ? <StatusAlert variant="success" icon={CircleCheck} id={result.messageId} /> : null}
+				{result?.ok ? (
+					<StatusAlert variant="success" icon={CircleCheck} id={result.messageId} live={false} />
+				) : null}
 			</div>
 			{result && !result.ok ? (
-				<ErrorAlert className="mt-3" onClose={() => setResult(null)}>
+				<ErrorAlert onClose={() => setResult(null)}>
 					<ApiErrorContent error={result.error} />
 				</ErrorAlert>
 			) : null}

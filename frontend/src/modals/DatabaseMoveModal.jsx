@@ -77,8 +77,7 @@ function CopyProgress({ tables }) {
 	);
 }
 
-// the steps of the move, each with its state; the copy step shows the rows copied so far. No top border: the header
-// border right above is the divider
+// the steps of the move, each with its state; the copy step shows the rows copied so far
 function StepList({ move }) {
 	return (
 		<ol className="divide-y rounded-md border">
@@ -264,7 +263,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	if (view === "confirm") {
 		body = (
 			<form id={`${baseId}-form`} onSubmit={onStart} noValidate>
-				<p className="text-muted-foreground">
+				<p className="mb-3 text-muted-foreground">
 					<Summary status={status} target={target} />
 				</p>
 				<FormField
@@ -354,7 +353,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 						</div>
 					) : null}
 					{phase === "timeout" ? (
-						<StatusAlert variant="warning" icon={TriangleAlert} className="mt-3">
+						<StatusAlert variant="warning" icon={TriangleAlert} className="mt-3" live={false}>
 							<T id="settings.database.move.restart-timeout" />
 						</StatusAlert>
 					) : null}

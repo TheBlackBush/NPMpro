@@ -223,14 +223,10 @@ function ProviderFields({ data, isLocked }) {
 						icon={CircleCheck}
 						id="settings.authentication.test.ok"
 						data={{ issuer: result.issuer }}
-						className="mt-3"
+						live={false}
 					/>
 				) : null}
-				{result && !result.ok ? (
-					<ErrorAlert className="mt-3" error={result.error}>
-						{result.message}
-					</ErrorAlert>
-				) : null}
+				{result && !result.ok ? <ErrorAlert error={result.error}>{result.message}</ErrorAlert> : null}
 			</div>
 		</SettingsCard>
 	);

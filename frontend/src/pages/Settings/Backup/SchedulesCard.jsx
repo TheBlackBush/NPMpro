@@ -18,10 +18,12 @@ import { Badge } from "src/components/ui/badge";
 import { Checkbox } from "src/components/ui/checkbox";
 import { Spinner } from "src/components/ui/spinner";
 import { useBackupSchedules, useBackupTypes, useRunBackupSchedule, useSaveBackupSchedule } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showBackupScheduleModal, showDeleteConfirmModal } from "src/modals";
 import { formatInZone, lastRunSize, scheduleStatus, timingText } from "src/modules/BackupSchedules";
 import { contentLabels } from "src/modules/BackupTypes";
+import { WRAP_BADGE } from "src/modules/Badges";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
@@ -37,7 +39,7 @@ const nameClass = (name) =>
 	String(name)
 		.split(/\s+/u)
 		.some((word) => [...word].length > LONG_WORD)
-		? "break-words"
+		? "wrap-anywhere"
 		: undefined;
 
 const keepText = (row) => label("settings.backup.schedule.keep-count", { count: row.keep });
@@ -70,11 +72,7 @@ function Contents({ categories, types }) {
 	return (
 		<div className="flex flex-wrap gap-1">
 			{contentLabels(categories, types ?? []).map((item) => (
-				<Badge
-					key={`${item.kind}-${item.id}`}
-					variant="secondary"
-					className="h-auto whitespace-normal py-0.5 text-left"
-				>
+				<Badge key={`${item.kind}-${item.id}`} variant="secondary" className={WRAP_BADGE}>
 					<T id={contentLabelId(item)} />
 				</Badge>
 			))}
@@ -87,12 +85,12 @@ function ScheduleStatus({ schedule, timeZone }) {
 	// the error of a failed last run (paused too): on phones under the badges, on wider screens in the Last run column
 	const error =
 		schedule.lastStatus === "failed" && schedule.lastError ? (
-			<div className="mt-1 text-sm text-destructive break-words md:hidden">{schedule.lastError}</div>
+			<div className="mt-1 text-sm text-destructive wrap-anywhere md:hidden">{schedule.lastError}</div>
 		) : null;
 	if (status === "paused") {
 		return (
 			<>
-				<Badge variant="secondary" className="h-auto whitespace-normal py-0.5 text-left">
+				<Badge variant="secondary" className={WRAP_BADGE}>
 					<T id="settings.backup.schedule.paused" />
 				</Badge>
 				{error}
@@ -107,14 +105,14 @@ function ScheduleStatus({ schedule, timeZone }) {
 					<StatusBadge
 						tone="destructive"
 						dot={false}
-						className="whitespace-normal text-left"
+						className={WRAP_BADGE}
 						title={schedule.lastError ?? undefined}
 					>
 						<T id="settings.backup.schedule.failed" />
 					</StatusBadge>
 				) : null}
 				{schedule.nextRunAt ? (
-					<StatusBadge tone="success" dot={false} className="whitespace-normal text-left">
+					<StatusBadge tone="success" dot={false} className={cn(WRAP_BADGE, "md:whitespace-nowrap")}>
 						<T
 							id="settings.backup.schedule.next"
 							data={{ when: formatTime(schedule.nextRunAt, timeZone) }}
@@ -142,7 +140,7 @@ function LastRun({ schedule, timeZone }) {
 				<div className="text-sm text-muted-foreground">{formatBytes(lastRunSize(schedule))}</div>
 			) : null}
 			{schedule.lastStatus === "failed" && schedule.lastError ? (
-				<div className="text-sm text-destructive break-words">{schedule.lastError}</div>
+				<div className="text-sm text-destructive wrap-anywhere">{schedule.lastError}</div>
 			) : null}
 		</>
 	);

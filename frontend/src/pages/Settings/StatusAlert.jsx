@@ -14,11 +14,15 @@ const VARIANTS = {
 
 /**
  * An alert with an icon for a settings section status line. Pass `id` for a translated text or `children` for own
- * content; `icon` is any icon component (lucide or Tabler).
+ * content; `icon` is any icon component (lucide or Tabler). It is a status region itself (role="status"); inside a
+ * live region that is always mounted, pass live={false} so the announcement is not nested in a second region.
  */
-function StatusAlert({ variant, icon: Icon, id, data, className, children }) {
+function StatusAlert({ variant, icon: Icon, id, data, className, children, live = true }) {
 	return (
-		<Alert role="status" className={cn("text-foreground", VARIANTS[variant] ?? VARIANTS.secondary, className)}>
+		<Alert
+			role={live ? "status" : undefined}
+			className={cn("text-foreground", VARIANTS[variant] ?? VARIANTS.secondary, className)}
+		>
 			<Icon aria-hidden="true" />
 			<div className="text-sm wrap-break-word">{id ? <T id={id} data={data} /> : children}</div>
 		</Alert>

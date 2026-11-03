@@ -256,7 +256,7 @@ function MoveForm({ tested, status }) {
 			{/* always mounted, so a screen reader announces the result that appears in it */}
 			<div aria-live="polite">
 				{current?.result ? (
-					<StatusAlert variant="success" icon={CircleCheck}>
+					<StatusAlert variant="success" icon={CircleCheck} live={false}>
 						{current.result.engine === "sqlite" ? (
 							<T id="settings.database.test.ok-sqlite" />
 						) : (

@@ -26,6 +26,7 @@ import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
 import { filterBySchedule, formatInZone, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
 import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
+import { WRAP_BADGE } from "src/modules/Badges";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
@@ -52,7 +53,7 @@ function Contents({ categories, types }) {
 	return (
 		<div className="flex flex-wrap gap-1">
 			{contentLabels(categories, types).map(({ kind, id }) => (
-				<Badge key={`${kind}-${id}`} variant="secondary" className="h-auto whitespace-normal py-0.5 text-left">
+				<Badge key={`${kind}-${id}`} variant="secondary" className={WRAP_BADGE}>
 					<T id={kind === "category" ? `settings.backup.category.${id}` : `settings.backup.type.${id}`} />
 				</Badge>
 			))}
@@ -63,7 +64,7 @@ function Contents({ categories, types }) {
 function SecretsBadge({ entry }) {
 	const secrets = entry.summary?.secrets;
 	return (
-		<Badge variant={secrets ? "outline" : "secondary"} className="h-auto whitespace-normal py-0.5 text-left">
+		<Badge variant={secrets ? "outline" : "secondary"} className={WRAP_BADGE}>
 			{secrets ? <KeyRound className="size-3" aria-hidden="true" /> : null}
 			<WrapBelowLg>
 				<T id={secrets ? "settings.backup.with-secrets" : "settings.backup.without-secrets"} />
@@ -79,9 +80,9 @@ function ScheduleBadge({ entry, names }) {
 	if (!badge) return null;
 	return (
 		<div className="mt-1">
-			<Badge variant="outline" className="h-auto whitespace-normal py-0.5 text-left">
+			<Badge variant="outline" className={WRAP_BADGE}>
 				<CalendarClock className="size-3" aria-hidden="true" />
-				<span className="break-words">
+				<span className="min-w-0 wrap-anywhere">
 					{badge.kind === "name" ? badge.name : <T id="settings.backup.schedule.deleted" />}
 				</span>
 			</Badge>
@@ -92,7 +93,7 @@ function ScheduleBadge({ entry, names }) {
 function NameCell({ entry, names }) {
 	return (
 		<>
-			<div className="break-words">{entry.name}</div>
+			<div className="wrap-anywhere">{entry.name}</div>
 			<ScheduleBadge entry={entry} names={names} />
 			{entry.auto ? (
 				<div className="mt-1 flex flex-wrap items-center gap-2">

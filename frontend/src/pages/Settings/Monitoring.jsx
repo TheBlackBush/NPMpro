@@ -260,7 +260,7 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 		>
 			{(control) => (
 				<div className="sm:max-w-xs">
-					<InputGroup data-disabled={isLocked(name) || undefined}>
+					<InputGroup>
 						<InputGroupInput
 							{...register(name)}
 							{...control}
