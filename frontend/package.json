@@ -30,9 +30,11 @@
 		"react-hook-form": "7.91.0",
 		"react-intl": "12.1.5",
 		"react-router": "8.5.0",
+		"react-simple-maps": "5.0.5",
 		"rooks": "9.9.0",
 		"simple-icons": "16.36.0",
-		"sonner": "2.0.8"
+		"sonner": "2.0.8",
+		"world-atlas": "2.0.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.2",
