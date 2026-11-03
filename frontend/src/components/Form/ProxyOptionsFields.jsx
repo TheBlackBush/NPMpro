@@ -1,3 +1,4 @@
+import cn from "clsx";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { intl, T } from "src/locale";
@@ -35,8 +36,9 @@ function useApplyOption(base) {
  * @param {Object} props
  * @param {string} [props.base]       the row's path ("locations.2"), "" for the host
  * @param {string} [props.idSuffix]   the row's key, "" for the host
+ * @param {string} [props.className]  of the row (the host window passes its bottom margin)
  */
-export function ForwardFields({ base = "", idSuffix = "" }) {
+export function ForwardFields({ base = "", idSuffix = "", className }) {
 	const { getValues } = useFormContext();
 	const field = (name) => optionField(base, name);
 	const id = (name) => optionId(name, idSuffix);
@@ -55,7 +57,7 @@ export function ForwardFields({ base = "", idSuffix = "" }) {
 	};
 
 	return (
-		<div className="mb-3 grid items-start gap-3 sm:grid-cols-[8rem_1fr_7rem]">
+		<div className={cn("grid items-start gap-3 sm:grid-cols-[8rem_1fr_7rem]", className)}>
 			<SelectField
 				name={field("forwardScheme")}
 				id={id("forwardScheme")}

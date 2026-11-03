@@ -3,6 +3,7 @@ import { ChevronDownIcon, ChevronRightIcon, PlusIcon, SearchIcon, SettingsIcon, 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { AccessFields, Button, SwitchField } from "src/components";
+import { DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { NativeSelect } from "src/components/ui/native-select";
@@ -17,9 +18,6 @@ import { useListRecheck, useReadOnly, useRecheckDependent } from "./HookForm";
 import { ForwardFields, ProxyOptionsFields } from "./ProxyOptionsFields";
 
 const locationLabel = (row) => `${row.locationType}${row.path}`;
-
-// the remove and settings buttons of a row: ghost icon buttons
-const ICON_BUTTON = "btn-ghost";
 
 // one custom location: a bordered card with its header (path, target, config marker, remove) and, while open, its
 // fields; row is the row's current values (the controlled field of LocationsFields)
@@ -76,7 +74,8 @@ function LocationRow({
 				</button>
 				{readOnly ? null : (
 					<Button
-						className={cn(ICON_BUTTON, "text-destructive hover:text-destructive")}
+						variant="ghost"
+						className={DESTRUCTIVE_TEXT}
 						size="icon-sm"
 						title={intl.formatMessage({ id: "action.delete" })}
 						aria-label={intl.formatMessage({ id: "action.delete" })}
@@ -99,7 +98,7 @@ function LocationRow({
 								<NativeSelect
 									id={`locationType-${rowKey}`}
 									className="w-auto shrink-0"
-									aria-labelledby={`${pathId}-label`}
+									aria-label={intl.formatMessage({ id: "location.type" })}
 									{...register(`${base}.locationType`, {
 										// the type and the path together must be unique
 										onChange: () => {
@@ -125,7 +124,8 @@ function LocationRow({
 								/>
 								{isAdmin || hasConfig ? (
 									<Button
-										className={cn(ICON_BUTTON, "w-auto shrink-0 px-2")}
+										variant="ghost"
+										className="w-auto shrink-0 px-2"
 										size="icon"
 										title={intl.formatMessage({ id: "location.config.toggle" })}
 										aria-label={intl.formatMessage({ id: "location.config.toggle" })}

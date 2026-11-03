@@ -2,7 +2,7 @@ import { IconLock, IconLockOpen2, IconWorld } from "@tabler/icons-react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
 import { useController, useWatch } from "react-hook-form";
-import { Button } from "src/components/Button";
+import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
 import { Skeleton } from "src/components/ui/skeleton";
@@ -215,7 +215,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 							/>
 							{idx > 0 ? (
 								<Button
-									className="btn-ghost"
+									variant="ghost"
 									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-up" })}
 									onClick={() => {
@@ -227,7 +227,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 							) : null}
 							{idx < values.length - 1 ? (
 								<Button
-									className="btn-ghost"
+									variant="ghost"
 									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-down" })}
 									onClick={() => {
@@ -238,7 +238,8 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 								</Button>
 							) : null}
 							<Button
-								className="btn-ghost text-destructive hover:text-destructive"
+								variant="ghost"
+								className={DESTRUCTIVE_TEXT}
 								size="icon-sm"
 								aria-label={intl.formatMessage({ id: "aria.remove" })}
 								onClick={() => {

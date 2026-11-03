@@ -1,7 +1,7 @@
 import cn from "clsx";
 import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { Button } from "src/components/Button";
+import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
 import { NativeSelect } from "src/components/ui/native-select";
 import { intl, T } from "src/locale";
@@ -38,7 +38,11 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 	const error = getFieldState(`${base}.address`, formState).error?.message ?? null;
 	return (
 		<div className="flex items-start gap-2">
-			<NativeSelect className={directiveClass(directive)} {...register(`${base}.directive`)}>
+			<NativeSelect
+				className={directiveClass(directive)}
+				aria-label={intl.formatMessage({ id: "access-list.directive" })}
+				{...register(`${base}.directive`)}
+			>
 				<DirectiveOptions />
 			</NativeSelect>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -56,7 +60,8 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 				{error ? <FieldMessage id={`${name}-${index}-address-error`}>{error}</FieldMessage> : null}
 			</div>
 			<Button
-				className="btn-ghost text-destructive hover:text-destructive"
+				variant="ghost"
+				className={DESTRUCTIVE_TEXT}
 				size="icon"
 				aria-label={intl.formatMessage({ id: "aria.remove" })}
 				onClick={onRemove}
@@ -77,7 +82,11 @@ function LastRule({ name, index }) {
 				<T id="access-list.help.rules-last" />
 			</p>
 			<div className="flex items-center gap-2">
-				<NativeSelect className={directiveClass(directive)} {...register(`${name}.${index}.directive`)}>
+				<NativeSelect
+					className={directiveClass(directive)}
+					aria-label={intl.formatMessage({ id: "access-list.directive" })}
+					{...register(`${name}.${index}.directive`)}
+				>
 					<DirectiveOptions />
 				</NativeSelect>
 				<Input

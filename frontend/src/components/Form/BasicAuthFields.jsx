@@ -65,7 +65,8 @@ function UserRow({ name, index, rowKey, savedUsers, onRemove, recheckRows, reche
 				{passwordError ? <FieldMessage id={`${passwordId}-error`}>{passwordError}</FieldMessage> : null}
 			</div>
 			<Button
-				className="btn-ghost row-span-2 self-center text-destructive hover:text-destructive sm:col-start-3 sm:row-span-1 sm:row-start-1 sm:self-start"
+				variant="ghost"
+				className="row-span-2 self-center text-[color-mix(in_oklab,var(--destructive)_75%,black)] sm:col-start-3 sm:row-span-1 sm:row-start-1 sm:self-start"
 				size="icon"
 				aria-label={intl.formatMessage({ id: "aria.remove" })}
 				onClick={onRemove}
@@ -99,7 +100,7 @@ export function BasicAuthFields({ savedUsers, name = "items" }) {
 
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="hidden gap-x-2 font-medium text-sm sm:grid sm:grid-cols-[1fr_1fr_2rem]" aria-hidden="true">
+			<div className="hidden gap-x-2 font-medium text-sm sm:grid sm:grid-cols-[1fr_1fr_auto]" aria-hidden="true">
 				<div>
 					<T id="username" />
 				</div>

@@ -112,7 +112,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 				>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-						<ForwardFields />
+						<ForwardFields className="mb-3" />
 						<DirectoryField labelId="proxy-host.directory" />
 						<ProxyOptionsFields />
 						<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
