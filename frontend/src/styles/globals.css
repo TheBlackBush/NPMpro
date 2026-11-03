@@ -166,6 +166,16 @@
 	}
 	html {
 		@apply font-sans;
+		/* NPMpro: native controls (the option list of a select, scrollbars) follow the theme; without it a dark page
+		   gets a light option list with the page's light text */
+		color-scheme: light;
+	}
+	html.dark {
+		color-scheme: dark;
+	}
+	/* NPMpro: the option list in the popover colours, for browsers that draw it from the option styles */
+	option {
+		@apply bg-popover text-popover-foreground;
 	}
 	/* NPMpro: the rules input-otp injects as a <style> element at runtime (CSP forbids it; patches/input-otp@1.5.0.patch
 	   turns the injection off): the real input stays invisible while the slots draw the characters */
