@@ -3,25 +3,25 @@ import { it } from "node:test";
 import { certificateActionKeys } from "./CertificateActions.js";
 
 const le = { provider: "letsencrypt", npmproDnsChallenge: false, inUse: false };
+const dns = { ...le, npmproDnsChallenge: true, npmproDnsProvider: "cloudflare" };
 
-it("offers renew but no edit for a Let's Encrypt certificate", () => {
+it("offers test and renew but no edit for an HTTP Let's Encrypt certificate", () => {
 	assert.deepEqual(certificateActionKeys(le, { canManage: true }), ["test", "renew", "download", "delete"]);
 });
 
-it("offers the DNS credential change only with a DNS challenge", () => {
-	assert.deepEqual(certificateActionKeys({ ...le, npmproDnsChallenge: true }, { canManage: true }), [
-		"test",
-		"renew",
-		"change-dns",
-		"download",
-		"delete",
-	]);
+it("offers no test but the DNS credential change for a DNS Let's Encrypt certificate", () => {
+	assert.deepEqual(certificateActionKeys(dns, { canManage: true }), ["renew", "change-dns", "download", "delete"]);
 });
 
-it("offers edit but no renew for an uploaded or mTLS certificate", () => {
+it("offers change-dns only with a DNS challenge", () => {
+	const keys = certificateActionKeys({ ...dns, npmproDnsChallenge: false }, { canManage: true });
+	assert.equal(keys.includes("change-dns"), false);
+	assert.equal(keys.includes("test"), false);
+});
+
+it("offers edit but no renew and no test for an uploaded or mTLS certificate", () => {
 	for (const provider of ["other", "mtls"]) {
 		assert.deepEqual(certificateActionKeys({ provider, inUse: false }, { canManage: true }), [
-			"test",
 			"edit",
 			"download",
 			"delete",
@@ -33,9 +33,11 @@ it("never offers delete for a certificate in use", () => {
 	assert.deepEqual(certificateActionKeys({ ...le, inUse: true }, { canManage: true }), ["test", "renew", "download"]);
 });
 
-it("gives a view-only user test and download only", () => {
-	assert.deepEqual(certificateActionKeys({ ...le, npmproDnsChallenge: true }, { canManage: false }), [
-		"test",
-		"download",
-	]);
+it("gives a view-only user test and download for an HTTP certificate", () => {
+	assert.deepEqual(certificateActionKeys(le, { canManage: false }), ["test", "download"]);
+});
+
+it("gives a view-only user download only for a DNS or uploaded certificate", () => {
+	assert.deepEqual(certificateActionKeys(dns, { canManage: false }), ["download"]);
+	assert.deepEqual(certificateActionKeys({ provider: "other", inUse: false }, { canManage: false }), ["download"]);
 });
