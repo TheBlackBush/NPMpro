@@ -147,7 +147,7 @@ function BansTable({ data }) {
 	});
 
 	return (
-		<Card className="min-w-0 gap-0 py-0 md:col-span-2">
+		<Card className="min-w-0 gap-0 py-0 @2xl:col-span-2">
 			<CardHeader className="py-(--card-spacing)">
 				<CardTitle role="heading" aria-level={3}>
 					<T id="monitoring.crowdsec.newest" />
@@ -196,8 +196,9 @@ function CrowdsecData({ data }) {
 					/>
 				</NoticeAlert>
 			)}
-			<div className="flex flex-col gap-4">
-				<div className="grid gap-4 md:grid-cols-3">
+			{/* the grids follow the width of this container, not the viewport, so the sidebar layout gets fewer columns */}
+			<div className="@container flex flex-col gap-4">
+				<div className="grid gap-4 @2xl:grid-cols-3">
 					<StatCard
 						className="min-w-0"
 						label={<T id="monitoring.crowdsec.active-bans" />}
@@ -230,8 +231,8 @@ function CrowdsecData({ data }) {
 					</EmptyCard>
 				) : (
 					<>
-						<div className="grid gap-4 lg:grid-cols-3">
-							<Card className="min-w-0 lg:col-span-2">
+						<div className="grid gap-4 @4xl:grid-cols-3">
+							<Card className="min-w-0 @4xl:col-span-2">
 								<CardHeader>
 									<CardTitle role="heading" aria-level={3}>
 										<T id="monitoring.crowdsec.map" />
@@ -264,7 +265,7 @@ function CrowdsecData({ data }) {
 								}))}
 							/>
 						</div>
-						<div className="grid gap-4 md:grid-cols-2">
+						<div className="grid gap-4 @2xl:grid-cols-2">
 							<TopList
 								className="min-w-0"
 								title={<T id="monitoring.crowdsec.by-origin" />}

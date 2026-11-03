@@ -380,7 +380,7 @@ function RecentTable({ rows }) {
 	});
 
 	return (
-		<Card className="min-w-0 gap-0 py-0 md:col-span-2 xl:col-span-3">
+		<Card className="min-w-0 gap-0 py-0 @2xl:col-span-2 @6xl:col-span-3">
 			<CardHeader className="py-(--card-spacing)">
 				<CardTitle role="heading" aria-level={3}>
 					<T id="monitoring.recent" />
@@ -427,8 +427,9 @@ function TrafficData({ data, range, params }) {
 	const topCountry = data.topCountries.find((c) => isCountryCode(c.country));
 	const empty = <T id="monitoring.no-data" />;
 
+	// the grids follow the width of this container, not the viewport, so the sidebar layout gets fewer columns
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="@container flex flex-col gap-4">
 			{status.error ? (
 				<NoticeAlert>
 					<T id="monitoring.traffic.read-error" data={{ error: status.error }} />
@@ -439,7 +440,7 @@ function TrafficData({ data, range, params }) {
 					<T id="monitoring.traffic.visitors-error" data={{ error: status.visitorsError }} />
 				</NoticeAlert>
 			) : null}
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+			<div className="grid gap-4 @lg:grid-cols-2 @4xl:grid-cols-5">
 				<StatCard
 					className="min-w-0"
 					label={<T id="monitoring.stat.requests" />}
@@ -465,8 +466,8 @@ function TrafficData({ data, range, params }) {
 				/>
 				<VisitorsCard status={status} totals={totals} range={range} />
 				<StatCard
-					// the last of five cards: a full row on two columns, one of five from lg
-					className="min-w-0 sm:col-span-2 lg:col-span-1"
+					// the last of five cards: a full row on two columns, one of five on a wide container
+					className="min-w-0 @lg:col-span-2 @4xl:col-span-1"
 					label={<T id="monitoring.stat.top-country" />}
 					value={
 						topCountry ? (
@@ -500,8 +501,8 @@ function TrafficData({ data, range, params }) {
 				</CardContent>
 			</Card>
 			{geoip ? (
-				<div className="grid gap-4 lg:grid-cols-3">
-					<Card className="min-w-0 lg:col-span-2">
+				<div className="grid gap-4 @4xl:grid-cols-3">
+					<Card className="min-w-0 @4xl:col-span-2">
 						<CardHeader>
 							<CardTitle role="heading" aria-level={3}>
 								<T id="monitoring.traffic.map" />
@@ -540,7 +541,7 @@ function TrafficData({ data, range, params }) {
 					</CardContent>
 				</Card>
 			)}
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div className="grid gap-4 @2xl:grid-cols-2 @6xl:grid-cols-3">
 				<TopList
 					className="min-w-0"
 					title={<T id="monitoring.top.hosts" />}
