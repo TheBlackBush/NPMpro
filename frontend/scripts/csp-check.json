@@ -95,6 +95,9 @@
 				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
 				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
 				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "click": "[role=dialog] #forwardHttpCode" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
 				{ "press": "Escape" }
 			]
 		},

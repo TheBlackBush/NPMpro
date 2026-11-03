@@ -1,8 +1,8 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { AppSelect } from "src/components/AppSelect";
 import { Button } from "src/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
-import { NativeSelect, NativeSelectOption } from "src/components/ui/native-select";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
@@ -12,23 +12,16 @@ const TLS_OPTIONS = ["with", "without"];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
 function FilterSelect({ label, value, onChange, options }) {
+	const name = intl.formatMessage({ id: label });
 	return (
-		<NativeSelect
+		<AppSelect
 			size="sm"
-			className="min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none md:w-fit"
-			aria-label={intl.formatMessage({ id: label })}
+			className="w-auto min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none"
+			aria-label={name}
 			value={value}
-			onChange={(e) => onChange(e.target.value)}
-		>
-			<NativeSelectOption value="all">
-				{intl.formatMessage({ id: label })}: {intl.formatMessage({ id: "list.filter.all" })}
-			</NativeSelectOption>
-			{options.map((option) => (
-				<NativeSelectOption key={option.value} value={option.value}>
-					{option.label}
-				</NativeSelectOption>
-			))}
-		</NativeSelect>
+			onValueChange={onChange}
+			options={[{ value: "all", label: `${name}: ${intl.formatMessage({ id: "list.filter.all" })}` }, ...options]}
+		/>
 	);
 }
 
@@ -151,24 +144,15 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 					<label className="text-sm font-medium" htmlFor={sortSelectId}>
 						<T id="list.sort-by" />
 					</label>
-					<NativeSelect
+					<AppSelect
 						size="sm"
 						className="min-w-0 flex-1"
 						id={sortSelectId}
 						value={sortSelected}
-						onChange={(e) => sorting.onChange([{ id: e.target.value, desc: sortValue.desc }])}
-					>
-						{sortSelected === "" ? (
-							<NativeSelectOption value="" disabled>
-								{intl.formatMessage({ id: "list.sort-by" })}
-							</NativeSelectOption>
-						) : null}
-						{sortChoices.map((option) => (
-							<NativeSelectOption key={option.id} value={option.id}>
-								{option.label}
-							</NativeSelectOption>
-						))}
-					</NativeSelect>
+						placeholder={intl.formatMessage({ id: "list.sort-by" })}
+						onValueChange={(id) => sorting.onChange([{ id, desc: sortValue.desc }])}
+						options={sortChoices.map((option) => ({ value: option.id, label: option.label }))}
+					/>
 					<Button
 						variant="outline"
 						size="icon-sm"

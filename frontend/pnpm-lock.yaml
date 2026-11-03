@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@radix-ui/react-select@2.4.1': ffce7940facf86f738fc2fc8b6d350bccf8d171d3183f3d341b16d0a2439699f
   input-otp@1.5.0: 95bbcc4208284206dbf2d99222aab05a0cbcc55d9692aa70817debd5979934c3
   sonner@2.0.8: d0ddf3f66b840851d38104bb0b455ac58bd568c4262bd9b7dbbee0909b8611c3
 
@@ -3691,7 +3692,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@radix-ui/react-select@2.4.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@radix-ui/react-select@2.4.1(patch_hash=ffce7940facf86f738fc2fc8b6d350bccf8d171d3183f3d341b16d0a2439699f)(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@radix-ui/number': 1.1.3
       '@radix-ui/primitive': 1.2.0
@@ -4976,7 +4977,7 @@ snapshots:
       '@radix-ui/react-radio-group': 1.5.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@radix-ui/react-roving-focus': 1.2.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@radix-ui/react-scroll-area': 1.4.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@radix-ui/react-select': 2.4.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@radix-ui/react-select': 2.4.1(patch_hash=ffce7940facf86f738fc2fc8b6d350bccf8d171d3183f3d341b16d0a2439699f)(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@radix-ui/react-separator': 1.2.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@radix-ui/react-slider': 1.6.1(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@radix-ui/react-slot': 1.5.0(@types/react@19.3.0)(react@19.3.1)

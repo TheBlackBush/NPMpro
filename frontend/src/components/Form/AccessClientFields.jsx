@@ -1,9 +1,9 @@
 import cn from "clsx";
 import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { FormSelect } from "src/components/AppSelect";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
-import { NativeSelect } from "src/components/ui/native-select";
 import { intl, T } from "src/locale";
 import { blankRule } from "src/modules/AccessListForms";
 import { FieldMessage } from "./FieldMessage";
@@ -12,22 +12,15 @@ import { useListRecheck, useRecheckDependent } from "./HookForm";
 // allow on a success tint, deny on a warning tint
 const directiveClass = (directive) =>
 	cn(
-		"w-auto shrink-0 [&_select]:text-foreground",
-		directive === "allow" ? "[&_select]:bg-success/10" : "[&_select]:bg-warning/10",
+		"w-auto shrink-0 text-foreground",
+		directive === "allow" ? "bg-success/10 dark:bg-success/15" : "bg-warning/10 dark:bg-warning/15",
 	);
 
-function DirectiveOptions() {
-	return (
-		<>
-			<option value="allow">
-				<T id="action.allow" />
-			</option>
-			<option value="deny">
-				<T id="action.deny" />
-			</option>
-		</>
-	);
-}
+// the directive's choices (labels translated when the select renders)
+const DIRECTIVE_OPTIONS = [
+	{ value: "allow", label: <T id="action.allow" /> },
+	{ value: "deny", label: <T id="action.deny" /> },
+];
 
 // one rule before the last one: allow or deny, and an address (a new address re-checks "at least one rule")
 function RuleRow({ name, index, onRemove, onAddressChange }) {
@@ -38,13 +31,12 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 	const error = getFieldState(`${base}.address`, formState).error?.message ?? null;
 	return (
 		<div className="flex items-start gap-2">
-			<NativeSelect
+			<FormSelect
+				name={`${base}.directive`}
+				options={DIRECTIVE_OPTIONS}
 				className={directiveClass(directive)}
 				aria-label={intl.formatMessage({ id: "access-list.directive" })}
-				{...register(`${base}.directive`)}
-			>
-				<DirectiveOptions />
-			</NativeSelect>
+			/>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<Input
 					type="text"
@@ -82,13 +74,12 @@ function LastRule({ name, index }) {
 				<T id="access-list.help.rules-last" />
 			</p>
 			<div className="flex items-center gap-2">
-				<NativeSelect
+				<FormSelect
+					name={`${name}.${index}.directive`}
+					options={DIRECTIVE_OPTIONS}
 					className={directiveClass(directive)}
 					aria-label={intl.formatMessage({ id: "access-list.directive" })}
-					{...register(`${name}.${index}.directive`)}
-				>
-					<DirectiveOptions />
-				</NativeSelect>
+				/>
 				<Input
 					name="clients[last].address"
 					type="text"

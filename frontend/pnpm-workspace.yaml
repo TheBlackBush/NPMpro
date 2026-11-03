@@ -2,5 +2,6 @@ minimumReleaseAge: 0
 allowBuilds:
   '@parcel/watcher': false
 patchedDependencies:
+  '@radix-ui/react-select@2.4.1': patches/@radix-ui__react-select@2.4.1.patch
   input-otp@1.5.0: patches/input-otp@1.5.0.patch
   sonner@2.0.8: patches/sonner@2.0.8.patch

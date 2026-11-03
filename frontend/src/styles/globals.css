@@ -182,6 +182,16 @@
 	option {
 		@apply bg-popover text-popover-foreground;
 	}
+	/* NPMpro: the rules Radix Select injects as a <style> element at runtime (CSP forbids it;
+	   patches/@radix-ui__react-select@2.4.1.patch turns the injection off): its list scrolls without a scrollbar */
+	[data-radix-select-viewport] {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+		-webkit-overflow-scrolling: touch;
+	}
+	[data-radix-select-viewport]::-webkit-scrollbar {
+		display: none;
+	}
 	/* NPMpro: the rules input-otp injects as a <style> element at runtime (CSP forbids it; patches/input-otp@1.5.0.patch
 	   turns the injection off): the real input stays invisible while the slots draw the characters */
 	[data-input-otp]::selection {
