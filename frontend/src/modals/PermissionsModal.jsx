@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 import { useState } from "react";
 import { setPermissions } from "src/api/backend";
 import {
@@ -64,7 +65,8 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 				<HookForm methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
-						<AppModal.Title>
+						<AppModal.Title className="flex items-center gap-2">
+							<Users className="size-5 shrink-0" aria-hidden="true" />
 							<T id="user.set-permissions" data={{ name: data?.name }} />
 						</AppModal.Title>
 					</AppModal.Header>
@@ -78,7 +80,7 @@ const PermissionsModal = EasyModal.create(({ id, visible, remove }) => {
 								))}
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
 						<FormSubmit className="ms-auto" edit={true} isLoading={isSubmitting} disabled={isSubmitting}>
