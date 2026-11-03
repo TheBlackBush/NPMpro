@@ -1,3 +1,4 @@
+import { Progress } from "src/components/ui/progress";
 import { intl, T } from "src/locale";
 
 // the largest file a page import takes (the API refuses larger ones with 413)
@@ -41,20 +42,10 @@ export function Uploading({ progress }) {
 	const percent = Math.round(progress * 100);
 	return (
 		<div className="py-3">
-			<div className="text-muted-foreground mb-2" role="status">
+			<div className="mb-2 text-muted-foreground" role="status">
 				<T id="settings.backup.uploading" data={{ percent }} />
 			</div>
-			<div className="progress progress-sm progress-brand">
-				<div
-					className="progress-bar"
-					style={{ width: `${percent}%` }}
-					role="progressbar"
-					aria-valuenow={percent}
-					aria-valuemin={0}
-					aria-valuemax={100}
-					aria-label={intl.formatMessage({ id: "backup.import" })}
-				/>
-			</div>
+			<Progress value={percent} aria-label={intl.formatMessage({ id: "backup.import" })} />
 		</div>
 	);
 }

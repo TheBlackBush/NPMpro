@@ -66,7 +66,6 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 
 // the last rule: its address is always "all", only allow or deny can change
 function LastRule({ name, index }) {
-	const { register } = useFormContext();
 	const directive = useWatch({ name: `${name}.${index}.directive` });
 	return (
 		<div className="flex flex-col gap-2">

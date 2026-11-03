@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { contrastRatio, parseHex } from "./ColorContrast.js";
 import { NAV_ITEMS } from "./Navigation.js";
-import { colorAccent, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent } from "./SectionAccents.js";
+import {
+	colorAccent,
+	kindSection,
+	navAccent,
+	PRIMARY_ACCENT,
+	SECTION_ACCENTS,
+	sectionAccent,
+} from "./SectionAccents.js";
 import { SECTION_COLORS } from "./SectionColors.js";
 
 const CSS = readFileSync(new URL("../styles/globals.css", import.meta.url), "utf8");
@@ -81,4 +88,18 @@ it("maps the old Tabler section colours to the accents", () => {
 		else assert.equal(colorAccent(SECTION_COLORS[key]), sectionAccent(key), key);
 	}
 	for (const color of ["primary", "teal", "nope", undefined]) assert.equal(colorAccent(color), PRIMARY_ACCENT);
+});
+
+it("maps every export kind to its section", () => {
+	assert.equal(kindSection("proxy_hosts"), "proxyHosts");
+	assert.equal(kindSection("redirection_hosts"), "redirectionHosts");
+	assert.equal(kindSection("dead_hosts"), "deadHosts");
+	assert.equal(kindSection("streams"), "streams");
+	assert.equal(kindSection("access_lists"), "accessLists");
+	assert.equal(kindSection("certificates"), "certificates");
+	assert.equal(kindSection("dns_credentials"), "dnsCredentials");
+});
+
+it("gives no section for an unknown kind", () => {
+	assert.equal(kindSection("users"), undefined);
 });

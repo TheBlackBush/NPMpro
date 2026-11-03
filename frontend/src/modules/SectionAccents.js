@@ -123,4 +123,20 @@ function colorAccent(color) {
 	return sectionAccent(section);
 }
 
-export { colorAccent, NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent };
+// the export and import kinds of the list pages (ImportExportButtons) and their sections
+const KIND_SECTIONS = Object.freeze({
+	proxy_hosts: "proxyHosts",
+	redirection_hosts: "redirectionHosts",
+	dead_hosts: "deadHosts",
+	streams: "streams",
+	access_lists: "accessLists",
+	certificates: "certificates",
+	dns_credentials: "dnsCredentials",
+});
+
+/** The section of an export kind (proxy_hosts -> proxyHosts); undefined for an unknown kind */
+function kindSection(kind) {
+	return KIND_SECTIONS[kind];
+}
+
+export { colorAccent, kindSection, NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent };

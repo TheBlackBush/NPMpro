@@ -43,30 +43,28 @@ function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphra
 				disabled={disabled}
 			/>
 			{secretsOn ? (
-				<div className="row">
-					<div className="col-12 col-md-6">
-						<PasswordField
-							name="passphrase"
-							id={`${baseId}-passphrase`}
-							label={<T id="settings.backup.passphrase" />}
-							hint={passphraseHintId ? <T id={passphraseHintId} /> : undefined}
-							required
-							autoComplete="new-password"
-							registerOptions={{ onChange: recheckRepeat }}
-						/>
-					</div>
-					<div className="col-12 col-md-6">
-						<PasswordField
-							name="passphraseRepeat"
-							id={`${baseId}-passphrase-repeat`}
-							label={<T id="settings.backup.passphrase.repeat" />}
-							required
-							autoComplete="new-password"
-						/>
-					</div>
+				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+					<PasswordField
+						className="mb-0"
+						name="passphrase"
+						id={`${baseId}-passphrase`}
+						label={<T id="settings.backup.passphrase" />}
+						hint={passphraseHintId ? <T id={passphraseHintId} /> : undefined}
+						required
+						autoComplete="new-password"
+						registerOptions={{ onChange: recheckRepeat }}
+					/>
+					<PasswordField
+						className="mb-0"
+						name="passphraseRepeat"
+						id={`${baseId}-passphrase-repeat`}
+						label={<T id="settings.backup.passphrase.repeat" />}
+						required
+						autoComplete="new-password"
+					/>
 				</div>
 			) : (
-				<p className="text-muted-foreground small mb-3">
+				<p className="mb-3 text-sm text-muted-foreground">
 					<T id={offNoteId} />
 				</p>
 			)}

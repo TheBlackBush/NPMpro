@@ -38,8 +38,18 @@ describe("optionsFromElements", () => {
 			{ type: "div", props: { value: "x" } },
 		];
 		assert.deepEqual(optionsFromElements(elements), [
-			{ value: "1", label: "PROXY v1" },
-			{ value: "", label: undefined },
+			{ value: "1", label: "PROXY v1", disabled: false },
+			{ value: "", label: undefined, disabled: false },
+		]);
+	});
+	it("keeps an option's disabled flag", () => {
+		const elements = [
+			{ type: "option", props: { value: 1, children: "v1", disabled: true } },
+			{ type: "option", props: { value: 2, children: "v2" } },
+		];
+		assert.deepEqual(optionsFromElements(elements), [
+			{ value: "1", label: "v1", disabled: true },
+			{ value: "2", label: "v2", disabled: false },
 		]);
 	});
 });

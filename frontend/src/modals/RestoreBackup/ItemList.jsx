@@ -12,13 +12,13 @@ function ItemList({ titleId, items, className = "mb-3" }) {
 	if (items.length === 0) return null;
 	return (
 		<div className={className}>
-			<div className="fw-bold mb-1">
+			<div className="mb-1 text-sm font-bold">
 				<T id={titleId} data={{ count: items.length }} />
 			</div>
-			{/* no utility gives a capped height: a long list scrolls instead of stretching the dialog */}
-			<ul className="mb-0 overflow-auto" style={{ maxHeight: "12em" }}>
+			{/* a long list scrolls instead of stretching the dialog */}
+			<ul className="mb-0 max-h-64 list-disc overflow-auto rounded-lg border py-2 pr-3 pl-8 text-sm">
 				{items.map((item) => (
-					<li key={item.key} className="text-break">
+					<li key={item.key} className="break-words">
 						{item.text}
 					</li>
 				))}
