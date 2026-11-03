@@ -366,6 +366,8 @@ function MultipleCombobox({
 	createText,
 	isValidNew,
 	normalize,
+	commitRef,
+	onQueryChange,
 	onBlur,
 	aria,
 	className,
@@ -393,8 +395,12 @@ function MultipleCombobox({
 	const hasContent = loading || list.keys.length > 0 || query.trim() !== "";
 	const shown = open && hasContent && !locked;
 
-	const typed = (text) => {
+	const changeQuery = (text) => {
 		setQuery(text);
+		onQueryChange?.(text);
+	};
+	const typed = (text) => {
+		changeQuery(text);
 		setActive(listFor({ ...listArgs, query: text }).keys[0] ?? "");
 		if (!locked) setOpen(true);
 	};
@@ -407,11 +413,17 @@ function MultipleCombobox({
 		if (next.length !== values.length) onChange(next);
 		typed(rejected.join(" "));
 		if (rejected.length === 0) setOpen(false);
+		return rejected;
 	};
+	// the form commits typed text before a save (HookForm's usePendingEntry): the refused parts, none without text
+	useLayoutEffect(() => {
+		if (!commitRef) return;
+		commitRef.current = () => (creatable && !locked && query.trim() !== "" ? commit(query) : []);
+	});
 	const pick = (option) => {
 		const picked = getOptionValue(option);
 		if (!values.includes(picked)) onChange([...values, picked]);
-		setQuery("");
+		changeQuery("");
 		setOpen(false);
 		focusRef.current?.focus();
 	};
@@ -588,6 +600,9 @@ function MultipleCombobox({
  * @param {string|Function} [props.createText]  or (query) => text, "Add "{value}"" by default
  * @param {Function} [props.isValidNew]      (query, values) => whether a typed value may be added
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
+ * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
+ *                                           adds the typed text as values (as Enter does) for a save
+ * @param {Function} [props.onQueryChange]   multiple: (text) after the typed text changed
  * @param {boolean}  [props.invalid]
  * @param {string}   [props.describedBy]
  * @param {Function} [props.onBlur]
@@ -616,6 +631,8 @@ export function Combobox({
 	createText,
 	isValidNew,
 	normalize = defaultNormalize,
+	commitRef,
+	onQueryChange,
 	invalid,
 	describedBy,
 	onBlur,
@@ -664,7 +681,13 @@ export function Combobox({
 	return (
 		<>
 			{multiple ? (
-				<MultipleCombobox {...shared} value={value} normalize={normalize} />
+				<MultipleCombobox
+					{...shared}
+					value={value}
+					normalize={normalize}
+					commitRef={commitRef}
+					onQueryChange={onQueryChange}
+				/>
 			) : (
 				<SingleCombobox {...shared} value={value} clearable={clearable} searchable={searchable} />
 			)}

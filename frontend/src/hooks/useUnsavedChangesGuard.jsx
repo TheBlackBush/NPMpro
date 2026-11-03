@@ -1,15 +1,18 @@
 import { useEffect, useRef } from "react";
 import { useFormState } from "react-hook-form";
+import { usePendingEntries } from "src/components/Form/HookForm";
 import { intl } from "src/locale";
 
 /**
- * Place inside a HookForm, keeps dirtyRef in sync with the form's isDirty
+ * Place inside a HookForm, keeps dirtyRef in sync with the form's isDirty; typed text that is not a value yet (a
+ * domain name without Enter) counts as a change too
  */
 function DirtyTracker({ dirtyRef }) {
 	const { isDirty } = useFormState();
+	const pending = usePendingEntries().size > 0;
 	useEffect(() => {
-		dirtyRef.current = isDirty;
-	}, [isDirty, dirtyRef]);
+		dirtyRef.current = isDirty || pending;
+	}, [isDirty, pending, dirtyRef]);
 	return null;
 }
 

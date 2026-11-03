@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	applyChanges,
+	commitPendingEntries,
 	errorPaths,
 	fieldPaths,
 	fieldsValidate,
@@ -159,4 +160,24 @@ it("keeps the edited fields when new values arrive, unless the form takes every 
 	assert.deepEqual(resetOptionsOf(true), { keepDirtyValues: true });
 	// a save that was tried stays tried, so messages follow each change after the refetch of the saved values
 	assert.deepEqual(resetOptionsOf(false), { keepIsSubmitted: true, keepSubmitCount: true });
+});
+
+it("commits every typed entry before a save and refuses it on the first refused text", () => {
+	const committed = [];
+	const entry = (name, rejected) => ({
+		name,
+		commit: () => {
+			committed.push(name);
+			return rejected;
+		},
+		messageOf: (parts) => `Invalid: ${parts.join(", ")}`,
+	});
+	assert.equal(commitPendingEntries([entry("a", []), entry("b", undefined)]), null);
+	assert.deepEqual(commitPendingEntries([entry("c", []), entry("d", ["x/y", "z"]), entry("e", ["w"])]), {
+		name: "d",
+		message: "Invalid: x/y, z",
+	});
+	// every entry commits its valid part, also after a refused one
+	assert.deepEqual(committed, ["a", "b", "c", "d", "e"]);
+	assert.equal(commitPendingEntries([]), null);
 });

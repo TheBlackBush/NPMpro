@@ -229,3 +229,20 @@ export function applyChanges(setValue, changes, prefix = "") {
 export function resetOptionsOf(keepEdits) {
 	return keepEdits ? { keepDirtyValues: true } : { keepIsSubmitted: true, keepSubmitCount: true };
 }
+
+/**
+ * Commits the text typed into fields but not yet taken as a value (a domain name typed without Enter), before a save.
+ * Every entry commits (its valid parts become values); the first one with refused text refuses the save.
+ *
+ * @param   {Iterable<{ name: string, commit: Function, messageOf: Function }>} entries
+ *          commit() => the refused parts (strings), messageOf(refused) => the field's message
+ * @returns {{ name: string, message: string }|null}  null when every entry was taken
+ */
+export function commitPendingEntries(entries) {
+	let refused = null;
+	for (const { name, commit, messageOf } of entries) {
+		const rejected = commit() ?? [];
+		if (rejected.length > 0 && !refused) refused = { name, message: messageOf(rejected) };
+	}
+	return refused;
+}
