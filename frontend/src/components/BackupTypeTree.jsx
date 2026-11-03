@@ -63,7 +63,7 @@ const typeCount = (typeId, counts, itemCounts) => {
 
 function TypeCount({ typeId, counts, itemCounts }) {
 	const text = typeCount(typeId, counts, itemCounts);
-	return text === undefined ? null : <span className="text-secondary ms-1">{text}</span>;
+	return text === undefined ? null : <span className="text-muted-foreground ms-1">{text}</span>;
 }
 
 // the list button of a type whose items can be chosen one by one, with the open picker under it: an icon button
@@ -139,7 +139,7 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 				aria-checked={state === "some" ? "mixed" : undefined}
 				aria-describedby={describedBy}
 			/>
-			{Icon ? <Icon className="icon text-secondary" aria-hidden="true" /> : null}
+			{Icon ? <Icon className="icon text-muted-foreground" aria-hidden="true" /> : null}
 			<span id={labelId} className="fw-bold">
 				<T id={category.labelId ?? `settings.backup.category.${category.id}`} />
 			</span>

@@ -82,7 +82,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 					<BreakableHost value={item.label} />
 				</div>
 				{item.neededBy?.length ? (
-					<div className="small text-secondary text-break">
+					<div className="small text-muted-foreground text-break">
 						<T
 							id="settings.backup.merge.needed-by"
 							data={{ names: item.neededBy.map(labelOf).join(", ") }}
@@ -97,7 +97,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 							</div>
 						) : null}
 						{target ? (
-							<div className="mt-1 small text-secondary text-break">
+							<div className="mt-1 small text-muted-foreground text-break">
 								<BreakableHost value={target} />
 							</div>
 						) : null}
@@ -107,7 +107,7 @@ function DecisionRow({ item, choice, onChoice, labelOf, disabled }) {
 			<td className={PHONE_HIDDEN_CELL}>
 				{item.reason ? <ReasonBadge reason={item.reason} className="me-1" /> : null}
 				{target ? (
-					<span className="text-secondary small text-break">
+					<span className="text-muted-foreground small text-break">
 						<BreakableHost value={target} />
 					</span>
 				) : null}
@@ -196,16 +196,16 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 							<IconChevronDown className="icon" aria-hidden="true" />
 						)}
 					</button>
-					<span className="small fw-bold text-uppercase text-secondary">{name}</span>
+					<span className="small fw-bold text-uppercase text-muted-foreground">{name}</span>
 					<span className="badge bg-secondary-lt">{group.items.length}</span>
-					<span className="small text-secondary d-none d-sm-inline">{summary}</span>
+					<span className="small text-muted-foreground d-none d-sm-inline">{summary}</span>
 					{options.length > 1 ? (
 						// below sm "Set all" takes its own line
 						<div className="w-100 d-sm-none" />
 					) : null}
 					{options.length > 1 ? (
 						<div className="d-flex align-items-center gap-2 ms-sm-auto">
-							<span className="small text-secondary" aria-hidden="true">
+							<span className="small text-muted-foreground" aria-hidden="true">
 								<T id="settings.backup.merge.set-all" />
 							</span>
 							<fieldset
@@ -300,7 +300,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 				</h4>
 				<span className="badge bg-secondary-lt">{items.length}</span>
 			</div>
-			<p className="text-secondary small mb-2">
+			<p className="text-muted-foreground small mb-2">
 				<T id="settings.backup.merge.decisions-hint" />
 			</p>
 			{tools ? (
@@ -412,7 +412,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 						{groups.length === 0 ? (
 							<tbody>
 								<tr>
-									<td colSpan={3} className="text-secondary text-center py-3">
+									<td colSpan={3} className="text-muted-foreground text-center py-3">
 										<T id="list.no-match" />
 									</td>
 								</tr>
@@ -421,7 +421,7 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 					</table>
 				</div>
 			</div>
-			<div className="small text-secondary mt-2">
+			<div className="small text-muted-foreground mt-2">
 				<T id="settings.backup.merge.summary" data={{ shown: shown.length, total: items.length, changed }} />
 			</div>
 		</div>

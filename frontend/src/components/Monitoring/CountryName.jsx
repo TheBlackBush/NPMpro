@@ -21,7 +21,7 @@ function CountryName({ code }) {
 			{isCountryCode(code) ? (
 				<Flag countryCode={code.toUpperCase()} className="flex-shrink-0" />
 			) : (
-				<IconWorld className="icon text-secondary flex-shrink-0" width={20} aria-hidden="true" />
+				<IconWorld className="icon text-muted-foreground flex-shrink-0" width={20} aria-hidden="true" />
 			)}
 			<span className="text-truncate">{countryLabel(code)}</span>
 		</span>

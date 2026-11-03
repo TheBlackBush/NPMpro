@@ -69,7 +69,7 @@ function CopyProgress({ tables }) {
 				<div className="progress-bar" style={{ width: `${progress.percent}%` }} />
 			</div>
 			{progress.current ? (
-				<div className="small text-secondary mt-1 text-break">
+				<div className="small text-muted-foreground mt-1 text-break">
 					<T
 						id="settings.database.move.table-progress"
 						data={{
@@ -98,7 +98,7 @@ function StepList({ move }) {
 							<StepMarker state={state} />
 							<span
 								className={cn(
-									state === "pending" && "text-secondary",
+									state === "pending" && "text-muted-foreground",
 									state === "active" && "fw-medium",
 								)}
 							>
@@ -271,7 +271,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	if (view === "confirm") {
 		body = (
 			<form id={`${baseId}-form`} onSubmit={onStart} noValidate>
-				<p className="text-secondary">
+				<p className="text-muted-foreground">
 					<Summary status={status} target={target} />
 				</p>
 				<FormField
@@ -337,12 +337,12 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 					{active ? stepLabel(active) : ""}
 				</div>
 				{connectionLost ? (
-					<div className="small text-secondary mb-3" role="status">
+					<div className="small text-muted-foreground mb-3" role="status">
 						<T id="settings.database.move.connection-lost" />
 					</div>
 				) : null}
 				{move?.backup && view !== "starting" ? (
-					<div className="small text-secondary text-break mb-3">
+					<div className="small text-muted-foreground text-break mb-3">
 						<T id="settings.database.move.backup-name" data={{ name: move.backup }} />
 					</div>
 				) : null}
@@ -355,7 +355,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 								<div className="fw-medium">
 									<T id="settings.database.move.restarting" />
 								</div>
-								<div className="text-secondary">
+								<div className="text-muted-foreground">
 									<T id="settings.database.move.sign-in" />
 								</div>
 							</div>

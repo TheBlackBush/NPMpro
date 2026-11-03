@@ -2,6 +2,7 @@ export * from "./AppModal";
 export * from "./BackupTypeTree";
 export * from "./BrandMark";
 export * from "./Button";
+export * from "./Combobox";
 export * from "./EmptyData";
 export * from "./ErrorAlert";
 export * from "./ErrorNotFound";

@@ -1,60 +1,232 @@
-import { createContext, useContext, useEffect, useId, useMemo, useState } from "react";
-import Modal from "react-bootstrap/Modal";
+import { XIcon } from "lucide-react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { Button } from "src/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
+import { usePreferences } from "src/context/PreferencesContext";
+import { useIsMobile } from "src/hooks/use-mobile";
+import { cn } from "src/lib/utils";
+import { intl } from "src/locale";
+import { useWindowFocusReturn } from "src/modules/easyModal";
+import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
 const HideContext = createContext(undefined);
 // true between the window's content box and its body: a <form> there must take part in the content's flex column
 const FrameContext = createContext(false);
-const TitleContext = createContext({ id: undefined, setMounted: () => {} });
+const TitleContext = createContext({ setMounted: () => {} });
+// the window's primitive ("dialog" or "sheet"), which decides the element that renders the title
+const ModeContext = createContext("dialog");
 
-// Windows open at the top, so their top edge stays put when a tab, a step, a choice or a result changes their height.
-// A small dialog that never changes size may pass `centered` (it is still full screen on phones unless it also passes
-// `fullscreen={false}`). The delete and disable confirmation is not an AppModal: it is a plain react-bootstrap Modal and
-// stays a small centered dialog on phones. Below the md breakpoint (phones) a
-// window fills the screen (Bootstrap's modal-fullscreen-md-down, UX-33); `fullscreen` sets another breakpoint, or
-// false for a window that stays a dialog.
-function AppModal({ children, centered = false, fullscreen = "md-down", ...props }) {
-	const id = useId();
+// A target the window must not treat as "outside": toasts and other windows stacked on top of it
+const STACKED = '[data-sonner-toaster], [role="dialog"]';
+
+// the controls a window may start in: the first one in its body that can take the focus and shows (not on a hidden
+// tab, not in a disabled fieldset)
+const FIELD =
+	'input:not([type="hidden"]), select, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])';
+function firstField(content) {
+	const body = content.querySelector("[data-window-body]");
+	if (!body) return null;
+	for (const element of body.querySelectorAll(FIELD)) {
+		if (!element.matches(":disabled") && element.checkVisibility()) return element;
+	}
+	return null;
+}
+
+// Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
+// put when a tab, a step, a choice or a result changes their height. Small windows ("sm") are always dialogs, phones
+// always get a full screen window (WindowFrame.windowMode). The primitive (Dialog or Sheet) never depends on the
+// screen width (WindowFrame.windowPrimitive): a phone gets the preferred primitive full screen, so crossing the phone
+// breakpoint while a window is open only changes classes and keeps the form and its edits.
+// Props follow the old react-bootstrap window: show, onHide (undefined: the window cannot close, it is saving),
+// size ("sm", "lg", "xl"), backdrop ("static" ignores clicks outside), keyboard (false ignores Escape).
+// `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls between a fixed header and
+// footer, windows open at the top, and phones always get a full screen window.
+function AppModal({
+	children,
+	show,
+	onHide,
+	size,
+	backdrop,
+	keyboard = true,
+	scrollable: _scrollable,
+	centered: _centered,
+	fullscreen: _fullscreen,
+	className,
+	...props
+}) {
 	const [hasTitle, setHasTitle] = useState(false);
-	const value = useMemo(() => ({ id, setMounted: setHasTitle }), [id]);
+	const value = useMemo(() => ({ setMounted: setHasTitle }), []);
+	const { editorStyle } = usePreferences();
+	const isPhone = useIsMobile();
+	const mode = windowMode({ editorStyle, size, isPhone });
+	const primitive = windowPrimitive({ editorStyle, size });
+	const giveFocusBack = useWindowFocusReturn();
+
+	const request = (reason) => canClose({ onHide, backdrop, reason });
+	const guards = {
+		// Escape, a click outside, or focus that moved to a toast or a stacked window must not close a window that cannot
+		onEscapeKeyDown: (event) => {
+			if (keyboard === false || !request("escape")) event.preventDefault();
+		},
+		onPointerDownOutside: (event) => {
+			const target = event.detail.originalEvent.target;
+			if (!request("outside") || target?.closest?.(STACKED)) event.preventDefault();
+		},
+		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
+		onFocusOutside: (event) => event.preventDefault(),
+		// Radix would focus the first tabbable element, the header's X: the first field of the body instead, or the
+		// window itself (it has tabIndex -1) when the body has none yet (loading) or on a phone, where a focused text
+		// field would open the on-screen keyboard over the window
+		onOpenAutoFocus: (event) => {
+			event.preventDefault();
+			const content = event.currentTarget;
+			const target = isPhone ? null : firstField(content);
+			(target ?? content).focus({ preventScroll: true });
+		},
+		// Radix would focus what was focused when the window mounted (the page body on Safari): the opener instead
+		onCloseAutoFocus: (event) => {
+			event.preventDefault();
+			giveFocusBack?.();
+		},
+		"aria-describedby": undefined,
+		...props,
+	};
+	// Radix reports Escape, outside clicks and the close button as one change; the first two were filtered above
+	const onOpenChange = (open) => {
+		if (!open && request("close-button")) onHide?.();
+	};
+
+	// a window without an AppModal.Title yet (loading) still needs a name for Radix and screen readers
+	const fallbackTitle = hasTitle ? null : (
+		<span className="sr-only">
+			{primitive === "sheet" ? (
+				<SheetTitle>{intl.formatMessage({ id: "loading" })}</SheetTitle>
+			) : (
+				<DialogTitle>{intl.formatMessage({ id: "loading" })}</DialogTitle>
+			)}
+		</span>
+	);
+	const frame = "flex min-h-0 flex-col gap-0 p-0";
 	return (
 		<TitleContext.Provider value={value}>
-			<HideContext.Provider value={props.onHide}>
+			<HideContext.Provider value={onHide}>
 				<FrameContext.Provider value={true}>
-					<Modal
-						centered={centered}
-						fullscreen={fullscreen}
-						aria-labelledby={hasTitle ? id : undefined}
-						{...props}
-					>
-						{children}
-					</Modal>
+					<ModeContext.Provider value={primitive}>
+						{primitive === "sheet" ? (
+							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
+								<SheetContent
+									side="right"
+									showCloseButton={false}
+									className={cn(
+										frame,
+										"w-full gap-0",
+										sheetWidthClass(mode === "fullscreen" ? "full" : size),
+										className,
+									)}
+									{...guards}
+								>
+									{fallbackTitle}
+									{children}
+								</SheetContent>
+							</Sheet>
+						) : (
+							<Dialog open={Boolean(show)} onOpenChange={onOpenChange}>
+								<DialogContent
+									showCloseButton={false}
+									className={cn(
+										frame,
+										"top-4 max-h-[calc(100dvh-2rem)] -translate-y-0 overflow-hidden",
+										mode === "fullscreen"
+											? "top-0 left-0 h-dvh max-h-none w-full max-w-none translate-x-0 rounded-none sm:max-w-none"
+											: dialogWidthClass(size),
+										className,
+									)}
+									{...guards}
+								>
+									{fallbackTitle}
+									{children}
+								</DialogContent>
+							</Dialog>
+						)}
+					</ModeContext.Provider>
 				</FrameContext.Provider>
 			</HideContext.Provider>
 		</TitleContext.Provider>
 	);
 }
 
-// The window's title as a heading (h2) in Tabler's modal-title size (16px), not react-bootstrap's div styled as h4
-function AppModalTitle({ children, ...props }) {
-	const { id, setMounted } = useContext(TitleContext);
+// Title row; with closeButton a translated X that closes through the window's onHide
+function AppModalHeader({ children, closeButton = false, className, ...props }) {
+	const onHide = useContext(HideContext);
+	return (
+		<div
+			data-slot="window-header"
+			className={cn("flex shrink-0 items-center gap-2 border-b px-4 py-3", className)}
+			{...props}
+		>
+			<div className="min-w-0 flex-1">{children}</div>
+			{closeButton && onHide ? (
+				<DialogClose asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-sm"
+						aria-label={intl.formatMessage({ id: "aria.close" })}
+					>
+						<XIcon />
+					</Button>
+				</DialogClose>
+			) : null}
+		</div>
+	);
+}
+
+// The window's title as a heading (Radix renders an h2), labelling the window
+function AppModalTitle({ children, className, ...props }) {
+	const { setMounted } = useContext(TitleContext);
+	const mode = useContext(ModeContext);
 	useEffect(() => {
 		setMounted(true);
 		return () => setMounted(false);
 	}, [setMounted]);
+	const Title = mode === "sheet" ? SheetTitle : DialogTitle;
 	return (
-		<Modal.Title as="h2" id={id} {...props}>
+		<Title className={cn("text-base font-medium leading-snug", className)} {...props}>
 			{children}
-		</Modal.Title>
+		</Title>
 	);
 }
 
-// The body ends the frame: a form inside it (not around header, body and footer) needs no flex classes
-function AppModalBody({ children, ...props }) {
+// The body ends the frame: a form inside it (not around header, body and footer) needs no flex classes. It scrolls
+// between the fixed header and footer.
+function AppModalBody({ children, className, ...props }) {
 	return (
-		<Modal.Body {...props}>
+		<div
+			data-slot="window-body"
+			data-window-body=""
+			className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-4", className)}
+			{...props}
+		>
 			<FrameContext.Provider value={false}>{children}</FrameContext.Provider>
-		</Modal.Body>
+		</div>
+	);
+}
+
+// Fixed at the bottom, buttons on the right
+function AppModalFooter({ children, className, ...props }) {
+	return (
+		<div
+			data-slot="window-footer"
+			className={cn(
+				"flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/50 px-4 py-3",
+				className,
+			)}
+			{...props}
+		>
+			{children}
+		</div>
 	);
 }
 
@@ -65,9 +237,9 @@ const useModalFrame = () => useContext(FrameContext);
 
 const useModalHide = () => useContext(HideContext);
 
-AppModal.Header = Modal.Header;
+AppModal.Header = AppModalHeader;
 AppModal.Title = AppModalTitle;
 AppModal.Body = AppModalBody;
-AppModal.Footer = Modal.Footer;
+AppModal.Footer = AppModalFooter;
 
 export { AppModal, useModalFrame, useModalHide };

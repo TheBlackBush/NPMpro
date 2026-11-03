@@ -66,7 +66,7 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 	);
 
 	return (
-		<AppModal show={visible} onHide={remove}>
+		<AppModal size="sm" show={visible} onHide={remove}>
 			<AppModal.Header closeButton>
 				<AppModal.Title>
 					<T id="certificates.http.test-results" />

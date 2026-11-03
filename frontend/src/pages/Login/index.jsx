@@ -53,7 +53,7 @@ function TotpCodeForm({ onSubmit, error }) {
 			<h2 className="h2 text-center mb-4">
 				<T id="login.totp-title" />
 			</h2>
-			<p className="text-secondary text-center mb-4">
+			<p className="text-muted-foreground text-center mb-4">
 				<T id={useBackup ? "login.totp-backup-description" : "login.totp-description"} />
 			</p>
 			{error && <ErrorAlert error={error} />}

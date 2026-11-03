@@ -224,7 +224,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						disabled={isSubmitting}
 					/>
 				) : (
-					<p className="text-secondary small mb-3">
+					<p className="text-muted-foreground small mb-3">
 						<T id="backup.export.no-secrets-note" />
 					</p>
 				)}
@@ -237,7 +237,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 				<div className="ms-auto d-flex flex-wrap align-items-center justify-content-end gap-2">
 					<FormErrorNote id={noteId} className="me-2 text-end" />
 					{showReason ? (
-						<span id={reasonId} className="text-secondary small me-2 text-end">
+						<span id={reasonId} className="text-muted-foreground small me-2 text-end">
 							<T id={reason} />
 						</span>
 					) : null}

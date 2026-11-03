@@ -30,7 +30,7 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 			<LeaveGuard />
 			<FormErrorNote id={NOTE_ID} labels={labels} className="me-3 text-end" />
 			{showReason ? (
-				<span id={REASON_ID} className="text-secondary small me-3 text-end">
+				<span id={REASON_ID} className="text-muted-foreground small me-3 text-end">
 					<T id={reasonId} />
 				</span>
 			) : null}

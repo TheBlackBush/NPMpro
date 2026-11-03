@@ -66,7 +66,7 @@ function SecretsFields({ offNoteId, passphraseHintId = "settings.backup.passphra
 					</div>
 				</div>
 			) : (
-				<p className="text-secondary small mb-3">
+				<p className="text-muted-foreground small mb-3">
 					<T id={offNoteId} />
 				</p>
 			)}

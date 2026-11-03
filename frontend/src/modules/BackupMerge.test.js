@@ -363,11 +363,13 @@ describe("BackupMerge type name by count", () => {
 
 describe("BackupMerge item picker, outside", () => {
 	// an element: its tag, classes and the elements it sits in
-	const el = (tag, classes = [], parent = null) => {
+	const el = (tag, classes = [], parent = null, attrs = {}) => {
 		const node = { tagName: tag.toUpperCase(), classes, parent };
 		node.matches = (selector) =>
 			selector.split(",").some((part) => {
 				const sel = part.trim();
+				const attr = sel.match(/^\[([\w-]+)="(.*)"\]$/u);
+				if (attr) return attrs[attr[1]] === attr[2];
 				return sel.startsWith(".") ? classes.includes(sel.slice(1)) : sel.toUpperCase() === node.tagName;
 			});
 		node.contains = (inner) => {
@@ -378,9 +380,9 @@ describe("BackupMerge item picker, outside", () => {
 	};
 	const html = el("html");
 	const body = el("body", [], html);
-	const modal = el("div", ["modal"], body);
-	const dialog = el("div", ["modal-dialog"], modal);
-	const content = el("div", ["modal-content"], dialog);
+	const modal = el("div", [], body, { role: "dialog" });
+	const dialog = el("div", [], modal, { "data-slot": "dialog-content" });
+	const content = el("div", [], dialog);
 	const opener = el("button", ["btn"], content);
 	const picker = el("div", ["dropdown-menu"], content);
 	const search = el("input", [], picker);

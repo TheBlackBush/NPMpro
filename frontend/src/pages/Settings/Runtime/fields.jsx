@@ -161,7 +161,7 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", clas
 			label={<FieldLabel name={name}>{label}</FieldLabel>}
 			hint={<FieldHint name={name} hint={hint} />}
 			as={rows ? "textarea" : "input"}
-			controlClassName={rows ? "font-monospace" : undefined}
+			controlClassName={rows ? "font-mono" : undefined}
 			disabled={isLocked(name)}
 			rows={rows}
 			type={rows ? undefined : type}

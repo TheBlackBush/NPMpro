@@ -57,7 +57,7 @@ function Scenario({ name }) {
 	if (slash <= 0) return <span>{name}</span>;
 	return (
 		<span>
-			<span className="text-secondary">{name.slice(0, slash + 1)}</span>
+			<span className="text-muted-foreground">{name.slice(0, slash + 1)}</span>
 			{name.slice(slash + 1)}
 		</span>
 	);
@@ -255,7 +255,7 @@ function CrowdsecData({ data }) {
 										label={intl.formatMessage({ id: "monitoring.crowdsec.map" })}
 									/>
 									{data.total > 0 && data.countries.length === 0 ? (
-										<p className="text-secondary small mt-3 mb-0">
+										<p className="text-muted-foreground small mt-3 mb-0">
 											<T id="monitoring.crowdsec.no-countries" />
 										</p>
 									) : null}

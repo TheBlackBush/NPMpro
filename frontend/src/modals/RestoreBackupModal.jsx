@@ -97,7 +97,7 @@ function Running() {
 	const elapsed = useElapsed(true);
 	return (
 		<div className="py-3">
-			<div className="text-secondary mb-2">
+			<div className="text-muted-foreground mb-2">
 				<span role="status">
 					<T id="settings.backup.restore.running" />
 				</span>
@@ -112,7 +112,7 @@ function Running() {
 			>
 				<div className="progress-bar progress-bar-indeterminate" />
 			</div>
-			<p className="text-secondary small mt-3 mb-0">
+			<p className="text-muted-foreground small mt-3 mb-0">
 				<T id="settings.backup.restore.running.hint" />
 			</p>
 		</div>
@@ -451,7 +451,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 					if (!passphraseShort) void open(passphrase);
 				}}
 			>
-				<p className="text-secondary">
+				<p className="text-muted-foreground">
 					<T id="settings.backup.restore.passphrase.hint" />
 				</p>
 				<FormField id={`${baseId}-passphrase`} label={<T id="settings.backup.passphrase" />} required>
@@ -476,7 +476,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				</Button>
 				<div className="ms-auto d-flex align-items-center">
 					{passphraseShort ? (
-						<span id={reasonId} className="text-secondary small me-3 text-end">
+						<span id={reasonId} className="text-muted-foreground small me-3 text-end">
 							<T id="settings.backup.passphrase.too-short" />
 						</span>
 					) : null}
@@ -495,7 +495,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	} else if (step === "opening") {
 		body = (
 			<div className="py-3">
-				<p className="text-secondary text-center" role="status">
+				<p className="text-muted-foreground text-center" role="status">
 					<T id="settings.backup.restore.opening" />
 				</p>
 				<Loading noLogo />
@@ -517,7 +517,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 		const createdBy = manifest.createdBy?.name || manifest.createdBy?.email || "?";
 		body = (
 			<>
-				<p className="text-secondary">
+				<p className="text-muted-foreground">
 					<T
 						id="settings.backup.restore.made-with"
 						data={{
@@ -583,7 +583,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				</Button>
 				<div className="ms-auto d-flex align-items-center">
 					{restoreReason ? (
-						<span id={reasonId} className="text-secondary small me-3 text-end">
+						<span id={reasonId} className="text-muted-foreground small me-3 text-end">
 							<T id={restoreReason} data={emptyType ? { type: typeLabel(emptyType) } : undefined} />
 						</span>
 					) : null}
@@ -636,7 +636,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
-				<div className="text-secondary small text-break mb-3">{importing ? file.name : entry.name}</div>
+				<div className="text-muted-foreground small text-break mb-3">{importing ? file.name : entry.name}</div>
 				{body}
 			</AppModal.Body>
 			<AppModal.Footer>{footer}</AppModal.Footer>

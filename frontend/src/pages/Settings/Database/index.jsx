@@ -53,7 +53,7 @@ export default function Database() {
 	return (
 		<div className="card-body">
 			<SettingsHeading titleId="settings.database" className="mb-2" />
-			<p className="text-secondary mb-4">
+			<p className="text-muted-foreground mb-4">
 				<T id="settings.database.intro" />
 			</p>
 			{isPending ? <Loading noLogo /> : null}

@@ -35,7 +35,7 @@ function IniInput({ provider, credential }) {
 			label={<T id="dns-credentials.ini" />}
 			required={!credential?.iniSet}
 			hint={credential?.iniSet ? <T id="dns-credentials.saved-keep" /> : undefined}
-			controlClassName="font-monospace"
+			controlClassName="font-mono"
 			spellCheck={false}
 			rows={6}
 			placeholder={provider.credentials}

@@ -8,7 +8,7 @@ export default function Backup() {
 	return (
 		<div className="card-body">
 			<SettingsHeading titleId="settings.backup" className="mb-2" />
-			<p className="text-secondary mb-4">
+			<p className="text-muted-foreground mb-4">
 				<T id="settings.backup.intro" />
 			</p>
 			<CreateCard />

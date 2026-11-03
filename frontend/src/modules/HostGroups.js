@@ -19,7 +19,7 @@ export function groupNames(...lists) {
 }
 
 /**
- * The option of a group name for react-select; no option for no group
+ * The option of a group name for the combobox; no option for no group
  *
  * @param   {string} name
  * @returns {{ label: string, value: string }|null}

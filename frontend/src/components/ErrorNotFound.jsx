@@ -12,7 +12,7 @@ export function ErrorNotFound() {
 				<p className="empty-title">
 					<T id="notfound.title" />
 				</p>
-				<p className="empty-subtitle text-secondary">
+				<p className="empty-subtitle text-muted-foreground">
 					<T id="notfound.content" />
 				</p>
 				<div className="empty-action">

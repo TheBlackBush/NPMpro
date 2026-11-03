@@ -43,18 +43,6 @@ export const pastedCodeValue = (current, text, start, end, length) => {
 };
 
 /**
- * The first size (Tabler's OTP size classes, largest first) whose boxes fit in the available width; the last one
- * when none does
- *
- * @param   {Array}    sizes      lists of classes, largest first
- * @param   {Function} widthOf    (size) => the width of the boxes in that size
- * @param   {number}   available
- * @returns {Array}
- */
-export const fittingOtpSize = (sizes, widthOf, available) =>
-	sizes.find((size) => widthOf(size) <= available) ?? sizes[sizes.length - 1];
-
-/**
  * A backup code as typed (spaces, a dash, small letters) in the form the backend checks
  *
  * @param   {string} text

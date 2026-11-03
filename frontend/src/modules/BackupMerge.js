@@ -195,6 +195,6 @@ export const mouseLeavesPicker = (target, picker, opener) => !(picker?.contains(
 
 // ... and on the focus moving to a focusable element outside it. A click on text that takes no focus (a row's label)
 // focuses the nearest focusable ancestor, the dialog's container (tabindex -1), or the page: that does not close it.
-const NOT_A_FOCUS_TARGET = "html, body, .modal, .modal-dialog";
+const NOT_A_FOCUS_TARGET = 'html, body, [role="dialog"], [data-slot="dialog-content"], [data-slot="sheet-content"]';
 export const focusLeavesPicker = (target, picker, opener) =>
 	Boolean(target) && !target.matches?.(NOT_A_FOCUS_TARGET) && mouseLeavesPicker(target, picker, opener);

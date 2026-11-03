@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-import Select from "react-select";
 import {
 	ApiErrorContent,
 	AppModal,
 	Button,
+	Combobox,
 	DnsCredentialValuesFields,
 	ErrorAlert,
 	FormField,
@@ -13,7 +13,6 @@ import {
 	HookForm,
 	Loading,
 	NoticeAlert,
-	selectControlProps,
 	TextField,
 	useAppForm,
 } from "src/components";
@@ -28,7 +27,6 @@ import { intl, T } from "src/locale";
 import { credentialFieldValues, dnsCredentialValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { selectClassNames } from "src/modules/Select";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
@@ -70,26 +68,21 @@ function ProviderSelect({ providers, options, locked }) {
 			error={fieldState.error?.message ?? null}
 		>
 			{(control) => (
-				<Select
-					{...selectControlProps(control)}
+				<Combobox
+					{...control}
 					ref={field.ref}
-					unstyled
-					classNames={selectClassNames}
 					name="provider"
 					onBlur={field.onBlur}
-					closeMenuOnSelect={true}
-					isClearable={false}
-					isDisabled={locked}
+					disabled={locked}
 					placeholder={intl.formatMessage({
 						id: "certificates.dns.provider.placeholder",
 					})}
-					isSearchable
-					required
-					value={options?.find((o) => o.value === field.value) ?? null}
-					options={options}
-					onChange={(newValue) => {
-						const next = providers.find((p) => p.id === newValue?.value);
-						field.onChange(newValue?.value);
+					value={options?.some((o) => o.value === field.value) ? field.value : null}
+					options={options ?? []}
+					onChange={(value) => {
+						const next = providers.find((p) => p.id === value);
+						// not clearable: value is always a provider of the list
+						field.onChange(value);
 						setValue("fieldValues", credentialFieldValues(next, null), { shouldDirty: true });
 						setValue("ini", "", { shouldDirty: true });
 						setValue("useIni", !next?.fields, { shouldDirty: true });
@@ -193,7 +186,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 						<CredentialValues providers={providers} data={data} />
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>

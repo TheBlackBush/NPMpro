@@ -8,7 +8,6 @@ import {
 	codeComplete,
 	codeModeChanges,
 	codeOf,
-	fittingOtpSize,
 	mfaCodeValidate,
 	normalizeBackupCode,
 	pastedCodeValue,
@@ -115,14 +114,4 @@ it("pastedCodeValue puts a partial paste at the caret and a complete code over t
 	assert.equal(pastedCodeValue("123456", "654 321", 3, 3, 6), "654321");
 	assert.equal(pastedCodeValue("abcd1234", "WXYZ-9876", 8, 8, 8), "WXYZ9876");
 	assert.equal(pastedCodeValue("", "98 76-54", 0, 0, 6), "987654");
-});
-
-it("fittingOtpSize takes the largest size that fits, the smallest when none does", () => {
-	const widths = { lg: 400, md: 340, sm: 300 };
-	const sizes = [["lg"], ["md"], ["sm"]];
-	const widthOf = ([name]) => widths[name];
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 500), ["lg"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 340), ["md"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 310), ["sm"]);
-	assert.deepEqual(fittingOtpSize(sizes, widthOf, 100), ["sm"]);
 });

@@ -12,7 +12,7 @@ import {
 	AlertDialogTitle,
 } from "src/components/ui/alert-dialog";
 import { T } from "src/locale";
-import EasyModal from "src/modules/easyModal";
+import EasyModal, { useWindowFocusReturn } from "src/modules/easyModal";
 
 const showDeleteConfirmModal = (props) => {
 	EasyModal.show(DeleteConfirmModal, props);
@@ -37,6 +37,7 @@ const DeleteConfirmModal = EasyModal.create(
 		remove,
 	}) => {
 		const queryClient = useQueryClient();
+		const giveFocusBack = useWindowFocusReturn();
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,6 +50,9 @@ const DeleteConfirmModal = EasyModal.create(
 				remove();
 				// invalidate caches as requested
 				await Promise.all(invalidations.map((inv) => queryClient.invalidateQueries({ queryKey: inv })));
+				// the window closed while its opener (the deleted row's action button) was still there and got the focus;
+				// now the row is gone, so the focus fell to the page: the list heading takes it (also on Safari)
+				giveFocusBack?.();
 			} catch (err) {
 				setError(<ApiErrorContent error={err} />);
 			}

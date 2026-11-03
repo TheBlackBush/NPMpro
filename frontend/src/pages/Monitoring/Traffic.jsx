@@ -158,7 +158,7 @@ function Toolbar({ range, filter, onRange, onFilter }) {
 
 function StatusLine({ status }) {
 	return (
-		<div className="text-secondary small mt-3">
+		<div className="text-muted-foreground small mt-3">
 			{status.lastRead ? (
 				<T id="monitoring.traffic.last-read" data={{ time: formatDateTime(status.lastRead) }} />
 			) : (
@@ -318,7 +318,7 @@ function RecentTable({ rows }) {
 				enableSorting: false,
 				cell: (info) => {
 					const { method, path } = info.row.original;
-					if (method === "-" && path === "") return <span className="text-secondary">-</span>;
+					if (method === "-" && path === "") return <span className="text-muted-foreground">-</span>;
 					return (
 						// focus (Tab or tap) shows the whole path: the title tooltip only appears on hover
 						<span
@@ -327,7 +327,7 @@ function RecentTable({ rows }) {
 							// biome-ignore lint/a11y/noNoninteractiveTabindex: focusing the cell is how touch and keyboard users read a cut path
 							tabIndex={0}
 						>
-							<span className="text-secondary me-2">{method}</span>
+							<span className="text-muted-foreground me-2">{method}</span>
 							{path}
 						</span>
 					);
@@ -354,7 +354,7 @@ function RecentTable({ rows }) {
 					info.row.original.country ? (
 						<CountryName code={info.row.original.country} />
 					) : (
-						<span className="text-secondary">-</span>
+						<span className="text-muted-foreground">-</span>
 					),
 				meta: { mobile: "hide" },
 			}),

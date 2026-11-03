@@ -124,7 +124,7 @@ function StatusBadge({ schedule, timeZone }) {
 function LastRun({ schedule, timeZone }) {
 	if (!schedule.lastRunAt) {
 		return (
-			<span className="text-secondary">
+			<span className="text-muted-foreground">
 				<T id="settings.backup.schedule.never" />
 			</span>
 		);
@@ -133,7 +133,7 @@ function LastRun({ schedule, timeZone }) {
 		<>
 			<div>{formatTime(schedule.lastRunAt, timeZone)}</div>
 			{lastRunSize(schedule) ? (
-				<div className="small text-secondary">{formatBytes(lastRunSize(schedule))}</div>
+				<div className="small text-muted-foreground">{formatBytes(lastRunSize(schedule))}</div>
 			) : null}
 			{schedule.lastStatus === "failed" && schedule.lastError ? (
 				<div className="small text-danger text-break">{schedule.lastError}</div>
@@ -242,7 +242,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 				cell: (info) => (
 					<>
 						{info.getValue()}
-						<div className="small text-secondary d-xl-none">{keepText(info.row.original)}</div>
+						<div className="small text-muted-foreground d-xl-none">{keepText(info.row.original)}</div>
 					</>
 				),
 			}),
@@ -428,7 +428,7 @@ function SchedulesCard() {
 				/>
 			) : null}
 			{data?.length && timeZone ? (
-				<div className="card-footer small text-secondary">
+				<div className="card-footer small text-muted-foreground">
 					<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
 				</div>
 			) : null}

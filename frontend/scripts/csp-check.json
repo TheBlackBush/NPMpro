@@ -67,6 +67,43 @@
 			]
 		},
 		{
+			"name": "proxy host window",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "role=button[name='Add Proxy Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=locations]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "click": "[role=dialog] #domainNames" },
+				{ "press": "a" },
+				{ "press": "." },
+				{ "press": "e" },
+				{ "press": "x" },
+				{ "press": "Enter" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "proxy host side sheet",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit windows']" },
+				{ "click": "role=menuitemradio[name='Side sheet']" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Proxy Host']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "press": "Escape" },
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit windows']" },
+				{ "click": "role=menuitemradio[name='Dialog']" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "sidebar layout",
 			"route": "/",
 			"steps": [

@@ -92,7 +92,7 @@ function Tls() {
 export default function Nginx() {
 	return (
 		<RuntimeSection group="nginx" titleId="settings.nginx" toForm={toForm} toApi={toApi} validate={validate}>
-			<p className="text-secondary">
+			<p className="text-muted-foreground">
 				<T id="settings.nginx.intro" />
 			</p>
 			<Part titleId="settings.nginx.workers-part">

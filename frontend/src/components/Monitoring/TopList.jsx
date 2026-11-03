@@ -77,11 +77,13 @@ function TopList({
 												</div>
 												<div className="ms-auto text-nowrap">
 													<span className="fw-medium">{formatValue(item.value)}</span>
-													<span className="text-secondary small ms-2">{share}</span>
+													<span className="text-muted-foreground small ms-2">{share}</span>
 												</div>
 											</div>
 											{item.detail ? (
-												<div className="text-secondary small text-truncate">{item.detail}</div>
+												<div className="text-muted-foreground small text-truncate">
+													{item.detail}
+												</div>
 											) : null}
 											<div
 												className="progress progress-sm mt-1"
@@ -109,7 +111,7 @@ function TopList({
 						})}
 					</div>
 				) : (
-					<div className="card-body text-secondary">{empty}</div>
+					<div className="card-body text-muted-foreground">{empty}</div>
 				)}
 			</div>
 		</div>

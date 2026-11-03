@@ -1,13 +1,20 @@
-import { IconX } from "@tabler/icons-react";
 import cn from "clsx";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
+import { Input } from "src/components/ui/input";
+import { NativeSelect } from "src/components/ui/native-select";
 import { intl, T } from "src/locale";
 import { blankRule } from "src/modules/AccessListForms";
+import { FieldMessage } from "./FieldMessage";
 import { useListRecheck, useRecheckDependent } from "./HookForm";
 
-// allow on a lime background, deny on orange
+// allow on a success tint, deny on a warning tint
 const directiveClass = (directive) =>
-	cn("form-select", "w-auto", "flex-grow-0", directive === "allow" ? "bg-lime-lt" : "bg-orange-lt");
+	cn(
+		"w-auto shrink-0 [&_select]:text-foreground",
+		directive === "allow" ? "[&_select]:bg-success/10" : "[&_select]:bg-warning/10",
+	);
 
 function DirectiveOptions() {
 	return (
@@ -30,31 +37,37 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 	const directive = useWatch({ name: `${base}.directive` });
 	const error = getFieldState(`${base}.address`, formState).error?.message ?? null;
 	return (
-		<div className="row mb-1">
-			<div className="col-11">
-				<div className="input-group mb-2">
-					<select className={directiveClass(directive)} {...register(`${base}.directive`)}>
-						<DirectiveOptions />
-					</select>
-					<input
-						type="text"
-						{...register(`${base}.address`, { onChange: onAddressChange })}
-						className={cn("form-control", error && "is-invalid")}
-						autoComplete="off"
-						aria-label={intl.formatMessage({ id: "access-list.address" })}
-						aria-invalid={error ? "true" : undefined}
-						placeholder={intl.formatMessage({
-							id: "access-list.rule-source.placeholder",
-						})}
-					/>
-					{error ? <div className="invalid-feedback">{error}</div> : null}
-				</div>
+		<div className="flex items-start gap-2">
+			<NativeSelect
+				className={directiveClass(directive)}
+				aria-label={intl.formatMessage({ id: "access-list.directive" })}
+				{...register(`${base}.directive`)}
+			>
+				<DirectiveOptions />
+			</NativeSelect>
+			<div className="flex min-w-0 flex-1 flex-col gap-1">
+				<Input
+					type="text"
+					{...register(`${base}.address`, { onChange: onAddressChange })}
+					autoComplete="off"
+					aria-label={intl.formatMessage({ id: "access-list.address" })}
+					aria-invalid={error ? "true" : undefined}
+					aria-describedby={error ? `${name}-${index}-address-error` : undefined}
+					placeholder={intl.formatMessage({
+						id: "access-list.rule-source.placeholder",
+					})}
+				/>
+				{error ? <FieldMessage id={`${name}-${index}-address-error`}>{error}</FieldMessage> : null}
 			</div>
-			<div className="col-1">
-				<button type="button" className="btn btn-ghost btn-danger p-0" onClick={onRemove}>
-					<IconX size={16} />
-				</button>
-			</div>
+			<Button
+				variant="ghost"
+				className={DESTRUCTIVE_TEXT}
+				size="icon"
+				aria-label={intl.formatMessage({ id: "aria.remove" })}
+				onClick={onRemove}
+			>
+				<XIcon aria-hidden="true" />
+			</Button>
 		</div>
 	);
 }
@@ -64,29 +77,30 @@ function LastRule({ name, index }) {
 	const { register } = useFormContext();
 	const directive = useWatch({ name: `${name}.${index}.directive` });
 	return (
-		<div className="row mb-3">
-			<p className="text-secondary">
+		<div className="flex flex-col gap-2">
+			<p className="text-muted-foreground text-sm">
 				<T id="access-list.help.rules-last" />
 			</p>
-			<div className="col-11">
-				<div className="input-group mb-2">
-					<select className={directiveClass(directive)} {...register(`${name}.${index}.directive`)}>
-						<DirectiveOptions />
-					</select>
-					<input
-						name="clients[last].address"
-						type="text"
-						className="form-control"
-						autoComplete="off"
-						value="all"
-						disabled
-					/>
-				</div>
+			<div className="flex items-center gap-2">
+				<NativeSelect
+					className={directiveClass(directive)}
+					aria-label={intl.formatMessage({ id: "access-list.directive" })}
+					{...register(`${name}.${index}.directive`)}
+				>
+					<DirectiveOptions />
+				</NativeSelect>
+				<Input
+					name="clients[last].address"
+					type="text"
+					aria-label={intl.formatMessage({ id: "access-list.address" })}
+					autoComplete="off"
+					value="all"
+					disabled
+				/>
 			</div>
 		</div>
 	);
 }
-
 /**
  * The access rules of an access list (useFieldArray over the form's clients): the rules in order, then the last
  * "all" rule; always at least one rule before it, a rule without an address is not sent (AccessListForms.js)
@@ -109,8 +123,8 @@ export function AccessClientFields({ name = "clients" }) {
 	};
 
 	return (
-		<>
-			<p className="text-secondary">
+		<div className="flex flex-col gap-3">
+			<p className="text-muted-foreground text-sm">
 				<T id="access-list.help.rules-order" />
 			</p>
 			{fields.slice(0, -1).map((field, index) => (
@@ -122,16 +136,11 @@ export function AccessClientFields({ name = "clients" }) {
 					onAddressChange={recheckAccessRules}
 				/>
 			))}
-			<div className="mb-3">
-				<button
-					type="button"
-					className="btn btn-sm"
-					onClick={() => insert(last, blankRule(), { shouldFocus: false })}
-				>
-					<T id="action.add" />
-				</button>
-			</div>
+			<Button className="self-start" size="sm" onClick={() => insert(last, blankRule(), { shouldFocus: false })}>
+				<PlusIcon data-icon="inline-start" aria-hidden="true" />
+				<T id="action.add" />
+			</Button>
 			<LastRule key={fields[last].id} name={name} index={last} />
-		</>
+		</div>
 	);
 }

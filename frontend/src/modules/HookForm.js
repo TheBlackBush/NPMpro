@@ -229,3 +229,53 @@ export function applyChanges(setValue, changes, prefix = "") {
 export function resetOptionsOf(keepEdits) {
 	return keepEdits ? { keepDirtyValues: true } : { keepIsSubmitted: true, keepSubmitCount: true };
 }
+
+/**
+ * Commits the text typed into fields but not yet taken as a value (a domain name typed without Enter), before a save.
+ * Every entry commits (its valid parts become values); the first one with refused text refuses the save.
+ *
+ * @param   {Iterable<{ name: string, commit: Function, messageOf: Function }>} entries
+ *          commit() => the refused parts (strings), messageOf(refused) => the field's message
+ * @returns {{ name: string, message: string }|null}  null when every entry was taken
+ */
+export function commitPendingEntries(entries) {
+	let refused = null;
+	for (const { name, commit, messageOf } of entries) {
+		const rejected = commit() ?? [];
+		if (rejected.length > 0 && !refused) refused = { name, message: messageOf(rejected) };
+	}
+	return refused;
+}
+
+/**
+ * Keys for the rows of a list of plain values (ids) that stay with their row: a row keeps its key where its value
+ * stayed, and a value that moved (up, down, or a row removed before it) takes the key it had. A row whose value is
+ * replaced in place keeps its key when the caller updates its entry first (so the control in it is not mounted
+ * again and keeps the focus).
+ *
+ * @param   {{ key: string, value: * }[]} rows    the previous rows
+ * @param   {*[]}                         values  the list now
+ * @param   {Function}                    newKey  () => a key not used before
+ * @returns {{ key: string, value: * }[]}
+ */
+export function rowKeysOf(rows, values, newKey) {
+	const used = new Set();
+	const inPlace = values.map((value, index) => {
+		const row = rows[index];
+		if (row && row.value === value) {
+			used.add(row.key);
+			return row;
+		}
+		return null;
+	});
+	return inPlace.map((row, index) => {
+		if (row) return row;
+		const value = values[index];
+		const moved = rows.find((other) => other.value === value && !used.has(other.key));
+		if (moved) {
+			used.add(moved.key);
+			return moved;
+		}
+		return { key: newKey(), value };
+	});
+}
