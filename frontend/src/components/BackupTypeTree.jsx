@@ -209,7 +209,8 @@ function TypeTree({
 		<div className="mb-3">
 			<div className="mb-2 flex items-center">
 				{label ? <div className="text-sm font-medium">{label}</div> : null}
-				<div className="ml-auto flex gap-3">
+				{/* Enter on "None" would clear every type: a window never starts here */}
+				<div className="ml-auto flex gap-3" data-window-start-skip="">
 					<Button
 						type="button"
 						variant="link"

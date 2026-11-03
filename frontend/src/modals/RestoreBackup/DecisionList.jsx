@@ -248,7 +248,7 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 										<ChevronDownIcon aria-hidden="true" />
 									</Button>
 								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end" className="w-auto">
+								<DropdownMenuContent align="end" collisionPadding={8} className="w-auto">
 									{options.map((option) => (
 										<DropdownMenuItem key={option} onSelect={() => onSetAll(option)}>
 											{optionLabel(option)}
@@ -378,7 +378,10 @@ export function DecisionList({ items, choices, onChoice, labelOf, disabled = fal
 					{groups.map((group) => {
 						const open = !folded.includes(group.type);
 						return (
-							<tbody key={group.type} className="block border-t first:border-t-0 md:table-row-group">
+							<tbody
+								key={group.type}
+								className="block border-t first-of-type:border-t-0 md:table-row-group"
+							>
 								<GroupHeader
 									group={group}
 									choices={choices}

@@ -458,7 +458,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 					if (!passphraseShort) void open(passphrase);
 				}}
 			>
-				<p className="text-sm text-muted-foreground">
+				<p className="mb-3 text-sm text-muted-foreground">
 					<T id="settings.backup.restore.passphrase.hint" />
 				</p>
 				<FormField id={`${baseId}-passphrase`} label={<T id="settings.backup.passphrase" />} required>
@@ -516,7 +516,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	} else if (step === "open-failed") {
 		body = <ErrorAlert error={openError} className="mb-0" />;
 		footer = (
-			<Button className="ml-auto" onClick={close}>
+			<Button variant="ghost" className="ml-auto" onClick={close}>
 				<T id="action.close" />
 			</Button>
 		);
@@ -524,7 +524,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 		const createdBy = manifest.createdBy?.name || manifest.createdBy?.email || "?";
 		body = (
 			<>
-				<p className="text-sm text-muted-foreground">
+				<p className="mb-3 text-sm text-muted-foreground">
 					<T
 						id="settings.backup.restore.made-with"
 						data={{
@@ -608,7 +608,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	} else if (step === "running") {
 		body = <Running />;
 		footer = (
-			<Button className="ml-auto" disabled>
+			<Button variant="ghost" className="ml-auto" disabled>
 				<T id="action.close" />
 			</Button>
 		);
@@ -625,7 +625,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				<ErrorAlert error={restoreError} className="mb-0" />
 			);
 		footer = (
-			<Button className="ml-auto" onClick={close}>
+			<Button variant="ghost" className="ml-auto" onClick={close}>
 				<T id="action.close" />
 			</Button>
 		);
