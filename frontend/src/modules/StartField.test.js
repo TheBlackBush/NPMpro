@@ -30,7 +30,7 @@ it("phones and a focus that already moved keep the focus where it is", () => {
 });
 
 it("a roving focus container (tab row, radio group, toolbar) is never a start field, its first control is", () => {
-	for (const role of ["tablist", "radiogroup", "toolbar"]) {
+	for (const role of ["tablist", "toolbar"]) {
 		assert.equal(isStartField({ ...field, role, containsField: true }), false, role);
 	}
 	assert.equal(isStartField({ ...field, role: "radio" }), true);
@@ -50,4 +50,24 @@ it("a container whose fields are all disabled (a View window's panel) is not a s
 it("a control out of the tab order (an unchecked Radix radio, tabindex -1) never starts the window", () => {
 	assert.equal(isStartField({ ...field, role: "radio", tabIndex: -1 }), false);
 	assert.equal(isStartField({ ...field, role: "radio", tabIndex: 0 }), true);
+});
+
+it("a Radix radio group (tabindex 0, its radios tabindex -1) is the start field, its radios are not", () => {
+	assert.equal(isStartField({ ...field, role: "radiogroup", tabIndex: 0, containsField: true }), true);
+	assert.equal(isStartField({ ...field, role: "radio", tabIndex: -1 }), false);
+	assert.equal(
+		isStartField({ ...field, role: "radiogroup", tabIndex: 0, containsField: true, disabled: true }),
+		false,
+	);
+});
+
+it("a tab panel, a tab and a tab row stay excluded", () => {
+	assert.equal(isStartField({ ...field, role: "tabpanel", tabIndex: 0, containsField: true }), false);
+	assert.equal(isStartField({ ...field, role: "tab", tabIndex: 0 }), false);
+	assert.equal(isStartField({ ...field, role: "tablist", tabIndex: 0, containsField: true }), false);
+});
+
+it("a control marked to be skipped (a chip's remove button) never starts the window", () => {
+	assert.equal(isStartField({ ...field, skip: true }), false);
+	assert.equal(isStartField({ ...field, skip: false }), true);
 });

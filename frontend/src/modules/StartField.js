@@ -8,18 +8,26 @@ export const START_FIELD_SELECTOR =
 // A tab: the active one is in the tab order but is not a field (the tab row comes before the fields of a tabbed editor)
 const NOT_START_ROLES = new Set(["tab"]);
 
+/** Marks controls a window never starts on (a chip's remove button, a clear button): Enter there would delete a value */
+export const START_SKIP_ATTRIBUTE = "data-window-start-skip";
+
 /**
  * True for a control the window may start in: shown, enabled (a View window's disabled fieldset disables all of
  * them), in the tab order (Radix gives the unchecked radios of a group tabindex -1), not a tab, and not a container
  * of other controls. A focusable container (a tab panel, a tab row, a radio group, a toolbar) carries a tabindex and
  * comes before its own fields in document order; it is skipped even when all its fields are disabled, so a View
- * window keeps the focus on the window.
+ * window keeps the focus on the window. A radio group is the exception: Radix gives the group tabindex 0 and its
+ * radios -1 until one is focused, and focusing the group moves the focus to the checked or first radio, so the group
+ * is the start field of its radios.
+ * Controls marked with START_SKIP_ATTRIBUTE (or inside one that is) never start the window.
  *
  * @param {{ role: string|null, disabled: boolean, visible: boolean, tabIndex: number, containsField: boolean }} control
  *   containsField: the element contains another element that matches START_FIELD_SELECTOR, disabled or not
+ *   skip: the element is, or is inside, an element marked with START_SKIP_ATTRIBUTE
  */
-export function isStartField({ role, disabled, visible, tabIndex, containsField }) {
-	return visible && !disabled && !(tabIndex < 0) && !containsField && !NOT_START_ROLES.has(role);
+export function isStartField({ role, disabled, visible, tabIndex, containsField, skip = false }) {
+	if (skip || !visible || disabled || tabIndex < 0 || NOT_START_ROLES.has(role)) return false;
+	return role === "radiogroup" || !containsField;
 }
 
 /**

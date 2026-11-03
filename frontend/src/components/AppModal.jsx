@@ -8,7 +8,7 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
-import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR } from "src/modules/StartField";
+import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR, START_SKIP_ATTRIBUTE } from "src/modules/StartField";
 import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
@@ -33,6 +33,8 @@ function firstField(content) {
 			tabIndex: element.tabIndex,
 			// a focusable container (a Radix tab panel has tabIndex 0) comes before its fields: never start on it
 			containsField: element.querySelector(START_FIELD_SELECTOR) !== null,
+			// a chip's remove button or a clear button: Enter there would delete a value
+			skip: element.closest(`[${START_SKIP_ATTRIBUTE}]`) !== null,
 		};
 		if (isStartField(control)) return element;
 	}
