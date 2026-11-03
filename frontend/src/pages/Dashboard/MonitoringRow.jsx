@@ -4,7 +4,7 @@ import { CountryName } from "src/components/Monitoring/CountryName";
 import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
 import { currentLocale, intl, T } from "src/locale";
-import { errorRateColor, formatCount, isCountryCode, sparklinePoints } from "src/modules/Monitoring";
+import { errorRateTone, formatCount, isCountryCode, sparklinePoints } from "src/modules/Monitoring";
 
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
 
@@ -66,7 +66,7 @@ function MonitoringRow() {
 				key="requests"
 				to="/monitoring/traffic"
 				icon={IconGauge}
-				color="blue"
+				tone="info"
 				label={<T id="dashboard.monitoring.requests" />}
 				value={formatCount(requestsToday)}
 				hint={
@@ -83,7 +83,7 @@ function MonitoringRow() {
 				key="errors"
 				to="/monitoring/traffic"
 				icon={IconAlertTriangle}
-				color={errorRateColor(errorRateToday)}
+				tone={errorRateTone(errorRateToday)}
 				label={<T id="dashboard.monitoring.error-rate" />}
 				value={percentFormat.format(errorRateToday)}
 				hint={<T id="monitoring.stat.error-rate.hint" />}
@@ -94,7 +94,7 @@ function MonitoringRow() {
 				key="bans"
 				to="/monitoring/crowdsec"
 				icon={IconShieldLock}
-				color="red"
+				tone="destructive"
 				label={<T id="monitoring.crowdsec.active-bans" />}
 				value={formatCount(activeBans)}
 			/>
@@ -104,7 +104,7 @@ function MonitoringRow() {
 				key="country"
 				to="/monitoring/traffic"
 				icon={IconFlag}
-				color="teal"
+				tone="primary"
 				label={<T id="dashboard.monitoring.top-country" />}
 				value={<CountryName code={topCountryToday} />}
 			/>

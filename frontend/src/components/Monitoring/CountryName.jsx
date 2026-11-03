@@ -1,4 +1,4 @@
-import { IconWorld } from "@tabler/icons-react";
+import { GlobeIcon } from "lucide-react";
 import { Flag } from "src/components";
 import { currentLocale, intl } from "src/locale";
 import { countryName, isCountryCode } from "src/modules/Monitoring";
@@ -17,13 +17,13 @@ const countryLabel = (code) =>
  */
 function CountryName({ code }) {
 	return (
-		<span className="d-inline-flex align-items-center gap-2 mw-100" title={countryLabel(code)}>
+		<span className="inline-flex max-w-full items-center gap-2" title={countryLabel(code)}>
 			{isCountryCode(code) ? (
-				<Flag countryCode={code.toUpperCase()} className="flex-shrink-0" />
+				<Flag countryCode={code.toUpperCase()} className="shrink-0" />
 			) : (
-				<IconWorld className="icon text-muted-foreground flex-shrink-0" width={20} aria-hidden="true" />
+				<GlobeIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 			)}
-			<span className="text-truncate">{countryLabel(code)}</span>
+			<span className="truncate">{countryLabel(code)}</span>
 		</span>
 	);
 }

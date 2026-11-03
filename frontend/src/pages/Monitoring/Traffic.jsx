@@ -17,7 +17,7 @@ import {
 } from "@tanstack/react-table";
 import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useSearchParams } from "react-router";
-import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
+import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert, StatusBadge } from "src/components";
 import {
 	CountryName,
 	countryLabel,
@@ -38,7 +38,7 @@ import {
 } from "src/hooks";
 import { currentLocale, formatDateTime, intl, T } from "src/locale";
 import {
-	errorRateColor,
+	errorRateTone,
 	filterRecent,
 	formatBytes,
 	formatCount,
@@ -51,7 +51,7 @@ import {
 	isCountryCode,
 	OTHER_HOST,
 	rangeOptions,
-	statusColor,
+	statusTone,
 } from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
@@ -198,7 +198,7 @@ function VisitorsCard({ status, totals, range }) {
 				// the link is the way to the setting: shown in full on a half-width phone card
 				hintWrap
 				icon={IconUsers}
-				color="secondary"
+				tone="muted"
 			/>
 		);
 	}
@@ -218,7 +218,7 @@ function VisitorsCard({ status, totals, range }) {
 			value={`${formatCount(visitors)}${totals.visitorsCapped ? "+" : ""}`}
 			hint={hint}
 			icon={IconUsers}
-			color="purple"
+			tone="primary"
 		/>
 	);
 }
@@ -337,7 +337,9 @@ function RecentTable({ rows }) {
 				header: intl.formatMessage({ id: "monitoring.recent.column.status" }),
 				enableSorting: false,
 				cell: (info) => (
-					<span className={`badge bg-${statusColor(info.getValue())}-lt`}>{info.getValue()}</span>
+					<StatusBadge tone={statusTone(info.getValue())} dot={false}>
+						{info.getValue()}
+					</StatusBadge>
 				),
 			}),
 			columnHelper.accessor("bytes", {
@@ -452,14 +454,14 @@ function TrafficData({ data, range, params }) {
 					value={formatCount(totals.requests)}
 					hint={exactHint(totals.requests)}
 					icon={IconChartBar}
-					color="primary"
+					tone="primary"
 				/>
 				<StatCard
 					className="col-6 col-lg"
 					label={<T id="monitoring.stat.data-sent" />}
 					value={formatBytes(totals.bytes)}
 					icon={IconArrowsTransferDown}
-					color="azure"
+					tone="info"
 				/>
 				<StatCard
 					className="col-6 col-lg"
@@ -467,7 +469,7 @@ function TrafficData({ data, range, params }) {
 					value={percentFormat.format(totals.errorRate)}
 					hint={<T id="monitoring.stat.error-rate.hint" />}
 					icon={IconAlertTriangle}
-					color={errorRateColor(totals.errorRate)}
+					tone={errorRateTone(totals.errorRate)}
 				/>
 				<VisitorsCard status={status} totals={totals} range={range} />
 				<StatCard
@@ -492,7 +494,7 @@ function TrafficData({ data, range, params }) {
 						)
 					}
 					icon={IconWorld}
-					color="green"
+					tone="success"
 				/>
 				<div className="col-12">
 					<div className="card">

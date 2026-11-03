@@ -214,7 +214,7 @@ function CrowdsecData({ data }) {
 					value={formatCount(data.total)}
 					hint={types || undefined}
 					icon={IconShieldX}
-					color="red"
+					tone="destructive"
 				/>
 				<StatCard
 					className="col-md-4"
@@ -222,7 +222,7 @@ function CrowdsecData({ data }) {
 					value={formatCount(data.added24h)}
 					hint={<T id="monitoring.crowdsec.added-24h.hint" />}
 					icon={IconClockPlus}
-					color="orange"
+					tone="warning"
 				/>
 				<StatCard
 					className="col-md-4"
@@ -231,7 +231,7 @@ function CrowdsecData({ data }) {
 					// the reason is in the alert above the cards, so the card only says when the data was read
 					hint={<T id="monitoring.crowdsec.fetched" data={{ time: formatDateTime(data.fetchedAt) }} />}
 					icon={data.reachable ? IconPlugConnected : IconPlugConnectedX}
-					color={data.reachable ? "green" : "red"}
+					tone={data.reachable ? "success" : "destructive"}
 				/>
 				{data.total === 0 ? (
 					<div className="col-12">
@@ -251,7 +251,7 @@ function CrowdsecData({ data }) {
 								<div className="card-body">
 									<WorldMap
 										countries={data.countries}
-										color="red"
+										tone="destructive"
 										label={intl.formatMessage({ id: "monitoring.crowdsec.map" })}
 									/>
 									{data.total > 0 && data.countries.length === 0 ? (
@@ -266,7 +266,7 @@ function CrowdsecData({ data }) {
 							className="col-lg-4"
 							title={<T id="monitoring.crowdsec.by-scenario" />}
 							total={data.total}
-							color="red"
+							tone="destructive"
 							empty={noBans}
 							items={data.byScenario.slice(0, TOP_LIST).map((s) => ({
 								key: s.scenario,
@@ -279,7 +279,7 @@ function CrowdsecData({ data }) {
 							className="col-md-6"
 							title={<T id="monitoring.crowdsec.by-origin" />}
 							total={data.total}
-							color="red"
+							tone="destructive"
 							empty={noBans}
 							items={data.byOrigin.slice(0, TOP_LIST).map((o) => ({
 								key: o.origin,
@@ -292,7 +292,7 @@ function CrowdsecData({ data }) {
 							className="col-md-6"
 							title={<T id="monitoring.crowdsec.by-country" />}
 							total={data.total}
-							color="red"
+							tone="destructive"
 							empty={noBans}
 							items={data.countries.slice(0, TOP_LIST).map((c) => ({
 								key: c.country,
