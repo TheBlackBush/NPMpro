@@ -1,10 +1,14 @@
-import { IconInfoCircle, IconLock } from "@tabler/icons-react";
+import { Info, Lock } from "lucide-react";
 import { Link } from "react-router";
 import { BreakableHost, ErrorAlert, Loading } from "src/components";
+import { Badge } from "src/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "src/components/ui/table";
 import { useEnvironment } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 import { hasLockReason, LockedBadge, LockReason } from "./Authentication/LockedBadge";
+import { SettingsCard } from "./SettingsCard";
 import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
@@ -90,18 +94,26 @@ const UPSTREAM_NAME = /^(?<provider>[a-z0-9]+)_upstream$/u;
 
 const label = (id) => intl.formatMessage({ id });
 
+// The stacked phone layout of the lists (TableLayout/TableBody): below md the table, its bodies and its rows are
+// blocks and each row is a card whose cells show their header as a small label above the value.
+const STACKED_TABLE = "max-md:block max-md:[&>tbody]:block";
+const CARD_ROW = "max-md:mb-3 max-md:flex max-md:flex-col max-md:gap-1 max-md:rounded-lg max-md:border max-md:p-3";
+const CARD_CELL =
+	"whitespace-normal max-md:px-0 max-md:py-1 max-md:data-label:before:block max-md:data-label:before:text-xs max-md:data-label:before:text-muted-foreground max-md:data-label:before:content-[attr(data-label)]";
+const HEAD = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+
 /**
  * The phone part of a stacked row, inside its title cell: the title with `end` on its right and the grey summary
  * line. The cells it repeats are PHONE_HIDDEN_CELL, so one copy is always display none and nothing is read twice.
  */
 function PhoneTitle({ title, end, summary }) {
 	return (
-		<div className="d-md-none">
-			<div className="d-flex align-items-start gap-2">
+		<div className="md:hidden">
+			<div className="flex items-start gap-2">
 				<div className={titleClass()}>{title}</div>
 				{end}
 			</div>
-			{summary ? <div className="mt-1 small text-muted-foreground text-break">{summary}</div> : null}
+			{summary ? <div className="mt-1 break-words text-xs text-muted-foreground">{summary}</div> : null}
 		</div>
 	);
 }
@@ -125,55 +137,58 @@ function LockedSettings({ locked }) {
 		);
 	}
 	return (
-		<div className="table-responsive mb-4">
-			<table className="table table-vcenter card-table table-mobile-md">
-				<thead>
-					<tr>
-						<th>
-							<T id="settings.environment.setting" />
-						</th>
-						<th>
-							<T id="settings.environment.locked-by" />
-						</th>
-						<th>
-							<T id="settings.environment.section" />
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					{locked.map(({ group, key, env, reason }) => (
-						<tr key={`${group}/${key}`}>
-							<td>
-								<PhoneTitle
-									title={<SettingLabel group={group} name={key} />}
-									end={<LockedBadge env={env} reason={reason} className="" />}
-									summary={
-										hasLockReason(env, reason) ? <LockReason env={env} reason={reason} /> : null
-									}
-								/>
-								<div className="d-none d-md-block">
-									<SettingLabel group={group} name={key} />
+		<Table className={STACKED_TABLE} role="table">
+			<TableHeader className="max-md:hidden" role="rowgroup">
+				<TableRow className="hover:bg-transparent" role="row">
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.setting" />
+					</TableHead>
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.locked-by" />
+					</TableHead>
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.section" />
+					</TableHead>
+				</TableRow>
+			</TableHeader>
+			<TableBody className="max-md:[&_tr:last-child]:border!" role="rowgroup">
+				{locked.map(({ group, key, env, reason }) => (
+					<TableRow key={`${group}/${key}`} className={CARD_ROW} role="row">
+						<TableCell className={CARD_CELL} role="cell">
+							<PhoneTitle
+								title={<SettingLabel group={group} name={key} />}
+								end={<LockedBadge env={env} reason={reason} className="" />}
+								summary={hasLockReason(env, reason) ? <LockReason env={env} reason={reason} /> : null}
+							/>
+							<div className="hidden md:block">
+								<SettingLabel group={group} name={key} />
+							</div>
+						</TableCell>
+						<TableCell
+							className={cn(CARD_CELL, PHONE_HIDDEN_CELL)}
+							data-label={label("settings.environment.locked-by")}
+							role="cell"
+						>
+							{/* the same wording as the badge in the settings section */}
+							<LockedBadge env={env} reason={reason} className="" />
+							{hasLockReason(env, reason) ? (
+								<div className="mt-1 text-xs text-muted-foreground">
+									<LockReason env={env} reason={reason} />
 								</div>
-							</td>
-							<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.locked-by")}>
-								{/* the same wording as the badge in the settings section */}
-								<LockedBadge env={env} reason={reason} className="" />
-								{hasLockReason(env, reason) ? (
-									<div className="small text-muted-foreground mt-1">
-										<LockReason env={env} reason={reason} />
-									</div>
-								) : null}
-							</td>
-							<td data-label={label("settings.environment.section")}>
-								<Link to={`/settings/${SECTION_OF_GROUP[group]}`}>
-									<T id={`settings.environment.group.${group}`} />
-								</Link>
-							</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		</div>
+							) : null}
+						</TableCell>
+						<TableCell className={CARD_CELL} data-label={label("settings.environment.section")} role="cell">
+							<Link
+								to={`/settings/${SECTION_OF_GROUP[group]}`}
+								className="text-primary underline-offset-4 hover:underline"
+							>
+								<T id={`settings.environment.group.${group}`} />
+							</Link>
+						</TableCell>
+					</TableRow>
+				))}
+			</TableBody>
+		</Table>
 	);
 }
 
@@ -192,89 +207,109 @@ function Value({ item }) {
 			</span>
 		);
 	}
-	return <code className={item.value.length > 24 ? "text-break" : "text-nowrap"}>{item.value}</code>;
+	return (
+		<code className={cn("font-mono text-xs", item.value.length > 24 ? "break-all" : "whitespace-nowrap")}>
+			{item.value}
+		</code>
+	);
 }
 
 // "set" or "default"; a startup setting (TZ, GOA) not set by env comes from its settings section
 function Status({ item }) {
 	if (item.setting && !item.set) {
 		return (
-			<Link to={`/settings/${item.setting}`} className="badge bg-azure-lt">
-				<T id="settings.environment.from-setting" />
-			</Link>
+			<Badge asChild variant="outline">
+				<Link to={`/settings/${item.setting}`}>
+					<T id="settings.environment.from-setting" />
+				</Link>
+			</Badge>
 		);
 	}
 	return (
-		<span className={`badge ${item.set ? "bg-green-lt" : "bg-secondary-lt"}`}>
+		<Badge variant={item.set ? "default" : "secondary"}>
 			<T id={item.set ? "settings.environment.set" : "settings.environment.default"} />
-		</span>
+		</Badge>
 	);
 }
 
 function GroupRows({ group }) {
 	return (
-		<tbody>
-			<tr className="bg-body-tertiary">
-				<th colSpan={4} className="text-body">
+		<TableBody className="max-md:[&_tr:last-child]:border!" role="rowgroup">
+			{/* below md a block at full width, like the cards */}
+			<TableRow className="border-0 hover:bg-transparent max-md:block" role="row">
+				<TableHead
+					scope="rowgroup"
+					colSpan={4}
+					className={cn(
+						"bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground max-md:block max-md:w-full",
+					)}
+					role="rowheader"
+				>
 					<T id={`settings.environment.group.${group.id}`} />
-				</th>
-			</tr>
+				</TableHead>
+			</TableRow>
 			{group.items.map((item) => (
-				<tr key={item.name}>
-					<td>
+				<TableRow key={item.name} className={CARD_ROW} role="row">
+					<TableCell className={CARD_CELL} role="cell">
 						<PhoneTitle
-							title={<code>{item.name}</code>}
+							title={<code className="font-mono text-xs">{item.name}</code>}
 							end={<Status item={item} />}
 							summary={<Value item={item} />}
 						/>
-						<div className="d-none d-md-block">
+						<div className="hidden md:block">
 							{/* on tablets the name breaks after an underscore, so the table fits next to the settings menu */}
-							<code className="d-lg-none">
+							<code className="font-mono text-xs lg:hidden">
 								<BreakableHost value={item.name} separators="_" />
 							</code>
-							<code className="d-none d-lg-inline text-nowrap">{item.name}</code>
+							<code className="hidden whitespace-nowrap font-mono text-xs lg:inline">{item.name}</code>
 						</div>
-					</td>
-					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.value")}>
+					</TableCell>
+					<TableCell
+						className={cn(CARD_CELL, PHONE_HIDDEN_CELL)}
+						data-label={label("settings.environment.value")}
+						role="cell"
+					>
 						<Value item={item} />
-					</td>
-					<td className={PHONE_HIDDEN_CELL} data-label={label("settings.environment.status")}>
+					</TableCell>
+					<TableCell
+						className={cn(CARD_CELL, PHONE_HIDDEN_CELL)}
+						data-label={label("settings.environment.status")}
+						role="cell"
+					>
 						<Status item={item} />
-					</td>
-					<td data-label={label("settings.environment.description")}>
+					</TableCell>
+					<TableCell className={CARD_CELL} data-label={label("settings.environment.description")} role="cell">
 						<T id={`environment.${group.id}.${item.name}`} />
-					</td>
-				</tr>
+					</TableCell>
+				</TableRow>
 			))}
-		</tbody>
+		</TableBody>
 	);
 }
 
 function GroupTable({ groups }) {
 	return (
-		<div className="table-responsive">
-			<table className="table table-vcenter card-table table-mobile-md">
-				<thead>
-					<tr>
-						<th>
-							<T id="settings.environment.variable" />
-						</th>
-						<th>
-							<T id="settings.environment.value" />
-						</th>
-						<th>
-							<T id="settings.environment.status" />
-						</th>
-						<th>
-							<T id="settings.environment.description" />
-						</th>
-					</tr>
-				</thead>
-				{groups.map((group) => (
-					<GroupRows key={group.id} group={group} />
-				))}
-			</table>
-		</div>
+		<Table className={STACKED_TABLE} role="table">
+			<TableHeader className="max-md:hidden" role="rowgroup">
+				<TableRow className="hover:bg-transparent" role="row">
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.variable" />
+					</TableHead>
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.value" />
+					</TableHead>
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.status" />
+					</TableHead>
+					<TableHead className={HEAD} role="columnheader">
+						<T id="settings.environment.description" />
+					</TableHead>
+				</TableRow>
+			</TableHeader>
+			{groups.map((group) => (
+				<GroupRows key={group.id} group={group} />
+			))}
+		</Table>
 	);
 }
 
@@ -282,19 +317,26 @@ export default function Environment() {
 	const { isPending, error, data } = useEnvironment();
 
 	return (
-		<div className="card-body">
+		<div className="space-y-4">
 			<SettingsHeading titleId="settings.environment" />
 			{error ? <ErrorAlert error={error} /> : null}
 			{isPending ? <Loading noLogo /> : null}
 			{data ? (
 				<>
-					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.environment.note" />
-					<h3 className="mb-2">
-						<IconLock className="icon me-2" aria-hidden="true" />
-						<T id="settings.environment.locked" />
-					</h3>
-					<LockedSettings locked={data.lockedRuntime ?? []} />
-					<GroupTable groups={data.groups} />
+					<StatusAlert variant="info" icon={Info} id="settings.environment.note" />
+					<SettingsCard
+						title={
+							<span className="inline-flex items-center gap-2">
+								<Lock className="size-4" aria-hidden="true" />
+								<T id="settings.environment.locked" />
+							</span>
+						}
+					>
+						<LockedSettings locked={data.lockedRuntime ?? []} />
+					</SettingsCard>
+					<SettingsCard>
+						<GroupTable groups={data.groups} />
+					</SettingsCard>
 				</>
 			) : null}
 		</div>

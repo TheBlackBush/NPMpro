@@ -22,6 +22,7 @@ import {
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { SaveBar } from "./SaveBar";
+import { SettingsCard } from "./SettingsCard";
 import { SettingsHeading } from "./SettingsHeading";
 
 const validate = defaultSiteValidate(validations);
@@ -60,6 +61,7 @@ function RedirectField() {
 			type="text"
 			placeholder="https://"
 			autoComplete="off"
+			className=""
 		/>
 	);
 }
@@ -84,6 +86,7 @@ function HtmlFields() {
 				max={599}
 				placeholder="200"
 				autoComplete="off"
+				className=""
 			/>
 		</>
 	);
@@ -114,14 +117,14 @@ function DefaultSiteForm({ data }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
-			<div className="card-body flex-fill">
-				<Heading />
-				<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+			<Heading />
+			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+			<SettingsCard>
 				<OptionField />
 				{option === "redirect" && <RedirectField />}
 				{option === "html" && <HtmlFields />}
-			</div>
+			</SettingsCard>
 			<SaveBar />
 		</HookForm>
 	);
@@ -132,22 +135,18 @@ export default function DefaultSite() {
 
 	if (error) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
-				<div className="mb-3">
-					<ErrorAlert error={error} />
-				</div>
+				<ErrorAlert error={error} />
 			</div>
 		);
 	}
 
 	if (isPending) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
-				<div className="mb-3">
-					<Loading noLogo />
-				</div>
+				<Loading noLogo />
 			</div>
 		);
 	}

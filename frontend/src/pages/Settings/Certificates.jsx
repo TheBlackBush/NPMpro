@@ -177,7 +177,7 @@ function Fields() {
 			</Part>
 			<StaplingFields />
 			<DefaultCertificateField />
-			<Part titleId="settings.certificates.ech" last>
+			<Part titleId="settings.certificates.ech">
 				<RuntimeNumber
 					name="echRotationInterval"
 					label={<T id="settings.certificates.ech-interval" />}

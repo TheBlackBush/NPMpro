@@ -1,4 +1,4 @@
-import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
+import { Info, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ErrorAlert, FormSection, HookForm, Loading, useAppForm, useFieldOrder } from "src/components";
@@ -18,6 +18,7 @@ import {
 import { unlockedErrors } from "src/modules/SettingsForms";
 import { showError, showObjectSuccess } from "src/notifications";
 import { SaveBar } from "../SaveBar";
+import { SettingsCard } from "../SettingsCard";
 import { SettingsHeading } from "../SettingsHeading";
 import { StatusAlert } from "../StatusAlert";
 
@@ -69,7 +70,7 @@ function RestartPendingAlert({ data }) {
 	return (
 		<StatusAlert
 			variant="orange"
-			icon={IconRefresh}
+			icon={RefreshCw}
 			id="settings.runtime.restart-pending"
 			data={{ fields: intl.formatList(labels, { type: "conjunction" }) }}
 		/>
@@ -87,13 +88,10 @@ function SaveErrorContent({ message, lead }) {
 	const [first, ...rest] = String(message).split("\n");
 	return (
 		<>
-			{lead ? <span className="d-block">{lead}</span> : null}
-			<span className="text-break">{first}</span>
+			{lead ? <span className="block">{lead}</span> : null}
+			<span className="break-words">{first}</span>
 			{rest.length > 0 ? (
-				// Tabler's .text-wrap is white-space: normal, which would collapse the nginx output
-				<pre className="mt-2 mb-0 overflow-auto text-break" style={{ whiteSpace: "pre-wrap" }}>
-					{rest.join("\n")}
-				</pre>
+				<pre className="mt-2 mb-0 overflow-auto break-words whitespace-pre-wrap">{rest.join("\n")}</pre>
 			) : null}
 		</>
 	);
@@ -188,16 +186,14 @@ function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }
 
 	return (
 		<RuntimeContext.Provider value={ctx}>
-			<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
-				<div className="card-body flex-fill">
-					<Heading titleId={titleId} />
-					{alert}
-					{ctx.anyLocked ? (
-						<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
-					) : null}
-					<RestartPendingAlert data={data} />
-					{children}
-				</div>
+			<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+				<Heading titleId={titleId} />
+				{alert}
+				{ctx.anyLocked ? (
+					<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+				) : null}
+				<RestartPendingAlert data={data} />
+				{children}
 				<SaveButton group={group} toApi={toApi} data={data} />
 			</HookForm>
 		</RuntimeContext.Provider>
@@ -221,7 +217,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 
 	if (error || isPending) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading titleId={titleId} />
 				{error ? <ErrorAlert error={error} /> : <Loading noLogo />}
 			</div>
@@ -239,11 +235,13 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
  * A titled group of fields inside a section: the form layer's FormSection with its heading (a fieldset named by
  * its legend), the switches of the group in a SwitchList
  */
-function Part({ titleId, children, last = false }) {
+function Part({ titleId, children }) {
 	return (
-		<FormSection heading legend={<T id={titleId} />} className={last ? "mb-0" : "mb-4"}>
-			{children}
-		</FormSection>
+		<SettingsCard>
+			<FormSection heading legend={<T id={titleId} />} className="mb-0">
+				{children}
+			</FormSection>
+		</SettingsCard>
 	);
 }
 
