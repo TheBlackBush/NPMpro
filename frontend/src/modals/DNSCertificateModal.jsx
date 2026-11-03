@@ -17,17 +17,22 @@ import {
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { dnsCertificateValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 const showDNSCertificateModal = () => {
 	EasyModal.show(DNSCertificateModal);
 };
 
 const validate = dnsCertificateValidate(validations);
+const accent = sectionAccent("certificates");
+const Icon = sectionIcon("certificates");
 
 const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
@@ -66,7 +71,8 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<DirtyTracker dirtyRef={dirtyRef} />
 				<AppModal.Header closeButton={!isSubmitting}>
-					<AppModal.Title>
+					<AppModal.Title className="flex items-center gap-2">
+						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 						<T id="object.add" tData={{ object: "lets-encrypt-via-dns" }} />
 					</AppModal.Title>
 				</AppModal.Header>
@@ -86,10 +92,10 @@ const DNSCertificateModal = EasyModal.create(({ visible, remove }) => {
 					<RequestProgress running={isSubmitting} propagationSeconds={propagationSeconds} />
 				</AppModal.Body>
 				<AppModal.Footer>
-					<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+					<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit className="ms-auto" isLoading={isSubmitting} disabled={isSubmitting}>
+					<FormSubmit isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>
