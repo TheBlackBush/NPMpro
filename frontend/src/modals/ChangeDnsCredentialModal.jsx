@@ -50,7 +50,7 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<DirtyTracker dirtyRef={dirtyRef} />
 				<AppModal.Header closeButton={!isSubmitting}>

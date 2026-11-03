@@ -31,7 +31,7 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title>

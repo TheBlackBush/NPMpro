@@ -301,7 +301,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 	const closable = !isSubmitting && step !== "backup";
 
 	return (
-		<AppModal show={visible} onHide={closable ? remove : undefined} backdrop="static" keyboard={closable}>
+		<AppModal size="sm" show={visible} onHide={closable ? remove : undefined} backdrop="static" keyboard={closable}>
 			<AppModal.Header closeButton={closable}>
 				<AppModal.Title>
 					<T id="mfa.title" />
