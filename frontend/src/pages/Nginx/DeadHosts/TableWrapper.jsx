@@ -1,13 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteDeadHost, toggleDeadHost } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { getDirectory, useDeadHosts, useDirectorySuggestions, useListFilters } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeadHostModal, showDeleteConfirmModal } from "src/modals";
+import { showDeadHostModal, showDeleteConfirmModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -79,33 +87,29 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("deadHosts")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="dead-hosts" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="DeadHosts" />
-						<ImportExportButtons
-							kind="dead_hosts"
-							permissionSection={DEAD_HOSTS}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("deadHosts")}
-									onClick={() => showDeadHostModal("new")}
-								>
-									<T id="object.add" tData={{ object: "dead-host" }} />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="dead-hosts" />}
+			section="deadHosts"
+			count={data.length}
+			help="DeadHosts"
+			actions={
+				<>
+					<ImportExportButtons
+						kind="dead_hosts"
+						permissionSection={DEAD_HOSTS}
+						hasItems={Boolean(data?.length)}
+					/>
+					<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showDeadHostModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="object.add" tData={{ object: "dead-host" }} />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -116,13 +120,14 @@ export default function TableWrapper() {
 					groups={groups}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayedHosts}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="dead-host.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayedHosts}
+				groupBy={groupingActive ? getDirectory : undefined}
+				renderGroupLabel={(key) => (key === "" ? <T id="dead-host.no-directory" /> : key)}
+				{...sharedTableProps}
+			/>
+		</ListPage>
 	);
 }
