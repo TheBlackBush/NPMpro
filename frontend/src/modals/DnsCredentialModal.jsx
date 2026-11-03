@@ -81,7 +81,8 @@ function ProviderSelect({ providers, options, locked }) {
 					options={options ?? []}
 					onChange={(value) => {
 						const next = providers.find((p) => p.id === value);
-						field.onChange(value ?? undefined);
+						// not clearable: value is always a provider of the list
+						field.onChange(value);
 						setValue("fieldValues", credentialFieldValues(next, null), { shouldDirty: true });
 						setValue("ini", "", { shouldDirty: true });
 						setValue("useIni", !next?.fields, { shouldDirty: true });
@@ -185,7 +186,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 						<CredentialValues providers={providers} data={data} />
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>

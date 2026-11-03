@@ -4,9 +4,11 @@ import { useController, useWatch } from "react-hook-form";
 import { certificateProviderTranslation } from "src/components";
 import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
+import { Skeleton } from "src/components/ui/skeleton";
 import { useCertificates, useUser } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { CERTIFICATES, hasPermission, MANAGE } from "src/modules/Permissions";
+import { FieldMessage } from "./FieldMessage";
 import { FormField } from "./FormField";
 import { useReadOnly } from "./HookForm";
 import { useTlsChange } from "./useTlsChange";
@@ -15,6 +17,7 @@ import { useTlsChange } from "./useTlsChange";
 const CERTIFICATE = "certificateId";
 const MTLS_CERTIFICATE = "npmproMtlsCertificateId";
 
+// the option icons: an existing certificate (success), a new request (primary), none (destructive)
 // a certificate row in the list: the icon and name, the provider and expiry under it
 const renderOption = (option) => (
 	<div className="flex-1">
@@ -29,14 +32,14 @@ const certificateOption = (cert) => ({
 	value: cert.id,
 	label: cert.niceName,
 	subLabel: `${intl.formatMessage({ id: certificateProviderTranslation(cert.provider) })} \u2014 ${intl.formatMessage({ id: "expires.on" }, { date: formatDateTime(cert.expiresOn) })}`,
-	icon: <IconShield size={14} className="text-pink" />,
+	icon: <IconShield size={14} className="text-success" />,
 });
 
 const noneOption = (subtitle) => ({
 	value: 0,
 	label: intl.formatMessage({ id: "certificate.none.title" }),
 	subLabel: intl.formatMessage({ id: subtitle }),
-	icon: <IconShield size={14} className="text-red" />,
+	icon: <IconShield size={14} className="text-destructive" />,
 });
 
 // a certificate select on FormField: the placeholder while the certificates load, their error, or the select
@@ -50,11 +53,11 @@ function CertificateSelect({ id, label, hint, field, options, disabled, onChoose
 		<FormField id={id} label={<T id={label} />} hint={hint}>
 			{(control) => (
 				<>
-					{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
+					{isPending ? <Skeleton className="h-8 w-full" /> : null}
 					{isError ? (
-						<div className="invalid-feedback d-block">
+						<FieldMessage>
 							<ApiErrorContent error={error} />
-						</div>
+						</FieldMessage>
 					) : null}
 					{!isPending && !isError ? (
 						<Combobox
@@ -97,7 +100,7 @@ export function SSLCertificateField({ label, allowNew, forHttp = true }) {
 						value: "new",
 						label: intl.formatMessage({ id: "certificates.request.title" }),
 						subLabel: intl.formatMessage({ id: "certificates.request.subtitle" }),
-						icon: <IconShield size={14} className="text-lime" />,
+						icon: <IconShield size={14} className="text-primary" />,
 					},
 				]
 			: []),

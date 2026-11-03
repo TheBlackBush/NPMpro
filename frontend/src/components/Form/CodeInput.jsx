@@ -1,6 +1,7 @@
 import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { Fragment, useCallback, useEffect, useRef } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
+import { Button } from "src/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "src/components/ui/input-otp";
 import { T } from "src/locale";
 import {
@@ -171,9 +172,9 @@ function CodeEntry({ idPrefix, label, allowBackup = false }) {
 				<CodeInput key="code" id={`${idPrefix}-code`} label={label} className="mb-2" />
 			)}
 			{allowBackup ? (
-				<button type="button" className="btn btn-link p-0" onClick={() => switchTo(!backupShown)}>
+				<Button type="button" variant="link" className="h-auto p-0" onClick={() => switchTo(!backupShown)}>
 					<T id={backupShown ? "mfa.use-app-code" : "mfa.use-backup-code"} />
-				</button>
+				</Button>
 			) : null}
 		</div>
 	);

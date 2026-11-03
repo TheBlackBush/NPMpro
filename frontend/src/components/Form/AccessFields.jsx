@@ -1,6 +1,6 @@
 import { IconLock, IconLockOpen2, IconWorld } from "@tabler/icons-react";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useController, useWatch } from "react-hook-form";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
@@ -8,6 +8,7 @@ import { ApiErrorContent } from "src/components/ErrorAlert";
 import { Skeleton } from "src/components/ui/skeleton";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
+import { rowKeysOf } from "src/modules/HookForm";
 import { NoticeAlert } from "../NoticeAlert";
 import { FieldMessage } from "./FieldMessage";
 import { useReadOnly, useRecheckDependent } from "./HookForm";
@@ -74,7 +75,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const createOption = (type) => {
 		if (type === "global") {
 			return {
-				icon: <IconWorld size={14} className="text-cyan" />,
+				icon: <IconWorld size={14} className="text-primary" />,
 				value: type,
 				label: intl.formatMessage({ id: "access-list.global" }),
 				subLabel: intl.formatMessage({ id: "access-list.global.subtitle" }),
@@ -82,14 +83,14 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		}
 		if (type === "custom") {
 			return {
-				icon: <IconLock size={14} className="text-lime" />,
+				icon: <IconLock size={14} className="text-success" />,
 				value: type,
 				label: intl.formatMessage({ id: "access-list.custom" }),
 				subLabel: intl.formatMessage({ id: "access-list.custom.subtitle" }),
 			};
 		}
 		return {
-			icon: <IconLockOpen2 size={14} className="text-red" />,
+			icon: <IconLockOpen2 size={14} className="text-destructive" />,
 			value: type,
 			label: intl.formatMessage({ id: "access-list.public" }),
 			subLabel: intl.formatMessage({ id: "access-list.public.subtitle" }),
@@ -129,7 +130,13 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 
 	const applyUpdatedValues = (newValues) => idsField.onChange(newValues);
 
+	// row keys that stay with their row: a pick in a row keeps the row (and its focus), a move takes the key along
+	const keyCount = useRef(0);
+	const rows = useRef([]);
+	rows.current = rowKeysOf(rows.current, values, () => `acl-row-${keyCount.current++}`);
+
 	const onAccessListChange = (acl, idx) => {
+		rows.current = rows.current.map((row, i) => (i === idx ? { ...row, value: acl.id } : row));
 		const newValues = values.map((id, i) => (i === idx ? acl.id : id));
 		applyUpdatedValues(newValues);
 	};
@@ -201,7 +208,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 			{!isPending && !isError && aclValue === "custom" ? (
 				<>
 					{values.map((item, idx) => (
-						<div key={item} className="flex items-center gap-1">
+						<div key={rows.current[idx].key} className="flex items-center gap-1">
 							<Combobox
 								className="min-w-0 flex-1"
 								aria-label={intl.formatMessage({ id: "access-list" })}

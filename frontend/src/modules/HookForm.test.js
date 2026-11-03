@@ -11,6 +11,7 @@ import {
 	orderErrorPaths,
 	resetOptionsOf,
 	rowErrorPaths,
+	rowKeysOf,
 	setIn,
 	toHookFormErrors,
 	translateErrors,
@@ -180,4 +181,29 @@ it("commits every typed entry before a save and refuses it on the first refused 
 	// every entry commits its valid part, also after a refused one
 	assert.deepEqual(committed, ["a", "b", "c", "d", "e"]);
 	assert.equal(commitPendingEntries([]), null);
+});
+
+it("keeps the key of a row with its value", () => {
+	let next = 0;
+	const newKey = () => `k${next++}`;
+	const start = rowKeysOf([], [5, 7], newKey);
+	assert.deepEqual(start, [
+		{ key: "k0", value: 5 },
+		{ key: "k1", value: 7 },
+	]);
+	// moved: the keys follow the values
+	assert.deepEqual(rowKeysOf(start, [7, 5], newKey), [
+		{ key: "k1", value: 7 },
+		{ key: "k0", value: 5 },
+	]);
+	// removed before it, then added
+	assert.deepEqual(rowKeysOf(start, [7, 9], newKey), [
+		{ key: "k1", value: 7 },
+		{ key: "k2", value: 9 },
+	]);
+	// replaced in place after the caller updated the entry: the key stays
+	const picked = start.map((row, index) => (index === 0 ? { ...row, value: 8 } : row));
+	assert.deepEqual(rowKeysOf(picked, [8, 7], newKey), picked);
+	// the same rows again: the same objects
+	assert.equal(rowKeysOf(start, [5, 7], newKey)[0], start[0]);
 });

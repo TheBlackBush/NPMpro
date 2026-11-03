@@ -246,3 +246,36 @@ export function commitPendingEntries(entries) {
 	}
 	return refused;
 }
+
+/**
+ * Keys for the rows of a list of plain values (ids) that stay with their row: a row keeps its key where its value
+ * stayed, and a value that moved (up, down, or a row removed before it) takes the key it had. A row whose value is
+ * replaced in place keeps its key when the caller updates its entry first (so the control in it is not mounted
+ * again and keeps the focus).
+ *
+ * @param   {{ key: string, value: * }[]} rows    the previous rows
+ * @param   {*[]}                         values  the list now
+ * @param   {Function}                    newKey  () => a key not used before
+ * @returns {{ key: string, value: * }[]}
+ */
+export function rowKeysOf(rows, values, newKey) {
+	const used = new Set();
+	const inPlace = values.map((value, index) => {
+		const row = rows[index];
+		if (row && row.value === value) {
+			used.add(row.key);
+			return row;
+		}
+		return null;
+	});
+	return inPlace.map((row, index) => {
+		if (row) return row;
+		const value = values[index];
+		const moved = rows.find((other) => other.value === value && !used.has(other.key));
+		if (moved) {
+			used.add(moved.key);
+			return moved;
+		}
+		return { key: newKey(), value };
+	});
+}
