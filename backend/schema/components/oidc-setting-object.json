@@ -130,6 +130,13 @@
 										"brand-github",
 										"brand-gitlab",
 										"brand-windows",
+										"brand-authentik",
+										"brand-authelia",
+										"brand-keycloak",
+										"brand-okta",
+										"brand-auth0",
+										"brand-openid",
+										"brand-gitea",
 										"cloud"
 									]
 								}

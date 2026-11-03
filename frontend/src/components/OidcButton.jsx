@@ -1,38 +1,16 @@
-import {
-	IconBrandGithub,
-	IconBrandGitlab,
-	IconBrandGoogle,
-	IconBrandWindows,
-	IconCloud,
-	IconKey,
-	IconLock,
-	IconLogin,
-	IconShieldLock,
-	IconUserCircle,
-} from "@tabler/icons-react";
+import { BrandIcon } from "src/components/BrandIcon";
 import { T } from "src/locale";
 import { contrastText, shade, validOidcColor } from "src/modules/Oidc";
-
-// Keys are the names stored in the OIDC settings (OIDC_BUILTIN_ICONS in modules/Oidc.js)
-const OIDC_ICON_COMPONENTS = {
-	key: IconKey,
-	lock: IconLock,
-	login: IconLogin,
-	"shield-lock": IconShieldLock,
-	"user-circle": IconUserCircle,
-	"brand-google": IconBrandGoogle,
-	"brand-github": IconBrandGithub,
-	"brand-gitlab": IconBrandGitlab,
-	"brand-windows": IconBrandWindows,
-	cloud: IconCloud,
-};
+import { oidcIcon } from "src/modules/OidcIcons";
 
 function OidcIcon({ icon }) {
 	if (icon?.type === "file") {
 		return <img src={icon.url} alt="" width={20} height={20} className="size-5 shrink-0" />;
 	}
-	const Icon = OIDC_ICON_COMPONENTS[icon?.name] ?? IconLogin;
-	return <Icon className="size-4 shrink-0" aria-hidden="true" />;
+	const entry = oidcIcon(icon?.name);
+	if (entry.kind === "brand") return <BrandIcon icon={entry.icon} className="size-5 shrink-0" />;
+	const Icon = entry.icon;
+	return <Icon className="size-5 shrink-0" aria-hidden="true" />;
 }
 
 function OidcButton({ label, color, icon, onClick, disabled }) {
@@ -63,4 +41,4 @@ function OidcButton({ label, color, icon, onClick, disabled }) {
 	);
 }
 
-export { OIDC_ICON_COMPONENTS, OidcButton, OidcIcon };
+export { OidcButton, OidcIcon };

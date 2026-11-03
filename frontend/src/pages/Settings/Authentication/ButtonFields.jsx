@@ -1,26 +1,35 @@
 import { CircleCheck } from "lucide-react";
 import { useId, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-import { ApiErrorContent, Button, ErrorAlert, OIDC_ICON_COMPONENTS, OidcButton, TextField } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, OidcButton, TextField } from "src/components";
+import { BrandIcon } from "src/components/BrandIcon";
 import { Input } from "src/components/ui/input";
 import { useDeleteOidcIcon, useDownloadOidcIcon, useUploadOidcIcon } from "src/hooks";
 import { intl, T } from "src/locale";
-import {
-	isOidcColor,
-	OIDC_BUILTIN_ICONS,
-	OIDC_COLOR_PRESETS,
-	OIDC_ICON_MAX_BYTES,
-	oidcIconUrl,
-	validOidcColor,
-} from "src/modules/Oidc";
+import { isOidcColor, OIDC_COLOR_PRESETS, OIDC_ICON_MAX_BYTES, oidcIconUrl, validOidcColor } from "src/modules/Oidc";
+import { OIDC_ICONS, OIDC_PICKER_ICONS } from "src/modules/OidcIcons";
 import { SettingsCard } from "../SettingsCard";
 import { StatusAlert } from "../StatusAlert";
+
+const iconLabel = (entry) => (entry.labelKey ? intl.formatMessage({ id: entry.labelKey }) : entry.label);
+
+// the picker tiles: the offered icons, plus a hidden icon (Windows) while it is the saved setting or the current pick,
+// so it shows as chosen and can be picked again after trying another tile
+const pickerEntries = (selected, storedName) => {
+	const kept = OIDC_ICONS.filter((entry) => entry.hidden && (entry.name === selected || entry.name === storedName));
+	return kept.length ? [...OIDC_PICKER_ICONS, ...kept] : OIDC_PICKER_ICONS;
+};
 
 const ICON_URL = /^https?:\/\/[^\s/$.?#].[^\s]*$/u;
 
 // the card of a picker radio: the native radio is hidden but stays the focus and keyboard target
 const PICK_CARD =
 	"flex h-9 items-center gap-2 rounded-md border px-3 text-sm peer-checked:border-primary peer-checked:bg-primary/10 peer-focus-visible:ring-2 peer-focus-visible:ring-ring";
+
+const ICON_GROUPS = [
+	{ kind: "generic", headingId: "settings.authentication.button.icon.group.generic" },
+	{ kind: "brand", headingId: "settings.authentication.button.icon.group.providers" },
+];
 
 const SOURCES = ["builtin", "upload", "url"];
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml";
@@ -152,7 +161,9 @@ function IconFields({ storedIcon }) {
 		remove.mutate(undefined, callbacks("settings.authentication.button.icon.removed"));
 	};
 
-	const selected = field.value ?? (storedIcon?.type === "builtin" ? storedIcon.name : null);
+	const firstName = OIDC_PICKER_ICONS[0].name;
+	const storedName = storedIcon?.type === "builtin" ? storedIcon.name : null;
+	const selected = field.value ?? storedName;
 
 	return (
 		<div className="space-y-2">
@@ -184,31 +195,48 @@ function IconFields({ storedIcon }) {
 				))}
 			</div>
 			{source === "builtin" ? (
-				<div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
-					{OIDC_BUILTIN_ICONS.map((name, index) => {
-						const Icon = OIDC_ICON_COMPONENTS[name];
+				// one radio group, so the arrow keys walk through every tile; the headings are plain text
+				<div className="space-y-3" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+					{ICON_GROUPS.map((group) => {
+						const entries = pickerEntries(selected, storedName).filter(
+							(entry) => entry.kind === group.kind,
+						);
 						return (
-							<label className="cursor-pointer" key={name}>
-								<input
-									ref={index === 0 ? field.ref : undefined}
-									type="radio"
-									name={`${groupId}-builtin`}
-									value={name}
-									className="peer sr-only"
-									aria-label={intl.formatMessage({
-										id: `settings.authentication.button.icon.${name}`,
+							<div className="space-y-1.5" key={group.kind}>
+								<div className="text-xs text-muted-foreground">
+									<T id={group.headingId} />
+								</div>
+								<div className="flex flex-wrap gap-2">
+									{entries.map((entry) => {
+										const label = iconLabel(entry);
+										return (
+											<label className="cursor-pointer" key={entry.name} title={label}>
+												<input
+													ref={entry.name === firstName ? field.ref : undefined}
+													type="radio"
+													name={`${groupId}-builtin`}
+													value={entry.name}
+													className="peer sr-only"
+													aria-label={label}
+													checked={selected === entry.name}
+													onBlur={field.onBlur}
+													onChange={() => {
+														field.onChange(entry.name);
+														setResult(null);
+													}}
+												/>
+												<span className={PICK_CARD}>
+													{entry.kind === "brand" ? (
+														<BrandIcon icon={entry.icon} className="size-5" />
+													) : (
+														<entry.icon className="size-5" aria-hidden="true" />
+													)}
+												</span>
+											</label>
+										);
 									})}
-									checked={selected === name}
-									onBlur={field.onBlur}
-									onChange={() => {
-										field.onChange(name);
-										setResult(null);
-									}}
-								/>
-								<span className={PICK_CARD}>
-									<Icon className="size-4" aria-hidden="true" />
-								</span>
-							</label>
+								</div>
+							</div>
 						);
 					})}
 				</div>
