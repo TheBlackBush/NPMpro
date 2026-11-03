@@ -82,7 +82,7 @@ export default function Setup() {
 							<h1 className="mt-5">
 								<T id="setup.title" />
 							</h1>
-							<p className="text-secondary">
+							<p className="text-muted-foreground">
 								<T id="setup.preamble" />
 							</p>
 						</div>

@@ -230,7 +230,7 @@ function TrafficChart({ series, range }) {
 	}, [Chart, data, classes, range, theme]);
 
 	if (failed) {
-		return <div className="text-secondary">{intl.formatMessage({ id: "monitoring.load-error" })}</div>;
+		return <div className="text-muted-foreground">{intl.formatMessage({ id: "monitoring.load-error" })}</div>;
 	}
 
 	return (

@@ -20,7 +20,7 @@ function EmptyState({ icon: Icon, title, subtitle, to, href, action }) {
 				<Icon className="icon" aria-hidden="true" />
 			</div>
 			<p className="empty-title">{title}</p>
-			{subtitle ? <p className="empty-subtitle text-secondary">{subtitle}</p> : null}
+			{subtitle ? <p className="empty-subtitle text-muted-foreground">{subtitle}</p> : null}
 			{(to || href) && action ? (
 				<div className="empty-action">
 					{href ? (

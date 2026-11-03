@@ -41,7 +41,7 @@ export function Uploading({ progress }) {
 	const percent = Math.round(progress * 100);
 	return (
 		<div className="py-3">
-			<div className="text-secondary mb-2" role="status">
+			<div className="text-muted-foreground mb-2" role="status">
 				<T id="settings.backup.uploading" data={{ percent }} />
 			</div>
 			<div className="progress progress-sm progress-brand">

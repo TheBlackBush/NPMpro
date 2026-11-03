@@ -93,7 +93,7 @@ const Dashboard = () => {
 				{viewable.length > 0 ? (
 					<DashboardTile to={errorsPath} icon={IconAlertTriangle} color="orange">
 						{errorTotal === null ? (
-							<span className="text-secondary">-</span>
+							<span className="text-muted-foreground">-</span>
 						) : (
 							<span className={errorTotal > 0 ? "badge bg-red-lt text-wrap text-start" : undefined}>
 								<T id="dashboard.config-errors" data={{ count: errorTotal }} />
@@ -104,7 +104,7 @@ const Dashboard = () => {
 				<HasPermission section={CERTIFICATES} permission={VIEW} hideError>
 					<DashboardTile to="/certificates?expiry=soon" icon={IconShield} color="teal">
 						{expiring === undefined || expired === undefined ? (
-							<span className="text-secondary">-</span>
+							<span className="text-muted-foreground">-</span>
 						) : (
 							<>
 								<div className="mb-1">
@@ -165,7 +165,7 @@ const Dashboard = () => {
 									))}
 								</div>
 							) : (
-								<div className="card-body text-secondary">
+								<div className="card-body text-muted-foreground">
 									<T id="dashboard.recent-changes.empty" />
 								</div>
 							)}

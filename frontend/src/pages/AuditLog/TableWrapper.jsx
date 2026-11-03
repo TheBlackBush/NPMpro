@@ -164,7 +164,7 @@ export default function TableWrapper() {
 				{rows.length && (hasNextPage || filtered || total !== null) ? (
 					<div className="card-footer d-flex align-items-center">
 						{total !== null ? (
-							<p className="m-0 text-secondary">
+							<p className="m-0 text-muted-foreground">
 								<T id="audit-log.loaded" data={{ loaded: rows.length, total }} />
 							</p>
 						) : null}

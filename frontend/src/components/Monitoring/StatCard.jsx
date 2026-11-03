@@ -39,7 +39,7 @@ function StatCard({
 			</div>
 			<div className="h1 mt-2 mb-0 text-truncate">{value}</div>
 			{hint ? (
-				<div className={`text-secondary small mt-1 ${hintWrap ? "text-wrap" : "text-truncate"}`}>{hint}</div>
+				<div className={`text-muted-foreground small mt-1 ${hintWrap ? "text-wrap" : "text-truncate"}`}>{hint}</div>
 			) : null}
 			{children}
 		</div>

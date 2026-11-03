@@ -68,7 +68,7 @@ export default function TableWrapper() {
 						) : null}
 					</div>
 				</div>
-				<div className="card-body border-bottom text-secondary">
+				<div className="card-body border-bottom text-muted-foreground">
 					<T id="users.oidc-hint" />{" "}
 					<Link to="/settings/authentication">
 						<T id="users.oidc-hint.link" />

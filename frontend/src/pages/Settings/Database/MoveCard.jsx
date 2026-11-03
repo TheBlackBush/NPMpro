@@ -195,7 +195,7 @@ function MoveForm({ tested, status }) {
 			</div>
 			<div className="card-body">
 				<LastFailedMove move={status?.move} />
-				<p className="text-secondary">
+				<p className="text-muted-foreground">
 					<T id="settings.database.move.intro" />
 				</p>
 				<SelectField
@@ -239,7 +239,7 @@ function MoveForm({ tested, status }) {
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
 				<FormErrorNote id={noteId} className="me-2 text-end" />
 				{hint && !blocked ? (
-					<span id={hintId} className="text-secondary small me-2 text-end">
+					<span id={hintId} className="text-muted-foreground small me-2 text-end">
 						<T id={hint} />
 					</span>
 				) : null}

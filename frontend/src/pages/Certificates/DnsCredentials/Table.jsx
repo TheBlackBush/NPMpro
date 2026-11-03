@@ -32,7 +32,7 @@ const features = tableFeatures({
 
 function UsedBy({ id, certificates }) {
 	if (certificates.length === 0) {
-		return <span className="text-secondary">0</span>;
+		return <span className="text-muted-foreground">0</span>;
 	}
 	const popover = (
 		<Popover id={`popover-dns-credential-used-by-${id}`}>

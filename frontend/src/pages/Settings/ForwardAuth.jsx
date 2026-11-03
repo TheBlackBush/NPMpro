@@ -26,7 +26,7 @@ export default function ForwardAuth() {
 			toApi={toApi}
 			validate={validate}
 		>
-			<p className="text-secondary">
+			<p className="text-muted-foreground">
 				<T id="settings.forward-auth.intro" />
 			</p>
 			<Part titleId="settings.forward-auth.upstreams">

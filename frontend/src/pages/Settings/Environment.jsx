@@ -101,7 +101,7 @@ function PhoneTitle({ title, end, summary }) {
 				<div className={titleClass()}>{title}</div>
 				{end}
 			</div>
-			{summary ? <div className="mt-1 small text-secondary text-break">{summary}</div> : null}
+			{summary ? <div className="mt-1 small text-muted-foreground text-break">{summary}</div> : null}
 		</div>
 	);
 }
@@ -119,7 +119,7 @@ function SettingLabel({ group, name }) {
 function LockedSettings({ locked }) {
 	if (locked.length === 0) {
 		return (
-			<p className="text-secondary">
+			<p className="text-muted-foreground">
 				<T id="settings.environment.locked.none" />
 			</p>
 		);
@@ -159,7 +159,7 @@ function LockedSettings({ locked }) {
 								{/* the same wording as the badge in the settings section */}
 								<LockedBadge env={env} reason={reason} className="" />
 								{hasLockReason(env, reason) ? (
-									<div className="small text-secondary mt-1">
+									<div className="small text-muted-foreground mt-1">
 										<LockReason env={env} reason={reason} />
 									</div>
 								) : null}
@@ -180,14 +180,14 @@ function LockedSettings({ locked }) {
 function Value({ item }) {
 	if (item.secret) {
 		return (
-			<span className="text-secondary">
+			<span className="text-muted-foreground">
 				<T id={item.set ? "settings.environment.secret.set" : "settings.environment.secret.unset"} />
 			</span>
 		);
 	}
 	if (item.value === "") {
 		return (
-			<span className="text-secondary">
+			<span className="text-muted-foreground">
 				<T id="settings.environment.empty" />
 			</span>
 		);

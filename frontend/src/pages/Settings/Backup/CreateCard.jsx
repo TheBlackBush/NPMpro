@@ -75,7 +75,7 @@ function CreateForm({ data, error, keepRef }) {
 			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
 				<FormErrorNote id={noteId} className="me-2 text-end" />
 				{showReason ? (
-					<span id={reasonId} className="text-secondary small me-2 text-end">
+					<span id={reasonId} className="text-muted-foreground small me-2 text-end">
 						<T id="settings.backup.reason.no-types" />
 					</span>
 				) : null}

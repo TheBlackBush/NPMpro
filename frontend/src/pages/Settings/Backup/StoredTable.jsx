@@ -91,7 +91,7 @@ function NameCell({ entry, names }) {
 					<span className="badge bg-purple-lt me-2">
 						<T id="settings.backup.automatic" />
 					</span>
-					<span className="small text-secondary">
+					<span className="small text-muted-foreground">
 						<T id="settings.backup.automatic.hint" />
 					</span>
 				</div>
@@ -376,7 +376,7 @@ function StoredTable() {
 			{uploading ? (
 				<div className="card-body border-bottom">
 					<div className="d-flex align-items-center mb-2">
-						<span className="text-secondary" role="status">
+						<span className="text-muted-foreground" role="status">
 							<T id="settings.backup.uploading" data={{ percent }} />
 						</span>
 						<Button size="sm" className="ms-auto" onClick={() => abortRef.current?.abort()}>

@@ -12,7 +12,7 @@ export function Unhealthy() {
 					<p className="empty-title">
 						<T id="unhealthy.title" />
 					</p>
-					<p className="empty-subtitle text-secondary">
+					<p className="empty-subtitle text-muted-foreground">
 						<T id="unhealthy.content" />
 					</p>
 					<div className="empty-action">

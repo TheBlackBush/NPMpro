@@ -95,7 +95,7 @@ function WorldMap({ countries, label, color = "primary", formatValue = formatCou
 	}, [scale]);
 
 	if (failed) {
-		return <div className="text-secondary">{intl.formatMessage({ id: "monitoring.load-error" })}</div>;
+		return <div className="text-muted-foreground">{intl.formatMessage({ id: "monitoring.load-error" })}</div>;
 	}
 
 	return (

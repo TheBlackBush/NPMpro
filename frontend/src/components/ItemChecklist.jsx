@@ -64,7 +64,7 @@ function ItemChecklist({
 					/>
 				</div>
 				<div className="d-flex flex-wrap align-items-center column-gap-3 row-gap-1 mt-2 small">
-					<span className="text-secondary" aria-live="polite">
+					<span className="text-muted-foreground" aria-live="polite">
 						{shown.length < items.length ? (
 							<T
 								id="settings.backup.items-selected-shown"
@@ -92,7 +92,7 @@ function ItemChecklist({
 				</div>
 			</div>
 			{shown.length === 0 ? (
-				<p className="text-secondary small px-3 py-2 mb-0">
+				<p className="text-muted-foreground small px-3 py-2 mb-0">
 					<T id="settings.backup.no-match-type" data={{ type: name }} />
 				</p>
 			) : (
