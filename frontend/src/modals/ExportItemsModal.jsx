@@ -248,6 +248,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 					) : null}
 					<Button
 						type="submit"
+						color="primary"
 						isLoading={isSubmitting}
 						disabled={reason !== null && !blocked}
 						blocked={blocked}
