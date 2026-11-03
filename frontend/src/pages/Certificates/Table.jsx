@@ -1,18 +1,4 @@
 import {
-	IconCloud,
-	IconDotsVertical,
-	IconDownload,
-	IconEdit,
-	IconFlask,
-	IconKey,
-	IconRefresh,
-	IconShield,
-	IconShieldLock,
-	IconTrash,
-	IconUpload,
-	IconWorld,
-} from "@tabler/icons-react";
-import {
 	createColumnHelper,
 	createSortedRowModel,
 	rowSortingFeature,
@@ -22,6 +8,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Download, FlaskConical, KeyRound, Pencil, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
 	CertificateInUseFormatter,
@@ -30,13 +17,14 @@ import {
 	EmptyData,
 	ExpiryFormatter,
 	GravatarFormatter,
-	HasPermission,
+	RowActions,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
-import { showCustomCertificateModal, showDNSCertificateModal, showHTTPCertificateModal } from "src/modals";
-import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { sectionColor } from "src/modules/SectionColors";
+import { certificateActionKeys } from "src/modules/CertificateActions";
+import { CERTIFICATES } from "src/modules/Permissions";
+import { AddCertificateMenu } from "./AddCertificateMenu";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -69,8 +57,51 @@ const providerSummary = (row) => {
 const inUseSummary = (row) =>
 	intl.formatMessage({ id: isInUse(row) ? "certificate.in-use" : "certificate.not-in-use" });
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential } = {}) {
+const actionDefs = {
+	test: { label: "test", icon: FlaskConical, handler: "onTest", arg: (row) => row.domainNames },
+	edit: { label: "action.edit", icon: Pencil, handler: "onEdit", arg: (row) => row },
+	renew: { label: "action.renew", icon: RefreshCw, handler: "onRenew", arg: (row) => row.id },
+	"change-dns": {
+		label: "dns-credentials.change",
+		icon: KeyRound,
+		handler: "onChangeDnsCredential",
+		arg: (row) => row,
+	},
+	download: { label: "action.download", icon: Download, handler: "onDownload", arg: (row) => row.id },
+	delete: { label: "action.delete", icon: Trash2, handler: "onDelete", arg: (row) => row.id },
+};
+
+function CertificateActions({ certificate, ...handlers }) {
+	const canManage = useCanManage(CERTIFICATES);
+	const keys = certificateActionKeys({ ...certificate, inUse: isInUse(certificate) }, { canManage });
+	return (
+		<RowActions
+			// names the row, so the buttons of a list are told apart (the first domain, else the nice name, as the Name column)
+			label={intl.formatMessage(
+				{ id: "list.row-actions" },
+				{ name: certificate.domainNames[0] ?? (certificate.niceName || `#${certificate.id}`) },
+			)}
+			focusKey={`certificate-${certificate.id}`}
+			title={<T id="object.actions-title" tData={{ object: "certificate" }} data={{ id: certificate.id }} />}
+			items={keys.map((key) => {
+				const def = actionDefs[key];
+				return {
+					key,
+					label: <T id={def.label} />,
+					icon: def.icon,
+					onSelect: () => handlers[def.handler]?.(def.arg(certificate)),
+					destructive: key === "delete",
+					separatorBefore: key === "delete",
+				};
+			})}
+		/>
+	);
+}
+
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+// The columns keep their identity between renders and the row handlers reach the cells through the table meta
+// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+export function useColumns() {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
@@ -164,122 +195,16 @@ export function useColumns({ onDelete, onRenew, onDownload, onTest, onEdit, onCh
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => {
-					const row = info.row.original;
-					const inUse = isInUse(row);
-
-					return (
-						<span className="dropdown">
-							<button
-								type="button"
-								className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-								aria-label={intl.formatMessage({ id: "actions" })}
-								data-bs-boundary="viewport"
-								data-bs-toggle="dropdown"
-								data-bs-popper-config='{"strategy":"fixed"}'
-							>
-								<IconDotsVertical />
-							</button>
-							<div className="dropdown-menu dropdown-menu-end">
-								<span className="dropdown-header">
-									<T
-										id="object.actions-title"
-										tData={{ object: "certificate" }}
-										data={{ id: row.id }}
-									/>
-								</span>
-
-								{row.provider === "letsencrypt" && !row.npmproDnsProvider && (
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onTest?.(row.domainNames);
-										}}
-									>
-										<IconFlask className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="test" />
-									</button>
-								)}
-
-								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-									{(row.provider === "other" || row.provider === "mtls") && (
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												onEdit?.(row);
-											}}
-										>
-											<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="action.edit" />
-										</button>
-									)}
-
-									{row.provider === "letsencrypt" && (
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												onRenew?.(row.id);
-											}}
-										>
-											<IconRefresh className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="action.renew" />
-										</button>
-									)}
-
-									{row.provider === "letsencrypt" && row.npmproDnsChallenge && (
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												onChangeDnsCredential?.(row);
-											}}
-										>
-											<IconKey className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="dns-credentials.change" />
-										</button>
-									)}
-
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onDownload?.(row.id);
-										}}
-									>
-										<IconDownload className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="action.download" />
-									</button>
-
-									{!inUse && (
-										<>
-											<div className="dropdown-divider" />
-											<button
-												type="button"
-												className="dropdown-item text-danger"
-												onClick={() => {
-													onDelete?.(row.id);
-												}}
-											>
-												<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-												<T id="action.delete" />
-											</button>
-										</>
-									)}
-								</HasPermission>
-							</div>
-						</span>
-					);
-				},
+				cell: (info) => (
+					<CertificateActions certificate={info.row.original} {...info.table.options.meta?.actions} />
+				),
 				meta: {
 					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential],
+		[],
 	);
 }
 
@@ -297,91 +222,36 @@ export default function Table({
 	sorting,
 	onSortingChange,
 }) {
-	const columns = useColumns({ onDelete, onRenew, onDownload, onTest, onEdit, onChangeDnsCredential });
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onRenew, onTest },
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
 		onSortingChange,
 	});
 
-	const customAddBtn = (
-		<div className="dropdown">
-			<button
-				type="button"
-				className={`btn dropdown-toggle btn-${sectionColor("certificates")} my-3`}
-				data-bs-toggle="dropdown"
-				data-bs-popper-config='{"strategy":"fixed"}'
-			>
-				<T id="object.add" tData={{ object: "certificate" }} />
-			</button>
-			<div className="dropdown-menu">
-				<button
-					type="button"
-					className="dropdown-item"
-					onClick={() => {
-						showHTTPCertificateModal();
-					}}
-				>
-					<IconWorld className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="lets-encrypt-via-http" />
-				</button>
-				<button
-					type="button"
-					className="dropdown-item"
-					onClick={() => {
-						showDNSCertificateModal();
-					}}
-				>
-					<IconCloud className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="lets-encrypt-via-dns" />
-				</button>
-				<div className="dropdown-divider" />
-				<button
-					type="button"
-					className="dropdown-item"
-					onClick={() => {
-						showCustomCertificateModal();
-					}}
-				>
-					<IconUpload className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="certificates.custom" />
-				</button>
-				<div className="dropdown-divider" />
-				<button
-					type="button"
-					className="dropdown-item"
-					onClick={() => {
-						showCustomCertificateModal(undefined, "mtls");
-					}}
-				>
-					<IconShieldLock className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="certificates.mtls" />
-				</button>
-			</div>
-		</div>
-	);
-
 	return (
 		<TableLayout
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
-					icon={IconShield}
+					icon={ShieldCheck}
 					object="certificate"
 					objects="certificates"
 					tableInstance={tableInstance}
 					isFiltered={isFiltered}
 					onClearFilters={onClearFilters}
-					color={sectionColor("certificates")}
-					customAddBtn={customAddBtn}
+					section="certificates"
+					customAddBtn={<AddCertificateMenu />}
 					permissionSection={CERTIFICATES}
 				/>
 			}

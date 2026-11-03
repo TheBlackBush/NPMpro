@@ -1,30 +1,26 @@
-import { IconCloud, IconShieldLock, IconUpload, IconWorld } from "@tabler/icons-react";
 import { useState } from "react";
 import { deleteCertificate, downloadCertificate } from "src/api/backend";
 import {
 	certificateProviderTranslation,
 	ErrorAlert,
-	HasPermission,
 	ImportExportButtons,
+	ListPage,
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
 import { useCertificates, useListFilters } from "src/hooks";
 import { formatDateTime, T } from "src/locale";
 import {
-	HelpButton,
 	showChangeDnsCredentialModal,
 	showCustomCertificateModal,
 	showDeleteConfirmModal,
-	showDNSCertificateModal,
-	showHTTPCertificateModal,
 	showReachabilityModal,
 	showRenewCertificateModal,
 } from "src/modals";
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
-import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
+import { CERTIFICATES } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
+import { AddCertificateMenu } from "./AddCertificateMenu";
 import Table, { useColumns } from "./Table";
 import { CertificateTabs } from "./Tabs";
 
@@ -67,80 +63,23 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("certificates")} />
-			<CertificateTabs />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="certificates" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="Certificates" />
-						<ImportExportButtons
-							kind="certificates"
-							permissionSection={CERTIFICATES}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-							{data?.length ? (
-								<div className="dropdown">
-									<button
-										type="button"
-										className={`btn btn-sm dropdown-toggle btn-${sectionColor("certificates")}`}
-										data-bs-toggle="dropdown"
-									>
-										<T id="object.add" tData={{ object: "certificate" }} />
-									</button>
-									<div className="dropdown-menu">
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												showHTTPCertificateModal();
-											}}
-										>
-											<IconWorld className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="lets-encrypt-via-http" />
-										</button>
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												showDNSCertificateModal();
-											}}
-										>
-											<IconCloud className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="lets-encrypt-via-dns" />
-										</button>
-										<div className="dropdown-divider" />
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												showCustomCertificateModal();
-											}}
-										>
-											<IconUpload className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="certificates.custom" />
-										</button>
-										<div className="dropdown-divider" />
-										<button
-											type="button"
-											className="dropdown-item"
-											onClick={() => {
-												showCustomCertificateModal(undefined, "mtls");
-											}}
-										>
-											<IconShieldLock className="icon dropdown-item-icon" aria-hidden="true" />
-											<T id="certificates.mtls" />
-										</button>
-									</div>
-								</div>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="certificates" />}
+			section="certificates"
+			count={data.length}
+			help="Certificates"
+			tabs={<CertificateTabs />}
+			actions={
+				<>
+					<ImportExportButtons
+						kind="certificates"
+						permissionSection={CERTIFICATES}
+						hasItems={Boolean(data?.length)}
+					/>
+					{data?.length ? <AddCertificateMenu size="sm" /> : null}
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -150,53 +89,54 @@ export default function TableWrapper() {
 					kinds={["expiry"]}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayed}
-					isFiltered={isFiltered}
-					onClearFilters={clear}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					isFetching={isFetching}
-					onRenew={showRenewCertificateModal}
-					onChangeDnsCredential={showChangeDnsCredentialModal}
-					onDownload={handleDownload}
-					onEdit={(cert) => showCustomCertificateModal(cert)}
-					onTest={(domains) => showReachabilityModal(domains)}
-					onDelete={(id) => {
-						const certificate = data?.find((item) => item.id === id);
-						const domainNames = certificate?.domainNames.join(", ");
-						showDeleteConfirmModal({
-							title: <T id="object.delete" tData={{ object: "certificate" }} />,
-							onConfirm: async () => {
-								await deleteCertificate(id);
-								showObjectSuccess("certificate", "deleted");
-							},
-							invalidations: [["certificates"], ["certificate", id]],
-							children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
-							subject: domainNames || certificate?.niceName,
-							details: certificate ? (
-								<>
-									{domainNames && certificate.niceName !== domainNames ? (
-										<div>{certificate.niceName}</div>
-									) : null}
-									<div>
-										<T id={certificateProviderTranslation(certificate.provider)} />
-										{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
-									</div>
-									<div>
-										<T
-											id="expires.on"
-											data={{
-												date: formatDateTime(certificate.expiresOn),
-											}}
-										/>
-									</div>
-								</>
-							) : null,
-						});
-					}}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayed}
+				isFiltered={isFiltered}
+				onClearFilters={clear}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				isFetching={isFetching}
+				onRenew={showRenewCertificateModal}
+				onChangeDnsCredential={showChangeDnsCredentialModal}
+				onDownload={handleDownload}
+				onEdit={(cert) => showCustomCertificateModal(cert)}
+				onTest={(domains) => showReachabilityModal(domains)}
+				onDelete={(id) => {
+					const certificate = data?.find((item) => item.id === id);
+					const domainNames = certificate?.domainNames.join(", ");
+					showDeleteConfirmModal({
+						title: <T id="object.delete" tData={{ object: "certificate" }} />,
+						onConfirm: async () => {
+							await deleteCertificate(id);
+							showObjectSuccess("certificate", "deleted");
+						},
+						invalidations: [["certificates"], ["certificate", id]],
+						children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
+						subject: domainNames || certificate?.niceName,
+						details: certificate ? (
+							<>
+								{domainNames && certificate.niceName !== domainNames ? (
+									<div>{certificate.niceName}</div>
+								) : null}
+								<div>
+									<T id={certificateProviderTranslation(certificate.provider)} />
+									{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
+								</div>
+								<div>
+									<T
+										id="expires.on"
+										data={{
+											date: formatDateTime(certificate.expiresOn),
+										}}
+									/>
+								</div>
+							</>
+						) : null,
+					});
+				}}
+			/>
+		</ListPage>
 	);
 }
