@@ -1,13 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteStream, toggleStream } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { getDirectory, useDirectorySuggestions, useListFilters, useStreams } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeleteConfirmModal, showStreamModal } from "src/modals";
+import { showDeleteConfirmModal, showStreamModal } from "src/modals";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE, STREAMS } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
 
@@ -83,33 +91,25 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("streams")} />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="streams" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="Streams" />
-						<ImportExportButtons
-							kind="streams"
-							permissionSection={STREAMS}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={STREAMS} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("streams")}
-									onClick={() => showStreamModal("new")}
-								>
-									<T id="object.add" tData={{ object: "stream" }} />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="streams" />}
+			section="streams"
+			count={data.length}
+			help="Streams"
+			actions={
+				<>
+					<ImportExportButtons kind="streams" permissionSection={STREAMS} hasItems={Boolean(data?.length)} />
+					<HasPermission section={STREAMS} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showStreamModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="object.add" tData={{ object: "stream" }} />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -120,13 +120,14 @@ export default function TableWrapper() {
 					groups={groups}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayedStreams}
-					groupBy={groupingActive ? getDirectory : undefined}
-					renderGroupLabel={(key) => (key === "" ? <T id="stream.no-directory" /> : key)}
-					{...sharedTableProps}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayedStreams}
+				groupBy={groupingActive ? getDirectory : undefined}
+				renderGroupLabel={(key) => (key === "" ? <T id="stream.no-directory" /> : key)}
+				{...sharedTableProps}
+			/>
+		</ListPage>
 	);
 }
