@@ -1,20 +1,22 @@
-import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
+import { Check, CircleCheck, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 import {
 	Button,
 	ErrorAlert,
 	FormField,
-	FormSection,
 	PasswordField,
 	SwitchField,
 	SwitchList,
 	TextField,
 	useRecheckDependent,
 } from "src/components";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { AUTHENTICATION_RECHECKS } from "src/modules/AuthenticationForms";
+import { SettingsCard } from "../SettingsCard";
+import { StatusAlert } from "../StatusAlert";
 import { LockedBadge } from "./LockedBadge";
 
 const CONNECTION_KEYS = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
@@ -35,6 +37,7 @@ function ProviderText({ name, label, hint, locked, type = "text", placeholder, o
 				</>
 			}
 			hint={hint}
+			className=""
 			registerOptions={onChange ? { onChange } : undefined}
 			type={type}
 			autoComplete="off"
@@ -119,8 +122,8 @@ function ProviderFields({ data, isLocked }) {
 	const secretPlaceholder = data.secretError && !secretLocked ? "" : intl.formatMessage({ id: secretKey() });
 
 	return (
-		<FormSection heading legend={<T id="settings.authentication.provider" />} className="mb-4">
-			<SwitchList className="mb-3">
+		<SettingsCard title={<T id="settings.authentication.provider" />}>
+			<SwitchList>
 				<SwitchField
 					id="oidc-enabled"
 					label={
@@ -166,6 +169,7 @@ function ProviderFields({ data, isLocked }) {
 					</>
 				}
 				autoComplete="new-password"
+				className=""
 				disabled={secretLocked}
 				placeholder={secretPlaceholder}
 				registerOptions={{ onChange: recheckAfter("clientSecret") }}
@@ -181,27 +185,25 @@ function ProviderFields({ data, isLocked }) {
 				id="oidc-callbackUrl"
 				label={<T id="settings.authentication.callback-url" />}
 				hint={<T id="settings.authentication.callback-url.hint" />}
+				className=""
 			>
 				{(control) => (
-					<div className="input-group">
-						<input {...control} type="text" className="form-control" readOnly value={callbackUrl} />
-						<button
-							type="button"
-							className="btn btn-icon"
-							aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
-							disabled={!callbackUrl}
-							onClick={onCopy}
-						>
-							{copied ? (
-								<IconCheck className="icon" aria-hidden="true" />
-							) : (
-								<IconCopy className="icon" aria-hidden="true" />
-							)}
-						</button>
-					</div>
+					<InputGroup>
+						<InputGroupInput {...control} type="text" readOnly value={callbackUrl} />
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								size="icon-xs"
+								aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+								disabled={!callbackUrl}
+								onClick={onCopy}
+							>
+								{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+							</InputGroupButton>
+						</InputGroupAddon>
+					</InputGroup>
 				)}
 			</FormField>
-			<div className="visually-hidden" aria-live="polite">
+			<div className="sr-only" aria-live="polite">
 				{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
 			</div>
 			<ProviderText name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
@@ -216,22 +218,21 @@ function ProviderFields({ data, isLocked }) {
 			</Button>
 			<div role="status">
 				{result?.ok ? (
-					<div className="alert alert-success mt-3 mb-0">
-						<div className="alert-icon">
-							<IconCircleCheck className="icon" aria-hidden="true" />
-						</div>
-						<div className="text-break">
-							<T id="settings.authentication.test.ok" data={{ issuer: result.issuer }} />
-						</div>
-					</div>
+					<StatusAlert
+						variant="success"
+						icon={CircleCheck}
+						id="settings.authentication.test.ok"
+						data={{ issuer: result.issuer }}
+						className="mt-3"
+					/>
 				) : null}
 				{result && !result.ok ? (
-					<ErrorAlert className="mt-3 mb-0" error={result.error}>
+					<ErrorAlert className="mt-3" error={result.error}>
 						{result.message}
 					</ErrorAlert>
 				) : null}
 			</div>
-		</FormSection>
+		</SettingsCard>
 	);
 }
 
