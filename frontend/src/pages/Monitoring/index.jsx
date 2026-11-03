@@ -4,7 +4,6 @@ import { ErrorNotFound, HasPermission } from "src/components";
 import { EmptyState } from "src/components/Monitoring";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent } from "src/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "src/components/ui/tabs";
 import { useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { ADMIN, VIEW } from "src/modules/Permissions";
@@ -46,9 +45,10 @@ function MonitoringOff({ goaccess }) {
 	);
 }
 
-// the GoAccess entry looks like a tab trigger but is a link to another page, so it sits beside the tab list
-const GOACCESS_LINK =
-	"inline-flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none dark:text-muted-foreground dark:hover:text-foreground [&_svg]:size-4 [&_svg]:shrink-0";
+// the tabs (links, as the Certificates tabs) and the GoAccess link share one look; the open tab is the NavLink with
+// aria-current="page", marked by the underline
+const TAB =
+	"relative inline-flex h-9 items-center gap-2 px-3 text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none aria-[current=page]:text-foreground aria-[current=page]:after:absolute aria-[current=page]:after:inset-x-3 aria-[current=page]:after:bottom-0 aria-[current=page]:after:h-0.5 aria-[current=page]:after:bg-primary [&_svg]:size-4 [&_svg]:shrink-0";
 
 const Monitoring = () => {
 	const { tab } = useParams();
@@ -71,24 +71,18 @@ const Monitoring = () => {
 				{user?.monitoring ? (
 					<>
 						<nav
-							className="flex flex-wrap items-center gap-1 border-b pb-1.5"
+							className="flex flex-wrap items-center border-b"
 							aria-label={intl.formatMessage({ id: "monitoring" })}
 						>
-							{/* the URL is the source: the open tab is its value, a tab changes it by being a link */}
-							<Tabs value={current?.id ?? ""} activationMode="manual">
-								<TabsList variant="line">
-									{TABS.map(({ id, labelKey, icon: Icon }) => (
-										<TabsTrigger key={id} value={id} asChild>
-											<NavLink to={`/monitoring/${id}`}>
-												<Icon aria-hidden="true" />
-												<T id={labelKey} />
-											</NavLink>
-										</TabsTrigger>
-									))}
-								</TabsList>
-							</Tabs>
+							{/* the URL is the source: each tab is a link, NavLink marks the open one with aria-current */}
+							{TABS.map(({ id, labelKey, icon: Icon }) => (
+								<NavLink key={id} to={`/monitoring/${id}`} className={TAB}>
+									<Icon aria-hidden="true" />
+									<T id={labelKey} />
+								</NavLink>
+							))}
 							{user.goaccess ? (
-								<a href={GOACCESS} target="_blank" rel="noopener noreferrer" className={GOACCESS_LINK}>
+								<a href={GOACCESS} target="_blank" rel="noopener noreferrer" className={TAB}>
 									<T id="goaccess" />
 									<ExternalLinkIcon aria-hidden="true" />
 								</a>
