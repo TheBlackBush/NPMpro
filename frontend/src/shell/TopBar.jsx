@@ -8,7 +8,7 @@ import { NavLinks } from "./NavLinks";
 import { ThemeMenu } from "./ThemeMenu";
 import { UserMenu } from "./UserMenu";
 
-/** Sticky top bar: logo, language, theme and user menus, request progress; the main links in their own row below from md up (the phone menu below md) */
+/** Sticky top bar: logo, language, theme and user menus, request progress; the main links in their own row below from lg up (the phone menu below lg) */
 export function TopBar() {
 	return (
 		<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

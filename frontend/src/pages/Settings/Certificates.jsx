@@ -101,7 +101,7 @@ function StaplingFields() {
 						<>
 							<T id="settings.certificates.ocsp-stapling.hint" />
 							{forced ? (
-								<span className="d-block">
+								<span className="block">
 									<T id="settings.certificates.ocsp-stapling.forced" />
 								</span>
 							) : null}
@@ -148,7 +148,7 @@ function DefaultCertificateField() {
 					<>
 						<T id="settings.certificates.default-certificate.hint" />
 						{isError ? (
-							<span className="d-block text-danger">
+							<span className="block text-destructive">
 								<T id="settings.certificates.default-certificate.list-error" />
 							</span>
 						) : null}

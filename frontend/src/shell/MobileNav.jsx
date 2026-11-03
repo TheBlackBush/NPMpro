@@ -15,7 +15,7 @@ import { LanguageMenu } from "./LanguageMenu";
 import { Logo } from "./Logo";
 import { NavLinks } from "./NavLinks";
 
-/** The main links in a left sheet below the md breakpoint */
+/** The main links in a left sheet below the lg breakpoint */
 export function MobileNav() {
 	const [open, setOpen] = useState(false);
 	return (

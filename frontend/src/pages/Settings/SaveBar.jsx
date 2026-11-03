@@ -25,7 +25,7 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 	const blocked = errorPaths(errors).length > 0;
 	const showReason = nothingToSave && !blocked && !isSubmitting;
 	return (
-		<div className="sticky bottom-0 z-10 -mx-4 mt-6 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur">
+		<div className="sticky bottom-0 z-10 mt-6 flex items-center justify-end gap-3 border-t bg-background/95 py-3 backdrop-blur">
 			<LeaveGuard />
 			<FormErrorNote id={NOTE_ID} labels={labels} className="text-right" />
 			{showReason ? (
@@ -34,6 +34,7 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 				</span>
 			) : null}
 			<Button
+				color="primary"
 				type="submit"
 				isLoading={isSubmitting}
 				disabled={isSubmitting || (nothingToSave && !blocked)}

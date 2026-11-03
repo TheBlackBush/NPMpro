@@ -12,7 +12,8 @@ import { SECTIONS } from "./sections";
 // the menu's categories, each with its sections (fixed, so grouped once)
 const CATEGORIES = groupSections(SECTIONS);
 
-const LINK = "flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted/60";
+const LINK =
+	"flex items-center gap-2 rounded-md px-3 py-2 text-sm outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50";
 const LINK_ACTIVE = "bg-muted font-medium text-foreground";
 
 export default function Layout() {
