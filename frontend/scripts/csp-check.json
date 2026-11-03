@@ -143,6 +143,53 @@
 			]
 		},
 		{
+			"name": "certificate menu",
+			"route": "/certificates",
+			"steps": [
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Certbot via HTTP']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Certbot via DNS']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Custom Certificate']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='mTLS Certificate']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "dns credential window",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{ "click": "role=button[name='Add DNS credential']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "access list window",
+			"route": "/access",
+			"steps": [
+				{ "click": "role=button[name='Add Access List']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=auth]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=rules]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "sidebar layout",
 			"route": "/",
 			"steps": [

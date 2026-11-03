@@ -12,7 +12,7 @@ import { useListRecheck, useRecheckDependent } from "./HookForm";
 // allow on a success tint, deny on a warning tint
 const directiveClass = (directive) =>
 	cn(
-		"w-auto shrink-0 text-foreground",
+		"w-28 shrink-0 text-foreground",
 		directive === "allow" ? "bg-success/10 dark:bg-success/15" : "bg-warning/10 dark:bg-warning/15",
 	);
 

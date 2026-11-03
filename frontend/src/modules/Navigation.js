@@ -24,7 +24,7 @@ export const NAV_ITEMS = Object.freeze([
 	},
 	{ id: "dead-hosts", to: "/nginx/404", labelKey: "dead-hosts", permissionSection: DEAD_HOSTS },
 	{ id: "streams", to: "/nginx/stream", labelKey: "streams", permissionSection: STREAMS },
-	{ id: "certificates", to: "/certificates", labelKey: "certificates", permissionSection: CERTIFICATES },
+	{ id: "certificates", to: "/certificates", labelKey: "certificates-dns", permissionSection: CERTIFICATES },
 	{ id: "access-lists", to: "/access", labelKey: "access-lists", permissionSection: ACCESS_LISTS },
 	{ id: "monitoring", to: "/monitoring", labelKey: "monitoring", permissionSection: ADMIN },
 	{ id: "settings", to: "/settings", labelKey: "settings", permissionSection: ADMIN },

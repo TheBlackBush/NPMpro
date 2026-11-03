@@ -270,6 +270,16 @@ function AppModalFooter({ children, className, ...props }) {
 				"flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/50 px-4 py-3",
 				className,
 			)}
+			// NPMpro: a click on Cancel (any button that is not a submit) first blurs the focused field, whose required error
+			// then appears, the footer moves and the click misses. Keeping the focus in the field on mousedown leaves the
+			// click intact. Submit buttons handle this themselves (FormSubmit). A button that acts on the form's values sets
+			// data-blur-first: the blur then commits typed text first (the HTTP certificate window's Test reads the
+			// domain chips, and a typed domain becomes a chip on blur).
+			onMouseDownCapture={(event) => {
+				const button = event.target instanceof Element ? event.target.closest("button") : null;
+				if (button && button.type !== "submit" && !button.hasAttribute("data-blur-first"))
+					event.preventDefault();
+			}}
 			{...props}
 		>
 			{children}
