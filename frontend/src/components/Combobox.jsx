@@ -433,7 +433,8 @@ function MultipleCombobox({
 	};
 
 	const onKeyDown = (event) => {
-		if (locked) return;
+		// keys that confirm an input method's composition (Enter, a comma in Japanese or Chinese) are not ours
+		if (locked || event.nativeEvent.isComposing || event.keyCode === 229) return;
 		const key = event.key;
 		const highlighted = shown && list.keys.includes(active);
 		if (key === "Home" || key === "End") {
