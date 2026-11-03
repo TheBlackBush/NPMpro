@@ -278,6 +278,46 @@
 				{ "click": "role=menuitemradio[name='Sidebar']" },
 				{ "waitFor": "[data-slot=sidebar]" }
 			]
+		},
+		{
+			"name": "authentication groups",
+			"route": "/settings/authentication",
+			"steps": [
+				{ "click": "#auth-rules-trigger" },
+				{ "waitFor": "#auth-rules-trigger[aria-expanded=true]" },
+				{ "click": "#auth-new-users-trigger" },
+				{ "waitFor": "#auth-new-users-trigger[aria-expanded=true]" },
+				{ "click": "#auth-permissions-trigger" },
+				{ "waitFor": "#auth-permissions-trigger[aria-expanded=true]" },
+				{ "click": "#auth-rules-trigger" },
+				{ "click": "#auth-new-users-trigger" },
+				{ "click": "#auth-permissions-trigger" }
+			]
+		},
+		{
+			"name": "backup schedule window",
+			"route": "/settings/backup",
+			"steps": [
+				{ "click": "role=button[name='Add schedule']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=combobox]" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "database move window",
+			"route": "/settings/database",
+			"steps": [
+				{ "click": "[id$='-engine']" },
+				{ "click": "role=option[name='SQLite']" },
+				{ "click": "role=button[name='Test connection']" },
+				{ "waitFor": "text=Nothing to test" },
+				{ "click": "role=button[name='Move' s]" },
+				{ "waitFor": "[role=dialog] input" },
+				{ "press": "Escape" }
+			]
 		}
 	]
 }
