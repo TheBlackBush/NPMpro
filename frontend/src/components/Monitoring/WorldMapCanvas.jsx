@@ -150,10 +150,10 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 			</p>
 			{ranges.length ? (
 				<ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
-					{ranges.map((range, idx) => (
-						<li key={swatches[idx + 1]} className="flex items-center gap-1.5">
+					{ranges.map((range) => (
+						<li key={range.shade} className="flex items-center gap-1.5">
 							<span
-								className={`inline-block size-3 rounded-sm ${swatches[idx + 1]}`}
+								className={`inline-block size-3 rounded-sm ${swatches[range.shade]}`}
 								aria-hidden="true"
 							/>
 							<span className="tabular-nums">
