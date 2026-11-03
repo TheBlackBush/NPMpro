@@ -193,7 +193,6 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 							<FormSubmit
 								className="ms-auto"
 								edit={!isNew}
-								section="dnsCredentials"
 								isLoading={isSubmitting}
 								disabled={isSubmitting}
 							>

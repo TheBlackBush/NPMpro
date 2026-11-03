@@ -146,12 +146,7 @@ function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, c
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-					<FormSubmit
-						edit={Boolean(data.id) && !isClone}
-						section="redirectionHosts"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

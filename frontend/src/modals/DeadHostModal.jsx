@@ -102,12 +102,7 @@ function DeadHostForm({ data, isClone, savedId, errorMsg, onCloseError, close })
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
-					<FormSubmit
-						edit={Boolean(data.id) && !isClone}
-						section="deadHosts"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

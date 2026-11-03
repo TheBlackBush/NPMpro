@@ -210,12 +210,7 @@ function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={STREAMS} permission={MANAGE} hideError>
-					<FormSubmit
-						edit={Boolean(data.id) && !isClone}
-						section="streams"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

@@ -138,13 +138,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 					<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit
-						className="ms-auto"
-						edit={isEdit}
-						section="certificates"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit className="ms-auto" edit={isEdit} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

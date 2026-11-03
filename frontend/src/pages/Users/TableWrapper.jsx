@@ -61,7 +61,7 @@ export default function TableWrapper() {
 							<Button
 								size="sm"
 								color={sectionColor("users")}
-								onClick={() => showUserModal("new", "users")}
+								onClick={() => showUserModal("new")}
 							>
 								<T id="object.add" tData={{ object: "user" }} />
 							</Button>
@@ -90,7 +90,7 @@ export default function TableWrapper() {
 					onSortingChange={setSorting}
 					isFetching={isFetching}
 					currentUserId={currentUser?.id}
-					onEditUser={(id) => showUserModal(id, "users")}
+					onEditUser={(id) => showUserModal(id)}
 					onEditPermissions={(id) => showPermissionsModal(id)}
 					onSetPassword={(id) => showSetPasswordModal(id)}
 					onResetMfa={(id) => {
@@ -136,7 +136,7 @@ export default function TableWrapper() {
 						});
 					}}
 					onDisableToggle={handleDisableToggle}
-					onNewUser={() => showUserModal("new", "users")}
+					onNewUser={() => showUserModal("new")}
 				/>
 			</div>
 		</div>

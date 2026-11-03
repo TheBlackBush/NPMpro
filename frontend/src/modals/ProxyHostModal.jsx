@@ -171,7 +171,6 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 					<FormSubmit
 						labels={FIELD_LABELS}
 						edit={Boolean(data.id) && !isClone}
-						section="proxyHosts"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>

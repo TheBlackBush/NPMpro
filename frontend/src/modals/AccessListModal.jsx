@@ -96,7 +96,6 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 						labels={FIELD_LABELS}
 						className="ms-auto"
 						edit={Boolean(data.id)}
-						section="accessLists"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>
