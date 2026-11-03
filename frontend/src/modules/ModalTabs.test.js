@@ -8,7 +8,7 @@ const tabs = [
 	{ id: "details", labelId: "column.details", fields: ["domainNames", "forwardHost", "fieldValues"] },
 	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },
 	{ id: "tls", labelId: "column.ssl", fields: ["certificateId", "npmproDnsProvider"] },
-	{ id: "advanced", labelId: "domains.advanced", fields: ["advancedConfig"], end: true },
+	{ id: "advanced", labelId: "domains.advanced", fields: ["advancedConfig"] },
 ];
 
 it("finds the tab of a field, a nested field and a list row; none for a field of no tab", () => {

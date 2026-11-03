@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
@@ -8,6 +8,7 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
+import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR } from "src/modules/StartField";
 import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
@@ -21,17 +22,50 @@ const ModeContext = createContext("dialog");
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
-// the controls a window may start in: the first one in its body that can take the focus and shows (not on a hidden
-// tab, not in a disabled fieldset)
-const FIELD =
-	'input:not([type="hidden"]), select, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])';
 function firstField(content) {
 	const body = content.querySelector("[data-window-body]");
 	if (!body) return null;
-	for (const element of body.querySelectorAll(FIELD)) {
-		if (!element.matches(":disabled") && element.checkVisibility()) return element;
+	for (const element of body.querySelectorAll(START_FIELD_SELECTOR)) {
+		const control = {
+			role: element.getAttribute("role"),
+			disabled: element.matches(":disabled"),
+			visible: element.checkVisibility(),
+		};
+		if (isStartField(control)) return element;
 	}
 	return null;
+}
+
+// A body that mounts after the window opened (an editor that loads its data first): its first field takes the focus
+// once it shows, as long as the focus is still on the window element itself. Stops after the first move, on close,
+// or after 10 seconds.
+function useLateStartField(contentRef, open, isPhone) {
+	useEffect(() => {
+		const content = contentRef.current;
+		if (!(open && content)) return;
+		const settle = () => {
+			const activeIsWindow = content.ownerDocument.activeElement === content;
+			if (keepsWindowFocus({ isPhone, activeIsWindow })) return true;
+			const target = firstField(content);
+			target?.focus({ preventScroll: true });
+			return Boolean(target);
+		};
+		if (settle()) return;
+		const observer = new MutationObserver(() => {
+			if (settle()) observer.disconnect();
+		});
+		observer.observe(content, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["data-state"],
+		});
+		const timer = setTimeout(() => observer.disconnect(), 10_000);
+		return () => {
+			observer.disconnect();
+			clearTimeout(timer);
+		};
+	}, [contentRef, open, isPhone]);
 }
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
@@ -63,6 +97,8 @@ function AppModal({
 	const mode = windowMode({ editorStyle, size, isPhone });
 	const primitive = windowPrimitive({ editorStyle, size });
 	const giveFocusBack = useWindowFocusReturn();
+	const contentRef = useRef(null);
+	useLateStartField(contentRef, Boolean(show), isPhone);
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
 	const guards = {
@@ -117,6 +153,7 @@ function AppModal({
 						{primitive === "sheet" ? (
 							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
 								<SheetContent
+									ref={contentRef}
 									side="right"
 									showCloseButton={false}
 									className={cn(
@@ -134,6 +171,7 @@ function AppModal({
 						) : (
 							<Dialog open={Boolean(show)} onOpenChange={onOpenChange}>
 								<DialogContent
+									ref={contentRef}
 									showCloseButton={false}
 									className={cn(
 										frame,
