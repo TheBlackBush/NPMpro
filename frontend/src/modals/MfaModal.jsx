@@ -1,10 +1,12 @@
-import { IconCopy } from "@tabler/icons-react";
-import cn from "clsx";
+import { CopyIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotpSetup } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { CodeEntry, HookForm, useAppForm, useRefusedCodeReset } from "src/components/Form";
+import { StatusBadge } from "src/components/StatusBadge";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
+import { Label } from "src/components/ui/label";
 import { intl, T } from "src/locale";
 import { CODE_VALUES, codeOf, mfaCodeValidate } from "src/modules/AccountForms";
 import EasyModal from "src/modules/easyModal";
@@ -33,13 +35,14 @@ function CodeForm({ step, labelId, allowBackup = false, color, submitId, onSubmi
 	return (
 		<HookForm methods={methods} onSubmit={submit}>
 			<CodeEntry idPrefix={`mfa-${step}`} label={<T id={labelId} />} allowBackup={allowBackup} />
-			<div className="d-flex gap-2 align-items-start">
+			{/* two equal columns: Cancel and the step's button are as wide as each other, the note goes under the button */}
+			<div className="grid grid-cols-2 items-start gap-2">
 				<Button type="button" fullWidth onClick={onCancel} disabled={isSubmitting}>
 					<T id="cancel" />
 				</Button>
 				<FormSubmit
 					stacked
-					className="w-100"
+					className="min-w-0"
 					messageId="form.fix-fields.continue"
 					color={color}
 					isLoading={isSubmitting}
@@ -49,6 +52,36 @@ function CodeForm({ step, labelId, allowBackup = false, color, submitId, onSubmi
 				</FormSubmit>
 			</div>
 		</HookForm>
+	);
+}
+
+// the secret of the authenticator app as text (for apps that cannot scan), read-only, with a copy button
+function SecretKey({ secret }) {
+	const id = useId();
+	return (
+		<div className="mb-3 flex flex-col gap-1.5">
+			<Label htmlFor={id} className="text-muted-foreground">
+				<T id="totp.secret-key" />
+			</Label>
+			<InputGroup>
+				<InputGroupInput
+					id={id}
+					className="font-mono"
+					value={secret}
+					readOnly
+					onClick={(e) => e.target.select()}
+				/>
+				<InputGroupAddon align="inline-end">
+					<InputGroupButton
+						size="icon-xs"
+						aria-label={intl.formatMessage({ id: "aria.copy" })}
+						onClick={() => navigator.clipboard.writeText(secret)}
+					>
+						<CopyIcon aria-hidden="true" />
+					</InputGroupButton>
+				</InputGroupAddon>
+			</InputGroup>
+		</div>
 	);
 }
 
@@ -145,17 +178,16 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 			return (
 				<div className="py-2">
 					<div className="mb-4">
-						<div className="d-flex align-items-center justify-content-between mb-2">
-							<span className="fw-bold">
+						<div className="mb-2 flex items-center justify-between gap-2">
+							<span className="font-medium">
 								<T id="totp.status" />
 							</span>
-							<span className={cn("status", isEnabled ? "status-green" : "status-secondary")}>
-								<span className="status-dot" />
+							<StatusBadge tone={isEnabled ? "success" : "muted"}>
 								{isEnabled ? <T id="totp.enabled" /> : <T id="totp.disabled" />}
-							</span>
+							</StatusBadge>
 						</div>
 						{isEnabled && (
-							<p className="text-secondary small mb-0">
+							<p className="mb-0 text-muted-foreground text-sm">
 								<T id="mfa.backup-codes-remaining" data={{ count: backupCodesRemaining }} />
 							</p>
 						)}
@@ -165,7 +197,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 							<T id="totp.enable" />
 						</Button>
 					) : (
-						<div className="d-flex flex-column gap-2">
+						<div className="flex flex-col gap-2">
 							<Button fullWidth onClick={() => setStep("disable")}>
 								<T id="totp.disable" />
 							</Button>
@@ -184,36 +216,13 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="logout-other-devices" />
 					</NoticeAlert>
-					<p className="text-secondary mb-3">
+					<p className="mb-3 text-muted-foreground text-sm">
 						<T id="totp.setup-instructions" />
 					</p>
-					<div className="text-center mb-3">
+					<div className="mb-3 flex justify-center">
 						<QRCodeSVG value={setupData.otpauthUrl} size={256} marginSize={4} />
 					</div>
-					<label className="mb-3 d-block">
-						<span className="form-label small text-secondary">
-							<T id="totp.secret-key" />
-						</span>
-						<div className="input-group input-group-flat">
-							<input
-								type="text"
-								className="form-control font-monospace"
-								value={setupData.secret}
-								readOnly
-								onClick={(e) => e.target.select()}
-							/>
-							<span className="input-group-text py-0">
-								<button
-									type="button"
-									aria-label={intl.formatMessage({ id: "aria.copy" })}
-									className="btn btn-icon btn-ghost btn-sm"
-									onClick={() => navigator.clipboard.writeText(setupData.secret)}
-								>
-									<IconCopy className="icon" aria-hidden="true" />
-								</button>
-							</span>
-						</div>
-					</label>
+					<SecretKey secret={setupData.secret} />
 					<CodeForm
 						key="setup"
 						step="setup"
@@ -234,14 +243,12 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="mfa.backup-warning" />
 					</NoticeAlert>
-					<div className="mb-3">
-						<div className="row g-2">
-							{backupCodes.map((code, index) => (
-								<div key={index} className="col-6">
-									<code className="d-block p-2 text-center">{code}</code>
-								</div>
-							))}
-						</div>
+					<div className="mb-3 grid grid-cols-2 gap-2">
+						{backupCodes.map((code, index) => (
+							<code key={index} className="block rounded-md bg-muted p-2 text-center font-mono">
+								{code}
+							</code>
+						))}
 					</div>
 					<Button fullWidth color="primary" onClick={handleBackupDone}>
 						<T id="totp.done" />
@@ -277,7 +284,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 					<NoticeAlert>
 						<T id="logout-other-devices" />
 					</NoticeAlert>
-					<p className="text-secondary mb-3">
+					<p className="mb-3 text-muted-foreground text-sm">
 						<T id="mfa.regenerate-instructions" />
 					</p>
 					<CodeForm
