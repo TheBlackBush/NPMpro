@@ -1,8 +1,8 @@
-import { IconAlertTriangle, IconFlag, IconGauge, IconShieldLock } from "@tabler/icons-react";
-import { cloneElement } from "react";
+import { FlagIcon, GaugeIcon, ShieldBanIcon, TriangleAlertIcon } from "lucide-react";
 import { CountryName } from "src/components/Monitoring/CountryName";
 import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
+import { cn } from "src/lib/utils";
 import { currentLocale, intl, T } from "src/locale";
 import { errorRateTone, formatCount, isCountryCode, sparklinePoints } from "src/modules/Monitoring";
 
@@ -20,7 +20,7 @@ function Sparkline({ series }) {
 	const { line, area } = sparklinePoints(values, WIDTH, HEIGHT);
 	return (
 		<svg
-			className="text-primary mt-2 d-block w-100"
+			className="mt-2 block w-full text-primary"
 			viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
 			height={HEIGHT}
 			preserveAspectRatio="none"
@@ -41,13 +41,12 @@ function Sparkline({ series }) {
 	);
 }
 
-// Column classes by the number of cards shown, so the cards always fill their row and the tiles start a new one.
-// With four cards the second pair takes the full width on phones, so a long country name is not cut off.
-const COLUMNS_BY_COUNT = {
-	1: ["col-12"],
-	2: ["col-12 col-sm-6", "col-12 col-sm-6"],
-	3: ["col-12 col-md-4", "col-12 col-md-4", "col-12 col-md-4"],
-	4: ["col-6 col-lg-3", "col-6 col-lg-3", "col-12 col-md-6 col-lg-3", "col-12 col-md-6 col-lg-3"],
+// Grid columns by the number of cards shown, so the cards always fill their row (whole class strings for Tailwind)
+const GRID_BY_COUNT = {
+	1: "sm:grid-cols-1",
+	2: "sm:grid-cols-2",
+	3: "sm:grid-cols-3",
+	4: "sm:grid-cols-2 lg:grid-cols-4",
 };
 
 /**
@@ -65,7 +64,7 @@ function MonitoringRow() {
 			<StatCard
 				key="requests"
 				to="/monitoring/traffic"
-				icon={IconGauge}
+				icon={GaugeIcon}
 				tone="info"
 				label={<T id="dashboard.monitoring.requests" />}
 				value={formatCount(requestsToday)}
@@ -82,7 +81,7 @@ function MonitoringRow() {
 			<StatCard
 				key="errors"
 				to="/monitoring/traffic"
-				icon={IconAlertTriangle}
+				icon={TriangleAlertIcon}
 				tone={errorRateTone(errorRateToday)}
 				label={<T id="dashboard.monitoring.error-rate" />}
 				value={percentFormat.format(errorRateToday)}
@@ -93,7 +92,7 @@ function MonitoringRow() {
 			<StatCard
 				key="bans"
 				to="/monitoring/crowdsec"
-				icon={IconShieldLock}
+				icon={ShieldBanIcon}
 				tone="destructive"
 				label={<T id="monitoring.crowdsec.active-bans" />}
 				value={formatCount(activeBans)}
@@ -103,7 +102,7 @@ function MonitoringRow() {
 			<StatCard
 				key="country"
 				to="/monitoring/traffic"
-				icon={IconFlag}
+				icon={FlagIcon}
 				tone="primary"
 				label={<T id="dashboard.monitoring.top-country" />}
 				value={<CountryName code={topCountryToday} />}
@@ -111,8 +110,8 @@ function MonitoringRow() {
 		) : null,
 	].filter(Boolean);
 
-	const columns = COLUMNS_BY_COUNT[cards.length];
-	return cards.map((card, i) => cloneElement(card, { className: columns[i] }));
+	if (cards.length === 0) return null;
+	return <div className={cn("grid gap-4", GRID_BY_COUNT[cards.length])}>{cards}</div>;
 }
 
 export { MonitoringRow };
