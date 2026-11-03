@@ -104,6 +104,15 @@
 			]
 		},
 		{
+			"name": "runtime select list",
+			"route": "/settings/advanced",
+			"steps": [
+				{ "click": "#runtime-timeZone" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "audit log filters",
 			"route": "/settings/audit-log",
 			"steps": [
