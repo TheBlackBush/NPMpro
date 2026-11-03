@@ -9,3 +9,18 @@ export const CERTIFICATE_TABS = Object.freeze([
 export function certificateTab(pathname) {
 	return /^\/certificates\/dns-credentials(\/|$)/u.test(pathname) ? "dns-credentials" : "certificates";
 }
+
+// The expand lists of the two tab pages. The tabs read their counts with the same lists, so the open page's request
+// is shared from the query cache.
+export const CERTIFICATE_LIST_EXPAND = Object.freeze([
+	"owner",
+	"dead_hosts",
+	"proxy_hosts",
+	"redirection_hosts",
+	"streams",
+	"mtls_dead_hosts",
+	"mtls_proxy_hosts",
+	"mtls_redirection_hosts",
+	"mtls_streams",
+]);
+export const DNS_CREDENTIAL_LIST_EXPAND = Object.freeze(["owner", "certificates"]);

@@ -1,6 +1,5 @@
-import { Badge } from "src/components/ui/badge";
+import { CountBadge } from "src/components/CountBadge";
 import { cn } from "src/lib/utils";
-import { intl } from "src/locale";
 import { HelpButton } from "src/modals";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { sectionIcon } from "src/shell/useNavItems";
@@ -32,19 +31,7 @@ function ListPage({ title, section, count, help, actions, tabs, toolbar, childre
 					<h1 className="text-2xl font-semibold tracking-tight outline-none" tabIndex={-1} data-list-heading>
 						{title}
 					</h1>
-					{count !== undefined ? (
-						// the number is shown, the full text ("6 items") is what screen readers read
-						<Badge variant="secondary" className={section ? cn(accent.bg, "text-foreground") : undefined}>
-							{section ? (
-								<span
-									className={cn("size-1.5 rounded-full bg-current", accent.text)}
-									aria-hidden="true"
-								/>
-							) : null}
-							<span aria-hidden="true">{count}</span>
-							<span className="sr-only">{intl.formatMessage({ id: "list.count" }, { count })}</span>
-						</Badge>
-					) : null}
+					{count !== undefined ? <CountBadge count={count} section={section} /> : null}
 					{help ? <HelpButton doc={help} /> : null}
 				</div>
 				{actions ? (

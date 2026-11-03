@@ -8,7 +8,7 @@ import { cn } from "src/lib/utils";
 import { controlAria } from "src/modules/FormFields";
 import { optionsFromElements } from "src/modules/SelectOptions";
 import { FieldMessage } from "./FieldMessage";
-import { useFieldError } from "./HookForm";
+import { useFieldError, useReadOnly } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 
 /**
@@ -41,13 +41,15 @@ function FormField({
 	children,
 }) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
+	// a read-only form (a window opened to view) asks for nothing, so it shows no required marks
+	const readOnly = useReadOnly();
 	return (
 		// no group role: the label already names the control, a named group around it only adds noise
 		<Field role="none" className={className} data-invalid={error ? true : undefined}>
 			{label ? (
 				<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick}>
 					{label}
-					{required ? (
+					{required && !readOnly ? (
 						<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
 							*
 						</span>

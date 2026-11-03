@@ -155,6 +155,8 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 						<Button
 							type="button"
 							color="secondary"
+							// the footer keeps the focus on mousedown; Test blurs first so a typed domain becomes a chip
+							data-blur-first=""
 							isLoading={isTesting}
 							disabled={isSubmitting || domains.length === 0}
 							onClick={handleTest}

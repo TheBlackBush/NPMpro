@@ -17,6 +17,7 @@ import {
 	showReachabilityModal,
 	showRenewCertificateModal,
 } from "src/modals";
+import { CERTIFICATE_LIST_EXPAND } from "src/modules/CertificateTabs";
 import { activeFilterCount, filterCertificates } from "src/modules/ListFilters";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
@@ -28,26 +29,8 @@ export default function TableWrapper() {
 	const [sorting, setSorting] = useState([{ id: "expiresOn", desc: false }]);
 	// only the ids, headers and sortability are read here; the cells render in Table
 	const columns = useColumns();
-	const { isFetching, isPending, isError, error, data } = useCertificates([
-		"owner",
-		"dead_hosts",
-		"proxy_hosts",
-		"redirection_hosts",
-		"streams",
-		"mtls_dead_hosts",
-		"mtls_proxy_hosts",
-		"mtls_redirection_hosts",
-		"mtls_streams",
-	]);
+	const { isFetching, isPending, isError, error, data } = useCertificates(CERTIFICATE_LIST_EXPAND);
 	const { filters, setFilter, clear } = useListFilters();
-
-	if (isPending) {
-		return <LoadingPage noLogo delay={300} />;
-	}
-
-	if (isError) {
-		return <ErrorAlert error={error} />;
-	}
 
 	const handleDownload = async (id) => {
 		try {
@@ -62,11 +45,12 @@ export default function TableWrapper() {
 	});
 	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 
+	const loaded = !(isPending || isError);
+
 	return (
 		<ListPage
 			title={<T id="certificates-dns" />}
 			section="certificates"
-			count={data.length}
 			help="Certificates"
 			tabs={<CertificateTabs />}
 			actions={
@@ -80,63 +64,74 @@ export default function TableWrapper() {
 				</>
 			}
 			toolbar={
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayed.length}
-					kinds={["expiry"]}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
+				loaded ? (
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayed.length}
+						kinds={["expiry"]}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+				) : null
 			}
 		>
-			<Table
-				data={displayed}
-				isFiltered={isFiltered}
-				onClearFilters={clear}
-				sorting={sorting}
-				onSortingChange={setSorting}
-				isFetching={isFetching}
-				onRenew={showRenewCertificateModal}
-				onChangeDnsCredential={showChangeDnsCredentialModal}
-				onDownload={handleDownload}
-				onEdit={(cert) => showCustomCertificateModal(cert)}
-				onTest={(domains) => showReachabilityModal(domains)}
-				onDelete={(id) => {
-					const certificate = data?.find((item) => item.id === id);
-					const domainNames = certificate?.domainNames.join(", ");
-					showDeleteConfirmModal({
-						title: <T id="object.delete" tData={{ object: "certificate" }} />,
-						onConfirm: async () => {
-							await deleteCertificate(id);
-							showObjectSuccess("certificate", "deleted");
-						},
-						invalidations: [["certificates"], ["certificate", id]],
-						children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
-						subject: domainNames || certificate?.niceName,
-						details: certificate ? (
-							<>
-								{domainNames && certificate.niceName !== domainNames ? (
-									<div>{certificate.niceName}</div>
-								) : null}
-								<div>
-									<T id={certificateProviderTranslation(certificate.provider)} />
-									{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
-								</div>
-								<div>
-									<T
-										id="expires.on"
-										data={{
-											date: formatDateTime(certificate.expiresOn),
-										}}
-									/>
-								</div>
-							</>
-						) : null,
-					});
-				}}
-			/>
+			{/* while the list loads or fails, the title and the tabs stay and the card holds the state */}
+			{isPending ? (
+				<LoadingPage noLogo delay={300} />
+			) : isError ? (
+				<div className="p-4">
+					<ErrorAlert error={error} />
+				</div>
+			) : (
+				<Table
+					data={displayed}
+					isFiltered={isFiltered}
+					onClearFilters={clear}
+					sorting={sorting}
+					onSortingChange={setSorting}
+					isFetching={isFetching}
+					onRenew={showRenewCertificateModal}
+					onChangeDnsCredential={showChangeDnsCredentialModal}
+					onDownload={handleDownload}
+					onEdit={(cert) => showCustomCertificateModal(cert)}
+					onTest={(domains) => showReachabilityModal(domains)}
+					onDelete={(id) => {
+						const certificate = data?.find((item) => item.id === id);
+						const domainNames = certificate?.domainNames.join(", ");
+						showDeleteConfirmModal({
+							title: <T id="object.delete" tData={{ object: "certificate" }} />,
+							onConfirm: async () => {
+								await deleteCertificate(id);
+								showObjectSuccess("certificate", "deleted");
+							},
+							invalidations: [["certificates"], ["certificate", id]],
+							children: <T id="object.delete.content" tData={{ object: "certificate" }} />,
+							subject: domainNames || certificate?.niceName,
+							details: certificate ? (
+								<>
+									{domainNames && certificate.niceName !== domainNames ? (
+										<div>{certificate.niceName}</div>
+									) : null}
+									<div>
+										<T id={certificateProviderTranslation(certificate.provider)} />
+										{certificate.npmproDnsProvider ? ` – ${certificate.npmproDnsProvider}` : null}
+									</div>
+									<div>
+										<T
+											id="expires.on"
+											data={{
+												date: formatDateTime(certificate.expiresOn),
+											}}
+										/>
+									</div>
+								</>
+							) : null,
+						});
+					}}
+				/>
+			)}
 		</ListPage>
 	);
 }
