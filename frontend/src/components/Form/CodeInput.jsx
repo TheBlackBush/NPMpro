@@ -65,6 +65,7 @@ function CodeInput({
 				<div className="flex justify-center">
 					<InputOTP
 						{...control}
+						noScriptCSSFallback={null}
 						ref={field.ref}
 						name={field.name}
 						maxLength={length}

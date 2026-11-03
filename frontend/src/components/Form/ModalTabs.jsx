@@ -105,6 +105,7 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 					<TabsTrigger
 						key={tab.id}
 						value={tab.id}
+						data-tab={tab.id}
 						disabled={Boolean(disabled[tab.id])}
 						aria-describedby={counts[tab.id] > 0 ? errorIds.of(tab.id) : undefined}
 						className={cn(
