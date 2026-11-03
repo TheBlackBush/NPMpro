@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useThemeState } from "src/context";
 import { currentLocale, intl } from "src/locale";
+import { chartTokenColors } from "src/modules/ChartColors";
 import { axisLabels, chartData, chartSeries, formatCount } from "src/modules/Monitoring";
 
-// Tabler colour per status class (spec: 2xx green, 3xx blue, 4xx orange, 5xx red)
-const CLASS_COLORS = { "2xx": "green", "3xx": "blue", "4xx": "orange", "5xx": "red", other: "secondary" };
-const HEIGHT = 260;
 // most time labels per range; fewer when they do not fit
 const MAX_TICKS = { "1h": 7, "24h": 8, "7d": 8, "30d": 10 };
 
@@ -46,8 +44,8 @@ const tooltipFormat = new Intl.DateTimeFormat(currentLocale, {
 });
 
 /**
- * Resolves Tabler CSS variables of the current theme to colours the canvas understands (the variables hold
- * light-dark() and var() values). A probe element inside the chart inherits the theme's colour scheme.
+ * Resolves the theme tokens (oklch values behind var()) to colours the canvas understands. A probe element inside
+ * the chart gets each value through the CSSOM (CSP-safe) and getComputedStyle returns the resolved colour.
  */
 const themeColors = (parent, keys) => {
 	const probe = document.createElement("span");
@@ -56,13 +54,15 @@ const themeColors = (parent, keys) => {
 		probe.style.color = value;
 		return getComputedStyle(probe).color;
 	};
+	const series = chartTokenColors(keys);
 	const colors = {
-		text: resolve("var(--tblr-body-color)"),
-		muted: resolve("var(--tblr-secondary)"),
-		grid: resolve("var(--tblr-border-color)"),
-		surface: resolve("var(--tblr-bg-surface)"),
-		lines: keys.map((key) => resolve(`var(--tblr-${CLASS_COLORS[key]})`)),
-		fills: keys.map((key) => resolve(`rgba(var(--tblr-${CLASS_COLORS[key]}-rgb), 0.25)`)),
+		text: resolve("var(--foreground)"),
+		muted: resolve("var(--muted-foreground)"),
+		grid: resolve("var(--border)"),
+		surface: resolve("var(--popover)"),
+		surfaceText: resolve("var(--popover-foreground)"),
+		lines: series.map((s) => resolve(s.line)),
+		fills: series.map((s) => resolve(s.fill)),
 		font: getComputedStyle(parent).fontFamily,
 	};
 	probe.remove();
@@ -131,8 +131,8 @@ const buildOptions = ({ range, labels, times, totals, colors }) => ({
 		},
 		tooltip: {
 			backgroundColor: colors.surface,
-			titleColor: colors.text,
-			bodyColor: colors.text,
+			titleColor: colors.surfaceText,
+			bodyColor: colors.surfaceText,
 			borderColor: colors.grid,
 			borderWidth: 1,
 			titleFont: { family: colors.font, size: 12, weight: "600" },
@@ -169,7 +169,7 @@ function TrafficChart({ series, range }) {
 	const chart = useRef(null);
 	const [Chart, setChart] = useState(null);
 	const [failed, setFailed] = useState(false);
-	// ThemeContext sets data-bs-theme on <html> while rendering, so the CSS variables match this value
+	// ThemeContext sets the dark class on <html> while rendering, so the CSS variables match this value
 	const { theme } = useThemeState();
 	const classes = useMemo(() => chartSeries(series, range), [series, range]);
 	const data = useMemo(() => chartData(classes), [classes]);
@@ -235,7 +235,7 @@ function TrafficChart({ series, range }) {
 
 	return (
 		<>
-			<div ref={wrapper} className="position-relative" style={{ height: HEIGHT }}>
+			<div ref={wrapper} className="relative h-65">
 				<canvas
 					ref={canvas}
 					role="img"
@@ -243,7 +243,7 @@ function TrafficChart({ series, range }) {
 				/>
 			</div>
 			{/* the numbers behind the chart for screen readers */}
-			<ul className="visually-hidden">
+			<ul className="sr-only">
 				{keys.map((key, i) => (
 					<li key={key}>
 						{seriesName(key)}:{" "}
