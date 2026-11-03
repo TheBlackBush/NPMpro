@@ -50,8 +50,8 @@ function SidebarLink({ item, active, onNavigate }) {
 }
 
 /**
- * The sidebar layout's navigation: icon rail when collapsed, a sheet on phones (drawn by the sidebar itself). Settings
- * sits at the bottom above the language and theme menus and the user menu (user decision 2026-11-03)
+ * The sidebar layout's navigation: icon rail when collapsed, a sheet on phones (drawn by the sidebar itself). The
+ * bottom holds the language and theme menus, then Settings, then the user menu (user decision 2026-11-03)
  */
 export function AppSidebar() {
 	const items = useNavItems();
@@ -89,6 +89,11 @@ export function AppSidebar() {
 				</SidebarGroup>
 			</SidebarContent>
 			<SidebarFooter>
+				{/* side by side, stacked in the icon rail */}
+				<div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
+					<LanguageMenu />
+					<ThemeMenu />
+				</div>
 				{settings ? (
 					// a second landmark with the same name would be ambiguous: Settings is a plain list in the footer
 					<SidebarMenu>
@@ -99,11 +104,6 @@ export function AppSidebar() {
 						/>
 					</SidebarMenu>
 				) : null}
-				{/* side by side, stacked in the icon rail */}
-				<div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
-					<LanguageMenu />
-					<ThemeMenu />
-				</div>
 				<UserMenu variant="sidebar" />
 			</SidebarFooter>
 			<SidebarRail />

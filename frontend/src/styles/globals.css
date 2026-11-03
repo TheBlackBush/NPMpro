@@ -173,6 +173,11 @@
 	html.dark {
 		color-scheme: dark;
 	}
+	/* NPMpro: Tailwind v4 gives buttons the default cursor; every enabled button shows the pointer, as links do */
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
+	}
 	/* NPMpro: the option list in the popover colours, for browsers that draw it from the option styles */
 	option {
 		@apply bg-popover text-popover-foreground;
