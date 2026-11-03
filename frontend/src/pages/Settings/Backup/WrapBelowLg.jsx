@@ -2,8 +2,8 @@
 function WrapBelowLg({ children }) {
 	return (
 		<>
-			<span className="d-lg-none">{children}</span>
-			<span className="d-none d-lg-inline text-nowrap">{children}</span>
+			<span className="lg:hidden">{children}</span>
+			<span className="hidden whitespace-nowrap lg:inline">{children}</span>
 		</>
 	);
 }

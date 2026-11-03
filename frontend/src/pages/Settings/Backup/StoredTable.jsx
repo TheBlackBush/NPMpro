@@ -1,4 +1,3 @@
-import { IconArchive, IconDotsVertical, IconDownload, IconRestore, IconTrash, IconUpload } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createPaginatedRowModel,
@@ -11,13 +10,17 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import cn from "clsx";
+import { Archive, Bot, CalendarClock, Download, KeyRound, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { deleteBackup, downloadBackup } from "src/api/backend";
-import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
+import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
+import { AppSelect } from "src/components/AppSelect";
+import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { TablePagination } from "src/components/Table/TablePagination";
+import { Badge } from "src/components/ui/badge";
+import { Progress } from "src/components/ui/progress";
 import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
@@ -26,6 +29,7 @@ import { contentLabels, withErrorDetails } from "src/modules/BackupTypes";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showObjectSuccess } from "src/notifications";
+import { SettingsCard } from "../SettingsCard";
 import { WrapBelowLg } from "./WrapBelowLg";
 
 const label = (id) => intl.formatMessage({ id });
@@ -46,11 +50,11 @@ const features = tableFeatures({
 
 function Contents({ categories, types }) {
 	return (
-		<div className="badge-list">
+		<div className="flex flex-wrap gap-1">
 			{contentLabels(categories, types).map(({ kind, id }) => (
-				<span key={`${kind}-${id}`} className="badge bg-secondary-lt text-wrap text-start">
+				<Badge key={`${kind}-${id}`} variant="secondary" className="h-auto whitespace-normal py-0.5 text-left">
 					<T id={kind === "category" ? `settings.backup.category.${id}` : `settings.backup.type.${id}`} />
-				</span>
+				</Badge>
 			))}
 		</div>
 	);
@@ -59,11 +63,12 @@ function Contents({ categories, types }) {
 function SecretsBadge({ entry }) {
 	const secrets = entry.summary?.secrets;
 	return (
-		<span className={cn("badge text-wrap text-start", secrets ? "bg-azure-lt" : "bg-secondary-lt")}>
+		<Badge variant={secrets ? "outline" : "secondary"} className="h-auto whitespace-normal py-0.5 text-left">
+			{secrets ? <KeyRound className="size-3" aria-hidden="true" /> : null}
 			<WrapBelowLg>
 				<T id={secrets ? "settings.backup.with-secrets" : "settings.backup.without-secrets"} />
 			</WrapBelowLg>
-		</span>
+		</Badge>
 	);
 }
 
@@ -74,9 +79,12 @@ function ScheduleBadge({ entry, names }) {
 	if (!badge) return null;
 	return (
 		<div className="mt-1">
-			<span className="badge bg-indigo-lt text-wrap text-start">
-				{badge.kind === "name" ? badge.name : <T id="settings.backup.schedule.deleted" />}
-			</span>
+			<Badge variant="outline" className="h-auto whitespace-normal py-0.5 text-left">
+				<CalendarClock className="size-3" aria-hidden="true" />
+				<span className="break-words">
+					{badge.kind === "name" ? badge.name : <T id="settings.backup.schedule.deleted" />}
+				</span>
+			</Badge>
 		</div>
 	);
 }
@@ -84,23 +92,24 @@ function ScheduleBadge({ entry, names }) {
 function NameCell({ entry, names }) {
 	return (
 		<>
-			<div className="text-break">{entry.name}</div>
+			<div className="break-words">{entry.name}</div>
 			<ScheduleBadge entry={entry} names={names} />
 			{entry.auto ? (
-				<div className="mt-1">
-					<span className="badge bg-purple-lt me-2">
+				<div className="mt-1 flex flex-wrap items-center gap-2">
+					<Badge variant="outline">
+						<Bot className="size-3" aria-hidden="true" />
 						<T id="settings.backup.automatic" />
-					</span>
-					<span className="small text-muted-foreground">
+					</Badge>
+					<span className="text-sm text-muted-foreground">
 						<T id="settings.backup.automatic.hint" />
 					</span>
 				</div>
 			) : null}
 			{entry.summary ? null : (
 				<div className="mt-1">
-					<span className="badge bg-warning-lt">
+					<StatusBadge tone="warning" dot={false}>
 						<T id="settings.backup.unreadable" />
-					</span>
+					</StatusBadge>
 				</div>
 			)}
 		</>
@@ -109,48 +118,39 @@ function NameCell({ entry, names }) {
 
 function Actions({ entry, onDelete, navigate }) {
 	return (
-		<span className="dropdown">
-			<button
-				type="button"
-				className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-				aria-label={label("actions")}
-				data-bs-boundary="viewport"
-				data-bs-toggle="dropdown"
-				data-bs-popper-config='{"strategy":"fixed"}'
-			>
-				<IconDotsVertical aria-hidden="true" />
-			</button>
-			<div className="dropdown-menu dropdown-menu-end">
-				<span className="dropdown-header text-break">{entry.name}</span>
-				<button
-					type="button"
-					className="dropdown-item"
-					onClick={() => downloadBackup(entry.name).catch((err) => showApiError(err))}
-				>
-					<IconDownload className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="action.download" />
-				</button>
-				<button
-					type="button"
-					className="dropdown-item"
-					disabled={!entry.summary}
-					title={entry.summary ? undefined : label("settings.backup.unreadable")}
-					onClick={() => showRestoreBackupModal(entry, navigate)}
-				>
-					<IconRestore className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="settings.backup.restore" />
-				</button>
-				<div className="dropdown-divider" />
-				<button type="button" className="dropdown-item text-danger" onClick={() => onDelete(entry)}>
-					<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="action.delete" />
-				</button>
-			</div>
-		</span>
+		<RowActions
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: entry.name })}
+			focusKey={`backup-file-${entry.name}`}
+			title={entry.name}
+			items={[
+				{
+					key: "download",
+					label: <T id="action.download" />,
+					icon: Download,
+					onSelect: () => downloadBackup(entry.name).catch((err) => showApiError(err)),
+				},
+				{
+					key: "restore",
+					label: <T id="settings.backup.restore" />,
+					icon: RotateCcw,
+					// an unreadable file cannot be restored (the row says why with its "Unreadable" badge)
+					disabled: !entry.summary,
+					onSelect: () => showRestoreBackupModal(entry, navigate),
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					destructive: true,
+					separatorBefore: true,
+					onSelect: () => onDelete(entry),
+				},
+			]}
+		/>
 	);
 }
 
-function Table({ data, categories, timeZone, names, filtered, onClearFilter, onDelete, navigate, uploadButton }) {
+function Table({ data, categories, timeZone, names, filtered, onClearFilter, actions, uploadButton }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -173,7 +173,7 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, onD
 				id: "size",
 				meta: { mobile: "summary", summaryText: (row) => formatBytes(row.size) },
 				header: label("settings.backup.size"),
-				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
+				cell: (info) => <span className="whitespace-nowrap">{formatBytes(info.getValue())}</span>,
 			}),
 			columnHelper.accessor((row) => row.summary?.types ?? [], {
 				id: "contents",
@@ -202,11 +202,11 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, onD
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => <Actions entry={info.row.original} onDelete={onDelete} navigate={navigate} />,
+				cell: (info) => <Actions entry={info.row.original} {...info.table.options.meta?.actions} />,
 				meta: { className: "text-right whitespace-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, timeZone, names, onDelete, navigate]);
+	}, [categories, timeZone, names]);
 
 	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
 	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
@@ -224,6 +224,8 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, onD
 		enableSortingRemoval: false,
 		state: { pagination },
 		onPaginationChange: setPagination,
+		// the row handlers reach the cells here, so the columns keep their identity
+		meta: { actions },
 	});
 
 	return (
@@ -232,7 +234,7 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, onD
 				tableInstance={tableInstance}
 				emptyState={
 					<EmptyData
-						icon={IconArchive}
+						icon={Archive}
 						object="backup"
 						objects="backups"
 						tableInstance={tableInstance}
@@ -292,19 +294,22 @@ function StoredTable() {
 		}
 	};
 
-	const onDelete = useMemo(
-		() => (entry) =>
-			showDeleteConfirmModal({
-				title: <T id="object.delete" tData={{ object: "backup" }} />,
-				onConfirm: async () => {
-					await deleteBackup(entry.name);
-					showObjectSuccess("backup", "deleted");
-				},
-				invalidations: [["backups"]],
-				children: <T id="settings.backup.delete.content" />,
-				subject: entry.name,
-			}),
-		[],
+	const actions = useMemo(
+		() => ({
+			navigate,
+			onDelete: (entry) =>
+				showDeleteConfirmModal({
+					title: <T id="object.delete" tData={{ object: "backup" }} />,
+					onConfirm: async () => {
+						await deleteBackup(entry.name);
+						showObjectSuccess("backup", "deleted");
+					},
+					invalidations: [["backups"]],
+					children: <T id="settings.backup.delete.content" />,
+					subject: entry.name,
+				}),
+		}),
+		[navigate],
 	);
 
 	// the "Schedule" filter: "" all, "none" not scheduled, else a schedule id
@@ -333,77 +338,64 @@ function StoredTable() {
 	const percent = Math.round((progress ?? 0) * 100);
 	const uploadButton = (
 		<Button size="sm" onClick={() => inputRef.current?.click()} disabled={uploading}>
-			<IconUpload className="icon" aria-hidden="true" />
+			<Upload aria-hidden="true" />
 			<T id="settings.backup.upload" />
 		</Button>
 	);
 
 	return (
-		<div className="card">
-			<div className="card-header flex-wrap gap-2">
-				<h3 className="card-title text-nowrap">
-					<T id="settings.backup.stored" />
-				</h3>
-				{/* mw-100 here and on the filter: a long schedule name must not widen the page on phones */}
-				<div className="card-actions d-flex flex-wrap align-items-center gap-2 mw-100">
+		<SettingsCard
+			title={<T id="settings.backup.stored" />}
+			bodyClassName="space-y-0 p-0"
+			actions={
+				<>
 					{scheduled.length > 0 ? (
-						<select
-							className="form-select form-select-sm w-auto mw-100"
+						<AppSelect
+							size="sm"
+							className="max-w-full sm:w-56"
 							value={activeFilter}
-							onChange={(event) => setFilter(event.target.value)}
+							onValueChange={setFilter}
 							aria-label={label("settings.backup.schedule.filter")}
-						>
-							<option value="">{label("settings.backup.schedule.filter.all")}</option>
-							<option value="none">{label("settings.backup.schedule.filter.none")}</option>
-							{filterOptions.map(([id, name]) => (
-								<option key={id} value={String(id)}>
-									{name}
-								</option>
-							))}
-						</select>
+							options={[
+								{ value: "", label: label("settings.backup.schedule.filter.all") },
+								{ value: "none", label: label("settings.backup.schedule.filter.none") },
+								...filterOptions.map(([id, name]) => ({ value: String(id), label: name })),
+							]}
+						/>
 					) : null}
 					<input
 						ref={inputRef}
 						type="file"
 						accept=".npmpro"
-						className="d-none"
+						className="hidden"
 						aria-label={label("settings.backup.upload")}
 						onChange={onFile}
 					/>
 					{data?.length ? uploadButton : null}
-				</div>
-			</div>
+				</>
+			}
+		>
 			{uploading ? (
-				<div className="card-body border-bottom">
-					<div className="d-flex align-items-center mb-2">
+				<div className="space-y-2 border-b p-4">
+					<div className="flex items-center gap-2">
 						<span className="text-muted-foreground" role="status">
 							<T id="settings.backup.uploading" data={{ percent }} />
 						</span>
-						<Button size="sm" className="ms-auto" onClick={() => abortRef.current?.abort()}>
+						<Button size="sm" variant="ghost" className="ms-auto" onClick={() => abortRef.current?.abort()}>
 							<T id="cancel" />
 						</Button>
 					</div>
-					<div className="progress progress-sm progress-brand">
-						<div
-							className="progress-bar"
-							style={{ width: `${percent}%` }}
-							role="progressbar"
-							aria-valuenow={percent}
-							aria-valuemin={0}
-							aria-valuemax={100}
-							aria-label={label("settings.backup.upload")}
-						/>
-					</div>
+					<Progress value={percent} aria-label={label("settings.backup.upload")} />
 				</div>
 			) : null}
 			{uploadError ? (
-				<div className="card-body border-bottom">
+				<div className="border-b p-4">
 					<ErrorAlert error={uploadError} onClose={() => setUploadError(null)} className="mb-0" />
 				</div>
 			) : null}
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
-				<div className="card-body">
+				<div className="p-4">
 					<ErrorAlert error={error} className="mb-0" />
 				</div>
 			) : null}
@@ -415,12 +407,11 @@ function StoredTable() {
 					names={names}
 					filtered={activeFilter}
 					onClearFilter={() => setFilter("")}
-					onDelete={onDelete}
-					navigate={navigate}
+					actions={actions}
 					uploadButton={uploadButton}
 				/>
 			) : null}
-		</div>
+		</SettingsCard>
 	);
 }
 

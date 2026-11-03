@@ -25,7 +25,7 @@ import { restoreRowFocus } from "src/modules/FocusReturn";
  * @param {string} [props.focusKey]  unique per row (for instance proxy-host-12), set as data-row-actions on the button
  * @param {React.ReactNode} [props.title]  the menu heading
  * @param {Array<{key: string, label: React.ReactNode, icon?: React.ElementType, onSelect: () => (void|Promise),
- *   destructive?: boolean, hidden?: boolean, separatorBefore?: boolean}>} props.items
+ *   destructive?: boolean, hidden?: boolean, disabled?: boolean, separatorBefore?: boolean}>} props.items
  *   hidden items and a separator before a first visible item are left out
  */
 function RowActions({ label, focusKey, title, items }) {
@@ -68,6 +68,7 @@ function RowActions({ label, focusKey, title, items }) {
 							{item.separatorBefore && index > 0 ? <DropdownMenuSeparator /> : null}
 							<DropdownMenuItem
 								variant={item.destructive ? "destructive" : "default"}
+								disabled={item.disabled}
 								onSelect={() => {
 									pending.current = item.onSelect;
 								}}

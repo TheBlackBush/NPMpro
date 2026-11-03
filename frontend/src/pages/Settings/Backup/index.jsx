@@ -6,9 +6,9 @@ import { StoredTable } from "./StoredTable";
 
 export default function Backup() {
 	return (
-		<div className="card-body">
-			<SettingsHeading titleId="settings.backup" className="mb-2" />
-			<p className="text-muted-foreground mb-4">
+		<div className="space-y-4">
+			<SettingsHeading titleId="settings.backup" className="mb-0" />
+			<p className="text-muted-foreground">
 				<T id="settings.backup.intro" />
 			</p>
 			<CreateCard />
