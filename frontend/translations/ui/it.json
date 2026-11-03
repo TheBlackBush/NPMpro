@@ -357,7 +357,6 @@
 	"form.fix-fields.continue": "Correggi prima di continuare: {fields}",
 	"form.no-changes": "Nessuna modifica da salvare",
 	"form.tabs.errors": "{count, plural, one {# errore} other {# errori}}",
-	"form.tabs.more": "Altro",
 	"goaccess": "GoAccess",
 	"help": "Aiuto",
 	"host.auth-request": "Auth Request",

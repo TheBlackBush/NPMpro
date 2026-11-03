@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  input-otp@1.5.0: 95bbcc4208284206dbf2d99222aab05a0cbcc55d9692aa70817debd5979934c3
   sonner@2.0.8: d0ddf3f66b840851d38104bb0b455ac58bd568c4262bd9b7dbbee0909b8611c3
 
 importers:
@@ -49,7 +50,7 @@ importers:
         version: 4.4.0
       input-otp:
         specifier: 1.5.0
-        version: 1.5.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 1.5.0(patch_hash=95bbcc4208284206dbf2d99222aab05a0cbcc55d9692aa70817debd5979934c3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       lucide-react:
         specifier: 1.66.0
         version: 1.66.0(@types/react@19.3.0)(react@19.3.1)
@@ -4520,7 +4521,7 @@ snapshots:
       resolve-from: 4.0.0
     optional: true
 
-  input-otp@1.5.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  input-otp@1.5.0(patch_hash=95bbcc4208284206dbf2d99222aab05a0cbcc55d9692aa70817debd5979934c3)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       react: 19.3.1
       react-dom: 19.3.1(react@19.3.1)

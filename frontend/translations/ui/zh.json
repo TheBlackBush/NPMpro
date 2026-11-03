@@ -357,7 +357,6 @@
 	"form.fix-fields.continue": "继续前请修正：{fields}",
 	"form.no-changes": "没有需要保存的更改",
 	"form.tabs.errors": "{count, plural, other {# 个错误}}",
-	"form.tabs.more": "更多",
 	"goaccess": "GoAccess",
 	"help": "帮助",
 	"host.auth-request": "认证请求",

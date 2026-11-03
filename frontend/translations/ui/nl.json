@@ -357,7 +357,6 @@
 	"form.fix-fields.continue": "Corrigeer voordat je verdergaat: {fields}",
 	"form.no-changes": "Geen wijzigingen om op te slaan",
 	"form.tabs.errors": "{count, plural, one {# fout} other {# fouten}}",
-	"form.tabs.more": "Meer",
 	"goaccess": "GoAccess",
 	"help": "Hulp",
 	"host.auth-request": "Auth-verzoeken",

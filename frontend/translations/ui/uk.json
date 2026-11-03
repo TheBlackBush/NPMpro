@@ -357,7 +357,6 @@
 	"form.fix-fields.continue": "Виправте, щоб продовжити: {fields}",
 	"form.no-changes": "Немає змін для збереження",
 	"form.tabs.errors": "{count, plural, one {# помилка} few {# помилки} many {# помилок} other {# помилки}}",
-	"form.tabs.more": "Ще",
 	"goaccess": "GoAccess",
 	"help": "Довідка",
 	"host.auth-request": "Auth Request",
