@@ -1,12 +1,20 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteDnsCredential } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { useDnsCredentials, useListFilters } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
+import { showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
 import { CertificateTabs } from "../Tabs";
 import Table, { useColumns } from "./Table";
@@ -31,34 +39,30 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("dnsCredentials")} />
-			<CertificateTabs />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="dns-credentials" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="Certificates" />
-						<ImportExportButtons
-							kind="dns_credentials"
-							permissionSection={CERTIFICATES}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("dnsCredentials")}
-									onClick={() => showDnsCredentialModal("new")}
-								>
-									<T id="dns-credentials.add" />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
-				</div>
+		<ListPage
+			title={<T id="dns-credentials" />}
+			section="dnsCredentials"
+			count={data.length}
+			help="Certificates"
+			tabs={<CertificateTabs />}
+			actions={
+				<>
+					<ImportExportButtons
+						kind="dns_credentials"
+						permissionSection={CERTIFICATES}
+						hasItems={Boolean(data?.length)}
+					/>
+					<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showDnsCredentialModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="dns-credentials.add" />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
 				<ListToolbar
 					filters={filters}
 					setFilter={setFilter}
@@ -68,29 +72,30 @@ export default function TableWrapper() {
 					kinds={[]}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
-				<Table
-					data={displayed}
-					isFetching={isFetching}
-					isFiltered={isFiltered}
-					sorting={sorting}
-					onSortingChange={setSorting}
-					onEdit={(id) => showDnsCredentialModal(id)}
-					onDelete={(id) => {
-						const credential = data?.find((item) => item.id === id);
-						showDeleteConfirmModal({
-							title: <T id="object.delete" tData={{ object: "dns-credential" }} />,
-							onConfirm: async () => {
-								await deleteDnsCredential(id);
-								showObjectSuccess("dns-credential", "deleted");
-							},
-							invalidations: [["dns-credentials"], ["dns-credential", id], ["certificates"]],
-							children: <T id="object.delete.content" tData={{ object: "dns-credential" }} />,
-							subject: credential?.name,
-						});
-					}}
-					onNew={() => showDnsCredentialModal("new")}
-				/>
-			</div>
-		</div>
+			}
+		>
+			<Table
+				data={displayed}
+				isFetching={isFetching}
+				isFiltered={isFiltered}
+				sorting={sorting}
+				onSortingChange={setSorting}
+				onEdit={(id) => showDnsCredentialModal(id)}
+				onDelete={(id) => {
+					const credential = data?.find((item) => item.id === id);
+					showDeleteConfirmModal({
+						title: <T id="object.delete" tData={{ object: "dns-credential" }} />,
+						onConfirm: async () => {
+							await deleteDnsCredential(id);
+							showObjectSuccess("dns-credential", "deleted");
+						},
+						invalidations: [["dns-credentials"], ["dns-credential", id], ["certificates"]],
+						children: <T id="object.delete.content" tData={{ object: "dns-credential" }} />,
+						subject: credential?.name,
+					});
+				}}
+				onNew={() => showDnsCredentialModal("new")}
+			/>
+		</ListPage>
 	);
 }

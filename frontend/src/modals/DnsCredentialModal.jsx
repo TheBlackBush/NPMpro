@@ -23,12 +23,19 @@ import {
 	useSetDnsCredential,
 	useUnsavedChangesGuard,
 } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { credentialFieldValues, dnsCredentialValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
+
+// DNS credentials has no menu link of its own: the certificates icon in the DNS credentials accent
+const accent = sectionAccent("dnsCredentials");
+const Icon = sectionIcon("certificates");
 
 const showDnsCredentialModal = (id, options = {}) => {
 	EasyModal.show(DnsCredentialModal, { id, ...options });
@@ -164,7 +171,8 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 				<HookForm methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
-						<AppModal.Title>
+						<AppModal.Title className="flex items-center gap-2">
+							{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 							<T id={isNew ? "object.add" : "object.edit"} tData={{ object: "dns-credential" }} />
 						</AppModal.Title>
 					</AppModal.Header>
@@ -190,12 +198,7 @@ const DnsCredentialModal = EasyModal.create(({ id, provider: presetProvider, onS
 							<T id="cancel" />
 						</Button>
 						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-							<FormSubmit
-								className="ms-auto"
-								edit={!isNew}
-								isLoading={isSubmitting}
-								disabled={isSubmitting}
-							>
+							<FormSubmit edit={!isNew} isLoading={isSubmitting} disabled={isSubmitting}>
 								<T id="save" />
 							</FormSubmit>
 						</HasPermission>
