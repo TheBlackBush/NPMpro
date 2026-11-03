@@ -149,7 +149,7 @@ function BansTable({ data }) {
 	return (
 		<Card className="min-w-0 gap-0 py-0 @2xl:col-span-2">
 			<CardHeader className="py-(--card-spacing)">
-				<CardTitle role="heading" aria-level={3}>
+				<CardTitle role="heading" aria-level={2}>
 					<T id="monitoring.crowdsec.newest" />
 				</CardTitle>
 				{data.total > rows.length ? (
@@ -234,7 +234,7 @@ function CrowdsecData({ data }) {
 						<div className="grid gap-4 @4xl:grid-cols-3">
 							<Card className="min-w-0 @4xl:col-span-2">
 								<CardHeader>
-									<CardTitle role="heading" aria-level={3}>
+									<CardTitle role="heading" aria-level={2}>
 										<T id="monitoring.crowdsec.map" />
 									</CardTitle>
 								</CardHeader>

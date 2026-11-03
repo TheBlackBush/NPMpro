@@ -36,7 +36,7 @@ function TopList({ title, items, total, formatValue = formatCount, tone = "prima
 	return (
 		<Card className={className}>
 			<CardHeader>
-				<CardTitle role="heading" aria-level={3}>
+				<CardTitle role="heading" aria-level={2}>
 					{title}
 				</CardTitle>
 			</CardHeader>
@@ -54,7 +54,7 @@ function TopList({ title, items, total, formatValue = formatCount, tone = "prima
 								aria-label={linked ? item.ariaLabel : undefined}
 								className={
 									linked
-										? "block rounded-md px-3 py-2 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+										? "block rounded-md px-3 py-2 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
 										: "block px-3 py-2"
 								}
 							>

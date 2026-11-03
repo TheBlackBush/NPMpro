@@ -145,7 +145,7 @@ const Dashboard = () => {
 					{failedSchedules.length > 0 ? (
 						<HasPermission section={ADMIN} permission={VIEW} hideError>
 							<DashboardTile to="/settings/backup" icon={CalendarXIcon}>
-								<StatusBadge tone="warning" dot={false} className={wrap}>
+								<StatusBadge tone="destructive" dot={false} className={wrap}>
 									{failedSchedules.length === 1 ? (
 										<T id="dashboard.schedule-failed" data={{ name: failedSchedules[0].name }} />
 									) : (

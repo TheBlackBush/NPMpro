@@ -194,7 +194,7 @@ function VisitorsCard({ status, totals, range }) {
 						<T id="monitoring.stat.visitors.off.hint" />
 					</Link>
 				}
-				// the link is the way to the setting: shown in full on a half-width phone card
+				// the link is the way to the setting: shown in full, not cut to one line
 				hintWrap
 				icon={UsersIcon}
 				tone="muted"
@@ -382,7 +382,7 @@ function RecentTable({ rows }) {
 	return (
 		<Card className="min-w-0 gap-0 py-0 @2xl:col-span-2 @6xl:col-span-3">
 			<CardHeader className="py-(--card-spacing)">
-				<CardTitle role="heading" aria-level={3}>
+				<CardTitle role="heading" aria-level={2}>
 					<T id="monitoring.recent" />
 				</CardTitle>
 				<CardDescription>
@@ -492,7 +492,7 @@ function TrafficData({ data, range, params }) {
 			</div>
 			<Card>
 				<CardHeader>
-					<CardTitle role="heading" aria-level={3}>
+					<CardTitle role="heading" aria-level={2}>
 						<T id="monitoring.traffic.requests-over-time" />
 					</CardTitle>
 				</CardHeader>
@@ -504,7 +504,7 @@ function TrafficData({ data, range, params }) {
 				<div className="grid gap-4 @4xl:grid-cols-3">
 					<Card className="min-w-0 @4xl:col-span-2">
 						<CardHeader>
-							<CardTitle role="heading" aria-level={3}>
+							<CardTitle role="heading" aria-level={2}>
 								<T id="monitoring.traffic.map" />
 							</CardTitle>
 						</CardHeader>

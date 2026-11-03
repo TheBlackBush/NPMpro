@@ -108,6 +108,7 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 											geography={geo}
 											className={`${OUTLINE} ${fills[shade]}`}
 											tabIndex={focusable ? 0 : -1}
+											role={focusable ? "img" : undefined}
 											aria-label={focusable ? text : undefined}
 											onMouseEnter={() => setActive(text)}
 											onMouseLeave={() => setActive(null)}
@@ -145,9 +146,8 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 					</Button>
 				</div>
 			</div>
-			<p className="m-0 min-h-5 text-sm text-muted-foreground" aria-live="polite">
-				{active}
-			</p>
+			{/* no live region: a focused country already reads its label */}
+			<p className="m-0 min-h-5 text-sm text-muted-foreground">{active}</p>
 			{ranges.length ? (
 				<ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
 					{ranges.map((range) => (
