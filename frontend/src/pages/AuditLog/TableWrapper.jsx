@@ -35,7 +35,7 @@ const ACTIONS = [
 ];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
-const FILTER_CLASS = "w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:flex-none";
+const FILTER_CLASS = "w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:max-w-56 md:flex-none";
 
 // the empty string means "all" in the query; the select needs a non-empty value for it
 function FilterSelect({ label, value, onChange, options }) {
@@ -78,12 +78,8 @@ export default function TableWrapper() {
 		fetchNextPage,
 	} = useAuditLogs(["user"], { query, objectType, action, userId });
 
-	if (isPending) {
-		return <LoadingPage noLogo delay={300} />;
-	}
-
 	// A failed next page keeps the loaded rows, a failed first load shows the error under the toolbar
-	const firstPageFailed = isError && !isFetchNextPageError && !rows.length;
+	const firstPageFailed = !isPending && isError && !isFetchNextPageError && !rows.length;
 
 	const filtered = Boolean(query || objectType || action || userId);
 
@@ -131,7 +127,9 @@ export default function TableWrapper() {
 						/>
 					</div>
 				</div>
-				{firstPageFailed ? (
+				{isPending ? (
+					<LoadingPage noLogo delay={300} />
+				) : firstPageFailed ? (
 					<ErrorAlert error={error} className="m-3" />
 				) : (
 					<Table

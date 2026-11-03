@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "사용자",
 	"audit-log.load-more": "더 불러오기",
 	"audit-log.loaded": "{loaded} / {total}",
+	"auditlog.details-for": "세부 정보: {name}",
 	"auditlogs": "감사 로그",
 	"auto": "자동",
 	"avatar.remove": "아바타 제거",

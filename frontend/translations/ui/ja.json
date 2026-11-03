@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "ユーザー",
 	"audit-log.load-more": "さらに読み込む",
 	"audit-log.loaded": "{loaded} / {total}",
+	"auditlog.details-for": "詳細: {name}",
 	"auditlogs": "監査ログ",
 	"auto": "自動",
 	"avatar.remove": "アバターを削除",

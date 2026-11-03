@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "Gebruiker",
 	"audit-log.load-more": "Meer laden",
 	"audit-log.loaded": "{loaded} van {total}",
+	"auditlog.details-for": "Details: {name}",
 	"auditlogs": "Logboeken",
 	"auto": "Automatisch",
 	"avatar.remove": "Gebruikersafbeelding verwijderen",

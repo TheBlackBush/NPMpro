@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "Пользователь",
 	"audit-log.load-more": "Загрузить ещё",
 	"audit-log.loaded": "{loaded} из {total}",
+	"auditlog.details-for": "Подробности: {name}",
 	"auditlogs": "Журнал аудита",
 	"auto": "Авто",
 	"avatar.remove": "Удалить аватар",

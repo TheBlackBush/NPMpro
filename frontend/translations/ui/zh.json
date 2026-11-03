@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "用户",
 	"audit-log.load-more": "加载更多",
 	"audit-log.loaded": "{loaded} / {total}",
+	"auditlog.details-for": "详情：{name}",
 	"auditlogs": "审计日志",
 	"auto": "自动",
 	"avatar.remove": "移除头像",

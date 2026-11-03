@@ -73,6 +73,7 @@
 	"audit-log.filter.user": "Utilizador",
 	"audit-log.load-more": "Carregar mais",
 	"audit-log.loaded": "{loaded} de {total}",
+	"auditlog.details-for": "Detalhes: {name}",
 	"auditlogs": "Registos de Auditoria",
 	"auto": "Automático",
 	"avatar.remove": "Remover avatar",

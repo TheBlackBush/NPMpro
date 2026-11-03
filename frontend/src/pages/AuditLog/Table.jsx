@@ -13,7 +13,7 @@ import { useMemo } from "react";
 import { EventFormatter, GravatarFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { Button } from "src/components/ui/button";
-import { intl } from "src/locale";
+import { formatDateTime, intl } from "src/locale";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -24,6 +24,13 @@ const features = tableFeatures({
 		text: sortFn_text,
 	},
 });
+
+// what a row shows first: the object (its type and name or domains), the user and the date, so each button has its own name
+function eventName(row) {
+	const type = intl.formatMessage({ id: row.objectType, defaultMessage: row.objectType });
+	const value = row.meta?.domainNames?.join(", ") || row.meta?.name || row.meta?.id || "";
+	return [`${type} ${value}`.trim(), row.user?.name, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
+}
 
 export default function Table({ data, isFetching, onSelectItem }) {
 	const columnHelper = createColumnHelper();
@@ -61,7 +68,10 @@ export default function Table({ data, isFetching, onSelectItem }) {
 						type="button"
 						variant="ghost"
 						size="icon-sm"
-						aria-label={intl.formatMessage({ id: "action.view-details" })}
+						aria-label={intl.formatMessage(
+							{ id: "auditlog.details-for" },
+							{ name: eventName(info.row.original) },
+						)}
 						title={intl.formatMessage({ id: "action.view-details" })}
 						onClick={(e) => {
 							e.preventDefault();
