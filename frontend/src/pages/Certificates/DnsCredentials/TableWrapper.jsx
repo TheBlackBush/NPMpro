@@ -8,7 +8,7 @@ import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
-import { Tabs } from "../Tabs";
+import { CertificateTabs } from "../Tabs";
 import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
@@ -33,7 +33,7 @@ export default function TableWrapper() {
 	return (
 		<div className="card mt-4">
 			<div className={stripeClass("dnsCredentials")} />
-			<Tabs />
+			<CertificateTabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title fs-2 fw-semibold text-nowrap">

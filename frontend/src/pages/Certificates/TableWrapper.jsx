@@ -26,7 +26,7 @@ import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
 import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showApiError, showObjectSuccess } from "src/notifications";
 import Table, { useColumns } from "./Table";
-import { Tabs } from "./Tabs";
+import { CertificateTabs } from "./Tabs";
 
 export default function TableWrapper() {
 	const [sorting, setSorting] = useState([{ id: "expiresOn", desc: false }]);
@@ -69,7 +69,7 @@ export default function TableWrapper() {
 	return (
 		<div className="card mt-4">
 			<div className={stripeClass("certificates")} />
-			<Tabs />
+			<CertificateTabs />
 			<div className="card-table">
 				<div className="card-header flex-wrap gap-2">
 					<h2 className="card-title fs-2 fw-semibold text-nowrap">

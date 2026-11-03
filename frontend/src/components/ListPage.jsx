@@ -16,10 +16,11 @@ import { sectionIcon } from "src/shell/useNavItems";
  * @param {number}      [props.count]       number of items, shown as a muted badge after the title
  * @param {string}      [props.help]        help document name for the HelpButton
  * @param {React.ReactNode} [props.actions] page actions (import/export, add), right aligned
+ * @param {React.ReactNode} [props.tabs]    a row of tab links between the header and the card
  * @param {React.ReactNode} [props.toolbar] the ListToolbar
  * @param {React.ReactNode} props.children  the table
  */
-function ListPage({ title, section, count, help, actions, toolbar, children }) {
+function ListPage({ title, section, count, help, actions, tabs, toolbar, children }) {
 	const accent = sectionAccent(section);
 	const Icon = sectionIcon(section);
 	return (
@@ -50,6 +51,7 @@ function ListPage({ title, section, count, help, actions, toolbar, children }) {
 					<div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>
 				) : null}
 			</div>
+			{tabs ? <div className="mb-3">{tabs}</div> : null}
 			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
 				{toolbar}
 				{children}
