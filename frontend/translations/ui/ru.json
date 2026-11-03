@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Поля",
 	"dns-credentials.entry.ini": "Текст INI",
 	"dns-credentials.group": "Используемые учётные данные",
-	"dns-credentials.in-use": "Ещё используются сертификатами",
 	"dns-credentials.ini": "Учётные данные (INI)",
 	"dns-credentials.name": "Имя",
 	"dns-credentials.none-for-provider": "Для этого провайдера пока нет сохранённых учётных данных",

@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "필드",
 	"dns-credentials.entry.ini": "INI 텍스트",
 	"dns-credentials.group": "사용할 자격 증명",
-	"dns-credentials.in-use": "인증서에서 아직 사용 중",
 	"dns-credentials.ini": "자격 증명 (INI)",
 	"dns-credentials.name": "이름",
 	"dns-credentials.none-for-provider": "이 공급자에 저장된 자격 증명이 아직 없습니다",

@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Champs",
 	"dns-credentials.entry.ini": "Texte INI",
 	"dns-credentials.group": "Identifiants à utiliser",
-	"dns-credentials.in-use": "Encore utilisé par des certificats",
 	"dns-credentials.ini": "Identifiants (INI)",
 	"dns-credentials.name": "Nom",
 	"dns-credentials.none-for-provider": "Aucun identifiant enregistré pour ce fournisseur pour le moment",

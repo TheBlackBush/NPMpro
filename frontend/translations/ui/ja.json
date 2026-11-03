@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "フィールド",
 	"dns-credentials.entry.ini": "INI テキスト",
 	"dns-credentials.group": "使用する認証情報",
-	"dns-credentials.in-use": "証明書でまだ使用中",
 	"dns-credentials.ini": "認証情報 (INI)",
 	"dns-credentials.name": "名前",
 	"dns-credentials.none-for-provider": "このプロバイダーの保存済み認証情報はまだありません",

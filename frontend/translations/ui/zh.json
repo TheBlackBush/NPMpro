@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "字段",
 	"dns-credentials.entry.ini": "INI 文本",
 	"dns-credentials.group": "要使用的凭据",
-	"dns-credentials.in-use": "仍被证书使用",
 	"dns-credentials.ini": "凭据 (INI)",
 	"dns-credentials.name": "名称",
 	"dns-credentials.none-for-provider": "此提供商尚无已保存的凭据",

@@ -8,7 +8,7 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { KeyRound, Pencil, Trash2 } from "lucide-react";
+import { Eye, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -35,7 +35,11 @@ function UsedBy({ certificates }) {
 	return (
 		<Popover>
 			<PopoverTrigger asChild>
-				<button type="button" className="rounded-sm text-start underline-offset-4 hover:underline">
+				<button
+					type="button"
+					className="rounded-sm text-start underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					aria-label={`${intl.formatMessage({ id: "dns-credentials.used-by" })}: ${certificates.length}`}
+				>
 					{certificates.length}
 				</button>
 			</PopoverTrigger>
@@ -60,8 +64,9 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 			items={[
 				{
 					key: "edit",
-					label: <T id="action.edit" />,
-					icon: Pencil,
+					// a user who may only view gets the View window
+					label: <T id={canManage ? "action.edit" : "action.view"} />,
+					icon: canManage ? Pencil : Eye,
 					onSelect: () => onEdit?.(credential.id),
 				},
 				{
@@ -69,12 +74,10 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					label: <T id="action.delete" />,
 					icon: Trash2,
 					onSelect: () => onDelete?.(credential.id),
-					destructive: !inUse,
+					destructive: true,
 					separatorBefore: true,
-					// a credential used by a certificate cannot be deleted
-					disabled: inUse,
-					title: inUse ? intl.formatMessage({ id: "dns-credentials.in-use" }) : undefined,
-					hidden: !canManage,
+					// a credential used by a certificate cannot be deleted (the Used by column shows why)
+					hidden: !canManage || inUse,
 				},
 			]}
 		/>

@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Campos",
 	"dns-credentials.entry.ini": "Texto INI",
 	"dns-credentials.group": "Credenciais a utilizar",
-	"dns-credentials.in-use": "Ainda usada por certificados",
 	"dns-credentials.ini": "Credenciais (INI)",
 	"dns-credentials.name": "Nome",
 	"dns-credentials.none-for-provider": "Ainda não há credencial guardada para este fornecedor",

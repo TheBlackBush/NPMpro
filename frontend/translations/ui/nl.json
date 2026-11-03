@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Velden",
 	"dns-credentials.entry.ini": "INI-tekst",
 	"dns-credentials.group": "Te gebruiken inloggegevens",
-	"dns-credentials.in-use": "Nog in gebruik door certificaten",
 	"dns-credentials.ini": "Inloggegevens (INI)",
 	"dns-credentials.name": "Naam",
 	"dns-credentials.none-for-provider": "Nog geen opgeslagen inloggegevens voor deze provider",

@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Felder",
 	"dns-credentials.entry.ini": "INI-Text",
 	"dns-credentials.group": "Zu verwendende Zugangsdaten",
-	"dns-credentials.in-use": "Noch von Zertifikaten verwendet",
 	"dns-credentials.ini": "Zugangsdaten (INI)",
 	"dns-credentials.name": "Name",
 	"dns-credentials.none-for-provider": "Noch keine gespeicherten Zugangsdaten für diesen Anbieter",

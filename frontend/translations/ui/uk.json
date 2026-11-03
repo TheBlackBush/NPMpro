@@ -237,7 +237,6 @@
 	"dns-credentials.entry.fields": "Поля",
 	"dns-credentials.entry.ini": "Текст INI",
 	"dns-credentials.group": "Облікові дані для використання",
-	"dns-credentials.in-use": "Ще використовуються сертифікатами",
 	"dns-credentials.ini": "Облікові дані (INI)",
 	"dns-credentials.name": "Назва",
 	"dns-credentials.none-for-provider": "Для цього провайдера ще немає збережених облікових даних",
