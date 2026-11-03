@@ -7,17 +7,13 @@ import { MobileNav } from "./MobileNav";
 import { NavLinks } from "./NavLinks";
 import { UserMenu } from "./UserMenu";
 
-/** Sticky top bar: logo, main links (inline as text from 2xl, a second row from md to 2xl), language and user menus, request progress */
+/** Sticky top bar: logo, language and user menus, request progress; the main links in their own row below from md up (the phone menu below md) */
 export function TopBar() {
 	return (
 		<header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 			<div className="mx-auto flex h-14 max-w-screen-2xl items-center gap-2 px-3 sm:px-5">
 				<MobileNav />
 				<Logo variant="horizontal" />
-				{/* The inline links start at 2xl; the second row below covers md up to there. Change both classes together. */}
-				<div className="ml-4 hidden 2xl:flex">
-					<NavLinks orientation="inline" />
-				</div>
 				<div className="ml-auto flex items-center gap-0.5 sm:gap-1">
 					<CommandPaletteButton />
 					<LanguageMenu />
@@ -25,8 +21,11 @@ export function TopBar() {
 					<UserMenu variant="topbar" />
 				</div>
 			</div>
-			<div className="mx-auto hidden max-w-screen-2xl border-t px-5 py-1.5 md:block 2xl:hidden">
-				<NavLinks orientation="row" />
+			{/* the separating line spans the whole width, like the header's bottom border; the links stay in the page width */}
+			<div className="hidden border-t md:block">
+				<div className="mx-auto max-w-screen-2xl px-5 py-1.5">
+					<NavLinks orientation="row" />
+				</div>
 			</div>
 			<LoadingBar />
 		</header>
