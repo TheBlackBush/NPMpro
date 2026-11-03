@@ -297,7 +297,7 @@ function Fields({ isLocked }) {
 		</>
 	);
 	return (
-		<Part titleId="settings.monitoring.statistics" last>
+		<Part titleId="settings.monitoring.statistics">
 			<SwitchList>
 				<SwitchField
 					{...register("trafficEnabled")}
@@ -437,20 +437,18 @@ function MonitoringForm({ data, logs }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
-			<div className="card-body flex-fill">
-				<Heading />
-				{alert}
-				{lockedKeys.length > 0 || logsCtx.anyLocked ? (
-					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
-				) : null}
-				<RestartPendingAlert data={logs} />
-				<RuntimeContext.Provider value={logsCtx}>
-					<LogFields />
-					<GoAccessFields />
-				</RuntimeContext.Provider>
-				<Fields isLocked={isLocked} />
-			</div>
+		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+			<Heading />
+			{alert}
+			{lockedKeys.length > 0 || logsCtx.anyLocked ? (
+				<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
+			) : null}
+			<RestartPendingAlert data={logs} />
+			<RuntimeContext.Provider value={logsCtx}>
+				<LogFields />
+				<GoAccessFields />
+			</RuntimeContext.Provider>
+			<Fields isLocked={isLocked} />
 			<SaveButton allLocked={allLocked} />
 		</HookForm>
 	);
@@ -462,7 +460,7 @@ export default function Monitoring() {
 
 	if (error || logsQuery.error) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<ErrorAlert error={error ?? logsQuery.error} />
 			</div>
@@ -471,7 +469,7 @@ export default function Monitoring() {
 
 	if (isPending || logsQuery.isPending) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<Loading noLogo />
 			</div>
