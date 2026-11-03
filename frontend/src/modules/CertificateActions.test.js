@@ -33,11 +33,11 @@ it("never offers delete for a certificate in use", () => {
 	assert.deepEqual(certificateActionKeys({ ...le, inUse: true }, { canManage: true }), ["test", "renew", "download"]);
 });
 
-it("gives a view-only user test and download for an HTTP certificate", () => {
-	assert.deepEqual(certificateActionKeys(le, { canManage: false }), ["test", "download"]);
+it("gives a view-only user test only for an HTTP certificate (download includes the private key)", () => {
+	assert.deepEqual(certificateActionKeys(le, { canManage: false }), ["test"]);
 });
 
-it("gives a view-only user download only for a DNS or uploaded certificate", () => {
-	assert.deepEqual(certificateActionKeys(dns, { canManage: false }), ["download"]);
-	assert.deepEqual(certificateActionKeys({ provider: "other", inUse: false }, { canManage: false }), ["download"]);
+it("gives a view-only user nothing for a DNS or uploaded certificate", () => {
+	assert.deepEqual(certificateActionKeys(dns, { canManage: false }), []);
+	assert.deepEqual(certificateActionKeys({ provider: "other", inUse: false }, { canManage: false }), []);
 });

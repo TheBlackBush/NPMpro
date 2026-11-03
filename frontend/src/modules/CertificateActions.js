@@ -12,7 +12,8 @@ export function certificateActionKeys(row, { canManage }) {
 	if (canManage && (row.provider === "other" || row.provider === "mtls")) keys.push("edit");
 	if (canManage && row.provider === "letsencrypt") keys.push("renew");
 	if (canManage && row.provider === "letsencrypt" && row.npmproDnsChallenge) keys.push("change-dns");
-	keys.push("download");
+	// the download includes the private key, so it is for managers only
+	if (canManage) keys.push("download");
 	if (canManage && !row.inUse) keys.push("delete");
 	return keys;
 }
