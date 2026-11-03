@@ -141,7 +141,8 @@ function TabPane({ id, selfReadOnly = false, children }) {
 		<TabsContent
 			value={id}
 			forceMount
-			className="rounded-md text-base focus-visible:ring-[3px] focus-visible:ring-ring/50"
+			// forceMount keeps every pane mounted, and Radix then never sets hidden on the inactive ones
+			className="rounded-md text-base focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=inactive]:hidden"
 		>
 			{readOnly && !selfReadOnly ? <fieldset disabled>{children}</fieldset> : children}
 		</TabsContent>
