@@ -100,9 +100,9 @@ export const totals = (tables = []) => ({
 });
 
 const SOURCE_BADGES = {
-	env: { labelId: "settings.database.source.env", className: "bg-orange-lt" },
-	file: { labelId: "settings.database.source.file", className: "bg-blue-lt" },
-	default: { labelId: "settings.database.source.default", className: "bg-secondary-lt" },
+	env: { labelId: "settings.database.source.env", tone: "warning" },
+	file: { labelId: "settings.database.source.file", tone: "file" },
+	default: { labelId: "settings.database.source.default", tone: "default" },
 };
 
 export const sourceBadge = (source) => SOURCE_BADGES[source] ?? SOURCE_BADGES.default;

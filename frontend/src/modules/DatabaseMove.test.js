@@ -92,8 +92,10 @@ it("sums the tables, names the source and the place", () => {
 		]),
 		{ tables: 2, rows: 5, copied: 3 },
 	);
-	assert.deepEqual(sourceBadge("env"), { labelId: "settings.database.source.env", className: "bg-orange-lt" });
-	assert.equal(sourceBadge("default").labelId, "settings.database.source.default");
+	assert.deepEqual(sourceBadge("env"), { labelId: "settings.database.source.env", tone: "warning" });
+	assert.deepEqual(sourceBadge("file"), { labelId: "settings.database.source.file", tone: "file" });
+	assert.deepEqual(sourceBadge("default"), { labelId: "settings.database.source.default", tone: "default" });
+	assert.deepEqual(sourceBadge("anything-else"), sourceBadge("default"));
 	assert.equal(whereText({ engine: "sqlite", file: "/data/npmpro/database.sqlite" }), "/data/npmpro/database.sqlite");
 	assert.equal(whereText({ engine: "postgres", host: "db", port: 5432, name: "npmpro" }), "db:5432/npmpro");
 });
