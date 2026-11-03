@@ -1,5 +1,4 @@
-import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
-import cn from "clsx";
+import { ExternalLink, Info } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
@@ -12,6 +11,9 @@ import {
 	useAppForm,
 	useFieldError,
 } from "src/components";
+import { Checkbox } from "src/components/ui/checkbox";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
+import { Label } from "src/components/ui/label";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
@@ -140,9 +142,9 @@ function GoAccessFields() {
 					href="/goaccess"
 					target="_blank"
 					rel="noopener noreferrer"
-					className="link-primary d-inline-block mt-3"
+					className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
 				>
-					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
+					<ExternalLink className="size-4" aria-hidden="true" />
 					<T id="settings.logs.goaccess.open" />
 				</a>
 			) : null}
@@ -186,7 +188,7 @@ function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
 					<div className="mt-2">
 						<T id="settings.monitoring.traffic.confirm.also" />
 					</div>
-					<ul className="mt-2 mb-0 text-start">
+					<ul className="mt-2 list-disc ps-5 text-left">
 						{ipsOff ? (
 							<li>
 								<T id="settings.monitoring.show-ips.confirm.item" />
@@ -200,17 +202,10 @@ function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
 					</ul>
 				</>
 			) : null}
-			<label className="form-check text-start mt-3 mb-0">
-				<input
-					className="form-check-input"
-					type="checkbox"
-					checked={checked}
-					onChange={(e) => choice.set(e.target.checked)}
-				/>
-				<span className="form-check-label">
-					<T id="settings.monitoring.traffic.confirm.delete" />
-				</span>
-			</label>
+			<Label className="mt-3 flex items-center gap-2">
+				<Checkbox checked={checked} onCheckedChange={(value) => choice.set(value === true)} />
+				<T id="settings.monitoring.traffic.confirm.delete" />
+			</Label>
 		</>
 	);
 }
@@ -231,7 +226,7 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 	return (
 		<>
 			<T id="settings.monitoring.both-off.confirm.body" />
-			<ul className="mt-2 mb-0 text-start">
+			<ul className="mt-2 list-disc ps-5 text-left">
 				<li>
 					<T id="settings.monitoring.show-ips.confirm.item" />
 				</li>
@@ -264,23 +259,25 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 			error={error}
 		>
 			{(control) => (
-				<div className="row">
-					<div className="col-12 col-sm-6 col-lg-4">
-						<div className="input-group">
-							<input
-								{...register(name)}
-								{...control}
-								type="number"
-								inputMode="numeric"
-								min={range.min}
-								max={range.max}
-								step={1}
-								className={cn("form-control", error && "is-invalid")}
-								disabled={isLocked(name)}
-							/>
-							{unit}
-						</div>
-					</div>
+				<div className="sm:max-w-xs">
+					<InputGroup>
+						<InputGroupInput
+							{...register(name)}
+							{...control}
+							aria-invalid={error ? true : undefined}
+							type="number"
+							inputMode="numeric"
+							min={range.min}
+							max={range.max}
+							step={1}
+							disabled={isLocked(name)}
+						/>
+						{unit ? (
+							<InputGroupAddon align="inline-end">
+								<InputGroupText>{unit}</InputGroupText>
+							</InputGroupAddon>
+						) : null}
+					</InputGroup>
 				</div>
 			)}
 		</FormField>
@@ -312,11 +309,7 @@ function Fields({ isLocked }) {
 					labelId="settings.monitoring.retention"
 					hint={<T id="settings.monitoring.retention.hint" data={RETENTION} />}
 					range={RETENTION}
-					unit={
-						<span className="input-group-text">
-							<T id="settings.monitoring.retention.days" />
-						</span>
-					}
+					unit={<T id="settings.monitoring.retention.days" />}
 					isLocked={isLocked}
 				/>
 				<SwitchField
@@ -441,7 +434,7 @@ function MonitoringForm({ data, logs }) {
 			<Heading />
 			{alert}
 			{lockedKeys.length > 0 || logsCtx.anyLocked ? (
-				<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
+				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
 			) : null}
 			<RestartPendingAlert data={logs} />
 			<RuntimeContext.Provider value={logsCtx}>

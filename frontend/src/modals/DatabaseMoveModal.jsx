@@ -1,9 +1,11 @@
-import { IconCheck, IconRefresh, IconX } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import cn from "clsx";
+import { Check, Database, Loader2, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { getDatabase, getHealth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormField } from "src/components";
+import { Input } from "src/components/ui/input";
+import { Progress } from "src/components/ui/progress";
 import { useDatabaseMove, useStartDatabaseMove } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -23,6 +25,7 @@ import {
 	whereText,
 } from "src/modules/DatabaseMove";
 import EasyModal from "src/modules/easyModal";
+import { StatusAlert } from "src/pages/Settings/StatusAlert";
 
 /**
  * @param {Object}  props
@@ -38,15 +41,15 @@ const engineLabel = (engine) => intl.formatMessage({ id: `settings.database.engi
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function StepMarker({ state }) {
-	if (state === "done") return <IconCheck className="icon text-success" aria-hidden="true" />;
-	if (state === "failed") return <IconX className="icon text-danger" aria-hidden="true" />;
+	if (state === "done") return <Check className="size-4 shrink-0 text-success" aria-hidden="true" />;
+	if (state === "failed") return <X className="size-4 shrink-0 text-destructive" aria-hidden="true" />;
 	return (
 		// the icon's width, so the step names line up
-		<span className="icon d-inline-flex align-items-center justify-content-center" aria-hidden="true">
+		<span className="inline-flex size-4 shrink-0 items-center justify-center" aria-hidden="true">
 			<span
 				className={cn(
-					"status-dot",
-					state === "active" ? "status-dot-animated status-green" : "status-secondary",
+					"size-2 rounded-full",
+					state === "active" ? "bg-success motion-safe:animate-pulse" : "bg-muted-foreground/50",
 				)}
 			/>
 		</span>
@@ -57,19 +60,9 @@ function CopyProgress({ tables }) {
 	const progress = copyProgress(tables);
 	return (
 		<div className="mt-2">
-			<div
-				className="progress progress-sm progress-brand"
-				role="progressbar"
-				aria-valuenow={progress.percent}
-				aria-valuemin={0}
-				aria-valuemax={100}
-				aria-label={intl.formatMessage({ id: "settings.database.step.copy" })}
-			>
-				{/* width is the data value: Tabler sets progress bar widths inline, no utility covers any percentage */}
-				<div className="progress-bar" style={{ width: `${progress.percent}%` }} />
-			</div>
+			<Progress value={progress.percent} aria-label={intl.formatMessage({ id: "settings.database.step.copy" })} />
 			{progress.current ? (
-				<div className="small text-muted-foreground mt-1 text-break">
+				<div className="mt-1 text-sm break-words text-muted-foreground">
 					<T
 						id="settings.database.move.table-progress"
 						data={{
@@ -84,22 +77,21 @@ function CopyProgress({ tables }) {
 	);
 }
 
-// the steps of the move, each with its state; the copy step shows the rows copied so far. No top border: the header
-// border right above is the divider
+// the steps of the move, each with its state; the copy step shows the rows copied so far
 function StepList({ move }) {
 	return (
-		<div className="list-group list-group-flush border-bottom">
+		<ol className="divide-y rounded-md border">
 			{MOVE_STEPS.map((step) => {
 				const state = stepState(move, step);
 				const label = intl.formatMessage({ id: `settings.database.step.${step}` });
 				return (
-					<div key={step} className="list-group-item" aria-current={state === "active" ? "step" : undefined}>
-						<div className="d-flex align-items-center gap-2">
+					<li key={step} className="px-3 py-2" aria-current={state === "active" ? "step" : undefined}>
+						<div className="flex items-center gap-2">
 							<StepMarker state={state} />
 							<span
 								className={cn(
 									state === "pending" && "text-muted-foreground",
-									state === "active" && "fw-medium",
+									state === "active" && "font-medium",
 								)}
 							>
 								{label}
@@ -108,10 +100,10 @@ function StepList({ move }) {
 						{step === "copy" && (state === "active" || state === "done") ? (
 							<CopyProgress tables={move?.tables ?? []} />
 						) : null}
-					</div>
+					</li>
 				);
 			})}
-		</div>
+		</ol>
 	);
 }
 
@@ -271,7 +263,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	if (view === "confirm") {
 		body = (
 			<form id={`${baseId}-form`} onSubmit={onStart} noValidate>
-				<p className="text-muted-foreground">
+				<p className="mb-3 text-muted-foreground">
 					<Summary status={status} target={target} />
 				</p>
 				<FormField
@@ -284,10 +276,9 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 					className="mb-0"
 				>
 					{(control) => (
-						<input
+						<Input
 							{...control}
 							ref={wordRef}
-							className="form-control"
 							value={word}
 							onChange={(event) => setWord(event.target.value)}
 							required
@@ -295,13 +286,12 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 							autoCapitalize="none"
 							autoCorrect="off"
 							spellCheck={false}
-							// biome-ignore lint/a11y/noAutofocus: the only field of a confirmation window
 							autoFocus
 						/>
 					)}
 				</FormField>
 				{error ? (
-					<ErrorAlert className="mt-3 mb-0" onClose={() => setError(null)}>
+					<ErrorAlert className="mt-3" onClose={() => setError(null)}>
 						<ApiErrorContent error={error} />
 					</ErrorAlert>
 				) : null}
@@ -309,13 +299,13 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		);
 		footer = (
 			<>
-				<Button onClick={close} disabled={startMove.isPending}>
+				<Button variant="ghost" onClick={close} disabled={startMove.isPending}>
 					<T id="cancel" />
 				</Button>
 				<Button
 					type="submit"
 					form={`${baseId}-form`}
-					color="warning"
+					color="primary"
 					className="ms-auto"
 					isLoading={startMove.isPending}
 					blocked={!matches}
@@ -329,30 +319,31 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 	} else {
 		body = (
 			<>
-				<div className="mb-3">
-					<StepList move={view === "starting" ? null : move} />
-				</div>
+				<StepList move={view === "starting" ? null : move} />
 				{/* the active step's name, for screen readers: the list itself is not a live region */}
-				<div className="visually-hidden" aria-live="polite">
+				<div className="sr-only" aria-live="polite">
 					{active ? stepLabel(active) : ""}
 				</div>
 				{connectionLost ? (
-					<div className="small text-muted-foreground mb-3" role="status">
+					<div className="mt-3 text-sm text-muted-foreground" role="status">
 						<T id="settings.database.move.connection-lost" />
 					</div>
 				) : null}
 				{move?.backup && view !== "starting" ? (
-					<div className="small text-muted-foreground text-break mb-3">
+					<div className="mt-3 text-sm break-words text-muted-foreground">
 						<T id="settings.database.move.backup-name" data={{ name: move.backup }} />
 					</div>
 				) : null}
 				{/* always mounted, so the restart and its end are announced */}
 				<div aria-live="polite">
 					{phase === "restarting" ? (
-						<div className="d-flex align-items-start gap-2">
-							<span className="spinner-border spinner-border-sm mt-1 flex-shrink-0" aria-hidden="true" />
+						<div className="mt-3 flex items-start gap-2">
+							<Loader2
+								className="mt-1 size-4 shrink-0 animate-spin motion-reduce:animate-none"
+								aria-hidden="true"
+							/>
 							<div>
-								<div className="fw-medium">
+								<div className="font-medium">
 									<T id="settings.database.move.restarting" />
 								</div>
 								<div className="text-muted-foreground">
@@ -362,17 +353,17 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 						</div>
 					) : null}
 					{phase === "timeout" ? (
-						<div className="alert alert-warning mb-0">
+						<StatusAlert variant="warning" icon={TriangleAlert} className="mt-3" live={false}>
 							<T id="settings.database.move.restart-timeout" />
-						</div>
+						</StatusAlert>
 					) : null}
 				</div>
 				{view === "failed" ? (
 					<>
-						<ErrorAlert className="mb-3">
+						<ErrorAlert className="mt-3">
 							<ApiErrorContent error={moveAsApiError(move?.error)} />
 						</ErrorAlert>
-						<p className="mb-0">
+						<p className="mt-3">
 							<T id="settings.database.move.failed" data={{ step: stepLabel(failedStepOf(move)) }} />
 						</p>
 					</>
@@ -388,7 +379,7 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 		} else if (phase === "timeout") {
 			footer = (
 				<Button ref={actionRef} color="primary" className="ms-auto" onClick={() => window.location.reload()}>
-					<IconRefresh className="icon" aria-hidden="true" />
+					<RefreshCw aria-hidden="true" />
 					<T id="settings.database.move.reload" />
 				</Button>
 			);
@@ -399,9 +390,9 @@ const DatabaseMoveModal = EasyModal.create(({ status, target, moveId: followed, 
 
 	return (
 		<AppModal show={visible} onHide={close} size="lg" backdrop={closable ? true : "static"} keyboard={closable}>
-			<div className={cn("modal-status", view === "failed" ? "bg-danger" : "bg-warning")} />
 			<AppModal.Header closeButton={closable}>
-				<AppModal.Title ref={titleRef} tabIndex={-1}>
+				<AppModal.Title ref={titleRef} tabIndex={-1} className="flex items-center gap-2">
+					<Database className="size-5 shrink-0" aria-hidden="true" />
 					<T id="settings.database.move.title" />
 				</AppModal.Title>
 			</AppModal.Header>

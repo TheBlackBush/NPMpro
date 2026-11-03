@@ -29,10 +29,10 @@ const OIDC_ICON_COMPONENTS = {
 
 function OidcIcon({ icon }) {
 	if (icon?.type === "file") {
-		return <img src={icon.url} alt="" width={20} height={20} className="icon" />;
+		return <img src={icon.url} alt="" width={20} height={20} className="size-5 shrink-0" />;
 	}
 	const Icon = OIDC_ICON_COMPONENTS[icon?.name] ?? IconLogin;
-	return <Icon className="icon" aria-hidden="true" />;
+	return <Icon className="size-4 shrink-0" aria-hidden="true" />;
 }
 
 function OidcButton({ label, color, icon, onClick, disabled }) {
@@ -43,24 +43,22 @@ function OidcButton({ label, color, icon, onClick, disabled }) {
 	return (
 		<button
 			type="button"
-			className="btn w-100"
-			// inline because the provider colour is a setting (any hex), so no Tabler colour class can express it;
-			// it sets Tabler's button variables, so hover, active and disabled states keep working
+			className="inline-flex w-full min-w-0 items-center justify-center gap-2 whitespace-normal rounded-md border border-(--oidc-bg) bg-(--oidc-bg) px-3 py-2 font-medium text-(--oidc-fg) text-sm outline-none transition-colors hover:border-(--oidc-hover) hover:bg-(--oidc-hover) focus-visible:ring-3 focus-visible:ring-ring/50 active:border-(--oidc-active) active:bg-(--oidc-active) disabled:pointer-events-none disabled:opacity-50"
+			// the provider colour is a setting (any hex), so no utility class can express it: only CSS custom
+			// properties are set here (through the CSSOM, allowed by the CSP) and the classes above read them
 			style={{
-				"--tblr-btn-bg": bg,
-				"--tblr-btn-border-color": bg,
-				"--tblr-btn-color": text,
-				"--tblr-btn-hover-bg": hover,
-				"--tblr-btn-hover-border-color": hover,
-				"--tblr-btn-hover-color": text,
-				"--tblr-btn-active-bg": active,
-				"--tblr-btn-active-border-color": active,
+				"--oidc-bg": bg,
+				"--oidc-fg": text,
+				"--oidc-hover": hover,
+				"--oidc-active": active,
 			}}
 			onClick={onClick}
 			disabled={disabled}
 		>
 			<OidcIcon icon={icon} />
-			<T id="login.oidc-sign-in" data={{ label }} />
+			<span className="min-w-0 wrap-anywhere">
+				<T id="login.oidc-sign-in" data={{ label }} />
+			</span>
 		</button>
 	);
 }

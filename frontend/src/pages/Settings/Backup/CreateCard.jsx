@@ -19,8 +19,8 @@ import { useBackupTypes, useCreateBackup } from "src/hooks";
 import { T } from "src/locale";
 import { DEFAULT_SELECTED, withErrorDetails } from "src/modules/BackupTypes";
 import { errorPaths } from "src/modules/HookForm";
-import { sectionColor } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
+import { SettingsCard } from "../SettingsCard";
 
 function CreateForm({ data, error, keepRef }) {
 	const { setFocus } = useFormContext();
@@ -53,61 +53,58 @@ function CreateForm({ data, error, keepRef }) {
 	};
 
 	return (
-		<>
-			<div className="card-header">
-				<h3 className="card-title">
-					<T id="settings.backup.create" />
-				</h3>
-			</div>
-			<div className="card-body">
-				<TypeTree
-					label={<T id="settings.backup.create.parts" />}
-					categories={data.categories}
-					counts={data.counts}
-					certificateKinds={data.certificateKinds}
-					selected={types.value}
-					onChange={types.onChange}
-					disabled={isSubmitting}
-				/>
-				<SecretsFields offNoteId="settings.backup.secrets.off" disabled={isSubmitting} />
-				<ErrorAlert error={error} className="mb-0" />
-			</div>
-			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
-				<FormErrorNote id={noteId} className="me-2 text-end" />
-				{showReason ? (
-					<span id={reasonId} className="text-muted-foreground small me-2 text-end">
-						<T id="settings.backup.reason.no-types" />
-					</span>
-				) : null}
-				<Button
-					isLoading={isSubmitting && keepRunning}
-					disabled={(isSubmitting && !keepRunning) || (noTypes && !blocked)}
-					blocked={blocked}
-					onBlockedClick={onBlocked}
-					onMouseDown={(e) => e.preventDefault()}
-					onClick={keepOnServer}
-					aria-describedby={describedBy}
-				>
-					<T id="settings.backup.keep" />
-				</Button>
-				<Button
-					type="submit"
-					color={sectionColor("settings")}
-					isLoading={isSubmitting && !keepRunning}
-					disabled={(isSubmitting && keepRunning) || (noTypes && !blocked)}
-					blocked={blocked}
-					onBlockedClick={onBlocked}
-					onMouseDown={(e) => e.preventDefault()}
-					onClick={() => {
-						keepRef.current = false;
-						setKeepRunning(false);
-					}}
-					aria-describedby={describedBy}
-				>
-					<T id="action.download" />
-				</Button>
-			</div>
-		</>
+		<SettingsCard
+			title={<T id="settings.backup.create" />}
+			footer={
+				<>
+					<FormErrorNote id={noteId} className="text-right" />
+					{showReason ? (
+						<span id={reasonId} className="text-right text-sm text-muted-foreground">
+							<T id="settings.backup.reason.no-types" />
+						</span>
+					) : null}
+					<Button
+						isLoading={isSubmitting && keepRunning}
+						disabled={(isSubmitting && !keepRunning) || (noTypes && !blocked)}
+						blocked={blocked}
+						onBlockedClick={onBlocked}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={keepOnServer}
+						aria-describedby={describedBy}
+					>
+						<T id="settings.backup.keep" />
+					</Button>
+					<Button
+						type="submit"
+						color="primary"
+						isLoading={isSubmitting && !keepRunning}
+						disabled={(isSubmitting && keepRunning) || (noTypes && !blocked)}
+						blocked={blocked}
+						onBlockedClick={onBlocked}
+						onMouseDown={(e) => e.preventDefault()}
+						onClick={() => {
+							keepRef.current = false;
+							setKeepRunning(false);
+						}}
+						aria-describedby={describedBy}
+					>
+						<T id="action.download" />
+					</Button>
+				</>
+			}
+		>
+			<TypeTree
+				label={<T id="settings.backup.create.parts" />}
+				categories={data.categories}
+				counts={data.counts}
+				certificateKinds={data.certificateKinds}
+				selected={types.value}
+				onChange={types.onChange}
+				disabled={isSubmitting}
+			/>
+			<SecretsFields offNoteId="settings.backup.secrets.off" disabled={isSubmitting} />
+			<ErrorAlert error={error} className="mb-0" />
+		</SettingsCard>
 	);
 }
 
@@ -153,7 +150,7 @@ function CreateBackupForm({ data }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="card mb-4">
+		<HookForm methods={methods} onSubmit={onSubmit}>
 			<CreateForm data={data} error={error} keepRef={keepRef} />
 		</HookForm>
 	);

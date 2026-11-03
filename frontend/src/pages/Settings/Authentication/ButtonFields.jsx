@@ -1,15 +1,8 @@
-import { IconCircleCheck } from "@tabler/icons-react";
+import { CircleCheck } from "lucide-react";
 import { useId, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-import {
-	ApiErrorContent,
-	Button,
-	ErrorAlert,
-	FormSection,
-	OIDC_ICON_COMPONENTS,
-	OidcButton,
-	TextField,
-} from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, OIDC_ICON_COMPONENTS, OidcButton, TextField } from "src/components";
+import { Input } from "src/components/ui/input";
 import { useDeleteOidcIcon, useDownloadOidcIcon, useUploadOidcIcon } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -20,8 +13,14 @@ import {
 	oidcIconUrl,
 	validOidcColor,
 } from "src/modules/Oidc";
+import { SettingsCard } from "../SettingsCard";
+import { StatusAlert } from "../StatusAlert";
 
 const ICON_URL = /^https?:\/\/[^\s/$.?#].[^\s]*$/u;
+
+// the card of a picker radio: the native radio is hidden but stays the focus and keyboard target
+const PICK_CARD =
+	"flex h-9 items-center gap-2 rounded-md border px-3 text-sm peer-checked:border-primary peer-checked:bg-primary/10 peer-focus-visible:ring-2 peer-focus-visible:ring-ring";
 
 const SOURCES = ["builtin", "upload", "url"];
 const ICON_ACCEPT = "image/png,image/jpeg,image/webp,image/svg+xml";
@@ -45,17 +44,17 @@ function ColorFields() {
 		void trigger("buttonColor");
 	};
 	return (
-		<div className="mb-3">
-			<div className="form-label" id={`${groupId}-label`}>
+		<div className="space-y-2">
+			<div className="text-sm font-medium" id={`${groupId}-label`}>
 				<T id="settings.authentication.button.color" />
 			</div>
-			<div className="d-flex flex-wrap gap-2 mb-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+			<div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
 				{OIDC_COLOR_PRESETS.map((preset) => (
-					<label className="form-colorinput" key={preset.name}>
+					<label className="cursor-pointer" key={preset.name}>
 						<input
 							type="radio"
 							name={`${groupId}-preset`}
-							className="form-colorinput-input"
+							className="peer sr-only"
 							value={preset.value}
 							aria-label={intl.formatMessage({
 								id: `settings.authentication.button.color.${preset.name}`,
@@ -64,44 +63,42 @@ function ColorFields() {
 							onChange={() => setColor(preset.value)}
 						/>
 						{/* inline because the preset colours are data (Tabler palette values), not classes */}
-						<span className="form-colorinput-color" style={{ backgroundColor: preset.value }} />
+						<span
+							className="block size-7 rounded-md border ring-offset-background peer-checked:ring-2 peer-checked:ring-ring peer-checked:ring-offset-2 peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
+							style={{ backgroundColor: preset.value }}
+						/>
 					</label>
 				))}
 			</div>
-			<div className="row g-2">
-				<div className="col-auto">
-					<input
-						type="color"
-						className="form-control form-control-color"
-						aria-label={intl.formatMessage({ id: "settings.authentication.button.color.custom" })}
-						value={validOidcColor(color).toLowerCase()}
-						onChange={(e) => setColor(e.target.value)}
-					/>
-				</div>
-				<div className="col">
-					<input
-						ref={field.ref}
-						name={field.name}
-						type="text"
-						className={`form-control${invalid ? " is-invalid" : ""}`}
-						aria-label={intl.formatMessage({ id: "settings.authentication.button.color.hex" })}
-						aria-invalid={invalid}
-						aria-describedby={invalid ? `${groupId}-hex-error` : undefined}
-						autoComplete="off"
-						spellCheck={false}
-						maxLength={7}
-						placeholder="#rrggbb"
-						value={color}
-						onBlur={field.onBlur}
-						onChange={(e) => setColor(e.target.value.trim())}
-					/>
-					{invalid ? (
-						<div className="invalid-feedback" id={`${groupId}-hex-error`}>
-							{fieldState.error?.message}
-						</div>
-					) : null}
-				</div>
+			<div className="flex items-center gap-2">
+				<input
+					type="color"
+					className="h-9 w-12 cursor-pointer rounded-md border bg-transparent p-1"
+					aria-label={intl.formatMessage({ id: "settings.authentication.button.color.custom" })}
+					value={validOidcColor(color).toLowerCase()}
+					onChange={(e) => setColor(e.target.value)}
+				/>
+				<Input
+					ref={field.ref}
+					name={field.name}
+					type="text"
+					aria-label={intl.formatMessage({ id: "settings.authentication.button.color.hex" })}
+					aria-invalid={invalid}
+					aria-describedby={invalid ? `${groupId}-hex-error` : undefined}
+					autoComplete="off"
+					spellCheck={false}
+					maxLength={7}
+					placeholder="#rrggbb"
+					value={color}
+					onBlur={field.onBlur}
+					onChange={(e) => setColor(e.target.value.trim())}
+				/>
 			</div>
+			{invalid ? (
+				<div className="text-sm text-destructive" id={`${groupId}-hex-error`}>
+					{fieldState.error?.message}
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -158,48 +155,46 @@ function IconFields({ storedIcon }) {
 	const selected = field.value ?? (storedIcon?.type === "builtin" ? storedIcon.name : null);
 
 	return (
-		<div className="mb-3">
-			<div className="form-label" id={`${groupId}-label`}>
+		<div className="space-y-2">
+			<div className="text-sm font-medium" id={`${groupId}-label`}>
 				<T id="settings.authentication.button.icon" />
 			</div>
-			<div className="mb-3">
-				<div
-					className="form-selectgroup"
-					role="radiogroup"
-					aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source" })}
-				>
-					{SOURCES.map((s) => (
-						<label className="form-selectgroup-item" key={s}>
-							<input
-								type="radio"
-								name={`${groupId}-source`}
-								value={s}
-								className="form-selectgroup-input"
-								checked={source === s}
-								onChange={() => {
-									setSource(s);
-									setResult(null);
-								}}
-							/>
-							<span className="form-selectgroup-label">
-								<T id={`settings.authentication.button.icon.source.${s}`} />
-							</span>
-						</label>
-					))}
-				</div>
+			<div
+				className="flex flex-wrap gap-2"
+				role="radiogroup"
+				aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source" })}
+			>
+				{SOURCES.map((s) => (
+					<label className="cursor-pointer" key={s}>
+						<input
+							type="radio"
+							name={`${groupId}-source`}
+							value={s}
+							className="peer sr-only"
+							checked={source === s}
+							onChange={() => {
+								setSource(s);
+								setResult(null);
+							}}
+						/>
+						<span className={PICK_CARD}>
+							<T id={`settings.authentication.button.icon.source.${s}`} />
+						</span>
+					</label>
+				))}
 			</div>
 			{source === "builtin" ? (
-				<div className="form-selectgroup" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+				<div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
 					{OIDC_BUILTIN_ICONS.map((name, index) => {
 						const Icon = OIDC_ICON_COMPONENTS[name];
 						return (
-							<label className="form-selectgroup-item" key={name}>
+							<label className="cursor-pointer" key={name}>
 								<input
 									ref={index === 0 ? field.ref : undefined}
 									type="radio"
 									name={`${groupId}-builtin`}
 									value={name}
-									className="form-selectgroup-input"
+									className="peer sr-only"
 									aria-label={intl.formatMessage({
 										id: `settings.authentication.button.icon.${name}`,
 									})}
@@ -210,8 +205,8 @@ function IconFields({ storedIcon }) {
 										setResult(null);
 									}}
 								/>
-								<span className="form-selectgroup-label">
-									<Icon className="icon" aria-hidden="true" />
+								<span className={PICK_CARD}>
+									<Icon className="size-4" aria-hidden="true" />
 								</span>
 							</label>
 						);
@@ -220,16 +215,15 @@ function IconFields({ storedIcon }) {
 			) : null}
 			{source === "upload" ? (
 				<>
-					<input
+					<Input
 						type="file"
-						className="form-control"
 						accept={ICON_ACCEPT}
 						aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.upload" })}
 						aria-describedby={`${groupId}-upload-hint`}
 						aria-disabled={busy}
 						onChange={onFile}
 					/>
-					<div className="form-hint" id={`${groupId}-upload-hint`}>
+					<div className="text-sm text-muted-foreground" id={`${groupId}-upload-hint`}>
 						<T
 							id="settings.authentication.button.icon.upload.hint"
 							data={{ kb: OIDC_ICON_MAX_BYTES / 1024 }}
@@ -239,10 +233,9 @@ function IconFields({ storedIcon }) {
 			) : null}
 			{source === "url" ? (
 				<>
-					<div className="input-group">
-						<input
+					<div className="flex gap-2">
+						<Input
 							type="url"
-							className={`form-control ${urlInvalid ? "is-invalid" : ""}`}
 							aria-invalid={urlInvalid ? "true" : undefined}
 							aria-describedby={urlInvalid ? "oidc-icon-url-error" : undefined}
 							aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.url" })}
@@ -253,8 +246,6 @@ function IconFields({ storedIcon }) {
 							onChange={(e) => setUrl(e.target.value)}
 						/>
 						<Button
-							outline
-							color="secondary"
 							isLoading={download.isPending}
 							disabled={busy || !url.trim() || urlInvalid}
 							onClick={onDownload}
@@ -263,14 +254,14 @@ function IconFields({ storedIcon }) {
 						</Button>
 					</div>
 					{urlInvalid ? (
-						<div className="invalid-feedback d-block" id="oidc-icon-url-error">
+						<div className="text-sm text-destructive" id="oidc-icon-url-error">
 							<T id="settings.authentication.button.icon.url.invalid" />
 						</div>
 					) : null}
 				</>
 			) : null}
 			{storedIcon?.type === "file" ? (
-				<div className="mt-3">
+				<div>
 					<Button
 						outline
 						color="danger"
@@ -285,18 +276,11 @@ function IconFields({ storedIcon }) {
 			) : null}
 			<div role="status">
 				{result?.ok ? (
-					<div className="alert alert-success mt-3 mb-0">
-						<div className="alert-icon">
-							<IconCircleCheck className="icon" aria-hidden="true" />
-						</div>
-						<div className="text-break">
-							<T id={result.messageId} />
-						</div>
-					</div>
+					<StatusAlert variant="success" icon={CircleCheck} id={result.messageId} live={false} />
 				) : null}
 			</div>
 			{result && !result.ok ? (
-				<ErrorAlert className="mt-3 mb-0" onClose={() => setResult(null)}>
+				<ErrorAlert onClose={() => setResult(null)}>
 					<ApiErrorContent error={result.error} />
 				</ErrorAlert>
 			) : null}
@@ -311,7 +295,7 @@ function ButtonFields({ data }) {
 	const [buttonLabel, buttonColor, buttonIcon] = watched;
 	const icon = effectiveIcon(buttonIcon, data.button?.icon);
 	return (
-		<FormSection heading legend={<T id="settings.authentication.button" />} className="mb-4">
+		<SettingsCard title={<T id="settings.authentication.button" />}>
 			<TextField
 				name="buttonLabel"
 				id="oidc-buttonLabel"
@@ -320,21 +304,20 @@ function ButtonFields({ data }) {
 				type="text"
 				maxLength={40}
 				autoComplete="off"
+				className=""
 			/>
 			<ColorFields />
 			<IconFields storedIcon={data.button?.icon} />
-			<div className="card card-sm">
-				<div className="card-body">
-					<div className="form-label">
-						<T id="settings.authentication.button.preview" />
-					</div>
-					{/* inert: the preview is not interactive and stays out of the tab order */}
-					<div inert>
-						<OidcButton label={buttonLabel} color={buttonColor} icon={icon} />
-					</div>
+			<div className="rounded-lg border p-4">
+				<div className="mb-2 text-sm font-medium">
+					<T id="settings.authentication.button.preview" />
+				</div>
+				{/* inert: the preview is not interactive and stays out of the tab order */}
+				<div inert>
+					<OidcButton label={buttonLabel} color={buttonColor} icon={icon} />
 				</div>
 			</div>
-		</FormSection>
+		</SettingsCard>
 	);
 }
 

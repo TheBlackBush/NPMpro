@@ -1,8 +1,9 @@
-import { IconAlertCircle, IconCircleCheck, IconCircleDashed, IconInfoCircle } from "@tabler/icons-react";
+import { CircleAlert, CircleCheck, CircleDashed, Info, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Accordion } from "react-bootstrap";
 import { useFormState, useWatch } from "react-hook-form";
-import { ApiErrorContent, ErrorAlert, HookForm, Loading, useAppForm } from "src/components";
+import { ApiErrorContent, ErrorAlert, HookForm, Loading, StatusBadge, useAppForm } from "src/components";
+import { Accordion, AccordionItem, AccordionPanel, AccordionTrigger } from "src/components/ui/accordion";
+import { Badge } from "src/components/ui/badge";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { T } from "src/locale";
 import { authenticationPayload, authenticationValidate, authenticationValues } from "src/modules/AuthenticationForms";
@@ -24,11 +25,28 @@ function Heading() {
 	return <SettingsHeading titleId="settings.authentication" />;
 }
 
+// the look of each summary kind: on (green), set by env (azure), neutral
+const SUMMARY_BADGES = {
+	green: ({ children }) => (
+		<StatusBadge tone="success" dot={false}>
+			{children}
+		</StatusBadge>
+	),
+	azure: ({ children }) => (
+		<Badge variant="outline">
+			<Lock aria-hidden="true" />
+			{children}
+		</Badge>
+	),
+	secondary: ({ children }) => <Badge variant="secondary">{children}</Badge>,
+};
+
 function Summary({ color = "secondary", id, values }) {
+	const SummaryBadge = SUMMARY_BADGES[color];
 	return (
-		<span className={`badge bg-${color}-lt fw-normal`}>
+		<SummaryBadge>
 			<T id={id} data={values} />
-		</span>
+		</SummaryBadge>
 	);
 }
 
@@ -68,22 +86,34 @@ function AuthAccordion({ data, isLocked }) {
 		setSeenSubmits(submitCount);
 		if (errors.autoCreateDomains && !openKeys.includes("new-users")) setOpenKeys([...openKeys, "new-users"]);
 	}
-	const item = (eventKey, titleId, summary, children) => (
-		<Accordion.Item eventKey={eventKey}>
-			<Accordion.Header className="fs-3">
-				<span className="d-flex flex-fill flex-wrap align-items-center justify-content-between gap-2 me-2">
-					<span>
+	const item = (key, titleId, summary, children) => (
+		<AccordionItem value={key}>
+			<AccordionTrigger
+				className="items-center hover:no-underline"
+				id={`auth-${key}-trigger`}
+				aria-controls={`auth-${key}-panel`}
+			>
+				<span className="flex flex-1 flex-wrap items-center justify-between gap-2 pe-2">
+					<span className="text-base font-medium">
 						<T id={titleId} />
 					</span>
 					{summary}
 				</span>
-			</Accordion.Header>
-			<Accordion.Body>{children}</Accordion.Body>
-		</Accordion.Item>
+			</AccordionTrigger>
+			{/* closed groups stay mounted, as before: their fields keep their values and registration */}
+			<AccordionPanel
+				id={`auth-${key}-panel`}
+				aria-labelledby={`auth-${key}-trigger`}
+				open={openKeys.includes(key)}
+				className="space-y-4"
+			>
+				{children}
+			</AccordionPanel>
+		</AccordionItem>
 	);
 
 	return (
-		<Accordion alwaysOpen activeKey={openKeys} onSelect={(keys) => setOpenKeys(keys ?? [])}>
+		<Accordion type="multiple" value={openKeys} onValueChange={setOpenKeys} className="rounded-lg border px-4">
 			{item(
 				"rules",
 				"settings.authentication.rules",
@@ -145,35 +175,25 @@ function AuthenticationForm({ data }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
-			<div className="card-body flex-fill">
-				<Heading />
-				<div ref={errorRef} tabIndex={-1}>
-					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-				</div>
-				{data.active ? (
-					<StatusAlert variant="success" icon={IconCircleCheck} id="settings.authentication.status.active" />
-				) : (
-					<StatusAlert
-						variant="secondary"
-						icon={IconCircleDashed}
-						id="settings.authentication.status.inactive"
-					/>
-				)}
-				{data.secretError ? (
-					<StatusAlert
-						variant="danger"
-						icon={IconAlertCircle}
-						id="settings.authentication.status.secret-error"
-					/>
-				) : null}
-				{locked.size > 0 ? (
-					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
-				) : null}
-				<ProviderFields data={data} isLocked={isLocked} />
-				<ButtonFields data={data} />
-				<AuthAccordion data={data} isLocked={isLocked} />
+		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+			<Heading />
+			<div ref={errorRef} tabIndex={-1} className="empty:hidden">
+				<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 			</div>
+			{data.active ? (
+				<StatusAlert variant="success" icon={CircleCheck} id="settings.authentication.status.active" />
+			) : (
+				<StatusAlert variant="secondary" icon={CircleDashed} id="settings.authentication.status.inactive" />
+			)}
+			{data.secretError ? (
+				<StatusAlert variant="danger" icon={CircleAlert} id="settings.authentication.status.secret-error" />
+			) : null}
+			{locked.size > 0 ? (
+				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+			) : null}
+			<ProviderFields data={data} isLocked={isLocked} />
+			<ButtonFields data={data} />
+			<AuthAccordion data={data} isLocked={isLocked} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>
 	);
@@ -184,7 +204,7 @@ export default function Authentication() {
 
 	if (error) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<ErrorAlert error={error} />
 			</div>
@@ -193,7 +213,7 @@ export default function Authentication() {
 
 	if (isPending) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<Loading noLogo />
 			</div>
