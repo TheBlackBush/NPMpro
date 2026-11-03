@@ -8,22 +8,24 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
-import { canClose, dialogWidthClass, sheetWidthClass, windowMode } from "src/modules/WindowFrame";
+import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
 const HideContext = createContext(undefined);
 // true between the window's content box and its body: a <form> there must take part in the content's flex column
 const FrameContext = createContext(false);
 const TitleContext = createContext({ setMounted: () => {} });
-// which element renders the title (a dialog's or a sheet's), and whether the header shows a close button
+// the window's primitive ("dialog" or "sheet"), which decides the element that renders the title
 const ModeContext = createContext("dialog");
 
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
-// put when a tab, a step, a choice or a result changes their height. On phones, and for sizes that are not "sm", the
-// preference is ignored where it says so (WindowFrame.windowMode): phones always get a full screen window.
+// put when a tab, a step, a choice or a result changes their height. Small windows ("sm") are always dialogs, phones
+// always get a full screen window (WindowFrame.windowMode). The primitive (Dialog or Sheet) never depends on the
+// screen width (WindowFrame.windowPrimitive): a phone gets the preferred primitive full screen, so crossing the phone
+// breakpoint while a window is open only changes classes and keeps the form and its edits.
 // Props follow the old react-bootstrap window: show, onHide (undefined: the window cannot close, it is saving),
 // size ("sm", "lg", "xl"), backdrop ("static" ignores clicks outside), keyboard (false ignores Escape).
 // `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls between a fixed header and
@@ -46,6 +48,7 @@ function AppModal({
 	const { editorStyle } = usePreferences();
 	const isPhone = useIsMobile();
 	const mode = windowMode({ editorStyle, size, isPhone });
+	const primitive = windowPrimitive({ editorStyle, size });
 	const giveFocusBack = useWindowFocusReturn();
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
@@ -76,7 +79,7 @@ function AppModal({
 	// a window without an AppModal.Title yet (loading) still needs a name for Radix and screen readers
 	const fallbackTitle = hasTitle ? null : (
 		<span className="sr-only">
-			{mode === "sheet" ? (
+			{primitive === "sheet" ? (
 				<SheetTitle>{intl.formatMessage({ id: "loading" })}</SheetTitle>
 			) : (
 				<DialogTitle>{intl.formatMessage({ id: "loading" })}</DialogTitle>
@@ -88,13 +91,18 @@ function AppModal({
 		<TitleContext.Provider value={value}>
 			<HideContext.Provider value={onHide}>
 				<FrameContext.Provider value={true}>
-					<ModeContext.Provider value={mode}>
-						{mode === "sheet" ? (
+					<ModeContext.Provider value={primitive}>
+						{primitive === "sheet" ? (
 							<Sheet open={Boolean(show)} onOpenChange={onOpenChange}>
 								<SheetContent
 									side="right"
 									showCloseButton={false}
-									className={cn(frame, "w-full gap-0", sheetWidthClass(size), className)}
+									className={cn(
+										frame,
+										"w-full gap-0",
+										sheetWidthClass(mode === "fullscreen" ? "full" : size),
+										className,
+									)}
 									{...guards}
 								>
 									{fallbackTitle}

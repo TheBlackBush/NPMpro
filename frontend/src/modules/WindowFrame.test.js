@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { canClose, dialogWidthClass, windowMode } from "./WindowFrame.js";
+import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "./WindowFrame.js";
 
 it("phones always get a full-screen window", () => {
 	assert.equal(windowMode({ editorStyle: "sheet", size: "lg", isPhone: true }), "fullscreen");
@@ -27,4 +27,20 @@ it("dialog widths per size", () => {
 	assert.equal(dialogWidthClass(undefined), "sm:max-w-2xl");
 	assert.equal(dialogWidthClass("lg"), "sm:max-w-3xl");
 	assert.equal(dialogWidthClass("xl"), "sm:max-w-5xl");
+});
+
+it("the primitive follows the preference and the size, never the screen width", () => {
+	assert.equal(windowPrimitive({ editorStyle: "sheet", size: "lg" }), "sheet");
+	assert.equal(windowPrimitive({ editorStyle: "sheet", size: undefined }), "sheet");
+	assert.equal(windowPrimitive({ editorStyle: "sheet", size: "sm" }), "dialog");
+	assert.equal(windowPrimitive({ editorStyle: "dialog", size: "xl" }), "dialog");
+	assert.equal(windowPrimitive({ editorStyle: undefined, size: "lg" }), "dialog");
+});
+
+it("sheet widths per size, full screen on a phone", () => {
+	assert.equal(sheetWidthClass("lg"), "data-[side=right]:sm:max-w-2xl");
+	assert.equal(sheetWidthClass(undefined), "data-[side=right]:sm:max-w-xl");
+	const full = sheetWidthClass("full").split(" ");
+	assert.ok(full.includes("data-[side=right]:w-full"));
+	assert.ok(full.includes("data-[side=right]:sm:max-w-none"));
 });
