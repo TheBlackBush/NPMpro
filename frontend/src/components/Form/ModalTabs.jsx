@@ -98,7 +98,9 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 			<TabsList
 				ref={listRef}
 				variant="line"
-				className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0"
+				// shadcn sets the row to h-8 for horizontal tabs (a group variant that outranks a plain h-auto); the tabs are h-9, so
+				// the scrolling row clipped their active underline
+				className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0 group-data-[orientation=horizontal]/tabs:h-auto"
 			>
 				{tabs.map((tab) => (
 					<TabsTrigger
