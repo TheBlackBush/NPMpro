@@ -1,8 +1,9 @@
 import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { Button } from "src/components/Button";
+import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { FieldLabel } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { blankUser } from "src/modules/AccessListForms";
 import { FieldMessage } from "./FieldMessage";
@@ -66,7 +67,10 @@ function UserRow({ name, index, rowKey, savedUsers, onRemove, recheckRows, reche
 			</div>
 			<Button
 				variant="ghost"
-				className="row-span-2 self-center text-[color-mix(in_oklab,var(--destructive)_75%,black)] sm:col-start-3 sm:row-span-1 sm:row-start-1 sm:self-start"
+				className={cn(
+					"row-span-2 self-center sm:col-start-3 sm:row-span-1 sm:row-start-1 sm:self-start",
+					DESTRUCTIVE_TEXT,
+				)}
 				size="icon"
 				aria-label={intl.formatMessage({ id: "aria.remove" })}
 				onClick={onRemove}

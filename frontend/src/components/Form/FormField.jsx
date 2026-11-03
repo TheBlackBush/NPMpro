@@ -3,6 +3,7 @@ import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
 import { Input } from "src/components/ui/input";
 import { NativeSelect } from "src/components/ui/native-select";
 import { Textarea } from "src/components/ui/textarea";
+import { cn } from "src/lib/utils";
 import { controlAria } from "src/modules/FormFields";
 import { FieldMessage } from "./FieldMessage";
 import { useFieldError } from "./HookForm";
@@ -27,7 +28,8 @@ import { PasswordControl } from "./PasswordInput";
 function FormField({ id, label, required = false, hint, error = null, describedBy, className = "mb-3", children }) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
 	return (
-		<Field className={className} data-invalid={error ? true : undefined}>
+		// no group role: the label already names the control, a named group around it only adds noise
+		<Field role="none" className={className} data-invalid={error ? true : undefined}>
 			{label ? (
 				<FieldLabel htmlFor={id} id={aria.labelId}>
 					{label}
@@ -98,7 +100,8 @@ function TextField({
 					{...register(name, registerOptions)}
 					{...control}
 					required={required}
-					className={controlClassName}
+					// a textarea keeps the rows it is given (Textarea grows with its content by default)
+					className={cn(as === "textarea" && "field-sizing-fixed", controlClassName)}
 				/>
 			)}
 		</FormField>

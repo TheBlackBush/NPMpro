@@ -79,7 +79,12 @@ function ChoiceGroup({
 							className={choiceItemClass({ variant, fill: fill || vertical })}
 							htmlFor={itemId}
 						>
-							<Field data-disabled={optionDisabled ? true : undefined} orientation="horizontal">
+							{/* no group role: the radio must belong to the radiogroup directly */}
+							<Field
+								role="none"
+								data-disabled={optionDisabled ? true : undefined}
+								orientation="horizontal"
+							>
 								<RadioGroupItem
 									aria-describedby={joinIds(aria["aria-describedby"], option.describedBy)}
 									aria-invalid={aria["aria-invalid"]}
