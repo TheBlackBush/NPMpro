@@ -16,7 +16,7 @@ function FilterSelect({ label, value, onChange, options }) {
 	return (
 		<AppSelect
 			size="sm"
-			className="w-auto min-w-[calc(50%-0.25rem)] flex-1 md:min-w-0 md:flex-none"
+			className="w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:flex-none"
 			aria-label={name}
 			value={value}
 			onValueChange={onChange}

@@ -178,9 +178,9 @@ function StreamForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 								registerOptions={{ valueAsNumber: true }}
 							>
 								<option value={0}>{intl.formatMessage({ id: "streams.pp.off" })}</option>
-								{tcpForwarding && !udpForwarding ? (
-									<option value={1}>{intl.formatMessage({ id: "streams.pp.v1" })}</option>
-								) : null}
+								<option value={1} disabled={!(tcpForwarding && !udpForwarding)}>
+									{intl.formatMessage({ id: "streams.pp.v1" })}
+								</option>
 								<option value={2}>{intl.formatMessage({ id: "streams.pp.v2" })}</option>
 							</SelectField>
 						</FormSection>

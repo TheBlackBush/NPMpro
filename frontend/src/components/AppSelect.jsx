@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useController } from "react-hook-form";
 import { useReadOnly } from "src/components/Form/HookForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "src/components/ui/select";
@@ -22,7 +22,7 @@ import { fromItemValue, toItemValue } from "src/modules/SelectOptions";
  * @param {*}        [props.placeholder]  shown while no option matches the value
  * @param {Function} [props.onBlur]
  * @param {*}        [props.triggerRef]   gets the trigger (react-hook-form focuses it for "jump to the first error")
- * @param {string}   [props.name]         used by a field's form value lookups only, never submitted by the browser
+ * @param {string}   [props.name]         names the trigger, so form error notes find the field
  *   (aria-label, aria-describedby, aria-invalid, aria-required and data-* go to the trigger)
  */
 function AppSelect({
@@ -36,18 +36,21 @@ function AppSelect({
 	placeholder,
 	onBlur,
 	triggerRef,
-	name: _name,
+	name,
 	...triggerProps
 }) {
 	// a value without an option (an unknown or empty sort) shows the placeholder: Radix shows it for ""
 	const item = toItemValue(value);
 	const selected = options.some((option) => toItemValue(option.value) === item) ? item : "";
 	const trigger = useRef(null);
-	const setTrigger = (element) => {
-		trigger.current = element;
-		if (typeof triggerRef === "function") triggerRef(element);
-		else if (triggerRef) triggerRef.current = element;
-	};
+	const setTrigger = useCallback(
+		(element) => {
+			trigger.current = element;
+			if (typeof triggerRef === "function") triggerRef(element);
+			else if (triggerRef) triggerRef.current = element;
+		},
+		[triggerRef],
+	);
 	// After a pick with the pointer the focus goes back to the trigger, so Tab goes on from the field, but Chrome
 	// would show that scripted focus as keyboard focus: the trigger is marked until it is left or a key is pressed
 	const onCloseAutoFocus = (event) => {
@@ -61,6 +64,7 @@ function AppSelect({
 		<Select value={selected} onValueChange={(item) => onValueChange(fromItemValue(item))} disabled={disabled}>
 			<SelectTrigger
 				id={id}
+				name={name}
 				ref={setTrigger}
 				size={size}
 				onBlur={(event) => {

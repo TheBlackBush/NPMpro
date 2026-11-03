@@ -24,16 +24,28 @@ import { PasswordControl } from "./PasswordInput";
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
  * @param {string}      [props.className]    of the wrapper, "mb-3" by default
+ * @param {Function}    [props.onLabelClick] of the label (onClick); a select passes one that focuses its trigger
+ *                                           instead of letting the label open the list
  * @param {Function}    props.children       (control) => the control, with control = { id, aria-invalid,
  *                                           aria-describedby, aria-required } to spread on it
  */
-function FormField({ id, label, required = false, hint, error = null, describedBy, className = "mb-3", children }) {
+function FormField({
+	id,
+	label,
+	required = false,
+	hint,
+	error = null,
+	describedBy,
+	className = "mb-3",
+	onLabelClick,
+	children,
+}) {
 	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
 	return (
 		// no group role: the label already names the control, a named group around it only adds noise
 		<Field role="none" className={className} data-invalid={error ? true : undefined}>
 			{label ? (
-				<FieldLabel htmlFor={id} id={aria.labelId}>
+				<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick}>
 					{label}
 					{required ? (
 						<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
@@ -138,6 +150,11 @@ function SelectField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			// a click on the label focuses the trigger (Space or Enter then opens the list), it does not open it
+			onLabelClick={(event) => {
+				event.preventDefault();
+				document.getElementById(id)?.focus();
+			}}
 		>
 			{(control) => (
 				<FormSelect

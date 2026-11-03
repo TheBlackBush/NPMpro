@@ -17,13 +17,17 @@ export function fromItemValue(item, { valueAsNumber = false } = {}) {
 }
 
 /**
- * The options of a list of <option> elements (the children a SelectField caller writes): { value, label } with the
- * value as a string; anything that is not an option element is skipped
+ * The options of a list of <option> elements (the children a SelectField caller writes): { value, label, disabled }
+ * with the value as a string; anything that is not an option element is skipped
  *
  * @param {Array} elements  React.Children.toArray(children)
  */
 export function optionsFromElements(elements) {
 	return elements
 		.filter((element) => element && typeof element === "object" && element.type === "option")
-		.map((element) => ({ value: String(element.props.value ?? ""), label: element.props.children }));
+		.map((element) => ({
+			value: String(element.props.value ?? ""),
+			label: element.props.children,
+			disabled: Boolean(element.props.disabled),
+		}));
 }
