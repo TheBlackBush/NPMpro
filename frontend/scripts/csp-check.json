@@ -12,6 +12,16 @@
 		"/users",
 		"/settings",
 		"/settings/default-site",
+		"/settings/network",
+		"/settings/nginx",
+		"/settings/authentication",
+		"/settings/forward-auth",
+		"/settings/certificates",
+		"/settings/geoip",
+		"/settings/advanced",
+		"/settings/environment",
+		"/settings/users",
+		"/settings/audit-log",
 		"/monitoring",
 		"/monitoring/traffic",
 		"/monitoring/crowdsec",
@@ -54,6 +64,67 @@
 				{ "click": "label:has-text('404 Page')" },
 				{ "click": "form >> role=button[name='Save']" },
 				{ "waitFor": "[data-sonner-toast]" }
+			]
+		},
+		{
+			"name": "add user window",
+			"route": "/settings/users",
+			"steps": [
+				{ "click": "role=button[name='Add User']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "user permissions and password windows",
+			"route": "/settings/users",
+			"steps": [
+				{ "click": "role=button[name='Add User']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] input[name=name]" },
+				{ "press": "a" },
+				{ "press": "b" },
+				{ "click": "[role=dialog] input[name=email]" },
+				{ "press": "a" },
+				{ "press": "@" },
+				{ "press": "b" },
+				{ "press": "." },
+				{ "press": "c" },
+				{ "press": "o" },
+				{ "click": "[role=dialog] >> role=button[name='Save']" },
+				{ "waitFor": "role=button[name='Actions for ab']" },
+				{ "click": "role=button[name='Actions for ab']" },
+				{ "click": "role=menuitem[name='Permissions']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for ab']" },
+				{ "click": "role=menuitem[name='Set Password']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "audit log filters",
+			"route": "/settings/audit-log",
+			"steps": [
+				{ "click": "role=combobox[name='Object type']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "click": "role=combobox[name='Action']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "click": "role=combobox[name='User']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "audit log event details",
+			"route": "/settings/audit-log",
+			"steps": [
+				{ "click": "role=button[name^='Details:']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
 			]
 		},
 		{
