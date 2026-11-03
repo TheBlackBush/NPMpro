@@ -6,11 +6,8 @@ import { Button } from "src/components/ui/button";
 import { Card, CardContent } from "src/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "src/components/ui/tabs";
 import { useUser } from "src/hooks";
-import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { ADMIN, VIEW } from "src/modules/Permissions";
-import { sectionAccent } from "src/modules/SectionAccents";
-import { sectionIcon } from "src/shell/useNavItems";
 import Crowdsec from "./Crowdsec";
 import Traffic from "./Traffic";
 
@@ -58,8 +55,6 @@ const Monitoring = () => {
 	const { data: user } = useUser("me");
 	const current = TABS.find((t) => t.id === tab);
 	const Tab = current?.element;
-	const accent = sectionAccent("monitoring");
-	const TitleIcon = sectionIcon("monitoring");
 
 	// HasPermission shows the loading state until the user is loaded, so no tab mounts (and fetches) before the
 	// monitoring flag is known
@@ -67,7 +62,8 @@ const Monitoring = () => {
 		<HasPermission section={ADMIN} permission={VIEW} pageLoading loadingNoLogo>
 			<section className="flex flex-col gap-4">
 				<div className="flex min-w-0 items-center gap-2">
-					<TitleIcon className={cn("size-6 shrink-0", accent.text)} aria-hidden="true" />
+					{/* the menu's Monitoring icon; Monitoring has no section accent, so the primary look */}
+					<ChartColumnIcon className="size-6 shrink-0 text-primary" aria-hidden="true" />
 					<h1 className="text-2xl font-semibold tracking-tight">
 						<T id="monitoring" />
 					</h1>
