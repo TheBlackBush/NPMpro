@@ -8,9 +8,9 @@ function OidcIcon({ icon }) {
 		return <img src={icon.url} alt="" width={20} height={20} className="size-5 shrink-0" />;
 	}
 	const entry = oidcIcon(icon?.name);
-	if (entry.kind === "brand") return <BrandIcon icon={entry.icon} className="size-4 shrink-0" />;
+	if (entry.kind === "brand") return <BrandIcon icon={entry.icon} className="size-5 shrink-0" />;
 	const Icon = entry.icon;
-	return <Icon className="size-4 shrink-0" aria-hidden="true" />;
+	return <Icon className="size-5 shrink-0" aria-hidden="true" />;
 }
 
 function OidcButton({ label, color, icon, onClick, disabled }) {

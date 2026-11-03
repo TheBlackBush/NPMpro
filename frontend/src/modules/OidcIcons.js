@@ -3,16 +3,13 @@ import {
 	siAuth0,
 	siAuthelia,
 	siAuthentik,
-	siForgejo,
 	siGitea,
 	siGithub,
 	siGitlab,
 	siGoogle,
 	siKeycloak,
-	siNextcloud,
 	siOkta,
 	siOpenid,
-	siSynology,
 } from "simple-icons";
 
 const generic = (name, icon) => ({
@@ -28,6 +25,9 @@ const brand = (name, icon) => ({ name, kind: "brand", label: icon.title, icon })
  * Generic icons are Lucide components, brand icons Simple Icons objects ({ title, path, hex }).
  * "brand-windows" is kept for settings saved earlier (Simple Icons has no Windows logo): it shows the Lucide
  * grid icon and is hidden from the picker.
+ * Licences: not all of these logos are CC0 (Authelia Apache-2.0, Keycloak custom trademark
+ * terms); when adding or bumping an icon, check its `license` field in simple-icons/data/simple-icons.json and
+ * update the credits in wiki/Authentication.md.
  */
 const OIDC_ICONS = [
 	generic("login", LogIn),
@@ -46,9 +46,6 @@ const OIDC_ICONS = [
 	brand("brand-github", siGithub),
 	brand("brand-gitlab", siGitlab),
 	brand("brand-gitea", siGitea),
-	brand("brand-forgejo", siForgejo),
-	brand("brand-nextcloud", siNextcloud),
-	brand("brand-synology", siSynology),
 	{ name: "brand-windows", kind: "generic", label: "Windows", hidden: true, icon: LayoutGrid },
 ];
 

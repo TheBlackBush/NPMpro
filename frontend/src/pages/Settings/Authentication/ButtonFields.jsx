@@ -13,10 +13,11 @@ import { StatusAlert } from "../StatusAlert";
 
 const iconLabel = (entry) => (entry.labelKey ? intl.formatMessage({ id: entry.labelKey }) : entry.label);
 
-// the picker tiles: the offered icons, plus a saved icon that is no longer offered (Windows) so it shows as chosen
-const pickerEntries = (selected) => {
-	const kept = OIDC_ICONS.find((entry) => entry.hidden && entry.name === selected);
-	return kept ? [...OIDC_PICKER_ICONS, kept] : OIDC_PICKER_ICONS;
+// the picker tiles: the offered icons, plus a hidden icon (Windows) while it is the saved setting or the current pick,
+// so it shows as chosen and can be picked again after trying another tile
+const pickerEntries = (selected, storedName) => {
+	const kept = OIDC_ICONS.filter((entry) => entry.hidden && (entry.name === selected || entry.name === storedName));
+	return kept.length ? [...OIDC_PICKER_ICONS, ...kept] : OIDC_PICKER_ICONS;
 };
 
 const ICON_URL = /^https?:\/\/[^\s/$.?#].[^\s]*$/u;
@@ -161,7 +162,8 @@ function IconFields({ storedIcon }) {
 	};
 
 	const firstName = OIDC_PICKER_ICONS[0].name;
-	const selected = field.value ?? (storedIcon?.type === "builtin" ? storedIcon.name : null);
+	const storedName = storedIcon?.type === "builtin" ? storedIcon.name : null;
+	const selected = field.value ?? storedName;
 
 	return (
 		<div className="space-y-2">
@@ -196,7 +198,9 @@ function IconFields({ storedIcon }) {
 				// one radio group, so the arrow keys walk through every tile; the headings are plain text
 				<div className="space-y-3" role="radiogroup" aria-labelledby={`${groupId}-label`}>
 					{ICON_GROUPS.map((group) => {
-						const entries = pickerEntries(selected).filter((entry) => entry.kind === group.kind);
+						const entries = pickerEntries(selected, storedName).filter(
+							(entry) => entry.kind === group.kind,
+						);
 						return (
 							<div className="space-y-1.5" key={group.kind}>
 								<div className="text-xs text-muted-foreground">
@@ -223,9 +227,9 @@ function IconFields({ storedIcon }) {
 												/>
 												<span className={PICK_CARD}>
 													{entry.kind === "brand" ? (
-														<BrandIcon icon={entry.icon} className="size-4" />
+														<BrandIcon icon={entry.icon} className="size-5" />
 													) : (
-														<entry.icon className="size-4" aria-hidden="true" />
+														<entry.icon className="size-5" aria-hidden="true" />
 													)}
 												</span>
 											</label>
