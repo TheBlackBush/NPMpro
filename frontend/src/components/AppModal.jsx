@@ -1,5 +1,5 @@
 import { XIcon } from "lucide-react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "src/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "src/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "src/components/ui/sheet";
@@ -30,6 +30,9 @@ function firstField(content) {
 			role: element.getAttribute("role"),
 			disabled: element.matches(":disabled"),
 			visible: element.checkVisibility(),
+			tabIndex: element.tabIndex,
+			// a focusable container (a Radix tab panel has tabIndex 0) comes before its fields: never start on it
+			containsField: element.querySelector(START_FIELD_SELECTOR) !== null,
 		};
 		if (isStartField(control)) return element;
 	}
@@ -38,13 +41,17 @@ function firstField(content) {
 
 // A body that mounts after the window opened (an editor that loads its data first): its first field takes the focus
 // once it shows, as long as the focus is still on the window element itself. Stops after the first move, on close,
-// or after 10 seconds.
+// or after 10 seconds. It decides once per opening: the phone state is read when the window opens (through a ref), so
+// crossing the phone breakpoint while the window is open never moves the focus; a later opening decides again.
 function useLateStartField(content, open, isPhone) {
+	const isPhoneRef = useRef(isPhone);
+	isPhoneRef.current = isPhone;
 	useEffect(() => {
 		if (!(open && content)) return;
+		const isPhoneAtOpen = isPhoneRef.current;
 		const settle = () => {
 			const activeIsWindow = content.ownerDocument.activeElement === content;
-			if (keepsWindowFocus({ isPhone, activeIsWindow })) return true;
+			if (keepsWindowFocus({ isPhone: isPhoneAtOpen, activeIsWindow })) return true;
 			const target = firstField(content);
 			target?.focus({ preventScroll: true });
 			return Boolean(target);
@@ -64,7 +71,7 @@ function useLateStartField(content, open, isPhone) {
 			observer.disconnect();
 			clearTimeout(timer);
 		};
-	}, [content, open, isPhone]);
+	}, [content, open]);
 }
 
 // Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
