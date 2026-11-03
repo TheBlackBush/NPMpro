@@ -36,6 +36,7 @@ import {
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import { domainNamesOptions, windowTitleId } from "src/modules/HostForms";
@@ -47,8 +48,10 @@ import {
 	proxyHostPayload,
 	proxyHostValidate,
 } from "src/modules/ProxyHostForms";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 // field name -> label for the note next to Save (no control has these names)
 const FIELD_LABELS = {
@@ -57,6 +60,8 @@ const FIELD_LABELS = {
 };
 
 const validate = proxyHostValidate(validations);
+const accent = sectionAccent("proxyHosts");
+const Icon = sectionIcon("proxyHosts");
 
 // the "*" of the Custom locations tab: a location with a path. Its own watch, so typing in a location row re-renders
 // this marker, not the whole window
@@ -92,7 +97,8 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T
 						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "proxy-host" }}
@@ -146,7 +152,7 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 							emptyHint={!isEmptyBoth}
 						/>
 						{isEmptyBoth && (
-							<div className="text-secondary text-center my-3">
+							<div className="my-3 text-center text-muted-foreground">
 								<T id="nginx-config.admin-only" />
 							</div>
 						)}
@@ -158,13 +164,12 @@ function ProxyHostForm({ data, isClone, isAdmin, savedId, errorMsg, onCloseError
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={PROXY_HOSTS} permission={MANAGE} hideError>
 					<FormSubmit
 						labels={FIELD_LABELS}
-						className="ms-auto"
 						edit={Boolean(data.id) && !isClone}
 						section="proxyHosts"
 						isLoading={isSubmitting}
