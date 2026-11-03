@@ -1,7 +1,8 @@
 import { CircleAlertIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, AlertAction } from "src/components/ui/alert";
 import { Button } from "src/components/ui/button";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
 
@@ -42,10 +43,26 @@ function ApiErrorContent({ error }) {
 	);
 }
 
+/**
+ * A red alert with an error (an API error through error, or any message as children), optionally closable. Inside a
+ * window's body it scrolls into view and takes the focus when it appears or its message changes, so a refused save
+ * is seen even with the body scrolled down (role alert still announces it). Changes of children that are elements
+ * count only when the alert appears (an element written inline is new on every render).
+ */
 function ErrorAlert({ error, children, onClose, className }) {
-	if (!children && !error) return null;
+	const ref = useRef(null);
+	const shown = Boolean(children || error);
+	const text = typeof children === "string" ? children : null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: error and text are the message, a new one is shown again
+	useEffect(() => {
+		const alert = ref.current;
+		if (!(shown && alert?.closest("[data-window-body]"))) return;
+		alert.scrollIntoView({ block: "nearest" });
+		alert.focus({ preventScroll: true });
+	}, [shown, error, text]);
+	if (!shown) return null;
 	return (
-		<Alert variant="destructive" className={className}>
+		<Alert ref={ref} tabIndex={-1} variant="destructive" className={cn("outline-none", className)}>
 			<CircleAlertIcon aria-hidden="true" />
 			<div className="break-words">{children ?? <ApiErrorContent error={error} />}</div>
 			{onClose ? (
