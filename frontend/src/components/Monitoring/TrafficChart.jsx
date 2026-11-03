@@ -44,15 +44,30 @@ const tooltipFormat = new Intl.DateTimeFormat(currentLocale, {
 });
 
 /**
- * Resolves the theme tokens (oklch values behind var()) to colours the canvas understands. A probe element inside
- * the chart gets each value through the CSSOM (CSP-safe) and getComputedStyle returns the resolved colour.
+ * Resolves the theme tokens (oklch values behind var()) to rgba colours. A probe element inside the chart gets each
+ * value through the CSSOM (CSP-safe) and getComputedStyle returns the resolved colour, still as oklch() or oklab().
+ * Chart.js derives hover colours with a parser that does not know those (hovered points turned black), so a 1x1
+ * canvas paints the colour and reads it back as rgba.
  */
 const themeColors = (parent, keys) => {
 	const probe = document.createElement("span");
 	parent.appendChild(probe);
+	const pixel = document.createElement("canvas");
+	pixel.width = 1;
+	pixel.height = 1;
+	const ctx = pixel.getContext("2d", { willReadFrequently: true });
+	const toRgb = (css) => {
+		ctx.clearRect(0, 0, 1, 1);
+		// an unparsable value keeps the previous fillStyle, so reset it to transparent first
+		ctx.fillStyle = "#0000";
+		ctx.fillStyle = css;
+		ctx.fillRect(0, 0, 1, 1);
+		const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+		return `rgba(${r}, ${g}, ${b}, ${Number((a / 255).toFixed(3))})`;
+	};
 	const resolve = (value) => {
 		probe.style.color = value;
-		return getComputedStyle(probe).color;
+		return toRgb(getComputedStyle(probe).color);
 	};
 	const series = chartTokenColors(keys);
 	const colors = {
@@ -222,6 +237,9 @@ function TrafficChart({ series, range }) {
 				data: data.values[i],
 				borderColor: colors.lines[i],
 				backgroundColor: colors.fills[i],
+				// Chart.js would otherwise derive the hover colours from backgroundColor
+				pointHoverBackgroundColor: colors.lines[i],
+				pointHoverBorderColor: colors.lines[i],
 				fill: i === 0 ? "origin" : "-1",
 			})),
 		};
