@@ -35,7 +35,7 @@ export default function Layout() {
 	);
 
 	if (!current) {
-		return <ErrorNotFound />;
+		return <ErrorNotFound level={2} />;
 	}
 
 	const Section = current.element;

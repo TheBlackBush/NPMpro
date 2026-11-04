@@ -88,7 +88,7 @@ const Monitoring = () => {
 								</a>
 							) : null}
 						</nav>
-						{Tab ? <Tab /> : <ErrorNotFound />}
+						{Tab ? <Tab /> : <ErrorNotFound level={2} />}
 					</>
 				) : (
 					<MonitoringOff goaccess={user?.goaccess} />

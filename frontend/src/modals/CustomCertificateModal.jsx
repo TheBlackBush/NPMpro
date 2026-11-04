@@ -14,6 +14,7 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
+import { Input } from "src/components/ui/input";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
@@ -40,14 +41,13 @@ function FileInput({ name, labelId }) {
 	return (
 		<FormField id={name} label={<T id={labelId} />} required error={error}>
 			{(control) => (
-				<input
+				<Input
 					{...control}
 					ref={field.ref}
 					name={name}
 					type="file"
 					required
 					autoComplete="off"
-					className={cn("form-control", error && "is-invalid")}
 					onBlur={field.onBlur}
 					onChange={(event) => {
 						field.onChange(event.currentTarget.files[0] ?? null);
