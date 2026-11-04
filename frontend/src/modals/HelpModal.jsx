@@ -84,6 +84,7 @@ function HelpButton({ doc, className }) {
 	const label = intl.formatMessage({ id: "help" });
 	return (
 		<Button
+			type="button"
 			variant="ghost"
 			size="icon-sm"
 			className={className}

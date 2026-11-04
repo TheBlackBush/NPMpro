@@ -54,6 +54,8 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      // NPMpro: a plain button by default, so a button inside a form never submits it unless it asks to (type="submit")
+      type={asChild ? undefined : "button"}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
