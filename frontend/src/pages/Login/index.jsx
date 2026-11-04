@@ -55,7 +55,7 @@ function TotpCodeForm({ onSubmit, error }) {
 			<CardContent className="flex flex-col gap-4">
 				{error && <ErrorAlert error={error} />}
 				<CodeEntry idPrefix="login-totp" label={<T id="login.totp-code" />} allowBackup />
-				<div className="flex items-start gap-2">
+				<div className="grid grid-cols-2 items-start gap-2">
 					<Button type="button" fullWidth size="lg" onClick={cancelTotp} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>

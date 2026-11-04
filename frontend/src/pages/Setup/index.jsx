@@ -122,6 +122,7 @@ export default function Setup() {
 					<CardFooter className="flex-col">
 						<FormSubmit
 							stacked
+							className="w-full"
 							messageId="form.fix-fields.continue"
 							color="primary"
 							size="lg"

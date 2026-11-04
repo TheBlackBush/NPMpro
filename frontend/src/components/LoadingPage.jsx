@@ -10,7 +10,12 @@ import { cn } from "src/lib/utils";
  */
 export function LoadingPage({ label, noLogo, delay, fullScreen = false }) {
 	return (
-		<div className={cn("flex items-center justify-center p-4", fullScreen ? "min-h-svh" : "min-h-[50vh]")}>
+		<div
+			className={cn(
+				"flex items-center justify-center p-4",
+				fullScreen ? "min-h-svh bg-muted/40" : "min-h-[50vh]",
+			)}
+		>
 			<div className="w-full max-w-sm">
 				<Loading label={label} noLogo={noLogo} delay={delay} />
 			</div>
