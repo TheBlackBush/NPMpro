@@ -23,7 +23,7 @@ function Progress({
         data-slot="progress-indicator"
         className={cn(
           value == null
-            ? "h-full w-2/5 animate-[npmpro-loader_1.2s_ease-in-out_infinite] bg-[image:var(--brand-gradient)] motion-reduce:w-full motion-reduce:animate-none"
+            ? "h-full w-2/5 animate-[npmpro-loader_1.2s_ease-in-out_infinite] rounded-full bg-[image:var(--brand-gradient)] motion-reduce:w-full motion-reduce:animate-none"
             : "size-full flex-1 bg-primary transition-all"
         )}
         style={value == null ? undefined : { transform: `translateX(-${100 - value}%)` }}

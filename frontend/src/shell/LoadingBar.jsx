@@ -6,7 +6,7 @@ export function LoadingBar() {
 	return (
 		<div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 overflow-hidden">
 			{busy ? (
-				<div className="h-full w-2/5 animate-[npmpro-loader_1.2s_ease-in-out_infinite] bg-[image:var(--brand-gradient)] motion-reduce:animate-none" />
+				<div className="h-full w-2/5 animate-[npmpro-loader_1.2s_ease-in-out_infinite] rounded-full bg-[image:var(--brand-gradient)] motion-reduce:animate-none" />
 			) : null}
 		</div>
 	);
