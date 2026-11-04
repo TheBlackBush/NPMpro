@@ -64,7 +64,7 @@ export function AppSidebar() {
 
 	return (
 		<Sidebar collapsible="icon">
-			<SidebarHeader>
+			<SidebarHeader className="h-14 justify-center py-0">
 				<div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
 					<Logo variant="horizontal" />
 				</div>
