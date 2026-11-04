@@ -32,14 +32,21 @@ function SettingBadge({ icon: Icon, description, className, children }) {
 }
 
 /**
- * The wrapping row of a field's badges, directly under its label; its id describes the control
+ * A field's badges in a wrapping row of their own width (so the width is the same beside the label and at the
+ * bottom of the setting); its id describes the control. Placement is the form layer's (useBadgesFit).
  *
  * @param {Object} props
  * @param {string} props.id
+ * @param {import("react").Ref<HTMLDivElement>} [props.ref]  for measuring
  */
-function SettingBadges({ id, children }) {
+function SettingBadges({ id, ref, children }) {
 	return (
-		<div id={id} data-slot="field-badges" className="flex min-w-0 flex-wrap items-center gap-1.5">
+		<div
+			id={id}
+			ref={ref}
+			data-slot="field-badges"
+			className="inline-flex w-fit min-w-0 max-w-full flex-wrap items-center gap-1.5"
+		>
 			{children}
 		</div>
 	);

@@ -11,6 +11,7 @@ import { FieldMessage } from "./FieldMessage";
 import { useFieldError, useReadOnly } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 import { SettingBadges } from "./SettingBadge";
+import { useBadgesFit } from "./useBadgesFit";
 
 /**
  * One field on shadcn's Field: the label (a red asterisk, hidden from screen readers, when required), the control,
@@ -22,8 +23,8 @@ import { SettingBadges } from "./SettingBadge";
  * @param {*}           [props.label]
  * @param {boolean}     [props.required]     the asterisk; the control takes the required attribute itself
  * @param {*}           [props.hint]
- * @param {*}           [props.badges]       lock, restart and applies badges in a wrapping row under the label;
- *                                           they describe the control
+ * @param {*}           [props.badges]       lock, restart and applies badges: beside the label when they fit, else
+ *                                           at the bottom after the hint; they describe the control
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
  * @param {string}      [props.className]    of the wrapper, "mb-3" by default
@@ -48,20 +49,34 @@ function FormField({
 	const aria = controlAria({ id, hasHint: Boolean(hint), hasBadges, error, describedBy });
 	// a read-only form (a window opened to view) asks for nothing, so it shows no required marks
 	const readOnly = useReadOnly();
+	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({ enabled: hasBadges && Boolean(label) });
+	const badgesRow = hasBadges ? (
+		<SettingBadges id={aria.badgesId} ref={badgesRef}>
+			{badges}
+		</SettingBadges>
+	) : null;
+	const labelNode = label ? (
+		<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick} ref={labelRef}>
+			{label}
+			{required && !readOnly ? (
+				<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
+					*
+				</span>
+			) : null}
+		</FieldLabel>
+	) : null;
 	return (
 		// no group role: the label already names the control, a named group around it only adds noise
 		<Field role="none" className={className} data-invalid={error ? true : undefined}>
-			{label ? (
-				<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick}>
-					{label}
-					{required && !readOnly ? (
-						<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
-							*
-						</span>
-					) : null}
-				</FieldLabel>
-			) : null}
-			{hasBadges ? <SettingBadges id={aria.badgesId}>{badges}</SettingBadges> : null}
+			{hasBadges && label ? (
+				// badges beside the label when both fit the row, else at the bottom of the setting after the hint
+				<div ref={rowRef} className="flex items-center gap-2">
+					{labelNode}
+					{inline ? badgesRow : null}
+				</div>
+			) : (
+				labelNode
+			)}
 			{children({
 				id,
 				"aria-invalid": aria["aria-invalid"],
@@ -70,6 +85,7 @@ function FormField({
 			})}
 			{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
 			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
+			{inline ? null : badgesRow}
 		</Field>
 	);
 }
