@@ -38,7 +38,11 @@ function Router() {
 	}
 
 	if (!health.data?.setup) {
-		return <Setup />;
+		return (
+			<Suspense fallback={<LoadingPage fullScreen />}>
+				<Setup />
+			</Suspense>
+		);
 	}
 
 	if (!authenticated) {
