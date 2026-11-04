@@ -1,5 +1,6 @@
 import { FileKey, RefreshCw, ServerCog, Zap } from "lucide-react";
 import { useController, useFormContext } from "react-hook-form";
+import { useIntl } from "react-intl";
 import { FormField, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
@@ -22,6 +23,7 @@ const APPLIES_ICONS = {
  * a saved change takes effect; null when none applies
  */
 function useFieldBadges(name) {
+	const { formatMessage } = useIntl();
 	const { isLocked, envOf, reasonOf, isRestart, appliesId } = useRuntimeSection();
 	const applies = appliesId(name);
 	const badges = [];
@@ -34,19 +36,22 @@ function useFieldBadges(name) {
 		);
 	if (applies)
 		badges.push(
-			<SettingBadge key="applies" icon={APPLIES_ICONS[applies]}>
-				<T id={applies} />
+			<SettingBadge key="applies" icon={APPLIES_ICONS[applies]} description={formatMessage({ id: applies })}>
+				{/* settings.runtime.applies.immediately.short, .next-certificate.short, .reload.short */}
+				<T id={`${applies}.short`} />
 			</SettingBadge>,
 		);
 	return badges.length > 0 ? badges : null;
 }
 
 /**
- * The field hint and, for a setting locked by another setting's env var, why (one sentence)
+ * The field hint and, for a setting locked by another setting's env var, why (one sentence); null when there is
+ * neither, so the field has no empty description for aria-describedby to point at
  */
-function FieldHint({ name, hint }) {
+function useFieldHint(name, hint) {
 	const { isLocked, envOf, reasonOf } = useRuntimeSection();
 	const reason = isLocked(name) ? reasonOf(name) : null;
+	if (!(hint || reason)) return null;
 	return (
 		<>
 			{hint}
@@ -68,12 +73,13 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	const badges = useFieldBadges(name);
+	const fieldHint = useFieldHint(name, hint);
 	return (
 		<SwitchField
 			id={idOf(name)}
 			label={label}
 			badges={badges}
-			hint={<FieldHint name={name} hint={hint} />}
+			hint={fieldHint}
 			name={field.name}
 			ref={field.ref}
 			onBlur={field.onBlur}
@@ -85,8 +91,8 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 }
 
 /**
- * One setting on the form layer's FormField: the label with its badges (lock, restart, applies), the control (narrow: a third
- * of the row from lg, half from sm), the error and the hint with when the change applies
+ * One setting on the form layer's FormField: the label with its badges (lock, restart, applies), the control
+ * (narrow: a third of the row from lg, half from sm), the error and the hint with when the change applies
  *
  * @param {Object}   props
  * @param {string}   props.name
@@ -100,15 +106,9 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
 	const error = useFieldError(name);
 	const badges = useFieldBadges(name);
+	const fieldHint = useFieldHint(name, hint);
 	return (
-		<FormField
-			id={idOf(name)}
-			label={label}
-			badges={badges}
-			hint={<FieldHint name={name} hint={hint} />}
-			error={error}
-			className={className}
-		>
+		<FormField id={idOf(name)} label={label} badges={badges} hint={fieldHint} error={error} className={className}>
 			{(control) =>
 				narrow ? <div className="w-full sm:w-1/2 lg:w-1/3">{children(control)}</div> : children(control)
 			}
@@ -153,6 +153,7 @@ function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 function RuntimeText({ name, label, hint, placeholder, rows, type = "text", className }) {
 	const { isLocked } = useRuntimeSection();
 	const badges = useFieldBadges(name);
+	const fieldHint = useFieldHint(name, hint);
 	return (
 		<TextField
 			name={name}
@@ -160,7 +161,7 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", clas
 			id={idOf(name)}
 			label={label}
 			badges={badges}
-			hint={<FieldHint name={name} hint={hint} />}
+			hint={fieldHint}
 			as={rows ? "textarea" : "input"}
 			controlClassName={rows ? "font-mono" : undefined}
 			disabled={isLocked(name)}

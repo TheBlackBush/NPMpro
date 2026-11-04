@@ -8,19 +8,25 @@ import { cn } from "src/lib/utils";
  *
  * @param {Object} props
  * @param {import("react").ComponentType} props.icon  a lucide icon
+ * @param {*} [props.description]  the full sentence behind a short text: the chip's tooltip (title, when it is a string)
+ *   and screen reader text after the short text
  * @param {string} [props.className]
  */
-function SettingBadge({ icon: Icon, className, children }) {
+function SettingBadge({ icon: Icon, description, className, children }) {
 	return (
 		<Badge
 			variant="outline"
+			title={typeof description === "string" ? description : undefined}
 			className={cn(
 				"h-auto min-w-0 max-w-full shrink whitespace-normal py-0.5 text-left wrap-anywhere",
 				className,
 			)}
 		>
 			<Icon aria-hidden="true" />
-			<span className="min-w-0">{children}</span>
+			<span className="min-w-0">
+				{children}
+				{description ? <span className="sr-only"> ({description})</span> : null}
+			</span>
 		</Badge>
 	);
 }
