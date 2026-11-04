@@ -46,10 +46,9 @@ async function watchedPage(browserContext) {
 	return watched;
 }
 
-// the app's error page (main.jsx's crash page, components/Unhealthy.jsx) renders without a page error or console error
+// the app's error pages (main.jsx's crash page, components/Unhealthy.jsx) carry data-error-page
 async function checkErrorPage(target, where) {
-	if (await target.locator('img[src="/images/unhealthy.svg"]').isVisible())
-		problems.push(`error page shown ${where}`);
+	if (await target.locator("[data-error-page]").first().isVisible()) problems.push(`error page shown ${where}`);
 }
 
 async function open(target, route) {

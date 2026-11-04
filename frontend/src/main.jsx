@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "src/App.jsx";
@@ -20,7 +21,10 @@ const root = ReactDOM.createRoot(document.querySelector("#root"), {
 		root.render(
 			<div className="flex min-h-svh items-center justify-center p-4">
 				<div className="flex w-full max-w-md flex-col items-center gap-4">
-					<img src="/images/unhealthy.svg" alt="" className="size-32" />
+					{/* data-error-page: the CSP gate's marker of an error page */}
+					<div data-error-page className="flex size-20 items-center justify-center rounded-full bg-muted">
+						<TriangleAlert aria-hidden="true" className="size-10 text-destructive" />
+					</div>
 					<Alert variant="destructive">
 						<AlertDescription className="wrap-anywhere">{error?.message ?? String(error)}</AlertDescription>
 					</Alert>
