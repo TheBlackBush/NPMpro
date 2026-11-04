@@ -19,14 +19,15 @@ const SECTIONS = Object.freeze([
  * checks it. The section keys are SECTIONS.
  *
  * text: icon and dot colour; bg: tinted fill (text on it stays text-foreground); border: tinted edge;
- * underline: active link underline of the top bar; marker: active link marker of the sidebar
+ * underline: active link underline of the top bar; marker: active link marker of the sidebar (the brand gradient,
+ * vertical, for the items without a section colour)
  */
 const PRIMARY_ACCENT = Object.freeze({
 	text: "text-primary",
 	bg: "bg-primary/15",
 	border: "border-primary/40",
 	underline: "after:bg-[image:var(--brand-gradient)]",
-	marker: "data-[active=true]:before:bg-primary",
+	marker: "data-[active=true]:before:bg-[image:var(--brand-gradient-y)]",
 });
 
 const PROXY = Object.freeze({

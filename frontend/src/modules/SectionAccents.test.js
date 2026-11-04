@@ -6,6 +6,8 @@ import { NAV_ITEMS } from "./Navigation.js";
 import { kindSection, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, SECTIONS, sectionAccent } from "./SectionAccents.js";
 
 const CSS = readFileSync(new URL("../styles/globals.css", import.meta.url), "utf8");
+const GRADIENT_Y =
+	/--brand-gradient-y:\s*linear-gradient\(180deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff\);/u;
 
 it("gives every section but settings an accent and everything else the primary look", () => {
 	assert.deepEqual(Object.keys(SECTION_ACCENTS).toSorted(), SECTIONS.filter((key) => key !== "settings").toSorted());
@@ -34,6 +36,9 @@ it("maps the nav ids to the accents and leaves dashboard, monitoring and setting
 		assert.equal(navAccent(id), PRIMARY_ACCENT, String(id));
 	}
 	assert.match(PRIMARY_ACCENT.underline, /brand-gradient/u);
+	// the sidebar's marker is a vertical bar: the vertical gradient token, defined next to the horizontal one
+	assert.equal(PRIMARY_ACCENT.marker, "data-[active=true]:before:bg-[image:var(--brand-gradient-y)]");
+	assert.match(CSS, GRADIENT_Y);
 	assert.ok(NAV_ITEMS.every((item) => navAccent(item.id)));
 });
 
