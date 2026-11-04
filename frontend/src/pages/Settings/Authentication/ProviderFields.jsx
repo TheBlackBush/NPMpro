@@ -30,12 +30,8 @@ function ProviderText({ name, label, hint, locked, type = "text", placeholder, o
 		<TextField
 			name={name}
 			id={`oidc-${name}`}
-			label={
-				<>
-					{label}
-					{locked ? <LockedBadge /> : null}
-				</>
-			}
+			label={label}
+			badges={locked ? <LockedBadge /> : null}
 			hint={hint}
 			className=""
 			registerOptions={onChange ? { onChange } : undefined}
@@ -126,12 +122,8 @@ function ProviderFields({ data, isLocked }) {
 			<SwitchList>
 				<SwitchField
 					id="oidc-enabled"
-					label={
-						<>
-							<T id="settings.authentication.enabled" />
-							{enabledLocked ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.authentication.enabled" />}
+					badges={enabledLocked ? <LockedBadge /> : null}
 					name={enabledField.name}
 					ref={enabledField.ref}
 					onBlur={enabledField.onBlur}
@@ -162,12 +154,8 @@ function ProviderFields({ data, isLocked }) {
 			<PasswordField
 				name="clientSecret"
 				id="oidc-clientSecret"
-				label={
-					<>
-						<T id="settings.authentication.client-secret" />
-						{secretLocked ? <LockedBadge /> : null}
-					</>
-				}
+				label={<T id="settings.authentication.client-secret" />}
+				badges={secretLocked ? <LockedBadge /> : null}
 				autoComplete="new-password"
 				className=""
 				disabled={secretLocked}

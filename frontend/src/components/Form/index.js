@@ -18,6 +18,7 @@ export * from "./ModalTabs";
 export * from "./NginxConfigField";
 export * from "./PasswordInput";
 export * from "./ProxyOptionsFields";
+export * from "./SettingBadge";
 export * from "./SSLCertificateField";
 export * from "./SSLOptionsFields";
 export * from "./SwitchField";

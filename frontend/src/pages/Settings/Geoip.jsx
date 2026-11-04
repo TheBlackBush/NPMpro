@@ -70,12 +70,8 @@ function AccountFields({ data, isLocked }) {
 				<TextField
 					name="accountId"
 					id="geoip-account-id"
-					label={
-						<>
-							<T id="settings.geoip.account-id" />
-							{isLocked("accountId") ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.geoip.account-id" />}
+					badges={isLocked("accountId") ? <LockedBadge /> : null}
 					type="text"
 					inputMode="numeric"
 					autoComplete="off"
@@ -85,12 +81,8 @@ function AccountFields({ data, isLocked }) {
 				<PasswordField
 					name="licenseKey"
 					id="geoip-license-key"
-					label={
-						<>
-							<T id="settings.geoip.license-key" />
-							{keyLocked ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.geoip.license-key" />}
+					badges={keyLocked ? <LockedBadge /> : null}
 					autoComplete="new-password"
 					disabled={keyLocked}
 					placeholder={keyPlaceholder}
@@ -123,7 +115,7 @@ function EditionFields({ isLocked }) {
 				legend={
 					<>
 						<T id="settings.geoip.editions" />
-						{locked ? <LockedBadge /> : null}
+						{locked ? <LockedBadge className="ms-2" /> : null}
 					</>
 				}
 				className="mb-0"

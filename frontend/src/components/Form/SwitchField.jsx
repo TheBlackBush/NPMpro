@@ -1,5 +1,7 @@
+import { Children } from "react";
 import { controlAria } from "src/modules/FormFields";
 import { FieldMessage } from "./FieldMessage";
+import { SettingBadges } from "./SettingBadge";
 
 // A native checkbox drawn as a switch with the tokens of the shadcn switch. Not Radix's Switch: that is a button, and the
 // callers hand this field a register() result (ref, name, onChange with event.target.checked, onBlur), which needs
@@ -11,8 +13,15 @@ const SWITCH_INPUT =
  * A settings row: text (and an optional hint) on the left, a switch on the right. The switch is described by its
  * error and its hint; the error shows under the row. A list of rows is a SwitchList.
  */
-function SwitchField({ id, label, hint, error, className, ...inputProps }) {
-	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy: inputProps["aria-describedby"] });
+function SwitchField({ id, label, hint, badges, error, className, ...inputProps }) {
+	const hasBadges = Children.toArray(badges).length > 0;
+	const aria = controlAria({
+		id,
+		hasHint: Boolean(hint),
+		hasBadges,
+		error,
+		describedBy: inputProps["aria-describedby"],
+	});
 	return (
 		<div className={className}>
 			<label className="flex items-start justify-between gap-4 has-[:disabled]:opacity-50" htmlFor={id}>
@@ -20,6 +29,7 @@ function SwitchField({ id, label, hint, error, className, ...inputProps }) {
 					<span className="font-medium" id={aria.labelId}>
 						{label}
 					</span>
+					{hasBadges ? <SettingBadges id={aria.badgesId}>{badges}</SettingBadges> : null}
 					{hint ? (
 						<span className="text-muted-foreground" id={aria.hintId}>
 							{hint}

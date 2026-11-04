@@ -1,6 +1,5 @@
 import { Lock } from "lucide-react";
-import { Badge } from "src/components/ui/badge";
-import { cn } from "src/lib/utils";
+import { SettingBadge } from "src/components";
 import { T } from "src/locale";
 
 // the badge text of a lock by another setting's env var (backend LOCK_REASONS)
@@ -25,13 +24,11 @@ const badgeIdOf = (env, reason) => {
  * "Set by environment", with `env` "Set by <ENV>", and with an indirect lock `reason` its own wording ("Follows
  * <ENV>", "Off because of <ENV>", "Required by <ENV>")
  */
-function LockedBadge({ env, reason, className = "ms-2" }) {
+function LockedBadge({ env, reason, className }) {
 	return (
-		// NPMpro: the badge text may wrap (a long variable name), so it is not a fixed height pill
-		<Badge variant="outline" className={cn("h-auto whitespace-normal break-all py-0.5 text-left", className)}>
-			<Lock aria-hidden="true" />
+		<SettingBadge icon={Lock} className={className}>
 			<T id={badgeIdOf(env, reason)} data={env ? { env: <span className="font-mono">{env}</span> } : undefined} />
-		</Badge>
+		</SettingBadge>
 	);
 }
 

@@ -10,6 +10,7 @@ import { optionsFromElements } from "src/modules/SelectOptions";
 import { FieldMessage } from "./FieldMessage";
 import { useFieldError, useReadOnly } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
+import { SettingBadges } from "./SettingBadge";
 
 /**
  * One field on shadcn's Field: the label (a red asterisk, hidden from screen readers, when required), the control,
@@ -21,6 +22,8 @@ import { PasswordControl } from "./PasswordInput";
  * @param {*}           [props.label]
  * @param {boolean}     [props.required]     the asterisk; the control takes the required attribute itself
  * @param {*}           [props.hint]
+ * @param {*}           [props.badges]       lock, restart and applies badges in a wrapping row under the label;
+ *                                           they describe the control
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
  * @param {string}      [props.className]    of the wrapper, "mb-3" by default
@@ -34,13 +37,15 @@ function FormField({
 	label,
 	required = false,
 	hint,
+	badges,
 	error = null,
 	describedBy,
 	className = "mb-3",
 	onLabelClick,
 	children,
 }) {
-	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
+	const hasBadges = Children.toArray(badges).length > 0;
+	const aria = controlAria({ id, hasHint: Boolean(hint), hasBadges, error, describedBy });
 	// a read-only form (a window opened to view) asks for nothing, so it shows no required marks
 	const readOnly = useReadOnly();
 	return (
@@ -56,6 +61,7 @@ function FormField({
 					) : null}
 				</FieldLabel>
 			) : null}
+			{hasBadges ? <SettingBadges id={aria.badgesId}>{badges}</SettingBadges> : null}
 			{children({
 				id,
 				"aria-invalid": aria["aria-invalid"],
@@ -77,6 +83,7 @@ function FormField({
  * @param {*}       [props.label]
  * @param {boolean} [props.required]
  * @param {*}       [props.hint]
+ * @param {*}       [props.badges]
  * @param {string}  [props.describedBy]
  * @param {string}  [props.className]          of the field
  * @param {Object}  [props.registerOptions]    register's options (onChange, setValueAs)
@@ -90,6 +97,7 @@ function TextField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -106,6 +114,7 @@ function TextField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}
@@ -134,6 +143,7 @@ function SelectField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -149,6 +159,7 @@ function SelectField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}
@@ -173,8 +184,7 @@ function SelectField({
 }
 
 /**
- * A password input of the form around it (register), with the eye button, on FormField. label may hold more than
- * the text (a lock badge).
+ * A password input of the form around it (register), with the eye button, on FormField. badges hold the lock badge.
  */
 function PasswordField({
 	name,
@@ -182,6 +192,7 @@ function PasswordField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -195,6 +206,7 @@ function PasswordField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}

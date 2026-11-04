@@ -1,8 +1,7 @@
-import { RefreshCw } from "lucide-react";
+import { FileKey, RefreshCw, ServerCog, Zap } from "lucide-react";
 import { useController, useFormContext } from "react-hook-form";
-import { FormField, SwitchField, TextField, useFieldError } from "src/components";
+import { FormField, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
-import { Badge } from "src/components/ui/badge";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
@@ -10,42 +9,43 @@ import { useRuntimeSection } from "./RuntimeSection";
 
 const idOf = (name) => `runtime-${name}`;
 
+// one icon per kind of "applies" note (settings.runtime.applies.*)
+// settings.runtime.applies.immediately, .next-certificate, .reload
+const APPLIES_ICONS = {
+	"settings.runtime.applies.immediately": Zap,
+	"settings.runtime.applies.next-certificate": FileKey,
+	"settings.runtime.applies.reload": ServerCog,
+};
+
 /**
- * The badge of a setting that applies after a container restart
+ * The badges under a setting's label: set by an env var (or locked by another setting), restart required, and when
+ * a saved change takes effect; null when none applies
  */
-function RestartBadge() {
-	return (
-		<Badge variant="outline" className="ms-2 h-auto whitespace-normal py-0.5 text-left">
-			<RefreshCw aria-hidden="true" />
-			<T id="settings.runtime.restart-required" />
-		</Badge>
-	);
+function useFieldBadges(name) {
+	const { isLocked, envOf, reasonOf, isRestart, appliesId } = useRuntimeSection();
+	const applies = appliesId(name);
+	const badges = [];
+	if (isLocked(name)) badges.push(<LockedBadge key="lock" env={envOf(name)} reason={reasonOf(name)} />);
+	if (isRestart(name))
+		badges.push(
+			<SettingBadge key="restart" icon={RefreshCw}>
+				<T id="settings.runtime.restart-required" />
+			</SettingBadge>,
+		);
+	if (applies)
+		badges.push(
+			<SettingBadge key="applies" icon={APPLIES_ICONS[applies]}>
+				<T id={applies} />
+			</SettingBadge>,
+		);
+	return badges.length > 0 ? badges : null;
 }
 
 /**
- * Label text with the lock badge when the key is locked ("Set by <ENV>", or the wording of an indirect lock), else
- * the Restart required badge for a setting that applies after a container restart
- */
-function FieldLabel({ name, children }) {
-	const { isLocked, envOf, reasonOf, isRestart } = useRuntimeSection();
-	let badge = null;
-	if (isLocked(name)) badge = <LockedBadge env={envOf(name)} reason={reasonOf(name)} />;
-	else if (isRestart(name)) badge = <RestartBadge />;
-	return (
-		<>
-			{children}
-			{badge}
-		</>
-	);
-}
-
-/**
- * The field hint, why another setting locks it (indirect lock) and when a change takes effect (restart settings show
- * their badge instead, a pending restart shows at the top of the section)
+ * The field hint and, for a setting locked by another setting's env var, why (one sentence)
  */
 function FieldHint({ name, hint }) {
-	const { appliesId, isLocked, envOf, reasonOf } = useRuntimeSection();
-	const applies = appliesId(name);
+	const { isLocked, envOf, reasonOf } = useRuntimeSection();
 	const reason = isLocked(name) ? reasonOf(name) : null;
 	return (
 		<>
@@ -55,27 +55,24 @@ function FieldHint({ name, hint }) {
 					<LockReason env={envOf(name)} reason={reason} />
 				</span>
 			) : null}
-			{applies ? (
-				<span className="block text-sm text-muted-foreground">
-					<T id={applies} />
-				</span>
-			) : null}
 		</>
 	);
 }
 
 /**
- * A boolean setting as a Tabler settings switch row, for a SwitchList. `forced` shows it on and read-only (another
+ * A boolean setting as a switch row, for a SwitchList. `forced` shows it on and read-only (another
  * setting needs it), `forcedOff` shows it off and read-only (another setting rules it out); a controller, as the
  * switch may show another state than the field holds.
  */
 function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
+	const badges = useFieldBadges(name);
 	return (
 		<SwitchField
 			id={idOf(name)}
-			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			label={label}
+			badges={badges}
 			hint={<FieldHint name={name} hint={hint} />}
 			name={field.name}
 			ref={field.ref}
@@ -88,7 +85,7 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 }
 
 /**
- * One setting on the form layer's FormField: the label with its lock or restart badge, the control (narrow: a third
+ * One setting on the form layer's FormField: the label with its badges (lock, restart, applies), the control (narrow: a third
  * of the row from lg, half from sm), the error and the hint with when the change applies
  *
  * @param {Object}   props
@@ -102,10 +99,12 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
  */
 function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
 	const error = useFieldError(name);
+	const badges = useFieldBadges(name);
 	return (
 		<FormField
 			id={idOf(name)}
-			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			label={label}
+			badges={badges}
 			hint={<FieldHint name={name} hint={hint} />}
 			error={error}
 			className={className}
@@ -153,12 +152,14 @@ function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
  */
 function RuntimeText({ name, label, hint, placeholder, rows, type = "text", className }) {
 	const { isLocked } = useRuntimeSection();
+	const badges = useFieldBadges(name);
 	return (
 		<TextField
 			name={name}
 			className={className}
 			id={idOf(name)}
-			label={<FieldLabel name={name}>{label}</FieldLabel>}
+			label={label}
+			badges={badges}
 			hint={<FieldHint name={name} hint={hint} />}
 			as={rows ? "textarea" : "input"}
 			controlClassName={rows ? "font-mono" : undefined}
