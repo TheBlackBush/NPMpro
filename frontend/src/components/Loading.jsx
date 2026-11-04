@@ -32,7 +32,7 @@ export function Loading({ label, noLogo, delay = 0 }) {
 			<p className="m-0 text-sm" role="status">
 				{label || <T id="loading" />}
 			</p>
-			<Progress aria-label={intl.formatMessage({ id: "loading" })} className="max-w-48" />
+			<Progress aria-label={intl.formatMessage({ id: "loading" })} className="h-1.5 max-w-64" />
 		</div>
 	);
 }
