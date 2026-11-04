@@ -352,6 +352,7 @@
 	"expires.on": "Verloopt: {date}",
 	"expiry.expired": "Verlopen",
 	"expiry.in-days": "{days, plural, =0 {Verloopt vandaag} =1 {Verloopt morgen} other {Verloopt over # dagen}}",
+	"footer.credit": "{project} door {author}",
 	"footer.github": "Repository op Github",
 	"form.example": "bijv. {example}",
 	"form.fix-fields": "Corrigeer vóór het opslaan: {fields}",

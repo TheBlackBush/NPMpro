@@ -352,6 +352,7 @@
 	"expires.on": "Expira: {date}",
 	"expiry.expired": "Caducado",
 	"expiry.in-days": "{days, plural, =0 {Caduca hoy} =1 {Caduca mañana} other {Caduca en # días}}",
+	"footer.credit": "{project} de {author}",
 	"footer.github": "Repositorio en GitHub",
 	"form.example": "p. ej. {example}",
 	"form.fix-fields": "Corrige antes de guardar: {fields}",

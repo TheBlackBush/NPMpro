@@ -352,6 +352,7 @@
 	"expires.on": "Истекает: {date}",
 	"expiry.expired": "Истёк",
 	"expiry.in-days": "{days, plural, =0 {Истекает сегодня} =1 {Истекает завтра} one {Истекает через # день} few {Истекает через # дня} many {Истекает через # дней} other {Истекает через # дня}}",
+	"footer.credit": "{project} от {author}",
 	"footer.github": "Репозиторий на GitHub",
 	"form.example": "напр. {example}",
 	"form.fix-fields": "Исправьте перед сохранением: {fields}",

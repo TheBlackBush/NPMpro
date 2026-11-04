@@ -352,6 +352,7 @@
 	"expires.on": "Expires: {date}",
 	"expiry.expired": "Expired",
 	"expiry.in-days": "{days, plural, =0 {Expires today} =1 {Expires tomorrow} other {Expires in # days}}",
+	"footer.credit": "{project} by {author}",
 	"footer.github": "Repository on Github",
 	"form.example": "e.g. {example}",
 	"form.fix-fields": "Fix before saving: {fields}",

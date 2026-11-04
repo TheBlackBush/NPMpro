@@ -28,7 +28,7 @@ export function AuthLayout({ width = "sm", children }) {
 					{children}
 				</div>
 			</main>
-			<Credits className="justify-center px-4 py-4" />
+			<Credits className="justify-center px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" />
 		</div>
 	);
 }

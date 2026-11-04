@@ -352,6 +352,7 @@
 	"expires.on": "Wygasa: {date}",
 	"expiry.expired": "Wygasł",
 	"expiry.in-days": "{days, plural, =0 {Wygasa dzisiaj} =1 {Wygasa jutro} one {Wygasa za # dzień} few {Wygasa za # dni} many {Wygasa za # dni} other {Wygasa za # dnia}}",
+	"footer.credit": "{project} autorstwa {author}",
 	"footer.github": "Repozytorium na Github",
 	"form.example": "np. {example}",
 	"form.fix-fields": "Popraw przed zapisaniem: {fields}",

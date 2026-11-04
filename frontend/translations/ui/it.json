@@ -352,6 +352,7 @@
 	"expires.on": "Scade: {date}",
 	"expiry.expired": "Scaduto",
 	"expiry.in-days": "{days, plural, =0 {Scade oggi} =1 {Scade domani} other {Scade tra # giorni}}",
+	"footer.credit": "{project} di {author}",
 	"footer.github": "Repository su GitHub",
 	"form.example": "es. {example}",
 	"form.fix-fields": "Correggi prima di salvare: {fields}",

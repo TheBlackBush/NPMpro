@@ -352,6 +352,7 @@
 	"expires.on": "만료일: {date}",
 	"expiry.expired": "만료됨",
 	"expiry.in-days": "{days, plural, =0 {오늘 만료} =1 {내일 만료} other {#일 후 만료}}",
+	"footer.credit": "{author}의 {project}",
 	"footer.github": "GitHub 저장소",
 	"form.example": "예: {example}",
 	"form.fix-fields": "저장하기 전에 수정하세요: {fields}",

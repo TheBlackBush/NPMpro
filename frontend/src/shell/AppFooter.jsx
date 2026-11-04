@@ -6,7 +6,7 @@ const repoUrl = "https://github.com/TheBlackBush/NPMpro";
 // release builds are "<MAJOR.MINOR.PATCH>-<commit>", beta and develop builds end with "-<commit>"
 const releaseBuildPattern = /^(?<release>\d+\.\d+\.\d+)-[0-9a-f]+$/u;
 const commitPattern = /-(?<commit>[0-9a-f]+)$/u;
-const LINK = "underline-offset-4 hover:text-foreground hover:underline";
+const LINK = "inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline";
 
 // lucide-react dropped brand icons, so the GitHub mark is drawn here (24x24 path from Simple Icons, CC0)
 function GithubMark({ className }) {
@@ -35,16 +35,20 @@ export function AppFooter() {
 	const versionUrl = release ? `${repoUrl}/releases/tag/v${release}` : commit ? `${repoUrl}/tree/${commit}` : repoUrl;
 
 	return (
-		<footer className="border-t print:hidden">
-			<div className="mx-auto flex max-w-screen-2xl flex-col gap-2 px-3 py-4 text-xs text-muted-foreground sm:px-5 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
-				<Credits className="flex-col gap-1 lg:flex-row lg:items-center lg:gap-x-4" />
-				<div className="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
-					<span>&copy; {new Date().getFullYear()} AGPL-3.0 (and MIT)</span>
+		// a container: the content column decides the layout (narrower than the viewport in the sidebar layout);
+		// the safe-area padding is 0 unless the page opts into viewport-fit=cover
+		<footer className="@container border-t pb-[env(safe-area-inset-bottom)] print:hidden">
+			<div className="mx-auto flex max-w-screen-2xl flex-col items-center gap-x-6 px-3 py-2 text-center text-muted-foreground text-xs sm:items-start sm:px-5 sm:text-left @4xl:flex-row @4xl:items-center @4xl:justify-between">
+				<Credits className="justify-center sm:justify-start" />
+				<div className="flex flex-wrap items-center justify-center gap-x-4 sm:justify-start">
+					<span className="inline-flex min-h-6 items-center">
+						&copy; {new Date().getFullYear()} AGPL-3.0 (and MIT)
+					</span>
 					{version ? <ExternalA href={versionUrl}>{version}</ExternalA> : null}
 					{versionData?.updateAvailable ? (
 						<ExternalA
 							href={`${repoUrl}/releases/tag/${versionData.latest}`}
-							className="font-medium text-primary underline-offset-4 hover:underline"
+							className="inline-flex min-h-6 items-center font-medium text-primary underline-offset-4 hover:underline"
 							title={intl.formatMessage(
 								{ id: "update-available" },
 								{ latestVersion: versionData.latest },
@@ -53,7 +57,7 @@ export function AppFooter() {
 							<T id="update-available" data={{ latestVersion: versionData.latest }} />
 						</ExternalA>
 					) : null}
-					<ExternalA href={repoUrl} className={`inline-flex items-center gap-1.5 ${LINK}`}>
+					<ExternalA href={repoUrl} className={`gap-1.5 ${LINK}`}>
 						<GithubMark className="size-3.5" />
 						<T id="footer.github" />
 					</ExternalA>

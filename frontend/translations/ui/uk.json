@@ -352,6 +352,7 @@
 	"expires.on": "Закінчується: {date}",
 	"expiry.expired": "Термін минув",
 	"expiry.in-days": "{days, plural, =0 {Спливає сьогодні} =1 {Спливає завтра} one {Спливає через # день} few {Спливає через # дні} many {Спливає через # днів} other {Спливає через # дня}}",
+	"footer.credit": "{project} від {author}",
 	"footer.github": "Репозиторій на GitHub",
 	"form.example": "напр. {example}",
 	"form.fix-fields": "Виправте перед збереженням: {fields}",

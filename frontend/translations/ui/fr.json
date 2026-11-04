@@ -352,6 +352,7 @@
 	"expires.on": "Expire le {date}",
 	"expiry.expired": "Expiré",
 	"expiry.in-days": "{days, plural, =0 {Expire aujourd'hui} =1 {Expire demain} other {Expire dans # jours}}",
+	"footer.credit": "{project} par {author}",
 	"footer.github": "Dépôt sur GitHub",
 	"form.example": "ex. {example}",
 	"form.fix-fields": "À corriger avant d'enregistrer : {fields}",

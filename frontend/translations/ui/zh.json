@@ -352,6 +352,7 @@
 	"expires.on": "过期时间: {date}",
 	"expiry.expired": "已过期",
 	"expiry.in-days": "{days, plural, =0 {今天过期} =1 {明天过期} other {# 天后过期}}",
+	"footer.credit": "{author} 的 {project}",
 	"footer.github": "在 Github 上查看代码仓库",
 	"form.example": "例如 {example}",
 	"form.fix-fields": "保存前请修正：{fields}",

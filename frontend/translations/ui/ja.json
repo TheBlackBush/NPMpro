@@ -352,6 +352,7 @@
 	"expires.on": "有効期限: {date}",
 	"expiry.expired": "期限切れ",
 	"expiry.in-days": "{days, plural, =0 {今日期限切れ} =1 {明日期限切れ} other {# 日後に期限切れ}}",
+	"footer.credit": "{author} の {project}",
 	"footer.github": "GitHub のリポジトリ",
 	"form.example": "例: {example}",
 	"form.fix-fields": "保存する前に修正してください: {fields}",
