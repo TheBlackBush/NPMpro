@@ -41,12 +41,13 @@ function Sparkline({ series }) {
 	);
 }
 
-// Grid columns by the number of cards shown, so the cards always fill their row (whole class strings for Tailwind)
+// Grid columns by the number of cards shown, so the cards always fill their row; by the width of the dashboard
+// column (container queries), so the sidebar layout gets the narrower grid (whole class strings for Tailwind)
 const GRID_BY_COUNT = {
-	1: "sm:grid-cols-1",
-	2: "sm:grid-cols-2",
-	3: "sm:grid-cols-3",
-	4: "sm:grid-cols-2 lg:grid-cols-4",
+	1: "",
+	2: "@lg:grid-cols-2",
+	3: "@3xl:grid-cols-3",
+	4: "@lg:grid-cols-2 @4xl:grid-cols-4",
 };
 
 /**
