@@ -35,7 +35,7 @@ class MapLoadBoundary extends Component {
 function WorldMap({ countries, label, tone = "primary", formatValue = formatCount }) {
 	return (
 		<MapLoadBoundary>
-			<Suspense fallback={<Skeleton className="aspect-[800/390] w-full" />}>
+			<Suspense fallback={<Skeleton className="aspect-[800/360] w-full" />}>
 				<WorldMapCanvas countries={countries} label={label} tone={tone} formatValue={formatValue} />
 			</Suspense>
 		</MapLoadBoundary>

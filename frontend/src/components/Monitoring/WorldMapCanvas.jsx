@@ -11,34 +11,78 @@ import world from "world-atlas/countries-110m.json" with { type: "json" };
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
-// shade 0 (no data) and 1 to 5 per tone: whole class strings so Tailwind finds them
+// Shade 0 (no data) and 1 to 5 per tone, mixed with the card colour instead of made transparent, so every shade is
+// opaque: each country is stroked in its own fill colour, which hides the seams between shapes without drawing border
+// lines (a transparent stroke over a transparent fill would draw a darker edge). Whole class strings so Tailwind finds them.
 const FILLS = {
-	primary: ["fill-muted", "fill-primary/20", "fill-primary/35", "fill-primary/55", "fill-primary/75", "fill-primary"],
+	primary: [
+		"fill-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--primary)_20%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--primary)_35%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--primary)_55%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--primary)_75%,var(--card))]",
+		"fill-primary",
+	],
 	destructive: [
-		"fill-muted",
-		"fill-destructive/20",
-		"fill-destructive/35",
-		"fill-destructive/55",
-		"fill-destructive/75",
+		"fill-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--destructive)_20%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--destructive)_35%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--destructive)_55%,var(--card))]",
+		"fill-[color-mix(in_oklab,var(--destructive)_75%,var(--card))]",
 		"fill-destructive",
 	],
 };
 
-// the same steps as background colours, for the legend swatches
-const SWATCHES = {
-	primary: ["bg-muted", "bg-primary/20", "bg-primary/35", "bg-primary/55", "bg-primary/75", "bg-primary"],
+// the same shades as strokes
+const STROKES = {
+	primary: [
+		"stroke-[color:color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--primary)_20%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--primary)_35%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--primary)_55%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--primary)_75%,var(--card))]",
+		"stroke-primary",
+	],
 	destructive: [
-		"bg-muted",
-		"bg-destructive/20",
-		"bg-destructive/35",
-		"bg-destructive/55",
-		"bg-destructive/75",
+		"stroke-[color:color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--destructive)_20%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--destructive)_35%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--destructive)_55%,var(--card))]",
+		"stroke-[color:color-mix(in_oklab,var(--destructive)_75%,var(--card))]",
+		"stroke-destructive",
+	],
+};
+
+// and as background colours, for the legend swatches
+const SWATCHES = {
+	primary: [
+		"bg-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--primary)_20%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--primary)_35%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--primary)_55%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--primary)_75%,var(--card))]",
+		"bg-primary",
+	],
+	destructive: [
+		"bg-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--destructive)_20%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--destructive)_35%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--destructive)_55%,var(--card))]",
+		"bg-[color-mix(in_oklab,var(--destructive)_75%,var(--card))]",
 		"bg-destructive",
 	],
 };
 
-const OUTLINE =
-	"stroke-card stroke-[0.5] outline-none [vector-effect:non-scaling-stroke] hover:stroke-foreground hover:stroke-1 focus-visible:stroke-foreground focus-visible:stroke-1";
+// a thin stroke that keeps its screen width at any zoom; hover and keyboard focus outline the one country
+const SHAPE =
+	"stroke-[0.75] outline-none [vector-effect:non-scaling-stroke] hover:stroke-foreground hover:stroke-[1.25] focus-visible:stroke-foreground focus-visible:stroke-[1.25]";
+
+// Antarctica (id 010) is left out, as in most traffic maps: it has no visitors and takes a fifth of the height
+const ANTARCTICA = "010";
+
+// geoEqualEarth fitted to the world without Antarctica in 800 x 360 with an 8 px margin
+const CENTER = [0, 7];
+const PROJECTION = { scale: 147.6, center: CENTER };
 
 const rawCounts = (countries) => {
 	const counts = {};
@@ -63,8 +107,9 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 	const max = Math.max(0, ...Object.values(counts));
 	const ranges = useMemo(() => shadeRanges(max), [max]);
 	const fills = FILLS[tone] ?? FILLS.primary;
+	const strokes = STROKES[tone] ?? STROKES.primary;
 	const swatches = SWATCHES[tone] ?? SWATCHES.primary;
-	const [view, setView] = useState({ coordinates: [0, 0], zoom: 1 });
+	const [view, setView] = useState({ coordinates: CENTER, zoom: 1 });
 	const [active, setActive] = useState(null);
 
 	const shapeInfo = (geo) => {
@@ -79,8 +124,9 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 			<div className="relative">
 				<ComposableMap
 					width={800}
-					height={390}
+					height={360}
 					projection="geoEqualEarth"
+					projectionConfig={PROJECTION}
 					role="group"
 					aria-label={label}
 					className="h-auto w-full"
@@ -98,27 +144,29 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 					>
 						<Geographies geography={world}>
 							{({ geographies }) =>
-								geographies.map((geo) => {
-									const { code, name, count, text } = shapeInfo(geo);
-									const shade = shadeIndex(code ? scale[code] : 0);
-									const focusable = count !== undefined;
-									return (
-										<Geography
-											key={geo.rsmKey}
-											geography={geo}
-											className={`${OUTLINE} ${fills[shade]}`}
-											tabIndex={focusable ? 0 : -1}
-											role={focusable ? "img" : undefined}
-											aria-label={focusable ? text : undefined}
-											onMouseEnter={() => setActive(text)}
-											onMouseLeave={() => setActive(null)}
-											onFocus={() => setActive(text)}
-											onBlur={() => setActive(null)}
-										>
-											<title>{text || name}</title>
-										</Geography>
-									);
-								})
+								geographies
+									.filter((geo) => geo.id !== ANTARCTICA)
+									.map((geo) => {
+										const { code, name, count, text } = shapeInfo(geo);
+										const shade = shadeIndex(code ? scale[code] : 0);
+										const focusable = count !== undefined;
+										return (
+											<Geography
+												key={geo.rsmKey}
+												geography={geo}
+												className={`${SHAPE} ${fills[shade]} ${strokes[shade]}`}
+												tabIndex={focusable ? 0 : -1}
+												role={focusable ? "img" : undefined}
+												aria-label={focusable ? text : undefined}
+												onMouseEnter={() => setActive(text)}
+												onMouseLeave={() => setActive(null)}
+												onFocus={() => setActive(text)}
+												onBlur={() => setActive(null)}
+											>
+												<title>{text || name}</title>
+											</Geography>
+										);
+									})
 							}
 						</Geographies>
 					</ZoomableGroup>
