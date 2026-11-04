@@ -9,6 +9,10 @@ const tones = {
 		badge: "border-success/30 bg-success/15 text-success",
 		dot: "bg-success",
 	},
+	info: {
+		badge: "border-info/30 bg-info/15 text-info",
+		dot: "bg-info",
+	},
 	warning: {
 		badge: "border-warning/30 bg-warning/15 text-warning",
 		dot: "bg-warning",
@@ -24,7 +28,7 @@ const tones = {
 };
 
 /**
- * A state label with a coloured dot: tone is success, warning, destructive or muted. pulse animates the dot (for a
+ * A state label with a coloured dot: tone is success, info, warning, destructive or muted. pulse animates the dot (for a
  * live state, not under prefers-reduced-motion); dot={false} leaves the dot out (a pure label).
  */
 export function StatusBadge({ tone = "muted", children, title, pulse, dot = true, className, ...rest }) {

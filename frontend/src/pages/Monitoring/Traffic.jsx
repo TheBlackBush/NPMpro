@@ -1,23 +1,24 @@
 import {
-	IconAlertTriangle,
-	IconArrowsTransferDown,
-	IconChartBar,
-	IconChartLine,
-	IconListDetails,
-	IconUsers,
-	IconWorld,
-	IconWorldOff,
-} from "@tabler/icons-react";
-import {
 	createColumnHelper,
 	createSortedRowModel,
 	rowSortingFeature,
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import { Fragment, useMemo, useState, useSyncExternalStore } from "react";
+import {
+	ArrowDownUpIcon,
+	ChartColumnIcon,
+	ChartLineIcon,
+	GlobeIcon,
+	GlobeLockIcon,
+	ListIcon,
+	TriangleAlertIcon,
+	UsersIcon,
+} from "lucide-react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Link, useSearchParams } from "react-router";
-import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert } from "src/components";
+import { BreakableHost, ErrorAlert, ListToolbar, Loading, NoticeAlert, StatusBadge } from "src/components";
+import { AppSelect } from "src/components/AppSelect";
 import {
 	CountryName,
 	countryLabel,
@@ -28,6 +29,9 @@ import {
 	WorldMap,
 } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { Button } from "src/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "src/components/ui/toggle-group";
 import {
 	useDeadHosts,
 	useListFilters,
@@ -38,7 +42,7 @@ import {
 } from "src/hooks";
 import { currentLocale, formatDateTime, intl, T } from "src/locale";
 import {
-	errorRateColor,
+	errorRateTone,
 	filterRecent,
 	formatBytes,
 	formatCount,
@@ -51,23 +55,23 @@ import {
 	isCountryCode,
 	OTHER_HOST,
 	rangeOptions,
-	statusColor,
+	statusTone,
 } from "src/modules/Monitoring";
 
 const DEFAULT_RANGE = "24h";
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
 
 const BADGES = {
-	proxy: { color: "green", labelKey: "monitoring.host.badge.proxy" },
-	redirection: { color: "yellow", labelKey: "monitoring.host.badge.redirection" },
-	dead: { color: "red", labelKey: "monitoring.host.badge.dead" },
-	deleted: { color: "secondary", labelKey: "monitoring.host.badge.deleted" },
+	proxy: { tone: "success", labelKey: "monitoring.host.badge.proxy" },
+	redirection: { tone: "warning", labelKey: "monitoring.host.badge.redirection" },
+	dead: { tone: "destructive", labelKey: "monitoring.host.badge.dead" },
+	deleted: { tone: "muted", labelKey: "monitoring.host.badge.deleted" },
 };
 
 // recent requests shown before "Show all" (the API sends up to 100); fewer on phones, where rows are stacked
 const FIRST_ROWS = 25;
 const FIRST_ROWS_SMALL = 10;
-// Tabler's md breakpoint
+// the md breakpoint
 const MD_UP = "(min-width: 768px)";
 
 const subscribeMdUp = (onChange) => {
@@ -112,53 +116,50 @@ function Toolbar({ range, filter, onRange, onFilter }) {
 	const value = hostSelectValue(filter);
 	const known = value === "" || value === OTHER_HOST || groups.some((g) => g.options.some((o) => o.value === value));
 
+	const options = [
+		{ value: "", label: intl.formatMessage({ id: "monitoring.host.all" }) },
+		{ value: OTHER_HOST, label: intl.formatMessage({ id: "monitoring.host.other" }) },
+		...(known ? [] : [{ value, label: unknownFilterLabel(filter) }]),
+		...groups
+			.filter((group) => group.options.length > 0)
+			.map((group) => ({
+				key: group.type,
+				label: intl.formatMessage({ id: group.labelKey }),
+				options: group.options.map((option) => ({ value: option.value, label: optionText(option) })),
+			})),
+	];
+
 	return (
-		<div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-			<fieldset className="btn-group" aria-label={intl.formatMessage({ id: "monitoring.range" })}>
+		<div className="flex flex-wrap items-center gap-2">
+			<ToggleGroup
+				type="single"
+				variant="outline"
+				spacing={0}
+				value={range}
+				// an empty value is the chosen item pressed again: one range is always chosen
+				onValueChange={(next) => next && onRange(next)}
+				aria-label={intl.formatMessage({ id: "monitoring.range" })}
+			>
 				{rangeOptions.map((option) => (
-					<Fragment key={option.value}>
-						<input
-							type="radio"
-							className="btn-check"
-							name="monitoring-range"
-							id={`monitoring-range-${option.value}`}
-							checked={range === option.value}
-							onChange={() => onRange(option.value)}
-						/>
-						<label className="btn" htmlFor={`monitoring-range-${option.value}`}>
-							<T id={option.labelKey} />
-						</label>
-					</Fragment>
+					<ToggleGroupItem key={option.value} value={option.value}>
+						<T id={option.labelKey} />
+					</ToggleGroupItem>
 				))}
-			</fieldset>
-			<select
-				className="form-select w-auto mw-100"
+			</ToggleGroup>
+			<AppSelect
+				className="w-auto max-w-full"
 				aria-label={intl.formatMessage({ id: "monitoring.host" })}
 				value={value}
-				onChange={(e) => onFilter(hostFilterFromSelect(e.target.value))}
-			>
-				<option value="">{intl.formatMessage({ id: "monitoring.host.all" })}</option>
-				<option value={OTHER_HOST}>{intl.formatMessage({ id: "monitoring.host.other" })}</option>
-				{known ? null : <option value={value}>{unknownFilterLabel(filter)}</option>}
-				{groups
-					.filter((group) => group.options.length > 0)
-					.map((group) => (
-						<optgroup key={group.type} label={intl.formatMessage({ id: group.labelKey })}>
-							{group.options.map((option) => (
-								<option key={option.value} value={option.value} title={option.domainNames.join(", ")}>
-									{optionText(option)}
-								</option>
-							))}
-						</optgroup>
-					))}
-			</select>
+				onValueChange={(next) => onFilter(hostFilterFromSelect(next))}
+				options={options}
+			/>
 		</div>
 	);
 }
 
 function StatusLine({ status }) {
 	return (
-		<div className="text-muted-foreground small mt-3">
+		<div className="text-sm text-muted-foreground">
 			{status.lastRead ? (
 				<T id="monitoring.traffic.last-read" data={{ time: formatDateTime(status.lastRead) }} />
 			) : (
@@ -182,11 +183,9 @@ function StatusLine({ status }) {
 
 function VisitorsCard({ status, totals, range }) {
 	const { data: settings } = useMonitoringSettings();
-	const className = "col-6 col-lg";
 	if (!status.uniqueVisitors) {
 		return (
 			<StatCard
-				className={className}
 				label={<T id="monitoring.stat.visitors" />}
 				value={<T id="monitoring.stat.visitors.off" />}
 				// the card itself is not a link; only the hint links to the settings
@@ -195,10 +194,10 @@ function VisitorsCard({ status, totals, range }) {
 						<T id="monitoring.stat.visitors.off.hint" />
 					</Link>
 				}
-				// the link is the way to the setting: shown in full on a half-width phone card
+				// the link is the way to the setting: shown in full, not cut to one line
 				hintWrap
-				icon={IconUsers}
-				color="secondary"
+				icon={UsersIcon}
+				tone="muted"
 			/>
 		);
 	}
@@ -213,12 +212,11 @@ function VisitorsCard({ status, totals, range }) {
 	}
 	return (
 		<StatCard
-			className={className}
 			label={<T id="monitoring.stat.visitors" />}
 			value={`${formatCount(visitors)}${totals.visitorsCapped ? "+" : ""}`}
 			hint={hint}
-			icon={IconUsers}
-			color="purple"
+			icon={UsersIcon}
+			tone="primary"
 		/>
 	);
 }
@@ -226,9 +224,9 @@ function VisitorsCard({ status, totals, range }) {
 function HostBadge({ badge }) {
 	if (!badge) return null;
 	return (
-		<span className={`badge bg-${BADGES[badge].color}-lt`}>
+		<StatusBadge tone={BADGES[badge].tone} dot={false}>
 			<T id={BADGES[badge].labelKey} />
-		</span>
+		</StatusBadge>
 	);
 }
 
@@ -296,14 +294,14 @@ function RecentTable({ rows }) {
 			columnHelper.accessor("time", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.time" }),
 				enableSorting: false,
-				cell: (info) => <span className="text-nowrap">{formatDateTime(info.getValue())}</span>,
+				cell: (info) => <span className="whitespace-nowrap">{formatDateTime(info.getValue())}</span>,
 			}),
 			columnHelper.accessor(recentHostName, {
 				id: "host",
 				header: intl.formatMessage({ id: "monitoring.recent.column.host" }),
 				enableSorting: false,
 				cell: (info) => (
-					<span className="d-inline-flex flex-wrap align-items-center gap-2">
+					<span className="inline-flex flex-wrap items-center gap-2">
 						<span>
 							<BreakableHost value={info.getValue()} />
 						</span>
@@ -322,12 +320,12 @@ function RecentTable({ rows }) {
 					return (
 						// focus (Tab or tap) shows the whole path: the title tooltip only appears on hover
 						<span
-							className="d-block text-truncate font-monospace request-path"
+							className="block truncate font-mono"
 							title={`${method} ${path}`}
 							// biome-ignore lint/a11y/noNoninteractiveTabindex: focusing the cell is how touch and keyboard users read a cut path
 							tabIndex={0}
 						>
-							<span className="text-muted-foreground me-2">{method}</span>
+							<span className="me-2 text-muted-foreground">{method}</span>
 							{path}
 						</span>
 					);
@@ -337,13 +335,15 @@ function RecentTable({ rows }) {
 				header: intl.formatMessage({ id: "monitoring.recent.column.status" }),
 				enableSorting: false,
 				cell: (info) => (
-					<span className={`badge bg-${statusColor(info.getValue())}-lt`}>{info.getValue()}</span>
+					<StatusBadge tone={statusTone(info.getValue())} dot={false}>
+						{info.getValue()}
+					</StatusBadge>
 				),
 			}),
 			columnHelper.accessor("bytes", {
 				header: intl.formatMessage({ id: "monitoring.recent.column.size" }),
 				enableSorting: false,
-				cell: (info) => <span className="text-nowrap">{formatBytes(info.getValue())}</span>,
+				cell: (info) => <span className="whitespace-nowrap">{formatBytes(info.getValue())}</span>,
 				meta: { mobile: "hide" },
 			}),
 			columnHelper.accessor((row) => (row.country ? countryLabel(row.country) : ""), {
@@ -363,7 +363,7 @@ function RecentTable({ rows }) {
 						columnHelper.accessor("ip", {
 							header: intl.formatMessage({ id: "monitoring.recent.column.ip" }),
 							enableSorting: false,
-							cell: (info) => <span className="font-monospace text-break">{info.getValue() ?? "-"}</span>,
+							cell: (info) => <span className="font-mono break-all">{info.getValue() ?? "-"}</span>,
 						}),
 					]
 				: []),
@@ -380,50 +380,44 @@ function RecentTable({ rows }) {
 	});
 
 	return (
-		<div className="col-12">
-			<div className="card">
-				<div className="card-table">
-					<div className="card-header">
-						<div>
-							<h3 className="card-title">
-								<T id="monitoring.recent" />
-							</h3>
-							<p className="card-subtitle">
-								<T id="monitoring.recent.subtitle" />
-							</p>
-						</div>
-					</div>
-					{rows.length === 0 ? (
-						<div className="card-body">
-							<EmptyState icon={IconListDetails} title={<T id="monitoring.recent.empty" />} />
-						</div>
-					) : (
-						<>
-							<ListToolbar
-								filters={filters}
-								setFilter={setFilter}
-								clear={clear}
-								total={rows.length}
-								shown={displayed.length}
-								kinds={[]}
-							/>
-							<TableLayout
-								tableInstance={tableInstance}
-								layout="scroll"
-								label={intl.formatMessage({ id: "monitoring.recent" })}
-							/>
-						</>
-					)}
-				</div>
-				{visible.length < displayed.length ? (
-					<div className="card-footer text-center">
-						<button type="button" className="btn btn-link" onClick={() => setShowAll(true)}>
-							<T id="monitoring.recent.show-all" data={{ count: displayed.length }} />
-						</button>
-					</div>
-				) : null}
-			</div>
-		</div>
+		<Card className="min-w-0 gap-0 py-0 @2xl:col-span-2 @6xl:col-span-3">
+			<CardHeader className="py-(--card-spacing)">
+				<CardTitle role="heading" aria-level={2}>
+					<T id="monitoring.recent" />
+				</CardTitle>
+				<CardDescription>
+					<T id="monitoring.recent.subtitle" />
+				</CardDescription>
+			</CardHeader>
+			{rows.length === 0 ? (
+				<CardContent className="pb-(--card-spacing)">
+					<EmptyState icon={ListIcon} title={<T id="monitoring.recent.empty" />} />
+				</CardContent>
+			) : (
+				<>
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={rows.length}
+						shown={displayed.length}
+						kinds={[]}
+					/>
+					<TableLayout
+						tableInstance={tableInstance}
+						layout="scroll"
+						label={intl.formatMessage({ id: "monitoring.recent" })}
+					/>
+				</>
+			)}
+			{visible.length < displayed.length ? (
+				<CardFooter className="justify-center border-t">
+					<Button type="button" variant="link" onClick={() => setShowAll(true)}>
+						<T id="monitoring.recent.show-all" data={{ count: displayed.length }} />
+					</Button>
+				</CardFooter>
+			) : null}
+		</Card>
 	);
 }
 
@@ -433,8 +427,9 @@ function TrafficData({ data, range, params }) {
 	const topCountry = data.topCountries.find((c) => isCountryCode(c.country));
 	const empty = <T id="monitoring.no-data" />;
 
+	// the grids follow the width of this container, not the viewport, so the sidebar layout gets fewer columns
 	return (
-		<>
+		<div className="@container flex flex-col gap-4">
 			{status.error ? (
 				<NoticeAlert>
 					<T id="monitoring.traffic.read-error" data={{ error: status.error }} />
@@ -445,39 +440,39 @@ function TrafficData({ data, range, params }) {
 					<T id="monitoring.traffic.visitors-error" data={{ error: status.visitorsError }} />
 				</NoticeAlert>
 			) : null}
-			<div className="row row-deck row-cards">
+			<div className="grid gap-4 @lg:grid-cols-2 @4xl:grid-cols-5">
 				<StatCard
-					className="col-6 col-lg"
+					className="min-w-0"
 					label={<T id="monitoring.stat.requests" />}
 					value={formatCount(totals.requests)}
 					hint={exactHint(totals.requests)}
-					icon={IconChartBar}
-					color="primary"
+					icon={ChartColumnIcon}
+					tone="primary"
 				/>
 				<StatCard
-					className="col-6 col-lg"
+					className="min-w-0"
 					label={<T id="monitoring.stat.data-sent" />}
 					value={formatBytes(totals.bytes)}
-					icon={IconArrowsTransferDown}
-					color="azure"
+					icon={ArrowDownUpIcon}
+					tone="info"
 				/>
 				<StatCard
-					className="col-6 col-lg"
+					className="min-w-0"
 					label={<T id="monitoring.stat.error-rate" />}
 					value={percentFormat.format(totals.errorRate)}
 					hint={<T id="monitoring.stat.error-rate.hint" />}
-					icon={IconAlertTriangle}
-					color={errorRateColor(totals.errorRate)}
+					icon={TriangleAlertIcon}
+					tone={errorRateTone(totals.errorRate)}
 				/>
 				<VisitorsCard status={status} totals={totals} range={range} />
 				<StatCard
-					// full width on phones so the country name fits; one of five equal cards from lg
-					className="col-12 col-lg"
+					// the last of five cards: a full row on two columns, one of five on a wide container
+					className="min-w-0 @lg:col-span-2 @4xl:col-span-1"
 					label={<T id="monitoring.stat.top-country" />}
 					value={
 						topCountry ? (
 							// smaller than the other values so a country name fits one of five cards
-							<span className="fs-3" title={countryLabel(topCountry.country)}>
+							<span className="text-xl" title={countryLabel(topCountry.country)}>
 								<CountryName code={topCountry.country} />
 							</span>
 						) : (
@@ -491,67 +486,64 @@ function TrafficData({ data, range, params }) {
 							<T id={geoip ? "monitoring.no-data" : "monitoring.geoip.missing"} />
 						)
 					}
-					icon={IconWorld}
-					color="green"
+					icon={GlobeIcon}
+					tone="success"
 				/>
-				<div className="col-12">
-					<div className="card">
-						<div className="card-header">
-							<h3 className="card-title">
-								<T id="monitoring.traffic.requests-over-time" />
-							</h3>
-						</div>
-						<div className="card-body">
-							<TrafficChart series={data.series} range={range} />
-						</div>
-					</div>
+			</div>
+			<Card>
+				<CardHeader>
+					<CardTitle role="heading" aria-level={2}>
+						<T id="monitoring.traffic.requests-over-time" />
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<TrafficChart series={data.series} range={range} />
+				</CardContent>
+			</Card>
+			{geoip ? (
+				<div className="grid gap-4 @4xl:grid-cols-3">
+					<Card className="min-w-0 @4xl:col-span-2">
+						<CardHeader>
+							<CardTitle role="heading" aria-level={2}>
+								<T id="monitoring.traffic.map" />
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<WorldMap
+								countries={data.countries}
+								label={intl.formatMessage({ id: "monitoring.traffic.map" })}
+							/>
+						</CardContent>
+					</Card>
+					<TopList
+						className="min-w-0"
+						title={<T id="monitoring.top.countries" />}
+						total={totals.requests}
+						empty={empty}
+						items={data.topCountries.map((c) => ({
+							key: c.country,
+							label: <CountryName code={c.country} />,
+							title: countryLabel(c.country),
+							value: c.requests,
+						}))}
+					/>
 				</div>
-				{geoip ? (
-					<>
-						<div className="col-lg-8">
-							<div className="card">
-								<div className="card-header">
-									<h3 className="card-title">
-										<T id="monitoring.traffic.map" />
-									</h3>
-								</div>
-								<div className="card-body">
-									<WorldMap
-										countries={data.countries}
-										label={intl.formatMessage({ id: "monitoring.traffic.map" })}
-									/>
-								</div>
-							</div>
-						</div>
-						<TopList
-							className="col-lg-4"
-							title={<T id="monitoring.top.countries" />}
-							total={totals.requests}
-							empty={empty}
-							items={data.topCountries.map((c) => ({
-								key: c.country,
-								label: <CountryName code={c.country} />,
-								title: countryLabel(c.country),
-								value: c.requests,
-							}))}
+			) : (
+				<Card>
+					<CardContent>
+						<EmptyState
+							icon={GlobeLockIcon}
+							title={<T id="monitoring.geoip.missing" />}
+							subtitle={<T id="monitoring.geoip.missing.subtitle" />}
+							to="/settings/geoip"
+							action={<T id="monitoring.geoip.setup" />}
 						/>
-					</>
-				) : (
-					<div className="col-12">
-						<div className="card">
-							<div className="card-body">
-								<EmptyState
-									icon={IconWorldOff}
-									title={<T id="monitoring.geoip.missing" />}
-									subtitle={<T id="monitoring.geoip.missing.subtitle" />}
-									to="/settings/geoip"
-									action={<T id="monitoring.geoip.setup" />}
-								/>
-							</div>
-						</div>
-					</div>
-				)}
+					</CardContent>
+				</Card>
+			)}
+			<div className="grid gap-4 @2xl:grid-cols-2 @6xl:grid-cols-3">
 				<TopList
+					className="min-w-0"
 					title={<T id="monitoring.top.hosts" />}
 					total={totals.requests}
 					empty={empty}
@@ -561,6 +553,7 @@ function TrafficData({ data, range, params }) {
 				/>
 				{geoip ? (
 					<TopList
+						className="min-w-0"
 						title={<T id="monitoring.top.networks" />}
 						total={totals.requests}
 						empty={empty}
@@ -575,6 +568,7 @@ function TrafficData({ data, range, params }) {
 				) : null}
 				{data.topIps ? (
 					<TopList
+						className="min-w-0"
 						title={<T id="monitoring.top.ips" />}
 						total={totals.requests}
 						empty={empty}
@@ -582,7 +576,7 @@ function TrafficData({ data, range, params }) {
 							const name = i.ip === "other" ? intl.formatMessage({ id: "monitoring.ip.other" }) : i.ip;
 							return {
 								key: i.ip,
-								label: <span className="font-monospace">{name}</span>,
+								label: <span className="font-mono">{name}</span>,
 								title: name,
 								value: i.requests,
 							};
@@ -592,7 +586,7 @@ function TrafficData({ data, range, params }) {
 				<RecentTable rows={data.recent ?? []} />
 			</div>
 			<StatusLine status={status} />
-		</>
+		</div>
 	);
 }
 
@@ -629,27 +623,27 @@ const Traffic = () => {
 		);
 	} else {
 		content = (
-			<div className="card">
-				<div className="card-body">
+			<Card>
+				<CardContent>
 					<EmptyState
-						icon={IconChartLine}
+						icon={ChartLineIcon}
 						title={<T id="monitoring.traffic.off" />}
 						subtitle={<T id="monitoring.traffic.off.subtitle" />}
 						to="/settings/monitoring"
 						action={<T id="monitoring.traffic.enable" />}
 					/>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 		);
 	}
 
 	return (
-		<>
+		<div className="flex flex-col gap-4">
 			{data?.status.enabled === false ? null : (
 				<Toolbar range={range} filter={filter} onRange={onRange} onFilter={onFilter} />
 			)}
 			{content}
-		</>
+		</div>
 	);
 };
 

@@ -350,13 +350,13 @@ const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () =
 	);
 };
 
-// Tabler colour per status class, the same as the chart (2xx green, 3xx blue, 4xx orange, 5xx red)
-const STATUS_COLORS = { 2: "green", 3: "blue", 4: "orange", 5: "red" };
+// status tone per status class, the same as the chart (2xx success, 3xx info, 4xx warning, 5xx destructive)
+const STATUS_TONES = { 2: "success", 3: "info", 4: "warning", 5: "destructive" };
 
-/** Tabler colour name of the status badge of a response status. */
-const statusColor = (status) => {
+/** StatusBadge tone of a response status. */
+const statusTone = (status) => {
 	const n = Number(status);
-	return (n >= 200 && n < 600 && STATUS_COLORS[Math.floor(n / 100)]) || "secondary";
+	return (n >= 200 && n < 600 && STATUS_TONES[Math.floor(n / 100)]) || "muted";
 };
 
 const rangeOptions = [
@@ -399,12 +399,12 @@ const monitoringSettingsPayload = (values) => {
 const geoipSettingsPayload = (values) => pickEditable(values, GEOIP_KEYS);
 
 /**
- * Tabler colour for an error rate (0..1): secondary below 1 %, orange from 1 %, red from 5 %.
+ * StatusBadge tone for an error rate (0..1): muted below 1 %, warning from 1 %, destructive from 5 %.
  */
-const errorRateColor = (rate) => {
-	if (rate >= 0.05) return "red";
-	if (rate >= 0.01) return "orange";
-	return "secondary";
+const errorRateTone = (rate) => {
+	if (rate >= 0.05) return "destructive";
+	if (rate >= 0.01) return "warning";
+	return "muted";
 };
 
 /**
@@ -431,7 +431,7 @@ export {
 	chartData,
 	chartSeries,
 	countryName,
-	errorRateColor,
+	errorRateTone,
 	filterBans,
 	filterRecent,
 	formatBytes,
@@ -451,7 +451,7 @@ export {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
-	statusColor,
+	statusTone,
 	timeLeftParts,
 	trafficParams,
 };

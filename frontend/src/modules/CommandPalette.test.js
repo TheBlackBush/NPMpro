@@ -21,11 +21,23 @@ it("an admin gets the pages and every Settings section, Users and Audit Log amon
 	);
 });
 
-it("GoAccess is in the palette whenever it is on, also next to Monitoring", () => {
-	const [pages] = paletteGroups({ ...admin, goaccess: true }, sections);
-	const goaccess = pages.items.find((i) => i.id === "goaccess");
-	assert.deepEqual([goaccess.to, goaccess.external], ["/goaccess", true]);
-	assert.ok(!paletteGroups(admin, sections)[0].items.some((i) => i.id === "goaccess"));
+const goaccessEntry = (user) => paletteGroups(user, sections)[0].items.find((i) => i.id === "goaccess");
+
+it("GoAccess gets its own entry next to the Monitoring page", () => {
+	const entry = goaccessEntry({ ...admin, monitoring: true, goaccess: true });
+	assert.deepEqual([entry.to, entry.external], ["/goaccess", true]);
+});
+
+it("with monitoring off the Monitoring item is the way to GoAccess, so no second entry", () => {
+	const items = paletteGroups({ ...admin, monitoring: false, goaccess: true }, sections)[0].items;
+	assert.equal(goaccessEntry({ ...admin, monitoring: false, goaccess: true }), undefined);
+	assert.equal(items.filter((i) => i.to === "/goaccess").length, 1);
+	assert.equal(items.find((i) => i.to === "/goaccess").external, true);
+});
+
+it("no GoAccess entry when GoAccess is off", () => {
+	assert.equal(goaccessEntry({ ...admin, goaccess: false }), undefined);
+	assert.equal(goaccessEntry(admin), undefined);
 });
 
 it("a limited user gets no Settings group and no Users or Audit Log", () => {

@@ -32,7 +32,7 @@ export const NAV_ITEMS = Object.freeze([
 
 /**
  * The links a user may open. Monitoring shows while traffic statistics or CrowdSec are on (user.monitoring); with
- * only GoAccess on it points at /goaccess in a new tab until the Monitoring page gets its tabs (PR 6).
+ * only GoAccess on it points at /goaccess in a new tab.
  *
  * @param   {{ roles?: string[], permissions?: Object, monitoring?: boolean, goaccess?: boolean }|undefined} user
  * @returns {Array<{ id: string, to: string, labelKey: string, external: boolean }>}

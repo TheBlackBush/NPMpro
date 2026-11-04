@@ -318,6 +318,48 @@
 				{ "waitFor": "[role=dialog] input" },
 				{ "press": "Escape" }
 			]
+		},
+		{
+			"name": "monitoring traffic on",
+			"route": "/settings/monitoring",
+			"steps": [
+				{ "click": "#monitoring-traffic-enabled" },
+				{ "click": "form >> role=button[name='Save']" },
+				{ "waitFor": "[data-sonner-toast]" }
+			]
+		},
+		{
+			"name": "monitoring range",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "waitFor": "role=radio[name='7 days']" },
+				{ "click": "role=radio[name='7 days']" },
+				{ "waitFor": "role=radio[name='7 days'][checked]" }
+			]
+		},
+		{
+			"name": "monitoring host filter",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "click": "role=combobox[name='Host']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "monitoring theme switch",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "waitFor": "canvas" },
+				{ "click": "[aria-label^='Theme']" },
+				{ "click": "[data-slot=dropdown-menu-content] >> text=Dark" },
+				{ "waitFor": "html.dark" }
+			]
+		},
+		{
+			"name": "dashboard",
+			"route": "/",
+			"steps": [{ "waitFor": "role=heading[name='Recent changes']" }]
 		}
 	]
 }
