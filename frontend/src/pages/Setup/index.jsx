@@ -1,25 +1,42 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { createSetupUser } from "src/api/backend";
-import {
-	ApiErrorContent,
-	BrandMark,
-	ErrorAlert,
-	FormSubmit,
-	HookForm,
-	LocalePicker,
-	Page,
-	ThemeSwitcher,
-	useAppForm,
-} from "src/components";
+import { ApiErrorContent, ErrorAlert, FormSubmit, HookForm, useAppForm } from "src/components";
 import { PasswordInput } from "src/components/Form";
+import { FieldMessage } from "src/components/Form/FieldMessage";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
+import { Field, FieldLabel } from "src/components/ui/field";
+import { Input } from "src/components/ui/input";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
 import { setupValidate } from "src/modules/AccountForms";
 import { validations } from "src/modules/Validations";
+import { AuthLayout } from "src/shell/AuthLayout";
 
 const validate = setupValidate(validations);
+
+/** A labelled text input with its error under it, for the setup form */
+function TextField({ id, type = "text", autoComplete, labelId, register, error }) {
+	return (
+		<Field data-invalid={error ? true : undefined}>
+			<FieldLabel htmlFor={id}>
+				<T id={labelId} />
+			</FieldLabel>
+			<Input
+				{...register(id)}
+				id={id}
+				type={type}
+				autoComplete={autoComplete}
+				required
+				aria-invalid={error ? "true" : undefined}
+				aria-describedby={error ? `${id}-error` : undefined}
+				placeholder={intl.formatMessage({ id: labelId })}
+			/>
+			{error ? <FieldMessage id={`${id}-error`}>{error.message}</FieldMessage> : null}
+		</Field>
+	);
+}
 
 export default function Setup() {
 	const queryClient = useQueryClient();
@@ -64,85 +81,58 @@ export default function Setup() {
 	};
 
 	return (
-		<Page className="page-center">
-			<div className="container container-tight py-4">
-				<div className="d-flex justify-content-end gap-2 mb-3">
-					<LocalePicker />
-					<ThemeSwitcher />
-				</div>
-				<div className="text-center mb-4">
-					<div className="navbar-brand fs-1">
-						<BrandMark variant="stacked" size={160} alt="NPMpro" className="navbar-brand-image" />
-					</div>
-				</div>
-				<div className="card card-md">
-					<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-					<HookForm methods={methods} onSubmit={onSubmit}>
-						<div className="card-body text-center py-4 p-sm-5">
-							<h1 className="mt-5">
-								<T id="setup.title" />
-							</h1>
-							<p className="text-muted-foreground">
-								<T id="setup.preamble" />
-							</p>
-						</div>
-						<hr />
-						<div className="card-body">
-							<div className="mb-3">
-								<label className="form-label" htmlFor="name">
-									<T id="user.full-name" />
-								</label>
-								<input
-									{...register("name")}
-									id="name"
-									autoComplete="name"
-									required
-									className={`form-control ${errors.name ? "is-invalid" : ""}`}
-									placeholder={intl.formatMessage({ id: "user.full-name" })}
-								/>
-								{errors.name ? <div className="invalid-feedback">{errors.name.message}</div> : null}
-							</div>
-							<div className="mb-3">
-								<label className="form-label" htmlFor="email">
-									<T id="email-address" />
-								</label>
-								<input
-									{...register("email")}
-									id="email"
-									type="email"
-									autoComplete="username"
-									required
-									className={`form-control ${errors.email ? "is-invalid" : ""}`}
-									placeholder={intl.formatMessage({ id: "email-address" })}
-								/>
-								{errors.email ? <div className="invalid-feedback">{errors.email.message}</div> : null}
-							</div>
-							<div className="mb-3">
-								<PasswordInput
-									{...register("password")}
-									id="password"
-									label={<T id="user.new-password" />}
-									autoComplete="new-password"
-									required
-									error={errors.password?.message ?? null}
-									placeholder={intl.formatMessage({ id: "user.new-password" })}
-								/>
-							</div>
-						</div>
-						<div className="text-center my-3 mx-3">
-							<FormSubmit
-								stacked
-								messageId="form.fix-fields.continue"
-								color="primary"
-								isLoading={isSubmitting}
-								disabled={isSubmitting}
-							>
-								<T id="setup.create-account" />
-							</FormSubmit>
-						</div>
-					</HookForm>
-				</div>
-			</div>
-		</Page>
+		<AuthLayout width="md">
+			<Card>
+				<HookForm methods={methods} onSubmit={onSubmit} className="contents">
+					<CardHeader className="text-center">
+						<CardTitle role="heading" aria-level={1} className="text-xl">
+							<T id="setup.title" />
+						</CardTitle>
+						<CardDescription>
+							<T id="setup.preamble" />
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-col gap-4">
+						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
+						<TextField
+							id="name"
+							autoComplete="name"
+							labelId="user.full-name"
+							register={register}
+							error={errors.name}
+						/>
+						<TextField
+							id="email"
+							type="email"
+							autoComplete="username"
+							labelId="email-address"
+							register={register}
+							error={errors.email}
+						/>
+						<PasswordInput
+							{...register("password")}
+							id="password"
+							label={<T id="user.new-password" />}
+							autoComplete="new-password"
+							required
+							error={errors.password?.message ?? null}
+							placeholder={intl.formatMessage({ id: "user.new-password" })}
+						/>
+					</CardContent>
+					<CardFooter className="flex-col">
+						<FormSubmit
+							stacked
+							messageId="form.fix-fields.continue"
+							color="primary"
+							size="lg"
+							isLoading={isSubmitting}
+							disabled={isSubmitting}
+						>
+							<T id="setup.create-account" />
+						</FormSubmit>
+					</CardFooter>
+				</HookForm>
+			</Card>
+		</AuthLayout>
 	);
 }
