@@ -10,7 +10,7 @@ import { sectionIcon } from "src/shell/useNavItems";
  *
  * @param {Object}      props
  * @param {React.ReactNode} props.title     the page title
- * @param {string}      [props.section]     the section key (SectionColors.js): shows its menu icon before the title and
+ * @param {string}      [props.section]     a key of SECTIONS (SectionAccents.js): shows its menu icon before the title and
  *   tints the count badge in its accent colour
  * @param {number}      [props.count]       number of items, shown as a muted badge after the title
  * @param {string}      [props.help]        help document name for the HelpButton

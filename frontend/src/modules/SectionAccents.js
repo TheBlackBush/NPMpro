@@ -1,10 +1,22 @@
-import { SECTION_COLORS } from "./SectionColors.js";
+// every section key of the app (list pages, users, audit log, settings); sectionAccent gives the others the primary look
+const SECTIONS = Object.freeze([
+	"proxyHosts",
+	"redirectionHosts",
+	"deadHosts",
+	"streams",
+	"accessLists",
+	"certificates",
+	"dnsCredentials",
+	"users",
+	"auditLog",
+	"settings",
+]);
 
 /**
  * The brand-gradient accent of each list section (tokens --accent-<name> in globals.css, registered as
  * section-<name> colours). It marks the page: title icon, count badge, empty-state icon and the active link of the
  * menu. Buttons stay primary. Class names are written out in full so Tailwind finds them. Pure, so node --test
- * checks it. The section keys are the ones of SectionColors.js.
+ * checks it. The section keys are SECTIONS.
  *
  * text: icon and dot colour; bg: tinted fill (text on it stays text-foreground); border: tinted edge;
  * underline: active link underline of the top bar; marker: active link marker of the sidebar
@@ -93,11 +105,11 @@ const NAV_SECTIONS = Object.freeze({
 /**
  * The accent classes of a section; the primary look for a page without one
  *
- * @param   {string} [section]  a key of SECTION_COLORS
+ * @param   {string} [section]  a key of SECTIONS
  * @returns {{ text: string, bg: string, border: string, underline: string, marker: string }}
  */
 function sectionAccent(section) {
-	return Object.hasOwn(SECTION_COLORS, section) ? (SECTION_ACCENTS[section] ?? PRIMARY_ACCENT) : PRIMARY_ACCENT;
+	return SECTIONS.includes(section) ? (SECTION_ACCENTS[section] ?? PRIMARY_ACCENT) : PRIMARY_ACCENT;
 }
 
 /**
@@ -108,19 +120,6 @@ function sectionAccent(section) {
  */
 function navAccent(navId) {
 	return sectionAccent(NAV_SECTIONS[navId]);
-}
-
-/**
- * The accent for a Tabler colour name as SectionColors.js gives it (older callers still pass color={sectionColor(..)}):
- * the first section with that colour, so pink (certificates and dnsCredentials) is the certificates accent; the
- * primary look for primary, settings' teal or an unknown colour
- *
- * @param   {string} [color]
- * @returns {{ text: string, bg: string, border: string, underline: string, marker: string }}
- */
-function colorAccent(color) {
-	const section = Object.keys(SECTION_COLORS).find((key) => SECTION_COLORS[key] === color);
-	return sectionAccent(section);
 }
 
 // the export and import kinds of the list pages (ImportExportButtons) and their sections
@@ -139,4 +138,4 @@ function kindSection(kind) {
 	return KIND_SECTIONS[kind];
 }
 
-export { colorAccent, kindSection, NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, sectionAccent };
+export { kindSection, NAV_SECTIONS, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, SECTIONS, sectionAccent };

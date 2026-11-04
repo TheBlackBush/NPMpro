@@ -1,5 +1,4 @@
-import { IconLock, IconLockOpen2, IconWorld } from "@tabler/icons-react";
-import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, GlobeIcon, LockIcon, LockOpenIcon, PlusIcon, XIcon } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { useController, useWatch } from "react-hook-form";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
@@ -75,7 +74,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const createOption = (type) => {
 		if (type === "global") {
 			return {
-				icon: <IconWorld size={14} className="text-primary" />,
+				icon: <GlobeIcon aria-hidden="true" className="size-3.5 text-primary" />,
 				value: type,
 				label: intl.formatMessage({ id: "access-list.global" }),
 				subLabel: intl.formatMessage({ id: "access-list.global.subtitle" }),
@@ -83,14 +82,14 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		}
 		if (type === "custom") {
 			return {
-				icon: <IconLock size={14} className="text-success" />,
+				icon: <LockIcon aria-hidden="true" className="size-3.5 text-success" />,
 				value: type,
 				label: intl.formatMessage({ id: "access-list.custom" }),
 				subLabel: intl.formatMessage({ id: "access-list.custom.subtitle" }),
 			};
 		}
 		return {
-			icon: <IconLockOpen2 size={14} className="text-destructive" />,
+			icon: <LockOpenIcon aria-hidden="true" className="size-3.5 text-destructive" />,
 			value: type,
 			label: intl.formatMessage({ id: "access-list.public" }),
 			subLabel: intl.formatMessage({ id: "access-list.public.subtitle" }),

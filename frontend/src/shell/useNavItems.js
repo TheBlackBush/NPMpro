@@ -29,7 +29,7 @@ const ICONS = {
 /**
  * The menu icon of a list section (the same one its menu link shows); undefined for a section without a menu link
  *
- * @param {string} [section]  a key of SECTION_COLORS
+ * @param {string} [section]  a key of SECTIONS (SectionAccents.js)
  */
 export function sectionIcon(section) {
 	const navId = Object.keys(NAV_SECTIONS).find((id) => NAV_SECTIONS[id] === section);

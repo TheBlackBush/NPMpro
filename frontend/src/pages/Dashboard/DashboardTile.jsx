@@ -10,7 +10,7 @@ import { sectionAccent } from "src/modules/SectionAccents";
  * @param {object} props
  * @param {string} props.to                                route to link to
  * @param {import("react").ElementType} props.icon        lucide icon
- * @param {string} [props.section]                         section key of SectionColors.js (proxyHosts, streams, ...)
+ * @param {string} [props.section]                         a key of SECTIONS (SectionAccents.js) (proxyHosts, streams, ...)
  * @param {import("react").ReactNode} props.children       the count text or highlights
  */
 function DashboardTile({ to, icon: Icon, section, children }) {

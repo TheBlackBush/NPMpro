@@ -8,7 +8,7 @@ import { sectionAccent } from "src/modules/SectionAccents";
  *
  * @param {Object} props
  * @param {number} props.count
- * @param {string} [props.section]   the section key (SectionColors.js): tints the badge in its accent colour, with a dot
+ * @param {string} [props.section]   a key of SECTIONS (SectionAccents.js): tints the badge in its accent colour, with a dot
  * @param {string} [props.className]
  */
 function CountBadge({ count, section, className }) {

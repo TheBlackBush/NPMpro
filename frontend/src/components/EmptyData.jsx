@@ -5,10 +5,9 @@ import { TableCell, TableRow } from "src/components/ui/table";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
-import { colorAccent, PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
+import { PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
 
-// Buttons use the one primary colour. The section key (or an older caller's Tabler colour) gives the icon circle
-// its section accent.
+// Buttons use the one primary colour. The section key gives the icon circle its section accent.
 function EmptyData({
 	tableInstance,
 	onNew,
@@ -21,12 +20,10 @@ function EmptyData({
 	permission,
 	icon: Icon,
 	section,
-	color,
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
-	// the section key wins; older callers pass the Tabler colour of their section
-	const accent = section ? sectionAccent(section) : colorAccent(color);
+	const accent = sectionAccent(section);
 	const tinted = accent !== PRIMARY_ACCENT && !isFiltered;
 	// role row and cell keep the row valid inside the stacked phone layout's role="rowgroup"
 	return (

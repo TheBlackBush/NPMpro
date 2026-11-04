@@ -4,7 +4,6 @@ import App from "src/App.jsx";
 import { Alert, AlertDescription } from "src/components/ui/alert";
 import { resolveTheme, startPreference, THEME_KEY, THEME_RESET_KEY } from "src/modules/Theme";
 
-import "@tabler/core";
 import "src/styles/globals.css";
 
 // first paint in the right theme; ThemeProvider takes over once React renders
