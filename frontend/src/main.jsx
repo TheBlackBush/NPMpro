@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "src/App.jsx";
-import { Page } from "src/components";
+import { Alert, AlertDescription } from "src/components/ui/alert";
 import { resolveTheme, startPreference, THEME_KEY, THEME_RESET_KEY } from "src/modules/Theme";
 
 import "@tabler/core";
@@ -19,18 +19,14 @@ try {
 const root = ReactDOM.createRoot(document.querySelector("#root"), {
 	onUncaughtError: (error) =>
 		root.render(
-			<Page className="page-center">
-				<div className="container-tight py-4">
-					<div className="empty">
-						<div className="empty-img">
-							<img src="/images/unhealthy.svg" alt="" />
-						</div>
-						<div className="alert alert-danger text-break text-start w-100 mb-0">
-							{error?.message ?? String(error)}
-						</div>
-					</div>
+			<div className="flex min-h-svh items-center justify-center p-4">
+				<div className="flex w-full max-w-md flex-col items-center gap-4">
+					<img src="/images/unhealthy.svg" alt="" className="size-32" />
+					<Alert variant="destructive">
+						<AlertDescription className="wrap-anywhere">{error?.message ?? String(error)}</AlertDescription>
+					</Alert>
 				</div>
-			</Page>,
+			</div>,
 		),
 });
 

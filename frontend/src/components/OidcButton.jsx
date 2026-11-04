@@ -21,7 +21,7 @@ function OidcButton({ label, color, icon, onClick, disabled }) {
 	return (
 		<button
 			type="button"
-			className="inline-flex w-full min-w-0 items-center justify-center gap-2 whitespace-normal rounded-md border border-(--oidc-bg) bg-(--oidc-bg) px-3 py-2 font-medium text-(--oidc-fg) text-sm outline-none transition-colors hover:border-(--oidc-hover) hover:bg-(--oidc-hover) focus-visible:ring-3 focus-visible:ring-ring/50 active:border-(--oidc-active) active:bg-(--oidc-active) disabled:pointer-events-none disabled:opacity-50"
+			className="inline-flex w-full min-w-0 items-center justify-center gap-2 whitespace-normal rounded-md border border-(--oidc-bg) bg-(--oidc-bg) min-h-9 px-3 py-1.5 font-medium text-(--oidc-fg) text-sm outline-none transition-colors hover:border-(--oidc-hover) hover:bg-(--oidc-hover) focus-visible:ring-3 focus-visible:ring-ring/50 active:border-(--oidc-active) active:bg-(--oidc-active) disabled:pointer-events-none disabled:opacity-50"
 			// the provider colour is a setting (any hex), so no utility class can express it: only CSS custom
 			// properties are set here (through the CSSOM, allowed by the CSP) and the classes above read them
 			style={{

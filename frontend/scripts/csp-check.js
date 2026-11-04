@@ -88,6 +88,19 @@ try {
 	const context = await browser.newContext(options);
 	const page = await watchedPage(context);
 	await open(page, "/");
+	// the language and theme menus of the signed-out page (dropdowns render in a portal: check each opens and closes)
+	page.step = "signed-out menus";
+	const menuTriggers = page.locator("button[aria-haspopup=menu]");
+	await page.locator("#login-email").waitFor();
+	const triggerCount = await menuTriggers.count();
+	if (triggerCount !== 2) throw new Error(`expected 2 menu buttons on the signed-out page, found ${triggerCount}`);
+	for (const trigger of await menuTriggers.all()) {
+		// biome-ignore lint/performance/noAwaitInLoops: one menu, one after another
+		await trigger.click();
+		await page.getByRole("menu").waitFor();
+		await page.keyboard.press("Escape");
+		await page.getByRole("menu").waitFor({ state: "detached" });
+	}
 	page.step = "login";
 	await page.locator("#login-email").fill(EMAIL);
 	await page.locator("#login-password").fill(password);

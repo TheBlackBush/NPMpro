@@ -1,5 +1,6 @@
 import { useCheckVersion } from "src/hooks";
 import { intl, T } from "src/locale";
+import { Credits } from "./Credits";
 
 const repoUrl = "https://github.com/TheBlackBush/NPMpro";
 // release builds are "<MAJOR.MINOR.PATCH>-<commit>", beta and develop builds end with "-<commit>"
@@ -36,11 +37,7 @@ export function AppFooter() {
 	return (
 		<footer className="border-t print:hidden">
 			<div className="mx-auto flex max-w-screen-2xl flex-col gap-2 px-3 py-4 text-xs text-muted-foreground sm:px-5 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
-				<div className="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
-					<ExternalA href="https://github.com/TheBlackBush">NPMpro by TheBlackBush</ExternalA>
-					<ExternalA href="https://github.com/ZoeyVid/NPMplus">NPMplus by ZoeyVid</ExternalA>
-					<ExternalA href="https://jc21.com">jc21.com</ExternalA>
-				</div>
+				<Credits className="flex-col gap-1 lg:flex-row lg:items-center lg:gap-x-4" />
 				<div className="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
 					<span>&copy; {new Date().getFullYear()} AGPL-3.0 (and MIT)</span>
 					{version ? <ExternalA href={versionUrl}>{version}</ExternalA> : null}

@@ -83,6 +83,7 @@ function TopList({ title, items, total, formatValue = formatCount, tone = "prima
 								) : null}
 								<Progress
 									value={width}
+									solid
 									className={`mt-1 h-1 ${BAR_TONES[tone] ?? BAR_TONES.primary}`}
 									// inside a link the row's aria-label already names it; the bar would repeat it
 									aria-hidden={linked ? "true" : undefined}

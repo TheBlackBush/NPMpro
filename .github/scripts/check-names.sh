@@ -11,7 +11,7 @@ hits="$(git grep -n -i npmplus -- . \
     ':!README.md' ':!COPYING' ':!MIT.LICENSE' \
     ':!wiki/Upgrading-from-NPMplus.md' ':!wiki/Home.md' ':!wiki/_Sidebar.md' ':!wiki/Troubleshooting.md' \
     ':!wiki/Configuration.md' ':!wiki/Upgrade-notes.md' \
-    ':!frontend/src/shell/AppFooter.jsx' \
+    ':!frontend/src/shell/Credits.jsx' \
     ':!backend/migrations' \
     ':!backend/test/*migration*.test.js' \
     ':!backend/test/migrate-data-folder.test.sh' \

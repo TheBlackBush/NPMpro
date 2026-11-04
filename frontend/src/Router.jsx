@@ -29,7 +29,8 @@ function Router() {
 	const health = useHealth();
 	const { authenticated } = useAuthState();
 
-	if (health.isPending) {
+	// after two failed tries the health check counts as down (Unhealthy below); retries go on in the background
+	if (health.isPending && health.failureCount < 2) {
 		return <LoadingPage fullScreen />;
 	}
 
@@ -38,7 +39,11 @@ function Router() {
 	}
 
 	if (!health.data?.setup) {
-		return <Setup />;
+		return (
+			<Suspense fallback={<LoadingPage fullScreen />}>
+				<Setup />
+			</Suspense>
+		);
 	}
 
 	if (!authenticated) {
