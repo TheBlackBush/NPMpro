@@ -1,4 +1,3 @@
-import cn from "clsx";
 import {
 	FileCodeIcon,
 	KeyRoundIcon,
@@ -13,6 +12,7 @@ import { useId } from "react";
 import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import { Checkbox } from "src/components/ui/checkbox";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { inSentence } from "src/modules/BackupMerge";
 import { arrangeRows, categoryState, toggleCategory, toggleType } from "src/modules/BackupTypes";

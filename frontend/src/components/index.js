@@ -16,7 +16,6 @@ export * from "./ListPage";
 export * from "./ListToolbar";
 export * from "./Loading";
 export * from "./LoadingPage";
-export * from "./NavLink";
 export * from "./NoticeAlert";
 export * from "./OidcButton";
 export * from "./PageHeader";

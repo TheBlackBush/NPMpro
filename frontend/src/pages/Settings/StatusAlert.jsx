@@ -2,7 +2,7 @@ import { Alert } from "src/components/ui/alert";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 
-// the tint of each variant (the old Tabler alert colours): border and background from the theme's status colours
+// the tint of each variant (info, success, warning, danger, orange, secondary): border and background from the theme's status colours
 const VARIANTS = {
 	info: "border-primary/50 bg-primary/10",
 	success: "border-success/50 bg-success/10",
@@ -14,7 +14,7 @@ const VARIANTS = {
 
 /**
  * An alert with an icon for a settings section status line. Pass `id` for a translated text or `children` for own
- * content; `icon` is any icon component (lucide or Tabler). It is a status region itself (role="status"); inside a
+ * content; `icon` is any icon component (a lucide icon). It is a status region itself (role="status"); inside a
  * live region that is always mounted, pass live={false} so the announcement is not nested in a second region.
  */
 function StatusAlert({ variant, icon: Icon, id, data, className, children, live = true }) {

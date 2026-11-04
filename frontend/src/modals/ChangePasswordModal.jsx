@@ -75,7 +75,7 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 					/>
 				</AppModal.Body>
 				<AppModal.Footer>
-					<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>
+					<Button variant="ghost" onClick={remove} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
 					<FormSubmit className="ms-auto" isLoading={isSubmitting} disabled={isSubmitting}>

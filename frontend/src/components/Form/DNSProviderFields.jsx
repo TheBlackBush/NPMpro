@@ -88,7 +88,7 @@ function PropagationInput() {
 }
 
 /**
- * The DNS challenge fields of the form around it, in Tabler's form-fieldset box named "DNS challenge": the notice, the
+ * The DNS challenge fields of the form around it, in a fieldset box named "DNS challenge": the notice, the
  * provider and, with a provider, the credential and the propagation time. The form's resolver checks them
  * (CertificateForms.js dnsChallengeRules). The same box in the host windows' TLS tab and the DNS certificate window.
  *

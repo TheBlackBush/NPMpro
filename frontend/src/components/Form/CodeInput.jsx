@@ -132,7 +132,7 @@ function useRefusedCodeReset(methods) {
 /**
  * The code of a second factor (the fields code, backupCode and useBackup of the form around it, CODE_VALUES): the
  * six boxes or, after "Use a backup code", eight boxes for a backup code. The switch shows
- * the other field empty, drops both messages and puts the focus in it. As on Tabler's two-step verification page,
+ * the other field empty, drops both messages and puts the focus in it. As on a two-step verification page,
  * the only field of its form carries no required asterisk.
  *
  * @param {Object}  props

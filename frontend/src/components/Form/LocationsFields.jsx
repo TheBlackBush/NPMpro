@@ -1,4 +1,3 @@
-import cn from "clsx";
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, SearchIcon, SettingsIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
@@ -8,6 +7,7 @@ import { DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useIsAdmin } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { newLocation } from "src/modules/ProxyHostForms";

@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { Check, Database, Loader2, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { getDatabase, getHealth } from "src/api/backend";
@@ -7,6 +6,7 @@ import { ApiErrorContent, AppModal, Button, ErrorAlert, FormField } from "src/co
 import { Input } from "src/components/ui/input";
 import { Progress } from "src/components/ui/progress";
 import { useDatabaseMove, useStartDatabaseMove } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
 	activeStep,

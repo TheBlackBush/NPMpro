@@ -1,7 +1,7 @@
-import cn from "clsx";
 // @ts-expect-error Creating a typing for a subfolder is not easily possible
 import Flags from "country-flag-icons/react/3x2";
 import { GlobeIcon } from "lucide-react";
+import { cn } from "src/lib/utils";
 
 function Flag({ className, countryCode }) {
 	if (countryCode === "EN") {

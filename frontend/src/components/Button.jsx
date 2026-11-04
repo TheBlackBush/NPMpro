@@ -9,10 +9,10 @@ import { buttonVariant } from "src/modules/ButtonVariants";
 export const DESTRUCTIVE_TEXT = "text-[color-mix(in_oklab,var(--destructive)_75%,black)] dark:text-destructive";
 
 /**
- * The button of the old pages on the shadcn Button: colour, outline, size and Bootstrap classes are mapped by
- * buttonVariant (one primary colour; an uncoloured button is the outline look).
+ * The app's button on the shadcn Button: colour, outline and size map to a variant (one primary colour; an
+ * uncoloured button is the outline look).
  *
- * variant: a shadcn variant to use instead of the one color/outline/className map to (icon buttons: "ghost").
+ * variant: a shadcn variant to use instead of the one color/outline map to (icon buttons: "ghost").
  *
  * blocked: looks disabled and does nothing when clicked, but stays focusable and announced (aria-disabled), so its
  * reason (aria-describedby) can be reached; use it when the button waits for the user to fix something, disabled
@@ -35,8 +35,8 @@ function Button({
 	variant: variantProp,
 	...rest
 }) {
-	const { variant: mapped, size: uiSize, rest: classes } = buttonVariant({ color, outline, size, className });
-	// an explicit shadcn variant (ghost) wins over the one the old props map to
+	const { variant: mapped, size: uiSize } = buttonVariant({ color, outline, size });
+	// an explicit shadcn variant (ghost) wins over the one the props map to
 	const variant = variantProp ?? mapped;
 	return (
 		<UiButton
@@ -47,7 +47,7 @@ function Button({
 			size={uiSize}
 			className={cn(
 				variant === "destructive" && DESTRUCTIVE_TEXT,
-				classes,
+				className,
 				fullWidth && "w-full",
 				blocked && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
 			)}

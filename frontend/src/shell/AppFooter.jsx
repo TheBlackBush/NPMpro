@@ -54,7 +54,7 @@ export function AppFooter() {
 						</ExternalA>
 					) : null}
 					<ExternalA href={repoUrl} className={`inline-flex items-center gap-1.5 ${LINK}`}>
-						<GithubMark className="size-3.5" aria-hidden="true" />
+						<GithubMark className="size-3.5" />
 						<T id="footer.github" />
 					</ExternalA>
 				</div>

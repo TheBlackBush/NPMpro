@@ -1,9 +1,9 @@
-import cn from "clsx";
 import { PlusIcon, XIcon } from "lucide-react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { FormSelect } from "src/components/AppSelect";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Input } from "src/components/ui/input";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { blankRule } from "src/modules/AccessListForms";
 import { FieldMessage } from "./FieldMessage";

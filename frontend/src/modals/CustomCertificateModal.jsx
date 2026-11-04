@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
@@ -16,6 +15,7 @@ import {
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { customCertificateValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";

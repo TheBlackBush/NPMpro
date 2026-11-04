@@ -81,7 +81,7 @@ function useLateStartField(content, open, isPhone) {
 // always get a full screen window (WindowFrame.windowMode). The primitive (Dialog or Sheet) never depends on the
 // screen width (WindowFrame.windowPrimitive): a phone gets the preferred primitive full screen, so crossing the phone
 // breakpoint while a window is open only changes classes and keeps the form and its edits.
-// Props follow the earlier modal window: show, onHide (undefined: the window cannot close, it is saving),
+// Props: show, onHide (undefined: the window cannot close, it is saving),
 // size ("sm", "lg", "xl"), backdrop ("static" ignores clicks outside), keyboard (false ignores Escape).
 // `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls between a fixed header and
 // footer, windows open at the top, and phones always get a full screen window.

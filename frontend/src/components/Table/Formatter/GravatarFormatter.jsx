@@ -3,7 +3,7 @@ import { cn } from "src/lib/utils";
 
 const defaultImg = "/images/default-avatar.jpg";
 
-// the size names of the old avatar (xs to xl) as square edges (Tabler sizes); no size is the 40 px default
+// the avatar size names (xs to xl) as square edges; no size is the 40 px default
 const sizes = { xs: "size-5", sm: "size-8", md: "size-12", lg: "size-20", xl: "size-28" };
 
 export function GravatarFormatter({ url, name, size, decorative }) {

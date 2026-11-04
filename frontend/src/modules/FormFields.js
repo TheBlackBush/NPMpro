@@ -2,7 +2,7 @@
  * Rules of the shared form layer (components/Form/FormField.jsx and friends): reading a value at a field path, how a
  * control is described, the classes of the groups. Pure, so node --test checks them without a DOM.
  */
-import cn from "clsx";
+import { cn } from "cn";
 
 // the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;

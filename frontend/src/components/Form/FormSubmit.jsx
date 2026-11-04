@@ -1,7 +1,7 @@
-import cn from "clsx";
 import { useId } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import { Button } from "src/components/Button";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
 import { FormErrorNote } from "./FormErrorNote";
