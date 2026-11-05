@@ -60,7 +60,9 @@ const startControlSocket = async (socket) => {
 	return { control, close: () => new Promise((resolve) => server.close(resolve)) };
 };
 
-// a name resolves only when a test added it, so no request can leave by a dispatcher of its own
+// A name resolves only when a test added it, so a request by name through a dispatcher of its own finds no DNS. IP
+// literals skip the lookup, and code on node:https is not seen by the MockAgent: later tests point such features at a
+// local fake.
 const fakeDns = () => {
 	const names = new Map();
 	dns.lookup = (hostname, options, callback) => {
@@ -143,6 +145,10 @@ const startApi = async ({ env = {} } = {}) => {
 		for (const name of FAKE_COMMANDS) {
 			await writeFile(path.join(root, "bin", name), fakeCommand(root, name), { mode: 0o755 });
 		}
+		// a developer shell must not point the backend away from the temporary root
+		for (const key of Object.keys(process.env)) {
+			if (key.startsWith("DB_") || key === "NPMPRO_SECRET_KEY_FILE") delete process.env[key];
+		}
 		Object.assign(process.env, {
 			NPMPRO_TEST_ROOT: root,
 			PATH: `${path.join(root, "bin")}:${process.env.PATH}`,
@@ -157,7 +163,10 @@ const startApi = async ({ env = {} } = {}) => {
 			dns: fakeDns(),
 			http: fakeHttp(),
 			calls: async () =>
-				(await readFile(path.join(root, "fake/calls.log"), "utf8").catch(() => "")).trim().split("\n"),
+				(await readFile(path.join(root, "fake/calls.log"), "utf8").catch(() => ""))
+					.trim()
+					.split("\n")
+					.filter(Boolean),
 			clearCalls: () => rm(path.join(root, "fake/calls.log"), { force: true }),
 			failCommand: (name, output) => writeFile(path.join(root, "fake", `${name}.fail`), output),
 			passCommand: (name) => rm(path.join(root, "fake", `${name}.fail`), { force: true }),
@@ -167,6 +176,9 @@ const startApi = async ({ env = {} } = {}) => {
 			},
 		};
 
+		const { rooted } = await import("../../lib/paths.js");
+		if (rooted("/") !== `${root}/`)
+			throw new Error("startApi must run before any backend import, once per test file");
 		const { migrateUp } = await import("../../migrate.js");
 		await migrateUp();
 		const { prepareApp } = await import("../../startup.js");

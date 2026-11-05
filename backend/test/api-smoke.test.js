@@ -71,10 +71,18 @@ it("refuses a request without a session and one from another origin", async () =
 	assert.equal(foreign.status, 403);
 });
 
+it("reports no recorded command calls as an empty list", async () => {
+	await api.outside.clearCalls();
+	assert.deepEqual(await api.outside.calls(), []);
+});
+
 it("lets nothing leave: outbound HTTP needs a mock and an own dispatcher finds no DNS", async () => {
-	await assert.rejects(fetch("https://outside.example/"));
 	await assert.rejects(
-		undiciFetch("https://outside.example/", { dispatcher: new Agent() }),
+		fetch("https://outside.example/"),
+		(error) => error.cause?.code === "UND_MOCK_ERR_MOCK_NOT_MATCHED",
+	);
+	await assert.rejects(
+		undiciFetch("http://localhost:59999/", { dispatcher: new Agent() }),
 		(error) => error.cause?.code === "ENOTFOUND",
 	);
 	api.outside.http
