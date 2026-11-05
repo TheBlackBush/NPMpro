@@ -510,7 +510,7 @@ function MultipleCombobox({
 											type="button"
 											variant="ghost"
 											size="icon-xs"
-											className="size-5 rounded-full"
+											className="size-6 rounded-full"
 											data-window-start-skip=""
 											aria-label={intl.formatMessage({ id: "combobox.remove" }, { value: label })}
 											onClick={() => remove(index)}

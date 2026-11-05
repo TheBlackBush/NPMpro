@@ -124,7 +124,7 @@ function ItemChecklist({
 					type="button"
 					variant="link"
 					size="sm"
-					className="h-auto p-0"
+					className="h-auto min-h-6 p-0"
 					onClick={() => onChange(tickShown(items, selected, shown, true))}
 					disabled={disabled || allShown}
 				>
@@ -134,7 +134,7 @@ function ItemChecklist({
 					type="button"
 					variant="link"
 					size="sm"
-					className="h-auto p-0"
+					className="h-auto min-h-6 p-0"
 					onClick={() => onChange(tickShown(items, selected, shown, false))}
 					disabled={disabled || noneShown}
 				>

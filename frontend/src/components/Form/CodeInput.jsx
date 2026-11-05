@@ -172,7 +172,12 @@ function CodeEntry({ idPrefix, label, allowBackup = false }) {
 				<CodeInput key="code" id={`${idPrefix}-code`} label={label} className="mb-2" />
 			)}
 			{allowBackup ? (
-				<Button type="button" variant="link" className="h-auto p-0" onClick={() => switchTo(!backupShown)}>
+				<Button
+					type="button"
+					variant="link"
+					className="h-auto min-h-6 p-0"
+					onClick={() => switchTo(!backupShown)}
+				>
 					<T id={backupShown ? "mfa.use-app-code" : "mfa.use-backup-code"} />
 				</Button>
 			) : null}
