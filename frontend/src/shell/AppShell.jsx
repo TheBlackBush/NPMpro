@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
 import { usePreferences } from "src/context";
+import { useMediaQuery } from "src/hooks/useMediaQuery";
 import { intl } from "src/locale";
+import { AUTO_COLLAPSE_BELOW, sidebarOpen, sidebarOpenChange } from "src/modules/SidebarOpen";
 import { AppFooter } from "./AppFooter";
 import { AppSidebar } from "./AppSidebar";
 import { CommandPalette, CommandPaletteButton, CommandPaletteProvider } from "./CommandPalette";
@@ -21,6 +24,12 @@ export default function AppShell({ children }) {
 
 function Layout({ children }) {
 	const { navLayout, sidebarCollapsed, setSidebarCollapsed } = usePreferences();
+	// below 1024 px the sidebar is the icon rail without touching the saved choice; the trigger opens it for this visit
+	const narrow = useMediaQuery(`(max-width: ${AUTO_COLLAPSE_BELOW - 1}px)`);
+	const [openedHere, setOpenedHere] = useState(false);
+	// crossing the 1024 px line either way returns to the automatic state
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the window crosses the line
+	useEffect(() => setOpenedHere(false), [narrow]);
 	const page = (
 		<>
 			<main className="mx-auto w-full max-w-screen-2xl flex-1 px-3 py-5 sm:px-5 sm:py-6">
@@ -34,8 +43,16 @@ function Layout({ children }) {
 	if (navLayout === "sidebar") {
 		// The TooltipProvider for the sidebar's tooltips is in App.jsx (one for the whole app).
 		// Controlled, so the collapse is kept in the preference; the provider's own cookie write is not read
+		const onOpenChange = (open) => {
+			const change = sidebarOpenChange({ narrow, open });
+			if ("openedHere" in change) setOpenedHere(change.openedHere);
+			else setSidebarCollapsed(change.collapsedPreference);
+		};
 		return (
-			<SidebarProvider open={!sidebarCollapsed} onOpenChange={(open) => setSidebarCollapsed(!open)}>
+			<SidebarProvider
+				open={sidebarOpen({ collapsedPreference: sidebarCollapsed, narrow, openedHere })}
+				onOpenChange={onOpenChange}
+			>
 				<AppSidebar />
 				{/* Not SidebarInset: it renders a main element, and the page already has one */}
 				<div className="relative flex min-h-dvh w-full min-w-0 flex-1 flex-col bg-background text-foreground">

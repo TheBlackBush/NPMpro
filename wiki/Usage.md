@@ -36,7 +36,7 @@ When NPMpro saves a host it tests the nginx config. If the test fails, the host 
 
 Open the user menu (your avatar, top right) and use **Appearance**:
 
-- **Navigation:** **Top bar** (the default, a row of pages under the header) or **Sidebar**. The sidebar can collapse to icons; NPMpro remembers whether you collapsed it.
+- **Navigation:** **Top bar** (the default, a row of pages under the header) or **Sidebar**. The sidebar can collapse to icons; NPMpro remembers whether you collapsed it. Below 1024 px it shows as icons by itself, without changing what you saved: the sidebar button opens it for that visit, and a window of 1024 px or more uses your saved choice again.
 - **Edit windows:** **Dialog** (a window in the middle of the page) or **Side sheet** (a panel that slides in from the right). The choice applies to every edit window.
 
 Both choices are saved in your browser, so each browser or device keeps its own.
