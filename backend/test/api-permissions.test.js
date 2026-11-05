@@ -238,10 +238,10 @@ it("visibility user shows only the own hosts, visibility all shows every host", 
 	const ids = (await manager.get("/nginx/proxy-hosts")).body.map((entry) => entry.id);
 	assert.ok(ids.includes(own.body.id));
 	assert.equal(ids.includes(theirs.body.id), false);
-	const refused = await manager.get(`/nginx/proxy-hosts/${theirs.body.id}`);
-	assert.ok([403, 404].includes(refused.status), `answered ${refused.status}`);
-	assert.equal((await manager.put(`/nginx/proxy-hosts/${theirs.body.id}`, { forward_port: 9 })).status >= 400, true);
-	assert.equal((await manager.delete(`/nginx/proxy-hosts/${theirs.body.id}`)).status >= 400, true);
+	// a host the user may not see does not exist for the user: 404, like an unknown id
+	assert.equal((await manager.get(`/nginx/proxy-hosts/${theirs.body.id}`)).status, 404);
+	assert.equal((await manager.put(`/nginx/proxy-hosts/${theirs.body.id}`, { forward_port: 9 })).status, 404);
+	assert.equal((await manager.delete(`/nginx/proxy-hosts/${theirs.body.id}`)).status, 404);
 	assert.ok(await api.db("proxy_host").where({ id: theirs.body.id }).first());
 
 	assert.equal((await admin.put(`/users/${manager.user.id}/permissions`, { visibility: "all" })).status, 200);
