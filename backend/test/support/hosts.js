@@ -64,6 +64,40 @@ const checkFields = (row, body) => {
 	}
 };
 
+/**
+ * Asserts that a rendered nginx config is well formed: braces balance outside quoted strings and comments, and no
+ * template text or "undefined" is left in it
+ *
+ * @param {String} text
+ * @param {String} [label]
+ */
+const assertWellFormed = (text, label = "config") => {
+	for (const leftover of ["{%", "%}", "{{", "}}", "undefined", "[object"]) {
+		assert.equal(text.includes(leftover), false, `${label} still has "${leftover}"`);
+	}
+	let depth = 0;
+	const bare = text.replace(/"(?:[^"\\\n]|\\.)*"/gu, '""').replace(/#.*$/gmu, "");
+	for (const char of bare) {
+		if (char === "{") depth += 1;
+		if (char === "}") depth -= 1;
+		assert.ok(depth >= 0, `${label} closes a block that is not open`);
+	}
+	assert.equal(depth, 0, `${label} leaves ${depth} block(s) open`);
+};
+
+/**
+ * Reads a file under the API root; a host config (.conf, .conf.err) must be well formed
+ *
+ * @param   {Object}  api
+ * @param   {String}  file
+ * @returns {Promise<String>}
+ */
+const readConfig = async (api, file) => {
+	const text = await api.read(file);
+	if (/\.conf(\.err)?$/u.test(file)) assertWellFormed(text, file);
+	return text;
+};
+
 const created = async (response, what) => {
 	assert.equal(response.status, 201, `${what}: ${response.text}`);
 	return response.body;
@@ -123,7 +157,7 @@ const hostTests = (ctx, type) => {
 		assert.ok(row, "the row is stored");
 		assert.equal(row.enabled, 1);
 		assert.equal(row.npmpro_nginx_online, 1);
-		assert.match(await api.read(configOf(answer.body.id)), type.written(body));
+		assert.match(await readConfig(api, configOf(answer.body.id)), type.written(body));
 		assert.equal(await fileExists(api, `${configOf(answer.body.id)}.err`), false);
 		assert.equal(reloads(api), reloadsBefore + 1);
 		const audit = await api.db("audit_log").where({ object_id: answer.body.id, action: "created" }).first();
@@ -165,7 +199,7 @@ const hostTests = (ctx, type) => {
 		assert.equal(answer.status, 200, answer.text);
 		type.check(answer.body, { ...body, ...edit });
 		type.check(await api.db(type.table).where({ id: host.id }).first(), { ...body, ...edit });
-		assert.match(await api.read(configOf(host.id)), type.edited(body, edit));
+		assert.match(await readConfig(api, configOf(host.id)), type.edited(body, edit));
 		assert.equal(reloads(api), reloadsBefore + 1);
 		const audit = await api.db("audit_log").where({ object_id: host.id, action: "updated" }).first();
 		assert.ok(audit);
@@ -190,7 +224,7 @@ const hostTests = (ctx, type) => {
 	tc(`${type.label}: refuses an invalid edit with 400 and keeps the host and its config`, async () => {
 		const body = make();
 		const host = await created(await admin.post(URL, body), "create");
-		const config = await api.read(configOf(host.id));
+		const config = await readConfig(api, configOf(host.id));
 		const reloadsBefore = reloads(api);
 		for (const [label, patch] of type.invalid) {
 			const answer = await admin.put(`${URL}/${host.id}`, { ...edit, ...patch });
@@ -198,7 +232,7 @@ const hostTests = (ctx, type) => {
 		}
 		assert.equal((await admin.put(`${URL}/${host.id}`, {})).status, 400);
 		type.check(await api.db(type.table).where({ id: host.id }).first(), body);
-		assert.equal(await api.read(configOf(host.id)), config);
+		assert.equal(await readConfig(api, configOf(host.id)), config);
 		assert.equal(reloads(api), reloadsBefore);
 	});
 
@@ -284,10 +318,10 @@ const hostTests = (ctx, type) => {
 		const body = make();
 		const host = await created(await post(managing, body), "create");
 		assert.equal(host.owner_user_id, managing.user.id);
-		assert.match(await api.read(configOf(host.id)), type.written(body));
+		assert.match(await readConfig(api, configOf(host.id)), type.written(body));
 		const saved = await managing.put(`${URL}/${host.id}`, edit);
 		assert.equal(saved.status, 200, saved.text);
-		assert.match(await api.read(configOf(host.id)), type.edited(body, edit));
+		assert.match(await readConfig(api, configOf(host.id)), type.edited(body, edit));
 		const removed = await managing.delete(`${URL}/${host.id}`);
 		assert.equal(removed.status, 200);
 		assert.equal(await api.db(type.table).where({ id: host.id }).first(), undefined);
@@ -331,7 +365,7 @@ const hostTests = (ctx, type) => {
 		assert.equal(on.status, 200, on.text);
 		assert.equal(on.body.enabled, true);
 		assert.equal((await api.db(type.table).where({ id: host.id }).first()).enabled, 1);
-		assert.match(await api.read(configOf(host.id)), type.written(body));
+		assert.match(await readConfig(api, configOf(host.id)), type.written(body));
 		assert.equal(reloads(api), reloadsBefore + 2);
 		const twice = await admin.post(`${URL}/${host.id}/enable`);
 		assert.equal(twice.status, 400);
@@ -357,7 +391,7 @@ const hostTests = (ctx, type) => {
 		assert.equal(await fileExists(api, configOf(host.id)), false);
 		assert.equal(reloads(api), reloadsBefore);
 		assert.equal((await admin.post(`${URL}/${host.id}/enable`)).status, 200);
-		assert.match(await api.read(configOf(host.id)), type.edited(body, edit));
+		assert.match(await readConfig(api, configOf(host.id)), type.edited(body, edit));
 	});
 
 	tc(`${type.label}: delete removes the row and the config, reloads once and logs it`, async () => {
@@ -396,7 +430,7 @@ const hostTests = (ctx, type) => {
 		const ids = (await managing.get(URL)).body.map((entry) => entry.id);
 		assert.ok(ids.includes(own.id));
 		assert.equal(ids.includes(theirs.id), false);
-		const config = await api.read(configOf(theirs.id));
+		const config = await readConfig(api, configOf(theirs.id));
 		const reloadsBefore = reloads(api);
 		const refused = [
 			await managing.get(`${URL}/${theirs.id}`),
@@ -411,7 +445,7 @@ const hostTests = (ctx, type) => {
 		}
 		const row = await api.db(type.table).where({ id: theirs.id }).first();
 		assert.equal(row.enabled, 1);
-		assert.equal(await api.read(configOf(theirs.id)), config);
+		assert.equal(await readConfig(api, configOf(theirs.id)), config);
 		assert.equal(reloads(api), reloadsBefore);
 		assert.equal((await admin.put(`/users/${managing.user.id}/permissions`, { visibility: "all" })).status, 200);
 		const all = (await managing.get(URL)).body.map((entry) => entry.id);
@@ -439,7 +473,7 @@ const hostTests = (ctx, type) => {
 			assert.equal(row.npmpro_nginx_online, 0);
 			assert.equal(row.npmpro_nginx_err, message);
 			assert.equal(await fileExists(api, configOf(id)), false);
-			assert.match(await api.read(`${configOf(id)}.err`), type.written(body));
+			assert.match(await readConfig(api, `${configOf(id)}.err`), type.written(body));
 			// the refused config, then the reload without it
 			assert.equal(reloads(api), reloadsBefore + 2);
 			const fixed = await admin.put(`${URL}/${id}`, edit);
@@ -449,7 +483,7 @@ const hostTests = (ctx, type) => {
 			const healthy = await api.db(type.table).where({ id }).first();
 			assert.equal(healthy.npmpro_nginx_online, 1);
 			assert.equal(healthy.npmpro_nginx_err, "");
-			assert.match(await api.read(configOf(id)), type.edited(body, edit));
+			assert.match(await readConfig(api, configOf(id)), type.edited(body, edit));
 			assert.equal(await fileExists(api, `${configOf(id)}.err`), false);
 		},
 	);
@@ -497,27 +531,41 @@ const hostTests = (ctx, type) => {
 	);
 
 	tc(
-		`${type.label}: does not act on host N for PUT, DELETE, enable or disable with the id N.5`,
+		`${type.label}: does not act on host N for PUT, DELETE, enable or disable with the id N.5 or Nabc`,
 		{
 			todo: "BUG-6",
 		},
 		async () => {
-			const host = await created(await admin.post(URL, make()), "create");
-			const fractional = `${host.id}.5`;
-			const answers = [
-				await admin.put(`${URL}/${fractional}`, edit),
-				await admin.post(`${URL}/${fractional}/disable`),
-				await admin.post(`${URL}/${fractional}/enable`),
-				await admin.delete(`${URL}/${fractional}`),
-			];
-			const row = await api.db(type.table).where({ id: host.id }).first();
-			assert.deepEqual(
-				answers.map(({ status }) => status),
-				[400, 400, 400, 400],
-			);
-			assert.ok(row, "the host is still stored");
+			for (const suffix of [".5", "abc"]) {
+				const host = await created(await admin.post(URL, make()), "create");
+				const id = `${host.id}${suffix}`;
+				const answers = [
+					await admin.put(`${URL}/${id}`, edit),
+					await admin.post(`${URL}/${id}/disable`),
+					await admin.post(`${URL}/${id}/enable`),
+					await admin.delete(`${URL}/${id}`),
+				];
+				const row = await api.db(type.table).where({ id: host.id }).first();
+				assert.deepEqual(
+					answers.map(({ status }) => status),
+					[400, 400, 400, 400],
+					suffix,
+				);
+				assert.ok(row, `the host is still stored (${suffix})`);
+			}
 		},
 	);
 };
 
-export { addCertificate, checkFields, countRows, created, fileExists, hostTests, listDir, reloads };
+export {
+	addCertificate,
+	assertWellFormed,
+	checkFields,
+	countRows,
+	created,
+	fileExists,
+	hostTests,
+	listDir,
+	readConfig,
+	reloads,
+};

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { addCertificate, countRows, created, fileExists, listDir } from "./support/hosts.js";
+import { addCertificate, countRows, created, fileExists, listDir, readConfig } from "./support/hosts.js";
 
 // What the generated host configs contain (templates/proxy_host.conf, _common.conf, _upstream.conf,
 // _proxy_host_custom_location.conf, redirection_host.conf, dead_host.conf, stream.conf) and which admin-only fields the
@@ -22,7 +22,8 @@ const body = (overrides = {}) => {
 };
 const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
-const configOf = async (host) => ctx.api.read(confOf(host.id));
+const read = (file) => readConfig(ctx.api, file);
+const configOf = async (host) => read(confOf(host.id));
 const make = async (overrides, who = ctx.admin) => created(await who.post(URL, body(overrides)), "create");
 // the text of a location block, up to the line that closes it at the same indent
 const block = (config, header) => {
@@ -196,6 +197,7 @@ it("redirects HTTP to HTTPS when SSL is forced, and writes HSTS with or without 
 	const hsts = await ctx.admin.put(`${URL}/${forced.id}`, { hsts_enabled: true });
 	assert.equal(hsts.status, 200, hsts.text);
 	assert.match(await configOf(forced), /more_set_headers "Strict-Transport-Security: \$hsts_header";/u);
+	assert.doesNotMatch(await configOf(forced), /more_clear_headers "Strict-Transport-Security"/u);
 	const subdomains = await ctx.admin.put(`${URL}/${forced.id}`, { hsts_subdomains: true });
 	assert.equal(subdomains.body.hsts_subdomains, true);
 	assert.match(
@@ -272,11 +274,13 @@ it("includes the basic auth and allow rules of an access list, and writes its pa
 			"u",
 		),
 	);
-	assert.match(config, /allow 10\.1\.0\.0\/16;/u);
-	assert.match(config, /deny all;/u);
-	assert.match(config, /satisfy any;/u);
-	assert.match(config, /proxy_set_header Authorization "";/u);
-	const passwords = await ctx.api.read(`data/access/${list.body.id}`);
+	const main = block(config, "location / {");
+	assert.match(main, /auth_basic_user_file\s+\/data\/access\/\d+;/u);
+	assert.match(main, /allow 10\.1\.0\.0\/16;\s+deny all;/u);
+	assert.match(main, /satisfy any;/u);
+	assert.match(main, /proxy_set_header Authorization "";/u);
+	assert.match(main, /grpc_set_header Authorization "";/u);
+	const passwords = await read(`data/access/${list.body.id}`);
 	assert.match(passwords, /^bob:/mu);
 	assert.doesNotMatch(passwords, /bobs-password-1/u);
 	// public again: the include is gone
@@ -286,6 +290,19 @@ it("includes the basic auth and allow rules of an access list, and writes its pa
 	});
 	assert.equal(publicHost.status, 200, publicHost.text);
 	assert.doesNotMatch(await configOf(host), /auth_basic\s+"|allow 10\.1/u);
+});
+
+it("passes the Authorization header on when the access list has pass_auth", async () => {
+	const list = await ctx.admin.post("/nginx/access-lists", {
+		name: "Passing",
+		pass_auth: true,
+		items: [{ username: "carol", password: "carols-password-1" }],
+	});
+	assert.equal(list.status, 201, list.text);
+	const host = await make({ npmpro_access_list_type: "custom", npmpro_access_list_ids: [list.body.id] });
+	const main = block(await configOf(host), "location / {");
+	assert.match(main, /auth_basic_user_file/u);
+	assert.doesNotMatch(main, /Authorization ""/u);
 });
 
 it("merges two access lists into one file for the host and removes the file with the host", async () => {
@@ -301,7 +318,7 @@ it("merges two access lists into one file for the host and removes the file with
 	const config = await configOf(host);
 	const file = config.match(/auth_basic_user_file\s+(\S+);/u)[1];
 	assert.match(file, /^\/data\/access\//u);
-	const merged = await ctx.api.read(file.slice(1));
+	const merged = await read(file.slice(1));
 	assert.match(merged, /^first:/mu);
 	assert.match(merged, /^second:/mu);
 	assert.equal((await ctx.admin.delete(`${URL}/${host.id}`)).status, 200);
@@ -410,7 +427,7 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 		}),
 		"redirect",
 	);
-	const redirectConfig = await ctx.api.read(`data/nginx/redirection_host/${redirect.id}.conf`);
+	const redirectConfig = await read(`data/nginx/redirection_host/${redirect.id}.conf`);
 	assert.match(
 		redirectConfig,
 		/return 308 \$scheme:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
@@ -422,7 +439,7 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 		}),
 		"dead",
 	);
-	assert.match(await ctx.api.read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
+	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
 });
 
 it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3 header of the shared block", async () => {
@@ -438,7 +455,7 @@ it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3
 		}),
 		"redirect",
 	);
-	const config = await ctx.api.read(`data/nginx/redirection_host/${redirect.id}.conf`);
+	const config = await read(`data/nginx/redirection_host/${redirect.id}.conf`);
 	assert.match(config, /listen 0\.0\.0\.0:443 ssl;/u);
 	assert.match(config, new RegExp(`ssl_certificate /data/tls/custom/npm-${certificate}/fullchain\\.pem;`, "u"));
 	assert.match(config, /Strict-Transport-Security: \$hsts_header/u);
@@ -451,7 +468,7 @@ it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3
 		}),
 		"dead",
 	);
-	assert.match(await ctx.api.read(`data/nginx/dead_host/${dead.id}.conf`), /return 301 https:/u);
+	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 301 https:/u);
 });
 
 it("writes a stream with TLS, the PROXY protocol and the certificate the host uses", async () => {
@@ -467,7 +484,7 @@ it("writes a stream with TLS, the PROXY protocol and the certificate the host us
 		}),
 		"stream",
 	);
-	const config = await ctx.api.read(`data/nginx/stream/${stream.id}.conf`);
+	const config = await read(`data/nginx/stream/${stream.id}.conf`);
 	assert.match(config, /# 9600 TCP: true UDP: false/u);
 	assert.match(config, /listen 0\.0\.0\.0:9600 ssl reuseport deferred so_keepalive=on;/u);
 	assert.match(config, /listen \[::\]:9600 ssl reuseport deferred so_keepalive=on;/u);
@@ -628,4 +645,250 @@ it("counts the hosts per type in the report, only the own ones for visibility us
 	assert.equal((await ctx.admin.post(`${URL}/${broken.id}/disable`)).status, 200);
 	assert.equal((await ctx.admin.get("/reports/hosts")).body.errors.proxy, 0);
 	assert.equal((await api.client().get("/reports/hosts")).status, 401);
+});
+
+const FORWARD_AUTH = [
+	{
+		value: "anubis",
+		path: "/.within.website/x/cmd/anubis/api/check",
+		errorPage: /error_page 401 403 =200 \/\.within\.website\/\?redir=\$request_uri;/u,
+		helpers: ["location /.within.website/ {"],
+	},
+	{
+		value: "tinyauth",
+		path: "/tinyauth",
+		errorPage: /error_page 401 403 =302 \$redirection_url;/u,
+		helpers: ["location = /tinyauth {"],
+	},
+	{
+		value: "oauth2proxy",
+		path: "/oauth2/auth",
+		errorPage: /error_page 401 = @oauth2_signin;/u,
+		helpers: ["location /oauth2/ {", "location = /oauth2/auth {", "location @oauth2_signin {"],
+	},
+	{
+		value: "voidauth",
+		path: "/api/authz/auth-request",
+		errorPage: /error_page 401 =302 \$redirection_url;/u,
+		helpers: ["location = /api/authz/auth-request {"],
+	},
+	{
+		value: "authelia",
+		path: "/internal/authelia/authz",
+		errorPage: /error_page 401 =302 \$redirection_url;/u,
+		helpers: ["location = /internal/authelia/authz {"],
+	},
+	{
+		value: "authentik",
+		path: "/outpost.goauthentik.io/auth/nginx",
+		errorPage: /error_page 401 = @goauthentik_proxy_signin;/u,
+		helpers: ["location /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
+	},
+	{
+		value: "authentik-send-basic-auth",
+		path: "/outpost.goauthentik.io/auth/nginx",
+		errorPage: /error_page 401 = @goauthentik_proxy_signin;/u,
+		helpers: ["location /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
+		extra: /proxy_set_header Authorization \$authentik_auth;/u,
+	},
+];
+const providerOf = (value) => (value === "authentik-send-basic-auth" ? "authentik" : value);
+
+for (const provider of FORWARD_AUTH) {
+	it(`forward auth ${provider.value}: the main location asks the helper, which proxies to the host's upstream`, async () => {
+		const host = await make({
+			npmpro_auth_request: provider.value,
+			npmpro_auth_request_upstream: "http://auth.internal:9091",
+		});
+		assert.equal(host.npmpro_auth_request, provider.value);
+		const config = await configOf(host);
+		const main = block(config, "location / {");
+		assert.match(main, new RegExp(`auth_request ${provider.path.replaceAll(".", "\\.")};`, "u"));
+		assert.match(main, provider.errorPage);
+		if (provider.extra) assert.match(main, provider.extra);
+		for (const helper of provider.helpers) assert.ok(config.includes(helper), helper);
+		const name = `auth_request_${providerOf(provider.value)}_${host.id}`;
+		assert.match(
+			config,
+			new RegExp(`upstream ${name} \\{\\s+zone ${name} 128k;\\s+server auth\\.internal:9091 resolve;`, "u"),
+		);
+		assert.match(config, new RegExp(`proxy_pass http://${name}[/;]`, "u"));
+		// the helpers of the other providers are not written
+		for (const other of FORWARD_AUTH.filter((entry) => providerOf(entry.value) !== providerOf(provider.value))) {
+			assert.doesNotMatch(main, new RegExp(`auth_request ${other.path.replaceAll(".", "\\.")};`, "u"));
+		}
+	});
+}
+
+it("forward auth: a host without a provider has no auth_request and no helper location", async () => {
+	const config = await configOf(await make());
+	assert.doesNotMatch(config, /auth_request \/|\.within\.website|\/oauth2\/|goauthentik|\/tinyauth|authelia\/authz/u);
+});
+
+it("forward auth: a client with a valid mTLS certificate skips the check when the host asks for it", async () => {
+	const certificate = await addCertificate(ctx.api, { domain: "bypass.example.com" });
+	const ca = await addCertificate(ctx.api, { provider: "mtls", domain: "bypass-ca.example.com" });
+	const common = {
+		certificate_id: certificate,
+		npmpro_mtls_certificate_id: ca,
+		npmpro_mtls_verify_client_optional: true,
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://auth.internal:9091",
+	};
+	const bypass = await make({
+		...common,
+		domain_names: ["bypass.example.com"],
+		npmpro_mtls_bypass_auth_request: true,
+	});
+	assert.equal(bypass.npmpro_mtls_bypass_auth_request, true);
+	assert.match(
+		block(await configOf(bypass), "location = /internal/authelia/authz {"),
+		/if \(\$ssl_client_verify = "SUCCESS"\) \{ return 200; \}/u,
+	);
+	const plain = await make({ ...common, domain_names: ["nobypass.example.com"] });
+	assert.doesNotMatch(await configOf(plain), /ssl_client_verify = "SUCCESS"/u);
+	// without a provider the switch is dropped
+	const none = await make({
+		certificate_id: certificate,
+		npmpro_mtls_certificate_id: ca,
+		npmpro_mtls_verify_client_optional: true,
+		npmpro_mtls_bypass_auth_request: true,
+	});
+	assert.equal(none.npmpro_mtls_bypass_auth_request, false);
+});
+
+it("forward auth: a custom location with its own provider gets the check, its helper and an upstream", async () => {
+	const host = await make({
+		locations: [
+			{
+				path: "/secure",
+				forward_host: "10.9.8.7",
+				forward_port: 80,
+				npmpro_auth_request: "authelia",
+				npmpro_auth_request_upstream: "http://auth.internal:9091",
+			},
+			{ path: "/open", forward_host: "10.9.8.6", forward_port: 80 },
+		],
+	});
+	const config = await configOf(host);
+	assert.match(
+		block(config, 'location "/secure" {'),
+		/auth_request \/internal\/authelia\/authz;\s+auth_request_set \$redirection_url/u,
+	);
+	assert.match(block(config, 'location "/secure" {'), /error_page 401 =302 \$redirection_url;/u);
+	assert.doesNotMatch(block(config, 'location "/open" {'), /auth_request/u);
+	assert.doesNotMatch(block(config, "location / {"), /auth_request/u);
+	assert.ok(config.includes("location = /internal/authelia/authz {"));
+	assert.match(
+		config,
+		new RegExp(`upstream auth_request_authelia_${host.id} \\{[\\s\\S]*server auth\\.internal:9091 resolve;`, "u"),
+	);
+});
+
+it("forward auth: an upstream with a variable or a quote is refused", async () => {
+	const rows = await countRows(ctx.api, "proxy_host");
+	for (const npmpro_auth_request_upstream of [
+		"http://a.b:80$x",
+		"http://a.b:80;",
+		'http://a"b:80',
+		"ftp://a.b:80",
+		"a.b:80",
+	]) {
+		const answer = await ctx.admin.post(
+			URL,
+			body({ npmpro_auth_request: "authelia", npmpro_auth_request_upstream }),
+		);
+		assert.equal(answer.status, 400, npmpro_auth_request_upstream);
+	}
+	assert.equal(await countRows(ctx.api, "proxy_host"), rows);
+});
+
+it("writes the defaults of a host created with only the required fields", async () => {
+	const host = await make();
+	const config = await configOf(host);
+	const main = block(config, "location / {");
+	assert.match(main, /more_set_headers "X-Frame-Options: SAMEORIGIN";/u);
+	assert.match(main, /proxy_set_header Accept-Encoding "";/u);
+	assert.doesNotMatch(config, /set \$crowdsec_disable_appsec/u);
+	assert.doesNotMatch(config, /noindex/u);
+	assert.doesNotMatch(config, /proxy_buffering off/u);
+	assert.doesNotMatch(config, /proxy_request_buffering off/u);
+	assert.doesNotMatch(config, /fancyindex on/u);
+	assert.doesNotMatch(config, /auth_basic\s+"/u);
+});
+
+it("writes the 404 page of a 404 host as an internal location", async () => {
+	const dead = await created(
+		await ctx.admin.post("/nginx/dead-hosts", { domain_names: ["dead-page.example.com"] }),
+		"dead",
+	);
+	const config = await read(`data/nginx/dead_host/${dead.id}.conf`);
+	assert.match(config, /location \/ \{\s+return 404;\s+\}/u);
+	assert.match(config, /error_page 404 \/dead\.html;/u);
+	assert.match(config, /location = \/dead\.html \{\s+root \/usr\/local\/nginx\/html;\s+internal;\s+\}/u);
+});
+
+it("appends the request path to a redirection only when preserve_path is set", async () => {
+	const keep = await created(
+		await ctx.admin.post("/nginx/redirection-hosts", {
+			domain_names: ["keep-path.example.com"],
+			forward_domain_name: "t.example.org",
+			forward_scheme: "https",
+			preserve_path: true,
+		}),
+		"redirect",
+	);
+	assert.match(
+		await read(`data/nginx/redirection_host/${keep.id}.conf`),
+		/return 302 https:\/\/t\.example\.org\$request_uri;/u,
+	);
+	const drop = await created(
+		await ctx.admin.post("/nginx/redirection-hosts", {
+			domain_names: ["drop-path.example.com"],
+			forward_domain_name: "t.example.org",
+			forward_scheme: "https",
+		}),
+		"redirect",
+	);
+	const config = await read(`data/nginx/redirection_host/${drop.id}.conf`);
+	assert.match(config, /return 302 https:\/\/t\.example\.org;/u);
+	assert.doesNotMatch(config, /request_uri;\s+\}/u);
+});
+
+it("writes a UDP stream without TCP options and its upstream with the proxy_pass that uses it", async () => {
+	const udp = await created(
+		await ctx.admin.post("/nginx/streams", {
+			incoming_port: "9800",
+			forwarding_host: "10.0.6.1",
+			forwarding_port: "53",
+			udp_forwarding: true,
+		}),
+		"udp",
+	);
+	const config = await read(`data/nginx/stream/${udp.id}.conf`);
+	assert.match(config, /# 9800 TCP: false UDP: true/u);
+	assert.match(
+		config,
+		new RegExp(
+			`upstream stream_upstream_${udp.id} \\{\\s+zone stream_upstream_${udp.id} 128k;\\s+server 10\\.0\\.6\\.1:53 resolve;`,
+			"u",
+		),
+	);
+	assert.match(config, /listen 0\.0\.0\.0:9800 udp reuseport;/u);
+	assert.match(config, /listen \[::\]:9800 udp reuseport;/u);
+	assert.match(config, new RegExp(`proxy_pass stream_upstream_${udp.id};`, "u"));
+	assert.doesNotMatch(config, /deferred|so_keepalive|\sssl\s/u);
+});
+
+it("keeps a request variable out of the forward path of a proxy host", { todo: "BUG-9" }, async () => {
+	const user = await ctx.api.limited({
+		visibility: "user",
+		proxy_hosts: "manage",
+		access_lists: "view",
+		certificates: "view",
+	});
+	const forwardHost = "app.internal/$http_x_foo";
+	const host = await user.post(URL, body({ forward_host: forwardHost }));
+	const located = await user.post(URL, body({ locations: [{ path: "/p", forward_host: forwardHost }] }));
+	assert.deepEqual([host.status, located.status], [400, 400], `${host.text} ${located.text}`);
 });
