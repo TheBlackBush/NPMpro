@@ -880,15 +880,33 @@ it("writes a UDP stream without TCP options and its upstream with the proxy_pass
 	assert.doesNotMatch(config, /deferred|so_keepalive|\sssl\s/u);
 });
 
-it("keeps a request variable out of the forward path of a proxy host", { todo: "BUG-9" }, async () => {
-	const user = await ctx.api.limited({
-		visibility: "user",
-		proxy_hosts: "manage",
-		access_lists: "view",
-		certificates: "view",
+const limitedManager = () =>
+	ctx.api.limited({ visibility: "user", proxy_hosts: "manage", access_lists: "view", certificates: "view" });
+
+// forward_host values with a request variable, as a user with only the proxy hosts manage permission can send them
+const VARIABLE_FORMS = [
+	["a variable in the forward path", "app.internal/$http_x_foo"],
+	[
+		"a variable in a cu_ upstream name (nginx picks the upstream or the host to resolve per request)",
+		"cu_$http_x_foo",
+	],
+	["a variable in a cu_ upstream name with a path", "cu_a$http_x_foo/p"],
+];
+for (const [label, forwardHost] of VARIABLE_FORMS) {
+	it(`refuses ${label}, on the host`, { todo: "BUG-9" }, async () => {
+		const user = await limitedManager();
+		const answer = await user.post(URL, body({ forward_host: forwardHost }));
+		assert.equal(answer.status, 400, answer.text);
 	});
-	const forwardHost = "app.internal/$http_x_foo";
-	const host = await user.post(URL, body({ forward_host: forwardHost }));
-	const located = await user.post(URL, body({ locations: [{ path: "/p", forward_host: forwardHost }] }));
-	assert.deepEqual([host.status, located.status], [400, 400], `${host.text} ${located.text}`);
+	it(`refuses ${label}, in a custom location`, { todo: "BUG-9" }, async () => {
+		const user = await limitedManager();
+		const answer = await user.post(URL, body({ locations: [{ path: "/p", forward_host: forwardHost }] }));
+		assert.equal(answer.status, 400, answer.text);
+	});
+}
+
+it("refuses a variable in the host part of the forward host", { todo: "BUG-9" }, async () => {
+	const user = await limitedManager();
+	const answer = await user.post(URL, body({ forward_host: "$http_x_foo" }));
+	assert.equal(answer.status, 400, answer.text);
 });
