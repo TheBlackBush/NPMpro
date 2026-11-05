@@ -238,7 +238,8 @@ it("visibility user shows only the own hosts, visibility all shows every host", 
 	const ids = (await manager.get("/nginx/proxy-hosts")).body.map((entry) => entry.id);
 	assert.ok(ids.includes(own.body.id));
 	assert.equal(ids.includes(theirs.body.id), false);
-	// a host the user may not see does not exist for the user: 404, like an unknown id
+	// the app answers 404 for a host the user may not see, like for an unknown id: a design choice that hides that the
+	// host exists (the contract lists only 200 here)
 	assert.equal((await manager.get(`/nginx/proxy-hosts/${theirs.body.id}`)).status, 404);
 	assert.equal((await manager.put(`/nginx/proxy-hosts/${theirs.body.id}`, { forward_port: 9 })).status, 404);
 	assert.equal((await manager.delete(`/nginx/proxy-hosts/${theirs.body.id}`)).status, 404);
