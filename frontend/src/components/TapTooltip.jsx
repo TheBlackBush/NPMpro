@@ -1,5 +1,10 @@
+import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { useRef, useState } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
+import { Tooltip, TooltipContent } from "src/components/ui/tooltip";
+
+// The Radix trigger itself, not the ui wrapper: that one sets data-slot="tooltip-trigger", which would replace the
+// data-slot of the element it wraps (a Button's or a Badge's styles select on it)
+const TooltipTrigger = TooltipPrimitive.Trigger;
 
 /**
  * A tooltip on a small label: hover or keyboard focus opens it, a tap toggles it (touch screens have no hover), a tap
@@ -17,8 +22,12 @@ export function TapTooltip({ content, tap = true, children }) {
 	const wasOpen = useRef(false);
 	if (!tap) {
 		return (
-			<Tooltip>
-				<TooltipTrigger asChild>{children}</TooltipTrigger>
+			// a press closes it even when the child's own handler prevented the default (a menu trigger does), which
+			// would otherwise leave the tooltip over the opened menu
+			<Tooltip open={open} onOpenChange={setOpen}>
+				<TooltipTrigger asChild onPointerDown={() => setOpen(false)}>
+					{children}
+				</TooltipTrigger>
 				<TooltipContent className="wrap-anywhere">{content}</TooltipContent>
 			</Tooltip>
 		);
