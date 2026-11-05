@@ -11,8 +11,8 @@ import {
 import { Eye } from "lucide-react";
 import { useMemo } from "react";
 import { EventFormatter, GravatarFormatter } from "src/components";
+import { Button } from "src/components/Button";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { Button } from "src/components/ui/button";
 import { formatDateTime, intl } from "src/locale";
 
 const features = tableFeatures({

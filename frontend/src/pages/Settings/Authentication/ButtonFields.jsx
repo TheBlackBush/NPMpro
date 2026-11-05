@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { ApiErrorContent, Button, ErrorAlert, OidcButton, TextField } from "src/components";
 import { BrandIcon } from "src/components/BrandIcon";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Input } from "src/components/ui/input";
 import { useDeleteOidcIcon, useDownloadOidcIcon, useUploadOidcIcon } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -210,29 +211,31 @@ function IconFields({ storedIcon }) {
 									{entries.map((entry) => {
 										const label = iconLabel(entry);
 										return (
-											<label className="cursor-pointer" key={entry.name} title={label}>
-												<input
-													ref={entry.name === firstName ? field.ref : undefined}
-													type="radio"
-													name={`${groupId}-builtin`}
-													value={entry.name}
-													className="peer sr-only"
-													aria-label={label}
-													checked={selected === entry.name}
-													onBlur={field.onBlur}
-													onChange={() => {
-														field.onChange(entry.name);
-														setResult(null);
-													}}
-												/>
-												<span className={PICK_CARD}>
-													{entry.kind === "brand" ? (
-														<BrandIcon icon={entry.icon} className="size-5" />
-													) : (
-														<entry.icon className="size-5" aria-hidden="true" />
-													)}
-												</span>
-											</label>
+											<TapTooltip key={entry.name} content={label} tap={false}>
+												<label className="cursor-pointer">
+													<input
+														ref={entry.name === firstName ? field.ref : undefined}
+														type="radio"
+														name={`${groupId}-builtin`}
+														value={entry.name}
+														className="peer sr-only"
+														aria-label={label}
+														checked={selected === entry.name}
+														onBlur={field.onBlur}
+														onChange={() => {
+															field.onChange(entry.name);
+															setResult(null);
+														}}
+													/>
+													<span className={PICK_CARD}>
+														{entry.kind === "brand" ? (
+															<BrandIcon icon={entry.icon} className="size-5" />
+														) : (
+															<entry.icon className="size-5" aria-hidden="true" />
+														)}
+													</span>
+												</label>
+											</TapTooltip>
 										);
 									})}
 								</div>

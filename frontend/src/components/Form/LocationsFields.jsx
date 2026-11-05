@@ -4,6 +4,7 @@ import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hoo
 import { AccessFields, Button, SwitchField } from "src/components";
 import { FormSelect } from "src/components/AppSelect";
 import { DESTRUCTIVE_TEXT } from "src/components/Button";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Input } from "src/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useIsAdmin } from "src/hooks";
@@ -65,14 +66,16 @@ function LocationRow({
 					<span className="truncate font-medium">{locationLabel(row)}</span>
 					<span className="truncate text-muted-foreground">{forwardSummary(row)}</span>
 					{hasConfig ? (
-						<span
-							className="flex shrink-0 items-center text-muted-foreground"
-							role="img"
-							title={intl.formatMessage({ id: "nginx-config.label" })}
-							aria-label={intl.formatMessage({ id: "nginx-config.label" })}
-						>
-							<SettingsIcon className="size-4" aria-hidden="true" />
-						</span>
+						// inside the row's toggle button: hover only, a click must reach the button
+						<TapTooltip content={intl.formatMessage({ id: "nginx-config.label" })} tap={false}>
+							<span
+								className="flex shrink-0 items-center text-muted-foreground"
+								role="img"
+								aria-label={intl.formatMessage({ id: "nginx-config.label" })}
+							>
+								<SettingsIcon className="size-4" aria-hidden="true" />
+							</span>
+						</TapTooltip>
 					) : null}
 				</button>
 				{readOnly ? null : (
@@ -272,14 +275,15 @@ export function LocationsFields({ name = "locations" }) {
 						onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
 					/>
 					<InputGroupAddon align="inline-end">
-						<InputGroupButton
-							size="icon-xs"
-							title={intl.formatMessage({ id: "action.clear" })}
-							aria-label={intl.formatMessage({ id: "action.clear" })}
-							onClick={() => setFilter("")}
-						>
-							<XIcon aria-hidden="true" />
-						</InputGroupButton>
+						<TapTooltip content={intl.formatMessage({ id: "action.clear" })} tap={false}>
+							<InputGroupButton
+								size="icon-xs"
+								aria-label={intl.formatMessage({ id: "action.clear" })}
+								onClick={() => setFilter("")}
+							>
+								<XIcon aria-hidden="true" />
+							</InputGroupButton>
+						</TapTooltip>
 					</InputGroupAddon>
 				</InputGroup>
 				{readOnly ? null : (
