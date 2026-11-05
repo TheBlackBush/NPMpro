@@ -1282,7 +1282,7 @@
 	"settings.runtime.number.invalid": "Geben Sie eine ganze Zahl von {min} bis {max} ein",
 	"settings.runtime.restart-pending": "Starten Sie den Container neu, um anzuwenden: {fields}.",
 	"settings.runtime.restart-required": "Neustart erforderlich",
-	"settings.runtime.restart-required.hint": "Starte den Container neu, um diese Einstellung anzuwenden.",
+	"settings.runtime.restart-required.hint": "Starten Sie den Container neu, um diese Einstellung anzuwenden.",
 	"settings.save.all-locked": "Alle Werte sind durch Umgebungsvariablen gesetzt",
 	"settings.section": "Einstellungsbereich",
 	"setup.create-account": "Konto erstellen",
