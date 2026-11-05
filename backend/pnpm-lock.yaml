@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  debug>supports-color: '-'
+
 importers:
 
   .:
@@ -31,16 +34,16 @@ importers:
         version: 1.11.23
       express:
         specifier: 5.3.0
-        version: 5.3.0(supports-color@7.2.0)
+        version: 5.3.0
       express-rate-limit:
         specifier: 8.7.1
-        version: 8.7.1(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0)
+        version: 8.7.1(express@5.3.0)
       jsonwebtoken:
         specifier: 9.0.3
         version: 9.0.3
       knex:
         specifier: 3.3.0
-        version: 3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)(supports-color@7.2.0)
+        version: 3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)
       liquidjs:
         specifier: 10.30.0
         version: 10.30.0
@@ -55,7 +58,7 @@ importers:
         version: 3.24.6(@types/node@26.6.5)
       objection:
         specifier: 4.3.0
-        version: 4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)(supports-color@7.2.0))
+        version: 4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1))
       openid-client:
         specifier: 6.8.8
         version: 6.8.8
@@ -67,7 +70,7 @@ importers:
         version: 8.23.1
       swagger-ui-express:
         specifier: 5.0.1
-        version: 5.0.1(express@5.3.0(supports-color@7.2.0))
+        version: 5.0.1(express@5.3.0)
       tar:
         specifier: 7.5.22
         version: 7.5.22
@@ -460,20 +463,10 @@ packages:
   debug@4.3.4:
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
     engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
 
   depd@2.0.0:
     resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
@@ -1474,19 +1467,17 @@ snapshots:
     dependencies:
       node-addon-api: 8.9.2
 
-  body-parser@2.4.0(supports-color@7.2.0):
+  body-parser@2.4.0:
     dependencies:
       bytes: 3.1.2
       content-type: 2.1.0
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       http-errors: 2.0.1
       iconv-lite: 0.7.3
       on-finished: 2.4.1
       qs: 6.16.1
       raw-body: 3.0.2
       type-is: 2.1.0
-    transitivePeerDependencies:
-      - supports-color
 
   brace-expansion@5.0.12:
     dependencies:
@@ -1587,17 +1578,13 @@ snapshots:
 
   dayjs@1.11.23: {}
 
-  debug@4.3.4(supports-color@7.2.0):
+  debug@4.3.4:
     dependencies:
       ms: 2.1.2
-    optionalDependencies:
-      supports-color: 7.2.0
 
-  debug@4.4.3(supports-color@7.2.0):
+  debug@4.4.3:
     dependencies:
       ms: 2.1.3
-    optionalDependencies:
-      supports-color: 7.2.0
 
   depd@2.0.0: {}
 
@@ -1643,28 +1630,26 @@ snapshots:
 
   events@3.3.0: {}
 
-  express-rate-limit@8.7.1(express@5.3.0(supports-color@7.2.0))(supports-color@7.2.0):
+  express-rate-limit@8.7.1(express@5.3.0):
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
-      express: 5.3.0(supports-color@7.2.0)
+      debug: 4.4.3
+      express: 5.3.0
       ip-address: 10.7.4
-    transitivePeerDependencies:
-      - supports-color
 
-  express@5.3.0(supports-color@7.2.0):
+  express@5.3.0:
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.4.0(supports-color@7.2.0)
+      body-parser: 2.4.0
       content-disposition: 2.0.1
       content-type: 2.1.0
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
-      finalhandler: 2.1.1(supports-color@7.2.0)
+      finalhandler: 2.1.1
       fresh: 2.0.0
       http-errors: 2.0.1
       merge-descriptors: 2.0.0
@@ -1675,14 +1660,12 @@ snapshots:
       proxy-addr: 2.0.8
       qs: 6.16.1
       range-parser: 1.3.0
-      router: 2.2.0(supports-color@7.2.0)
-      send: 1.2.1(supports-color@7.2.0)
-      serve-static: 2.2.1(supports-color@7.2.0)
+      router: 2.2.0
+      send: 1.2.1
+      serve-static: 2.2.1
       statuses: 2.0.2
       type-is: 2.1.0
       vary: 1.1.2
-    transitivePeerDependencies:
-      - supports-color
 
   fast-deep-equal@3.1.3: {}
 
@@ -1690,16 +1673,14 @@ snapshots:
 
   fast-uri@3.1.9: {}
 
-  finalhandler@2.1.1(supports-color@7.2.0):
+  finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
       parseurl: 1.3.3
       statuses: 2.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   find-up@5.0.0:
     dependencies:
@@ -1846,11 +1827,11 @@ snapshots:
       jwa: 2.0.1
       safe-buffer: 5.2.1
 
-  knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)(supports-color@7.2.0):
+  knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
-      debug: 4.3.4(supports-color@7.2.0)
+      debug: 4.3.4
       escalade: 3.2.0
       esm: 3.2.25
       get-package-type: 0.1.0
@@ -1866,8 +1847,6 @@ snapshots:
       better-sqlite3: 13.0.3
       mysql2: 3.24.6(@types/node@26.6.5)
       pg: 8.23.1
-    transitivePeerDependencies:
-      - supports-color
 
   lazystream@1.0.1:
     dependencies:
@@ -1981,11 +1960,11 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  objection@4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)(supports-color@7.2.0)):
+  objection@4.3.0(knex@3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)):
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
-      knex: 3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)(supports-color@7.2.0)
+      knex: 3.3.0(better-sqlite3@13.0.3)(mysql2@3.24.6(@types/node@26.6.5))(pg@8.23.1)
 
   on-finished@2.4.1:
     dependencies:
@@ -2141,15 +2120,13 @@ snapshots:
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
 
-  router@2.2.0(supports-color@7.2.0):
+  router@2.2.0:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
       path-to-regexp: 8.4.2
-    transitivePeerDependencies:
-      - supports-color
 
   safe-buffer@5.1.2: {}
 
@@ -2159,9 +2136,9 @@ snapshots:
 
   semver@7.8.5: {}
 
-  send@1.2.1(supports-color@7.2.0):
+  send@1.2.1:
     dependencies:
-      debug: 4.4.3(supports-color@7.2.0)
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -2172,17 +2149,13 @@ snapshots:
       on-finished: 2.4.1
       range-parser: 1.3.0
       statuses: 2.0.2
-    transitivePeerDependencies:
-      - supports-color
 
-  serve-static@2.2.1(supports-color@7.2.0):
+  serve-static@2.2.1:
     dependencies:
       encodeurl: 2.0.0
       escape-html: 1.0.3
       parseurl: 1.3.3
-      send: 1.2.1(supports-color@7.2.0)
-    transitivePeerDependencies:
-      - supports-color
+      send: 1.2.1
 
   setprototypeof@1.2.0: {}
 
@@ -2272,9 +2245,9 @@ snapshots:
     dependencies:
       '@scarf/scarf': 1.4.0
 
-  swagger-ui-express@5.0.1(express@5.3.0(supports-color@7.2.0)):
+  swagger-ui-express@5.0.1(express@5.3.0):
     dependencies:
-      express: 5.3.0(supports-color@7.2.0)
+      express: 5.3.0
       swagger-ui-dist: 5.33.3
 
   tar-stream@3.2.2:
