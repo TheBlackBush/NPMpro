@@ -42,6 +42,7 @@ const rolesSummary = (row) =>
 function UserActions({
 	user,
 	currentUserId,
+	mfaUserIds,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
@@ -79,7 +80,8 @@ function UserActions({
 					label: <T id="user.reset-mfa" />,
 					icon: ShieldOff,
 					onSelect: () => onResetMfa?.(user.id),
-					hidden: !other,
+					// nothing to reset without MFA
+					hidden: !other || !mfaUserIds?.has(user.id),
 				},
 				{
 					key: "revoke-sessions",
@@ -190,6 +192,7 @@ export default function Table({
 	isFiltered,
 	isFetching,
 	currentUserId,
+	mfaUserIds,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
@@ -213,6 +216,7 @@ export default function Table({
 			isFetching,
 			actions: {
 				currentUserId,
+				mfaUserIds,
 				onEditUser,
 				onEditPermissions,
 				onSetPassword,
