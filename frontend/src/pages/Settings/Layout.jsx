@@ -51,8 +51,8 @@ export default function Layout() {
 					id="settings-section"
 					value={current.id}
 					options={groups}
-					onValueChange={(id) => {
-						if (confirmLeave()) void navigate(`/settings/${id}`);
+					onValueChange={async (id) => {
+						if (await confirmLeave()) void navigate(`/settings/${id}`);
 					}}
 				/>
 			</div>
