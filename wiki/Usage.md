@@ -50,7 +50,7 @@ Both choices are saved in your browser, so each browser or device keeps its own.
   <img alt="The same proxy host in a side sheet" src="images/proxy-host-sheet-light.png" width="720">
 </picture>
 
-The theme (**Light**, **Dark** or **System**, which follows the operating system) and the language are menus next to each other in the header, on the sign-in page as well.
+The theme (**Light**, **Dark** or **System**, which follows the operating system) and the language are menus next to each other in the header (in the Sidebar layout, at the bottom of the sidebar), on the sign-in page as well.
 
 **Search** in the header opens the command palette; so does `Ctrl+K` (`Cmd+K` on a Mac). Type to find a page, or, as an administrator, a Settings section, and press Enter to open it.
 
