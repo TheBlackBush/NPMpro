@@ -6,6 +6,9 @@
 	"license": "AGPL-3.0 (and MIT)",
 	"main": "index.js",
 	"type": "module",
+	"scripts": {
+		"coverage": "c8 --config coverage-floor.json node --test \"test/*.test.js\""
+	},
 	"dependencies": {
 		"@apidevtools/json-schema-ref-parser": "16.0.5",
 		"ajv": "8.20.0",
@@ -32,6 +35,7 @@
 	},
 	"devDependencies": {
 		"@apidevtools/swagger-parser": "13.1.0",
-		"@biomejs/biome": "2.6.2"
+		"@biomejs/biome": "2.6.2",
+		"c8": "12.0.0"
 	}
 }

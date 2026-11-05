@@ -1,0 +1,23 @@
+{
+	"all": true,
+	"check-coverage": true,
+	"lines": 82.3,
+	"branches": 90.1,
+	"functions": 79.1,
+	"reporter": ["text-summary", "json-summary"],
+	"include": [
+		"app.js",
+		"db.js",
+		"index.js",
+		"logger.js",
+		"migrate.js",
+		"password-reset.js",
+		"setup.js",
+		"startup.js",
+		"internal/**",
+		"lib/**",
+		"models/**",
+		"routes/**",
+		"schema/index.js"
+	]
+}

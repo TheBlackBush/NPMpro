@@ -32,8 +32,8 @@ jobs:
         run: pnpm biome ci
       - name: openapi schema
         run: node validate-schema.js
-      - name: unit tests
-        run: node --test 'test/*.test.js' # a directory argument is not supported by node --test before Node 23
+      - name: unit tests with the coverage floor
+        run: pnpm run coverage # fails on a failed test or below coverage-floor.json; the summary is in this log
       - name: data folder move
         run: sh test/migrate-data-folder.test.sh
 
@@ -65,8 +65,12 @@ jobs:
         run: ./translations/check-locale.sh
       - name: every translation key is used
         run: node translations/check-unused.js
-      - name: unit tests
-        run: node --test 'src/**/*.test.js'
+      - name: unit tests with the coverage floor
+        # the floor covers src/modules, the code with a test harness (measured 98.59, 95.16, 97.26)
+        run: >-
+          node --test --experimental-test-coverage --test-coverage-include='src/modules/**'
+          --test-coverage-lines=98.5 --test-coverage-branches=95.1 --test-coverage-functions=97.2
+          'src/**/*.test.js'
       - name: build
         run: pnpm vite build
       - name: no Tabler or Bootstrap in the bundle
