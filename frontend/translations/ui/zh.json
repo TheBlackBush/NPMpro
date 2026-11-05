@@ -332,6 +332,7 @@
 	"error.code-six-digits": "请输入 6 位验证码",
 	"error.details.hide": "隐藏详情",
 	"error.details.show": "显示详情",
+	"error.forward-host-variable-admin-only": "只有管理员才能在转发主机中使用请求变量 ($)。",
 	"error.invalid-auth": "无效的邮箱或密码",
 	"error.invalid-code": "验证码无效",
 	"error.invalid-domain": "无效的域名: {domain}",

@@ -97,6 +97,24 @@ const assertPathScheme = (isAdmin, item, stored) => {
 };
 
 /**
+ * A request variable (`$`) in forward_host is evaluated by nginx per request: with a `cu_` name a visitor could pick
+ * the upstream group or the name to resolve. The schema pattern allows `$`, so non-admins are refused here, unless
+ * the value is the stored one (an administrator may have set it). Administrators can write advanced config anyway.
+ *
+ * @param {Boolean} isAdmin
+ * @param {Object}  item      host or location payload
+ * @param {Object}  [stored]  the stored host or location
+ */
+const assertForwardHostPlain = (isAdmin, item, stored) => {
+	if (isAdmin || typeof item.forward_host !== "string" || !item.forward_host.includes("$")) return;
+	if (item.forward_host === stored?.forward_host) return;
+	throw new errs.ValidationError(
+		"Only administrators can use a request variable ($) in the forward host.",
+		"error.forward-host-variable-admin-only",
+	);
+};
+
+/**
  * A custom prefix location renders a folder path (ending in `/`) as `alias`. nginx then replaces the location path
  * with the folder, so a location path without the trailing slash (`/x` with `/var/www/a/`) lets `/x../` reach the
  * parent folder. Non-admins must end such a location path in `/`, unless the location is the stored one.
@@ -136,6 +154,7 @@ const assertLocations = (isAdmin, locations, storedLocations = []) => {
 		} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
 			throw advancedConfigError();
 		}
+		assertForwardHostPlain(false, location, match);
 		assertPathScheme(false, location, match);
 		assertAliasPrefix(location, match);
 	}
@@ -171,6 +190,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 	assertConfigFields(isAdmin, data, stored, CONFIG_FIELDS[hostType]);
 	if (hostType === "proxy_host") {
 		assertUniqueLocations(data.locations);
+		assertForwardHostPlain(isAdmin, data, stored);
 		assertPathScheme(isAdmin, data, stored);
 		assertLocations(isAdmin, data.locations, stored?.locations);
 	}
@@ -179,6 +199,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 export {
 	assertAliasPrefix,
 	assertConfigFields,
+	assertForwardHostPlain,
 	assertHostConfig,
 	assertLocations,
 	assertPathScheme,

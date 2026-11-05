@@ -1,11 +1,31 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
-import { cleanStreamData } from "../lib/stream-rules.js";
+import { cleanStreamData, streamsConflict } from "../lib/stream-rules.js";
 import streamModel from "../models/stream.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalNginx from "./nginx.js";
+
+/**
+ * An incoming port is unique per protocol: nginx refuses a second listen on the same port. Only enabled streams
+ * count, because a disabled stream has no config until it is enabled (and then it is checked again). The check
+ * covers every owner's streams, not only the ones the caller can see.
+ *
+ * @param {Object}  stream      the stream as it will be stored: incoming_port, tcp_forwarding, udp_forwarding, enabled
+ * @param {Number}  [ownId]     the id of the stream being updated
+ */
+const assertPortFree = async (stream, ownId) => {
+	if (!stream.enabled) return;
+	const query = streamModel.query().where("enabled", 1);
+	if (ownId) query.whereNot("id", ownId);
+	const clash = (await query).find((other) => streamsConflict(stream, other));
+	if (clash) {
+		throw new errs.ValidationError(
+			`Another stream already uses the incoming port ${clash.incoming_port} for the same protocol. A port can be used once for TCP and once for UDP.`,
+		);
+	}
+};
 
 const internalStream = {
 	/**
@@ -28,6 +48,8 @@ const internalStream = {
 
 		access.can("streams:manage");
 		assertHostConfig(access, "stream", data);
+
+		await assertPortFree({ ...thisData, enabled: thisData.enabled ?? true });
 
 		thisData.owner_user_id = access.token.getUserId(1);
 
@@ -85,6 +107,13 @@ const internalStream = {
 		access.can("streams:manage");
 		// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
 		assertHostConfig(access, "stream", data, existingRow);
+
+		const changesListen =
+			thisData.incoming_port !== existingRow.incoming_port ||
+			["tcp_forwarding", "udp_forwarding", "enabled"].some(
+				(field) => Boolean(thisData[field]) !== Boolean(existingRow[field]),
+			);
+		if (changesListen) await assertPortFree(thisData, thisData.id);
 
 		if (createCertificate) {
 			const cert = await internalCertificate.createQuickCertificate(access, thisData);
@@ -192,6 +221,8 @@ const internalStream = {
 		if (row.enabled) {
 			throw new errs.ValidationError("Stream is already enabled");
 		}
+
+		await assertPortFree({ ...row, enabled: true }, row.id);
 
 		row.enabled = 1;
 

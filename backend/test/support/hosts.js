@@ -509,32 +509,24 @@ const hostTests = (ctx, type) => {
 		}
 	});
 
-	tc(
-		`${type.label}: answers PUT, DELETE, enable and disable with an id below 1 or text with 400`,
-		{
-			todo: "BUG-5",
-		},
-		async () => {
-			const calls = (id) => [
-				["PUT", () => admin.put(`${URL}/${id}`, edit)],
-				["DELETE", () => admin.delete(`${URL}/${id}`)],
-				["enable", () => admin.post(`${URL}/${id}/enable`)],
-				["disable", () => admin.post(`${URL}/${id}/disable`)],
-			];
-			for (const id of ["0", "-1", "abc"]) {
-				for (const [method, call] of calls(id)) {
-					const answer = await call();
-					assert.equal(answer.status, 400, `${method} ${id}: ${answer.status}`);
-				}
+	tc(`${type.label}: answers PUT, DELETE, enable and disable with an id below 1 or text with 400`, {}, async () => {
+		const calls = (id) => [
+			["PUT", () => admin.put(`${URL}/${id}`, edit)],
+			["DELETE", () => admin.delete(`${URL}/${id}`)],
+			["enable", () => admin.post(`${URL}/${id}/enable`)],
+			["disable", () => admin.post(`${URL}/${id}/disable`)],
+		];
+		for (const id of ["0", "-1", "abc"]) {
+			for (const [method, call] of calls(id)) {
+				const answer = await call();
+				assert.equal(answer.status, 400, `${method} ${id}: ${answer.status}`);
 			}
-		},
-	);
+		}
+	});
 
 	tc(
 		`${type.label}: does not act on host N for PUT, DELETE, enable or disable with the id N.5 or Nabc`,
-		{
-			todo: "BUG-6",
-		},
+		{},
 		async () => {
 			for (const suffix of [".5", "abc"]) {
 				const host = await created(await admin.post(URL, make()), "create");

@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Введите 6-значный код",
 	"error.details.hide": "Скрыть подробности",
 	"error.details.show": "Показать подробности",
+	"error.forward-host-variable-admin-only": "Только администраторы могут использовать переменную запроса ($) в хосте пересылки.",
 	"error.invalid-auth": "Неверный адрес эл. почты или пароль",
 	"error.invalid-code": "Неверный код проверки",
 	"error.invalid-domain": "Неверный домен: {domain}",

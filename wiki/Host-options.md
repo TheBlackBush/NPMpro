@@ -2,7 +2,7 @@
 
 Notes on some options of proxy hosts, redirection hosts, 404 hosts and streams. Many forms have changed compared to nginx-proxy-manager, so check them when you migrate (see [Migrating from Nginx Proxy Manager](Migrating-from-Nginx-Proxy-Manager)).
 
-- Forward Hostname / IP / Path: if the scheme is set to path you can just put here a path in and nginx works as a file server, otherwise you need to input ip/domain, you can also append a path to the ip/domain like `127.0.0.1/path` to proxy to a subpath.
+- Forward Hostname / IP / Path: if the scheme is set to path you can just put here a path in and nginx works as a file server, otherwise you need to input ip/domain, you can also append a path to the ip/domain like `127.0.0.1/path` to proxy to a subpath. Only administrators can put a request variable (`$`) in this field.
   - Mount your files under `/var/www` for the `path` scheme (see the commented volume in `compose.yaml`). Users who are not administrators can only use an absolute path inside `/var/www` (no `..`, no nginx variables); only administrators can serve another folder.
   - For custom locations with a set path, the path of the location will be stripped. So a request `GET /cdf/abc` to a custom location `/cdf` which proxies to `127.0.0.1/abc` will proxy to `127.0.0.1/abc/abc`, a custom location `/cdf/` which proxies to `127.0.0.1/` will proxy to `127.0.0.1/abc`  and a custom location `/cdf` which proxies to `127.0.0.1` will proxy to `127.0.0.1/cdf/abc`
   - If the scheme is set to `path`, a path ending with a `/` will be searched relative to the custom location (is uses nginx alias) and a path ending without a `/` will be searched relative to the main `/` location (it uses nginx root)

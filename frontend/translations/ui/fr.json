@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Saisissez le code à 6 chiffres",
 	"error.details.hide": "Masquer les détails",
 	"error.details.show": "Afficher les détails",
+	"error.forward-host-variable-admin-only": "Seuls les administrateurs peuvent utiliser une variable de requête ($) dans l'hôte de transfert.",
 	"error.invalid-auth": "Adresse e-mail ou mot de passe invalide",
 	"error.invalid-code": "Code de vérification invalide",
 	"error.invalid-domain": "Domaine invalide : {domain}",

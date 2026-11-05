@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Introduce el código de 6 dígitos",
 	"error.details.hide": "Ocultar detalles",
 	"error.details.show": "Mostrar detalles",
+	"error.forward-host-variable-admin-only": "Solo los administradores pueden usar una variable de solicitud ($) en el host de reenvío.",
 	"error.invalid-auth": "Correo electrónico o contraseña no válidos",
 	"error.invalid-code": "Código de verificación no válido",
 	"error.invalid-domain": "Dominio no válido: {domain}",

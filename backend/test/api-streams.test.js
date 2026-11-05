@@ -111,7 +111,7 @@ it("keeps the port of a TCP and a UDP stream apart: one port may serve both prot
 	assert.notEqual(udp.body.id, tcp.id);
 });
 
-it("refuses a second stream on the same port and protocol", { todo: "BUG-7" }, async () => {
+it("refuses a second stream on the same port and protocol", async () => {
 	const first = await created(await ctx.admin.post(URL, body({ incoming_port: "9500" })), "create");
 	const second = await ctx.admin.post(URL, body({ incoming_port: "9500" }));
 	const rows = await ctx.api.db("stream").where({ incoming_port: "9500" });
@@ -120,13 +120,87 @@ it("refuses a second stream on the same port and protocol", { todo: "BUG-7" }, a
 	assert.equal(rows[0].id, first.id);
 });
 
-it("refuses a port above 65535 or 0", { todo: "BUG-8" }, async () => {
+it("refuses a port above 65535 or 0", async () => {
 	const rows = await countRows(ctx.api, "stream");
 	for (const incoming_port of ["99999", "70000", "0"]) {
 		const answer = await ctx.admin.post(URL, body({ incoming_port }));
 		assert.equal(answer.status, 400, incoming_port);
 	}
 	assert.equal(await countRows(ctx.api, "stream"), rows);
+});
+
+it("treats overlapping port ranges on one protocol as a duplicate", async () => {
+	await created(await ctx.admin.post(URL, body({ incoming_port: "20000-20010" })), "range");
+	for (const incoming_port of ["20005", "20010-20020", "19990-20000", "19000-21000"]) {
+		const answer = await ctx.admin.post(URL, body({ incoming_port }));
+		assert.equal(answer.status, 400, incoming_port);
+	}
+	const next = await ctx.admin.post(URL, body({ incoming_port: "20011-20020" }));
+	assert.equal(next.status, 201, next.text);
+	const udp = await ctx.admin.post(
+		URL,
+		body({ incoming_port: "20005", tcp_forwarding: false, udp_forwarding: true }),
+	);
+	assert.equal(udp.status, 201, udp.text);
+});
+
+it("refuses to move a stream onto a used port, and lets it keep its own", async () => {
+	const first = await created(await ctx.admin.post(URL, body({ incoming_port: "20100" })), "first");
+	const second = await created(await ctx.admin.post(URL, body({ incoming_port: "20101" })), "second");
+	assert.equal((await ctx.admin.put(`${URL}/${second.id}`, { incoming_port: "20100" })).status, 400);
+	assert.equal((await ctx.admin.put(`${URL}/${second.id}`, { udp_forwarding: true })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${first.id}`, { incoming_port: "20100" })).status, 200);
+	const udp = await created(
+		await ctx.admin.post(URL, body({ incoming_port: "20100", tcp_forwarding: false, udp_forwarding: true })),
+		"udp",
+	);
+	assert.equal((await ctx.admin.put(`${URL}/${udp.id}`, { tcp_forwarding: true })).status, 400);
+});
+
+it("lets a disabled stream share a port and refuses to enable it while the port is used", async () => {
+	const first = await created(await ctx.admin.post(URL, body({ incoming_port: "20200" })), "first");
+	const second = await created(await ctx.admin.post(URL, body({ incoming_port: "20201" })), "second");
+	assert.equal((await ctx.admin.post(`${URL}/${second.id}/disable`)).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${second.id}`, { incoming_port: "20200" })).status, 200);
+	assert.equal((await ctx.admin.post(`${URL}/${second.id}/enable`)).status, 400);
+	assert.equal((await ctx.admin.post(`${URL}/${first.id}/disable`)).status, 200);
+	assert.equal((await ctx.admin.post(`${URL}/${second.id}/enable`)).status, 200);
+	assert.equal((await ctx.admin.post(`${URL}/${first.id}/enable`)).status, 400);
+});
+
+it("counts the streams of other users for the port check", async () => {
+	const user = await ctx.api.limited({ visibility: "user", streams: "manage", certificates: "view" });
+	await created(await ctx.admin.post(URL, body({ incoming_port: "20300" })), "admin");
+	const answer = await user.post(URL, body({ incoming_port: "20300" }));
+	assert.equal(answer.status, 400, answer.text);
+});
+
+it("lets a save that keeps the port, protocols and state work on a row that already duplicates another", async () => {
+	const first = await created(await ctx.admin.post(URL, body({ incoming_port: "20400" })), "first");
+	const second = await created(await ctx.admin.post(URL, body({ incoming_port: "20401" })), "second");
+	await ctx.api.db("stream").where({ id: second.id }).update({ incoming_port: "20400" });
+	const rename = await ctx.admin.put(`${URL}/${second.id}`, { npmpro_description: "repaired later" });
+	assert.equal(rename.status, 200, rename.text);
+	assert.equal((await ctx.admin.put(`${URL}/${second.id}`, { incoming_port: "20402" })).status, 200);
+	assert.notEqual(first.id, second.id);
+});
+
+it("accepts the ports 1 and 65535 and refuses 65536, a reversed range and a range past 65535", async () => {
+	for (const incoming_port of ["1", "65535"]) {
+		const answer = await ctx.admin.post(URL, body({ incoming_port }));
+		assert.equal(answer.status, 201, `${incoming_port}: ${answer.text}`);
+		await ctx.admin.delete(`${URL}/${answer.body.id}`);
+	}
+	for (const incoming_port of ["65536", "9010-9000", "65530-65540", "0-10", "00000"]) {
+		assert.equal((await ctx.admin.post(URL, body({ incoming_port }))).status, 400, incoming_port);
+	}
+});
+
+it("lets a save that keeps an out of range port work on an older row", async () => {
+	const stream = await created(await ctx.admin.post(URL, body({ incoming_port: "20500" })), "create");
+	await ctx.api.db("stream").where({ id: stream.id }).update({ incoming_port: "70000" });
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { npmpro_description: "x" })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { incoming_port: "70001" })).status, 400);
 });
 
 it("turns TLS, the certificate and PROXY protocol v1 off for UDP", async () => {

@@ -893,20 +893,40 @@ const VARIABLE_FORMS = [
 	["a variable in a cu_ upstream name with a path", "cu_a$http_x_foo/p"],
 ];
 for (const [label, forwardHost] of VARIABLE_FORMS) {
-	it(`refuses ${label}, on the host`, { todo: "BUG-9" }, async () => {
+	it(`refuses ${label}, on the host`, async () => {
 		const user = await limitedManager();
 		const answer = await user.post(URL, body({ forward_host: forwardHost }));
 		assert.equal(answer.status, 400, answer.text);
 	});
-	it(`refuses ${label}, in a custom location`, { todo: "BUG-9" }, async () => {
+	it(`refuses ${label}, in a custom location`, async () => {
 		const user = await limitedManager();
 		const answer = await user.post(URL, body({ locations: [{ path: "/p", forward_host: forwardHost }] }));
 		assert.equal(answer.status, 400, answer.text);
 	});
 }
 
-it("refuses a variable in the host part of the forward host", { todo: "BUG-9" }, async () => {
+it("refuses a variable in the host part of the forward host", async () => {
 	const user = await limitedManager();
 	const answer = await user.post(URL, body({ forward_host: "$http_x_foo" }));
 	assert.equal(answer.status, 400, answer.text);
+});
+
+it("lets an administrator save a request variable in the forward host, on the host and in a location", async () => {
+	const host = await ctx.admin.post(URL, body({ forward_host: "cu_$http_x_foo" }));
+	assert.equal(host.status, 201, host.text);
+	const location = await ctx.admin.post(
+		URL,
+		body({ locations: [{ path: "/p", forward_host: "app.internal/$http_x_foo" }] }),
+	);
+	assert.equal(location.status, 201, location.text);
+});
+
+it("lets a limited user keep a request variable an administrator set, and refuses to change it", async () => {
+	const user = await limitedManager();
+	const own = await ctx.admin.post(URL, body({ forward_host: "cu_$http_x_foo" }));
+	assert.equal(own.status, 201, own.text);
+	const stored = await ctx.api.db("proxy_host").where({ id: own.body.id }).first();
+	await ctx.api.db("proxy_host").where({ id: stored.id }).update({ owner_user_id: user.user.id });
+	assert.equal((await user.put(`${URL}/${stored.id}`, { forward_host: "cu_$http_x_foo" })).status, 200);
+	assert.equal((await user.put(`${URL}/${stored.id}`, { forward_host: "cu_$http_x_bar" })).status, 400);
 });

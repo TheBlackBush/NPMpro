@@ -332,6 +332,7 @@
 	"error.code-six-digits": "6자리 코드를 입력하세요",
 	"error.details.hide": "세부 정보 숨기기",
 	"error.details.show": "세부 정보 보기",
+	"error.forward-host-variable-admin-only": "전달 호스트에 요청 변수($)를 사용할 수 있는 사람은 관리자뿐입니다.",
 	"error.invalid-auth": "이메일 또는 비밀번호가 잘못되었습니다.",
 	"error.invalid-code": "잘못된 인증 코드입니다",
 	"error.invalid-domain": "잘못된 도메인: {domain}",

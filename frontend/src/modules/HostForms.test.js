@@ -154,6 +154,12 @@ it("stream: the same errors as the Formik fields", () => {
 			forwardingPort: "Enter a port from 1 to 65535, $server_port, or leave it empty",
 		},
 	);
+	for (const incomingPort of ["9010-9000", "65530-65540", "0-10"]) {
+		assert.deepEqual(validate({ ...filled, incomingPort }), {
+			incomingPort: "Enter a port from 1 to 65535 or a range such as 8000-8100",
+		});
+	}
+	assert.deepEqual(validate({ ...filled, incomingPort: "65535" }), {});
 	// a requested certificate: its domain names with wildcards, the DNS challenge (always on for streams)
 	assert.deepEqual(validate({ ...filled, certificateId: "new", npmproDnsChallenge: true }), {
 		domainNames: "This is required",

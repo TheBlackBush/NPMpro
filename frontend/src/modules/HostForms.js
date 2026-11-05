@@ -437,7 +437,10 @@ export const streamValidate = (rules) =>
 			if (text === "") return rules.message("error.required");
 			const match = PORT_RANGE.exec(text);
 			const valid =
-				match && isPort(match.groups.from) && (match.groups.to === undefined || isPort(match.groups.to));
+				match &&
+				isPort(match.groups.from) &&
+				(match.groups.to === undefined ||
+					(isPort(match.groups.to) && Number(match.groups.from) <= Number(match.groups.to)));
 			return valid ? undefined : rules.message("stream.incoming-port.invalid");
 		},
 		npmproDescription: rules.validateString(0, 255),

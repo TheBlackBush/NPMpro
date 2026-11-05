@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Wpisz 6-cyfrowy kod",
 	"error.details.hide": "Ukryj szczegóły",
 	"error.details.show": "Pokaż szczegóły",
+	"error.forward-host-variable-admin-only": "Tylko administratorzy mogą używać zmiennej żądania ($) w hoście przekierowania.",
 	"error.invalid-auth": "Nieprawidłowy email lub hasło",
 	"error.invalid-code": "Nieprawidłowy kod weryfikacyjny",
 	"error.invalid-domain": "Nieprawidłowa domena: {domain}",

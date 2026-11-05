@@ -9,6 +9,7 @@ import internalCertificate from "../../internal/certificate.js";
 import { getFieldDefinition } from "../../lib/dns-credential-values.js";
 import errs from "../../lib/error.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
+import pathId from "../../lib/express/path-id.js";
 import requireLogin from "../../lib/express/require-login.js";
 import apiValidator from "../../lib/validator/api.js";
 import validator from "../../lib/validator/index.js";
@@ -56,6 +57,8 @@ const router = express.Router({
 	strict: true,
 	mergeParams: true,
 });
+
+router.param("certificate_id", pathId);
 
 const downloadLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
