@@ -4,7 +4,7 @@ import { GlobeIcon } from "lucide-react";
 import { TapTooltip } from "src/components/TapTooltip";
 import { cn } from "src/lib/utils";
 
-function Flag({ className, countryCode }) {
+function Flag({ className, countryCode, tooltip = true }) {
 	if (countryCode === "EN") {
 		return <GlobeIcon className={cn("size-5", className)} aria-hidden="true" />;
 	}
@@ -16,12 +16,18 @@ function Flag({ className, countryCode }) {
 	}
 	// a thin themable edge (the theme border colour), so a white flag (Japan) does not melt into a light background
 	// the code in the themed tooltip (hover or focus; a tap on a flag does nothing else), the wrapper names the image
-	return (
+	const image = (
+		<span role="img" aria-label={countryCode} className={cn("inline-flex", className)}>
+			<FlagElement aria-hidden="true" className="rounded-sm border" width={20} />
+		</span>
+	);
+	// tooltip={false}: inside something that has its own tooltip (CountryName), so a label has just one
+	return tooltip ? (
 		<TapTooltip content={countryCode} tap={false}>
-			<span role="img" aria-label={countryCode} className={cn("inline-flex", className)}>
-				<FlagElement aria-hidden="true" className="rounded-sm border" width={20} />
-			</span>
+			{image}
 		</TapTooltip>
+	) : (
+		image
 	);
 }
 

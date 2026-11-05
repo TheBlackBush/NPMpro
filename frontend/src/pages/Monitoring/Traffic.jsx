@@ -522,6 +522,7 @@ function TrafficData({ data, range, params }) {
 							key: c.country,
 							label: <CountryName code={c.country} />,
 							title: countryLabel(c.country),
+							tip: false,
 							value: c.requests,
 						}))}
 					/>

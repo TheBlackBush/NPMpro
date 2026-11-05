@@ -1,5 +1,6 @@
 import { GlobeIcon } from "lucide-react";
 import { Flag } from "src/components";
+import { TapTooltip } from "src/components/TapTooltip";
 import { currentLocale, intl } from "src/locale";
 import { countryName, isCountryCode } from "src/modules/Monitoring";
 
@@ -16,15 +17,18 @@ const countryLabel = (code) =>
  * @param {string|null} props.code two-letter country code
  */
 function CountryName({ code }) {
+	// one tooltip for flag and name (hover and focus): the full name, which the cut label may not show
 	return (
-		<span className="inline-flex max-w-full items-center gap-2">
-			{isCountryCode(code) ? (
-				<Flag countryCode={code.toUpperCase()} className="shrink-0" />
-			) : (
-				<GlobeIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-			)}
-			<span className="truncate">{countryLabel(code)}</span>
-		</span>
+		<TapTooltip content={countryLabel(code)} tap={false}>
+			<span className="inline-flex max-w-full items-center gap-2">
+				{isCountryCode(code) ? (
+					<Flag countryCode={code.toUpperCase()} className="shrink-0" tooltip={false} />
+				) : (
+					<GlobeIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+				)}
+				<span className="truncate">{countryLabel(code)}</span>
+			</span>
+		</TapTooltip>
 	);
 }
 

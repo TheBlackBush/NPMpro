@@ -33,7 +33,7 @@ function FullText({ text, linked, children }) {
  * @param {{ key: string, label: import("react").ReactNode, title?: string, value: number,
  *          extra?: string, badge?: import("react").ReactNode, detail?: import("react").ReactNode, to?: string,
  *          ariaLabel?: string }[]} props.items
- *        rows in display order; `title` is the full text for the tooltip of a truncated name, `extra` a short
+ *        rows in display order; `tip: false` leaves the tooltip out (the label has its own; `title` still names the share bar), `title` is the full text for the tooltip of a truncated name, `extra` a short
  *        marker after the name (such as "+2"), `badge` a badge after it, `detail` a small line under the name
  *        and `to` a route the whole row links to (`ariaLabel` names that link; its share bar is then hidden from
  *        assistive technology)
@@ -75,11 +75,11 @@ function TopList({ title, items, total, formatValue = formatCount, tone = "prima
 										{idx + 1}
 									</Badge>
 									<div className="flex min-w-0 items-center gap-1">
-										<FullText text={item.title} linked={linked}>
+										<FullText text={item.tip === false ? null : item.title} linked={linked}>
 											<span className="truncate">{item.label}</span>
 										</FullText>
 										{item.extra ? (
-											<FullText text={item.title} linked={linked}>
+											<FullText text={item.tip === false ? null : item.title} linked={linked}>
 												<Badge variant="secondary">{item.extra}</Badge>
 											</FullText>
 										) : null}

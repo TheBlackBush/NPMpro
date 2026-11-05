@@ -290,6 +290,7 @@ function CrowdsecData({ data }) {
 									key: c.country,
 									label: <CountryName code={c.country} />,
 									title: countryLabel(c.country),
+									tip: false,
 									value: c.count,
 								}))}
 							/>
