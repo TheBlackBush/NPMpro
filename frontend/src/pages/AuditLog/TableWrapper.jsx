@@ -139,7 +139,7 @@ export default function TableWrapper() {
 										<T id="list.shown" data={{ shown: rows.length, total }} />
 									</span>
 								) : null}
-								<Button variant="link" size="sm" className="h-auto p-0" onClick={clearFilters}>
+								<Button variant="link" size="sm" className="h-auto min-h-6 p-0" onClick={clearFilters}>
 									<T id="list.clear-filters" />
 								</Button>
 							</div>

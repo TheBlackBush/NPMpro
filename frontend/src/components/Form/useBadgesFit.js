@@ -17,8 +17,8 @@ function naturalWidth(element, classes) {
  * Decides where a setting's badges go: true when they fit on the label's line (INLINE), false when they go to the
  * bottom of the setting after the hint (BOTTOM, also before the first measurement). It measures the label's and the
  * badges' natural widths against the row's width, so the answer does not depend on the current placement and cannot
- * oscillate; it re-measures when the row or the label resizes, when fonts load and after every render (a new locale
- * changes the texts).
+ * oscillate; it observes the row's size and re-measures when the row resizes, when fonts load and after every render
+ * (a new locale or label text changes the widths without resizing the row).
  *
  * @param   {Object}   options
  * @param   {boolean}  options.enabled       the field has badges

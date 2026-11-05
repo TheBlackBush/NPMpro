@@ -127,7 +127,7 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 							<Button
 								variant="link"
 								size="sm"
-								className="h-auto p-0"
+								className="h-auto min-h-6 p-0"
 								onClick={() => {
 									setText("");
 									clear();
