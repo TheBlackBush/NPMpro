@@ -1,6 +1,8 @@
 import { ExternalLinkIcon } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "src/components/ui/button";
+import { cn } from "src/lib/utils";
+import { PRIMARY_ACCENT } from "src/modules/SectionAccents";
 
 /**
  * Empty state for a monitoring source that is off or not set up, with an optional link to the settings section that
@@ -18,8 +20,10 @@ import { Button } from "src/components/ui/button";
 function EmptyState({ icon: Icon, title, subtitle, to, href, action, children }) {
 	return (
 		<div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-			<div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-				<Icon className="size-5" aria-hidden="true" />
+			<div
+				className={cn("mb-1 flex rounded-full border bg-card p-3", PRIMARY_ACCENT.border, PRIMARY_ACCENT.text)}
+			>
+				<Icon className="size-6" aria-hidden="true" />
 			</div>
 			<p className="m-0 text-base font-medium">{title}</p>
 			{subtitle ? <p className="m-0 max-w-prose text-sm text-muted-foreground">{subtitle}</p> : null}

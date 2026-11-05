@@ -13,9 +13,10 @@ export const mobileRole = (columnDef) => {
 // a cell hidden on phones, where its content shows in the phone title block
 export const PHONE_HIDDEN_CELL = "hidden md:table-cell";
 
-const hiddenClass = (columnDef) => {
+// hidden is the class a phone-hidden cell gets: PHONE_HIDDEN_CELL, or the container variant of a table that stacks by its width
+const hiddenClass = (columnDef, hidden = PHONE_HIDDEN_CELL) => {
 	const role = mobileRole(columnDef);
-	if (PHONE_HIDDEN.has(role)) return PHONE_HIDDEN_CELL;
+	if (PHONE_HIDDEN.has(role)) return hidden;
 	if (role === "hide-lg") return "hidden lg:table-cell";
 	return "";
 };

@@ -3,6 +3,7 @@ import { testHttpCertificate } from "src/api/backend";
 import { ApiErrorContent, AppModal, ErrorAlert, Loading } from "src/components";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
+import { reachabilityMessage } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { sectionIcon } from "src/shell/useNavItems";
@@ -37,34 +38,11 @@ const ReachabilityModal = EasyModal.create(({ visible, remove, domains }) => {
 		<>
 			{testResults.map((testResult) => {
 				const { domain, status } = testResult;
-				let messageComponent;
-
-				switch (status) {
-					case "ok":
-						messageComponent = <T id="certificates.http.reachability-ok" />;
-						break;
-					case "no-host":
-						messageComponent = <T id="certificates.http.reachability-not-resolved" />;
-						break;
-					case "failed":
-						messageComponent = <T id="certificates.http.reachability-failed-to-check" />;
-						break;
-					case "404":
-						messageComponent = <T id="certificates.http.reachability-404" />;
-						break;
-					case "wrong-data":
-						messageComponent = <T id="certificates.http.reachability-wrong-data" />;
-						break;
-					default: {
-						const code = status.slice(6);
-						messageComponent = <T id="certificates.http.reachability-other" data={{ code }} />;
-						break;
-					}
-				}
+				const message = reachabilityMessage(status);
 
 				return (
 					<p key={domain}>
-						<strong>{domain}:</strong> {messageComponent}
+						<strong>{domain}:</strong> <T id={message.id} data={message.data} />
 					</p>
 				);
 			})}

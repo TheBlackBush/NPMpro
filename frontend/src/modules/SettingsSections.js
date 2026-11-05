@@ -41,6 +41,3 @@ export const settingsHelpDoc = (id) =>
 		.split("-")
 		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 		.join("")}`;
-
-/** The sections with no help document of their own (the heading shows no "?"): the list sections of Administration */
-export const SECTIONS_WITHOUT_HELP = Object.freeze(["users", "audit-log"]);

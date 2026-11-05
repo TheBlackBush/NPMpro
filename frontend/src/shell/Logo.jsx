@@ -2,8 +2,8 @@ import { Link } from "react-router";
 import { cn } from "src/lib/utils";
 
 const FILE = { mark: "logo-mark", horizontal: "logo-horizontal" };
-// the horizontal artwork carries a small word mark, so it needs more height than the square mark to stay readable
-const HEIGHT = { mark: "h-8", horizontal: "h-10" };
+// the horizontal artwork carries a small word mark: 48 px high in the 56 px bar keeps it readable
+const HEIGHT = { mark: "h-8", horizontal: "h-12" };
 
 /**
  * The NPMpro logo as a link to the dashboard; both theme files are in the page and the `dark` class picks one.

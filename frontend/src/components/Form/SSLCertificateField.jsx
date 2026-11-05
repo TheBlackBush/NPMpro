@@ -1,4 +1,4 @@
-import { IconShield } from "@tabler/icons-react";
+import { ShieldIcon } from "lucide-react";
 import { memo } from "react";
 import { useController, useWatch } from "react-hook-form";
 import { certificateProviderTranslation } from "src/components";
@@ -32,14 +32,14 @@ const certificateOption = (cert) => ({
 	value: cert.id,
 	label: cert.niceName,
 	subLabel: `${intl.formatMessage({ id: certificateProviderTranslation(cert.provider) })} \u2014 ${intl.formatMessage({ id: "expires.on" }, { date: formatDateTime(cert.expiresOn) })}`,
-	icon: <IconShield size={14} className="text-success" />,
+	icon: <ShieldIcon aria-hidden="true" className="size-3.5 text-success" />,
 });
 
 const noneOption = (subtitle) => ({
 	value: 0,
 	label: intl.formatMessage({ id: "certificate.none.title" }),
 	subLabel: intl.formatMessage({ id: subtitle }),
-	icon: <IconShield size={14} className="text-destructive" />,
+	icon: <ShieldIcon aria-hidden="true" className="size-3.5 text-destructive" />,
 });
 
 // a certificate select on FormField: the placeholder while the certificates load, their error, or the select
@@ -100,7 +100,7 @@ export function SSLCertificateField({ label, allowNew, forHttp = true }) {
 						value: "new",
 						label: intl.formatMessage({ id: "certificates.request.title" }),
 						subLabel: intl.formatMessage({ id: "certificates.request.subtitle" }),
-						icon: <IconShield size={14} className="text-primary" />,
+						icon: <ShieldIcon aria-hidden="true" className="size-3.5 text-primary" />,
 					},
 				]
 			: []),

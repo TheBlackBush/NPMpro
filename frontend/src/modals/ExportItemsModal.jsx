@@ -25,6 +25,7 @@ import EasyModal from "src/modules/easyModal";
 import { errorPaths } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
 import { kindSection, sectionAccent } from "src/modules/SectionAccents";
+import { showSuccess } from "src/notifications";
 import { sectionIcon } from "src/shell/useNavItems";
 
 /**
@@ -292,6 +293,7 @@ function ExportContent({ kind, base, admin, onClose }) {
 				passphrase: values.secrets ? values.passphrase : undefined,
 			});
 			await downloadPendingBackup(result.pending, result.name);
+			showSuccess(intl.formatMessage({ id: "notification.export-done" }));
 			onClose();
 		} catch (err) {
 			setError(withErrorDetails(err));

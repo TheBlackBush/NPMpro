@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
@@ -15,7 +14,9 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
+import { Input } from "src/components/ui/input";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { customCertificateValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
@@ -40,14 +41,13 @@ function FileInput({ name, labelId }) {
 	return (
 		<FormField id={name} label={<T id={labelId} />} required error={error}>
 			{(control) => (
-				<input
+				<Input
 					{...control}
 					ref={field.ref}
 					name={name}
 					type="file"
 					required
 					autoComplete="off"
-					className={cn("form-control", error && "is-invalid")}
 					onBlur={field.onBlur}
 					onChange={(event) => {
 						field.onChange(event.currentTarget.files[0] ?? null);
@@ -119,14 +119,17 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title className="flex items-center gap-2">
 						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-						<T id={isEdit ? "object.edit" : "object.add"} tData={{ object: "certificates.custom" }} />
+						<T
+							id={isEdit ? "object.edit" : "object.add"}
+							tData={{ object: isMtls ? "mtls-certificate" : "certificates.custom" }}
+						/>
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
 						{errorMsg}
 					</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="certificates.custom.warning" />
 					</NoticeAlert>
 					<TextField

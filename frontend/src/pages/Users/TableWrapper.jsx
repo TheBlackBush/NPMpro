@@ -4,11 +4,11 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { adminDisableMfa, deleteUser, revokeSessions, toggleUser } from "src/api/backend";
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
-import { useListFilters, useUser, useUsers } from "src/hooks";
-import { T } from "src/locale";
+import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
+import { intl, T } from "src/locale";
 import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, showUserModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
-import { showApiError, showObjectSuccess } from "src/notifications";
+import { showApiError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
 import Table, { useColumns } from "./Table";
 
@@ -20,6 +20,7 @@ export default function TableWrapper() {
 	const { filters, setFilter, clear } = useListFilters();
 	const { isFetching, isPending, isError, error, data } = useUsers();
 	const { data: currentUser } = useUser("me");
+	const mfaUserIds = useUsersMfa(data, currentUser?.id);
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
@@ -81,6 +82,7 @@ export default function TableWrapper() {
 							onSortingChange={setSorting}
 							isFetching={isFetching}
 							currentUserId={currentUser?.id}
+							mfaUserIds={mfaUserIds}
 							onEditUser={(id) => showUserModal(id)}
 							onEditPermissions={(id) => showPermissionsModal(id)}
 							onSetPassword={(id) => showSetPasswordModal(id)}
@@ -95,7 +97,10 @@ export default function TableWrapper() {
 										await adminDisableMfa(id);
 										showObjectSuccess("user", "updated");
 									},
-									invalidations: [["users"], ["user", id]],
+									invalidations: [
+										["user", id],
+										["users-mfa", id],
+									],
 								});
 							}}
 							onRevokeSessions={(id) => {
@@ -107,7 +112,7 @@ export default function TableWrapper() {
 									details: user?.email,
 									onConfirm: async () => {
 										await revokeSessions(id);
-										showObjectSuccess("user", "updated");
+										showSuccess(intl.formatMessage({ id: "notification.user-sessions-revoked" }));
 									},
 									invalidations: [["users"], ["user", id]],
 								});

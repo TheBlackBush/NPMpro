@@ -8,7 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // NPMpro: a disabled (or aria-disabled) primary button is a grey button with an edge and a full-strength label (4.5:1 or more)
+        // in both themes; the shared 50% opacity left white on faded violet at 1.9:1 and almost no shape in dark
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/80 disabled:border-foreground/20 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 aria-disabled:border-foreground/20 aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -54,6 +57,8 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      // NPMpro: a plain button by default, so a button inside a form never submits it unless it asks to (type="submit")
+      type={asChild ? undefined : "button"}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

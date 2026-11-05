@@ -1,14 +1,13 @@
 import { Search } from "lucide-react";
 import { Button, HasPermission } from "src/components";
-import { STACKED_EMPTY_CELL, STACKED_EMPTY_ROW, useStacked } from "src/components/Table/StackedContext";
+import { useStack, useStacked } from "src/components/Table/StackedContext";
 import { TableCell, TableRow } from "src/components/ui/table";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
-import { colorAccent, PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
+import { PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
 
-// Buttons use the one primary colour. The section key (or an older caller's Tabler colour) gives the icon circle
-// its section accent.
+// Buttons use the one primary colour. The section key gives the icon circle its section accent.
 function EmptyData({
 	tableInstance,
 	onNew,
@@ -21,20 +20,19 @@ function EmptyData({
 	permission,
 	icon: Icon,
 	section,
-	color,
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
-	// the section key wins; older callers pass the Tabler colour of their section
-	const accent = section ? sectionAccent(section) : colorAccent(color);
+	const stack = useStack();
+	const accent = sectionAccent(section);
 	const tinted = accent !== PRIMARY_ACCENT && !isFiltered;
 	// role row and cell keep the row valid inside the stacked phone layout's role="rowgroup"
 	return (
-		<TableRow className={cn("hover:bg-transparent", stacked && STACKED_EMPTY_ROW)} role="row">
+		<TableRow className={cn("hover:bg-transparent", stacked && stack.emptyRow)} role="row">
 			<TableCell
 				colSpan={tableInstance.getAllFlatColumns().length}
 				role="cell"
-				className={cn("whitespace-normal", stacked && STACKED_EMPTY_CELL)}
+				className={cn("whitespace-normal", stacked && stack.emptyCell)}
 			>
 				<div className="flex flex-col items-center gap-2 py-10 text-center">
 					<div

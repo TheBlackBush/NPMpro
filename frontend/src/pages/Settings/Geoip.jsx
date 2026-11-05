@@ -70,12 +70,8 @@ function AccountFields({ data, isLocked }) {
 				<TextField
 					name="accountId"
 					id="geoip-account-id"
-					label={
-						<>
-							<T id="settings.geoip.account-id" />
-							{isLocked("accountId") ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.geoip.account-id" />}
+					badges={isLocked("accountId") ? <LockedBadge env={data.lockedBy?.accountId} /> : null}
 					type="text"
 					inputMode="numeric"
 					autoComplete="off"
@@ -85,12 +81,8 @@ function AccountFields({ data, isLocked }) {
 				<PasswordField
 					name="licenseKey"
 					id="geoip-license-key"
-					label={
-						<>
-							<T id="settings.geoip.license-key" />
-							{keyLocked ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.geoip.license-key" />}
+					badges={keyLocked ? <LockedBadge env={data.lockedBy?.licenseKey} /> : null}
 					autoComplete="new-password"
 					disabled={keyLocked}
 					placeholder={keyPlaceholder}
@@ -113,7 +105,7 @@ function AccountFields({ data, isLocked }) {
 }
 
 // the editions: one field (the chosen list, in the API's order), its switches on a controller
-function EditionFields({ isLocked }) {
+function EditionFields({ data, isLocked }) {
 	const { field } = useController({ name: "editions" });
 	const locked = isLocked("editions");
 	return (
@@ -123,7 +115,7 @@ function EditionFields({ isLocked }) {
 				legend={
 					<>
 						<T id="settings.geoip.editions" />
-						{locked ? <LockedBadge /> : null}
+						{locked ? <LockedBadge env={data.lockedBy?.editions} className="ms-2" /> : null}
 					</>
 				}
 				className="mb-0"
@@ -277,7 +269,7 @@ function GeoipForm({ data, background, setBackground }) {
 			) : null}
 			{background ? <StatusAlert variant="info" icon={Info} id="settings.geoip.background" /> : null}
 			<AccountFields data={data} isLocked={isLocked} />
-			<EditionFields isLocked={isLocked} />
+			<EditionFields data={data} isLocked={isLocked} />
 			<UpdateStatus data={data} />
 			<SaveButton allLocked={allLocked} />
 		</HookForm>

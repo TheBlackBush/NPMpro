@@ -35,7 +35,7 @@ export default function Layout() {
 	);
 
 	if (!current) {
-		return <ErrorNotFound />;
+		return <ErrorNotFound level={2} />;
 	}
 
 	const Section = current.element;
@@ -51,8 +51,8 @@ export default function Layout() {
 					id="settings-section"
 					value={current.id}
 					options={groups}
-					onValueChange={(id) => {
-						if (confirmLeave()) void navigate(`/settings/${id}`);
+					onValueChange={async (id) => {
+						if (await confirmLeave()) void navigate(`/settings/${id}`);
 					}}
 				/>
 			</div>

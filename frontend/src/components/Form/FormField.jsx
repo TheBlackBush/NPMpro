@@ -10,6 +10,8 @@ import { optionsFromElements } from "src/modules/SelectOptions";
 import { FieldMessage } from "./FieldMessage";
 import { useFieldError, useReadOnly } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
+import { SettingBadges } from "./SettingBadge";
+import { useBadgesFit } from "./useBadgesFit";
 
 /**
  * One field on shadcn's Field: the label (a red asterisk, hidden from screen readers, when required), the control,
@@ -21,6 +23,8 @@ import { PasswordControl } from "./PasswordInput";
  * @param {*}           [props.label]
  * @param {boolean}     [props.required]     the asterisk; the control takes the required attribute itself
  * @param {*}           [props.hint]
+ * @param {*}           [props.badges]       lock, restart and applies badges: beside the label when they fit, else
+ *                                           at the bottom after the hint; they describe the control
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
  * @param {string}      [props.className]    of the wrapper, "mb-3" by default
@@ -34,28 +38,45 @@ function FormField({
 	label,
 	required = false,
 	hint,
+	badges,
 	error = null,
 	describedBy,
 	className = "mb-3",
 	onLabelClick,
 	children,
 }) {
-	const aria = controlAria({ id, hasHint: Boolean(hint), error, describedBy });
+	const hasBadges = Children.toArray(badges).length > 0;
+	const aria = controlAria({ id, hasHint: Boolean(hint), hasBadges, error, describedBy });
 	// a read-only form (a window opened to view) asks for nothing, so it shows no required marks
 	const readOnly = useReadOnly();
+	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({ enabled: hasBadges && Boolean(label) });
+	const badgesRow = hasBadges ? (
+		<SettingBadges id={aria.badgesId} ref={badgesRef}>
+			{badges}
+		</SettingBadges>
+	) : null;
+	const labelNode = label ? (
+		<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick} ref={labelRef}>
+			{label}
+			{required && !readOnly ? (
+				<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
+					*
+				</span>
+			) : null}
+		</FieldLabel>
+	) : null;
 	return (
 		// no group role: the label already names the control, a named group around it only adds noise
 		<Field role="none" className={className} data-invalid={error ? true : undefined}>
-			{label ? (
-				<FieldLabel htmlFor={id} id={aria.labelId} onClick={onLabelClick}>
-					{label}
-					{required && !readOnly ? (
-						<span aria-hidden="true" className="text-destructive" data-slot="required-mark">
-							*
-						</span>
-					) : null}
-				</FieldLabel>
-			) : null}
+			{hasBadges && label ? (
+				// badges beside the label when both fit the row, else at the bottom of the setting after the hint
+				<div ref={rowRef} className="flex items-center gap-2">
+					{labelNode}
+					{inline ? badgesRow : null}
+				</div>
+			) : (
+				labelNode
+			)}
 			{children({
 				id,
 				"aria-invalid": aria["aria-invalid"],
@@ -64,6 +85,7 @@ function FormField({
 			})}
 			{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
 			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
+			{inline ? null : badgesRow}
 		</Field>
 	);
 }
@@ -77,6 +99,7 @@ function FormField({
  * @param {*}       [props.label]
  * @param {boolean} [props.required]
  * @param {*}       [props.hint]
+ * @param {*}       [props.badges]
  * @param {string}  [props.describedBy]
  * @param {string}  [props.className]          of the field
  * @param {Object}  [props.registerOptions]    register's options (onChange, setValueAs)
@@ -90,6 +113,7 @@ function TextField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -106,6 +130,7 @@ function TextField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}
@@ -134,6 +159,7 @@ function SelectField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -149,6 +175,7 @@ function SelectField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}
@@ -173,8 +200,7 @@ function SelectField({
 }
 
 /**
- * A password input of the form around it (register), with the eye button, on FormField. label may hold more than
- * the text (a lock badge).
+ * A password input of the form around it (register), with the eye button, on FormField. badges hold the lock badge.
  */
 function PasswordField({
 	name,
@@ -182,6 +208,7 @@ function PasswordField({
 	label,
 	required = false,
 	hint,
+	badges,
 	describedBy,
 	className,
 	registerOptions,
@@ -195,6 +222,7 @@ function PasswordField({
 			label={label}
 			required={required}
 			hint={hint}
+			badges={badges}
 			error={error}
 			describedBy={describedBy}
 			className={className}

@@ -3,25 +3,14 @@ import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { contrastRatio, parseHex } from "./ColorContrast.js";
 import { NAV_ITEMS } from "./Navigation.js";
-import {
-	colorAccent,
-	kindSection,
-	navAccent,
-	PRIMARY_ACCENT,
-	SECTION_ACCENTS,
-	sectionAccent,
-} from "./SectionAccents.js";
-import { SECTION_COLORS } from "./SectionColors.js";
+import { kindSection, navAccent, PRIMARY_ACCENT, SECTION_ACCENTS, SECTIONS, sectionAccent } from "./SectionAccents.js";
 
 const CSS = readFileSync(new URL("../styles/globals.css", import.meta.url), "utf8");
+const GRADIENT_Y =
+	/--brand-gradient-y:\s*linear-gradient\(180deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff\);/u;
 
 it("gives every section but settings an accent and everything else the primary look", () => {
-	assert.deepEqual(
-		Object.keys(SECTION_ACCENTS).toSorted(),
-		Object.keys(SECTION_COLORS)
-			.filter((key) => key !== "settings")
-			.toSorted(),
-	);
+	assert.deepEqual(Object.keys(SECTION_ACCENTS).toSorted(), SECTIONS.filter((key) => key !== "settings").toSorted());
 	assert.equal(sectionAccent("proxyHosts").text, "text-section-proxy");
 	assert.equal(sectionAccent("proxyHosts").bg, "bg-section-proxy/15");
 	assert.equal(sectionAccent("dnsCredentials"), sectionAccent("certificates"));
@@ -47,6 +36,9 @@ it("maps the nav ids to the accents and leaves dashboard, monitoring and setting
 		assert.equal(navAccent(id), PRIMARY_ACCENT, String(id));
 	}
 	assert.match(PRIMARY_ACCENT.underline, /brand-gradient/u);
+	// the sidebar's marker is a vertical bar: the vertical gradient token, defined next to the horizontal one
+	assert.equal(PRIMARY_ACCENT.marker, "data-[active=true]:before:bg-[image:var(--brand-gradient-y)]");
+	assert.match(CSS, GRADIENT_Y);
 	assert.ok(NAV_ITEMS.every((item) => navAccent(item.id)));
 });
 
@@ -79,15 +71,6 @@ it("has a token pair in globals.css for every accent class, 3:1 against page and
 			}
 		}
 	}
-});
-
-it("maps the old Tabler section colours to the accents", () => {
-	for (const key of Object.keys(SECTION_ACCENTS)) {
-		if (key === "dnsCredentials") assert.equal(colorAccent(SECTION_COLORS[key]), sectionAccent("certificates"));
-		else if (key === "auditLog") continue;
-		else assert.equal(colorAccent(SECTION_COLORS[key]), sectionAccent(key), key);
-	}
-	for (const color of ["primary", "teal", "nope", undefined]) assert.equal(colorAccent(color), PRIMARY_ACCENT);
 });
 
 it("maps every export kind to its section", () => {

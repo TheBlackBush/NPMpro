@@ -26,7 +26,9 @@
 		"/monitoring/traffic",
 		"/monitoring/crowdsec",
 		"/login",
-		"/no-such-page"
+		"/no-such-page",
+		"/settings/nope",
+		"/monitoring/nope"
 	],
 	"actions": [
 		{
@@ -270,6 +272,76 @@
 			]
 		},
 		{
+			"name": "profile window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit Profile']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "change password window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Change Password']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "mfa window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='MFA']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "waitFor": "[role=dialog] svg, [role=dialog] canvas" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "phone menu",
+			"route": "/",
+			"steps": [
+				{ "viewport": [390, 844] },
+				{ "click": "role=button[name='Toggle navigation']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "access list lifecycle",
+			"route": "/access",
+			"steps": [
+				{ "click": "role=button[name='Add Access List']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] input[name=name]" },
+				{ "press": "a" },
+				{ "press": "l" },
+				{ "click": "[role=dialog] [role=tab][data-tab=rules]" },
+				{ "click": "[role=dialog] input[placeholder^='192.168']" },
+				{ "press": ":" },
+				{ "press": ":" },
+				{ "press": "1" },
+				{ "click": "[role=dialog] >> role=button[name='Save']" },
+				{ "waitFor": "role=button[name='Actions for al']" },
+				{ "click": "role=button[name='Export']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for al']" },
+				{ "click": "role=menuitem[name='Edit']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for al']" },
+				{ "click": "role=menuitem[name='Delete']" },
+				{ "waitFor": "[role=alertdialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "sidebar layout",
 			"route": "/",
 			"steps": [
@@ -323,6 +395,7 @@
 			"name": "monitoring traffic on",
 			"route": "/settings/monitoring",
 			"steps": [
+				{ "skipIfDisabled": "#monitoring-traffic-enabled" },
 				{ "click": "#monitoring-traffic-enabled" },
 				{ "click": "form >> role=button[name='Save']" },
 				{ "waitFor": "[data-sonner-toast]" }

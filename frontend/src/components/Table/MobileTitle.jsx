@@ -1,5 +1,6 @@
 import { flexRender } from "@tanstack/react-table";
 import { phoneParts, summaryText, titleClass } from "src/modules/MobileColumns";
+import { useStack } from "./StackedContext";
 
 /**
  * The phone-only part of a stacked row, inside its title cell: the title, the cells marked title-end on its right,
@@ -9,6 +10,7 @@ import { phoneParts, summaryText, titleClass } from "src/modules/MobileColumns";
  * hidden): their renderers must not use fixed element ids or side effects that may only happen once.
  */
 function MobileTitle({ row, titleCell }) {
+	const stack = useStack();
 	const cells = row.getAllCells();
 	const columns = cells.map((cell) => cell.column.columnDef);
 	const parts = phoneParts(columns);
@@ -18,7 +20,7 @@ function MobileTitle({ row, titleCell }) {
 	};
 	const summary = summaryText(columns, row.original);
 	return (
-		<div className="md:hidden">
+		<div className={stack.phoneOnly}>
 			<div className="flex items-start gap-2">
 				<div className={titleClass()}>
 					{flexRender(titleCell.column.columnDef.cell, titleCell.getContext())}

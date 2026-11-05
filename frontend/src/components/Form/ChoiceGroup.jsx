@@ -1,8 +1,8 @@
-import cn from "clsx";
 import { useId } from "react";
 import { useController } from "react-hook-form";
 import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "src/components/ui/radio-group";
+import { cn } from "src/lib/utils";
 import { choiceGroupClass, choiceItemClass, controlAria, joinIds, legendClass } from "src/modules/FormFields";
 import { FieldMessage } from "./FieldMessage";
 

@@ -1,6 +1,5 @@
 import { Lock } from "lucide-react";
-import { Badge } from "src/components/ui/badge";
-import { cn } from "src/lib/utils";
+import { SettingBadge } from "src/components";
 import { T } from "src/locale";
 
 // the badge text of a lock by another setting's env var (backend LOCK_REASONS)
@@ -16,22 +15,32 @@ const REASON_BADGES = {
 	"force-mlkem-setting": "settings.nginx.locked.post-quantum",
 };
 
-const badgeIdOf = (env, reason) => {
-	if (!env) return "settings.authentication.locked";
-	return REASON_BADGES[reason] ?? "settings.runtime.locked";
-};
-
 /**
- * "Set by environment", with `env` "Set by <ENV>", and with an indirect lock `reason` its own wording ("Follows
- * <ENV>", "Off because of <ENV>", "Required by <ENV>")
+ * A direct lock reads "Set by environment" and explains "Set by <ENV>" in the badge's tooltip. An indirect lock
+ * `reason` keeps its own wording ("Follows <ENV>", "Off because of <ENV>", "Required by <ENV>") and its tooltip is
+ * the reason's sentence. Without `env` the badge is the plain "Set by environment".
  */
-function LockedBadge({ env, reason, className = "ms-2" }) {
+function LockedBadge({ env, reason, className }) {
+	const name = <span className="font-mono">{env}</span>;
+	if (env && Object.hasOwn(REASON_BADGES, reason)) {
+		return (
+			<SettingBadge
+				icon={Lock}
+				className={className}
+				description={<T id={`settings.runtime.locked.reason.${reason}`} data={{ env: name }} />}
+			>
+				<T id={REASON_BADGES[reason]} data={{ env: name }} />
+			</SettingBadge>
+		);
+	}
 	return (
-		// NPMpro: the badge text may wrap (a long variable name), so it is not a fixed height pill
-		<Badge variant="outline" className={cn("h-auto whitespace-normal break-all py-0.5 text-left", className)}>
-			<Lock aria-hidden="true" />
-			<T id={badgeIdOf(env, reason)} data={env ? { env: <span className="font-mono">{env}</span> } : undefined} />
-		</Badge>
+		<SettingBadge
+			icon={Lock}
+			className={className}
+			description={env ? <T id="settings.runtime.locked" data={{ env: name }} /> : undefined}
+		>
+			<T id="settings.authentication.locked" />
+		</SettingBadge>
 	);
 }
 

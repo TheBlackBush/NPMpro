@@ -1,6 +1,6 @@
-import cn from "clsx";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
 import { hostRecheckOnScheme } from "src/modules/ProxyHostForms";

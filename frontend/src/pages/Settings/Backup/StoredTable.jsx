@@ -232,6 +232,7 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, act
 	return (
 		<>
 			<TableLayout
+				stackBy="container"
 				tableInstance={tableInstance}
 				emptyState={
 					<EmptyData

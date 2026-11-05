@@ -20,6 +20,7 @@ const OBJECT_TYPES = [
 	"user",
 	"setting",
 	"backup-schedule",
+	"backup",
 	"database",
 ];
 const ACTIONS = [
@@ -32,6 +33,12 @@ const ACTIONS = [
 	"backup-failed",
 	"moved",
 	"move-failed",
+	"restored",
+	"merged",
+	"imported",
+	"exported",
+	"uploaded",
+	"downloaded",
 ];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
@@ -82,6 +89,13 @@ export default function TableWrapper() {
 	const firstPageFailed = !isPending && isError && !isFetchNextPageError && !rows.length;
 
 	const filtered = Boolean(query || objectType || action || userId);
+	const clearFilters = () => {
+		setSearch("");
+		setQuery("");
+		setObjectType("");
+		setAction("");
+		setUserId("");
+	};
 
 	return (
 		<section>
@@ -125,6 +139,18 @@ export default function TableWrapper() {
 							onChange={setUserId}
 							options={(users ?? []).map((u) => ({ value: `${u.id}`, label: u.name }))}
 						/>
+						{filtered ? (
+							<div className="flex w-full items-center justify-end gap-2 md:w-auto">
+								{total !== null ? (
+									<span className="text-sm text-muted-foreground">
+										<T id="list.shown" data={{ shown: rows.length, total }} />
+									</span>
+								) : null}
+								<Button variant="link" size="sm" className="h-auto min-h-6 p-0" onClick={clearFilters}>
+									<T id="list.clear-filters" />
+								</Button>
+							</div>
+						) : null}
 					</div>
 				</div>
 				{isPending ? (

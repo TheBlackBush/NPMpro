@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useFormState } from "react-hook-form";
 import { usePendingEntries } from "src/components/Form/HookForm";
-import { intl } from "src/locale";
+import { askDiscard } from "src/modals/DiscardChangesModal";
 
 /**
  * Place inside a HookForm, keeps dirtyRef in sync with the form's isDirty; typed text that is not a value yet (a
@@ -22,9 +22,8 @@ function DirtyTracker({ dirtyRef }) {
  */
 const useUnsavedChangesGuard = (remove) => {
 	const dirtyRef = useRef(false);
-	const close = () => {
-		// biome-ignore lint/suspicious/noAlert: a blocking confirm is enough for this guard
-		if (dirtyRef.current && !window.confirm(intl.formatMessage({ id: "unsaved-changes.confirm" }))) return;
+	const close = async () => {
+		if (dirtyRef.current && !(await askDiscard("unsaved-changes.confirm"))) return;
 		remove();
 	};
 	return { dirtyRef, close };

@@ -1,4 +1,4 @@
-import cn from "clsx";
+import { cn } from "src/lib/utils";
 import { legendClass, sectionClass } from "src/modules/FormFields";
 
 /**

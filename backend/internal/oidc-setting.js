@@ -1,4 +1,5 @@
 import { discovery } from "openid-client";
+import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
 import { clearDiscoveryCache, DISCOVERY_TIMEOUT_SECONDS, getOidcConfig, readStoredOidc } from "../lib/oidc-config.js";
 import { checkIcon, downloadIcon, removeIconFiles, writeIconFile } from "../lib/oidc-icon.js";
@@ -67,6 +68,7 @@ const internalOidcSetting = {
 			...sanitizeOidcRow(values),
 			client_secret_set: Boolean(secret) || cfg.secretError,
 			locked: cfg.locked,
+			locked_by: lockedByOf("oidc", cfg.locked),
 			active: cfg.active,
 			secret_error: cfg.secretError,
 			callback_url: cfg.values.redirect_domain ? callbackUrl(cfg.values.redirect_domain) : "",

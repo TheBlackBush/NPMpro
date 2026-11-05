@@ -208,6 +208,7 @@
 									}
 								},
 								"locked": [],
+								"locked_by": {},
 								"active": true,
 								"secret_error": false,
 								"callback_url": "https://npm.example.com/api/oidc/callback",

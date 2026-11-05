@@ -274,6 +274,7 @@ function Table({ data, categories, timeZone, running, addButton, handlers }) {
 
 	return (
 		<TableLayout
+			stackBy="container"
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData

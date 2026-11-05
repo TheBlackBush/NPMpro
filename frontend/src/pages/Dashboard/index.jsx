@@ -57,14 +57,14 @@ const Dashboard = () => {
 	return (
 		<div>
 			<PageHeader title={<T id="dashboard" />} />
-			<div className="flex flex-col gap-4">
+			<div className="@container flex flex-col gap-4">
 				{/* only while monitoring has anything to show, so the summary is not fetched otherwise */}
 				{user?.monitoring ? (
 					<HasPermission section={ADMIN} permission={VIEW} hideError>
 						<MonitoringRow />
 					</HasPermission>
 				) : null}
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<div className="grid gap-4 @lg:grid-cols-2 @4xl:grid-cols-4">
 					<HasPermission section={PROXY_HOSTS} permission={VIEW} hideError>
 						<DashboardTile to="/nginx/proxy" icon={ZapIcon} section="proxyHosts">
 							<T id="proxy-hosts.count" data={{ count: hostReport?.proxy }} />

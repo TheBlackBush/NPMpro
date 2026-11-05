@@ -239,22 +239,18 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 }
 
 /**
- * A number of the traffic statistics on the form layer's FormField: its label with the lock badge, the input (with
- * an optional unit), the error and the hint
+ * A number of the traffic statistics on the form layer's FormField: its label with the lock badge under it, the
+ * input (with an optional unit), the error and the hint
  */
-function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
+function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, envOf }) {
 	const { register } = useFormContext();
 	const error = useFieldError(name);
 	return (
 		<FormField
 			id={id}
 			className=""
-			label={
-				<>
-					<T id={labelId} />
-					{isLocked(name) ? <LockedBadge /> : null}
-				</>
-			}
+			label={<T id={labelId} />}
+			badges={isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
 			hint={hint}
 			error={error}
 		>
@@ -284,22 +280,18 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 	);
 }
 
-function Fields({ isLocked }) {
+function Fields({ isLocked, envOf }) {
 	const { register, clearErrors } = useFormContext();
 	const uniqueVisitors = useWatch({ name: "uniqueVisitors" });
-	const label = (key, id) => (
-		<>
-			<T id={id} />
-			{isLocked(key) ? <LockedBadge /> : null}
-		</>
-	);
+	const lock = (key) => (isLocked(key) ? <LockedBadge env={envOf(key)} /> : null);
 	return (
 		<Part titleId="settings.monitoring.statistics">
 			<SwitchList>
 				<SwitchField
 					{...register("trafficEnabled")}
 					id="monitoring-traffic-enabled"
-					label={label("trafficEnabled", "settings.monitoring.traffic")}
+					label={<T id="settings.monitoring.traffic" />}
+					badges={lock("trafficEnabled")}
 					hint={<T id="settings.monitoring.traffic.hint" />}
 					disabled={isLocked("trafficEnabled")}
 				/>
@@ -311,11 +303,13 @@ function Fields({ isLocked }) {
 					range={RETENTION}
 					unit={<T id="settings.monitoring.retention.days" />}
 					isLocked={isLocked}
+					envOf={envOf}
 				/>
 				<SwitchField
 					{...register("showIps")}
 					id="monitoring-show-ips"
-					label={label("showIps", "settings.monitoring.show-ips")}
+					label={<T id="settings.monitoring.show-ips" />}
+					badges={lock("showIps")}
 					hint={<T id="settings.monitoring.show-ips.hint" />}
 					disabled={isLocked("showIps")}
 				/>
@@ -327,7 +321,8 @@ function Fields({ isLocked }) {
 						},
 					})}
 					id="monitoring-unique-visitors"
-					label={label("uniqueVisitors", "settings.monitoring.unique-visitors")}
+					label={<T id="settings.monitoring.unique-visitors" />}
+					badges={lock("uniqueVisitors")}
 					hint={<T id="settings.monitoring.unique-visitors.hint" />}
 					disabled={isLocked("uniqueVisitors")}
 				/>
@@ -339,6 +334,7 @@ function Fields({ isLocked }) {
 						hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
 						range={VISITORS_CAP}
 						isLocked={isLocked}
+						envOf={envOf}
 					/>
 				) : null}
 			</SwitchList>
@@ -441,7 +437,7 @@ function MonitoringForm({ data, logs }) {
 				<LogFields />
 				<GoAccessFields />
 			</RuntimeContext.Provider>
-			<Fields isLocked={isLocked} />
+			<Fields isLocked={isLocked} envOf={(key) => data.lockedBy?.[key]} />
 			<SaveButton allLocked={allLocked} />
 		</HookForm>
 	);

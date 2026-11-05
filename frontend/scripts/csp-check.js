@@ -1,7 +1,9 @@
 // The CSP gate of the image smoke test (.github/workflows/docker.yml): opens every page and the listed menus and
 // windows of a fresh NPMpro in a real browser and fails on any Content Security Policy violation or page error.
 // The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
-// followed too (the Settings sections, the Monitoring tabs).
+// followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click,
+// waitFor (selectors), press (a key), viewport ([width, height], until the action ends) or skipIfDisabled (a selector:
+// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
 // set up, give that user's password in CSP_CHECK_PASSWORD (email admin@example.com).
@@ -46,10 +48,9 @@ async function watchedPage(browserContext) {
 	return watched;
 }
 
-// the app's error page (main.jsx's crash page, components/Unhealthy.jsx) renders without a page error or console error
+// the app's error pages (main.jsx's crash page, components/Unhealthy.jsx) carry data-error-page
 async function checkErrorPage(target, where) {
-	if (await target.locator('img[src="/images/unhealthy.svg"]').isVisible())
-		problems.push(`error page shown ${where}`);
+	if (await target.locator("[data-error-page]").first().isVisible()) problems.push(`error page shown ${where}`);
 }
 
 async function open(target, route) {
@@ -124,7 +125,13 @@ try {
 		page.step = `${action.route}: ${action.name}`;
 		try {
 			for (const step of action.steps) {
+				// an action that needs a control an env var may lock (TRAFFIC_STATS): skipped, and said so, when disabled
 				// biome-ignore lint/performance/noAwaitInLoops: the steps of an action run in order
+				if (step.skipIfDisabled && (await page.locator(step.skipIfDisabled).first().isDisabled())) {
+					console.log(`${page.step}: skipped (${step.skipIfDisabled} is disabled)`);
+					break;
+				}
+				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
 				if (step.click) await page.locator(step.click).first().click();
 				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
 				if (step.press) await page.keyboard.press(step.press);
@@ -135,6 +142,9 @@ try {
 			problems.push(
 				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
 			);
+		} finally {
+			// a phone action changes the size: every action starts on the desktop size again
+			await page.setViewportSize(options.viewport);
 		}
 		await checkErrorPage(page, `on ${action.route} (after ${action.name})`);
 	}

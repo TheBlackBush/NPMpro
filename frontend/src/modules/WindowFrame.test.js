@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "./WindowFrame.js";
+import {
+	bumpsOnOutside,
+	canClose,
+	dialogWidthClass,
+	sheetWidthClass,
+	windowMode,
+	windowPrimitive,
+} from "./WindowFrame.js";
 
 it("phones always get a full-screen window", () => {
 	assert.equal(windowMode({ editorStyle: "sheet", size: "lg", isPhone: true }), "fullscreen");
@@ -43,4 +50,14 @@ it("sheet widths per size, full screen on a phone", () => {
 	const full = sheetWidthClass("full").split(" ");
 	assert.ok(full.includes("data-[side=right]:w-full"));
 	assert.ok(full.includes("data-[side=right]:sm:max-w-none"));
+});
+
+it("a refused outside click bumps the window, unless stacked, full screen or reduced motion", () => {
+	const base = { mode: "dialog", refused: true, stacked: false, reducedMotion: false };
+	assert.equal(bumpsOnOutside(base), true);
+	assert.equal(bumpsOnOutside({ ...base, mode: "sheet" }), true);
+	assert.equal(bumpsOnOutside({ ...base, refused: false }), false);
+	assert.equal(bumpsOnOutside({ ...base, stacked: true }), false);
+	assert.equal(bumpsOnOutside({ ...base, mode: "fullscreen" }), false);
+	assert.equal(bumpsOnOutside({ ...base, reducedMotion: true }), false);
 });

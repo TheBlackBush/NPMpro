@@ -71,7 +71,7 @@ function ColorFields() {
 							checked={color.toLowerCase() === preset.value}
 							onChange={() => setColor(preset.value)}
 						/>
-						{/* inline because the preset colours are data (Tabler palette values), not classes */}
+						{/* inline because the preset colours are data (preset palette values), not classes */}
 						<span
 							className="block size-7 rounded-md border ring-offset-background peer-checked:ring-2 peer-checked:ring-ring peer-checked:ring-offset-2 peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
 							style={{ backgroundColor: preset.value }}

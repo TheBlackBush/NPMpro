@@ -41,9 +41,13 @@ export function CertificateTabs() {
 					<T id={tab.labelId} />
 					{counts[tab.key] === undefined ? null : (
 						<>
-							{/* the sr-only count reads "Certificates, 5 items" */}
-							<span className="sr-only">, </span>
-							<CountBadge count={counts[tab.key]} section="certificates" />
+							{/* the badge is for the eyes; the link reads "Certificates, 5 items" once */}
+							<span className="sr-only">
+								, {intl.formatMessage({ id: "list.count" }, { count: counts[tab.key] })}
+							</span>
+							<span aria-hidden="true" className="contents">
+								<CountBadge count={counts[tab.key]} section="certificates" />
+							</span>
 						</>
 					)}
 				</Link>

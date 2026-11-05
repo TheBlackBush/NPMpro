@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { HelpButton } from "src/modals";
-import { SECTIONS_WITHOUT_HELP, settingsHelpDoc } from "src/modules/SettingsSections";
+import { settingsHelpDoc } from "src/modules/SettingsSections";
 
 // the id of the Settings section on screen (Layout provides it), so its heading opens the section's help document
 const SettingsSectionContext = createContext(null);
@@ -23,7 +23,7 @@ function SettingsHeading({ titleId, className = "mb-4", actions }) {
 			<h2 className="text-xl font-semibold">
 				<T id={titleId} />
 			</h2>
-			{section && !SECTIONS_WITHOUT_HELP.includes(section) ? <HelpButton doc={settingsHelpDoc(section)} /> : null}
+			{section ? <HelpButton doc={settingsHelpDoc(section)} /> : null}
 			{actions ? <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div> : null}
 		</div>
 	);

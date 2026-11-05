@@ -62,7 +62,6 @@ export * from "./getRedirectionHost";
 export * from "./getRedirectionHosts";
 export * from "./getRuntimeSettings";
 export * from "./getSetting";
-export * from "./getSettings";
 export * from "./getStream";
 export * from "./getStreams";
 export * from "./getToken";

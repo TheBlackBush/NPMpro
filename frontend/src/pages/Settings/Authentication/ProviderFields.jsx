@@ -25,17 +25,13 @@ const WATCHED = ["issuerUrl", "clientId", "clientSecret"];
 /**
  * A text setting of the provider on the form layer's TextField: the lock badge in its label, disabled while locked
  */
-function ProviderText({ name, label, hint, locked, type = "text", placeholder, onChange }) {
+function ProviderText({ name, label, hint, locked, env, type = "text", placeholder, onChange }) {
 	return (
 		<TextField
 			name={name}
 			id={`oidc-${name}`}
-			label={
-				<>
-					{label}
-					{locked ? <LockedBadge /> : null}
-				</>
-			}
+			label={label}
+			badges={locked ? <LockedBadge env={env} /> : null}
 			hint={hint}
 			className=""
 			registerOptions={onChange ? { onChange } : undefined}
@@ -104,6 +100,8 @@ function ProviderFields({ data, isLocked }) {
 		});
 	};
 
+	// the variable that sets a locked field (locked_by, camelized by base.js), shown in its badge
+	const envOf = (key) => data.lockedBy?.[key];
 	const secretLocked = isLocked("clientSecret");
 	// With every connection value from env vars OIDC is active whatever the stored switch says
 	const envOnly = CONNECTION_KEYS.every((key) => isLocked(key));
@@ -126,12 +124,8 @@ function ProviderFields({ data, isLocked }) {
 			<SwitchList>
 				<SwitchField
 					id="oidc-enabled"
-					label={
-						<>
-							<T id="settings.authentication.enabled" />
-							{enabledLocked ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.authentication.enabled" />}
+					badges={enabledLocked ? <LockedBadge env={envOf("enabled")} /> : null}
 					name={enabledField.name}
 					ref={enabledField.ref}
 					onBlur={enabledField.onBlur}
@@ -149,6 +143,7 @@ function ProviderFields({ data, isLocked }) {
 				label={<T id="settings.authentication.issuer-url" />}
 				hint={<T id="settings.authentication.issuer-url.hint" />}
 				locked={isLocked("issuerUrl")}
+				env={envOf("issuerUrl")}
 				placeholder="https://"
 				onChange={recheckAfter("issuerUrl")}
 			/>
@@ -156,18 +151,15 @@ function ProviderFields({ data, isLocked }) {
 				name="clientId"
 				label={<T id="settings.authentication.client-id" />}
 				locked={isLocked("clientId")}
+				env={envOf("clientId")}
 				onChange={recheckAfter("clientId")}
 			/>
 			{/* a locked secret stays empty: the environment's secret is never shown */}
 			<PasswordField
 				name="clientSecret"
 				id="oidc-clientSecret"
-				label={
-					<>
-						<T id="settings.authentication.client-secret" />
-						{secretLocked ? <LockedBadge /> : null}
-					</>
-				}
+				label={<T id="settings.authentication.client-secret" />}
+				badges={secretLocked ? <LockedBadge env={envOf("clientSecret")} /> : null}
 				autoComplete="new-password"
 				className=""
 				disabled={secretLocked}
@@ -179,6 +171,7 @@ function ProviderFields({ data, isLocked }) {
 				label={<T id="settings.authentication.redirect-domain" />}
 				hint={<T id="settings.authentication.redirect-domain.hint" />}
 				locked={isLocked("redirectDomain")}
+				env={envOf("redirectDomain")}
 				onChange={recheckAfter("redirectDomain")}
 			/>
 			<FormField
@@ -206,7 +199,12 @@ function ProviderFields({ data, isLocked }) {
 			<div className="sr-only" aria-live="polite">
 				{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
 			</div>
-			<ProviderText name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
+			<ProviderText
+				name="scopes"
+				label={<T id="settings.authentication.scopes" />}
+				locked={isLocked("scopes")}
+				env={envOf("scopes")}
+			/>
 			<Button
 				outline
 				color="secondary"

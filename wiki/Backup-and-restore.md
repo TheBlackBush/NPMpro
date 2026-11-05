@@ -2,6 +2,11 @@
 
 NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` file and restores them on the same or another instance (SQLite, MySQL/MariaDB or Postgres). Copying the whole `/data` folder is not needed for it. You find it under Settings, Backup and restore; only administrators see it. This page has every detail.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/backup-dark.png">
+  <img alt="Settings, Backup and restore" src="images/backup-light.png" width="720">
+</picture>
+
 ## What a backup holds
 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams

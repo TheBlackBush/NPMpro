@@ -22,7 +22,9 @@ function SettingsCard({ title, description, actions, footer, children, className
 						{title ? <h3 className="text-base font-medium">{title}</h3> : null}
 						{description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
 					</div>
-					{actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
+					{actions ? (
+						<div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>
+					) : null}
 				</div>
 			) : null}
 			<div className={cn("space-y-4 p-4", bodyClassName)}>{children}</div>

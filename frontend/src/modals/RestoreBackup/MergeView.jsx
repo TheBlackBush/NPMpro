@@ -369,7 +369,7 @@ export function MergeView({
 						<Button
 							type="button"
 							variant="link"
-							className="mb-3 h-auto p-0"
+							className="mb-3 h-auto min-h-6 p-0"
 							aria-expanded={showAll}
 							aria-controls={allId}
 							onClick={() => setShowAll((value) => !value)}

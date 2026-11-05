@@ -1,4 +1,4 @@
-import cn from "clsx";
+import { cn } from "src/lib/utils";
 import { switchListClass } from "src/modules/FormFields";
 
 /**

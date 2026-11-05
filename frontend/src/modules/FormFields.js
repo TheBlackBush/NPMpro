@@ -2,7 +2,7 @@
  * Rules of the shared form layer (components/Form/FormField.jsx and friends): reading a value at a field path, how a
  * control is described, the classes of the groups. Pure, so node --test checks them without a DOM.
  */
-import cn from "clsx";
+import { cn } from "cn";
 
 // the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;
@@ -54,18 +54,26 @@ export function joinIds(...ids) {
  * @param   {Object}  options
  * @param   {string}  options.id
  * @param   {boolean} [options.hasHint]
+ * @param   {boolean} [options.hasBadges]  the field has a row of badges
  * @param   {string|null} [options.error]  the message that shows
  * @param   {string}  [options.describedBy]
  */
-export function controlAria({ id, hasHint = false, error = null, describedBy }) {
+export function controlAria({ id, hasHint = false, hasBadges = false, error = null, describedBy }) {
 	const hintId = `${id}-hint`;
 	const errorId = `${id}-error`;
+	const badgesId = `${id}-badges`;
 	return {
 		labelId: `${id}-label`,
 		hintId,
 		errorId,
+		badgesId,
 		"aria-invalid": error ? "true" : undefined,
-		"aria-describedby": joinIds(error ? errorId : null, hasHint ? hintId : null, describedBy),
+		"aria-describedby": joinIds(
+			error ? errorId : null,
+			hasHint ? hintId : null,
+			hasBadges ? badgesId : null,
+			describedBy,
+		),
 	};
 }
 

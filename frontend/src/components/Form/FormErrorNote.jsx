@@ -1,6 +1,6 @@
-import cn from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useFormState } from "react-hook-form";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { errorPaths, orderErrorPaths } from "src/modules/HookForm";
 import { useFieldOrder } from "./HookForm";

@@ -7,7 +7,10 @@ export function StatusFormatter({ enabled, nginxOnline, nginxErr }) {
 		return (
 			<Popover>
 				<PopoverTrigger asChild>
-					<button type="button" className="rounded-4xl focus-visible:ring-[3px] focus-visible:ring-ring/50">
+					<button
+						type="button"
+						className="inline-flex min-h-6 items-center rounded-4xl focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					>
 						<StatusBadge tone="destructive" className="cursor-pointer">
 							<T id="status.config-error" />
 						</StatusBadge>

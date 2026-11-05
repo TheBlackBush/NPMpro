@@ -4,6 +4,7 @@ import { TableHead, TableRow, TableHeader as UiTableHeader } from "src/component
 import { cn } from "src/lib/utils";
 import { headerClass } from "src/modules/MobileColumns";
 import { ariaSort } from "src/modules/TableSort";
+import { useStack } from "./StackedContext";
 
 const SORT_ICON = { asc: ArrowUp, desc: ArrowDown };
 const WHITESPACE = /\s+/u;
@@ -12,8 +13,9 @@ const WHITESPACE = /\s+/u;
 function TableHeader({ tableInstance, scroll = false }) {
 	// stacked layout: explicit roles, see TableLayout
 	const role = (name) => (scroll ? undefined : name);
+	const stack = useStack();
 	return (
-		<UiTableHeader className={cn(!scroll && "max-md:hidden")} role={role("rowgroup")}>
+		<UiTableHeader className={cn(!scroll && stack.headerHidden)} role={role("rowgroup")}>
 			{tableInstance.getHeaderGroups().map((headerGroup) => (
 				<TableRow key={headerGroup.id} className="hover:bg-transparent" role={role("row")}>
 					{headerGroup.headers.map((header) => {
@@ -21,7 +23,7 @@ function TableHeader({ tableInstance, scroll = false }) {
 						const className = cn(
 							"text-xs font-semibold uppercase tracking-wide text-muted-foreground",
 							column.columnDef.meta?.className,
-							headerClass(column.columnDef),
+							headerClass(column.columnDef, stack.hiddenCell),
 						);
 						const label = typeof column.columnDef.header === "string" ? column.columnDef.header : null;
 						if (!label || !column.getCanSort()) {

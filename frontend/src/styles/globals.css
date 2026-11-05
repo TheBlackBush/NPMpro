@@ -91,6 +91,7 @@
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.54 0.25 293);
 	--brand-gradient: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
+	--brand-gradient-y: linear-gradient(180deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
 	--chart-1: oklch(0.87 0 0);
 	--chart-2: oklch(0.556 0 0);
 	--chart-3: oklch(0.439 0 0);

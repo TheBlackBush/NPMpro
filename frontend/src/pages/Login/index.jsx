@@ -10,7 +10,7 @@ import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
 import { CODE_VALUES, codeComplete, codeOf } from "src/modules/AccountForms";
-import { getCookie } from "src/modules/Cookies";
+import { deleteCookie, getCookie } from "src/modules/Cookies";
 import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
 import { validateEmail } from "src/modules/Validations";
 import { AuthLayout } from "src/shell/AuthLayout";
@@ -186,7 +186,7 @@ function PasswordForm({ oidcError, noRedirect }) {
 		} else if (!emailRef.current?.form?.contains(document.activeElement)) {
 			emailRef.current?.focus();
 		}
-		window.cookieStore.delete("__Host-npmpro_oidc_no_redirect");
+		deleteCookie("__Host-npmpro_oidc_no_redirect");
 	}, [passwordAllowed, oidcActive, noRedirect]);
 
 	return (

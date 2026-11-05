@@ -79,7 +79,7 @@ function AccordionContent({
 }
 
 // NPMpro: Radix renders the children of a closed item only while it is open (even with forceMount), so fields would
-// leave the DOM. This panel stays mounted and is hidden while closed (the old Bootstrap behaviour); `id` is what the
+// leave the DOM. This panel stays mounted and is hidden while closed (so form state in it survives); `id` is what the
 // trigger's aria-controls points to. No height animation, and no overflow clipping of focus rings.
 function AccordionPanel({
   className,

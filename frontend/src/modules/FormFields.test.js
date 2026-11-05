@@ -41,6 +41,7 @@ it("describes a control by its error and its hint together", () => {
 		labelId: "name-label",
 		hintId: "name-hint",
 		errorId: "name-error",
+		badgesId: "name-badges",
 		"aria-invalid": "true",
 		"aria-describedby": "name-error name-hint",
 	});
@@ -51,6 +52,13 @@ it("keeps the hint without an error and adds the caller's ids", () => {
 	assert.equal(aria["aria-invalid"], undefined);
 	assert.equal(aria["aria-describedby"], "name-hint name-note");
 	assert.equal(controlAria({ id: "x" })["aria-describedby"], undefined);
+});
+
+it("describes a control by its badges after the hint", () => {
+	const aria = controlAria({ id: "x", hasHint: true, hasBadges: true, error: "Bad", describedBy: "x-note" });
+	assert.equal(aria.badgesId, "x-badges");
+	assert.equal(aria["aria-describedby"], "x-error x-hint x-badges x-note");
+	assert.equal(controlAria({ id: "x", hasBadges: true })["aria-describedby"], "x-badges");
 });
 
 it("classes the legend of a section", () => {

@@ -9,6 +9,7 @@ import {
 	dnsCertificateValidate,
 	dnsCredentialValidate,
 	httpCertificateValidate,
+	reachabilityMessage,
 } from "./CertificateForms.js";
 import { createValidations } from "./ValidationRules.js";
 
@@ -164,4 +165,29 @@ it("DNS credential: every provider field starts with its saved value or empty", 
 	);
 	assert.deepEqual(credentialFieldValues(providers[2], null), {});
 	assert.deepEqual(credentialFieldValues(undefined, null), {});
+});
+
+it("fixed statuses map to their messages", () => {
+	assert.deepEqual(reachabilityMessage("ok"), { id: "certificates.http.reachability-ok" });
+	assert.deepEqual(reachabilityMessage("404"), { id: "certificates.http.reachability-404" });
+	assert.deepEqual(reachabilityMessage("wrong-data"), { id: "certificates.http.reachability-wrong-data" });
+});
+
+it("an HTTP status code keeps the status code message", () => {
+	assert.deepEqual(reachabilityMessage("other:502"), {
+		id: "certificates.http.reachability-other",
+		data: { code: "502" },
+	});
+});
+
+it("an error text gets its own message without its trailing full stop", () => {
+	assert.deepEqual(reachabilityMessage("other:Connection timed out."), {
+		id: "certificates.http.reachability-error",
+		data: { error: "Connection timed out" },
+	});
+});
+
+it("an other status without detail falls back to the failed message", () => {
+	assert.deepEqual(reachabilityMessage("other:"), { id: "certificates.http.reachability-failed-to-check" });
+	assert.deepEqual(reachabilityMessage("other: "), { id: "certificates.http.reachability-failed-to-check" });
 });

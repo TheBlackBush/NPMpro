@@ -1,3 +1,4 @@
+import { ServerCrash } from "lucide-react";
 import { Button } from "src/components/Button";
 import { Card, CardContent } from "src/components/ui/card";
 import { T } from "src/locale";
@@ -8,7 +9,10 @@ export function Unhealthy() {
 		<AuthLayout>
 			<Card>
 				<CardContent className="flex flex-col items-center gap-3 text-center">
-					<img src="/images/unhealthy.svg" alt="" className="size-32" />
+					{/* data-error-page: the CSP gate's marker of an error page */}
+					<div data-error-page className="flex size-20 items-center justify-center rounded-full bg-muted">
+						<ServerCrash aria-hidden="true" className="size-10 text-muted-foreground" />
+					</div>
 					<h1 className="m-0 font-semibold text-xl">
 						<T id="unhealthy.title" />
 					</h1>

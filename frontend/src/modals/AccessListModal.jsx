@@ -20,6 +20,7 @@ import {
 	useAppForm,
 	useReadOnly,
 } from "src/components";
+import { FieldMessage } from "src/components/Form/FieldMessage";
 import { DirtyTracker, useAccessList, useCanManage, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
@@ -64,9 +65,9 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 					{errorMsg}
 				</ErrorAlert>
 				{errors.accessRules && isSubmitted ? (
-					<div className="invalid-feedback d-block mb-3" role="alert">
+					<FieldMessage role="alert" className="mb-3">
 						{errors.accessRules.message}
-					</div>
+					</FieldMessage>
 				) : null}
 				<ModalTabs tabs={ACCESS_LIST_TABS}>
 					<TabPane id="details">

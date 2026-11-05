@@ -20,12 +20,8 @@ function SignInRules({ data, isLocked }) {
 		<SwitchField
 			{...register(name, name === "disablePassword" ? { onChange: () => void trigger(name) } : undefined)}
 			id={`oidc-${name}`}
-			label={
-				<>
-					<T id={labelId} />
-					{isLocked(name) ? <LockedBadge /> : null}
-				</>
-			}
+			label={<T id={labelId} />}
+			badges={isLocked(name) ? <LockedBadge env={data.lockedBy?.[name]} /> : null}
 			hint={hintId ? <T id={hintId} /> : null}
 			disabled={isLocked(name) || extra.disabled}
 			error={errors[name]?.message}
