@@ -6,6 +6,7 @@ Signing in to the NPMpro web UI: passwords, two-factor authentication and OIDC. 
   <source media="(prefers-color-scheme: dark)" srcset="images/login-dark.png">
   <img alt="The sign-in page" src="images/login-light.png" width="720">
 </picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/phone-login-dark.png">
   <img alt="The sign-in page on a phone" src="images/phone-login-light.png" width="260">

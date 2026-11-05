@@ -45,6 +45,7 @@ Both choices are saved in your browser, so each browser or device keeps its own.
   <source media="(prefers-color-scheme: dark)" srcset="images/proxy-host-dialog-dark.png">
   <img alt="A proxy host in an edit dialog" src="images/proxy-host-dialog-light.png" width="720">
 </picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/proxy-host-sheet-dark.png">
   <img alt="The same proxy host in a side sheet" src="images/proxy-host-sheet-light.png" width="720">
@@ -58,6 +59,7 @@ The theme (**Light**, **Dark** or **System**, which follows the operating system
   <source media="(prefers-color-scheme: dark)" srcset="images/command-palette-dark.png">
   <img alt="The command palette listing pages" src="images/command-palette-light.png" width="720">
 </picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/appearance-menu-dark.png">
   <img alt="The Appearance part of the user menu" src="images/appearance-menu-light.png" width="720">
@@ -71,10 +73,12 @@ On a narrow screen the menu button in the header opens the navigation. Edit wind
   <source media="(prefers-color-scheme: dark)" srcset="images/phone-dashboard-dark.png">
   <img alt="The dashboard on a phone" src="images/phone-dashboard-light.png" width="260">
 </picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/phone-proxy-hosts-dark.png">
   <img alt="The proxy host list as cards on a phone" src="images/phone-proxy-hosts-light.png" width="260">
 </picture>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/phone-menu-dark.png">
   <img alt="The navigation menu on a phone" src="images/phone-menu-light.png" width="260">
