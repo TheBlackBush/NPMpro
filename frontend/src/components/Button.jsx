@@ -49,7 +49,9 @@ function Button({
 				variant === "destructive" && DESTRUCTIVE_TEXT,
 				className,
 				fullWidth && "w-full",
-				blocked && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+				// the primary look has its own grey blocked state (ui/button.jsx); the others fade
+				blocked && "aria-disabled:cursor-not-allowed",
+				blocked && variant !== "default" && "aria-disabled:opacity-50",
 			)}
 			onClick={(e) => {
 				if (blocked) {

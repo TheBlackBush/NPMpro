@@ -119,7 +119,10 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 				<AppModal.Header closeButton={!isSubmitting}>
 					<AppModal.Title className="flex items-center gap-2">
 						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-						<T id={isEdit ? "object.edit" : "object.add"} tData={{ object: "certificates.custom" }} />
+						<T
+							id={isEdit ? "object.edit" : "object.add"}
+							tData={{ object: isMtls ? "mtls-certificate" : "certificates.custom" }}
+						/>
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
