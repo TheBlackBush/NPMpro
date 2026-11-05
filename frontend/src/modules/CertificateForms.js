@@ -157,6 +157,7 @@ const TRAILING_STOPS = /[.\s]+$/u;
 export const reachabilityMessage = (status) => {
 	if (Object.hasOwn(FIXED, status)) return { id: FIXED[status] };
 	const detail = status.startsWith("other:") ? status.slice(6).trim() : status;
+	if (detail === "") return { id: FIXED.failed };
 	if (HTTP_CODE.test(detail)) return { id: "certificates.http.reachability-other", data: { code: detail } };
 	// the sentence supplies its own full stop
 	return { id: "certificates.http.reachability-error", data: { error: detail.replace(TRAILING_STOPS, "") } };

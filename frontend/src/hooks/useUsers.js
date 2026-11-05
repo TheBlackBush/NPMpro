@@ -11,22 +11,28 @@ const useUsers = (expand) =>
 	});
 
 /**
- * The ids of the given users that have MFA on (the user list does not carry it). The keys start with "users", so the
- * list's invalidations refresh them too; an id is missing until its status is known.
+ * The ids of the given users that have MFA on (the user list does not carry it), the current user excluded. The keys
+ * are outside the "users" prefix, so a list invalidation does not refetch them; after a reset invalidate
+ * ["users-mfa", id]. An id is missing until its status is known.
  *
  * @param {Array<{ id: number }>} users
+ * @param {number} [currentUserId]
  * @returns {Set<number>}
  */
-const useUsersMfa = (users) => {
+const useUsersMfa = (users, currentUserId) => {
+	// the own row has no Reset MFA item
+	const others = (users ?? []).filter((user) => user.id !== currentUserId);
 	const results = useQueries({
-		queries: (users ?? []).map((user) => ({
-			queryKey: ["users", "mfa", user.id],
+		queries: others.map((user) => ({
+			queryKey: ["users-mfa", user.id],
 			queryFn: () => getMfaStatus(user.id),
 			staleTime: 60 * 1000,
+			// a failed request counts against the /users rate limiter
+			retry: false,
 		})),
 	});
 	const ids = new Set();
-	(users ?? []).forEach((user, index) => {
+	others.forEach((user, index) => {
 		if (results[index]?.data?.totpEnabled) ids.add(user.id);
 	});
 	return ids;

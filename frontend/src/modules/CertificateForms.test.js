@@ -186,3 +186,8 @@ it("an error text gets its own message without its trailing full stop", () => {
 		data: { error: "Connection timed out" },
 	});
 });
+
+it("an other status without detail falls back to the failed message", () => {
+	assert.deepEqual(reachabilityMessage("other:"), { id: "certificates.http.reachability-failed-to-check" });
+	assert.deepEqual(reachabilityMessage("other: "), { id: "certificates.http.reachability-failed-to-check" });
+});

@@ -20,7 +20,7 @@ export default function TableWrapper() {
 	const { filters, setFilter, clear } = useListFilters();
 	const { isFetching, isPending, isError, error, data } = useUsers();
 	const { data: currentUser } = useUser("me");
-	const mfaUserIds = useUsersMfa(data);
+	const mfaUserIds = useUsersMfa(data, currentUser?.id);
 
 	const handleDisableToggle = async (id, enabled) => {
 		try {
@@ -97,7 +97,10 @@ export default function TableWrapper() {
 										await adminDisableMfa(id);
 										showObjectSuccess("user", "updated");
 									},
-									invalidations: [["users"], ["user", id]],
+									invalidations: [
+										["user", id],
+										["users-mfa", id],
+									],
 								});
 							}}
 							onRevokeSessions={(id) => {
