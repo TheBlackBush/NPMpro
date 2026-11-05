@@ -5,7 +5,7 @@ import { Button } from "src/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "src/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "src/components/ui/dialog";
 import { Kbd } from "src/components/ui/kbd";
-import { useUser } from "src/hooks";
+import { confirmLeave, useUser } from "src/hooks";
 import { intl } from "src/locale";
 import { isPaletteShortcut, paletteGroups } from "src/modules/CommandPalette";
 import { SECTIONS } from "src/pages/Settings/sections";
@@ -69,13 +69,14 @@ export function CommandPalette() {
 
 	const groups = paletteGroups(user, SECTIONS);
 
-	const select = ({ to, external }) => {
+	const select = async ({ to, external }) => {
 		setOpen(false);
 		if (external) {
 			window.open(to, "_blank", "noopener");
 			return;
 		}
-		void navigate(to);
+		// like the links: a page with unsaved changes asks first
+		if (await confirmLeave()) void navigate(to);
 	};
 
 	return (
@@ -113,7 +114,7 @@ export function CommandPalette() {
 											key={item.id}
 											value={`${group.id}:${item.id}`}
 											keywords={[label]}
-											onSelect={() => select(item)}
+											onSelect={() => void select(item)}
 										>
 											{label}
 											{item.external && <ExternalLink className="ml-auto" aria-hidden="true" />}
