@@ -1,9 +1,9 @@
 {
 	"all": true,
 	"check-coverage": true,
-	"lines": 82.3,
-	"branches": 90.1,
-	"functions": 79.1,
+	"lines": 85.1,
+	"branches": 90.5,
+	"functions": 81.6,
 	"reporter": ["text-summary", "json-summary"],
 	"exclude": ["test/**", "migrations/**", "coverage/**", "node_modules/**", "validate-schema.js"]
 }
