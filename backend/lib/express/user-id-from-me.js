@@ -1,6 +1,5 @@
 import errs from "../error.js";
-
-const POSITIVE_INTEGER = /^[1-9]\d*$/u;
+import { isPositiveInteger } from "./path-id.js";
 
 export default (req, res, next) => {
 	if (req.params.user_id === "me" && res.locals.access) {
@@ -11,10 +10,9 @@ export default (req, res, next) => {
 		return next();
 	}
 
-	const id = Number(req.params.user_id);
-	if (!(POSITIVE_INTEGER.test(req.params.user_id) && Number.isSafeInteger(id))) {
+	if (!isPositiveInteger(req.params.user_id)) {
 		return next(new errs.ValidationError("The user id must be me or a positive integer"));
 	}
-	req.params.user_id = id;
+	req.params.user_id = Number(req.params.user_id);
 	next();
 };

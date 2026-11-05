@@ -1,6 +1,7 @@
 import express from "express";
 import internalDnsCredential from "../../internal/dns-credential.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
+import pathId from "../../lib/express/path-id.js";
 import apiValidator from "../../lib/validator/api.js";
 import validator from "../../lib/validator/index.js";
 import { getValidationSchema } from "../../schema/index.js";
@@ -25,6 +26,8 @@ const credentialSchema = {
 };
 
 const router = express.Router({ caseSensitive: true, strict: true, mergeParams: true });
+
+router.param("credential_id", pathId);
 
 /**
  * /api/nginx/dns-credentials

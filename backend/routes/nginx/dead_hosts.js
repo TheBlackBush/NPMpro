@@ -1,6 +1,7 @@
 import express from "express";
 import internalDeadHost from "../../internal/dead-host.js";
 import jwtdecode from "../../lib/express/jwt-decode.js";
+import pathId from "../../lib/express/path-id.js";
 import apiValidator from "../../lib/validator/api.js";
 import validator from "../../lib/validator/index.js";
 import { getValidationSchema } from "../../schema/index.js";
@@ -35,6 +36,8 @@ const router = express.Router({
 	strict: true,
 	mergeParams: true,
 });
+
+router.param("host_id", pathId);
 
 /**
  * /api/nginx/dead-hosts

@@ -512,7 +512,6 @@ const hostTests = (ctx, type) => {
 	tc(
 		`${type.label}: answers PUT, DELETE, enable and disable with an id below 1 or text with 400`,
 		{
-			todo: "BUG-5",
 		},
 		async () => {
 			const calls = (id) => [
@@ -533,7 +532,6 @@ const hostTests = (ctx, type) => {
 	tc(
 		`${type.label}: does not act on host N for PUT, DELETE, enable or disable with the id N.5 or Nabc`,
 		{
-			todo: "BUG-6",
 		},
 		async () => {
 			for (const suffix of [".5", "abc"]) {
