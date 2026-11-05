@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { it } from "node:test";
-import { groupSections, SECTIONS_WITHOUT_HELP, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
+import { groupSections, SETTINGS_CATEGORIES, settingsHelpDoc } from "./SettingsSections.js";
 
 // a section entry of sections.js: its id, then its category
 const ENTRY = /\bid: "(?<id>[^"]+)",\s+category: "(?<category>[^"]+)"/gu;
@@ -77,9 +77,7 @@ it("names a section's help document after its id", () => {
 
 it("has a help document in every language for every section in sections.js", () => {
 	const source = readFileSync(new URL("../pages/Settings/sections.js", import.meta.url), "utf8");
-	const ids = [...source.matchAll(ENTRY)]
-		.map(({ groups }) => groups.id)
-		.filter((id) => !SECTIONS_WITHOUT_HELP.includes(id));
+	const ids = [...source.matchAll(ENTRY)].map(({ groups }) => groups.id);
 	assert.ok(ids.length > 10);
 	const help = new URL("../../translations/help/", import.meta.url);
 	const languages = readdirSync(help, { withFileTypes: true })
