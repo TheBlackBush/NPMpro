@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Введите целое число от {min} до {max}",
 	"settings.runtime.restart-pending": "Перезапустите контейнер, чтобы применить: {fields}.",
 	"settings.runtime.restart-required": "Требуется перезапуск",
+	"settings.runtime.restart-required.hint": "Перезапустите контейнер, чтобы применить эту настройку.",
 	"settings.save.all-locked": "Все значения заданы переменными окружения",
 	"settings.section": "Раздел настроек",
 	"setup.create-account": "Создать аккаунт",

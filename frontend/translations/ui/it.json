@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Inserisci un numero intero da {min} a {max}",
 	"settings.runtime.restart-pending": "Riavvia il container per applicare: {fields}.",
 	"settings.runtime.restart-required": "Riavvio necessario",
+	"settings.runtime.restart-required.hint": "Riavvia il container per applicare questa impostazione.",
 	"settings.save.all-locked": "Tutti i valori sono impostati da variabili d'ambiente",
 	"settings.section": "Sezione delle impostazioni",
 	"setup.create-account": "Crea account",

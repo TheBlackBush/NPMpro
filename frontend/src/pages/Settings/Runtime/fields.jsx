@@ -30,7 +30,11 @@ function useFieldBadges(name) {
 	if (isLocked(name)) badges.push(<LockedBadge key="lock" env={envOf(name)} reason={reasonOf(name)} />);
 	if (isRestart(name))
 		badges.push(
-			<SettingBadge key="restart" icon={RefreshCw}>
+			<SettingBadge
+				key="restart"
+				icon={RefreshCw}
+				description={formatMessage({ id: "settings.runtime.restart-required.hint" })}
+			>
 				<T id="settings.runtime.restart-required" />
 			</SettingBadge>,
 		);

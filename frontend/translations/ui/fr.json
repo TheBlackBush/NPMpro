@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Saisissez un nombre entier de {min} à {max}",
 	"settings.runtime.restart-pending": "Redémarrez le conteneur pour appliquer : {fields}.",
 	"settings.runtime.restart-required": "Redémarrage requis",
+	"settings.runtime.restart-required.hint": "Redémarrez le conteneur pour appliquer ce paramètre.",
 	"settings.save.all-locked": "Toutes les valeurs sont définies par des variables d'environnement",
 	"settings.section": "Section des paramètres",
 	"setup.create-account": "Créer un compte",

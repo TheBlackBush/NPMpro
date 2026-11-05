@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Введіть ціле число від {min} до {max}",
 	"settings.runtime.restart-pending": "Перезапустіть контейнер, щоб застосувати: {fields}.",
 	"settings.runtime.restart-required": "Потрібен перезапуск",
+	"settings.runtime.restart-required.hint": "Перезапустіть контейнер, щоб застосувати це налаштування.",
 	"settings.save.all-locked": "Усі значення задано змінними середовища",
 	"settings.section": "Розділ налаштувань",
 	"setup.create-account": "Створити обліковий запис",

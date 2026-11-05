@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "{min}에서 {max} 사이의 정수를 입력하세요",
 	"settings.runtime.restart-pending": "적용하려면 컨테이너를 다시 시작하세요: {fields}.",
 	"settings.runtime.restart-required": "다시 시작 필요",
+	"settings.runtime.restart-required.hint": "이 설정을 적용하려면 컨테이너를 다시 시작하세요.",
 	"settings.save.all-locked": "모든 값이 환경 변수로 설정되어 있습니다",
 	"settings.section": "설정 섹션",
 	"setup.create-account": "계정 만들기",

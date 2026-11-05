@@ -1,7 +1,5 @@
 import { Lock } from "lucide-react";
-import { useRef, useState } from "react";
 import { SettingBadge } from "src/components";
-import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { T } from "src/locale";
 
 // the badge text of a lock by another setting's env var (backend LOCK_REASONS)
@@ -18,53 +16,31 @@ const REASON_BADGES = {
 };
 
 /**
- * A direct lock reads "Set by environment"; hovering or focusing it (or tapping it on a touch screen) shows "Set by
- * <ENV>" in a tooltip, and screen readers get the sentence after the text. An indirect lock `reason` keeps its own
- * wording ("Follows <ENV>", "Off because of <ENV>", "Required by <ENV>") and has no tooltip. Without `env` the badge
- * is the plain "Set by environment".
+ * A direct lock reads "Set by environment" and explains "Set by <ENV>" in the badge's tooltip. An indirect lock
+ * `reason` keeps its own wording ("Follows <ENV>", "Off because of <ENV>", "Required by <ENV>") and its tooltip is
+ * the reason's sentence. Without `env` the badge is the plain "Set by environment".
  */
 function LockedBadge({ env, reason, className }) {
-	const [open, setOpen] = useState(false);
-	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
-	const wasOpen = useRef(false);
+	const name = <span className="font-mono">{env}</span>;
 	if (env && Object.hasOwn(REASON_BADGES, reason)) {
 		return (
-			<SettingBadge icon={Lock} className={className}>
-				<T id={REASON_BADGES[reason]} data={{ env: <span className="font-mono">{env}</span> }} />
+			<SettingBadge
+				icon={Lock}
+				className={className}
+				description={<T id={`settings.runtime.locked.reason.${reason}`} data={{ env: name }} />}
+			>
+				<T id={REASON_BADGES[reason]} data={{ env: name }} />
 			</SettingBadge>
 		);
 	}
-	if (!env) {
-		return (
-			<SettingBadge icon={Lock} className={className}>
-				<T id="settings.authentication.locked" />
-			</SettingBadge>
-		);
-	}
-	const named = <T id="settings.runtime.locked" data={{ env: <span className="font-mono">{env}</span> }} />;
 	return (
-		<Tooltip open={open} onOpenChange={setOpen}>
-			<TooltipTrigger asChild>
-				<SettingBadge
-					icon={Lock}
-					className={className}
-					description={named}
-					tabIndex={0}
-					onPointerDown={() => {
-						wasOpen.current = open;
-					}}
-					onClick={(event) => {
-						// inside a switch's label a click would toggle the switch
-						event.preventDefault();
-						setOpen(!wasOpen.current);
-						wasOpen.current = !wasOpen.current;
-					}}
-				>
-					<T id="settings.authentication.locked" />
-				</SettingBadge>
-			</TooltipTrigger>
-			<TooltipContent>{named}</TooltipContent>
-		</Tooltip>
+		<SettingBadge
+			icon={Lock}
+			className={className}
+			description={env ? <T id="settings.runtime.locked" data={{ env: name }} /> : undefined}
+		>
+			<T id="settings.authentication.locked" />
+		</SettingBadge>
 	);
 }
 

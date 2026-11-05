@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Introduce un número entero de {min} a {max}",
 	"settings.runtime.restart-pending": "Reinicia el contenedor para aplicar: {fields}.",
 	"settings.runtime.restart-required": "Reinicio necesario",
+	"settings.runtime.restart-required.hint": "Reinicia el contenedor para aplicar este ajuste.",
 	"settings.save.all-locked": "Todos los valores están definidos por variables de entorno",
 	"settings.section": "Sección de ajustes",
 	"setup.create-account": "Crear cuenta",

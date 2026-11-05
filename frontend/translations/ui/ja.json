@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "{min} から {max} までの整数を入力してください",
 	"settings.runtime.restart-pending": "適用するにはコンテナを再起動してください: {fields}。",
 	"settings.runtime.restart-required": "再起動が必要",
+	"settings.runtime.restart-required.hint": "この設定を適用するには、コンテナを再起動してください。",
 	"settings.save.all-locked": "すべての値が環境変数で設定されています",
 	"settings.section": "設定セクション",
 	"setup.create-account": "アカウントを作成",

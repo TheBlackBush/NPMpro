@@ -1282,6 +1282,7 @@
 	"settings.runtime.number.invalid": "Wpisz liczbę całkowitą od {min} do {max}",
 	"settings.runtime.restart-pending": "Uruchom ponownie kontener, aby zastosować: {fields}.",
 	"settings.runtime.restart-required": "Wymagane ponowne uruchomienie",
+	"settings.runtime.restart-required.hint": "Uruchom ponownie kontener, aby zastosować to ustawienie.",
 	"settings.save.all-locked": "Wszystkie wartości są ustawione przez zmienne środowiskowe",
 	"settings.section": "Sekcja ustawień",
 	"setup.create-account": "Utwórz konto",

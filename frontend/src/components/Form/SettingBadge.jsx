@@ -1,4 +1,6 @@
+import { useRef, useState } from "react";
 import { Badge } from "src/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { cn } from "src/lib/utils";
 
 /**
@@ -6,23 +8,30 @@ import { cn } from "src/lib/utils";
  * with an icon. It shrinks to the row and its text wraps (a long variable name breaks anywhere), so it never pushes
  * the label or leaves the card.
  *
+ * With a `description` the chip is focusable and explains itself in a tooltip: hover or keyboard focus opens it, a
+ * tap toggles it (a tap elsewhere or Escape closes it), and screen readers get the sentence after the short text
+ * (so the control's aria-describedby carries it). A click never reaches a switch's label. Without one it is a plain
+ * chip.
+ *
  * @param {Object} props
  * @param {import("react").ComponentType} props.icon  a lucide icon
- * @param {*} [props.description]  the full sentence behind a short text: the chip's tooltip (title, when it is a string)
- *   and screen reader text after the short text
+ * @param {*} [props.description]  the full sentence behind a short text
  * @param {string} [props.className]
- * @param {import("react").Ref<HTMLSpanElement>} [props.ref]  other props (a tooltip trigger's handlers) go to the chip
+ * @param {import("react").Ref<HTMLSpanElement>} [props.ref]
  */
 function SettingBadge({ icon: Icon, description, className, children, ...props }) {
-	return (
+	const [open, setOpen] = useState(false);
+	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
+	const wasOpen = useRef(false);
+	const chip = (extra) => (
 		<Badge
 			variant="outline"
-			title={typeof description === "string" ? description : undefined}
 			className={cn(
 				"h-auto min-w-0 max-w-full shrink whitespace-normal py-0.5 text-left wrap-anywhere",
 				className,
 			)}
 			{...props}
+			{...extra}
 		>
 			<Icon aria-hidden="true" />
 			<span className="min-w-0">
@@ -30,6 +39,26 @@ function SettingBadge({ icon: Icon, description, className, children, ...props }
 				{description ? <span className="sr-only"> ({description})</span> : null}
 			</span>
 		</Badge>
+	);
+	if (!description) return chip();
+	return (
+		<Tooltip open={open} onOpenChange={setOpen}>
+			<TooltipTrigger asChild>
+				{chip({
+					tabIndex: 0,
+					onPointerDown: () => {
+						wasOpen.current = open;
+					},
+					onClick: (event) => {
+						// inside a switch's label a click would toggle the switch
+						event.preventDefault();
+						setOpen(!wasOpen.current);
+						wasOpen.current = !wasOpen.current;
+					},
+				})}
+			</TooltipTrigger>
+			<TooltipContent>{description}</TooltipContent>
+		</Tooltip>
 	);
 }
 
