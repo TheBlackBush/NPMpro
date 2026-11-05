@@ -17,7 +17,7 @@ const countryLabel = (code) =>
  */
 function CountryName({ code }) {
 	return (
-		<span className="inline-flex max-w-full items-center gap-2" title={countryLabel(code)}>
+		<span className="inline-flex max-w-full items-center gap-2">
 			{isCountryCode(code) ? (
 				<Flag countryCode={code.toUpperCase()} className="shrink-0" />
 			) : (

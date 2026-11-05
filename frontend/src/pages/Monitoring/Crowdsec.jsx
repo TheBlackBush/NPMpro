@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ErrorAlert, ListToolbar, Loading, NoticeAlert, StatusBadge } from "src/components";
 import { CountryName, countryLabel, EmptyState, StatCard, TopList, WorldMap } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
 import { useListFilters, useMonitoringCrowdsec } from "src/hooks";
@@ -124,9 +125,9 @@ function BansTable({ data }) {
 				header: intl.formatMessage({ id: "monitoring.crowdsec.column.time-left" }),
 				enableSorting: false,
 				cell: (info) => (
-					<span className="whitespace-nowrap" title={info.row.original.duration}>
-						{formatTimeLeft(info.getValue())}
-					</span>
+					<TapTooltip content={info.row.original.duration}>
+						<span className="whitespace-nowrap">{formatTimeLeft(info.getValue())}</span>
+					</TapTooltip>
 				),
 			}),
 			columnHelper.accessor((row) => countryLabel(row.country), {

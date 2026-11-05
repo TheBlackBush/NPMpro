@@ -1,4 +1,5 @@
 import { StatusBadge } from "src/components/StatusBadge";
+import { TapTooltip } from "src/components/TapTooltip";
 import { formatDateTime, T } from "src/locale";
 import { expiryInfo } from "src/modules/Expiry";
 
@@ -10,14 +11,18 @@ export function ExpiryFormatter({ value, provider }) {
 	}
 	if (state === "soon") {
 		return (
-			<StatusBadge tone="warning" title={formatDateTime(value)}>
-				<T id="expiry.in-days" data={{ days }} />
-			</StatusBadge>
+			<TapTooltip content={formatDateTime(value)}>
+				<StatusBadge tone="warning">
+					<T id="expiry.in-days" data={{ days }} />
+				</StatusBadge>
+			</TapTooltip>
 		);
 	}
 	return (
-		<StatusBadge tone="destructive" title={formatDateTime(value)}>
-			<T id="expiry.expired" />
-		</StatusBadge>
+		<TapTooltip content={formatDateTime(value)}>
+			<StatusBadge tone="destructive">
+				<T id="expiry.expired" />
+			</StatusBadge>
+		</TapTooltip>
 	);
 }

@@ -7,12 +7,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/toolt
  *
  * @param {Object} props
  * @param {*} props.content  the tooltip's text
+ * @param {boolean} [props.tap]  false: hover and keyboard focus only (the child keeps its own click and focus
+ *                               behaviour); use it on a button, a link or anything inside one
  * @param {import("react").ReactElement} props.children  one element that forwards its props and ref to the DOM
  */
-export function TapTooltip({ content, children }) {
+export function TapTooltip({ content, tap = true, children }) {
 	const [open, setOpen] = useState(false);
 	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
 	const wasOpen = useRef(false);
+	if (!tap) {
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>{children}</TooltipTrigger>
+				<TooltipContent className="wrap-anywhere">{content}</TooltipContent>
+			</Tooltip>
+		);
+	}
 	return (
 		<Tooltip open={open} onOpenChange={setOpen}>
 			<TooltipTrigger

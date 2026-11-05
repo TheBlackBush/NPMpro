@@ -29,6 +29,7 @@ import {
 	WorldMap,
 } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "src/components/ui/toggle-group";
@@ -318,16 +319,13 @@ function RecentTable({ rows }) {
 					const { method, path } = info.row.original;
 					if (method === "-" && path === "") return <span className="text-muted-foreground">-</span>;
 					return (
-						// focus (Tab or tap) shows the whole path: the title tooltip only appears on hover
-						<span
-							className="block truncate font-mono"
-							title={`${method} ${path}`}
-							// biome-ignore lint/a11y/noNoninteractiveTabindex: focusing the cell is how touch and keyboard users read a cut path
-							tabIndex={0}
-						>
-							<span className="me-2 text-muted-foreground">{method}</span>
-							{path}
-						</span>
+						// hover, focus (Tab) or a tap shows the whole path
+						<TapTooltip content={`${method} ${path}`}>
+							<span className="block truncate font-mono">
+								<span className="me-2 text-muted-foreground">{method}</span>
+								{path}
+							</span>
+						</TapTooltip>
 					);
 				},
 			}),
@@ -472,7 +470,7 @@ function TrafficData({ data, range, params }) {
 					value={
 						topCountry ? (
 							// smaller than the other values so a country name fits one of five cards
-							<span className="text-xl" title={countryLabel(topCountry.country)}>
+							<span className="text-xl">
 								<CountryName code={topCountry.country} />
 							</span>
 						) : (
