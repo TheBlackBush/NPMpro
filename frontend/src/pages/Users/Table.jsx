@@ -123,7 +123,7 @@ export function useColumns() {
 					return <GravatarFormatter url={value.avatar} name={value.name} decorative />;
 				},
 				meta: {
-					className: "whitespace-nowrap",
+					className: "whitespace-nowrap md:@max-3xl:hidden",
 					mobile: "hide",
 				},
 			}),
@@ -145,7 +145,8 @@ export function useColumns() {
 			}),
 			columnHelper.accessor((row) => row.email, {
 				id: "email",
-				meta: { mobile: "summary", summaryText: (row) => row.email },
+				// one line in a narrow column (the section next to the sidebar), where it would break in three
+				meta: { className: "@max-3xl:whitespace-nowrap", mobile: "summary", summaryText: (row) => row.email },
 				header: intl.formatMessage({ id: "column.email" }),
 				cell: (info) => <EmailFormatter email={info.getValue()} />,
 			}),
@@ -166,7 +167,8 @@ export function useColumns() {
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "w-px whitespace-nowrap",
+					// hidden in a narrow column (the section next to the sidebar), where the e-mail needs the room
+					className: "w-px whitespace-nowrap md:@max-3xl:hidden",
 					mobile: "hide",
 				},
 			}),

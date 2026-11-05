@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { Button, HasPermission } from "src/components";
-import { STACKED_EMPTY_CELL, STACKED_EMPTY_ROW, useStacked } from "src/components/Table/StackedContext";
+import { useStack, useStacked } from "src/components/Table/StackedContext";
 import { TableCell, TableRow } from "src/components/ui/table";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
@@ -23,15 +23,16 @@ function EmptyData({
 }) {
 	const ShownIcon = isFiltered || !Icon ? Search : Icon;
 	const stacked = useStacked();
+	const stack = useStack();
 	const accent = sectionAccent(section);
 	const tinted = accent !== PRIMARY_ACCENT && !isFiltered;
 	// role row and cell keep the row valid inside the stacked phone layout's role="rowgroup"
 	return (
-		<TableRow className={cn("hover:bg-transparent", stacked && STACKED_EMPTY_ROW)} role="row">
+		<TableRow className={cn("hover:bg-transparent", stacked && stack.emptyRow)} role="row">
 			<TableCell
 				colSpan={tableInstance.getAllFlatColumns().length}
 				role="cell"
-				className={cn("whitespace-normal", stacked && STACKED_EMPTY_CELL)}
+				className={cn("whitespace-normal", stacked && stack.emptyCell)}
 			>
 				<div className="flex flex-col items-center gap-2 py-10 text-center">
 					<div

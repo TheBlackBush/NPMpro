@@ -215,7 +215,7 @@ function TypeTree({
 						type="button"
 						variant="link"
 						size="sm"
-						className="h-auto p-0"
+						className="h-auto min-h-6 p-0"
 						onClick={() => onChange(allTypes)}
 						disabled={disabled || allSelected}
 					>
@@ -225,7 +225,7 @@ function TypeTree({
 						type="button"
 						variant="link"
 						size="sm"
-						className="h-auto p-0"
+						className="h-auto min-h-6 p-0"
 						onClick={() => onChange([])}
 						disabled={disabled || selected.length === 0}
 					>
@@ -233,77 +233,85 @@ function TypeTree({
 					</Button>
 				</div>
 			</div>
-			<div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-				{arrangeRows(categories).flatMap((row) =>
-					row.map((category) => {
-						const labelId = `${baseId}-${category.id}`;
-						const kindsId = `${labelId}-kinds`;
-						const kinds = category.types.includes("certificates") ? certificateKinds : null;
-						const state = categoryState(category, selected);
-						const several = category.types.length > 1;
-						return (
-							<div key={category.id} className={row.length > 2 ? "md:col-span-2" : "md:col-span-3"}>
-								<fieldset
-									className={cn("h-full rounded-lg border p-3", state !== "none" && "border-primary")}
-									aria-labelledby={labelId}
-								>
-									<div>
-										<CategoryCheck
-											category={category}
-											state={state}
-											count={
-												several
-													? categoryCount(category, counts)
-													: typeCount(category.types[0], counts, itemCounts)
-											}
-											onChange={() => onChange(toggleCategory(category, selected))}
-											disabled={disabled}
-											labelId={labelId}
-											describedBy={kinds ? kindsId : undefined}
-										/>
-										<CertificateKinds kinds={kinds} id={kindsId} />
-										{several ? (
-											<div className="mt-3 flex flex-wrap gap-2">
-												{category.types.map((typeId) =>
-													choosable(typeId) ? (
-														<div key={typeId} className="relative flex">
+			{/* the boxes follow the width of their column (the section column is narrow next to the sidebar), not the window */}
+			<div className="@container">
+				<div className="grid grid-cols-1 gap-2 @xl:grid-cols-6">
+					{arrangeRows(categories).flatMap((row) =>
+						row.map((category) => {
+							const labelId = `${baseId}-${category.id}`;
+							const kindsId = `${labelId}-kinds`;
+							const kinds = category.types.includes("certificates") ? certificateKinds : null;
+							const state = categoryState(category, selected);
+							const several = category.types.length > 1;
+							return (
+								<div key={category.id} className={row.length > 2 ? "@xl:col-span-2" : "@xl:col-span-3"}>
+									<fieldset
+										className={cn(
+											"h-full rounded-lg border p-3",
+											state !== "none" && "border-primary",
+										)}
+										aria-labelledby={labelId}
+									>
+										<div>
+											<CategoryCheck
+												category={category}
+												state={state}
+												count={
+													several
+														? categoryCount(category, counts)
+														: typeCount(category.types[0], counts, itemCounts)
+												}
+												onChange={() => onChange(toggleCategory(category, selected))}
+												disabled={disabled}
+												labelId={labelId}
+												describedBy={kinds ? kindsId : undefined}
+											/>
+											<CertificateKinds kinds={kinds} id={kindsId} />
+											{several ? (
+												<div className="mt-3 flex flex-wrap gap-2">
+													{category.types.map((typeId) =>
+														choosable(typeId) ? (
+															<div key={typeId} className="relative flex">
+																<TypePill
+																	typeId={typeId}
+																	checked={selected.includes(typeId)}
+																	onChange={() =>
+																		onChange(toggleType(typeId, selected))
+																	}
+																	disabled={disabled}
+																	joined={true}
+																	counts={counts}
+																	itemCounts={itemCounts}
+																/>
+																{chooseButton(typeId, false)}
+															</div>
+														) : (
 															<TypePill
+																key={typeId}
 																typeId={typeId}
 																checked={selected.includes(typeId)}
 																onChange={() => onChange(toggleType(typeId, selected))}
 																disabled={disabled}
-																joined={true}
+																joined={false}
 																counts={counts}
 																itemCounts={itemCounts}
 															/>
-															{chooseButton(typeId, false)}
-														</div>
-													) : (
-														<TypePill
-															key={typeId}
-															typeId={typeId}
-															checked={selected.includes(typeId)}
-															onChange={() => onChange(toggleType(typeId, selected))}
-															disabled={disabled}
-															joined={false}
-															counts={counts}
-															itemCounts={itemCounts}
-														/>
-													),
-												)}
-											</div>
-										) : null}
-										{!several && choosable(category.types[0]) ? (
-											<div className="relative mt-3 inline-block">
-												{chooseButton(category.types[0], true)}
-											</div>
-										) : null}
-									</div>
-								</fieldset>
-							</div>
-						);
-					}),
-				)}
+														),
+													)}
+												</div>
+											) : null}
+											{!several && choosable(category.types[0]) ? (
+												<div className="relative mt-3 inline-block">
+													{chooseButton(category.types[0], true)}
+												</div>
+											) : null}
+										</div>
+									</fieldset>
+								</div>
+							);
+						}),
+					)}
+				</div>
 			</div>
 		</div>
 	);

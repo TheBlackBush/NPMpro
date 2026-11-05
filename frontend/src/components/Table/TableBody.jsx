@@ -6,21 +6,20 @@ import { cellClass, mobileRole } from "src/modules/MobileColumns";
 import { cellLabel } from "src/modules/TableCells";
 import { EmptyRow } from "./EmptyRow";
 import { MobileTitle } from "./MobileTitle";
-import { StackedContext } from "./StackedContext";
+import { StackedContext, useStack } from "./StackedContext";
 
-// Below md a stacked row is a card: the row is a flex column (its cells become blocks without touching their own
-// display, so the hidden-on-phone cells stay hidden) and each cell shows its header as a small label above the value.
-const CARD_ROW = "max-md:mb-3 max-md:flex max-md:flex-col max-md:gap-1 max-md:rounded-lg max-md:border max-md:p-3";
-const CARD_CELL =
-	"max-md:px-0 max-md:py-1 max-md:data-label:before:block max-md:data-label:before:text-xs max-md:data-label:before:text-muted-foreground max-md:data-label:before:content-[attr(data-label)]";
+// On narrow widths (see modules/TableStack.js) a stacked row is a card: the row is a flex column (its cells become
+// blocks without touching their own display, so the hidden-on-phone cells stay hidden) and each cell shows its header
+// as a small label above the value.
 
 function TableBody(props) {
 	const { tableInstance, extraStyles, emptyState, groupBy, renderGroupLabel, scroll = false } = props;
+	const stack = useStack();
 	const { rows } = tableInstance.getRowModel();
 	// the last card keeps its border (the shadcn body removes the border of its last row)
 	// stacked layout: explicit roles, see TableLayout
 	const role = (name) => (scroll ? undefined : name);
-	const bodyClass = scroll ? undefined : "max-md:[&_tr:last-child]:border!";
+	const bodyClass = scroll ? undefined : stack.tableBody;
 
 	if (rows.length === 0) {
 		// no bodyClass: the empty state is not a card and keeps no border of its own (the list card has one)
@@ -33,13 +32,13 @@ function TableBody(props) {
 		);
 	}
 
-	const cellBase = scroll ? "whitespace-nowrap" : cn("whitespace-normal", CARD_CELL);
+	const cellBase = scroll ? "whitespace-nowrap" : cn("whitespace-normal", stack.cardCell);
 
 	const renderRow = (row) => (
 		<TableRow
 			key={row.id}
 			{...extraStyles?.row(row.original)}
-			className={cn(!scroll && CARD_ROW)}
+			className={cn(!scroll && stack.cardRow)}
 			role={role("row")}
 		>
 			{row.getAllCells().map((cell) => {
@@ -50,18 +49,18 @@ function TableBody(props) {
 					return (
 						<TableCell
 							key={cell.id}
-							className={cn(cellBase, className, cellClass(columnDef))}
+							className={cn(cellBase, className, cellClass(columnDef, stack.hiddenCell))}
 							role={role("cell")}
 						>
 							<MobileTitle row={row} titleCell={cell} />
-							<div className="hidden md:block">{content}</div>
+							<div className={stack.wideOnly}>{content}</div>
 						</TableCell>
 					);
 				}
 				return (
 					<TableCell
 						key={cell.id}
-						className={cn(cellBase, className, cellClass(columnDef))}
+						className={cn(cellBase, className, cellClass(columnDef, stack.hiddenCell))}
 						data-label={cellLabel(columnDef)}
 						role={role("cell")}
 					>
@@ -96,7 +95,7 @@ function TableBody(props) {
 				<Fragment key={key}>
 					{/* below md a block at full width, like the cards (a table row there shrinks to its content) */}
 					<TableRow
-						className={cn("max-md:border-0 hover:bg-transparent", !scroll && "max-md:block")}
+						className={cn("hover:bg-transparent", scroll ? "max-md:border-0" : stack.groupRow)}
 						role={role("row")}
 					>
 						<th
@@ -105,7 +104,7 @@ function TableBody(props) {
 							colSpan={colSpan}
 							className={cn(
 								"bg-muted/50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground",
-								!scroll && "max-md:block max-md:w-full",
+								!scroll && stack.groupHead,
 							)}
 						>
 							{renderGroupLabel(key)}

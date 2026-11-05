@@ -15,7 +15,7 @@ const DomainLink = ({ domain, color }) => {
 		<Badge
 			asChild
 			variant={color ? "secondary" : "outline"}
-			className="mr-2 h-auto min-w-0 max-w-full py-0.5 text-left font-mono whitespace-normal"
+			className="mr-2 h-auto min-h-6 min-w-0 max-w-full rounded-xl px-2.5 py-0.5 text-left font-mono whitespace-normal"
 		>
 			<a href={`http://${domain}`} target="_blank" rel="noopener" onClick={onClick}>
 				<span>
