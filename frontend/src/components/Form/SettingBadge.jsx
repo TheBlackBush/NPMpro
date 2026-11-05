@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
 import { Badge } from "src/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { cn } from "src/lib/utils";
+import { TapTooltip } from "../TapTooltip";
 
 /**
  * A badge of a setting's badge row (set by an env var, restart required, when a change applies): an outline chip
@@ -20,10 +19,7 @@ import { cn } from "src/lib/utils";
  * @param {import("react").Ref<HTMLSpanElement>} [props.ref]
  */
 function SettingBadge({ icon: Icon, description, className, children, ...props }) {
-	const [open, setOpen] = useState(false);
-	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
-	const wasOpen = useRef(false);
-	const chip = (extra) => (
+	const chip = (
 		<Badge
 			variant="outline"
 			className={cn(
@@ -31,7 +27,6 @@ function SettingBadge({ icon: Icon, description, className, children, ...props }
 				className,
 			)}
 			{...props}
-			{...extra}
 		>
 			<Icon aria-hidden="true" />
 			<span className="min-w-0">
@@ -40,26 +35,7 @@ function SettingBadge({ icon: Icon, description, className, children, ...props }
 			</span>
 		</Badge>
 	);
-	if (!description) return chip();
-	return (
-		<Tooltip open={open} onOpenChange={setOpen}>
-			<TooltipTrigger asChild>
-				{chip({
-					tabIndex: 0,
-					onPointerDown: () => {
-						wasOpen.current = open;
-					},
-					onClick: (event) => {
-						// inside a switch's label a click would toggle the switch
-						event.preventDefault();
-						setOpen(!wasOpen.current);
-						wasOpen.current = !wasOpen.current;
-					},
-				})}
-			</TooltipTrigger>
-			<TooltipContent>{description}</TooltipContent>
-		</Tooltip>
-	);
+	return description ? <TapTooltip content={description}>{chip}</TapTooltip> : chip;
 }
 
 /**

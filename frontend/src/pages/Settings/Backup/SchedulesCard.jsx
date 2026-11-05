@@ -14,6 +14,7 @@ import { deleteBackupSchedule } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Badge } from "src/components/ui/badge";
 import { Checkbox } from "src/components/ui/checkbox";
 import { Spinner } from "src/components/ui/spinner";
@@ -80,6 +81,16 @@ function Contents({ categories, types }) {
 	);
 }
 
+// "Failed": the error of the last run in its tooltip when there is one
+function FailedBadge({ error }) {
+	const badge = (
+		<StatusBadge tone="destructive" dot={false} className={WRAP_BADGE}>
+			<T id="settings.backup.schedule.failed" />
+		</StatusBadge>
+	);
+	return error ? <TapTooltip content={error}>{badge}</TapTooltip> : badge;
+}
+
 function ScheduleStatus({ schedule, timeZone }) {
 	const status = scheduleStatus(schedule);
 	// the error of a failed last run (paused too): on phones under the badges, on wider screens in the Last run column
@@ -101,16 +112,7 @@ function ScheduleStatus({ schedule, timeZone }) {
 	return (
 		<>
 			<div className="flex flex-wrap gap-1">
-				{status === "failed" ? (
-					<StatusBadge
-						tone="destructive"
-						dot={false}
-						className={WRAP_BADGE}
-						title={schedule.lastError ?? undefined}
-					>
-						<T id="settings.backup.schedule.failed" />
-					</StatusBadge>
-				) : null}
+				{status === "failed" ? <FailedBadge error={schedule.lastError} /> : null}
 				{schedule.nextRunAt ? (
 					<StatusBadge tone="success" dot={false} className={cn(WRAP_BADGE, "md:whitespace-nowrap")}>
 						<T
