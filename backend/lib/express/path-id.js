@@ -8,7 +8,8 @@ const POSITIVE_INTEGER = /^[1-9]\d*$/u;
  * @param   {*}  text
  * @returns {Boolean}
  */
-const isPositiveInteger = (text) => typeof text === "string" && POSITIVE_INTEGER.test(text) && Number.isSafeInteger(Number(text));
+const isPositiveInteger = (text) =>
+	typeof text === "string" && POSITIVE_INTEGER.test(text) && Number.isSafeInteger(Number(text));
 
 /**
  * Handler for `router.param(name, pathId)`: refuses a path id that is not a positive integer with a 400, before any
