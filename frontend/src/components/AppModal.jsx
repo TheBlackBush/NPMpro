@@ -9,7 +9,14 @@ import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
 import { useWindowFocusReturn } from "src/modules/easyModal";
 import { isStartField, keepsWindowFocus, START_FIELD_SELECTOR, START_SKIP_ATTRIBUTE } from "src/modules/StartField";
-import { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive } from "src/modules/WindowFrame";
+import {
+	bumpsOnOutside,
+	canClose,
+	dialogWidthClass,
+	sheetWidthClass,
+	windowMode,
+	windowPrimitive,
+} from "src/modules/WindowFrame";
 
 // the window's onHide (undefined while it cannot close), for parts inside it that handle keys themselves
 const HideContext = createContext(undefined);
@@ -20,6 +27,32 @@ const TitleContext = createContext({ setMounted: () => {} });
 const ModeContext = createContext("dialog");
 
 // A target the window must not treat as "outside": toasts and other windows stacked on top of it
+const BUMP_ID = "window-bump";
+
+// The short scale of a window that refuses a click outside. Web Animations, not a class: Radix content runs its
+// enter animation through the CSS animation property (a swap would replay it) and no style is injected (CSP). A
+// running bump is cancelled first, so repeated clicks do not stack. A sheet is anchored right, so it grows from there.
+function bump(element, mode) {
+	if (!element?.animate) return;
+	for (const running of element.getAnimations()) if (running.id === BUMP_ID) running.cancel();
+	const origin = mode === "sheet" ? "right center" : "center";
+	const keyframes = [1, 1.02, 1].map((scale) => ({ scale, transformOrigin: origin }));
+	element.animate(keyframes, { id: BUMP_ID, duration: 180, easing: "ease-in-out" });
+}
+
+// A press on the backdrop moves focus to the page body: the field that had focus (or the window) gets it back.
+// Radix reports the press after the focus moved, so the field comes from `lastFocus`.
+function keepFocus(element, lastFocus) {
+	const restore = () => {
+		if (!element?.isConnected || element.contains(document.activeElement)) return;
+		// a field that rerendered on blur is a new node: the window itself (tabIndex -1) keeps the focus then
+		(lastFocus?.isConnected && element.contains(lastFocus) ? lastFocus : element).focus({ preventScroll: true });
+	};
+	// Radix reports the press as late as after its pointerup on some engines: restore now, and again once it ends
+	setTimeout(restore, 0);
+	document.addEventListener("pointerup", () => setTimeout(restore, 0), { once: true, capture: true });
+}
+
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
 
 function firstField(content) {
@@ -108,6 +141,15 @@ function AppModal({
 	// a state, not a ref object: the portal mounts the content after the first effects, and the hook must rerun then
 	const [windowElement, setWindowElement] = useState(null);
 	useLateStartField(windowElement, Boolean(show), isPhone);
+	const lastFocus = useRef(null);
+	useEffect(() => {
+		if (!windowElement) return;
+		const remember = (event) => {
+			lastFocus.current = event.target;
+		};
+		windowElement.addEventListener("focusin", remember);
+		return () => windowElement.removeEventListener("focusin", remember);
+	}, [windowElement]);
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
 	const guards = {
@@ -117,7 +159,12 @@ function AppModal({
 		},
 		onPointerDownOutside: (event) => {
 			const target = event.detail.originalEvent.target;
-			if (!request("outside") || target?.closest?.(STACKED)) event.preventDefault();
+			const refused = !request("outside");
+			const stacked = Boolean(target?.closest?.(STACKED));
+			if (refused || stacked) event.preventDefault();
+			const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			if (bumpsOnOutside({ mode, refused, stacked, reducedMotion })) bump(windowElement, mode);
+			if (refused && !stacked) keepFocus(windowElement, lastFocus.current);
 		},
 		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
 		onFocusOutside: (event) => event.preventDefault(),

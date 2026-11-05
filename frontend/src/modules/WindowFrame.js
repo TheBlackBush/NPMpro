@@ -26,6 +26,15 @@ function canClose({ onHide, backdrop, reason }) {
 	return !(reason === "outside" && backdrop === "static");
 }
 
+/**
+ * Whether a click outside a window that refuses it plays the short bump (the feedback of a static backdrop). Not for
+ * a full screen window (nothing outside to click), a click on a stacked layer (a toast, another window) or when the
+ * user asks for reduced motion.
+ */
+function bumpsOnOutside({ mode, refused, stacked, reducedMotion }) {
+	return refused && !stacked && !reducedMotion && mode !== "fullscreen";
+}
+
 /** Dialog width from the size prop (full class names, so Tailwind finds them) */
 function dialogWidthClass(size) {
 	if (size === "sm") return "sm:max-w-md";
@@ -48,4 +57,4 @@ function sheetWidthClass(size) {
 	return "data-[side=right]:sm:max-w-xl";
 }
 
-export { canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive };
+export { bumpsOnOutside, canClose, dialogWidthClass, sheetWidthClass, windowMode, windowPrimitive };
