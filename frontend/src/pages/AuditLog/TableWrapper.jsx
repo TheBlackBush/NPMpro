@@ -82,6 +82,13 @@ export default function TableWrapper() {
 	const firstPageFailed = !isPending && isError && !isFetchNextPageError && !rows.length;
 
 	const filtered = Boolean(query || objectType || action || userId);
+	const clearFilters = () => {
+		setSearch("");
+		setQuery("");
+		setObjectType("");
+		setAction("");
+		setUserId("");
+	};
 
 	return (
 		<section>
@@ -125,6 +132,18 @@ export default function TableWrapper() {
 							onChange={setUserId}
 							options={(users ?? []).map((u) => ({ value: `${u.id}`, label: u.name }))}
 						/>
+						{filtered ? (
+							<div className="flex w-full items-center justify-end gap-2 md:w-auto">
+								{total !== null ? (
+									<span className="text-sm text-muted-foreground">
+										<T id="list.shown" data={{ shown: rows.length, total }} />
+									</span>
+								) : null}
+								<Button variant="link" size="sm" className="h-auto p-0" onClick={clearFilters}>
+									<T id="list.clear-filters" />
+								</Button>
+							</div>
+						) : null}
 					</div>
 				</div>
 				{isPending ? (

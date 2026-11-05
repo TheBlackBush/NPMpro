@@ -133,3 +133,31 @@ export function credentialFieldValues(provider, credential) {
 	const saved = new Map((credential?.fields ?? []).map((f) => [f.key, f.value]));
 	return Object.fromEntries((provider?.fields ?? []).map((f) => [f.key, saved.get(f.key) ?? ""]));
 }
+
+// The reachability test of the HTTP challenge answers per domain with a status: ok, no-host, failed, 404, wrong-data,
+// or "other:<detail>" where the detail is the HTTP status code of the server found, or the error text when the test
+// got no HTTP answer (a timeout, a refused connection).
+const FIXED = Object.freeze({
+	ok: "certificates.http.reachability-ok",
+	"no-host": "certificates.http.reachability-not-resolved",
+	failed: "certificates.http.reachability-failed-to-check",
+	404: "certificates.http.reachability-404",
+	"wrong-data": "certificates.http.reachability-wrong-data",
+});
+
+const HTTP_CODE = /^\d{3}$/u;
+const TRAILING_STOPS = /[.\s]+$/u;
+
+/**
+ * The message (translation key and values) for a reachability status.
+ *
+ * @param {string} status
+ * @returns {{ id: string, data?: Record<string, string> }}
+ */
+export const reachabilityMessage = (status) => {
+	if (Object.hasOwn(FIXED, status)) return { id: FIXED[status] };
+	const detail = status.startsWith("other:") ? status.slice(6).trim() : status;
+	if (HTTP_CODE.test(detail)) return { id: "certificates.http.reachability-other", data: { code: detail } };
+	// the sentence supplies its own full stop
+	return { id: "certificates.http.reachability-error", data: { error: detail.replace(TRAILING_STOPS, "") } };
+};
