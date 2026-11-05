@@ -11,8 +11,9 @@ import { cn } from "src/lib/utils";
  * @param {*} [props.description]  the full sentence behind a short text: the chip's tooltip (title, when it is a string)
  *   and screen reader text after the short text
  * @param {string} [props.className]
+ * @param {import("react").Ref<HTMLSpanElement>} [props.ref]  other props (a tooltip trigger's handlers) go to the chip
  */
-function SettingBadge({ icon: Icon, description, className, children }) {
+function SettingBadge({ icon: Icon, description, className, children, ...props }) {
 	return (
 		<Badge
 			variant="outline"
@@ -21,6 +22,7 @@ function SettingBadge({ icon: Icon, description, className, children }) {
 				"h-auto min-w-0 max-w-full shrink whitespace-normal py-0.5 text-left wrap-anywhere",
 				className,
 			)}
+			{...props}
 		>
 			<Icon aria-hidden="true" />
 			<span className="min-w-0">
