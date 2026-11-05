@@ -730,7 +730,7 @@ const internalCertificate = {
 			`Requesting Certbot certificates via ${dnsPlugin.name} for Cert #${certificate.id}: ${certificate.domain_names.join(", ")}`,
 		);
 
-		const credentialsLocation = `/tmp/certbot-credentials/credentials-${certificate.id}`;
+		const credentialsLocation = rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`);
 		await internalDnsCredential.writeCertificateFile(certificate);
 
 		try {
@@ -924,7 +924,7 @@ const internalCertificate = {
 		}
 
 		await rm(rooted(`/data/tls/certbot/live/npm-${certificate.id}.der`), { force: true });
-		await rm(`/tmp/certbot-credentials/credentials-${certificate.id}`, { force: true });
+		await rm(rooted(`/tmp/certbot-credentials/credentials-${certificate.id}`), { force: true });
 	},
 
 	/**
