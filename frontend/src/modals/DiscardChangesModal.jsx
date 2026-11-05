@@ -1,5 +1,6 @@
 import { useModal } from "@ebay/nice-modal-react";
 import { TriangleAlertIcon } from "lucide-react";
+import { Button } from "src/components";
 import {
 	AlertDialog,
 	AlertDialogCancel,
@@ -9,7 +10,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "src/components/ui/alert-dialog";
-import { Button } from "src/components/ui/button";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 
@@ -47,7 +47,7 @@ const DiscardChangesModal = EasyModal.create(({ messageId, visible }) => {
 						<T id="unsaved-changes.keep" />
 					</AlertDialogCancel>
 					{/* Not AlertDialogAction: the answer is resolved here before the window goes */}
-					<Button type="button" color="danger" onClick={() => answer(true)}>
+					<Button color="danger" onClick={() => answer(true)}>
 						<T id="unsaved-changes.discard" />
 					</Button>
 				</AlertDialogFooter>
