@@ -152,8 +152,7 @@ Settings, Authentication sets up sign-in with an OIDC provider: issuer URL, clie
 
 ## Users and permissions
 
-Under Users an administrator creates users, sets or resets their password, resets their MFA, revokes their sessions and sets their permissions: for each section (proxy hosts, redirection hosts, 404 hosts, streams, access lists, certificates) "Manage", "View Only" or "Hidden", and whether they see all items or only the ones they created. Administrators can also sign in as another user.
-
+Under Users an administrator creates users, sets or resets their password, resets their MFA, revokes their sessions and sets their permissions: for each section (proxy hosts, redirection hosts, 404 hosts, streams, access lists, certificates) "Manage", "View Only" or "Hidden", and whether they see all items or only the ones they created.
 ## Audit Logs
 
 Audit Logs lists who created, updated, enabled, disabled or deleted which object, with filters for the user, the object type and the action. Each entry opens with its details. Backups, restores, scheduled backup runs (succeeded or failed) and database moves are listed too.

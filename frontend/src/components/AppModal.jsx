@@ -45,12 +45,17 @@ function bump(element, mode) {
 function keepFocus(element, lastFocus) {
 	const restore = () => {
 		if (!element?.isConnected || element.contains(document.activeElement)) return;
+		// a stacked window that took the focus keeps it
+		if (document.activeElement?.closest?.('[role="dialog"]')) return;
 		// a field that rerendered on blur is a new node: the window itself (tabIndex -1) keeps the focus then
 		(lastFocus?.isConnected && element.contains(lastFocus) ? lastFocus : element).focus({ preventScroll: true });
 	};
 	// Radix reports the press as late as after its pointerup on some engines: restore now, and again once it ends
 	setTimeout(restore, 0);
-	document.addEventListener("pointerup", () => setTimeout(restore, 0), { once: true, capture: true });
+	const onPointerUp = () => setTimeout(restore, 0);
+	document.addEventListener("pointerup", onPointerUp, { once: true, capture: true });
+	// the caller removes the listener if the window closes before the pointerup
+	return () => document.removeEventListener("pointerup", onPointerUp, { capture: true });
 }
 
 const STACKED = '[data-sonner-toaster], [role="dialog"]';
@@ -150,6 +155,14 @@ function AppModal({
 		windowElement.addEventListener("focusin", remember);
 		return () => windowElement.removeEventListener("focusin", remember);
 	}, [windowElement]);
+	// the pointerup listener of a press outside is removed when the window closes or unmounts
+	const releaseFocus = useRef(null);
+	useEffect(() => {
+		if (show) return;
+		releaseFocus.current?.();
+		releaseFocus.current = null;
+	}, [show]);
+	useEffect(() => () => releaseFocus.current?.(), []);
 
 	const request = (reason) => canClose({ onHide, backdrop, reason });
 	const guards = {
@@ -164,7 +177,10 @@ function AppModal({
 			if (refused || stacked) event.preventDefault();
 			const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 			if (bumpsOnOutside({ mode, refused, stacked, reducedMotion })) bump(windowElement, mode);
-			if (refused && !stacked) keepFocus(windowElement, lastFocus.current);
+			if (refused && !stacked) {
+				releaseFocus.current?.();
+				releaseFocus.current = keepFocus(windowElement, lastFocus.current);
+			}
 		},
 		// intentional: focus leaving the window (to a toast, a stacked layer, the browser UI) never closes it
 		onFocusOutside: (event) => event.preventDefault(),

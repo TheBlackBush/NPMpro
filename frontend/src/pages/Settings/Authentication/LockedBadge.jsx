@@ -27,7 +27,6 @@ function LockedBadge({ env, reason, className }) {
 	const [open, setOpen] = useState(false);
 	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
 	const wasOpen = useRef(false);
-	const named = <T id="settings.runtime.locked" data={{ env: <span className="font-mono">{env}</span> }} />;
 	if (env && Object.hasOwn(REASON_BADGES, reason)) {
 		return (
 			<SettingBadge icon={Lock} className={className}>
@@ -42,6 +41,7 @@ function LockedBadge({ env, reason, className }) {
 			</SettingBadge>
 		);
 	}
+	const named = <T id="settings.runtime.locked" data={{ env: <span className="font-mono">{env}</span> }} />;
 	return (
 		<Tooltip open={open} onOpenChange={setOpen}>
 			<TooltipTrigger asChild>
