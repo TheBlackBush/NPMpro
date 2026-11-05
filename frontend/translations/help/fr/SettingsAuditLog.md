@@ -4,8 +4,10 @@ Un historique de qui a changé quoi. Seuls les administrateurs le voient.
 
 Chaque entrée indique l'utilisateur, l'objet et l'action. Sont consignés :
 
-- **Créé**, **Mis à jour**, **Supprimé**, **Activé** et **Désactivé** pour les hôtes proxy, les hôtes de redirection, les hôtes 404, les streams, les listes d'accès, les certificats, les identifiants DNS, les planifications de sauvegarde, les utilisateurs et les paramètres.
-- Sauvegardes : **Sauvegarde réussie** et **Échec de la sauvegarde** pour les exécutions de sauvegardes planifiées.
+- **Créé**, **Mis à jour** et **Supprimé** pour les hôtes proxy, les hôtes de redirection, les hôtes 404, les streams, les listes d'accès, les certificats, les identifiants DNS, les planifications de sauvegarde et les utilisateurs. Les paramètres ne consignent que **Mis à jour**.
+- **Activé** et **Désactivé** pour les hôtes proxy, les hôtes de redirection, les hôtes 404, les streams et les planifications de sauvegarde.
+- Sauvegardes : **Créé**, **Téléversé**, **Supprimé**, **Restauré** et **Fusionné** pour une sauvegarde, et **Sauvegarde réussie** et **Échec de la sauvegarde** pour les exécutions de sauvegardes planifiées.
+- **Téléchargé** pour les certificats. **Exporté** et **Importé** pour la sauvegarde d'une seule page (hôtes, listes d'accès, certificats, identifiants DNS).
 - Déplacements de base de données : **Déplacé** et **Échec du déplacement**.
 
 Les entrées les plus récentes viennent en premier. **Charger plus** affiche les 50 suivantes, et le nombre sous la liste indique combien sont chargées sur le total.

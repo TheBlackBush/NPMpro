@@ -4,8 +4,10 @@ Un registro di chi ha cambiato cosa. Solo gli amministratori lo vedono.
 
 Ogni voce mostra l'utente, l'oggetto e l'azione. Vengono registrati:
 
-- **Creato**, **Aggiornato**, **Eliminato**, **Abilitato** e **Disabilitato** per host proxy, host di reindirizzamento, hosts 404, stream, liste di accesso, certificati, credenziali DNS, pianificazioni del backup, utenti e impostazioni.
-- Backup: **Backup riuscito** e **Backup non riuscito** per le esecuzioni dei backup pianificati.
+- **Creato**, **Aggiornato** ed **Eliminato** per host proxy, host di reindirizzamento, hosts 404, stream, liste di accesso, certificati, credenziali DNS, pianificazioni del backup e utenti. Le impostazioni registrano solo **Aggiornato**.
+- **Abilitato** e **Disabilitato** per host proxy, host di reindirizzamento, hosts 404, stream e pianificazioni del backup.
+- Backup: **Creato**, **Caricato**, **Eliminato**, **Ripristinato** e **Unito** per un backup, e **Backup riuscito** e **Backup non riuscito** per le esecuzioni dei backup pianificati.
+- **Scaricato** per i certificati. **Esportato** e **Importato** per il backup di una singola pagina (host, liste di accesso, certificati, credenziali DNS).
 - Spostamenti del database: **Spostato** e **Spostamento non riuscito**.
 
 Le voci più recenti vengono prima. **Carica altri** mostra le 50 successive e il numero sotto l'elenco indica quante sono caricate sul totale.

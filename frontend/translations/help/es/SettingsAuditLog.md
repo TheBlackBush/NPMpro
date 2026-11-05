@@ -4,8 +4,10 @@ Un historial de quién cambió qué. Solo lo ven los administradores.
 
 Cada entrada muestra el usuario, el objeto y la acción. Se registran:
 
-- **Creado**, **Actualizado**, **Eliminado**, **Habilitado** y **Deshabilitado** para hosts proxy, hosts de redirección, hosts 404, streams, listas de acceso, certificados, credenciales DNS, programaciones de copia de seguridad, usuarios y ajustes.
-- Copias de seguridad: **Copia de seguridad correcta** y **Copia de seguridad fallida** en las ejecuciones programadas.
+- **Creado**, **Actualizado** y **Eliminado** para hosts proxy, hosts de redirección, hosts 404, streams, listas de acceso, certificados, credenciales DNS, programaciones de copia de seguridad y usuarios. Los ajustes solo registran **Actualizado**.
+- **Habilitado** y **Deshabilitado** para hosts proxy, hosts de redirección, hosts 404, streams y programaciones de copia de seguridad.
+- Copias de seguridad: **Creado**, **Subido**, **Eliminado**, **Restaurado** y **Fusionado** para una copia, y **Copia de seguridad correcta** y **Copia de seguridad fallida** en las ejecuciones programadas.
+- **Descargado** para certificados. **Exportado** e **Importado** para la copia de una sola página (hosts, listas de acceso, certificados, credenciales DNS).
 - Traslados de la base de datos: **Movido** y **Error al mover**.
 
 Las entradas más recientes van primero. **Cargar más** muestra las 50 siguientes, y el número bajo la lista indica cuántas están cargadas del total.

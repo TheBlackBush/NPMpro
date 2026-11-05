@@ -4,8 +4,10 @@ Ein Protokoll darüber, wer was geändert hat. Nur Administratoren sehen es.
 
 Jeder Eintrag zeigt den Benutzer, das Objekt und die Aktion. Protokolliert werden:
 
-- **Erstellt**, **Aktualisiert**, **Gelöscht**, **Aktiviert** und **Deaktiviert** für Proxy-Hosts, Weiterleitungs-Hosts, 404-Hosts, Streams, Zugriffslisten, Zertifikate, DNS-Zugangsdaten, Backup-Zeitpläne, Benutzer und Einstellungen.
-- Sicherungen: **Sicherung erfolgreich** und **Sicherung fehlgeschlagen** bei geplanten Sicherungsläufen.
+- **Erstellt**, **Aktualisiert** und **Gelöscht** für Proxy-Hosts, Weiterleitungs-Hosts, 404-Hosts, Streams, Zugriffslisten, Zertifikate, DNS-Zugangsdaten, Backup-Zeitpläne und Benutzer. Einstellungen protokollieren nur **Aktualisiert**.
+- **Aktiviert** und **Deaktiviert** für Proxy-Hosts, Weiterleitungs-Hosts, 404-Hosts, Streams und Backup-Zeitpläne.
+- Sicherungen: **Erstellt**, **Hochgeladen**, **Gelöscht**, **Wiederhergestellt** und **Zusammengeführt** für eine Sicherung sowie **Sicherung erfolgreich** und **Sicherung fehlgeschlagen** bei geplanten Sicherungsläufen.
+- **Heruntergeladen** für Zertifikate. **Exportiert** und **Importiert** für die Sicherung einer einzelnen Seite (Hosts, Zugriffslisten, Zertifikate, DNS-Zugangsdaten).
 - Datenbankumzüge: **Verschoben** und **Verschieben fehlgeschlagen**.
 
 Die neuesten Einträge stehen oben. **Mehr laden** zeigt die nächsten 50, und die Zahl unter der Liste nennt, wie viele der insgesamt vorhandenen geladen sind.

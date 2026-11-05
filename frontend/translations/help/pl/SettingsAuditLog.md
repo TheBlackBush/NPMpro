@@ -4,8 +4,10 @@ Zapis tego, kto co zmienił. Widzą go tylko administratorzy.
 
 Każdy wpis pokazuje użytkownika, obiekt i akcję. Zapisywane są:
 
-- **Utworzono**, **Zaktualizowano**, **Usunięto**, **Włączono** i **Wyłączono** dla hostów proxy, przekierowań, hostów 404, strumieni, list dostępu, certyfikatów, danych uwierzytelniających DNS, harmonogramów kopii zapasowych, użytkowników i ustawień.
-- Kopie zapasowe: **Kopia zapasowa wykonana** i **Kopia zapasowa nieudana** przy uruchomieniach zaplanowanych kopii.
+- **Utworzono**, **Zaktualizowano** i **Usunięto** dla hostów proxy, przekierowań, hostów 404, strumieni, list dostępu, certyfikatów, danych uwierzytelniających DNS, harmonogramów kopii zapasowych i użytkowników. Ustawienia zapisują tylko **Zaktualizowano**.
+- **Włączono** i **Wyłączono** dla hostów proxy, przekierowań, hostów 404, strumieni i harmonogramów kopii zapasowych.
+- Kopie zapasowe: **Utworzono**, **Przesłano**, **Usunięto**, **Przywrócono** i **Scalono** dla kopii zapasowej oraz **Kopia zapasowa wykonana** i **Kopia zapasowa nieudana** przy uruchomieniach zaplanowanych kopii.
+- **Pobrano** dla certyfikatów. **Wyeksportowano** i **Zaimportowano** dla kopii jednej strony (hosty, listy dostępu, certyfikaty, dane uwierzytelniające DNS).
 - Przenoszenie bazy danych: **Przeniesiono** i **Przeniesienie nieudane**.
 
 Najnowsze wpisy są na górze. **Wczytaj więcej** pokazuje kolejne 50, a liczba pod listą mówi, ile z całości wczytano.

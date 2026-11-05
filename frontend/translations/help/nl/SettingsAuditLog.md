@@ -4,8 +4,10 @@ Een overzicht van wie wat heeft gewijzigd. Alleen beheerders zien het.
 
 Elk item toont de gebruiker, het object en de actie. Vastgelegd worden:
 
-- **Aangemaakt**, **Bijgewerkt**, **Verwijderd**, **Ingeschakeld** en **Uitgeschakeld** voor proxyhosts, omgeleide hosts, 404-hosts, streams, toegangslijsten, certificaten, DNS-referenties, back-upschema's, gebruikers en instellingen.
-- Back-ups: **Back-up geslaagd** en **Back-up mislukt** bij uitvoeringen van geplande back-ups.
+- **Aangemaakt**, **Bijgewerkt** en **Verwijderd** voor proxyhosts, omgeleide hosts, 404-hosts, streams, toegangslijsten, certificaten, DNS-referenties, back-upschema's en gebruikers. Instellingen leggen alleen **Bijgewerkt** vast.
+- **Ingeschakeld** en **Uitgeschakeld** voor proxyhosts, omgeleide hosts, 404-hosts, streams en back-upschema's.
+- Back-ups: **Aangemaakt**, **Geüpload**, **Verwijderd**, **Hersteld** en **Samengevoegd** voor een back-up, en **Back-up geslaagd** en **Back-up mislukt** bij uitvoeringen van geplande back-ups.
+- **Gedownload** voor certificaten. **Geëxporteerd** en **Geïmporteerd** voor de back-up van één pagina (hosts, toegangslijsten, certificaten, DNS-referenties).
 - Databaseverhuizingen: **Verplaatst** en **Verplaatsen mislukt**.
 
 De nieuwste items staan bovenaan. **Meer laden** toont de volgende 50 en het aantal onder de lijst geeft aan hoeveel van het totaal geladen zijn.

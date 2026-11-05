@@ -4,8 +4,10 @@ Um histórico de quem alterou o quê. Apenas os administradores o veem.
 
 Cada entrada mostra o utilizador, o objeto e a ação. São registados:
 
-- **Criado**, **Atualizado**, **Eliminado**, **Ativado** e **Desativado** para proxy hosts, hosts de redirecionamento, hosts 404, streams, listas de acesso, certificados, credenciais DNS, agendamentos de backup, utilizadores e definições.
-- Backups: **Backup concluído** e **Backup falhou** nas execuções de backups agendados.
+- **Criado**, **Atualizado** e **Eliminado** para proxy hosts, hosts de redirecionamento, hosts 404, streams, listas de acesso, certificados, credenciais DNS, agendamentos de backup e utilizadores. As definições só registam **Atualizado**.
+- **Ativado** e **Desativado** para proxy hosts, hosts de redirecionamento, hosts 404, streams e agendamentos de backup.
+- Backups: **Criado**, **Carregado**, **Eliminado**, **Restaurado** e **Intercalado** para um backup, e **Backup concluído** e **Backup falhou** nas execuções de backups agendados.
+- **Descarregado** para certificados. **Exportado** e **Importado** para o backup de uma única página (hosts, listas de acesso, certificados, credenciais DNS).
 - Mudanças de base de dados: **Movido** e **Falha ao mover**.
 
 As entradas mais recentes aparecem primeiro. **Carregar mais** mostra as 50 seguintes e o número por baixo da lista indica quantas estão carregadas do total.

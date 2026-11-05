@@ -20,6 +20,7 @@ const OBJECT_TYPES = [
 	"user",
 	"setting",
 	"backup-schedule",
+	"backup",
 	"database",
 ];
 const ACTIONS = [
@@ -32,6 +33,12 @@ const ACTIONS = [
 	"backup-failed",
 	"moved",
 	"move-failed",
+	"restored",
+	"merged",
+	"imported",
+	"exported",
+	"uploaded",
+	"downloaded",
 ];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md

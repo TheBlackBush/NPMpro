@@ -4,8 +4,10 @@ A record of who changed what. Only administrators see it.
 
 Each entry shows the user, the object and the action. These are logged:
 
-- **Created**, **Updated**, **Deleted**, **Enabled** and **Disabled** for proxy hosts, redirection hosts, 404 hosts, streams, access lists, certificates, DNS credentials, backup schedules, users and settings.
-- Backups: **Backup succeeded** and **Backup failed** for scheduled backup runs.
+- **Created**, **Updated** and **Deleted** for proxy hosts, redirection hosts, 404 hosts, streams, access lists, certificates, DNS credentials, backup schedules and users. Settings only log **Updated**.
+- **Enabled** and **Disabled** for proxy hosts, redirection hosts, 404 hosts, streams and backup schedules.
+- Backups: **Created**, **Uploaded**, **Deleted**, **Restored** and **Merged** for a backup, and **Backup succeeded** and **Backup failed** for scheduled backup runs.
+- **Downloaded** for certificates. **Exported** and **Imported** for the backup of a single page (hosts, access lists, certificates, DNS credentials).
 - Database moves: **Moved** and **Move failed**.
 
 The newest entries come first. **Load more** shows the next 50, and the count below the list tells how many of the total are loaded.
