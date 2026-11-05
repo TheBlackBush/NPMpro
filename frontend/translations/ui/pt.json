@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Introduza o código de 6 dígitos",
 	"error.details.hide": "Esconder detalhes",
 	"error.details.show": "Mostrar detalhes",
+	"error.forward-host-variable-admin-only": "Apenas administradores podem usar uma variável de requisição ($) no host de encaminhamento.",
 	"error.invalid-auth": "Email ou palavra-passe inválidos",
 	"error.invalid-code": "Código de verificação inválido",
 	"error.invalid-domain": "Domínio inválido: {domain}",

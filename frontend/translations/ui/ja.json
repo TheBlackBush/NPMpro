@@ -332,6 +332,7 @@
 	"error.code-six-digits": "6 桁のコードを入力してください",
 	"error.details.hide": "詳細を隠す",
 	"error.details.show": "詳細を表示",
+	"error.forward-host-variable-admin-only": "転送先ホストにリクエスト変数 ($) を使用できるのは管理者のみです。",
 	"error.invalid-auth": "無効なemailまたはパスワード",
 	"error.invalid-code": "確認コードが無効です",
 	"error.invalid-domain": "無効なドメイン: {domain}",

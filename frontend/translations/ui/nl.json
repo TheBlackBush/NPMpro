@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Voer de 6-cijferige code in",
 	"error.details.hide": "Details verbergen",
 	"error.details.show": "Details tonen",
+	"error.forward-host-variable-admin-only": "Alleen beheerders kunnen een aanvraagvariabele ($) gebruiken in de doorstuurhost.",
 	"error.invalid-auth": "Ongeldig e-mail of wachtwoord",
 	"error.invalid-code": "Ongeldige verificatiecode",
 	"error.invalid-domain": "Ongeldige domeinnaam: {domain}",

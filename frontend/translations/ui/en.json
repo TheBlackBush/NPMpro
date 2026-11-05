@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Enter the 6-digit code",
 	"error.details.hide": "Hide details",
 	"error.details.show": "Show details",
+	"error.forward-host-variable-admin-only": "Only administrators can use a request variable ($) in the forward host.",
 	"error.invalid-auth": "Invalid email or password",
 	"error.invalid-code": "Invalid verification code",
 	"error.invalid-domain": "Invalid domain: {domain}",

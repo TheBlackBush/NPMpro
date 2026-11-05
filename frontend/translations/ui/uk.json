@@ -332,6 +332,7 @@
 	"error.code-six-digits": "Введіть 6-значний код",
 	"error.details.hide": "Приховати подробиці",
 	"error.details.show": "Показати подробиці",
+	"error.forward-host-variable-admin-only": "Лише адміністратори можуть використовувати змінну запиту ($) у хості пересилання.",
 	"error.invalid-auth": "Невірна адреса ел. пошти або пароль",
 	"error.invalid-code": "Неправильний код перевірки",
 	"error.invalid-domain": "Невірний домен: {domain}",
