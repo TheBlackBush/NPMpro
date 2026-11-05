@@ -2,6 +2,15 @@
 
 Signing in to the NPMpro web UI: passwords, two-factor authentication and OIDC. To put a login in front of your own services, see [Forward authentication](Forward-Authentication).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/login-dark.png">
+  <img alt="The sign-in page" src="images/login-light.png" width="720">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-login-dark.png">
+  <img alt="The sign-in page on a phone" src="images/phone-login-light.png" width="260">
+</picture>
+
 ## Passwords and two-factor authentication
 
 Every user signs in with an email address and a password. Two-factor authentication (TOTP, with one-time backup codes) can be turned on for each account in the user menu. If you are locked out, the password and MFA can be reset from the command line (SQLite only): `docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin. See [Usage](Usage#password-and-mfa-reset). The session cookie is signed with `COOKIE_SECRET`, see [Configuration](Configuration#cookie_secret).

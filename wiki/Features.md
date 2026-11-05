@@ -36,7 +36,7 @@ What NPMpro offers, grouped by topic. Each group links to the page that explains
 ## Web UI and operations
 - most settings live in the web UI (Settings): certificates and TLS, network, forward authentication, logs and monitoring, GeoIP, authentication, nginx core options (workers, TLS 1.2, curves, modules) and more; an environment variable still wins and locks the field (see [Settings and environment variables](Configuration))
 - an Environment page (Settings, Environment) that lists the startup variables read-only, secrets never shown
-- audit log, users with per-section permissions, a light, dark or system theme (System follows the operating system)
+- audit log, users with per-section permissions, a light, dark or system theme (System follows the operating system), a top bar or sidebar layout, dialogs or side sheets for editing, and a Ctrl+K command palette (see [Appearance and navigation](Usage#appearance-and-navigation))
 - database backup before upgrades (SQLite only): before database migrations run, the database is copied to `/data/backups/database` (the newest 5 are kept; a copy holds the secrets the database held at that time, so treat the folder like the database). To go back to the previous image, stop the container, replace `/data/npmpro/database.sqlite` with the backup (remove `database.sqlite-wal` and `database.sqlite-shm` next to it) and start the previous image
 - Alpine based, a much smaller image
 - many other things, see these wiki pages and the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml)

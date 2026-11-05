@@ -10,6 +10,7 @@
   - 81/tcp for the web UI (`NPM_PORT`)
 - **For public certificates:** a domain whose DNS points to your server, and ports 80 and 443 forwarded to it. Without port 80 use the DNS challenge (see [Usage](Usage#certificates)).
 - **Database:** nothing extra. NPMpro uses SQLite in its data folder. MariaDB/MySQL and PostgreSQL may work but are unsupported and not recommended. Settings, Database can move an instance between them later, see [Database](Database).
+- **Browser for the web UI:** Chrome or Edge 118, Safari 17.4 (macOS and iOS) or Firefox 146, or newer. Older browsers are not supported; the UI also needs JavaScript and local storage (private modes that block storage are not supported).
 
 ## Install with Docker Compose
 

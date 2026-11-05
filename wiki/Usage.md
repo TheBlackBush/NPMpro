@@ -4,6 +4,11 @@
 
 Open `https://<server-ip>:81` and create the admin account on the setup page (or sign in with `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` if you set them on the first start). The dashboard shows your hosts and, for administrators, a short monitoring row.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/dashboard-dark.png">
+  <img alt="The dashboard with host counts, the traffic summary and recent changes" src="images/dashboard-light.png" width="720">
+</picture>
+
 On the login page, **Sign in** becomes available once a valid email address and a password are entered. If you leave the email field with an address that is not valid, "Invalid email address" shows under it. In the two-factor step, **Verify** becomes available once a code is entered.
 
 You can turn on two-factor authentication (TOTP, with one-time backup codes) for your account in the user menu.
@@ -18,14 +23,67 @@ You can turn on two-factor authentication (TOTP, with one-time backup codes) for
 
 The meaning of several options differs from nginx-proxy-manager, see [Comments on some buttons](Host-options). Websockets are always on.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/proxy-hosts-dark.png">
+  <img alt="The Proxy Hosts list with status, TLS and access list per host" src="images/proxy-hosts-light.png" width="720">
+</picture>
+
 When you save a host, NPMpro first checks its certificates: the TLS certificate cannot be an mTLS CA ("An mTLS certificate can not be used as the SSL certificate"), the **mTLS Certificate** must be an mTLS CA certificate, and the certificate files must exist ("The certificate files are missing"). These checks run before a new certificate is requested, so a refused save leaves no unused certificate behind.
 
 When NPMpro saves a host it tests the nginx config. If the test fails, the host gets a red "Config error" status (click it for the nginx message), and the rest of your hosts keep working. See [Troubleshooting](Troubleshooting#a-host-shows-offline-or-config-error).
 
+## Appearance and navigation
+
+Open the user menu (your avatar, top right) and use **Appearance**:
+
+- **Navigation:** **Top bar** (the default, a row of pages under the header) or **Sidebar**. The sidebar can collapse to icons; NPMpro remembers whether you collapsed it.
+- **Edit windows:** **Dialog** (a window in the middle of the page) or **Side sheet** (a panel that slides in from the right). The choice applies to every edit window.
+
+Both choices are saved in your browser, so each browser or device keeps its own.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/proxy-host-dialog-dark.png">
+  <img alt="A proxy host in an edit dialog" src="images/proxy-host-dialog-light.png" width="720">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/proxy-host-sheet-dark.png">
+  <img alt="The same proxy host in a side sheet" src="images/proxy-host-sheet-light.png" width="720">
+</picture>
+
+The theme (**Light**, **Dark** or **System**, which follows the operating system) and the language are menus next to each other in the header, on the sign-in page as well.
+
+**Search** in the header opens the command palette; so does `Ctrl+K` (`Cmd+K` on a Mac). Type to find a page, or, as an administrator, a Settings section, and press Enter to open it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/command-palette-dark.png">
+  <img alt="The command palette listing pages" src="images/command-palette-light.png" width="720">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/appearance-menu-dark.png">
+  <img alt="The Appearance part of the user menu" src="images/appearance-menu-light.png" width="720">
+</picture>
+
+## On a phone
+
+On a narrow screen the menu button in the header opens the navigation. Edit windows fill the screen (whichever Edit windows choice you made), and lists such as the hosts become cards with the actions in a menu on each card.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-dashboard-dark.png">
+  <img alt="The dashboard on a phone" src="images/phone-dashboard-light.png" width="260">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-proxy-hosts-dark.png">
+  <img alt="The proxy host list as cards on a phone" src="images/phone-proxy-hosts-light.png" width="260">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-menu-dark.png">
+  <img alt="The navigation menu on a phone" src="images/phone-menu-light.png" width="260">
+</picture>
+
 ## Saving forms
 
 - **Save never stays unavailable without a reason.** While a field has an error, the button looks disabled and a red note next to it names the fields to fix ("Fix before saving: ..."); clicking it jumps to the first marked field. When an edit form has no changes, the button is disabled and a grey note says "No changes to save". Errors show once you leave a field or try to save, so an empty form does not open full of red.
-- **Unsaved changes are not lost by accident.** Closing a host, certificate, access list, DNS credential, user, permissions or backup schedule window with unsaved changes asks "You have unsaved changes. Close and discard them?". Leaving a Settings page with unsaved changes asks "You have unsaved changes. Leave and discard them?" first.
+- **Unsaved changes are not lost by accident.** Closing a host, certificate, access list, DNS credential, user, permissions or backup schedule window with unsaved changes asks "You have unsaved changes. Close and discard them?". Leaving a Settings page with unsaved changes asks "You have unsaved changes. Leave and discard them?" first. Both questions open as a themed dialog in the page, not as a browser prompt.
 
 ## Certificates
 
@@ -53,8 +111,13 @@ With CrowdSec enabled, banned IPs get the ban page before the access list asks f
 
 Settings (administrators) has these pages: Default Site, Authentication, Certificates & TLS, Network, nginx, Forward authentication, Logs & monitoring, GeoIP, Advanced, Backup and restore, Database and Environment. On phones and tablets the side menu is a select at the top of the page.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/settings-nginx-dark.png">
+  <img alt="Settings, nginx, with a badge beside each setting telling when it applies" src="images/settings-nginx-light.png" width="720">
+</picture>
+
 - **A variable in `compose.yaml` wins** over the saved value and locks the field. The badge names it, for example "Set by TRUST_IP", or explains an indirect lock ("Follows ACME_KEY_SIZE": `ACME_KEY_SIZE` set alone is an ECDSA curve, so the key type stays ECDSA, and an RSA size needs `ACME_KEY_TYPE=rsa` too; "Required by GOA"). Authentication, traffic statistics and GeoIP fields show "Set by environment". Remove the variable and recreate the container to manage the field in the UI again.
-- **Each field says when it applies:** to the next certificate, when you save (with an nginx reload), or immediately. If the nginx test fails on save, nothing is saved and the error is shown.
+- **Each field says when it applies** with a short badge beside its label (or at the bottom of the setting when it does not fit): **Instant** (applies immediately), **Next certificate** (applies to the next certificate you request or renew) or **nginx reload** (applied when you save: saving tests the config and reloads nginx). Hover a badge for the full sentence. If the nginx test fails on save, nothing is saved and the error is shown.
 - **"Restart required" fields** (Time zone in Advanced, GoAccess report and GoAccess options in Logs & monitoring) are read when the container starts. After saving, the section lists them under "Restart the container to apply" until you run `docker restart npmpro`.
 - **Environment** is read-only: the startup variables (ports, bindings, users, nginx and TLS switches, modules and PHP, database and first start, the ACME account) with their value or default, and the list of settings that a variable locks. Passwords, email addresses and keys are only shown as "set" or "not set". To change one, edit `compose.yaml` and recreate the container.
 
