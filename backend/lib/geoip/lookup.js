@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import maxmind from "maxmind";
+import { rooted } from "../paths.js";
 
 const COUNTRY_FILE = "GeoLite2-Country.mmdb";
 const ASN_FILE = "GeoLite2-ASN.mmdb";
@@ -44,7 +45,7 @@ const refreshSlot = async (file, slot, cacheSize) => {
  * @param   {number}  [options.cacheSize]
  * @returns {{lookup: Function, available: Function, reload: Function}}
  */
-const createGeoip = ({ dir = "/data/goaccess/geoip", cacheSize = 50000 } = {}) => {
+const createGeoip = ({ dir = rooted("/data/goaccess/geoip"), cacheSize = 50000 } = {}) => {
 	const country = { reader: null, mtimeMs: null };
 	const asn = { reader: null, mtimeMs: null };
 	let reloading = Promise.resolve();

@@ -1,10 +1,11 @@
 import { chmod, mkdir, readdir, rm } from "node:fs/promises";
 import db from "./db.js";
 import { isSqlite, sqliteFile } from "./lib/config.js";
+import { rooted } from "./lib/paths.js";
 import { migrate as logger } from "./logger.js";
 
 const migrationConfig = { tableName: "migrations", directory: "migrations" };
-const backupDir = "/data/backups/database";
+const backupDir = rooted("/data/backups/database");
 const keepBackups = 5;
 const backupPattern = /^database-.+\.sqlite$/u;
 

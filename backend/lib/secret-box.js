@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { rooted } from "./paths.js";
 
 const algorithm = "aes-256-gcm";
 const ivLength = 12;
@@ -71,6 +72,8 @@ const createSecretBox = (keyFile) => {
 	};
 };
 
-const defaultSecretBox = createSecretBox(process.env.NPMPRO_SECRET_KEY_FILE ?? "/data/npmpro/dns-credentials.key");
+const defaultSecretBox = createSecretBox(
+	process.env.NPMPRO_SECRET_KEY_FILE ?? rooted("/data/npmpro/dns-credentials.key"),
+);
 
 export { createSecretBox, defaultSecretBox, SecretBoxError };

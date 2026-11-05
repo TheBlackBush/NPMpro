@@ -2,11 +2,12 @@ import crypto from "node:crypto";
 import nodeFs from "node:fs/promises";
 import { gravatar as logger } from "../logger.js";
 import pjson from "../package.json" with { type: "json" };
+import { rooted } from "./paths.js";
 import { gravatarOn } from "./runtime-config.js";
 
 const AVATAR_EXTS = ["png", "jpg", "gif", "webp"];
 const DEFAULT_AVATAR = "/images/default-avatar.jpg";
-const GRAVATAR_DIR = "/data/public/gravatar";
+const GRAVATAR_DIR = rooted("/data/public/gravatar");
 
 /**
  * The image type of an avatar file from its first bytes, null when it is not png, jpg, gif or webp

@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { applyDefaultSite, assertDefaultSiteMeta } from "../lib/default-site.js";
 import errs from "../lib/error.js";
 import { sanitizeGeoipMeta } from "../lib/monitoring-rules.js";
+import { rooted } from "../lib/paths.js";
 import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
 import settingModel from "../models/setting.js";
 import internalAuditLog from "./audit-log.js";
@@ -44,7 +45,7 @@ const internalSetting = {
 			// are put back and the row is not changed.
 			await runtimeExclusive(() =>
 				applyDefaultSite(internalNginx, merged, existingRow, {
-					writeHtml: (html) => writeFile("/data/public/html/index.html", html, { encoding: "utf8" }),
+					writeHtml: (html) => writeFile(rooted("/data/public/html/index.html"), html, { encoding: "utf8" }),
 					save,
 				}),
 			);

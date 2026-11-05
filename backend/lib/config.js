@@ -3,13 +3,14 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { global as logger } from "../logger.js";
 import { chooseDatabase, DATABASE_FILE, unsealWith } from "./database/connection-file.js";
 import { failingKnexConfig, knexConfigOf } from "./database/knex-config.js";
+import { rooted } from "./paths.js";
 import { createRetryLog, knexLogOf } from "./retry-log.js";
 import { defaultSecretBox } from "./secret-box.js";
 
 // the startup retry (index.js) and knex's connection warnings share it: one full line per error, then short ones
 const startupRetryLog = createRetryLog({ log: logger });
 
-const keysFile = "/data/npmpro/keys-ec.json";
+const keysFile = rooted("/data/npmpro/keys-ec.json");
 
 let instance = null;
 

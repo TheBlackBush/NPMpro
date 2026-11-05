@@ -2,6 +2,7 @@ import { stat } from "node:fs/promises";
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { waitWithin, writerRunning } from "../database/pause.js";
+import { rooted } from "../paths.js";
 import { createCounter } from "./counter.js";
 import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
@@ -9,7 +10,7 @@ import { isOwnRequest, parseAlogLine } from "./parse.js";
 import { createRecent } from "./recent.js";
 import { createVisitorHasher } from "./visitor-hash.js";
 
-const ACCESS_LOG = "/data/nginx/logs/access.log";
+const ACCESS_LOG = rooted("/data/nginx/logs/access.log");
 const OTHER_HOST = "_other";
 
 const READ_MS = 5000;

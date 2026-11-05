@@ -1,7 +1,9 @@
+import { rooted } from "./paths.js";
+
 // The nginx settings of Settings > nginx (runtime group "nginx"): four include files nginx.conf reads in the main,
 // events, http and stream context. rootfs/usr/local/bin/nginx-core-files.sh writes the same files at the first start
 // (test/nginx-core.test.js keeps them equal).
-const DIR = "/data/npmpro/nginx";
+const DIR = rooted("/data/npmpro/nginx");
 const NGINX_CORE_FILES = {
 	main: `${DIR}/core-main.conf`,
 	events: `${DIR}/core-events.conf`,

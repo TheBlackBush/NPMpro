@@ -14,6 +14,7 @@ import { maintenance } from "../lib/database/maintenance.js";
 import error from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
+import { rooted } from "../lib/paths.js";
 import { createRenewalTimer } from "../lib/renewal-timer.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
 import { writeSecretFile } from "../lib/secret-file.js";
@@ -401,8 +402,8 @@ const internalCertificate = {
 		} else if (row.provider === "mtls") {
 			await rm(internalCertificate.getMtlsCertFile(row.id), { force: true });
 		} else {
-			await rm(`/data/tls/custom/npm-${row.id}`, { force: true, recursive: true });
-			await rm(`/data/tls/custom/npm-${row.id}.der`, { force: true });
+			await rm(rooted(`/data/tls/custom/npm-${row.id}`), { force: true, recursive: true });
+			await rm(rooted(`/data/tls/custom/npm-${row.id}.der`), { force: true });
 		}
 		return row;
 	},
@@ -846,9 +847,9 @@ const internalCertificate = {
 		);
 
 		const oldCertPath = await realpath(`${internalCertificate.getLiveCertPath(certificate.id)}/cert.pem`);
-		const oldServer = (await readFile(`/data/tls/certbot/renewal/npm-${certificate.id}.conf`, "utf8")).match(
-			renewalServerPattern,
-		)?.groups.server;
+		const oldServer = (
+			await readFile(rooted(`/data/tls/certbot/renewal/npm-${certificate.id}.conf`), "utf8")
+		).match(renewalServerPattern)?.groups.server;
 
 		const renewResult = await runCertbot([
 			"--config",
@@ -922,7 +923,7 @@ const internalCertificate = {
 			logger.error(err.message);
 		}
 
-		await rm(`/data/tls/certbot/live/npm-${certificate.id}.der`, { force: true });
+		await rm(rooted(`/data/tls/certbot/live/npm-${certificate.id}.der`), { force: true });
 		await rm(`/tmp/certbot-credentials/credentials-${certificate.id}`, { force: true });
 	},
 
@@ -936,7 +937,7 @@ const internalCertificate = {
 		access.can("certificates:view");
 
 		// Create a test challenge file
-		await writeFile("/data/public/acme-challenge/.well-known/acme-challenge/test-challenge", "Success", {
+		await writeFile(rooted("/data/public/acme-challenge/.well-known/acme-challenge/test-challenge"), "Success", {
 			encoding: "utf8",
 		});
 
@@ -1028,11 +1029,11 @@ const internalCertificate = {
 		return `other:${result.responsecode}`;
 	},
 
-	getLiveCertPath: (certificateId) => `/data/tls/certbot/live/npm-${certificateId}`,
+	getLiveCertPath: (certificateId) => rooted(`/data/tls/certbot/live/npm-${certificateId}`),
 
-	getCustomCertPath: (certificateId) => `/data/tls/custom/npm-${certificateId}`,
+	getCustomCertPath: (certificateId) => rooted(`/data/tls/custom/npm-${certificateId}`),
 
-	getMtlsCertFile: (certificateId) => `/data/tls/mtls/npm-${certificateId}.pem`,
+	getMtlsCertFile: (certificateId) => rooted(`/data/tls/mtls/npm-${certificateId}.pem`),
 };
 
 export default internalCertificate;

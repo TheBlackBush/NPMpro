@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import errs from "./error.js";
+import { rooted } from "./paths.js";
 
 /**
  * The certificate file the host templates load for a certificate row (templates/_common.conf, stream.conf)
@@ -8,9 +9,9 @@ import errs from "./error.js";
  * @returns {string}
  */
 const certificateFile = ({ id, provider }) => {
-	if (provider === "letsencrypt") return `/data/tls/certbot/live/npm-${id}/fullchain.pem`;
-	if (provider === "mtls") return `/data/tls/mtls/npm-${id}.pem`;
-	return `/data/tls/custom/npm-${id}/fullchain.pem`;
+	if (provider === "letsencrypt") return rooted(`/data/tls/certbot/live/npm-${id}/fullchain.pem`);
+	if (provider === "mtls") return rooted(`/data/tls/mtls/npm-${id}.pem`);
+	return rooted(`/data/tls/custom/npm-${id}/fullchain.pem`);
 };
 
 /**

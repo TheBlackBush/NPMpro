@@ -9,6 +9,7 @@ import { HOST_TYPES, loadEnabledHosts, regenerateAllHosts, regenerateDefaultSite
 import internalUser from "./internal/user.js";
 import Access from "./lib/access.js";
 import { installPlugins } from "./lib/certbot.js";
+import { rooted } from "./lib/paths.js";
 import { setup as logger } from "./logger.js";
 import certificateModel from "./models/certificate.js";
 import settingModel from "./models/setting.js";
@@ -125,7 +126,7 @@ const regenerateHosts = async () => {
 	if (regenerateAll) {
 		const hosts = await loadEnabledHosts();
 		await regenerateAllHosts(hosts);
-		await writeFile("/data/npmpro/env.sha512sum", process.env.ENV_SHA512SUM);
+		await writeFile(rooted("/data/npmpro/env.sha512sum"), process.env.ENV_SHA512SUM);
 		logger.info(`Regenerated ${hosts.length} host config(s)`);
 		await internalNginx.reload();
 		return;

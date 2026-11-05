@@ -1,8 +1,10 @@
+import { rooted } from "./paths.js";
+
 // included by nginx.conf: the error log at main level, the stream access log in stream {}
-const ERROR_LOG_CONF = "/data/npmpro/nginx/error-log.conf";
-const STREAM_LOG_CONF = "/data/npmpro/nginx/stream-log.conf";
+const ERROR_LOG_CONF = rooted("/data/npmpro/nginx/error-log.conf");
+const STREAM_LOG_CONF = rooted("/data/npmpro/nginx/stream-log.conf");
 // the live logrotate config: start.sh copies /etc/logrotate there at every start (PUID can not write /etc)
-const LOGROTATE_CONF = "/run/npmpro/logrotate";
+const LOGROTATE_CONF = rooted("/run/npmpro/logrotate");
 
 /**
  * The error log and stream log includes for Write log files (start.sh writes the same lines at boot from LOGROTATE);

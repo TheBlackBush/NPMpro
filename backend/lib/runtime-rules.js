@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
 import { isDeepStrictEqual } from "node:util";
+import { rooted } from "./paths.js";
 import { isTimeZone } from "./time-zones.js";
 
 const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"];
@@ -11,7 +12,7 @@ const LETSENCRYPT_SERVER = "https://acme-v02.api.letsencrypt.org/directory";
 const STAPLING_SERVERS = new Set(["https://dv.acme-v02.api.pki.goog/directory", "https://acme.zerossl.com/v2/DV90"]);
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
-const ANUBIS_IMAGES = ["happy", "reject", "pensive"].map((name) => `/data/public/anubis/${name}.webp`);
+const ANUBIS_IMAGES = ["happy", "reject", "pensive"].map((name) => rooted(`/data/public/anubis/${name}.webp`));
 // envs.sh:762-787
 // no whitespace and no nginx syntax characters: the value is written into the config (frontend upstreamUrlPattern,
 // the proxy host schema and envs.sh use the same rule)
