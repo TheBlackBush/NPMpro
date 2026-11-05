@@ -286,7 +286,8 @@ function SidebarRail({
           {...props}
         />
       </TooltipTrigger>
-      <TooltipContent side="right">{intl.formatMessage({ id: "aria.toggle-sidebar" })}</TooltipContent>
+      {/* NPMpro: says what a click does instead of repeating the name */}
+      <TooltipContent side="right">{intl.formatMessage({ id: "tooltip.sidebar-rail" })}</TooltipContent>
     </Tooltip>
   )
 }

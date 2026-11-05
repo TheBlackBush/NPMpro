@@ -67,7 +67,7 @@ function LocationRow({
 					<span className="truncate text-muted-foreground">{forwardSummary(row)}</span>
 					{hasConfig ? (
 						// inside the row's toggle button: hover only, a click must reach the button
-						<TapTooltip content={intl.formatMessage({ id: "nginx-config.label" })} tap={false}>
+						<TapTooltip content={intl.formatMessage({ id: "tooltip.location-has-config" })} tap={false}>
 							<span
 								className="flex shrink-0 items-center text-muted-foreground"
 								role="img"
@@ -83,7 +83,7 @@ function LocationRow({
 						variant="ghost"
 						className={DESTRUCTIVE_TEXT}
 						size="icon-sm"
-						title={intl.formatMessage({ id: "action.delete" })}
+						title={intl.formatMessage({ id: "tooltip.location-delete" })}
 						aria-label={intl.formatMessage({ id: "action.delete" })}
 						onClick={onRemove}
 					>
@@ -275,7 +275,7 @@ export function LocationsFields({ name = "locations" }) {
 						onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
 					/>
 					<InputGroupAddon align="inline-end">
-						<TapTooltip content={intl.formatMessage({ id: "action.clear" })} tap={false}>
+						<TapTooltip content={intl.formatMessage({ id: "tooltip.filter-clear" })} tap={false}>
 							<InputGroupButton
 								size="icon-xs"
 								aria-label={intl.formatMessage({ id: "action.clear" })}

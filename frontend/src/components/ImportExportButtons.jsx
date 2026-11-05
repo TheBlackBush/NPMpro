@@ -39,7 +39,7 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 						size="sm"
 						onClick={() => showExportItemsModal(kind)}
 						aria-label={exportLabel}
-						title={exportLabel}
+						title={intl.formatMessage({ id: "tooltip.export" })}
 					>
 						<Download aria-hidden="true" />
 						<span className="sr-only sm:not-sr-only">
@@ -62,7 +62,7 @@ function ImportExportButtons({ kind, permissionSection, hasItems }) {
 					size="sm"
 					onClick={() => inputRef.current?.click()}
 					aria-label={importLabel}
-					title={importLabel}
+					title={intl.formatMessage({ id: "tooltip.import" })}
 				>
 					<Upload aria-hidden="true" />
 					<span className="sr-only sm:not-sr-only">

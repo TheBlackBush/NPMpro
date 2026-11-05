@@ -88,7 +88,7 @@ function HelpButton({ doc, className }) {
 			size="icon-sm"
 			className={className}
 			aria-label={label}
-			title={label}
+			title={intl.formatMessage({ id: "tooltip.help" })}
 			onClick={() => showHelpModal(doc)}
 		>
 			<CircleHelp strokeWidth={2.25} aria-hidden="true" />

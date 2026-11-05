@@ -27,7 +27,15 @@ export function ThemeMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" aria-label={label} title={label}>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label={label}
+					title={intl.formatMessage(
+						{ id: "tooltip.theme" },
+						{ theme: intl.formatMessage({ id: current.labelId }) },
+					)}
+				>
 					<current.Icon aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>

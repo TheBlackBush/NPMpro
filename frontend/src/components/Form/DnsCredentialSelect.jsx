@@ -49,7 +49,7 @@ export function DnsCredentialSelect({ name, provider, hint }) {
 					<Button
 						size="icon"
 						aria-label={addLabel}
-						title={addLabel}
+						title={intl.formatMessage({ id: "tooltip.dns-credential-add" })}
 						onClick={() =>
 							showDnsCredentialModal("new", { provider, onSaved: (row) => field.onChange(row.id) })
 						}

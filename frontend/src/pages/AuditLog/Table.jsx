@@ -72,7 +72,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 							{ id: "auditlog.details-for" },
 							{ name: eventName(info.row.original) },
 						)}
-						title={intl.formatMessage({ id: "action.view-details" })}
+						title={intl.formatMessage({ id: "tooltip.event-details" })}
 						onClick={(e) => {
 							e.preventDefault();
 							onSelectItem?.(info.row.original.id);
