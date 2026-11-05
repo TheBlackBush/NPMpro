@@ -29,13 +29,11 @@ const auths = (userId, type) => api.db("auth").where({ user_id: userId, type });
 
 const enroll = async () => {
 	const user = await api.limited({ visibility: "user" });
-	const setup = await user.post(`/users/${user.user.id}/mfa/totp`);
-	assert.equal(setup.status, 200);
+	const setup = must(await user.post(`/users/${user.user.id}/mfa/totp`));
 	nextPeriod();
-	const enabled = await user.post(`/users/${user.user.id}/mfa/totp/enable`, {
-		code: await codeOf(setup.body.secret),
-	});
-	assert.equal(enabled.status, 200);
+	const enabled = must(
+		await user.post(`/users/${user.user.id}/mfa/totp/enable`, { code: await codeOf(setup.body.secret) }),
+	);
 	return {
 		user,
 		id: user.user.id,
@@ -69,7 +67,10 @@ it("starts the setup: a secret and an otpauth URL for the account, the secret st
 	const { id, email } = user.user;
 	const setup = await user.post(`/users/${id}/mfa/totp`);
 	assert.equal(setup.status, 200);
-	assert.deepEqual(Object.keys(setup.body).sort(), ["otpauth_url", "secret"]);
+	assert.deepEqual(
+		Object.keys(setup.body).sort((a, b) => a.localeCompare(b)),
+		["otpauth_url", "secret"],
+	);
 	assert.match(setup.body.otpauth_url, OTPAUTH);
 	assert.ok(setup.body.otpauth_url.includes(`secret=${setup.body.secret}`));
 	assert.ok(decodeURIComponent(setup.body.otpauth_url).includes(email));
@@ -144,7 +145,10 @@ it("gives a challenge cookie instead of a session when the account has TOTP", as
 	const client = api.client();
 	const login = await client.post("/tokens", { identity: email, secret: PASSWORD });
 	assert.equal(login.status, 200);
-	assert.deepEqual(Object.keys(login.body).sort(), ["expires", "requiresTotp"]);
+	assert.deepEqual(
+		Object.keys(login.body).sort((a, b) => a.localeCompare(b)),
+		["expires", "requiresTotp"],
+	);
 	assert.equal(login.body.requiresTotp, true);
 	const cookie = setCookie(login, CHALLENGE);
 	assert.match(cookie, SIGNED);
