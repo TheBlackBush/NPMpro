@@ -213,7 +213,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "setup") {
 			return (
 				<div className="py-2">
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
 					<p className="mb-3 text-muted-foreground text-sm">
@@ -240,7 +240,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "backup") {
 			return (
 				<div className="py-2">
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="mfa.backup-warning" />
 					</NoticeAlert>
 					<div className="mb-3 grid grid-cols-2 gap-2">
@@ -260,7 +260,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "disable") {
 			return (
 				<div className="py-2">
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="totp.disable-warning" />
 					</NoticeAlert>
 					<CodeForm
@@ -281,7 +281,7 @@ const MfaModal = EasyModal.create(({ id, visible, remove }) => {
 		if (step === "verify") {
 			return (
 				<div className="py-2">
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
 					<p className="mb-3 text-muted-foreground text-sm">

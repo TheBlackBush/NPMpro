@@ -57,7 +57,7 @@ const ChangePasswordModal = EasyModal.create(({ id, visible, remove }) => {
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
 					<PasswordField

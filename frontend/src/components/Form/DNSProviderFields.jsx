@@ -100,7 +100,7 @@ export function DNSProviderFields({ className }) {
 	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
 		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
-			<NoticeAlert>
+			<NoticeAlert className="mb-3">
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
 			<ProviderSelect providerId={providerId} className={providerId ? undefined : "mb-0"} />

@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { useFormState } from "react-hook-form";
 import { Badge } from "src/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "src/components/ui/tabs";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { tabErrorCounts } from "src/modules/ModalTabs";
 import { useFormTabs, useReadOnly } from "./HookForm";
@@ -54,6 +55,8 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 	const activeRef = useRef(active);
 	const disabledRef = useRef(disabled);
 	const pendingFocus = useRef(null);
+	// whether tabs lie beyond the start or the end of the scrolling row: a fade at that edge shows there is more
+	const [more, setMore] = useState({ start: false, end: false });
 	const errorIds = useMemo(() => ({ of: (id) => `${baseId}-errors-${id}` }), [baseId]);
 	const counts = tabErrorCounts(tabs, errors);
 
@@ -73,6 +76,24 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 			inline: "nearest",
 		});
 	}, [active]);
+
+	useEffect(() => {
+		const list = listRef.current;
+		if (!list) return;
+		const update = () => {
+			const start = list.scrollLeft > 1;
+			const end = Math.ceil(Math.abs(list.scrollLeft)) + list.clientWidth < list.scrollWidth - 1;
+			setMore((current) => (current.start === start && current.end === end ? current : { start, end }));
+		};
+		update();
+		list.addEventListener("scroll", update, { passive: true });
+		const observer = new ResizeObserver(update);
+		observer.observe(list);
+		return () => {
+			list.removeEventListener("scroll", update);
+			observer.disconnect();
+		};
+	}, []);
 
 	// HookForm opens the tab of the first error through this
 	useLayoutEffect(() => {
@@ -100,7 +121,13 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 				variant="line"
 				// shadcn sets the row to h-8 for horizontal tabs (a group variant that outranks a plain h-auto); the tabs are h-9, so
 				// the scrolling row clipped their active underline
-				className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0 group-data-[orientation=horizontal]/tabs:h-auto"
+				className={cn(
+					"h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0 group-data-[orientation=horizontal]/tabs:h-auto",
+					// a fade (a mask) at the edge that has more tabs behind it
+					more.end && !more.start && "mask-r-from-85%",
+					more.start && !more.end && "mask-l-from-85%",
+					more.start && more.end && "mask-x-from-85%",
+				)}
 			>
 				{tabs.map((tab) => (
 					<TabsTrigger

@@ -125,7 +125,7 @@ const HTTPCertificateModal = EasyModal.create(({ visible, remove }) => {
 					<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
 						{errorMsg}
 					</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="certificates.http.warning" />
 					</NoticeAlert>
 					<DomainNamesField forCertificate onChange={() => setTestResults(null)} />

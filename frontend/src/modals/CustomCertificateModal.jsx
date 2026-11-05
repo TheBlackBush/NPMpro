@@ -126,7 +126,7 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 					<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
 						{errorMsg}
 					</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="certificates.custom.warning" />
 					</NoticeAlert>
 					<TextField

@@ -38,7 +38,7 @@ export function AppFooter() {
 		// a container: the content column decides the layout (narrower than the viewport in the sidebar layout);
 		// the safe-area padding is 0 unless the page opts into viewport-fit=cover
 		<footer className="@container border-t pb-[env(safe-area-inset-bottom)] print:hidden">
-			<div className="mx-auto flex max-w-screen-2xl flex-col items-center gap-x-6 px-3 py-2 text-center text-muted-foreground text-xs sm:items-start sm:px-5 sm:text-left @4xl:flex-row @4xl:items-center @4xl:justify-between">
+			<div className="mx-auto flex max-w-screen-2xl flex-col items-center gap-x-6 px-3 py-2 text-center text-muted-foreground text-xs sm:items-start sm:px-5 sm:text-left @5xl:flex-row @5xl:items-center @5xl:justify-between">
 				<Credits className="justify-center sm:justify-start" />
 				<div className="flex flex-wrap items-center justify-center gap-x-4 sm:justify-start">
 					<span className="inline-flex min-h-6 items-center">
