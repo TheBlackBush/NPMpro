@@ -153,6 +153,21 @@ const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
 	return entries;
 };
 
+const SETTING_ENV_KEYS = { oidc: OIDC_ENV_KEYS, monitoring: MONITORING_ENV_KEYS, geoip: GEOIP_ENV_KEYS };
+
+/**
+ * The variable that locks each locked key of the OIDC, monitoring or GeoIP setting (locked_by in the response): key to
+ * variable NAME, never a value. A key without a name in the map has no entry.
+ *
+ * @param   {"oidc"|"monitoring"|"geoip"}  group
+ * @param   {string[]}  [locked]  the locked keys of mergeOidcConfig() / mergeMonitoringConfig() / mergeGeoipConfig()
+ * @returns {Object<string, string>}
+ */
+const lockedByOf = (group, locked) => {
+	const names = SETTING_ENV_KEYS[group];
+	return Object.fromEntries((locked ?? []).filter((key) => names[key]).map((key) => [key, names[key]]));
+};
+
 /**
  * The Environment page data. A secret item has no `value` key, whether it is set or not.
  *
@@ -197,4 +212,12 @@ const environmentInfo = (env, runtimeLocked) => {
 	return { groups, locked_runtime: lockedRuntimeOf(runtimeLocked) };
 };
 
-export { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, ENVIRONMENT_NAMES, environmentInfo, LOCK_GROUP_ORDER, settingLocksOf };
+export {
+	ENVIRONMENT_GROUPS,
+	ENVIRONMENT_ITEMS,
+	ENVIRONMENT_NAMES,
+	environmentInfo,
+	LOCK_GROUP_ORDER,
+	lockedByOf,
+	settingLocksOf,
+};

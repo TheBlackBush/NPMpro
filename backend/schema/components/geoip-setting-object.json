@@ -7,6 +7,7 @@
 		"editions",
 		"license_key_set",
 		"locked",
+		"locked_by",
 		"secret_error",
 		"last_update",
 		"last_error"
@@ -38,6 +39,13 @@
 				"type": "string"
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "The environment variable that sets each locked field (name only, never the value)"
 		},
 		"secret_error": {
 			"type": "boolean",

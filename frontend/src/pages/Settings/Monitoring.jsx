@@ -242,7 +242,7 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
  * A number of the traffic statistics on the form layer's FormField: its label with the lock badge under it, the
  * input (with an optional unit), the error and the hint
  */
-function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
+function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, envOf }) {
 	const { register } = useFormContext();
 	const error = useFieldError(name);
 	return (
@@ -250,7 +250,7 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 			id={id}
 			className=""
 			label={<T id={labelId} />}
-			badges={isLocked(name) ? <LockedBadge /> : null}
+			badges={isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
 			hint={hint}
 			error={error}
 		>
@@ -280,10 +280,10 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
 	);
 }
 
-function Fields({ isLocked }) {
+function Fields({ isLocked, envOf }) {
 	const { register, clearErrors } = useFormContext();
 	const uniqueVisitors = useWatch({ name: "uniqueVisitors" });
-	const lock = (key) => (isLocked(key) ? <LockedBadge /> : null);
+	const lock = (key) => (isLocked(key) ? <LockedBadge env={envOf(key)} /> : null);
 	return (
 		<Part titleId="settings.monitoring.statistics">
 			<SwitchList>
@@ -303,6 +303,7 @@ function Fields({ isLocked }) {
 					range={RETENTION}
 					unit={<T id="settings.monitoring.retention.days" />}
 					isLocked={isLocked}
+					envOf={envOf}
 				/>
 				<SwitchField
 					{...register("showIps")}
@@ -333,6 +334,7 @@ function Fields({ isLocked }) {
 						hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
 						range={VISITORS_CAP}
 						isLocked={isLocked}
+						envOf={envOf}
 					/>
 				) : null}
 			</SwitchList>
@@ -435,7 +437,7 @@ function MonitoringForm({ data, logs }) {
 				<LogFields />
 				<GoAccessFields />
 			</RuntimeContext.Provider>
-			<Fields isLocked={isLocked} />
+			<Fields isLocked={isLocked} envOf={(key) => data.lockedBy?.[key]} />
 			<SaveButton allLocked={allLocked} />
 		</HookForm>
 	);

@@ -1,3 +1,4 @@
+import { lockedByOf } from "../lib/environment-info.js";
 import {
 	getGeoipConfig,
 	getMonitoringConfig,
@@ -68,6 +69,7 @@ const geoipView = (cfg) => {
 		editions: values.editions,
 		license_key_set: Boolean(key) || cfg.secretError,
 		locked: cfg.locked,
+		locked_by: lockedByOf("geoip", cfg.locked),
 		secret_error: cfg.secretError,
 		last_update: values.last_update ?? null,
 		last_error: values.last_error ?? null,
@@ -91,7 +93,7 @@ const internalMonitoringSetting = {
 	getMonitoring: async (access) => {
 		access.canAdmin();
 		const cfg = await getMonitoringConfig();
-		return { ...cfg.values, locked: cfg.locked };
+		return { ...cfg.values, locked: cfg.locked, locked_by: lockedByOf("monitoring", cfg.locked) };
 	},
 
 	/**

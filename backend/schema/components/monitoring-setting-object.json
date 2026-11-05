@@ -8,7 +8,8 @@
 		"show_ips",
 		"unique_visitors",
 		"visitors_cap",
-		"locked"
+		"locked",
+		"locked_by"
 	],
 	"properties": {
 		"traffic_enabled": {
@@ -41,6 +42,13 @@
 				"type": "string"
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "The environment variable that sets each locked field (name only, never the value)"
 		}
 	}
 }
