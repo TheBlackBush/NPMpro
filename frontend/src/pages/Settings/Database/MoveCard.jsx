@@ -223,7 +223,6 @@ function MoveForm({ tested, status }) {
 								?.focus()
 						}
 						onClick={() => showDatabaseMoveModal({ status, target: toPayload(values) })}
-						title={hint ? intl.formatMessage({ id: hint }) : undefined}
 						aria-describedby={hint && !blocked ? hintId : undefined}
 					>
 						<ArrowLeftRight aria-hidden="true" />

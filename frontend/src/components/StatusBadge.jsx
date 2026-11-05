@@ -31,10 +31,10 @@ const tones = {
  * A state label with a coloured dot: tone is success, info, warning, destructive or muted. pulse animates the dot (for a
  * live state, not under prefers-reduced-motion); dot={false} leaves the dot out (a pure label).
  */
-export function StatusBadge({ tone = "muted", children, title, pulse, dot = true, className, ...rest }) {
+export function StatusBadge({ tone = "muted", children, pulse, dot = true, className, ...rest }) {
 	const t = tones[tone] || tones.muted;
 	return (
-		<Badge {...rest} title={title} variant="outline" className={cn("h-auto gap-1.5 py-0.5", t.badge, className)}>
+		<Badge {...rest} variant="outline" className={cn("h-auto gap-1.5 py-0.5", t.badge, className)}>
 			{dot ? (
 				<span
 					aria-hidden="true"

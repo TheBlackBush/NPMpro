@@ -1,8 +1,7 @@
 import { CircleHelp } from "lucide-react";
 import Markdown from "markdown-to-jsx";
 import { useEffect, useState } from "react";
-import { ErrorAlert, Loading } from "src/components";
-import { Button } from "src/components/ui/button";
+import { Button, ErrorAlert, Loading } from "src/components";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "src/components/ui/sheet";
 import { cn } from "src/lib/utils";
 import { getHelpFile, intl, T } from "src/locale";
@@ -89,7 +88,7 @@ function HelpButton({ doc, className }) {
 			size="icon-sm"
 			className={className}
 			aria-label={label}
-			title={label}
+			title={intl.formatMessage({ id: "tooltip.help" })}
 			onClick={() => showHelpModal(doc)}
 		>
 			<CircleHelp strokeWidth={2.25} aria-hidden="true" />

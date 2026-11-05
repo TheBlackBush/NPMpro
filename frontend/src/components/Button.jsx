@@ -1,3 +1,4 @@
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button as UiButton } from "src/components/ui/button";
 import { Spinner } from "src/components/ui/spinner";
 import { cn } from "src/lib/utils";
@@ -13,6 +14,9 @@ export const DESTRUCTIVE_TEXT = "text-[color-mix(in_oklab,var(--destructive)_75%
  * uncoloured button is the outline look).
  *
  * variant: a shadcn variant to use instead of the one color/outline map to (icon buttons: "ghost").
+ *
+ * title: the text of a themed tooltip (hover and keyboard focus only: the button keeps its own click, and the name
+ * for assistive technology stays the caller's aria-label or text). Use it on a button that shows only an icon.
  *
  * blocked: looks disabled and does nothing when clicked, but stays focusable and announced (aria-disabled), so its
  * reason (aria-describedby) can be reached; use it when the button waits for the user to fix something, disabled
@@ -33,12 +37,13 @@ function Button({
 	onBlockedClick,
 	style,
 	variant: variantProp,
+	title,
 	...rest
 }) {
 	const { variant: mapped, size: uiSize } = buttonVariant({ color, outline, size });
 	// an explicit shadcn variant (ghost) wins over the one the props map to
 	const variant = variantProp ?? mapped;
-	return (
+	const button = (
 		<UiButton
 			{...rest}
 			style={style}
@@ -69,6 +74,13 @@ function Button({
 			{isLoading ? <Spinner role="presentation" aria-hidden="true" data-icon="inline-start" /> : null}
 			{children}
 		</UiButton>
+	);
+	return title ? (
+		<TapTooltip content={title} tap={false}>
+			{button}
+		</TapTooltip>
+	) : (
+		button
 	);
 }
 
