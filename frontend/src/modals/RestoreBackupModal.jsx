@@ -1,16 +1,21 @@
-import { IconAlertCircle, IconAlertTriangle, IconCircleCheck } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { CircleAlertIcon, CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { cancelRestore, checkRestore, inspectBackup, openImport } from "src/api/backend";
 import { AppModal, Button, ErrorAlert, FormField, Loading, PasswordControl, TypeTree } from "src/components";
+import { Alert as UiAlert } from "src/components/ui/alert";
+import { Checkbox } from "src/components/ui/checkbox";
+import { Progress } from "src/components/ui/progress";
 import { useBackupTypes, useImportUpload, useRestoreBackup } from "src/hooks";
 import { useElapsed } from "src/hooks/useElapsed";
+import { cn } from "src/lib/utils";
 import { formatDateTime, intl, T } from "src/locale";
 import { emptyItemType } from "src/modules/BackupMerge";
 import { categoriesOf, PASSPHRASE_MIN_LENGTH, restoreBlockReason, withErrorDetails } from "src/modules/BackupTypes";
 import { formatElapsed } from "src/modules/Duration";
 import EasyModal from "src/modules/easyModal";
-import { kindColor, sectionColor } from "src/modules/SectionColors";
+import { kindSection, sectionAccent } from "src/modules/SectionAccents";
+import { sectionIcon } from "src/shell/useNavItems";
 import { importCategories, isTooLarge, MAX_IMPORT, tooLargeError, Uploading } from "./RestoreBackup/ImportFile";
 import { ItemList } from "./RestoreBackup/ItemList";
 import { MergeNotes, MergeView, ModeSwitch, useMergePlan } from "./RestoreBackup/MergeView";
@@ -82,14 +87,23 @@ function PreviewLists({ preview }) {
 	);
 }
 
+// the look of each variant by tokens: the destructive one is the shadcn variant, the others a tinted border
+const ALERT_LOOKS = {
+	success: { className: "border-success/50 bg-success/10 text-foreground", icon: "text-success" },
+	warning: { className: "border-warning/50 bg-warning/10 text-foreground", icon: "text-warning" },
+};
+
 function Alert({ variant, icon: Icon, children }) {
+	const look = ALERT_LOOKS[variant];
 	return (
-		<div className={`alert alert-${variant}`} role={variant === "danger" ? "alert" : "status"}>
-			<div className="alert-icon">
-				<Icon className="icon" aria-hidden="true" />
-			</div>
-			<div className="text-break">{children}</div>
-		</div>
+		<UiAlert
+			variant={look ? "default" : "destructive"}
+			role={variant === "danger" ? "alert" : "status"}
+			className={cn("mb-3", look?.className)}
+		>
+			<Icon className={look?.icon} aria-hidden="true" />
+			<div className="text-sm break-words">{children}</div>
+		</UiAlert>
 	);
 }
 
@@ -97,22 +111,16 @@ function Running() {
 	const elapsed = useElapsed(true);
 	return (
 		<div className="py-3">
-			<div className="text-secondary mb-2">
+			<div className="mb-2 text-muted-foreground">
 				<span role="status">
 					<T id="settings.backup.restore.running" />
 				</span>
-				<span className="ms-1" aria-hidden="true">
+				<span className="ml-1" aria-hidden="true">
 					<T id="certificates.request.progress" data={{ elapsed: formatElapsed(elapsed) }} />
 				</span>
 			</div>
-			<div
-				className="progress progress-sm progress-brand"
-				role="progressbar"
-				aria-label={intl.formatMessage({ id: "loading" })}
-			>
-				<div className="progress-bar progress-bar-indeterminate" />
-			</div>
-			<p className="text-secondary small mt-3 mb-0">
+			<Progress aria-label={intl.formatMessage({ id: "loading" })} />
+			<p className="mt-3 mb-0 text-sm text-muted-foreground">
 				<T id="settings.backup.restore.running.hint" />
 			</p>
 		</div>
@@ -125,12 +133,12 @@ function Result({ result, types, plan, onOpen }) {
 	const counts = Object.entries(result.counts ?? {});
 	return (
 		<>
-			<Alert variant="success" icon={IconCircleCheck}>
-				<div className="fw-bold">
+			<Alert variant="success" icon={CircleCheckIcon}>
+				<div className="font-bold">
 					<T id={merged ? "settings.backup.merge.done" : "settings.backup.restore.done"} />
 				</div>
 				{counts.length > 0 ? (
-					<ul className="mb-0 mt-1">
+					<ul className="mt-1 mb-0 list-disc pl-5">
 						{counts.map(([typeId, count]) => (
 							<li key={typeId}>
 								<T id="settings.backup.restore.count" data={{ type: typeLabel(typeId), count }} />
@@ -140,7 +148,7 @@ function Result({ result, types, plan, onOpen }) {
 				) : null}
 			</Alert>
 			{result.restartNeeded || monitoring ? (
-				<Alert variant="warning" icon={IconAlertTriangle}>
+				<Alert variant="warning" icon={TriangleAlertIcon}>
 					{result.restartNeeded ? (
 						<div>
 							<T id="settings.backup.restore.restart" />
@@ -154,7 +162,7 @@ function Result({ result, types, plan, onOpen }) {
 				</Alert>
 			) : null}
 			{result.runtimeFailed?.length ? (
-				<Alert variant="warning" icon={IconAlertTriangle}>
+				<Alert variant="warning" icon={TriangleAlertIcon}>
 					<T
 						id="settings.backup.restore.runtime-failed"
 						data={{ groups: [...new Set(result.runtimeFailed.map(groupLabel))].join(", ") }}
@@ -162,32 +170,31 @@ function Result({ result, types, plan, onOpen }) {
 				</Alert>
 			) : null}
 			{result.offlineHosts?.length ? (
-				<Alert variant="warning" icon={IconAlertTriangle}>
-					<div className="fw-bold mb-1">
+				<Alert variant="warning" icon={TriangleAlertIcon}>
+					<div className="mb-1 font-bold">
 						<T id="settings.backup.restore.offline-hosts" data={{ count: result.offlineHosts.length }} />
 					</div>
-					<ul className="mb-0 overflow-auto" style={{ maxHeight: "16em" }}>
+					<ul className="mb-0 max-h-64 list-disc overflow-auto pl-5">
 						{result.offlineHosts.map((host) => {
 							const list = HOST_LISTS[host.type];
 							return (
 								<li key={`${host.type}-${host.id}`} className="mb-1">
-									<span className="fw-medium">{host.domain}</span>
+									<span className="font-medium">{host.domain}</span>
 									{list ? (
-										<span className="ms-1">
+										<span className="ml-1">
 											(
-											<button
-												type="button"
-												className="btn btn-link p-0 align-baseline"
+											<Button
+												variant="link"
+												className="h-auto p-0 align-baseline text-inherit underline"
 												onClick={() => onOpen(list.path)}
 											>
 												<T id={list.labelId} />
-											</button>
+											</Button>
 											)
 										</span>
 									) : null}
 									{host.error ? (
-										// pre-wrap is inline: Tabler's .text-wrap is white-space: normal and would flatten the nginx output
-										<pre className="mt-1 mb-0 small text-break" style={{ whiteSpace: "pre-wrap" }}>
+										<pre className="mt-1 mb-0 text-sm break-words whitespace-pre-wrap">
 											{host.error}
 										</pre>
 									) : null}
@@ -436,7 +443,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	if (step === "uploading") {
 		body = <Uploading progress={progress} />;
 		footer = (
-			<Button className="ms-auto" onClick={close}>
+			<Button variant="ghost" onClick={close}>
 				<T id="cancel" />
 			</Button>
 		);
@@ -451,7 +458,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 					if (!passphraseShort) void open(passphrase);
 				}}
 			>
-				<p className="text-secondary">
+				<p className="mb-3 text-sm text-muted-foreground">
 					<T id="settings.backup.restore.passphrase.hint" />
 				</p>
 				<FormField id={`${baseId}-passphrase`} label={<T id="settings.backup.passphrase" />} required>
@@ -471,19 +478,19 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 		);
 		footer = (
 			<>
-				<Button onClick={close}>
+				<Button variant="ghost" onClick={close}>
 					<T id="cancel" />
 				</Button>
-				<div className="ms-auto d-flex align-items-center">
+				<div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
 					{passphraseShort ? (
-						<span id={reasonId} className="text-secondary small me-3 text-end">
+						<span id={reasonId} className="text-right text-sm text-muted-foreground">
 							<T id="settings.backup.passphrase.too-short" />
 						</span>
 					) : null}
 					<Button
 						type="submit"
 						form={formId}
-						color={importing ? kindColor(importKind) : sectionColor("settings")}
+						color="primary"
 						disabled={passphraseShort}
 						aria-describedby={passphraseShort ? reasonId : undefined}
 					>
@@ -495,21 +502,21 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	} else if (step === "opening") {
 		body = (
 			<div className="py-3">
-				<p className="text-secondary text-center" role="status">
+				<p className="text-center text-muted-foreground" role="status">
 					<T id="settings.backup.restore.opening" />
 				</p>
 				<Loading noLogo />
 			</div>
 		);
 		footer = (
-			<Button className="ms-auto" onClick={close}>
+			<Button variant="ghost" onClick={close}>
 				<T id="cancel" />
 			</Button>
 		);
 	} else if (step === "open-failed") {
 		body = <ErrorAlert error={openError} className="mb-0" />;
 		footer = (
-			<Button className="ms-auto" onClick={close}>
+			<Button variant="ghost" className="ml-auto" onClick={close}>
 				<T id="action.close" />
 			</Button>
 		);
@@ -517,7 +524,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 		const createdBy = manifest.createdBy?.name || manifest.createdBy?.email || "?";
 		body = (
 			<>
-				<p className="text-secondary">
+				<p className="mb-3 text-sm text-muted-foreground">
 					<T
 						id="settings.backup.restore.made-with"
 						data={{
@@ -555,22 +562,22 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 					</>
 				)}
 				{merging ? (
-					<Alert variant="warning" icon={IconAlertTriangle}>
+					<Alert variant="warning" icon={TriangleAlertIcon}>
 						<T id="settings.backup.merge.warning" />
 					</Alert>
 				) : (
-					<Alert variant="danger" icon={IconAlertCircle}>
+					<Alert variant="danger" icon={CircleAlertIcon}>
 						<T id="settings.backup.restore.warning" />
 					</Alert>
 				)}
-				<label className="form-check mb-0">
-					<input
-						className="form-check-input"
-						type="checkbox"
+				{/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the row */}
+				<label className="flex cursor-pointer items-start gap-3 text-sm">
+					<Checkbox
 						checked={confirmed}
-						onChange={(e) => setConfirmed(e.target.checked)}
+						onCheckedChange={(checked) => setConfirmed(checked === true)}
+						className="mt-0.5"
 					/>
-					<span className="form-check-label">
+					<span className="min-w-0 break-words">
 						<T id={merging ? "settings.backup.merge.confirm" : "settings.backup.restore.confirm"} />
 					</span>
 				</label>
@@ -578,17 +585,17 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 		);
 		footer = (
 			<>
-				<Button onClick={close}>
+				<Button variant="ghost" onClick={close}>
 					<T id="cancel" />
 				</Button>
-				<div className="ms-auto d-flex align-items-center">
+				<div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
 					{restoreReason ? (
-						<span id={reasonId} className="text-secondary small me-3 text-end">
+						<span id={reasonId} className="text-right text-sm text-muted-foreground">
 							<T id={restoreReason} data={emptyType ? { type: typeLabel(emptyType) } : undefined} />
 						</span>
 					) : null}
 					<Button
-						color={importing ? kindColor(importKind) : "danger"}
+						color={importing ? "primary" : "danger"}
 						disabled={restoreReason !== null}
 						aria-describedby={restoreReason ? reasonId : undefined}
 						onClick={run}
@@ -601,7 +608,7 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 	} else if (step === "running") {
 		body = <Running />;
 		footer = (
-			<Button className="ms-auto" disabled>
+			<Button variant="ghost" className="ml-auto" disabled>
 				<T id="action.close" />
 			</Button>
 		);
@@ -618,16 +625,24 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				<ErrorAlert error={restoreError} className="mb-0" />
 			);
 		footer = (
-			<Button className="ms-auto" onClick={close}>
+			<Button variant="ghost" className="ml-auto" onClick={close}>
 				<T id="action.close" />
 			</Button>
 		);
 	}
 
+	const section = importing ? kindSection(importKind) : undefined;
+	const SectionIcon = section ? sectionIcon(section) : undefined;
 	return (
 		<AppModal show={visible} onHide={close} size="xl" backdrop={running ? "static" : true} keyboard={!running}>
 			<AppModal.Header closeButton={!running}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{SectionIcon ? (
+						<SectionIcon
+							className={cn("size-5 shrink-0", sectionAccent(section).text)}
+							aria-hidden="true"
+						/>
+					) : null}
 					{importing ? (
 						<T id="backup.import.title" data={{ objects: typeLabel(importKind) }} />
 					) : (
@@ -636,7 +651,9 @@ const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate
 				</AppModal.Title>
 			</AppModal.Header>
 			<AppModal.Body>
-				<div className="text-secondary small text-break mb-3">{importing ? file.name : entry.name}</div>
+				<div className="mb-3 text-sm break-words text-muted-foreground">
+					{importing ? file.name : entry.name}
+				</div>
 				{body}
 			</AppModal.Body>
 			<AppModal.Footer>{footer}</AppModal.Footer>

@@ -1,19 +1,16 @@
 import { useEffect } from "react";
 import { useFormState } from "react-hook-form";
-import { intl } from "src/locale";
+import { askDiscard } from "src/modals/DiscardChangesModal";
 
 let guards = 0;
 
 /**
- * For navigation that is not a link click (a select, a button calling navigate): true when nothing is unsaved
- * or the user agrees to leave. Same prompt as the link guard.
+ * For navigation that is not a link click (a select, a button calling navigate): resolves true when nothing is
+ * unsaved or the user agrees to leave. Same prompt as the link guard.
  *
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-const confirmLeave = () => {
-	// biome-ignore lint/suspicious/noAlert: a blocking confirm is enough for this guard (as in useUnsavedChangesGuard)
-	return guards === 0 || window.confirm(intl.formatMessage({ id: "unsaved-changes.leave" }));
-};
+const confirmLeave = async () => guards === 0 || (await askDiscard("unsaved-changes.leave"));
 
 /**
  * Asks before leaving the page while dirty: links inside the app (the click is cancelled before React Router sees it,
@@ -27,8 +24,10 @@ const useLeaveGuard = (dirty) => {
 	useEffect(() => {
 		if (!dirty) return;
 		guards += 1;
+		// the link the user agreed to leave through: its click is replayed once and passes
+		let replaying = false;
 		const onClick = (event) => {
-			if (event.defaultPrevented || event.button !== 0) return;
+			if (replaying || event.defaultPrevented || event.button !== 0) return;
 			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 			const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
 			if (!link || (link.target && link.target !== "_self") || link.hasAttribute("download")) return;
@@ -36,11 +35,15 @@ const useLeaveGuard = (dirty) => {
 			if (url.origin !== window.location.origin) return;
 			// tabs and in-page anchors stay on the page
 			if (url.pathname === window.location.pathname && url.search === window.location.search) return;
-			// biome-ignore lint/suspicious/noAlert: a blocking confirm is enough for this guard (as in useUnsavedChangesGuard)
-			if (!window.confirm(intl.formatMessage({ id: "unsaved-changes.leave" }))) {
-				event.preventDefault();
-				event.stopPropagation();
-			}
+			// the themed prompt cannot block: stop the click, replay it when the user agrees
+			event.preventDefault();
+			event.stopPropagation();
+			void askDiscard("unsaved-changes.leave").then((leave) => {
+				if (!leave) return;
+				replaying = true;
+				link.click();
+				replaying = false;
+			});
 		};
 		const onBeforeUnload = (event) => {
 			event.preventDefault();

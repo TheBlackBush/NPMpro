@@ -1,0 +1,240 @@
+@import "./fonts.css";
+@import "sonner/dist/styles.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+	--font-heading: var(--font-sans);
+	--font-sans:
+		"Geist Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+	--font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--color-section-proxy: var(--accent-proxy);
+	--color-section-redirection: var(--accent-redirection);
+	--color-section-dead: var(--accent-dead);
+	--color-section-streams: var(--accent-streams);
+	--color-section-certificates: var(--accent-certificates);
+	--color-section-access: var(--accent-access);
+	--color-section-users: var(--accent-users);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning: var(--warning);
+	--color-success-foreground: var(--success-foreground);
+	--color-success: var(--success);
+	--color-info-foreground: var(--info-foreground);
+	--color-info: var(--info);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.145 0 0);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.145 0 0);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.145 0 0);
+	--primary: oklch(0.54 0.25 293);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.97 0 0);
+	--secondary-foreground: oklch(0.205 0 0);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.556 0 0);
+	--accent: oklch(0.97 0 0);
+	--accent-foreground: oklch(0.205 0 0);
+	--destructive: oklch(0.577 0.245 27.325);
+	--warning: oklch(0.5 0.13 65);
+	--warning-foreground: oklch(0.985 0 0);
+	--success: oklch(0.5 0.13 150);
+	--success-foreground: oklch(0.985 0 0);
+	--info: oklch(0.5 0.13 250);
+	--info-foreground: oklch(0.985 0 0);
+	--border: oklch(0.922 0 0);
+	--input: oklch(0.922 0 0);
+	--ring: oklch(0.54 0.25 293);
+	--brand-gradient: linear-gradient(90deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
+	--brand-gradient-y: linear-gradient(180deg, #ff8a00, #ff2d55 30%, #d91aff 60%, #7a3bff 85%, #00d1ff);
+	--chart-1: oklch(0.87 0 0);
+	--chart-2: oklch(0.556 0 0);
+	--chart-3: oklch(0.439 0 0);
+	--chart-4: oklch(0.371 0 0);
+	--chart-5: oklch(0.269 0 0);
+	/* section accents (brand gradient tones), each >= 3:1 against the page and the card */
+	--accent-proxy: #7a3bff;
+	--accent-redirection: #009fcb;
+	--accent-dead: #ff2d55;
+	--accent-streams: #e67400;
+	--accent-certificates: #d91aff;
+	--accent-access: #ff5c2b;
+	--accent-users: #3d86ff;
+	--radius: 0.625rem;
+	--sidebar: oklch(0.985 0 0);
+	--sidebar-foreground: oklch(0.145 0 0);
+	--sidebar-primary: oklch(0.54 0.25 293);
+	--sidebar-primary-foreground: oklch(0.985 0 0);
+	--sidebar-accent: oklch(0.97 0 0);
+	--sidebar-accent-foreground: oklch(0.205 0 0);
+	--sidebar-border: oklch(0.922 0 0);
+	--sidebar-ring: oklch(0.54 0.25 293);
+}
+
+.dark {
+	--background: oklch(0.145 0 0);
+	--foreground: oklch(0.985 0 0);
+	--card: oklch(0.205 0 0);
+	--card-foreground: oklch(0.985 0 0);
+	--popover: oklch(0.205 0 0);
+	--popover-foreground: oklch(0.985 0 0);
+	--primary: oklch(0.7 0.18 293);
+	--primary-foreground: oklch(0.15 0.02 293);
+	--secondary: oklch(0.269 0 0);
+	--secondary-foreground: oklch(0.985 0 0);
+	--muted: oklch(0.269 0 0);
+	--muted-foreground: oklch(0.708 0 0);
+	--accent: oklch(0.269 0 0);
+	--accent-foreground: oklch(0.985 0 0);
+	--destructive: oklch(0.704 0.191 22.216);
+	--warning: oklch(0.8 0.16 80);
+	--warning-foreground: oklch(0.15 0.02 80);
+	--success: oklch(0.78 0.17 150);
+	--success-foreground: oklch(0.15 0.02 150);
+	--info: oklch(0.75 0.13 250);
+	--info-foreground: oklch(0.15 0.02 250);
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 15%);
+	--ring: oklch(0.7 0.18 293);
+	--chart-1: oklch(0.87 0 0);
+	--chart-2: oklch(0.556 0 0);
+	--chart-3: oklch(0.439 0 0);
+	--chart-4: oklch(0.371 0 0);
+	--chart-5: oklch(0.269 0 0);
+	/* section accents, dark theme */
+	--accent-proxy: #7a3bff;
+	--accent-redirection: #00d1ff;
+	--accent-dead: #ff2d55;
+	--accent-streams: #ff8a00;
+	--accent-certificates: #d91aff;
+	--accent-access: #ff5c2b;
+	--accent-users: #3d86ff;
+	--sidebar: oklch(0.205 0 0);
+	--sidebar-foreground: oklch(0.985 0 0);
+	--sidebar-primary: oklch(0.7 0.18 293);
+	--sidebar-primary-foreground: oklch(0.15 0.02 293);
+	--sidebar-accent: oklch(0.269 0 0);
+	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.7 0.18 293);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+		/* NPMpro: native controls (the option list of a select, scrollbars) follow the theme; without it a dark page
+		   gets a light option list with the page's light text */
+		color-scheme: light;
+	}
+	html.dark {
+		color-scheme: dark;
+	}
+	/* NPMpro: Tailwind v4 gives buttons the default cursor; every enabled button shows the pointer, as links do */
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
+	}
+	/* NPMpro: the option list in the popover colours, for browsers that draw it from the option styles */
+	option {
+		@apply bg-popover text-popover-foreground;
+	}
+	/* NPMpro: the rules Radix Select injects as a <style> element at runtime (CSP forbids it;
+	   patches/@radix-ui__react-select@2.4.1.patch turns the injection off): its list scrolls without a scrollbar */
+	[data-radix-select-viewport] {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+		-webkit-overflow-scrolling: touch;
+	}
+	[data-radix-select-viewport]::-webkit-scrollbar {
+		display: none;
+	}
+	/* NPMpro: the rules input-otp injects as a <style> element at runtime (CSP forbids it; patches/input-otp@1.5.0.patch
+	   turns the injection off): the real input stays invisible while the slots draw the characters */
+	[data-input-otp]::selection {
+		background: transparent !important;
+		color: transparent !important;
+	}
+	[data-input-otp]:autofill,
+	[data-input-otp]:-webkit-autofill {
+		background: transparent !important;
+		color: transparent !important;
+		border-color: transparent !important;
+		opacity: 0 !important;
+		box-shadow: none !important;
+		-webkit-box-shadow: none !important;
+		-webkit-text-fill-color: transparent !important;
+	}
+	@supports (-webkit-touch-callout: none) {
+		[data-input-otp] {
+			letter-spacing: -0.6em !important;
+			font-weight: 100 !important;
+			font-stretch: ultra-condensed;
+			font-optical-sizing: none !important;
+			left: -1px !important;
+			right: 1px !important;
+		}
+	}
+	[data-input-otp] + * {
+		pointer-events: all !important;
+	}
+}
+
+@keyframes npmpro-loader {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(250%);
+	}
+}

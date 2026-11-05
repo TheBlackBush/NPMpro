@@ -1,5 +1,6 @@
 import { flexRender } from "@tanstack/react-table";
 import { phoneParts, summaryText, titleClass } from "src/modules/MobileColumns";
+import { useStack } from "./StackedContext";
 
 /**
  * The phone-only part of a stacked row, inside its title cell: the title, the cells marked title-end on its right,
@@ -9,6 +10,7 @@ import { phoneParts, summaryText, titleClass } from "src/modules/MobileColumns";
  * hidden): their renderers must not use fixed element ids or side effects that may only happen once.
  */
 function MobileTitle({ row, titleCell }) {
+	const stack = useStack();
 	const cells = row.getAllCells();
 	const columns = cells.map((cell) => cell.column.columnDef);
 	const parts = phoneParts(columns);
@@ -18,17 +20,15 @@ function MobileTitle({ row, titleCell }) {
 	};
 	const summary = summaryText(columns, row.original);
 	return (
-		<div className="d-md-none">
-			<div className="d-flex align-items-start gap-2">
+		<div className={stack.phoneOnly}>
+			<div className="flex items-start gap-2">
 				<div className={titleClass()}>
 					{flexRender(titleCell.column.columnDef.cell, titleCell.getContext())}
 				</div>
 				{parts.end.map(render)}
 			</div>
-			{parts.below.length > 0 ? (
-				<div className="mt-1 d-flex flex-wrap gap-1">{parts.below.map(render)}</div>
-			) : null}
-			{summary ? <div className="mt-1 small text-secondary text-break">{summary}</div> : null}
+			{parts.below.length > 0 ? <div className="mt-1 flex flex-wrap gap-1">{parts.below.map(render)}</div> : null}
+			{summary ? <div className="mt-1 break-words text-xs text-muted-foreground">{summary}</div> : null}
 		</div>
 	);
 }

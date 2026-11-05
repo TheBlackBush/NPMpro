@@ -1,18 +1,17 @@
-import cn from "clsx";
 import { useId } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import { Button } from "src/components/Button";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
-import { sectionColor } from "src/modules/SectionColors";
 import { FormErrorNote } from "./FormErrorNote";
-import { focusFirstError, useFieldOrder, useFormTabs } from "./HookForm";
+import { focusFirstError, useFieldOrder, useFormTabs, usePendingEntries } from "./HookForm";
 
 /**
  * A form's submit button with the reason next to it whenever it cannot be used: while a field shows an error it
  * looks disabled (aria-disabled, still reachable) and a red note names the fields; with nothing to save it is
  * disabled and a grey note says so. An error shows once its field was left or a save was tried (mode onTouched);
- * "nothing to save" is !isDirty.
+ * "nothing to save" is !isDirty with no typed text waiting to become a value (usePendingEntry).
  *
  * @param {Object}   props
  * @param {*}        props.children        the button text
@@ -22,8 +21,7 @@ import { focusFirstError, useFieldOrder, useFormTabs } from "./HookForm";
  * @param {string}   [props.messageId]     the note's text (FormErrorNote)
  * @param {string}   [props.className]     of the wrapper, e.g. "ms-auto" in a modal footer
  * @param {boolean}  [props.stacked]       a full-width button with the note centred under it (login, setup)
- * @param {string}   [props.section]       the section of the window (SectionColors.js): the button takes its colour,
- *                                         primary without one; color overrides it (a destructive action: danger)
+ * @param {string}   [props.color]         the button colour, the one primary (violet) by default; danger for a destructive action
  * @param {Object}   props.buttonProps     the rest goes to Button (color, isLoading, ...)
  */
 function FormSubmit({
@@ -34,23 +32,23 @@ function FormSubmit({
 	messageId,
 	className,
 	stacked = false,
-	section,
-	color,
+	color = "primary",
 	...buttonProps
 }) {
 	const { setFocus } = useFormContext();
 	const { isSubmitting, isDirty, errors } = useFormState();
 	const order = useFieldOrder();
 	const tabs = useFormTabs();
+	const pending = usePendingEntries();
 	const blocked = errorPaths(errors).length > 0;
-	const unchanged = edit && !isDirty;
+	const unchanged = edit && !isDirty && pending.size === 0;
 	const noteId = useId();
 	const reasonId = useId();
 	const showReason = unchanged && !blocked && !isSubmitting;
 	const button = (
 		<Button
 			{...buttonProps}
-			color={color ?? sectionColor(section)}
+			color={color}
 			type="submit"
 			fullWidth={stacked || buttonProps.fullWidth}
 			disabled={disabled || (unchanged && !blocked)}
@@ -72,16 +70,13 @@ function FormSubmit({
 			</div>
 		);
 	}
-	// takes the room left next to the other footer buttons without asking for more (a zero flex basis, which no
-	// Bootstrap utility sets), so a long note wraps inside it instead of pushing the footer onto two lines
+	// takes the room left next to the other footer buttons without asking for more (a zero flex basis: flex-1), so a
+	// long note wraps inside it instead of pushing the footer onto two lines
 	return (
-		<div
-			className={cn("d-flex align-items-center justify-content-end", className)}
-			style={{ flex: "1 1 0", minWidth: 0 }}
-		>
-			<FormErrorNote id={noteId} labels={labels} messageId={messageId} className="me-3 text-end" />
+		<div className={cn("flex min-w-0 flex-1 items-center justify-end", className)}>
+			<FormErrorNote id={noteId} labels={labels} messageId={messageId} className="mr-3 text-right" />
 			{showReason ? (
-				<span id={reasonId} className="text-secondary small me-3 text-end">
+				<span id={reasonId} className="mr-3 text-right text-muted-foreground text-sm">
 					<T id="form.no-changes" />
 				</span>
 			) : null}

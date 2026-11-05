@@ -1,0 +1,64 @@
+import { useCheckVersion } from "src/hooks";
+import { T } from "src/locale";
+import { Credits } from "./Credits";
+
+const repoUrl = "https://github.com/TheBlackBush/NPMpro";
+// release builds are "<MAJOR.MINOR.PATCH>-<commit>", beta and develop builds end with "-<commit>"
+const releaseBuildPattern = /^(?<release>\d+\.\d+\.\d+)-[0-9a-f]+$/u;
+const commitPattern = /-(?<commit>[0-9a-f]+)$/u;
+const LINK = "inline-flex min-h-6 items-center underline-offset-4 hover:text-foreground hover:underline";
+
+// lucide-react dropped brand icons, so the GitHub mark is drawn here (24x24 path from Simple Icons, CC0)
+function GithubMark({ className }) {
+	return (
+		<svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+			<path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+		</svg>
+	);
+}
+
+function ExternalA({ href, className = LINK, children, ...props }) {
+	return (
+		<a href={href} target="_blank" rel="noopener noreferrer" className={className} {...props}>
+			{children}
+		</a>
+	);
+}
+
+/** Credits, copyright, version (with the update notice) and the repository link */
+export function AppFooter() {
+	const { data: versionData } = useCheckVersion();
+
+	const version = versionData?.current || "";
+	const release = releaseBuildPattern.exec(version)?.groups.release;
+	const commit = commitPattern.exec(version)?.groups.commit;
+	const versionUrl = release ? `${repoUrl}/releases/tag/v${release}` : commit ? `${repoUrl}/tree/${commit}` : repoUrl;
+
+	return (
+		// a container: the content column decides the layout (narrower than the viewport in the sidebar layout);
+		// the safe-area padding is 0 unless the page opts into viewport-fit=cover
+		<footer className="@container border-t pb-[env(safe-area-inset-bottom)] print:hidden">
+			<div className="mx-auto flex max-w-screen-2xl flex-col items-center gap-x-6 px-3 py-2 text-center text-muted-foreground text-xs sm:items-start sm:px-5 sm:text-left @5xl:flex-row @5xl:items-center @5xl:justify-between">
+				<Credits className="justify-center sm:justify-start" />
+				<div className="flex flex-wrap items-center justify-center gap-x-4 sm:justify-start">
+					<span className="inline-flex min-h-6 items-center">
+						&copy; {new Date().getFullYear()} AGPL-3.0 (and MIT)
+					</span>
+					{version ? <ExternalA href={versionUrl}>{version}</ExternalA> : null}
+					{versionData?.updateAvailable ? (
+						<ExternalA
+							href={`${repoUrl}/releases/tag/${versionData.latest}`}
+							className="inline-flex min-h-6 items-center font-medium text-primary underline-offset-4 hover:underline"
+						>
+							<T id="update-available" data={{ latestVersion: versionData.latest }} />
+						</ExternalA>
+					) : null}
+					<ExternalA href={repoUrl} className={`gap-1.5 ${LINK}`}>
+						<GithubMark className="size-3.5" />
+						<T id="footer.github" />
+					</ExternalA>
+				</div>
+			</div>
+		</footer>
+	);
+}

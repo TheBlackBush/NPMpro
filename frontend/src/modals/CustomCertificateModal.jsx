@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import cn from "clsx";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 import { createCertificate, uploadCertificate, validateCertificate } from "src/api/backend";
@@ -15,16 +14,23 @@ import {
 	TextField,
 	useAppForm,
 } from "src/components";
+import { Input } from "src/components/ui/input";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { customCertificateValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 const showCustomCertificateModal = (cert, provider) => {
 	EasyModal.show(CustomCertificateModal, { cert, provider });
 };
+
+const accent = sectionAccent("certificates");
+const Icon = sectionIcon("certificates");
 
 // a required certificate file (a controller: its value is the chosen File); a chosen file is checked at once, so a
 // file that is too large is named right away
@@ -35,14 +41,13 @@ function FileInput({ name, labelId }) {
 	return (
 		<FormField id={name} label={<T id={labelId} />} required error={error}>
 			{(control) => (
-				<input
+				<Input
 					{...control}
 					ref={field.ref}
 					name={name}
 					type="file"
 					required
 					autoComplete="off"
-					className={cn("form-control", error && "is-invalid")}
 					onBlur={field.onBlur}
 					onChange={(event) => {
 						field.onChange(event.currentTarget.files[0] ?? null);
@@ -112,15 +117,19 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<DirtyTracker dirtyRef={dirtyRef} />
 				<AppModal.Header closeButton={!isSubmitting}>
-					<AppModal.Title>
-						<T id={isEdit ? "object.edit" : "object.add"} tData={{ object: "certificates.custom" }} />
+					<AppModal.Title className="flex items-center gap-2">
+						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
+						<T
+							id={isEdit ? "object.edit" : "object.add"}
+							tData={{ object: isMtls ? "mtls-certificate" : "certificates.custom" }}
+						/>
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert className="mb-3" onClose={() => setErrorMsg(null)}>
 						{errorMsg}
 					</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="certificates.custom.warning" />
 					</NoticeAlert>
 					<TextField
@@ -135,16 +144,10 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 					{!isMtls && <FileInput name="certificateKey" labelId="certificate.custom-certificate-key" />}
 				</AppModal.Body>
 				<AppModal.Footer>
-					<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+					<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit
-						className="ms-auto"
-						edit={isEdit}
-						section="certificates"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={isEdit} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

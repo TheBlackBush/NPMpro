@@ -1,5 +1,5 @@
 /**
- * Label shown above a cell when a table stacks on small screens (Tabler .table-mobile-*)
+ * Label shown above a cell when a table stacks on small screens (the stacked mobile layout)
  *
  * @param {{ header?: unknown } | undefined} columnDef
  * @returns {string | undefined}

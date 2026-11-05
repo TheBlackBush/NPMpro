@@ -1,15 +1,4 @@
 import {
-	IconDevicesX,
-	IconDotsVertical,
-	IconEdit,
-	IconLock,
-	IconPower,
-	IconShield,
-	IconShieldOff,
-	IconTrash,
-	IconUsers,
-} from "@tabler/icons-react";
-import {
 	createColumnHelper,
 	createSortedRowModel,
 	rowSortingFeature,
@@ -19,18 +8,19 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Lock, MonitorOff, Pencil, Power, ShieldCheck, ShieldOff, Trash2, Users } from "lucide-react";
 import { useMemo } from "react";
 import {
 	EmailFormatter,
 	EmptyData,
 	GravatarFormatter,
 	RolesFormatter,
+	RowActions,
 	TrueFalseFormatter,
 	ValueWithDateFormatter,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { intl, T } from "src/locale";
-import { sectionColor } from "src/modules/SectionColors";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -49,9 +39,10 @@ const rolesSummary = (row) =>
 		.map((role) => intl.formatMessage({ id: `role.${role}` }))
 		.join(", ");
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({
+function UserActions({
+	user,
 	currentUserId,
+	mfaUserIds,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
@@ -59,7 +50,71 @@ export function useColumns({
 	onRevokeSessions,
 	onDeleteUser,
 	onDisableToggle,
-} = {}) {
+}) {
+	// the other items act on another account: not offered on your own row
+	const other = currentUserId !== user.id;
+	return (
+		<RowActions
+			// names the row, so the buttons of a list are told apart
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: user.name || `#${user.id}` })}
+			focusKey={`user-${user.id}`}
+			title={<T id="object.actions-title" tData={{ object: "user" }} data={{ id: user.id }} />}
+			items={[
+				{ key: "edit", label: <T id="action.edit" />, icon: Pencil, onSelect: () => onEditUser?.(user.id) },
+				{
+					key: "permissions",
+					label: <T id="action.permissions" />,
+					icon: ShieldCheck,
+					onSelect: () => onEditPermissions?.(user.id),
+					hidden: !other,
+				},
+				{
+					key: "set-password",
+					label: <T id="user.set-password" />,
+					icon: Lock,
+					onSelect: () => onSetPassword?.(user.id),
+					hidden: !other,
+				},
+				{
+					key: "reset-mfa",
+					label: <T id="user.reset-mfa" />,
+					icon: ShieldOff,
+					onSelect: () => onResetMfa?.(user.id),
+					// nothing to reset without MFA
+					hidden: !other || !mfaUserIds?.has(user.id),
+				},
+				{
+					key: "revoke-sessions",
+					label: <T id="user.revoke-sessions" />,
+					icon: MonitorOff,
+					onSelect: () => onRevokeSessions?.(user.id),
+					hidden: !other,
+				},
+				{
+					key: "toggle",
+					label: <T id={user.isDisabled ? "action.enable" : "action.disable"} />,
+					icon: Power,
+					onSelect: () => onDisableToggle?.(user.id, user.isDisabled),
+					hidden: !other,
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					onSelect: () => onDeleteUser?.(user.id),
+					destructive: true,
+					separatorBefore: true,
+					hidden: !other,
+				},
+			]}
+		/>
+	);
+}
+
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+// The columns keep their identity between renders and the row handlers reach the cells through the table meta
+// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+export function useColumns() {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.name, {
@@ -70,7 +125,7 @@ export function useColumns({
 					return <GravatarFormatter url={value.avatar} name={value.name} decorative />;
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap md:@max-3xl:hidden",
 					mobile: "hide",
 				},
 			}),
@@ -92,7 +147,8 @@ export function useColumns({
 			}),
 			columnHelper.accessor((row) => row.email, {
 				id: "email",
-				meta: { mobile: "summary", summaryText: (row) => row.email },
+				// one line in a narrow column (the section next to the sidebar), where it would break in three
+				meta: { className: "@max-3xl:whitespace-nowrap", mobile: "summary", summaryText: (row) => row.email },
 				header: intl.formatMessage({ id: "column.email" }),
 				cell: (info) => <EmailFormatter email={info.getValue()} />,
 			}),
@@ -113,126 +169,21 @@ export function useColumns({
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "w-1 text-nowrap",
+					// hidden in a narrow column (the section next to the sidebar), where the e-mail needs the room
+					className: "w-px whitespace-nowrap md:@max-3xl:hidden",
 					mobile: "hide",
 				},
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => (
-					<span className="dropdown">
-						<button
-							type="button"
-							className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-							aria-label={intl.formatMessage({ id: "actions" })}
-							data-bs-boundary="viewport"
-							data-bs-toggle="dropdown"
-							data-bs-popper-config='{"strategy":"fixed"}'
-						>
-							<IconDotsVertical />
-						</button>
-						<div className="dropdown-menu dropdown-menu-end">
-							<span className="dropdown-header">
-								<T
-									id="object.actions-title"
-									tData={{ object: "user" }}
-									data={{ id: info.row.original.id }}
-								/>
-							</span>
-							<button
-								type="button"
-								className="dropdown-item"
-								onClick={() => {
-									onEditUser?.(info.row.original.id);
-								}}
-							>
-								<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-								<T id="action.edit" />
-							</button>
-							{currentUserId !== info.row.original.id ? (
-								<>
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onEditPermissions?.(info.row.original.id);
-										}}
-									>
-										<IconShield className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="action.permissions" />
-									</button>
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onSetPassword?.(info.row.original.id);
-										}}
-									>
-										<IconLock className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="user.set-password" />
-									</button>
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onResetMfa?.(info.row.original.id);
-										}}
-									>
-										<IconShieldOff className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="user.reset-mfa" />
-									</button>
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onRevokeSessions?.(info.row.original.id);
-										}}
-									>
-										<IconDevicesX className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="user.revoke-sessions" />
-									</button>
-									<button
-										type="button"
-										className="dropdown-item"
-										onClick={() => {
-											onDisableToggle?.(info.row.original.id, info.row.original.isDisabled);
-										}}
-									>
-										<IconPower className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id={info.row.original.isDisabled ? "action.enable" : "action.disable"} />
-									</button>
-									<div className="dropdown-divider" />
-									<button
-										type="button"
-										className="dropdown-item text-danger"
-										onClick={() => {
-											onDeleteUser?.(info.row.original.id);
-										}}
-									>
-										<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="action.delete" />
-									</button>
-								</>
-							) : null}
-						</div>
-					</span>
-				),
+				cell: (info) => <UserActions user={info.row.original} {...info.table.options.meta?.actions} />,
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[
-			currentUserId,
-			onEditUser,
-			onDisableToggle,
-			onDeleteUser,
-			onEditPermissions,
-			onSetPassword,
-			onResetMfa,
-			onRevokeSessions,
-		],
+		[],
 	);
 }
 
@@ -241,6 +192,7 @@ export default function Table({
 	isFiltered,
 	isFetching,
 	currentUserId,
+	mfaUserIds,
 	onEditUser,
 	onEditPermissions,
 	onSetPassword,
@@ -252,24 +204,27 @@ export default function Table({
 	sorting,
 	onSortingChange,
 }) {
-	const columns = useColumns({
-		currentUserId,
-		onEditUser,
-		onEditPermissions,
-		onSetPassword,
-		onResetMfa,
-		onRevokeSessions,
-		onDeleteUser,
-		onDisableToggle,
-	});
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: {
+				currentUserId,
+				mfaUserIds,
+				onEditUser,
+				onEditPermissions,
+				onSetPassword,
+				onResetMfa,
+				onRevokeSessions,
+				onDeleteUser,
+				onDisableToggle,
+			},
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
@@ -281,13 +236,12 @@ export default function Table({
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
-					icon={IconUsers}
+					icon={Users}
 					object="user"
 					objects="users"
 					tableInstance={tableInstance}
 					onNew={onNewUser}
 					isFiltered={isFiltered}
-					color={sectionColor("users")}
 				/>
 			}
 		/>

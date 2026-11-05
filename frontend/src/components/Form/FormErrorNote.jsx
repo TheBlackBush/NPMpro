@@ -1,6 +1,6 @@
-import cn from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useFormState } from "react-hook-form";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { errorPaths, orderErrorPaths } from "src/modules/HookForm";
 import { useFieldOrder } from "./HookForm";
@@ -8,6 +8,14 @@ import { useFieldOrder } from "./HookForm";
 const NO_LABELS = {};
 const LIST_INDEX = /\[(?<index>\d+)\]/gu;
 const PATH_START = /[.[]/u;
+
+// the text of a label without its required asterisk (aria-hidden marks)
+const textOf = (element) => {
+	if (!element) return null;
+	const copy = element.cloneNode(true);
+	for (const mark of copy.querySelectorAll("[aria-hidden=true]")) mark.remove();
+	return copy.textContent?.trim() || null;
+};
 
 /**
  * The visible label of a field, found in the form: the label of the control named like the field (or with it as id),
@@ -23,12 +31,15 @@ const labelInForm = (form, name) => {
 	if (!control) return null;
 	const own = control.getAttribute("aria-label");
 	if (own) return own.trim();
+	// a radio group is named by the legend of its fieldset (the labels in it name the options)
+	const group = control.closest("[role=radiogroup]");
+	if (group) return textOf(group.closest("fieldset")?.querySelector(":scope > legend"));
 	const byFor = control.id ? form.querySelector(`label[for="${CSS.escape(control.id)}"]`) : null;
-	if (byFor) return byFor.textContent?.trim() || null;
-	// else the nearest form label above the control (custom selects keep their input in nested wrappers)
+	if (byFor) return textOf(byFor);
+	// else the nearest field label above the control (custom selects keep their input in nested wrappers)
 	for (let node = control.parentElement; node && node !== form; node = node.parentElement) {
-		const label = node.querySelector(".form-label, legend");
-		if (label) return label.textContent?.trim() || null;
+		const label = node.querySelector("[data-slot=field-label], legend");
+		if (label) return textOf(label);
 	}
 	return null;
 };
@@ -70,7 +81,7 @@ function ErrorNoteText({ id, paths, labels, messageId, block, className, noteRef
 		<Tag
 			ref={noteRef}
 			id={id}
-			className={cn("text-danger small", block && "text-center", block && show && "mt-2", className)}
+			className={cn("text-destructive text-sm", block && "text-center", block && show && "mt-2", className)}
 			role="status"
 		>
 			{show ? <T id={messageId} data={{ fields: names.join(", ") }} /> : null}

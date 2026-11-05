@@ -1,4 +1,4 @@
-import { IconArrowsExchange, IconPlugConnected } from "@tabler/icons-react";
+import { ArrowLeftRight, CircleCheck, Info, PlugZap } from "lucide-react";
 import { useId, useState } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
@@ -36,6 +36,8 @@ import {
 } from "src/modules/DatabaseMove";
 import { numberInputValue } from "src/modules/FormFields";
 import { errorPaths, translateErrors } from "src/modules/HookForm";
+import { SettingsCard } from "../SettingsCard";
+import { StatusAlert } from "../StatusAlert";
 
 // every field of the target, for the test result that belongs to exactly these values
 const TARGET_FIELDS = Object.keys(initialTarget());
@@ -50,8 +52,8 @@ function LastFailedMove({ move }) {
 	const [hidden, setHidden] = useState(false);
 	if (hidden || move?.state !== "failed") return null;
 	return (
-		<ErrorAlert className="mb-3" onClose={() => setHidden(true)}>
-			<div className="fw-medium">
+		<ErrorAlert onClose={() => setHidden(true)}>
+			<div className="font-medium">
 				<T
 					id="settings.database.move.failed"
 					data={{ step: stepName(failedStepOf(move), (id) => intl.formatMessage({ id })) }}
@@ -86,12 +88,12 @@ function ServerFields({ baseId }) {
 	const [engine, sslEnabled] = useWatch({ name: ["engine", "sslEnabled"] });
 	return (
 		<>
-			<div className="row g-2 mb-3">
+			<div className="grid gap-2 md:grid-cols-12">
 				<InputField
 					name="host"
 					id={`${baseId}-host`}
 					labelId="settings.database.host"
-					className="col-md-8"
+					className="md:col-span-8"
 					required
 					autoComplete="off"
 					spellCheck={false}
@@ -100,7 +102,7 @@ function ServerFields({ baseId }) {
 					name="port"
 					id={`${baseId}-port`}
 					labelId="settings.database.port"
-					className="col-md-4"
+					className="md:col-span-4"
 					// a number, as changeEngine compares it with the engines' default ports
 					registerOptions={{ setValueAs: numberInputValue }}
 					type="number"
@@ -111,7 +113,7 @@ function ServerFields({ baseId }) {
 					name="name"
 					id={`${baseId}-name`}
 					labelId="settings.database.name"
-					className="col-md-6"
+					className="md:col-span-6"
 					required
 					autoComplete="off"
 					spellCheck={false}
@@ -120,7 +122,7 @@ function ServerFields({ baseId }) {
 					name="user"
 					id={`${baseId}-user`}
 					labelId="settings.database.user"
-					className="col-md-6"
+					className="md:col-span-6"
 					required
 					autoComplete="off"
 					spellCheck={false}
@@ -130,7 +132,7 @@ function ServerFields({ baseId }) {
 					id={`${baseId}-password`}
 					label={<T id="settings.database.password" />}
 					autoComplete="new-password"
-					className="col-12"
+					className="md:col-span-12"
 				/>
 			</div>
 			<SwitchList>
@@ -187,94 +189,88 @@ function MoveForm({ tested, status }) {
 	};
 
 	return (
-		<>
-			<div className="card-header">
-				<h3 className="card-title">
-					<T id="settings.database.move" />
-				</h3>
-			</div>
-			<div className="card-body">
-				<LastFailedMove move={status?.move} />
-				<p className="text-secondary">
-					<T id="settings.database.move.intro" />
-				</p>
-				<SelectField
-					name="engine"
-					id={`${baseId}-engine`}
-					label={<T id="settings.database.engine" />}
-					registerOptions={{ onChange: onEngine }}
-				>
-					{ENGINES.map((engine) => (
-						<option key={engine} value={engine}>
-							{intl.formatMessage({ id: `settings.database.engine.${engine}` })}
-						</option>
-					))}
-				</SelectField>
-				{values.engine === "sqlite" ? (
-					<div className="alert alert-info">
-						<T id="settings.database.move.sqlite-note" />
-					</div>
-				) : (
-					<ServerFields baseId={baseId} />
-				)}
-				{/* always mounted, so a screen reader announces the result that appears in it */}
-				<div aria-live="polite">
-					{current?.result ? (
-						<div className="alert alert-success mt-3 mb-0">
-							{current.result.engine === "sqlite" ? (
-								<T id="settings.database.test.ok-sqlite" />
-							) : (
-								<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
-							)}
-						</div>
+		<SettingsCard
+			title={<T id="settings.database.move" />}
+			footer={
+				<>
+					<FormErrorNote id={noteId} className="text-right" />
+					{hint && !blocked ? (
+						<span id={hintId} className="text-right text-sm text-muted-foreground">
+							<T id={hint} />
+						</span>
 					) : null}
-				</div>
-				{/* outside the polite region: the alert's own role="alert" announces it once */}
-				{current?.error ? (
-					<ErrorAlert className="mt-3 mb-0">
-						<ApiErrorContent error={current.error} />
-					</ErrorAlert>
+					<Button
+						type="submit"
+						id={testId}
+						isLoading={isSubmitting}
+						blocked={blocked}
+						onBlockedClick={() => focusFirstError(errors, order, setFocus)}
+						// keeps the focus in the field until the click is done (a blur error would move the button)
+						onMouseDown={(e) => e.preventDefault()}
+						aria-describedby={blocked ? noteId : undefined}
+					>
+						<PlugZap aria-hidden="true" />
+						<T id="settings.database.test" />
+					</Button>
+					<Button
+						color="primary"
+						blocked={!canMove}
+						// the next step is the test: a click on the blocked Move goes to its button
+						onBlockedClick={(e) =>
+							e.currentTarget
+								.closest("form")
+								?.querySelector(`#${CSS.escape(testId)}`)
+								?.focus()
+						}
+						onClick={() => showDatabaseMoveModal({ status, target: toPayload(values) })}
+						aria-describedby={hint && !blocked ? hintId : undefined}
+					>
+						<ArrowLeftRight aria-hidden="true" />
+						<T id="settings.database.move.button" />
+					</Button>
+				</>
+			}
+		>
+			<LastFailedMove move={status?.move} />
+			<p className="text-muted-foreground">
+				<T id="settings.database.move.intro" />
+			</p>
+			<SelectField
+				name="engine"
+				id={`${baseId}-engine`}
+				label={<T id="settings.database.engine" />}
+				registerOptions={{ onChange: onEngine }}
+			>
+				{ENGINES.map((engine) => (
+					<option key={engine} value={engine}>
+						{intl.formatMessage({ id: `settings.database.engine.${engine}` })}
+					</option>
+				))}
+			</SelectField>
+			{values.engine === "sqlite" ? (
+				<StatusAlert variant="info" icon={Info} id="settings.database.move.sqlite-note" />
+			) : (
+				<ServerFields baseId={baseId} />
+			)}
+			{/* always mounted, so a screen reader announces the result that appears in it */}
+			<div aria-live="polite">
+				{current?.result ? (
+					<StatusAlert variant="success" icon={CircleCheck} live={false}>
+						{current.result.engine === "sqlite" ? (
+							<T id="settings.database.test.ok-sqlite" />
+						) : (
+							<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
+						)}
+					</StatusAlert>
 				) : null}
 			</div>
-			<div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2">
-				<FormErrorNote id={noteId} className="me-2 text-end" />
-				{hint && !blocked ? (
-					<span id={hintId} className="text-secondary small me-2 text-end">
-						<T id={hint} />
-					</span>
-				) : null}
-				<Button
-					type="submit"
-					id={testId}
-					isLoading={isSubmitting}
-					blocked={blocked}
-					onBlockedClick={() => focusFirstError(errors, order, setFocus)}
-					// keeps the focus in the field until the click is done (a blur error would move the button)
-					onMouseDown={(e) => e.preventDefault()}
-					aria-describedby={blocked ? noteId : undefined}
-				>
-					<IconPlugConnected className="icon" aria-hidden="true" />
-					<T id="settings.database.test" />
-				</Button>
-				<Button
-					color="primary"
-					blocked={!canMove}
-					// the next step is the test: a click on the blocked Move goes to its button
-					onBlockedClick={(e) =>
-						e.currentTarget
-							.closest("form")
-							?.querySelector(`#${CSS.escape(testId)}`)
-							?.focus()
-					}
-					onClick={() => showDatabaseMoveModal({ status, target: toPayload(values) })}
-					title={hint ? intl.formatMessage({ id: hint }) : undefined}
-					aria-describedby={hint && !blocked ? hintId : undefined}
-				>
-					<IconArrowsExchange className="icon" aria-hidden="true" />
-					<T id="settings.database.move.button" />
-				</Button>
-			</div>
-		</>
+			{/* outside the polite region: the alert's own role="alert" announces it once */}
+			{current?.error ? (
+				<ErrorAlert>
+					<ApiErrorContent error={current.error} />
+				</ErrorAlert>
+			) : null}
+		</SettingsCard>
 	);
 }
 
@@ -307,7 +303,7 @@ function MoveCard({ status }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="card mb-4">
+		<HookForm methods={methods} onSubmit={onSubmit}>
 			<MoveForm tested={tested} status={status} />
 		</HookForm>
 	);

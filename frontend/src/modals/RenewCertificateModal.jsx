@@ -3,13 +3,19 @@ import { useEffect, useState } from "react";
 import { renewCertificate } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, Loading, RequestProgress } from "src/components";
 import { useCertificate } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 const showRenewCertificateModal = (id) => {
 	EasyModal.show(RenewCertificateModal, { id });
 };
+
+const accent = sectionAccent("certificates");
+const Icon = sectionIcon("certificates");
 
 const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 	const queryClient = useQueryClient();
@@ -38,9 +44,10 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 	}, [id, data, isFresh, remove, queryClient]);
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : remove}>
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : remove}>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T id="certificate.renew" />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -51,7 +58,7 @@ const RenewCertificateModal = EasyModal.create(({ id, visible, remove }) => {
 				<RequestProgress running={isSubmitting} />
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="ms-auto" onClick={remove} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={remove} disabled={isSubmitting}>
 					<T id="action.close" />
 				</Button>
 			</AppModal.Footer>

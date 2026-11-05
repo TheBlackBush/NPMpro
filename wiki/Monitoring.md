@@ -1,6 +1,12 @@
 # Monitoring
 
 Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitoring/traffic`) and a CrowdSec tab (`/monitoring/crowdsec`), plus a short monitoring row on the dashboard. It is read-only.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/monitoring-traffic-dark.png">
+  <img alt="The Traffic tab with request totals, error rate and a requests chart" src="images/monitoring-traffic-light.png" width="720">
+</picture>
+
 - Traffic statistics are off by default. Turn them on under Settings, Logs & monitoring (`/settings/monitoring`). NPMpro then reads the nginx access log itself and counts requests, bytes sent and status classes per host. Switching the setting in the UI turns the access log on or off without a restart. With `LOGROTATE=true` or `TRAFFIC_STATS=true` the access log is already on when the container starts. Write log files (`LOGROTATE`) and GoAccess keep the access log on disk but do not turn traffic statistics on: only the setting or `TRAFFIC_STATS` does.
 - Switching traffic statistics off stops reading the access log, so nothing new is stored. The stored statistics are kept until they age out (the retention period), unless you tick "Also delete the stored statistics" in the dialog that opens when you save the switch-off: then all stored counts, top lists, visitor IPs and visitor hashes are deleted before the setting is saved (if the delete fails, nothing is changed).
 - The Monitoring menu entry and the monitoring row on the dashboard are only shown while there is something to show: traffic statistics are on or the CrowdSec bouncer is configured. Opening `/monitoring` otherwise shows "Monitoring is off" with a link to the settings.
@@ -12,6 +18,7 @@ Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitor
 - Top hosts are grouped per NPMpro host (proxy, redirection or 404 host) with all its domain names. A host row links to the page filtered to that host (the URL keeps `host_type` and `host_id`). Every top list shows at most 10 rows.
 - GeoIP is set up under Settings, GeoIP (`/settings/geoip`): enter your MaxMind account ID and license key ([create them here](https://www.maxmind.com/en/geolite2/signup)) and choose the editions (`GeoLite2-Country` and `GeoLite2-ASN` by default, `GeoLite2-City` is optional). NPMpro downloads the databases itself: when the credentials or editions are changed, when "Update now" is used, and automatically every 3 days (a failed automatic update is retried after 24 hours). A separate geoipupdate container is not needed anymore (the old container still works, but is legacy). The files are stored in `/data/goaccess/geoip`, the same place GoAccess and the [geoblocking example](Security#geoblocking) read them from. Without databases the map and the country and network lists are hidden, the rest works.
 - CrowdSec bans: the CrowdSec tab shows the currently active bans (total, added in the last 24 hours, by reason (the CrowdSec scenario), origin and type, a map and the newest bans). It needs the bouncer of the [Crowdsec](CrowdSec) section enabled (`ENABLED=true` in `/data/crowdsec/crowdsec.conf`) with an API key or a TLS client certificate. NPMpro reads the bans with those bouncer settings (including `SSL_VERIFY`), read-only, and polls the LAPI every 60 seconds. It needs no additional key. Only active bans are shown, no alerts.
+- Map data: the country shapes of the maps come from [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth, public domain) and are drawn with [react-simple-maps](https://github.com/zcreativelabs/react-simple-maps) (MIT).
 - For alerts, decision management and CrowdSec metrics I recommend the companion project [CrowdSec Web UI](https://github.com/TheDuffman85/crowdsec-web-ui).
 - Environment variables win over the saved value and lock their field in the UI ("Set by environment"):
   - `TRAFFIC_STATS` (`true` or `false`); it is the only variable that sets traffic statistics (`LOGROTATE` and `GOA` do not)

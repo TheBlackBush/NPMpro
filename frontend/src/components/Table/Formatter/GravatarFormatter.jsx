@@ -1,19 +1,25 @@
-import cn from "clsx";
+import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
+import { cn } from "src/lib/utils";
 
 const defaultImg = "/images/default-avatar.jpg";
 
+// the avatar size names (xs to xl) as square edges; no size is the 40 px default
+const sizes = { xs: "size-5", sm: "size-8", md: "size-12", lg: "size-20", xl: "size-28" };
+
 export function GravatarFormatter({ url, name, size, decorative }) {
 	return (
-		<div className="d-flex py-1 align-items-center">
-			<span
+		<div className="flex items-center py-1">
+			<Avatar
 				{...(name && !decorative
 					? { role: "img", "aria-label": name, title: name }
 					: { "aria-hidden": "true", ...(name ? { title: name } : {}) })}
-				className={cn("avatar avatar-square me-2", size && `avatar-${size}`)}
-				style={{
-					backgroundImage: `url(${url || defaultImg})`,
-				}}
-			/>
+				className={cn("mr-2 rounded-md after:rounded-md", sizes[size] || "size-10")}
+			>
+				<AvatarImage src={url || defaultImg} alt="" className="rounded-md" />
+				<AvatarFallback className="rounded-md bg-cover">
+					<img src={defaultImg} alt="" className="size-full rounded-md object-cover" />
+				</AvatarFallback>
+			</Avatar>
 		</div>
 	);
 }

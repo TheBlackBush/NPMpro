@@ -1,38 +1,38 @@
-import cn from "clsx";
-import OverlayTrigger from "react-bootstrap/OverlayTrigger";
-import Popover from "react-bootstrap/Popover";
+import { StatusBadge } from "src/components/StatusBadge";
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "src/components/ui/popover";
 import { T } from "src/locale";
 
 export function StatusFormatter({ enabled, nginxOnline, nginxErr }) {
 	if (enabled && !nginxOnline) {
-		const popover = (
-			<Popover id="popover-nginx-error">
-				<Popover.Header>
-					<T id="notification.nginx-config-error" />
-				</Popover.Header>
-				<Popover.Body>
-					{/* Tabler's .text-wrap is white-space: normal, which would collapse the nginx output */}
-					<pre className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+		return (
+			<Popover>
+				<PopoverTrigger asChild>
+					<button
+						type="button"
+						className="inline-flex min-h-6 items-center rounded-4xl focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					>
+						<StatusBadge tone="destructive" className="cursor-pointer">
+							<T id="status.config-error" />
+						</StatusBadge>
+					</button>
+				</PopoverTrigger>
+				<PopoverContent side="bottom" className="w-auto max-w-sm">
+					<PopoverHeader>
+						<PopoverTitle>
+							<T id="notification.nginx-config-error" />
+						</PopoverTitle>
+					</PopoverHeader>
+					<pre className="m-0 font-mono text-xs break-words whitespace-pre-wrap">
 						{nginxErr || <T id="status.config-error.unknown" />}
 					</pre>
-				</Popover.Body>
+				</PopoverContent>
 			</Popover>
-		);
-
-		return (
-			<OverlayTrigger trigger="click" placement="bottom" overlay={popover} rootClose>
-				<button type="button" className="status status-red border-0">
-					<span className="status-dot" />
-					<T id="status.config-error" />
-				</button>
-			</OverlayTrigger>
 		);
 	}
 
 	return (
-		<span className={cn("status", enabled ? "status-lime" : "status-orange")}>
-			<span className={cn("status-dot", enabled && "status-dot-animated")} />
+		<StatusBadge tone={enabled ? "success" : "warning"} pulse={enabled}>
 			<T id={enabled ? "online" : "disabled"} />
-		</span>
+		</StatusBadge>
 	);
 }

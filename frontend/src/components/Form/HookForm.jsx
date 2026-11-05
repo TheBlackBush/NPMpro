@@ -1,7 +1,14 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FormProvider, get, useForm, useFormContext, useFormState } from "react-hook-form";
 import { useModalFrame } from "src/components/AppModal";
-import { fieldPaths, formResolver, resetOptionsOf, rowErrorPaths } from "src/modules/HookForm";
+import {
+	commitPendingEntries,
+	fieldPaths,
+	formResolver,
+	resetOptionsOf,
+	rowErrorPaths,
+	setIn,
+} from "src/modules/HookForm";
 import { firstErrorOf } from "src/modules/ModalTabs";
 
 const FieldOrderContext = createContext([]);
@@ -9,6 +16,11 @@ const FieldOrderContext = createContext([]);
 const ReadOnlyContext = createContext(false);
 // the ModalTabs of the form: { current: { tabs, open(id, then) } | null }, so the first error's tab opens
 const FormTabsContext = createContext(null);
+// the fields holding typed text that is not a value yet: { entries: Set, setPending(name, on) } | null, and the set
+// of their names
+const PendingRegistryContext = createContext(null);
+const NO_PENDING = new Set();
+const PendingNamesContext = createContext(NO_PENDING);
 
 /**
  * useForm for the app's forms: the window's validate function (values => errors of translated messages; the newest
@@ -111,6 +123,50 @@ function useFormTabs() {
 }
 
 /**
+ * For a field that holds typed text before it becomes a value (the domain names: text without Enter). ref.current
+ * is set by the field to a function that commits the text and returns the refused parts; a save calls it first, so
+ * typed text is saved too, and refused text refuses the save with messageOf(refused) on the field. setPending(true)
+ * while text is typed: the save button is available then even in an unchanged form, and closing the window asks
+ * before the text is lost.
+ *
+ * @param   {string}   name       the field
+ * @param   {Function} messageOf  (refused: string[]) => the field's message
+ * @returns {{ ref: { current: Function|null }, setPending: Function }}
+ */
+function usePendingEntry(name, messageOf) {
+	const registry = useContext(PendingRegistryContext);
+	const ref = useRef(null);
+	const messageRef = useRef(messageOf);
+	useLayoutEffect(() => {
+		messageRef.current = messageOf;
+	});
+	useEffect(() => {
+		if (!registry) return;
+		const entry = {
+			name,
+			commit: () => ref.current?.() ?? [],
+			messageOf: (refused) => messageRef.current(refused),
+		};
+		registry.entries.add(entry);
+		return () => {
+			registry.entries.delete(entry);
+			registry.setPending(name, false);
+		};
+	}, [registry, name]);
+	const setPending = useCallback((on) => registry?.setPending(name, on), [registry, name]);
+	return { ref, setPending };
+}
+
+/**
+ * The fields of the form around the caller that hold typed text not yet taken as a value (usePendingEntry)
+ *
+ * @returns {Set<string>}
+ */
+function usePendingEntries() {
+	return useContext(PendingNamesContext);
+}
+
+/**
  * Focuses the first field with an error in field order: a field on another tab opens that tab first (ModalTabs,
  * also a tab in its More menu), then setFocus
  *
@@ -208,14 +264,14 @@ function useListRecheck(name) {
  * @param {string[]} [props.fieldOrder]  the fields in form order, when the defaultValues' order differs; read once,
  *                                      on the first render (as the defaultValues' order)
  * @param {string}   [props.className]   of the <form>
- * @param {boolean}  [props.readOnly]    a View window: TabPane disables the fields (a disabled fieldset), react-select
- *                                      fields read useReadOnly, and a submit saves nothing
+ * @param {boolean}  [props.readOnly]    a View window: TabPane disables the fields (a disabled fieldset), the
+ *                                      comboboxes read useReadOnly, and a submit saves nothing
  * @param {*}        props.children
  */
 function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, children }) {
 	const [order] = useState(() => fieldOrder ?? fieldPaths(methods.formState.defaultValues));
 	// directly inside a window (around its header, body and footer): a flex column capped at the content box, so on a
-	// phone (full screen window, fixed height) the header and footer stay put and .modal-body scrolls
+	// phone (full screen window, fixed height) the header and footer stay put and the window body scrolls
 	const frame = useModalFrame();
 	const submitting = useRef(false);
 	const tabsRef = useRef(null);
@@ -226,34 +282,67 @@ function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, 
 	useLayoutEffect(() => {
 		if (refused) focusFirstError(refused.errors, order, methods.setFocus, tabsRef.current);
 	}, [refused, methods, order]);
+	const [pendingNames, setPendingNames] = useState(NO_PENDING);
+	const [pending] = useState(() => ({
+		entries: new Set(),
+		setPending: (name, on) =>
+			setPendingNames((names) => {
+				if (names.has(name) === on) return names;
+				const next = new Set(names);
+				if (on) next.add(name);
+				else next.delete(name);
+				return next;
+			}),
+	}));
 	return (
 		<FormProvider {...methods}>
 			<FieldOrderContext.Provider value={order}>
 				<FormTabsContext.Provider value={tabsRef}>
-					<ReadOnlyContext.Provider value={readOnly}>
-						<form
-							className={
-								frame ? ["d-flex flex-column mh-100", className].filter(Boolean).join(" ") : className
-							}
-							action="#"
-							noValidate
-							onSubmit={(event) => {
-								event.stopPropagation();
-								if (readOnly || submitting.current) {
-									event.preventDefault();
-									return;
-								}
-								submitting.current = true;
-								void methods
-									.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
-									.finally(() => {
-										submitting.current = false;
-									});
-							}}
-						>
-							{children}
-						</form>
-					</ReadOnlyContext.Provider>
+					<PendingRegistryContext.Provider value={pending}>
+						<PendingNamesContext.Provider value={pendingNames}>
+							<ReadOnlyContext.Provider value={readOnly}>
+								<form
+									className={
+										frame
+											? ["flex min-h-0 flex-1 flex-col", className].filter(Boolean).join(" ")
+											: className
+									}
+									action="#"
+									noValidate
+									onSubmit={(event) => {
+										event.stopPropagation();
+										if (readOnly || submitting.current) {
+											event.preventDefault();
+											return;
+										}
+										// typed text becomes a value first (the Save button keeps the focus in the field, so its
+										// blur never committed it); refused text stops the save with a message on its field
+										const typed = commitPendingEntries(pending.entries);
+										if (typed) {
+											event.preventDefault();
+											const error = { type: "pending", message: typed.message };
+											methods.setError(typed.name, error);
+											focusFirstError(
+												setIn({}, typed.name, error),
+												order,
+												methods.setFocus,
+												tabsRef.current,
+											);
+											return;
+										}
+										submitting.current = true;
+										void methods
+											.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
+											.finally(() => {
+												submitting.current = false;
+											});
+									}}
+								>
+									{children}
+								</form>
+							</ReadOnlyContext.Provider>
+						</PendingNamesContext.Provider>
+					</PendingRegistryContext.Provider>
 				</FormTabsContext.Provider>
 			</FieldOrderContext.Provider>
 		</FormProvider>
@@ -269,6 +358,8 @@ export {
 	useFocusFirstError,
 	useFormTabs,
 	useListRecheck,
+	usePendingEntries,
+	usePendingEntry,
 	useReadOnly,
 	useRecheckDependent,
 	useResetToSaved,

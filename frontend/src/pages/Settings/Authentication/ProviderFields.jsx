@@ -1,20 +1,22 @@
-import { IconCheck, IconCircleCheck, IconCopy } from "@tabler/icons-react";
+import { Check, CircleCheck, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 import {
 	Button,
 	ErrorAlert,
 	FormField,
-	FormSection,
 	PasswordField,
 	SwitchField,
 	SwitchList,
 	TextField,
 	useRecheckDependent,
 } from "src/components";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { AUTHENTICATION_RECHECKS } from "src/modules/AuthenticationForms";
+import { SettingsCard } from "../SettingsCard";
+import { StatusAlert } from "../StatusAlert";
 import { LockedBadge } from "./LockedBadge";
 
 const CONNECTION_KEYS = ["issuerUrl", "clientId", "clientSecret", "redirectDomain"];
@@ -23,18 +25,15 @@ const WATCHED = ["issuerUrl", "clientId", "clientSecret"];
 /**
  * A text setting of the provider on the form layer's TextField: the lock badge in its label, disabled while locked
  */
-function ProviderText({ name, label, hint, locked, type = "text", placeholder, onChange }) {
+function ProviderText({ name, label, hint, locked, env, type = "text", placeholder, onChange }) {
 	return (
 		<TextField
 			name={name}
 			id={`oidc-${name}`}
-			label={
-				<>
-					{label}
-					{locked ? <LockedBadge /> : null}
-				</>
-			}
+			label={label}
+			badges={locked ? <LockedBadge env={env} /> : null}
 			hint={hint}
+			className=""
 			registerOptions={onChange ? { onChange } : undefined}
 			type={type}
 			autoComplete="off"
@@ -101,6 +100,8 @@ function ProviderFields({ data, isLocked }) {
 		});
 	};
 
+	// the variable that sets a locked field (locked_by, camelized by base.js), shown in its badge
+	const envOf = (key) => data.lockedBy?.[key];
 	const secretLocked = isLocked("clientSecret");
 	// With every connection value from env vars OIDC is active whatever the stored switch says
 	const envOnly = CONNECTION_KEYS.every((key) => isLocked(key));
@@ -119,16 +120,12 @@ function ProviderFields({ data, isLocked }) {
 	const secretPlaceholder = data.secretError && !secretLocked ? "" : intl.formatMessage({ id: secretKey() });
 
 	return (
-		<FormSection heading legend={<T id="settings.authentication.provider" />} className="mb-4">
-			<SwitchList className="mb-3">
+		<SettingsCard title={<T id="settings.authentication.provider" />}>
+			<SwitchList>
 				<SwitchField
 					id="oidc-enabled"
-					label={
-						<>
-							<T id="settings.authentication.enabled" />
-							{enabledLocked ? <LockedBadge /> : null}
-						</>
-					}
+					label={<T id="settings.authentication.enabled" />}
+					badges={enabledLocked ? <LockedBadge env={envOf("enabled")} /> : null}
 					name={enabledField.name}
 					ref={enabledField.ref}
 					onBlur={enabledField.onBlur}
@@ -146,6 +143,7 @@ function ProviderFields({ data, isLocked }) {
 				label={<T id="settings.authentication.issuer-url" />}
 				hint={<T id="settings.authentication.issuer-url.hint" />}
 				locked={isLocked("issuerUrl")}
+				env={envOf("issuerUrl")}
 				placeholder="https://"
 				onChange={recheckAfter("issuerUrl")}
 			/>
@@ -153,19 +151,17 @@ function ProviderFields({ data, isLocked }) {
 				name="clientId"
 				label={<T id="settings.authentication.client-id" />}
 				locked={isLocked("clientId")}
+				env={envOf("clientId")}
 				onChange={recheckAfter("clientId")}
 			/>
 			{/* a locked secret stays empty: the environment's secret is never shown */}
 			<PasswordField
 				name="clientSecret"
 				id="oidc-clientSecret"
-				label={
-					<>
-						<T id="settings.authentication.client-secret" />
-						{secretLocked ? <LockedBadge /> : null}
-					</>
-				}
+				label={<T id="settings.authentication.client-secret" />}
+				badges={secretLocked ? <LockedBadge env={envOf("clientSecret")} /> : null}
 				autoComplete="new-password"
+				className=""
 				disabled={secretLocked}
 				placeholder={secretPlaceholder}
 				registerOptions={{ onChange: recheckAfter("clientSecret") }}
@@ -175,36 +171,40 @@ function ProviderFields({ data, isLocked }) {
 				label={<T id="settings.authentication.redirect-domain" />}
 				hint={<T id="settings.authentication.redirect-domain.hint" />}
 				locked={isLocked("redirectDomain")}
+				env={envOf("redirectDomain")}
 				onChange={recheckAfter("redirectDomain")}
 			/>
 			<FormField
 				id="oidc-callbackUrl"
 				label={<T id="settings.authentication.callback-url" />}
 				hint={<T id="settings.authentication.callback-url.hint" />}
+				className=""
 			>
 				{(control) => (
-					<div className="input-group">
-						<input {...control} type="text" className="form-control" readOnly value={callbackUrl} />
-						<button
-							type="button"
-							className="btn btn-icon"
-							aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
-							disabled={!callbackUrl}
-							onClick={onCopy}
-						>
-							{copied ? (
-								<IconCheck className="icon" aria-hidden="true" />
-							) : (
-								<IconCopy className="icon" aria-hidden="true" />
-							)}
-						</button>
-					</div>
+					<InputGroup>
+						<InputGroupInput {...control} type="text" readOnly value={callbackUrl} />
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								size="icon-xs"
+								aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+								disabled={!callbackUrl}
+								onClick={onCopy}
+							>
+								{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+							</InputGroupButton>
+						</InputGroupAddon>
+					</InputGroup>
 				)}
 			</FormField>
-			<div className="visually-hidden" aria-live="polite">
+			<div className="sr-only" aria-live="polite">
 				{copied ? <T id="settings.authentication.callback-url.copied" /> : null}
 			</div>
-			<ProviderText name="scopes" label={<T id="settings.authentication.scopes" />} locked={isLocked("scopes")} />
+			<ProviderText
+				name="scopes"
+				label={<T id="settings.authentication.scopes" />}
+				locked={isLocked("scopes")}
+				env={envOf("scopes")}
+			/>
 			<Button
 				outline
 				color="secondary"
@@ -216,22 +216,17 @@ function ProviderFields({ data, isLocked }) {
 			</Button>
 			<div role="status">
 				{result?.ok ? (
-					<div className="alert alert-success mt-3 mb-0">
-						<div className="alert-icon">
-							<IconCircleCheck className="icon" aria-hidden="true" />
-						</div>
-						<div className="text-break">
-							<T id="settings.authentication.test.ok" data={{ issuer: result.issuer }} />
-						</div>
-					</div>
+					<StatusAlert
+						variant="success"
+						icon={CircleCheck}
+						id="settings.authentication.test.ok"
+						data={{ issuer: result.issuer }}
+						live={false}
+					/>
 				) : null}
-				{result && !result.ok ? (
-					<ErrorAlert className="mt-3 mb-0" error={result.error}>
-						{result.message}
-					</ErrorAlert>
-				) : null}
+				{result && !result.ok ? <ErrorAlert error={result.error}>{result.message}</ErrorAlert> : null}
 			</div>
-		</FormSection>
+		</SettingsCard>
 	);
 }
 

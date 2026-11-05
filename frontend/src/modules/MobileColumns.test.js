@@ -22,17 +22,17 @@ it("reads the mobile role of a column", () => {
 
 it("hides phone-only roles on phones and keeps them on tablets", () => {
 	for (const role of ["title-end", "title-below", "summary", "hide"]) {
-		assert.equal(cellClass(col("a", role)), "d-none d-md-table-cell");
-		assert.equal(headerClass(col("a", role)), "d-none d-md-table-cell");
+		assert.equal(cellClass(col("a", role)), "hidden md:table-cell");
+		assert.equal(headerClass(col("a", role)), "hidden md:table-cell");
 	}
-	assert.equal(PHONE_HIDDEN_CELL, "d-none d-md-table-cell");
-	assert.equal(cellClass(col("a", "hide-lg")), "d-none d-lg-table-cell");
+	assert.equal(PHONE_HIDDEN_CELL, "hidden md:table-cell");
+	assert.equal(cellClass(col("a", "hide-lg")), "hidden lg:table-cell");
 	assert.equal(cellClass(col("a", "title")), "");
 	assert.equal(cellClass({ id: "a" }), "");
 });
 
 it("lets long titles wrap", () => {
-	assert.match(titleClass(), /text-break/u);
+	assert.equal(titleClass(), "min-w-0 flex-1 break-words");
 });
 
 it("joins the summary texts in column order and skips empty ones", () => {

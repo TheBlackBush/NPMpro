@@ -1,27 +1,17 @@
-import cn from "clsx";
-import { Children } from "react";
+import { cn } from "src/lib/utils";
 import { switchListClass } from "src/modules/FormFields";
 
 /**
- * Tabler settings rows of switches (SwitchField): one column with a gap between rows, or two columns from the md
+ * Settings rows of switches (SwitchField), stacked without dividers: one column, or two columns from the md
  * breakpoint. Put it in a FormSection to name the group.
  *
  * @param {Object} props
  * @param {1|2}    [props.columns]
  * @param {string} [props.className]
- * @param {*}      props.children  SwitchField rows (empty ones are skipped)
+ * @param {*}      props.children  SwitchField rows
  */
 function SwitchList({ columns = 1, className, children }) {
-	if (columns !== 2) return <div className={cn(switchListClass(1), className)}>{children}</div>;
-	return (
-		<div className={cn(switchListClass(2), className)}>
-			{Children.toArray(children).map((child) => (
-				<div key={child.key} className="col py-2">
-					{child}
-				</div>
-			))}
-		</div>
-	);
+	return <div className={cn(switchListClass(columns), className)}>{children}</div>;
 }
 
 export { SwitchList };

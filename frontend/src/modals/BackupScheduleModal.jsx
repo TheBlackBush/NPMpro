@@ -1,3 +1,4 @@
+import { CalendarClock } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
@@ -83,7 +84,7 @@ function NextRun({ timeZone, lastRunAt }) {
 		return null;
 	}
 	return (
-		<div className="form-hint mt-2">
+		<div className="mt-2 text-sm text-muted-foreground">
 			<T id="settings.backup.schedule.next-run" data={{ when, zone: timeZone }} />
 		</div>
 	);
@@ -95,12 +96,12 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 	return (
 		<div className="mb-3">
 			{/* on phones the field next to "When" takes the full row when it is alone and half of it beside a second one */}
-			<div className="row g-2">
+			<div className="grid grid-cols-2 gap-2 md:grid-cols-3">
 				<SelectField
 					name="frequency"
 					id={`${baseId}-frequency`}
 					label={<T id="settings.backup.schedule.when" />}
-					className="col-12 col-md-4"
+					className="col-span-2 md:col-span-1"
 					// the fields this frequency hides take their messages with them
 					registerOptions={{ onChange: (event) => clearErrors(hiddenTimingFields(event.target.value)) }}
 				>
@@ -115,7 +116,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="everyHours"
 						id={`${baseId}-every-hours`}
 						label={<T id="settings.backup.schedule.every-hours" />}
-						className="col-12 col-md-4"
+						className="col-span-2 md:col-span-1"
 						registerOptions={{ valueAsNumber: true }}
 						type="number"
 						min={1}
@@ -128,7 +129,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="weekday"
 						id={`${baseId}-weekday`}
 						label={<T id="settings.backup.schedule.weekday" />}
-						className="col-6 col-md-4"
+						className="col-span-1"
 					>
 						{WEEKDAYS.map((weekday) => (
 							<option key={weekday} value={String(weekday)}>
@@ -142,7 +143,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="monthDay"
 						id={`${baseId}-month-day`}
 						label={<T id="settings.backup.schedule.month-day" />}
-						className="col-6 col-md-4"
+						className="col-span-1"
 						registerOptions={{ valueAsNumber: true }}
 						type="number"
 						min={1}
@@ -155,7 +156,7 @@ function TimingFields({ baseId, timeZone, lastRunAt }) {
 						name="time"
 						id={`${baseId}-time`}
 						label={<T id="settings.backup.schedule.time" />}
-						className={frequency === "daily" ? "col-12 col-md-4" : "col-6 col-md-4"}
+						className={frequency === "daily" ? "col-span-2 md:col-span-1" : "col-span-1"}
 						type="time"
 						required
 					/>
@@ -235,7 +236,7 @@ function TypesField({ types, disabled }) {
 				}}
 				disabled={disabled}
 			/>
-			{typesError ? <div className="invalid-feedback d-block mt-n2 mb-3">{typesError}</div> : null}
+			{typesError ? <div className="mb-3 text-sm text-destructive">{typesError}</div> : null}
 		</div>
 	);
 }
@@ -250,7 +251,8 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					<CalendarClock className="size-5 shrink-0" aria-hidden="true" />
 					<T id={schedule ? "settings.backup.schedule.title.edit" : "settings.backup.schedule.title.add"} />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -276,8 +278,8 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 				<TypesField types={types} disabled={isSubmitting} />
 				<ProtectionField disabled={isSubmitting} />
 				{protection === "passphrase" ? (
-					<div className="row">
-						<div className="col-12 col-md-6">
+					<div className="grid gap-4 md:grid-cols-2">
+						<div>
 							<PassphraseField
 								name="passphrase"
 								id={`${baseId}-passphrase`}
@@ -288,7 +290,7 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 								required={!schedule?.passphraseSet}
 							/>
 						</div>
-						<div className="col-12 col-md-6">
+						<div>
 							<PassphraseField
 								name="passphraseRepeat"
 								id={`${baseId}-passphrase-repeat`}
@@ -311,13 +313,12 @@ function ScheduleForm({ schedule, types, errorMsg, onCloseError, close }) {
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id="cancel" />
 				</Button>
 				<FormSubmit
 					className="ms-auto"
 					edit={Boolean(schedule)}
-					section="settings"
 					labels={NOTE_LABELS}
 					isLoading={isSubmitting}
 					disabled={isSubmitting}

@@ -8,7 +8,7 @@ function NewUsersFields() {
 
 	return (
 		<>
-			<SwitchList className="mb-3">
+			<SwitchList>
 				<SwitchField
 					{...register("autoCreateEnabled")}
 					id="oidc-autoCreateEnabled"
@@ -23,6 +23,7 @@ function NewUsersFields() {
 				hint={<T id="settings.authentication.allowed-domains.hint" />}
 				type="text"
 				autoComplete="off"
+				className=""
 				placeholder={intl.formatMessage({ id: "settings.authentication.allowed-domains.placeholder" })}
 			/>
 		</>

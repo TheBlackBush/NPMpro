@@ -1,5 +1,4 @@
-import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
-import cn from "clsx";
+import { ExternalLink, Info } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import {
@@ -12,6 +11,9 @@ import {
 	useAppForm,
 	useFieldError,
 } from "src/components";
+import { Checkbox } from "src/components/ui/checkbox";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
+import { Label } from "src/components/ui/label";
 import { useMonitoringSettings, useRuntimeSettings, useSaveLogsAndMonitoring, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
@@ -140,9 +142,9 @@ function GoAccessFields() {
 					href="/goaccess"
 					target="_blank"
 					rel="noopener noreferrer"
-					className="link-primary d-inline-block mt-3"
+					className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
 				>
-					<IconExternalLink size={16} className="me-1" aria-hidden="true" />
+					<ExternalLink className="size-4" aria-hidden="true" />
 					<T id="settings.logs.goaccess.open" />
 				</a>
 			) : null}
@@ -186,7 +188,7 @@ function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
 					<div className="mt-2">
 						<T id="settings.monitoring.traffic.confirm.also" />
 					</div>
-					<ul className="mt-2 mb-0 text-start">
+					<ul className="mt-2 list-disc ps-5 text-left">
 						{ipsOff ? (
 							<li>
 								<T id="settings.monitoring.show-ips.confirm.item" />
@@ -200,17 +202,10 @@ function TrafficOffConfirm({ days, ipsOff, visitorsOff, choice }) {
 					</ul>
 				</>
 			) : null}
-			<label className="form-check text-start mt-3 mb-0">
-				<input
-					className="form-check-input"
-					type="checkbox"
-					checked={checked}
-					onChange={(e) => choice.set(e.target.checked)}
-				/>
-				<span className="form-check-label">
-					<T id="settings.monitoring.traffic.confirm.delete" />
-				</span>
-			</label>
+			<Label className="mt-3 flex items-center gap-2">
+				<Checkbox checked={checked} onCheckedChange={(value) => choice.set(value === true)} />
+				<T id="settings.monitoring.traffic.confirm.delete" />
+			</Label>
 		</>
 	);
 }
@@ -231,7 +226,7 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 	return (
 		<>
 			<T id="settings.monitoring.both-off.confirm.body" />
-			<ul className="mt-2 mb-0 text-start">
+			<ul className="mt-2 list-disc ps-5 text-left">
 				<li>
 					<T id="settings.monitoring.show-ips.confirm.item" />
 				</li>
@@ -244,65 +239,59 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 }
 
 /**
- * A number of the traffic statistics on the form layer's FormField: its label with the lock badge, the input (with
- * an optional unit), the error and the hint
+ * A number of the traffic statistics on the form layer's FormField: its label with the lock badge under it, the
+ * input (with an optional unit), the error and the hint
  */
-function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked }) {
+function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, envOf }) {
 	const { register } = useFormContext();
 	const error = useFieldError(name);
 	return (
 		<FormField
 			id={id}
 			className=""
-			label={
-				<>
-					<T id={labelId} />
-					{isLocked(name) ? <LockedBadge /> : null}
-				</>
-			}
+			label={<T id={labelId} />}
+			badges={isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
 			hint={hint}
 			error={error}
 		>
 			{(control) => (
-				<div className="row">
-					<div className="col-12 col-sm-6 col-lg-4">
-						<div className="input-group">
-							<input
-								{...register(name)}
-								{...control}
-								type="number"
-								inputMode="numeric"
-								min={range.min}
-								max={range.max}
-								step={1}
-								className={cn("form-control", error && "is-invalid")}
-								disabled={isLocked(name)}
-							/>
-							{unit}
-						</div>
-					</div>
+				<div className="sm:max-w-xs">
+					<InputGroup>
+						<InputGroupInput
+							{...register(name)}
+							{...control}
+							aria-invalid={error ? true : undefined}
+							type="number"
+							inputMode="numeric"
+							min={range.min}
+							max={range.max}
+							step={1}
+							disabled={isLocked(name)}
+						/>
+						{unit ? (
+							<InputGroupAddon align="inline-end">
+								<InputGroupText>{unit}</InputGroupText>
+							</InputGroupAddon>
+						) : null}
+					</InputGroup>
 				</div>
 			)}
 		</FormField>
 	);
 }
 
-function Fields({ isLocked }) {
+function Fields({ isLocked, envOf }) {
 	const { register, clearErrors } = useFormContext();
 	const uniqueVisitors = useWatch({ name: "uniqueVisitors" });
-	const label = (key, id) => (
-		<>
-			<T id={id} />
-			{isLocked(key) ? <LockedBadge /> : null}
-		</>
-	);
+	const lock = (key) => (isLocked(key) ? <LockedBadge env={envOf(key)} /> : null);
 	return (
-		<Part titleId="settings.monitoring.statistics" last>
+		<Part titleId="settings.monitoring.statistics">
 			<SwitchList>
 				<SwitchField
 					{...register("trafficEnabled")}
 					id="monitoring-traffic-enabled"
-					label={label("trafficEnabled", "settings.monitoring.traffic")}
+					label={<T id="settings.monitoring.traffic" />}
+					badges={lock("trafficEnabled")}
 					hint={<T id="settings.monitoring.traffic.hint" />}
 					disabled={isLocked("trafficEnabled")}
 				/>
@@ -312,17 +301,15 @@ function Fields({ isLocked }) {
 					labelId="settings.monitoring.retention"
 					hint={<T id="settings.monitoring.retention.hint" data={RETENTION} />}
 					range={RETENTION}
-					unit={
-						<span className="input-group-text">
-							<T id="settings.monitoring.retention.days" />
-						</span>
-					}
+					unit={<T id="settings.monitoring.retention.days" />}
 					isLocked={isLocked}
+					envOf={envOf}
 				/>
 				<SwitchField
 					{...register("showIps")}
 					id="monitoring-show-ips"
-					label={label("showIps", "settings.monitoring.show-ips")}
+					label={<T id="settings.monitoring.show-ips" />}
+					badges={lock("showIps")}
 					hint={<T id="settings.monitoring.show-ips.hint" />}
 					disabled={isLocked("showIps")}
 				/>
@@ -334,7 +321,8 @@ function Fields({ isLocked }) {
 						},
 					})}
 					id="monitoring-unique-visitors"
-					label={label("uniqueVisitors", "settings.monitoring.unique-visitors")}
+					label={<T id="settings.monitoring.unique-visitors" />}
+					badges={lock("uniqueVisitors")}
 					hint={<T id="settings.monitoring.unique-visitors.hint" />}
 					disabled={isLocked("uniqueVisitors")}
 				/>
@@ -346,6 +334,7 @@ function Fields({ isLocked }) {
 						hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
 						range={VISITORS_CAP}
 						isLocked={isLocked}
+						envOf={envOf}
 					/>
 				) : null}
 			</SwitchList>
@@ -437,20 +426,18 @@ function MonitoringForm({ data, logs }) {
 	};
 
 	return (
-		<HookForm methods={methods} onSubmit={onSubmit} className="d-flex flex-column flex-fill">
-			<div className="card-body flex-fill">
-				<Heading />
-				{alert}
-				{lockedKeys.length > 0 || logsCtx.anyLocked ? (
-					<StatusAlert variant="info" icon={IconInfoCircle} id="settings.authentication.status.locked" />
-				) : null}
-				<RestartPendingAlert data={logs} />
-				<RuntimeContext.Provider value={logsCtx}>
-					<LogFields />
-					<GoAccessFields />
-				</RuntimeContext.Provider>
-				<Fields isLocked={isLocked} />
-			</div>
+		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
+			<Heading />
+			{alert}
+			{lockedKeys.length > 0 || logsCtx.anyLocked ? (
+				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+			) : null}
+			<RestartPendingAlert data={logs} />
+			<RuntimeContext.Provider value={logsCtx}>
+				<LogFields />
+				<GoAccessFields />
+			</RuntimeContext.Provider>
+			<Fields isLocked={isLocked} envOf={(key) => data.lockedBy?.[key]} />
 			<SaveButton allLocked={allLocked} />
 		</HookForm>
 	);
@@ -462,7 +449,7 @@ export default function Monitoring() {
 
 	if (error || logsQuery.error) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<ErrorAlert error={error ?? logsQuery.error} />
 			</div>
@@ -471,7 +458,7 @@ export default function Monitoring() {
 
 	if (isPending || logsQuery.isPending) {
 		return (
-			<div className="card-body">
+			<div className="space-y-4">
 				<Heading />
 				<Loading noLogo />
 			</div>

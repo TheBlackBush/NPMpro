@@ -1,5 +1,5 @@
-import { IconLock } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Lock } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { ApiErrorContent, ErrorAlert, Loading } from "src/components";
 import { useDatabase } from "src/hooks";
@@ -7,6 +7,7 @@ import { T } from "src/locale";
 import { showDatabaseMoveModal } from "src/modals";
 import { isMoveActive } from "src/modules/DatabaseMove";
 import { SettingsHeading } from "../SettingsHeading";
+import { StatusAlert } from "../StatusAlert";
 import { InUseCard } from "./InUseCard";
 import { MoveCard } from "./MoveCard";
 import { TablesCard } from "./TablesCard";
@@ -14,19 +15,14 @@ import { TablesCard } from "./TablesCard";
 // a connection from the DB_* environment variables cannot be moved here: the variables would win at the next start
 function EnvLock() {
 	return (
-		<div className="alert alert-warning">
-			<div className="alert-icon">
-				<IconLock className="icon alert-icon" aria-hidden="true" />
+		<StatusAlert variant="warning" icon={Lock}>
+			<div className="font-medium">
+				<T id="settings.database.env.title" />
 			</div>
 			<div>
-				<h4 className="alert-heading">
-					<T id="settings.database.env.title" />
-				</h4>
-				<div className="alert-description">
-					<T id="settings.database.env.text" />
-				</div>
+				<T id="settings.database.env.text" />
 			</div>
-		</div>
+		</StatusAlert>
 	);
 }
 
@@ -51,9 +47,9 @@ export default function Database() {
 	}, [data, isFetchedAfterMount, queryClient]);
 
 	return (
-		<div className="card-body">
-			<SettingsHeading titleId="settings.database" className="mb-2" />
-			<p className="text-secondary mb-4">
+		<div className="space-y-4">
+			<SettingsHeading titleId="settings.database" className="mb-0" />
+			<p className="text-muted-foreground">
 				<T id="settings.database.intro" />
 			</p>
 			{isPending ? <Loading noLogo /> : null}

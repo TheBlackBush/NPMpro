@@ -1,6 +1,6 @@
 /**
  * The categories of the Settings menu (pages/Settings/sections.js): every section names one, the menu shows them in
- * this order with the category's subheader (and an optgroup in the phone select). Pure, so node --test checks them.
+ * this order with the category's heading (and a group in the phone select). Pure, so node --test checks them.
  */
 export const SETTINGS_CATEGORIES = [
 	{ id: "sites", labelKey: "settings.category.sites" },
@@ -8,6 +8,7 @@ export const SETTINGS_CATEGORIES = [
 	{ id: "monitoring", labelKey: "settings.category.monitoring" },
 	{ id: "data", labelKey: "settings.category.data" },
 	{ id: "system", labelKey: "settings.category.system" },
+	{ id: "administration", labelKey: "settings.category.administration" },
 ];
 
 /**

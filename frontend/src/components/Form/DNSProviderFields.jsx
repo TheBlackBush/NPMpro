@@ -1,12 +1,11 @@
-import cn from "clsx";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-import Select from "react-select";
+import { Combobox } from "src/components/Combobox";
+import { Input } from "src/components/ui/input";
 import { useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
-import { selectClassNames } from "src/modules/Select";
 import { NoticeAlert } from "../NoticeAlert";
 import { DnsCredentialSelect } from "./DnsCredentialSelect";
-import { FormField, selectControlProps } from "./FormField";
+import { FormField } from "./FormField";
 import { FormSection } from "./FormSection";
 import { useRecheckDependent } from "./HookForm";
 
@@ -34,27 +33,22 @@ function ProviderSelect({ providerId, className }) {
 			className={className}
 		>
 			{(control) => (
-				<Select
-					{...selectControlProps(control)}
+				<Combobox
+					{...control}
 					ref={field.ref}
-					unstyled
-					classNames={selectClassNames}
 					name="npmproDnsProvider"
-					closeMenuOnSelect={true}
-					isClearable={false}
 					placeholder={intl.formatMessage({
 						id: "certificates.dns.provider.placeholder",
 					})}
-					isLoading={isPending}
-					isSearchable
-					required
+					loading={isPending}
+					value={field.value ?? null}
 					onBlur={field.onBlur}
-					onChange={(newValue) => {
-						field.onChange(newValue?.value);
+					onChange={(value) => {
+						field.onChange(value);
 						setValue("npmproDnsCredentialId", null, { shouldDirty: true });
 						recheckCredential();
 					}}
-					options={options}
+					options={options ?? []}
 				/>
 			)}
 		</FormField>
@@ -74,11 +68,10 @@ function PropagationInput() {
 			className="mb-0"
 		>
 			{(control) => (
-				<input
+				<Input
 					{...control}
 					ref={field.ref}
 					type="number"
-					className={cn("form-control", error && "is-invalid")}
 					min={0}
 					max={7200}
 					placeholder={intl.formatMessage({
@@ -95,7 +88,7 @@ function PropagationInput() {
 }
 
 /**
- * The DNS challenge fields of the form around it, in Tabler's form-fieldset box named "DNS challenge": the notice, the
+ * The DNS challenge fields of the form around it, in a fieldset box named "DNS challenge": the notice, the
  * provider and, with a provider, the credential and the propagation time. The form's resolver checks them
  * (CertificateForms.js dnsChallengeRules). The same box in the host windows' TLS tab and the DNS certificate window.
  *
@@ -107,7 +100,7 @@ export function DNSProviderFields({ className }) {
 	const providerId = useWatch({ name: "npmproDnsProvider" });
 	return (
 		<FormSection boxed className={className} legend={<T id="certificates.dns.section" />}>
-			<NoticeAlert>
+			<NoticeAlert className="mb-3">
 				<T id="certificates.dns.warning" />
 			</NoticeAlert>
 			<ProviderSelect providerId={providerId} className={providerId ? undefined : "mb-0"} />

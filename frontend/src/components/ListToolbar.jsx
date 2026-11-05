@@ -1,5 +1,8 @@
-import { IconSearch, IconSortAscending, IconSortDescending } from "@tabler/icons-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { AppSelect } from "src/components/AppSelect";
+import { Button } from "src/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
 import { intl, T } from "src/locale";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
@@ -7,23 +10,18 @@ import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
 
+// two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
 function FilterSelect({ label, value, onChange, options }) {
+	const name = intl.formatMessage({ id: label });
 	return (
-		<select
-			className="form-select form-select-sm w-100"
-			aria-label={intl.formatMessage({ id: label })}
+		<AppSelect
+			size="sm"
+			className="w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 md:min-w-0 md:flex-none"
+			aria-label={name}
 			value={value}
-			onChange={(e) => onChange(e.target.value)}
-		>
-			<option value="all">
-				{intl.formatMessage({ id: label })}: {intl.formatMessage({ id: "list.filter.all" })}
-			</option>
-			{options.map((option) => (
-				<option key={option.value} value={option.value}>
-					{option.label}
-				</option>
-			))}
-		</select>
+			onValueChange={onChange}
+			options={[{ value: "all", label: `${name}: ${intl.formatMessage({ id: "list.filter.all" })}` }, ...options]}
+		/>
 	);
 }
 
@@ -62,30 +60,28 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 	// like the headers, the select always names a column; an empty or unknown sort shows a disabled "Sort by"
 	const sortSelected = sortChoices.some((option) => option.id === sortValue.id) ? sortValue.id : "";
 	return (
-		<div className="card-body border-bottom py-3">
-			<div className="row g-2 align-items-center">
-				<div className="col-12 col-md">
-					<div className="input-group input-group-flat input-group-sm">
-						<span className="input-group-text">
-							<IconSearch className="icon" aria-hidden="true" />
-						</span>
-						<input
-							type="text"
-							className="form-control"
-							placeholder={intl.formatMessage({ id: "search" })}
-							aria-label={intl.formatMessage({ id: "search" })}
-							autoComplete="off"
-							ref={inputRef}
-							value={text}
-							onChange={(e) => {
-								setText(e.target.value);
-								setFilter("q", e.target.value);
-							}}
-						/>
-					</div>
-				</div>
-				{kinds.includes("status") ? (
-					<div className="col-6 col-md-auto">
+		<div className="flex flex-col gap-2 border-b p-3">
+			<div className="flex flex-wrap items-center gap-2">
+				<InputGroup className="w-full md:min-w-64 md:flex-1">
+					<InputGroupAddon>
+						<Search aria-hidden="true" />
+					</InputGroupAddon>
+					<InputGroupInput
+						type="text"
+						placeholder={intl.formatMessage({ id: "search" })}
+						aria-label={intl.formatMessage({ id: "search" })}
+						autoComplete="off"
+						ref={inputRef}
+						value={text}
+						onChange={(e) => {
+							setText(e.target.value);
+							setFilter("q", e.target.value);
+						}}
+					/>
+				</InputGroup>
+				{/* the filters, their count and Clear sit on the right (search on the left) */}
+				<div className="flex w-full flex-wrap items-center justify-end gap-2 md:ml-auto md:w-auto">
+					{kinds.includes("status") ? (
 						<FilterSelect
 							label="list.filter.status"
 							value={filters.status}
@@ -95,10 +91,8 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 								label: intl.formatMessage({ id: `list.filter.${value}` }),
 							}))}
 						/>
-					</div>
-				) : null}
-				{kinds.includes("tls") ? (
-					<div className="col-6 col-md-auto">
+					) : null}
+					{kinds.includes("tls") ? (
 						<FilterSelect
 							label="list.filter.tls"
 							value={filters.tls}
@@ -108,88 +102,71 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 								label: intl.formatMessage({ id: `list.filter.${value}` }),
 							}))}
 						/>
-					</div>
-				) : null}
-				{kinds.includes("group") && groups.length > 0 ? (
-					<div className="col-6 col-md-auto">
+					) : null}
+					{kinds.includes("group") && groups.length > 0 ? (
 						<FilterSelect
 							label="list.filter.group"
 							value={filters.group ?? "all"}
 							onChange={(v) => setFilter("group", v)}
 							options={groups.map((value) => ({ value, label: value }))}
 						/>
-					</div>
-				) : null}
-				{kinds.includes("expiry") ? (
-					<div className="col-6 col-md-auto">
+					) : null}
+					{kinds.includes("expiry") ? (
 						<FilterSelect
 							label="list.filter.expiry"
 							value={filters.expiry}
 							onChange={(v) => setFilter("expiry", v)}
 							options={[{ value: "soon", label: intl.formatMessage({ id: "list.filter.soon" }) }]}
 						/>
-					</div>
-				) : null}
-				{active && shown > 0 ? (
-					<div className="col-12 col-md-auto d-flex align-items-center gap-2">
-						<span className="text-secondary small">
-							<T id="list.shown" data={{ shown, total }} />
-						</span>
-						<button
-							type="button"
-							className="btn btn-link btn-sm p-0"
-							onClick={() => {
-								setText("");
-								clear();
-							}}
-						>
-							<T id="list.clear-filters" />
-						</button>
-					</div>
-				) : null}
+					) : null}
+					{active && shown > 0 ? (
+						<div className="flex w-full items-center justify-end gap-2 md:w-auto">
+							<span className="text-sm text-muted-foreground">
+								<T id="list.shown" data={{ shown, total }} />
+							</span>
+							<Button
+								variant="link"
+								size="sm"
+								className="h-auto min-h-6 p-0"
+								onClick={() => {
+									setText("");
+									clear();
+								}}
+							>
+								<T id="list.clear-filters" />
+							</Button>
+						</div>
+					) : null}
+				</div>
 			</div>
 			{sortChoices.length > 0 ? (
-				<div className="row g-2 align-items-center mt-0 d-md-none">
-					<div className="col-auto">
-						<label className="form-label mb-0" htmlFor={sortSelectId}>
-							<T id="list.sort-by" />
-						</label>
-					</div>
-					<div className="col">
-						<select
-							id={sortSelectId}
-							className="form-select form-select-sm"
-							value={sortSelected}
-							onChange={(e) => sorting.onChange([{ id: e.target.value, desc: sortValue.desc }])}
-						>
-							{sortSelected === "" ? (
-								<option value="" disabled>
-									{intl.formatMessage({ id: "list.sort-by" })}
-								</option>
-							) : null}
-							{sortChoices.map((option) => (
-								<option key={option.id} value={option.id}>
-									{option.label}
-								</option>
-							))}
-						</select>
-					</div>
-					<div className="col-auto">
-						<button
-							type="button"
-							className="btn btn-sm btn-icon"
-							aria-label={intl.formatMessage({ id: "list.sort-desc" })}
-							aria-pressed={sortValue.desc}
-							disabled={!sortValue.id}
-							onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}
-						>
-							{sortValue.desc ? (
-								<IconSortDescending className="icon" aria-hidden="true" />
-							) : (
-								<IconSortAscending className="icon" aria-hidden="true" />
-							)}
-						</button>
-					</div>
+				<div className="flex items-center gap-2 md:hidden">
+					<label className="text-sm font-medium" htmlFor={sortSelectId}>
+						<T id="list.sort-by" />
+					</label>
+					<AppSelect
+						size="sm"
+						className="min-w-0 flex-1"
+						id={sortSelectId}
+						value={sortSelected}
+						placeholder={intl.formatMessage({ id: "list.sort-by" })}
+						onValueChange={(id) => sorting.onChange([{ id, desc: sortValue.desc }])}
+						options={sortChoices.map((option) => ({ value: option.id, label: option.label }))}
+					/>
+					<Button
+						variant="outline"
+						size="icon-sm"
+						aria-label={intl.formatMessage({ id: "list.sort-desc" })}
+						aria-pressed={sortValue.desc}
+						disabled={!sortValue.id}
+						onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}
+					>
+						{sortValue.desc ? (
+							<ArrowDownWideNarrow aria-hidden="true" />
+						) : (
+							<ArrowUpNarrowWide aria-hidden="true" />
+						)}
+					</Button>
 				</div>
 			) : null}
 		</div>

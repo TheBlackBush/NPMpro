@@ -9,21 +9,8 @@ const OIDC_ERROR_CODES = [
 	"maintenance",
 ];
 
-const OIDC_BUILTIN_ICONS = [
-	"key",
-	"lock",
-	"login",
-	"shield-lock",
-	"user-circle",
-	"brand-google",
-	"brand-github",
-	"brand-gitlab",
-	"brand-windows",
-	"cloud",
-];
-
-// Light theme root values of --tblr-<name> in tabler.css (converted from oklch). "dark" is a slate grey
-// instead of --tblr-dark, so that the button still stands out on the dark theme's card background.
+// Preset colours of the sign-in button (hex values; "dark" is a slate grey, so that the button still stands out on
+// the dark theme's card background).
 const OIDC_COLOR_PRESETS = [
 	{ name: "blue", value: "#066fd1" },
 	{ name: "azure", value: "#4299e1" },
@@ -168,7 +155,6 @@ export {
 	DEFAULT_OIDC_COLOR,
 	isOidcColor,
 	isOidcDomain,
-	OIDC_BUILTIN_ICONS,
 	OIDC_COLOR_PRESETS,
 	OIDC_ICON_MAX_BYTES,
 	OIDC_MAX_DOMAINS,

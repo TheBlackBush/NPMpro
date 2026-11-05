@@ -1,4 +1,3 @@
-import { IconDotsVertical, IconLock, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,12 +8,13 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Eye, Lock, Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
-import { EditMenuItem, EmptyData, GravatarFormatter, HasPermission, ValueWithDateFormatter } from "src/components";
+import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
-import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
-import { sectionColor } from "src/modules/SectionColors";
+import { ACCESS_LISTS } from "src/modules/Permissions";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -26,10 +26,42 @@ const features = tableFeatures({
 	},
 });
 
+function AccessListActions({ accessList, onDelete, onEdit }) {
+	const canManage = useCanManage(ACCESS_LISTS);
+	return (
+		<RowActions
+			// names the row, so the buttons of a list are told apart
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: accessList.name || `#${accessList.id}` })}
+			focusKey={`access-list-${accessList.id}`}
+			title={<T id="object.actions-title" tData={{ object: "access-list" }} data={{ id: accessList.id }} />}
+			items={[
+				{
+					key: "edit",
+					// a user who may only view gets the View window
+					label: <T id={canManage ? "action.edit" : "action.view"} />,
+					icon: canManage ? Pencil : Eye,
+					onSelect: () => onEdit?.(accessList.id),
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					onSelect: () => onDelete?.(accessList.id),
+					destructive: true,
+					separatorBefore: true,
+					hidden: !canManage,
+				},
+			]}
+		/>
+	);
+}
+
 const columnHelper = createColumnHelper();
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onEdit, onDelete } = {}) {
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+// The columns keep their identity between renders and the row handlers reach the cells through the table meta
+// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+export function useColumns() {
 	return useMemo(
 		() => [
 			columnHelper.accessor((row) => row.owner?.name, {
@@ -45,7 +77,7 @@ export function useColumns({ onEdit, onDelete } = {}) {
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
@@ -98,69 +130,37 @@ export function useColumns({ onEdit, onDelete } = {}) {
 				header: "ID",
 				cell: (info) => info.getValue(),
 				meta: {
-					className: "w-1 text-nowrap",
+					className: "w-px whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
 			columnHelper.display({
 				id: "actions",
 				cell: (info) => (
-					<span className="dropdown">
-						<button
-							type="button"
-							className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-							aria-label={intl.formatMessage({ id: "actions" })}
-							data-bs-boundary="viewport"
-							data-bs-toggle="dropdown"
-							data-bs-popper-config='{"strategy":"fixed"}'
-						>
-							<IconDotsVertical />
-						</button>
-						<div className="dropdown-menu dropdown-menu-end">
-							<span className="dropdown-header">
-								<T
-									id="object.actions-title"
-									tData={{ object: "access-list" }}
-									data={{ id: info.row.original.id }}
-								/>
-							</span>
-							<EditMenuItem section={ACCESS_LISTS} onClick={() => onEdit?.(info.row.original.id)} />
-							<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
-								<div className="dropdown-divider" />
-								<button
-									type="button"
-									className="dropdown-item text-danger"
-									onClick={() => {
-										onDelete?.(info.row.original.id);
-									}}
-								>
-									<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.delete" />
-								</button>
-							</HasPermission>
-						</div>
-					</span>
+					<AccessListActions accessList={info.row.original} {...info.table.options.meta?.actions} />
 				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[onEdit, onDelete],
+		[],
 	);
 }
 
 export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
-	const columns = useColumns({ onEdit, onDelete });
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: { onDelete, onEdit },
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
@@ -172,13 +172,13 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
-					icon={IconLock}
+					icon={Lock}
 					object="access-list"
 					objects="access-lists"
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
-					color={sectionColor("accessLists")}
+					section="accessLists"
 					permissionSection={ACCESS_LISTS}
 				/>
 			}

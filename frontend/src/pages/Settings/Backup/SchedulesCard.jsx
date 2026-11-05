@@ -1,13 +1,4 @@
 import {
-	IconCalendarTime,
-	IconDotsVertical,
-	IconEdit,
-	IconPlayerPause,
-	IconPlayerPlay,
-	IconPlus,
-	IconTrash,
-} from "@tabler/icons-react";
-import {
 	createColumnHelper,
 	createSortedRowModel,
 	rowSortingFeature,
@@ -17,18 +8,27 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { CalendarClock, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { deleteBackupSchedule } from "src/api/backend";
-import { Button, EmptyData, ErrorAlert, Loading } from "src/components";
+import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
+import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { TapTooltip } from "src/components/TapTooltip";
+import { Badge } from "src/components/ui/badge";
+import { Checkbox } from "src/components/ui/checkbox";
+import { Spinner } from "src/components/ui/spinner";
 import { useBackupSchedules, useBackupTypes, useRunBackupSchedule, useSaveBackupSchedule } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showBackupScheduleModal, showDeleteConfirmModal } from "src/modals";
 import { formatInZone, lastRunSize, scheduleStatus, timingText } from "src/modules/BackupSchedules";
 import { contentLabels } from "src/modules/BackupTypes";
+import { WRAP_BADGE } from "src/modules/Badges";
 import { formatBytes } from "src/modules/Monitoring";
 import { ADMIN, VIEW } from "src/modules/Permissions";
 import { showApiError, showError, showObjectSuccess, showSuccess } from "src/notifications";
+import { SettingsCard } from "../SettingsCard";
 
 const label = (id, values) => intl.formatMessage({ id }, values);
 
@@ -40,7 +40,7 @@ const nameClass = (name) =>
 	String(name)
 		.split(/\s+/u)
 		.some((word) => [...word].length > LONG_WORD)
-		? "text-break"
+		? "wrap-anywhere"
 		: undefined;
 
 const keepText = (row) => label("settings.backup.schedule.keep-count", { count: row.keep });
@@ -71,29 +71,39 @@ const lastRunText = (schedule, timeZone) =>
 
 function Contents({ categories, types }) {
 	return (
-		<div className="badge-list">
+		<div className="flex flex-wrap gap-1">
 			{contentLabels(categories, types ?? []).map((item) => (
-				<span key={`${item.kind}-${item.id}`} className="badge bg-secondary-lt text-wrap text-start">
+				<Badge key={`${item.kind}-${item.id}`} variant="secondary" className={WRAP_BADGE}>
 					<T id={contentLabelId(item)} />
-				</span>
+				</Badge>
 			))}
 		</div>
 	);
 }
 
-function StatusBadge({ schedule, timeZone }) {
+// "Failed": the error of the last run in its tooltip when there is one
+function FailedBadge({ error }) {
+	const badge = (
+		<StatusBadge tone="destructive" dot={false} className={WRAP_BADGE}>
+			<T id="settings.backup.schedule.failed" />
+		</StatusBadge>
+	);
+	return error ? <TapTooltip content={error}>{badge}</TapTooltip> : badge;
+}
+
+function ScheduleStatus({ schedule, timeZone }) {
 	const status = scheduleStatus(schedule);
 	// the error of a failed last run (paused too): on phones under the badges, on wider screens in the Last run column
 	const error =
 		schedule.lastStatus === "failed" && schedule.lastError ? (
-			<div className="small text-danger text-break mt-1 d-md-none">{schedule.lastError}</div>
+			<div className="mt-1 text-sm text-destructive wrap-anywhere md:hidden">{schedule.lastError}</div>
 		) : null;
 	if (status === "paused") {
 		return (
 			<>
-				<span className="badge bg-secondary-lt">
+				<Badge variant="secondary" className={WRAP_BADGE}>
 					<T id="settings.backup.schedule.paused" />
-				</span>
+				</Badge>
 				{error}
 			</>
 		);
@@ -101,19 +111,15 @@ function StatusBadge({ schedule, timeZone }) {
 	// a failed schedule still runs again: "Failed" and its next run
 	return (
 		<>
-			<div className="badge-list">
-				{status === "failed" ? (
-					<span className="badge bg-red-lt text-wrap text-start" title={schedule.lastError ?? undefined}>
-						<T id="settings.backup.schedule.failed" />
-					</span>
-				) : null}
+			<div className="flex flex-wrap gap-1">
+				{status === "failed" ? <FailedBadge error={schedule.lastError} /> : null}
 				{schedule.nextRunAt ? (
-					<span className="badge bg-green-lt text-wrap text-start">
+					<StatusBadge tone="success" dot={false} className={cn(WRAP_BADGE, "md:whitespace-nowrap")}>
 						<T
 							id="settings.backup.schedule.next"
 							data={{ when: formatTime(schedule.nextRunAt, timeZone) }}
 						/>
-					</span>
+					</StatusBadge>
 				) : null}
 			</div>
 			{error}
@@ -124,7 +130,7 @@ function StatusBadge({ schedule, timeZone }) {
 function LastRun({ schedule, timeZone }) {
 	if (!schedule.lastRunAt) {
 		return (
-			<span className="text-secondary">
+			<span className="text-muted-foreground">
 				<T id="settings.backup.schedule.never" />
 			</span>
 		);
@@ -133,10 +139,10 @@ function LastRun({ schedule, timeZone }) {
 		<>
 			<div>{formatTime(schedule.lastRunAt, timeZone)}</div>
 			{lastRunSize(schedule) ? (
-				<div className="small text-secondary">{formatBytes(lastRunSize(schedule))}</div>
+				<div className="text-sm text-muted-foreground">{formatBytes(lastRunSize(schedule))}</div>
 			) : null}
 			{schedule.lastStatus === "failed" && schedule.lastError ? (
-				<div className="small text-danger text-break">{schedule.lastError}</div>
+				<div className="text-sm text-destructive wrap-anywhere">{schedule.lastError}</div>
 			) : null}
 		</>
 	);
@@ -144,60 +150,45 @@ function LastRun({ schedule, timeZone }) {
 
 function Actions({ schedule, running, onRun, onEdit, onToggle, onDelete }) {
 	if (running) {
-		return (
-			<span
-				className="spinner-border spinner-border-sm"
-				role="status"
-				aria-label={label("settings.backup.schedule.running")}
-			/>
-		);
+		return <Spinner role="status" aria-label={label("settings.backup.schedule.running")} />;
 	}
 	return (
-		<span className="dropdown">
-			<button
-				type="button"
-				className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-				aria-label={label("actions")}
-				data-bs-boundary="viewport"
-				data-bs-toggle="dropdown"
-				data-bs-popper-config='{"strategy":"fixed"}'
-			>
-				<IconDotsVertical aria-hidden="true" />
-			</button>
-			<div className="dropdown-menu dropdown-menu-end">
-				<span className="dropdown-header text-break">{schedule.name}</span>
-				<button type="button" className="dropdown-item" onClick={() => onRun(schedule)}>
-					<IconPlayerPlay className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="settings.backup.schedule.run-now" />
-				</button>
-				<button type="button" className="dropdown-item" onClick={() => onEdit(schedule)}>
-					<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="action.edit" />
-				</button>
-				<button type="button" className="dropdown-item" onClick={() => onToggle(schedule)}>
-					{schedule.enabled ? (
-						<>
-							<IconPlayerPause className="icon dropdown-item-icon" aria-hidden="true" />
-							<T id="settings.backup.schedule.pause" />
-						</>
-					) : (
-						<>
-							<IconPlayerPlay className="icon dropdown-item-icon" aria-hidden="true" />
-							<T id="settings.backup.schedule.resume" />
-						</>
-					)}
-				</button>
-				<div className="dropdown-divider" />
-				<button type="button" className="dropdown-item text-danger" onClick={() => onDelete(schedule)}>
-					<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-					<T id="action.delete" />
-				</button>
-			</div>
-		</span>
+		<RowActions
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: schedule.name })}
+			focusKey={`backup-schedule-${schedule.id}`}
+			title={schedule.name}
+			items={[
+				{
+					key: "run",
+					label: <T id="settings.backup.schedule.run-now" />,
+					icon: Play,
+					onSelect: () => onRun(schedule),
+				},
+				{ key: "edit", label: <T id="action.edit" />, icon: Pencil, onSelect: () => onEdit(schedule) },
+				{
+					key: "toggle",
+					label: (
+						<T
+							id={schedule.enabled ? "settings.backup.schedule.pause" : "settings.backup.schedule.resume"}
+						/>
+					),
+					icon: schedule.enabled ? Pause : Play,
+					onSelect: () => onToggle(schedule),
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					destructive: true,
+					separatorBefore: true,
+					onSelect: () => onDelete(schedule),
+				},
+			]}
+		/>
 	);
 }
 
-function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, onToggle, onDelete }) {
+function Table({ data, categories, timeZone, running, addButton, handlers }) {
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [
@@ -211,7 +202,7 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 				id: "status",
 				meta: { mobile: "title-below" },
 				header: label("column.status"),
-				cell: (info) => <StatusBadge schedule={info.row.original} timeZone={timeZone} />,
+				cell: (info) => <ScheduleStatus schedule={info.row.original} timeZone={timeZone} />,
 			}),
 			columnHelper.accessor((row) => timingText(row, intl), {
 				id: "timing",
@@ -242,14 +233,14 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 				cell: (info) => (
 					<>
 						{info.getValue()}
-						<div className="small text-secondary d-xl-none">{keepText(info.row.original)}</div>
+						<div className="text-sm text-muted-foreground xl:hidden">{keepText(info.row.original)}</div>
 					</>
 				),
 			}),
 			columnHelper.accessor((row) => row.keep, {
 				id: "keep",
 				// phones show the count in the Protection summary
-				meta: { className: "d-none d-xl-table-cell" },
+				meta: { className: "hidden xl:table-cell" },
 				header: label("settings.backup.schedule.column.keep"),
 				cell: (info) => info.getValue(),
 			}),
@@ -264,17 +255,14 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 				cell: (info) => (
 					<Actions
 						schedule={info.row.original}
-						running={running.includes(info.row.original.id)}
-						onRun={onRun}
-						onEdit={onEdit}
-						onToggle={onToggle}
-						onDelete={onDelete}
+						running={info.table.options.meta?.running.includes(info.row.original.id)}
+						{...info.table.options.meta?.handlers}
 					/>
 				),
-				meta: { className: "text-end text-nowrap", mobile: "title-end" },
+				meta: { className: "text-right whitespace-nowrap", mobile: "title-end" },
 			}),
 		];
-	}, [categories, timeZone, running, onRun, onEdit, onToggle, onDelete]);
+	}, [categories, timeZone]);
 
 	const tableInstance = useTable({
 		features,
@@ -282,14 +270,17 @@ function Table({ data, categories, timeZone, running, addButton, onRun, onEdit, 
 		data,
 		getRowId: (row) => String(row.id),
 		enableSortingRemoval: false,
+		// the row handlers and the running ids reach the cells here, so the columns keep their identity
+		meta: { running, handlers },
 	});
 
 	return (
 		<TableLayout
+			stackBy="container"
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
-					icon={IconCalendarTime}
+					icon={CalendarClock}
 					object="backup-schedule"
 					objects="backup-schedules"
 					tableInstance={tableInstance}
@@ -314,21 +305,20 @@ function DeleteFiles({ count, filesRef }) {
 	const [checked, setChecked] = useState(false);
 	if (!(count > 0)) return null;
 	return (
-		<label className="form-check d-inline-block text-start mb-0" htmlFor={id}>
-			<input
+		<div className="flex items-start gap-2 text-left">
+			<Checkbox
 				id={id}
-				type="checkbox"
-				className="form-check-input"
+				className="mt-0.5"
 				checked={checked}
-				onChange={(event) => {
-					filesRef.current = event.target.checked;
-					setChecked(event.target.checked);
+				onCheckedChange={(value) => {
+					filesRef.current = value === true;
+					setChecked(value === true);
 				}}
 			/>
-			<span className="form-check-label">
+			<label htmlFor={id} className="text-sm">
 				<T id="settings.backup.schedule.delete-files" data={{ count }} />
-			</span>
-		</label>
+			</label>
+		</div>
 	);
 }
 
@@ -393,27 +383,32 @@ function SchedulesCard() {
 
 	const addButton = (
 		<Button size="sm" onClick={() => showBackupScheduleModal(null)}>
-			<IconPlus className="icon" aria-hidden="true" />
+			<Plus aria-hidden="true" />
 			<T id="settings.backup.schedule.add" />
 		</Button>
 	);
 
 	return (
-		<div className="card mb-4">
-			<div className="card-header flex-wrap gap-2">
-				<h3 className="card-title text-nowrap">
-					<T id="settings.backup.schedules" />
-				</h3>
-				<div className="card-actions">{data?.length ? addButton : null}</div>
-			</div>
+		<SettingsCard
+			title={<T id="settings.backup.schedules" />}
+			actions={data?.length ? addButton : null}
+			bodyClassName="space-y-0 p-0"
+			footer={
+				data?.length && timeZone ? (
+					<span className="mr-auto text-sm text-muted-foreground">
+						<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
+					</span>
+				) : null
+			}
+		>
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
-				<div className="card-body">
+				<div className="p-4">
 					<ErrorAlert error={error} className="mb-0" />
 				</div>
 			) : null}
 			{data?.some((schedule) => schedule.fileCount === null) ? (
-				<div className="card-body py-2 small text-danger">
+				<div className="px-4 py-2 text-sm text-destructive">
 					<T id="settings.backup.schedule.count-error" />
 				</div>
 			) : null}
@@ -424,15 +419,10 @@ function SchedulesCard() {
 					timeZone={timeZone}
 					running={running}
 					addButton={addButton}
-					{...handlers}
+					handlers={handlers}
 				/>
 			) : null}
-			{data?.length && timeZone ? (
-				<div className="card-footer small text-secondary">
-					<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
-				</div>
-			) : null}
-		</div>
+		</SettingsCard>
 	);
 }
 

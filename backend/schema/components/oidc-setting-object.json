@@ -15,6 +15,7 @@
 		"auto_create",
 		"button",
 		"locked",
+		"locked_by",
 		"active",
 		"secret_error",
 		"callback_url",
@@ -130,6 +131,13 @@
 										"brand-github",
 										"brand-gitlab",
 										"brand-windows",
+										"brand-authentik",
+										"brand-authelia",
+										"brand-keycloak",
+										"brand-okta",
+										"brand-auth0",
+										"brand-openid",
+										"brand-gitea",
 										"cloud"
 									]
 								}
@@ -179,6 +187,13 @@
 				"type": "string"
 			},
 			"description": "Fields set by environment variables (read only)"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "The environment variable that sets each locked field (name only, never the value)"
 		},
 		"active": {
 			"type": "boolean",

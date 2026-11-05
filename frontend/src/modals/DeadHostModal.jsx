@@ -30,6 +30,7 @@ import {
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import {
@@ -41,8 +42,10 @@ import {
 	windowTitleId,
 } from "src/modules/HostForms";
 import { DEAD_HOSTS, MANAGE } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 // isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
 const showDeadHostModal = (id, isClone = false) => {
@@ -50,6 +53,8 @@ const showDeadHostModal = (id, isClone = false) => {
 };
 
 const validate = deadHostValidate(validations);
+const accent = sectionAccent("deadHosts");
+const Icon = sectionIcon("deadHosts");
 
 function DeadHostForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
 	const { isSubmitting } = useFormState();
@@ -60,7 +65,8 @@ function DeadHostForm({ data, isClone, savedId, errorMsg, onCloseError, close })
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T
 						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "dead-host" }}
@@ -92,17 +98,11 @@ function DeadHostForm({ data, isClone, savedId, errorMsg, onCloseError, close })
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={DEAD_HOSTS} permission={MANAGE} hideError>
-					<FormSubmit
-						className="ms-auto"
-						edit={Boolean(data.id) && !isClone}
-						section="deadHosts"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

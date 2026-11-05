@@ -135,6 +135,13 @@
 												"brand-github",
 												"brand-gitlab",
 												"brand-windows",
+												"brand-authentik",
+												"brand-authelia",
+												"brand-keycloak",
+												"brand-okta",
+												"brand-auth0",
+												"brand-openid",
+												"brand-gitea",
 												"cloud"
 											]
 										}
@@ -201,6 +208,7 @@
 									}
 								},
 								"locked": [],
+								"locked_by": {},
 								"active": true,
 								"secret_error": false,
 								"callback_url": "https://npm.example.com/api/oidc/callback",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { errorCountOf, firstErrorOf, nextTabId, tabErrorCounts, tabOfPath, tabStopId } from "./ModalTabs.js";
+import { firstErrorOf, tabErrorCounts, tabOfPath } from "./ModalTabs.js";
 
 const error = (message = "Required") => ({ type: "validate", message });
 
@@ -8,7 +8,7 @@ const tabs = [
 	{ id: "details", labelId: "column.details", fields: ["domainNames", "forwardHost", "fieldValues"] },
 	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },
 	{ id: "tls", labelId: "column.ssl", fields: ["certificateId", "npmproDnsProvider"] },
-	{ id: "advanced", labelId: "domains.advanced", fields: ["advancedConfig"], end: true },
+	{ id: "advanced", labelId: "domains.advanced", fields: ["advancedConfig"] },
 ];
 
 it("finds the tab of a field, a nested field and a list row; none for a field of no tab", () => {
@@ -36,14 +36,6 @@ it("counts the shown errors of every tab, each field of a list row once, the roo
 	assert.deepEqual(tabErrorCounts(tabs, {}), { details: 0, locations: 0, tls: 0, advanced: 0 });
 });
 
-it("adds up the errors of the tabs in the More menu", () => {
-	const counts = { details: 2, locations: 3, tls: 1, advanced: 0 };
-	assert.equal(errorCountOf(counts, ["tls", "advanced"]), 1);
-	assert.equal(errorCountOf(counts, ["locations", "tls", "advanced"]), 4);
-	assert.equal(errorCountOf(counts, []), 0);
-	assert.equal(errorCountOf(counts, ["unknown"]), 0);
-});
-
 it("names the first error in field order and its tab, also when it sits in a later tab", () => {
 	const order = ["domainNames", "forwardHost", "locations", "certificateId", "npmproDnsProvider", "advancedConfig"];
 	const errors = { npmproDnsProvider: error(), locations: [{ path: error() }] };
@@ -57,27 +49,4 @@ it("names the first error in field order and its tab, also when it sits in a lat
 	// a form without tabs
 	assert.deepEqual(firstErrorOf({ forwardHost: error() }, order), { path: "forwardHost", tabId: null });
 	assert.equal(firstErrorOf({}, order, tabs), null);
-});
-
-it("moves with the arrow keys as Tabler's tabs do, wrapping around; Home and End; other keys do nothing", () => {
-	const ids = ["details", "locations", "tls"];
-	assert.equal(nextTabId(ids, "details", "ArrowRight"), "locations");
-	assert.equal(nextTabId(ids, "details", "ArrowDown"), "locations");
-	assert.equal(nextTabId(ids, "tls", "ArrowRight"), "details");
-	assert.equal(nextTabId(ids, "details", "ArrowLeft"), "tls");
-	assert.equal(nextTabId(ids, "locations", "ArrowUp"), "details");
-	assert.equal(nextTabId(ids, "tls", "Home"), "details");
-	assert.equal(nextTabId(ids, "details", "End"), "tls");
-	assert.equal(nextTabId(ids, "details", "Enter"), null);
-	assert.equal(nextTabId(ids, "details", " "), null);
-	assert.equal(nextTabId(ids, "details", "Tab"), null);
-	// the focused tab is no longer reachable (it moved into More): start at the first
-	assert.equal(nextTabId(ids, "advanced", "ArrowRight"), "details");
-	assert.equal(nextTabId([], "details", "ArrowRight"), null);
-});
-
-it("keeps the open tab in the Tab order, or the first reachable tab while the open one sits in More", () => {
-	assert.equal(tabStopId(["details", "locations", "tls", "advanced"], "tls"), "tls");
-	assert.equal(tabStopId(["details", "locations"], "advanced"), "details");
-	assert.equal(tabStopId([], "advanced"), null);
 });

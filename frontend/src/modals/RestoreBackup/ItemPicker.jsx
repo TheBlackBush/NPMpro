@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ItemChecklist } from "src/components";
+import { Button, ItemChecklist } from "src/components";
 import { intl, T } from "src/locale";
 import { focusLeavesPicker, inSentence, mouseLeavesPicker } from "src/modules/BackupMerge";
 
 /**
- * The items of one type to tick, as a dropdown card under the type's list button: search, "Selected only", the list,
+ * The items of one type to tick, as a card under the type's list button: search, "Selected only", the list,
  * "Select all", "None" and Done. Closes on Done and Escape (focus back to the button) and on a click outside.
  *
  * @param {Object}      props
@@ -34,7 +34,7 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 		const measure = () => {
 			const menu = ref.current;
 			if (!menu) return;
-			const box = (menu.closest(".modal-body") ?? document.body).getBoundingClientRect();
+			const box = (menu.closest("[data-window-body]") ?? document.body).getBoundingClientRect();
 			const rect = menu.getBoundingClientRect();
 			const left = rect.left - shiftRef.current;
 			const right = rect.right - shiftRef.current;
@@ -49,9 +49,7 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 	// focus moves into the search once, on open
 	useEffect(() => searchRef.current?.focus(), []);
 
-	// While open, Escape closes the picker, not the dialog, wherever the focus is. Tabler's dropdown script handles
-	// Escape and the arrow keys in every .dropdown-menu on the document (capture phase) and fails without its own
-	// toggle, so these keys are taken first.
+	// While open, Escape closes the picker, not the dialog, wherever the focus is; the arrow keys stay in the picker.
 	useEffect(() => {
 		const onKey = (e) => {
 			if (e.key === "Escape") {
@@ -85,10 +83,9 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 			id={id}
 			role="dialog"
 			aria-label={label}
-			className="dropdown-menu dropdown-menu-card show"
-			data-bs-popper="static"
-			// no Tabler utility sets a menu width; the shift is measured
-			style={{ width: "20rem", maxWidth: "calc(100vw - 48px)", left: shift }}
+			// under its button (the wrapper is relative); the one dynamic value is the measured shift
+			className="absolute top-full z-50 mt-1 w-80 max-w-[calc(100vw-3rem)] rounded-lg bg-popover text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10"
+			style={{ left: shift }}
 		>
 			<ItemChecklist
 				items={items}
@@ -100,14 +97,16 @@ export function ItemPicker({ id, typeId, items, selected, onChange, onClose, ope
 				label={label}
 				searchRef={searchRef}
 				footer={
-					<button
+					<Button
 						type="button"
-						className="btn btn-sm btn-primary ms-auto"
+						color="primary"
+						size="sm"
+						className="ml-auto"
 						onClick={() => onClose(true)}
 						disabled={disabled}
 					>
 						<T id="settings.backup.done" />
-					</button>
+					</Button>
 				}
 			/>
 		</div>

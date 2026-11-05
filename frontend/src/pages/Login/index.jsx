@@ -1,25 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-import {
-	BrandMark,
-	Button,
-	ErrorAlert,
-	HookForm,
-	LocalePicker,
-	MaintenanceBanner,
-	OidcButton,
-	Page,
-	ThemeSwitcher,
-	useAppForm,
-} from "src/components";
+import { Button, ErrorAlert, HookForm, OidcButton, useAppForm } from "src/components";
 import { CodeEntry, PasswordInput, useRefusedCodeReset } from "src/components/Form";
+import { FieldMessage } from "src/components/Form/FieldMessage";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "src/components/ui/card";
+import { Field, FieldLabel, FieldSeparator } from "src/components/ui/field";
+import { Input } from "src/components/ui/input";
 import { useAuthState } from "src/context";
 import { useHealth } from "src/hooks";
 import { intl, T } from "src/locale";
 import { CODE_VALUES, codeComplete, codeOf } from "src/modules/AccountForms";
-import { getCookie } from "src/modules/Cookies";
+import { deleteCookie, getCookie } from "src/modules/Cookies";
 import { oidcErrorKey, takeOidcError } from "src/modules/Oidc";
 import { validateEmail } from "src/modules/Validations";
+import { AuthLayout } from "src/shell/AuthLayout";
 
 // Sign in is enabled only for a valid email address and a password
 const checkEmail = validateEmail();
@@ -49,29 +43,34 @@ function TotpCodeForm({ onSubmit, error }) {
 		refuse(values.useBackup);
 	};
 	return (
-		<HookForm methods={methods} onSubmit={submit}>
-			<h2 className="h2 text-center mb-4">
-				<T id="login.totp-title" />
-			</h2>
-			<p className="text-secondary text-center mb-4">
-				<T id={useBackup ? "login.totp-backup-description" : "login.totp-description"} />
-			</p>
-			{error && <ErrorAlert error={error} />}
-			<CodeEntry idPrefix="login-totp" label={<T id="login.totp-code" />} allowBackup />
-			<div className="form-footer d-flex gap-2 align-items-start">
-				<Button type="button" fullWidth onClick={cancelTotp} disabled={isSubmitting}>
-					<T id="cancel" />
-				</Button>
-				<Button
-					type="submit"
-					fullWidth
-					color="azure"
-					isLoading={isSubmitting}
-					disabled={isSubmitting || !codeComplete({ code, backupCode, useBackup })}
-				>
-					<T id="login.totp-verify" />
-				</Button>
-			</div>
+		<HookForm methods={methods} onSubmit={submit} className="contents">
+			<CardHeader className="text-center">
+				<CardTitle role="heading" aria-level={1} className="text-xl">
+					<T id="login.totp-title" />
+				</CardTitle>
+				<CardDescription>
+					<T id={useBackup ? "login.totp-backup-description" : "login.totp-description"} />
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-4">
+				{error && <ErrorAlert error={error} />}
+				<CodeEntry idPrefix="login-totp" label={<T id="login.totp-code" />} allowBackup />
+				<div className="grid grid-cols-2 items-start gap-2">
+					<Button type="button" fullWidth size="lg" onClick={cancelTotp} disabled={isSubmitting}>
+						<T id="cancel" />
+					</Button>
+					<Button
+						type="submit"
+						fullWidth
+						color="primary"
+						size="lg"
+						isLoading={isSubmitting}
+						disabled={isSubmitting || !codeComplete({ code, backupCode, useBackup })}
+					>
+						<T id="login.totp-verify" />
+					</Button>
+				</div>
+			</CardContent>
 		</HookForm>
 	);
 }
@@ -111,32 +110,27 @@ function PasswordFields({ emailRef, onSubmit }) {
 	const { ref: emailFieldRef, ...emailField } = register("email");
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit}>
-			<div className="mb-3">
-				<label className="form-label" htmlFor="login-email">
-					<T id="email-address" />
-				</label>
-				<input
-					{...emailField}
-					ref={(input) => {
-						emailFieldRef(input);
-						emailRef.current = input;
-					}}
-					id="login-email"
-					type="email"
-					autoComplete="username"
-					required
-					className={`form-control ${hint ? "is-invalid" : ""}`}
-					aria-invalid={hint ? "true" : undefined}
-					aria-describedby={hint ? "login-email-error" : undefined}
-					placeholder={intl.formatMessage({ id: "email-address" })}
-				/>
-				{hint ? (
-					<div className="invalid-feedback" id="login-email-error">
-						{hint}
-					</div>
-				) : null}
-			</div>
-			<div className="mb-2">
+			<div className="flex flex-col gap-4">
+				<Field data-invalid={hint ? true : undefined}>
+					<FieldLabel htmlFor="login-email">
+						<T id="email-address" />
+					</FieldLabel>
+					<Input
+						{...emailField}
+						ref={(input) => {
+							emailFieldRef(input);
+							emailRef.current = input;
+						}}
+						id="login-email"
+						type="email"
+						autoComplete="username"
+						required
+						aria-invalid={hint ? "true" : undefined}
+						aria-describedby={hint ? "login-email-error" : undefined}
+						placeholder={intl.formatMessage({ id: "email-address" })}
+					/>
+					{hint ? <FieldMessage id="login-email-error">{hint}</FieldMessage> : null}
+				</Field>
 				<PasswordInput
 					{...register("password")}
 					id="login-password"
@@ -146,12 +140,11 @@ function PasswordFields({ emailRef, onSubmit }) {
 					maxLength={255}
 					placeholder={intl.formatMessage({ id: "password" })}
 				/>
-			</div>
-			<div className="form-footer">
 				<Button
 					type="submit"
 					fullWidth
-					color="azure"
+					color="primary"
+					size="lg"
 					isLoading={isSubmitting}
 					disabled={isSubmitting || Boolean(checkEmail(email.trim())) || password === ""}
 				>
@@ -193,25 +186,29 @@ function PasswordForm({ oidcError, noRedirect }) {
 		} else if (!emailRef.current?.form?.contains(document.activeElement)) {
 			emailRef.current?.focus();
 		}
-		window.cookieStore.delete("__Host-npmpro_oidc_no_redirect");
+		deleteCookie("__Host-npmpro_oidc_no_redirect");
 	}, [passwordAllowed, oidcActive, noRedirect]);
 
 	return (
 		<>
-			<h2 className="h2 text-center mb-4">
-				<T id="login.title" />
-			</h2>
-			{oidcError !== null && <ErrorAlert error={intl.formatMessage({ id: oidcErrorKey(oidcError) })} />}
-			{formErr && <ErrorAlert error={formErr} />}
-			{oidcActive && (
-				<OidcButton label={oidc.label} color={oidc.color} icon={oidc.icon} onClick={redirectToOIDC} />
-			)}
-			{oidcActive && passwordAllowed && (
-				<div className="hr-text my-3">
-					<T id="or" />
-				</div>
-			)}
-			{passwordAllowed && <PasswordFields emailRef={emailRef} onSubmit={onSubmit} />}
+			<CardHeader className="text-center">
+				<CardTitle role="heading" aria-level={1} className="text-xl">
+					<T id="login.title" />
+				</CardTitle>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-4">
+				{oidcError !== null && <ErrorAlert error={intl.formatMessage({ id: oidcErrorKey(oidcError) })} />}
+				{formErr && <ErrorAlert error={formErr} />}
+				{oidcActive && (
+					<OidcButton label={oidc.label} color={oidc.color} icon={oidc.icon} onClick={redirectToOIDC} />
+				)}
+				{oidcActive && passwordAllowed && (
+					<FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+						<T id="or" />
+					</FieldSeparator>
+				)}
+				{passwordAllowed && <PasswordFields emailRef={emailRef} onSubmit={onSubmit} />}
+			</CardContent>
 		</>
 	);
 }
@@ -224,24 +221,8 @@ export default function Login() {
 	const [noRedirect] = useState(() => oidcError !== null || getCookie("__Host-npmpro_oidc_no_redirect") === "true");
 
 	return (
-		<Page className="page-center">
-			<div className="container container-tight py-4">
-				<div className="d-flex justify-content-end gap-2 mb-3">
-					<LocalePicker />
-					<ThemeSwitcher />
-				</div>
-				<MaintenanceBanner />
-				<div className="text-center mb-4">
-					<h1 className="navbar-brand fs-1">
-						<BrandMark variant="stacked" size={160} alt="NPMpro" className="navbar-brand-image" />
-					</h1>
-				</div>
-				<div className="card card-md">
-					<div className="card-body">
-						{totpChallenge ? <TotpForm /> : <PasswordForm oidcError={oidcError} noRedirect={noRedirect} />}
-					</div>
-				</div>
-			</div>
-		</Page>
+		<AuthLayout>
+			<Card>{totpChallenge ? <TotpForm /> : <PasswordForm oidcError={oidcError} noRedirect={noRedirect} />}</Card>
+		</AuthLayout>
 	);
 }

@@ -3,7 +3,6 @@ import { Button, FormErrorNote, useFocusFirstError } from "src/components";
 import { LeaveGuard } from "src/hooks";
 import { T } from "src/locale";
 import { errorPaths } from "src/modules/HookForm";
-import { sectionColor } from "src/modules/SectionColors";
 
 const NOTE_ID = "settings-save-note";
 const REASON_ID = "settings-save-reason";
@@ -26,17 +25,17 @@ function SaveBar({ disabled, reasonId = "form.no-changes", labels }) {
 	const blocked = errorPaths(errors).length > 0;
 	const showReason = nothingToSave && !blocked && !isSubmitting;
 	return (
-		<div className="card-footer d-flex align-items-center justify-content-end">
+		<div className="sticky bottom-0 z-10 mt-6 flex items-center justify-end gap-3 border-t bg-background/95 py-3 backdrop-blur">
 			<LeaveGuard />
-			<FormErrorNote id={NOTE_ID} labels={labels} className="me-3 text-end" />
+			<FormErrorNote id={NOTE_ID} labels={labels} className="text-right" />
 			{showReason ? (
-				<span id={REASON_ID} className="text-secondary small me-3 text-end">
+				<span id={REASON_ID} className="text-right text-sm text-muted-foreground">
 					<T id={reasonId} />
 				</span>
 			) : null}
 			<Button
+				color="primary"
 				type="submit"
-				color={sectionColor("settings")}
 				isLoading={isSubmitting}
 				disabled={isSubmitting || (nothingToSave && !blocked)}
 				blocked={blocked}

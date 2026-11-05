@@ -1,27 +1,57 @@
-import { useLocation } from "react-router";
-import { NavLink } from "src/components";
-import { T } from "src/locale";
+import { Link, useLocation } from "react-router";
+import { CountBadge } from "src/components/CountBadge";
+import { useCertificates, useDnsCredentials } from "src/hooks";
+import { cn } from "src/lib/utils";
+import { intl, T } from "src/locale";
+import {
+	CERTIFICATE_LIST_EXPAND,
+	CERTIFICATE_TABS,
+	certificateTab,
+	DNS_CREDENTIAL_LIST_EXPAND,
+} from "src/modules/CertificateTabs";
 
-const tabs = [
-	{ key: "certificates", to: "/certificates", label: "certificates" },
-	{ key: "dns-credentials", to: "/certificates/dns-credentials", label: "dns-credentials" },
-];
+const TAB =
+	"relative inline-flex h-9 items-center gap-2 px-3 text-sm font-medium text-muted-foreground hover:text-foreground";
+const TAB_ACTIVE = "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary";
 
-export function Tabs() {
+/**
+ * The tabs of the Certificates & DNS page as links: the open one is marked with aria-current and an underline. Each
+ * tab shows its item count once its list is loaded; the lists are read with the pages' own expand lists, so the open
+ * page's request is shared from the cache.
+ */
+export function CertificateTabs() {
 	const { pathname } = useLocation();
-	const activeKey = pathname.startsWith("/certificates/dns-credentials") ? "dns-credentials" : "certificates";
+	const active = certificateTab(pathname);
+	const certificates = useCertificates(CERTIFICATE_LIST_EXPAND);
+	const dnsCredentials = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
+	const counts = {
+		certificates: certificates.data?.length,
+		"dns-credentials": dnsCredentials.data?.length,
+	};
 
 	return (
-		<div className="card-header">
-			<ul className="nav nav-tabs card-header-tabs">
-				{tabs.map((tab) => (
-					<li className="nav-item" key={tab.key}>
-						<NavLink to={tab.to} active={activeKey === tab.key}>
-							<T id={tab.label} />
-						</NavLink>
-					</li>
-				))}
-			</ul>
-		</div>
+		<nav aria-label={intl.formatMessage({ id: "certificates-dns" })} className="flex border-b">
+			{CERTIFICATE_TABS.map((tab) => (
+				<Link
+					key={tab.key}
+					to={tab.to}
+					aria-current={active === tab.key ? "page" : undefined}
+					className={cn(TAB, active === tab.key && TAB_ACTIVE)}
+				>
+					<T id={tab.labelId} />
+					{counts[tab.key] === undefined ? null : (
+						<>
+							{/* the badge is for the eyes; the link reads "Certificates, 5 items" once */}
+							<span className="sr-only">
+								, {intl.formatMessage({ id: "list.count" }, { count: counts[tab.key] })}
+							</span>
+							<span aria-hidden="true" className="contents">
+								<CountBadge count={counts[tab.key]} section="certificates" />
+							</span>
+						</>
+					)}
+				</Link>
+			))}
+		</nav>
 	);
 }

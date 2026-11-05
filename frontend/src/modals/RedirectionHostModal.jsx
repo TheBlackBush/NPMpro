@@ -35,6 +35,7 @@ import {
 	useTlsQueriesSettled,
 	useUnsavedChangesGuard,
 } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
 import {
@@ -46,8 +47,10 @@ import {
 	windowTitleId,
 } from "src/modules/HostForms";
 import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 // isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
 const showRedirectionHostModal = (id, isClone = false) => {
@@ -55,6 +58,8 @@ const showRedirectionHostModal = (id, isClone = false) => {
 };
 
 const validate = redirectionHostValidate(validations);
+const accent = sectionAccent("redirectionHosts");
+const Icon = sectionIcon("redirectionHosts");
 
 // the redirect status codes, in the select's order
 const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
@@ -69,7 +74,8 @@ function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, c
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T
 						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
 						tData={{ object: "redirection-host" }}
@@ -83,25 +89,20 @@ function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, c
 				<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 					<TabPane id="details">
 						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-						<div className="row">
-							<div className="col-md-6">
-								<SelectField name="forwardScheme" label={<T id="host.forward-scheme" />}>
-									<option value="$scheme">
-										{intl.formatMessage({ id: "redirection.scheme.keep" })}
-									</option>
-									<option value="http">http</option>
-									<option value="https">https</option>
-								</SelectField>
-							</div>
-							<div className="col-md-6">
-								<TextField
-									name="forwardDomainName"
-									label={<T id="redirection-host.forward-domain" />}
-									required
-									type="text"
-									placeholder="example.com"
-								/>
-							</div>
+						<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+							<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
+								<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>
+								<option value="http">http</option>
+								<option value="https">https</option>
+							</SelectField>
+							<TextField
+								className="mb-0"
+								name="forwardDomainName"
+								label={<T id="redirection-host.forward-domain" />}
+								required
+								type="text"
+								placeholder="example.com"
+							/>
 						</div>
 						<SelectField
 							name="forwardHttpCode"
@@ -141,17 +142,11 @@ function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, c
 				/>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-					<FormSubmit
-						className="ms-auto"
-						edit={Boolean(data.id) && !isClone}
-						section="redirectionHosts"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</HasPermission>

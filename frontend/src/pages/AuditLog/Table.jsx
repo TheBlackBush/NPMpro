@@ -8,10 +8,12 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { Eye } from "lucide-react";
 import { useMemo } from "react";
 import { EventFormatter, GravatarFormatter } from "src/components";
+import { Button } from "src/components/Button";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { intl, T } from "src/locale";
+import { formatDateTime, intl } from "src/locale";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -22,6 +24,13 @@ const features = tableFeatures({
 		text: sortFn_text,
 	},
 });
+
+// what a row shows first: the object (its type and name or domains), the user and the date, so each button has its own name
+function eventName(row) {
+	const type = intl.formatMessage({ id: row.objectType, defaultMessage: row.objectType });
+	const value = row.meta?.domainNames?.join(", ") || row.meta?.name || row.meta?.id || "";
+	return [`${type} ${value}`.trim(), row.user?.name, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
+}
 
 export default function Table({ data, isFetching, onSelectItem }) {
 	const columnHelper = createColumnHelper();
@@ -40,7 +49,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.createdOn, {
@@ -49,25 +58,31 @@ export default function Table({ data, isFetching, onSelectItem }) {
 				cell: (info) => <EventFormatter row={info.row.original} />,
 				// long domain lists wrap instead of widening the scroll area
 				meta: {
-					className: "text-wrap",
+					className: "whitespace-normal",
 				},
 			}),
 			columnHelper.display({
 				id: "details",
 				cell: (info) => (
-					<button
+					<Button
 						type="button"
-						className="btn btn-action btn-sm px-1"
+						variant="ghost"
+						size="icon-sm"
+						aria-label={intl.formatMessage(
+							{ id: "auditlog.details-for" },
+							{ name: eventName(info.row.original) },
+						)}
+						title={intl.formatMessage({ id: "tooltip.event-details" })}
 						onClick={(e) => {
 							e.preventDefault();
 							onSelectItem?.(info.row.original.id);
 						}}
 					>
-						<T id="action.view-details" />
-					</button>
+						<Eye aria-hidden="true" />
+					</Button>
 				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 				},
 			}),
 		],

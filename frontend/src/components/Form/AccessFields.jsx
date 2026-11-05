@@ -1,32 +1,26 @@
-import { IconArrowDown, IconArrowUp, IconLock, IconLockOpen2, IconWorld, IconX } from "@tabler/icons-react";
-import { useCallback } from "react";
+import { ArrowDownIcon, ArrowUpIcon, GlobeIcon, LockIcon, LockOpenIcon, PlusIcon, XIcon } from "lucide-react";
+import { useCallback, useRef } from "react";
 import { useController, useWatch } from "react-hook-form";
-import Select, { components } from "react-select";
+import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
+import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
+import { Skeleton } from "src/components/ui/skeleton";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
-import { selectClassNames } from "src/modules/Select";
+import { rowKeysOf } from "src/modules/HookForm";
 import { NoticeAlert } from "../NoticeAlert";
+import { FieldMessage } from "./FieldMessage";
 import { useReadOnly, useRecheckDependent } from "./HookForm";
 
-const OptionContent = (label, subLabel, icon) => (
-	<div className="flex-fill">
-		<div className="fw-medium">
-			{icon}
-			<strong className="ms-1">{label}</strong>
+// a row of the list: the icon (the type options have one), the name and the details under it
+const renderOption = (option) => (
+	<div className="flex-1">
+		<div className="font-medium">
+			{option.icon}
+			<strong className="ms-1">{option.label}</strong>
 		</div>
-		<div className="text-secondary mt-1 ps-3">{subLabel}</div>
+		<div className="mt-1 ps-3 text-muted-foreground">{option.subLabel}</div>
 	</div>
-);
-
-const Option = (props) => (
-	<components.Option {...props}>{OptionContent(props.data.label, props.data.subLabel)}</components.Option>
-);
-
-const TypeOption = (props) => (
-	<components.Option {...props}>
-		{OptionContent(props.data.label, props.data.subLabel, props.data.icon)}
-	</components.Option>
 );
 
 /**
@@ -57,7 +51,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const [hostType, hostIds] = useWatch({ name: ["npmproAccessListType", "npmproAccessListIds"] });
 	// a new type changes whether the ids are required
 	const recheckIds = useRecheckDependent(name);
-	// a View window: the selects are disabled too (a disabled fieldset does not reach react-select)
+	// a View window: the selects are disabled too (a disabled fieldset does not reach the comboboxes)
 	const readOnly = useReadOnly();
 	const values = idsField.value;
 	const aclValue = typeField.value;
@@ -80,23 +74,23 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 	const createOption = (type) => {
 		if (type === "global") {
 			return {
-				icon: <IconWorld size={14} className="text-cyan" />,
-				type,
+				icon: <GlobeIcon aria-hidden="true" className="size-3.5 text-primary" />,
+				value: type,
 				label: intl.formatMessage({ id: "access-list.global" }),
 				subLabel: intl.formatMessage({ id: "access-list.global.subtitle" }),
 			};
 		}
 		if (type === "custom") {
 			return {
-				icon: <IconLock size={14} className="text-lime" />,
-				type,
+				icon: <LockIcon aria-hidden="true" className="size-3.5 text-success" />,
+				value: type,
 				label: intl.formatMessage({ id: "access-list.custom" }),
 				subLabel: intl.formatMessage({ id: "access-list.custom.subtitle" }),
 			};
 		}
 		return {
-			icon: <IconLockOpen2 size={14} className="text-red" />,
-			type,
+			icon: <LockOpenIcon aria-hidden="true" className="size-3.5 text-destructive" />,
+			value: type,
 			label: intl.formatMessage({ id: "access-list.public" }),
 			subLabel: intl.formatMessage({ id: "access-list.public.subtitle" }),
 		};
@@ -118,9 +112,30 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		return ret;
 	};
 
+	// the current type shows even when the list does not offer it (a type that needs lists not loaded yet)
+	const shownTypes = typeOptions();
+	const typeSelectOptions = shownTypes.some((o) => o.value === aclValue)
+		? shownTypes
+		: [...shownTypes, createOption(aclValue)];
+	// a row offers the lists not used yet and its own; a list that is gone shows as "#id"
+	const rowOptions = (item) => {
+		const current = defaultOptions.find((o) => o.value === item) ?? {
+			value: item,
+			label: `#${item}`,
+			meta: { id: item },
+		};
+		return [current, ...options.filter((o) => o.value !== item)];
+	};
+
 	const applyUpdatedValues = (newValues) => idsField.onChange(newValues);
 
+	// row keys that stay with their row: a pick in a row keeps the row (and its focus), a move takes the key along
+	const keyCount = useRef(0);
+	const rows = useRef([]);
+	rows.current = rowKeysOf(rows.current, values, () => `acl-row-${keyCount.current++}`);
+
 	const onAccessListChange = (acl, idx) => {
+		rows.current = rows.current.map((row, i) => (i === idx ? { ...row, value: acl.id } : row));
 		const newValues = values.map((id, i) => (i === idx ? acl.id : id));
 		applyUpdatedValues(newValues);
 	};
@@ -168,118 +183,93 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 		.filter(Boolean);
 
 	return (
-		<div className="mb-3">
-			{isPending ? <div className="placeholder placeholder-lg col-12 my-3 placeholder-glow" /> : null}
+		<div className="flex flex-col gap-3">
+			{isPending ? <Skeleton className="h-8 w-full" /> : null}
 			{isError ? (
-				<div className="invalid-feedback d-block">
+				<FieldMessage>
 					<ApiErrorContent error={error} />
-				</div>
+				</FieldMessage>
 			) : null}
-			<div className="row">
-				<div className="col-md-10">
-					<div className="input-group mb-3 shadow-none">
-						<Select
-							className="col-md-8"
-							unstyled
-							classNames={selectClassNames}
-							isSearchable={false}
-							isDisabled={readOnly}
-							getOptionValue={(o) => o.type}
-							value={createOption(aclValue)}
-							options={typeOptions()}
-							components={{ Option: TypeOption }}
-							styles={{
-								option: (base) => ({
-									...base,
-									height: "100%",
-								}),
-							}}
-							ref={selectRef}
-							onChange={(e) => {
-								typeField.onChange(e.type);
-								recheckIds();
-							}}
-							onBlur={typeField.onBlur}
-						/>
-					</div>
-				</div>
-			</div>
+			<Combobox
+				aria-label={intl.formatMessage({ id: "access-list" })}
+				searchable={false}
+				disabled={readOnly}
+				value={aclValue}
+				options={typeSelectOptions}
+				renderOption={renderOption}
+				ref={selectRef}
+				onChange={(type) => {
+					typeField.onChange(type);
+					recheckIds();
+				}}
+				onBlur={typeField.onBlur}
+			/>
 			{!isPending && !isError && aclValue === "custom" ? (
 				<>
 					{values.map((item, idx) => (
-						<div key={item} className="input-group mb-1 shadow-none">
-							<Select
-								className="col-md-8 mb-1"
-								unstyled
-								classNames={selectClassNames}
-								value={
-									defaultOptions.find((o) => o.value === item) ?? { value: item, label: `#${item}` }
-								}
-								options={options}
-								isDisabled={readOnly}
-								components={{ Option }}
-								styles={{
-									option: (base) => ({
-										...base,
-										height: "100%",
-									}),
-								}}
-								onChange={(e) => {
-									onAccessListChange(e.meta, idx);
+						<div key={rows.current[idx].key} className="flex items-center gap-1">
+							<Combobox
+								className="min-w-0 flex-1"
+								aria-label={intl.formatMessage({ id: "access-list" })}
+								value={item}
+								options={rowOptions(item)}
+								renderOption={renderOption}
+								disabled={readOnly}
+								onChange={(_value, option) => {
+									onAccessListChange(option.meta, idx);
 								}}
 							/>
-
 							{idx > 0 ? (
-								<button
-									type="button"
+								<Button
+									variant="ghost"
+									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-up" })}
-									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveUp(idx);
 									}}
 								>
-									<IconArrowUp size={16} />
-								</button>
+									<ArrowUpIcon aria-hidden="true" />
+								</Button>
 							) : null}
 							{idx < values.length - 1 ? (
-								<button
-									type="button"
+								<Button
+									variant="ghost"
+									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-down" })}
-									className="btn mb-1 ms-1"
 									onClick={() => {
 										handleMoveDown(idx);
 									}}
 								>
-									<IconArrowDown size={16} />
-								</button>
+									<ArrowDownIcon aria-hidden="true" />
+								</Button>
 							) : null}
-							<button
-								type="button"
+							<Button
+								variant="ghost"
+								className={DESTRUCTIVE_TEXT}
+								size="icon-sm"
 								aria-label={intl.formatMessage({ id: "aria.remove" })}
-								className="btn btn-ghost btn-danger p-0 mb-1"
 								onClick={() => {
 									handleRemove(item);
 								}}
 							>
-								<IconX size={16} />
-							</button>
+								<XIcon aria-hidden="true" />
+							</Button>
 						</div>
 					))}
 					{values.length === 0 ? (
 						<>
-							<input name={name} className="visually-hidden" tabIndex={-1} required defaultValue="" />
-							<div className="invalid-feedback d-block">
+							<input name={name} className="sr-only" tabIndex={-1} required defaultValue="" />
+							<FieldMessage>
 								<T id="error.required" />
-							</div>
+							</FieldMessage>
 						</>
 					) : null}
 					{!readOnly &&
 						options.length > 0 && ( // only show add button if there are more acls that can be added
-							<div className="text-center">
-								<button type="button" className="btn my-3" onClick={handleAdd}>
-									<T id="action.add" />
-								</button>
-							</div>
+							<Button className="self-start" onClick={handleAdd}>
+								<PlusIcon data-icon="inline-start" aria-hidden="true" />
+								<T id="action.add" />
+							</Button>
 						)}
 				</>
 			) : null}

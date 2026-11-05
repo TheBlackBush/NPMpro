@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useIntervalWhen } from "rooks";
 import { deleteToken, getToken, refreshToken, revokeSessions, verifyTotp } from "src/api/backend";
 import AuthStore from "src/modules/AuthStore";
-import { getCookie } from "src/modules/Cookies";
+import { deleteCookie, getCookie } from "src/modules/Cookies";
 import { clearOidcError } from "src/modules/Oidc";
 
 const AuthContext = createContext(null);
@@ -69,7 +69,7 @@ function AuthProvider({ children, tokenRefreshInterval = 5 * 60 * 1000 }) {
 	useEffect(() => {
 		if (!authenticated) {
 			if (totpChallenge) {
-				window.cookieStore.delete("__Host-npmpro_oidc_totp_required");
+				deleteCookie("__Host-npmpro_oidc_totp_required");
 				return;
 			}
 			void refresh(false);

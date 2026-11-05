@@ -2,7 +2,7 @@
  * Rules of the shared form layer (components/Form/FormField.jsx and friends): reading a value at a field path, how a
  * control is described, the classes of the groups. Pure, so node --test checks them without a DOM.
  */
-import cn from "clsx";
+import { cn } from "cn";
 
 // the parts of a field path: "items[0].username" -> items, 0, username
 const PATH_PART = /[^.[\]]+/gu;
@@ -54,34 +54,56 @@ export function joinIds(...ids) {
  * @param   {Object}  options
  * @param   {string}  options.id
  * @param   {boolean} [options.hasHint]
+ * @param   {boolean} [options.hasBadges]  the field has a row of badges
  * @param   {string|null} [options.error]  the message that shows
  * @param   {string}  [options.describedBy]
  */
-export function controlAria({ id, hasHint = false, error = null, describedBy }) {
+export function controlAria({ id, hasHint = false, hasBadges = false, error = null, describedBy }) {
 	const hintId = `${id}-hint`;
 	const errorId = `${id}-error`;
+	const badgesId = `${id}-badges`;
 	return {
 		labelId: `${id}-label`,
 		hintId,
 		errorId,
+		badgesId,
 		"aria-invalid": error ? "true" : undefined,
-		"aria-describedby": joinIds(error ? errorId : null, hasHint ? hintId : null, describedBy),
+		"aria-describedby": joinIds(
+			error ? errorId : null,
+			hasHint ? hintId : null,
+			hasBadges ? badgesId : null,
+			describedBy,
+		),
 	};
 }
 
 /**
- * The class of a field label; Tabler's required class draws the red asterisk
+ * The classes of a section's legend: the group heading style (text-base) for a heading, the label style otherwise;
+ * hidden, it stays for screen readers
  *
- * @param   {boolean} [required]
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.heading]
+ * @param   {boolean} [options.hideLegend]
  * @returns {string}
  */
-export function labelClass(required = false) {
-	return cn("form-label", required && "required");
+export function legendClass({ heading = false, hideLegend = false } = {}) {
+	if (hideLegend) return "sr-only";
+	return cn("mb-1.5 font-medium", heading ? "text-base" : "text-sm");
 }
 
 /**
- * The classes of a ChoiceGroup's list (Tabler's form-selectgroup): buttons, pills or described boxes. fill: the
- * options share the whole row; vertical: one option per line, as Tabler's described boxes (d-flex flex-column)
+ * The classes of a section's fieldset: a column of fields; boxed is a tinted, bordered panel
+ *
+ * @param   {Object}  [options]
+ * @param   {boolean} [options.boxed]
+ * @returns {string}
+ */
+export function sectionClass({ boxed = false } = {}) {
+	return cn("flex min-w-0 flex-col gap-3", boxed && "rounded-lg border bg-muted/30 p-4");
+}
+
+/**
+ * The classes of a ChoiceGroup's list of options: a wrapping row, or one option per line when vertical
  *
  * @param   {Object}  [options]
  * @param   {"buttons"|"pills"|"boxes"} [options.variant]
@@ -89,35 +111,35 @@ export function labelClass(required = false) {
  * @param   {boolean} [options.vertical]
  * @returns {string}
  */
-export function choiceGroupClass({ variant = "buttons", fill = false, vertical = false } = {}) {
+export function choiceGroupClass({ vertical = false } = {}) {
+	return vertical ? "flex flex-col gap-2" : "flex flex-row flex-wrap gap-2";
+}
+
+/**
+ * The classes of one option of a ChoiceGroup (a card around a radio): pills are round, an option of a filled row
+ * takes its share (a described box the whole line); a disabled option looks disabled
+ *
+ * @param   {Object}  [options]
+ * @param   {"buttons"|"pills"|"boxes"} [options.variant]
+ * @param   {boolean} [options.fill]
+ * @returns {string}
+ */
+export function choiceItemClass({ variant = "buttons", fill = false } = {}) {
 	return cn(
-		"form-selectgroup",
-		variant === "pills" && "form-selectgroup-pills",
-		variant === "boxes" && "form-selectgroup-boxes",
-		vertical && "d-flex flex-column",
-		fill && !vertical && "w-100",
+		variant === "pills" ? "rounded-full" : "rounded-lg",
+		// FieldLabel makes a card full width; an option that is not filling the row sits inline
+		fill ? (variant === "boxes" ? "w-full" : "min-w-0 flex-1") : "has-[>[data-slot=field]]:w-fit",
+		// also disabled by a fieldset (View windows), not only by the option's own prop
+		"has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
 	);
 }
 
 /**
- * The classes of one option of a ChoiceGroup: it takes its share of a filled row (or the width of a vertical
- * list); a disabled option looks disabled (Tabler styles no disabled select group input)
- *
- * @param   {Object}  [options]
- * @param   {boolean} [options.fill]
- * @param   {boolean} [options.disabled]
- * @returns {string}
- */
-export function choiceItemClass({ fill = false, disabled = false } = {}) {
-	return cn("form-selectgroup-item", fill && "flex-fill", disabled && "opacity-50 cursor-not-allowed");
-}
-
-/**
- * The classes of a SwitchList: settings rows divided by a line in one column, or two columns from the md breakpoint
+ * The classes of a SwitchList: settings rows in one column, or two columns from the md breakpoint
  *
  * @param   {1|2} [columns]
  * @returns {string}
  */
 export function switchListClass(columns = 1) {
-	return columns === 2 ? "row row-cols-1 row-cols-md-2 gx-4" : "vstack gap-3";
+	return columns === 2 ? "grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2" : "flex flex-col gap-3";
 }

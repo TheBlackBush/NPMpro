@@ -1,9 +1,10 @@
-// below lg the content may wrap, so a table fits next to the settings menu on tablets; from lg it stays on one line
+// the content may wrap while its table is narrow (the table's container is under 56rem), so a table fits in the
+// section column next to the sidebar; wider it stays on one line
 function WrapBelowLg({ children }) {
 	return (
 		<>
-			<span className="d-lg-none">{children}</span>
-			<span className="d-none d-lg-inline text-nowrap">{children}</span>
+			<span className="@4xl:hidden">{children}</span>
+			<span className="hidden whitespace-nowrap @4xl:inline">{children}</span>
 		</>
 	);
 }

@@ -1,38 +1,16 @@
-import {
-	IconBrandGithub,
-	IconBrandGitlab,
-	IconBrandGoogle,
-	IconBrandWindows,
-	IconCloud,
-	IconKey,
-	IconLock,
-	IconLogin,
-	IconShieldLock,
-	IconUserCircle,
-} from "@tabler/icons-react";
+import { BrandIcon } from "src/components/BrandIcon";
 import { T } from "src/locale";
 import { contrastText, shade, validOidcColor } from "src/modules/Oidc";
-
-// Keys are the names stored in the OIDC settings (OIDC_BUILTIN_ICONS in modules/Oidc.js)
-const OIDC_ICON_COMPONENTS = {
-	key: IconKey,
-	lock: IconLock,
-	login: IconLogin,
-	"shield-lock": IconShieldLock,
-	"user-circle": IconUserCircle,
-	"brand-google": IconBrandGoogle,
-	"brand-github": IconBrandGithub,
-	"brand-gitlab": IconBrandGitlab,
-	"brand-windows": IconBrandWindows,
-	cloud: IconCloud,
-};
+import { oidcIcon } from "src/modules/OidcIcons";
 
 function OidcIcon({ icon }) {
 	if (icon?.type === "file") {
-		return <img src={icon.url} alt="" width={20} height={20} className="icon" />;
+		return <img src={icon.url} alt="" width={20} height={20} className="size-5 shrink-0" />;
 	}
-	const Icon = OIDC_ICON_COMPONENTS[icon?.name] ?? IconLogin;
-	return <Icon className="icon" aria-hidden="true" />;
+	const entry = oidcIcon(icon?.name);
+	if (entry.kind === "brand") return <BrandIcon icon={entry.icon} className="size-5 shrink-0" />;
+	const Icon = entry.icon;
+	return <Icon className="size-5 shrink-0" aria-hidden="true" />;
 }
 
 function OidcButton({ label, color, icon, onClick, disabled }) {
@@ -43,26 +21,24 @@ function OidcButton({ label, color, icon, onClick, disabled }) {
 	return (
 		<button
 			type="button"
-			className="btn w-100"
-			// inline because the provider colour is a setting (any hex), so no Tabler colour class can express it;
-			// it sets Tabler's button variables, so hover, active and disabled states keep working
+			className="inline-flex min-h-9 w-full min-w-0 items-center justify-center gap-2 whitespace-normal rounded-md border border-(--oidc-bg) bg-(--oidc-bg) px-3 py-1.5 font-medium text-(--oidc-fg) text-sm outline-none transition-colors hover:border-(--oidc-hover) hover:bg-(--oidc-hover) focus-visible:ring-3 focus-visible:ring-ring/50 active:border-(--oidc-active) active:bg-(--oidc-active) disabled:pointer-events-none disabled:opacity-50"
+			// the provider colour is a setting (any hex), so no utility class can express it: only CSS custom
+			// properties are set here (through the CSSOM, allowed by the CSP) and the classes above read them
 			style={{
-				"--tblr-btn-bg": bg,
-				"--tblr-btn-border-color": bg,
-				"--tblr-btn-color": text,
-				"--tblr-btn-hover-bg": hover,
-				"--tblr-btn-hover-border-color": hover,
-				"--tblr-btn-hover-color": text,
-				"--tblr-btn-active-bg": active,
-				"--tblr-btn-active-border-color": active,
+				"--oidc-bg": bg,
+				"--oidc-fg": text,
+				"--oidc-hover": hover,
+				"--oidc-active": active,
 			}}
 			onClick={onClick}
 			disabled={disabled}
 		>
 			<OidcIcon icon={icon} />
-			<T id="login.oidc-sign-in" data={{ label }} />
+			<span className="min-w-0 wrap-anywhere">
+				<T id="login.oidc-sign-in" data={{ label }} />
+			</span>
 		</button>
 	);
 }
 
-export { OIDC_ICON_COMPONENTS, OidcButton, OidcIcon };
+export { OidcButton, OidcIcon };

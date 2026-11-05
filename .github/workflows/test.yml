@@ -69,6 +69,13 @@ jobs:
         run: node --test 'src/**/*.test.js'
       - name: build
         run: pnpm vite build
+      - name: no Tabler or Bootstrap in the bundle
+        # tabler-theme is the kept localStorage key of the theme (src/modules/Theme.js), not Tabler code
+        run: |
+          if grep -rnoE 'data-bs-|@popperjs|tblr|tabler[a-z-]*' dist | grep -v ':tabler-theme$'; then
+            echo "Tabler or Bootstrap code in dist/"
+            exit 1
+          fi
 
   lint:
     runs-on: ubuntu-latest
@@ -100,5 +107,5 @@ jobs:
         with:
           check_filenames: true
           check_hidden: true
-          skip: pnpm-lock.yaml,./frontend/translations
-          ignore_words_list: afterAll,alog,clen,Nd,hasTable
+          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches
+          ignore_words_list: afterAll,alog,clen,Nd,hasTable,MapPin

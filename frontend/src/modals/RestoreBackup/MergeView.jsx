@@ -1,7 +1,10 @@
-import { IconAlertTriangle } from "@tabler/icons-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { planRestore } from "src/api/backend";
-import { ChoiceGroup, ErrorAlert, TypeTree } from "src/components";
+import { ChoiceGroup, ErrorAlert, NoticeAlert, TypeTree } from "src/components";
+import { AppSelect } from "src/components/AppSelect";
+import { Button } from "src/components/ui/button";
+import { Checkbox } from "src/components/ui/checkbox";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import {
 	ACTIONS,
@@ -14,7 +17,7 @@ import {
 	sentChoices,
 } from "src/modules/BackupMerge";
 import { withErrorDetails } from "src/modules/BackupTypes";
-import { ACTION_COLORS, DecisionList } from "./DecisionList";
+import { ActionBadge, DecisionList } from "./DecisionList";
 import { ItemList } from "./ItemList";
 import { ItemPicker } from "./ItemPicker";
 
@@ -172,10 +175,10 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 	].filter(Boolean);
 	const value = item.choices.includes(choice) ? choice : item.action;
 	return (
-		<div className="list-group-item d-block d-sm-flex">
-			<div className="list-group-item-content">
-				<div className="list-group-item-title text-wrap text-break">{item.label}</div>
-				<div className="list-group-item-description text-wrap text-break small">
+		<div className="block px-3 py-2 sm:flex sm:items-center sm:justify-between sm:gap-3">
+			<div className="min-w-0">
+				<div className="text-sm font-medium break-words">{item.label}</div>
+				<div className="text-sm break-words text-muted-foreground">
 					{description.map((part, index) => (
 						<span key={part.key}>
 							{index > 0 ? " · " : null}
@@ -184,59 +187,52 @@ function ItemRow({ item, choice, onChoice, labelOf, disabled }) {
 					))}
 				</div>
 			</div>
-			<div className="list-group-item-actions d-flex flex-wrap align-items-center gap-3 mt-2 mt-sm-0">
+			<div className="mt-2 flex flex-wrap items-center gap-3 sm:mt-0">
 				{item.linked ? (
-					<label className="form-check mb-0">
-						<input
-							className="form-check-input"
-							type="checkbox"
+					// biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the row
+					<label className="flex cursor-pointer items-center gap-2 text-sm has-[:disabled]:cursor-not-allowed">
+						<Checkbox
 							checked={choice === undefined ? !item.unticked : choice !== "unticked"}
-							onChange={(e) => onChoice(item.key, e.target.checked ? item.default : "unticked")}
+							onCheckedChange={(on) => onChoice(item.key, on === true ? item.default : "unticked")}
 							disabled={disabled}
 							aria-label={intl.formatMessage(
 								{ id: "settings.backup.merge.include-item" },
 								{ label: item.label },
 							)}
 						/>
-						<span className="form-check-label" aria-hidden="true">
+						<span aria-hidden="true">
 							<T id="settings.backup.merge.include" />
 						</span>
 					</label>
 				) : null}
 				{item.choices.length > 1 && !item.unticked ? (
-					<select
-						className="form-select form-select-sm w-auto"
+					<AppSelect
+						size="sm"
+						className="w-auto"
 						value={value}
-						onChange={(e) => onChoice(item.key, e.target.value)}
+						onValueChange={(next) => onChoice(item.key, next)}
+						options={item.choices.map((option) => ({
+							value: option,
+							label: intl.formatMessage({ id: `settings.backup.merge.choice.${option}` }),
+						}))}
 						disabled={disabled}
 						aria-label={intl.formatMessage(
 							{ id: "settings.backup.merge.choice-for" },
 							{ label: item.label },
 						)}
-					>
-						{item.choices.map((option) => (
-							<option key={option} value={option}>
-								{intl.formatMessage({ id: `settings.backup.merge.choice.${option}` })}
-							</option>
-						))}
-					</select>
+					/>
 				) : (
-					<span className={`badge ${ACTION_COLORS[item.action] ?? "bg-secondary-lt"}`}>
-						<T id={`settings.backup.merge.action.${item.action}`} />
-					</span>
+					<ActionBadge action={item.action} />
 				)}
 			</div>
 		</div>
 	);
 }
 
-// capped: a long list scrolls instead of stretching the dialog (no Tabler utility caps a height, only mh-100)
+// capped: a long list scrolls instead of stretching the dialog
 function ItemRows({ items, merge, labelOf, disabled, capped = false }) {
 	return (
-		<div
-			className={capped ? "list-group overflow-auto" : "list-group"}
-			style={capped ? { maxHeight: "20rem" } : undefined}
-		>
+		<div className={cn("divide-y rounded-lg border", capped && "max-h-80 overflow-auto")}>
 			{items.map((item) => (
 				<ItemRow
 					key={item.key}
@@ -342,27 +338,21 @@ export function MergeView({
 			/>
 			<ErrorAlert error={merge.error} />
 			{merge.changed ? (
-				<div className="alert alert-warning" role="alert">
-					<div className="alert-icon">
-						<IconAlertTriangle className="icon" aria-hidden="true" />
-					</div>
-					<div>
-						<T id="settings.backup.merge.plan-changed" />
-					</div>
-				</div>
+				<NoticeAlert role="alert" className="mb-3">
+					<T id="settings.backup.merge.plan-changed" />
+				</NoticeAlert>
 			) : null}
 			{plan && selected.length > 0 ? (
 				<>
 					<div className="mb-3">
-						<div className="form-label">
+						<div className="mb-1 text-sm font-medium">
 							<T id="settings.backup.merge.changes" />
 						</div>
-						<div className="badge-list">
+						<div className="flex flex-wrap gap-2">
 							{ACTIONS.filter((action) => plan.counts[action] > 0).map((action) => (
-								<span key={action} className={`badge ${ACTION_COLORS[action]}`}>
-									<T id={`settings.backup.merge.action.${action}`} />
-									<span className="ms-1">{plan.counts[action]}</span>
-								</span>
+								<ActionBadge key={action} action={action}>
+									<span>{plan.counts[action]}</span>
+								</ActionBadge>
 							))}
 						</div>
 					</div>
@@ -376,25 +366,25 @@ export function MergeView({
 						/>
 					) : null}
 					{plan.items.length > 0 ? (
-						<button
+						<Button
 							type="button"
-							className="btn btn-link p-0 mb-3"
+							variant="link"
+							className="mb-3 h-auto min-h-6 p-0"
 							aria-expanded={showAll}
 							aria-controls={allId}
 							onClick={() => setShowAll((value) => !value)}
 						>
 							<T id="settings.backup.merge.show-all" />
-						</button>
+						</Button>
 					) : null}
 					<div id={allId} hidden={!showAll}>
 						{showAll
 							? Object.entries(groups).map(([action, list]) => (
 									<div key={action} className="mb-3">
 										<div className="mb-1">
-											<span className={`badge ${ACTION_COLORS[action]}`}>
-												<T id={`settings.backup.merge.action.${action}`} />
-												<span className="ms-1">{list.length}</span>
-											</span>
+											<ActionBadge action={action}>
+												<span>{list.length}</span>
+											</ActionBadge>
 										</div>
 										<ItemRows items={list} {...rowProps} capped />
 									</div>

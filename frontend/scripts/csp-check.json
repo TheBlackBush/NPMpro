@@ -1,0 +1,438 @@
+{
+	"routes": [
+		"/",
+		"/nginx/proxy",
+		"/nginx/redirection",
+		"/nginx/404",
+		"/nginx/stream",
+		"/certificates",
+		"/certificates/dns-credentials",
+		"/access",
+		"/audit-log",
+		"/users",
+		"/settings",
+		"/settings/default-site",
+		"/settings/network",
+		"/settings/nginx",
+		"/settings/authentication",
+		"/settings/forward-auth",
+		"/settings/certificates",
+		"/settings/geoip",
+		"/settings/advanced",
+		"/settings/environment",
+		"/settings/users",
+		"/settings/audit-log",
+		"/monitoring",
+		"/monitoring/traffic",
+		"/monitoring/crowdsec",
+		"/login",
+		"/no-such-page",
+		"/settings/nope",
+		"/monitoring/nope"
+	],
+	"actions": [
+		{
+			"name": "command palette",
+			"route": "/",
+			"steps": [
+				{ "press": "Control+k" },
+				{ "waitFor": "[data-slot=command]" },
+				{ "waitFor": "[data-slot=command-item]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "language menu",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Select language']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "user menu",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "toast",
+			"route": "/settings/default-site",
+			"steps": [
+				{ "click": "label:has-text('404 Page')" },
+				{ "click": "form >> role=button[name='Save']" },
+				{ "waitFor": "[data-sonner-toast]" }
+			]
+		},
+		{
+			"name": "add user window",
+			"route": "/settings/users",
+			"steps": [
+				{ "click": "role=button[name='Add User']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "user permissions and password windows",
+			"route": "/settings/users",
+			"steps": [
+				{ "click": "role=button[name='Add User']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] input[name=name]" },
+				{ "press": "a" },
+				{ "press": "b" },
+				{ "click": "[role=dialog] input[name=email]" },
+				{ "press": "a" },
+				{ "press": "@" },
+				{ "press": "b" },
+				{ "press": "." },
+				{ "press": "c" },
+				{ "press": "o" },
+				{ "click": "[role=dialog] >> role=button[name='Save']" },
+				{ "waitFor": "role=button[name='Actions for ab']" },
+				{ "click": "role=button[name='Actions for ab']" },
+				{ "click": "role=menuitem[name='Permissions']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for ab']" },
+				{ "click": "role=menuitem[name='Set Password']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "runtime select list",
+			"route": "/settings/nginx",
+			"steps": [
+				{ "click": "#runtime-workerProcesses" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "audit log filters",
+			"route": "/settings/audit-log",
+			"steps": [
+				{ "click": "role=combobox[name='Object type']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "click": "role=combobox[name='Action']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "click": "role=combobox[name='User']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "audit log event details",
+			"route": "/settings/audit-log",
+			"steps": [
+				{ "click": "role=button[name^='Details:']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "help sheet",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "role=button[name='Help']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "waitFor": "[data-slot=sheet-content] .prose" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "proxy host window",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "role=button[name='Add Proxy Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=locations]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "click": "[role=dialog] #domainNames" },
+				{ "press": "a" },
+				{ "press": "." },
+				{ "press": "e" },
+				{ "press": "x" },
+				{ "press": "Enter" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "redirection host window",
+			"route": "/nginx/redirection",
+			"steps": [
+				{ "click": "role=button[name='Add Redirection Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "click": "[role=dialog] #forwardHttpCode" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "404 host window",
+			"route": "/nginx/404",
+			"steps": [
+				{ "click": "role=button[name='Add 404 Host']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "stream window",
+			"route": "/nginx/stream",
+			"steps": [
+				{ "click": "role=button[name='Add Stream']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=tls]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=advanced]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "proxy host side sheet",
+			"route": "/nginx/proxy",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit windows']" },
+				{ "click": "role=menuitemradio[name='Side sheet']" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Proxy Host']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "press": "Escape" },
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit windows']" },
+				{ "click": "role=menuitemradio[name='Dialog']" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "certificate menu",
+			"route": "/certificates",
+			"steps": [
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Certbot via HTTP']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Certbot via DNS']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='Custom Certificate']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Add Certificate']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "click": "role=menuitem[name='mTLS Certificate']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "dns credential window",
+			"route": "/certificates/dns-credentials",
+			"steps": [
+				{ "click": "role=button[name='Add DNS credential']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "access list window",
+			"route": "/access",
+			"steps": [
+				{ "click": "role=button[name='Add Access List']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=auth]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=rules]" },
+				{ "click": "[role=dialog] [role=tab][data-tab=details]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "profile window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Edit Profile']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "change password window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Change Password']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "mfa window",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='MFA']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "waitFor": "[role=dialog] svg, [role=dialog] canvas" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "phone menu",
+			"route": "/",
+			"steps": [
+				{ "viewport": [390, 844] },
+				{ "click": "role=button[name='Toggle navigation']" },
+				{ "waitFor": "[data-slot=sheet-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "access list lifecycle",
+			"route": "/access",
+			"steps": [
+				{ "click": "role=button[name='Add Access List']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] input[name=name]" },
+				{ "press": "a" },
+				{ "press": "l" },
+				{ "click": "[role=dialog] [role=tab][data-tab=rules]" },
+				{ "click": "[role=dialog] input[placeholder^='192.168']" },
+				{ "press": ":" },
+				{ "press": ":" },
+				{ "press": "1" },
+				{ "click": "[role=dialog] >> role=button[name='Save']" },
+				{ "waitFor": "role=button[name='Actions for al']" },
+				{ "click": "role=button[name='Export']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for al']" },
+				{ "click": "role=menuitem[name='Edit']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "press": "Escape" },
+				{ "click": "role=button[name='Actions for al']" },
+				{ "click": "role=menuitem[name='Delete']" },
+				{ "waitFor": "[role=alertdialog]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "sidebar layout",
+			"route": "/",
+			"steps": [
+				{ "click": "header >> role=button[name='Open user menu']" },
+				{ "click": "role=menuitem[name='Navigation']" },
+				{ "click": "role=menuitemradio[name='Sidebar']" },
+				{ "waitFor": "[data-slot=sidebar]" }
+			]
+		},
+		{
+			"name": "authentication groups",
+			"route": "/settings/authentication",
+			"steps": [
+				{ "click": "#auth-rules-trigger" },
+				{ "waitFor": "#auth-rules-trigger[aria-expanded=true]" },
+				{ "click": "#auth-new-users-trigger" },
+				{ "waitFor": "#auth-new-users-trigger[aria-expanded=true]" },
+				{ "click": "#auth-permissions-trigger" },
+				{ "waitFor": "#auth-permissions-trigger[aria-expanded=true]" },
+				{ "click": "#auth-rules-trigger" },
+				{ "click": "#auth-new-users-trigger" },
+				{ "click": "#auth-permissions-trigger" }
+			]
+		},
+		{
+			"name": "backup schedule window",
+			"route": "/settings/backup",
+			"steps": [
+				{ "click": "role=button[name='Add schedule']" },
+				{ "waitFor": "[role=dialog]" },
+				{ "click": "[role=dialog] [role=combobox]" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "database move window",
+			"route": "/settings/database",
+			"steps": [
+				{ "click": "[id$='-engine']" },
+				{ "click": "role=option[name='SQLite']" },
+				{ "click": "role=button[name='Test connection']" },
+				{ "waitFor": "text=Nothing to test" },
+				{ "click": "role=button[name='Move' s]" },
+				{ "waitFor": "[role=dialog] input" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "monitoring traffic on",
+			"route": "/settings/monitoring",
+			"steps": [
+				{ "skipIfDisabled": "#monitoring-traffic-enabled" },
+				{ "click": "#monitoring-traffic-enabled" },
+				{ "click": "form >> role=button[name='Save']" },
+				{ "waitFor": "[data-sonner-toast]" }
+			]
+		},
+		{
+			"name": "monitoring range",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "waitFor": "role=radio[name='7 days']" },
+				{ "click": "role=radio[name='7 days']" },
+				{ "waitFor": "role=radio[name='7 days'][checked]" }
+			]
+		},
+		{
+			"name": "monitoring host filter",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "click": "role=combobox[name='Host']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "monitoring theme switch",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "waitFor": "canvas" },
+				{ "click": "[aria-label^='Theme']" },
+				{ "click": "[data-slot=dropdown-menu-content] >> text=Dark" },
+				{ "waitFor": "html.dark" }
+			]
+		},
+		{
+			"name": "dashboard",
+			"route": "/",
+			"steps": [{ "waitFor": "role=heading[name='Recent changes']" }]
+		}
+	]
+}

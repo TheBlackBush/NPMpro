@@ -1,43 +1,74 @@
-import cn from "clsx";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { Button } from "src/components/ui/button";
+import { TableHead, TableRow, TableHeader as UiTableHeader } from "src/components/ui/table";
+import { cn } from "src/lib/utils";
 import { headerClass } from "src/modules/MobileColumns";
 import { ariaSort } from "src/modules/TableSort";
+import { useStack } from "./StackedContext";
 
-function TableHeader({ tableInstance }) {
+const SORT_ICON = { asc: ArrowUp, desc: ArrowDown };
+const WHITESPACE = /\s+/u;
+
+// scroll tables are not stacked: they keep their header on every width
+function TableHeader({ tableInstance, scroll = false }) {
+	// stacked layout: explicit roles, see TableLayout
+	const role = (name) => (scroll ? undefined : name);
+	const stack = useStack();
 	return (
-		<thead>
+		<UiTableHeader className={cn(!scroll && stack.headerHidden)} role={role("rowgroup")}>
 			{tableInstance.getHeaderGroups().map((headerGroup) => (
-				<tr key={headerGroup.id}>
+				<TableRow key={headerGroup.id} className="hover:bg-transparent" role={role("row")}>
 					{headerGroup.headers.map((header) => {
 						const { column } = header;
-						const className = cn(column.columnDef.meta?.className, headerClass(column.columnDef));
+						const className = cn(
+							"text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+							column.columnDef.meta?.className,
+							headerClass(column.columnDef, stack.hiddenCell),
+						);
 						const label = typeof column.columnDef.header === "string" ? column.columnDef.header : null;
 						if (!label || !column.getCanSort()) {
 							return (
-								<th key={header.id} className={className}>
+								<TableHead key={header.id} className={className} role={role("columnheader")}>
 									{label}
-								</th>
+								</TableHead>
 							);
 						}
 						const sorted = column.getIsSorted();
+						const Icon = SORT_ICON[sorted] ?? ArrowUpDown;
+						// the button fills the whole header cell, so a click anywhere in it sorts
+						const alignEnd = (column.columnDef.meta?.className ?? "")
+							.split(WHITESPACE)
+							.includes("text-right");
 						return (
-							<th key={header.id} className={className} aria-sort={ariaSort(sorted)}>
-								{/* bg-transparent: the header background is translucent and .table-sort inherits it, which would paint it twice.
-								w-auto: Tabler's width 100% with its negative margins leaves the button 1.5rem narrower than the
-								label in a column that shrinks to its content (the ID column), so the label and the sort icon
-								overflowed it; at auto width the button spans the whole cell, padding included */}
-								<button
+							<TableHead
+								key={header.id}
+								className={cn(className, "p-0")}
+								aria-sort={ariaSort(sorted)}
+								role={role("columnheader")}
+							>
+								<Button
 									type="button"
-									className={cn("table-sort bg-transparent w-auto", sorted)}
+									variant="ghost"
+									size="sm"
+									className={cn(
+										"h-10 w-full justify-start rounded-none px-2 text-xs font-semibold uppercase tracking-wide focus-visible:ring-inset",
+										alignEnd && "justify-end",
+									)}
 									onClick={column.getToggleSortingHandler()}
 								>
 									{label}
-								</button>
-							</th>
+									<Icon
+										data-icon="inline-end"
+										className={cn(!sorted && "opacity-50")}
+										aria-hidden="true"
+									/>
+								</Button>
+							</TableHead>
 						);
 					})}
-				</tr>
+				</TableRow>
 			))}
-		</thead>
+		</UiTableHeader>
 	);
 }
 

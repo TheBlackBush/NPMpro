@@ -1,4 +1,3 @@
-import { IconDotsVertical, IconEdit, IconKey, IconTrash } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -9,16 +8,15 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
-import cn from "clsx";
+import { Eye, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
-import OverlayTrigger from "react-bootstrap/OverlayTrigger";
-import Popover from "react-bootstrap/Popover";
-import { EmptyData, GravatarFormatter, HasPermission, ValueWithDateFormatter } from "src/components";
+import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { useDnsProviders } from "src/hooks";
+import { Badge } from "src/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
+import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
-import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { sectionColor } from "src/modules/SectionColors";
+import { CERTIFICATES } from "src/modules/Permissions";
 
 const features = tableFeatures({
 	rowSortingFeature,
@@ -30,37 +28,68 @@ const features = tableFeatures({
 	},
 });
 
-function UsedBy({ id, certificates }) {
+function UsedBy({ certificates }) {
 	if (certificates.length === 0) {
-		return <span className="text-secondary">0</span>;
+		return <span className="text-muted-foreground">0</span>;
 	}
-	const popover = (
-		<Popover id={`popover-dns-credential-used-by-${id}`}>
-			<Popover.Body>
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className="rounded-sm text-start underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+					aria-label={`${intl.formatMessage({ id: "dns-credentials.used-by" })}: ${certificates.length}`}
+				>
+					{certificates.length}
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-auto max-w-80">
 				{certificates.map((cert) => (
 					<div key={cert.id}>{cert.niceName}</div>
 				))}
-			</Popover.Body>
+			</PopoverContent>
 		</Popover>
 	);
+}
+
+function DnsCredentialActions({ credential, onDelete, onEdit }) {
+	const canManage = useCanManage(CERTIFICATES);
+	const inUse = (credential.certificates?.length ?? 0) > 0;
 	return (
-		<OverlayTrigger trigger={["hover", "click", "focus"]} placement="bottom" overlay={popover}>
-			<button
-				type="button"
-				className="btn btn-link d-inline-block p-0 text-reset text-decoration-none text-start align-baseline"
-				// Tabler .btn sets a minimum size, which would centre and pad the text like a button
-				style={{ minWidth: 0, minHeight: 0 }}
-			>
-				{certificates.length}
-			</button>
-		</OverlayTrigger>
+		<RowActions
+			// names the row, so the buttons of a list are told apart
+			label={intl.formatMessage({ id: "list.row-actions" }, { name: credential.name || `#${credential.id}` })}
+			focusKey={`dns-credential-${credential.id}`}
+			title={<T id="object.actions-title" tData={{ object: "dns-credential" }} data={{ id: credential.id }} />}
+			items={[
+				{
+					key: "edit",
+					// a user who may only view gets the View window
+					label: <T id={canManage ? "action.edit" : "action.view"} />,
+					icon: canManage ? Pencil : Eye,
+					onSelect: () => onEdit?.(credential.id),
+				},
+				{
+					key: "delete",
+					label: <T id="action.delete" />,
+					icon: Trash2,
+					onSelect: () => onDelete?.(credential.id),
+					destructive: true,
+					separatorBefore: true,
+					// a credential used by a certificate cannot be deleted (the Used by column shows why)
+					hidden: !canManage || inUse,
+				},
+			]}
+		/>
 	);
 }
 
 const columnHelper = createColumnHelper();
 
-// shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar
-export function useColumns({ onEdit, onDelete } = {}) {
+// Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
+// The columns keep their identity between renders and the row handlers reach the cells through the table meta
+// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+export function useColumns() {
 	const { data: providers } = useDnsProviders();
 	return useMemo(
 		() => [
@@ -77,7 +106,7 @@ export function useColumns({ onEdit, onDelete } = {}) {
 					);
 				},
 				meta: {
-					className: "text-nowrap",
+					className: "whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
@@ -92,9 +121,9 @@ export function useColumns({ onEdit, onDelete } = {}) {
 							createdOn={info.row.original.createdOn}
 						/>
 						{info.row.original.decryptError ? (
-							<span className="badge bg-warning-lt ms-1">
+							<Badge variant="outline" className="ms-1 border-warning text-warning">
 								<T id="dns-credentials.decrypt-error-short" />
-							</span>
+							</Badge>
 						) : null}
 					</>
 				),
@@ -119,83 +148,35 @@ export function useColumns({ onEdit, onDelete } = {}) {
 						),
 				},
 				header: intl.formatMessage({ id: "dns-credentials.used-by" }),
-				cell: (info) => (
-					<UsedBy id={info.row.original.id} certificates={info.row.original.certificates ?? []} />
-				),
+				cell: (info) => <UsedBy certificates={info.row.original.certificates ?? []} />,
 			}),
 			columnHelper.display({
 				id: "actions",
-				cell: (info) => {
-					const inUse = (info.row.original.certificates?.length ?? 0) > 0;
-					return (
-						<span className="dropdown">
-							<button
-								type="button"
-								className="btn dropdown-toggle btn-action btn-sm px-1 d-inline-block"
-								aria-label={intl.formatMessage({ id: "actions" })}
-								data-bs-boundary="viewport"
-								data-bs-toggle="dropdown"
-								data-bs-popper-config='{"strategy":"fixed"}'
-							>
-								<IconDotsVertical />
-							</button>
-							<div className="dropdown-menu dropdown-menu-end">
-								<span className="dropdown-header">
-									<T
-										id="object.actions-title"
-										tData={{ object: "dns-credential" }}
-										data={{ id: info.row.original.id }}
-									/>
-								</span>
-								<button
-									type="button"
-									className="dropdown-item"
-									onClick={() => {
-										onEdit?.(info.row.original.id);
-									}}
-								>
-									<IconEdit className="icon dropdown-item-icon" aria-hidden="true" />
-									<T id="action.edit" />
-								</button>
-								<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-									<div className="dropdown-divider" />
-									<button
-										type="button"
-										className={cn("dropdown-item", !inUse && "text-danger")}
-										disabled={inUse}
-										title={inUse ? intl.formatMessage({ id: "dns-credentials.in-use" }) : undefined}
-										onClick={() => {
-											onDelete?.(info.row.original.id);
-										}}
-									>
-										<IconTrash className="icon dropdown-item-icon" aria-hidden="true" />
-										<T id="action.delete" />
-									</button>
-								</HasPermission>
-							</div>
-						</span>
-					);
-				},
+				cell: (info) => (
+					<DnsCredentialActions credential={info.row.original} {...info.table.options.meta?.actions} />
+				),
 				meta: {
-					className: "text-end text-nowrap",
+					className: "text-right whitespace-nowrap",
 					mobile: "title-end",
 				},
 			}),
 		],
-		[onEdit, onDelete, providers],
+		[providers],
 	);
 }
 
 export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
-	const columns = useColumns({ onEdit, onDelete });
+	const columns = useColumns();
 
 	const tableInstance = useTable({
 		features,
 		columns: columnHelper.columns(columns),
 		data,
 		getRowId: (row) => `${row.id}`,
+		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
+			actions: { onDelete, onEdit },
 		},
 		enableSortingRemoval: false,
 		state: { sorting },
@@ -207,13 +188,13 @@ export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, 
 			tableInstance={tableInstance}
 			emptyState={
 				<EmptyData
-					icon={IconKey}
+					icon={KeyRound}
 					object="dns-credential"
 					objects="dns-credentials"
 					tableInstance={tableInstance}
 					onNew={onNew}
 					isFiltered={isFiltered}
-					color={sectionColor("dnsCredentials")}
+					section="dnsCredentials"
 					permissionSection={CERTIFICATES}
 				/>
 			}

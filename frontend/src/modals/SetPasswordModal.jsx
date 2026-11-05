@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { useState } from "react";
 import { updateAuth } from "src/api/backend";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, NoticeAlert } from "src/components";
@@ -31,16 +32,17 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : remove} backdrop="static">
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<AppModal.Header closeButton={!isSubmitting}>
-					<AppModal.Title>
+					<AppModal.Title className="flex items-center gap-2">
+						<Users className="size-5 shrink-0" aria-hidden="true" />
 						<T id="user.set-password" />
 					</AppModal.Title>
 				</AppModal.Header>
 				<AppModal.Body>
 					<ErrorAlert onClose={() => setError(null)}>{error}</ErrorAlert>
-					<NoticeAlert>
+					<NoticeAlert className="mb-3">
 						<T id="logout-other-devices" />
 					</NoticeAlert>
 					<PasswordField
@@ -51,10 +53,10 @@ const SetPasswordModal = EasyModal.create(({ id, visible, remove }) => {
 					/>
 				</AppModal.Body>
 				<AppModal.Footer>
-					<Button className="btn-link link-secondary" onClick={remove} disabled={isSubmitting}>
+					<Button variant="ghost" onClick={remove} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit className="ms-auto" section="users" isLoading={isSubmitting} disabled={isSubmitting}>
+					<FormSubmit className="ms-auto" isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

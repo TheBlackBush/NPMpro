@@ -16,13 +16,17 @@ import {
 	useFieldOrder,
 	validateSecrets,
 } from "src/components";
+import { Checkbox } from "src/components/ui/checkbox";
 import { useExportPreview, useUser } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { withErrorDetails } from "src/modules/BackupTypes";
 import EasyModal from "src/modules/easyModal";
 import { errorPaths } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
-import { kindColor } from "src/modules/SectionColors";
+import { kindSection, sectionAccent } from "src/modules/SectionAccents";
+import { showSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 /**
  * @param {string} kind  the page's kind of items: proxy_hosts, redirection_hosts, dead_hosts, streams, certificates,
@@ -89,9 +93,14 @@ function useLinked(kind, ids, initial) {
 
 // the title and the close button, in every state of the window
 function ExportHeader({ kind, closable = true }) {
+	const section = kindSection(kind);
+	const Icon = section ? sectionIcon(section) : undefined;
 	return (
 		<AppModal.Header closeButton={closable}>
-			<AppModal.Title>
+			<AppModal.Title className="flex items-center gap-2">
+				{Icon ? (
+					<Icon className={cn("size-5 shrink-0", sectionAccent(section).text)} aria-hidden="true" />
+				) : null}
 				<T id="backup.export.title" data={{ objects: typeLabel(kind) }} />
 			</AppModal.Title>
 		</AppModal.Header>
@@ -102,20 +111,18 @@ function ExportHeader({ kind, closable = true }) {
 function LinkedRow({ item, labelOf, checked, onChange, disabled }) {
 	const descriptionId = useId();
 	return (
-		<label className="list-group-item">
-			<span className="list-group-item-media">
-				<input
-					type="checkbox"
-					className="form-check-input list-group-selectable-check m-0"
-					checked={checked}
-					onChange={(e) => onChange(e.target.checked)}
-					disabled={disabled}
-					aria-describedby={descriptionId}
-				/>
-			</span>
-			<span className="list-group-item-content">
-				<span className="list-group-item-title text-wrap text-break">{item.label}</span>
-				<span id={descriptionId} className="list-group-item-description text-wrap text-break small">
+		// biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the row
+		<label className="flex cursor-pointer items-start gap-3 px-3 py-2 hover:bg-muted has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+			<Checkbox
+				checked={checked}
+				onCheckedChange={(v) => onChange(v === true)}
+				disabled={disabled}
+				aria-describedby={descriptionId}
+				className="mt-0.5"
+			/>
+			<span className="min-w-0">
+				<span className="block text-sm break-words">{item.label}</span>
+				<span id={descriptionId} className="block text-xs text-muted-foreground break-words">
 					{`${typeLabel(item.type)} · `}
 					<T
 						id="settings.backup.merge.needed-by"
@@ -161,11 +168,11 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 		<>
 			<ExportHeader kind={kind} closable={!isSubmitting} />
 			<AppModal.Body>
-				<div className="card card-sm mb-3">
-					<div className="card-header py-2">
-						<div id={titleId} className="card-title">
+				<section aria-labelledby={titleId} className="mb-3 overflow-hidden rounded-lg border">
+					<div className="border-b bg-muted/40 px-3 py-2">
+						<h3 id={titleId} className="text-sm font-medium">
 							{typeLabel(kind)}
-						</div>
+						</h3>
 					</div>
 					<ItemChecklist
 						labelledBy={titleId}
@@ -175,24 +182,23 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						typeName={typeLabel(kind)}
 						disabled={isSubmitting}
 					/>
-				</div>
+				</section>
 				{linked.error ? (
-					<div className="mb-3">
-						<ErrorAlert error={linked.error} className="mb-2" />
-						<Button size="sm" onClick={linked.retry}>
+					<div className="mb-3 flex flex-col items-start gap-2">
+						<ErrorAlert error={linked.error} />
+						<Button variant="outline" size="sm" onClick={linked.retry}>
 							<T id="backup.export.retry" />
 						</Button>
 					</div>
 				) : null}
 				{shownLinked.length > 0 ? (
-					<div className="mb-3">
-						<div id={linkedTitleId} className="form-label">
+					<>
+						<div id={linkedTitleId} className="mb-1.5 text-sm font-medium">
 							<T id="backup.export.needed-by" />
 						</div>
 						<fieldset
 							aria-labelledby={linkedTitleId}
-							className="list-group list-group-selectable overflow-auto"
-							style={{ maxHeight: "16rem" }}
+							className="mb-3 max-h-64 divide-y overflow-auto rounded-lg border"
 						>
 							{shownLinked.map((item) => {
 								const key = itemKey(item.type, item.id);
@@ -215,7 +221,7 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 								);
 							})}
 						</fieldset>
-					</div>
+					</>
 				) : null}
 				{secretsAllowed ? (
 					<SecretsFields
@@ -224,26 +230,26 @@ function ExportForm({ kind, base, ids, setIds, linked, shownLinked, unticked, se
 						disabled={isSubmitting}
 					/>
 				) : (
-					<p className="text-secondary small mb-3">
+					<p className="mb-3 text-sm text-muted-foreground">
 						<T id="backup.export.no-secrets-note" />
 					</p>
 				)}
 				<ErrorAlert error={error} className="mb-0" />
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button onClick={onClose} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
 					<T id="cancel" />
 				</Button>
-				<div className="ms-auto d-flex flex-wrap align-items-center justify-content-end gap-2">
-					<FormErrorNote id={noteId} className="me-2 text-end" />
+				<div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+					<FormErrorNote id={noteId} className="text-right" />
 					{showReason ? (
-						<span id={reasonId} className="text-secondary small me-2 text-end">
+						<span id={reasonId} className="text-right text-sm text-muted-foreground">
 							<T id={reason} />
 						</span>
 					) : null}
 					<Button
 						type="submit"
-						color={kindColor(kind)}
+						color="primary"
 						isLoading={isSubmitting}
 						disabled={reason !== null && !blocked}
 						blocked={blocked}
@@ -287,6 +293,7 @@ function ExportContent({ kind, base, admin, onClose }) {
 				passphrase: values.secrets ? values.passphrase : undefined,
 			});
 			await downloadPendingBackup(result.pending, result.name);
+			showSuccess(intl.formatMessage({ id: "notification.export-done" }));
 			onClose();
 		} catch (err) {
 			setError(withErrorDetails(err));
@@ -332,7 +339,7 @@ const ExportItemsModal = EasyModal.create(({ kind, visible, remove }) => {
 						<ErrorAlert error={error} className="mb-0" />
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="ms-auto" onClick={remove}>
+						<Button variant="ghost" onClick={remove}>
 							<T id="action.close" />
 						</Button>
 					</AppModal.Footer>

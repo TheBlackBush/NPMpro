@@ -12,11 +12,18 @@ import {
 	useAppForm,
 } from "src/components";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import { changeDnsCredentialValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
+
+// DNS credentials has no menu link of its own: the certificates icon in the DNS credentials accent
+const accent = sectionAccent("dnsCredentials");
+const Icon = sectionIcon("certificates");
 
 const showChangeDnsCredentialModal = (certificate) => {
 	EasyModal.show(ChangeDnsCredentialModal, { certificate });
@@ -50,11 +57,12 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 	};
 
 	return (
-		<AppModal show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
+		<AppModal size="sm" show={visible} onHide={isSubmitting ? undefined : close} backdrop="static">
 			<HookForm methods={methods} onSubmit={onSubmit}>
 				<DirtyTracker dirtyRef={dirtyRef} />
 				<AppModal.Header closeButton={!isSubmitting}>
-					<AppModal.Title>
+					<AppModal.Title className="flex items-center gap-2">
+						{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 						<T id="dns-credentials.change" />
 					</AppModal.Title>
 				</AppModal.Header>
@@ -63,16 +71,10 @@ const ChangeDnsCredentialModal = EasyModal.create(({ certificate, visible, remov
 					<DnsCredentialSelect name="npmproDnsCredentialId" provider={certificate.npmproDnsProvider} />
 				</AppModal.Body>
 				<AppModal.Footer>
-					<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+					<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 						<T id="cancel" />
 					</Button>
-					<FormSubmit
-						className="ms-auto"
-						edit={true}
-						section="certificates"
-						isLoading={isSubmitting}
-						disabled={isSubmitting}
-					>
+					<FormSubmit edit={true} isLoading={isSubmitting} disabled={isSubmitting}>
 						<T id="save" />
 					</FormSubmit>
 				</AppModal.Footer>

@@ -23,19 +23,19 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 				{isPending ? <Loading noLogo /> : null}
 				{data ? (
 					<>
-						<div className="d-flex align-items-center gap-3 mb-3">
+						<div className="mb-3 flex flex-wrap items-center gap-3">
 							<GravatarFormatter url={data.user?.avatar} name={data.user?.name} />
 							<EventFormatter row={data} />
 						</div>
 						{/* pre-wrap wraps long values instead of scrolling sideways */}
-						<pre className="form-control font-monospace mb-0" style={{ whiteSpace: "pre-wrap" }}>
+						<pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-sm">
 							{JSON.stringify(decamelizeKeys(data.meta), null, 2)}
 						</pre>
 					</>
 				) : null}
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="ms-auto" onClick={remove}>
+				<Button variant="ghost" onClick={remove}>
 					<T id="action.close" />
 				</Button>
 			</AppModal.Footer>

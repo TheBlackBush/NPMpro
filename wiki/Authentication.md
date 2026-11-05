@@ -2,6 +2,16 @@
 
 Signing in to the NPMpro web UI: passwords, two-factor authentication and OIDC. To put a login in front of your own services, see [Forward authentication](Forward-Authentication).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/login-dark.png">
+  <img alt="The sign-in page" src="images/login-light.png" width="720">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/phone-login-dark.png">
+  <img alt="The sign-in page on a phone" src="images/phone-login-light.png" width="260">
+</picture>
+
 ## Passwords and two-factor authentication
 
 Every user signs in with an email address and a password. Two-factor authentication (TOTP, with one-time backup codes) can be turned on for each account in the user menu. If you are locked out, the password and MFA can be reset from the command line (SQLite only): `docker exec -it npmpro password-reset.js USER_EMAIL [--disable-mfa]`, the new password is read from stdin. See [Usage](Usage#password-and-mfa-reset). The session cookie is signed with `COOKIE_SECRET`, see [Configuration](Configuration#cookie_secret).
@@ -15,4 +25,6 @@ OIDC is set up under Settings, Authentication in the web UI (administrators only
 - Require a verified email (default on) refuses users whose provider has not verified their email address. Skip two-factor after OIDC (default off) trusts the multi-factor check of the provider.
 - Create users on their first sign-in (default off): a person without an account gets one with the default permissions set on the page. Allowed email domains limit this (comma separated, empty allows any domain; they are dotted host names such as `example.com`, single-label and non-ASCII names are not accepted). Enabled users can always sign in. Warning: with an empty domain list and Require a verified email off, anyone your provider will authenticate gets an account, under any email address they can set at the provider. New users are never administrators, an access list cannot be hidden while proxy hosts are visible, and certificates cannot be hidden while any host type is visible.
 - Button icon: choose a built-in icon, upload a file or download one from a URL. PNG, JPEG, WebP and SVG are accepted, up to 256 KB. SVG files that contain scripts, event handlers, embedded documents or references to other files (anything but `#` fragments and inline PNG, JPEG or WebP images) are refused.
+  Built-in icons: Login, Key, Lock, Shield, User and Cloud (generic), and the logos of Authentik, Authelia, Keycloak, Okta, Auth0, OpenID, Google, GitHub, GitLab and Gitea. They are shown in the button text colour. An icon saved earlier as Windows keeps working (it shows a grid icon) but is no longer offered.
+  Logo credits: the provider logos come from [Simple Icons](https://simpleicons.org) (CC0), except the following. The [Authelia logo](https://www.authelia.com/reference/guides/branding) is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Keycloak is a trademark of The Linux Foundation, see its [trademark usage](https://www.linuxfoundation.org/legal/trademark-usage) page. All logos are trademarks of their respective owners; their use does not imply endorsement.
 - Sign-in errors are shown on the sign-in page by code: `not_configured`, `provider_error`, `no_email`, `email_not_verified`, `no_user` (no account and auto-create is off), `domain_not_allowed` (email domain not in the allowed list) and `user_disabled`.

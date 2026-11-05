@@ -246,3 +246,20 @@ it("leaves the locks of the GoAccess report setting out of the env locked list",
 	const fromSetting = { NPMPRO_USER_ENV: "", LOGROTATE: "true", GOA: "true" };
 	assert.deepEqual(settingLocksOf({ monitoring: mergeMonitoringConfig({}, fromSetting).locked }), []);
 });
+
+it("names the variable of every locked oidc, monitoring and geoip key (locked_by), names only", async () => {
+	const { lockedByOf } = await import("../lib/environment-info.js");
+	assert.deepEqual(lockedByOf("oidc", ["issuer_url", "client_secret"]), {
+		issuer_url: "OIDC_ISSUER_URL",
+		client_secret: "OIDC_CLIENT_SECRET",
+	});
+	assert.deepEqual(lockedByOf("monitoring", ["retention_days"]), { retention_days: "TRAFFIC_RETENTION_DAYS" });
+	assert.deepEqual(lockedByOf("geoip", ["account_id", "editions"]), {
+		account_id: "GEOIP_ACCOUNT_ID",
+		editions: "GEOIP_EDITIONS",
+	});
+	assert.deepEqual(lockedByOf("geoip", []), {});
+	assert.deepEqual(lockedByOf("oidc", undefined), {});
+	// a key without a name in the map has no entry
+	assert.deepEqual(lockedByOf("oidc", ["unknown_key", "skip_mfa"]), { skip_mfa: "OIDC_SKIP_MFA" });
+});

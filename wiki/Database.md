@@ -4,6 +4,11 @@ NPMpro keeps its hosts, certificates, users, settings, the audit log and the tra
 
 You find this under Settings, Database; only administrators see it.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/database-move-dark.png">
+  <img alt="Settings, Database, with the database in use and the form to move to another one" src="images/database-move-light.png" width="720">
+</picture>
+
 ## What the section shows
 
 - **Database in use:** the engine and its version, where it is (the file, or host, port and database name), its size, and the **Source** of the connection:

@@ -1,29 +1,30 @@
-import {
-	IconChevronDown,
-	IconChevronRight,
-	IconPlus,
-	IconSearch,
-	IconSettings,
-	IconTrash,
-	IconX,
-} from "@tabler/icons-react";
-import cn from "clsx";
+import { ChevronDownIcon, ChevronRightIcon, PlusIcon, SearchIcon, SettingsIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
-import { AccessFields, SwitchField } from "src/components";
+import { AccessFields, Button, SwitchField } from "src/components";
+import { FormSelect } from "src/components/AppSelect";
+import { DESTRUCTIVE_TEXT } from "src/components/Button";
+import { TapTooltip } from "src/components/TapTooltip";
+import { Input } from "src/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useIsAdmin } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
 import { newLocation } from "src/modules/ProxyHostForms";
 import { NoticeAlert } from "../NoticeAlert";
+import { FormField, TextField } from "./FormField";
 import { FormSection } from "./FormSection";
 import { useListRecheck, useReadOnly, useRecheckDependent } from "./HookForm";
 import { ForwardFields, ProxyOptionsFields } from "./ProxyOptionsFields";
 
+// the nginx location modifiers; the empty one is a plain prefix match
+const LOCATION_TYPES = ["", "@", "= ", "~ ", "~* ", "^~ "].map((value) => ({ value, label: value.trim() || "\u00a0" }));
+
 const locationLabel = (row) => `${row.locationType}${row.path}`;
 
-// one custom location: a card with its header (path, target, config marker) and, while open, its fields; row is
-// the row's current values (the controlled field of LocationsFields)
+// one custom location: a bordered card with its header (path, target, config marker, remove) and, while open, its
+// fields; row is the row's current values (the controlled field of LocationsFields)
 function LocationRow({
 	name,
 	index,
@@ -45,108 +46,100 @@ function LocationRow({
 	const formState = useFormState({ name: base });
 	const recheckPath = useRecheckDependent(`${base}.path`);
 	const pathError = getFieldState(`${base}.path`, formState).error?.message ?? null;
+	const pathId = `locationPath-${rowKey}`;
+	const hasConfig = Boolean(row.advancedConfig?.trim());
 	return (
-		<div
-			ref={cardRef}
-			className={cn("card", "card-active", "mb-2", hidden && "d-none")}
-			style={{ "--tblr-card-border-color": "var(--tblr-border-color)" }}
-		>
-			<div className={cn("card-header", "p-2", !open && "border-bottom-0")}>
+		<div ref={cardRef} className={cn("rounded-lg border bg-card", hidden && "hidden")}>
+			<div className="flex items-center gap-2 p-2">
 				<button
 					type="button"
-					className="d-flex flex-fill align-self-stretch align-items-center overflow-hidden p-0 text-start text-body bg-transparent border-0"
+					className="flex min-w-0 flex-1 items-center gap-2 self-stretch rounded-md p-1 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 					aria-expanded={open}
 					aria-controls={`location-body-${rowKey}`}
 					onClick={onToggle}
 				>
-					{open ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
-					<span className="ms-2 fw-medium text-truncate">{locationLabel(row)}</span>
-					<span className="ms-2 text-secondary text-truncate">{forwardSummary(row)}</span>
-					{row.advancedConfig?.trim() && (
-						<span
-							className="ms-2 text-secondary d-flex align-items-center flex-shrink-0"
-							role="img"
-							title={intl.formatMessage({ id: "nginx-config.label" })}
-							aria-label={intl.formatMessage({ id: "nginx-config.label" })}
-						>
-							<IconSettings size={16} />
-						</span>
+					{open ? (
+						<ChevronDownIcon className="size-4 shrink-0" aria-hidden="true" />
+					) : (
+						<ChevronRightIcon className="size-4 shrink-0" aria-hidden="true" />
 					)}
+					<span className="truncate font-medium">{locationLabel(row)}</span>
+					<span className="truncate text-muted-foreground">{forwardSummary(row)}</span>
+					{hasConfig ? (
+						// inside the row's toggle button: hover only, a click must reach the button
+						<TapTooltip content={intl.formatMessage({ id: "tooltip.location-has-config" })} tap={false}>
+							<span
+								className="flex shrink-0 items-center text-muted-foreground"
+								role="img"
+								aria-label={intl.formatMessage({ id: "nginx-config.label" })}
+							>
+								<SettingsIcon className="size-4" aria-hidden="true" />
+							</span>
+						</TapTooltip>
+					) : null}
 				</button>
 				{readOnly ? null : (
-					<button
-						type="button"
-						className="btn btn-action ms-2"
-						title={intl.formatMessage({ id: "action.delete" })}
+					<Button
+						variant="ghost"
+						className={DESTRUCTIVE_TEXT}
+						size="icon-sm"
+						title={intl.formatMessage({ id: "tooltip.location-delete" })}
 						aria-label={intl.formatMessage({ id: "action.delete" })}
 						onClick={onRemove}
 					>
-						<IconTrash size={16} className="icon" />
-					</button>
+						<Trash2Icon aria-hidden="true" />
+					</Button>
 				)}
 			</div>
-			<div className={cn("card-body", !open && "d-none")} id={`location-body-${rowKey}`}>
-				<fieldset disabled={readOnly}>
-					<div className="row mb-3">
-						<SwitchField
-							id={`npmproEnabled-${rowKey}`}
-							label={<T id="enabled" />}
-							{...register(`${base}.npmproEnabled`)}
-						/>
-					</div>
-					<div className="row">
-						<div className="col-md-10">
-							<div className="input-group mb-3">
-								<span className="input-group-text">
-									<T id="location" />
-								</span>
-								<select
+			<div className={cn("flex flex-col gap-4 border-t p-4", !open && "hidden")} id={`location-body-${rowKey}`}>
+				<fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-4">
+					<SwitchField
+						id={`npmproEnabled-${rowKey}`}
+						label={<T id="enabled" />}
+						{...register(`${base}.npmproEnabled`)}
+					/>
+					<FormField id={pathId} label={<T id="location" />} required error={pathError} className="mb-0">
+						{(control) => (
+							<div className="flex gap-2">
+								<FormSelect
 									id={`locationType-${rowKey}`}
-									className="form-select w-auto flex-grow-0"
-									{...register(`${base}.locationType`, {
+									name={`${base}.locationType`}
+									options={LOCATION_TYPES}
+									className="w-auto shrink-0"
+									aria-label={intl.formatMessage({ id: "location.type" })}
+									registerOptions={{
 										// the type and the path together must be unique
 										onChange: () => {
 											recheckPath();
 											recheckPaths();
 										},
-									})}
-								>
-									<option value="" />
-									<option value="@">@</option>
-									<option value="= ">=</option>
-									<option value="~ ">~</option>
-									<option value="~* ">~*</option>
-									<option value="^~ ">^~</option>
-								</select>
-								<input
+									}}
+								/>
+								<Input
 									type="text"
 									{...register(`${base}.path`, { onChange: recheckPaths })}
-									className={cn("form-control", pathError && "is-invalid")}
+									{...control}
 									placeholder="/path"
 									autoComplete="off"
 									required
-									aria-label={intl.formatMessage({ id: "location.path" })}
-									aria-invalid={pathError ? "true" : undefined}
 								/>
-								{pathError ? <div className="invalid-feedback">{pathError}</div> : null}
+								{isAdmin || hasConfig ? (
+									<Button
+										variant="ghost"
+										className="w-auto shrink-0 px-2"
+										size="icon"
+										title={intl.formatMessage({ id: "location.config.toggle" })}
+										aria-label={intl.formatMessage({ id: "location.config.toggle" })}
+										aria-expanded={advOpen}
+										onClick={onToggleAdv}
+									>
+										<SettingsIcon aria-hidden="true" />
+										{hasConfig ? "*" : ""}
+									</Button>
+								) : null}
 							</div>
-						</div>
-						<div className="col-md-2 text-end">
-							{(isAdmin || row.advancedConfig?.trim()) && (
-								<button
-									type="button"
-									className="btn p-0"
-									title={intl.formatMessage({ id: "location.config.toggle" })}
-									aria-label={intl.formatMessage({ id: "location.config.toggle" })}
-									aria-expanded={advOpen}
-									onClick={onToggleAdv}
-								>
-									<IconSettings size={20} />
-									{row.advancedConfig?.trim() ? "*" : ""}
-								</button>
-							)}
-						</div>
-					</div>
+						)}
+					</FormField>
 					{!row.path?.endsWith("/") && (row.locationType === "" || row.locationType === "^~ ") && (
 						<NoticeAlert role="status">
 							<T id="proxy-host.location-no-trailing-slash-warning" />
@@ -164,30 +157,21 @@ function LocationRow({
 					</FormSection>
 				</fieldset>
 				{/* outside the disabled fieldset of a View window: read-only, so it can still be focused and scrolled */}
-				{advOpen && (
-					<div className="">
-						<label className="form-label" htmlFor={`advancedConfig-${rowKey}`}>
-							<T id="location.config.label" />
-						</label>
-						<textarea
-							id={`advancedConfig-${rowKey}`}
-							className="form-control font-monospace"
-							spellCheck={false}
-							placeholder={intl.formatMessage({
-								id: "nginx-config.placeholder",
-							})}
-							{...register(`${base}.advancedConfig`)}
-							rows={8}
-							readOnly={!isAdmin || readOnly}
-							aria-describedby={isAdmin ? undefined : `advancedConfig-hint-${rowKey}`}
-						/>
-						{!isAdmin && (
-							<div className="form-hint" id={`advancedConfig-hint-${rowKey}`}>
-								<T id="nginx-config.admin-only" />
-							</div>
-						)}
-					</div>
-				)}
+				{advOpen ? (
+					<TextField
+						name={`${base}.advancedConfig`}
+						id={`advancedConfig-${rowKey}`}
+						as="textarea"
+						label={<T id="location.config.label" />}
+						hint={isAdmin ? undefined : <T id="nginx-config.admin-only" />}
+						className="mb-0"
+						controlClassName="font-mono"
+						spellCheck={false}
+						placeholder={intl.formatMessage({ id: "nginx-config.placeholder" })}
+						rows={8}
+						readOnly={!isAdmin || readOnly}
+					/>
+				) : null}
 			</div>
 		</div>
 	);
@@ -260,61 +244,57 @@ export function LocationsFields({ name = "locations" }) {
 	if (fields.length === 0) {
 		if (readOnly) {
 			return (
-				<div className="text-secondary text-center my-3">
+				<div className="my-3 text-center text-muted-foreground">
 					<T id="location.none" />
 				</div>
 			);
 		}
 		return (
 			<div className="text-center">
-				<button type="button" className="btn my-3" onClick={handleAdd}>
+				<Button className="my-3" onClick={handleAdd}>
 					<T id="action.add-location" />
-				</button>
+				</Button>
 			</div>
 		);
 	}
 
 	return (
-		<>
-			<div className="row g-2 mb-3">
-				<div className="col">
-					<div className="input-group">
-						<span className="input-group-text">
-							<IconSearch size={16} />
-						</span>
-						<input
-							type="text"
-							className="form-control"
-							autoComplete="off"
-							placeholder={intl.formatMessage({ id: "location.filter" })}
-							aria-label={intl.formatMessage({ id: "location.filter" })}
-							value={filter}
-							onChange={(e) => setFilter(e.target.value)}
-							onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-						/>
-
-						<button
-							type="button"
-							className="btn btn-icon"
-							title={intl.formatMessage({ id: "action.clear" })}
-							aria-label={intl.formatMessage({ id: "action.clear" })}
-							onClick={() => setFilter("")}
-						>
-							<IconX size={16} />
-						</button>
-					</div>
-				</div>
+		<div className="flex flex-col gap-3">
+			<div className="flex items-center gap-2">
+				<InputGroup className="flex-1">
+					<InputGroupAddon>
+						<SearchIcon aria-hidden="true" />
+					</InputGroupAddon>
+					<InputGroupInput
+						type="text"
+						autoComplete="off"
+						placeholder={intl.formatMessage({ id: "location.filter" })}
+						aria-label={intl.formatMessage({ id: "location.filter" })}
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+					/>
+					<InputGroupAddon align="inline-end">
+						<TapTooltip content={intl.formatMessage({ id: "tooltip.filter-clear" })} tap={false}>
+							<InputGroupButton
+								size="icon-xs"
+								aria-label={intl.formatMessage({ id: "action.clear" })}
+								onClick={() => setFilter("")}
+							>
+								<XIcon aria-hidden="true" />
+							</InputGroupButton>
+						</TapTooltip>
+					</InputGroupAddon>
+				</InputGroup>
 				{readOnly ? null : (
-					<div className="col-auto">
-						<button type="button" className="btn" onClick={handleAdd}>
-							<IconPlus size={16} className="me-1" />
-							<T id="action.add-location" />
-						</button>
-					</div>
+					<Button onClick={handleAdd}>
+						<PlusIcon data-icon="inline-start" aria-hidden="true" />
+						<T id="action.add-location" />
+					</Button>
 				)}
 			</div>
 			{!controlledFields.some(matchesFilter) && (
-				<div className="text-secondary text-center my-3">
+				<div className="my-3 text-center text-muted-foreground">
 					<T id="empty-search" />
 				</div>
 			)}
@@ -340,6 +320,6 @@ export function LocationsFields({ name = "locations" }) {
 					}}
 				/>
 			))}
-		</>
+		</div>
 	);
 }

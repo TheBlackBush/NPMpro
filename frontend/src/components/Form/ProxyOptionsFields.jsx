@@ -1,8 +1,7 @@
-import cn from "clsx";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { controlAria, labelClass } from "src/modules/FormFields";
 import { applyChanges } from "src/modules/HookForm";
 import { hostRecheckOnScheme } from "src/modules/ProxyHostForms";
 import {
@@ -17,7 +16,7 @@ import {
 } from "src/modules/ProxyOptions";
 import { SelectField, TextField } from "./FormField";
 import { FormSection } from "./FormSection";
-import { useFieldError, useRecheckDependent } from "./HookForm";
+import { useRecheckDependent } from "./HookForm";
 import { SwitchField } from "./SwitchField";
 import { SwitchList } from "./SwitchList";
 
@@ -31,28 +30,23 @@ function useApplyOption(base) {
 }
 
 /**
- * The scheme, forward host and port of a proxy host or of a custom location, in one row from the md breakpoint. The
- * three labels share the first line of the row, bottom aligned, and the controls the next line, so the controls line
- * up when a label wraps; on phones Bootstrap's order classes put each label above its control again.
+ * The scheme, forward host and port of a proxy host or of a custom location: three fields in one row from the sm
+ * breakpoint (the scheme and the port narrow, the host takes the rest), stacked on phones.
  *
  * @param {Object} props
  * @param {string} [props.base]       the row's path ("locations.2"), "" for the host
  * @param {string} [props.idSuffix]   the row's key, "" for the host
+ * @param {string} [props.className]  of the row (the host window passes its bottom margin)
  */
-export function ForwardFields({ base = "", idSuffix = "" }) {
-	const { register, getValues } = useFormContext();
+export function ForwardFields({ base = "", idSuffix = "", className }) {
+	const { getValues } = useFormContext();
 	const field = (name) => optionField(base, name);
 	const id = (name) => optionId(name, idSuffix);
 	const scheme = useWatch({ name: field("forwardScheme") });
 	const recheckHost = useRecheckDependent(field("forwardHost"));
-	const hostError = useFieldError(field("forwardHost"));
-	const portError = useFieldError(field("forwardPort"));
 	const applyOption = useApplyOption(base);
 	const [resetNotice, setResetNotice] = useState(false);
 	const hostRequired = scheme !== "empty";
-	const schemeAria = controlAria({ id: id("forwardScheme"), hasHint: resetNotice });
-	const hostAria = controlAria({ id: id("forwardHost"), hasHint: scheme === "path", error: hostError });
-	const portAria = controlAria({ id: id("forwardPort"), error: portError });
 
 	const onScheme = (event) => {
 		const next = event.target.value;
@@ -63,89 +57,47 @@ export function ForwardFields({ base = "", idSuffix = "" }) {
 	};
 
 	return (
-		<div className="row">
-			<label
-				className={cn(labelClass(), "col-12 col-md-3 order-first align-self-end")}
-				htmlFor={id("forwardScheme")}
-				id={schemeAria.labelId}
+		<div className={cn("grid items-start gap-3 sm:grid-cols-[8rem_1fr_7rem]", className)}>
+			<SelectField
+				name={field("forwardScheme")}
+				id={id("forwardScheme")}
+				label={<T id="host.forward-scheme" />}
+				required
+				hint={
+					resetNotice ? (
+						<span className="text-warning">
+							<T id="host.forward-scheme.options-reset" />
+						</span>
+					) : undefined
+				}
+				className="mb-0"
+				registerOptions={{ onChange: onScheme }}
 			>
-				<T id="host.forward-scheme" />
-			</label>
-			<label
-				className={cn(labelClass(hostRequired), "col-12 col-md-5 order-2 order-md-1 align-self-end")}
-				htmlFor={id("forwardHost")}
-				id={hostAria.labelId}
-			>
-				<T id="proxy-host.forward-host-path" />
-			</label>
-			<label
-				className={cn(labelClass(), "col-12 col-md-4 order-4 order-md-2 align-self-end")}
-				htmlFor={id("forwardPort")}
-				id={portAria.labelId}
-			>
-				<T id="host.forward-port" />
-			</label>
-			<div className="col-12 col-md-3 order-1 order-md-3 mb-3">
-				<select
-					id={id("forwardScheme")}
-					className="form-select"
-					required
-					aria-describedby={schemeAria["aria-describedby"]}
-					{...register(field("forwardScheme"), { onChange: onScheme })}
-				>
-					{FORWARD_SCHEME_OPTIONS.map((option) => (
-						<option key={option.value} value={option.value}>
-							{option.label ?? intl.formatMessage({ id: option.labelId })}
-						</option>
-					))}
-				</select>
-				{resetNotice ? (
-					<div className="form-hint text-warning" id={schemeAria.hintId}>
-						<T id="host.forward-scheme.options-reset" />
-					</div>
-				) : null}
-			</div>
-			<div className="col-12 col-md-5 order-3 order-md-4 mb-3">
-				<input
-					id={id("forwardHost")}
-					type="text"
-					className={cn("form-control", hostError && "is-invalid")}
-					placeholder="example.com"
-					required={hostRequired}
-					aria-invalid={hostAria["aria-invalid"]}
-					aria-describedby={hostAria["aria-describedby"]}
-					{...register(field("forwardHost"))}
-				/>
-				{hostError ? (
-					<div className="invalid-feedback d-block" id={hostAria.errorId}>
-						{hostError}
-					</div>
-				) : null}
-				{scheme === "path" ? (
-					<div className="form-hint" id={hostAria.hintId}>
-						<T id="host.forward-host.path-hint" />
-					</div>
-				) : null}
-			</div>
-			<div className="col-12 col-md-4 order-5 order-md-5 mb-3">
-				<div className={cn("input-group", portError && "has-validation")}>
-					<input
-						id={id("forwardPort")}
-						type="text"
-						inputMode="numeric"
-						className={cn("form-control", portError && "is-invalid")}
-						placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
-						aria-invalid={portAria["aria-invalid"]}
-						aria-describedby={portAria["aria-describedby"]}
-						{...register(field("forwardPort"))}
-					/>
-					{portError ? (
-						<div className="invalid-feedback d-block" id={portAria.errorId}>
-							{portError}
-						</div>
-					) : null}
-				</div>
-			</div>
+				{FORWARD_SCHEME_OPTIONS.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label ?? intl.formatMessage({ id: option.labelId })}
+					</option>
+				))}
+			</SelectField>
+			<TextField
+				name={field("forwardHost")}
+				id={id("forwardHost")}
+				label={<T id="proxy-host.forward-host-path" />}
+				required={hostRequired}
+				hint={scheme === "path" ? <T id="host.forward-host.path-hint" /> : undefined}
+				className="mb-0"
+				type="text"
+				placeholder="example.com"
+			/>
+			<TextField
+				name={field("forwardPort")}
+				id={id("forwardPort")}
+				label={<T id="host.forward-port" />}
+				className="mb-0"
+				type="text"
+				inputMode="numeric"
+				placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
+			/>
 		</div>
 	);
 }
@@ -169,7 +121,7 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 
 	return (
 		<FormSection heading legend={<T id="options" />}>
-			<SwitchList className="mb-3">
+			<SwitchList>
 				{proxyOptionRows({ forwardScheme, npmproProxyRequestBuffering }).map((row) => (
 					<SwitchField
 						key={row.name}
@@ -178,7 +130,7 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 						hint={
 							row.hintIds.length > 0
 								? row.hintIds.map((hintId) => (
-										<span key={hintId} className="d-block">
+										<span key={hintId} className="block">
 											<T id={hintId} />
 										</span>
 									))
@@ -189,32 +141,40 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 					/>
 				))}
 			</SwitchList>
-			<SelectField name={field("npmproXFrameOptions")} id={id("npmproXFrameOptions")} label="X-Frame-Options">
-				{X_FRAME_OPTIONS.map((value) => (
-					<option key={value} value={value}>
-						{value}
-					</option>
-				))}
-			</SelectField>
-			<SelectField
-				name={field("npmproAuthRequest")}
-				id={id("npmproAuthRequest")}
-				label={<T id="host.auth-request" />}
-				className={npmproAuthRequest === "none" ? "mb-0" : undefined}
-				registerOptions={{
-					onChange: (e) => {
-						applyOption("npmproAuthRequest", e.target.value);
-						// the upstream is hidden without an auth request
-						if (e.target.value === "none") clearErrors(field("npmproAuthRequestUpstream"));
-					},
-				}}
-			>
-				{AUTH_REQUEST_OPTIONS.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</SelectField>
+			{/* two narrow selects side by side from sm up */}
+			<div className="grid items-start gap-3 sm:grid-cols-2">
+				<SelectField
+					name={field("npmproXFrameOptions")}
+					id={id("npmproXFrameOptions")}
+					label="X-Frame-Options"
+					className="mb-0"
+				>
+					{X_FRAME_OPTIONS.map((value) => (
+						<option key={value} value={value}>
+							{value}
+						</option>
+					))}
+				</SelectField>
+				<SelectField
+					name={field("npmproAuthRequest")}
+					id={id("npmproAuthRequest")}
+					label={<T id="host.auth-request" />}
+					className="mb-0"
+					registerOptions={{
+						onChange: (e) => {
+							applyOption("npmproAuthRequest", e.target.value);
+							// the upstream is hidden without an auth request
+							if (e.target.value === "none") clearErrors(field("npmproAuthRequestUpstream"));
+						},
+					}}
+				>
+					{AUTH_REQUEST_OPTIONS.map((option) => (
+						<option key={option.value} value={option.value}>
+							{option.label}
+						</option>
+					))}
+				</SelectField>
+			</div>
 			{npmproAuthRequest === "none" ? null : (
 				<TextField
 					name={field("npmproAuthRequestUpstream")}

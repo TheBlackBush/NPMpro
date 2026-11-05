@@ -5,7 +5,7 @@ import {
 	chartData,
 	chartSeries,
 	countryName,
-	errorRateColor,
+	errorRateTone,
 	filterBans,
 	filterRecent,
 	formatBytes,
@@ -23,7 +23,7 @@ import {
 	secondsLeftNow,
 	shareBar,
 	sparklinePoints,
-	statusColor,
+	statusTone,
 	timeLeftParts,
 	trafficParams,
 } from "./Monitoring.js";
@@ -243,10 +243,12 @@ it("sparklinePoints draws a flat line for zeros and nothing for no data", () => 
 	assert.deepEqual(sparklinePoints([], 10, 10), { line: "", area: "" });
 });
 
-it("errorRateColor follows the 1 % and 5 % thresholds", () => {
-	assert.equal(errorRateColor(0.0099), "secondary");
-	assert.equal(errorRateColor(0.01), "orange");
-	assert.equal(errorRateColor(0.05), "red");
+it("errorRateTone follows the 1 % and 5 % thresholds", () => {
+	assert.equal(errorRateTone(0), "muted");
+	assert.equal(errorRateTone(0.0099), "muted");
+	assert.equal(errorRateTone(0.01), "warning");
+	assert.equal(errorRateTone(0.05), "destructive");
+	assert.equal(errorRateTone(1), "destructive");
 });
 
 it("splits the chart series into times, per-class values and totals", () => {
@@ -452,13 +454,14 @@ it("filterRecent searches host, method, path, status, country and IP", () => {
 	assert.deepEqual(filterRecent(undefined, "x"), []);
 });
 
-it("statusColor follows the chart colours per status class", () => {
-	assert.equal(statusColor(200), "green");
-	assert.equal(statusColor(304), "blue");
-	assert.equal(statusColor(499), "orange");
-	assert.equal(statusColor(502), "red");
-	assert.equal(statusColor(101), "secondary");
-	assert.equal(statusColor(0), "secondary");
+it("statusTone follows the chart classes per status class", () => {
+	assert.equal(statusTone(200), "success");
+	assert.equal(statusTone(304), "info");
+	assert.equal(statusTone(499), "warning");
+	assert.equal(statusTone(502), "destructive");
+	assert.equal(statusTone(101), "muted");
+	assert.equal(statusTone(0), "muted");
+	assert.equal(statusTone("404"), "warning");
 });
 
 it("sends deleteStats only as true together with trafficEnabled false", () => {

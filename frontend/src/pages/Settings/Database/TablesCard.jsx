@@ -1,4 +1,3 @@
-import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
 import {
 	createColumnHelper,
 	createSortedRowModel,
@@ -8,8 +7,10 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { readTablesOpen, tablesSummary, writeTablesOpen } from "src/modules/DatabaseMove";
 
@@ -42,7 +43,7 @@ function TablesCard({ tables }) {
 			}),
 			columnHelper.accessor((row) => row.rows, {
 				id: "rows",
-				meta: { className: "text-end" },
+				meta: { className: "text-right" },
 				header: label("settings.database.rows"),
 				cell: (info) => intl.formatNumber(info.getValue()),
 			}),
@@ -59,28 +60,29 @@ function TablesCard({ tables }) {
 	});
 
 	return (
-		<div className="card mb-4">
-			<div className={open ? "card-header" : "card-header border-0"}>
-				<button
-					type="button"
-					className="btn btn-link text-reset text-start text-decoration-none d-flex align-items-center gap-2 w-100 p-0"
-					aria-expanded={open}
-					aria-controls={bodyId}
-					onClick={toggle}
-				>
-					<div>
-						<h3 className="card-title">
-							<T id="settings.database.tables" />
-						</h3>
-						<div className="card-subtitle">{tablesSummary(tables, intl.formatMessage)}</div>
-					</div>
-					{open ? (
-						<IconChevronDown className="icon ms-auto" aria-hidden="true" />
-					) : (
-						<IconChevronRight className="icon ms-auto" aria-hidden="true" />
-					)}
-				</button>
-			</div>
+		<div className="overflow-hidden rounded-lg border bg-card text-card-foreground">
+			<button
+				type="button"
+				className={cn(
+					"flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset",
+					open && "border-b",
+				)}
+				aria-expanded={open}
+				aria-controls={bodyId}
+				onClick={toggle}
+			>
+				<div className="min-w-0">
+					<h3 className="text-base font-medium">
+						<T id="settings.database.tables" />
+					</h3>
+					<div className="text-sm text-muted-foreground">{tablesSummary(tables, intl.formatMessage)}</div>
+				</div>
+				{open ? (
+					<ChevronDown className="ms-auto size-4 shrink-0" aria-hidden="true" />
+				) : (
+					<ChevronRight className="ms-auto size-4 shrink-0" aria-hidden="true" />
+				)}
+			</button>
 			<div id={bodyId} hidden={!open}>
 				{open ? (
 					<TableLayout

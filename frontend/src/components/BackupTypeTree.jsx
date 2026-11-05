@@ -1,15 +1,18 @@
 import {
-	IconFileCode,
-	IconKey,
-	IconListCheck,
-	IconLock,
-	IconServer2,
-	IconSettings,
-	IconShield,
-	IconUsers,
-} from "@tabler/icons-react";
-import cn from "clsx";
-import { useEffect, useId, useRef } from "react";
+	FileCodeIcon,
+	KeyRoundIcon,
+	ListChecksIcon,
+	LockIcon,
+	ServerIcon,
+	SettingsIcon,
+	ShieldCheckIcon,
+	UsersIcon,
+} from "lucide-react";
+import { useId } from "react";
+import { Badge } from "src/components/ui/badge";
+import { Button } from "src/components/ui/button";
+import { Checkbox } from "src/components/ui/checkbox";
+import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { inSentence } from "src/modules/BackupMerge";
 import { arrangeRows, categoryState, toggleCategory, toggleType } from "src/modules/BackupTypes";
@@ -22,13 +25,13 @@ const CERTIFICATE_KINDS = [
 ];
 
 const CATEGORY_ICONS = {
-	hosts: IconServer2,
-	certificates: IconShield,
-	access_lists: IconLock,
-	dns_credentials: IconKey,
-	users: IconUsers,
-	settings: IconSettings,
-	custom_files: IconFileCode,
+	hosts: ServerIcon,
+	certificates: ShieldCheckIcon,
+	access_lists: LockIcon,
+	dns_credentials: KeyRoundIcon,
+	users: UsersIcon,
+	settings: SettingsIcon,
+	custom_files: FileCodeIcon,
 };
 
 // the rows or files of a category: the sum of its types
@@ -41,7 +44,7 @@ const categoryCount = (category, counts) => {
 function CertificateKinds({ kinds, id }) {
 	if (!kinds) return null;
 	return (
-		<div id={id} className="form-hint mt-2 mb-0">
+		<div id={id} className="mt-2 mb-0 text-xs text-muted-foreground">
 			{CERTIFICATE_KINDS.map(([kind, labelId], index) => (
 				<span key={kind}>
 					{index > 0 ? ", " : null}
@@ -63,7 +66,7 @@ const typeCount = (typeId, counts, itemCounts) => {
 
 function TypeCount({ typeId, counts, itemCounts }) {
 	const text = typeCount(typeId, counts, itemCounts);
-	return text === undefined ? null : <span className="text-secondary ms-1">{text}</span>;
+	return text === undefined ? null : <span className="ml-1 text-muted-foreground">{text}</span>;
 }
 
 // the list button of a type whose items can be chosen one by one, with the open picker under it: an icon button
@@ -71,9 +74,11 @@ function TypeCount({ typeId, counts, itemCounts }) {
 function ChooseButton({ typeId, part, single, open, menuId, onChoose, disabled }) {
 	const typeName = intl.formatMessage({ id: `settings.backup.type.${typeId}` });
 	return (
-		<button
+		<Button
 			type="button"
-			className={cn("btn btn-outline-primary", single ? "btn-sm btn-pill" : "btn-icon rounded-end-pill")}
+			variant="outline"
+			size={single ? "sm" : "default"}
+			className={cn(single ? "rounded-full" : "-ml-px rounded-l-none", "border-primary/40 text-primary")}
 			aria-label={
 				single
 					? undefined
@@ -87,31 +92,32 @@ function ChooseButton({ typeId, part, single, open, menuId, onChoose, disabled }
 			onClick={(e) => onChoose(typeId, e.currentTarget)}
 			disabled={disabled}
 		>
-			<IconListCheck className={cn("icon", single && "me-1")} aria-hidden="true" />
+			<ListChecksIcon aria-hidden="true" />
 			{single ? (
 				<>
 					<T id="settings.backup.choose-items" />
-					<span className="ms-1 opacity-75">
+					<span className="ml-1 opacity-75">
 						<T id="settings.backup.items-of" data={part} />
 					</span>
 				</>
 			) : null}
-		</button>
+		</Button>
 	);
 }
 
-// a type as a pill toggle; joined: its end is square, for the list button after it
+// a type as a checkbox card; joined: its end is square, for the list button after it
 function TypePill({ typeId, checked, onChange, disabled, joined, counts, itemCounts }) {
 	return (
-		<label className="form-selectgroup-item">
-			<input
-				type="checkbox"
-				className="form-selectgroup-input"
-				checked={checked}
-				onChange={onChange}
-				disabled={disabled}
-			/>
-			<span className={cn("form-selectgroup-label", joined && "rounded-end-0")}>
+		// biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the card
+		<label
+			className={cn(
+				"flex h-8 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-sm hover:bg-muted has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
+				checked && "border-primary bg-primary/10",
+				joined && "rounded-r-none",
+			)}
+		>
+			<Checkbox checked={checked} onCheckedChange={onChange} disabled={disabled} />
+			<span>
 				<T id={`settings.backup.type.${typeId}`} />
 				<TypeCount typeId={typeId} counts={counts} itemCounts={itemCounts} />
 			</span>
@@ -121,29 +127,25 @@ function TypePill({ typeId, checked, onChange, disabled, joined, counts, itemCou
 
 // the category header: a checkbox (ticked, cleared or mixed) with the icon, the name and the count
 function CategoryCheck({ category, state, count, onChange, disabled, labelId, describedBy }) {
-	const ref = useRef(null);
-	// indeterminate exists only as a DOM property
-	useEffect(() => {
-		if (ref.current) ref.current.indeterminate = state === "some";
-	}, [state]);
 	const Icon = CATEGORY_ICONS[category.id];
 	return (
-		<label className="d-flex align-items-center gap-2 mb-0 cursor-pointer">
-			<input
-				ref={ref}
-				className="form-check-input m-0"
-				type="checkbox"
-				checked={state === "all"}
-				onChange={onChange}
+		// biome-ignore lint/a11y/noLabelWithoutControl: the Radix checkbox inside is a button, which labels the header
+		<label className="mb-0 flex cursor-pointer items-center gap-2 has-[:disabled]:cursor-not-allowed">
+			<Checkbox
+				checked={state === "some" ? "indeterminate" : state === "all"}
+				onCheckedChange={onChange}
 				disabled={disabled}
-				aria-checked={state === "some" ? "mixed" : undefined}
 				aria-describedby={describedBy}
 			/>
-			{Icon ? <Icon className="icon text-secondary" aria-hidden="true" /> : null}
-			<span id={labelId} className="fw-bold">
+			{Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /> : null}
+			<span id={labelId} className="font-bold">
 				<T id={category.labelId ?? `settings.backup.category.${category.id}`} />
 			</span>
-			{count === undefined ? null : <span className="badge bg-secondary-lt ms-auto">{count}</span>}
+			{count === undefined ? null : (
+				<Badge variant="secondary" className="ml-auto">
+					{count}
+				</Badge>
+			)}
 		</label>
 	);
 }
@@ -167,7 +169,7 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
  * @param {Function}  [props.onChooseItems]     (typeId, button) => void, a list button per selected type of
  *                                              itemCounts: joined to its pill, or "Choose items" in a box of one type
  * @param {string}    [props.openType]          the type whose item picker is open
- * @param {ReactNode} [props.picker]            that picker, a dropdown menu shown under its button
+ * @param {ReactNode} [props.picker]            that picker, a card shown under its button
  * @param {string}    [props.pickerId]          the id of the picker, for aria-controls
  */
 function TypeTree({
@@ -205,98 +207,111 @@ function TypeTree({
 	);
 	return (
 		<div className="mb-3">
-			<div className="d-flex align-items-center mb-2">
-				{label ? <div className="form-label mb-0">{label}</div> : null}
-				<div className="ms-auto d-flex gap-3">
-					<button
+			<div className="mb-2 flex items-center">
+				{label ? <div className="text-sm font-medium">{label}</div> : null}
+				{/* Enter on "None" would clear every type: a window never starts here */}
+				<div className="ml-auto flex gap-3" data-window-start-skip="">
+					<Button
 						type="button"
-						className="btn btn-link btn-sm p-0"
+						variant="link"
+						size="sm"
+						className="h-auto min-h-6 p-0"
 						onClick={() => onChange(allTypes)}
 						disabled={disabled || allSelected}
 					>
 						<T id="settings.backup.select-all" />
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
-						className="btn btn-link btn-sm p-0"
+						variant="link"
+						size="sm"
+						className="h-auto min-h-6 p-0"
 						onClick={() => onChange([])}
 						disabled={disabled || selected.length === 0}
 					>
 						<T id="settings.backup.select-none" />
-					</button>
+					</Button>
 				</div>
 			</div>
-			<div className="row g-2">
-				{arrangeRows(categories).flatMap((row) =>
-					row.map((category) => {
-						const labelId = `${baseId}-${category.id}`;
-						const kindsId = `${labelId}-kinds`;
-						const kinds = category.types.includes("certificates") ? certificateKinds : null;
-						const state = categoryState(category, selected);
-						const several = category.types.length > 1;
-						return (
-							<div key={category.id} className={row.length > 2 ? "col-12 col-md-4" : "col-12 col-md-6"}>
-								<fieldset
-									className={cn("card card-sm h-100", state !== "none" && "border-primary")}
-									aria-labelledby={labelId}
-								>
-									<div className="card-body">
-										<CategoryCheck
-											category={category}
-											state={state}
-											count={
-												several
-													? categoryCount(category, counts)
-													: typeCount(category.types[0], counts, itemCounts)
-											}
-											onChange={() => onChange(toggleCategory(category, selected))}
-											disabled={disabled}
-											labelId={labelId}
-											describedBy={kinds ? kindsId : undefined}
-										/>
-										<CertificateKinds kinds={kinds} id={kindsId} />
-										{several ? (
-											<div className="form-selectgroup form-selectgroup-pills mt-3">
-												{category.types.map((typeId) =>
-													choosable(typeId) ? (
-														<div key={typeId} className="btn-group">
+			{/* the boxes follow the width of their column (the section column is narrow next to the sidebar), not the window */}
+			<div className="@container">
+				<div className="grid grid-cols-1 gap-2 @xl:grid-cols-6">
+					{arrangeRows(categories).flatMap((row) =>
+						row.map((category) => {
+							const labelId = `${baseId}-${category.id}`;
+							const kindsId = `${labelId}-kinds`;
+							const kinds = category.types.includes("certificates") ? certificateKinds : null;
+							const state = categoryState(category, selected);
+							const several = category.types.length > 1;
+							return (
+								<div key={category.id} className={row.length > 2 ? "@xl:col-span-2" : "@xl:col-span-3"}>
+									<fieldset
+										className={cn(
+											"h-full rounded-lg border p-3",
+											state !== "none" && "border-primary",
+										)}
+										aria-labelledby={labelId}
+									>
+										<div>
+											<CategoryCheck
+												category={category}
+												state={state}
+												count={
+													several
+														? categoryCount(category, counts)
+														: typeCount(category.types[0], counts, itemCounts)
+												}
+												onChange={() => onChange(toggleCategory(category, selected))}
+												disabled={disabled}
+												labelId={labelId}
+												describedBy={kinds ? kindsId : undefined}
+											/>
+											<CertificateKinds kinds={kinds} id={kindsId} />
+											{several ? (
+												<div className="mt-3 flex flex-wrap gap-2">
+													{category.types.map((typeId) =>
+														choosable(typeId) ? (
+															<div key={typeId} className="relative flex">
+																<TypePill
+																	typeId={typeId}
+																	checked={selected.includes(typeId)}
+																	onChange={() =>
+																		onChange(toggleType(typeId, selected))
+																	}
+																	disabled={disabled}
+																	joined={true}
+																	counts={counts}
+																	itemCounts={itemCounts}
+																/>
+																{chooseButton(typeId, false)}
+															</div>
+														) : (
 															<TypePill
+																key={typeId}
 																typeId={typeId}
 																checked={selected.includes(typeId)}
 																onChange={() => onChange(toggleType(typeId, selected))}
 																disabled={disabled}
-																joined={true}
+																joined={false}
 																counts={counts}
 																itemCounts={itemCounts}
 															/>
-															{chooseButton(typeId, false)}
-														</div>
-													) : (
-														<TypePill
-															key={typeId}
-															typeId={typeId}
-															checked={selected.includes(typeId)}
-															onChange={() => onChange(toggleType(typeId, selected))}
-															disabled={disabled}
-															joined={false}
-															counts={counts}
-															itemCounts={itemCounts}
-														/>
-													),
-												)}
-											</div>
-										) : null}
-										{!several && choosable(category.types[0]) ? (
-											<div className="dropdown d-inline-block mt-3">
-												{chooseButton(category.types[0], true)}
-											</div>
-										) : null}
-									</div>
-								</fieldset>
-							</div>
-						);
-					}),
-				)}
+														),
+													)}
+												</div>
+											) : null}
+											{!several && choosable(category.types[0]) ? (
+												<div className="relative mt-3 inline-block">
+													{chooseButton(category.types[0], true)}
+												</div>
+											) : null}
+										</div>
+									</fieldset>
+								</div>
+							);
+						}),
+					)}
+				</div>
 			</div>
 		</div>
 	);

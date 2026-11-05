@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 import { useRef, useState } from "react";
 import { deleteAvatar, uploadAvatar } from "src/api/backend";
 import {
@@ -25,18 +26,17 @@ import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 
 /**
- * @param {number|string} id         a user's id, "new" or "me"
- * @param {string}        [section]  "users" when opened from the users list (its Save colour), none from the header
+ * @param {number|string} id  a user's id, "new" or "me"
  */
-const showUserModal = (id, section) => {
-	EasyModal.show(UserModal, { id, section });
+const showUserModal = (id) => {
+	EasyModal.show(UserModal, { id });
 };
 
 const validate = userValidate(validations);
 
 const emptyUser = { name: "", email: "", isAdmin: false, isDisabled: false };
 
-const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
+const UserModal = EasyModal.create(({ id, visible, remove }) => {
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const { data, isPending, error } = useUser(id);
 	const { data: currentUser, isPending: currentIsPending } = useUser("me");
@@ -110,21 +110,22 @@ const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
 				<HookForm methods={methods} onSubmit={onSubmit}>
 					<DirtyTracker dirtyRef={dirtyRef} />
 					<AppModal.Header closeButton={!isSubmitting}>
-						<AppModal.Title>
+						<AppModal.Title className="flex items-center gap-2">
+							<Users className="size-5 shrink-0" aria-hidden="true" />
 							<T id={data?.id ? "object.edit" : "object.add"} tData={{ object: "user" }} />
 						</AppModal.Title>
 					</AppModal.Header>
 					<AppModal.Body>
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						{id !== "new" && (
-							<div className="d-flex align-items-center mb-3">
+							<div className="mb-3 flex items-center gap-2">
 								<GravatarFormatter url={data?.avatar} name={data?.name} size="lg" />
 
 								<input
 									ref={fileInput}
 									type="file"
 									accept="image/png,image/jpeg,image/gif,image/webp"
-									className="d-none"
+									className="hidden"
 									onChange={(e) => {
 										const file = e.target.files?.[0];
 										void changeAvatar(() => uploadAvatar(id, file));
@@ -132,7 +133,7 @@ const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
 									}}
 								/>
 
-								<Button className="me-2" onClick={() => fileInput.current?.click()}>
+								<Button onClick={() => fileInput.current?.click()}>
 									<T id="avatar.upload" />
 								</Button>
 								{data?.avatar?.startsWith("/images/avatar/") && (
@@ -164,13 +165,12 @@ const UserModal = EasyModal.create(({ id, section, visible, remove }) => {
 						) : null}
 					</AppModal.Body>
 					<AppModal.Footer>
-						<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+						<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 							<T id="cancel" />
 						</Button>
 						<FormSubmit
 							className="ms-auto"
 							edit={Boolean(data?.id)}
-							section={section}
 							isLoading={isSubmitting}
 							disabled={isSubmitting}
 						>

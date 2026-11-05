@@ -1,14 +1,23 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { deleteDnsCredential } from "src/api/backend";
-import { Button, ErrorAlert, HasPermission, ImportExportButtons, ListToolbar, LoadingPage } from "src/components";
+import {
+	Button,
+	ErrorAlert,
+	HasPermission,
+	ImportExportButtons,
+	ListPage,
+	ListToolbar,
+	LoadingPage,
+} from "src/components";
 import { useDnsCredentials, useListFilters } from "src/hooks";
 import { T } from "src/locale";
-import { HelpButton, showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
+import { showDeleteConfirmModal, showDnsCredentialModal } from "src/modals";
+import { DNS_CREDENTIAL_LIST_EXPAND } from "src/modules/CertificateTabs";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { CERTIFICATES, MANAGE } from "src/modules/Permissions";
-import { sectionColor, stripeClass } from "src/modules/SectionColors";
 import { showObjectSuccess } from "src/notifications";
-import { Tabs } from "../Tabs";
+import { CertificateTabs } from "../Tabs";
 import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
@@ -16,58 +25,59 @@ export default function TableWrapper() {
 	// only the ids, headers and sortability are read here; the cells render in Table
 	const columns = useColumns();
 	const { filters, setFilter, clear } = useListFilters();
-	const { isFetching, isPending, isError, error, data } = useDnsCredentials(["owner", "certificates"]);
-
-	if (isPending) {
-		return <LoadingPage noLogo delay={300} />;
-	}
-
-	if (isError) {
-		return <ErrorAlert error={error} />;
-	}
+	const { isFetching, isPending, isError, error, data } = useDnsCredentials(DNS_CREDENTIAL_LIST_EXPAND);
 
 	const needle = filters.q.trim().toLowerCase();
 	const displayed = (data ?? []).filter((item) => needle === "" || item.name.toLowerCase().includes(needle));
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
+	const loaded = !(isPending || isError);
+
 	return (
-		<div className="card mt-4">
-			<div className={stripeClass("dnsCredentials")} />
-			<Tabs />
-			<div className="card-table">
-				<div className="card-header flex-wrap gap-2">
-					<h2 className="card-title fs-2 fw-semibold text-nowrap">
-						<T id="dns-credentials" />
-					</h2>
-					<div className="card-actions btn-list">
-						<HelpButton doc="Certificates" />
-						<ImportExportButtons
-							kind="dns_credentials"
-							permissionSection={CERTIFICATES}
-							hasItems={Boolean(data?.length)}
-						/>
-						<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
-							{data?.length ? (
-								<Button
-									size="sm"
-									color={sectionColor("dnsCredentials")}
-									onClick={() => showDnsCredentialModal("new")}
-								>
-									<T id="dns-credentials.add" />
-								</Button>
-							) : null}
-						</HasPermission>
-					</div>
+		<ListPage
+			title={<T id="certificates-dns" />}
+			section="certificates"
+			help="Certificates"
+			tabs={<CertificateTabs />}
+			actions={
+				<>
+					<ImportExportButtons
+						kind="dns_credentials"
+						permissionSection={CERTIFICATES}
+						hasItems={Boolean(data?.length)}
+					/>
+					<HasPermission section={CERTIFICATES} permission={MANAGE} hideError>
+						{data?.length ? (
+							<Button color="primary" size="sm" onClick={() => showDnsCredentialModal("new")}>
+								<Plus data-icon="inline-start" aria-hidden="true" />
+								<T id="dns-credentials.add" />
+							</Button>
+						) : null}
+					</HasPermission>
+				</>
+			}
+			toolbar={
+				loaded ? (
+					<ListToolbar
+						filters={filters}
+						setFilter={setFilter}
+						clear={clear}
+						total={data?.length ?? 0}
+						shown={displayed.length}
+						kinds={[]}
+						sorting={{ columns, state: sorting, onChange: setSorting }}
+					/>
+				) : null
+			}
+		>
+			{/* while the list loads or fails, the title and the tabs stay and the card holds the state */}
+			{isPending ? (
+				<LoadingPage noLogo delay={300} />
+			) : isError ? (
+				<div className="p-4">
+					<ErrorAlert error={error} />
 				</div>
-				<ListToolbar
-					filters={filters}
-					setFilter={setFilter}
-					clear={clear}
-					total={data?.length ?? 0}
-					shown={displayed.length}
-					kinds={[]}
-					sorting={{ columns, state: sorting, onChange: setSorting }}
-				/>
+			) : (
 				<Table
 					data={displayed}
 					isFetching={isFetching}
@@ -90,7 +100,7 @@ export default function TableWrapper() {
 					}}
 					onNew={() => showDnsCredentialModal("new")}
 				/>
-			</div>
-		</div>
+			)}
+		</ListPage>
 	);
 }

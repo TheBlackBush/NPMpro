@@ -1,4 +1,6 @@
 import { useFormContext, useWatch } from "react-hook-form";
+import { Field, FieldDescription, FieldLabel } from "src/components/ui/field";
+import { Textarea } from "src/components/ui/textarea";
 import { useIsAdmin } from "src/hooks";
 import { intl, T } from "src/locale";
 import { useReadOnly } from "./HookForm";
@@ -31,20 +33,21 @@ export function NginxConfigField({
 	const value = useWatch({ name });
 	if (!isAdmin && !value?.trim()) {
 		return emptyHint ? (
-			<div className="text-secondary text-center my-3">
+			<div className="my-3 text-center text-muted-foreground">
 				<T id="nginx-config.admin-only" />
 			</div>
 		) : null;
 	}
 	const describedBy = [hint && `${id}-hint`, !isAdmin && `${id}-admin-hint`].filter(Boolean);
 	return (
-		<div className="mt-3">
-			<label htmlFor={id} className="form-label">
+		<Field className="mt-3">
+			<FieldLabel htmlFor={id}>
 				<T id={label} />
-			</label>
-			<textarea
+			</FieldLabel>
+			<Textarea
 				id={id}
-				className="form-control font-monospace"
+				// fixed rows the user can stretch, not the auto-growing default of Textarea
+				className="field-sizing-fixed min-h-24 resize-y font-mono"
 				spellCheck={false}
 				placeholder={intl.formatMessage({ id: "nginx-config.placeholder" })}
 				rows={9}
@@ -53,15 +56,15 @@ export function NginxConfigField({
 				{...register(name)}
 			/>
 			{hint && (
-				<div className="form-hint" id={`${id}-hint`}>
+				<FieldDescription id={`${id}-hint`}>
 					<T id={hint} />
-				</div>
+				</FieldDescription>
 			)}
 			{!isAdmin && (
-				<div className="form-hint" id={`${id}-admin-hint`}>
+				<FieldDescription id={`${id}-admin-hint`}>
 					<T id="nginx-config.admin-only" />
-				</div>
+				</FieldDescription>
 			)}
-		</div>
+		</Field>
 	);
 }

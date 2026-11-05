@@ -20,7 +20,9 @@ import {
 	useAppForm,
 	useReadOnly,
 } from "src/components";
+import { FieldMessage } from "src/components/Form/FieldMessage";
 import { DirtyTracker, useAccessList, useCanManage, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
+import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import {
 	ACCESS_LIST_TABS,
@@ -31,12 +33,17 @@ import {
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
+import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
+import { sectionIcon } from "src/shell/useNavItems";
 
 const showAccessListModal = (id) => {
 	EasyModal.show(AccessListModal, { id });
 };
+
+const accent = sectionAccent("accessLists");
+const Icon = sectionIcon("accessLists");
 
 // field name -> label for the note next to Save
 const FIELD_LABELS = { accessRules: "access-list.rules-required" };
@@ -48,7 +55,8 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title>
+				<AppModal.Title className="flex items-center gap-2">
+					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
 					<T id={windowTitleId({ editing: Boolean(data.id), readOnly })} tData={{ object: "access-list" }} />
 				</AppModal.Title>
 			</AppModal.Header>
@@ -57,9 +65,9 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 					{errorMsg}
 				</ErrorAlert>
 				{errors.accessRules && isSubmitted ? (
-					<div className="invalid-feedback d-block mb-3" role="alert">
+					<FieldMessage role="alert" className="mb-3">
 						{errors.accessRules.message}
-					</div>
+					</FieldMessage>
 				) : null}
 				<ModalTabs tabs={ACCESS_LIST_TABS}>
 					<TabPane id="details">
@@ -88,15 +96,13 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 				</ModalTabs>
 			</AppModal.Body>
 			<AppModal.Footer>
-				<Button className="btn-link link-secondary" onClick={close} disabled={isSubmitting}>
+				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
 					<T id={readOnly ? "action.close" : "cancel"} />
 				</Button>
 				<HasPermission section={ACCESS_LISTS} permission={MANAGE} hideError>
 					<FormSubmit
 						labels={FIELD_LABELS}
-						className="ms-auto"
 						edit={Boolean(data.id)}
-						section="accessLists"
 						isLoading={isSubmitting}
 						disabled={isSubmitting}
 					>
