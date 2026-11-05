@@ -5,13 +5,14 @@ import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forwar
 import { beautify } from "../lib/nginx-beautify.js";
 import { quoteLocation, serverNames } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
+import { rooted } from "../lib/paths.js";
 import { beautifierOn, effectiveEnv } from "../lib/runtime-config.js";
 import utils from "../lib/utils.js";
 import { nginx as logger } from "../logger.js";
 import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
-const controlApi = new Client("http://localhost", { connect: { socketPath: "/run/nginx-control.sock" } });
+const controlApi = new Client("http://localhost", { connect: { socketPath: rooted("/run/nginx-control.sock") } });
 
 const internalNginx = {
 	/**
@@ -109,9 +110,9 @@ const internalNginx = {
 	 */
 	getConfigName: (host_type, host_id) => {
 		if (host_type === "default") {
-			return "/usr/local/nginx/conf/conf.d/default.conf";
+			return rooted("/usr/local/nginx/conf/conf.d/default.conf");
 		}
-		return `/data/nginx/${host_type}/${host_id}.conf`;
+		return rooted(`/data/nginx/${host_type}/${host_id}.conf`);
 	},
 
 	/**

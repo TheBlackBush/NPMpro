@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { chmod, open, rename, rm } from "node:fs/promises";
 import path from "node:path";
+import { rooted } from "../paths.js";
 
 // The connection a database move saved: /data/npmpro/database.json. Read at startup after the DB_* env vars and before
 // the default SQLite file; an invalid file stops the startup instead of falling back.
 
-const DATA_DIR = "/data/npmpro";
+const DATA_DIR = rooted("/data/npmpro");
 const DATABASE_FILE = `${DATA_DIR}/database.json`;
 const DEFAULT_SQLITE = `${DATA_DIR}/database.sqlite`;
 const ENGINES = ["sqlite", "mysql", "postgres"];

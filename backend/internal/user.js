@@ -2,6 +2,7 @@ import { rm, writeFile } from "node:fs/promises";
 import errs from "../lib/error.js";
 import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
+import { rooted } from "../lib/paths.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
@@ -80,8 +81,8 @@ const internalUser = {
 
 	deleteAvatarFiles: async (id) => {
 		for (const e of avatarExts) {
-			await rm(`/data/public/avatar/${id}.${e}`, { force: true });
-			await rm(`/data/public/gravatar/${id}.${e}`, { force: true });
+			await rm(rooted(`/data/public/avatar/${id}.${e}`), { force: true });
+			await rm(rooted(`/data/public/gravatar/${id}.${e}`), { force: true });
 		}
 	},
 
@@ -91,7 +92,7 @@ const internalUser = {
 		if (!ext) throw new errs.ValidationError("Invalid avatar file type");
 		const user = await internalUser.get(access, { id });
 		await internalUser.deleteAvatarFiles(user.id);
-		await writeFile(`/data/public/avatar/${user.id}.${ext}`, file.buffer);
+		await writeFile(rooted(`/data/public/avatar/${user.id}.${ext}`), file.buffer);
 		await userModel
 			.query()
 			.findById(user.id)
@@ -111,7 +112,7 @@ const internalUser = {
 	deleteAvatar: async (access, id) => {
 		access.canUser(id);
 		const user = await internalUser.get(access, { id });
-		for (const e of avatarExts) await rm(`/data/public/avatar/${user.id}.${e}`, { force: true });
+		for (const e of avatarExts) await rm(rooted(`/data/public/avatar/${user.id}.${e}`), { force: true });
 		await userModel.query().findById(user.id).patch({ avatar: "" });
 		return internalUser.update(access, { id: user.id });
 	},

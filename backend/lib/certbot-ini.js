@@ -1,9 +1,10 @@
 import nodeFs from "node:fs/promises";
 import path from "node:path";
+import { rooted } from "./paths.js";
 
 // The live certbot config: start.sh copies the image's /etc/certbot.ini here at boot and edits it from env, the
 // backend writes it again from the runtime settings (/etc is not writable for PUID)
-const CERTBOT_INI = "/run/npmpro/certbot.ini";
+const CERTBOT_INI = rooted("/run/npmpro/certbot.ini");
 
 // The image's /etc/certbot.ini (rootfs/etc/certbot.ini, kept equal by a test)
 const CERTBOT_INI_BASE = `logs-dir = /tmp/certbot-log
@@ -25,7 +26,7 @@ must-staple = true
 no-verify-ssl = false
 `;
 
-const RENEWAL_DIR = "/data/tls/certbot/renewal";
+const RENEWAL_DIR = rooted("/data/tls/certbot/renewal");
 const PROFILE_LINE = /^#?required-profile(?:\s*=.*)?$/u;
 const RENEWAL_PROFILE_LINE = /required_profile/u;
 

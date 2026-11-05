@@ -3,12 +3,13 @@ import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew } from "../lib/certbot.js";
 import { buildValues, publicView, toIni } from "../lib/dns-credential-values.js";
 import errs from "../lib/error.js";
+import { rooted } from "../lib/paths.js";
 import { defaultSecretBox, SecretBoxError } from "../lib/secret-box.js";
 import certificateModel from "../models/certificate.js";
 import dnsCredentialModel from "../models/dns_credential.js";
 import internalAuditLog from "./audit-log.js";
 
-const credentialsDir = "/tmp/certbot-credentials";
+const credentialsDir = rooted("/tmp/certbot-credentials");
 
 const decryptOrNull = (row) => {
 	try {

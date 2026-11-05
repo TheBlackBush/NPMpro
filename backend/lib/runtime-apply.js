@@ -9,6 +9,7 @@ import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
 import { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF } from "./log-files.js";
 import { NGINX_CORE_FILES, renderNginxCore } from "./nginx-core.js";
+import { rooted } from "./paths.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
 import { describeHosts } from "./runtime-hosts.js";
 import { acmeServerOf, appliesOf, RESTART_GROUPS, RUNTIME_GROUPS, renderStartupSettings } from "./runtime-rules.js";
@@ -20,14 +21,14 @@ const PATHS = {
 	crontabDir: "/tmp/crontabs",
 	defaultCertConf: DEFAULT_CERT_CONF,
 	tlsDir: TLS_DIR,
-	ipRangesConf: "/usr/local/nginx/conf/conf.d/ip_ranges.conf",
+	ipRangesConf: rooted("/usr/local/nginx/conf/conf.d/ip_ranges.conf"),
 	errorLogConf: ERROR_LOG_CONF,
 	streamLogConf: STREAM_LOG_CONF,
 	accessLogConf: ACCESS_LOG_CONF,
 	logrotateConf: LOGROTATE_CONF,
-	nginxDir: "/data/nginx",
+	nginxDir: rooted("/data/nginx"),
 	// TZ and GOA saved in the UI, read by envs.sh and healthcheck.sh (startup-settings.sh)
-	startupSettings: "/data/npmpro/startup-settings.env",
+	startupSettings: rooted("/data/npmpro/startup-settings.env"),
 	nginxCore: NGINX_CORE_FILES,
 };
 

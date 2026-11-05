@@ -4,6 +4,7 @@ import { fetch } from "undici";
 import pjson from "../package.json" with { type: "json" };
 import errs from "./error.js";
 import { blockedError, guardedAgent, isBlockedAddress } from "./outbound-guard.js";
+import { rooted } from "./paths.js";
 
 /**
  * OIDC login button icon: type detection, SVG checks, URL download and the stored file
@@ -16,7 +17,7 @@ const ICON_MIME = {
 	webp: "image/webp",
 	svg: "image/svg+xml",
 };
-const ICON_DIR = "/data/npmpro";
+const ICON_DIR = rooted("/data/npmpro");
 const DOWNLOAD_TIMEOUT_MS = 10_000;
 const MAX_REDIRECTS = 3;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);

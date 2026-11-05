@@ -1,8 +1,9 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { global as logger } from "../../logger.js";
 import errs from "../error.js";
+import { rooted } from "../paths.js";
 
-const ACCESS_LOG_CONF = "/data/npmpro/nginx/access-log.conf";
+const ACCESS_LOG_CONF = rooted("/data/npmpro/nginx/access-log.conf");
 
 /**
  * The http level access_log directive nginx includes from ACCESS_LOG_CONF

@@ -1,4 +1,5 @@
 import { readdir, rm } from "node:fs/promises";
+import { rooted } from "../lib/paths.js";
 import { setup as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
 import deadModel from "../models/dead_host.js";
@@ -12,7 +13,7 @@ import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const HOST_CONFIG_DIRS = ["proxy_host", "redirection_host", "dead_host", "stream"];
-const ACCESS_DIR = "/data/access";
+const ACCESS_DIR = rooted("/data/access");
 const ACCESS_FILE = /^\d+$/u;
 
 // the host types with the graph their configs are rendered from
@@ -33,9 +34,9 @@ const HOST_TYPES = [
  */
 const removeLeftoverConfigs = async (written) => {
 	for (const dir of HOST_CONFIG_DIRS) {
-		const names = await readdir(`/data/nginx/${dir}`).catch(() => []);
+		const names = await readdir(rooted(`/data/nginx/${dir}`)).catch(() => []);
 		for (const name of names) {
-			const file = `/data/nginx/${dir}/${name}`;
+			const file = rooted(`/data/nginx/${dir}/${name}`);
 			const isError = name.endsWith(".conf.err");
 			const config = isError ? file.slice(0, -".err".length) : file;
 			if (name.endsWith(".conf.stale") || ((isError || name.endsWith(".conf")) && !written.has(config))) {

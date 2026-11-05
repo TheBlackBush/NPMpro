@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
 import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
+import { rooted } from "../lib/paths.js";
 import { writeSecretFile } from "../lib/secret-file.js";
 import { access as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
@@ -383,7 +384,7 @@ const internalAccessList = {
 	 * @param   {Integer} list.id
 	 * @returns {String}
 	 */
-	getFilename: (list) => `/data/access/${list.id}`,
+	getFilename: (list) => rooted(`/data/access/${list.id}`),
 
 	/**
 	 *

@@ -5,6 +5,7 @@ import db from "../db.js";
 import { createBackupStore } from "../lib/backup/store.js";
 import { geoip } from "../lib/geoip/instance.js";
 import { clearDiscoveryCache } from "../lib/oidc-config.js";
+import { rooted } from "../lib/paths.js";
 import { loadRuntimeConfig } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
@@ -24,7 +25,7 @@ import {
 import { runtimeExclusive } from "./runtime-queue.js";
 import { applyAllRuntime } from "./runtime-setting.js";
 
-const KEY_FILE = process.env.NPMPRO_SECRET_KEY_FILE ?? "/data/npmpro/dns-credentials.key";
+const KEY_FILE = process.env.NPMPRO_SECRET_KEY_FILE ?? rooted("/data/npmpro/dns-credentials.key");
 
 // the secret box key (created on its first use), which also derives the key of the automatic backups
 const readInstanceKey = async () => {
@@ -34,12 +35,12 @@ const readInstanceKey = async () => {
 	return key;
 };
 
-const backupStore = createBackupStore({ dir: "/data/backups" });
+const backupStore = createBackupStore({ dir: rooted("/data/backups") });
 
 const internalBackup = createBackupService({
 	knex: db(),
 	box: defaultSecretBox,
-	dataDir: "/data",
+	dataDir: rooted("/data"),
 	store: backupStore,
 	dbVersion: () => db().migrate.currentVersion({ tableName: "migrations", directory: "migrations" }),
 	dbMigrations: () => db()("migrations").pluck("name"),

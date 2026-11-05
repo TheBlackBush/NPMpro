@@ -1,4 +1,5 @@
 import nodeFs from "node:fs/promises";
+import { rooted } from "./paths.js";
 
 /**
  * The default certificate of the default host and the admin UI: an include with its ssl_certificate, ssl_certificate_key
@@ -6,8 +7,8 @@ import nodeFs from "node:fs/promises";
  * The path rules are the ones of start.sh.
  */
 
-const DEFAULT_CERT_CONF = "/data/npmpro/nginx/default-cert.conf";
-const TLS_DIR = "/data/tls";
+const DEFAULT_CERT_CONF = rooted("/data/npmpro/nginx/default-cert.conf");
+const TLS_DIR = rooted("/data/tls");
 const STAPLING_KEYS = ["ocsp_stapling", "custom_ocsp_stapling"];
 
 const statOf = async (fs, file) => {

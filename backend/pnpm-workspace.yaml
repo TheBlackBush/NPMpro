@@ -2,3 +2,5 @@ minimumReleaseAge: 0
 allowBuilds:
   '@scarf/scarf': false
   better-sqlite3: false
+overrides:
+  debug>supports-color: '-'
