@@ -12,6 +12,7 @@ For installs that update to this version:
 - **`TZ` is no longer required.** Without it the Time zone setting (Settings, Advanced) is used, and UTC when that was never saved. An invalid `TZ` still stops the container from starting.
 - **`LOGROTATE` and `GOA` no longer turn on traffic statistics.** Write log files and GoAccess keep the access log on disk, but traffic statistics follow only their own setting or `TRAFFIC_STATS`. If you relied on `LOGROTATE=true` (or GoAccess) for the Monitoring page, set `TRAFFIC_STATS=true` or switch Traffic statistics on once under Settings, Logs & monitoring. The statistics stored so far are kept.
 - Settings that were variables only are now in the web UI. Your variables keep working and lock their fields, so nothing changes until you remove them from `compose.yaml`.
+- **Two users with the same email address:** an old database can hold two users whose addresses differ only in case or surrounding spaces. Only one of them could sign in. On the first start the user that signs in (an enabled user before a disabled one, then the lowest id) keeps the address, and every other user gets `name+dup-<id>@domain`. The log says "shared an email address with another user" with the ids of the users concerned, so you can tell them or change the address under Users. Nothing changes without such a pair.
 
 ## Database copy before upgrades
 

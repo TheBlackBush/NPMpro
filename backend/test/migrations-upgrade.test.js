@@ -794,17 +794,107 @@ it("a user stored twice in different case keeps both rows through the upgrade", 
 	});
 });
 
-it("a user stored twice in different case does not end as two users with one address", { todo: "BUG-12" }, async () => {
-	await atMigration("20260913183434_lowercase_emails", async (knex, { step }) => {
-		await put(knex, "user", { email: "A@x.example", roles: "[]" });
-		await put(knex, "user", { email: "a@x.example", roles: "[]" });
-		// the app refuses a second user with a taken address (internal/user.js isEmailAvailable), so the upgrade must
-		// either stop with an error or keep the addresses distinct
-		const failed = await step().then(
-			() => false,
-			() => true,
+it("a user stored twice in different case does not end as two users with one address", async () => {
+	await atMigration("20260913183434_lowercase_emails", async (knex, { rest }) => {
+		const upper = await put(knex, "user", { email: "A@x.example", roles: "[]" });
+		const lower = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		await rest();
+		const rows = await knex("user").orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => row.id),
+			[upper, lower],
 		);
-		const emails = await knex("user").pluck("email");
-		assert.ok(failed || new Set(emails).size === emails.length, `two users share an address: ${emails}`);
+		assert.equal(new Set(rows.map((row) => row.email)).size, 2);
+		assert.equal(rows[0].email, "a@x.example");
+	});
+});
+
+// the address the login finds: enabled first, then the lowest id (internal/token.js)
+const loginFinds = (knex, email) => knex("user").where("email", email).orderBy("is_disabled").orderBy("id").first();
+
+it("20261106180000_distinct_user_emails keeps the address with the first user of three", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const ids = [];
+		for (const email of ["a@x.example", "A@X.example", " a@x.example "]) {
+			ids.push(await put(knex, "user", { email, roles: "[]" }));
+		}
+		await step();
+		const rows = await knex("user").orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => row.email),
+			["a@x.example", `a+dup-${ids[1]}@x.example`, `a+dup-${ids[2]}@x.example`],
+		);
+		assert.equal((await loginFinds(knex, "a@x.example")).id, ids[0]);
+	});
+});
+
+it("20261106180000_distinct_user_emails keeps the address with the enabled user, not the lowest id", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const off = await put(knex, "user", { email: "a@x.example", is_disabled: 1, roles: "[]" });
+		const on = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const also = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const before = (await loginFinds(knex, "a@x.example")).id;
+		await step();
+		assert.equal(before, on);
+		assert.equal((await loginFinds(knex, "a@x.example")).id, on);
+		assert.equal((await knex("user").where("id", off).first()).email, `a+dup-${off}@x.example`);
+		assert.equal((await knex("user").where("id", also).first()).email, `a+dup-${also}@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails also changes an address with no at sign", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const first = await put(knex, "user", { email: "nobody", roles: "[]" });
+		const second = await put(knex, "user", { email: "Nobody", roles: "[]" });
+		await step();
+		assert.equal((await knex("user").where("id", first).first()).email, "nobody");
+		assert.equal((await knex("user").where("id", second).first()).email, `nobody+dup-${second}`);
+	});
+});
+
+it("20261106180000_distinct_user_emails keeps an address at the length limit within 255 characters", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const domain = "@x.example";
+		const email = `${"a".repeat(255 - domain.length)}${domain}`;
+		const first = await put(knex, "user", { email, roles: "[]" });
+		const second = await put(knex, "user", { email: email.toUpperCase(), roles: "[]" });
+		await step();
+		const kept = (await knex("user").where("id", first).first()).email;
+		const changed = (await knex("user").where("id", second).first()).email;
+		assert.equal(kept, email);
+		assert.ok(changed.length <= 255, `${changed.length} characters`);
+		assert.ok(changed.endsWith(`+dup-${second}${domain}`));
+		assert.notEqual(changed, kept);
+	});
+});
+
+it("20261106180000_distinct_user_emails does not hand out an address another user already has", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const second = await put(knex, "user", { email: "A@x.example", roles: "[]" });
+		await put(knex, "user", { email: `a+dup-${second}@x.example`, roles: "[]" });
+		await step();
+		const emails = await knex("user").orderBy("id").pluck("email");
+		assert.equal(new Set(emails).size, 3);
+		assert.equal(emails[2], `a+dup-${second}@x.example`);
+		assert.equal(emails[1], `a+dup-${second}-1@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails treats addresses that differ only by spaces as the same", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const spaced = await put(knex, "user", { email: "  a@x.example  ", roles: "[]" });
+		await step();
+		assert.equal((await knex("user").where("id", spaced).first()).email, `a+dup-${spaced}@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails leaves a database without duplicates as it is", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const emails = ["a@x.example", "B@x.example", "c@y.example", "plain"];
+		for (const email of emails) await put(knex, "user", { email, roles: "[]" });
+		await step();
+		assert.deepEqual(await knex("user").orderBy("id").pluck("email"), emails);
 	});
 });
