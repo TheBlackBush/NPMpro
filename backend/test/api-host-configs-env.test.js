@@ -43,8 +43,6 @@ before(async () => {
 			CUSTOM_OCSP_STAPLING: "true",
 		},
 	});
-	// a login in the same second as the first user is refused (token_valid_after)
-	mock.timers.tick(5000);
 	ctx.admin = await ctx.api.admin();
 });
 after(() => {

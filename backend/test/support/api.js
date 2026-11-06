@@ -208,6 +208,10 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 			return session;
 		};
 
+		// The column default is the second of the migration and a token issued in that second or before is refused, so a
+		// login right after the setup would depend on the speed of the machine. A stored 0 refuses nothing.
+		const openSessions = (where) => db().from("user").where(where).update({ npmpro_token_valid_after: 0 });
+
 		let adminSession = null;
 		const admin = async () => {
 			if (adminSession) return adminSession;
@@ -220,6 +224,7 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 				}),
 				"setup",
 			);
+			await openSessions({ email });
 			adminSession = await login(email);
 			return adminSession;
 		};
@@ -238,6 +243,7 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 				}),
 				"create user",
 			);
+			await openSessions({ id: user.id });
 			assertOk(await session.put(`/users/${user.id}/permissions`, permissions), "set permissions");
 			const own = await login(email);
 			own.user = user;
