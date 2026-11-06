@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { cleanStreamData } from "../lib/stream-rules.js";
 
-it("sends PROXY protocol v2 instead of v1 over UDP", () => {
-	const out = cleanStreamData({ tcp_forwarding: true, udp_forwarding: true, npmpro_proxy_protocol_forwarding: 1 });
-	assert.equal(out.npmpro_proxy_protocol_forwarding, 2);
-	assert.equal(out.npmpro_proxy_tls, false);
-	assert.equal(out.certificate_id, 0);
-});
-
-it("keeps v1 over TCP only and v2 or off over UDP", () => {
+it("sends PROXY protocol v2 instead of v1 over UDP, and keeps v1 over TCP only", () => {
+	{
+		const out = cleanStreamData({
+			tcp_forwarding: true,
+			udp_forwarding: true,
+			npmpro_proxy_protocol_forwarding: 1,
+		});
+		assert.equal(out.npmpro_proxy_protocol_forwarding, 2);
+		assert.equal(out.npmpro_proxy_tls, false);
+		assert.equal(out.certificate_id, 0);
+	}
 	assert.equal(
 		cleanStreamData({ tcp_forwarding: true, npmpro_proxy_protocol_forwarding: 1 }).npmpro_proxy_protocol_forwarding,
 		1,

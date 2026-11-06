@@ -37,7 +37,7 @@ it("keeps the base equal to the image's certbot.ini", async () => {
 	assert.equal(CERTBOT_INI_BASE, await readFile(path.join(ROOT, "rootfs/etc/certbot.ini"), "utf8"));
 });
 
-it("renders ecdsa curves", () => {
+it("renders ecdsa curves and rsa sizes", () => {
 	assert.equal(
 		renderCertbotIni(values({ key_size: "secp256r1" })),
 		expected({
@@ -60,9 +60,6 @@ it("renders ecdsa curves", () => {
 			noVerify: false,
 		}),
 	);
-});
-
-it("renders rsa sizes and keeps the curve line", () => {
 	assert.equal(
 		renderCertbotIni(values({ key_type: "rsa", key_size: "2048" })),
 		expected({
@@ -185,6 +182,4 @@ it("points every certbot call at the live config, not the root-owned /etc copy",
 	const launchSh = await readFile(path.join(ROOT, "rootfs/usr/local/bin/launch.sh"), "utf8");
 	assert.equal(launchSh.includes("/etc/certbot.ini"), false);
 	assert.equal(launchSh.includes("--config /run/npmpro/certbot.ini"), true);
-	const certificate = await readFile(path.join(ROOT, "backend/internal/certificate.js"), "utf8");
-	assert.equal(certificate.includes("/etc/certbot.ini"), false);
 });

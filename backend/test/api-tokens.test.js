@@ -221,13 +221,35 @@ it("logs out: the cookie is cleared, the old cookie stops working and the sessio
 	assert.equal((await other.get("/users/me")).status, 200);
 });
 
-it("answers a logout without a session or with a broken cookie with 200", async () => {
+it("answers a logout without a session or with a broken cookie with 200 and clears the cookie", async () => {
 	const none = await api.client().delete("/tokens");
 	assert.equal(none.status, 200);
 	assert.equal(none.body.expires, "1970-01-01T00:00:00.000Z");
+	assert.match(setCookie(none, SESSION), CLEARED);
 	const broken = api.client();
 	broken.jar.set(SESSION, "s%3Agarbage.garbage");
-	assert.equal((await broken.delete("/tokens")).status, 200);
+	const done = await broken.delete("/tokens");
+	assert.equal(done.status, 200);
+	assert.match(setCookie(done, SESSION), CLEARED);
+});
+
+it("answers a logout with a signed cookie whose token ran out with 200, clears the cookie and stores no revocation", async () => {
+	const { email } = await account();
+	const session = api.client();
+	await session.post("/tokens", { identity: email, secret: PASSWORD });
+	const now = Date.now();
+	try {
+		mock.timers.tick(2 * 60 * MINUTE);
+		assert.equal((await session.get("/users/me")).status, 401);
+		const revokedBefore = (await api.db("session_revocation").count({ n: "*" }).first()).n;
+		const logout = await session.delete("/tokens");
+		assert.equal(logout.status, 200);
+		assert.equal(logout.body.expires, "1970-01-01T00:00:00.000Z");
+		assert.match(setCookie(logout, SESSION), CLEARED);
+		assert.equal((await api.db("session_revocation").count({ n: "*" }).first()).n, revokedBefore);
+	} finally {
+		mock.timers.setTime(now);
+	}
 });
 
 it("a valid session of a deleted user gets 401, not data", async () => {

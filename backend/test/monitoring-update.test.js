@@ -204,28 +204,54 @@ it("does not run onShowIpsOn when the env locks show_ips off", async () => {
 	assert.equal(calls, 0);
 });
 
-it("runs onUniqueVisitorsOff before the save", async () => {
-	const store = fakeStore({ unique_visitors: true });
-	const events = [];
-	const update = createMonitoringUpdater({
-		readStored: store.readStored,
-		saveStored: async (next) => {
-			await store.saveStored(next);
-			events.push("save");
-		},
-		deleteIps: ok,
-		env: {},
-		hooks: {
-			onTrafficEnabledChange: ok,
-			onShowIpsOff: ok,
-			onUniqueVisitorsOff: async () => {
-				events.push("off");
+it("runs onUniqueVisitorsOff before the save, and both off hooks before one save", async () => {
+	{
+		const store = fakeStore({ unique_visitors: true });
+		const events = [];
+		const update = createMonitoringUpdater({
+			readStored: store.readStored,
+			saveStored: async (next) => {
+				await store.saveStored(next);
+				events.push("save");
 			},
-		},
-	});
-	await update({ unique_visitors: false });
-	assert.deepEqual(events, ["off", "save"]);
-	assert.deepEqual(store.get(), { unique_visitors: false });
+			deleteIps: ok,
+			env: {},
+			hooks: {
+				onTrafficEnabledChange: ok,
+				onShowIpsOff: ok,
+				onUniqueVisitorsOff: async () => {
+					events.push("off");
+				},
+			},
+		});
+		await update({ unique_visitors: false });
+		assert.deepEqual(events, ["off", "save"]);
+		assert.deepEqual(store.get(), { unique_visitors: false });
+	}
+	{
+		const store = fakeStore({ show_ips: true, unique_visitors: true });
+		const events = [];
+		const update = createMonitoringUpdater({
+			readStored: store.readStored,
+			saveStored: async (next) => {
+				await store.saveStored(next);
+				events.push("save");
+			},
+			deleteIps: ok,
+			env: {},
+			hooks: {
+				onTrafficEnabledChange: ok,
+				onShowIpsOff: async () => {
+					events.push("ips");
+				},
+				onUniqueVisitorsOff: async () => {
+					events.push("visitors");
+				},
+			},
+		});
+		await update({ show_ips: false, unique_visitors: false });
+		assert.deepEqual(events, ["ips", "visitors", "save"]);
+	}
 });
 
 it("saves nothing when onUniqueVisitorsOff rejects", async () => {
@@ -288,31 +314,6 @@ it("ignores unique_visitors when the env locks it", async () => {
 	await update({ unique_visitors: false });
 	assert.equal(calls, 0);
 	assert.deepEqual(store.get(), { unique_visitors: true });
-});
-
-it("runs both off hooks before one save", async () => {
-	const store = fakeStore({ show_ips: true, unique_visitors: true });
-	const events = [];
-	const update = createMonitoringUpdater({
-		readStored: store.readStored,
-		saveStored: async (next) => {
-			await store.saveStored(next);
-			events.push("save");
-		},
-		deleteIps: ok,
-		env: {},
-		hooks: {
-			onTrafficEnabledChange: ok,
-			onShowIpsOff: async () => {
-				events.push("ips");
-			},
-			onUniqueVisitorsOff: async () => {
-				events.push("visitors");
-			},
-		},
-	});
-	await update({ show_ips: false, unique_visitors: false });
-	assert.deepEqual(events, ["ips", "visitors", "save"]);
 });
 
 it("saves visitors_cap unless the env locks it", async () => {

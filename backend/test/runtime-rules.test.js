@@ -530,16 +530,29 @@ it("names the env var that locks each key in locked_by, also for the cross-locks
 	}
 });
 
-it("keeps locked_by in the cache and after prime", async () => {
-	const env = userEnv({ ACME_KEY_SIZE: "4096" });
-	const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
-	const first = await config.getRuntimeConfig("certificates");
-	assert.equal(first.locked_by.key_type, "ACME_KEY_SIZE");
-	assert.equal((await config.getRuntimeConfig("certificates")).locked_by.key_type, "ACME_KEY_SIZE");
-	config.prime("certificates", first);
-	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_by, first.locked_by);
-	config.prime("logs", { values: {}, locked: [] });
-	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_by, {});
+it("keeps locked_by and locked_reason in the cache and after prime", async () => {
+	{
+		const env = userEnv({ ACME_KEY_SIZE: "4096" });
+		const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
+		const first = await config.getRuntimeConfig("certificates");
+		assert.equal(first.locked_by.key_type, "ACME_KEY_SIZE");
+		assert.equal((await config.getRuntimeConfig("certificates")).locked_by.key_type, "ACME_KEY_SIZE");
+		config.prime("certificates", first);
+		assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_by, first.locked_by);
+		config.prime("logs", { values: {}, locked: [] });
+		assert.deepEqual((await config.getRuntimeConfig("logs")).locked_by, {});
+	}
+	{
+		const env = userEnv({ ACME_KEY_SIZE: "4096" });
+		const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
+		const first = await config.getRuntimeConfig("certificates");
+		assert.deepEqual(first.locked_reason, { key_type: "key-size" });
+		assert.equal("invalid" in first, false);
+		config.prime("certificates", first);
+		assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_reason, { key_type: "key-size" });
+		config.prime("logs", { values: {}, locked: [] });
+		assert.deepEqual((await config.getRuntimeConfig("logs")).locked_reason, {});
+	}
 });
 
 it("marks the indirect locks with their reason in locked_reason, direct locks are not in it", () => {
@@ -564,18 +577,6 @@ it("marks the indirect locks with their reason in locked_reason, direct locks ar
 	for (const reason of ["key-size", "ocsp-stapling-off", "must-staple", "goaccess"]) {
 		assert.ok(LOCK_REASONS.includes(reason));
 	}
-});
-
-it("keeps locked_reason in the cache and after prime", async () => {
-	const env = userEnv({ ACME_KEY_SIZE: "4096" });
-	const config = createRuntimeConfig({ readStored: async () => ({}), env, log: { warn: () => {} } });
-	const first = await config.getRuntimeConfig("certificates");
-	assert.deepEqual(first.locked_reason, { key_type: "key-size" });
-	assert.equal("invalid" in first, false);
-	config.prime("certificates", first);
-	assert.deepEqual((await config.getRuntimeConfig("certificates")).locked_reason, { key_type: "key-size" });
-	config.prime("logs", { values: {}, locked: [] });
-	assert.deepEqual((await config.getRuntimeConfig("logs")).locked_reason, {});
 });
 
 const NGINX_DEFAULTS_CPU = String(Math.min(availableParallelism(), 4));

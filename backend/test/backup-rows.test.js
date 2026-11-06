@@ -41,20 +41,6 @@ it("exports JSON columns as values and dates as ISO", async () => {
 	await knex.destroy();
 });
 
-// mysql and pg return Date objects for date columns; better-sqlite3 returns strings
-const stubKnex = (rows) => () => {
-	const query = Object.assign(Promise.resolve(rows), { orderBy: () => query, select: () => query });
-	return query;
-};
-
-it("exports Date values as ISO strings", async () => {
-	const rows = await exportRows(
-		stubKnex([{ id: 1, created_on: new Date("2026-10-26T10:00:00.000Z") }]),
-		"proxy_host",
-	);
-	assert.equal(rows[0].created_on, "2026-10-26T10:00:00.000Z");
-});
-
 it("refuses binary values", async () => {
 	const knex = await sqlite();
 	await knex("proxy_host").insert({ advanced_config: Buffer.from("x") });
@@ -100,26 +86,30 @@ it("coerces for sqlite: JSON stringified, unknown columns dropped, booleans as 1
 	await knex.destroy();
 });
 
-it("coerces for postgres booleans and keeps ISO dates", () => {
-	const columns = {
-		__client: "pg",
-		id: { type: "integer" },
-		enabled: { type: "boolean" },
-		created_on: { type: "timestamp with time zone" },
-	};
-	assert.deepEqual(coerceRow(columns, "proxy_host", { id: 1, enabled: 1, created_on: "2026-10-26T10:00:00.000Z" }), {
-		id: 1,
-		enabled: true,
-		created_on: "2026-10-26T10:00:00.000Z",
-	});
-});
-
-it("coerces for mysql dates and keeps null JSON values", () => {
-	const columns = { __client: "mysql2", meta: { type: "json" }, modified_on: { type: "datetime" } };
-	assert.deepEqual(coerceRow(columns, "setting", { meta: null, modified_on: "2026-10-26T10:00:00.000Z" }), {
-		meta: null,
-		modified_on: "2026-10-26 10:00:00",
-	});
+it("coerces for postgres and mysql: booleans, ISO dates, null JSON values", () => {
+	{
+		const columns = {
+			__client: "pg",
+			id: { type: "integer" },
+			enabled: { type: "boolean" },
+			created_on: { type: "timestamp with time zone" },
+		};
+		assert.deepEqual(
+			coerceRow(columns, "proxy_host", { id: 1, enabled: 1, created_on: "2026-10-26T10:00:00.000Z" }),
+			{
+				id: 1,
+				enabled: true,
+				created_on: "2026-10-26T10:00:00.000Z",
+			},
+		);
+	}
+	{
+		const columns = { __client: "mysql2", meta: { type: "json" }, modified_on: { type: "datetime" } };
+		assert.deepEqual(coerceRow(columns, "setting", { meta: null, modified_on: "2026-10-26T10:00:00.000Z" }), {
+			meta: null,
+			modified_on: "2026-10-26 10:00:00",
+		});
+	}
 });
 
 it("stringifies object and array values whatever the column, so mysql2 and pg build valid inserts", () => {

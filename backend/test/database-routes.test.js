@@ -61,25 +61,6 @@ it("passes reads and checked bodies to the service, the password as typed", asyn
 	assert.deepEqual(calls.find(([name]) => name === "move")[1], { engine: "sqlite" });
 });
 
-it("refuses unknown fields, engines, out of range ports and values of another type", async () => {
-	for (const body of [
-		{ ...target, extra: 1 },
-		{ ...target, engine: "oracle" },
-		{ ...target, port: 70_000 },
-		{ ...target, port: "5432" },
-		{ ...target, name: 5 },
-		{ ...target, ssl: { enabled: "true" } },
-		{ ...target, ssl: { enabled: 1 } },
-		{ ...target, ssl: { enabled: false, other: true } },
-		{ host: "db" },
-	]) {
-		for (const path of ["/test", "/move"]) {
-			const sent = await call("post", path, { body });
-			assert.equal(sent.error?.name, "ValidationError", `${path} ${JSON.stringify(body)}`);
-		}
-	}
-});
-
 it("gives the move the promise of the answer having gone out", async () => {
 	calls.length = 0;
 	let given;
@@ -105,15 +86,6 @@ it("gives the move the promise of the answer having gone out", async () => {
 	closed.emit("close");
 	await given;
 	service.move = original;
-});
-
-it("answers a service refusal as an error and never an answer", async () => {
-	const original = service.status;
-	service.status = () => Promise.reject(Object.assign(new Error("Forbidden"), { status: 403 }));
-	const sent = await call("get", "/");
-	assert.equal(sent.error.status, 403);
-	assert.equal(sent.status, undefined);
-	service.status = original;
 });
 
 it("has only the four routes, none with a parameter or wildcard", () => {

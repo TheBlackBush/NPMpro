@@ -2,30 +2,31 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { cutoffs, errorRate, fillSeries, minutesToHours } from "../lib/traffic/rollup.js";
 
-it("sums minute rows into hour rows", () => {
-	const m = 29_401_020; // a unix minute, divisible by 60
-	const rows = [
-		{ bucket: m, host: "a", status_class: "2xx", requests: 2, bytes: 10 },
-		{ bucket: m + 1, host: "a", status_class: "2xx", requests: 3, bytes: 5 },
-		{ bucket: m, host: "a", status_class: "5xx", requests: 1, bytes: 1 },
-	];
-	const hour = Math.floor(m / 60);
-	assert.deepEqual(
-		minutesToHours(rows).sort((x, y) => x.status_class.localeCompare(y.status_class)),
-		[
-			{ bucket: hour, host: "a", status_class: "2xx", requests: 5, bytes: 15 },
-			{ bucket: hour, host: "a", status_class: "5xx", requests: 1, bytes: 1 },
-		],
-	);
-});
-
-it("puts minutes on either side of an hour boundary into different hours", () => {
-	const m = 29_401_020;
-	const out = minutesToHours([
-		{ bucket: m - 1, host: "a", status_class: "2xx", requests: 1, bytes: 1 },
-		{ bucket: m, host: "a", status_class: "2xx", requests: 1, bytes: 1 },
-	]);
-	assert.deepEqual(out.map((r) => r.bucket).sort(), [m / 60 - 1, m / 60]);
+it("sums minute rows into hour rows and puts minutes on either side of an hour boundary into different hours", () => {
+	{
+		const m = 29_401_020; // a unix minute, divisible by 60
+		const rows = [
+			{ bucket: m, host: "a", status_class: "2xx", requests: 2, bytes: 10 },
+			{ bucket: m + 1, host: "a", status_class: "2xx", requests: 3, bytes: 5 },
+			{ bucket: m, host: "a", status_class: "5xx", requests: 1, bytes: 1 },
+		];
+		const hour = Math.floor(m / 60);
+		assert.deepEqual(
+			minutesToHours(rows).sort((x, y) => x.status_class.localeCompare(y.status_class)),
+			[
+				{ bucket: hour, host: "a", status_class: "2xx", requests: 5, bytes: 15 },
+				{ bucket: hour, host: "a", status_class: "5xx", requests: 1, bytes: 1 },
+			],
+		);
+	}
+	{
+		const m = 29_401_020;
+		const out = minutesToHours([
+			{ bucket: m - 1, host: "a", status_class: "2xx", requests: 1, bytes: 1 },
+			{ bucket: m, host: "a", status_class: "2xx", requests: 1, bytes: 1 },
+		]);
+		assert.deepEqual(out.map((r) => r.bucket).sort(), [m / 60 - 1, m / 60]);
+	}
 });
 
 it("computes cutoffs for 24 hours of minutes and the retention in hours", () => {

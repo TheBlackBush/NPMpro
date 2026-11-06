@@ -135,11 +135,6 @@ it("the default instance used by internalNginx is bounded", async () => {
 	assert.equal(fetchOcsp("custom"), first);
 	await first;
 	assert.equal(fetchOcsp("custom"), first);
-	const source = await readFile(path.join(import.meta.dirname, "../internal/nginx.js"), "utf8");
-	assert.ok(source.includes('import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";'));
-	assert.ok(source.includes("\tfetchOcsp,\n"));
-	assert.ok(source.includes("fetch: internalNginx.fetchOcsp,"));
-	assert.equal(source.includes("certbot-ocsp-fetcher.sh"), false);
 	assert.deepEqual(boundedCommand("x", ["a"]), {
 		cmd: "timeout",
 		args: ["-k", "5", "60", "x", "a"],

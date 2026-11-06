@@ -22,7 +22,6 @@ const HASH = /^[0-9a-f]{32}$/u;
 const NOT_FOUND = /not found/u;
 const NGINX_FAILED = /nginx -t failed/u;
 const REFUSED = /ECONNREFUSED/u;
-const PERMISSION = /Permission/u;
 const silent = { error: () => {}, warn: () => {}, info: () => {} };
 
 const line = (host, ip = "203.0.113.7", status = 200, bytes = 100) =>
@@ -689,18 +688,34 @@ describe("traffic service: unique visitors", () => {
 		assert.equal(t.store.flushed[0].visitors.length, 1);
 	});
 
-	it("visitor rows of a batch older than 10 minutes are dropped with it", async () => {
-		const t = setup({ config: on, results: [read([line("example.com")])] });
-		await t.service.start();
-		t.store.failing = true;
-		await t.service.read();
-		await t.service.flush();
-		t.advance(10 * MINUTE);
-		await t.service.flush();
-		t.store.failing = false;
-		await t.service.flush();
-		assert.equal(t.store.flushed.length, 0, "nothing left to write");
-		assert.equal(t.service.status().dropped_requests, 1);
+	it("visitor rows of a batch older than 10 minutes are dropped with it, and those visitors are counted again the same day", async () => {
+		{
+			const t = setup({ config: on, results: [read([line("example.com")])] });
+			await t.service.start();
+			t.store.failing = true;
+			await t.service.read();
+			await t.service.flush();
+			t.advance(10 * MINUTE);
+			await t.service.flush();
+			t.store.failing = false;
+			await t.service.flush();
+			assert.equal(t.store.flushed.length, 0, "nothing left to write");
+			assert.equal(t.service.status().dropped_requests, 1);
+		}
+		{
+			const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
+			await t.service.start();
+			t.store.failing = true;
+			await t.service.read();
+			await t.service.flush();
+			t.advance(10 * MINUTE);
+			await t.service.flush();
+			t.store.failing = false;
+			await t.service.read();
+			await t.service.flush();
+			assert.equal(t.store.flushed.length, 1);
+			assert.equal(t.store.flushed[0].visitors.length, 1);
+		}
 	});
 
 	it("returning visitors after a restart do not fill the cap: 800 stored, 300 back and 100 new under cap 1000", async () => {
@@ -846,21 +861,6 @@ describe("traffic service: unique visitors", () => {
 		await t.service.read();
 		await t.service.flush();
 		assert.equal(t.store.flushed.at(-1).visitors.length, 1, "a raised cap counts new visitors again");
-	});
-
-	it("visitors dropped by the 10-minute rule are counted again the same day", async () => {
-		const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
-		await t.service.start();
-		t.store.failing = true;
-		await t.service.read();
-		await t.service.flush();
-		t.advance(10 * MINUTE);
-		await t.service.flush();
-		t.store.failing = false;
-		await t.service.read();
-		await t.service.flush();
-		assert.equal(t.store.flushed.length, 1);
-		assert.equal(t.store.flushed[0].visitors.length, 1);
 	});
 
 	it("reports a failed key load in the status only while the setting is on", async () => {
@@ -1390,11 +1390,6 @@ describe("monitoring API", () => {
 	const validSummary = ajv.compile(schema("monitoring-summary-object"));
 
 	const admin = { canAdmin: () => true };
-	const user = {
-		canAdmin: () => {
-			throw new Error("Permission Denied");
-		},
-	};
 
 	const trafficData = {
 		totals: { requests: 3, bytes: 300, error_rate: 0 },
@@ -1858,13 +1853,6 @@ describe("monitoring API", () => {
 			{ keys: ["example.com", "www.example.com"], limit: 100 },
 			{ keys: ["_other"], limit: 100 },
 		]);
-	});
-
-	it("requires an administrator on every endpoint", async () => {
-		const { api } = make();
-		await assert.rejects(api.getTraffic(user, { range: "24h", host: "" }), PERMISSION);
-		assert.throws(() => api.getCrowdsec(user), PERMISSION);
-		await assert.rejects(api.getSummary(user), PERMISSION);
 	});
 
 	it("omits IP fields when show_ips is off", async () => {

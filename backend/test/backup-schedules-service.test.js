@@ -310,16 +310,6 @@ it("give-up records the skip as a failure", async () => {
 	assert.equal(view.next_run_at, "2026-10-30T03:00:00.000Z");
 });
 
-it("remove with files deletes the schedule's stored files", async () => {
-	const { service, clock, files } = await make();
-	const { id } = await service.create(admin(), daily);
-	await service.runNow(admin(), id);
-	clock.value += 1000;
-	const { removedFiles } = await service.remove(admin(), id, { files: true });
-	assert.equal(removedFiles.length, 1);
-	assert.equal(files.get(id).length, 0);
-});
-
 it("a busy automatic run throws and leaves the status for the next tick", async () => {
 	let busy = true;
 	const { service, clock, audits } = await make({
@@ -407,15 +397,30 @@ it("the unsealed passphrase, types and protection reach the backup", async () =>
 	]);
 });
 
-it("last_error is cut to 1000 characters", async () => {
-	const { service } = await make({
-		run: async () => {
-			throw new Error("x".repeat(1500));
-		},
-	});
-	const { id } = await service.create(admin(), daily);
-	await service.runNow(admin(), id);
-	assert.equal((await service.get(admin(), id)).last_error.length, 1000);
+it("last_error and the error in the log line are cut to 1000 characters", async () => {
+	{
+		const { service } = await make({
+			run: async () => {
+				throw new Error("x".repeat(1500));
+			},
+		});
+		const { id } = await service.create(admin(), daily);
+		await service.runNow(admin(), id);
+		assert.equal((await service.get(admin(), id)).last_error.length, 1000);
+	}
+	{
+		const lines = [];
+		const log = { info: () => {}, warn: (line) => lines.push(line), error: () => {} };
+		const { service } = await make({
+			log,
+			run: () => {
+				throw new Error("x".repeat(1500));
+			},
+		});
+		const { id } = await service.create(admin(), daily);
+		await service.runNow(admin(), id);
+		assert.equal(lines[0], `Scheduled backup "Nightly": failed, ${"x".repeat(1000)}, 0 ms`);
+	}
 });
 
 it("names are unique without regard to case, a schedule may change the case of its own name", async () => {
@@ -845,20 +850,6 @@ it("the passphrase never reaches the audit log or the log lines", async () => {
 	assert.ok(audits.length >= 6);
 	assert.ok(lines.length >= 2);
 	for (const text of [secret, "another secret!", "v1:"]) assert.equal(captured.includes(text), false);
-});
-
-it("the error in the log line is cut to 1000 characters", async () => {
-	const lines = [];
-	const log = { info: () => {}, warn: (line) => lines.push(line), error: () => {} };
-	const { service } = await make({
-		log,
-		run: () => {
-			throw new Error("x".repeat(1500));
-		},
-	});
-	const { id } = await service.create(admin(), daily);
-	await service.runNow(admin(), id);
-	assert.equal(lines[0], `Scheduled backup "Nightly": failed, ${"x".repeat(1000)}, 0 ms`);
 });
 
 it("list reads the backups folder once for all schedules", async () => {

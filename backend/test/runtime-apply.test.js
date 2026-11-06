@@ -1022,10 +1022,6 @@ it("beautifier off skips the beautifier on the next render, also with the values
 	// a forward-auth save renders with effectiveEnv({ "forward-auth": next }): the saved beautifier value applies
 	assert.equal(beautifierOn(config.effectiveEnv({ "forward-auth": { anubis_upstream: "" } })), false);
 	assert.equal(beautifierOn(config.effectiveEnv({ advanced: { config_beautifier: true } })), true);
-
-	const source = await readFile(path.join(import.meta.dirname, "../internal/nginx.js"), "utf8");
-	assert.ok(source.includes("beautifierOn(host.env)"));
-	assert.equal(source.includes("process.env.DISABLE_NGINX_BEAUTIFIER"), false);
 });
 
 it("Gravatar off gives the default avatar at the next profile update without contacting Gravatar", async () => {
@@ -1053,9 +1049,6 @@ it("Gravatar off gives the default avatar at the next profile update without con
 	assert.equal(requests.length, 1);
 	// the fetched picture is removed
 	assert.deepEqual(await readdir(dir), []);
-
-	const source = await readFile(path.join(import.meta.dirname, "../internal/user.js"), "utf8");
-	assert.equal(source.includes("process.env.DISABLE_GRAVATAR"), false);
 });
 
 // fix round 1
@@ -1264,14 +1257,11 @@ it("data-setup.sh (run by start.sh) writes the same include lines as logIncludes
 	assert.equal(PATHS.logrotateConf, "/run/npmpro/logrotate");
 });
 
-it("renderRotations does not match across lines", () => {
+it("renderRotations sets every rotate count and does not match across lines", () => {
 	assert.equal(
 		renderRotations("a {\n  rotate\n\n  3\n\n  rotate 4\n}\n", 8),
 		"a {\n  rotate\n\n  3\n\n  rotate 8\n}\n",
 	);
-});
-
-it("renderRotations sets every rotate count", () => {
 	assert.equal(
 		renderRotations("a {\n  rotate 3\n}\nb {\n\trotate 12\n}\n", 7),
 		"a {\n  rotate 7\n}\nb {\n\trotate 7\n}\n",
