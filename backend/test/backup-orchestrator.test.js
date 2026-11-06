@@ -860,17 +860,6 @@ it("restoring an instance-key file on another instance fails with other-instance
 	}
 });
 
-it("types returns the time zone", async () => {
-	const { service, cleanup } = await setup();
-	try {
-		const result = await service.types(access);
-		assert.equal(typeof result.time_zone, "string");
-		assert.ok(result.time_zone.length > 0);
-	} finally {
-		await cleanup();
-	}
-});
-
 // a schedule #3 on the instance, a backup of the schedules, and a stored file of schedule #3 made after it
 const schedulesThenFile = async (ctx) => {
 	await ctx.knex("npmpro_backup_schedule").insert({

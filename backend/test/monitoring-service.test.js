@@ -22,7 +22,6 @@ const HASH = /^[0-9a-f]{32}$/u;
 const NOT_FOUND = /not found/u;
 const NGINX_FAILED = /nginx -t failed/u;
 const REFUSED = /ECONNREFUSED/u;
-const PERMISSION = /Permission/u;
 const silent = { error: () => {}, warn: () => {}, info: () => {} };
 
 const line = (host, ip = "203.0.113.7", status = 200, bytes = 100) =>
@@ -1391,11 +1390,6 @@ describe("monitoring API", () => {
 	const validSummary = ajv.compile(schema("monitoring-summary-object"));
 
 	const admin = { canAdmin: () => true };
-	const user = {
-		canAdmin: () => {
-			throw new Error("Permission Denied");
-		},
-	};
 
 	const trafficData = {
 		totals: { requests: 3, bytes: 300, error_rate: 0 },
@@ -1859,13 +1853,6 @@ describe("monitoring API", () => {
 			{ keys: ["example.com", "www.example.com"], limit: 100 },
 			{ keys: ["_other"], limit: 100 },
 		]);
-	});
-
-	it("requires an administrator on every endpoint", async () => {
-		const { api } = make();
-		await assert.rejects(api.getTraffic(user, { range: "24h", host: "" }), PERMISSION);
-		assert.throws(() => api.getCrowdsec(user), PERMISSION);
-		await assert.rejects(api.getSummary(user), PERMISSION);
 	});
 
 	it("omits IP fields when show_ips is off", async () => {

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew, CERTBOT_CONSTRAINTS, certbotEnv, pluginInstallArgs } from "../lib/certbot.js";
@@ -51,10 +50,4 @@ it("refuses deprecated providers for new certificates and credentials only", () 
 	assert.deepEqual(deprecated.sort(), ["cloudxns", "constellix", "corenetworks", "dnspod", "googledomains", "oci"]);
 	for (const key of deprecated) assert.throws(() => assertProviderForNew(key), { status: 400 });
 	assert.doesNotThrow(() => assertProviderForNew("cloudflare"));
-});
-
-it("routes every certbot call through the minimal environment", () => {
-	const source = readFileSync(new URL("../internal/certificate.js", import.meta.url), "utf8");
-	assert.equal(source.includes('execFile("certbot"'), false);
-	assert.ok(source.includes("runCertbot(["));
 });

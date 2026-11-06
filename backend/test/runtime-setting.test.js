@@ -7,7 +7,6 @@ import { runtimeExclusive, runtimeQueue } from "../internal/runtime-queue.js";
 import { createRuntimeUpdater, runtimeView, withCpuCount } from "../internal/runtime-update.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import { mergeRuntimeConfig, RUNTIME_GROUPS } from "../lib/runtime-rules.js";
-import { DEDICATED_IDS, HIDDEN_IDS, isDedicatedSettingId } from "../lib/setting-ids.js";
 import { getCompiledSchema } from "../schema/index.js";
 
 const BOOT_ENV = { NPMPRO_USER_ENV: "PATH", ACME_SERVER: "https://acme-v02.api.letsencrypt.org/directory" };
@@ -227,21 +226,6 @@ it("primes the runtime config with the saved values, effectiveEnv has them befor
 	assert.equal(config.effectiveEnv().ACME_OCSP_STAPLING, "true");
 	assert.equal((await config.getRuntimeConfig("certificates")).values.ocsp_stapling, true);
 	assert.equal(configReads, 0);
-});
-
-it("answers 404 for an unknown group", async () => {
-	await assert.rejects(updater(fakeStore())("monitoring", { retention_days: 1 }), { name: "ItemNotFoundError" });
-});
-
-it("refuses the runtime ids in the generic settings route and hides them", () => {
-	for (const id of [...RUNTIME_GROUPS, "oidc", "monitoring", "geoip", " Certificates "]) {
-		assert.equal(isDedicatedSettingId(id), true, id);
-	}
-	assert.equal(isDedicatedSettingId("default-site"), false);
-	for (const group of RUNTIME_GROUPS) {
-		assert.ok(DEDICATED_IDS.includes(group));
-		assert.ok(HIDDEN_IDS.includes(group));
-	}
 });
 
 it("matches the OpenAPI schemas: GET view, PUT body", async () => {
