@@ -192,9 +192,7 @@ it("20260913183434_lowercase_emails lowercases and trims stored addresses", asyn
 });
 
 it("20260913183435_recache_gravatars fetches again for users without an own avatar", async () => {
-	await atMigration("20260913183435_recache_gravatars", async (knex, { step, db }) => {
-		await mkdir(`${db.dir}/gravatar`, { recursive: true });
-		await writeFile(`${db.dir}/gravatar/old.jpg`, "x");
+	await atMigration("20260913183435_recache_gravatars", async (knex, { step }) => {
 		const plain = await put(knex, "user", { avatar: "/data/gravatar/old.jpg", roles: "[]" });
 		const own = await put(knex, "user", { avatar: "/images/avatar/7.jpg", roles: "[]" });
 		const gone = await put(knex, "user", { avatar: "/data/gravatar/old.jpg", is_deleted: 1, roles: "[]" });
@@ -202,16 +200,6 @@ it("20260913183435_recache_gravatars fetches again for users without an own avat
 		assert.equal((await knex("user").where("id", plain).first()).avatar, "/images/default-avatar.jpg");
 		assert.equal((await knex("user").where("id", own).first()).avatar, "/images/avatar/7.jpg");
 		assert.equal((await knex("user").where("id", gone).first()).avatar, "/data/gravatar/old.jpg");
-		await assert.rejects(readFile(`${db.dir}/gravatar/old.jpg`), { code: "ENOENT" });
-	});
-});
-
-it("20260913183435_recache_gravatars leaves the disk alone on a database without users", async () => {
-	await atMigration("20260913183435_recache_gravatars", async (_knex, { step, db }) => {
-		await mkdir(`${db.dir}/gravatar`, { recursive: true });
-		await writeFile(`${db.dir}/gravatar/old.jpg`, "x");
-		await step();
-		assert.equal(await readFile(`${db.dir}/gravatar/old.jpg`, "utf8"), "x");
 	});
 });
 
@@ -547,6 +535,20 @@ it("20261010135653_hard_delete removes deleted users with their auth and permiss
 	await atMigration("20261010135653_hard_delete", async (knex, { step, db }) => {
 		const gone = await put(knex, "user", { is_deleted: 1, nickname: "n", roles: "[]" });
 		const live = await put(knex, "user", { nickname: "n", roles: "[]" });
+		const files = [];
+		for (const [id, kind, ext] of [
+			[gone, "avatar", "png"],
+			[gone, "gravatar", "jpg"],
+			[gone, "avatar", "gif"],
+			[gone, "gravatar", "webp"],
+			[live, "avatar", "png"],
+			[live, "gravatar", "jpg"],
+		]) {
+			const file = `${db.dir}/data/public/${kind}/${id}.${ext}`;
+			await mkdir(path.dirname(file), { recursive: true });
+			await writeFile(file, "x");
+			files.push([id, file]);
+		}
 		await put(knex, "auth", { user_id: gone, type: "password" });
 		await put(knex, "auth", { user_id: live, type: "password" });
 		await put(knex, "user_permission", { user_id: gone });
@@ -555,7 +557,10 @@ it("20261010135653_hard_delete removes deleted users with their auth and permiss
 		assert.deepEqual(await knex("user").pluck("id"), [live]);
 		assert.deepEqual(await knex("auth").pluck("user_id"), [live]);
 		assert.deepEqual(await knex("user_permission").pluck("user_id"), [live]);
-		assert.deepEqual(db.deletedAvatars, [gone]);
+		for (const [id, file] of files) {
+			if (id === gone) await assert.rejects(readFile(file), { code: "ENOENT" });
+			else assert.equal(await readFile(file, "utf8"), "x");
+		}
 		assert.equal((await knex("user").where("id", live).first()).nickname, "");
 	});
 });

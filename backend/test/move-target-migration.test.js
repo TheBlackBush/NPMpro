@@ -7,11 +7,11 @@ import { up as recacheGravatars } from "../migrations/20260913183435_recache_gra
 import { up as hardDelete } from "../migrations/20261010135653_hard_delete.js";
 import { tempSqlite } from "./support/database.js";
 
-// the two migrations that load the user module (useNullAsDefault: every inserted row names every column it needs): an empty database skips it, a database with users behaves as before
+// the two migrations that fetch avatars or remove their files (useNullAsDefault: every inserted row names every column it needs): an empty database skips it, a database with users behaves as before
 const memoryKnex = () =>
 	knexFactory({ client: "better-sqlite3", connection: { filename: ":memory:" }, useNullAsDefault: true });
-const noUserModule = () => {
-	throw new Error("the user module must not be loaded");
+const noFetch = () => {
+	throw new Error("no avatar may be fetched");
 };
 
 const userTable = (knex) =>
@@ -24,25 +24,19 @@ const userTable = (knex) =>
 		t.integer("is_deleted").defaultTo(0);
 	});
 
-it("recache_gravatars on an empty database touches no folder and loads no model", async () => {
+it("recache_gravatars on an empty database fetches nothing", async () => {
 	const knex = memoryKnex();
-	const tmp = await tempSqlite();
 	try {
 		await userTable(knex);
-		const gravatarDir = path.join(tmp.dir, "gravatar");
-		await mkdir(gravatarDir);
-		await writeFile(path.join(gravatarDir, "1.png"), "old");
-		await recacheGravatars(knex, { gravatarDir, loadUser: noUserModule });
-		assert.deepEqual(await readdir(gravatarDir), ["1.png"]);
+		await recacheGravatars(knex, { fetchGravatar: noFetch });
+		assert.equal((await knex("user").count({ count: "*" }))[0].count, 0);
 	} finally {
 		await knex.destroy();
-		await tmp.cleanup();
 	}
 });
 
-it("recache_gravatars on a database with users clears the folder and re-fetches as before", async () => {
+it("recache_gravatars on a database with users re-fetches as before", async () => {
 	const knex = memoryKnex();
-	const tmp = await tempSqlite();
 	try {
 		await userTable(knex);
 		await knex("user").insert([
@@ -50,16 +44,12 @@ it("recache_gravatars on a database with users clears the folder and re-fetches 
 			{ id: 2, email: "b@example.com", name: "B", avatar: "/images/avatar/custom.png", is_deleted: 0 },
 			{ id: 3, email: "c@example.com", name: "C", avatar: "", is_deleted: 1 },
 		]);
-		const gravatarDir = path.join(tmp.dir, "gravatar");
-		await mkdir(gravatarDir);
-		await writeFile(path.join(gravatarDir, "stale.png"), "old");
 		const fetched = [];
 		const fetchGravatar = (id, email, name) => {
 			fetched.push([id, email, name]);
 			return `/gravatar/${id}.png`;
 		};
-		await recacheGravatars(knex, { gravatarDir, loadUser: () => ({ default: { fetchGravatar } }) });
-		assert.deepEqual(await readdir(gravatarDir), []);
+		await recacheGravatars(knex, { fetchGravatar });
 		assert.deepEqual(fetched, [[1, "a@example.com", "A"]]);
 		assert.deepEqual(await knex("user").orderBy("id").pluck("avatar"), [
 			"/gravatar/1.png",
@@ -68,7 +58,6 @@ it("recache_gravatars on a database with users clears the folder and re-fetches 
 		]);
 	} finally {
 		await knex.destroy();
-		await tmp.cleanup();
 	}
 });
 
@@ -102,11 +91,11 @@ const hardDeleteTables = async (knex) => {
 	});
 };
 
-it("hard_delete on an empty database loads no model", async () => {
+it("hard_delete on an empty database removes nothing", async () => {
 	const knex = memoryKnex();
 	try {
 		await hardDeleteTables(knex);
-		await hardDelete(knex, { loadUser: noUserModule });
+		await hardDelete(knex, { root: "/nonexistent" });
 		assert.equal((await knex("user").count({ count: "*" }))[0].count, 0);
 	} finally {
 		await knex.destroy();
@@ -115,6 +104,7 @@ it("hard_delete on an empty database loads no model", async () => {
 
 it("hard_delete on a database with deleted users removes them and their avatars as before", async () => {
 	const knex = memoryKnex();
+	const tmp = await tempSqlite();
 	try {
 		await hardDeleteTables(knex);
 		await knex("user").insert([
@@ -137,12 +127,12 @@ it("hard_delete on a database with deleted users removes them and their avatars 
 			{ proxy_host_id: 2, access_list_id: 1 },
 			{ proxy_host_id: 1, access_list_id: 2 },
 		]);
-		const removed = [];
-		const deleteAvatarFiles = (id) => {
-			removed.push(id);
-		};
-		await hardDelete(knex, { loadUser: () => ({ default: { deleteAvatarFiles } }) });
-		assert.deepEqual(removed, [2]);
+		const avatar = (id) => path.join(tmp.dir, "data", "public", "avatar", `${id}.png`);
+		await mkdir(path.dirname(avatar(1)), { recursive: true });
+		await writeFile(avatar(1), "x");
+		await writeFile(avatar(2), "x");
+		await hardDelete(knex, { root: tmp.dir });
+		assert.deepEqual(await readdir(path.dirname(avatar(1))), ["1.png"]);
 		assert.deepEqual(await knex("user").pluck("id"), [1]);
 		assert.deepEqual(await knex("user").pluck("nickname"), [""]);
 		assert.deepEqual(await knex("auth").pluck("user_id"), [1]);
@@ -155,5 +145,6 @@ it("hard_delete on a database with deleted users removes them and their avatars 
 		]);
 	} finally {
 		await knex.destroy();
+		await tmp.cleanup();
 	}
 });

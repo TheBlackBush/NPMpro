@@ -1,6 +1,16 @@
+import { rm } from "node:fs/promises";
+import { rooted } from "../lib/paths.js";
 import { migrate as logger } from "../logger.js";
 
 const migrateName = "hard_delete";
+
+// a frozen copy of what deleting a user removed when this migration was written, so it does not follow later changes
+const removeAvatarFiles = async (id, root) => {
+	for (const ext of ["png", "jpg", "gif", "webp"]) {
+		await rm(`${root}/data/public/avatar/${id}.${ext}`, { force: true });
+		await rm(`${root}/data/public/gravatar/${id}.${ext}`, { force: true });
+	}
+};
 
 /**
  * Migrate
@@ -8,10 +18,11 @@ const migrateName = "hard_delete";
  * @see https://knexjs.org/guide/migrations.html#migration-api
  *
  * @param   {Object} knex
- * @param   {Object} [options] the user module, replaceable in tests
+ * @param   {Object} [options]
+ * @param   {string} [options.root] prefix of the /data folder, replaceable in tests
  * @returns {Promise}
  */
-const up = async (knex, { loadUser = () => import("../internal/user.js") } = {}) => {
+const up = async (knex, { root = rooted("") } = {}) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 
 	await knex("npmplus_proxy_host_access_list")
@@ -40,11 +51,7 @@ const up = async (knex, { loadUser = () => import("../internal/user.js") } = {})
 	const userIds = await knex("user").where("is_deleted", 1).pluck("id");
 	for (const table of ["auth", "user_permission"]) await knex(table).whereIn("user_id", userIds).delete();
 	await knex("user").whereIn("id", userIds).delete();
-	if (userIds.length > 0) {
-		// imported here: the models connect to the database in use when loaded
-		const { default: internalUser } = await loadUser();
-		for (const id of userIds) await internalUser.deleteAvatarFiles(id);
-	}
+	for (const id of userIds) await removeAvatarFiles(id, root);
 
 	logger.info(`[${migrateName}] removed ${userIds.length} deleted users`);
 
