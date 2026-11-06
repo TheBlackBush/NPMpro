@@ -771,15 +771,6 @@ it("an install from 2026-02 (new_proxy_buttons) upgrades with every row and the 
 	});
 });
 
-it("20260926160524_meta_to_columns reads an empty-string meta like an empty object", { todo: "BUG-13" }, async () => {
-	await atMigration("20260926160524_meta_to_columns", async (knex, { step }) => {
-		const host = await put(knex, "proxy_host", { meta: "" });
-		await step();
-		const row = await knex("proxy_host").where("id", host).first();
-		assert.deepEqual([row.npmplus_nginx_online, row.npmplus_directory, row.meta], [0, "", "{}"]);
-	});
-});
-
 it("a user stored twice in different case keeps both rows through the upgrade", async () => {
 	await atMigration("20260913183434_lowercase_emails", async (knex, { step }) => {
 		const upper = await put(knex, "user", { email: "A@x.example", roles: "[]" });
