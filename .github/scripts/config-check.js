@@ -116,6 +116,7 @@ const hosts = [
 			forward_scheme: "http",
 			forward_host: "127.0.0.1",
 			forward_port: 8080,
+			advanced_config: "this_is_not_a_directive;",
 		},
 	],
 	[
