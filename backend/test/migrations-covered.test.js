@@ -20,3 +20,12 @@ it("every migration that changes data is named by a test", async () => {
 	}
 	assert.deepEqual(missing, []);
 });
+
+it("no migration imports from internal/ or models/, which move with the app", async () => {
+	const found = [];
+	for (const name of await migrationNames()) {
+		const text = await readFile(new URL(name, folder), "utf8");
+		if (/["'][^"']*\/(?:internal|models)\//u.test(text)) found.push(name);
+	}
+	assert.deepEqual(found, []);
+});

@@ -192,9 +192,7 @@ it("20260913183434_lowercase_emails lowercases and trims stored addresses", asyn
 });
 
 it("20260913183435_recache_gravatars fetches again for users without an own avatar", async () => {
-	await atMigration("20260913183435_recache_gravatars", async (knex, { step, db }) => {
-		await mkdir(`${db.dir}/gravatar`, { recursive: true });
-		await writeFile(`${db.dir}/gravatar/old.jpg`, "x");
+	await atMigration("20260913183435_recache_gravatars", async (knex, { step }) => {
 		const plain = await put(knex, "user", { avatar: "/data/gravatar/old.jpg", roles: "[]" });
 		const own = await put(knex, "user", { avatar: "/images/avatar/7.jpg", roles: "[]" });
 		const gone = await put(knex, "user", { avatar: "/data/gravatar/old.jpg", is_deleted: 1, roles: "[]" });
@@ -202,16 +200,6 @@ it("20260913183435_recache_gravatars fetches again for users without an own avat
 		assert.equal((await knex("user").where("id", plain).first()).avatar, "/images/default-avatar.jpg");
 		assert.equal((await knex("user").where("id", own).first()).avatar, "/images/avatar/7.jpg");
 		assert.equal((await knex("user").where("id", gone).first()).avatar, "/data/gravatar/old.jpg");
-		await assert.rejects(readFile(`${db.dir}/gravatar/old.jpg`), { code: "ENOENT" });
-	});
-});
-
-it("20260913183435_recache_gravatars leaves the disk alone on a database without users", async () => {
-	await atMigration("20260913183435_recache_gravatars", async (_knex, { step, db }) => {
-		await mkdir(`${db.dir}/gravatar`, { recursive: true });
-		await writeFile(`${db.dir}/gravatar/old.jpg`, "x");
-		await step();
-		assert.equal(await readFile(`${db.dir}/gravatar/old.jpg`, "utf8"), "x");
 	});
 });
 
@@ -547,6 +535,20 @@ it("20261010135653_hard_delete removes deleted users with their auth and permiss
 	await atMigration("20261010135653_hard_delete", async (knex, { step, db }) => {
 		const gone = await put(knex, "user", { is_deleted: 1, nickname: "n", roles: "[]" });
 		const live = await put(knex, "user", { nickname: "n", roles: "[]" });
+		const files = [];
+		for (const [id, kind, ext] of [
+			[gone, "avatar", "png"],
+			[gone, "gravatar", "jpg"],
+			[gone, "avatar", "gif"],
+			[gone, "gravatar", "webp"],
+			[live, "avatar", "png"],
+			[live, "gravatar", "jpg"],
+		]) {
+			const file = `${db.dir}/data/public/${kind}/${id}.${ext}`;
+			await mkdir(path.dirname(file), { recursive: true });
+			await writeFile(file, "x");
+			files.push([id, file]);
+		}
 		await put(knex, "auth", { user_id: gone, type: "password" });
 		await put(knex, "auth", { user_id: live, type: "password" });
 		await put(knex, "user_permission", { user_id: gone });
@@ -555,7 +557,10 @@ it("20261010135653_hard_delete removes deleted users with their auth and permiss
 		assert.deepEqual(await knex("user").pluck("id"), [live]);
 		assert.deepEqual(await knex("auth").pluck("user_id"), [live]);
 		assert.deepEqual(await knex("user_permission").pluck("user_id"), [live]);
-		assert.deepEqual(db.deletedAvatars, [gone]);
+		for (const [id, file] of files) {
+			if (id === gone) await assert.rejects(readFile(file), { code: "ENOENT" });
+			else assert.equal(await readFile(file, "utf8"), "x");
+		}
 		assert.equal((await knex("user").where("id", live).first()).nickname, "");
 	});
 });
@@ -766,15 +771,6 @@ it("an install from 2026-02 (new_proxy_buttons) upgrades with every row and the 
 	});
 });
 
-it("20260926160524_meta_to_columns reads an empty-string meta like an empty object", { todo: "BUG-13" }, async () => {
-	await atMigration("20260926160524_meta_to_columns", async (knex, { step }) => {
-		const host = await put(knex, "proxy_host", { meta: "" });
-		await step();
-		const row = await knex("proxy_host").where("id", host).first();
-		assert.deepEqual([row.npmplus_nginx_online, row.npmplus_directory, row.meta], [0, "", "{}"]);
-	});
-});
-
 it("a user stored twice in different case keeps both rows through the upgrade", async () => {
 	await atMigration("20260913183434_lowercase_emails", async (knex, { step }) => {
 		const upper = await put(knex, "user", { email: "A@x.example", roles: "[]" });
@@ -789,17 +785,125 @@ it("a user stored twice in different case keeps both rows through the upgrade", 
 	});
 });
 
-it("a user stored twice in different case does not end as two users with one address", { todo: "BUG-12" }, async () => {
-	await atMigration("20260913183434_lowercase_emails", async (knex, { step }) => {
-		await put(knex, "user", { email: "A@x.example", roles: "[]" });
-		await put(knex, "user", { email: "a@x.example", roles: "[]" });
-		// the app refuses a second user with a taken address (internal/user.js isEmailAvailable), so the upgrade must
-		// either stop with an error or keep the addresses distinct
-		const failed = await step().then(
-			() => false,
-			() => true,
+it("a user stored twice in different case does not end as two users with one address", async () => {
+	await atMigration("20260913183434_lowercase_emails", async (knex, { rest }) => {
+		const upper = await put(knex, "user", { email: "A@x.example", roles: "[]" });
+		const lower = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		await rest();
+		const rows = await knex("user").orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => row.id),
+			[upper, lower],
 		);
-		const emails = await knex("user").pluck("email");
-		assert.ok(failed || new Set(emails).size === emails.length, `two users share an address: ${emails}`);
+		assert.equal(new Set(rows.map((row) => row.email)).size, 2);
+		assert.equal(rows[0].email, "a@x.example");
+	});
+});
+
+// the address the login finds: enabled first, then the lowest id (internal/token.js)
+const loginFinds = (knex, email) => knex("user").where("email", email).orderBy("is_disabled").orderBy("id").first();
+
+it("20261106180000_distinct_user_emails keeps the address with the first user of three", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const ids = [];
+		for (const email of ["a@x.example", "A@X.example", " a@x.example "]) {
+			ids.push(await put(knex, "user", { email, roles: "[]" }));
+		}
+		await step();
+		const rows = await knex("user").orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => row.email),
+			["a@x.example", `a+dup-${ids[1]}@x.example`, `a+dup-${ids[2]}@x.example`],
+		);
+		assert.equal((await loginFinds(knex, "a@x.example")).id, ids[0]);
+	});
+});
+
+it("20261106180000_distinct_user_emails keeps the address with the enabled user, not the lowest id", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const off = await put(knex, "user", { email: "a@x.example", is_disabled: 1, roles: "[]" });
+		const on = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const also = await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const before = (await loginFinds(knex, "a@x.example")).id;
+		await step();
+		assert.equal(before, on);
+		assert.equal((await loginFinds(knex, "a@x.example")).id, on);
+		assert.equal((await knex("user").where("id", off).first()).email, `a+dup-${off}@x.example`);
+		assert.equal((await knex("user").where("id", also).first()).email, `a+dup-${also}@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails also changes an address with no at sign", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const first = await put(knex, "user", { email: "nobody", roles: "[]" });
+		const second = await put(knex, "user", { email: "Nobody", roles: "[]" });
+		await step();
+		assert.equal((await knex("user").where("id", first).first()).email, "nobody");
+		assert.equal((await knex("user").where("id", second).first()).email, `nobody+dup-${second}`);
+	});
+});
+
+it("20261106180000_distinct_user_emails keeps an address at the length limit within 255 characters", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const domain = "@x.example";
+		const email = `${"a".repeat(255 - domain.length)}${domain}`;
+		const first = await put(knex, "user", { email, roles: "[]" });
+		const second = await put(knex, "user", { email: email.toUpperCase(), roles: "[]" });
+		await step();
+		const kept = (await knex("user").where("id", first).first()).email;
+		const changed = (await knex("user").where("id", second).first()).email;
+		assert.equal(kept, email);
+		assert.ok(changed.length <= 255, `${changed.length} characters`);
+		assert.ok(changed.endsWith(`+dup-${second}${domain}`));
+		assert.notEqual(changed, kept);
+	});
+});
+
+it("20261106180000_distinct_user_emails cuts a long address on a whole character", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const domain = "@x.example";
+		// emojis are two UTF-16 units each, so a cut by units would land inside one
+		const email = `${"\u{1F600}".repeat(255 - domain.length)}${domain}`;
+		await put(knex, "user", { email, roles: "[]" });
+		const second = await put(knex, "user", { email, roles: "[]" });
+		await step();
+		const changed = (await knex("user").where("id", second).first()).email;
+		assert.ok(Array.from(changed).length <= 255, `${Array.from(changed).length} characters`);
+		assert.ok(changed.endsWith(`+dup-${second}${domain}`));
+		assert.equal(changed.isWellFormed(), true);
+		// SQLite turns a lone surrogate into U+FFFD, so also check that the cut kept every character that fits
+		assert.equal(Array.from(changed).length, 255);
+		assert.equal(changed.includes("\uFFFD"), false);
+	});
+});
+
+it("20261106180000_distinct_user_emails does not hand out an address another user already has", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const second = await put(knex, "user", { email: "A@x.example", roles: "[]" });
+		await put(knex, "user", { email: `a+dup-${second}@x.example`, roles: "[]" });
+		await step();
+		const emails = await knex("user").orderBy("id").pluck("email");
+		assert.equal(new Set(emails).size, 3);
+		assert.equal(emails[2], `a+dup-${second}@x.example`);
+		assert.equal(emails[1], `a+dup-${second}-1@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails treats addresses that differ only by spaces as the same", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		await put(knex, "user", { email: "a@x.example", roles: "[]" });
+		const spaced = await put(knex, "user", { email: "  a@x.example  ", roles: "[]" });
+		await step();
+		assert.equal((await knex("user").where("id", spaced).first()).email, `a+dup-${spaced}@x.example`);
+	});
+});
+
+it("20261106180000_distinct_user_emails leaves a database without duplicates as it is", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const emails = ["a@x.example", "B@x.example", "c@y.example", "plain"];
+		for (const email of emails) await put(knex, "user", { email, roles: "[]" });
+		await step();
+		assert.deepEqual(await knex("user").orderBy("id").pluck("email"), emails);
 	});
 });

@@ -1,29 +1,23 @@
 import { readdir } from "node:fs/promises";
 import { MIGRATIONS } from "../../lib/database/schema.js";
 
-// recache_gravatars works on the disk and fetches avatars for existing users. Knex cannot pass it options, so a database
-// with users goes through it with a throwaway folder and no fetch.
+// recache_gravatars fetches avatars from the network and hard_delete removes avatar files below /data. Knex cannot pass
+// them options, so the test source gives them a stand-in fetch and a throwaway root (db.dir).
 // biome-ignore lint/security/noSecrets: a migration file name
 const GRAVATARS = "20260913183435_recache_gravatars.js";
 const HARD_DELETE = "20261010135653_hard_delete.js";
 
 const migrationNames = async () => (await readdir(MIGRATIONS.directory)).filter((name) => name.endsWith(".js")).sort();
 
-// hard_delete removes the avatar files of deleted users through internal/user.js, which loads the real models. The
-// test gets a stand-in that records the ids in db.deletedAvatars.
 const sourceFor = (db) => ({
 	getMigrations: migrationNames,
 	getMigrationName: (name) => name,
 	getMigration: async (name) => {
 		const migration = await import(`${MIGRATIONS.directory}/${name}`);
-		if (name === HARD_DELETE) {
-			db.deletedAvatars = [];
-			const loadUser = () => ({ default: { deleteAvatarFiles: (id) => db.deletedAvatars.push(id) } });
-			return { ...migration, up: (knex) => migration.up(knex, { loadUser }) };
-		}
+		if (name === HARD_DELETE) return { ...migration, up: (knex) => migration.up(knex, { root: db.dir }) };
 		if (name !== GRAVATARS) return migration;
-		const loadUser = () => ({ default: { fetchGravatar: () => "/images/default-avatar.jpg" } });
-		return { ...migration, up: (knex) => migration.up(knex, { gravatarDir: `${db.dir}/gravatar`, loadUser }) };
+		const fetchGravatar = () => "/images/default-avatar.jpg";
+		return { ...migration, up: (knex) => migration.up(knex, { fetchGravatar }) };
 	},
 });
 

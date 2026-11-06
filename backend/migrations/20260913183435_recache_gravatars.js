@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { fetchGravatar as fetchGravatarFile } from "../lib/gravatar.js";
 import { migrate as logger } from "../logger.js";
 
 const migrateName = "recache_gravatars";
@@ -9,13 +9,11 @@ const migrateName = "recache_gravatars";
  * @see https://knexjs.org/guide/migrations.html#migration-api
  *
  * @param   {Object} knex
- * @param   {Object} [options] the gravatar folder and the user module, replaceable in tests
+ * @param   {Object} [options]
+ * @param   {Function} [options.fetchGravatar] (id, email, name) => avatar URL, replaceable in tests
  * @returns {Promise}
  */
-const up = async (
-	knex,
-	{ gravatarDir = "/data/npmpro/gravatar", loadUser = () => import("../internal/user.js") } = {},
-) => {
+const up = async (knex, { fetchGravatar = fetchGravatarFile } = {}) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 
 	const users = await knex("user").select("id", "email", "name", "avatar").where("is_deleted", 0);
@@ -25,16 +23,11 @@ const up = async (
 		return;
 	}
 
-	await rm(gravatarDir, { recursive: true, force: true });
-	await mkdir(gravatarDir, { recursive: true });
-
-	// imported here: the models connect to the database in use when loaded
-	const { default: internalUser } = await loadUser();
 	for (const user of users) {
 		if (user.avatar?.startsWith("/images/avatar/")) continue;
 		await knex("user")
 			.where("id", user.id)
-			.update({ avatar: await internalUser.fetchGravatar(user.id, user.email, user.name) });
+			.update({ avatar: await fetchGravatar(user.id, user.email, user.name) });
 	}
 
 	logger.info(`[${migrateName}] re-fetched gravatars for ${users.length} users`);
