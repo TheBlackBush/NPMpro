@@ -454,8 +454,10 @@ it("sends the domain to the tester as the challenge CERTS", async () => {
 	api.outside.http
 		.get("https://www.site24x7.com")
 		.intercept({ path: "/tools/restapi-tester", method: "POST" })
-		.reply(200, (options) => {
-			sent = String(options.body);
+		.reply(200, async (options) => {
+			// a string on Node 26, an async iterable of chunks on Node 24 (its built-in fetch is an older undici)
+			if (typeof options.body === "string") sent = options.body;
+			else for await (const chunk of options.body) sent += Buffer.from(chunk).toString();
 			return { responsecode: 200, htmlresponse: "Success" };
 		});
 	const result = await admin.post(`${CERTS}/test-http`, { domains: ["münchen.example.com"] });
