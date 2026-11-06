@@ -49,6 +49,8 @@ const listSchema = {
 				"restored",
 				"merged",
 				"imported",
+				"exported",
+				"downloaded",
 			],
 		},
 		user_id: { $ref: "common#/properties/id" },

@@ -134,6 +134,8 @@ it("filters the audit log by the backup entries", async () => {
 		["backup", "restored"],
 		["backup", "merged"],
 		["proxy-host", "imported"],
+		["proxy-host", "exported"],
+		["certificate", "downloaded"],
 	]) {
 		await api.db("audit_log").insert({
 			created_on: now,
@@ -165,6 +167,8 @@ it("filters the audit log by the backup entries", async () => {
 		restored: "backup",
 		merged: "backup",
 		imported: "proxy-host",
+		exported: "proxy-host",
+		downloaded: "certificate",
 	};
 	for (const [action, objectType] of Object.entries(expected)) {
 		const rows = (await list(`?action=${action}&limit=200`)).body;

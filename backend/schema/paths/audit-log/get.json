@@ -91,7 +91,9 @@
 					"uploaded",
 					"restored",
 					"merged",
-					"imported"
+					"imported",
+					"exported",
+					"downloaded"
 				]
 			}
 		},
