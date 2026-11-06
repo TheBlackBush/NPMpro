@@ -1,11 +1,15 @@
 import "./support/secret-key-env.js";
 import assert from "node:assert/strict";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { it } from "node:test";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { after, it } from "node:test";
 import knexFactory from "knex";
 import { knexConfigOf } from "../lib/database/knex-config.js";
 import { fillRow, tempSqlite } from "./support/database.js";
 import { migrateRest, migrateThrough, migrationNames, schemaSnapshot } from "./support/migrations.js";
+
+// the key folder made by secret-key-env.js
+after(() => rm(path.dirname(process.env.NPMPRO_SECRET_KEY_FILE), { recursive: true, force: true }));
 
 const SCHEME = /\$scheme/u;
 const AUTO = /auto/u;
@@ -519,7 +523,9 @@ it("20261010135653_hard_delete leaves no location or relation of a deleted host 
 			{ proxy_host_id: host, access_list_id: live },
 			{ proxy_host_id: goneHost, access_list_id: live },
 		]);
+		const goneUser = await put(knex, "user", { is_deleted: 1, roles: "[]" });
 		await rest();
+		assert.ok(!(await knex("user").pluck("id")).includes(goneUser));
 
 		assert.deepEqual(await knex("proxy_host").pluck("id"), [host]);
 		const locations = await knex("npmpro_location").select("proxy_host_id", "path");
@@ -533,6 +539,52 @@ it("20261010135653_hard_delete leaves no location or relation of a deleted host 
 		assert.deepEqual(relations, [
 			{ proxy_host_id: host, location_id: 0, access_list_id: live },
 			{ proxy_host_id: host, location_id: (await knex("npmpro_location").first()).id, access_list_id: live },
+		]);
+	});
+});
+
+it("20261010135653_hard_delete removes deleted users with their auth and permission rows and avatar files", async () => {
+	await atMigration("20261010135653_hard_delete", async (knex, { step, db }) => {
+		const gone = await put(knex, "user", { is_deleted: 1, nickname: "n", roles: "[]" });
+		const live = await put(knex, "user", { nickname: "n", roles: "[]" });
+		await put(knex, "auth", { user_id: gone, type: "password" });
+		await put(knex, "auth", { user_id: live, type: "password" });
+		await put(knex, "user_permission", { user_id: gone });
+		await put(knex, "user_permission", { user_id: live });
+		await step();
+		assert.deepEqual(await knex("user").pluck("id"), [live]);
+		assert.deepEqual(await knex("auth").pluck("user_id"), [live]);
+		assert.deepEqual(await knex("user_permission").pluck("user_id"), [live]);
+		assert.deepEqual(db.deletedAvatars, [gone]);
+		assert.equal((await knex("user").where("id", live).first()).nickname, "");
+	});
+});
+
+it("20261010135653_hard_delete: rows pointing at a parent that is missing do not survive the chain", async () => {
+	await atMigration("20261010135653_hard_delete", async (knex, { rest }) => {
+		const live = await put(knex, "access_list");
+		const host = await put(knex, "proxy_host", {
+			npmplus_access_list_type: "custom",
+			npmplus_access_list_ids: json([live, 9002]),
+			locations: json([
+				{ path: "/a", npmplus_access_list_type: "custom", npmplus_access_list_ids: [9002, live] },
+			]),
+		});
+		// relation rows of a host and of a list that are absent (not soft-deleted)
+		await knex("npmplus_proxy_host_access_list").insert([
+			{ proxy_host_id: host, access_list_id: live },
+			{ proxy_host_id: 9001, access_list_id: live },
+			{ proxy_host_id: host, access_list_id: 9002 },
+		]);
+		await rest();
+		// the relation table is rebuilt from the hosts and locations that exist, with the lists that exist
+		const location = await knex("npmpro_location").first();
+		const relations = await knex("npmpro_proxy_host_access_list")
+			.orderBy(["location_id", "position"])
+			.select("proxy_host_id", "location_id", "access_list_id");
+		assert.deepEqual(relations, [
+			{ proxy_host_id: host, location_id: 0, access_list_id: live },
+			{ proxy_host_id: host, location_id: location.id, access_list_id: live },
 		]);
 	});
 });
@@ -727,7 +779,12 @@ it("a user stored twice in different case keeps both rows through the upgrade", 
 	await atMigration("20260913183434_lowercase_emails", async (knex, { step }) => {
 		const upper = await put(knex, "user", { email: "A@x.example", roles: "[]" });
 		const lower = await put(knex, "user", { email: "a@x.example", roles: "[]" });
-		await step().catch(() => {});
+		const error = await step().then(
+			() => null,
+			(err) => err,
+		);
+		// finished, or stopped with an error that names the problem; either way both rows are still there
+		if (error) assert.match(String(error), /UNIQUE|unique|constraint|email/u);
 		assert.deepEqual(await knex("user").orderBy("id").pluck("id"), [upper, lower]);
 	});
 });
