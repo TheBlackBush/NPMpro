@@ -1264,14 +1264,11 @@ it("data-setup.sh (run by start.sh) writes the same include lines as logIncludes
 	assert.equal(PATHS.logrotateConf, "/run/npmpro/logrotate");
 });
 
-it("renderRotations does not match across lines", () => {
+it("renderRotations sets every rotate count and does not match across lines", () => {
 	assert.equal(
 		renderRotations("a {\n  rotate\n\n  3\n\n  rotate 4\n}\n", 8),
 		"a {\n  rotate\n\n  3\n\n  rotate 8\n}\n",
 	);
-});
-
-it("renderRotations sets every rotate count", () => {
 	assert.equal(
 		renderRotations("a {\n  rotate 3\n}\nb {\n\trotate 12\n}\n", 7),
 		"a {\n  rotate 7\n}\nb {\n\trotate 7\n}\n",

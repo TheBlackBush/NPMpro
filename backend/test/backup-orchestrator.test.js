@@ -696,7 +696,9 @@ const regenerateWithServerFile = (dataDir) => async (knex) => {
 		);
 };
 
-it("rolls back a restore whose custom nginx file takes hosts offline", TIMEOUT, async () => {
+// The backup holds host 1 with a server file nginx rejects. onInstance is the host the instance has when the file is
+// restored on it: the same host 1, or another host 2 that was not in the backup.
+const rollsBackBrokenServerFile = async ({ onInstance }) => {
 	const holder = {};
 	const ctx = await setup({ regenerated: (knex) => regenerateWithServerFile(holder.dataDir)(knex) });
 	holder.dataDir = ctx.dataDir;
@@ -710,6 +712,11 @@ it("rolls back a restore whose custom nginx file takes hosts offline", TIMEOUT, 
 			secrets: false,
 			keep: true,
 		});
+		if (onInstance === 2) {
+			// the instance the file is restored on has another host and a good file
+			await ctx.knex("proxy_host").del();
+			await ctx.knex("proxy_host").insert({ id: 2, domain_names: '["two.example.com"]' });
+		}
 		await writeFile(serverFile, "# the instance\n");
 		const { token } = await ctx.service.inspect(access, entry.name, {});
 		await assert.rejects(
@@ -717,22 +724,31 @@ it("rolls back a restore whose custom nginx file takes hosts offline", TIMEOUT, 
 			(error) => {
 				assert.equal(error.code, "nginx-failed");
 				assert.match(error.message, BROKEN_HOSTS);
-				assert.match(error.message, UNKNOWN_DIRECTIVE);
+				if (onInstance === 1) assert.match(error.message, UNKNOWN_DIRECTIVE);
 				return true;
 			},
 		);
 		assert.equal(await readFile(serverFile, "utf8"), "# the instance\n");
-		assert.deepEqual(await hostIds(ctx.knex), [1]);
-		assert.equal(Number((await ctx.knex("proxy_host").where({ id: 1 }).first()).npmpro_nginx_online), 1);
+		assert.deepEqual(await hostIds(ctx.knex), [onInstance]);
+		assert.equal(Number((await ctx.knex("proxy_host").where({ id: onInstance }).first()).npmpro_nginx_online), 1);
 		assert.equal(
 			ctx.calls.audit.some((item) => item.action === "restored"),
 			false,
 		);
-		assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
+		if (onInstance === 1) assert.deepEqual([ctx.calls.pause, ctx.calls.resume, ctx.isPaused()], [1, 1, false]);
 	} finally {
 		await ctx.cleanup();
 	}
-});
+};
+
+it(
+	"rolls back a restore whose custom nginx file takes hosts offline, also hosts that were not on the instance",
+	TIMEOUT,
+	async () => {
+		await rollsBackBrokenServerFile({ onInstance: 1 });
+		await rollsBackBrokenServerFile({ onInstance: 2 });
+	},
+);
 
 it("finishes a restore without custom nginx files that leaves a host offline", TIMEOUT, async () => {
 	const ctx = await setup({
@@ -747,45 +763,6 @@ it("finishes a restore without custom nginx files that leaves a host offline", T
 		assert.deepEqual(result.offlineHosts, [
 			{ type: "proxy_host", id: 1, domain: "one.example.com", error: "no certificate" },
 		]);
-	} finally {
-		await ctx.cleanup();
-	}
-});
-
-it("rolls back a restore whose custom nginx file breaks hosts that were not on the instance", TIMEOUT, async () => {
-	const holder = {};
-	const ctx = await setup({ regenerated: (knex) => regenerateWithServerFile(holder.dataDir)(knex) });
-	holder.dataDir = ctx.dataDir;
-	const serverFile = path.join(ctx.dataDir, "custom_nginx", "server_proxy.conf");
-	try {
-		await ctx.knex("proxy_host").insert({ id: 1, domain_names: '["one.example.com"]' });
-		await mkdir(path.join(ctx.dataDir, "custom_nginx"), { recursive: true });
-		await writeFile(serverFile, BROKEN_SERVER_FILE);
-		const { entry } = await ctx.service.create(access, {
-			types: ["proxy_hosts", "custom_nginx"],
-			secrets: false,
-			keep: true,
-		});
-		// the instance the file is restored on has another host and a good file
-		await ctx.knex("proxy_host").del();
-		await ctx.knex("proxy_host").insert({ id: 2, domain_names: '["two.example.com"]' });
-		await writeFile(serverFile, "# the instance\n");
-		const { token } = await ctx.service.inspect(access, entry.name, {});
-		await assert.rejects(
-			ctx.service.restore(access, token, { types: ["proxy_hosts", "custom_nginx"] }),
-			(error) => {
-				assert.equal(error.code, "nginx-failed");
-				assert.match(error.message, BROKEN_HOSTS);
-				return true;
-			},
-		);
-		assert.equal(await readFile(serverFile, "utf8"), "# the instance\n");
-		assert.deepEqual(await hostIds(ctx.knex), [2]);
-		assert.equal(Number((await ctx.knex("proxy_host").where({ id: 2 }).first()).npmpro_nginx_online), 1);
-		assert.equal(
-			ctx.calls.audit.some((item) => item.action === "restored"),
-			false,
-		);
 	} finally {
 		await ctx.cleanup();
 	}

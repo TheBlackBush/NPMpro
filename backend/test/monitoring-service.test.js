@@ -689,18 +689,34 @@ describe("traffic service: unique visitors", () => {
 		assert.equal(t.store.flushed[0].visitors.length, 1);
 	});
 
-	it("visitor rows of a batch older than 10 minutes are dropped with it", async () => {
-		const t = setup({ config: on, results: [read([line("example.com")])] });
-		await t.service.start();
-		t.store.failing = true;
-		await t.service.read();
-		await t.service.flush();
-		t.advance(10 * MINUTE);
-		await t.service.flush();
-		t.store.failing = false;
-		await t.service.flush();
-		assert.equal(t.store.flushed.length, 0, "nothing left to write");
-		assert.equal(t.service.status().dropped_requests, 1);
+	it("visitor rows of a batch older than 10 minutes are dropped with it, and those visitors are counted again the same day", async () => {
+		{
+			const t = setup({ config: on, results: [read([line("example.com")])] });
+			await t.service.start();
+			t.store.failing = true;
+			await t.service.read();
+			await t.service.flush();
+			t.advance(10 * MINUTE);
+			await t.service.flush();
+			t.store.failing = false;
+			await t.service.flush();
+			assert.equal(t.store.flushed.length, 0, "nothing left to write");
+			assert.equal(t.service.status().dropped_requests, 1);
+		}
+		{
+			const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
+			await t.service.start();
+			t.store.failing = true;
+			await t.service.read();
+			await t.service.flush();
+			t.advance(10 * MINUTE);
+			await t.service.flush();
+			t.store.failing = false;
+			await t.service.read();
+			await t.service.flush();
+			assert.equal(t.store.flushed.length, 1);
+			assert.equal(t.store.flushed[0].visitors.length, 1);
+		}
 	});
 
 	it("returning visitors after a restart do not fill the cap: 800 stored, 300 back and 100 new under cap 1000", async () => {
@@ -846,21 +862,6 @@ describe("traffic service: unique visitors", () => {
 		await t.service.read();
 		await t.service.flush();
 		assert.equal(t.store.flushed.at(-1).visitors.length, 1, "a raised cap counts new visitors again");
-	});
-
-	it("visitors dropped by the 10-minute rule are counted again the same day", async () => {
-		const t = setup({ config: on, results: [read([line("example.com")]), read([line("example.com")])] });
-		await t.service.start();
-		t.store.failing = true;
-		await t.service.read();
-		await t.service.flush();
-		t.advance(10 * MINUTE);
-		await t.service.flush();
-		t.store.failing = false;
-		await t.service.read();
-		await t.service.flush();
-		assert.equal(t.store.flushed.length, 1);
-		assert.equal(t.store.flushed[0].visitors.length, 1);
 	});
 
 	it("reports a failed key load in the status only while the setting is on", async () => {

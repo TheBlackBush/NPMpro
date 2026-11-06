@@ -29,17 +29,18 @@ it("keeps a bracketed IPv6 literal host lower-cased and strips its port", () => 
 	assert.equal(parseAlogLine(line("[2001:db8::1]", "203.0.113.7")).host, "[2001:db8::1]");
 });
 
-it("ignores quoted fields with spaces and escaped quotes after the byte count", () => {
-	const ua = String.raw`Mozilla/5.0 (X11; Linux) say \"hi\" 200 99`;
-	const r = parseAlogLine(line("example.com", "203.0.113.7", 200, 512, "GET /a HTTP/1.1", ua));
-	assert.equal(r.status, 200);
-	assert.equal(r.bytes, 512);
-});
-
-it("handles an escaped quote inside the request", () => {
-	const r = parseAlogLine(line("example.com", "203.0.113.7", 301, 7, String.raw`GET /a\"b 200 5 HTTP/1.1`));
-	assert.equal(r.status, 301);
-	assert.equal(r.bytes, 7);
+it("ignores quoted fields with spaces and handles escaped quotes in the user agent and in the request", () => {
+	{
+		const ua = String.raw`Mozilla/5.0 (X11; Linux) say \"hi\" 200 99`;
+		const r = parseAlogLine(line("example.com", "203.0.113.7", 200, 512, "GET /a HTTP/1.1", ua));
+		assert.equal(r.status, 200);
+		assert.equal(r.bytes, 512);
+	}
+	{
+		const r = parseAlogLine(line("example.com", "203.0.113.7", 301, 7, String.raw`GET /a\"b 200 5 HTTP/1.1`));
+		assert.equal(r.status, 301);
+		assert.equal(r.bytes, 7);
+	}
 });
 
 it("returns method and path with the query string and fragment cut off", () => {
