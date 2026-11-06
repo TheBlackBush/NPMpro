@@ -68,7 +68,16 @@ it("reads one setting, and answers 404 for an unknown or hidden id", async () =>
 });
 
 it("refuses to change a setting that has its own endpoint, and an unknown one", async () => {
-	for (const id of ["OIDC", "Monitoring", "GEOIP", "traffic-state", "network", "nginx", "advanced"]) {
+	for (const id of [
+		"OIDC",
+		"Monitoring",
+		"GEOIP",
+		" Certificates ",
+		"traffic-state",
+		"network",
+		"nginx",
+		"advanced",
+	]) {
 		const done = await admin.put(`/settings/${id}`, { value: "404" });
 		assert.equal(done.status, 400, `${id}: ${done.text}`);
 		assert.match(done.body.error.message, /own endpoint/u);
