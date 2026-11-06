@@ -127,14 +127,62 @@ it("lists the entries of manual backups unfiltered, with their own object type a
 	assert.deepEqual(rows.map((entry) => entry.action).sort(), ["created", "uploaded"]);
 });
 
-it("filters the audit log by the backup entries", { todo: "BUG-11" }, async () => {
-	const byType = await admin.get(`${BASE}?object_type=backup`);
-	assert.equal(byType.status, 200, byType.text);
-	assert.ok(byType.body.length > 0);
-	assert.ok(byType.body.every((entry) => entry.object_type === "backup"));
-	const byAction = await admin.get(`${BASE}?action=uploaded`);
-	assert.equal(byAction.status, 200, byAction.text);
-	assert.ok(byAction.body.length > 0);
+it("filters the audit log by the backup entries", async () => {
+	// restores, merges and page imports need a full backup run; their rows are written the way internal/backup.js does
+	const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+	for (const [objectType, action] of [
+		["backup", "restored"],
+		["backup", "merged"],
+		["proxy-host", "imported"],
+	]) {
+		await api.db("audit_log").insert({
+			created_on: now,
+			modified_on: now,
+			user_id: 1,
+			object_type: objectType,
+			object_id: 0,
+			action,
+			meta: JSON.stringify({ name: "filter-test" }),
+		});
+	}
+	const made = await admin.post("/backups", { types: ["proxy_hosts"], secrets: false, keep: true });
+	assert.equal(made.status, 200, made.text);
+	assert.equal((await admin.delete(`/backups/${made.body.entry.name}`)).status, 200);
+
+	const byType = (await list("?object_type=backup&limit=200")).body;
+	assert.deepEqual([...new Set(byType.map((entry) => entry.object_type))], ["backup"]);
+	assert.deepEqual([...new Set(byType.map((entry) => entry.action))].sort(), [
+		"created",
+		"deleted",
+		"merged",
+		"restored",
+		"uploaded",
+	]);
+	const expected = {
+		created: "backup",
+		deleted: "backup",
+		uploaded: "backup",
+		restored: "backup",
+		merged: "backup",
+		imported: "proxy-host",
+	};
+	for (const [action, objectType] of Object.entries(expected)) {
+		const rows = (await list(`?action=${action}&limit=200`)).body;
+		assert.ok(rows.length > 0, `${action} selects rows`);
+		assert.ok(
+			rows.every((entry) => entry.action === action),
+			`${action} selects only its own rows`,
+		);
+		assert.ok(
+			rows.some((entry) => entry.object_type === objectType),
+			`${action} reaches a ${objectType} row`,
+		);
+	}
+	const both = (await list("?object_type=backup&action=restored&limit=200")).body;
+	assert.ok(both.length > 0);
+	assert.ok(both.every((entry) => entry.object_type === "backup" && entry.action === "restored"));
+	assert.equal((await admin.get(`${BASE}?object_type=backups`)).status, 400);
+	assert.equal((await admin.get(`${BASE}?action=restore`)).status, 400);
 });
 
 it("pages with limit and offset, and the total counts every match", async () => {
