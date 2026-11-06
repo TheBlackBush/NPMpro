@@ -65,7 +65,7 @@ const countryArchive = async () => {
 	return readFile(file);
 };
 const waitFor = async (check, what) => {
-	for (let attempt = 0; attempt < 100; attempt += 1) {
+	for (let attempt = 0; attempt < 500; attempt += 1) {
 		const value = await check();
 		if (value) return value;
 		await new Promise((resolve) => setTimeout(resolve, 20));

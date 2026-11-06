@@ -588,9 +588,9 @@ it("asks for the second factor of a user who has one, unless the settings skip i
 		const direct = await finishLogin(again.browser, again.params.get("state"));
 		assert.ok(setCookie(direct, "__Host-Http-token"));
 		assert.equal(setCookie(direct, "__Host-Http-challenge_token"), undefined);
-		await admin.put(SETTINGS, { skip_mfa: false });
 	} finally {
 		mock.timers.reset();
+		await admin.put(SETTINGS, { skip_mfa: false });
 	}
 });
 

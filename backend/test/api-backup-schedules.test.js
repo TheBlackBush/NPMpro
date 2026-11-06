@@ -42,14 +42,12 @@ const run = async (id) => {
 before(async () => {
 	api = await startApi({ env: { TZ: "Europe/Berlin" } });
 	admin = await api.admin();
-});
-after(() => api?.stop());
-
-it("starts with no schedules", async () => {
+	// a new instance has no schedules
 	const done = await admin.get(BASE);
 	assert.equal(done.status, 200);
 	assert.deepEqual(done.body, []);
 });
+after(() => api?.stop());
 
 it("creates a daily schedule with the next run in the container time zone", async () => {
 	const body = valid({ name: "Nightly", keep: 7 });
