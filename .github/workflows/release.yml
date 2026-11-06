@@ -22,20 +22,7 @@ jobs:
         id: version
         env:
           TAG: ${{ github.ref_name }}
-        run: |
-          version="$(tr -d '[:space:]' < .version)"
-          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::.version must be MAJOR.MINOR.PATCH, got '$version'"
-            exit 1
-          fi
-          if [ "$TAG" != "v$version" ]; then
-            echo "::error::tag $TAG does not match .version ($version)"
-            exit 1
-          fi
-          minor="${version%.*}"
-          major="${version%%.*}"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tags=$version $minor $major latest" >> "$GITHUB_OUTPUT"
+        run: sh .github/scripts/release-version.sh .version "$TAG" >> "$GITHUB_OUTPUT"
 
   publish:
     needs: version
