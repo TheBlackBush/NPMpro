@@ -189,11 +189,11 @@ it("downloads a stored backup as an attachment, and answers 404 for an unknown o
 	assert.equal(done.bytes.length, entry.size);
 	for (const name of ["npmpro-backup-none.npmpro", "..%2F..%2Fetc%2Fpasswd", "notes.txt", "auto", ".hidden.npmpro"]) {
 		const missing = await admin.get(`${BASE}/${name}`);
-		assert.ok([400, 404].includes(missing.status), `${name}: ${missing.status}`);
+		assert.equal(missing.status, 404, name);
 		assert.equal(missing.text.includes("root:"), false);
 	}
 	const inspected = await admin.post(`${BASE}/..%2F..%2Fetc%2Fpasswd/inspect`, {});
-	assert.ok([400, 404].includes(inspected.status), String(inspected.status));
+	assert.equal(inspected.status, 404);
 });
 
 it("uploads a backup file as a stored backup, and refuses a file that is not a backup", async () => {
