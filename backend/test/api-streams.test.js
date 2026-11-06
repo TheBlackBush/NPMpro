@@ -336,3 +336,29 @@ it("lets a limited user keep a request variable an administrator set, sent uncha
 	assert.equal((await user.put(`${URL}/${stream.id}`, { npmpro_description: "x" })).status, 200);
 	assert.equal((await user.put(`${URL}/${stream.id}`, { forwarding_host: "cu_$other" })).status, 400);
 });
+
+it("accepts an empty forwarding port, $server_port and the ports 1 to 65535", async () => {
+	for (const forwarding_port of ["", "$server_port", "1", "65535"]) {
+		const answer = await ctx.admin.post(URL, body({ forwarding_port }));
+		assert.equal(answer.status, 201, `${forwarding_port}: ${answer.text}`);
+	}
+});
+
+it("refuses a forwarding port of 0 or above 65535, on create and on update, for everyone", async () => {
+	const user = await limitedStreams();
+	const stream = await created(await ctx.admin.post(URL, body()), "create");
+	for (const forwarding_port of ["70000", "0", "65536", "00000"]) {
+		for (const session of [ctx.admin, user]) {
+			assert.equal((await session.post(URL, body({ forwarding_port }))).status, 400, forwarding_port);
+		}
+		assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port })).status, 400, forwarding_port);
+	}
+});
+
+it("lets a save that keeps an out of range forwarding port work on an older row", async () => {
+	const stream = await created(await ctx.admin.post(URL, body()), "create");
+	await ctx.api.db("stream").where({ id: stream.id }).update({ forwarding_port: "70000" });
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { npmpro_description: "x" })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70000" })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70001" })).status, 400);
+});
