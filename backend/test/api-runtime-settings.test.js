@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -13,6 +12,16 @@ const GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "adv
 const NGINX_FILES = ["main", "events", "http", "stream"].map((part) => `data/npmpro/nginx/core-${part}.conf`);
 const ACME = "https://acme-v02.api.letsencrypt.org";
 const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+
+// a stand-in for the nginxbeautifier module of the image: it marks the first line of what it formats
+const BEAUTIFIER_STUB = `module.exports = {
+	modifyOptions: () => {},
+	clean_lines: (text) => text.split("\\n"),
+	join_opening_bracket: (lines) => lines,
+	perform_indentation: (lines) => ["# beautified by the stub", ...lines],
+};
+`;
+const MARK = "# beautified by the stub";
 
 let api;
 let admin;
@@ -76,6 +85,7 @@ const addCustomCertificate = async (provider = "other") => {
 before(async () => {
 	// the beautifier and Gravatar are on unless a test turns them off; two values are locked by the environment
 	api = await startApi({
+		files: { "/usr/local/bin/nginxbeautifier.js": BEAUTIFIER_STUB },
 		env: {
 			// what envs.sh exports when the user set neither (NPMPRO_USER_ENV lists the names the user set)
 			DISABLE_GRAVATAR: "false",
@@ -564,9 +574,6 @@ it("writes the GoAccess and time zone settings to the startup settings file for 
 	await saved("advanced", { time_zone: "UTC" });
 });
 
-// the formatter is the nginxbeautifier module of the image; without it (a developer machine) the text stays as rendered
-const BEAUTIFIER_MODULE = "/usr/local/bin/nginxbeautifier.js";
-
 it("turning the beautifier off changes the next config", async () => {
 	const host = await addProxyHost({});
 	const confFile = `data/nginx/proxy_host/${host.id}.conf`;
@@ -575,24 +582,20 @@ it("turning the beautifier off changes the next config", async () => {
 		assert.equal(done.status, 200, done.text);
 		return api.read(confFile);
 	};
-	const formatted = await resave(8181);
+	assert.ok((await api.read(confFile)).startsWith(MARK), "formatted while the setting is on");
 
 	const off = await saved("advanced", { config_beautifier: false });
 	assert.equal(off.config_beautifier, false);
 	assert.equal((await storedMeta("advanced")).config_beautifier, false);
 	const plain = await resave(8182);
 	assert.match(plain, /8182/u);
+	assert.equal(plain.includes(MARK), false);
 
 	const on = await saved("advanced", { config_beautifier: true });
 	assert.equal(on.config_beautifier, true);
-	const again = await resave(8182);
-	assert.match(again, /8182/u);
-	if (existsSync(BEAUTIFIER_MODULE)) {
-		assert.notEqual(again, plain);
-		assert.equal(again.split("\n").filter((line) => line !== "" && line.trim() === "").length, 0);
-		assert.equal(formatted.split("\n").filter((line) => line !== "" && line.trim() === "").length, 0);
-		assert.ok(plain.split("\n").some((line) => line !== "" && line.trim() === ""));
-	}
+	const again = await resave(8183);
+	assert.match(again, /8183/u);
+	assert.ok(again.startsWith(MARK));
 });
 
 it("turning Gravatar off sends no request at the next profile save", async () => {

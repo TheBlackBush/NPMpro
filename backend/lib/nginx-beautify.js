@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
+import { rooted } from "./paths.js";
 
 // the nginxbeautifier module the image ships (pinned and checked by sha256 in the Dockerfile)
-const BEAUTIFIER_MODULE = "/usr/local/bin/nginxbeautifier.js";
+const BEAUTIFIER_MODULE = rooted("/usr/local/bin/nginxbeautifier.js");
 const INDENTATION = "  ";
 
 // nginxbeautifier misreads braces, quotes, `$` patterns and escapes inside a quoted custom location path (crash,
