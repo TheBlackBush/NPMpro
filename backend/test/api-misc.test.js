@@ -79,9 +79,10 @@ it("answers the version check without data when GitHub fails, and does not ask a
 	github.intercept({ path: LATEST, method: "GET" }).reply(200, { tag_name: "v99.0.0" });
 	const again = await admin.get("/version/check");
 	assert.deepEqual(again.body, failed.body);
-	// one interceptor is left; Node 24's built-in fetch uses a second mock pool, which lists it twice
-	const pending = api.outside.http.pendingInterceptors().map((one) => `${one.method} ${one.path}`);
-	assert.deepEqual([...new Set(pending)], [`GET ${LATEST}`]);
+	// one interceptor is left; Node 24's built-in fetch uses a second mock pool ("#http1-only") that lists it again
+	const pending = api.outside.http.pendingInterceptors().filter((one) => !one.origin.endsWith("#http1-only"));
+	assert.equal(pending.length, 1);
+	assert.equal(`${pending[0].method} ${pending[0].path}`, `GET ${LATEST}`);
 	assert.equal((await api.client().get("/version/check")).status, 401);
 });
 
