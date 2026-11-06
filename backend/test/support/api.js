@@ -90,9 +90,10 @@ const fakeHttp = () => {
 
 const createClient = (base, ip) => {
 	const jar = new Map();
-	const send = async (method, url, { body, form, headers = {} } = {}) => {
+	const send = async (method, url, { body, form, headers = {}, redirect } = {}) => {
 		const res = await fetch(`${base}/api${url}`, {
 			method,
+			redirect,
 			headers: {
 				"x-forwarded-for": ip,
 				...(body === undefined ? {} : { "content-type": "application/json" }),
