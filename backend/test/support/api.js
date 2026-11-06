@@ -90,9 +90,10 @@ const fakeHttp = () => {
 
 const createClient = (base, ip) => {
 	const jar = new Map();
-	const send = async (method, url, { body, form, headers = {} } = {}) => {
+	const send = async (method, url, { body, form, headers = {}, redirect } = {}) => {
 		const res = await fetch(`${base}/api${url}`, {
 			method,
+			redirect,
 			headers: {
 				"x-forwarded-for": ip,
 				...(body === undefined ? {} : { "content-type": "application/json" }),
@@ -131,9 +132,10 @@ const assertOk = (response, what) => {
 /**
  * @param   {Object}  [options]
  * @param   {Object}  [options.env]  environment of the backend, set before its modules load
+ * @param   {Object}  [options.files]  { "/container/path": text } written under the root before the backend starts
  * @returns {Promise<Object>}        { root, client, admin, limited, read, db, outside, stop }
  */
-const startApi = async ({ env = {} } = {}) => {
+const startApi = async ({ env = {}, files = {} } = {}) => {
 	if (!argon2) throw new Error("the API tests need a Node.js with crypto.argon2 (24.7 or newer)");
 	const root = await mkdtemp(path.join(os.tmpdir(), "npa-"));
 	// the backend logs through console.log; API_TEST_LOG=1 shows it while debugging a test
@@ -142,6 +144,10 @@ const startApi = async ({ env = {} } = {}) => {
 	let server;
 	try {
 		for (const dir of DIRS) await mkdir(path.join(root, dir), { recursive: true });
+		for (const [file, content] of Object.entries(files)) {
+			await mkdir(path.dirname(path.join(root, file)), { recursive: true });
+			await writeFile(path.join(root, file), content);
+		}
 		for (const name of FAKE_COMMANDS) {
 			await writeFile(path.join(root, "bin", name), fakeCommand(root, name), { mode: 0o755 });
 		}
