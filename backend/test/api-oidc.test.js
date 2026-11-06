@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
-import { after, before, it } from "node:test";
+import { after, before, it, mock } from "node:test";
+import { generate } from "otplib";
 import { PASSWORD, startApi } from "./support/api.js";
 import { setCookie } from "./support/auth.js";
 import { fileExists } from "./support/hosts.js";
@@ -553,6 +554,44 @@ it("refuses a login for a disabled user", async () => {
 	const login = await startLogin();
 	seen.idToken = idToken({ nonce: login.params.get("nonce"), email: "off@example.com", email_verified: true });
 	assert.equal(errorOf(await finishLogin(login.browser, login.params.get("state"))), "user_disabled");
+});
+
+it("asks for the second factor of a user who has one, unless the settings skip it", async () => {
+	const user = await api.limited({ visibility: "user" });
+	const setup = await user.post(`/users/${user.user.id}/mfa/totp`);
+	assert.equal(setup.status, 200, setup.text);
+	const enabled = await user.post(`/users/${user.user.id}/mfa/totp/enable`, {
+		code: await generate({ secret: setup.body.secret }),
+	});
+	assert.equal(enabled.status, 200, enabled.text);
+	// enabling the second factor revokes the tokens of that second: the login must come later
+	mock.timers.enable({ apis: ["Date"], now: Date.now() });
+	mock.timers.tick(2000);
+	try {
+		const login = await startLogin();
+		seen.idToken = idToken({ nonce: login.params.get("nonce"), email: user.user.email, email_verified: true });
+		const challenged = await finishLogin(login.browser, login.params.get("state"));
+		assert.equal(challenged.headers.get("location"), "/");
+		assert.equal(setCookie(challenged, "__Host-Http-token"), undefined);
+		assert.match(setCookie(challenged, "__Host-Http-challenge_token"), /HttpOnly/iu);
+		assert.match(setCookie(challenged, "__Host-npmpro_oidc_totp_required"), /Secure/iu);
+		assert.equal((await login.browser.get("/users/me")).status, 401);
+		// a backup code completes the login
+		const done = await login.browser.post("/tokens/totp", { code: enabled.body.backup_codes[0] });
+		assert.equal(done.status, 200, done.text);
+		assert.equal((await login.browser.get("/users/me")).body.email, user.user.email);
+
+		const skipped = await admin.put(SETTINGS, { skip_mfa: true });
+		assert.equal(skipped.status, 200, skipped.text);
+		const again = await startLogin();
+		seen.idToken = idToken({ nonce: again.params.get("nonce"), email: user.user.email, email_verified: true });
+		const direct = await finishLogin(again.browser, again.params.get("state"));
+		assert.ok(setCookie(direct, "__Host-Http-token"));
+		assert.equal(setCookie(direct, "__Host-Http-challenge_token"), undefined);
+		await admin.put(SETTINGS, { skip_mfa: false });
+	} finally {
+		mock.timers.reset();
+	}
 });
 
 it("answers OIDC routes with an error code on the sign-in page while OIDC is off or the provider fails", async () => {

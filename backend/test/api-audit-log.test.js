@@ -114,6 +114,29 @@ it("filters by object type, action and user, and searches the details", async ()
 	assert.equal((await list("?query=no-such-text-anywhere")).headers.get("x-total-count"), "0");
 });
 
+it("lists the entries of manual backups unfiltered, with their own object type and actions", async () => {
+	const made = await admin.post("/backups", { types: ["proxy_hosts"], secrets: false, keep: true });
+	assert.equal(made.status, 200, made.text);
+	const bytes = (await admin.get(`/backups/${made.body.entry.name}`)).bytes;
+	const uploaded = await admin.send("POST", "/backups/upload", {
+		form: bytes,
+		headers: { "content-type": "application/octet-stream" },
+	});
+	assert.equal(uploaded.status, 200, uploaded.text);
+	const rows = (await list("?limit=200")).body.filter((entry) => entry.object_type === "backup");
+	assert.deepEqual(rows.map((entry) => entry.action).sort(), ["created", "uploaded"]);
+});
+
+it("filters the audit log by the backup entries", { todo: "BUG-11" }, async () => {
+	const byType = await admin.get(`${BASE}?object_type=backup`);
+	assert.equal(byType.status, 200, byType.text);
+	assert.ok(byType.body.length > 0);
+	assert.ok(byType.body.every((entry) => entry.object_type === "backup"));
+	const byAction = await admin.get(`${BASE}?action=uploaded`);
+	assert.equal(byAction.status, 200, byAction.text);
+	assert.ok(byAction.body.length > 0);
+});
+
 it("pages with limit and offset, and the total counts every match", async () => {
 	for (let n = 0; n < 4; n += 1) await writeHost();
 	const all = (await list("?limit=200")).body;
