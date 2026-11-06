@@ -294,3 +294,71 @@ it("finds a stream by its forwarding host, its forwarding port and its descripti
 		);
 	}
 });
+
+const limitedStreams = () => ctx.api.limited({ visibility: "user", streams: "manage", certificates: "view" });
+
+// forwarding_host values with a request variable, as a user with only the streams manage permission can send them
+const STREAM_VARIABLE_FORMS = [
+	[
+		"a request variable in the host with $server_port",
+		{ forwarding_host: "$ssl_server_name", forwarding_port: "$server_port" },
+	],
+	["a request variable in a cu_ upstream name", { forwarding_host: "cu_$var", forwarding_port: "" }],
+	["a request variable inside a name", { forwarding_host: "a$var" }],
+];
+for (const [label, fields] of STREAM_VARIABLE_FORMS) {
+	it(`refuses ${label} from a limited user, on create and on update`, async () => {
+		const user = await limitedStreams();
+		const rows = await countRows(ctx.api, "stream");
+		const answer = await user.post(URL, body(fields));
+		assert.equal(answer.status, 400, answer.text);
+		assert.equal(await countRows(ctx.api, "stream"), rows);
+		const own = await created(await user.post(URL, body()), "own");
+		const edit = await user.put(`${URL}/${own.id}`, fields);
+		assert.equal(edit.status, 400, edit.text);
+		assert.equal((await ctx.api.db("stream").where({ id: own.id }).first()).forwarding_host, own.forwarding_host);
+	});
+}
+
+it("lets an administrator set a request variable in the forward host of a stream", async () => {
+	const answer = await ctx.admin.post(
+		URL,
+		body({ forwarding_host: "$ssl_server_name", forwarding_port: "$server_port" }),
+	);
+	assert.equal(answer.status, 201, answer.text);
+});
+
+it("lets a limited user keep a request variable an administrator set, sent unchanged or left out", async () => {
+	const user = await limitedStreams();
+	const stream = await created(await ctx.admin.post(URL, body({ forwarding_host: "cu_$var" })), "admin");
+	await ctx.api.db("stream").where({ id: stream.id }).update({ owner_user_id: user.user.id });
+	assert.equal((await user.put(`${URL}/${stream.id}`, { forwarding_host: "cu_$var" })).status, 200);
+	assert.equal((await user.put(`${URL}/${stream.id}`, { npmpro_description: "x" })).status, 200);
+	assert.equal((await user.put(`${URL}/${stream.id}`, { forwarding_host: "cu_$other" })).status, 400);
+});
+
+it("accepts an empty forwarding port, $server_port and the ports 1 to 65535", async () => {
+	for (const forwarding_port of ["", "$server_port", "1", "65535"]) {
+		const answer = await ctx.admin.post(URL, body({ forwarding_port }));
+		assert.equal(answer.status, 201, `${forwarding_port}: ${answer.text}`);
+	}
+});
+
+it("refuses a forwarding port of 0 or above 65535, on create and on update, for everyone", async () => {
+	const user = await limitedStreams();
+	const stream = await created(await ctx.admin.post(URL, body()), "create");
+	for (const forwarding_port of ["70000", "0", "65536", "00000"]) {
+		for (const session of [ctx.admin, user]) {
+			assert.equal((await session.post(URL, body({ forwarding_port }))).status, 400, forwarding_port);
+		}
+		assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port })).status, 400, forwarding_port);
+	}
+});
+
+it("lets a save that keeps an out of range forwarding port work on an older row", async () => {
+	const stream = await created(await ctx.admin.post(URL, body()), "create");
+	await ctx.api.db("stream").where({ id: stream.id }).update({ forwarding_port: "70000" });
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { npmpro_description: "x" })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70000" })).status, 200);
+	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70001" })).status, 400);
+});

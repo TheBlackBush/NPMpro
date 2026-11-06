@@ -29,6 +29,19 @@ const assertIncomingPort = (value) => {
 };
 
 /**
+ * @param {*} value  the forwarding port of a stream: empty (the incoming port is used), `$server_port` or 1 to 65535
+ */
+const assertForwardingPort = (value) => {
+	if (value === "" || value === "$server_port") return;
+	const port = /^\d{1,5}$/u.test(String(value)) ? Number(value) : 0;
+	if (port < 1 || port > 65535) {
+		throw new errs.ValidationError(
+			"The forwarding port must be a port from 1 to 65535, $server_port or empty (the incoming port is used)",
+		);
+	}
+};
+
+/**
  * True when both streams would listen on the same port for one protocol: they share TCP or UDP and their incoming
  * ports (or ranges) overlap. TCP on a port and UDP on the same port do not conflict.
  *
@@ -61,6 +74,10 @@ const cleanStreamData = (data, existingData) => {
 		assertIncomingPort(data.incoming_port);
 	}
 
+	if (data.forwarding_port !== undefined && data.forwarding_port !== existingData?.forwarding_port) {
+		assertForwardingPort(data.forwarding_port);
+	}
+
 	if (!combinedData.tcp_forwarding && !combinedData.udp_forwarding) {
 		throw new errs.ValidationError("TCP or UDP forwarding needs to be enabled");
 	}
@@ -89,4 +106,4 @@ const cleanStreamData = (data, existingData) => {
 	return combinedData;
 };
 
-export { assertIncomingPort, cleanStreamData, parsePortRange, streamsConflict };
+export { assertForwardingPort, assertIncomingPort, cleanStreamData, parsePortRange, streamsConflict };

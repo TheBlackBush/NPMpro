@@ -97,17 +97,19 @@ const assertPathScheme = (isAdmin, item, stored) => {
 };
 
 /**
- * A request variable (`$`) in forward_host is evaluated by nginx per request: with a `cu_` name a visitor could pick
- * the upstream group or the name to resolve. The schema pattern allows `$`, so non-admins are refused here, unless
- * the value is the stored one (an administrator may have set it). Administrators can write advanced config anyway.
+ * A request variable (`$`) in forward_host (`forwarding_host` on a stream) is evaluated by nginx per request: with a
+ * `cu_` name a visitor could pick the upstream group or the name to resolve. The schema pattern allows `$`, so
+ * non-admins are refused here, unless the value is the stored one (an administrator may have set it). Administrators
+ * can write advanced config anyway.
  *
  * @param {Boolean} isAdmin
  * @param {Object}  item      host or location payload
  * @param {Object}  [stored]  the stored host or location
+ * @param {String}  [field]   the name of the field
  */
-const assertForwardHostPlain = (isAdmin, item, stored) => {
-	if (isAdmin || typeof item.forward_host !== "string" || !item.forward_host.includes("$")) return;
-	if (item.forward_host === stored?.forward_host) return;
+const assertForwardHostPlain = (isAdmin, item, stored, field = "forward_host") => {
+	if (isAdmin || typeof item[field] !== "string" || !item[field].includes("$")) return;
+	if (item[field] === stored?.[field]) return;
 	throw new errs.ValidationError(
 		"Only administrators can use a request variable ($) in the forward host.",
 		"error.forward-host-variable-admin-only",
@@ -194,6 +196,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 		assertPathScheme(isAdmin, data, stored);
 		assertLocations(isAdmin, data.locations, stored?.locations);
 	}
+	if (hostType === "stream") assertForwardHostPlain(isAdmin, data, stored, "forwarding_host");
 };
 
 export {

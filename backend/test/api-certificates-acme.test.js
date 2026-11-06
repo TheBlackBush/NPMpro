@@ -171,7 +171,7 @@ it("refuses a certbot certificate that has no files after a run that did nothing
 	await api.outside.hookCommand("certbot", "#!/bin/sh\nexit 0\n");
 	const rows = await countRows(api, "certificate");
 	const failed = await admin.post(CERTS, { provider: "letsencrypt", domain_names: ["empty.example.com"] });
-	assert.equal(failed.status >= 400, true);
+	assert.equal(failed.status, 500);
 	assert.equal(await countRows(api, "certificate"), rows);
 });
 
@@ -335,7 +335,7 @@ it("refuses to renew a certificate that has no certbot files", async () => {
 		meta: "{}",
 	});
 	const failed = await admin.post(`${CERTS}/${id}/renew`, {});
-	assert.equal(failed.status >= 400, true);
+	assert.equal(failed.status, 500);
 	assert.deepEqual(await certbotCalls(), []);
 });
 
