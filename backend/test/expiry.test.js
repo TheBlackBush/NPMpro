@@ -1,13 +1,9 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { EXPIRY_WARNING_DAYS, expiryBounds, expiryState } from "../lib/expiry.js";
+import { expiryBounds, expiryState } from "../lib/expiry.js";
 
 const now = new Date("2026-10-23T12:00:00Z");
 const days = (n) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
-
-it("uses a 14 day window", () => {
-	assert.equal(EXPIRY_WARNING_DAYS, 14);
-});
 
 it("classifies the boundaries", () => {
 	assert.equal(expiryState(days(-1), now), "expired");

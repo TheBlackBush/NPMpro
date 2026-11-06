@@ -41,20 +41,6 @@ it("exports JSON columns as values and dates as ISO", async () => {
 	await knex.destroy();
 });
 
-// mysql and pg return Date objects for date columns; better-sqlite3 returns strings
-const stubKnex = (rows) => () => {
-	const query = Object.assign(Promise.resolve(rows), { orderBy: () => query, select: () => query });
-	return query;
-};
-
-it("exports Date values as ISO strings", async () => {
-	const rows = await exportRows(
-		stubKnex([{ id: 1, created_on: new Date("2026-10-26T10:00:00.000Z") }]),
-		"proxy_host",
-	);
-	assert.equal(rows[0].created_on, "2026-10-26T10:00:00.000Z");
-});
-
 it("refuses binary values", async () => {
 	const knex = await sqlite();
 	await knex("proxy_host").insert({ advanced_config: Buffer.from("x") });

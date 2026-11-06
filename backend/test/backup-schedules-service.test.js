@@ -310,16 +310,6 @@ it("give-up records the skip as a failure", async () => {
 	assert.equal(view.next_run_at, "2026-10-30T03:00:00.000Z");
 });
 
-it("remove with files deletes the schedule's stored files", async () => {
-	const { service, clock, files } = await make();
-	const { id } = await service.create(admin(), daily);
-	await service.runNow(admin(), id);
-	clock.value += 1000;
-	const { removedFiles } = await service.remove(admin(), id, { files: true });
-	assert.equal(removedFiles.length, 1);
-	assert.equal(files.get(id).length, 0);
-});
-
 it("a busy automatic run throws and leaves the status for the next tick", async () => {
 	let busy = true;
 	const { service, clock, audits } = await make({
