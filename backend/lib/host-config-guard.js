@@ -98,8 +98,9 @@ const assertPathScheme = (isAdmin, item, stored) => {
 
 /**
  * A request variable (`$`) in forward_host (`forwarding_host` on a stream) is evaluated by nginx per request: with a
- * `cu_` name a visitor could pick the upstream group or the name to resolve. The schema pattern allows `$`, so non-admins are refused here, unless
- * the value is the stored one (an administrator may have set it). Administrators can write advanced config anyway.
+ * `cu_` name a visitor could pick the upstream group or the name to resolve. The schema pattern allows `$`, so
+ * non-admins are refused here, unless the value is the stored one (an administrator may have set it). Administrators
+ * can write advanced config anyway.
  *
  * @param {Boolean} isAdmin
  * @param {Object}  item      host or location payload
