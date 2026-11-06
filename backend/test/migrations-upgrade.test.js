@@ -859,6 +859,24 @@ it("20261106180000_distinct_user_emails keeps an address at the length limit wit
 	});
 });
 
+it("20261106180000_distinct_user_emails cuts a long address on a whole character", async () => {
+	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
+		const domain = "@x.example";
+		// emojis are two UTF-16 units each, so a cut by units would land inside one
+		const email = `${"\u{1F600}".repeat(255 - domain.length)}${domain}`;
+		await put(knex, "user", { email, roles: "[]" });
+		const second = await put(knex, "user", { email, roles: "[]" });
+		await step();
+		const changed = (await knex("user").where("id", second).first()).email;
+		assert.ok(Array.from(changed).length <= 255, `${Array.from(changed).length} characters`);
+		assert.ok(changed.endsWith(`+dup-${second}${domain}`));
+		assert.equal(changed.isWellFormed(), true);
+		// SQLite turns a lone surrogate into U+FFFD, so also check that the cut kept every character that fits
+		assert.equal(Array.from(changed).length, 255);
+		assert.equal(changed.includes("\uFFFD"), false);
+	});
+});
+
 it("20261106180000_distinct_user_emails does not hand out an address another user already has", async () => {
 	await atMigration("20261106180000_distinct_user_emails", async (knex, { step }) => {
 		await put(knex, "user", { email: "a@x.example", roles: "[]" });

@@ -25,9 +25,11 @@ const distinctAddress = ({ id, email }, taken) => {
 	const domain = at === -1 ? "" : address.slice(at);
 	for (let n = 0; ; n++) {
 		const suffix = n === 0 ? `+dup-${id}` : `+dup-${id}-${n}`;
-		const room = MAX_LENGTH - suffix.length - domain.length;
+		// the column counts characters, so everything is measured and cut in code points, never inside a surrogate pair
+		const room = MAX_LENGTH - suffix.length - Array.from(domain).length;
 		// a domain that leaves no room for the suffix is not a real address, the id alone is still distinct
-		const candidate = room >= 1 ? `${local.slice(0, room)}${suffix}${domain}` : `dup-${id}-${n}`;
+		const candidate =
+			room >= 1 ? `${Array.from(local).slice(0, room).join("")}${suffix}${domain}` : `dup-${id}-${n}`;
 		if (!taken.has(candidate)) {
 			taken.add(candidate);
 			return candidate;
