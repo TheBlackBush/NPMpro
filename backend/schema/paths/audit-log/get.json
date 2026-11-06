@@ -67,6 +67,7 @@
 					"user",
 					"setting",
 					"backup-schedule",
+					"backup",
 					"database"
 				]
 			}
@@ -86,7 +87,13 @@
 					"backup-succeeded",
 					"backup-failed",
 					"moved",
-					"move-failed"
+					"move-failed",
+					"uploaded",
+					"restored",
+					"merged",
+					"imported",
+					"exported",
+					"downloaded"
 				]
 			}
 		},

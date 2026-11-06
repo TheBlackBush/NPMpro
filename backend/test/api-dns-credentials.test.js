@@ -414,7 +414,7 @@ it("shows a user with the visibility user only their own credentials", async () 
 	assert.equal(sameName.name, foreign.name);
 });
 
-it("documents the status the create answers with", { todo: "BUG-10" }, async () => {
+it("documents the status the create answers with", async () => {
 	const schema = await admin.get("/schema");
 	assert.equal(schema.status, 200);
 	const responses = schema.body.paths["/nginx/dns-credentials"].post.responses;
