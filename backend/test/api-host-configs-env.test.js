@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { after, before, it } from "node:test";
+import { after, before, it, mock } from "node:test";
 import { startApi } from "./support/api.js";
 import { addCertificate, created, readConfig } from "./support/hosts.js";
 
 // The same host configs under the opposite environment of api-host-configs.test.js: HTTP, IPv6 and HTTP/3 switched
 // off, PROXY protocol on the HTTPS listener, MPTCP and OCSP stapling on (templates/_common.conf, stream.conf).
 
+const MINUTE = 60 * 1000;
 const ctx = {};
 const URL = "/nginx/proxy-hosts";
 let counter = 0;
@@ -25,6 +26,8 @@ const read = (file) => readConfig(ctx.api, file);
 const proxyConfig = async (host) => read(`data/nginx/proxy_host/${host.id}.conf`);
 
 before(async () => {
+	// before startApi: the OCSP fetcher takes Date.now once, when its module loads, so the mock has to be there first
+	mock.timers.enable({ apis: ["Date"], now: Date.now() });
 	ctx.api = await startApi({
 		env: {
 			IPV4_BINDING: "127.0.0.1",
@@ -40,9 +43,14 @@ before(async () => {
 			CUSTOM_OCSP_STAPLING: "true",
 		},
 	});
+	// a login in the same second as the first user is refused (token_valid_after)
+	mock.timers.tick(5000);
 	ctx.admin = await ctx.api.admin();
 });
-after(() => ctx.api?.stop());
+after(() => {
+	mock.timers.reset();
+	return ctx.api?.stop();
+});
 
 it("writes no HTTP listener and no IPv6 listener, and keeps the internal socket", async () => {
 	const host = await created(await ctx.admin.post(URL, body()), "create");
@@ -107,26 +115,31 @@ printf ocsp > "${ctx.api.root}/data/tls/custom/npm-${certificate}.der"
 };
 
 // The fetcher already ran once at startup (every reload fetches for a kind that has stapling on) and is bounded to one
-// run per 10 minutes per kind, so a host save in the first minutes of the process finds the interval still running.
-it("runs the OCSP fetcher for the custom certificates when a host is saved without an OCSP file", {
-	todo: "BUG-14",
-}, async () => {
-	const certificate = await addCertificate(ctx.api, { domain: "env-fetch.example.com" });
-	await installFetcher(certificate);
-	const host = await created(
-		await ctx.admin.post(URL, body({ domain_names: ["env-fetch.example.com"], certificate_id: certificate })),
-		"create",
-	);
-	const runs = await fetcherRuns();
-	assert.equal(runs.length, 1);
-	assert.match(runs[0], /-c \S+\/data\/tls\/custom -o \S+\/data\/tls\/custom /u);
-	const config = await proxyConfig(host);
-	assert.match(config, new RegExp(`ssl_stapling_file /data/tls/custom/npm-${certificate}\\.der;`, "u"));
-	const saved = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8998 });
-	assert.equal(saved.status, 200, saved.text);
-	assert.equal((await fetcherRuns()).length, 1);
+// run per 10 minutes per kind, so these tests move the clock instead of waiting.
+it("runs the OCSP fetcher once for the custom certificates when a host is saved without an OCSP file", async () => {
+	const now = Date.now();
+	try {
+		mock.timers.tick(11 * MINUTE);
+		const certificate = await addCertificate(ctx.api, { domain: "env-fetch.example.com" });
+		await installFetcher(certificate);
+		const host = await created(
+			await ctx.admin.post(URL, body({ domain_names: ["env-fetch.example.com"], certificate_id: certificate })),
+			"create",
+		);
+		const runs = await fetcherRuns();
+		assert.equal(runs.length, 1);
+		assert.match(runs[0], /-c \S+\/data\/tls\/custom -o \S+\/data\/tls\/custom /u);
+		const config = await proxyConfig(host);
+		assert.match(config, new RegExp(`ssl_stapling_file /data/tls/custom/npm-${certificate}\\.der;`, "u"));
+		const saved = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8998 });
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal((await fetcherRuns()).length, 1);
+	} finally {
+		mock.timers.setTime(now);
+	}
 });
 
+// BUG-14 is about this: within the bound a save without an OCSP file runs nothing and stapling stays off
 it("does not run the OCSP fetcher again within its interval when a host without an OCSP file is saved", async () => {
 	const certificate = await addCertificate(ctx.api, { domain: "env-bound.example.com" });
 	await installFetcher(certificate);
