@@ -1,0 +1,260 @@
+[
+	{
+		"type": "index",
+		"name": "auth_user_id_type_index",
+		"table": "auth",
+		"sql": "CREATE INDEX `auth_user_id_type_index` on `auth` (`user_id`, `type`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_backup_schedule_name",
+		"table": "npmpro_backup_schedule",
+		"sql": "CREATE UNIQUE INDEX `npmpro_backup_schedule_name` on `npmpro_backup_schedule` (`name`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_dns_credential_owner_user_id_name_unique",
+		"table": "npmpro_dns_credential",
+		"sql": "CREATE UNIQUE INDEX `npmpro_dns_credential_owner_user_id_name_unique` on \"npmpro_dns_credential\" (`owner_user_id`, `name`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_location_proxy_host_id_index",
+		"table": "npmpro_location",
+		"sql": "CREATE INDEX `npmpro_location_proxy_host_id_index` on \"npmpro_location\" (`proxy_host_id`)"
+	},
+	{
+		"type": "index",
+		"name": "session_revocation_expires",
+		"table": "session_revocation",
+		"sql": "CREATE INDEX `session_revocation_expires` on `session_revocation` (`expires_at`)"
+	},
+	{
+		"type": "index",
+		"name": "session_revocation_sid",
+		"table": "session_revocation",
+		"sql": "CREATE UNIQUE INDEX `session_revocation_sid` on `session_revocation` (`sid`)"
+	},
+	{
+		"type": "index",
+		"name": "tah_hb",
+		"table": "traffic_asn_hour",
+		"sql": "CREATE INDEX `tah_hb` on `traffic_asn_hour` (`host`, `bucket`)"
+	},
+	{
+		"type": "index",
+		"name": "tah_uq",
+		"table": "traffic_asn_hour",
+		"sql": "CREATE UNIQUE INDEX `tah_uq` on `traffic_asn_hour` (`bucket`, `host`, `asn`)"
+	},
+	{
+		"type": "index",
+		"name": "tch_hb",
+		"table": "traffic_country_hour",
+		"sql": "CREATE INDEX `tch_hb` on `traffic_country_hour` (`host`, `bucket`)"
+	},
+	{
+		"type": "index",
+		"name": "tch_uq",
+		"table": "traffic_country_hour",
+		"sql": "CREATE UNIQUE INDEX `tch_uq` on `traffic_country_hour` (`bucket`, `host`, `country`)"
+	},
+	{
+		"type": "index",
+		"name": "th_hb",
+		"table": "traffic_hour",
+		"sql": "CREATE INDEX `th_hb` on `traffic_hour` (`host`, `bucket`)"
+	},
+	{
+		"type": "index",
+		"name": "th_uq",
+		"table": "traffic_hour",
+		"sql": "CREATE UNIQUE INDEX `th_uq` on `traffic_hour` (`bucket`, `host`, `status_class`)"
+	},
+	{
+		"type": "index",
+		"name": "tih_hb",
+		"table": "traffic_ip_hour",
+		"sql": "CREATE INDEX `tih_hb` on `traffic_ip_hour` (`host`, `bucket`)"
+	},
+	{
+		"type": "index",
+		"name": "tih_uq",
+		"table": "traffic_ip_hour",
+		"sql": "CREATE UNIQUE INDEX `tih_uq` on `traffic_ip_hour` (`bucket`, `host`, `ip`)"
+	},
+	{
+		"type": "index",
+		"name": "tm_hb",
+		"table": "traffic_minute",
+		"sql": "CREATE INDEX `tm_hb` on `traffic_minute` (`host`, `bucket`)"
+	},
+	{
+		"type": "index",
+		"name": "tm_uq",
+		"table": "traffic_minute",
+		"sql": "CREATE UNIQUE INDEX `tm_uq` on `traffic_minute` (`bucket`, `host`, `status_class`)"
+	},
+	{
+		"type": "index",
+		"name": "tv_day",
+		"table": "traffic_visitor",
+		"sql": "CREATE INDEX `tv_day` on `traffic_visitor` (`day`)"
+	},
+	{
+		"type": "index",
+		"name": "tv_uq",
+		"table": "traffic_visitor",
+		"sql": "CREATE UNIQUE INDEX `tv_uq` on `traffic_visitor` (`day`, `host`, `hash`)"
+	},
+	{
+		"type": "index",
+		"name": "user_permission_user_id_unique",
+		"table": "user_permission",
+		"sql": "CREATE UNIQUE INDEX `user_permission_user_id_unique` on `user_permission` (`user_id`)"
+	},
+	{
+		"type": "table",
+		"name": "access_list",
+		"table": "access_list",
+		"sql": "CREATE TABLE \"access_list\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `name` varchar(255) NOT NULL, `meta` json NOT NULL, `satisfy_any` integer NOT NULL DEFAULT '0', `pass_auth` integer NOT NULL DEFAULT '0')"
+	},
+	{
+		"type": "table",
+		"name": "access_list_auth",
+		"table": "access_list_auth",
+		"sql": "CREATE TABLE `access_list_auth` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `access_list_id` integer not null, `username` varchar(255) not null, `password` varchar(255) not null, `meta` json not null)"
+	},
+	{
+		"type": "table",
+		"name": "access_list_client",
+		"table": "access_list_client",
+		"sql": "CREATE TABLE `access_list_client` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `access_list_id` integer not null, `address` varchar(255) not null, `directive` varchar(255) not null, `meta` json not null)"
+	},
+	{
+		"type": "table",
+		"name": "audit_log",
+		"table": "audit_log",
+		"sql": "CREATE TABLE `audit_log` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `user_id` integer not null, `object_type` varchar(255) not null default '', `object_id` integer not null default '0', `action` varchar(255) not null, `meta` json not null)"
+	},
+	{
+		"type": "table",
+		"name": "auth",
+		"table": "auth",
+		"sql": "CREATE TABLE `auth` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `user_id` integer not null, `type` varchar(30) not null, `secret` varchar(255) not null, `meta` json not null, `is_deleted` integer not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "certificate",
+		"table": "certificate",
+		"sql": "CREATE TABLE \"certificate\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `provider` varchar(255) NOT NULL, `nice_name` varchar(255) NOT NULL DEFAULT '', `domain_names` json NOT NULL, `expires_on` datetime NOT NULL, `meta` json NOT NULL, \"npmpro_reuse_key\" integer NOT NULL DEFAULT '0', \"npmpro_dns_challenge\" integer NOT NULL DEFAULT '0', \"npmpro_dns_provider\" varchar(255) NOT NULL DEFAULT '', \"npmpro_propagation_seconds\" integer NOT NULL DEFAULT '0', \"npmpro_dns_credential_id\" integer NULL DEFAULT null)"
+	},
+	{
+		"type": "table",
+		"name": "dead_host",
+		"table": "dead_host",
+		"sql": "CREATE TABLE `dead_host` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `is_deleted` integer not null default '0', `domain_names` json not null, `certificate_id` integer not null default '0', `ssl_forced` integer not null default '0', `advanced_config` text not null default '', `meta` json not null, `http2_support` integer not null default '0', `enabled` integer not null default '1', `hsts_enabled` integer not null default '0', `hsts_subdomains` integer not null default '0', \"npmpro_http3_support\" integer not null default '0', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_backup_schedule",
+		"table": "npmpro_backup_schedule",
+		"sql": "CREATE TABLE `npmpro_backup_schedule` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `name` varchar(60) not null, `enabled` boolean not null default '1', `frequency` varchar(10) not null, `every_hours` integer null, `time` varchar(5) null, `weekday` integer null, `month_day` integer null, `types` text not null, `protection` varchar(12) not null, `passphrase` text null, `keep` integer not null, `next_run_at` datetime null, `last_run_at` datetime null, `last_status` varchar(10) null, `last_error` text null, `last_file` varchar(255) null, `last_size` bigint null, `last_duration_ms` integer null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_dns_credential",
+		"table": "npmpro_dns_credential",
+		"sql": "CREATE TABLE \"npmpro_dns_credential\" (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `name` varchar(255) not null, `provider` varchar(255) not null, `values` text not null)"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_location",
+		"table": "npmpro_location",
+		"sql": "CREATE TABLE \"npmpro_location\" (`id` integer not null primary key autoincrement, `proxy_host_id` integer not null, \"npmpro_enabled\" integer not null default '1', `path` text not null, `location_type` varchar(255) not null default '', `forward_scheme` varchar(255) not null default 'http', `forward_host` varchar(255) not null default '', `forward_port` integer not null default '0', \"npmpro_noindex\" integer not null default '0', \"npmpro_crowdsec_appsec\" integer not null default '0', \"npmpro_proxy_request_buffering\" integer not null default '0', \"npmpro_proxy_response_buffering\" integer not null default '0', \"npmpro_upstream_compression\" integer not null default '0', \"npmpro_fancyindex\" integer not null default '0', \"npmpro_x_frame_options\" varchar(255) not null default 'SAMEORIGIN', \"npmpro_auth_request\" varchar(255) not null default 'none', \"npmpro_auth_request_upstream\" varchar(255) not null default '', `advanced_config` text not null default '', \"npmpro_access_list_type\" varchar(255) not null default 'global')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_proxy_host_access_list",
+		"table": "npmpro_proxy_host_access_list",
+		"sql": "CREATE TABLE \"npmpro_proxy_host_access_list\" (`proxy_host_id` integer not null, `location_id` integer not null default '0', `access_list_id` integer not null, `position` integer not null default '0', primary key (`proxy_host_id`, `location_id`, `access_list_id`))"
+	},
+	{
+		"type": "table",
+		"name": "proxy_host",
+		"table": "proxy_host",
+		"sql": "CREATE TABLE \"proxy_host\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `domain_names` json NOT NULL, `forward_host` varchar(255) NOT NULL, `forward_port` integer NOT NULL DEFAULT '0', `access_list_id` integer NOT NULL DEFAULT '0', `certificate_id` integer NOT NULL DEFAULT '0', `ssl_forced` integer NOT NULL DEFAULT '0', `caching_enabled` integer NOT NULL DEFAULT '0', `block_exploits` integer NOT NULL DEFAULT '0', `advanced_config` text NOT NULL DEFAULT '', `meta` json NOT NULL, `allow_websocket_upgrade` integer NOT NULL DEFAULT '0', `http2_support` integer NOT NULL DEFAULT '0', `forward_scheme` varchar(255) NOT NULL DEFAULT 'http', `enabled` integer NOT NULL DEFAULT '1', `locations` json NOT NULL DEFAULT '[]', `hsts_enabled` integer NOT NULL DEFAULT '0', `hsts_subdomains` integer NOT NULL DEFAULT '0', `trust_forwarded_proto` tinyint NOT NULL DEFAULT '0', \"npmpro_proxy_request_buffering\" integer NOT NULL DEFAULT '0', \"npmpro_proxy_response_buffering\" integer NOT NULL DEFAULT '0', \"npmpro_noindex\" integer NOT NULL DEFAULT '0', \"npmpro_x_frame_options\" varchar(255) NOT NULL DEFAULT 'SAMEORIGIN', \"npmpro_auth_request\" varchar(255) NOT NULL DEFAULT 'none', \"npmpro_http3_support\" integer NOT NULL DEFAULT '0', \"npmpro_crowdsec_appsec\" integer NOT NULL DEFAULT '0', \"npmpro_upstream_compression\" integer NOT NULL DEFAULT '0', \"npmpro_fancyindex\" integer NOT NULL DEFAULT '0', \"npmpro_location_config\" text NOT NULL DEFAULT '', \"npmpro_access_list_type\" varchar(255) NOT NULL DEFAULT 'public', \"npmpro_auth_request_upstream\" varchar(255) NOT NULL DEFAULT '', \"npmpro_nginx_online\" integer NOT NULL DEFAULT '0', \"npmpro_nginx_err\" text NOT NULL DEFAULT '', \"npmpro_directory\" varchar(255) NOT NULL DEFAULT '', \"npmpro_mtls_certificate_id\" integer NOT NULL DEFAULT '0', \"npmpro_mtls_verify_client_optional\" integer NOT NULL DEFAULT '0', \"npmpro_mtls_bypass_auth_request\" integer NOT NULL DEFAULT '0')"
+	},
+	{
+		"type": "table",
+		"name": "redirection_host",
+		"table": "redirection_host",
+		"sql": "CREATE TABLE \"redirection_host\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `domain_names` json NOT NULL, `forward_domain_name` varchar(255) NOT NULL, `preserve_path` integer NOT NULL DEFAULT '0', `certificate_id` integer NOT NULL DEFAULT '0', `ssl_forced` integer NOT NULL DEFAULT '0', `block_exploits` integer NOT NULL DEFAULT '0', `advanced_config` text NOT NULL DEFAULT '', `meta` json NOT NULL, `http2_support` integer NOT NULL DEFAULT '0', `enabled` integer NOT NULL DEFAULT '1', `hsts_enabled` integer NOT NULL DEFAULT '0', `hsts_subdomains` integer NOT NULL DEFAULT '0', `forward_scheme` varchar(255) NOT NULL DEFAULT '$scheme', `forward_http_code` integer NOT NULL DEFAULT '302', \"npmpro_http3_support\" integer NOT NULL DEFAULT '0', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "session_revocation",
+		"table": "session_revocation",
+		"sql": "CREATE TABLE `session_revocation` (`id` integer not null primary key autoincrement, `sid` varchar(64) not null, `expires_at` integer not null)"
+	},
+	{
+		"type": "table",
+		"name": "setting",
+		"table": "setting",
+		"sql": "CREATE TABLE `setting` (`id` varchar(255) not null, `name` varchar(100) not null, `description` varchar(255) not null, `value` varchar(255) not null, `meta` json not null, primary key (`id`))"
+	},
+	{
+		"type": "table",
+		"name": "stream",
+		"table": "stream",
+		"sql": "CREATE TABLE \"stream\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `owner_user_id` integer NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `incoming_port` varchar(11) NOT NULL, `forwarding_host` varchar(255) NOT NULL, `forwarding_port` varchar(12) NOT NULL DEFAULT '', `tcp_forwarding` integer NOT NULL DEFAULT '0', `udp_forwarding` integer NOT NULL DEFAULT '0', `meta` json NOT NULL, `enabled` integer NOT NULL DEFAULT '1', `certificate_id` integer NOT NULL DEFAULT '0', \"npmpro_proxy_protocol_forwarding\" integer NOT NULL DEFAULT '0', \"npmpro_proxy_tls\" integer NOT NULL DEFAULT '0', \"npmpro_description\" varchar(255) NOT NULL DEFAULT '', \"npmpro_advanced_config\" text NOT NULL DEFAULT '', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_asn_hour",
+		"table": "traffic_asn_hour",
+		"sql": "CREATE TABLE `traffic_asn_hour` (`id` integer not null primary key autoincrement, `bucket` integer not null, `host` varchar(255) not null, `asn` bigint not null, `asn_name` varchar(255) not null default '', `requests` bigint not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_country_hour",
+		"table": "traffic_country_hour",
+		"sql": "CREATE TABLE `traffic_country_hour` (`id` integer not null primary key autoincrement, `bucket` integer not null, `host` varchar(255) not null, `country` varchar(2) not null, `requests` bigint not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_hour",
+		"table": "traffic_hour",
+		"sql": "CREATE TABLE `traffic_hour` (`id` integer not null primary key autoincrement, `bucket` integer not null, `host` varchar(255) not null, `status_class` varchar(8) not null, `requests` bigint not null default '0', `bytes` bigint not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_ip_hour",
+		"table": "traffic_ip_hour",
+		"sql": "CREATE TABLE `traffic_ip_hour` (`id` integer not null primary key autoincrement, `bucket` integer not null, `host` varchar(255) not null, `ip` varchar(45) not null, `requests` bigint not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_minute",
+		"table": "traffic_minute",
+		"sql": "CREATE TABLE `traffic_minute` (`id` integer not null primary key autoincrement, `bucket` integer not null, `host` varchar(255) not null, `status_class` varchar(8) not null, `requests` bigint not null default '0', `bytes` bigint not null default '0')"
+	},
+	{
+		"type": "table",
+		"name": "traffic_visitor",
+		"table": "traffic_visitor",
+		"sql": "CREATE TABLE `traffic_visitor` (`id` integer not null primary key autoincrement, `day` integer not null, `host` varchar(255) not null, `hash` varchar(32) not null)"
+	},
+	{
+		"type": "table",
+		"name": "user",
+		"table": "user",
+		"sql": "CREATE TABLE \"user\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `is_disabled` integer NOT NULL DEFAULT '0', `email` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `nickname` varchar(255) NOT NULL DEFAULT '', `avatar` varchar(255) NOT NULL, `roles` json NOT NULL, \"npmpro_token_valid_after\" bigint NOT NULL DEFAULT '<migration time>')"
+	},
+	{
+		"type": "table",
+		"name": "user_permission",
+		"table": "user_permission",
+		"sql": "CREATE TABLE `user_permission` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `user_id` integer not null, `visibility` varchar(255) not null, `proxy_hosts` varchar(255) not null, `redirection_hosts` varchar(255) not null, `dead_hosts` varchar(255) not null, `streams` varchar(255) not null, `access_lists` varchar(255) not null, `certificates` varchar(255) not null)"
+	}
+]
