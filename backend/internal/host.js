@@ -1,8 +1,13 @@
 import { domainToASCII, domainToUnicode } from "node:url";
+import { raw } from "objection";
+import { isMysql } from "../lib/config.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
+
+// MySQL compares a json column with a binary collation, so LIKE would not ignore case: compare it as text
+const domainNamesText = () => (isMysql() ? raw("CAST(?? AS CHAR)", ["domain_names"]) : castJsonIfNeed("domain_names"));
 
 /**
  * @param   {String}  hostname
@@ -89,14 +94,8 @@ const internalHost = {
 								.where("enabled", 1)
 								.andWhere((query) =>
 									query
-										.whereILike(
-											castJsonIfNeed("domain_names"),
-											`%${domainToASCII(hostname) || hostname}%`,
-										)
-										.orWhereILike(
-											castJsonIfNeed("domain_names"),
-											`%${domainToUnicode(hostname) || hostname}%`,
-										),
+										.whereILike(domainNamesText(), `%${domainToASCII(hostname) || hostname}%`)
+										.orWhereILike(domainNamesText(), `%${domainToUnicode(hostname) || hostname}%`),
 								),
 							ignore_type === type && ignore_id ? ignore_id : 0,
 						),
