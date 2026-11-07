@@ -14,6 +14,34 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+        env:
+          POSTGRES_USER: npmpro
+          POSTGRES_PASSWORD: ci-throwaway
+          POSTGRES_DB: npmpro_test_unit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U npmpro -d npmpro_test_unit"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 24
+      mysql:
+        image: mysql:8.4@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
+        env:
+          MYSQL_ROOT_PASSWORD: ci-throwaway-root
+          MYSQL_DATABASE: npmpro_test_unit
+          MYSQL_USER: npmpro
+          MYSQL_PASSWORD: ci-throwaway
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -u npmpro -pci-throwaway --silent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 36
     defaults:
       run:
         working-directory: backend
@@ -31,6 +59,37 @@ jobs:
         run: pnpm run coverage # fails on a failed test or below coverage-floor.json; the summary is in this log
       - name: data folder move
         run: sh test/migrate-data-folder.test.sh
+      - name: tests on real database servers
+        shell: bash
+        env:
+          POSTGRES_NPMPRO_HOST: 127.0.0.1
+          POSTGRES_NPMPRO_PORT: "5432"
+          POSTGRES_NPMPRO_USER: npmpro
+          POSTGRES_NPMPRO_PASS: ci-throwaway
+          MYSQL_NPMPRO_HOST: 127.0.0.1
+          MYSQL_NPMPRO_PORT: "3306"
+          MYSQL_NPMPRO_USER: npmpro
+          MYSQL_NPMPRO_PASS: ci-throwaway
+          TEST_PG_URL: postgres://npmpro:ci-throwaway@127.0.0.1:5432/npmpro_test_unit
+          TEST_MYSQL_URL: mysql://npmpro:ci-throwaway@127.0.0.1:3306/npmpro_test_unit
+        # one file at a time: they share one database and most start by dropping it; outside c8, the floor reads the step above
+        run: |
+          set -o pipefail
+          node --test --test-concurrency=1 --test-reporter=tap \
+            test/backup-merge-pg.test.js \
+            test/backup-schedule-migration.test.js \
+            test/database-copy.test.js \
+            test/database-move.test.js \
+            test/database-schema.test.js \
+            test/database-target.test.js \
+            test/database-values.test.js \
+            test/rename-migration-servers.test.js \
+            test/servers-mysql.test.js \
+            test/servers-postgres.test.js | tee "$RUNNER_TEMP/servers.tap"
+          if grep '# SKIP' "$RUNNER_TEMP/servers.tap" | grep -v 'rename migration on mariadb'; then
+            echo "::error::a real-server test was skipped"
+            exit 1
+          fi
 
   frontend:
     runs-on: ubuntu-slim
