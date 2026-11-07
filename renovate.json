@@ -8,6 +8,8 @@
 	"timezone": "UTC",
 	"automerge": false,
 	"prConcurrentLimit": 10,
+	"prHourlyLimit": 0,
+	"lockFileMaintenance": { "enabled": false },
 	"osvVulnerabilityAlerts": true,
 	"vulnerabilityAlerts": { "enabled": true, "schedule": ["at any time"] },
 	"customManagers": [
@@ -31,12 +33,12 @@
 		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG COF_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "tomwassenberg/certbot-ocsp-fetcher", "packageNameTemplate": "https://github.com/tomwassenberg/certbot-ocsp-fetcher", "datasourceTemplate": "git-refs" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["hadolint/releases/download/(?<currentValue>v[0-9.]+)/"], "depNameTemplate": "hadolint/hadolint", "datasourceTemplate": "github-releases" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["actionlint/releases/download/v(?<currentValue>[0-9.]+)/", "actionlint_(?<currentValue>[0-9.]+)_linux"], "matchStringsStrategy": "any", "depNameTemplate": "rhysd/actionlint", "datasourceTemplate": "github-releases", "extractVersionTemplate": "^v(?<version>.*)$" },
-		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["nginxbeautifier@(?<currentValue>[0-9.]+)"], "depNameTemplate": "nginxbeautifier", "datasourceTemplate": "npm" },
-		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/actions/setup/action\\.yml$/"], "matchStrings": ["version: (?<currentValue>[0-9.]+)\\n"], "depNameTemplate": "pnpm", "datasourceTemplate": "npm" }
+		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["nginxbeautifier@(?<currentValue>[0-9.]+)"], "depNameTemplate": "nginxbeautifier", "datasourceTemplate": "npm" }
 	],
 	"packageRules": [
 		{ "matchManagers": ["docker-compose"], "pinDigests": false },
 		{ "matchManagers": ["nodenv"], "enabled": false },
+		{ "matchManagers": ["pip_requirements"], "enabled": false },
 		{ "matchDepNames": ["openresty/lua-nginx-module", "openresty/lua-resty-core"], "ignoreUnstable": false },
 		{
 			"groupName": "nginx stack",
