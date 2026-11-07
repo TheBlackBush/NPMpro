@@ -37,15 +37,16 @@
 	"packageRules": [
 		{ "matchManagers": ["docker-compose"], "pinDigests": false },
 		{ "matchManagers": ["nodenv"], "enabled": false },
-		{ "matchPackageNames": ["openresty/lua-nginx-module", "openresty/lua-resty-core"], "ignoreUnstable": false },
+		{ "matchDepNames": ["openresty/lua-nginx-module", "openresty/lua-resty-core"], "ignoreUnstable": false },
 		{
 			"groupName": "nginx stack",
 			"matchManagers": ["custom.regex"],
 			"matchFileNames": ["Dockerfile"],
 			"separateMajorMinor": false
 		},
+		{ "groupName": "runtime tools", "matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"] },
 		{
-			"matchPackageNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"],
+			"matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"],
 			"postUpgradeTasks": {
 				"commands": ["sh .github/scripts/renovate-post-upgrade.sh {{{depName}}} {{{newDigest}}}"],
 				"fileFilters": ["Dockerfile", "rootfs/etc/crowdsec.conf.original"],

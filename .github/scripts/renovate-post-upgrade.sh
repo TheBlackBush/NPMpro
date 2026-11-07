@@ -13,14 +13,22 @@ hash_of() {
     rm -f "$out"
 }
 
+# Replaces the hash on the line after the line that matches $1; refuses anything but 64 hex characters
 set_hash() {
+    case "$2" in
+        *[!0-9a-f]*) echo "bad hash for $1" >&2; exit 1 ;;
+    esac
+    if [ "${#2}" -ne 64 ]; then
+        echo "bad hash for $1" >&2
+        exit 1
+    fi
     sed -i "\\|$1|{n;s|[0-9a-f]\\{64\\}|$2|}" Dockerfile
 }
 
 case "$dep" in
     tomwassenberg/certbot-ocsp-fetcher)
-        set_hash 'raw.githubusercontent.com/tomwassenberg' \
-            "$(hash_of "https://raw.githubusercontent.com/tomwassenberg/certbot-ocsp-fetcher/$sha/certbot-ocsp-fetcher")"
+        h="$(hash_of "https://raw.githubusercontent.com/tomwassenberg/certbot-ocsp-fetcher/$sha/certbot-ocsp-fetcher")" || exit 1
+        set_hash 'raw.githubusercontent.com/tomwassenberg' "$h"
         ;;
     crowdsecurity/lua-cs-bouncer)
         curl -sSfL "https://raw.githubusercontent.com/crowdsecurity/lua-cs-bouncer/$sha/config_example.conf" -o rootfs/etc/crowdsec.conf.original

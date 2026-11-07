@@ -95,7 +95,7 @@ jobs:
         run: sh .github/scripts/check-compose-envs.sh
       - name: release version script
         run: sh .github/scripts/release-version.test.sh
-      - name: update-sources stops on a failed download
+      - name: update scripts stop on a failed download or a bad hash
         run: sh .github/scripts/update-sources.test.sh
       - name: nginx config format
         run: |
