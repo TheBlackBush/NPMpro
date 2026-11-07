@@ -33,7 +33,9 @@ jobs:
     with:
       version: ${{ needs.version.outputs.version }}
       tags: ${{ needs.version.outputs.tags }}
-    secrets: inherit
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   release:
     needs: [version, publish]

@@ -10,6 +10,13 @@ on:
         description: space separated image tags to publish
         required: true
         type: string
+    secrets:
+      DOCKER_USERNAME:
+        description: Docker Hub user, the copy to Docker Hub is skipped when this or the token is missing
+        required: false
+      DOCKER_TOKEN:
+        description: Docker Hub access token
+        required: false
 permissions: {}
 env:
   GHCR_IMAGE: ghcr.io/theblackbush/npmpro

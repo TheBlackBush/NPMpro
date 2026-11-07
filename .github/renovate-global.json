@@ -6,5 +6,5 @@
 	"onboarding": false,
 	"dependencyDashboard": true,
 	"requireConfig": "required",
-	"allowedCommands": ["^sh \\.github/scripts/renovate-post-upgrade\\.sh "]
+	"allowedCommands": ["^sh \\.github/scripts/renovate-post-upgrade\\.sh [A-Za-z0-9/_.-]+ [0-9a-f]{40}$"]
 }

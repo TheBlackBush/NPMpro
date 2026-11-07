@@ -40,6 +40,14 @@ need() {
     fi
 }
 
+# Stops the run unless the version is only digits and dots; a name from an upstream repository reaches sed otherwise
+need_version() {
+    need "$1" "$2"
+    case "$2" in
+        *[!0-9.]*) echo "unexpected characters in the $1 version" >&2; exit 1 ;;
+    esac
+}
+
 pr_patch() {
     local h
     fetch "https://patch-diff.githubusercontent.com/raw/$1/pull/$2.patch" "$tmp/pr.patch"
@@ -57,7 +65,7 @@ dtr_ver="$(
     find "$tmp/dtr" -maxdepth 1 -name 'nginx__dynamic_tls_records_*.patch' -printf '%f\n' \
         | sed 's|nginx__dynamic_tls_records_\([0-9.]\+\)+.patch|\1|' | sort -V | tail -1
 )"
-need dynamic_tls_records "$dtr_ver"
+need_version dynamic_tls_records "$dtr_ver"
 dtr_hash="$(hash_of "$tmp/dtr/nginx__dynamic_tls_records_$dtr_ver+.patch")"
 sed -i "s|ARG DTR_VER=.*|ARG DTR_VER=$dtr_ver|" Dockerfile
 set_hash "dynamic_tls_records" "$dtr_hash"
@@ -65,7 +73,7 @@ set_hash "dynamic_tls_records" "$dtr_hash"
 # OpenResty patches
 git clone --quiet --depth 1 https://github.com/openresty/openresty "$tmp/openresty"
 orp_ver="$(find "$tmp/openresty/patches/nginx" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort -V | tail -1)"
-need openresty-patches "$orp_ver"
+need_version openresty-patches "$orp_ver"
 sed -i "s|ARG ORP_VER=.*|ARG ORP_VER=$orp_ver|" Dockerfile
 for patch in resolver_conf_parsing resolver_hosts upstream_pipelining reuseport_close_unused_fds; do
     orp_hash="$(hash_of "$tmp/openresty/patches/nginx/$orp_ver/nginx-$orp_ver-$patch.patch")"
@@ -78,7 +86,7 @@ znp_ver="$(
     find "$tmp/zlib-ng/nginx" -maxdepth 1 -name '*-zlib-ng.patch' -printf '%f\n' \
         | sed 's|\([0-9.]\+\)-zlib-ng.patch|\1|' | sort -V | tail -1
 )"
-need zlib-ng-patch "$znp_ver"
+need_version zlib-ng-patch "$znp_ver"
 znp_hash="$(hash_of "$tmp/zlib-ng/nginx/$znp_ver-zlib-ng.patch")"
 sed -i "s|ARG ZNP_VER=.*|ARG ZNP_VER=$znp_ver|" Dockerfile
 set_hash "zlib-ng.patch" "$znp_hash"
@@ -100,6 +108,10 @@ sed -i 's|crowdsec-nginx-bouncer/.*"|crowdsec-nginx-bouncer/version"|' rootfs/us
 # nginxbeautifier: follows master, except a commit we do not take (Renovate can not skip one commit)
 nbf_sha="$(git ls-remote https://github.com/vasilevich/nginxbeautifier master | cut -f1)"
 need nginxbeautifier "$nbf_sha"
+if [ "${#nbf_sha}" -ne 40 ] || [ -n "$(printf '%s' "$nbf_sha" | tr -d '0-9a-f')" ]; then
+    echo "nginxbeautifier commit is not 40 lowercase hex characters" >&2
+    exit 1
+fi
 if [ "$nbf_sha" != "ac5fd769a49c79bf2d750b6456a4565c6c99578d" ]; then
     fetch "https://raw.githubusercontent.com/vasilevich/nginxbeautifier/$nbf_sha/index.js" "$tmp/index.js"
     fetch "https://raw.githubusercontent.com/vasilevich/nginxbeautifier/$nbf_sha/nginxbeautifier.js" "$tmp/nginxbeautifier.js"
