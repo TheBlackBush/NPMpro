@@ -20,9 +20,6 @@ jobs:
           ref: develop
           persist-credentials: false
       - uses: renovatebot/github-action@1c0cf989c02653fba0efe7ca5772338860ca71dc # v46.3.12
-        env:
-          RENOVATE_DRY_RUN: full
-          LOG_LEVEL: debug
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
           configurationFile: .github/renovate-global.json
