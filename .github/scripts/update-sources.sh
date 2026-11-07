@@ -108,7 +108,7 @@ sed -i 's|crowdsec-nginx-bouncer/.*"|crowdsec-nginx-bouncer/version"|' rootfs/us
 # nginxbeautifier: follows master, except a commit we do not take (Renovate can not skip one commit)
 nbf_sha="$(git ls-remote https://github.com/vasilevich/nginxbeautifier master | cut -f1)"
 need nginxbeautifier "$nbf_sha"
-if ! printf '%s\n' "$nbf_sha" | grep -qE '^[0-9a-f]{40}$'; then
+if [ "${#nbf_sha}" -ne 40 ] || [ -n "$(printf '%s' "$nbf_sha" | tr -d '0-9a-f')" ]; then
     echo "nginxbeautifier commit is not 40 lowercase hex characters" >&2
     exit 1
 fi
