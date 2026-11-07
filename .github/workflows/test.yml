@@ -95,6 +95,8 @@ jobs:
         run: sh .github/scripts/check-compose-envs.sh
       - name: release version script
         run: sh .github/scripts/release-version.test.sh
+      - name: update scripts stop on a failed download or a bad hash
+        run: sh .github/scripts/update-sources.test.sh
       - name: nginx config format
         run: |
           npx --yes nginxbeautifier@1.0.19 -s 2 -r rootfs/usr/local/nginx/conf

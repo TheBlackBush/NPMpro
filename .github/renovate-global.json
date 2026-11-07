@@ -1,0 +1,8 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"platform": "github",
+	"repositories": ["TheBlackBush/NPMpro"],
+	"onboarding": false,
+	"requireConfig": "required",
+	"allowedCommands": ["^sh \\.github/scripts/renovate-post-upgrade\\.sh "]
+}

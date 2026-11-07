@@ -1,12 +1,61 @@
 {
-	"extends": ["config:best-practices"],
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:best-practices", ":dependencyDashboard"],
 	"ignorePresets": ["security:minimumReleaseAgeNpm"],
 	"forkProcessing": "enabled",
 	"rangeStrategy": "pin",
+	"schedule": ["before 6am on monday"],
+	"timezone": "UTC",
+	"automerge": false,
+	"prConcurrentLimit": 10,
+	"osvVulnerabilityAlerts": true,
+	"vulnerabilityAlerts": { "enabled": true, "schedule": ["at any time"] },
+	"customManagers": [
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG AWSLC_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "aws/aws-lc", "datasourceTemplate": "github-tags" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NGINX_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "nginx/nginx", "datasourceTemplate": "github-tags", "versioningTemplate": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NUB_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "HanadaLee/ngx_http_unbrotli_filter_module", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG ZNM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "HanadaLee/ngx_http_zstd_module", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NHUZFM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "HanadaLee/ngx_http_unzstd_filter_module", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NF_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "aperezdc/ngx-fancyindex", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG HMNM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "openresty/headers-more-nginx-module", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NDK_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "vision5/ngx_devel_kit", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LNM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "openresty/lua-nginx-module", "datasourceTemplate": "github-tags", "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(rc(?<prerelease>\\d+))?$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NJS_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "nginx/njs", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG VTS_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "vozlt/nginx-module-vts", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LRC_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "openresty/lua-resty-core", "datasourceTemplate": "github-tags", "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(rc(?<prerelease>\\d+))?$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LRL_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "openresty/lua-resty-lrucache", "datasourceTemplate": "github-tags", "versioningTemplate": "loose" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NB_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "HanadaLee/ngx_http_brotli_module", "packageNameTemplate": "https://github.com/HanadaLee/ngx_http_brotli_module", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NAL_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "kvspb/nginx-auth-ldap", "packageNameTemplate": "https://github.com/kvspb/nginx-auth-ldap", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NNTLM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "gabihodoroaga/nginx-ntlm-module", "packageNameTemplate": "https://github.com/gabihodoroaga/nginx-ntlm-module", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LCSB_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "crowdsecurity/lua-cs-bouncer", "packageNameTemplate": "https://github.com/crowdsecurity/lua-cs-bouncer", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG COF_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "tomwassenberg/certbot-ocsp-fetcher", "packageNameTemplate": "https://github.com/tomwassenberg/certbot-ocsp-fetcher", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["hadolint/releases/download/(?<currentValue>v[0-9.]+)/"], "depNameTemplate": "hadolint/hadolint", "datasourceTemplate": "github-releases" },
+		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["actionlint/releases/download/v(?<currentValue>[0-9.]+)/", "actionlint_(?<currentValue>[0-9.]+)_linux"], "matchStringsStrategy": "any", "depNameTemplate": "rhysd/actionlint", "datasourceTemplate": "github-releases", "extractVersionTemplate": "^v(?<version>.*)$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["nginxbeautifier@(?<currentValue>[0-9.]+)"], "depNameTemplate": "nginxbeautifier", "datasourceTemplate": "npm" },
+		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/actions/setup/action\\.yml$/"], "matchStrings": ["version: (?<currentValue>[0-9.]+)\\n"], "depNameTemplate": "pnpm", "datasourceTemplate": "npm" }
+	],
 	"packageRules": [
+		{ "matchManagers": ["docker-compose"], "pinDigests": false },
+		{ "matchManagers": ["nodenv"], "enabled": false },
+		{ "matchDepNames": ["openresty/lua-nginx-module", "openresty/lua-resty-core"], "ignoreUnstable": false },
 		{
-			"matchManagers": ["docker-compose"],
-			"pinDigests": false
-		}
+			"groupName": "nginx stack",
+			"matchManagers": ["custom.regex"],
+			"matchFileNames": ["Dockerfile"],
+			"separateMajorMinor": false
+		},
+		{ "groupName": "runtime tools", "matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"] },
+		{
+			"matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"],
+			"postUpgradeTasks": {
+				"commands": ["sh .github/scripts/renovate-post-upgrade.sh {{{depName}}} {{{newDigest}}}"],
+				"fileFilters": ["Dockerfile", "rootfs/etc/crowdsec.conf.original"],
+				"executionMode": "update"
+			}
+		},
+		{ "groupName": "backend npm non-major", "matchFileNames": ["backend/**"], "matchManagers": ["npm"], "matchUpdateTypes": ["minor", "patch", "pin", "digest"] },
+		{ "groupName": "frontend npm non-major", "matchFileNames": ["frontend/**"], "matchManagers": ["npm"], "matchUpdateTypes": ["minor", "patch", "pin", "digest"] },
+		{ "groupName": "github actions", "matchManagers": ["github-actions"] },
+		{ "groupName": "base images", "matchManagers": ["dockerfile"] }
 	]
 }
