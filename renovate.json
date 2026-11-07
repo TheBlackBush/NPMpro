@@ -9,7 +9,7 @@
 	"automerge": false,
 	"prConcurrentLimit": 10,
 	"prHourlyLimit": 0,
-	"lockFileMaintenance": { "enabled": false },
+	"lockFileMaintenance": { "enabled": true, "schedule": ["before 6am on monday"] },
 	"osvVulnerabilityAlerts": true,
 	"vulnerabilityAlerts": { "enabled": true, "schedule": ["at any time"] },
 	"customManagers": [
