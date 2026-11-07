@@ -1,0 +1,49 @@
+# The rules are on develop: renovate.json and .github/scripts. This file only starts them on a schedule, which GitHub
+# reads from the default branch.
+name: dependency-updates
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: develop
+          persist-credentials: false
+      - uses: renovatebot/github-action@1c0cf989c02653fba0efe7ca5772338860ca71dc # v46.3.12
+        env:
+          RENOVATE_DRY_RUN: full
+          LOG_LEVEL: debug
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+          configurationFile: .github/renovate-global.json
+          renovate-version: 44.222.0
+
+  sources:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: develop
+          persist-credentials: false
+      - run: bash .github/scripts/update-sources.sh
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.RENOVATE_TOKEN }}
+          base: develop
+          branch: update-sources
+          delete-branch: true
+          commit-message: update patches and pinned sources
+          title: update patches and pinned sources
+          body: Hashes and files that have no version Renovate can track, from update-sources.sh.
