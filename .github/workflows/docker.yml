@@ -31,6 +31,11 @@ jobs:
           build-args: |
             FLAGS=-march=x86-64-v2 -mtune=generic -fcf-protection=full
       - uses: ./.github/actions/setup
+      - name: password of the first user
+        run: |
+          password="Ci-$(openssl rand -hex 12)-9"
+          echo "::add-mask::$password"
+          echo "CHECK_PASSWORD=$password" >> "$GITHUB_ENV"
       - name: start container and wait until healthy
         run: |
           mkdir -p "$RUNNER_TEMP/data"
@@ -65,7 +70,15 @@ jobs:
           exit 1
       - name: no CSP violation or page error on any page, menu or window
         working-directory: frontend
+        env:
+          CSP_CHECK_PASSWORD: ${{ env.CHECK_PASSWORD }}
         run: node scripts/csp-check.js https://127.0.0.1:81 chromium
+      - name: nginx accepts every host type
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: "0"
+        run: node .github/scripts/config-check.js https://127.0.0.1:81
+      - name: nginx -t on the whole config
+        run: docker exec npmpro nginx -t
       - name: container logs
         if: ${{ failure() }}
         run: docker logs npmpro
