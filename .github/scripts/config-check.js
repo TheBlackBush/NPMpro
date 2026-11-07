@@ -46,7 +46,9 @@ async function login() {
 	if (!cookie) throw new Error("login: no cookie");
 }
 
-async function customCertificate() {
+// A self-signed certificate, uploaded as the server certificate of a host ("other", with its key) or as the CA that
+// checks client certificates ("mtls", certificate only)
+async function uploadCertificate(provider, niceName, subject, san) {
 	const dir = mkdtempSync(join(tmpdir(), "config-check-"));
 	const certificate = join(dir, "cert.pem");
 	const key = join(dir, "key.pem");
@@ -61,18 +63,17 @@ async function customCertificate() {
 		"-days",
 		"30",
 		"-subj",
-		"/CN=check.example.com",
-		"-addext",
-		"subjectAltName=DNS:*.check.example.com",
+		subject,
+		...(san ? ["-addext", san] : []),
 		"-keyout",
 		key,
 		"-out",
 		certificate,
 	]);
-	const row = await must("POST", "/nginx/certificates", { provider: "other", nice_name: "config check" });
+	const row = await must("POST", "/nginx/certificates", { provider, nice_name: niceName });
 	const form = new FormData();
 	form.append("certificate", new Blob([readFileSync(certificate)]), "certificate.pem");
-	form.append("certificate_key", new Blob([readFileSync(key)]), "certificate_key.pem");
+	if (provider === "other") form.append("certificate_key", new Blob([readFileSync(key)]), "certificate_key.pem");
 	await must("POST", `/nginx/certificates/${row.id}/upload`, form);
 	return row.id;
 }
@@ -82,7 +83,13 @@ async function stateOf(type, id) {
 }
 
 await login();
-const certificateId = await customCertificate();
+const certificateId = await uploadCertificate(
+	"other",
+	"config check",
+	"/CN=check.example.com",
+	"subjectAltName=DNS:*.check.example.com",
+);
+const mtlsCaId = await uploadCertificate("mtls", "config check client CA", "/CN=config check client CA");
 const list = await must("POST", "/nginx/access-lists", {
 	name: "config check",
 	satisfy_any: true,
@@ -91,10 +98,28 @@ const list = await must("POST", "/nginx/access-lists", {
 });
 
 const tls = { certificate_id: certificateId, ssl_forced: true, hsts_enabled: true, hsts_subdomains: true };
+const plainProxy = (name) => ({
+	domain_names: [`${name}.check.example.com`],
+	forward_scheme: "http",
+	forward_host: "127.0.0.1",
+	forward_port: 8080,
+});
+// every npmpro_auth_request value except "none", each with an upstream of its own so no Forward authentication
+// default is needed
+const authValues = [
+	"anubis",
+	"tinyauth",
+	"oauth2proxy",
+	"voidauth",
+	"authelia",
+	"authentik",
+	"authentik-send-basic-auth",
+];
+const authUpstream = "http://127.0.0.1:9000";
 const hosts = [
 	[
 		"proxy-hosts",
-		"proxy with every local option",
+		"proxy with TLS, HTTP/3, access list, advanced and location config, a location, noindex, DENY, upstream compression, no response buffering",
 		{
 			...tls,
 			domain_names: ["proxy.check.example.com"],
@@ -105,9 +130,53 @@ const hosts = [
 			npmpro_access_list_type: "custom",
 			npmpro_access_list_ids: [list.id],
 			advanced_config: "add_header X-Config-Check yes;",
+			npmpro_location_config: "add_header X-Location-Check yes;",
+			npmpro_noindex: true,
+			npmpro_x_frame_options: "DENY",
+			npmpro_upstream_compression: true,
+			npmpro_proxy_response_buffering: true,
 			locations: [{ path: "/app", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 }],
 		},
 	],
+	[
+		"proxy-hosts",
+		"path host with fancyindex",
+		{
+			domain_names: ["files.check.example.com"],
+			forward_scheme: "path",
+			forward_host: "/var/www/check",
+			npmpro_fancyindex: true,
+		},
+	],
+	[
+		"proxy-hosts",
+		"proxy with X-Frame-Options from the upstream",
+		{ ...plainProxy("frame"), npmpro_x_frame_options: "upstream" },
+	],
+	["proxy-hosts", "proxy with X-Frame-Options removed", { ...plainProxy("noframe"), npmpro_x_frame_options: "none" }],
+	[
+		"proxy-hosts",
+		"proxy with mTLS required",
+		{ ...tls, ...plainProxy("mtls"), npmpro_mtls_certificate_id: mtlsCaId },
+	],
+	[
+		"proxy-hosts",
+		"proxy with optional mTLS, Authelia and the mTLS bypass of the auth request",
+		{
+			...tls,
+			...plainProxy("mtls-bypass"),
+			npmpro_mtls_certificate_id: mtlsCaId,
+			npmpro_mtls_verify_client_optional: true,
+			npmpro_mtls_bypass_auth_request: true,
+			npmpro_auth_request: "authelia",
+			npmpro_auth_request_upstream: authUpstream,
+		},
+	],
+	...authValues.map((value) => [
+		"proxy-hosts",
+		`proxy with auth request ${value}`,
+		{ ...plainProxy(`auth-${value}`), npmpro_auth_request: value, npmpro_auth_request_upstream: authUpstream },
+	]),
 	[
 		"proxy-hosts",
 		"plain proxy",
