@@ -7,7 +7,7 @@ import { runMigrations } from "../../lib/database/schema.js";
 
 const env = process.env;
 
-// the Postgres tests run only where the test server is configured (not in CI)
+// the Postgres tests run where the test server is configured (the servers step of test.yml)
 const pgSkip = env.POSTGRES_NPMPRO_HOST ? false : "POSTGRES_NPMPRO_HOST is not set";
 
 const pgConnection = {
