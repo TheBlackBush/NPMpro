@@ -2,77 +2,53 @@
 // http://vincit.github.io/objection.js/
 
 import { Model } from "objection";
-import db from "../db.js";
-import { convertBoolFieldsToInt, convertIntFieldsToBool, removeCertificateFields } from "../lib/helpers.js";
 import AccessList from "./access_list.js";
 import Certificate from "./certificate.js";
+import HostModel from "./host-model.js";
 import Location from "./location.js";
-import now from "./now_helper.js";
 import User from "./user.js";
 
-Model.knex(db());
+class ProxyHost extends HostModel {
+	static boolFields = [
+		"ssl_forced",
+		"npmpro_http3_support",
+		"enabled",
+		"hsts_enabled",
+		"hsts_subdomains",
+		"npmpro_noindex",
+		"npmpro_crowdsec_appsec",
+		"npmpro_proxy_request_buffering",
+		"npmpro_proxy_response_buffering",
+		"npmpro_upstream_compression",
+		"npmpro_fancyindex",
+		"npmpro_nginx_online",
+		"npmpro_mtls_verify_client_optional",
+		"npmpro_mtls_bypass_auth_request",
+	];
 
-const boolFields = [
-	"ssl_forced",
-	"npmpro_http3_support",
-	"enabled",
-	"hsts_enabled",
-	"hsts_subdomains",
-	"npmpro_noindex",
-	"npmpro_crowdsec_appsec",
-	"npmpro_proxy_request_buffering",
-	"npmpro_proxy_response_buffering",
-	"npmpro_upstream_compression",
-	"npmpro_fancyindex",
-	"npmpro_nginx_online",
-	"npmpro_mtls_verify_client_optional",
-	"npmpro_mtls_bypass_auth_request",
-];
+	static droppedColumns = [
+		"is_deleted",
+		"meta",
+		"access_list_id",
+		"caching_enabled",
+		"block_exploits",
+		"allow_websocket_upgrade",
+		"http2_support",
+		"trust_forwarded_proto",
+		"locations",
+	];
 
-class ProxyHost extends Model {
-	$beforeInsert() {
-		this.created_on = now();
-		this.modified_on = now();
+	static writeOnlyFields = ["npmpro_access_list_ids"];
 
-		// Default for domain_names
-		this.domain_names ??= [];
-
-		// Default for meta
-		this.meta ??= {};
-		this.advanced_config ??= "";
-		this.npmpro_location_config ??= "";
-		this.npmpro_nginx_err ??= "";
-
-		// Default for access list type
-		this.npmpro_access_list_type ??= "public";
-	}
-
-	$beforeUpdate() {
-		this.modified_on = now();
-	}
-
-	$parseDatabaseJson(json) {
-		const {
-			is_deleted,
-			meta,
-			access_list_id,
-			caching_enabled,
-			block_exploits,
-			allow_websocket_upgrade,
-			http2_support,
-			trust_forwarded_proto,
-			locations,
-			...thisJson
-		} = super.$parseDatabaseJson(json);
-		return convertIntFieldsToBool(thisJson, boolFields);
-	}
-
-	$formatDatabaseJson(json) {
-		const { npmpro_access_list_ids, ...thisJson } = convertBoolFieldsToInt(
-			removeCertificateFields(json),
-			boolFields,
-		);
-		return super.$formatDatabaseJson(thisJson);
+	static insertDefaults() {
+		return {
+			domain_names: [],
+			meta: {},
+			advanced_config: "",
+			npmpro_location_config: "",
+			npmpro_nginx_err: "",
+			npmpro_access_list_type: "public",
+		};
 	}
 
 	static tableName = "proxy_host";
