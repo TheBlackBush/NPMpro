@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
 import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
+import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { rooted } from "../lib/paths.js";
 import { writeSecretFile } from "../lib/secret-file.js";
 import { access as logger } from "../logger.js";
@@ -169,11 +170,7 @@ const internalAccessList = {
 		// re-fetch with expansions
 		const freshRow = await internalAccessList.get(access, {
 			id: data.id,
-			expand: [
-				"items",
-				"clients",
-				"proxy_hosts.[certificate,access_lists.[clients,items],locations.access_lists.[clients,items]]",
-			],
+			expand: ["items", "clients", `proxy_hosts.${PROXY_HOST_GRAPH}`],
 		});
 
 		const savedRow = { ...freshRow, proxy_hosts: undefined };
@@ -214,9 +211,7 @@ const internalAccessList = {
 			.leftJoin("proxy_host", "proxy_host.id", "npmpro_proxy_host_access_list.proxy_host_id")
 			.where("access_list.id", data.id)
 			.groupBy("access_list.id")
-			.allowGraph(
-				"[items,clients,proxy_hosts.[certificate,access_lists.[clients,items],locations.access_lists.[clients,items]]]",
-			)
+			.allowGraph(`[items,clients,proxy_hosts.${PROXY_HOST_GRAPH}]`)
 			.first();
 
 		if (access.visibility !== "all") {
@@ -247,11 +242,7 @@ const internalAccessList = {
 		access.can("access_lists:manage");
 		const row = await internalAccessList.get(access, {
 			id: data.id,
-			expand: [
-				"proxy_hosts.[certificate, access_lists.[clients,items], locations.access_lists.[clients,items]]",
-				"items",
-				"clients",
-			],
+			expand: [`proxy_hosts.${PROXY_HOST_GRAPH}`, "items", "clients"],
 		});
 		// 1. update row to be deleted
 		// 2. update any proxy hosts that were using it (ignoring permissions)

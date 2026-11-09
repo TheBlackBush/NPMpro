@@ -1,6 +1,7 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
+import { PROXY_HOST_EXPAND } from "../lib/host-expand.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
@@ -87,7 +88,7 @@ const internalProxyHost = {
 		try {
 			const row = await internalProxyHost.get(access, {
 				id: createdRow.id,
-				expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+				expand: PROXY_HOST_EXPAND,
 			});
 
 			// Configure nginx
@@ -154,7 +155,7 @@ const internalProxyHost = {
 		try {
 			const row = await internalProxyHost.get(access, {
 				id: thisData.id,
-				expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+				expand: PROXY_HOST_EXPAND,
 			});
 
 			// Configure nginx
@@ -253,7 +254,7 @@ const internalProxyHost = {
 
 		const row = await internalProxyHost.get(access, {
 			id: data.id,
-			expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+			expand: PROXY_HOST_EXPAND,
 		});
 		if (row.enabled) {
 			throw new errs.ValidationError("Host is already enabled");

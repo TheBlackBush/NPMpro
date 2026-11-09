@@ -1,4 +1,5 @@
 import { readdir, rm } from "node:fs/promises";
+import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { rooted } from "../lib/paths.js";
 import { setup as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
@@ -18,7 +19,7 @@ const ACCESS_FILE = /^\d+$/u;
 
 // the host types with the graph their configs are rendered from
 const HOST_TYPES = [
-	[proxyModel, "proxy_host", "[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]"],
+	[proxyModel, "proxy_host", PROXY_HOST_GRAPH],
 	[redirectionModel, "redirection_host", "certificate"],
 	[deadModel, "dead_host", "certificate"],
 	[streamModel, "stream", "certificate"],

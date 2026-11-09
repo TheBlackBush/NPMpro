@@ -1,3 +1,4 @@
+import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { createHostRenderer } from "../lib/runtime-hosts.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
@@ -7,7 +8,7 @@ import internalNginx from "./nginx.js";
 
 // the relations renderConfig needs, as setup.js regenerates them
 const HOST_TYPES = [
-	[proxyHostModel, "proxy_host", "[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]"],
+	[proxyHostModel, "proxy_host", PROXY_HOST_GRAPH],
 	[redirectionHostModel, "redirection_host", "certificate"],
 	[deadHostModel, "dead_host", "certificate"],
 	[streamModel, "stream", "certificate"],
