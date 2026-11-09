@@ -1,20 +1,12 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
-import { assertHostConfig } from "../lib/host-config-guard.js";
 import { cleanStreamData, streamsConflict } from "../lib/stream-rules.js";
 import streamModel from "../models/stream.js";
-import internalAuditLog from "./audit-log.js";
-import internalCertificate from "./certificate.js";
-import internalHost from "./host.js";
-import internalNginx from "./nginx.js";
+import createHostService from "./host-service.js";
 
 /**
- * An incoming port is unique per protocol: nginx refuses a second listen on the same port. Only enabled streams
- * count, because a disabled stream has no config until it is enabled (and then it is checked again). The check
- * covers every owner's streams, not only the ones the caller can see.
- *
- * @param {Object}  stream      the stream as it will be stored: incoming_port, tcp_forwarding, udp_forwarding, enabled
- * @param {Number}  [ownId]     the id of the stream being updated
+ * An incoming port is unique per protocol (nginx refuses a second listen). Only enabled streams count, and every
+ * owner's streams are checked, not only the caller's. `ownId` is the stream being updated.
  */
 const assertPortFree = async (stream, ownId) => {
 	if (!stream.enabled) return;
@@ -28,286 +20,36 @@ const assertPortFree = async (stream, ownId) => {
 	}
 };
 
-const internalStream = {
-	/**
-	 * @param   {Access}  access
-	 * @param   {Object}  data
-	 * @returns {Promise}
-	 */
-	create: async (access, data) => {
-		const thisData = cleanStreamData(data);
-		const createCertificate = await internalHost.checkCertificates(access, thisData);
+const LISTEN_FIELDS = ["tcp_forwarding", "udp_forwarding", "enabled"];
 
-		access.can("streams:manage");
-		assertHostConfig(access, "stream", data);
-
-		await assertPortFree({ ...thisData, enabled: thisData.enabled ?? true });
-
-		thisData.owner_user_id = access.token.getUserId(1);
-
-		if (createCertificate) {
-			thisData.certificate_id = (await internalCertificate.createQuickCertificate(access, thisData)).id;
-		}
-
-		const createdRow = await streamModel.query().insertAndFetch(thisData);
-
-		let savedRow;
-		try {
-			const row = await internalStream.get(access, {
-				id: createdRow.id,
-				expand: ["certificate"],
-			});
-
-			// Configure nginx
-			await internalNginx.configure(streamModel, "stream", row);
-		} finally {
-			savedRow = await internalStream.get(access, { id: createdRow.id });
-
-			// Add to audit log
-			await internalAuditLog.add(access, {
-				action: "created",
-				object_type: "stream",
-				object_id: savedRow.id,
-				meta: savedRow,
-			});
-		}
-
-		return savedRow;
-	},
-
-	/**
-	 * @param  {Access}  access
-	 * @param  {Object}  data
-	 * @param  {Number}  data.id
-	 * @return {Promise}
-	 */
-	update: async (access, data) => {
-		const existingRow = await internalStream.get(access, { id: data.id });
-
-		const thisData = cleanStreamData(data, existingRow);
-		const createCertificate = await internalHost.checkCertificates(access, thisData);
-
-		access.can("streams:manage");
-		// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
-		assertHostConfig(access, "stream", data, existingRow);
-
-		const changesListen =
-			thisData.incoming_port !== existingRow.incoming_port ||
-			["tcp_forwarding", "udp_forwarding", "enabled"].some(
-				(field) => Boolean(thisData[field]) !== Boolean(existingRow[field]),
-			);
-		if (changesListen) await assertPortFree(thisData, thisData.id);
-
-		if (createCertificate) {
-			const cert = await internalCertificate.createQuickCertificate(access, thisData);
-
-			// update host with cert id
-			thisData.certificate_id = cert.id;
-		}
-
-		await streamModel.query().where({ id: thisData.id }).patch(thisData);
-
-		let savedRow;
-		try {
-			const row = await internalStream.get(access, {
-				id: thisData.id,
-				expand: ["certificate"],
-			});
-
-			// Configure nginx
-			await internalNginx.configure(streamModel, "stream", row);
-		} finally {
-			savedRow = await internalStream.get(access, { id: thisData.id });
-
-			// Add to audit log
-			await internalAuditLog.add(access, {
-				action: "updated",
-				object_type: "stream",
-				object_id: savedRow.id,
-				meta: savedRow,
-			});
-		}
-
-		return savedRow;
-	},
-
-	/**
-	 * @param  {Access}   access
-	 * @param  {Object}   data
-	 * @param  {Number}   data.id
-	 * @param  {Array}    [data.expand]
-	 * @return {Promise}
-	 */
-	get: async (access, data) => {
-		access.can("streams:view");
-
-		const query = streamModel.query().where("id", data.id).allowGraph("[certificate]").first();
-
-		if (access.visibility !== "all") {
-			query.andWhere("owner_user_id", access.token.getUserId(1));
-		}
-
-		if (data.expand) query.withGraphFetched(`[${data.expand.join(", ")}]`);
-
-		const row = await query;
-		if (!row?.id) {
-			throw new errs.ItemNotFoundError(data.id);
-		}
-
-		return row;
-	},
-
-	/**
-	 * @param {Access}  access
-	 * @param {Object}  data
-	 * @param {Number}  data.id
-	 * @param {String}  [data.reason]
-	 * @returns {Promise}
-	 */
-	delete: async (access, data) => {
-		access.can("streams:manage");
-
-		const row = await internalStream.get(access, { id: data.id });
-
-		await streamModel.query().deleteById(row.id);
-
-		try {
-			// Delete Nginx Config
-			await internalNginx.removeConfig("stream", row);
-		} finally {
-			// Add to audit log
-			await internalAuditLog.add(access, {
-				action: "deleted",
-				object_type: "stream",
-				object_id: row.id,
-				meta: row,
-			});
-		}
-
-		return row;
-	},
-
-	/**
-	 * @param {Access}  access
-	 * @param {Object}  data
-	 * @param {Number}  data.id
-	 * @param {String}  [data.reason]
-	 * @returns {Promise}
-	 */
-	enable: async (access, data) => {
-		access.can("streams:manage");
-
-		const row = await internalStream.get(access, {
-			id: data.id,
-			expand: ["certificate"],
-		});
-		if (row.enabled) {
-			throw new errs.ValidationError("Stream is already enabled");
-		}
-
-		await assertPortFree({ ...row, enabled: true }, row.id);
-
-		row.enabled = 1;
-
-		await streamModel.query().where("id", row.id).patch({
-			enabled: 1,
-		});
-
-		let savedRow;
-		try {
-			// Configure nginx
-			await internalNginx.configure(streamModel, "stream", row);
-		} finally {
-			savedRow = await internalStream.get(access, { id: row.id });
-
-			// Add to audit log
-			await internalAuditLog.add(access, {
-				action: "enabled",
-				object_type: "stream",
-				object_id: row.id,
-				meta: savedRow,
-			});
-		}
-
-		return savedRow;
-	},
-
-	/**
-	 * @param {Access}  access
-	 * @param {Object}  data
-	 * @param {Number}  data.id
-	 * @param {String}  [data.reason]
-	 * @returns {Promise}
-	 */
-	disable: async (access, data) => {
-		access.can("streams:manage");
-
-		const row = await internalStream.get(access, { id: data.id });
-		if (!row.enabled) {
-			throw new errs.ValidationError("Stream is already disabled");
-		}
-
-		await streamModel.query().where("id", row.id).patch({
-			enabled: 0,
-		});
-
-		let savedRow;
-		try {
-			// Delete Nginx Config
-			await internalNginx.removeConfig("stream", row);
-		} finally {
-			savedRow = await internalStream.get(access, { id: row.id });
-
-			// Add to audit log
-			await internalAuditLog.add(access, {
-				action: "disabled",
-				object_type: "stream",
-				object_id: row.id,
-				meta: savedRow,
-			});
-		}
-
-		return savedRow;
-	},
-
-	/**
-	 * All Streams
-	 *
-	 * @param   {Access}  access
-	 * @param   {Array}   [expand]
-	 * @param   {String}  [searchQuery]
-	 * @returns {Promise}
-	 */
-	getAll: (access, expand, searchQuery) => {
-		access.can("streams:view");
-
-		const query = streamModel
-			.query()
-			.groupBy("id")
-			.allowGraph("[owner,certificate]")
-			.orderBy("incoming_port", "ASC");
-
-		if (access.visibility !== "all") {
-			query.andWhere("owner_user_id", access.token.getUserId(1));
-		}
-
-		// Query is used for searching
-		if (typeof searchQuery === "string" && searchQuery.length > 0) {
+const internalStream = createHostService({
+	type: { hostType: "stream", auditType: "stream", permission: "streams", takenType: null, label: "Stream" },
+	model: streamModel,
+	expand: ["certificate"],
+	hooks: {
+		// the stored row is merged into the payload before anything else, so it is loaded first
+		loadExistingFirst: true,
+		prepareCreate: (data) => cleanStreamData(data),
+		prepareUpdate: (data, existingRow) => cleanStreamData(data, existingRow),
+		assertFreeOnCreate: (data) => assertPortFree({ ...data, enabled: data.enabled ?? true }),
+		// a save that keeps the listener passes on a row that already duplicates another
+		assertFreeOnUpdate: async (data, existingRow) => {
+			const changesListen =
+				data.incoming_port !== existingRow.incoming_port ||
+				LISTEN_FIELDS.some((field) => Boolean(data[field]) !== Boolean(existingRow[field]));
+			if (changesListen) await assertPortFree(data, data.id);
+		},
+		assertFreeOnEnable: (row) => assertPortFree({ ...row, enabled: true }, row.id),
+		cleanData: (_access, _createCertificate, data) => data,
+		applyListOrder: (query) => query.orderBy("incoming_port", "ASC"),
+		applySearch: (query, searchQuery) =>
 			query.where(function () {
 				this.where(castJsonIfNeed("incoming_port"), "like", `%${searchQuery}%`)
 					.orWhere(castJsonIfNeed("forwarding_port"), "like", `%${searchQuery}%`)
 					.orWhere("forwarding_host", "like", `%${searchQuery}%`)
 					.orWhere("npmpro_description", "like", `%${searchQuery}%`);
-			});
-		}
-
-		if (expand) query.withGraphFetched(`[${expand.join(", ")}]`);
-
-		return query;
+			}),
 	},
-
-	getCount: (...args) => internalHost.hostCounts(streamModel).getCount(...args),
-	getErrorCount: (...args) => internalHost.hostCounts(streamModel).getErrorCount(...args),
-};
+});
 
 export default internalStream;

@@ -95,6 +95,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			access.can(`${permission}:manage`);
 
 			existingRow ??= await service.get(access, { id: thisData.id });
+			// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
 			assertHostConfig(access, hostType, data, existingRow);
 			await flow.assertFreeOnUpdate(thisData, existingRow);
 
