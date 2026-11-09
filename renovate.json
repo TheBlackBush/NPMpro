@@ -1,7 +1,8 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
 	"extends": ["config:best-practices", ":dependencyDashboard"],
-	"ignorePresets": ["security:minimumReleaseAgeNpm"],
+	"minimumReleaseAge": "3 days",
+	"minimumReleaseAgeBehaviour": "timestamp-optional",
 	"forkProcessing": "enabled",
 	"rangeStrategy": "pin",
 	"schedule": ["on monday"],
