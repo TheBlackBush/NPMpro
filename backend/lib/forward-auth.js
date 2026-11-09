@@ -69,4 +69,4 @@ const forwardAuthHost = (host, changed) =>
 		return provider !== undefined && proxyHostsForProvider([host], provider).length > 0;
 	});
 
-export { AUTH_REQUEST_PROVIDERS, forwardAuthHost, ownUpstream, providerOf, proxyHostsForProvider, usesProvider };
+export { AUTH_REQUEST_PROVIDERS, forwardAuthHost, ownUpstream, proxyHostsForProvider, usesProvider };

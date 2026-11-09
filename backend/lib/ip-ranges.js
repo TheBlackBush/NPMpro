@@ -149,4 +149,4 @@ const createIpRanges = ({
 	};
 };
 
-export { createIpRanges, parseCloudflareRanges, renderIpRanges };
+export { createIpRanges, parseCloudflareRanges };

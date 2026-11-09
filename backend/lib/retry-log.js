@@ -77,4 +77,4 @@ const knexLogOf = (retryLog, warn) => ({
 	},
 });
 
-export { createRetryLog, KNEX_CONNECTION_WARNING, knexConnectionError, knexLogOf, REPEAT_MS };
+export { createRetryLog, knexConnectionError, knexLogOf };

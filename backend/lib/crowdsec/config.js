@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { rooted } from "../paths.js";
 
 /** Default location of the bouncer config inside the container (copied from crowdsec.conf.example by start.sh). */
-export const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
+const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
 
 /** The bouncer config text, "" when the file does not exist. */
 export const readCrowdsecConf = async () => {

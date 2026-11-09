@@ -150,4 +150,4 @@ const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
 		source.pipe(parser);
 	});
 
-export { extractTo, LIMITS, packStage };
+export { extractTo, packStage };

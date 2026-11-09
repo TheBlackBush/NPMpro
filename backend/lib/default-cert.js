@@ -9,7 +9,6 @@ import { rooted } from "./paths.js";
 
 const DEFAULT_CERT_CONF = rooted("/data/npmpro/nginx/default-cert.conf");
 const TLS_DIR = rooted("/data/tls");
-const STAPLING_KEYS = ["ocsp_stapling", "custom_ocsp_stapling"];
 
 const statOf = async (fs, file) => {
 	try {
@@ -129,7 +128,6 @@ export {
 	defaultCertificatePaths,
 	hasStaplingFile,
 	renderDefaultCertConf,
-	STAPLING_KEYS,
 	stapledHost,
 	staplingFileOf,
 	TLS_DIR,

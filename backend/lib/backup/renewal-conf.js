@@ -188,4 +188,4 @@ const checkStagedRenewals = async ({ stageDir, dataDir, items }) => {
 	}
 };
 
-export { accountIds, CREDENTIALS_DIR, checkStagedRenewals, namedAccounts, parseRenewalConf, rebuildRenewalConf };
+export { accountIds, checkStagedRenewals, namedAccounts, rebuildRenewalConf };

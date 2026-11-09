@@ -27,4 +27,4 @@ const expiryState = (expiresOn, now = new Date()) => {
  */
 const expiryBounds = (now = new Date()) => ({ now, soon: new Date(now.getTime() + EXPIRY_WARNING_DAYS * dayMs) });
 
-export { EXPIRY_WARNING_DAYS, expiryBounds, expiryState };
+export { expiryBounds, expiryState };

@@ -200,9 +200,7 @@ const assertHostConfig = (access, hostType, data, stored) => {
 };
 
 export {
-	assertAliasPrefix,
 	assertConfigFields,
-	assertForwardHostPlain,
 	assertHostConfig,
 	assertLocations,
 	assertPathScheme,
@@ -210,5 +208,4 @@ export {
 	CONFIG_FIELDS,
 	isInsideWebroot,
 	sameConfig,
-	WEBROOT,
 };

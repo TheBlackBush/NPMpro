@@ -297,7 +297,6 @@ export {
 	downloadIcon,
 	ICON_MAX_BYTES,
 	ICON_MIME,
-	iconPath,
 	readIconFile,
 	removeIconFiles,
 	svgIsSafe,
