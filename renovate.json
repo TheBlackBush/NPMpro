@@ -58,6 +58,12 @@
 		{ "groupName": "backend npm non-major", "matchFileNames": ["backend/**"], "matchManagers": ["npm"], "matchUpdateTypes": ["minor", "patch", "pin", "digest"] },
 		{ "groupName": "frontend npm non-major", "matchFileNames": ["frontend/**"], "matchManagers": ["npm"], "matchUpdateTypes": ["minor", "patch", "pin", "digest"] },
 		{ "groupName": "github actions", "matchManagers": ["github-actions"] },
-		{ "groupName": "base images", "matchManagers": ["dockerfile"] }
+		{ "groupName": "base images", "matchManagers": ["dockerfile"] },
+		{
+			"description": "CI keeps MySQL on the 8.4 LTS line; 26.10 sorts host lists by domain differently",
+			"matchFileNames": [".github/workflows/test.yml"],
+			"matchDepNames": ["mysql"],
+			"allowedVersions": "/^8\\.4(\\.|$)/"
+		}
 	]
 }
