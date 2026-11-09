@@ -3,8 +3,8 @@
 name: dependency-updates
 on:
   schedule:
-    # Off the hour, as GitHub delays or drops scheduled runs at busy times. The second run is a fallback: it updates
-    # the branches and PRs of the first, it opens no second set.
+    # Off the hour, as GitHub delays or drops scheduled runs at busy times. The second run is a fallback: after a
+    # first run that worked, it only updates the same branches and PRs.
     - cron: "17 2 * * 1"
     - cron: "17 8 * * 1"
   workflow_dispatch:
