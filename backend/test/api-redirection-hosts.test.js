@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
+import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { checkFields, countRows, created, hostTests, listDir } from "./support/hosts.js";
 
 // /nginx/redirection-hosts (schema/paths/nginx/redirection-hosts). The shared tests of every host type are in
@@ -135,4 +137,19 @@ it("gives a domain name to one of two requests at once", async () => {
 		(await ctx.api.db("redirection_host").where("domain_names", "like", "%redir-race.example.com%")).length,
 		1,
 	);
+});
+
+it("creates a redirection host with a new certificate, and stores the certificate on the host", async () => {
+	const pair = await makeCertificate(path.join(ctx.api.root, "fake"), "redir-cert.example.com");
+	await certbotSucceeds(ctx.api, pair);
+	const before = (await ctx.api.db("certificate").select("id")).map((row) => row.id);
+	const host = await created(
+		await ctx.admin.post(URL, body({ domain_names: ["redir-cert.example.com"], certificate_id: "new" })),
+		"create",
+	);
+	const added = (await ctx.api.db("certificate").select("id"))
+		.map((row) => row.id)
+		.filter((id) => !before.includes(id));
+	assert.equal(added.length, 1);
+	assert.equal(host.certificate_id, added[0]);
 });
