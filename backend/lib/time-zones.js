@@ -85,4 +85,4 @@ const listTimeZones = async ({ dir = ZONEINFO_DIR, fs = nodeFs } = {}) => {
 	return [...(await cache.get(dir))];
 };
 
-export { isTimeZone, isZoneName, listTimeZones, ZONEINFO_DIR };
+export { isTimeZone, isZoneName, listTimeZones };

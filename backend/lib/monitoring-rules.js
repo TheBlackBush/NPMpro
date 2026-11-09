@@ -124,13 +124,4 @@ const sanitizeGeoipMeta = (meta) => {
 	return { ...rest, license_key_set: Boolean(key) };
 };
 
-export {
-	GEOIP_DEFAULTS,
-	GEOIP_EDITIONS,
-	GEOIP_ENV_KEYS,
-	MONITORING_DEFAULTS,
-	MONITORING_ENV_KEYS,
-	mergeGeoipConfig,
-	mergeMonitoringConfig,
-	sanitizeGeoipMeta,
-};
+export { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS, mergeGeoipConfig, mergeMonitoringConfig, sanitizeGeoipMeta };

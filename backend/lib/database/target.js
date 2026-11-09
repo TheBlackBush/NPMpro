@@ -243,4 +243,4 @@ const testTarget = async ({ target, current, createKnex, timeoutMs = 10_000 }) =
 	throw mapped;
 };
 
-export { PROBE_TABLE, parseVersion, sameDatabase, scrub, testTarget, validateTarget, versionProblem };
+export { parseVersion, sameDatabase, scrub, testTarget, validateTarget, versionProblem };

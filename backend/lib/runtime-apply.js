@@ -18,7 +18,7 @@ import { ACCESS_LOG_CONF, accessLogDirective } from "./traffic/access-log.js";
 const PATHS = {
 	certbotIni: CERTBOT_INI,
 	renewalDir: RENEWAL_DIR,
-	crontabDir: "/tmp/crontabs",
+	crontabDir: rooted("/tmp/crontabs"),
 	defaultCertConf: DEFAULT_CERT_CONF,
 	tlsDir: TLS_DIR,
 	ipRangesConf: rooted("/usr/local/nginx/conf/conf.d/ip_ranges.conf"),
@@ -638,4 +638,4 @@ const createRuntimeApplier = ({
 	return { applyAll, applyGroup };
 };
 
-export { createRuntimeApplier, fetchAcmeDirectory, PATHS, testAndReload, withFiles };
+export { createRuntimeApplier, PATHS, testAndReload, withFiles };

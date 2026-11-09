@@ -60,4 +60,4 @@ const guardedLookup = (hostname, options, callback) => {
 // for undici fetch: every connection, also after a redirect, goes through the guarded lookup
 const guardedAgent = new Agent({ connect: { lookup: guardedLookup } });
 
-export { blockedError, guardedAgent, guardedLookup, isBlockedAddress };
+export { blockedError, guardedAgent, isBlockedAddress };

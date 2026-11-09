@@ -24,10 +24,7 @@ const setupDefaultUser = async () => {
 	const initialAdminEmail = process.env.INITIAL_ADMIN_EMAIL?.trim();
 	const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
 
-	// This will only create a new user when there are no active users in the database
-	// and the INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD environment variables are set.
-	// Otherwise, users should be shown the setup wizard in the frontend.
-	// I'm keeping this legacy behavior in case some people are automating deployments.
+	// only without active users and with both variables set; otherwise the setup wizard runs
 
 	if (!initialAdminEmail || !initialAdminPassword) {
 		return;

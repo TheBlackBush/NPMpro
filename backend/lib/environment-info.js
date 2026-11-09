@@ -212,12 +212,4 @@ const environmentInfo = (env, runtimeLocked) => {
 	return { groups, locked_runtime: lockedRuntimeOf(runtimeLocked) };
 };
 
-export {
-	ENVIRONMENT_GROUPS,
-	ENVIRONMENT_ITEMS,
-	ENVIRONMENT_NAMES,
-	environmentInfo,
-	LOCK_GROUP_ORDER,
-	lockedByOf,
-	settingLocksOf,
-};
+export { ENVIRONMENT_GROUPS, ENVIRONMENT_ITEMS, environmentInfo, LOCK_GROUP_ORDER, lockedByOf, settingLocksOf };

@@ -751,4 +751,4 @@ const createTrafficHooks = ({ applyAccessLog, traffic, clearCaches = () => {} })
 	onUniqueVisitorsOn: () => traffic.uniqueVisitorsOn(),
 });
 
-export { ACCESS_LOG, createHostMapper, createStateMeta, createTrafficHooks, createTrafficService, OTHER_HOST };
+export { createHostMapper, createStateMeta, createTrafficHooks, createTrafficService };

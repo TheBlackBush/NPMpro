@@ -177,13 +177,4 @@ const staplingFileReady = async (host, env, { fetchMissingOcsp = true, fetch = f
 	return hasStaplingFile(host, { fs, tlsDir });
 };
 
-export {
-	boundedCommand,
-	createOcspFetcher,
-	fetchOcsp,
-	listResponses,
-	MIN_INTERVAL,
-	OCSP_DIRS,
-	runOcspFetcher,
-	staplingFileReady,
-};
+export { boundedCommand, createOcspFetcher, fetchOcsp, listResponses, MIN_INTERVAL, runOcspFetcher, staplingFileReady };

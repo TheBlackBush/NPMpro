@@ -54,4 +54,4 @@ const beautifyWith = (beautifier, text) => {
  */
 const beautify = (text) => beautifyWith(loadBeautifier(), text);
 
-export { BEAUTIFIER_UNSAFE_LOCATION, beautify, beautifyWith, loadBeautifier };
+export { beautify, beautifyWith };

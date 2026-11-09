@@ -106,4 +106,4 @@ const cleanStreamData = (data, existingData) => {
 	return combinedData;
 };
 
-export { assertForwardingPort, assertIncomingPort, cleanStreamData, parsePortRange, streamsConflict };
+export { cleanStreamData, streamsConflict };

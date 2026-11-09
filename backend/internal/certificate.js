@@ -11,7 +11,7 @@ import { assertProviderForNew, installPlugin, runCertbot } from "../lib/certbot.
 import { CERTBOT_INI } from "../lib/certbot-ini.js";
 import { assertCertificateUse } from "../lib/certificate-files.js";
 import { maintenance } from "../lib/database/maintenance.js";
-import error from "../lib/error.js";
+import errs from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
 import { rooted } from "../lib/paths.js";
@@ -165,7 +165,7 @@ const internalCertificate = {
 			assertProviderForNew(data.npmpro_dns_provider);
 			const credential = await internalDnsCredential.get(access, { id: data.npmpro_dns_credential_id });
 			if (credential.provider !== data.npmpro_dns_provider) {
-				throw new error.ValidationError("The DNS credential belongs to another DNS provider");
+				throw new errs.ValidationError("The DNS credential belongs to another DNS provider");
 			}
 		} else {
 			delete data.npmpro_dns_provider;
@@ -267,7 +267,7 @@ const internalCertificate = {
 
 		const row = await query;
 		if (!row?.id) {
-			throw new error.ItemNotFoundError(data.id);
+			throw new errs.ItemNotFoundError(data.id);
 		}
 		if (data.mtls !== undefined) assertCertificateUse(row, data.mtls);
 
@@ -304,7 +304,7 @@ const internalCertificate = {
 			try {
 				await stat(zipDirectory);
 			} catch (err) {
-				throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, {
+				throw new errs.ItemNotFoundError(`Certificate ${certificate.nice_name} does not exists`, {
 					cause: err,
 				});
 			}
@@ -314,7 +314,7 @@ const internalCertificate = {
 				try {
 					certFiles.push([fileName, await realpath(path.join(zipDirectory, fileName))]);
 				} catch (err) {
-					throw new error.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
+					throw new errs.ItemNotFoundError(`Certificate ${certificate.nice_name} is missing ${fileName}`, {
 						cause: err,
 					});
 				}
@@ -370,7 +370,7 @@ const internalCertificate = {
 			// the effective default certificate (env DEFAULT_CERT_ID or the Certificates & TLS setting)
 			const { values: tls } = await getRuntimeConfig("certificates");
 			if (row.id === tls.default_certificate_id) {
-				throw new error.ValidationError("Certificate is still in use by the default host");
+				throw new errs.ValidationError("Certificate is still in use by the default host");
 			}
 
 			for (const hostModel of [proxyHostModel, redirectionHostModel, deadHostModel, streamModel]) {
@@ -381,7 +381,7 @@ const internalCertificate = {
 						.orWhere("npmpro_mtls_certificate_id", row.id)
 						.resultSize()) > 0
 				) {
-					throw new error.ValidationError("Certificate is still in use");
+					throw new errs.ValidationError("Certificate is still in use");
 				}
 			}
 
@@ -558,7 +558,7 @@ const internalCertificate = {
 				createPrivateKey(data.files.certificate_key[0].buffer),
 			)
 		) {
-			throw new error.ValidationError("Certificate Key does not match the Certificate");
+			throw new errs.ValidationError("Certificate Key does not match the Certificate");
 		}
 
 		return finalData;
@@ -574,14 +574,14 @@ const internalCertificate = {
 	upload: async (access, data) => {
 		const row = await internalCertificate.get(access, { id: data.id });
 		if (row.provider !== "other" && row.provider !== "mtls") {
-			throw new error.ValidationError("Cannot upload certificates for this type of provider");
+			throw new errs.ValidationError("Cannot upload certificates for this type of provider");
 		}
 		const isMtls = row.provider === "mtls";
 
 		const validations = internalCertificate.validate(access, data);
-		if (validations.certificate === undefined) throw new error.ValidationError("Certificate file was not provided");
+		if (validations.certificate === undefined) throw new errs.ValidationError("Certificate file was not provided");
 		if (!isMtls && validations.certificate_key === undefined) {
-			throw new error.ValidationError("Certificate Key file was not provided");
+			throw new errs.ValidationError("Certificate Key file was not provided");
 		}
 
 		const certs = {};
@@ -603,17 +603,14 @@ const internalCertificate = {
 	},
 
 	/**
-	 * Uses the openssl command to validate the private key.
-	 * It will save the file to disk first, then run commands on it, then delete the file.
-	 *
-	 * @param {String}  privateKey    This is the entire key contents as a string
+	 * @param {String}  privateKey    the key text
 	 */
 	checkPrivateKey: (privateKey) => {
 		try {
 			createPrivateKey(privateKey);
 			return true;
 		} catch (err) {
-			throw new error.ValidationError(`Certificate Key is not valid (${err.message})`, undefined, { cause: err });
+			throw new errs.ValidationError(`Certificate Key is not valid (${err.message})`, undefined, { cause: err });
 		}
 	},
 
@@ -651,12 +648,12 @@ const internalCertificate = {
 			const validTo = Math.floor(cert.validToDate.getTime() / 1000);
 
 			if (Number.isNaN(validFrom) || Number.isNaN(validTo)) {
-				throw new error.ValidationError("Could not determine dates from certificate");
+				throw new errs.ValidationError("Could not determine dates from certificate");
 			}
 
 			const now = Math.floor(Date.now() / 1000);
 			if (throwExpired && validTo < now) {
-				throw new error.ValidationError("Certificate has expired");
+				throw new errs.ValidationError("Certificate has expired");
 			}
 
 			certData.dates = {
@@ -666,15 +663,12 @@ const internalCertificate = {
 
 			return certData;
 		} catch (err) {
-			throw new error.ValidationError(`Certificate is not valid (${err.message})`, undefined, { cause: err });
+			throw new errs.ValidationError(`Certificate is not valid (${err.message})`, undefined, { cause: err });
 		}
 	},
 
 	/**
-	 * Uses the openssl command to both validate and get info out of the certificate.
-	 * It will save the file to disk first, then run commands on it, then delete the file.
-	 *
-	 * @param {String}  certificateFile The file location on disk
+	 * @param {String}  certificateFile The file location on disk, read and parsed in process
 	 * @param {Boolean} [throwExpired]  Throw when the certificate is out of date
 	 */
 	getCertificateInfoFromFile: async (certificateFile, throwExpired) => {
@@ -722,7 +716,7 @@ const internalCertificate = {
 	requestCertbotWithDnsChallenge: async (certificate) => {
 		const dnsPlugin = dnsPlugins[certificate.npmpro_dns_provider];
 		if (!dnsPlugin) {
-			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
+			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
 		await installPlugin(certificate.npmpro_dns_provider);
 
@@ -774,11 +768,11 @@ const internalCertificate = {
 		access.can("certificates:manage");
 		const certificate = await internalCertificate.get(access, { id: data.id });
 		if (certificate.provider !== "letsencrypt" || !certificate.npmpro_dns_challenge) {
-			throw new error.ValidationError("Only DNS challenge certificates use a DNS credential");
+			throw new errs.ValidationError("Only DNS challenge certificates use a DNS credential");
 		}
 		const credential = await internalDnsCredential.get(access, { id: data.npmpro_dns_credential_id });
 		if (credential.provider !== certificate.npmpro_dns_provider) {
-			throw new error.ValidationError("The DNS credential belongs to another DNS provider");
+			throw new errs.ValidationError("The DNS credential belongs to another DNS provider");
 		}
 		const saved = await certificateModel
 			.query()
@@ -829,7 +823,7 @@ const internalCertificate = {
 			return updatedCertificate;
 		}
 
-		throw new error.ValidationError("Only Certbot certificates can be renewed");
+		throw new errs.ValidationError("Only Certbot certificates can be renewed");
 	},
 
 	/**
@@ -839,7 +833,7 @@ const internalCertificate = {
 	renewCertbot: async (certificate) => {
 		const dnsPlugin = certificate.npmpro_dns_challenge ? dnsPlugins[certificate.npmpro_dns_provider] : null;
 		if (certificate.npmpro_dns_challenge && !dnsPlugin) {
-			throw new error.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
+			throw new errs.ValidationError(`Unknown DNS provider '${certificate.npmpro_dns_provider}'`);
 		}
 
 		logger.info(

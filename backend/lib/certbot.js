@@ -114,7 +114,6 @@ const installPlugins = async (pluginKeys) => {
 export {
 	assertProviderForNew,
 	CERTBOT_CONSTRAINTS,
-	CERTBOT_ENV_KEYS,
 	certbotEnv,
 	installPlugin,
 	installPlugins,

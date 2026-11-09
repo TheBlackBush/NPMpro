@@ -8,7 +8,6 @@ import { rooted } from "../paths.js";
 
 const DATA_DIR = rooted("/data/npmpro");
 const DATABASE_FILE = `${DATA_DIR}/database.json`;
-const DEFAULT_SQLITE = `${DATA_DIR}/database.sqlite`;
 const ENGINES = ["sqlite", "mysql", "postgres"];
 const SQLITE_NAME = /^database(?:-\d{8}-\d{6})?\.sqlite$/u;
 const HOST = /^[A-Za-z0-9._:%-]{1,253}$/u;
@@ -256,11 +255,9 @@ export {
 	connectionFileOf,
 	DATA_DIR,
 	DATABASE_FILE,
-	DEFAULT_SQLITE,
 	ENGINES,
 	parseConnectionFile,
 	publicConnection,
-	SQLITE_NAME,
 	sealWith,
 	serverFieldError,
 	unsealWith,

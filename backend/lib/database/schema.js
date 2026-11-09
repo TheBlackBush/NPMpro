@@ -166,4 +166,4 @@ const compareSchemas = async (source, target) => {
 	return { tables: sourceTables, info };
 };
 
-export { compareSchemas, dataTables, foreignKeys, keyColumns, MIGRATION_TABLES, MIGRATIONS, runMigrations, tableOrder };
+export { compareSchemas, dataTables, foreignKeys, keyColumns, MIGRATIONS, runMigrations, tableOrder };

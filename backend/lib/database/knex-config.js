@@ -155,4 +155,4 @@ const failingKnexConfig = (error) => ({
 	},
 });
 
-export { failingKnexConfig, knexConfigOf, mysqlSessionZone, processZone, resetZoneNote, utcOffsetOf };
+export { failingKnexConfig, knexConfigOf, mysqlSessionZone, resetZoneNote, utcOffsetOf };

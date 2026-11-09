@@ -52,4 +52,4 @@ const quoteLocation = ({ location_type: type, path }) =>
 		? { location_type: "", path: quoteNginxString(`@${unquote(path)}`) }
 		: { location_type: type ?? "", path: quoteNginxString(unquote(path)) };
 
-export { quoteLocation, quoteNginxString, serverNames, unquote };
+export { quoteLocation, quoteNginxString, serverNames };

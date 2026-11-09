@@ -58,4 +58,4 @@ const renderNginxCore = (values) => {
 	};
 };
 
-export { CORE_MODULES, NGINX_CORE_FILES, renderNginxCore };
+export { NGINX_CORE_FILES, renderNginxCore };
