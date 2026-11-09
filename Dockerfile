@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS nginx
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS nginx
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 ARG LUAJIT_INC=/usr/include/luajit-2.1
@@ -172,7 +172,7 @@ RUN find /usr/local/nginx/modules -name "*.so" -exec llvm-strip -s {} \; && \
     /usr/local/nginx/sbin/nginx -V
 
 
-FROM --platform="$BUILDPLATFORM" alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS frontend
+FROM --platform="$BUILDPLATFORM" alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS frontend
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ARG NODE_ENV=production
 ARG NODE_OPTIONS=--use-openssl-ca
@@ -189,7 +189,7 @@ COPY frontend /app
 RUN pnpm vite build && \
     find /app/dist -type f ! -name "*.jpg" ! -name "*.png" -print0 | xargs -r0 -P "$(nproc)" -n 1 brotli -q 11 -sf
 
-FROM --platform=$BUILDPLATFORM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS backend
+FROM --platform=$BUILDPLATFORM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS backend
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ARG NODE_ENV=production
 ARG NODE_OPTIONS=--use-openssl-ca
@@ -214,7 +214,7 @@ RUN apk upgrade --no-cache -a && \
 COPY backend /app
 
 
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--use-openssl-ca
