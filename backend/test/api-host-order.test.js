@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { rename } from "node:fs/promises";
+import { rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
+import { setTimeout as sleep } from "node:timers/promises";
 import { startApi } from "./support/api.js";
 import { certbotFails, certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { countRows, created, fileExists, reloads } from "./support/hosts.js";
@@ -195,6 +196,72 @@ for (const type of TYPES) {
 		assert.ok(answer.body.certificate_id > 0);
 		if (type.label !== "stream") assert.equal(answer.body.ssl_forced, true);
 	});
+
+	it(`${type.label}: a refused update requests no certificate`, async () => {
+		const taken = await created(await admin.post(type.url, type.make()), "create");
+		const host = await created(await admin.post(type.url, type.make()), "create");
+		const stored = await api.db(type.table).where({ id: host.id }).first();
+		const certificates = await countRows(api, "certificate");
+		const clash = newCertificate(type);
+		if (type.label === "stream") clash.incoming_port = taken.incoming_port;
+		else clash.domain_names = taken.domain_names;
+		const answer = await admin.put(`${type.url}/${host.id}`, clash);
+		assert.equal(answer.status, 400, answer.text);
+		assert.deepEqual(await certbotCalls(), []);
+		assert.equal(await countRows(api, "certificate"), certificates);
+		assert.deepEqual(await api.db(type.table).where({ id: host.id }).first(), stored);
+	});
+
+	it(`${type.label}: a failing removal on disable and on delete still logs`, async () => {
+		const host = await created(await admin.post(type.url, type.make()), "create");
+		api.outside.control.failNext = "reload refused";
+		const disabled = await admin.post(`${type.url}/${host.id}/disable`);
+		assert.equal(disabled.status >= 400, true, disabled.text);
+		assert.equal((await auditRows(type, host.id, "disabled")).length, 1);
+		assert.equal((await api.db(type.table).where({ id: host.id }).first()).enabled, 0);
+		api.outside.control.failNext = "reload refused";
+		const deleted = await admin.delete(`${type.url}/${host.id}`);
+		assert.equal(deleted.status >= 400, true, deleted.text);
+		assert.equal((await auditRows(type, host.id, "deleted")).length, 1);
+		assert.equal(await api.db(type.table).where({ id: host.id }).first(), undefined);
+	});
+
+	for (const action of ["save", "disable", "delete"]) {
+		it(`${type.label}: a ${action} waits for the runtime queue`, async () => {
+			const host = await created(await admin.post(type.url, type.make()), "create");
+			const release = path.join(api.root, "fake/release");
+			const held = path.join(api.root, "fake/held");
+			await rm(release, { force: true });
+			await rm(held, { force: true });
+			// a default site change holds the queue in its nginx -t until the release file exists; later nginx calls pass
+			await api.outside.hookCommand(
+				"nginx",
+				`#!/bin/sh\nif [ ! -f "${held}" ]; then : > "${held}"; while [ ! -f "${release}" ]; do sleep 0.02; done; fi\n`,
+			);
+			await api.outside.clearCalls();
+			const calls = async () => (await api.outside.calls()).filter((line) => line.startsWith("nginx ")).length;
+			try {
+				const holder = admin.put("/settings/default-site", { value: "404" });
+				while ((await calls()) === 0) await sleep(10);
+				const reloadsHeld = reloads(api);
+				const request = {
+					save: () => admin.put(`${type.url}/${host.id}`, type.edit),
+					disable: () => admin.post(`${type.url}/${host.id}/disable`),
+					delete: () => admin.delete(`${type.url}/${host.id}`),
+				}[action]();
+				// waiting only makes a missing lock easier to see: a held queue never lets the request through
+				await sleep(300);
+				assert.equal(reloads(api), reloadsHeld, `a ${action} reloaded nginx while the queue was held`);
+				await writeFile(release, "");
+				for (const answer of await Promise.all([holder, request]))
+					assert.equal(answer.status, 200, answer.text);
+				assert.ok(reloads(api) > reloadsHeld);
+			} finally {
+				await writeFile(release, "");
+				await rm(path.join(api.root, "fake/nginx.hook"), { force: true });
+			}
+		});
+	}
 }
 
 it("proxy host: an access list that does not exist is refused before a new certificate", async () => {
@@ -202,6 +269,20 @@ it("proxy host: an access list that does not exist is refused before a new certi
 	const certificates = await countRows(api, "certificate");
 	const answer = await admin.post(proxy.url, {
 		...proxy.make(),
+		certificate_id: "new",
+		npmpro_access_list_type: "custom",
+		npmpro_access_list_ids: [99999],
+	});
+	assert.equal(answer.status, 400, answer.text);
+	assert.deepEqual(await certbotCalls(), []);
+	assert.equal(await countRows(api, "certificate"), certificates);
+});
+
+it("proxy host: an update with an access list that does not exist is refused before a new certificate", async () => {
+	const proxy = TYPES[0];
+	const host = await created(await admin.post(proxy.url, proxy.make()), "create");
+	const certificates = await countRows(api, "certificate");
+	const answer = await admin.put(`${proxy.url}/${host.id}`, {
 		certificate_id: "new",
 		npmpro_access_list_type: "custom",
 		npmpro_access_list_ids: [99999],
