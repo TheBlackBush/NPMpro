@@ -29,6 +29,8 @@ const checkHostnameRecordsTaken = (hostname, existingRows, ignoreId) =>
 			),
 	);
 
+const HOSTNAME_MODELS = { proxy: proxyHostModel, redirection: redirectionHostModel, dead: deadHostModel };
+
 const internalHost = {
 	/**
 	 * Makes sure that the ssl_* and hsts_* fields play nicely together.
@@ -76,34 +78,44 @@ const internalHost = {
 	},
 
 	/**
-	 * Internal use only, checks to see if the domain is already taken by any other record
+	 * The first name, in the order given, that an enabled host of another row uses. One query per table for all names:
+	 * the LIKE only narrows the rows, checkHostnameRecordsTaken decides.
 	 *
+	 * @param   {String[]}  names
+	 * @param   {String}    [ignore_type]  'proxy', 'redirection', 'dead'
+	 * @param   {Integer}   [ignore_id]    must be supplied if type was also supplied
+	 * @returns {Promise<String|undefined>}
+	 */
+	findTakenHostname: async (names, ignore_type, ignore_id) => {
+		if (names.length === 0) return;
+		const patterns = [
+			...new Set(names.flatMap((name) => [domainToASCII(name) || name, domainToUnicode(name) || name])),
+		].map((name) => `%${name}%`);
+		const tables = await Promise.all(
+			Object.entries(HOSTNAME_MODELS).map(async ([type, model]) => ({
+				rows: await model
+					.query()
+					.where("enabled", 1)
+					.andWhere((query) => {
+						for (const pattern of patterns) query.orWhereILike(domainNamesText(), pattern);
+					}),
+				ignoreId: ignore_type === type && ignore_id ? ignore_id : 0,
+			})),
+		);
+		return names.find((name) =>
+			tables.some(({ rows, ignoreId }) => checkHostnameRecordsTaken(name, rows, ignoreId)),
+		);
+	},
+
+	/**
 	 * @param   {String}   hostname
-	 * @param   {String}   [ignore_type]   'proxy', 'redirection', 'dead'
-	 * @param   {Integer}  [ignore_id]     Must be supplied if type was also supplied
-	 * @returns {Promise}
+	 * @param   {String}   [ignore_type]
+	 * @param   {Integer}  [ignore_id]
+	 * @returns {Promise<{hostname: String, is_taken: Boolean}>}
 	 */
 	isHostnameTaken: async (hostname, ignore_type, ignore_id) => ({
 		hostname,
-		is_taken: (
-			await Promise.all(
-				Object.entries({ proxy: proxyHostModel, redirection: redirectionHostModel, dead: deadHostModel }).map(
-					async ([type, model]) =>
-						checkHostnameRecordsTaken(
-							hostname,
-							await model
-								.query()
-								.where("enabled", 1)
-								.andWhere((query) =>
-									query
-										.whereILike(domainNamesText(), `%${domainToASCII(hostname) || hostname}%`)
-										.orWhereILike(domainNamesText(), `%${domainToUnicode(hostname) || hostname}%`),
-								),
-							ignore_type === type && ignore_id ? ignore_id : 0,
-						),
-				),
-			)
-		).includes(true),
+		is_taken: (await internalHost.findTakenHostname([hostname], ignore_type, ignore_id)) !== undefined,
 	}),
 
 	/**
@@ -137,12 +149,9 @@ const internalHost = {
 	 * @param {String}    [options.suffix]      added to the message
 	 */
 	assertHostnamesFree: async (names, { ignoreType, ignoreId, suffix = "" } = {}) => {
-		const results = await Promise.all(
-			names.map((name) => internalHost.isHostnameTaken(name, ignoreType, ignoreId)),
-		);
-		const taken = results.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use${suffix}`);
+		const taken = await internalHost.findTakenHostname(names, ignoreType, ignoreId);
+		if (taken !== undefined) {
+			throw new errs.ValidationError(`${taken} is already in use${suffix}`);
 		}
 	},
 

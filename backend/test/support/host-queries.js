@@ -77,6 +77,18 @@ const hostQueryTests = (ctx) => {
 		refused(await ctx.admin.post(PROXY, proxy(["~^rx2-[a-z]+$"])), "~^rx2-[a-z]+$");
 	});
 
+	it("reads each host table once for all names of a save", async () => {
+		const seen = [];
+		const count = ({ sql }) => {
+			if (/like/iu.test(sql)) seen.push(sql);
+		};
+		ctx.api.db.on("query", count);
+		const names = Array.from({ length: 5 }, (_, n) => `count${n}.example.com`);
+		ok(await ctx.admin.post(PROXY, proxy(names)));
+		ctx.api.db.removeListener("query", count);
+		assert.equal(seen.length, 3);
+	});
+
 	it("searches and sorts the list of each host type", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["search-b.example.com"])));
 		ok(await ctx.admin.post(PROXY, proxy(["search-a.example.com"])));
