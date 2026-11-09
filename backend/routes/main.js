@@ -1,6 +1,11 @@
 import express from "express";
+import internalDeadHost from "../internal/dead-host.js";
+import internalProxyHost from "../internal/proxy-host.js";
+import internalRedirectionHost from "../internal/redirection-host.js";
+import internalStream from "../internal/stream.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
+import hostRouter from "../lib/express/host-router.js";
 import requireLogin from "../lib/express/require-login.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { OIDC_DEFAULTS } from "../lib/oidc-rules.js";
@@ -13,11 +18,7 @@ import docsRoutes from "./docs.js";
 import monitoringRoutes from "./monitoring.js";
 import accessListsRoutes from "./nginx/access_lists.js";
 import certificatesHostsRoutes from "./nginx/certificates.js";
-import deadHostsRoutes from "./nginx/dead_hosts.js";
 import dnsCredentialsRoutes from "./nginx/dns_credentials.js";
-import proxyHostsRoutes from "./nginx/proxy_hosts.js";
-import redirectionHostsRoutes from "./nginx/redirection_hosts.js";
-import streamsRoutes from "./nginx/streams.js";
 import oidcRoutes from "./oidc.js";
 import reportsRoutes from "./reports.js";
 import schemaRoutes from "./schema.js";
@@ -95,10 +96,43 @@ router.use("/api/reports", reportsRoutes);
 router.use("/api/monitoring", monitoringRoutes);
 router.use("/api/settings", settingsRoutes);
 router.use("/api/version", versionRoutes);
-router.use("/api/nginx/proxy-hosts", proxyHostsRoutes);
-router.use("/api/nginx/redirection-hosts", redirectionHostsRoutes);
-router.use("/api/nginx/dead-hosts", deadHostsRoutes);
-router.use("/api/nginx/streams", streamsRoutes);
+const PLAIN_EXPAND = ["owner", "certificate"];
+router.use(
+	"/api/nginx/proxy-hosts",
+	hostRouter({
+		internal: internalProxyHost,
+		path: "/nginx/proxy-hosts",
+		expandEnum: ["owner", "access_lists", "certificate"],
+		idParam: "host_id",
+	}),
+);
+router.use(
+	"/api/nginx/redirection-hosts",
+	hostRouter({
+		internal: internalRedirectionHost,
+		path: "/nginx/redirection-hosts",
+		expandEnum: PLAIN_EXPAND,
+		idParam: "host_id",
+	}),
+);
+router.use(
+	"/api/nginx/dead-hosts",
+	hostRouter({
+		internal: internalDeadHost,
+		path: "/nginx/dead-hosts",
+		expandEnum: PLAIN_EXPAND,
+		idParam: "host_id",
+	}),
+);
+router.use(
+	"/api/nginx/streams",
+	hostRouter({
+		internal: internalStream,
+		path: "/nginx/streams",
+		expandEnum: PLAIN_EXPAND,
+		idParam: "stream_id",
+	}),
+);
 router.use("/api/nginx/access-lists", accessListsRoutes);
 router.use("/api/nginx/certificates", certificatesHostsRoutes);
 router.use("/api/nginx/dns-credentials", dnsCredentialsRoutes);
