@@ -288,7 +288,8 @@ const internalDeadHost = {
 		return query;
 	},
 
-	...internalHost.hostCounts(deadHostModel),
+	getCount: (...args) => internalHost.hostCounts(deadHostModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(deadHostModel).getErrorCount(...args),
 };
 
 export default internalDeadHost;

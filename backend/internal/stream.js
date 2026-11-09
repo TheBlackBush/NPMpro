@@ -306,7 +306,8 @@ const internalStream = {
 		return query;
 	},
 
-	...internalHost.hostCounts(streamModel),
+	getCount: (...args) => internalHost.hostCounts(streamModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(streamModel).getErrorCount(...args),
 };
 
 export default internalStream;

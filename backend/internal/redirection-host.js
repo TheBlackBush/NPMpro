@@ -288,7 +288,8 @@ const internalRedirectionHost = {
 		return query;
 	},
 
-	...internalHost.hostCounts(redirectionHostModel),
+	getCount: (...args) => internalHost.hostCounts(redirectionHostModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(redirectionHostModel).getErrorCount(...args),
 };
 
 export default internalRedirectionHost;

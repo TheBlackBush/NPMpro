@@ -1,7 +1,7 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
-import { PROXY_HOST_EXPAND } from "../lib/host-expand.js";
+import { PROXY_HOST_EXPAND, PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
@@ -188,7 +188,7 @@ const internalProxyHost = {
 		const query = proxyHostModel
 			.query()
 			.where("id", data.id)
-			.allowGraph("[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]")
+			.allowGraph(PROXY_HOST_GRAPH)
 			.withGraphFetched("[access_lists, locations.access_lists]")
 			.first();
 
@@ -359,7 +359,8 @@ const internalProxyHost = {
 		return query;
 	},
 
-	...internalHost.hostCounts(proxyHostModel),
+	getCount: (...args) => internalHost.hostCounts(proxyHostModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(proxyHostModel).getErrorCount(...args),
 };
 
 export default internalProxyHost;
