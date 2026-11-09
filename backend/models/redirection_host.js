@@ -2,51 +2,26 @@
 // http://vincit.github.io/objection.js/
 
 import { Model } from "objection";
-import db from "../db.js";
-import { convertBoolFieldsToInt, convertIntFieldsToBool, removeCertificateFields } from "../lib/helpers.js";
 import Certificate from "./certificate.js";
-import now from "./now_helper.js";
+import HostModel from "./host-model.js";
 import User from "./user.js";
 
-Model.knex(db());
+class RedirectionHost extends HostModel {
+	static boolFields = [
+		"enabled",
+		"preserve_path",
+		"ssl_forced",
+		"hsts_enabled",
+		"hsts_subdomains",
+		"npmpro_http3_support",
+		"npmpro_nginx_online",
+		"npmpro_mtls_verify_client_optional",
+	];
 
-const boolFields = [
-	"enabled",
-	"preserve_path",
-	"ssl_forced",
-	"hsts_enabled",
-	"hsts_subdomains",
-	"npmpro_http3_support",
-	"npmpro_nginx_online",
-	"npmpro_mtls_verify_client_optional",
-];
+	static droppedColumns = ["is_deleted", "meta", "block_exploits", "http2_support"];
 
-class RedirectionHost extends Model {
-	$beforeInsert() {
-		this.created_on = now();
-		this.modified_on = now();
-
-		// Default for domain_names
-		this.domain_names ??= [];
-
-		// Default for meta
-		this.meta ??= {};
-		this.advanced_config ??= "";
-		this.npmpro_nginx_err ??= "";
-	}
-
-	$beforeUpdate() {
-		this.modified_on = now();
-	}
-
-	$parseDatabaseJson(json) {
-		const { is_deleted, meta, block_exploits, http2_support, ...thisJson } = super.$parseDatabaseJson(json);
-		return convertIntFieldsToBool(thisJson, boolFields);
-	}
-
-	$formatDatabaseJson(json) {
-		const thisJson = convertBoolFieldsToInt(removeCertificateFields(json), boolFields);
-		return super.$formatDatabaseJson(thisJson);
+	static insertDefaults() {
+		return { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" };
 	}
 
 	static tableName = "redirection_host";
