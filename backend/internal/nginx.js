@@ -1,4 +1,4 @@
-import { readFile, rename, rm, writeFile } from "node:fs/promises";
+import { rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
@@ -151,11 +151,6 @@ const internalNginx = {
 	 * @returns {Promise}
 	 */
 	renderLocations: async (host) => {
-		const template = await readFile(`${import.meta.dirname}/../templates/_proxy_host_custom_location.conf`, {
-			encoding: "utf8",
-		});
-
-		const renderEngine = utils.getRenderEngine();
 		let renderedLocations = "";
 
 		for (const [idx, location] of (host.locations || []).entries()) {
@@ -167,7 +162,7 @@ const internalNginx = {
 
 			setUpstreamName(location, `upstream_${host.id}_location_${idx}`);
 			Object.assign(location, quoteLocation(location));
-			renderedLocations += await renderEngine.parseAndRender(template, location);
+			renderedLocations += await utils.renderTemplate("_proxy_host_custom_location.conf", location);
 		}
 
 		return renderedLocations;
@@ -179,18 +174,13 @@ const internalNginx = {
 	 * @returns {Promise}
 	 */
 	renderUpstreams: async (host) => {
-		const template = await readFile(`${import.meta.dirname}/../templates/_upstream.conf`, {
-			encoding: "utf8",
-		});
-
-		const renderEngine = utils.getRenderEngine();
 		let renderedUpstreams = "";
 
 		if (["http", "https", "grpc", "grpcs"].includes(host.forward_scheme)) {
 			splitForwardHost(host);
 
 			if (setUpstreamName(host, `upstream_${host.id}`)) {
-				renderedUpstreams += await renderEngine.parseAndRender(template, host);
+				renderedUpstreams += await utils.renderTemplate("_upstream.conf", host);
 			}
 		}
 
@@ -206,7 +196,7 @@ const internalNginx = {
 			splitForwardHost(location);
 
 			if (setUpstreamName(location, `upstream_${host.id}_location_${idx}`)) {
-				renderedUpstreams += await renderEngine.parseAndRender(template, location);
+				renderedUpstreams += await utils.renderTemplate("_upstream.conf", location);
 			}
 		}
 
@@ -236,8 +226,6 @@ const internalNginx = {
 	renderConfig: async (host_type, host_row, { env, fetchMissingOcsp = true } = {}) => {
 		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
-
-		const renderEngine = utils.getRenderEngine();
 
 		host.env = env ?? effectiveEnv();
 
@@ -291,10 +279,7 @@ const internalNginx = {
 			host.locations = await internalNginx.renderLocations(host);
 		}
 
-		const config_text = await renderEngine.parseAndRender(
-			await readFile(`${import.meta.dirname}/../templates/${host_type}.conf`, { encoding: "utf8" }),
-			host,
-		);
+		const config_text = await utils.renderTemplate(`${host_type}.conf`, host);
 
 		// the beautifier switch of the render's env (advanced.config_beautifier, also inside a runtime save)
 		return beautifierOn(host.env) ? internalNginx.beautify(config_text) : config_text;
