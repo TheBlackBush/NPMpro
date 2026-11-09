@@ -51,10 +51,8 @@ try {
 
 	const { loadEnabledHosts, regenerateAllHosts } = await import("../../backend/internal/regenerate.js");
 	await api.outside.clearCalls();
-	const reloadsBefore = api.outside.control.reloads;
 	report("regenerate_ms", await timed(async () => regenerateAllHosts(await loadEnabledHosts())), { hosts });
 	report("regenerate_nginx_tests", (await nginxTests()) / rounds, { hosts });
-	report("regenerate_reloads", (api.outside.control.reloads - reloadsBefore) / rounds, { hosts });
 
 	await api.outside.clearCalls();
 	const reloadsAccess = api.outside.control.reloads;
@@ -66,12 +64,28 @@ try {
 	report("access_list_nginx_tests", (await nginxTests()) / rounds, { hosts: 50 });
 	report("access_list_reloads", (api.outside.control.reloads - reloadsAccess) / rounds, { hosts: 50 });
 
-	report("list_ms", await timed(() => admin.get("/nginx/proxy-hosts")), { hosts });
-
 	let queries = 0;
 	api.db.on("query", () => {
 		queries += 1;
 	});
+
+	report("list_ms", await timed(() => admin.get("/nginx/proxy-hosts")), { hosts });
+	queries = 0;
+	ok(await admin.get("/nginx/proxy-hosts"));
+	report("list_queries", queries, { hosts });
+
+	// the real startup again over the populated database: a plain start (configs exist) and a full regeneration
+	const { prepareApp } = await import("../../backend/startup.js");
+	for (const mode of ["plain", "regenerate_all"]) {
+		process.env.REGENERATE_ALL = mode === "regenerate_all" ? "true" : "false";
+		process.env.ENV_SHA512SUM = "bench";
+		await api.outside.clearCalls();
+		const reloadsStart = api.outside.control.reloads;
+		await prepareApp({ background: false });
+		report("startup_nginx_tests", await nginxTests(), { hosts, mode });
+		report("startup_reloads", api.outside.control.reloads - reloadsStart, { hosts, mode });
+	}
+	delete process.env.REGENERATE_ALL;
 	for (const domains of [1, 5, 100]) {
 		queries = 0;
 		const names = Array.from({ length: domains }, (_, n) => `q${domains}-${n}.example.com`);
@@ -92,6 +106,9 @@ try {
 	}));
 	await api.db.batchInsert("audit_log", rows, 500);
 	report("audit_list_ms", await timed(() => admin.get("/audit-log?limit=50&offset=1000")), { rows: auditRows });
+	queries = 0;
+	ok(await admin.get("/audit-log?limit=50&offset=1000"));
+	report("audit_list_queries", queries, { rows: auditRows });
 } finally {
 	await api.stop();
 }
