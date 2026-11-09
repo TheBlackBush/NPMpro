@@ -1,6 +1,7 @@
 import { maintenance } from "../lib/database/maintenance.js";
 import { logValue, newUserPermissions, OidcLoginError } from "../lib/oidc-login.js";
 import { userNameFromClaims } from "../lib/oidc-rules.js";
+import { createSerializer } from "../lib/serializer.js";
 import { oidc as logger } from "../logger.js";
 import auditLogModel from "../models/audit-log.js";
 import userModel from "../models/user.js";
@@ -8,7 +9,7 @@ import userPermissionModel from "../models/user_permission.js";
 import internalUser from "./user.js";
 
 // The email column has no unique index, so creations for the same email run one after another
-const pending = new Map();
+const byEmail = createSerializer();
 
 const findByEmail = (email, trx) =>
 	userModel.query(trx).where("email", email).orderBy("is_disabled").orderBy("id").first();
@@ -73,13 +74,9 @@ export default {
 		// the new user would be missing in the moved database; the claim covers the avatar patch too
 		const release = maintenance.tryBeginWrite();
 		if (!release) throw new OidcLoginError("maintenance", "A database move is in progress");
-		const previous = pending.get(email) ?? Promise.resolve();
-		const run = previous.catch(() => null).then(() => insertUser(email, name, checked.permissions));
-		pending.set(email, run);
 		try {
-			return await run;
+			return await byEmail(() => insertUser(email, name, checked.permissions), email);
 		} finally {
-			if (pending.get(email) === run) pending.delete(email);
 			release();
 		}
 	},

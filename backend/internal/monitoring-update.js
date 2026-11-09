@@ -1,5 +1,6 @@
 import errs from "../lib/error.js";
 import { mergeMonitoringConfig } from "../lib/monitoring-rules.js";
+import { createSerializer } from "../lib/serializer.js";
 import { global as logger } from "../logger.js";
 
 const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
@@ -9,20 +10,6 @@ const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visit
  */
 const pickEditable = (body, locked, keys) =>
 	Object.fromEntries(keys.filter((key) => key in body && !locked.includes(key)).map((key) => [key, body[key]]));
-
-/**
- * Runs the given functions one after another, also when an earlier one failed
- *
- * @returns {(fn: Function) => Promise}
- */
-const createSerializer = () => {
-	let chain = Promise.resolve();
-	return (fn) => {
-		const run = chain.then(fn, fn);
-		chain = run.catch(() => {});
-		return run;
-	};
-};
 
 /**
  * Builds the monitoring settings update. Each update (read stored, hooks, save) runs as one unit,
@@ -148,4 +135,4 @@ const createMonitoringUpdater = ({ readStored, saveStored, deleteIps, hooks, env
 	return (body) => serialize(() => update(body));
 };
 
-export { createMonitoringUpdater, createSerializer, pickEditable };
+export { createMonitoringUpdater, pickEditable };

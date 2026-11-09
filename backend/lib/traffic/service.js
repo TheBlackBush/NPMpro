@@ -3,6 +3,7 @@ import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { global as logger } from "../../logger.js";
 import { waitWithin, writerRunning } from "../database/pause.js";
 import { rooted } from "../paths.js";
+import { createSerializer } from "../serializer.js";
 import { createCounter } from "./counter.js";
 import { createHostResolver } from "./host-resolver.js";
 import { createLogReader } from "./log-reader.js";
@@ -80,18 +81,6 @@ const createHostMapper = (domains) => {
 	// every key the mapper can return
 	map.keys = new Set([...exact, ...wildcards.map((w) => w.name), OTHER_HOST]);
 	return map;
-};
-
-/**
- * Runs the given functions one after another, also when an earlier one failed (single database writer)
- */
-const createQueue = () => {
-	let chain = Promise.resolve();
-	return (fn) => {
-		const run = chain.then(fn, fn);
-		chain = run.catch(() => {});
-		return run;
-	};
 };
 
 const sumRequests = (rows) => rows.reduce((n, r) => n + r.requests, 0);
@@ -187,7 +176,7 @@ const createTrafficService = ({
 	bindAddresses = [process.env.NPM_IPV4_BINDING].filter((address) => address && address !== "0.0.0.0"),
 	log = logger,
 }) => {
-	const queue = createQueue();
+	const queue = createSerializer();
 	const counter = createCounter({ maxPerKey, maxVisitors });
 	// the newest requests for the API, in memory only; IPs only while show_ips is on
 	const recent = createRecent();
