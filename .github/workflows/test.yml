@@ -139,7 +139,7 @@ jobs:
           check_together: 'yes'
       - name: dockerfile
         run: |
-          curl -sSfL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-linux-x86_64 -o "$RUNNER_TEMP/hadolint"
+          curl -sSfL https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64 -o "$RUNNER_TEMP/hadolint"
           chmod +x "$RUNNER_TEMP/hadolint"
           git ls-files '*Dockerfile' | xargs -n1 "$RUNNER_TEMP/hadolint" --ignore DL3018 --ignore DL3003 --ignore DL3013
       - name: workflows
