@@ -14,6 +14,8 @@ import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
 
+const proxyHostEntries = (hosts) => hosts.map((host) => ({ model: proxyHostModel, hostType: "proxy_host", host }));
+
 const hasNoRules = (items = [], clients = []) =>
 	items.length === 0 && clients.every(({ address = "" }) => ["", "all"].includes(address.trim().toLowerCase()));
 
@@ -177,9 +179,7 @@ const internalAccessList = {
 
 		try {
 			await internalAccessList.build(freshRow);
-			for (const host of freshRow.proxy_hosts) {
-				await internalNginx.configure(proxyHostModel, "proxy_host", host, { skipReload: true });
-			}
+			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
 			await internalNginx.reload();
 		} finally {
 			// Add to audit log
@@ -297,9 +297,7 @@ const internalAccessList = {
 		try {
 			// 3. Write the changes to the config
 			// Regenerate configs and htpasswd files
-			for (const host of affectedHosts) {
-				await internalNginx.configure(proxyHostModel, "proxy_host", host, { skipReload: true });
-			}
+			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
 
 			await internalNginx.reload();
 

@@ -125,7 +125,6 @@ const regenerateHosts = async () => {
 		await regenerateAllHosts(hosts);
 		await writeFile(rooted("/data/npmpro/env.sha512sum"), process.env.ENV_SHA512SUM);
 		logger.info(`Regenerated ${hosts.length} host config(s)`);
-		await internalNginx.reload();
 		return;
 	}
 

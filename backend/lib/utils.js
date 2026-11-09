@@ -24,26 +24,26 @@ const execFile = async (cmd, args, options = {}) => {
 	}
 };
 
+// Parsed templates only, cached by file name by liquidjs, partials included. They ship in the image, so they cannot go
+// stale, and nothing rendered is kept.
+const renderEngine = new Liquid({
+	root: `${import.meta.dirname}/../templates/`,
+	cache: true,
+});
+
+// expects an object with the properties directive and address
+renderEngine.registerFilter("nginxAccessRule", (v) => {
+	if (v.directive && v.address) return `${v.directive} ${v.address};`;
+	return "";
+});
+
+const getRenderEngine = () => renderEngine;
+
 /**
- * @returns {Object} Liquid render engine
+ * @param   {String}  name   a file in templates/
+ * @param   {Object}  scope
+ * @returns {Promise<String>}
  */
-const getRenderEngine = () => {
-	const renderEngine = new Liquid({
-		root: `${import.meta.dirname}/../templates/`,
-	});
+const renderTemplate = (name, scope) => renderEngine.renderFile(name, scope);
 
-	/**
-	 * nginxAccessRule expects the object given to have 2 properties:
-	 *
-	 * directive  string
-	 * address    string
-	 */
-	renderEngine.registerFilter("nginxAccessRule", (v) => {
-		if (v.directive && v.address) return `${v.directive} ${v.address};`;
-		return "";
-	});
-
-	return renderEngine;
-};
-
-export default { execFile, getRenderEngine };
+export default { execFile, getRenderEngine, renderTemplate };

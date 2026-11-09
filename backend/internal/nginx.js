@@ -44,6 +44,26 @@ const setUpstreamName = (item, ownName) => {
 	return !isCustom;
 };
 
+const readOrNull = (file) => readFile(file, "utf8").catch(() => null);
+
+// the config (and .err) of each host as it is on disk, null where there is none
+const readConfigs = (entries) =>
+	Promise.all(
+		entries.map(async ({ hostType, host }) => {
+			const file = internalNginx.getConfigName(hostType, host.id);
+			return { file, conf: await readOrNull(file), err: await readOrNull(`${file}.err`) };
+		}),
+	);
+
+const restoreConfigs = async (previous) => {
+	for (const { file, conf, err } of previous) {
+		await rm(file, { force: true });
+		await rm(`${file}.err`, { force: true });
+		if (conf !== null) await writeFile(file, conf, { encoding: "utf8" });
+		if (err !== null) await writeFile(`${file}.err`, err, { encoding: "utf8" });
+	}
+};
+
 const internalNginx = {
 	/**
 	 * This will:
@@ -99,6 +119,65 @@ const internalNginx = {
 	},
 
 	/**
+	 * Several hosts with one nginx -t: every config is written first (the previous ones stay in use until the reload).
+	 * Only when that test fails, the hosts are checked one by one like a single save, so a broken one ends up as .err
+	 * with the nginx message. The caller reloads. For code that runs in the runtime settings queue already.
+	 *
+	 * With keepPrevious, the configs the hosts had before the batch (or none) are put back before the one by one
+	 * check, and also when a write throws: a host not yet checked keeps a config nginx accepted, and no host is tested
+	 * against the new config of another one. Without it (a full regeneration) the batch configs are deleted instead.
+	 *
+	 * @param   {Array<{model: Object, hostType: String, host: Object}>}  entries
+	 * @param   {Object}    [options]
+	 * @param   {boolean}   [options.fetchMissingOcsp]
+	 * @param   {boolean}   [options.keepPrevious]
+	 * @param   {Function}  [options.afterWrite]  async (entries), after the writes and before the test
+	 * @returns {Promise}
+	 */
+	configureManyNow: async (entries, { fetchMissingOcsp = true, keepPrevious = false, afterWrite } = {}) => {
+		const needsFiles = entries.some(({ hostType }) => hostType === "proxy_host");
+		const files = needsFiles ? await internalProxyHostAccessList.listFiles() : undefined;
+		const previous = keepPrevious ? await readConfigs(entries) : [];
+		try {
+			for (const { hostType, host } of entries) {
+				await internalProxyHostAccessList.build(hostType, host, files);
+				await internalNginx.deleteConfig(hostType, host);
+				await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
+			}
+			await afterWrite?.(entries);
+		} catch (err) {
+			if (keepPrevious) await restoreConfigs(previous);
+			throw err;
+		}
+
+		try {
+			await internalNginx.test();
+		} catch (err) {
+			logger.warn(`The configs do not pass nginx -t, checking the hosts one by one: ${err.message}`);
+			if (keepPrevious) await restoreConfigs(previous);
+			else for (const { hostType, host } of entries) await internalNginx.deleteConfig(hostType, host);
+			for (const { model, hostType, host } of entries) {
+				await internalNginx.configureNow(model, hostType, host, { skipReload: true, fetchMissingOcsp });
+			}
+			return;
+		}
+		const ok = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
+		for (const model of new Set(entries.map((entry) => entry.model))) {
+			const ids = entries.filter((entry) => entry.model === model).map(({ host }) => host.id);
+			await model.query().whereIn("id", ids).patch(ok);
+		}
+	},
+
+	/**
+	 * configureManyNow in the runtime settings queue, for the enabled hosts only; no enabled host, no nginx -t
+	 */
+	configureMany: async (entries, options) => {
+		const enabled = entries.filter(({ host }) => host.enabled);
+		if (enabled.length === 0) return;
+		await runtimeExclusive(() => internalNginx.configureManyNow(enabled, { ...options, keepPrevious: true }));
+	},
+
+	/**
 	 * @returns {Promise}
 	 */
 	test: () => utils.execFile("nginx", ["-tq"]),
@@ -151,11 +230,6 @@ const internalNginx = {
 	 * @returns {Promise}
 	 */
 	renderLocations: async (host) => {
-		const template = await readFile(`${import.meta.dirname}/../templates/_proxy_host_custom_location.conf`, {
-			encoding: "utf8",
-		});
-
-		const renderEngine = utils.getRenderEngine();
 		let renderedLocations = "";
 
 		for (const [idx, location] of (host.locations || []).entries()) {
@@ -167,7 +241,7 @@ const internalNginx = {
 
 			setUpstreamName(location, `upstream_${host.id}_location_${idx}`);
 			Object.assign(location, quoteLocation(location));
-			renderedLocations += await renderEngine.parseAndRender(template, location);
+			renderedLocations += await utils.renderTemplate("_proxy_host_custom_location.conf", location);
 		}
 
 		return renderedLocations;
@@ -179,18 +253,13 @@ const internalNginx = {
 	 * @returns {Promise}
 	 */
 	renderUpstreams: async (host) => {
-		const template = await readFile(`${import.meta.dirname}/../templates/_upstream.conf`, {
-			encoding: "utf8",
-		});
-
-		const renderEngine = utils.getRenderEngine();
 		let renderedUpstreams = "";
 
 		if (["http", "https", "grpc", "grpcs"].includes(host.forward_scheme)) {
 			splitForwardHost(host);
 
 			if (setUpstreamName(host, `upstream_${host.id}`)) {
-				renderedUpstreams += await renderEngine.parseAndRender(template, host);
+				renderedUpstreams += await utils.renderTemplate("_upstream.conf", host);
 			}
 		}
 
@@ -206,7 +275,7 @@ const internalNginx = {
 			splitForwardHost(location);
 
 			if (setUpstreamName(location, `upstream_${host.id}_location_${idx}`)) {
-				renderedUpstreams += await renderEngine.parseAndRender(template, location);
+				renderedUpstreams += await utils.renderTemplate("_upstream.conf", location);
 			}
 		}
 
@@ -236,8 +305,6 @@ const internalNginx = {
 	renderConfig: async (host_type, host_row, { env, fetchMissingOcsp = true } = {}) => {
 		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
-
-		const renderEngine = utils.getRenderEngine();
 
 		host.env = env ?? effectiveEnv();
 
@@ -281,20 +348,17 @@ const internalNginx = {
 					location.filename = htpasswdFileName;
 				}
 			}
-
-			// the host's or a location's own upstream; empty: the template uses the Forward authentication default
-			for (const provider of AUTH_REQUEST_PROVIDERS) {
-				if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
-				host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
-			}
-
-			host.locations = await internalNginx.renderLocations(host);
 		}
 
-		const config_text = await renderEngine.parseAndRender(
-			await readFile(`${import.meta.dirname}/../templates/${host_type}.conf`, { encoding: "utf8" }),
-			host,
-		);
+		// the host's or a location's own upstream; empty: the template uses the Forward authentication default
+		for (const provider of AUTH_REQUEST_PROVIDERS) {
+			if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
+			host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
+		}
+
+		if (host.locations) host.locations = await internalNginx.renderLocations(host);
+
+		const config_text = await utils.renderTemplate(`${host_type}.conf`, host);
 
 		// the beautifier switch of the render's env (advanced.config_beautifier, also inside a runtime save)
 		return beautifierOn(host.env) ? internalNginx.beautify(config_text) : config_text;
