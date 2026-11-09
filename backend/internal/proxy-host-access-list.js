@@ -40,9 +40,9 @@ const getProxyHostFilename = (proxyHost) => `${GENERATED_DIR}/${getHostFilePrefi
 const getProxyLocationFilename = (proxyHost, location) =>
 	`${GENERATED_DIR}/${getHostFilePrefix(proxyHost)}-location-${location.id}`;
 
-const findHostFiles = async (proxyHost) => {
+const findHostFiles = async (proxyHost, files) => {
 	const prefix = getHostFilePrefix(proxyHost);
-	const entries = await readdir(GENERATED_DIR, { withFileTypes: true });
+	const entries = files ?? (await internalProxyHostAccessList.listFiles());
 
 	return entries
 		.filter((entry) => entry.isFile() && (entry.name === prefix || entry.name.startsWith(`${prefix}-`)))
@@ -125,11 +125,18 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
+	 * One read of the generated folder, for a batch of build or delete calls
+	 *
+	 * @returns {Promise<import("node:fs").Dirent[]>}
+	 */
+	listFiles: () => readdir(GENERATED_DIR, { withFileTypes: true }),
+
+	/**
 	 *
 	 * @param {*} proxyHost
 	 */
-	delete: async (proxyHost) => {
-		const oldFiles = await findHostFiles(proxyHost);
+	delete: async (proxyHost, files) => {
+		const oldFiles = await findHostFiles(proxyHost, files);
 		for (const file of oldFiles) {
 			await rm(file, { force: true });
 		}
@@ -175,13 +182,13 @@ const internalProxyHostAccessList = {
 	 * Generates the output htpasswd file on the filesystem
 	 * @param {*} proxyHost
 	 */
-	build: async (host_type, proxyHost) => {
+	build: async (host_type, proxyHost, files) => {
 		if (host_type !== "proxy_host") {
 			return;
 		}
 
 		// cleanup all old files for this host and regenerate
-		await internalProxyHostAccessList.delete(proxyHost);
+		await internalProxyHostAccessList.delete(proxyHost, files);
 
 		await buildHostFile(proxyHost, proxyHost.access_lists ?? []);
 

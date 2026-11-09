@@ -1,7 +1,6 @@
 import { readdir, rm } from "node:fs/promises";
 import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { rooted } from "../lib/paths.js";
-import { setup as logger } from "../logger.js";
 import accessListModel from "../models/access_list.js";
 import deadModel from "../models/dead_host.js";
 import proxyModel from "../models/proxy_host.js";
@@ -10,7 +9,6 @@ import settingModel from "../models/setting.js";
 import streamModel from "../models/stream.js";
 import internalAccessList from "./access-list.js";
 import internalNginx from "./nginx.js";
-import internalProxyHostAccessList from "./proxy-host-access-list.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const HOST_CONFIG_DIRS = ["proxy_host", "redirection_host", "dead_host", "stream"];
@@ -55,31 +53,14 @@ const removeLeftoverConfigs = async (written) => {
  * @returns {Promise}
  */
 const regenerateAllHostsNow = async (hosts) => {
-	const written = new Set();
-	for (const { hostType, host } of hosts) {
-		await internalProxyHostAccessList.build(hostType, host);
-		await internalNginx.deleteConfig(hostType, host);
-		// launch.sh and the startup apply fetched the OCSP responses, the reload afterwards fetches the rest once
-		await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp: false });
-		written.add(internalNginx.getConfigName(hostType, host.id));
-	}
-	await removeLeftoverConfigs(written);
-
-	try {
-		await internalNginx.test();
-	} catch (err) {
-		logger.warn(`The regenerated configs do not pass nginx -t, checking the hosts one by one: ${err.message}`);
-		for (const { hostType, host } of hosts) await internalNginx.deleteConfig(hostType, host);
-		for (const { model, hostType, host } of hosts) {
-			await internalNginx.configureNow(model, hostType, host, { skipReload: true, fetchMissingOcsp: false });
-		}
-		return;
-	}
-	const ok = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
-	for (const model of new Set(hosts.map(({ model }) => model))) {
-		const ids = hosts.filter((entry) => entry.model === model).map(({ host }) => host.id);
-		if (ids.length > 0) await model.query().whereIn("id", ids).patch(ok);
-	}
+	// launch.sh and the startup apply fetched the OCSP responses, the reload afterwards fetches the rest once
+	await internalNginx.configureManyNow(hosts, {
+		fetchMissingOcsp: false,
+		afterWrite: async (entries) =>
+			removeLeftoverConfigs(
+				new Set(entries.map(({ hostType, host }) => internalNginx.getConfigName(hostType, host.id))),
+			),
+	});
 };
 
 /**

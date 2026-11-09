@@ -99,6 +99,53 @@ const internalNginx = {
 	},
 
 	/**
+	 * Several hosts with one nginx -t: every config is written first (the previous ones stay in use until the reload).
+	 * Only when that test fails, the hosts are checked one by one like a single save, so a broken one ends up as .err
+	 * with the nginx message. The caller reloads. For code that runs in the runtime settings queue already.
+	 *
+	 * @param   {Array<{model: Object, hostType: String, host: Object}>}  entries
+	 * @param   {Object}    [options]
+	 * @param   {boolean}   [options.fetchMissingOcsp]
+	 * @param   {Function}  [options.afterWrite]  async (entries), after the writes and before the test
+	 * @returns {Promise}
+	 */
+	configureManyNow: async (entries, { fetchMissingOcsp = true, afterWrite } = {}) => {
+		const needsFiles = entries.some(({ hostType }) => hostType === "proxy_host");
+		const files = needsFiles ? await internalProxyHostAccessList.listFiles() : undefined;
+		for (const { hostType, host } of entries) {
+			await internalProxyHostAccessList.build(hostType, host, files);
+			await internalNginx.deleteConfig(hostType, host);
+			await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
+		}
+		await afterWrite?.(entries);
+
+		try {
+			await internalNginx.test();
+		} catch (err) {
+			logger.warn(`The configs do not pass nginx -t, checking the hosts one by one: ${err.message}`);
+			for (const { hostType, host } of entries) await internalNginx.deleteConfig(hostType, host);
+			for (const { model, hostType, host } of entries) {
+				await internalNginx.configureNow(model, hostType, host, { skipReload: true, fetchMissingOcsp });
+			}
+			return;
+		}
+		const ok = { npmpro_nginx_online: true, npmpro_nginx_err: "" };
+		for (const model of new Set(entries.map((entry) => entry.model))) {
+			const ids = entries.filter((entry) => entry.model === model).map(({ host }) => host.id);
+			await model.query().whereIn("id", ids).patch(ok);
+		}
+	},
+
+	/**
+	 * configureManyNow in the runtime settings queue, for the enabled hosts only; no enabled host, no nginx -t
+	 */
+	configureMany: async (entries, options) => {
+		const enabled = entries.filter(({ host }) => host.enabled);
+		if (enabled.length === 0) return;
+		await runtimeExclusive(() => internalNginx.configureManyNow(enabled, options));
+	},
+
+	/**
 	 * @returns {Promise}
 	 */
 	test: () => utils.execFile("nginx", ["-tq"]),
