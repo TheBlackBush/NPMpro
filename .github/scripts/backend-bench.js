@@ -34,6 +34,11 @@ const proxy = (name, extra = {}) => ({
 });
 
 const api = await startApi();
+// the first start ran inside startApi, over an empty database; its calls are in the log and its reloads in the counter
+const firstStart = {
+	tests: (await api.outside.calls()).filter((line) => line.startsWith("nginx -t")).length,
+	reloads: api.outside.control.reloads,
+};
 try {
 	const admin = await api.admin();
 	const list = ok(
@@ -47,6 +52,8 @@ try {
 	for (let n = 0; n < hosts; n++) {
 		ok(await admin.post("/nginx/proxy-hosts", proxy(`b${n}.example.com`, n < 50 ? custom : {})));
 	}
+	report("startup_first_nginx_tests", firstStart.tests, { hosts: 0 });
+	report("startup_first_reloads", firstStart.reloads, { hosts: 0 });
 	const nginxTests = async () => (await api.outside.calls()).filter((line) => line.startsWith("nginx -t")).length;
 
 	const { loadEnabledHosts, regenerateAllHosts } = await import("../../backend/internal/regenerate.js");
@@ -74,16 +81,17 @@ try {
 	ok(await admin.get("/nginx/proxy-hosts"));
 	report("list_queries", queries, { hosts });
 
-	// the real startup again over the populated database: a plain start (configs exist) and a full regeneration
+	// the real startup again over the populated database: a warm start (configs exist) and a full regeneration; the
+	// regenerate_all start runs on unchanged config text, so applyAll skips the files it already wrote
 	const { prepareApp } = await import("../../backend/startup.js");
-	for (const mode of ["plain", "regenerate_all"]) {
+	for (const mode of ["warm", "regenerate_all"]) {
 		process.env.REGENERATE_ALL = mode === "regenerate_all" ? "true" : "false";
 		process.env.ENV_SHA512SUM = "bench";
 		await api.outside.clearCalls();
 		const reloadsStart = api.outside.control.reloads;
 		await prepareApp({ background: false });
-		report("startup_nginx_tests", await nginxTests(), { hosts, mode });
-		report("startup_reloads", api.outside.control.reloads - reloadsStart, { hosts, mode });
+		report(`startup_${mode}_nginx_tests`, await nginxTests(), { hosts });
+		report(`startup_${mode}_reloads`, api.outside.control.reloads - reloadsStart, { hosts });
 	}
 	delete process.env.REGENERATE_ALL;
 	for (const domains of [1, 5, 100]) {
