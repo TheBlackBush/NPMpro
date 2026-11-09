@@ -96,10 +96,17 @@ try {
 	delete process.env.REGENERATE_ALL;
 	for (const domains of [1, 5, 100]) {
 		queries = 0;
-		const names = Array.from({ length: domains }, (_, n) => `q${domains}-${n}.example.com`);
-		const start = performance.now();
-		ok(await admin.post("/nginx/proxy-hosts", proxy(names)));
-		report("create_ms", performance.now() - start, { domains });
+		// a median of several creates: one call can take a WAL auto-checkpoint (every 1000 pages, two fsyncs)
+		const names = (round) => Array.from({ length: domains }, (_, n) => `q${domains}-${round}-${n}.example.com`);
+		report(
+			"create_ms",
+			await timed(async (round) => ok(await admin.post("/nginx/proxy-hosts", proxy(names(round))))),
+			{
+				domains,
+			},
+		);
+		queries = 0;
+		ok(await admin.post("/nginx/proxy-hosts", proxy(names(rounds))));
 		report("create_queries", queries, { domains });
 	}
 
