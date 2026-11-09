@@ -1,10 +1,12 @@
 import { domainToASCII, domainToUnicode } from "node:url";
 import { raw } from "objection";
 import { isMysql } from "../lib/config.js";
+import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
+import internalCertificate from "./certificate.js";
 
 // MySQL compares a json column with a binary collation, so LIKE would not ignore case: compare it as text
 const domainNamesText = () => (isMysql() ? raw("CAST(?? AS CHAR)", ["domain_names"]) : castJsonIfNeed("domain_names"));
@@ -103,6 +105,67 @@ const internalHost = {
 			)
 		).includes(true),
 	}),
+
+	/**
+	 * The certificate step before a save: certificate_id "new" stays for later (a new certificate is only requested
+	 * when everything else is valid), a chosen one must fit. Runs before access.can in every host type.
+	 *
+	 * @param   {Access}  access
+	 * @param   {Object}  data  loses certificate_id when it is "new"
+	 * @returns {Promise<boolean>}  whether a new certificate is wanted
+	 */
+	checkCertificates: async (access, data) => {
+		const createCertificate = data.certificate_id === "new";
+		if (createCertificate) {
+			delete data.certificate_id;
+		} else if (data.certificate_id > 0) {
+			await internalCertificate.get(access, { id: data.certificate_id, mtls: false });
+		}
+		if (data.npmpro_mtls_certificate_id > 0) {
+			await internalCertificate.get(access, { id: data.npmpro_mtls_certificate_id, mtls: true });
+		}
+		return createCertificate;
+	},
+
+	/**
+	 * Refuses the first name, in the order given, that another enabled host uses
+	 *
+	 * @param {String[]}  names
+	 * @param {Object}    [options]
+	 * @param {String}    [options.ignoreType]  "proxy", "redirection" or "dead"
+	 * @param {Number}    [options.ignoreId]
+	 * @param {String}    [options.suffix]      added to the message
+	 */
+	assertHostnamesFree: async (names, { ignoreType, ignoreId, suffix = "" } = {}) => {
+		const results = await Promise.all(
+			names.map((name) => internalHost.isHostnameTaken(name, ignoreType, ignoreId)),
+		);
+		const taken = results.find((result) => result.is_taken);
+		if (taken) {
+			throw new errs.ValidationError(`${taken.hostname} is already in use${suffix}`);
+		}
+	},
+
+	/**
+	 * The report counts of a host model
+	 *
+	 * @param   {Object}  model
+	 * @returns {{getCount: Function, getErrorCount: Function}}
+	 */
+	hostCounts: (model) => {
+		const count = (query, user_id, visibility) => {
+			if (visibility !== "all") {
+				query.andWhere("owner_user_id", user_id);
+			}
+			return query.resultSize();
+		};
+		return {
+			getCount: (user_id, visibility) => count(model.query(), user_id, visibility),
+			// enabled hosts whose nginx config was rejected
+			getErrorCount: (user_id, visibility) =>
+				count(model.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0), user_id, visibility),
+		};
+	},
 };
 
 export default internalHost;
