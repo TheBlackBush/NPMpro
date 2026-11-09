@@ -25,13 +25,16 @@ it("with REGENERATE_ALL a start writes every enabled host and reloads nginx once
 	const host = await created(await admin.post("/nginx/dead-hosts", { domain_names: ["regen.example.com"] }), "host");
 	const file = `data/nginx/dead_host/${host.id}.conf`;
 	await rm(path.join(api.root, file));
-	assert.equal(await startAgain(true), 2);
+	assert.equal(await startAgain(true), 1);
 	assert.equal(await fileExists(api, file), true);
 	assert.equal(await api.read("data/npmpro/env.sha512sum"), "bench-sha");
 });
 
 it("without REGENERATE_ALL a missing config still comes back and the reloads stay", async () => {
-	const host = await created(await admin.post("/nginx/dead-hosts", { domain_names: ["missing.example.com"] }), "host");
+	const host = await created(
+		await admin.post("/nginx/dead-hosts", { domain_names: ["missing.example.com"] }),
+		"host",
+	);
 	const file = `data/nginx/dead_host/${host.id}.conf`;
 	await rm(path.join(api.root, file));
 	assert.equal(await startAgain(false), 2);
