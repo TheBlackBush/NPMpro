@@ -1,4 +1,4 @@
-import { rename, rm, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
@@ -42,6 +42,26 @@ const setUpstreamName = (item, ownName) => {
 	const isCustom = item.forward_host?.startsWith("cu_");
 	item.forward_upstream_name = isCustom ? item.forward_host : ownName;
 	return !isCustom;
+};
+
+const readOrNull = (file) => readFile(file, "utf8").catch(() => null);
+
+// the config (and .err) of each host as it is on disk, null where there is none
+const readConfigs = (entries) =>
+	Promise.all(
+		entries.map(async ({ hostType, host }) => {
+			const file = internalNginx.getConfigName(hostType, host.id);
+			return { file, conf: await readOrNull(file), err: await readOrNull(`${file}.err`) };
+		}),
+	);
+
+const restoreConfigs = async (previous) => {
+	for (const { file, conf, err } of previous) {
+		await rm(file, { force: true });
+		await rm(`${file}.err`, { force: true });
+		if (conf !== null) await writeFile(file, conf, { encoding: "utf8" });
+		if (err !== null) await writeFile(`${file}.err`, err, { encoding: "utf8" });
+	}
 };
 
 const internalNginx = {
@@ -103,27 +123,39 @@ const internalNginx = {
 	 * Only when that test fails, the hosts are checked one by one like a single save, so a broken one ends up as .err
 	 * with the nginx message. The caller reloads. For code that runs in the runtime settings queue already.
 	 *
+	 * With keepPrevious, the configs the hosts had before the batch (or none) are put back before the one by one
+	 * check, and also when a write throws: a host not yet checked keeps a config nginx accepted, and no host is tested
+	 * against the new config of another one. Without it (a full regeneration) the batch configs are deleted instead.
+	 *
 	 * @param   {Array<{model: Object, hostType: String, host: Object}>}  entries
 	 * @param   {Object}    [options]
 	 * @param   {boolean}   [options.fetchMissingOcsp]
+	 * @param   {boolean}   [options.keepPrevious]
 	 * @param   {Function}  [options.afterWrite]  async (entries), after the writes and before the test
 	 * @returns {Promise}
 	 */
-	configureManyNow: async (entries, { fetchMissingOcsp = true, afterWrite } = {}) => {
+	configureManyNow: async (entries, { fetchMissingOcsp = true, keepPrevious = false, afterWrite } = {}) => {
 		const needsFiles = entries.some(({ hostType }) => hostType === "proxy_host");
 		const files = needsFiles ? await internalProxyHostAccessList.listFiles() : undefined;
-		for (const { hostType, host } of entries) {
-			await internalProxyHostAccessList.build(hostType, host, files);
-			await internalNginx.deleteConfig(hostType, host);
-			await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
+		const previous = keepPrevious ? await readConfigs(entries) : [];
+		try {
+			for (const { hostType, host } of entries) {
+				await internalProxyHostAccessList.build(hostType, host, files);
+				await internalNginx.deleteConfig(hostType, host);
+				await internalNginx.generateConfig(hostType, host, { fetchMissingOcsp });
+			}
+			await afterWrite?.(entries);
+		} catch (err) {
+			if (keepPrevious) await restoreConfigs(previous);
+			throw err;
 		}
-		await afterWrite?.(entries);
 
 		try {
 			await internalNginx.test();
 		} catch (err) {
 			logger.warn(`The configs do not pass nginx -t, checking the hosts one by one: ${err.message}`);
-			for (const { hostType, host } of entries) await internalNginx.deleteConfig(hostType, host);
+			if (keepPrevious) await restoreConfigs(previous);
+			else for (const { hostType, host } of entries) await internalNginx.deleteConfig(hostType, host);
 			for (const { model, hostType, host } of entries) {
 				await internalNginx.configureNow(model, hostType, host, { skipReload: true, fetchMissingOcsp });
 			}
@@ -142,7 +174,7 @@ const internalNginx = {
 	configureMany: async (entries, options) => {
 		const enabled = entries.filter(({ host }) => host.enabled);
 		if (enabled.length === 0) return;
-		await runtimeExclusive(() => internalNginx.configureManyNow(enabled, options));
+		await runtimeExclusive(() => internalNginx.configureManyNow(enabled, { ...options, keepPrevious: true }));
 	},
 
 	/**

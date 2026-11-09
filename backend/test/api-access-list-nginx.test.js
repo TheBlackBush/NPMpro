@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { after, before, beforeEach, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -71,8 +71,10 @@ it("tests nginx once for all hosts of a list, and reloads once", async () => {
 it("names the broken host after a failed test, keeps the others online and writes its .err", async () => {
 	const list = await makeList();
 	const good = await makeHost([list.id]);
-	const bad = await makeHost([list.id], { advanced_config: "# BADHOST" });
+	const bad = await makeHost([list.id]);
 	const other = await makeHost([list.id]);
+	// the previous config of the second host is fine, its new one (rendered from the row) is not
+	await api.db("proxy_host").where({ id: bad.id }).update({ advanced_config: "# BADHOST" });
 	await brokenNginx();
 	await api.outside.clearCalls();
 	assert.equal((await admin.put(`${LISTS}/${list.id}`, { name: "broken once" })).status, 200);
@@ -136,4 +138,66 @@ it("rewrites the merged access file of a host in a batch", async () => {
 	const text = await readFile(file, "utf8");
 	assert.match(text, /third-user/u);
 	assert.doesNotMatch(text, /second-user/u);
+});
+
+it("sets a host that was offline online again when the batch passes", async () => {
+	const list = await makeList();
+	const host = await makeHost([list.id]);
+	await api.db("proxy_host").where({ id: host.id }).update({ npmpro_nginx_online: 0, npmpro_nginx_err: "old error" });
+	assert.equal((await row(host.id)).npmpro_nginx_online, 0);
+	assert.equal((await admin.put(`${LISTS}/${list.id}`, { name: "fixed host" })).status, 200);
+	const stored = await row(host.id);
+	assert.equal(stored.npmpro_nginx_online, 1);
+	assert.equal(stored.npmpro_nginx_err, "");
+	assert.equal(await fileExists(api, config(host.id)), true);
+});
+
+it("tests the batches of two saves one after the other", async () => {
+	const lists = [await makeList(), await makeList()];
+	for (const list of lists) await makeHost([list.id]);
+	const log = path.join(api.root, "fake/overlap.log");
+	await api.outside.hookCommand("nginx", `#!/bin/sh\necho start >> "${log}"\nsleep 0.3\necho end >> "${log}"\n`);
+	await rm(log, { force: true });
+	const answers = await Promise.all(
+		lists.map((list) => admin.put(`${LISTS}/${list.id}`, { name: "at the same time" })),
+	);
+	for (const answer of answers) assert.equal(answer.status, 200);
+	const lines = (await readFile(log, "utf8")).trim().split("\n");
+	assert.deepEqual(lines, ["start", "end", "start", "end"]);
+});
+
+it("keeps the previous configs of the other hosts while a failed batch is checked one by one", async () => {
+	const list = await makeList();
+	const hosts = [await makeHost([list.id]), await makeHost([list.id]), await makeHost([list.id])];
+	// the previous config of the second host is fine, its new one (rendered from the row) is not
+	await api.db("proxy_host").where({ id: hosts[1].id }).update({ advanced_config: "# BADHOST" });
+	const log = path.join(api.root, "fake/listing.log");
+	const dir = path.join(api.root, "data/nginx/proxy_host");
+	await api.outside.hookCommand(
+		"nginx",
+		`#!/bin/sh
+ls "${dir}" | tr '\\n' ' ' >> "${log}"
+echo >> "${log}"
+if grep -rq BADHOST --include='*.conf' "${dir}"; then echo "BADHOST is not valid" >&2; exit 1; fi
+`,
+	);
+	await rm(log, { force: true });
+	assert.equal((await admin.put(`${LISTS}/${list.id}`, { name: "previous kept" })).status, 200);
+	const ours = new Set(hosts.map((host) => `${host.id}.conf`));
+	const listings = (await readFile(log, "utf8")).trim().split("\n");
+	assert.equal(listings.length, 4, "one for the batch, then one per host");
+	const all = [...ours].sort().join(" ");
+	assert.equal(
+		listings[1]
+			.split(" ")
+			.filter((name) => ours.has(name))
+			.sort()
+			.join(" "),
+		all,
+		"all previous configs are there for the first check",
+	);
+	assert.match((await row(hosts[1].id)).npmpro_nginx_err, /BADHOST is not valid/u);
+	for (const host of [hosts[0], hosts[2]]) assert.equal((await row(host.id)).npmpro_nginx_online, 1);
+	await api.db("proxy_host").where({ id: hosts[1].id }).delete();
+	await api.db("npmpro_proxy_host_access_list").where({ proxy_host_id: hosts[1].id }).delete();
 });
