@@ -348,15 +348,15 @@ const internalNginx = {
 					location.filename = htpasswdFileName;
 				}
 			}
-
-			// the host's or a location's own upstream; empty: the template uses the Forward authentication default
-			for (const provider of AUTH_REQUEST_PROVIDERS) {
-				if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
-				host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
-			}
-
-			host.locations = await internalNginx.renderLocations(host);
 		}
+
+		// the host's or a location's own upstream; empty: the template uses the Forward authentication default
+		for (const provider of AUTH_REQUEST_PROVIDERS) {
+			if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
+			host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
+		}
+
+		if (host.locations) host.locations = await internalNginx.renderLocations(host);
 
 		const config_text = await utils.renderTemplate(`${host_type}.conf`, host);
 
