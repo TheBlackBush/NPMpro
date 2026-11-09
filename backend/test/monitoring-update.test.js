@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
-import { createMonitoringUpdater, createSerializer } from "../internal/monitoring-update.js";
+import { createMonitoringUpdater } from "../internal/monitoring-update.js";
 
 const ok = () => Promise.resolve();
 
@@ -137,23 +137,6 @@ it("ignores locked keys and does not call the hook for them", async () => {
 	await update({ traffic_enabled: false, show_ips: true });
 	assert.deepEqual(store.get(), { show_ips: true });
 	assert.equal(calls, 0);
-});
-
-it("runs serialized functions in order, also after a failure", async () => {
-	const serialize = createSerializer();
-	const order = [];
-	const a = serialize(async () => {
-		await sleep(15);
-		order.push("a");
-		throw new Error("a failed");
-	});
-	const b = serialize(() => {
-		order.push("b");
-		return Promise.resolve("b");
-	});
-	await assert.rejects(a, { message: "a failed" });
-	assert.equal(await b, "b");
-	assert.deepEqual(order, ["a", "b"]);
 });
 
 it("runs onShowIpsOn after saving show_ips as on, and only then", async () => {

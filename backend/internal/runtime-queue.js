@@ -1,4 +1,4 @@
-import { createSerializer } from "./monitoring-update.js";
+import { createSerializer } from "../lib/serializer.js";
 
 /**
  * The runtime settings queue: runtime saves, the Cloudflare refresh, the access log switch, the certificate delete

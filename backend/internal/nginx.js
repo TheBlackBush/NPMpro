@@ -14,6 +14,36 @@ import { runtimeExclusive } from "./runtime-queue.js";
 
 const controlApi = new Client("http://localhost", { connect: { socketPath: rooted("/run/nginx-control.sock") } });
 
+/**
+ * "host/path" in forward_host becomes forward_host and forward_path. A socket or an absolute path stays as it is.
+ *
+ * @param {Object} item  a host or a location, changed in place
+ */
+const splitForwardHost = (item) => {
+	if (
+		item.forward_host?.includes("/") &&
+		!item.forward_host.startsWith("/") &&
+		!item.forward_host.startsWith("unix")
+	) {
+		const split = item.forward_host.split("/");
+		item.forward_host = split.shift();
+		item.forward_path = `/${split.join("/")}`;
+	}
+};
+
+/**
+ * Sets forward_upstream_name: a custom upstream (cu_) keeps its own name, anything else gets ownName
+ *
+ * @param   {Object}  item     a host or a location, changed in place
+ * @param   {String}  ownName
+ * @returns {boolean}  whether the item needs an upstream block of its own
+ */
+const setUpstreamName = (item, ownName) => {
+	const isCustom = item.forward_host?.startsWith("cu_");
+	item.forward_upstream_name = isCustom ? item.forward_host : ownName;
+	return !isCustom;
+};
+
 const internalNginx = {
 	/**
 	 * This will:
@@ -133,22 +163,9 @@ const internalNginx = {
 				continue;
 			}
 
-			if (
-				location.forward_host?.includes("/") &&
-				!location.forward_host.startsWith("/") &&
-				!location.forward_host.startsWith("unix")
-			) {
-				const split = location.forward_host.split("/");
+			splitForwardHost(location);
 
-				location.forward_host = split.shift();
-				location.forward_path = `/${split.join("/")}`;
-			}
-
-			if (location.forward_host?.startsWith("cu_")) {
-				location.forward_upstream_name = location.forward_host;
-			} else {
-				location.forward_upstream_name = `upstream_${host.id}_location_${idx}`;
-			}
+			setUpstreamName(location, `upstream_${host.id}_location_${idx}`);
 			Object.assign(location, quoteLocation(location));
 			renderedLocations += await renderEngine.parseAndRender(template, location);
 		}
@@ -170,20 +187,9 @@ const internalNginx = {
 		let renderedUpstreams = "";
 
 		if (["http", "https", "grpc", "grpcs"].includes(host.forward_scheme)) {
-			if (
-				host.forward_host?.includes("/") &&
-				!host.forward_host.startsWith("/") &&
-				!host.forward_host.startsWith("unix")
-			) {
-				const split = host.forward_host.split("/");
-				host.forward_host = split.shift();
-				host.forward_path = `/${split.join("/")}`;
-			}
+			splitForwardHost(host);
 
-			if (host.forward_host?.startsWith("cu_")) {
-				host.forward_upstream_name = host.forward_host;
-			} else {
-				host.forward_upstream_name = `upstream_${host.id}`;
+			if (setUpstreamName(host, `upstream_${host.id}`)) {
 				renderedUpstreams += await renderEngine.parseAndRender(template, host);
 			}
 		}
@@ -197,20 +203,9 @@ const internalNginx = {
 				continue;
 			}
 
-			if (
-				location.forward_host?.includes("/") &&
-				!location.forward_host.startsWith("/") &&
-				!location.forward_host.startsWith("unix")
-			) {
-				const split = location.forward_host.split("/");
-				location.forward_host = split.shift();
-				location.forward_path = `/${split.join("/")}`;
-			}
+			splitForwardHost(location);
 
-			if (location.forward_host?.startsWith("cu_")) {
-				location.forward_upstream_name = location.forward_host;
-			} else {
-				location.forward_upstream_name = `upstream_${host.id}_location_${idx}`;
+			if (setUpstreamName(location, `upstream_${host.id}_location_${idx}`)) {
 				renderedUpstreams += await renderEngine.parseAndRender(template, location);
 			}
 		}
@@ -252,15 +247,7 @@ const internalNginx = {
 			fetch: internalNginx.fetchOcsp,
 		});
 
-		if (
-			host.forward_host?.includes("/") &&
-			!host.forward_host.startsWith("/") &&
-			!host.forward_host.startsWith("unix")
-		) {
-			const split = host.forward_host.split("/");
-			host.forward_host = split.shift();
-			host.forward_path = `/${split.join("/")}`;
-		}
+		splitForwardHost(host);
 
 		if (host.domain_names) {
 			host.server_names = serverNames(host.domain_names);

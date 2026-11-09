@@ -5,8 +5,8 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
 import { unknownMigrations } from "../internal/backup.js";
-import { createSerializer } from "../internal/monitoring-update.js";
 import { writeBackupFile } from "../lib/backup/format.js";
+import { createSerializer } from "../lib/serializer.js";
 import { MIGRATIONS, setup } from "./support/backup-service.js";
 
 process.env.TZ = "UTC";

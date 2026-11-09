@@ -5,6 +5,7 @@ import { cleanStreamData, streamsConflict } from "../lib/stream-rules.js";
 import streamModel from "../models/stream.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
+import internalHost from "./host.js";
 import internalNginx from "./nginx.js";
 
 /**
@@ -35,16 +36,7 @@ const internalStream = {
 	 */
 	create: async (access, data) => {
 		const thisData = cleanStreamData(data);
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("streams:manage");
 		assertHostConfig(access, "stream", data);
@@ -93,16 +85,7 @@ const internalStream = {
 		const existingRow = await internalStream.get(access, { id: data.id });
 
 		const thisData = cleanStreamData(data, existingRow);
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("streams:manage");
 		// the raw payload, not thisData: thisData already holds the stored values of the fields the payload omits
@@ -323,39 +306,8 @@ const internalStream = {
 		return query;
 	},
 
-	/**
-	 * Report use
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getCount: (user_id, visibility) => {
-		const query = streamModel.query();
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
-
-	/**
-	 * Report use: enabled hosts whose nginx config was rejected
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getErrorCount: (user_id, visibility) => {
-		const query = streamModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
+	getCount: (...args) => internalHost.hostCounts(streamModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(streamModel).getErrorCount(...args),
 };
 
 export default internalStream;

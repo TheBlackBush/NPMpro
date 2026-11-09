@@ -8,8 +8,9 @@ import {
 	restartPendingOf,
 	rulesOf,
 } from "../lib/runtime-rules.js";
+import { createSerializer } from "../lib/serializer.js";
 import { global as logger } from "../logger.js";
-import { createSerializer, pickEditable } from "./monitoring-update.js";
+import { pickEditable } from "./monitoring-update.js";
 
 /**
  * GET/PUT response of a runtime settings group

@@ -15,28 +15,12 @@ const internalRedirectionHost = {
 	 */
 	create: async (access, data) => {
 		let thisData = data;
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("redirection_hosts:manage");
 		assertHostConfig(access, "redirection_host", thisData);
 
-		// Get a list of the domain names and check each of them against existing records
-		const checkResults = await Promise.all(
-			thisData.domain_names.map((domainName) => internalHost.isHostnameTaken(domainName)),
-		);
-		const taken = checkResults.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use`);
-		}
+		await internalHost.assertHostnamesFree(thisData.domain_names);
 
 		// At this point the domains should have been checked
 		thisData.owner_user_id = access.token.getUserId(1);
@@ -80,33 +64,18 @@ const internalRedirectionHost = {
 	 */
 	update: async (access, data) => {
 		let thisData = data;
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("redirection_hosts:manage");
 
 		const existingRow = await internalRedirectionHost.get(access, { id: thisData.id });
 		assertHostConfig(access, "redirection_host", thisData, existingRow);
 
-		// Get a list of the domain names and check each of them against existing records
 		if (thisData.domain_names !== undefined) {
-			const checkResults = await Promise.all(
-				thisData.domain_names.map((domainName) =>
-					internalHost.isHostnameTaken(domainName, "redirection", thisData.id),
-				),
-			);
-			const taken = checkResults.find((result) => result.is_taken);
-			if (taken) {
-				throw new errs.ValidationError(`${taken.hostname} is already in use`);
-			}
+			await internalHost.assertHostnamesFree(thisData.domain_names, {
+				ignoreType: "redirection",
+				ignoreId: thisData.id,
+			});
 		}
 
 		if (createCertificate) {
@@ -221,13 +190,7 @@ const internalRedirectionHost = {
 			throw new errs.ValidationError("Host is already enabled");
 		}
 
-		const checkResults = await Promise.all(
-			row.domain_names.map((domainName) => internalHost.isHostnameTaken(domainName)),
-		);
-		const taken = checkResults.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use by an active host`);
-		}
+		await internalHost.assertHostnamesFree(row.domain_names, { suffix: " by an active host" });
 
 		row.enabled = 1;
 
@@ -325,39 +288,8 @@ const internalRedirectionHost = {
 		return query;
 	},
 
-	/**
-	 * Report use
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getCount: (user_id, visibility) => {
-		const query = redirectionHostModel.query();
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
-
-	/**
-	 * Report use: enabled hosts whose nginx config was rejected
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getErrorCount: (user_id, visibility) => {
-		const query = redirectionHostModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
+	getCount: (...args) => internalHost.hostCounts(redirectionHostModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(redirectionHostModel).getErrorCount(...args),
 };
 
 export default internalRedirectionHost;

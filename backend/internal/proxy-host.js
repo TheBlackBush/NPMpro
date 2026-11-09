@@ -1,6 +1,7 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
+import { PROXY_HOST_EXPAND, PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
@@ -59,28 +60,12 @@ const internalProxyHost = {
 	 */
 	create: async (access, data) => {
 		let thisData = data;
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("proxy_hosts:manage");
 		assertHostConfig(access, "proxy_host", thisData);
 
-		// Get a list of the domain names and check each of them against existing records
-		const checkResults = await Promise.all(
-			thisData.domain_names.map((domainName) => internalHost.isHostnameTaken(domainName)),
-		);
-		const taken = checkResults.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use`);
-		}
+		await internalHost.assertHostnamesFree(thisData.domain_names);
 
 		// At this point the domains should have been checked
 		thisData.owner_user_id = access.token.getUserId(1);
@@ -103,7 +88,7 @@ const internalProxyHost = {
 		try {
 			const row = await internalProxyHost.get(access, {
 				id: createdRow.id,
-				expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+				expand: PROXY_HOST_EXPAND,
 			});
 
 			// Configure nginx
@@ -131,33 +116,18 @@ const internalProxyHost = {
 	 */
 	update: async (access, data) => {
 		let thisData = data;
-		const createCertificate = thisData.certificate_id === "new";
-
-		if (createCertificate) {
-			delete thisData.certificate_id;
-		} else if (thisData.certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.certificate_id, mtls: false });
-		}
-		if (thisData.npmpro_mtls_certificate_id > 0) {
-			await internalCertificate.get(access, { id: thisData.npmpro_mtls_certificate_id, mtls: true });
-		}
+		const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 		access.can("proxy_hosts:manage");
 
 		const existingRow = await internalProxyHost.get(access, { id: thisData.id });
 		assertHostConfig(access, "proxy_host", thisData, existingRow);
 
-		// Get a list of the domain names and check each of them against existing records
 		if (thisData.domain_names !== undefined) {
-			const checkResults = await Promise.all(
-				thisData.domain_names.map((domainName) =>
-					internalHost.isHostnameTaken(domainName, "proxy", thisData.id),
-				),
-			);
-			const taken = checkResults.find((result) => result.is_taken);
-			if (taken) {
-				throw new errs.ValidationError(`${taken.hostname} is already in use`);
-			}
+			await internalHost.assertHostnamesFree(thisData.domain_names, {
+				ignoreType: "proxy",
+				ignoreId: thisData.id,
+			});
 		}
 
 		// everything is checked before a new certificate is requested, so a refused save leaves no certificate behind
@@ -185,7 +155,7 @@ const internalProxyHost = {
 		try {
 			const row = await internalProxyHost.get(access, {
 				id: thisData.id,
-				expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+				expand: PROXY_HOST_EXPAND,
 			});
 
 			// Configure nginx
@@ -218,7 +188,7 @@ const internalProxyHost = {
 		const query = proxyHostModel
 			.query()
 			.where("id", data.id)
-			.allowGraph("[access_lists.[clients,items],certificate,locations.access_lists.[clients,items]]")
+			.allowGraph(PROXY_HOST_GRAPH)
 			.withGraphFetched("[access_lists, locations.access_lists]")
 			.first();
 
@@ -284,19 +254,13 @@ const internalProxyHost = {
 
 		const row = await internalProxyHost.get(access, {
 			id: data.id,
-			expand: ["certificate", "access_lists.[clients,items]", "locations.access_lists.[clients,items]"],
+			expand: PROXY_HOST_EXPAND,
 		});
 		if (row.enabled) {
 			throw new errs.ValidationError("Host is already enabled");
 		}
 
-		const checkResults = await Promise.all(
-			row.domain_names.map((domainName) => internalHost.isHostnameTaken(domainName)),
-		);
-		const taken = checkResults.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use by an active host`);
-		}
+		await internalHost.assertHostnamesFree(row.domain_names, { suffix: " by an active host" });
 
 		row.enabled = 1;
 
@@ -395,39 +359,8 @@ const internalProxyHost = {
 		return query;
 	},
 
-	/**
-	 * Report use
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getCount: (user_id, visibility) => {
-		const query = proxyHostModel.query();
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
-
-	/**
-	 * Report use: enabled hosts whose nginx config was rejected
-	 *
-	 * @param   {Number}  user_id
-	 * @param   {String}  visibility
-	 * @returns {Promise}
-	 */
-	getErrorCount: (user_id, visibility) => {
-		const query = proxyHostModel.query().where("enabled", 1).andWhere("npmpro_nginx_online", 0);
-
-		if (visibility !== "all") {
-			query.andWhere("owner_user_id", user_id);
-		}
-
-		return query.resultSize();
-	},
+	getCount: (...args) => internalHost.hostCounts(proxyHostModel).getCount(...args),
+	getErrorCount: (...args) => internalHost.hostCounts(proxyHostModel).getErrorCount(...args),
 };
 
 export default internalProxyHost;
