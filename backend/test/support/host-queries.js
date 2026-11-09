@@ -67,6 +67,16 @@ const hostQueryTests = (ctx) => {
 		ok(await ctx.admin.post(PROXY, proxy(["off.example.com"])));
 	});
 
+	it("does not find a stored regular expression name with a backslash, as JSON doubles it", async () => {
+		ok(await ctx.admin.post(PROXY, proxy(["~^rx1\\.example\\.com$"])));
+		ok(await ctx.admin.post(PROXY, proxy(["~^rx1\\.example\\.com$"])));
+	});
+
+	it("finds a stored regular expression name without a backslash", async () => {
+		ok(await ctx.admin.post(PROXY, proxy(["~^rx2-[a-z]+$"])));
+		refused(await ctx.admin.post(PROXY, proxy(["~^rx2-[a-z]+$"])), "~^rx2-[a-z]+$");
+	});
+
 	it("searches and sorts the list of each host type", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["search-b.example.com"])));
 		ok(await ctx.admin.post(PROXY, proxy(["search-a.example.com"])));
