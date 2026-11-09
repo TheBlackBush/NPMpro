@@ -142,11 +142,14 @@ it("gives a domain name to one of two requests at once", async () => {
 it("creates a redirection host with a new certificate, and stores the certificate on the host", async () => {
 	const pair = await makeCertificate(path.join(ctx.api.root, "fake"), "redir-cert.example.com");
 	await certbotSucceeds(ctx.api, pair);
-	const certificates = await countRows(ctx.api, "certificate");
+	const before = (await ctx.api.db("certificate").select("id")).map((row) => row.id);
 	const host = await created(
 		await ctx.admin.post(URL, body({ domain_names: ["redir-cert.example.com"], certificate_id: "new" })),
 		"create",
 	);
-	assert.ok(host.certificate_id > 0);
-	assert.equal(await countRows(ctx.api, "certificate"), certificates + 1);
+	const added = (await ctx.api.db("certificate").select("id"))
+		.map((row) => row.id)
+		.filter((id) => !before.includes(id));
+	assert.equal(added.length, 1);
+	assert.equal(host.certificate_id, added[0]);
 });

@@ -202,7 +202,8 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			return query;
 		},
 
-		...internalHost.hostCounts(model),
+		getCount: (...args) => internalHost.hostCounts(model).getCount(...args),
+		getErrorCount: (...args) => internalHost.hostCounts(model).getErrorCount(...args),
 	};
 
 	return service;
