@@ -1,10 +1,11 @@
 import { HasPermission } from "src/components";
 import { PROXY_HOSTS, VIEW } from "src/modules/Permissions";
-import TableWrapper from "./TableWrapper";
+import { HostListPage } from "../HostListPage";
+import { proxyHostList } from "./listType";
 
 const ProxyHosts = () => (
 	<HasPermission section={PROXY_HOSTS} permission={VIEW} pageLoading loadingNoLogo>
-		<TableWrapper />
+		<HostListPage list={proxyHostList} />
 	</HasPermission>
 );
 
