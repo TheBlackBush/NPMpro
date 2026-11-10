@@ -1,10 +1,11 @@
 import { HasPermission } from "src/components";
 import { DEAD_HOSTS, VIEW } from "src/modules/Permissions";
-import TableWrapper from "./TableWrapper";
+import { HostListPage } from "../HostListPage";
+import { deadHostList } from "./listType";
 
 const DeadHosts = () => (
 	<HasPermission section={DEAD_HOSTS} permission={VIEW} pageLoading loadingNoLogo>
-		<TableWrapper />
+		<HostListPage list={deadHostList} />
 	</HasPermission>
 );
 
