@@ -367,7 +367,7 @@
 	"form.tabs.errors": "{count, plural, one {# Fehler} other {# Fehler}}",
 	"goaccess": "GoAccess",
 	"help": "Hilfe",
-	"host.auth-request": "Authentifizierungsanfrage",
+	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth-Request-Upstream",
 	"host.auth-request-upstream.placeholder": "Leer lassen, um den Standard aus Einstellungen > Forward-Authentifizierung zu verwenden",
 	"host.flags.disable-crowdsec-appsec": "Crowdsec Appsec deaktivieren",

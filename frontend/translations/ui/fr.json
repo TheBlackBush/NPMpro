@@ -367,7 +367,7 @@
 	"form.tabs.errors": "{count, plural, one {# erreur} other {# erreurs}}",
 	"goaccess": "GoAccess",
 	"help": "Aide",
-	"host.auth-request": "Requête d'authentification",
+	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream Auth Request",
 	"host.auth-request-upstream.placeholder": "Laisser vide pour utiliser la valeur par défaut de Paramètres > Authentification déléguée",
 	"host.flags.disable-crowdsec-appsec": "Désactiver CrowdSec AppSec",

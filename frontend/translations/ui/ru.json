@@ -367,7 +367,7 @@
 	"form.tabs.errors": "{count, plural, one {# ошибка} few {# ошибки} many {# ошибок} other {# ошибки}}",
 	"goaccess": "GoAccess",
 	"help": "Справка",
-	"host.auth-request": "Запрос авторизации",
+	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream для Auth Request",
 	"host.auth-request-upstream.placeholder": "Оставьте пустым, чтобы использовать значение по умолчанию из Настройки > Внешняя аутентификация",
 	"host.flags.disable-crowdsec-appsec": "Отключить CrowdSec AppSec",

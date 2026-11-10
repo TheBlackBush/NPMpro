@@ -367,7 +367,7 @@
 	"form.tabs.errors": "{count, plural, one {# помилка} few {# помилки} many {# помилок} other {# помилки}}",
 	"goaccess": "GoAccess",
 	"help": "Довідка",
-	"host.auth-request": "Запит автентифікації",
+	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Upstream для Auth Request",
 	"host.auth-request-upstream.placeholder": "Залиште порожнім, щоб використати значення за замовчуванням із Налаштування > Зовнішня автентифікація",
 	"host.flags.disable-crowdsec-appsec": "Вимкнути CrowdSec AppSec",

@@ -367,7 +367,7 @@
 	"form.tabs.errors": "{count, plural, other {오류 #개}}",
 	"goaccess": "GoAccess",
 	"help": "도움말",
-	"host.auth-request": "인증 요청",
+	"host.auth-request": "Auth Request",
 	"host.auth-request-upstream": "Auth Request 업스트림",
 	"host.auth-request-upstream.placeholder": "비워 두면 설정 > 전달 인증의 기본값을 사용합니다",
 	"host.flags.disable-crowdsec-appsec": "CrowdSec AppSec 비활성화",
