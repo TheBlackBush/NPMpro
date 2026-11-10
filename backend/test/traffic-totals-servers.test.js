@@ -14,7 +14,6 @@ for (const [name, label] of [
 ]) {
 	const engine = ENGINES[name];
 	const ctx = {};
-	// biome-ignore lint/correctness/usePlaywrightValidDescribeCallback: node:test takes its options as the second argument
 	describe(`traffic totals on ${label}`, { skip: engine.skip, timeout: 120_000 }, () => {
 		before(async () => {
 			await resetEngine(name);
