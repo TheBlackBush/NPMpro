@@ -98,7 +98,7 @@ export function UserMenu({ variant = "topbar" }) {
 				<Avatar>
 					{hasNoPicture(user?.avatar) ? null : <AvatarImage src={user.avatar} alt="" />}
 					{letters ? (
-						<AvatarFallback className={cn("font-medium", avatarColor(user?.name, user?.email).className)}>
+						<AvatarFallback className={cn("font-bold", avatarColor(user?.name, user?.email).className)}>
 							{letters}
 						</AvatarFallback>
 					) : (

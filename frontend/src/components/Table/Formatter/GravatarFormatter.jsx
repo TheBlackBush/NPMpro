@@ -28,7 +28,7 @@ export function GravatarFormatter({ url, name, email, size, decorative }) {
 				{hasNoPicture(url) ? null : <AvatarImage src={url} alt="" className="rounded-md" />}
 				{letters ? (
 					<AvatarFallback
-						className={cn("rounded-md font-medium", color.className, initialsSizes[size] || "text-sm")}
+						className={cn("rounded-md font-bold", color.className, initialsSizes[size] || "text-sm")}
 					>
 						<span aria-hidden="true">{letters}</span>
 					</AvatarFallback>
