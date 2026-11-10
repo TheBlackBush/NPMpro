@@ -29,6 +29,7 @@ after(() => api?.stop());
 beforeEach(async () => {
 	await api.outside.clearCalls();
 	await certbotSucceeds(api, pair);
+	internalCertificate.intervalProcessing = false;
 });
 
 it("a renewal run renews, reloads, reads each expiry again and lets the next run start", async () => {
@@ -55,6 +56,7 @@ it("a failed renewal run still reloads and frees the flag", async () => {
 it("a certificate without files does not stop the renewal of the others", async () => {
 	const missing = await requested("files-gone.example.com");
 	await api.db("certificate").where({ id: missing.id }).update({ expires_on: "2000-01-01 00:00:00" });
+	// the fake certbot "renew" without --cert-name exits at once and does not recreate the live folder
 	await rm(path.join(api.root, `data/tls/certbot/live/npm-${missing.id}`), { recursive: true, force: true });
 	await internalCertificate.processExpiringHosts();
 	const row = await api.db("certificate").where({ id: missing.id }).first();
