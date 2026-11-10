@@ -29,6 +29,18 @@ function apiOf(context, base) {
  * @returns {Promise<{context: Object, page: Object, api: Function, errors: string[]}>}
  */
 // biome-ignore lint/complexity/useMaxParams: the one entry point of every flow session
+// waits until GET /api reports OK (at most 60 s), checking every half second
+async function apiAnswers(context) {
+	const until = Date.now() + 60_000;
+	while (Date.now() < until) {
+		// biome-ignore lint/performance/noAwaitInLoops: one check after the other
+		const response = await context.request.get("/api/", { failOnStatusCode: false }).catch(() => null);
+		if (response?.ok() && (await response.json().catch(() => ({}))).status === "OK") return;
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	}
+	throw new Error("the API did not answer OK within 60 seconds");
+}
+
 export async function signIn(browser, base, email, password, viewport = CONTEXT.viewport) {
 	const context = await browser.newContext({ ...CONTEXT, viewport, baseURL: base });
 	const page = await context.newPage();
@@ -42,7 +54,11 @@ export async function signIn(browser, base, email, password, viewport = CONTEXT.
 	page.setDefaultNavigationTimeout(30_000);
 	const errors = [];
 	page.on("pageerror", (error) => errors.push(error.message));
+	// an earlier flow's save can reload nginx: open the page once the API answers (after two failed health checks the
+	// app shows "unhealthy" and retries with a growing delay, which can outlast the default timeout)
+	await apiAnswers(context);
 	await page.goto("/");
+	await page.locator("#login-email").waitFor({ timeout: 60_000 });
 	await page.locator("#login-email").fill(email);
 	await page.locator("#login-password").fill(password);
 	await page.locator("form button[type=submit]").click();
