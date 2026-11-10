@@ -32,13 +32,25 @@ const flows = [...hostFlows, ...windowFlows, ...appFlows].filter(
 	(flow) => only.length === 0 || only.includes(flow.name),
 );
 // FLOWS_CDP (a remote Chromium's DevTools WebSocket URL, for machines that cannot launch one) is for local runs only;
-// the smoke test launches Chromium itself.
+// the smoke test launches Chromium itself. The URL holds a token: no message prints it.
 // biome-ignore lint/style/noProcessEnv: the switch is read once
 const cdp = process.env.FLOWS_CDP;
-const browser = cdp ? await chromium.connectOverCDP(cdp) : await (engine === "webkit" ? webkit : chromium).launch();
+const firstLine = (error) =>
+	String(error.message)
+		.split("\n")[0]
+		.replaceAll(cdp || "\u0000", "<FLOWS_CDP>");
 const failed = [];
+let browser;
+let admin;
 try {
-	const admin = await signIn(browser, base, ADMIN_EMAIL, password);
+	try {
+		browser = cdp ? await chromium.connectOverCDP(cdp) : await (engine === "webkit" ? webkit : chromium).launch();
+	} catch (error) {
+		throw new Error(`the browser did not start: ${cdp ? "FLOWS_CDP did not connect" : firstLine(error)}`, {
+			cause: cdp ? undefined : error,
+		});
+	}
+	admin = await signIn(browser, base, ADMIN_EMAIL, password);
 	// what a run that stopped half way left
 	await removeFlowData(admin.api);
 	const viewer = await admin.api("POST", "/users", {
@@ -61,21 +73,27 @@ try {
 			console.log(`ok ${flow.name} (${Date.now() - started} ms)`);
 		} catch (error) {
 			failed.push(flow.name);
-			console.log(`FAIL ${flow.name}: ${error.message.split("\n")[0]} (page ${admin.page.url()})`);
+			console.log(`FAIL ${flow.name}: ${firstLine(error)} (page ${admin.page.url()})`);
 		}
 	}
-	await removeFlowData(admin.api);
 } catch (error) {
-	console.error(`${engine}: the run stopped: ${error.message.split("\n")[0]}`);
+	console.error(`${engine}: the run stopped: ${firstLine(error)}`);
 	process.exitCode = 1;
 } finally {
+	// the flows remove their own data; this also removes the viewer and what a failed step left
 	try {
-		await browser.close();
+		if (admin) await removeFlowData(admin.api);
 	} catch (error) {
-		console.error(`${engine}: the browser did not close: ${error.message.split("\n")[0]}`);
+		console.error(`${engine}: the cleanup failed: ${firstLine(error)}`);
+		process.exitCode = 1;
+	}
+	try {
+		await browser?.close();
+	} catch (error) {
+		console.error(`${engine}: the browser did not close: ${firstLine(error)}`);
 	}
 }
-console.log(`${engine}: ${flows.length - failed.length} of ${flows.length} flows passed`);
+if (!process.exitCode) console.log(`${engine}: ${flows.length - failed.length} of ${flows.length} flows passed`);
 if (failed.length > 0) {
 	console.log(`failed: ${failed.join(", ")}`);
 	process.exitCode = 1;

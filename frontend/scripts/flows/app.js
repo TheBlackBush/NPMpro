@@ -11,26 +11,34 @@ const switchOn = (selector) => {
 	return el.type === "checkbox" ? el.checked : el.getAttribute("aria-checked") === "true";
 };
 
+const storedSwitch = async (api) => (await api("GET", "/settings/runtime/nginx")).log_not_found;
+
 async function settingsSave({ admin }) {
-	const { page } = admin;
-	await page.goto("/settings/nginx");
-	const toggle = page.locator(SWITCH);
-	await toggle.waitFor();
-	const before = await page.evaluate(switchOn, SWITCH);
-	// on and back: the second save restores the setting
-	for (const wanted of [!before, before]) {
-		// biome-ignore lint/performance/noAwaitInLoops: one save after the other
-		await toggle.click();
-		await withToast(page, "Setting has been saved", () =>
-			page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
-		);
-		await page.waitForFunction(
-			([selector, value]) => {
-				const el = document.querySelector(selector);
-				return (el.type === "checkbox" ? el.checked : el.getAttribute("aria-checked") === "true") === value;
-			},
-			[SWITCH, wanted],
-		);
+	const { page, api } = admin;
+	const before = await storedSwitch(api);
+	try {
+		await page.goto("/settings/nginx");
+		const toggle = page.locator(SWITCH);
+		await toggle.waitFor();
+		if ((await page.evaluate(switchOn, SWITCH)) !== before)
+			throw new Error("the page shows another value than the stored one");
+		// on and back: each save is read back from the API, the second restores the setting
+		for (const wanted of [!before, before]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one save after the other
+			await toggle.click();
+			await withToast(page, "Setting has been saved", () =>
+				page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+			);
+			const stored = await storedSwitch(api);
+			if (stored !== wanted) throw new Error(`the saved setting is ${stored}, expected ${wanted}`);
+		}
+		await page.reload();
+		await page.locator(SWITCH).waitFor();
+		if ((await page.evaluate(switchOn, SWITCH)) !== before)
+			throw new Error("the page shows the setting changed after a reload");
+	} finally {
+		if ((await storedSwitch(api)) !== before)
+			await api("PUT", "/settings/runtime/nginx", { log_not_found: before });
 	}
 }
 
@@ -61,7 +69,9 @@ async function mfaWindow({ admin }) {
 	await page.goto("/");
 	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
 	await page.getByRole("menuitem", { name: "MFA", exact: true }).click();
-	await page.getByRole("dialog").locator("svg, canvas").first().waitFor();
+	// the setup step shows the QR code (not the svg icon of the close button); nothing is enabled, Escape ends it
+	await page.getByRole("dialog").getByRole("button", { name: "Enable TOTP", exact: true }).click();
+	await page.getByRole("dialog").locator("svg[role=img]").first().waitFor();
 	await page.keyboard.press("Escape");
 	await windowClosed(page);
 	await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Open user menu");
