@@ -73,6 +73,11 @@ jobs:
         env:
           CSP_CHECK_PASSWORD: ${{ env.CHECK_PASSWORD }}
         run: node scripts/csp-check.js https://127.0.0.1:81 chromium
+      - name: browser flows of the host lists, windows, settings and language
+        working-directory: frontend
+        env:
+          FLOWS_PASSWORD: ${{ env.CHECK_PASSWORD }}
+        run: node scripts/flows/run.js https://127.0.0.1:81 chromium
       - name: nginx accepts every host type
         env:
           NODE_TLS_REJECT_UNAUTHORIZED: "0"
