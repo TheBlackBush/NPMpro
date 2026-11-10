@@ -85,7 +85,8 @@ jobs:
             test/database-values.test.js \
             test/rename-migration-servers.test.js \
             test/servers-mysql.test.js \
-            test/servers-postgres.test.js | tee "$RUNNER_TEMP/servers.tap"
+            test/servers-postgres.test.js \
+            test/traffic-totals-servers.test.js | tee "$RUNNER_TEMP/servers.tap"
           if grep '# SKIP' "$RUNNER_TEMP/servers.tap" | grep -v 'rename migration on mariadb'; then
             echo "::error::a real-server test was skipped"
             exit 1

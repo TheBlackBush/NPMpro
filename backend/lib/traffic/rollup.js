@@ -1,6 +1,8 @@
 const MINUTE = 60000;
 const HOUR = 3600000;
 const CLASSES = ["2xx", "3xx", "4xx", "5xx"];
+// the host key of the all-hosts total rows, written next to the per-host rows by the same flush and roll-up
+export const ALL_HOSTS = "*";
 
 /**
  * Adds per-minute rows (bucket = unix minute) into per-hour rows (bucket = unix hour).
