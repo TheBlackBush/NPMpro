@@ -122,7 +122,7 @@ export function useColumns() {
 				enableSorting: false,
 				cell: (info) => {
 					const value = info.row.original;
-					return <GravatarFormatter url={value.avatar} name={value.name} decorative />;
+					return <GravatarFormatter url={value.avatar} name={value.name} email={value.email} decorative />;
 				},
 				meta: {
 					className: "whitespace-nowrap md:@max-3xl:hidden",
