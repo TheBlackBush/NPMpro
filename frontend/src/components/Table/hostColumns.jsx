@@ -9,8 +9,9 @@ import { StatusFormatter } from "./Formatter/StatusFormatter";
 import { appColumnHelper as columnHelper } from "./useAppTable";
 
 // The columns and the row menu the four host lists share. Columns keep their identity between renders (build them
-// in a useMemo with no dependencies): flexRender renders a cell function as a component, so a new one would remount
-// every cell. Row handlers reach the cells through the table meta (meta.actions), never through the columns.
+// in a useMemo with no dependencies; a language change reloads the page): flexRender renders a cell function as a
+// component, so a new one would remount every cell. Row handlers reach the cells through the table meta (meta.actions),
+// never through the columns.
 
 export const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
 
