@@ -119,7 +119,7 @@ const UserModal = EasyModal.create(({ id, visible, remove }) => {
 						<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 						{id !== "new" && (
 							<div className="mb-3 flex items-center gap-2">
-								<GravatarFormatter url={data?.avatar} name={data?.name} size="lg" />
+								<GravatarFormatter url={data?.avatar} name={data?.name} email={data?.email} size="lg" />
 
 								<input
 									ref={fileInput}

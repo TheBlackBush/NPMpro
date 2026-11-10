@@ -20,6 +20,7 @@ import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
+import { avatarColor, defaultAvatar, hasNoPicture, initials } from "src/modules/Avatar";
 import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
 import { showApiError } from "src/notifications";
@@ -74,6 +75,7 @@ export function UserMenu({ variant = "topbar" }) {
 	const openModal = (show) => () => {
 		pendingWindow.current = show;
 	};
+	const letters = initials(user?.name, user?.email);
 	const role = isAdmin(user?.roles) ? "role.admin" : "role.standard-user";
 
 	const signOut = (action) => async () => {
@@ -94,8 +96,16 @@ export function UserMenu({ variant = "topbar" }) {
 				)}
 			>
 				<Avatar>
-					<AvatarImage src={user?.avatar || "/images/default-avatar.jpg"} alt="" />
-					<AvatarFallback>{user?.name?.trim().charAt(0).toUpperCase()}</AvatarFallback>
+					{hasNoPicture(user?.avatar) ? null : <AvatarImage src={user.avatar} alt="" />}
+					{letters ? (
+						<AvatarFallback className={cn("font-medium", avatarColor(user?.name, user?.email).className)}>
+							{letters}
+						</AvatarFallback>
+					) : (
+						<AvatarFallback>
+							<img src={defaultAvatar} alt="" className="size-full rounded-full object-cover" />
+						</AvatarFallback>
+					)}
 				</Avatar>
 				<span
 					className={cn(

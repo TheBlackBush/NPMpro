@@ -26,7 +26,7 @@ Hints for your privacy policy and the connections the container makes.
 - to your dns server for name resolution
 - to your acme/ocsp server
 - to github for an hourly update check
-- if not turned off (Settings, Advanced) gravatar for profile pictures
+- if not turned off (Settings, Advanced) gravatar for profile pictures (only to look for a photo of the user's email address; without one NPMpro draws the user's initials)
 - if used to your OIDC
 - if used to pypi to download certbot plugins
 - if used to your dns provider for acme dns challenges

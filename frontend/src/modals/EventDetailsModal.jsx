@@ -24,7 +24,11 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 				{data ? (
 					<>
 						<div className="mb-3 flex flex-wrap items-center gap-3">
-							<GravatarFormatter url={data.user?.avatar} name={data.user?.name} />
+							<GravatarFormatter
+								url={data.user?.avatar}
+								name={data.user?.name}
+								email={data.user?.email}
+							/>
 							<EventFormatter row={data} />
 						</div>
 						{/* pre-wrap wraps long values instead of scrolling sideways */}
