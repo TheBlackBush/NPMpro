@@ -64,6 +64,8 @@ const addRows = async (trx, kind, rows = []) => {
 			for (const c of adds) {
 				hit[c] += row[c];
 			}
+			// the all-hosts ASN row keeps the greatest name, as a read of every host does (max(asn_name))
+			if (kind === "asns" && row.asn_name > hit.asn_name) hit.asn_name = row.asn_name;
 		} else {
 			merged.set(keyOf(row), { ...row });
 		}
@@ -92,6 +94,14 @@ const addRows = async (trx, kind, rows = []) => {
 		const patch = {};
 		for (const c of adds) {
 			patch[c] = trx.raw("?? + ?", [c, row[c]]);
+		}
+		if (kind === "asns" && row.host === ALL_HOSTS) {
+			patch.asn_name = trx.raw("case when ?? < ? then ? else ?? end", [
+				"asn_name",
+				row.asn_name,
+				row.asn_name,
+				"asn_name",
+			]);
 		}
 		await trx(table).where({ id }).update(patch);
 	}

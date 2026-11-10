@@ -53,3 +53,34 @@ describe("the traffic totals migration", () => {
 		assert.throws(() => down(), /can't migrate down/u);
 	});
 });
+
+describe("the traffic totals backfill with stray buckets", () => {
+	it("jumps over the empty buckets, so a bucket 0 and a far future one cost a batch each", async () => {
+		const knex = knexFactory({
+			client: "better-sqlite3",
+			connection: { filename: ":memory:" },
+			useNullAsDefault: true,
+		});
+		await upMonitoring(knex);
+		await upVisitors(knex);
+		await upIndexes(knex);
+		const now = Math.floor(Date.UTC(2026, 10, 10, 12) / 60000);
+		await knex("traffic_minute").insert(
+			[0, now, now * 3].flatMap((bucket) => [
+				{ bucket, host: "a.example.com", status_class: "2xx", requests: 2, bytes: 20 },
+				{ bucket, host: "b.example.com", status_class: "2xx", requests: 3, bytes: 30 },
+			]),
+		);
+		const start = Date.now();
+		await upTotals(knex);
+		assert.ok(Date.now() - start < 5000);
+		const totals = await knex("traffic_minute").where("host", "*").orderBy("bucket");
+		assert.deepEqual(
+			totals.map((row) => [Number(row.bucket), Number(row.requests), Number(row.bytes)]),
+			[0, now, now * 3].map((bucket) => [bucket, 5, 50]),
+		);
+		await upTotals(knex);
+		assert.equal((await knex("traffic_minute").where("host", "*")).length, 3);
+		await knex.destroy();
+	});
+});

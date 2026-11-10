@@ -129,4 +129,17 @@ export const trafficTotalTests = (ctx) => {
 		const thirty = await store.queryTraffic({ range: "30d", host: "", showIps: true, now: NOW });
 		assert.deepEqual(thirty.top_asns[0], { asn: 64500, asn_name: "Net B", requests: 8 });
 	});
+
+	it("the live all-hosts ASN row keeps the greatest name, in one flush and across flushes", async () => {
+		const store = createStore(ctx.knex);
+		await store.deleteAll();
+		const row = (host, asn_name, requests = 1) => ({ bucket: HOUR - 1, host, asn: 64500, asn_name, requests });
+		await store.flush({ asns: [row("a.example.com", "Net A"), row("b.example.com", "Net C")] });
+		await store.flush({ asns: [row("a.example.com", "Net B")] });
+		const total = await ctx.knex("traffic_asn_hour").where("host", "*");
+		assert.deepEqual(
+			total.map((r) => [r.asn_name, Number(r.requests)]),
+			[["Net C", 3]],
+		);
+	});
 };

@@ -18,8 +18,14 @@ const TABLES = [
 
 const backfill = async (knex, [table, keys, sums, name]) => {
 	if (!(await knex.schema.hasTable(table))) return 0;
-	const [range] = await knex(table).whereNot("host", ALL_HOSTS).min({ low: "bucket" }).max({ high: "bucket" });
-	if (range?.low === null || range?.low === undefined) return 0;
+	// the next bucket with per-host rows at or after `from` (null: none), so a stray bucket costs one batch, not millions
+	const nextBucket = async (from) => {
+		const [found] = await knex(table)
+			.whereNot("host", ALL_HOSTS)
+			.where("bucket", ">=", from)
+			.min({ next: "bucket" });
+		return found?.next === null || found?.next === undefined ? null : Number(found.next);
+	};
 	const named = name ? [name] : [];
 	const columns = ["bucket", "host", ...keys, ...named, ...sums];
 	const select = [
@@ -33,7 +39,7 @@ const backfill = async (knex, [table, keys, sums, name]) => {
 		`insert into ?? (${columns.map(() => "??").join(", ")}) select ${select} from ?? ` +
 		`where host <> '${ALL_HOSTS}' and bucket >= ? and bucket < ? group by bucket, ${keys.map(() => "??").join(", ")}`;
 	let batches = 0;
-	for (let from = Number(range.low); from <= Number(range.high); from += BATCH) {
+	for (let from = await nextBucket(0); from !== null; from = await nextBucket(from + BATCH)) {
 		// delete, then insert, in one transaction per batch: a second run, or one after an interrupted run, writes the
 		// same rows again
 		await knex.transaction(async (trx) => {
