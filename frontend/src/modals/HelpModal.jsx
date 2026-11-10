@@ -1,11 +1,12 @@
 import { CircleHelp } from "lucide-react";
-import Markdown from "markdown-to-jsx";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Button, ErrorAlert, Loading } from "src/components";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "src/components/ui/sheet";
 import { cn } from "src/lib/utils";
 import { getHelpFile, intl, T } from "src/locale";
 import EasyModal from "src/modules/easyModal";
+
+const HelpMarkdown = lazy(() => import("./HelpMarkdown"));
 
 const showHelpModal = (section) => {
 	EasyModal.show(HelpModal, { section });
@@ -61,9 +62,11 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 					{error ? <ErrorAlert>{error}</ErrorAlert> : null}
 					{markdownText === null && !error ? <Loading noLogo /> : null}
 					{markdownText !== null ? (
-						<div className={PROSE}>
-							<Markdown options={{ disableParsingRawHTML: true }}>{markdownText}</Markdown>
-						</div>
+						<Suspense fallback={<Loading noLogo />}>
+							<div className={PROSE}>
+								<HelpMarkdown text={markdownText} />
+							</div>
+						</Suspense>
 					) : null}
 				</div>
 			</SheetContent>
