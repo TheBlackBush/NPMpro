@@ -2,8 +2,9 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, ErrorAlert, LoadingPage } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
+import { PagedTable } from "src/components/Table/TablePagination";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
-import { useAuditLogs, useUsers } from "src/hooks";
+import { useAuditLogs, usePaging, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
 import { SettingsHeading } from "../Settings/SettingsHeading";
@@ -72,21 +73,27 @@ export default function TableWrapper() {
 		return () => clearTimeout(timer);
 	}, [search]);
 
-	const {
-		isFetching,
-		isFetchingNextPage,
-		isPending,
-		isError,
-		isFetchNextPageError,
-		error,
-		rows,
-		total,
-		hasNextPage,
-		fetchNextPage,
-	} = useAuditLogs(["user"], { query, objectType, action, userId });
+	// the pager needs the total, which the page's own query answers: the last known total is used meanwhile
+	const [knownTotal, setKnownTotal] = useState(null);
+	// a new search or filter starts on the first page
+	const paging = usePaging({
+		list: "audit-log",
+		total: knownTotal,
+		signature: JSON.stringify([query, objectType, action, userId]),
+	});
+	const { isFetching, isPending, isError, isPlaceholderData, error, rows, total } = useAuditLogs(["user"], {
+		query,
+		objectType,
+		action,
+		userId,
+		page: paging.pageIndex,
+		size: paging.pageSize,
+	});
+	if (total !== null && !isPlaceholderData && total !== knownTotal) setKnownTotal(total);
 
-	// A failed next page keeps the loaded rows, a failed first load shows the error under the toolbar
-	const firstPageFailed = !isPending && isError && !isFetchNextPageError && !rows.length;
+	// a failed first load shows the error under the toolbar; a failed later page shows it in the table area, with the
+	// pager (and its known total) still there to go back to a page that works
+	const firstLoadFailed = isError && knownTotal === null;
 
 	const filtered = Boolean(query || objectType || action || userId);
 	const clearFilters = () => {
@@ -141,11 +148,6 @@ export default function TableWrapper() {
 						/>
 						{filtered ? (
 							<div className="flex w-full items-center justify-end gap-2 md:w-auto">
-								{total !== null ? (
-									<span className="text-sm text-muted-foreground">
-										<T id="list.shown" data={{ shown: rows.length, total }} />
-									</span>
-								) : null}
 								<Button variant="link" size="sm" className="h-auto min-h-6 p-0" onClick={clearFilters}>
 									<T id="list.clear-filters" />
 								</Button>
@@ -155,30 +157,17 @@ export default function TableWrapper() {
 				</div>
 				{isPending ? (
 					<LoadingPage noLogo delay={300} />
-				) : firstPageFailed ? (
+				) : firstLoadFailed ? (
 					<ErrorAlert error={error} className="m-3" />
 				) : (
-					<Table
-						data={rows}
-						isFetching={isFetching && !isFetchingNextPage}
-						onSelectItem={showEventDetailsModal}
-					/>
+					<PagedTable paging={paging} total={total ?? knownTotal ?? 0}>
+						{isError ? (
+							<ErrorAlert error={error} className="m-3" />
+						) : (
+							<Table data={rows} isFetching={isFetching} onSelectItem={showEventDetailsModal} />
+						)}
+					</PagedTable>
 				)}
-				{isFetchNextPageError ? <ErrorAlert error={error} className="m-3" /> : null}
-				{rows.length && (hasNextPage || filtered || total !== null) ? (
-					<div className="flex items-center gap-3 border-t px-4 py-3">
-						{total !== null ? (
-							<p className="m-0 text-sm text-muted-foreground">
-								<T id="audit-log.loaded" data={{ loaded: rows.length, total }} />
-							</p>
-						) : null}
-						{hasNextPage ? (
-							<Button className="ml-auto" isLoading={isFetchingNextPage} onClick={() => fetchNextPage()}>
-								<T id="audit-log.load-more" />
-							</Button>
-						) : null}
-					</div>
-				) : null}
 			</div>
 		</section>
 	);

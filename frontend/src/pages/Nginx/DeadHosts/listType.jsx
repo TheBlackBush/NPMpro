@@ -7,6 +7,7 @@ import Table, { useColumns } from "./Table";
 export const deadHostList = {
 	...HOST_TYPES.dead,
 	type: "dead",
+	pagingKey: "dead-hosts",
 	useList: useDeadHosts,
 	useColumns,
 	Table,

@@ -7,6 +7,7 @@ import Table, { useColumns } from "./Table";
 export const streamList = {
 	...HOST_TYPES.stream,
 	type: "stream",
+	pagingKey: "streams",
 	useList: useStreams,
 	useColumns,
 	Table,

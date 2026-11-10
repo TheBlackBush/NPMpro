@@ -13,6 +13,7 @@ const servesThisPage = (host) => servesCurrentPage(host?.domainNames, window.loc
 export const proxyHostList = {
 	...HOST_TYPES.proxy,
 	type: "proxy",
+	pagingKey: "proxy-hosts",
 	useList: useProxyHosts,
 	useColumns,
 	Table,

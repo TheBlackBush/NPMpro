@@ -4,6 +4,7 @@ import { TableCell, TableRow, TableBody as UiTableBody } from "src/components/ui
 import { cn } from "src/lib/utils";
 import { cellClass, mobileRole } from "src/modules/MobileColumns";
 import { cellLabel } from "src/modules/TableCells";
+import { groupRows, pageGroups } from "src/modules/TableGroups";
 import { EmptyRow } from "./EmptyRow";
 import { MobileTitle } from "./MobileTitle";
 import { StackedContext, useStack } from "./StackedContext";
@@ -13,7 +14,7 @@ import { StackedContext, useStack } from "./StackedContext";
 // as a small label above the value.
 
 function TableBody(props) {
-	const { tableInstance, extraStyles, emptyState, groupBy, renderGroupLabel, scroll = false } = props;
+	const { tableInstance, extraStyles, emptyState, groupBy, renderGroupLabel, page, scroll = false } = props;
 	const stack = useStack();
 	const { rows } = tableInstance.getRowModel();
 	// the last card keeps its border (the shadcn body removes the border of its last row)
@@ -79,19 +80,14 @@ function TableBody(props) {
 		);
 	}
 
-	const groups = new Map();
-	for (const row of rows) {
-		const key = groupBy(row.original);
-		const bucket = groups.get(key);
-		if (bucket) bucket.push(row);
-		else groups.set(key, [row]);
-	}
-	const orderedKeys = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
+	// with pages the rows of all groups are cut into pages here (the table passes every row on)
+	const allGroups = groupRows(rows, (row) => groupBy(row.original));
+	const shown = page ? pageGroups(allGroups, page.pageIndex, page.pageSize) : allGroups;
 	const colSpan = tableInstance.getAllLeafColumns().length;
 
 	return (
 		<UiTableBody className={bodyClass} role={role("rowgroup")}>
-			{orderedKeys.map((key) => (
+			{shown.map(([key, members]) => (
 				<Fragment key={key}>
 					{/* below md a block at full width, like the cards (a table row there shrinks to its content) */}
 					<TableRow
@@ -110,7 +106,7 @@ function TableBody(props) {
 							{renderGroupLabel(key)}
 						</th>
 					</TableRow>
-					{groups.get(key)?.map(renderRow)}
+					{members.map(renderRow)}
 				</Fragment>
 			))}
 		</UiTableBody>

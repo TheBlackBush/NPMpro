@@ -7,6 +7,7 @@ import Table, { useColumns } from "./Table";
 export const redirectionHostList = {
 	...HOST_TYPES.redirection,
 	type: "redirection",
+	pagingKey: "redirection-hosts",
 	useList: useRedirectionHosts,
 	useColumns,
 	Table,

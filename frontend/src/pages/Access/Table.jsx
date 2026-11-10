@@ -3,7 +3,8 @@ import { Eye, Lock, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { useAppTable } from "src/components/Table/useAppTable";
+import { PagedTable } from "src/components/Table/TablePagination";
+import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
 import { ACCESS_LISTS } from "src/modules/Permissions";
@@ -135,33 +136,46 @@ export function useColumns() {
 	);
 }
 
-export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
+export default function Table({
+	data,
+	isFetching,
+	isFiltered,
+	onEdit,
+	onDelete,
+	onNew,
+	sorting,
+	onSortingChange,
+	paging,
+}) {
 	const columns = useColumns();
 
 	const tableInstance = useAppTable({
+		features: PAGED_FEATURES,
 		columns: columnHelper.columns(columns),
 		data,
 		// the row handlers live here, not in the columns (see useColumns)
 		meta: { isFetching, actions: { onDelete, onEdit } },
-		state: { sorting },
+		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },
 		onSortingChange,
 	});
 
 	return (
-		<TableLayout
-			tableInstance={tableInstance}
-			emptyState={
-				<EmptyData
-					icon={Lock}
-					object="access-list"
-					objects="access-lists"
-					tableInstance={tableInstance}
-					onNew={onNew}
-					isFiltered={isFiltered}
-					section="accessLists"
-					permissionSection={ACCESS_LISTS}
-				/>
-			}
-		/>
+		<PagedTable paging={paging} total={data.length}>
+			<TableLayout
+				tableInstance={tableInstance}
+				emptyState={
+					<EmptyData
+						icon={Lock}
+						object="access-list"
+						objects="access-lists"
+						tableInstance={tableInstance}
+						onNew={onNew}
+						isFiltered={isFiltered}
+						section="accessLists"
+						permissionSection={ACCESS_LISTS}
+					/>
+				}
+			/>
+		</PagedTable>
 	);
 }

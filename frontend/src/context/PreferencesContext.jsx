@@ -1,10 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
+	defaultPageSize,
 	EDITOR_KEY,
 	NAV_KEY,
+	PAGED_LISTS,
+	pageSizeKey,
 	parseCollapsed,
 	parseEditorStyle,
 	parseNavLayout,
+	parsePageSize,
 	SIDEBAR_KEY,
 } from "src/modules/Preferences";
 
@@ -41,12 +45,40 @@ function useStored(key, parse, serialize = String) {
 }
 
 export function PreferencesProvider({ children }) {
+	// rows per page of each paged list
+	const [pageSizes, setPageSizes] = useState(() =>
+		Object.fromEntries(
+			PAGED_LISTS.map((list) => [list, parsePageSize(read(pageSizeKey(list)), defaultPageSize(list))]),
+		),
+	);
+	const setPageSize = useCallback((list, size) => {
+		setPageSizes((current) => ({ ...current, [list]: size }));
+		write(pageSizeKey(list), String(size));
+	}, []);
 	const [navLayout, setNavLayout] = useStored(NAV_KEY, parseNavLayout);
 	const [editorStyle, setEditorStyle] = useStored(EDITOR_KEY, parseEditorStyle);
 	const [sidebarCollapsed, setSidebarCollapsed] = useStored(SIDEBAR_KEY, parseCollapsed, flag);
 	const value = useMemo(
-		() => ({ navLayout, setNavLayout, editorStyle, setEditorStyle, sidebarCollapsed, setSidebarCollapsed }),
-		[navLayout, setNavLayout, editorStyle, setEditorStyle, sidebarCollapsed, setSidebarCollapsed],
+		() => ({
+			navLayout,
+			setNavLayout,
+			editorStyle,
+			setEditorStyle,
+			sidebarCollapsed,
+			setSidebarCollapsed,
+			pageSizes,
+			setPageSize,
+		}),
+		[
+			navLayout,
+			setNavLayout,
+			editorStyle,
+			setEditorStyle,
+			sidebarCollapsed,
+			setSidebarCollapsed,
+			pageSizes,
+			setPageSize,
+		],
 	);
 	return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;
 }

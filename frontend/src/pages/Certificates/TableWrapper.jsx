@@ -8,7 +8,7 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { useCertificates, useListFilters } from "src/hooks";
+import { useCertificates, useListFilters, usePaging } from "src/hooks";
 import { formatDateTime, T } from "src/locale";
 import {
 	showChangeDnsCredentialModal,
@@ -46,6 +46,12 @@ export default function TableWrapper() {
 	const isFiltered = activeFilterCount(filters, ["expiry"]) > 0 && Boolean(data?.length);
 
 	const loaded = !(isPending || isError);
+	// a search, a filter or a new sort starts on the first page
+	const paging = usePaging({
+		list: "certificates",
+		total: displayed.length,
+		signature: JSON.stringify([filters, sorting]),
+	});
 
 	return (
 		<ListPage
@@ -87,6 +93,7 @@ export default function TableWrapper() {
 			) : (
 				<Table
 					data={displayed}
+					paging={paging}
 					isFiltered={isFiltered}
 					onClearFilters={clear}
 					sorting={sorting}

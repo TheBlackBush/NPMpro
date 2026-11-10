@@ -11,7 +11,8 @@ import {
 	RowActions,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { useAppTable } from "src/components/Table/useAppTable";
+import { PagedTable } from "src/components/Table/TablePagination";
+import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
 import { certificateActionKeys } from "src/modules/CertificateActions";
@@ -204,34 +205,38 @@ export default function Table({
 	onClearFilters,
 	sorting,
 	onSortingChange,
+	paging,
 }) {
 	const columns = useColumns();
 
 	const tableInstance = useAppTable({
+		features: PAGED_FEATURES,
 		columns: columnHelper.columns(columns),
 		data,
 		// the row handlers live here, not in the columns (see useColumns)
 		meta: { isFetching, actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onRenew, onTest } },
-		state: { sorting },
+		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },
 		onSortingChange,
 	});
 
 	return (
-		<TableLayout
-			tableInstance={tableInstance}
-			emptyState={
-				<EmptyData
-					icon={ShieldCheck}
-					object="certificate"
-					objects="certificates"
-					tableInstance={tableInstance}
-					isFiltered={isFiltered}
-					onClearFilters={onClearFilters}
-					section="certificates"
-					customAddBtn={<AddCertificateMenu />}
-					permissionSection={CERTIFICATES}
-				/>
-			}
-		/>
+		<PagedTable paging={paging} total={data.length}>
+			<TableLayout
+				tableInstance={tableInstance}
+				emptyState={
+					<EmptyData
+						icon={ShieldCheck}
+						object="certificate"
+						objects="certificates"
+						tableInstance={tableInstance}
+						isFiltered={isFiltered}
+						onClearFilters={onClearFilters}
+						section="certificates"
+						customAddBtn={<AddCertificateMenu />}
+						permissionSection={CERTIFICATES}
+					/>
+				}
+			/>
+		</PagedTable>
 	);
 }

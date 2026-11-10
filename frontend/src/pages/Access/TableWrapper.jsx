@@ -10,7 +10,7 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { useAccessLists, useListFilters } from "src/hooks";
+import { useAccessLists, useListFilters, usePaging } from "src/hooks";
 import { T } from "src/locale";
 import { showAccessListModal, showDeleteConfirmModal } from "src/modals";
 import { activeFilterCount } from "src/modules/ListFilters";
@@ -24,6 +24,14 @@ export default function TableWrapper() {
 	const columns = useColumns();
 	const { filters, setFilter, clear } = useListFilters();
 	const { isFetching, isPending, isError, error, data } = useAccessLists(["owner", "items", "clients"]);
+	const needle = filters.q.trim().toLowerCase();
+	const displayed = (data ?? []).filter((item) => needle === "" || item.name.toLowerCase().includes(needle));
+	// a search or a new sort starts on the first page
+	const paging = usePaging({
+		list: "access-lists",
+		total: displayed.length,
+		signature: JSON.stringify([filters, sorting]),
+	});
 
 	if (isPending) {
 		return <LoadingPage noLogo delay={300} />;
@@ -33,8 +41,6 @@ export default function TableWrapper() {
 		return <ErrorAlert error={error} />;
 	}
 
-	const needle = filters.q.trim().toLowerCase();
-	const displayed = (data ?? []).filter((item) => needle === "" || item.name.toLowerCase().includes(needle));
 	const isFiltered = activeFilterCount(filters, []) > 0 && Boolean(data?.length);
 
 	return (
@@ -74,6 +80,7 @@ export default function TableWrapper() {
 		>
 			<Table
 				data={displayed}
+				paging={paging}
 				isFetching={isFetching}
 				isFiltered={isFiltered}
 				sorting={sorting}

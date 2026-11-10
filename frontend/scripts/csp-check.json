@@ -341,6 +341,20 @@
 			]
 		},
 		{
+			"name": "access list rows per page",
+			"route": "/access",
+			"steps": [
+				{ "seedAccessLists": 11 },
+				{ "reload": true },
+				{ "waitFor": "[data-slot=table-pagination]" },
+				{ "click": "role=combobox[name='Rows per page']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "click": "role=option[name='10']" },
+				{ "click": "role=button[name='Page 2']" },
+				{ "waitFor": "role=button[name='Page 1']" }
+			]
+		},
+		{
 			"name": "sidebar layout",
 			"route": "/",
 			"steps": [
