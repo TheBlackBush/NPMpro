@@ -2,7 +2,7 @@
 // (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
-import { ADMIN_EMAIL, rowOf, signIn, VIEWER_EMAIL, windowClosed, withToast } from "./lib.js";
+import { ADMIN_EMAIL, cleanUp, revealRow, rowOf, signIn, VIEWER_EMAIL, windowClosed, withToast } from "./lib.js";
 
 const SWITCH = "#runtime-logNotFound";
 // a switch is a checkbox input or a button with aria-checked
@@ -51,6 +51,7 @@ async function phoneList({ browser, base, admin, password }) {
 		host = await admin.api("POST", "/nginx/dead-hosts", { domain_names: ["flow-phone.example.com"] });
 		const { page } = phone;
 		await page.goto("/nginx/404");
+		await revealRow(page, "flow-phone.example.com");
 		const row = rowOf(page, "flow-phone.example.com");
 		await row.first().waitFor();
 		// a card: the domain as its title with the TLS summary, the action button; owner and id stay hidden
@@ -94,6 +95,77 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	}
 }
 
+const PAGE_NAMES = Array.from({ length: 27 }, (_, index) => `flow-page-${String(index + 1).padStart(2, "0")}`);
+const SIZE_KEY = "npmpro-page-size-access-lists";
+
+// the names the visible rows' Edit buttons carry, in row order
+const rowNames = (page) =>
+	page
+		.locator("tbody tr")
+		.filter({ visible: true })
+		.locator("[data-row-edit]:visible")
+		.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label").replace(/^Edit /u, "")));
+
+// 27 access lists: the paging bars, page 2 in the same sort, the rows per page choice, a search back to page 1, and
+// the choice kept over a reload
+async function listPaging({ admin }) {
+	const { page, api } = admin;
+	try {
+		for (const name of PAGE_NAMES) {
+			// biome-ignore lint/performance/noAwaitInLoops: one request after another
+			await api("POST", "/nginx/access-lists", {
+				name,
+				satisfy_any: true,
+				items: [{ username: "flow", password: "flow-password-1" }],
+				clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+			});
+		}
+		const total = (await api("GET", "/nginx/access-lists")).length;
+		await page.goto("/access");
+		await page.evaluate((key) => localStorage.removeItem(key), SIZE_KEY);
+		await page.reload();
+		const bars = page.locator("[data-slot=table-pagination]");
+		const size = page.getByRole("combobox", { name: "Rows per page" }).first();
+		await bars.first().waitFor();
+		if ((await bars.count()) !== 2) throw new Error("the list does not show a paging bar above and below");
+		await size.filter({ hasText: "25" }).waitFor();
+		const first = await rowNames(page);
+		if (first.length !== 25) throw new Error(`the first page shows ${first.length} rows, expected 25`);
+		await bars.first().getByText(`Showing 1 to 25 of ${total}`, { exact: true }).waitFor();
+
+		// page 2 from the bar below: the next rows
+		await bars.last().getByRole("button", { name: "Page 2", exact: true }).click();
+		await bars.first().getByText(`Showing 26 to ${total} of ${total}`, { exact: true }).waitFor();
+		const second = await rowNames(page);
+		if (second.length !== total - 25 || second.some((name) => first.includes(name)))
+			throw new Error("page 2 does not show the next rows");
+		const flowNames = [...first, ...second].filter((name) => name.startsWith("flow-page-"));
+		if (flowNames.join() !== PAGE_NAMES.join()) throw new Error("the pages are not in the sort of the list");
+
+		// a new size: back to page 1 with that many rows
+		await size.click();
+		await page.getByRole("option", { name: "10", exact: true }).click();
+		await bars.first().getByText(`Showing 1 to 10 of ${total}`, { exact: true }).waitFor();
+		if ((await rowNames(page)).length !== 10) throw new Error("a new size does not show that many rows");
+		await bars.first().locator('[aria-current="page"]').filter({ hasText: "1" }).waitFor();
+
+		// a search from page 2: back to page 1
+		await bars.first().getByRole("button", { name: "Page 2", exact: true }).click();
+		await bars.first().getByText(`Showing 11 to 20 of ${total}`, { exact: true }).waitFor();
+		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-page-");
+		await bars.first().getByText("Showing 1 to 10 of 27", { exact: true }).waitFor();
+
+		// the choice survives a reload
+		await page.reload();
+		await bars.first().waitFor();
+		await size.filter({ hasText: "10" }).waitFor();
+		if ((await rowNames(page)).length !== 10) throw new Error("the size was not kept over a reload");
+	} finally {
+		await page.evaluate((key) => localStorage.removeItem(key), SIZE_KEY).catch(() => undefined);
+		await cleanUp(api);
+	}
+}
+
 async function helpSheet({ admin }) {
 	const { page } = admin;
 	await page.goto("/nginx/proxy");
@@ -131,5 +203,6 @@ export const appFlows = [
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "help sheet", run: helpSheet },
+	{ name: "list paging", run: listPaging },
 	{ name: "language", run: languageSwitch },
 ];

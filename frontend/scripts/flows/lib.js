@@ -69,16 +69,28 @@ export async function signIn(browser, base, email, password, viewport = CONTEXT.
 // CSS, not roles: an open window hides the page from the accessibility tree, and some checks read the list behind it
 export const rowOf = (page, text) => page.locator("tbody tr").filter({ hasText: text }).filter({ visible: true });
 
+// A list is paged: a row that is not on the page shown is found by searching for its name. Only a list with a paging
+// bar (more than 10 rows) is searched; a list that is still loading has none.
+export async function revealRow(page, name) {
+	if ((await rowOf(page, name).count()) > 0) return;
+	if ((await page.locator("[data-slot=table-pagination]").filter({ visible: true }).count()) === 0) return;
+	const search = page.getByRole("textbox", { name: "Search", exact: true }).filter({ visible: true }).first();
+	if ((await search.count()) > 0) await search.fill(name);
+}
+
 export async function rowShows(page, name, text) {
+	await revealRow(page, name);
 	await rowOf(page, name).filter({ hasText: text }).first().waitFor();
 }
 
 export async function rowGone(page, name) {
+	await revealRow(page, name);
 	await page.locator("tbody tr").filter({ hasText: name }).first().waitFor({ state: "detached" });
 }
 
 // Edit and View are the row's own button (named "Edit <name>" or "View <name>"), every other item is in the menu
 export async function rowAction(page, name, item) {
+	await revealRow(page, name);
 	if (item === "Edit" || item === "View") {
 		await page
 			.getByRole("button", { name: `${item} ${name}`, exact: true })

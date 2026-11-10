@@ -3,7 +3,8 @@
 // The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
 // followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click,
 // waitFor (selectors), press (a key), viewport ([width, height], until the action ends) or skipIfDisabled (a selector:
-// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var).
+// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var) or skipIfMissing
+// (a selector: the rest is skipped, and logged, when nothing matches, e.g. the paging bar of a list with few rows).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -130,6 +131,10 @@ try {
 				// biome-ignore lint/performance/noAwaitInLoops: the steps of an action run in order
 				if (step.skipIfDisabled && (await page.locator(step.skipIfDisabled).first().isDisabled())) {
 					console.log(`${page.step}: skipped (${step.skipIfDisabled} is disabled)`);
+					break;
+				}
+				if (step.skipIfMissing && (await page.locator(step.skipIfMissing).count()) === 0) {
+					console.log(`${page.step}: skipped (${step.skipIfMissing} is not on the page)`);
 					break;
 				}
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
