@@ -20,10 +20,28 @@ describe("initials", () => {
 		assert.equal(initials("山田 太郎"), "山太");
 		assert.equal(initials("ünal"), "Ü");
 	});
-	it("uses a whole emoji, not half a surrogate pair", () => {
-		assert.equal(initials("😀 Smile"), "😀S");
-		assert.equal(initials("👨‍👩‍👧"), "👨‍👩‍👧");
-		for (const char of initials("😀")) assert.notEqual(char, "\ud83d");
+	it("skips words without a letter or number", () => {
+		assert.equal(initials("(admin) Jane Doe"), "JD");
+		assert.equal(initials("- Jane"), "J");
+		assert.equal(initials("\u200B Jane"), "J");
+		assert.equal(initials("😀 Smile"), "S");
+		assert.equal(initials("Jane 🇩🇪"), "J");
+		assert.equal(initials("1st Place"), "1P");
+	});
+	it("falls back to the email when the name has no letter, then to nothing", () => {
+		assert.equal(initials("😀", "zed@example.com"), "Z");
+		assert.equal(initials("\u200B", "zed@example.com"), "Z");
+		assert.equal(initials("---", "zed@example.com"), "Z");
+		assert.equal(initials("👨‍👩‍👧"), "");
+		assert.equal(initials("(...)", ""), "");
+	});
+	it("keeps combining marks, right-to-left names and the sharp s", () => {
+		assert.equal(initials("E\u0308mil Berg"), "E\u0308B");
+		assert.equal(initials("Ëmil"), "Ë");
+		assert.equal(initials("דוד כהן"), "דכ");
+		assert.equal(initials("علي أحمد"), "عأ");
+		assert.equal(initials("ß"), "ß");
+		assert.equal(initials("ßa Müller"), "ßM");
 	});
 	it("falls back to the email, then to nothing", () => {
 		assert.equal(initials("", "zed@example.com"), "Z");

@@ -29,6 +29,17 @@ function firstGrapheme(word) {
 	return String.fromCodePoint(word.codePointAt(0));
 }
 
+const startsWithLetter = /^[\p{L}\p{N}]/u;
+const firstLetter = /[\p{L}\p{N}]\p{M}*/u;
+const spaces = /\s+/u;
+
+// the first grapheme in upper case; a letter whose upper case is longer (the German sharp s gives SS) stays as it is
+function upperFirst(word) {
+	const first = firstGrapheme(word);
+	const upper = first.toUpperCase();
+	return [...upper].length > [...first].length ? first : upper;
+}
+
 /**
  * True when the URL is not a real picture: empty, missing or the stored default picture
  *
@@ -40,7 +51,8 @@ export function hasNoPicture(url) {
 }
 
 /**
- * The initials: first letter of the first and the last word of the name (one word: its first letter), upper case.
+ * The initials: first letter of the first and the last word of the name (one word: its first letter), upper case;
+ * words that do not start with a letter or number are skipped.
  * Without a name the first letter of the email; without both an empty string.
  *
  * @param   {string|null|undefined} name
@@ -48,13 +60,15 @@ export function hasNoPicture(url) {
  * @returns {string}
  */
 export function initials(name, email) {
-	const words = typeof name === "string" ? name.trim().split(/\s+/u).filter(Boolean) : [];
+	// words that do not start with a letter or a number (punctuation, a zero-width space, an emoji) are skipped
+	const words = typeof name === "string" ? name.split(spaces).filter((word) => startsWithLetter.test(word)) : [];
 	if (words.length > 0) {
 		const picked = words.length === 1 ? [words[0]] : [words[0], words.at(-1)];
-		return picked.map((word) => firstGrapheme(word).toUpperCase()).join("");
+		return picked.map(upperFirst).join("");
 	}
 	const mail = typeof email === "string" ? email.trim() : "";
-	return mail ? firstGrapheme(mail).toUpperCase() : "";
+	const match = mail.match(firstLetter);
+	return match ? upperFirst(match[0]) : "";
 }
 
 /**
