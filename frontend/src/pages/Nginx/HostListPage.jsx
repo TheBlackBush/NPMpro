@@ -10,7 +10,7 @@ import {
 	ListToolbar,
 	LoadingPage,
 } from "src/components";
-import { getDirectory, useDirectorySuggestions, useListFilters } from "src/hooks";
+import { getDirectory, useDirectorySuggestions, useListFilters, usePaging } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
 import { deleteInvalidations, toggleInvalidations } from "src/modules/HostTypes";
@@ -32,6 +32,16 @@ export function HostListPage({ list }) {
 	const { isFetching, isPending, isError, error, data } = list.useList(list.expand);
 	const groups = useDirectorySuggestions(data);
 	const { filters, setFilter, clear } = useListFilters(groups);
+	const displayedHosts = filterHosts(data ?? [], filters, {
+		searchText: list.searchText,
+		getGroup: (item) => getDirectory(item) ?? "",
+	});
+	// a search, a filter or a new sort starts on the first page
+	const paging = usePaging({
+		list: list.pagingKey,
+		total: displayedHosts.length,
+		signature: JSON.stringify([filters, sorting]),
+	});
 
 	if (isPending) {
 		return <LoadingPage noLogo delay={300} />;
@@ -43,6 +53,8 @@ export function HostListPage({ list }) {
 
 	const hostOf = (id) => data?.find((item) => item.id === id);
 	const { Table, showModal } = list;
+	const isFiltered = activeFilterCount(filters, FILTERS) > 0 && Boolean(data?.length);
+	const groupingActive = displayedHosts.some(getDirectory);
 
 	// turns the host on or off and says how it went; throws when the request fails
 	const toggle = async (id, enabled) => {
@@ -88,13 +100,6 @@ export function HostListPage({ list }) {
 		});
 	};
 
-	const displayedHosts = filterHosts(data ?? [], filters, {
-		searchText: list.searchText,
-		getGroup: (item) => getDirectory(item) ?? "",
-	});
-	const isFiltered = activeFilterCount(filters, FILTERS) > 0 && Boolean(data?.length);
-	const groupingActive = displayedHosts.some(getDirectory);
-
 	return (
 		<ListPage
 			title={<T id={list.objects} />}
@@ -133,6 +138,7 @@ export function HostListPage({ list }) {
 		>
 			<Table
 				data={displayedHosts}
+				paging={paging}
 				groupBy={groupingActive ? getDirectory : undefined}
 				renderGroupLabel={(key) => (key === "" ? <T id={list.noDirectory} /> : key)}
 				isFiltered={isFiltered}

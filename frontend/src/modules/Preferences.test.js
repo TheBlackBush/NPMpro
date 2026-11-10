@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { parseCollapsed, parseEditorStyle, parseNavLayout } from "./Preferences.js";
+import { pageSizeKey, parseCollapsed, parseEditorStyle, parseNavLayout, parsePageSize } from "./Preferences.js";
 
 it("navigation layout defaults to the top bar", () => {
 	assert.equal(parseNavLayout(null), "top");
@@ -18,4 +18,15 @@ it("the sidebar is open unless the stored value is exactly 1", () => {
 	assert.equal(parseCollapsed(null), false);
 	assert.equal(parseCollapsed("true"), false);
 	assert.equal(parseCollapsed("1"), true);
+});
+
+it("rows per page are one of the five choices, 25 otherwise", () => {
+	for (const size of [10, 25, 50, 75, 100]) assert.equal(parsePageSize(String(size)), size);
+	for (const value of [null, undefined, "", "abc", "30", "0", "-10", "25.5", "1e2", " 50"]) {
+		assert.equal(parsePageSize(value), 25);
+	}
+});
+
+it("each list has its own key", () => {
+	assert.equal(pageSizeKey("proxy-hosts"), "npmpro-page-size-proxy-hosts");
 });

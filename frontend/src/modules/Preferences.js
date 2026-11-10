@@ -14,3 +14,26 @@ export const parseEditorStyle = (value) => (EDITOR_STYLES.includes(value) ? valu
 
 /** @returns {boolean} whether the sidebar shows icons only */
 export const parseCollapsed = (value) => value === "1";
+
+// Rows per page of the lists, remembered per list
+export const PAGE_SIZES = Object.freeze([10, 25, 50, 75, 100]);
+export const DEFAULT_PAGE_SIZE = 25;
+export const PAGED_LISTS = Object.freeze([
+	"proxy-hosts",
+	"redirection-hosts",
+	"dead-hosts",
+	"streams",
+	"certificates",
+	"access-lists",
+	"backups",
+	"audit-log",
+]);
+
+/** @returns {string} the storage key of a list's rows per page */
+export const pageSizeKey = (list) => `npmpro-page-size-${list}`;
+
+/** @returns {number} the stored rows per page, 25 for a missing, broken or unknown value */
+export const parsePageSize = (value) => {
+	const size = PAGE_SIZES.find((candidate) => String(candidate) === value);
+	return size ?? DEFAULT_PAGE_SIZE;
+};

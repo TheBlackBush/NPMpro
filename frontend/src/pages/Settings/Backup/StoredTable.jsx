@@ -7,11 +7,11 @@ import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/componen
 import { AppSelect } from "src/components/AppSelect";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
-import { TablePagination } from "src/components/Table/TablePagination";
+import { PagedTable } from "src/components/Table/TablePagination";
 import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { Badge } from "src/components/ui/badge";
 import { Progress } from "src/components/ui/progress";
-import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
+import { useBackupSchedules, useBackups, useBackupTypes, usePaging, useUploadBackup } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
 import { showDeleteConfirmModal, showRestoreBackupModal } from "src/modals";
 import { filterBySchedule, formatInZone, scheduleBadge, scheduleNames } from "src/modules/BackupSchedules";
@@ -28,8 +28,6 @@ const label = (id) => intl.formatMessage({ id });
 // in the server's zone like the schedules card; the browser's until the zone is known
 const createdText = (value, timeZone) =>
 	timeZone ? formatInZone(value, intl.locale, timeZone) : formatDateTime(value);
-
-const PAGE_SIZE = 10;
 
 function Contents({ categories, types }) {
 	return (
@@ -191,27 +189,22 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, act
 		];
 	}, [categories, timeZone, names]);
 
-	// 10 backups per page; a changed list (upload, new backup, delete) goes back to the first page
-	const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE });
-	// another schedule filter starts on the first page
-	const [shownFilter, setShownFilter] = useState(filtered);
-	if (shownFilter !== filtered) {
-		setShownFilter(filtered);
-		setPagination((current) => ({ ...current, pageIndex: 0 }));
-	}
+	// a new sort or another schedule filter starts on the first page
+	const [sorting, setSorting] = useState([]);
+	const paging = usePaging({ list: "backups", total: data.length, signature: JSON.stringify([filtered, sorting]) });
 	const tableInstance = useAppTable({
 		features: PAGED_FEATURES,
 		columns,
 		data,
 		getRowId: (row) => row.name,
-		state: { pagination },
-		onPaginationChange: setPagination,
+		state: { sorting, pagination: { pageIndex: paging.pageIndex, pageSize: paging.pageSize } },
+		onSortingChange: setSorting,
 		// the row handlers reach the cells here, so the columns keep their identity
 		meta: { actions },
 	});
 
 	return (
-		<>
+		<PagedTable paging={paging} total={data.length}>
 			<TableLayout
 				stackBy="container"
 				tableInstance={tableInstance}
@@ -229,13 +222,7 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, act
 					/>
 				}
 			/>
-			<TablePagination
-				pageIndex={pagination.pageIndex}
-				pageSize={pagination.pageSize}
-				total={data.length}
-				onPage={(pageIndex) => setPagination((current) => ({ ...current, pageIndex }))}
-			/>
-		</>
+		</PagedTable>
 	);
 }
 

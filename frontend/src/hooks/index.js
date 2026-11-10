@@ -22,6 +22,7 @@ export * from "./useLeaveGuard";
 export * from "./useListFilters";
 export * from "./useMonitoring";
 export * from "./useOidcSettings";
+export * from "./usePaging";
 export * from "./useProxyHost";
 export * from "./useProxyHosts";
 export * from "./useRecentAuditLogs";
