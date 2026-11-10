@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { c as createArchive } from "tar";
+import { up as upTotals } from "../migrations/20261110120000_traffic_totals.js";
 import { startApi } from "./support/api.js";
 import { reloads } from "./support/hosts.js";
 
@@ -166,6 +167,8 @@ it("answers the traffic statistics from the stored counts, grouped per host, wit
 	await api
 		.db("traffic_ip_hour")
 		.insert([{ bucket: HOUR, host: "shop.example.com", ip: "203.0.113.9", requests: 8 }]);
+	// the all-hosts view reads the total rows, which the flush writes: the backfill writes them for these rows
+	await upTotals(api.db);
 
 	const done = await admin.get("/monitoring/traffic?range=1h");
 	assert.equal(done.status, 200, done.text);
@@ -255,7 +258,7 @@ it("turns visitor IPs and unique visitors on, and off again deletes what they st
 	assert.equal((await count("traffic_visitor")) > 0, true);
 	await saved({ unique_visitors: false });
 	assert.equal(await count("traffic_visitor"), 0);
-	assert.equal(await count("traffic_minute"), 3);
+	assert.equal(await count("traffic_minute"), 6);
 	const without = await admin.get("/monitoring/traffic?range=1h&host=shop.example.com");
 	assert.equal("top_ips" in without.body, false);
 	assert.equal("visitors" in without.body.totals, false);
@@ -264,7 +267,7 @@ it("turns visitor IPs and unique visitors on, and off again deletes what they st
 it("deletes the stored statistics only together with switching traffic statistics off", async () => {
 	await refused({ delete_stats: true }, /delete_stats can only be sent together/u);
 	await refused({ traffic_enabled: true, delete_stats: true }, /delete_stats can only be sent together/u);
-	assert.equal(await count("traffic_minute"), 3);
+	assert.equal(await count("traffic_minute"), 6);
 	const calls = reloads(api);
 
 	const view = await saved({ traffic_enabled: false, delete_stats: true });

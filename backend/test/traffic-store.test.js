@@ -49,8 +49,10 @@ it("rolls old minutes into hours, keeps totals and prunes by retention", async (
 	const old = MIN - 25 * 60;
 	await store.flush({ minutes: [m(old, "2xx", 2), m(MIN, "2xx", 1)] });
 	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
-	assert.equal((await knex("traffic_minute")).length, 1);
-	assert.equal(Number((await knex("traffic_hour"))[0].requests), 2);
+	// one row per host and one for the all-hosts total
+	assert.equal((await knex("traffic_minute")).length, 2);
+	assert.equal(Number((await knex("traffic_hour").where("host", "a"))[0].requests), 2);
+	assert.equal(Number((await knex("traffic_hour").where("host", "*"))[0].requests), 2);
 	assert.equal((await store.queryTraffic({ range: "7d", now: NOW })).totals.requests, 3);
 	await store.rollUpAndPrune({ now: NOW + 31 * 86400000, retentionDays: 30 });
 	assert.equal((await knex("traffic_hour")).length, 0);
@@ -87,8 +89,9 @@ it("flushes 1500 ip rows twice in batches and sums them", async () => {
 	}));
 	await store.flush({ ips });
 	await store.flush({ ips: ips.map((r) => ({ ...r })) });
-	const rows = await knex("traffic_ip_hour");
+	const rows = await knex("traffic_ip_hour").where("host", "a");
 	assert.equal(rows.length, 1500);
+	assert.equal((await knex("traffic_ip_hour").where("host", "*")).length, 1500);
 	assert.ok(rows.every((r) => Number(r.requests) === 4));
 	await knex.destroy();
 });
@@ -113,12 +116,15 @@ it("counts a stored hour row and unrolled minutes of another hour once, and fold
 	const { knex, store } = await setup();
 	const oldMinute = MIN - 25 * 60;
 	const oldHour = Math.floor(oldMinute / 60);
-	await knex("traffic_hour").insert({ bucket: oldHour, host: "a", status_class: "2xx", requests: 5, bytes: 50 });
+	// a stored hour row, with its all-hosts total as the totals migration or an earlier flush wrote it
+	for (const host of ["a", "*"]) {
+		await knex("traffic_hour").insert({ bucket: oldHour, host, status_class: "2xx", requests: 5, bytes: 50 });
+	}
 	await store.flush({ minutes: [m(oldMinute, "2xx", 2, 20), m(MIN, "2xx", 1, 10)] });
 	// unrolled old minutes plus the stored hour row: both count
 	assert.equal((await store.queryTraffic({ range: "7d", now: NOW })).totals.requests, 8);
 	await store.rollUpAndPrune({ now: NOW, retentionDays: 30 });
-	const hours = await knex("traffic_hour");
+	const hours = await knex("traffic_hour").where("host", "a");
 	assert.equal(hours.length, 1);
 	assert.equal(Number(hours[0].requests), 7);
 	assert.equal(Number(hours[0].bytes), 70);

@@ -1,4 +1,5 @@
 import { createHostResolver } from "./host-resolver.js";
+import { ALL_HOSTS } from "./rollup.js";
 
 const OTHER_HOST = "_other";
 
@@ -8,6 +9,8 @@ const OTHER_HOST = "_other";
  * Storing the wildcard name instead of the real sub domain keeps the tables bounded.
  * Trailing wildcards (`www.example.*`) and regex names are not matched: their requests fall back to `_other`.
  * Every configured host counts as managed, also a disabled one (its requests reach the default site anyway).
+ *
+ * A name that is only "*" maps to _other: "*" is the key of the all-hosts totals.
  *
  * @param   {Iterable<string>}  domains  domain names of the managed hosts
  * @returns {((host: string) => string) & {keys: Set<string>}}  `keys` holds every key it can return
@@ -19,7 +22,7 @@ const createHostMapper = (domains) => {
 		const name = String(raw ?? "")
 			.trim()
 			.toLowerCase();
-		if (name === "") continue;
+		if (name === "" || name === ALL_HOSTS) continue;
 		if (name.startsWith("*.")) {
 			wildcards.push({ name, suffix: name.slice(1), self: null });
 		} else if (name.startsWith(".")) {

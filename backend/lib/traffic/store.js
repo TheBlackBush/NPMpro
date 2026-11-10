@@ -1,5 +1,5 @@
 import db from "../../db.js";
-import { cutoffs, errorRate, fillSeries, minutesToHours } from "./rollup.js";
+import { ALL_HOSTS, cutoffs, errorRate, fillSeries, minutesToHours } from "./rollup.js";
 
 const MINUTE = 60000;
 const HOUR = 3600000;
@@ -64,6 +64,8 @@ const addRows = async (trx, kind, rows = []) => {
 			for (const c of adds) {
 				hit[c] += row[c];
 			}
+			// the all-hosts ASN row keeps the greatest name, as a read of every host does (max(asn_name))
+			if (kind === "asns" && row.asn_name > hit.asn_name) hit.asn_name = row.asn_name;
 		} else {
 			merged.set(keyOf(row), { ...row });
 		}
@@ -93,12 +95,24 @@ const addRows = async (trx, kind, rows = []) => {
 		for (const c of adds) {
 			patch[c] = trx.raw("?? + ?", [c, row[c]]);
 		}
+		if (kind === "asns" && row.host === ALL_HOSTS) {
+			patch.asn_name = trx.raw("case when ?? < ? then ? else ?? end", [
+				"asn_name",
+				row.asn_name,
+				row.asn_name,
+				"asn_name",
+			]);
+		}
 		await trx(table).where({ id }).update(patch);
 	}
 	for (const part of chunks(fresh, CHUNK_INSERT)) {
 		await trx(table).insert(part);
 	}
 };
+
+// the rows plus their all-hosts copy: addRows merges the copies per key, so the "*" row holds the sum of the batch's
+// host rows, the same rows a read of every host adds up (also the ASN and IP rows a host's cap turned into "other")
+const withTotals = (rows = []) => [...rows, ...rows.map((row) => ({ ...row, host: ALL_HOSTS }))];
 
 const top = (rows, limit) => rows.slice(0, limit);
 
@@ -110,21 +124,21 @@ const top = (rows, limit) => rows.slice(0, limit);
  * @returns {Object}  store functions
  */
 export const createStore = (knex) => {
-	// host: one key (empty = all) or a list of keys (empty list matches nothing)
+	// host: one key, a list of keys (an empty list matches nothing), or empty for all hosts: their total rows
 	const hostFilter = (query, host) => {
 		if (Array.isArray(host)) {
 			return query.whereIn("host", host);
 		}
-		return host ? query.where("host", host) : query;
+		return query.where("host", host || ALL_HOSTS);
 	};
 
 	/** Adds the drained counters to the stored rows in one transaction. */
 	const flush = ({ minutes, countries, asns, ips, visitors = [] }) =>
 		knex.transaction(async (trx) => {
-			await addRows(trx, "minutes", minutes);
-			await addRows(trx, "countries", countries);
-			await addRows(trx, "asns", asns);
-			await addRows(trx, "ips", ips);
+			await addRows(trx, "minutes", withTotals(minutes));
+			await addRows(trx, "countries", withTotals(countries));
+			await addRows(trx, "asns", withTotals(asns));
+			await addRows(trx, "ips", withTotals(ips));
 			// duplicates (re-sent after a restart) are ignored by the unique index
 			for (const part of chunks(visitors, CHUNK_INSERT)) {
 				await trx("traffic_visitor").insert(part).onConflict(["day", "host", "hash"]).ignore();
@@ -236,14 +250,15 @@ export const createStore = (knex) => {
 		return toRows(await hostFilter(query, host));
 	};
 
-	/** Requests and bytes per host key, summed in SQL. */
+	/** Requests and bytes per host key, summed in SQL; for all hosts every key but the total. */
 	const hostRows = async (table, from, host) => {
 		const query = knex(table)
 			.where("bucket", ">=", from)
 			.select("host")
 			.sum({ requests: "requests", bytes: "bytes" })
 			.groupBy("host");
-		return toRows(await hostFilter(query, host)).map(({ bucket: _bucket, ...row }) => row);
+		const filtered = host ? hostFilter(query, host) : query.whereNot("host", ALL_HOSTS);
+		return toRows(await filtered).map(({ bucket: _bucket, ...row }) => row);
 	};
 
 	/** Series and per host sums from startHour on: stored hour rows plus the minute rows not rolled up yet. */

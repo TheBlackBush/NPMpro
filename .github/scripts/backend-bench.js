@@ -1,5 +1,5 @@
 // Benchmark of the backend refactor (roadmap 11 part 3), outside the image. Runs the real backend with a fake nginx.
-// Usage: cd backend && node ../.github/scripts/backend-bench.js [hosts=300] [rounds=5] [auditRows=200000]
+// Usage: cd backend && node ../.github/scripts/backend-bench.js [hosts=300] [rounds=5] [auditRows=200000] [trafficHosts=200]
 // One JSON line per metric on stdout. Times are medians of the rounds, in milliseconds; counts are per round.
 import { performance } from "node:perf_hooks";
 import process from "node:process";
@@ -8,6 +8,7 @@ import { startApi } from "../../backend/test/support/api.js";
 const hosts = Number(process.argv[2] ?? 300);
 const rounds = Number(process.argv[3] ?? 5);
 const auditRows = Number(process.argv[4] ?? 200000);
+const trafficHosts = Number(process.argv[5] ?? 200);
 
 const report = (name, value, extra = {}) =>
 	process.stdout.write(`${JSON.stringify({ name, value: Math.round(value * 10) / 10, ...extra })}\n`);
@@ -109,6 +110,56 @@ try {
 		ok(await admin.post("/nginx/proxy-hosts", proxy(names(rounds))));
 		report("create_queries", queries, { domains });
 	}
+
+	// the all-hosts traffic view (PERF-3 fix 1): 30 days of hour rows and one day of minute rows per host; the totals
+	// migration, once it exists, writes the all-hosts rows from them
+	const { createStore } = await import("../../backend/lib/traffic/store.js");
+	const store = createStore(api.db);
+	const now = Date.UTC(2026, 10, 10, 12, 0, 0);
+	const hour = Math.floor(now / 3600000);
+	const minute = Math.floor(now / 60000);
+	for (let n = 0; n < trafficHosts; n++) {
+		const host = `t${n}.example.com`;
+		const hours = [];
+		const countries = [];
+		const asns = [];
+		const ips = [];
+		const minutes = [];
+		for (let bucket = hour - 30 * 24; bucket < hour - 24; bucket++) {
+			for (const status_class of ["2xx", "3xx", "4xx", "5xx"]) {
+				hours.push({ bucket, host, status_class, requests: 10, bytes: 1000 });
+			}
+			for (const country of ["DE", "US"]) countries.push({ bucket, host, country, requests: 5 });
+			for (const asn of [64500, 64501]) asns.push({ bucket, host, asn, asn_name: `AS${asn}`, requests: 5 });
+			for (const ip of ["10.0.0.1", "10.0.0.2", "10.0.0.3"]) ips.push({ bucket, host, ip, requests: 3 });
+		}
+		for (let bucket = minute - 24 * 60; bucket <= minute; bucket++) {
+			for (const status_class of ["2xx", "4xx"]) minutes.push({ bucket, host, status_class, requests: 1, bytes: 100 });
+		}
+		await api.db.batchInsert("traffic_hour", hours, 500);
+		await api.db.batchInsert("traffic_country_hour", countries, 500);
+		await api.db.batchInsert("traffic_asn_hour", asns, 500);
+		await api.db.batchInsert("traffic_ip_hour", ips, 500);
+		await api.db.batchInsert("traffic_minute", minutes, 500);
+	}
+	const totals = await import("../../backend/migrations/20261110120000_traffic_totals.js").catch(() => null);
+	if (totals) {
+		const start = performance.now();
+		await totals.up(api.db);
+		report("traffic_backfill_ms", performance.now() - start, { hosts: trafficHosts });
+	}
+	for (const range of ["24h", "30d"]) {
+		report(
+			`traffic_${range}_all_ms`,
+			await timed(() => store.queryTraffic({ range, host: "", showIps: true, now })),
+			{ hosts: trafficHosts },
+		);
+	}
+	report(
+		"traffic_30d_host_ms",
+		await timed(() => store.queryTraffic({ range: "30d", host: "t7.example.com", showIps: true, now })),
+		{ hosts: trafficHosts },
+	);
 
 	const rows = Array.from({ length: auditRows }, (_, n) => ({
 		created_on: "2026-11-07 10:00:00",
