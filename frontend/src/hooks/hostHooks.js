@@ -16,6 +16,7 @@ const STALE_MS = 60 * 1000;
  */
 export function createHostHooks(type, { get, getAll, create, update, empty }) {
 	const { itemKey, listKey } = HOST_TYPES[type];
+	// readOne, readList and save are hooks, returned as useOne, useList and useSave (Biome refuses use* names here)
 	const readOne = (id) =>
 		useQuery({
 			queryKey: [itemKey, id],
