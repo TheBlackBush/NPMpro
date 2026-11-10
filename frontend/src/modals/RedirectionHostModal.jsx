@@ -1,20 +1,10 @@
-import { useState } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import {
-	ApiErrorContent,
-	AppModal,
-	Button,
 	DirectoryField,
 	DomainNamesField,
-	ErrorAlert,
 	FormSection,
-	FormSubmit,
-	HasPermission,
-	HookForm,
-	Loading,
 	ModalTabs,
 	NginxConfigField,
-	RequestProgress,
 	SelectField,
 	SSLCertificateField,
 	SSLOptionsFields,
@@ -22,219 +12,91 @@ import {
 	SwitchList,
 	TabPane,
 	TextField,
-	useAppForm,
-	useReadOnly,
-	useResetToSaved,
 } from "src/components";
-import {
-	DirtyTracker,
-	useCanManage,
-	useIsAdmin,
-	useRedirectionHost,
-	useSetRedirectionHost,
-	useTlsQueriesSettled,
-	useUnsavedChangesGuard,
-} from "src/hooks";
-import { cn } from "src/lib/utils";
+import { useRedirectionHost, useSetRedirectionHost } from "src/hooks";
 import { intl, T } from "src/locale";
-import EasyModal from "src/modules/easyModal";
 import {
 	domainNamesOptions,
 	REDIRECTION_HOST_TABS,
 	redirectionHostDefaults,
 	redirectionHostValidate,
 	requestValues,
-	windowTitleId,
 } from "src/modules/HostForms";
-import { MANAGE, REDIRECTION_HOSTS } from "src/modules/Permissions";
-import { sectionAccent } from "src/modules/SectionAccents";
+import { REDIRECTION_HOSTS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
-import { getNginxConfigError, NginxConfigErrorMsg, showObjectSuccess } from "src/notifications";
-import { sectionIcon } from "src/shell/useNavItems";
-
-// isClone: the create window, prefilled from the host id (cloneValues empties what must be unique)
-const showRedirectionHostModal = (id, isClone = false) => {
-	EasyModal.show(RedirectionHostModal, { id, isClone });
-};
-
-const validate = redirectionHostValidate(validations);
-const accent = sectionAccent("redirectionHosts");
-const Icon = sectionIcon("redirectionHosts");
+import { createHostEditorModal } from "./HostEditorModal";
 
 // the redirect status codes, in the select's order
 const REDIRECTION_HTTP_CODES = [301, 302, 303, 307, 308];
 
-function RedirectionHostForm({ data, isClone, savedId, errorMsg, onCloseError, close }) {
+function RedirectionHostFields() {
 	const { register } = useFormContext();
-	const { isSubmitting } = useFormState();
-	const readOnly = useReadOnly();
-	const [certificateId, npmproDnsChallenge, advancedConfig, npmproPropagationSeconds] = useWatch({
-		name: ["certificateId", "npmproDnsChallenge", "advancedConfig", "npmproPropagationSeconds"],
+	const [certificateId, npmproDnsChallenge, advancedConfig] = useWatch({
+		name: ["certificateId", "npmproDnsChallenge", "advancedConfig"],
 	});
 	return (
-		<>
-			<AppModal.Header closeButton={!isSubmitting}>
-				<AppModal.Title className="flex items-center gap-2">
-					{Icon ? <Icon className={cn("size-5 shrink-0", accent.text)} aria-hidden="true" /> : null}
-					<T
-						id={windowTitleId({ editing: Boolean(savedId || (data.id && !isClone)), readOnly })}
-						tData={{ object: "redirection-host" }}
+		<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
+			<TabPane id="details">
+				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+					<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
+						<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>
+						<option value="http">http</option>
+						<option value="https">https</option>
+					</SelectField>
+					<TextField
+						className="mb-0"
+						name="forwardDomainName"
+						label={<T id="redirection-host.forward-domain" />}
+						required
+						type="text"
+						placeholder="example.com"
 					/>
-				</AppModal.Title>
-			</AppModal.Header>
-			<AppModal.Body>
-				<ErrorAlert className="mb-3" onClose={onCloseError}>
-					{errorMsg}
-				</ErrorAlert>
-				<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
-					<TabPane id="details">
-						<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-						<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
-							<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
-								<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>
-								<option value="http">http</option>
-								<option value="https">https</option>
-							</SelectField>
-							<TextField
-								className="mb-0"
-								name="forwardDomainName"
-								label={<T id="redirection-host.forward-domain" />}
-								required
-								type="text"
-								placeholder="example.com"
-							/>
-						</div>
-						<SelectField
-							name="forwardHttpCode"
-							label={<T id="redirection-host.forward-http-code" />}
-							registerOptions={{ valueAsNumber: true }}
-						>
-							{REDIRECTION_HTTP_CODES.map((code) => (
-								<option key={code} value={code}>
-									{intl.formatMessage({ id: `redirection-hosts.http-code.${code}` })}
-								</option>
-							))}
-						</SelectField>
-						<DirectoryField labelId="redirection-host.directory" />
-						<FormSection heading legend={<T id="options" />} className="mb-0">
-							<SwitchList>
-								<SwitchField
-									id="preservePath"
-									label={<T id="host.flags.preserve-path" />}
-									{...register("preservePath")}
-								/>
-							</SwitchList>
-						</FormSection>
-					</TabPane>
-					<TabPane id="tls">
-						<SSLCertificateField label="ssl-certificate" allowNew />
+				</div>
+				<SelectField
+					name="forwardHttpCode"
+					label={<T id="redirection-host.forward-http-code" />}
+					registerOptions={{ valueAsNumber: true }}
+				>
+					{REDIRECTION_HTTP_CODES.map((code) => (
+						<option key={code} value={code}>
+							{intl.formatMessage({ id: `redirection-hosts.http-code.${code}` })}
+						</option>
+					))}
+				</SelectField>
+				<DirectoryField labelId="redirection-host.directory" />
+				<FormSection heading legend={<T id="options" />} className="mb-0">
+					<SwitchList>
+						<SwitchField
+							id="preservePath"
+							label={<T id="host.flags.preserve-path" />}
+							{...register("preservePath")}
+						/>
+					</SwitchList>
+				</FormSection>
+			</TabPane>
+			<TabPane id="tls">
+				<SSLCertificateField label="ssl-certificate" allowNew />
 
-						<SSLOptionsFields />
-					</TabPane>
-					{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
-					<TabPane id="advanced" selfReadOnly>
-						<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
-					</TabPane>
-				</ModalTabs>
-				<RequestProgress
-					running={isSubmitting && certificateId === "new"}
-					propagationSeconds={npmproPropagationSeconds}
-				/>
-			</AppModal.Body>
-			<AppModal.Footer>
-				<Button variant="ghost" onClick={close} disabled={isSubmitting}>
-					<T id={readOnly ? "action.close" : "cancel"} />
-				</Button>
-				<HasPermission section={REDIRECTION_HOSTS} permission={MANAGE} hideError>
-					<FormSubmit edit={Boolean(data.id) && !isClone} isLoading={isSubmitting} disabled={isSubmitting}>
-						<T id="save" />
-					</FormSubmit>
-				</HasPermission>
-			</AppModal.Footer>
-		</>
+				<SSLOptionsFields />
+			</TabPane>
+			{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
+			<TabPane id="advanced" selfReadOnly>
+				<NginxConfigField label="nginx-config.server.label" hint="nginx-config.server.hint" />
+			</TabPane>
+		</ModalTabs>
 	);
 }
 
-// the form, mounted once the host is loaded and the reads of the TLS tab have settled (useTlsQueriesSettled):
-// complete defaultValues from the first render, no reset on a refetch
-function RedirectionHostEditor({ id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, ...formProps }) {
-	const [defaultValues] = useState(() => redirectionHostDefaults(data, { isClone, isAdmin }));
-	const methods = useAppForm({ defaultValues, validate });
-	const resetToSaved = useResetToSaved(methods);
-	const [errorMsg, setErrorMsg] = useState(null);
-	// set once a new host was created but its nginx config failed, so saving again updates it
-	const [savedId, setSavedId] = useState(null);
-
-	const onSubmit = async (values) => {
-		setErrorMsg(null);
-		try {
-			const row = await save({
-				id: savedId ?? (id === "new" || isClone ? undefined : id),
-				...requestValues(values),
-			});
-			const nginxErr = getNginxConfigError(row);
-			if (nginxErr === null) {
-				showObjectSuccess("redirection-host", "saved");
-				remove();
-				return;
-			}
-			setSavedId(row.id);
-			// the changes are saved, only the nginx config needs fixing. Keep the certificate the backend created,
-			// otherwise saving again with "new" would request another one
-			methods.setValue("certificateId", row.certificateId);
-			resetToSaved();
-			setErrorMsg(<NginxConfigErrorMsg obj="redirection-host" nginxErr={nginxErr} />);
-		} catch (err) {
-			setErrorMsg(<ApiErrorContent error={err} />);
-		}
-	};
-
-	return (
-		<HookForm readOnly={readOnly} methods={methods} onSubmit={onSubmit}>
-			<DirtyTracker dirtyRef={dirtyRef} />
-			<RedirectionHostForm
-				data={data}
-				isClone={isClone}
-				savedId={savedId}
-				errorMsg={errorMsg}
-				onCloseError={() => setErrorMsg(null)}
-				{...formProps}
-			/>
-		</HookForm>
-	);
-}
-
-const RedirectionHostModal = EasyModal.create(({ id, isClone, visible, remove }) => {
-	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
-	// a user who may only view the section gets a View window
-	const readOnly = !useCanManage(REDIRECTION_HOSTS);
-	// a non-admin's clone leaves out the raw nginx config
-	const isAdmin = useIsAdmin();
-	const { data, error } = useRedirectionHost(id);
-	const tlsSettled = useTlsQueriesSettled();
-	const { mutateAsync: save, isPending: isSaving } = useSetRedirectionHost();
-	// never false again once true: a refetch keeps data (also when it fails), tlsSettled is latched
-	const ready = Boolean(data) && tlsSettled;
-
-	return (
-		<AppModal show={visible} onHide={isSaving ? undefined : close} backdrop="static" size="lg">
-			{error && <ErrorAlert error={error} className="m-3" />}
-			{!(ready || error) && <Loading noLogo />}
-			{ready && (
-				<RedirectionHostEditor
-					readOnly={readOnly}
-					id={id}
-					isClone={isClone}
-					isAdmin={isAdmin}
-					data={data}
-					save={save}
-					remove={remove}
-					dirtyRef={dirtyRef}
-					close={close}
-				/>
-			)}
-		</AppModal>
-	);
+const showRedirectionHostModal = createHostEditorModal({
+	object: "redirection-host",
+	section: REDIRECTION_HOSTS,
+	useHost: useRedirectionHost,
+	useSave: useSetRedirectionHost,
+	defaults: redirectionHostDefaults,
+	validate: redirectionHostValidate(validations),
+	payload: requestValues,
+	Fields: RedirectionHostFields,
 });
 
 export { showRedirectionHostModal };
