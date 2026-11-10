@@ -75,7 +75,7 @@ export async function revealRow(page, name) {
 	await page
 		.locator("tbody tr")
 		.first()
-		.waitFor()
+		.waitFor({ timeout: 5000 })
 		.catch(() => undefined);
 	// a row of a list that has just loaded or refreshed may need a moment before it shows
 	if (
