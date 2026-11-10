@@ -11,7 +11,7 @@ const clamp = (value) => Math.min(1, Math.max(0, value));
  * @param   {{ l: number, c: number, h: number }} color
  * @returns {number[]}  [r, g, b]
  */
-export function linearRgb({ l, c, h }) {
+function linearRgb({ l, c, h }) {
 	const a = c * Math.cos((h * Math.PI) / 180);
 	const b = c * Math.sin((h * Math.PI) / 180);
 	const lms = [
@@ -33,7 +33,7 @@ export function linearRgb({ l, c, h }) {
  * @param   {{ l: number, c: number, h: number }} color
  * @returns {number}
  */
-export function luminance(color) {
+function luminance(color) {
 	const [r, g, b] = linearRgb(color);
 	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }

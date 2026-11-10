@@ -358,11 +358,9 @@ function AppModalFooter({ children, className, ...props }) {
 // height): the header and footer stay in view and the body scrolls (HookForm does this).
 const useModalFrame = () => useContext(FrameContext);
 
-const useModalHide = () => useContext(HideContext);
-
 AppModal.Header = AppModalHeader;
 AppModal.Title = AppModalTitle;
 AppModal.Body = AppModalBody;
 AppModal.Footer = AppModalFooter;
 
-export { AppModal, useModalFrame, useModalHide };
+export { AppModal, useModalFrame };

@@ -3,8 +3,8 @@
 export const NAV_KEY = "npmpro-nav";
 export const EDITOR_KEY = "npmpro-editor";
 export const SIDEBAR_KEY = "npmpro-sidebar-collapsed";
-export const NAV_LAYOUTS = Object.freeze(["top", "sidebar"]);
-export const EDITOR_STYLES = Object.freeze(["dialog", "sheet"]);
+const NAV_LAYOUTS = Object.freeze(["top", "sidebar"]);
+const EDITOR_STYLES = Object.freeze(["dialog", "sheet"]);
 
 /** @returns {"top"|"sidebar"} the stored layout, the top bar for a missing or unknown value */
 export const parseNavLayout = (value) => (NAV_LAYOUTS.includes(value) ? value : "top");

@@ -111,4 +111,4 @@ const nextRun = (schedule, after, zone = localZone) => {
 	throw new Error(`No run time for the schedule within ${MAX_DAYS} days`);
 };
 
-export { FREQUENCIES, localZone, nextRun, TIME, wallTime, zoneOf };
+export { FREQUENCIES, nextRun, TIME, zoneOf };

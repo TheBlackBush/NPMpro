@@ -23,8 +23,6 @@ const intl = createIntl({
 	},
 });
 
-const getFlagCodeForLocale = (locale = currentLocale) => localeList[locale].flag;
-
 const changeLocale = (lang) => {
 	window.localStorage.setItem("locale", lang);
 	location.reload();
@@ -53,4 +51,4 @@ const T = ({ id, data, tData }) => {
 	);
 };
 
-export { changeLocale, currentLocale, getFlagCodeForLocale, intl, localeOptions, T };
+export { changeLocale, currentLocale, intl, localeOptions, T };

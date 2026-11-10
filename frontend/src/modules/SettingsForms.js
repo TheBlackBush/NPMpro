@@ -291,7 +291,7 @@ export const RETENTION = { min: 7, max: 365 };
 export const VISITORS_CAP = { min: 1000, max: 1_000_000 };
 export const ROTATIONS = { min: 1, max: 1000 };
 export const KEEP_DAYS = { min: 1, max: 366 };
-export const MONITORING_FIELDS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
+const MONITORING_FIELDS = ["trafficEnabled", "retentionDays", "showIps", "uniqueVisitors", "visitorsCap"];
 
 /**
  * The starting values of Logs & monitoring, in the section's order: the log files and GoAccess (the logs runtime

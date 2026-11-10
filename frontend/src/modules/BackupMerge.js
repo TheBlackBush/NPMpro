@@ -38,7 +38,7 @@ export const searchItems = (items, text) => {
 };
 
 // the types whose rows can be chosen one by one ("Choose items")
-export const ITEM_TYPES = [
+const ITEM_TYPES = [
 	"proxy_hosts",
 	"redirection_hosts",
 	"dead_hosts",

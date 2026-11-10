@@ -41,4 +41,4 @@ function OidcButton({ label, color, icon, onClick, disabled }) {
 	);
 }
 
-export { OidcButton, OidcIcon };
+export { OidcButton };

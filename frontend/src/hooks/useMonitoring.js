@@ -56,21 +56,6 @@ const useGeoipSettings = () =>
 		staleTime: 60 * 1000,
 	});
 
-const useSaveMonitoringSettings = () => {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (values) => updateMonitoringSettings(values),
-		onSuccess: () =>
-			Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["monitoring-settings"] }),
-				queryClient.invalidateQueries({ queryKey: ["monitoring-traffic"] }),
-				queryClient.invalidateQueries({ queryKey: ["monitoring-summary"] }),
-				queryClient.invalidateQueries({ queryKey: ["audit-logs"] }),
-				queryClient.invalidateQueries({ queryKey: ["user", "me"] }),
-			]),
-	});
-};
-
 /**
  * Settings > Logs & monitoring: saves the log files (logs runtime group) and then the monitoring settings, each only
  * when given. The caches are refreshed only after both succeeded, so the form keeps its values until then. When the
@@ -140,6 +125,5 @@ export {
 	useMonitoringTraffic,
 	useSaveGeoipSettings,
 	useSaveLogsAndMonitoring,
-	useSaveMonitoringSettings,
 	useUpdateGeoipNow,
 };
