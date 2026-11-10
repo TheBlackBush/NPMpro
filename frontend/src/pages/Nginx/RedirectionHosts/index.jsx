@@ -1,10 +1,11 @@
 import { HasPermission } from "src/components";
 import { REDIRECTION_HOSTS, VIEW } from "src/modules/Permissions";
-import TableWrapper from "./TableWrapper";
+import { HostListPage } from "../HostListPage";
+import { redirectionHostList } from "./listType";
 
 const RedirectionHosts = () => (
 	<HasPermission section={REDIRECTION_HOSTS} permission={VIEW} pageLoading loadingNoLogo>
-		<TableWrapper />
+		<HostListPage list={redirectionHostList} />
 	</HasPermission>
 );
 
