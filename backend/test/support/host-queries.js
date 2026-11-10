@@ -162,6 +162,18 @@ const hostQueryTests = (ctx) => {
 		assert.ok(Number(report.proxy) >= 1);
 		assert.equal(Number(report.errors.proxy), 0);
 	});
+
+	it("has the audit log index after the migrations", async () => {
+		const { client } = ctx.api.db.client.config;
+		const sql = {
+			"better-sqlite3": "select name from sqlite_master where name = 'audit_log_created_on_id'",
+			pg: "select indexname as name from pg_indexes where indexname = 'audit_log_created_on_id'",
+			mysql2: "select index_name as name from information_schema.statistics where index_name = 'audit_log_created_on_id' and table_schema = database()",
+		}[client];
+		const result = await ctx.api.db.raw(sql);
+		const rows = result.rows ?? (client === "mysql2" ? result[0] : result);
+		assert.ok(rows.length >= 1, client);
+	});
 };
 
 export { hostQueryTests };
