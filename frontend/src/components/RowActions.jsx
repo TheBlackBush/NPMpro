@@ -1,5 +1,6 @@
 import { EllipsisVertical } from "lucide-react";
 import { Fragment, useRef } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import {
 	DropdownMenu,
@@ -9,7 +10,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "src/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { ROW_EDIT_ATTR, restoreRowFocus } from "src/modules/FocusReturn";
 
 /**
@@ -47,28 +47,25 @@ function RowActions({ label, focusKey, title, items }) {
 	return (
 		<div className="flex items-center gap-1">
 			{primary ? (
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							aria-label={primary.ariaLabel}
-							disabled={primary.disabled}
-							{...{ [ROW_EDIT_ATTR]: focusKey }}
-							onClick={async () => {
-								try {
-									await primary.onSelect();
-								} finally {
-									restoreRowFocus(focusKey, ROW_EDIT_ATTR);
-								}
-							}}
-						>
-							{PrimaryIcon ? <PrimaryIcon aria-hidden="true" /> : null}
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent>{primary.ariaLabel}</TooltipContent>
-				</Tooltip>
+				<TapTooltip content={primary.ariaLabel} tap={false}>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-sm"
+						aria-label={primary.ariaLabel}
+						disabled={primary.disabled}
+						data-row-edit={focusKey}
+						onClick={async () => {
+							try {
+								await primary.onSelect();
+							} finally {
+								restoreRowFocus(focusKey, ROW_EDIT_ATTR);
+							}
+						}}
+					>
+						{PrimaryIcon ? <PrimaryIcon aria-hidden="true" /> : null}
+					</Button>
+				</TapTooltip>
 			) : null}
 			{visible.length > 0 ? (
 				<DropdownMenu>

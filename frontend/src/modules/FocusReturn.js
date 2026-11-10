@@ -50,7 +50,10 @@ function pickOpener(doc, lastPressed, now = Date.now()) {
 
 const PRESSABLE = 'button, a[href], [role="button"], [role="menuitem"], [tabindex]';
 
-/** Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader of { element, at } */
+/**
+ * Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader
+ * of { element, at }
+ */
 function trackPressed(doc) {
 	let last = null;
 	doc.addEventListener(
@@ -92,7 +95,10 @@ function afterPaint(fn) {
 	requestAnimationFrame(() => setTimeout(fn, 0));
 }
 
-/** After a row action settles: if focus fell to the body, put it on the row's action button again (attr: ROW_EDIT_ATTR for the edit button) */
+/**
+ * After a row action settles: if focus fell to the body, put it on the row's action button again (attr: ROW_EDIT_ATTR
+ * for the edit button)
+ */
 function restoreRowFocus(key, attr = ROW_ACTIONS_ATTR) {
 	afterPaint(() => {
 		if (focusLost(document)) findRowActions(document, key, attr)?.focus();
