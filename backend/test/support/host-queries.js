@@ -67,20 +67,43 @@ const hostQueryTests = (ctx) => {
 		ok(await ctx.admin.post(PROXY, proxy(["off.example.com"])));
 	});
 
-	it("does not find a stored regular expression name with a backslash, as JSON doubles it", async () => {
+	it("finds a stored regular expression name with a backslash, for one name or many", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["~^rx1\\.example\\.com$"])));
-		ok(await ctx.admin.post(PROXY, proxy(["~^rx1\\.example\\.com$"])));
+		refused(await ctx.admin.post(PROXY, proxy(["~^rx1\\.example\\.com$"])), "~^rx1\\.example\\.com$");
+		refused(
+			await ctx.admin.post(PROXY, proxy(["rx1-free.example.com", "~^rx1\\.example\\.com$"])),
+			"~^rx1\\.example\\.com$",
+		);
 	});
 
-	it("finds a stored regular expression name without a backslash", async () => {
+	it("finds a stored regular expression name without a backslash, for one name or many", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["~^rx2-[a-z]+$"])));
 		refused(await ctx.admin.post(PROXY, proxy(["~^rx2-[a-z]+$"])), "~^rx2-[a-z]+$");
+		refused(await ctx.admin.post(PROXY, proxy(["rx2-free.example.com", "~^rx2-[a-z]+$"])), "~^rx2-[a-z]+$");
+	});
+
+	it("treats a name that differs only by non-ASCII letter case as one name, for one name or many", async () => {
+		ok(await ctx.admin.post(PROXY, proxy(["Ä.case.example.com"])));
+		refused(await ctx.admin.post(PROXY, proxy(["ä.case.example.com"])), "ä.case.example.com");
+		refused(
+			await ctx.admin.post(PROXY, proxy(["case-free.example.com", "ä.case.example.com"])),
+			"ä.case.example.com",
+		);
+	});
+
+	it("finds a stored punycode name from its Unicode form, for one name or many", async () => {
+		ok(await ctx.admin.post(PROXY, proxy(["xn--bcher-kva.example.com"])));
+		refused(await ctx.admin.post(PROXY, proxy(["bücher.example.com"])), "bücher.example.com");
+		refused(
+			await ctx.admin.post(PROXY, proxy(["puny-free.example.com", "bücher.example.com"])),
+			"bücher.example.com",
+		);
 	});
 
 	it("reads each host table once for all names of a save", async () => {
 		const seen = [];
 		const count = ({ sql }) => {
-			if (/like/iu.test(sql)) seen.push(sql);
+			if (sql.startsWith("select") && sql.includes("domain_names") && sql.includes("enabled")) seen.push(sql);
 		};
 		ctx.api.db.on("query", count);
 		const names = Array.from({ length: 5 }, (_, n) => `count${n}.example.com`);

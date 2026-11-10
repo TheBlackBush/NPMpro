@@ -1,15 +1,9 @@
-import { domainToASCII, domainToUnicode } from "node:url";
-import { raw } from "objection";
-import { isMysql } from "../lib/config.js";
+import { domainToASCII } from "node:url";
 import errs from "../lib/error.js";
-import { castJsonIfNeed } from "../lib/helpers.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import internalCertificate from "./certificate.js";
-
-// MySQL compares a json column with a binary collation, so LIKE would not ignore case: compare it as text
-const domainNamesText = () => (isMysql() ? raw("CAST(?? AS CHAR)", ["domain_names"]) : castJsonIfNeed("domain_names"));
 
 /**
  * @param   {String}  hostname
@@ -78,8 +72,8 @@ const internalHost = {
 	},
 
 	/**
-	 * The first name, in the order given, that an enabled host of another row uses. One query per table for all names:
-	 * the LIKE only narrows the rows, checkHostnameRecordsTaken decides.
+	 * The first name, in the order given, that an enabled host of another row uses. One query per table for all names,
+	 * with no LIKE: checkHostnameRecordsTaken decides on every enabled row, so one name or many give the same answer.
 	 *
 	 * @param   {String[]}  names
 	 * @param   {String}    [ignore_type]  'proxy', 'redirection', 'dead'
@@ -88,17 +82,9 @@ const internalHost = {
 	 */
 	findTakenHostname: async (names, ignore_type, ignore_id) => {
 		if (names.length === 0) return;
-		const patterns = [
-			...new Set(names.flatMap((name) => [domainToASCII(name) || name, domainToUnicode(name) || name])),
-		].map((name) => `%${name}%`);
 		const tables = await Promise.all(
 			Object.entries(HOSTNAME_MODELS).map(async ([type, model]) => ({
-				rows: await model
-					.query()
-					.where("enabled", 1)
-					.andWhere((query) => {
-						for (const pattern of patterns) query.orWhereILike(domainNamesText(), pattern);
-					}),
+				rows: await model.query().select("id", "domain_names").where("enabled", 1),
 				ignoreId: ignore_type === type && ignore_id ? ignore_id : 0,
 			})),
 		);
