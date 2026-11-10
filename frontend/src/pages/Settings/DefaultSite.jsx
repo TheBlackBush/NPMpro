@@ -5,7 +5,6 @@ import {
 	ChoiceField,
 	ErrorAlert,
 	HookForm,
-	Loading,
 	TextField,
 	useAppForm,
 	useResetToSaved,
@@ -23,6 +22,7 @@ import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
+import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
 
 const validate = defaultSiteValidate(validations);
@@ -133,23 +133,9 @@ function DefaultSiteForm({ data }) {
 export default function DefaultSite() {
 	const { data, isPending, error } = useSetting("default-site");
 
-	if (error) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<ErrorAlert error={error} />
-			</div>
-		);
-	}
-
-	if (isPending) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<Loading noLogo />
-			</div>
-		);
-	}
-
-	return <DefaultSiteForm data={data} />;
+	return (
+		<SettingsForm titleId="settings.default-site" error={error} isPending={isPending}>
+			{() => <DefaultSiteForm data={data} />}
+		</SettingsForm>
+	);
 }

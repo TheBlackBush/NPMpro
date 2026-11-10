@@ -1,16 +1,7 @@
 import { ExternalLink, Info } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
-import {
-	ErrorAlert,
-	FormField,
-	HookForm,
-	Loading,
-	SwitchField,
-	SwitchList,
-	useAppForm,
-	useFieldError,
-} from "src/components";
+import { FormField, HookForm, SwitchField, SwitchList, useAppForm, useFieldError } from "src/components";
 import { Checkbox } from "src/components/ui/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
@@ -43,6 +34,7 @@ import {
 	useSaveError,
 } from "./Runtime/RuntimeSection";
 import { SaveBar } from "./SaveBar";
+import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
@@ -447,23 +439,13 @@ export default function Monitoring() {
 	const { data, isPending, error } = useMonitoringSettings();
 	const logsQuery = useRuntimeSettings("logs");
 
-	if (error || logsQuery.error) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<ErrorAlert error={error ?? logsQuery.error} />
-			</div>
-		);
-	}
-
-	if (isPending || logsQuery.isPending) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<Loading noLogo />
-			</div>
-		);
-	}
-
-	return <MonitoringForm data={data} logs={logsQuery.data} />;
+	return (
+		<SettingsForm
+			titleId="settings.monitoring"
+			error={error ?? logsQuery.error}
+			isPending={isPending || logsQuery.isPending}
+		>
+			{() => <MonitoringForm data={data} logs={logsQuery.data} />}
+		</SettingsForm>
+	);
 }

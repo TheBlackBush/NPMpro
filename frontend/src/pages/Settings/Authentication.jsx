@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, CircleDashed, Info, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFormState, useWatch } from "react-hook-form";
-import { ApiErrorContent, ErrorAlert, HookForm, Loading, StatusBadge, useAppForm } from "src/components";
+import { ApiErrorContent, ErrorAlert, HookForm, StatusBadge, useAppForm } from "src/components";
 import { Accordion, AccordionItem, AccordionPanel, AccordionTrigger } from "src/components/ui/accordion";
 import { Badge } from "src/components/ui/badge";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
@@ -15,6 +15,7 @@ import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUs
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 import { SaveBar } from "./SaveBar";
+import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
@@ -202,23 +203,9 @@ function AuthenticationForm({ data }) {
 export default function Authentication() {
 	const { data, isPending, error } = useOidcSettings();
 
-	if (error) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<ErrorAlert error={error} />
-			</div>
-		);
-	}
-
-	if (isPending) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<Loading noLogo />
-			</div>
-		);
-	}
-
-	return <AuthenticationForm data={data} />;
+	return (
+		<SettingsForm titleId="settings.authentication" error={error} isPending={isPending}>
+			{() => <AuthenticationForm data={data} />}
+		</SettingsForm>
+	);
 }
