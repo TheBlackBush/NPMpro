@@ -2,6 +2,10 @@ import { existsSync } from "node:fs";
 import errs from "./error.js";
 import { rooted } from "./paths.js";
 
+const liveCertPath = (id) => rooted(`/data/tls/certbot/live/npm-${id}`);
+const customCertPath = (id) => rooted(`/data/tls/custom/npm-${id}`);
+const mtlsCertFile = (id) => rooted(`/data/tls/mtls/npm-${id}.pem`);
+
 /**
  * The certificate file the host templates load for a certificate row (templates/_common.conf, stream.conf)
  *
@@ -9,9 +13,9 @@ import { rooted } from "./paths.js";
  * @returns {string}
  */
 const certificateFile = ({ id, provider }) => {
-	if (provider === "letsencrypt") return rooted(`/data/tls/certbot/live/npm-${id}/fullchain.pem`);
-	if (provider === "mtls") return rooted(`/data/tls/mtls/npm-${id}.pem`);
-	return rooted(`/data/tls/custom/npm-${id}/fullchain.pem`);
+	if (provider === "letsencrypt") return `${liveCertPath(id)}/fullchain.pem`;
+	if (provider === "mtls") return mtlsCertFile(id);
+	return `${customCertPath(id)}/fullchain.pem`;
 };
 
 /**
@@ -36,4 +40,4 @@ const assertCertificateUse = (row, mtls, fileExists = existsSync) => {
 	}
 };
 
-export { assertCertificateUse, certificateFile };
+export { assertCertificateUse, certificateFile, customCertPath, liveCertPath, mtlsCertFile };
