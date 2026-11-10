@@ -74,10 +74,7 @@ const HelpModal = EasyModal.create(({ section, visible, remove }) => {
 /**
  * The "?" button that opens a help document in the help sheet (list page headers, Settings section headings). The
  * bolder stroke keeps the icon crisp in the small button.
- *
- * @param {Object} props
- * @param {string} props.doc          the help document (translations/help/<language>/<doc>.md)
- * @param {string} [props.className]
+ * The document is translations/help/<language>/<doc>.md.
  */
 function HelpButton({ doc, className }) {
 	const label = intl.formatMessage({ id: "help" });

@@ -7,8 +7,6 @@ let guards = 0;
 /**
  * For navigation that is not a link click (a select, a button calling navigate): resolves true when nothing is
  * unsaved or the user agrees to leave. Same prompt as the link guard.
- *
- * @returns {Promise<boolean>}
  */
 const confirmLeave = async () => guards === 0 || (await askDiscard("unsaved-changes.leave"));
 
@@ -17,8 +15,6 @@ const confirmLeave = async () => guards === 0 || (await askDiscard("unsaved-chan
  * BrowserRouter has no navigation blocker) and reloading or closing the tab (the browser's own prompt).
  * The browser's back button is not covered. For navigation that is not a link click (a select or button calling
  * navigate), ask with confirmLeave() first.
- *
- * @param {boolean} dirty
  */
 const useLeaveGuard = (dirty) => {
 	useEffect(() => {
