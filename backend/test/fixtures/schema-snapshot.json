@@ -1,6 +1,12 @@
 [
 	{
 		"type": "index",
+		"name": "audit_log_created_on_id",
+		"table": "audit_log",
+		"sql": "CREATE INDEX `audit_log_created_on_id` on `audit_log` (`created_on`, `id`)"
+	},
+	{
+		"type": "index",
 		"name": "auth_user_id_type_index",
 		"table": "auth",
 		"sql": "CREATE INDEX `auth_user_id_type_index` on `auth` (`user_id`, `type`)"

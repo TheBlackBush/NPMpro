@@ -1,15 +1,9 @@
-import { domainToASCII, domainToUnicode } from "node:url";
-import { raw } from "objection";
-import { isMysql } from "../lib/config.js";
+import { domainToASCII } from "node:url";
 import errs from "../lib/error.js";
-import { castJsonIfNeed } from "../lib/helpers.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
 import internalCertificate from "./certificate.js";
-
-// MySQL compares a json column with a binary collation, so LIKE would not ignore case: compare it as text
-const domainNamesText = () => (isMysql() ? raw("CAST(?? AS CHAR)", ["domain_names"]) : castJsonIfNeed("domain_names"));
 
 /**
  * @param   {String}  hostname
@@ -28,6 +22,8 @@ const checkHostnameRecordsTaken = (hostname, existingRows, ignoreId) =>
 					(domainToASCII(hostname) || hostname).toLowerCase(),
 			),
 	);
+
+const HOSTNAME_MODELS = { proxy: proxyHostModel, redirection: redirectionHostModel, dead: deadHostModel };
 
 const internalHost = {
 	/**
@@ -76,34 +72,36 @@ const internalHost = {
 	},
 
 	/**
-	 * Internal use only, checks to see if the domain is already taken by any other record
+	 * The first name, in the order given, that an enabled host of another row uses. One query per table for all names,
+	 * with no LIKE: checkHostnameRecordsTaken decides on every enabled row, so one name or many give the same answer.
 	 *
+	 * @param   {String[]}  names
+	 * @param   {String}    [ignore_type]  'proxy', 'redirection', 'dead'
+	 * @param   {Integer}   [ignore_id]    must be supplied if type was also supplied
+	 * @returns {Promise<String|undefined>}
+	 */
+	findTakenHostname: async (names, ignore_type, ignore_id) => {
+		if (names.length === 0) return;
+		const tables = await Promise.all(
+			Object.entries(HOSTNAME_MODELS).map(async ([type, model]) => ({
+				rows: await model.query().select("id", "domain_names").where("enabled", 1),
+				ignoreId: ignore_type === type && ignore_id ? ignore_id : 0,
+			})),
+		);
+		return names.find((name) =>
+			tables.some(({ rows, ignoreId }) => checkHostnameRecordsTaken(name, rows, ignoreId)),
+		);
+	},
+
+	/**
 	 * @param   {String}   hostname
-	 * @param   {String}   [ignore_type]   'proxy', 'redirection', 'dead'
-	 * @param   {Integer}  [ignore_id]     Must be supplied if type was also supplied
-	 * @returns {Promise}
+	 * @param   {String}   [ignore_type]
+	 * @param   {Integer}  [ignore_id]
+	 * @returns {Promise<{hostname: String, is_taken: Boolean}>}
 	 */
 	isHostnameTaken: async (hostname, ignore_type, ignore_id) => ({
 		hostname,
-		is_taken: (
-			await Promise.all(
-				Object.entries({ proxy: proxyHostModel, redirection: redirectionHostModel, dead: deadHostModel }).map(
-					async ([type, model]) =>
-						checkHostnameRecordsTaken(
-							hostname,
-							await model
-								.query()
-								.where("enabled", 1)
-								.andWhere((query) =>
-									query
-										.whereILike(domainNamesText(), `%${domainToASCII(hostname) || hostname}%`)
-										.orWhereILike(domainNamesText(), `%${domainToUnicode(hostname) || hostname}%`),
-								),
-							ignore_type === type && ignore_id ? ignore_id : 0,
-						),
-				),
-			)
-		).includes(true),
+		is_taken: (await internalHost.findTakenHostname([hostname], ignore_type, ignore_id)) !== undefined,
 	}),
 
 	/**
@@ -137,12 +135,9 @@ const internalHost = {
 	 * @param {String}    [options.suffix]      added to the message
 	 */
 	assertHostnamesFree: async (names, { ignoreType, ignoreId, suffix = "" } = {}) => {
-		const results = await Promise.all(
-			names.map((name) => internalHost.isHostnameTaken(name, ignoreType, ignoreId)),
-		);
-		const taken = results.find((result) => result.is_taken);
-		if (taken) {
-			throw new errs.ValidationError(`${taken.hostname} is already in use${suffix}`);
+		const taken = await internalHost.findTakenHostname(names, ignoreType, ignoreId);
+		if (taken !== undefined) {
+			throw new errs.ValidationError(`${taken} is already in use${suffix}`);
 		}
 	},
 
