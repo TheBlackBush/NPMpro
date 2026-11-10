@@ -65,7 +65,7 @@ function TablePagination({ pageIndex, pageSize, total, onPage, onSize, placement
 	return (
 		<div
 			className={cn(
-				"flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3",
+				"flex flex-wrap items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-x-4 sm:px-4",
 				placement === "top" ? "border-b" : "border-t",
 			)}
 			data-slot="table-pagination"
