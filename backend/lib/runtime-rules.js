@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, UPSTREAM, WHITESPACE } from "./runtime-rule-table.js";
+import { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, WHITESPACE } from "./runtime-rule-table.js";
 
 const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"];
 

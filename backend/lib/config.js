@@ -143,7 +143,6 @@ const getPrivateKey = () => {
 
 const engine = () => configGet("database").connection.engine;
 const isSqlite = () => engine() === "sqlite";
-const isMysql = () => engine() === "mysql";
 const isPostgres = () => engine() === "postgres";
 
 /**
@@ -163,14 +162,4 @@ const getDatabaseInfo = () => {
 	return { source, connection, moved_at, moved_from };
 };
 
-export {
-	configGet,
-	getDatabaseInfo,
-	getPrivateKey,
-	getPublicKey,
-	isMysql,
-	isPostgres,
-	isSqlite,
-	sqliteFile,
-	startupRetryLog,
-};
+export { configGet, getDatabaseInfo, getPrivateKey, getPublicKey, isPostgres, isSqlite, sqliteFile, startupRetryLog };

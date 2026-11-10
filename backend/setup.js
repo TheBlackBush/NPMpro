@@ -25,6 +25,7 @@ const setupDefaultUser = async () => {
 	const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
 
 	// only without active users and with both variables set; otherwise the setup wizard runs
+	// Kept for automated deployments that set both variables.
 
 	if (!initialAdminEmail || !initialAdminPassword) {
 		return;
