@@ -67,4 +67,4 @@ function LeaveGuard() {
 	return null;
 }
 
-export { confirmLeave, LeaveGuard, useLeaveGuard };
+export { confirmLeave, LeaveGuard };

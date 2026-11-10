@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	createBackup,
-	deleteBackup,
 	exportPreview,
 	getBackups,
 	getBackupTypes,
@@ -32,14 +31,6 @@ const useCreateBackup = () => {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (data) => createBackup(data),
-		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["backups"] }),
-	});
-};
-
-const useDeleteBackup = () => {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (name) => deleteBackup(name),
 		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["backups"] }),
 	});
 };
@@ -91,7 +82,6 @@ export {
 	useBackups,
 	useBackupTypes,
 	useCreateBackup,
-	useDeleteBackup,
 	useExportPreview,
 	useImportUpload,
 	useRestoreBackup,

@@ -1,7 +1,7 @@
 // The Database settings section and the move window: form values, payload, steps and the restart wait
 
 export const ENGINES = ["sqlite", "mysql", "postgres"];
-export const DEFAULT_PORTS = { mysql: 3306, postgres: 5432 };
+const DEFAULT_PORTS = { mysql: 3306, postgres: 5432 };
 export const MOVE_STEPS = ["maintenance", "backup", "schema", "copy", "verify", "switch"];
 
 const HOST = /^[A-Za-z0-9._:%-]{1,253}$/u;
@@ -158,7 +158,7 @@ export const moveAsApiError = (error) => ({
 export const failedStepOf = (move) => move?.error?.step ?? move?.step ?? null;
 
 // progress polls that failed this long in a row (since the last answer) start the resolution
-export const STALL_MS = 10_000;
+const STALL_MS = 10_000;
 
 /**
  * The progress polls failed for STALL_MS in a row: counted from the last answer (or from when the polls resumed), so

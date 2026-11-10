@@ -74,7 +74,7 @@ export const changeDnsCredentialValidate = (rules) =>
  * @param   {boolean} saved       a saved secret: empty keeps it
  * @returns {Function}
  */
-export const credentialValueRule = (rules, definition, saved) => (raw) => {
+const credentialValueRule = (rules, definition, saved) => (raw) => {
 	const value = String(raw ?? "").trim();
 	if (value === "") return definition.optional || saved ? undefined : rules.message("error.required");
 	if (value.length > MAX_VALUE) return rules.message("error.max-character-length", { max: MAX_VALUE });
@@ -88,7 +88,7 @@ export const credentialValueRule = (rules, definition, saved) => (raw) => {
 /**
  * The INI text of a DNS credential, required unless one is saved
  */
-export const iniRule = (rules, credential) => (value) =>
+const iniRule = (rules, credential) => (value) =>
 	String(value ?? "").trim() === "" && !credential?.iniSet ? rules.message("error.required") : undefined;
 
 /**

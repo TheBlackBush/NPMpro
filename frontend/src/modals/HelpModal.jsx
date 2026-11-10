@@ -96,4 +96,4 @@ function HelpButton({ doc, className }) {
 	);
 }
 
-export { HelpButton, showHelpModal };
+export { HelpButton };

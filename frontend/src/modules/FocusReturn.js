@@ -102,11 +102,9 @@ function restoreWindowFocus(captured) {
 }
 
 export {
-	afterPaint,
 	findRowActions,
 	focusLost,
 	pickOpener,
-	ROW_ACTIONS_ATTR,
 	restoreRowFocus,
 	restoreWindowFocus,
 	returnTarget,
