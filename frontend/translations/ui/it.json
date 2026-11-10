@@ -416,6 +416,8 @@
 	"list.filter.without": "Senza certificato",
 	"list.no-match": "Nessun elemento corrisponde ai filtri",
 	"list.row-actions": "Azioni per {name}",
+	"list.row-edit": "Modifica {name}",
+	"list.row-view": "Visualizza {name}",
 	"list.shown": "{shown} di {total} mostrati",
 	"list.sort-by": "Ordina per",
 	"list.sort-desc": "Ordine decrescente",

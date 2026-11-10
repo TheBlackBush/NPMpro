@@ -61,7 +61,15 @@ export async function rowGone(page, name) {
 	await page.locator("tbody tr").filter({ hasText: name }).first().waitFor({ state: "detached" });
 }
 
+// Edit and View are the row's own button (named "Edit <name>" or "View <name>"), every other item is in the menu
 export async function rowAction(page, name, item) {
+	if (item === "Edit" || item === "View") {
+		await page
+			.getByRole("button", { name: `${item} ${name}`, exact: true })
+			.filter({ visible: true })
+			.click();
+		return;
+	}
 	await page
 		.getByRole("button", { name: `Actions for ${name}`, exact: true })
 		.filter({ visible: true })

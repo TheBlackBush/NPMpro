@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, KeyRound, Pencil, Trash2 } from "lucide-react";
+import { Eye, KeyRound, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -48,7 +48,11 @@ function DnsCredentialActions({ credential, onDelete, onEdit }) {
 					key: "edit",
 					// a user who may only view gets the View window
 					label: <T id={canManage ? "action.edit" : "action.view"} />,
-					icon: canManage ? Pencil : Eye,
+					icon: canManage ? SquarePen : Eye,
+					primary: true,
+					ariaLabel: canManage
+						? intl.formatMessage({ id: "list.row-edit" }, { name: credential.name || `#${credential.id}` })
+						: intl.formatMessage({ id: "list.row-view" }, { name: credential.name || `#${credential.id}` }),
 					onSelect: () => onEdit?.(credential.id),
 				},
 				{

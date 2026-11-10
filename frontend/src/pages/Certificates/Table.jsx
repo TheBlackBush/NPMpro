@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Download, FlaskConical, KeyRound, Pencil, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { Download, FlaskConical, KeyRound, RefreshCw, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
 	CertificateInUseFormatter,
@@ -41,7 +41,7 @@ const inUseSummary = (row) =>
 
 const actionDefs = {
 	test: { label: "test", icon: FlaskConical, handler: "onTest", arg: (row) => row.domainNames },
-	edit: { label: "action.edit", icon: Pencil, handler: "onEdit", arg: (row) => row },
+	edit: { label: "action.edit", icon: SquarePen, handler: "onEdit", arg: (row) => row },
 	renew: { label: "action.renew", icon: RefreshCw, handler: "onRenew", arg: (row) => row.id },
 	"change-dns": {
 		label: "dns-credentials.change",
@@ -56,13 +56,11 @@ const actionDefs = {
 function CertificateActions({ certificate, ...handlers }) {
 	const canManage = useCanManage(CERTIFICATES);
 	const keys = certificateActionKeys({ ...certificate, inUse: isInUse(certificate) }, { canManage });
+	const name = certificate.niceName || certificate.domainNames[0] || `#${certificate.id}`;
 	return (
 		<RowActions
 			// names the row, so the buttons of a list are told apart (the nice name, else the first domain, as the Name column)
-			label={intl.formatMessage(
-				{ id: "list.row-actions" },
-				{ name: certificate.niceName || certificate.domainNames[0] || `#${certificate.id}` },
-			)}
+			label={intl.formatMessage({ id: "list.row-actions" }, { name })}
 			focusKey={`certificate-${certificate.id}`}
 			title={<T id="object.actions-title" tData={{ object: "certificate" }} data={{ id: certificate.id }} />}
 			items={keys.map((key) => {
@@ -72,6 +70,9 @@ function CertificateActions({ certificate, ...handlers }) {
 					label: <T id={def.label} />,
 					icon: def.icon,
 					onSelect: () => handlers[def.handler]?.(def.arg(certificate)),
+					// the Edit item is the row's edit button (custom and mTLS certificates)
+					primary: key === "edit",
+					ariaLabel: key === "edit" ? intl.formatMessage({ id: "list.row-edit" }, { name }) : undefined,
 					destructive: key === "delete",
 					separatorBefore: key === "delete",
 				};

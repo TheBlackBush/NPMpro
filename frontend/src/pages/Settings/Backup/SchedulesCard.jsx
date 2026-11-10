@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { CalendarClock, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pause, Play, Plus, SquarePen, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { deleteBackupSchedule } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
@@ -150,7 +150,14 @@ function Actions({ schedule, running, onRun, onEdit, onToggle, onDelete }) {
 					icon: Play,
 					onSelect: () => onRun(schedule),
 				},
-				{ key: "edit", label: <T id="action.edit" />, icon: Pencil, onSelect: () => onEdit(schedule) },
+				{
+					key: "edit",
+					label: <T id="action.edit" />,
+					icon: SquarePen,
+					primary: true,
+					ariaLabel: intl.formatMessage({ id: "list.row-edit" }, { name: schedule.name }),
+					onSelect: () => onEdit(schedule),
+				},
 				{
 					key: "toggle",
 					label: (

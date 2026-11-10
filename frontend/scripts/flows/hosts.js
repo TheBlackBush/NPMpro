@@ -143,20 +143,18 @@ export const TYPES = [
 	},
 ];
 
-// the limited user sees one menu item, View, and a window where nothing can be changed or saved
+// the limited user sees a View button and no menu, and a window where nothing can be changed or saved
 export async function viewOnly(type, { browser, base, viewerPassword }) {
 	const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
 	try {
 		const { page } = viewer;
 		await page.goto(type.route);
-		await page
-			.getByRole("button", { name: `Actions for ${type.label}`, exact: true })
-			.filter({ visible: true })
-			.click();
-		const items = page.getByRole("menuitem");
-		await items.first().waitFor();
-		if ((await items.count()) !== 1) throw new Error(`the viewer's menu has ${await items.count()} items`);
-		await page.getByRole("menuitem", { name: "View", exact: true }).click();
+		const view = page.getByRole("button", { name: `View ${type.label}`, exact: true }).filter({ visible: true });
+		await view.waitFor();
+		// nothing is left for a menu: no Actions button
+		const menus = await page.getByRole("button", { name: `Actions for ${type.label}`, exact: true }).count();
+		if (menus !== 0) throw new Error(`the viewer has ${menus} Actions buttons`);
+		await view.click();
 		await windowTitled(page, `View ${type.object}`);
 		const dialog = page.getByRole("dialog");
 		if ((await dialog.getByRole("button", { name: "Save" }).count()) !== 0)
@@ -228,13 +226,13 @@ async function hostSteps(type, env) {
 	await rowShows(page, type.label, type.edited);
 	await checkSaved(type, api, changed, expected, "edit");
 
-	// an unchanged window closed with Escape gives the focus back to the row's action button
+	// an unchanged window closed with Escape gives the focus back to the row's Edit button
 	await rowAction(page, type.label, "Edit");
 	await windowTitled(page, `Edit ${type.object}`);
 	await page.keyboard.press("Escape");
 	await windowClosed(page);
 	await page.waitForFunction(
-		(key) => document.activeElement?.getAttribute("data-row-actions") === key,
+		(key) => document.activeElement?.getAttribute("data-row-edit") === key,
 		`${type.focus}-${id}`,
 	);
 

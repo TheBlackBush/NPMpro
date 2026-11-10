@@ -416,6 +416,8 @@
 	"list.filter.without": "无证书",
 	"list.no-match": "没有符合筛选条件的项目",
 	"list.row-actions": "{name} 的操作",
+	"list.row-edit": "编辑 {name}",
+	"list.row-view": "查看 {name}",
 	"list.shown": "显示 {shown} / {total}",
 	"list.sort-by": "排序方式",
 	"list.sort-desc": "降序",

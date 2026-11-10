@@ -416,6 +416,8 @@
 	"list.filter.without": "Ohne Zertifikat",
 	"list.no-match": "Keine Einträge entsprechen den Filtern",
 	"list.row-actions": "Aktionen für {name}",
+	"list.row-edit": "{name} bearbeiten",
+	"list.row-view": "{name} ansehen",
 	"list.shown": "{shown} von {total} angezeigt",
 	"list.sort-by": "Sortieren nach",
 	"list.sort-desc": "Absteigende Reihenfolge",

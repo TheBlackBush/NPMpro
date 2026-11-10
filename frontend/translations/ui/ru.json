@@ -416,6 +416,8 @@
 	"list.filter.without": "Без сертификата",
 	"list.no-match": "Нет элементов, соответствующих фильтрам",
 	"list.row-actions": "Действия для {name}",
+	"list.row-edit": "Изменить {name}",
+	"list.row-view": "Просмотр {name}",
 	"list.shown": "Показано {shown} из {total}",
 	"list.sort-by": "Сортировать по",
 	"list.sort-desc": "По убыванию",

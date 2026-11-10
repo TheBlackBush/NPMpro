@@ -1,4 +1,4 @@
-import { Copy, Eye, Pencil, Power, Trash2 } from "lucide-react";
+import { Copy, Eye, Power, SquarePen, Trash2 } from "lucide-react";
 import { RowActions } from "src/components/RowActions";
 import { useCanManage } from "src/hooks/useUser";
 import { intl, T } from "src/locale";
@@ -15,7 +15,7 @@ import { appColumnHelper as columnHelper } from "./useAppTable";
 
 export const tlsSummary = (row) => intl.formatMessage({ id: row.certificate ? "column.ssl" : "no-tls" });
 
-// Edit (View for a user who may only view), Clone, Enable or Disable, Delete
+// The Edit (View for a user who may only view) button, then the menu: Clone, Enable or Disable, Delete
 function HostRowActions({ host, permission, object, name, onClone, onDelete, onDisableToggle, onEdit }) {
 	const canManage = useCanManage(permission);
 	return (
@@ -27,7 +27,11 @@ function HostRowActions({ host, permission, object, name, onClone, onDelete, onD
 				{
 					key: "edit",
 					label: <T id={canManage ? "action.edit" : "action.view"} />,
-					icon: canManage ? Pencil : Eye,
+					icon: canManage ? SquarePen : Eye,
+					primary: true,
+					ariaLabel: canManage
+						? intl.formatMessage({ id: "list.row-edit" }, { name })
+						: intl.formatMessage({ id: "list.row-view" }, { name }),
 					onSelect: () => onEdit?.(host.id),
 				},
 				{

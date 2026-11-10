@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Eye, Lock, Pencil, Trash2 } from "lucide-react";
+import { Eye, Lock, SquarePen, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
@@ -21,7 +21,11 @@ function AccessListActions({ accessList, onDelete, onEdit }) {
 					key: "edit",
 					// a user who may only view gets the View window
 					label: <T id={canManage ? "action.edit" : "action.view"} />,
-					icon: canManage ? Pencil : Eye,
+					icon: canManage ? SquarePen : Eye,
+					primary: true,
+					ariaLabel: canManage
+						? intl.formatMessage({ id: "list.row-edit" }, { name: accessList.name || `#${accessList.id}` })
+						: intl.formatMessage({ id: "list.row-view" }, { name: accessList.name || `#${accessList.id}` }),
 					onSelect: () => onEdit?.(accessList.id),
 				},
 				{

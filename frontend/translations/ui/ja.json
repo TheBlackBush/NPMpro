@@ -416,6 +416,8 @@
 	"list.filter.without": "証明書なし",
 	"list.no-match": "フィルターに一致する項目はありません",
 	"list.row-actions": "{name} の操作",
+	"list.row-edit": "{name} を編集",
+	"list.row-view": "{name} を表示",
 	"list.shown": "{total} 件中 {shown} 件を表示",
 	"list.sort-by": "並べ替え",
 	"list.sort-desc": "降順",
