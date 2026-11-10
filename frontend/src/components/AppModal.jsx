@@ -267,7 +267,7 @@ function AppModal({
 	);
 }
 
-// Title row; with closeButton a translated X that closes through the window's onHide
+// Title row; with closeButton a translated X that closes through the window's onHide (its mousedown keeps the focus)
 function AppModalHeader({ children, closeButton = false, className, ...props }) {
 	const onHide = useContext(HideContext);
 	return (
@@ -284,6 +284,9 @@ function AppModalHeader({ children, closeButton = false, className, ...props }) 
 						variant="ghost"
 						size="icon-sm"
 						aria-label={intl.formatMessage({ id: "aria.close" })}
+						// keeps the focus in the field until the click is done, as the footer and FormSubmit do: a blur
+						// would validate the field and show its required error while the window closes
+						onMouseDown={(event) => event.preventDefault()}
 					>
 						<XIcon />
 					</Button>

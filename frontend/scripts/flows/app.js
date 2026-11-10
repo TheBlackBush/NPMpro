@@ -42,10 +42,13 @@ async function settingsSave({ admin }) {
 	}
 }
 
+// The phone session signs in first: creating the host reloads nginx, and a login page that opens during a reload can
+// wait on its health check for seconds (it shows the form only after the check answers), longer than the wait for a field.
 async function phoneList({ browser, base, admin, password }) {
-	const host = await admin.api("POST", "/nginx/dead-hosts", { domain_names: ["flow-phone.example.com"] });
 	const phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
+	let host;
 	try {
+		host = await admin.api("POST", "/nginx/dead-hosts", { domain_names: ["flow-phone.example.com"] });
 		const { page } = phone;
 		await page.goto("/nginx/404");
 		const row = rowOf(page, "flow-phone.example.com");
@@ -58,9 +61,10 @@ async function phoneList({ browser, base, admin, password }) {
 			.first()
 			.waitFor();
 		if (await row.locator('[data-label="ID"]').first().isVisible()) throw new Error("the ID cell shows on a phone");
+		if (phone.errors.length > 0) throw new Error(`page error on the phone: ${phone.errors[0]}`);
 	} finally {
 		await phone.context.close();
-		await admin.api("DELETE", `/nginx/dead-hosts/${host.id}`);
+		if (host) await admin.api("DELETE", `/nginx/dead-hosts/${host.id}`);
 	}
 }
 

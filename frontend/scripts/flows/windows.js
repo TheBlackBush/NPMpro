@@ -144,8 +144,37 @@ async function unsavedChangesOfAllWindows(env) {
 	}
 }
 
+// The X of a window with a clean form: the pressed button must not take the focus from the field (a blur validates
+// it, and its required error would show while the window closes). Checked while the mouse button is down.
+async function closeWithoutErrors({ admin }) {
+	const { page } = admin;
+	await page.goto("/nginx/stream");
+	await page.getByRole("button", { name: "Add Stream", exact: true }).first().click();
+	await windowTitled(page, "Add Stream");
+	const dialog = page.getByRole("dialog");
+	await dialog.locator("input[name=incomingPort]").click();
+	// records an invalid field that shows before the window is gone
+	await dialog.evaluate((element) => {
+		window.flowInvalid = false;
+		const observer = new MutationObserver(() => {
+			if (element.querySelector("[aria-invalid=true]")) window.flowInvalid = true;
+		});
+		observer.observe(element, { subtree: true, childList: true, attributes: true });
+	});
+	const box = await dialog.getByRole("button", { name: "Close", exact: true }).boundingBox();
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	const focused = await page.evaluate(() => document.activeElement?.getAttribute("name"));
+	await page.mouse.up();
+	await windowClosed(page);
+	if (focused !== "incomingPort") throw new Error(`pressing the X moved the focus from the field (to ${focused})`);
+	if (await page.evaluate(() => window.flowInvalid))
+		throw new Error("a required error showed while the window closed");
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
 	{ name: "nginx error and re-save", run: nginxErrorResave },
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
+	{ name: "close without errors", run: closeWithoutErrors },
 ];
