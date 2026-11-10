@@ -1,13 +1,4 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Download, FlaskConical, KeyRound, Pencil, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import {
@@ -20,21 +11,12 @@ import {
 	RowActions,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { useCanManage } from "src/hooks";
 import { intl, T } from "src/locale";
 import { certificateActionKeys } from "src/modules/CertificateActions";
 import { CERTIFICATES } from "src/modules/Permissions";
 import { AddCertificateMenu } from "./AddCertificateMenu";
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: {
-		alphanumeric: sortFn_alphanumeric,
-		datetime: sortFn_datetime,
-		text: sortFn_text,
-	},
-});
 
 const isInUse = (row) =>
 	[
@@ -100,7 +82,7 @@ function CertificateActions({ certificate, ...handlers }) {
 
 // Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
 // The columns keep their identity between renders and the row handlers reach the cells through the table meta
-// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+// (`meta.actions`); see the top of src/components/Table/hostColumns.jsx.
 export function useColumns() {
 	return useMemo(
 		() => [
@@ -224,17 +206,11 @@ export default function Table({
 }) {
 	const columns = useColumns();
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns: columnHelper.columns(columns),
 		data,
-		getRowId: (row) => `${row.id}`,
 		// the row handlers live here, not in the columns (see useColumns)
-		meta: {
-			isFetching,
-			actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onRenew, onTest },
-		},
-		enableSortingRemoval: false,
+		meta: { isFetching, actions: { onChangeDnsCredential, onDelete, onDownload, onEdit, onRenew, onTest } },
 		state: { sorting },
 		onSortingChange,
 	});

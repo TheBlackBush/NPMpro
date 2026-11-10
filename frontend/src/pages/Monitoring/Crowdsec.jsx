@@ -1,15 +1,10 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { ClockPlusIcon, PlugZapIcon, ShieldBanIcon, ShieldCheckIcon, ShieldOffIcon, UnplugIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ErrorAlert, ListToolbar, Loading, NoticeAlert, StatusBadge } from "src/components";
 import { CountryName, countryLabel, EmptyState, StatCard, TopList, WorldMap } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { PLAIN_SORT_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
@@ -21,12 +16,6 @@ import { filterBans, formatCount, secondsLeftNow, timeLeftParts } from "src/modu
 const TOP_LIST = 10;
 
 const CROWDSEC_GUIDE = "https://github.com/TheBlackBush/NPMpro/wiki/CrowdSec";
-
-// newest first, as the API sends them; no column sorting, since only the first rows are shown until "Show all"
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-});
 
 // rows shown before "Show all"; 100 stacked rows make a very long page on a phone
 const FIRST_ROWS = 25;
@@ -140,11 +129,12 @@ function BansTable({ data }) {
 		[],
 	);
 
-	const tableInstance = useTable({
-		features,
+	// newest first, as the API sends them; no column sorting, since only the first rows are shown until "Show all"
+	const tableInstance = useAppTable({
+		features: PLAIN_SORT_FEATURES,
+		enableSortingRemoval: true,
 		columns: columnHelper.columns(columns),
 		data: visible,
-		getRowId: (row) => `${row.id}`,
 	});
 
 	return (

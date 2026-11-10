@@ -1,19 +1,11 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { CalendarClock, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { deleteBackupSchedule } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Badge } from "src/components/ui/badge";
 import { Checkbox } from "src/components/ui/checkbox";
@@ -44,12 +36,6 @@ const nameClass = (name) =>
 		: undefined;
 
 const keepText = (row) => label("settings.backup.schedule.keep-count", { count: row.keep });
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
-});
 
 const contentLabelId = ({ kind, id }) =>
 	kind === "category" ? `settings.backup.category.${id}` : `settings.backup.type.${id}`;
@@ -264,12 +250,9 @@ function Table({ data, categories, timeZone, running, addButton, handlers }) {
 		];
 	}, [categories, timeZone]);
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns,
 		data,
-		getRowId: (row) => String(row.id),
-		enableSortingRemoval: false,
 		// the row handlers and the running ids reach the cells here, so the columns keep their identity
 		meta: { running, handlers },
 	});

@@ -1,32 +1,14 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Eye, KeyRound, Pencil, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { EmptyData, GravatarFormatter, RowActions, ValueWithDateFormatter } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { Badge } from "src/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
 import { useCanManage, useDnsProviders } from "src/hooks";
 import { intl, T } from "src/locale";
 import { CERTIFICATES } from "src/modules/Permissions";
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: {
-		alphanumeric: sortFn_alphanumeric,
-		datetime: sortFn_datetime,
-		text: sortFn_text,
-	},
-});
 
 function UsedBy({ certificates }) {
 	if (certificates.length === 0) {
@@ -88,7 +70,7 @@ const columnHelper = createColumnHelper();
 
 // Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
 // The columns keep their identity between renders and the row handlers reach the cells through the table meta
-// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+// (`meta.actions`); see the top of src/components/Table/hostColumns.jsx.
 export function useColumns() {
 	const { data: providers } = useDnsProviders();
 	return useMemo(
@@ -168,17 +150,11 @@ export function useColumns() {
 export default function Table({ data, isFetching, isFiltered, onEdit, onDelete, onNew, sorting, onSortingChange }) {
 	const columns = useColumns();
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns: columnHelper.columns(columns),
 		data,
-		getRowId: (row) => `${row.id}`,
 		// the row handlers live here, not in the columns (see useColumns)
-		meta: {
-			isFetching,
-			actions: { onDelete, onEdit },
-		},
-		enableSortingRemoval: false,
+		meta: { isFetching, actions: { onDelete, onEdit } },
 		state: { sorting },
 		onSortingChange,
 	});
