@@ -116,11 +116,13 @@ jobs:
       - name: every translation key is used
         run: node translations/check-unused.js
       - name: unit tests with the coverage floor
-        # the floor covers src/modules, the code with a test harness (measured 98.59, 95.16, 97.26)
-        run: >-
-          node --test --experimental-test-coverage --test-coverage-include='src/modules/**'
-          --test-coverage-lines=98.5 --test-coverage-branches=95.1 --test-coverage-functions=97.2
-          'src/**/*.test.js'
+        # the floor covers src/modules, the code with a test harness (measured 98.63, 95.19, 97.34); node's own
+        # --test-coverage-* flags read 98.5 as 98, so scripts/coverage-floor.js checks the decimals
+        run: |
+          set -o pipefail
+          node --test --experimental-test-coverage --test-coverage-include='src/modules/**' 'src/**/*.test.js' \
+            | tee "$RUNNER_TEMP/coverage.txt"
+          node scripts/coverage-floor.js 98.5 95.1 97.2 < "$RUNNER_TEMP/coverage.txt"
       - name: build
         run: pnpm vite build
       - name: no Tabler or Bootstrap in the bundle
