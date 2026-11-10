@@ -7,7 +7,6 @@ import {
 	ErrorAlert,
 	FormSection,
 	HookForm,
-	Loading,
 	PasswordField,
 	SwitchField,
 	SwitchList,
@@ -30,6 +29,7 @@ import { showObjectSuccess } from "src/notifications";
 import { LockedBadge } from "./Authentication/LockedBadge";
 import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
+import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
 import { StatusAlert } from "./StatusAlert";
 
@@ -298,23 +298,9 @@ export default function Geoip() {
 		}
 	}, [background, data]);
 
-	if (error) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<ErrorAlert error={error} />
-			</div>
-		);
-	}
-
-	if (isPending) {
-		return (
-			<div className="space-y-4">
-				<Heading />
-				<Loading noLogo />
-			</div>
-		);
-	}
-
-	return <GeoipForm data={data} background={background} setBackground={setBackground} />;
+	return (
+		<SettingsForm titleId="settings.geoip" error={error} isPending={isPending}>
+			{() => <GeoipForm data={data} background={background} setBackground={setBackground} />}
+		</SettingsForm>
+	);
 }

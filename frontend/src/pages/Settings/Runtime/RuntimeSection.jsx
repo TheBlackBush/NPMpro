@@ -1,7 +1,7 @@
 import { Info, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-import { ErrorAlert, FormSection, HookForm, Loading, useAppForm, useFieldOrder } from "src/components";
+import { ErrorAlert, FormSection, HookForm, useAppForm, useFieldOrder } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -19,6 +19,7 @@ import { unlockedErrors } from "src/modules/SettingsForms";
 import { showError, showObjectSuccess } from "src/notifications";
 import { SaveBar } from "../SaveBar";
 import { SettingsCard } from "../SettingsCard";
+import { SettingsForm } from "../SettingsForm";
 import { SettingsHeading } from "../SettingsHeading";
 import { StatusAlert } from "../StatusAlert";
 
@@ -215,19 +216,21 @@ function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }
 function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 	const { data, isPending, error } = useRuntimeSettings(group);
 
-	if (error || isPending) {
-		return (
-			<div className="space-y-4">
-				<Heading titleId={titleId} />
-				{error ? <ErrorAlert error={error} /> : <Loading noLogo />}
-			</div>
-		);
-	}
-
 	return (
-		<RuntimeForm group={group} titleId={titleId} data={data} toForm={toForm} toApi={toApi} validate={validate}>
-			{children}
-		</RuntimeForm>
+		<SettingsForm titleId={titleId} error={error} isPending={isPending}>
+			{() => (
+				<RuntimeForm
+					group={group}
+					titleId={titleId}
+					data={data}
+					toForm={toForm}
+					toApi={toApi}
+					validate={validate}
+				>
+					{children}
+				</RuntimeForm>
+			)}
+		</SettingsForm>
 	);
 }
 
