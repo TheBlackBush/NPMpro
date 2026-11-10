@@ -5,6 +5,7 @@
 // waitFor (selectors), press (a key), viewport ([width, height], until the action ends) or skipIfDisabled (a selector:
 // the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
+// The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
 // set up, give that user's password in CSP_CHECK_PASSWORD (email admin@example.com).
 import { randomBytes } from "node:crypto";
