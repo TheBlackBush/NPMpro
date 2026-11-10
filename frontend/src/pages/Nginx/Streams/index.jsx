@@ -1,10 +1,11 @@
 import { HasPermission } from "src/components";
 import { STREAMS, VIEW } from "src/modules/Permissions";
-import TableWrapper from "./TableWrapper";
+import { HostListPage } from "../HostListPage";
+import { streamList } from "./listType";
 
 const Streams = () => (
 	<HasPermission section={STREAMS} permission={VIEW} pageLoading loadingNoLogo>
-		<TableWrapper />
+		<HostListPage list={streamList} />
 	</HasPermission>
 );
 
