@@ -1,10 +1,4 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import {
 	ArrowDownUpIcon,
 	ChartColumnIcon,
@@ -29,6 +23,7 @@ import {
 	WorldMap,
 } from "src/components/Monitoring";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { PLAIN_SORT_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "src/components/ui/card";
@@ -81,12 +76,6 @@ const subscribeMdUp = (onChange) => {
 	return () => query.removeEventListener("change", onChange);
 };
 const isMdUp = () => window.matchMedia(MD_UP).matches;
-
-// newest first, as the API sends them; no column sorting, like the newest bans table
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-});
 
 const columnHelper = createColumnHelper();
 
@@ -369,8 +358,10 @@ function RecentTable({ rows }) {
 		[withIps],
 	);
 
-	const tableInstance = useTable({
-		features,
+	// newest first, as the API sends them; no column sorting, like the newest bans table
+	const tableInstance = useAppTable({
+		features: PLAIN_SORT_FEATURES,
+		enableSortingRemoval: true,
 		columns: columnHelper.columns(columns),
 		data: visible,
 		// time, host and path can repeat within a second: the position in the newest first list is the id

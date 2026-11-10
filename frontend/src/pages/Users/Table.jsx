@@ -1,13 +1,4 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Lock, MonitorOff, Pencil, Power, ShieldCheck, ShieldOff, Trash2, Users } from "lucide-react";
 import { useMemo } from "react";
 import {
@@ -20,17 +11,8 @@ import {
 	ValueWithDateFormatter,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { intl, T } from "src/locale";
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: {
-		alphanumeric: sortFn_alphanumeric,
-		datetime: sortFn_datetime,
-		text: sortFn_text,
-	},
-});
 
 const columnHelper = createColumnHelper();
 
@@ -113,7 +95,7 @@ function UserActions({
 
 // Shared with the wrapper, which hands the sortable columns to the phone "Sort by" in ListToolbar.
 // The columns keep their identity between renders and the row handlers reach the cells through the table meta
-// (`meta.actions`); see the comment above useColumns in src/pages/Nginx/ProxyHosts/Table.jsx.
+// (`meta.actions`); see the top of src/components/Table/hostColumns.jsx.
 export function useColumns() {
 	return useMemo(
 		() => [
@@ -206,11 +188,9 @@ export default function Table({
 }) {
 	const columns = useColumns();
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns: columnHelper.columns(columns),
 		data,
-		getRowId: (row) => `${row.id}`,
 		// the row handlers live here, not in the columns (see useColumns)
 		meta: {
 			isFetching,
@@ -226,7 +206,6 @@ export default function Table({
 				onDisableToggle,
 			},
 		},
-		enableSortingRemoval: false,
 		state: { sorting },
 		onSortingChange,
 	});

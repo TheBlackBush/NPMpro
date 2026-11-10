@@ -1,15 +1,4 @@
-import {
-	createColumnHelper,
-	createPaginatedRowModel,
-	createSortedRowModel,
-	rowPaginationFeature,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Archive, Bot, CalendarClock, Download, KeyRound, RotateCcw, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -19,6 +8,7 @@ import { AppSelect } from "src/components/AppSelect";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { TablePagination } from "src/components/Table/TablePagination";
+import { PAGED_FEATURES, useAppTable } from "src/components/Table/useAppTable";
 import { Badge } from "src/components/ui/badge";
 import { Progress } from "src/components/ui/progress";
 import { useBackupSchedules, useBackups, useBackupTypes, useUploadBackup } from "src/hooks";
@@ -40,14 +30,6 @@ const createdText = (value, timeZone) =>
 	timeZone ? formatInZone(value, intl.locale, timeZone) : formatDateTime(value);
 
 const PAGE_SIZE = 10;
-
-const features = tableFeatures({
-	rowSortingFeature,
-	rowPaginationFeature,
-	sortedRowModel: createSortedRowModel(),
-	paginatedRowModel: createPaginatedRowModel(),
-	sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
-});
 
 function Contents({ categories, types }) {
 	return (
@@ -217,12 +199,11 @@ function Table({ data, categories, timeZone, names, filtered, onClearFilter, act
 		setShownFilter(filtered);
 		setPagination((current) => ({ ...current, pageIndex: 0 }));
 	}
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
+		features: PAGED_FEATURES,
 		columns,
 		data,
 		getRowId: (row) => row.name,
-		enableSortingRemoval: false,
 		state: { pagination },
 		onPaginationChange: setPagination,
 		// the row handlers reach the cells here, so the columns keep their identity

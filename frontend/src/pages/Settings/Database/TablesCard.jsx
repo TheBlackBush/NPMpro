@@ -1,26 +1,13 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { readTablesOpen, tablesSummary, writeTablesOpen } from "src/modules/DatabaseMove";
 
 const label = (id) => intl.formatMessage({ id });
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: { alphanumeric: sortFn_alphanumeric, text: sortFn_text },
-});
 
 /**
  * The tables of the database in use with their row counts, sorted by name
@@ -50,12 +37,10 @@ function TablesCard({ tables }) {
 		];
 	}, []);
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns,
 		data: tables,
 		getRowId: (row) => row.name,
-		enableSortingRemoval: false,
 		initialState: { sorting: [{ id: "name", desc: false }] },
 	});
 

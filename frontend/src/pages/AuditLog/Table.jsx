@@ -1,29 +1,11 @@
-import {
-	createColumnHelper,
-	createSortedRowModel,
-	rowSortingFeature,
-	sortFn_alphanumeric,
-	sortFn_datetime,
-	sortFn_text,
-	tableFeatures,
-	useTable,
-} from "@tanstack/react-table";
+import { createColumnHelper } from "@tanstack/react-table";
 import { Eye } from "lucide-react";
 import { useMemo } from "react";
 import { EventFormatter, GravatarFormatter } from "src/components";
 import { Button } from "src/components/Button";
 import { TableLayout } from "src/components/Table/TableLayout";
+import { useAppTable } from "src/components/Table/useAppTable";
 import { formatDateTime, intl } from "src/locale";
-
-const features = tableFeatures({
-	rowSortingFeature,
-	sortedRowModel: createSortedRowModel(),
-	sortFns: {
-		alphanumeric: sortFn_alphanumeric,
-		datetime: sortFn_datetime,
-		text: sortFn_text,
-	},
-});
 
 // what a row shows first: the object (its type and name or domains), the user and the date, so each button has its own name
 function eventName(row) {
@@ -89,15 +71,10 @@ export default function Table({ data, isFetching, onSelectItem }) {
 		[columnHelper, onSelectItem],
 	);
 
-	const tableInstance = useTable({
-		features,
+	const tableInstance = useAppTable({
 		columns: columnHelper.columns(columns),
 		data,
-		getRowId: (row) => `${row.id}`,
-		meta: {
-			isFetching,
-		},
-		enableSortingRemoval: false,
+		meta: { isFetching },
 	});
 
 	return (
