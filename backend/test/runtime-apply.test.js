@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import nodeFs, { lstat, mkdir, mkdtemp, readdir, readFile, readlink, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -1042,6 +1043,11 @@ it("Gravatar off gives the default avatar at the next profile update without con
 	};
 	const on = await fetchGravatar(1, "a@example.com", "Ann Bee", deps);
 	assert.ok(on.startsWith("/images/gravatar/1.png?v="));
+	// Gravatar is asked for a real photo only (default=404), with no initials parameter
+	assert.equal(
+		requests[0],
+		`https://www.gravatar.com/avatar/${crypto.hash("sha256", "a@example.com")}?s=64&default=404`,
+	);
 	assert.deepEqual(await readdir(dir), ["1.png"]);
 
 	config.prime("advanced", { values: { config_beautifier: true, gravatar: false }, locked: [] });
@@ -1049,6 +1055,22 @@ it("Gravatar off gives the default avatar at the next profile update without con
 	assert.equal(requests.length, 1);
 	// the fetched picture is removed
 	assert.deepEqual(await readdir(dir), []);
+});
+
+it("a 404 from Gravatar gives the default avatar, removes an older picture and logs no error", async () => {
+	const dir = await mkdtemp(path.join(tmpdir(), "gravatar-"));
+	await writeFile(`${dir}/1.png`, "old initials picture");
+	const errors = [];
+	const deps = {
+		enabled: () => true,
+		fetch: () => Promise.resolve({ ok: false, status: 404, arrayBuffer: () => Promise.resolve(Buffer.alloc(0)) }),
+		fs: nodeFs,
+		dir,
+		log: { ...quietLog(), error: (message) => errors.push(message) },
+	};
+	assert.equal(await fetchGravatar(1, "none@example.com", "No Photo", deps), DEFAULT_AVATAR);
+	assert.deepEqual(await readdir(dir), []);
+	assert.deepEqual(errors, []);
 });
 
 // fix round 1

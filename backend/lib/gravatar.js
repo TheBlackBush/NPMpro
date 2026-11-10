@@ -28,11 +28,11 @@ const avatarExt = (b) => {
 
 /**
  * Removes the user's fetched Gravatar picture and fetches it again; the default avatar when Gravatar is off
- * (advanced.gravatar, read per call) or the fetch fails
+ * (advanced.gravatar, read per call), Gravatar has no photo for the email (404) or the fetch fails
  *
  * @param   {number}  id
  * @param   {string}  email
- * @param   {string}  name
+ * @param   {string}  _name  not used (the user's initials are drawn by the frontend)
  * @param   {Object}  [deps]
  * @param   {Function} [deps.enabled]  () => boolean
  * @param   {Function} [deps.fetch]
@@ -44,22 +44,20 @@ const avatarExt = (b) => {
 const fetchGravatar = async (
 	id,
 	email,
-	name,
+	_name,
 	{ enabled = gravatarOn, fetch = globalThis.fetch, fs = nodeFs, dir = GRAVATAR_DIR, log = logger } = {},
 ) => {
 	for (const e of AVATAR_EXTS) await fs.rm(`${dir}/${id}.${e}`, { force: true });
 	if (!enabled()) return DEFAULT_AVATAR;
 	try {
-		const initials = name
-			.split(" ")
-			.map((n) => n[0])
-			.join("");
 		const response = await fetch(
-			`https://www.gravatar.com/avatar/${crypto.hash("sha256", email)}?s=64&default=initials&name=${encodeURIComponent(initials)}`,
+			`https://www.gravatar.com/avatar/${crypto.hash("sha256", email)}?s=64&default=404`,
 			// bounded: a first OIDC login holds a write slot (a database move waits for it) while this runs
 			{ headers: { "User-Agent": `NPMpro/${pjson.version}` }, signal: AbortSignal.timeout(10_000) },
 		);
 
+		// 404: this email has no photo at Gravatar (default=404), the frontend draws the user's initials
+		if (response.status === 404) return DEFAULT_AVATAR;
 		if (!response.ok) throw new Error(`Status code: ${response.status}`);
 
 		const buffer = Buffer.from(await response.arrayBuffer());

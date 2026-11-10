@@ -598,6 +598,21 @@ it("turning the beautifier off changes the next config", async () => {
 	assert.ok(again.startsWith(MARK));
 });
 
+it("a user whose email has no Gravatar photo (404) gets the default avatar", async () => {
+	api.outside.http
+		.get("https://www.gravatar.com")
+		.intercept({ path: /^\/avatar\//u, method: "GET" })
+		.reply(404, "");
+	const done = await admin.post("/users", {
+		name: "No Photo",
+		email: "nophoto@example.com",
+		roles: [],
+		auth: { type: "password", secret: "correct-horse-battery-9" },
+	});
+	assert.equal(done.status, 201, done.text);
+	assert.equal(done.body.avatar, "/images/default-avatar.jpg");
+});
+
 it("turning Gravatar off sends no request at the next profile save", async () => {
 	const requests = [];
 	const gravatar = api.outside.http.get("https://www.gravatar.com");
