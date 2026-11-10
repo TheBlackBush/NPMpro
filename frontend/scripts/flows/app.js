@@ -60,6 +60,12 @@ async function phoneList({ browser, base, admin, password }) {
 			.filter({ visible: true })
 			.first()
 			.waitFor();
+		// the Edit button sits next to the menu button in the card
+		await row
+			.getByRole("button", { name: "Edit flow-phone.example.com", exact: true })
+			.filter({ visible: true })
+			.first()
+			.waitFor();
 		if (await row.locator('[data-label="ID"]').first().isVisible()) throw new Error("the ID cell shows on a phone");
 		if (phone.errors.length > 0) throw new Error(`page error on the phone: ${phone.errors[0]}`);
 	} finally {

@@ -1,19 +1,21 @@
 // Where keyboard focus goes back to after a row action or a window, when the element that had it is gone.
 //
-// A row's action menu button carries data-row-actions="<key>" (for instance proxy-host-12). The row may re-render,
+// A row's action menu button carries data-row-actions="<key>" (for instance proxy-host-12), and the row's edit (or
+// view) button next to it data-row-edit="<key>". The row may re-render,
 // move after a re-sort or exist twice (the phone and the desktop copy, one hidden), so the button is found again by
 // its key: the first visible match. The list page heading (data-list-heading, tabIndex -1) is the last fallback.
 
 const ROW_ACTIONS_ATTR = "data-row-actions";
+const ROW_EDIT_ATTR = "data-row-edit";
 const LIST_HEADING_SELECTOR = "[data-list-heading]";
 
 // CSS.escape exists in every supported browser; the fallback only serves the unit tests
 const escapeValue = (value) =>
 	globalThis.CSS?.escape ? globalThis.CSS.escape(value) : value.replace(/["\\]/gu, "\\$&");
 
-/** The selector of the row action buttons with this key */
-function rowActionsSelector(key) {
-	return `[${ROW_ACTIONS_ATTR}="${escapeValue(key)}"]`;
+/** The selector of the row action buttons with this key (the edit buttons with attr = ROW_EDIT_ATTR) */
+function rowActionsSelector(key, attr = ROW_ACTIONS_ATTR) {
+	return `[${attr}="${escapeValue(key)}"]`;
 }
 
 function isVisible(element) {
@@ -48,7 +50,10 @@ function pickOpener(doc, lastPressed, now = Date.now()) {
 
 const PRESSABLE = 'button, a[href], [role="button"], [role="menuitem"], [tabindex]';
 
-/** Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader of { element, at } */
+/**
+ * Starts remembering the control that was pressed last (capture phase, so no handler can hide it); returns a reader
+ * of { element, at }
+ */
 function trackPressed(doc) {
 	let last = null;
 	doc.addEventListener(
@@ -62,10 +67,10 @@ function trackPressed(doc) {
 	return () => last;
 }
 
-/** The first visible row action button with this key, or null */
-function findRowActions(doc, key) {
+/** The first visible row action button with this key, or null (the edit button with attr = ROW_EDIT_ATTR) */
+function findRowActions(doc, key, attr = ROW_ACTIONS_ATTR) {
 	if (!key) return null;
-	for (const element of doc.querySelectorAll(rowActionsSelector(key))) {
+	for (const element of doc.querySelectorAll(rowActionsSelector(key, attr))) {
 		if (isVisible(element)) return element;
 	}
 	return null;
@@ -78,7 +83,10 @@ function findRowActions(doc, key) {
 function returnTarget(doc, captured) {
 	const usable = captured && captured !== doc.body;
 	if (usable && captured.isConnected) return captured;
-	const twin = usable ? findRowActions(doc, captured.getAttribute?.(ROW_ACTIONS_ATTR)) : null;
+	const twin = usable
+		? (findRowActions(doc, captured.getAttribute?.(ROW_ACTIONS_ATTR)) ??
+			findRowActions(doc, captured.getAttribute?.(ROW_EDIT_ATTR), ROW_EDIT_ATTR))
+		: null;
 	return twin ?? doc.querySelector(LIST_HEADING_SELECTOR);
 }
 
@@ -87,10 +95,13 @@ function afterPaint(fn) {
 	requestAnimationFrame(() => setTimeout(fn, 0));
 }
 
-/** After a row action settles: if focus fell to the body, put it on the row's action button again */
-function restoreRowFocus(key) {
+/**
+ * After a row action settles: if focus fell to the body, put it on the row's action button again (attr: ROW_EDIT_ATTR
+ * for the edit button)
+ */
+function restoreRowFocus(key, attr = ROW_ACTIONS_ATTR) {
 	afterPaint(() => {
-		if (focusLost(document)) findRowActions(document, key)?.focus();
+		if (focusLost(document)) findRowActions(document, key, attr)?.focus();
 	});
 }
 
@@ -105,6 +116,8 @@ export {
 	findRowActions,
 	focusLost,
 	pickOpener,
+	ROW_ACTIONS_ATTR,
+	ROW_EDIT_ATTR,
 	restoreRowFocus,
 	restoreWindowFocus,
 	returnTarget,

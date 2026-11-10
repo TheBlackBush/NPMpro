@@ -416,6 +416,8 @@
 	"list.filter.without": "Without certificate",
 	"list.no-match": "No items match the filters",
 	"list.row-actions": "Actions for {name}",
+	"list.row-edit": "Edit {name}",
+	"list.row-view": "View {name}",
 	"list.shown": "{shown} of {total} shown",
 	"list.sort-by": "Sort by",
 	"list.sort-desc": "Descending order",

@@ -416,6 +416,8 @@
 	"list.filter.without": "Без сертифіката",
 	"list.no-match": "Немає елементів, що відповідають фільтрам",
 	"list.row-actions": "Дії для {name}",
+	"list.row-edit": "Змінити {name}",
+	"list.row-view": "Переглянути {name}",
 	"list.shown": "Показано {shown} з {total}",
 	"list.sort-by": "Сортувати за",
 	"list.sort-desc": "За спаданням",

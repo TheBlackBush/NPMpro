@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { findRowActions, focusLost, pickOpener, returnTarget, rowActionsSelector } from "./FocusReturn.js";
 
-const element = ({ connected = true, visible = true, key } = {}) => ({
+const element = ({ connected = true, visible = true, key, attr = "data-row-actions" } = {}) => ({
 	isConnected: connected,
 	checkVisibility: () => visible,
-	getAttribute: (name) => (name === "data-row-actions" ? (key ?? null) : null),
+	getAttribute: (name) => (name === attr ? (key ?? null) : null),
 	focus() {},
 });
 
@@ -15,7 +15,13 @@ const fakeDoc = ({ active, buttons = [], heading = null } = {}) => {
 		body,
 		activeElement: active === "body" ? body : active,
 		querySelectorAll: (selector) =>
-			buttons.filter((button) => selector === rowActionsSelector(button.getAttribute("data-row-actions"))),
+			buttons.filter((button) =>
+				["data-row-actions", "data-row-edit"].some(
+					(attr) =>
+						button.getAttribute(attr) !== null &&
+						selector === rowActionsSelector(button.getAttribute(attr), attr),
+				),
+			),
 		querySelector: (selector) => (selector === "[data-list-heading]" ? heading : null),
 	};
 };
@@ -53,6 +59,22 @@ it("returns to the visible twin when the captured button was replaced", () => {
 	const twin = element({ key: "proxy-host-1" });
 	const heading = element();
 	assert.equal(returnTarget(fakeDoc({ buttons: [hiddenTwin, twin], heading }), captured), twin);
+});
+
+it("finds the row's edit button by its own attribute", () => {
+	const menu = element({ key: "proxy-host-1" });
+	const edit = element({ key: "proxy-host-1", attr: "data-row-edit" });
+	const doc = fakeDoc({ buttons: [menu, edit] });
+	assert.equal(findRowActions(doc, "proxy-host-1", "data-row-edit"), edit);
+	assert.equal(findRowActions(doc, "proxy-host-1"), menu);
+	assert.equal(rowActionsSelector("x-1", "data-row-edit"), '[data-row-edit="x-1"]');
+});
+
+it("returns to the visible twin of a replaced edit button", () => {
+	const captured = element({ key: "proxy-host-1", attr: "data-row-edit", connected: false });
+	const menuTwin = element({ key: "proxy-host-1" });
+	const twin = element({ key: "proxy-host-1", attr: "data-row-edit" });
+	assert.equal(returnTarget(fakeDoc({ buttons: [menuTwin, twin] }), captured), twin);
 });
 
 it("falls back to the list heading when the row is gone or nothing was captured", () => {

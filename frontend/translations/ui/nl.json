@@ -416,6 +416,8 @@
 	"list.filter.without": "Zonder certificaat",
 	"list.no-match": "Geen items voldoen aan de filters",
 	"list.row-actions": "Acties voor {name}",
+	"list.row-edit": "{name} bewerken",
+	"list.row-view": "{name} bekijken",
 	"list.shown": "{shown} van {total} getoond",
 	"list.sort-by": "Sorteren op",
 	"list.sort-desc": "Aflopende volgorde",

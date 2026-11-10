@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Lock, MonitorOff, Pencil, Power, ShieldCheck, ShieldOff, Trash2, Users } from "lucide-react";
+import { Lock, MonitorOff, Power, ShieldCheck, ShieldOff, SquarePen, Trash2, Users } from "lucide-react";
 import { useMemo } from "react";
 import {
 	EmailFormatter,
@@ -42,7 +42,14 @@ function UserActions({
 			focusKey={`user-${user.id}`}
 			title={<T id="object.actions-title" tData={{ object: "user" }} data={{ id: user.id }} />}
 			items={[
-				{ key: "edit", label: <T id="action.edit" />, icon: Pencil, onSelect: () => onEditUser?.(user.id) },
+				{
+					key: "edit",
+					label: <T id="action.edit" />,
+					icon: SquarePen,
+					primary: true,
+					ariaLabel: intl.formatMessage({ id: "list.row-edit" }, { name: user.name || `#${user.id}` }),
+					onSelect: () => onEditUser?.(user.id),
+				},
 				{
 					key: "permissions",
 					label: <T id="action.permissions" />,
