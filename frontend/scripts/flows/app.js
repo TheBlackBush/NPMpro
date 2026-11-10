@@ -4,6 +4,8 @@ import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import { ADMIN_EMAIL, cleanUp, revealRow, rowOf, signIn, VIEWER_EMAIL, windowClosed, withToast } from "./lib.js";
 
+// the German strings are a chunk of their own, named after de.json
+const GERMAN_CHUNK = /\/assets\/de-[\w-]+\.js$/u;
 const SWITCH = "#runtime-logNotFound";
 // a switch is a checkbox input or a button with aria-checked
 const switchOn = (selector) => {
@@ -200,11 +202,27 @@ async function languageSwitch({ admin }) {
 	}
 }
 
+// The German strings cannot be fetched: the app still starts, in English
+async function languageFallback({ browser, base, password }) {
+	const session = await signIn(browser, base, ADMIN_EMAIL, password);
+	try {
+		const { page, context } = session;
+		await page.evaluate(() => localStorage.setItem("locale", "de"));
+		await context.route(GERMAN_CHUNK, (route) => route.abort());
+		await page.goto("/nginx/proxy");
+		await page.locator("[data-list-heading]").filter({ hasText: "Proxy Hosts" }).waitFor();
+		if (session.errors.length > 0) throw new Error(`page error: ${session.errors[0]}`);
+	} finally {
+		await session.context.close();
+	}
+}
+
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "help sheet", run: helpSheet },
 	{ name: "list paging", run: listPaging },
+	{ name: "language fallback", run: languageFallback },
 	{ name: "language", run: languageSwitch },
 ];
