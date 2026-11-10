@@ -120,10 +120,12 @@ async function listPaging({ admin }) {
 				clients: [{ address: "10.0.0.0/8", directive: "allow" }],
 			});
 		}
-		const total = (await api("GET", "/nginx/access-lists")).length;
+		const total = PAGE_NAMES.length;
 		await page.goto("/access");
 		await page.evaluate((key) => localStorage.removeItem(key), SIZE_KEY);
 		await page.reload();
+		// other access lists may exist: the flow works on its own 27
+		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-page-");
 		const bars = page.locator("[data-slot=table-pagination]");
 		const size = page.getByRole("combobox", { name: "Rows per page" }).first();
 		await bars.first().waitFor();
@@ -152,7 +154,7 @@ async function listPaging({ admin }) {
 		// a search from page 2: back to page 1
 		await bars.first().getByRole("button", { name: "Page 2", exact: true }).click();
 		await bars.first().getByText(`Showing 11 to 20 of ${total}`, { exact: true }).waitFor();
-		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-page-");
+		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-page");
 		await bars.first().getByText("Showing 1 to 10 of 27", { exact: true }).waitFor();
 
 		// the choice survives a reload

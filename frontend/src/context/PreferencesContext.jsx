@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
+	defaultPageSize,
 	EDITOR_KEY,
 	NAV_KEY,
 	PAGED_LISTS,
@@ -46,7 +47,9 @@ function useStored(key, parse, serialize = String) {
 export function PreferencesProvider({ children }) {
 	// rows per page of each paged list
 	const [pageSizes, setPageSizes] = useState(() =>
-		Object.fromEntries(PAGED_LISTS.map((list) => [list, parsePageSize(read(pageSizeKey(list)))])),
+		Object.fromEntries(
+			PAGED_LISTS.map((list) => [list, parsePageSize(read(pageSizeKey(list)), defaultPageSize(list))]),
+		),
 	);
 	const setPageSize = useCallback((list, size) => {
 		setPageSizes((current) => ({ ...current, [list]: size }));

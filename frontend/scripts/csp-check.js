@@ -3,8 +3,9 @@
 // The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
 // followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click,
 // waitFor (selectors), press (a key), viewport ([width, height], until the action ends) or skipIfDisabled (a selector:
-// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var) or skipIfMissing
-// (a selector: the rest is skipped, and logged, when nothing matches, e.g. the paging bar of a list with few rows).
+// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var), seedAccessLists (a
+// number: that many access lists named flow-csp-NN are created through the API, so a list has a paging bar; they are
+// removed when the action ends) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -24,6 +25,8 @@ const problems = [];
 // the paths opened and the paths they ended on (/settings redirects to /settings/default-site)
 const visited = new Set();
 
+// the access lists an action made with seedAccessLists, removed when it ends
+const seeded = [];
 const browser = await (engine === "webkit" ? webkit : chromium).launch();
 const options = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1440, height: 900 } };
 
@@ -48,6 +51,31 @@ async function watchedPage(browserContext) {
 	});
 	watched.on("pageerror", (error) => problems.push(`${watched.step}: page error: ${error.message}`));
 	return watched;
+}
+
+// the session's own requests: the same cookie as the page
+let session;
+const apiOf = (method, path, data) => session.request.fetch(`${base}/api${path}`, { method, data });
+
+async function seedAccessLists(count) {
+	for (let index = 1; index <= count; index++) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		const answer = await apiOf("POST", "/nginx/access-lists", {
+			name: `flow-csp-${String(index).padStart(2, "0")}`,
+			satisfy_any: true,
+			items: [{ username: "csp", password: "flow-password-1" }],
+			clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+		});
+		if (!answer.ok()) throw new Error(`seeding an access list failed: ${answer.status()}`);
+		seeded.push((await answer.json()).id);
+	}
+}
+
+async function removeSeeded() {
+	for (const id of seeded.splice(0)) {
+		// biome-ignore lint/performance/noAwaitInLoops: one request after another
+		await apiOf("DELETE", `/nginx/access-lists/${id}`).catch(() => undefined);
+	}
 }
 
 // the app's error pages (main.jsx's crash page, components/Unhealthy.jsx) carry data-error-page
@@ -89,6 +117,7 @@ try {
 	await setupContext.close();
 
 	const context = await browser.newContext(options);
+	session = context;
 	const page = await watchedPage(context);
 	await open(page, "/");
 	// the language and theme menus of the signed-out page (dropdowns render in a portal: check each opens and closes)
@@ -133,10 +162,8 @@ try {
 					console.log(`${page.step}: skipped (${step.skipIfDisabled} is disabled)`);
 					break;
 				}
-				if (step.skipIfMissing && (await page.locator(step.skipIfMissing).count()) === 0) {
-					console.log(`${page.step}: skipped (${step.skipIfMissing} is not on the page)`);
-					break;
-				}
+				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
+				if (step.reload) await page.reload();
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
 				if (step.click) await page.locator(step.click).first().click();
 				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
@@ -149,6 +176,7 @@ try {
 				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
 			);
 		} finally {
+			await removeSeeded();
 			// a phone action changes the size: every action starts on the desktop size again
 			await page.setViewportSize(options.viewport);
 		}

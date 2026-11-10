@@ -130,16 +130,6 @@
 			]
 		},
 		{
-			"name": "audit log rows per page",
-			"route": "/settings/audit-log",
-			"steps": [
-				{ "skipIfMissing": "role=combobox[name='Rows per page']" },
-				{ "click": "role=combobox[name='Rows per page']" },
-				{ "waitFor": "[data-slot=select-content]" },
-				{ "press": "Escape" }
-			]
-		},
-		{
 			"name": "audit log event details",
 			"route": "/settings/audit-log",
 			"steps": [
@@ -348,6 +338,20 @@
 				{ "click": "role=menuitem[name='Delete']" },
 				{ "waitFor": "[role=alertdialog]" },
 				{ "press": "Escape" }
+			]
+		},
+		{
+			"name": "access list rows per page",
+			"route": "/access",
+			"steps": [
+				{ "seedAccessLists": 11 },
+				{ "reload": true },
+				{ "waitFor": "[data-slot=table-pagination]" },
+				{ "click": "role=combobox[name='Rows per page']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "click": "role=option[name='10']" },
+				{ "click": "role=button[name='Page 2']" },
+				{ "waitFor": "role=button[name='Page 1']" }
 			]
 		},
 		{

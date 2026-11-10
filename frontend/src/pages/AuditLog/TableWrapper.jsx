@@ -91,8 +91,9 @@ export default function TableWrapper() {
 	});
 	if (total !== null && !isPlaceholderData && total !== knownTotal) setKnownTotal(total);
 
-	// a failed first load shows the error under the toolbar; a failed later page keeps the rows on screen
-	const firstPageFailed = !isPending && isError && !rows.length;
+	// a failed first load shows the error under the toolbar; a failed later page shows it in the table area, with the
+	// pager (and its known total) still there to go back to a page that works
+	const firstLoadFailed = isError && knownTotal === null;
 
 	const filtered = Boolean(query || objectType || action || userId);
 	const clearFilters = () => {
@@ -156,14 +157,17 @@ export default function TableWrapper() {
 				</div>
 				{isPending ? (
 					<LoadingPage noLogo delay={300} />
-				) : firstPageFailed ? (
+				) : firstLoadFailed ? (
 					<ErrorAlert error={error} className="m-3" />
 				) : (
-					<PagedTable paging={paging} total={total ?? 0}>
-						<Table data={rows} isFetching={isFetching} onSelectItem={showEventDetailsModal} />
+					<PagedTable paging={paging} total={total ?? knownTotal ?? 0}>
+						{isError ? (
+							<ErrorAlert error={error} className="m-3" />
+						) : (
+							<Table data={rows} isFetching={isFetching} onSelectItem={showEventDetailsModal} />
+						)}
 					</PagedTable>
 				)}
-				{isError && rows.length ? <ErrorAlert error={error} className="m-3" /> : null}
 			</div>
 		</section>
 	);
