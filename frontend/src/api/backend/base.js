@@ -21,7 +21,7 @@ function buildUrl({ url, params }) {
 export const BACKUP_RAW_KEYS = ["counts", "certificate_kinds", "certificateKinds", "items", "choices"];
 
 // url is "/backups..." (request) or "/api/backups..." (response path)
-const isBackupUrl = (url) => /^(\/api)?\/backups(?:[/?]|$)/u.test(url);
+const isBackupUrl = (url) => /^(?:\/api)?\/backups(?:[/?]|$)/u.test(url);
 
 function buildBody(data, url) {
 	const isBackupApi = typeof url === "string" && isBackupUrl(url);
