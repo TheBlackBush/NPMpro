@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import process from "node:process";
 
 export const ADMIN_EMAIL = "admin@example.com";
 export const VIEWER_EMAIL = "flow-viewer@example.com";
@@ -31,6 +32,12 @@ function apiOf(context, base) {
 export async function signIn(browser, base, email, password, viewport = CONTEXT.viewport) {
 	const context = await browser.newContext({ ...CONTEXT, viewport, baseURL: base });
 	const page = await context.newPage();
+	// a remote Chromium (FLOWS_CDP, local runs only) ignores the context's viewport and stays 800 x 600: set it by hand
+	// biome-ignore lint/style/noProcessEnv: the same switch as in run.js
+	if (process.env.FLOWS_CDP) {
+		const session = await context.newCDPSession(page);
+		await session.send("Emulation.setDeviceMetricsOverride", { ...viewport, deviceScaleFactor: 1, mobile: false });
+	}
 	page.setDefaultTimeout(15_000);
 	page.setDefaultNavigationTimeout(30_000);
 	const errors = [];
@@ -106,20 +113,18 @@ export async function saveWindowSent(page, object, apiPath) {
 	return (await sent).postDataJSON();
 }
 
-/** Throws unless every key of expected has exactly that value in row (compared as JSON) */
-export function assertFields(row, expected, what, { loose = false } = {}) {
-	// loose: a request carries the numbers of a form as text, and the API gives a stream port back as text
-	const same = (a, b) => JSON.stringify(a) === JSON.stringify(b) || (loose && String(a) === String(b));
+/** Throws unless every key of expected has exactly that value, of that type, in row (compared as JSON) */
+export function assertFields(row, expected, what) {
 	for (const [key, value] of Object.entries(expected)) {
-		if (!same(row[key], value)) {
+		if (JSON.stringify(row[key]) !== JSON.stringify(value)) {
 			throw new Error(`${what}: ${key} is ${JSON.stringify(row[key])}, expected ${JSON.stringify(value)}`);
 		}
 	}
 }
 
-/** Throws if row has any of the keys with a value (the fields of another host type) */
+/** Throws if row has any of the keys, null too (the fields of another host type: none is sent or returned today) */
 export function assertAbsent(row, keys, what) {
-	const found = keys.filter((key) => row[key] !== undefined && row[key] !== null);
+	const found = keys.filter((key) => row[key] !== undefined);
 	if (found.length > 0) throw new Error(`${what} holds fields of another host type: ${found.join(", ")}`);
 }
 
@@ -139,6 +144,12 @@ const ENABLED_CONTROLS = (root) =>
 				!(el.disabled || el.closest("fieldset:disabled") || el.readOnly) &&
 				el.getAttribute("aria-readonly") !== "true" &&
 				el.getAttribute("aria-disabled") !== "true" &&
+				// what a View window keeps usable on purpose: the cards of the locations open and close, and the filter
+				// above them works; their fields are checked with the cards open
+				!(el.hasAttribute("aria-expanded") && el.getAttribute("role") !== "combobox") &&
+				!el
+					.closest("[data-slot=input-group]")
+					?.querySelector('input[aria-label="Filter by path or destination"]') &&
 				el.getAttribute("aria-label") !== "Close" &&
 				el.textContent.trim() !== "Close",
 		)
@@ -161,6 +172,17 @@ export async function assertViewOnly(dialog, what) {
 	for (const tab of tabs) {
 		// biome-ignore lint/performance/noAwaitInLoops: one tab after another
 		await openTab(dialog, tab);
+		// biome-ignore lint/performance/noAwaitInLoops: one card after another
+		for (
+			let card = dialog
+				.locator("button[aria-expanded=false]:not([role=combobox])")
+				.filter({ visible: true })
+				.first();
+			await card.count();
+		) {
+			await card.click();
+			card = dialog.locator("button[aria-expanded=false]:not([role=combobox])").filter({ visible: true }).first();
+		}
 		const enabled = await dialog.evaluate(ENABLED_CONTROLS);
 		if (enabled.length > 0) throw new Error(`${what}: enabled controls on the ${tab} tab: ${enabled.join(", ")}`);
 		if (first && (await dialog.evaluate(COUNT_CONTROLS)) === 0)
@@ -194,15 +216,29 @@ export async function uploadCertificate(api, niceName) {
 }
 
 /**
- * Opens a page without a reload, as a menu link does (the router listens to popstate), so the query cache of the pages
- * visited before stays. The main menu is not shown at every width, so the link is not clicked.
+ * Opens a page through the main menu link of the top bar, as a user does (no reload, so the query cache of the pages
+ * visited before stays). A menu that is not shown is an app problem: the error says what the page had.
  */
 export async function openFromMenu(page, href) {
-	await page.evaluate((path) => {
-		window.history.pushState({}, "", path);
-		window.dispatchEvent(new PopStateEvent("popstate"));
-	}, href);
+	const link = page.locator(`header nav a[href="${href}"]`);
+	await link.first().waitFor({ state: "attached" });
+	if (!(await link.filter({ visible: true }).count())) {
+		const layout = await page.evaluate(() => window.localStorage.getItem("npmpro-nav"));
+		throw new Error(
+			`the menu link ${href} is not visible (viewport ${JSON.stringify(page.viewportSize())}, npmpro-nav ${layout})`,
+		);
+	}
+	await link.filter({ visible: true }).first().click();
 	await page.waitForURL(`**${href}`);
+}
+
+/** removeFlowData for a finally block: a failed cleanup is logged and never replaces the failure of the flow */
+export async function cleanUp(api) {
+	try {
+		await removeFlowData(api, false);
+	} catch (error) {
+		console.error(`cleanup failed: ${String(error.message).split("\n")[0]}`);
+	}
 }
 
 /** Removes what the flows create (not the viewer when withViewer is false, for a flow that is not the last): hosts and streams named flow-..., access lists named flow-... and the viewer */

@@ -2,7 +2,7 @@
 // (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
-import { ADMIN_EMAIL, rowOf, signIn, windowClosed, withToast } from "./lib.js";
+import { ADMIN_EMAIL, rowOf, signIn, VIEWER_EMAIL, windowClosed, withToast } from "./lib.js";
 
 const SWITCH = "#runtime-logNotFound";
 // a switch is a checkbox input or a button with aria-checked
@@ -64,17 +64,24 @@ async function phoneList({ browser, base, admin, password }) {
 	}
 }
 
-async function mfaWindow({ admin }) {
-	const { page } = admin;
-	await page.goto("/");
-	await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
-	await page.getByRole("menuitem", { name: "MFA", exact: true }).click();
-	// the setup step shows the QR code (not the svg icon of the close button); nothing is enabled, Escape ends it
-	await page.getByRole("dialog").getByRole("button", { name: "Enable TOTP", exact: true }).click();
-	await page.getByRole("dialog").locator("svg[role=img]").first().waitFor();
-	await page.keyboard.press("Escape");
-	await windowClosed(page);
-	await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Open user menu");
+// the limited flow user: starting the setup stores a pending secret, which goes with the user (the admin would keep it)
+async function mfaWindow({ browser, base, viewerPassword }) {
+	const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
+	try {
+		const { page } = viewer;
+		await page.goto("/");
+		await page.locator("header").getByRole("button", { name: "Open user menu" }).click();
+		await page.getByRole("menuitem", { name: "MFA", exact: true }).click();
+		// the setup step shows the QR code (not the svg icon of the close button); nothing is enabled, Escape ends it
+		await page.getByRole("dialog").getByRole("button", { name: "Enable TOTP", exact: true }).click();
+		await page.getByRole("dialog").locator("svg[role=img]").first().waitFor();
+		await page.keyboard.press("Escape");
+		await windowClosed(page);
+		await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Open user menu");
+		if (viewer.errors.length > 0) throw new Error(`page error for the viewer: ${viewer.errors[0]}`);
+	} finally {
+		await viewer.context.close();
+	}
 }
 
 async function helpSheet({ admin }) {

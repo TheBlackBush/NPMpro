@@ -1,11 +1,11 @@
 // The proxy host window with a custom location, an access list and a certificate (and the lists that must follow), a
 // save that nginx refuses and its re-save, and the unsaved-changes question of all four host windows.
-import { TYPES, unsavedChanges } from "./hosts.js";
+import { TYPES, unsavedChanges, viewOnly } from "./hosts.js";
 import {
 	addDomain,
+	cleanUp,
 	openFromMenu,
 	openTab,
-	removeFlowData,
 	rowAction,
 	rowShows,
 	saveWindow,
@@ -19,8 +19,8 @@ const CUSTOM_OPTION = /^Custom/u;
 const FLOW_LIST_OPTION = /flow-acl/u;
 const FLOW_CERTIFICATE_OPTION = /flow-cert/u;
 
-async function proxyLocationAccess({ admin }) {
-	const { page, api } = admin;
+async function proxyLocationAccess(env) {
+	const { page, api } = env.admin;
 	try {
 		const list = await api("POST", "/nginx/access-lists", {
 			name: "flow-acl",
@@ -67,6 +67,16 @@ async function proxyLocationAccess({ admin }) {
 		if (!host.access_lists?.some((row) => row.id === list.id)) throw new Error("the access list was not stored");
 		if (!host.certificate_id) throw new Error("the certificate was not stored");
 
+		// a host with a certificate: the TLS tab controls are open to the rules, so only the View window locks them
+		await viewOnly(
+			{
+				...TYPES.find((type) => type.name === "proxy hosts"),
+				label: "flow-location.example.com",
+				noAdvanced: true,
+			},
+			env,
+		);
+
 		// the other lists follow the save without a reload
 		await openFromMenu(page, "/access");
 		await rowShows(page, "flow-acl", "1 Proxy Host");
@@ -93,7 +103,7 @@ async function proxyLocationAccess({ admin }) {
 		await openFromMenu(page, "/certificates");
 		await rowShows(page, "flow-cert", "Not Used");
 	} finally {
-		await removeFlowData(api, false);
+		await cleanUp(api);
 	}
 }
 
@@ -123,7 +133,7 @@ async function nginxErrorResave({ admin }) {
 		);
 		if (saved.length !== 1) throw new Error(`${saved.length} hosts saved, expected one`);
 	} finally {
-		await removeFlowData(api, false);
+		await cleanUp(api);
 	}
 }
 

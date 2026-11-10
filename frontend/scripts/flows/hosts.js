@@ -5,8 +5,8 @@ import {
 	assertAbsent,
 	assertFields,
 	assertViewOnly,
+	cleanUp,
 	openTab,
-	removeFlowData,
 	rowAction,
 	rowGone,
 	rowShows,
@@ -32,6 +32,8 @@ const STREAM_ONLY = [
 ];
 const HOST_ONLY = ["domain_names", "advanced_config", "ssl_forced"];
 
+// The values are compared with their types, in the request and in the stored row: today the stream ports are text in
+// both and the proxy host port is a number. A change of a type must be made on purpose, here too.
 export const TYPES = [
 	{
 		name: "404 hosts",
@@ -66,7 +68,11 @@ export const TYPES = [
 		},
 		edit: (dialog) => dialog.locator("input[name=forwardDomainName]").fill("target2.example.org"),
 		edited: "target2.example.org",
-		created: { domain_names: ["flow-redirect.example.com"], forward_domain_name: "target.example.org" },
+		created: {
+			domain_names: ["flow-redirect.example.com"],
+			forward_domain_name: "target.example.org",
+			forward_http_code: 301,
+		},
 		changed: { forward_domain_name: "target2.example.org", advanced_config: "# flow" },
 		foreign: [...PROXY_ONLY, ...STREAM_ONLY],
 		kept: (dialog) =>
@@ -117,12 +123,16 @@ export const TYPES = [
 		edit: (dialog) => dialog.locator("input[name=npmproDescription]").fill("flow-stream edited"),
 		edited: "flow-stream edited",
 		created: {
-			incoming_port: 19601,
+			incoming_port: "19601",
 			forwarding_host: "127.0.0.1",
-			forwarding_port: 8080,
+			forwarding_port: "8080",
 			npmpro_description: "flow-stream",
 		},
-		changed: { forwarding_port: 8080, npmpro_description: "flow-stream edited", npmpro_advanced_config: "# flow" },
+		changed: {
+			forwarding_port: "8080",
+			npmpro_description: "flow-stream edited",
+			npmpro_advanced_config: "# flow",
+		},
 		foreign: [...PROXY_ONLY, ...REDIRECTION_ONLY, ...HOST_ONLY],
 		kept: (dialog) =>
 			dialog.locator("input[name=incomingPort]").evaluate((el) => {
@@ -134,7 +144,7 @@ export const TYPES = [
 ];
 
 // the limited user sees one menu item, View, and a window where nothing can be changed or saved
-async function viewOnly(type, { browser, base, viewerPassword }) {
+export async function viewOnly(type, { browser, base, viewerPassword }) {
 	const viewer = await signIn(browser, base, VIEWER_EMAIL, viewerPassword);
 	try {
 		const { page } = viewer;
@@ -153,7 +163,8 @@ async function viewOnly(type, { browser, base, viewerPassword }) {
 			throw new Error("the View window can save");
 		await assertViewOnly(dialog, `${type.object} View window`);
 		await openTab(dialog, "advanced");
-		if ((await dialog.locator(type.advanced).getAttribute("readonly")) === null) {
+		// a host without any advanced config shows no textarea in a View window (assertViewOnly saw the tab)
+		if (!type.noAdvanced && (await dialog.locator(type.advanced).getAttribute("readonly")) === null) {
 			throw new Error("the advanced config can be edited in the View window");
 		}
 		await page.keyboard.press("Escape");
@@ -170,24 +181,24 @@ const sentTo = (type) => `/nginx/${type.path}`;
 // biome-ignore lint/complexity/useMaxParams: the parts of one check
 async function checkSaved(type, api, sent, expected, step) {
 	assertAbsent(sent, type.foreign, `${type.object} ${step} request`);
-	assertFields(sent, expected, `${type.object} ${step} request`, { loose: true });
+	assertFields(sent, expected, `${type.object} ${step} request`);
 	const row = (await api("GET", sentTo(type))).find(type.matches);
 	if (!row) throw new Error(`${type.object} ${step}: the host is not stored`);
 	assertAbsent(row, type.foreign, `${type.object} ${step}, stored,`);
-	assertFields(row, expected, `${type.object} ${step}, stored`, { loose: true });
+	assertFields(row, expected, `${type.object} ${step}, stored`);
 	return row;
 }
 
 async function checkStored(type, api, expected) {
 	const row = (await api("GET", sentTo(type))).find(type.matches);
-	assertFields(row, expected, `${type.object} after a discarded edit`, { loose: true });
+	assertFields(row, expected, `${type.object} after a discarded edit`);
 }
 
 async function hostFlow(type, env) {
 	try {
 		await hostSteps(type, env);
 	} finally {
-		await removeFlowData(env.admin.api, false);
+		await cleanUp(env.admin.api);
 	}
 }
 
