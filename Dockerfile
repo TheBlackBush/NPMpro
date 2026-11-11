@@ -280,7 +280,7 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     wget -q https://raw.githubusercontent.com/vasilevich/nginxbeautifier/"$NBF_VER"/nginxbeautifier.js -O /usr/local/bin/nginxbeautifier.js && \
     echo "406f715ae944cc46ae31e79a1bc3ea758f91605621113b8a29f5332fe13f0a83  /usr/local/bin/nginxbeautifier.js" | sha256sum -c - && \
     sed -i "s|code.slice(0, startOfParanthesis - 1)|code.slice(0, startOfParanthesis)|g" /usr/local/bin/nginxbeautifier.js && \
-    chmod +x /usr/local/bin/certbot-ocsp-fetcher.sh /usr/local/bin/nginxbeautifier /usr/local/bin/nginxbeautifier.js && \
+    chmod +x /usr/local/bin/* && \
     \
     ln -s /usr/local/nginx/sbin/nginx /usr/local/bin/nginx && \
     ln -s /app/password-reset.js /usr/local/bin/password-reset.js && \
