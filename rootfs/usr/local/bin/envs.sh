@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting: a restart loop would repeat ACME requests and flood the log.
+# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting:
+# a restart loop would repeat ACME requests and flood the log.
 
 umask 022
 
@@ -90,20 +91,19 @@ for name in $NPMPRO_RUNTIME_ENVS $NPMPRO_STARTUP_ENVS; do
 done
 export NPMPRO_USER_ENV
 
-# TZ, GOA and the GoAccess options saved in the UI (Settings), for the ones the env does not set; after NPMPRO_USER_ENV, so they do not count
-# as set by the user, and before their defaults and checks below. The file is parsed line by line, never sourced.
+# TZ, GOA and the GoAccess options saved in the UI, where the env does not set them; after NPMPRO_USER_ENV so they do
+# not count as set by the user. The file is parsed line by line, never sourced.
 # shellcheck source=/dev/null
 . /usr/local/bin/startup-settings.sh
 startup_settings_warn /data/npmpro/startup-settings.env
 if [ -z "$TZ" ]; then
     TZ="$(startup_setting /data/npmpro/startup-settings.env TZ)"
-    # without TZ from the env or the UI
     export TZ="${TZ:-UTC}"
 fi
 if [ -z "$GOA" ]; then
     GOA="$(startup_setting /data/npmpro/startup-settings.env GOA)"
 fi
-# the GoAccess options from the UI become fixed GOACLA flags; a GOACLA from the env wins (checked below like before)
+# the GoAccess options from the UI become fixed GOACLA flags; a GOACLA from the env wins
 if [ -z "$GOACLA" ]; then
     GOACLA="$(startup_settings_goacla /data/npmpro/startup-settings.env)"
 fi

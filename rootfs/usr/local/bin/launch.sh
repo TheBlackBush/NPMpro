@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting: a restart loop would repeat ACME requests and flood the log.
+# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting:
+# a restart loop would repeat ACME requests and flood the log.
 
 echo "
 -------------------------------------

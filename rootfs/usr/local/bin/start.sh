@@ -2,7 +2,8 @@
 # Runs as root. With PUID set, root never runs, sources, chowns or writes through anything the PUID user can change:
 # image code stays root-owned, the few runtime folders are recreated before they are handed over (without
 # recursion), and the /data housekeeping (data-setup.sh) runs as the PUID user.
-# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting: a restart loop would repeat ACME requests and flood the log.
+# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting:
+# a restart loop would repeat ACME requests and flood the log.
 
 umask 022
 
@@ -36,7 +37,7 @@ mkdir -p /tmp/npmhome /tmp/goa /tmp/crontabs /tmp/certbot-log /tmp/certbot-work 
 rm -rf /usr/local/nginx/logs /usr/local/nginx/client_body_temp /usr/local/nginx/proxy_temp /usr/local/nginx/fastcgi_temp /usr/local/nginx/uwsgi_temp /usr/local/nginx/scgi_temp
 mkdir -p /usr/local/nginx/logs
 
-# the live certbot config, written again by the backend when the certificate settings change (PUID can not write /etc)
+# the live certbot config; the backend rewrites it when the certificate settings change (PUID can not write /etc)
 cp /etc/certbot.ini /run/npmpro/certbot.ini
 if [ "$ACME_KEY_TYPE" = "rsa" ]; then
     sed -i "s|key-type = ecdsa|key-type = rsa|g" /run/npmpro/certbot.ini
@@ -58,7 +59,7 @@ if [ "$ACME_PROFILE" != "none" ]; then
     sed -i "s|#required-profile|required-profile = $ACME_PROFILE|g" /run/npmpro/certbot.ini
 fi
 
-# the live logrotate config, written again by the backend when the log rotations setting changes
+# the live logrotate config; the backend rewrites it when the log rotations setting changes
 cp /etc/logrotate /run/npmpro/logrotate
 sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /run/npmpro/logrotate
 
