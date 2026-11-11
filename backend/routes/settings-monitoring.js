@@ -60,11 +60,7 @@ geoipRouter
 	.route("/update")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/settings/geoip/update
-	 *
-	 * Download the GeoIP databases now
-	 */
+	/** POST /api/settings/geoip/update */
 	.post(async (_, res) => {
 		res.status(200).send(await internalMonitoringSetting.updateGeoipNow(res.locals.access));
 	});

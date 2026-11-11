@@ -34,11 +34,7 @@ router
 	.route("/")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/settings
-	 *
-	 * Retrieve all settings
-	 */
+	/** GET /api/settings */
 	.get(async (_, res) => {
 		const rows = await internalSetting.getAll(res.locals.access);
 		res.status(200).send(rows);
@@ -54,19 +50,13 @@ router.use("/runtime", runtimeRouter);
 router.use("/environment", environmentRouter);
 
 /**
- * Specific setting
- *
  * /api/settings/something
  */
 router
 	.route("/:setting_id")
 	.all(jwtdecode())
 
-	/**
-	 * GET /settings/something
-	 *
-	 * Retrieve a specific setting
-	 */
+	/** GET /settings/something */
 	.get(async (req, res) => {
 		const data = validator(settingSchema, {
 			setting_id: req.params.setting_id,
@@ -77,11 +67,7 @@ router
 		res.status(200).send(row);
 	})
 
-	/**
-	 * PUT /api/settings/something
-	 *
-	 * Update and existing setting
-	 */
+	/** PUT /api/settings/something */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/{settingID}", "put"), req.body);
 		payload.id = req.params.setting_id;

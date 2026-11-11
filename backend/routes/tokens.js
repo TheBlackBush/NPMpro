@@ -29,13 +29,7 @@ const limiter = rateLimit({
 router
 	.route("/")
 
-	/**
-	 * GET /tokens
-	 *
-	 * Get a new Token, given they already have a token they want to refresh
-	 * We also piggy back on to this method, allowing admins to get tokens
-	 * for services like Job board and Worker.
-	 */
+	/** GET /tokens: refreshes the token of a caller who already has one */
 	.get(jwtdecode(), (_, res) => {
 		const data = internalToken.getFreshToken(res.locals.access);
 
@@ -50,11 +44,7 @@ router
 		res.status(200).send({ expires: data.expires });
 	})
 
-	/**
-	 * POST /tokens
-	 *
-	 * Create a new Token
-	 */
+	/** POST /tokens */
 	.post(limiter, async (req, res) => {
 		const cfg = await getOidcConfig();
 		if (cfg.active && cfg.values.disable_password) {
@@ -86,21 +76,13 @@ router
 		res.status(200).send(responseBody);
 	})
 
-	/**
-	 * DELETE /tokens
-	 *
-	 * Delete the Token
-	 */
+	/** DELETE /tokens */
 	.delete(createLogoutHandler({ revokeSession, loadToken: (token) => TokenModel().load(token) }));
 
 router
 	.route("/totp")
 
-	/**
-	 * POST /tokens/totp
-	 *
-	 * Verify TOTP code and get full token
-	 */
+	/** POST /tokens/totp */
 	.post(limiter, async (req, res) => {
 		const { code } = apiValidator(getValidationSchema("/tokens/totp", "post"), req.body);
 		const result = await internalToken.verifyTotp(req.signedCookies?.["__Host-Http-challenge_token"], code);

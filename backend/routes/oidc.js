@@ -95,11 +95,7 @@ const fail = (res, code) => {
 router
 	.route("/")
 
-	/**
-	 * GET /api/oidc
-	 *
-	 * OAuth Authorization Code flow initialisation
-	 */
+	/** GET /api/oidc */
 	.get(async (_, res) => {
 		try {
 			const cfg = await getOidcConfig();
@@ -152,11 +148,7 @@ const exchangeCode = async (req, values) => {
 router
 	.route("/callback")
 
-	/**
-	 * GET /api/oidc/callback
-	 *
-	 * Oauth Authorization Code flow callback
-	 */
+	/** GET /api/oidc/callback */
 	.get(async (req, res) => {
 		let cfg;
 		let claims;

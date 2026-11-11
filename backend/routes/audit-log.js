@@ -88,11 +88,7 @@ router
 	.route("/")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/audit-log
-	 *
-	 * Retrieve all logs
-	 */
+	/** GET /api/audit-log */
 	.get(async (req, res) => {
 		const data = validator(listSchema, {
 			expand: typeof req.query.expand === "string" ? req.query.expand.split(",") : null,
@@ -119,19 +115,13 @@ router
 	});
 
 /**
- * Specific audit log entry
- *
  * /api/audit-log/123
  */
 router
 	.route("/:event_id")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/audit-log/123
-	 *
-	 * Retrieve a specific entry
-	 */
+	/** GET /api/audit-log/123 */
 	.get(async (req, res) => {
 		const data = validator(eventSchema, {
 			event_id: req.params.event_id,

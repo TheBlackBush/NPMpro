@@ -15,11 +15,7 @@ router
 	.route("/check")
 	.all(requireLogin())
 
-	/**
-	 * GET /api/version/check
-	 *
-	 * Check for available updates
-	 */
+	/** GET /api/version/check */
 	.get(async (_, res) => {
 		res.status(200).send(await internalRemoteVersion.get());
 	});
