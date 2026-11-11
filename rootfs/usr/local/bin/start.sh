@@ -2,6 +2,7 @@
 # Runs as root. With PUID set, root never runs, sources, chowns or writes through anything the PUID user can change:
 # image code stays root-owned, the few runtime folders are recreated before they are handed over (without
 # recursion), and the /data housekeeping (data-setup.sh) runs as the PUID user.
+# A fatal setting prints the reason and sleeps (sleep inf) instead of exiting: a restart loop would repeat ACME requests and flood the log.
 
 umask 022
 
@@ -62,69 +63,13 @@ cp /etc/logrotate /run/npmpro/logrotate
 sed -i "s|rotate [0-9]\+|rotate $LOGROTATIONS|g" /run/npmpro/logrotate
 
 
-if [ "$PHP83" = "true" ]; then
-    apk add --no-cache php83-fpm
-    # From https://github.com/nextcloud/all-in-one/pull/1377/files
-    if [ -n "$PHP83_APKS" ]; then
-        for apk in $(echo "$PHP83_APKS" | tr " " "\n"); do
-            if ! echo "$apk" | grep -q "^php83-.*$"; then
-                echo "$apk is a non allowed value."
-                echo "It needs to start with \"php83-\"."
-                echo "It is set to \"$apk\"."
-                sleep inf
-            fi
-            echo "Installing $apk via apk..."
-            if ! apk add --no-cache "$apk" > /dev/null 2>&1; then
-                echo "The apk \"$apk\" was not installed!"
-            fi
-        done
-    fi
-fi
-
-if [ "$PHP84" = "true" ]; then
-    apk add --no-cache php84-fpm
-    # From https://github.com/nextcloud/all-in-one/pull/1377/files
-    if [ -n "$PHP84_APKS" ]; then
-        for apk in $(echo "$PHP84_APKS" | tr " " "\n"); do
-            if ! echo "$apk" | grep -q "^php84-.*$"; then
-                echo "$apk is a non allowed value."
-                echo "It needs to start with \"php84-\"."
-                echo "It is set to \"$apk\"."
-                sleep inf
-            fi
-            echo "Installing $apk via apk..."
-            if ! apk add --no-cache "$apk" > /dev/null 2>&1; then
-                echo "The apk \"$apk\" was not installed!"
-            fi
-        done
-    fi
-fi
-
-if [ "$PHP85" = "true" ]; then
-    apk add --no-cache php85-fpm
-    # From https://github.com/nextcloud/all-in-one/pull/1377/files
-    if [ -n "$PHP85_APKS" ]; then
-        for apk in $(echo "$PHP85_APKS" | tr " " "\n"); do
-            if ! echo "$apk" | grep -q "^php85-.*$"; then
-                echo "$apk is a non allowed value."
-                echo "It needs to start with \"php85-\"."
-                echo "It is set to \"$apk\"."
-                sleep inf
-            fi
-            echo "Installing $apk via apk..."
-            if ! apk add --no-cache "$apk" > /dev/null 2>&1; then
-                echo "The apk \"$apk\" was not installed!"
-            fi
-        done
-    fi
-fi
-
-if { [ "$PHP83" = "true" ] || [ "$PHP84" = "true" ] || [ "$PHP85" = "true" ]; } && [ -n "$PHP_APKS" ]; then
-    # From https://github.com/nextcloud/all-in-one/pull/1377/files
-    for apk in $(echo "$PHP_APKS" | tr " " "\n"); do
-        if ! echo "$apk" | grep -q "^php-.*$"; then
+# PHP from Alpine at every start (PHPxx), its extensions (PHPxx_APKS) and extra php- packages (PHP_APKS); the name
+# check is from https://github.com/nextcloud/all-in-one/pull/1377/files
+php_apks() { # $1: the prefix every name must have, $2: the list
+    for apk in $(echo "$2" | tr " " "\n"); do
+        if ! echo "$apk" | grep -q "^$1-.*$"; then
             echo "$apk is a non allowed value."
-            echo "It needs to start with \"php-\"."
+            echo "It needs to start with \"$1-\"."
             echo "It is set to \"$apk\"."
             sleep inf
         fi
@@ -133,6 +78,20 @@ if { [ "$PHP83" = "true" ] || [ "$PHP84" = "true" ] || [ "$PHP85" = "true" ]; } 
             echo "The apk \"$apk\" was not installed!"
         fi
     done
+}
+
+php_on=false
+for v in 83 84 85; do
+    [ "$(printenv "PHP$v")" = "true" ] || continue
+    php_on=true
+    apk add --no-cache "php$v-fpm"
+    apks="$(printenv "PHP${v}_APKS")"
+    if [ -n "$apks" ]; then
+        php_apks "php$v" "$apks"
+    fi
+done
+if [ "$php_on" = "true" ] && [ -n "$PHP_APKS" ]; then
+    php_apks php "$PHP_APKS"
 fi
 
 
