@@ -92,10 +92,10 @@ export const statusClass = (status) => {
 
 /**
  * True for NPMpro's own requests, which are not visitor traffic: requests nginx received on the admin UI port
- * ($server_port at the end of the line), which includes the container health check. When the admin port is 80 or
- * 443, proxy hosts share it, and for requests over a unix socket (empty $server_port), only a health check (user
- * agent "NPMpro/healthcheck") from a loopback address or the configured binding address is skipped. Lines written before $server_port was added fall back to the port in the raw host field, which is the
- * port the browser sent (a remapped Docker port is not recognised there).
+ * ($server_port at the end of the line), including the container health check. When the admin port is 80 or 443, proxy
+ * hosts share it, and for requests over a unix socket (empty $server_port) only a health check (user agent
+ * "NPMpro/healthcheck") from a loopback address or the configured binding address is skipped. Lines written before
+ * $server_port was added fall back to the port the browser sent (a remapped Docker port is not recognised there).
  * @param {string} line a raw alog line
  * @param {string | number | null | undefined} adminPort NPM_PORT
  * @param {string[]} [bindAddresses] addresses the health check may come from besides loopback (NPM_IPV4_BINDING)

@@ -22,10 +22,9 @@ const expandIpv6 = (ip) => {
 };
 
 /**
- * The value a visitor is counted by: IPv4 as is, IPv4-mapped IPv6 (also `::ffff:cb00:7107`) as plain IPv4,
- * other IPv6 as its /64 network in a fixed form (`2001:db8:1:2::/64`: lower case, no leading zeros, zone id
- * dropped), since one device often changes its address within the /64 during a day.
- * Anything that is not an IP address is returned unchanged.
+ * The value a visitor is counted by: IPv4 as is, IPv4-mapped IPv6 (also `::ffff:cb00:7107`) as plain IPv4, other IPv6
+ * as its /64 network in a fixed form (`2001:db8:1:2::/64`: lower case, no leading zeros, zone id dropped), since one
+ * device often changes its address within the /64 during a day. Anything that is not an IP address is unchanged.
  *
  * @param   {String}  ip
  * @returns {String}
@@ -62,8 +61,8 @@ const readKey = (meta, box) => {
 };
 
 /**
- * Loads the visitor key from the traffic meta, or creates and stores a new one.
- * `created` is true when a new key was created, `replaced` when it replaced a stored key that could not be read.
+ * Loads the visitor key from the traffic meta, or creates and stores a new one. `created` is true when a new key was
+ * created, `replaced` when it replaced a stored key that could not be read.
  *
  * @param   {Object}  options
  * @param   {() => Promise<Object|undefined>}  options.readMeta

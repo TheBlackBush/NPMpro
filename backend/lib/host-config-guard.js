@@ -2,10 +2,10 @@ import path from "node:path";
 import errs from "./error.js";
 
 /**
- * Raw nginx config and file serving are admin-only. Every host field below is rendered verbatim into an nginx
- * template, so whoever sets it controls nginx (which runs as root). Non-admins may keep a value an admin set, but not
- * set or change one. The "path" forward scheme turns forward_host into `root`/`alias`, so non-admins may only serve
- * files from below WEBROOT.
+ * Raw nginx config and file serving are admin-only: every host field below is rendered verbatim into an nginx template,
+ * so whoever sets it controls nginx (which runs as root). Non-admins may keep a value an admin set, but not set or
+ * change one. The "path" forward scheme turns forward_host into `root`/`alias`, so non-admins may only serve files from
+ * below WEBROOT.
  */
 
 const WEBROOT = "/var/www";
@@ -52,9 +52,9 @@ const sameConfig = (value, stored) =>
 	isBlank(value) ? isBlank(stored) : !isBlank(stored) && asText(value) === asText(stored);
 
 /**
- * True when value is an absolute path that stays inside WEBROOT: no `..` segment, no characters nginx would treat
- * specially in an unquoted `root`/`alias` argument (variables, quotes, escapes, `;`, braces, comments) and no
- * whitespace or control characters.
+ * True when value is an absolute path that stays inside WEBROOT: no `..` segment, no characters nginx treats specially
+ * in an unquoted `root`/`alias` argument (variables, quotes, escapes, `;`, braces, comments), no whitespace or control
+ * characters.
  *
  * @param   {*}  value
  * @returns {Boolean}
@@ -180,8 +180,6 @@ const assertUniqueLocations = (locations) => {
 };
 
 /**
- * All checks for one host create or update.
- *
  * @param {Object}  access
  * @param {String}  hostType  key of CONFIG_FIELDS
  * @param {Object}  data

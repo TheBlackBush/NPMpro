@@ -5,14 +5,13 @@ const NEWLINE = 0x0a;
 /**
  * Follows a log file that is rotated with copytruncate.
  *
- * The returned state is `{ inode, offset }` where `offset` is the byte position of the first byte that was not
- * handed out as a complete line, i.e. the start of a trailing partial line. Nothing else is kept in memory between
- * reads except a flag for a line that is being skipped, so a restart from a saved state loses nothing: the partial
- * line is simply read again. Lines are cut on the newline byte before decoding, so a multi-byte UTF-8 character
- * split across a chunk boundary is never corrupted.
+ * The returned state is `{ inode, offset }`: the byte position of the first byte not handed out as a complete line (the
+ * start of a trailing partial line). Nothing else is kept between reads except a flag for a line that is being skipped,
+ * so a restart from a saved state loses nothing: the partial line is read again. Lines are cut on the newline byte
+ * before decoding, so a multi-byte UTF-8 character split across a chunk boundary is never corrupted.
  *
- * Result of read(): `{ lines, state, missing, dropped }`. `dropped` counts lines longer than `maxChunk` that were
- * discarded (their bytes are skipped up to the next newline).
+ * Result of read(): `{ lines, state, missing, dropped }`; `dropped` counts lines longer than `maxChunk` (skipped up to
+ * the next newline).
  *
  * Known limitation: rotation is detected by an inode change or by a size smaller than the saved offset. If the file
  * is truncated and refilled beyond the old offset between two reads, the size is not smaller and the new content

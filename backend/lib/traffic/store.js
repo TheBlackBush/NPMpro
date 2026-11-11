@@ -26,7 +26,6 @@ const TABLES = {
 	ips: ["traffic_ip_hour", ["bucket", "host", "ip"], ["requests"]],
 };
 
-// every table with stored traffic data (deleteAll empties them all)
 const ALL_TABLES = [
 	"traffic_minute",
 	"traffic_hour",
@@ -48,9 +47,9 @@ const chunks = (list, size) => {
 };
 
 /**
- * Adds the counters to the stored rows with the same unique key and inserts the rest.
- * One select per bucket chunk, chunked inserts for new rows, one update per existing row
- * (`col = col + ?`). Portable across SQLite, MySQL and Postgres; the caller runs it in a transaction.
+ * Adds the counters to the stored rows with the same unique key and inserts the rest: one select per bucket chunk,
+ * chunked inserts for new rows, one update per existing row (`col = col + ?`). Portable across SQLite, MySQL and
+ * Postgres; the caller runs it in a transaction.
  */
 const addRows = async (trx, kind, rows = []) => {
 	const [table, keys, adds] = TABLES[kind];
@@ -117,8 +116,8 @@ const withTotals = (rows = []) => [...rows, ...rows.map((row) => ({ ...row, host
 const top = (rows, limit) => rows.slice(0, limit);
 
 /**
- * Single-writer assumption: flush and rollUpAndPrune must run through one queue (never concurrently),
- * because the select-then-write upserts would race on the unique indexes. The traffic service serialises them.
+ * Single-writer assumption: flush and rollUpAndPrune must run through one queue (never concurrently), because the
+ * select-then-write upserts would race on the unique indexes. The traffic service serialises them.
  *
  * @param   {Object}  knex  knex instance
  * @returns {Object}  store functions
@@ -176,9 +175,9 @@ export const createStore = (knex) => {
 		});
 
 	/**
-	 * Distinct visitor hashes from startDay (UTC day number) on. The empty hash is the cap marker: it is not
-	 * counted and sets `capped` when it matches the same filter. A marker stays when the cap is raised later, so a
-	 * day that reached the old cap still reports `capped` while it counts more visitors.
+	 * Distinct visitor hashes from startDay (UTC day number) on. The empty hash is the cap marker: it is not counted and
+	 * sets `capped` when it matches the same filter. A marker stays when the cap is raised later, so a day that reached
+	 * the old cap still reports `capped` while it counts more visitors.
 	 *
 	 * @param   {Object}         args
 	 * @param   {Number}         args.startDay
@@ -196,8 +195,8 @@ export const createStore = (knex) => {
 	};
 
 	/**
-	 * Stored visitor hashes (without the empty marker) and the cap marker per (day, host) for the given days, so
-	 * the counter can keep the per day cap across restarts without counting returning visitors twice.
+	 * Stored visitor hashes (without the empty marker) and the cap marker per (day, host) for the given days, so the
+	 * counter can keep the per day cap across restarts without counting returning visitors twice.
 	 *
 	 * @param   {Object}    args
 	 * @param   {Number[]}  args.days  UTC day numbers
