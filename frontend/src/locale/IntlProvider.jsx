@@ -40,12 +40,10 @@ const changeLocale = (lang) => {
 	location.reload();
 };
 
-// This is a translation component that wraps the translation in a span with a data
-// attribute so devs can inspect the element to see the translation ID
+// Wraps the translation in a span with a data attribute holding the translation ID
 const T = ({ id, data, tData }) => {
 	const translatedData = {};
 	if (tData) {
-		// iterate over tData and translate each value
 		for (const [key, value] of Object.entries(tData)) {
 			translatedData[key] = intl.formatMessage({ id: value });
 		}
