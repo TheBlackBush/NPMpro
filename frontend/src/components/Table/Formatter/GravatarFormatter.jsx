@@ -1,3 +1,4 @@
+import { TapTooltip } from "src/components/TapTooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
 import { cn } from "src/lib/utils";
 import { avatarColor, defaultAvatar, hasNoPicture, initials } from "src/modules/Avatar";
@@ -13,31 +14,40 @@ const initialsSizes = { xs: "text-[8px]", sm: "text-xs", md: "text-base", lg: "t
  * @param {string} [props.url]
  * @param {string} [props.name]
  * @param {string} [props.email]  the initials when there is no name
+ * The name shows in the app's tooltip; a decorative avatar (next to the visible name) gets it on hover only and is
+ * not a keyboard stop.
  */
 export function GravatarFormatter({ url, name, email, size, decorative }) {
 	const letters = initials(name, email);
 	const color = avatarColor(name, email);
+	const avatar = (
+		<Avatar
+			{...(name && !decorative ? { role: "img", "aria-label": name } : { "aria-hidden": "true" })}
+			className={cn("mr-2 rounded-md after:rounded-md", sizes[size] || "size-10")}
+		>
+			{hasNoPicture(url) ? null : <AvatarImage src={url} alt="" className="rounded-md" />}
+			{letters ? (
+				<AvatarFallback
+					className={cn("rounded-md font-bold", color.className, initialsSizes[size] || "text-sm")}
+				>
+					<span aria-hidden="true">{letters}</span>
+				</AvatarFallback>
+			) : (
+				<AvatarFallback className="rounded-md bg-cover">
+					<img src={defaultAvatar} alt="" className="size-full rounded-md object-cover" />
+				</AvatarFallback>
+			)}
+		</Avatar>
+	);
 	return (
 		<div className="flex items-center py-1">
-			<Avatar
-				{...(name && !decorative
-					? { role: "img", "aria-label": name, title: name }
-					: { "aria-hidden": "true", ...(name ? { title: name } : {}) })}
-				className={cn("mr-2 rounded-md after:rounded-md", sizes[size] || "size-10")}
-			>
-				{hasNoPicture(url) ? null : <AvatarImage src={url} alt="" className="rounded-md" />}
-				{letters ? (
-					<AvatarFallback
-						className={cn("rounded-md font-bold", color.className, initialsSizes[size] || "text-sm")}
-					>
-						<span aria-hidden="true">{letters}</span>
-					</AvatarFallback>
-				) : (
-					<AvatarFallback className="rounded-md bg-cover">
-						<img src={defaultAvatar} alt="" className="size-full rounded-md object-cover" />
-					</AvatarFallback>
-				)}
-			</Avatar>
+			{name ? (
+				<TapTooltip content={name} tap={!decorative}>
+					{avatar}
+				</TapTooltip>
+			) : (
+				avatar
+			)}
 		</div>
 	);
 }
