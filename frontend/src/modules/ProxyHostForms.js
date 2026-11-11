@@ -82,8 +82,8 @@ export const namedLocations = (rows) => rows.filter((row) => String(row.path ?? 
 
 /**
  * Whether a forward scheme change checks the proxy host's forward host again: "empty" needs no host, so its message
- * goes; coming back from "empty" the host stays quiet until it is left or Save is clicked;
- * between schemes that need a host its message follows.
+ * goes; coming back from "empty" the host stays quiet until it is left or Save is clicked; between schemes that
+ * need a host its message follows.
  *
  * @param   {string}  previous  the scheme before the change
  * @param   {string}  scheme    the chosen scheme

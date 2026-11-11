@@ -353,7 +353,6 @@ const filterRecent = (rows, q, { hostOf = (row) => row.name ?? "", nameOf = () =
 // status tone per status class, the same as the chart (2xx success, 3xx info, 4xx warning, 5xx destructive)
 const STATUS_TONES = { 2: "success", 3: "info", 4: "warning", 5: "destructive" };
 
-/** StatusBadge tone of a response status. */
 const statusTone = (status) => {
 	const n = Number(status);
 	return (n >= 200 && n < 600 && STATUS_TONES[Math.floor(n / 100)]) || "muted";

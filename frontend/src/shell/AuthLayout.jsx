@@ -9,7 +9,8 @@ const WIDTHS = { sm: "max-w-sm", md: "max-w-md" };
 
 /**
  * The frame of the pages shown without a session (Login, Setup, Unhealthy): the logo, the language and theme menus
- * right-aligned between the logo and the card, the maintenance banner, the page's card and the credits. Needs no router or session.
+ * right-aligned between the logo and the card, the maintenance banner, the page's card and the credits. Needs no
+ * router or session.
  *
  * @param {Object} props
  * @param {"sm"|"md"} [props.width]  the column width: sm for sign-in, md for the longer setup form

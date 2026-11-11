@@ -1,7 +1,7 @@
 /**
  * The rules of the Settings sections on React Hook Form (Default site, the runtime sections, GeoIP, Logs & monitoring):
- * starting values in the order the section shows its fields, validate functions (through createValidations' message) and the
- * requests. Pure, so node --test checks them without a DOM.
+ * starting values in the order the section shows its fields, validate functions (through createValidations' message)
+ * and the requests. Pure, so node --test checks them without a DOM.
  */
 import { isEmptyPayload, parseTrustedIps, runtimeSettingsPayload } from "./RuntimeSettings.js";
 
