@@ -1,7 +1,7 @@
 /**
  * The rules of the host windows (redirection hosts, 404 hosts, streams, and the TLS tab every host window shares) on
- * React Hook Form: their starting values, their validate functions (built from the rules their Formik fields had),
- * what a TLS choice changes and hides, and the request a save sends. Pure, so node --test checks them without a DOM.
+ * React Hook Form: their starting values, their validate functions, what a
+ * TLS choice changes and hides, and the request a save sends. Pure, so node --test checks them without a DOM.
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
@@ -17,7 +17,7 @@ const FORWARD_HOST = /^[^\s/;{}"'\\#]{0,253}(?:\/[^\s;{}"'\\#]*)?$/u;
 
 /**
  * The fields of a certificate request (certificate "new"), with their starting values. They only exist in the
- * request while a certificate is requested (requestValues), as the Formik windows left them out.
+ * request while a certificate is requested (requestValues).
  */
 export const CERTIFICATE_REQUEST_DEFAULTS = Object.freeze({
 	npmproReuseKey: false,
@@ -101,7 +101,7 @@ export function domainNamesOptions(values, { forHttp = true } = {}) {
 }
 
 /**
- * The rule of the domain names for the flags of domainNamesOptions (the rule DomainNamesField had in Formik)
+ * The rule of the domain names for the flags of domainNamesOptions
  *
  * @param   {Object} rules    createValidations(intl)
  * @param   {Object} options  domainNamesOptions(...)
@@ -129,8 +129,7 @@ export function tlsRules(rules, values, { forHttp = true } = {}) {
 }
 
 /**
- * The fields a change on the TLS tab sets: the changed field, plus what it turns off or on, as the Formik
- * SSLCertificateField and SSLOptionsFields did. No certificate: no mTLS and (HTTP hosts) no HTTPS options; another
+ * The fields a change on the TLS tab sets: the changed field, plus what it turns off or on. No certificate: no mTLS and (HTTP hosts) no HTTPS options; another
  * certificate than a requested one: no request fields; a stream's requested certificate uses the DNS challenge; the
  * DNS challenge off empties its box; HTTPS off turns HSTS off; an mTLS certificate without optional verification
  * forces HTTPS (HTTP hosts).

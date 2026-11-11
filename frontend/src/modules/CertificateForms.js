@@ -1,7 +1,6 @@
 /**
- * The validate functions of the certificate and DNS credential windows, built from the field rules their Formik
- * fields had (also those of the shared DomainNamesField, DNSProviderFields and DnsCredentialSelect), for React Hook
- * Form's resolver
+ * The validate functions of the certificate and DNS credential windows (with the rules of the shared DomainNamesField,
+ * DNSProviderFields and DnsCredentialSelect), for React Hook Form's resolver
  */
 import { fieldsValidate } from "./HookForm.js";
 

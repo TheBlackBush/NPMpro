@@ -1,5 +1,5 @@
 /**
- * Which translation keys (translations/ui/en.json) the code uses, for translations/check-unused.js (UX-35). A key
+ * Which translation keys (translations/ui/en.json) the code uses, for translations/check-unused.js. A key
  * counts as used when the code holds it as a whole string ("settings.nginx", 'x', `x`), or when a template literal
  * can build it: `settings.default-site.${value}` covers every key that starts with settings.default-site. and
  * `${key}.confirm` every key that ends in .confirm. Templates whose fixed text is not a key's (a path, a CSS size)

@@ -1,7 +1,7 @@
 /**
  * The rules of the proxy host window and its custom locations on React Hook Form: the starting values (a location
- * row has every field), the validate function (built from the rules the Formik window, its LocationsFields and
- * AccessFields had) and the request a save sends. Pure, so node --test checks them without a DOM.
+ * row has every field), the validate function and the request a save sends. Pure, so node --test checks them without
+ * a DOM.
  */
 import { fieldsValidate, mergeErrors } from "./HookForm.js";
 import {
@@ -72,7 +72,7 @@ export const newLocation = (location = {}) => ({
 });
 
 /**
- * The rows with a path (the Formik value left out the others): the "*" of the Custom locations tab and the
+ * The rows with a path: the "*" of the Custom locations tab and the
  * locations the mTLS options look at
  *
  * @param   {Object[]} rows
@@ -82,8 +82,8 @@ export const namedLocations = (rows) => rows.filter((row) => String(row.path ?? 
 
 /**
  * Whether a forward scheme change checks the proxy host's forward host again: "empty" needs no host, so its message
- * goes; coming back from "empty" the host stays quiet until it is left or Save is clicked (as the Formik window,
- * whose check after a scheme change still saw "empty"); between schemes that need a host its message follows.
+ * goes; coming back from "empty" the host stays quiet until it is left or Save is clicked;
+ * between schemes that need a host its message follows.
  *
  * @param   {string}  previous  the scheme before the change
  * @param   {string}  scheme    the chosen scheme

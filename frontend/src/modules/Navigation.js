@@ -11,7 +11,7 @@ import {
 } from "./Permissions.js";
 
 // The app's main links, in the order the top bar, the sidebar, the phone menu and the command palette show them.
-// Users and Audit Log are reached through Settings (spec: Administration group), DNS Credentials through Certificates,
+// Users and Audit Log are reached through Settings, DNS Credentials through Certificates,
 // GoAccess through Monitoring.
 export const NAV_ITEMS = Object.freeze([
 	{ id: "dashboard", to: "/", labelKey: "dashboard" },

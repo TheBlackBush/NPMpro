@@ -32,7 +32,7 @@ const getOptionsResetByScheme = (values, scheme) =>
 		: schemeDependentOptions.filter((option) => values[option] && getOptionHintId(option, scheme));
 
 /**
- * The fields a change of a proxy option sets, on a proxy host or a custom location (as both Formik forms did): a
+ * The fields a change of a proxy option sets, on a proxy host or a custom location: a
  * scheme switches off the options it cannot use, CrowdSec AppSec off turns request buffering off and request
  * buffering on turns AppSec on, no auth request empties its upstream
  *

@@ -1,6 +1,6 @@
 /**
- * The validate functions of the account windows (change password, set password, two-factor codes, user), built from
- * the field rules each Formik field had, for React Hook Form's resolver
+ * The validate functions of the account windows (change password, set password, two-factor codes, user), for
+ * React Hook Form's resolver
  */
 import { fieldsValidate } from "./HookForm.js";
 
@@ -82,7 +82,7 @@ export const codeModeChanges = (useBackup) =>
 
 /**
  * Change password: current 1 to 255 characters, new and repeat 8 to 255, all untrimmed; the repeat must match the
- * new one, and that message wins over the repeat's length message (Formik merged the form's validate last)
+ * new one, and that message wins over the repeat's length message
  *
  * @param   {Object} rules  createValidations(intl)
  * @returns {Function}

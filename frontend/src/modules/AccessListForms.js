@@ -1,7 +1,7 @@
 /**
  * The rules of the access list window on React Hook Form: the rows of its basic auth users and access rules (with
- * the blank row and the last "all" rule the window always shows), the validate function (built from the rules the
- * Formik window and its row fields had) and the request a save sends. Pure, so node --test checks them without a DOM.
+ * the blank row and the last "all" rule the window always shows), the validate function and the request a save sends.
+ * Pure, so node --test checks them without a DOM.
  */
 import { fieldsValidate } from "./HookForm.js";
 
@@ -149,7 +149,7 @@ export const accessListValidate = (rules, { savedUsers }) =>
 
 /**
  * The request of an access list: the users with a name, the rules with an address. Rules the user did not change
- * are sent as saved (a list saved without the "all" rule keeps it out, as the Formik window did).
+ * are sent as saved (a list saved without the "all" rule keeps it out).
  *
  * @param   {Object}   values
  * @param   {Object[]} savedClients  the saved rules

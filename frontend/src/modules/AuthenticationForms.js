@@ -1,6 +1,6 @@
 /**
  * The rules of Settings > Authentication (OIDC) on React Hook Form: starting values in the order the section shows
- * its fields, the validate function the Formik section had (the same messages), the fields whose message follows
+ * its fields, the validate function, the fields whose message follows
  * another field, and the request. Pure, so node --test checks them without a DOM.
  */
 import {

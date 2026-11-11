@@ -1,5 +1,5 @@
 /**
- * The field rules of the forms (formerly the body of Validations.jsx), built for one react-intl object so they run
+ * The field rules of the forms, built for one react-intl object so they run
  * in node --test with the English messages. Validations.jsx builds them once with the app's intl.
  */
 

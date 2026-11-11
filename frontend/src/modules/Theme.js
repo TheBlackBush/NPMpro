@@ -2,8 +2,8 @@
 // localStorage (tabler-theme: light, dark, auto); the key keeps its old Tabler name so saved choices survive.
 
 export const THEME_KEY = "tabler-theme";
-// set once the stored theme went through the one-time reset to System (UX-34): before B6 the first visit stored the
-// system's theme as if the user had chosen it
+// set once the stored theme went through the one-time reset to System (an early version stored the system's
+// theme on the first visit as if the user had chosen it)
 export const THEME_RESET_KEY = "npmpro-theme-system";
 export const THEME_PREFERENCES = Object.freeze(["light", "dark", "auto"]);
 
