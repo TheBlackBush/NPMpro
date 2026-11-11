@@ -13,7 +13,8 @@ const MAX_ZOOM = 8;
 
 // Shade 0 (no data) and 1 to 5 per tone, mixed with the card colour instead of made transparent, so every shade is
 // opaque: each country is stroked in its own fill colour, which hides the seams between shapes without drawing border
-// lines (a transparent stroke over a transparent fill would draw a darker edge). Whole class strings so Tailwind finds them.
+// lines (a transparent stroke over a transparent fill would draw a darker edge). Whole class strings so Tailwind
+// finds them.
 const FILLS = {
 	primary: [
 		"fill-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
