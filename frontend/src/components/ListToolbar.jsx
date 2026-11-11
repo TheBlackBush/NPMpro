@@ -10,7 +10,8 @@ import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
 
-// two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md
+// two filters per row on phones (half the row minus half the gap; a lone last one grows to the full row), their own
+// width from md
 function FilterSelect({ label, value, onChange, options }) {
 	const name = intl.formatMessage({ id: label });
 	return (

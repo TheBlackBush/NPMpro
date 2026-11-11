@@ -153,8 +153,8 @@ function CategoryCheck({ category, state, count, onChange, disabled, labelId, de
 /**
  * The backup parts as select boxes in a grid arranged by size (see arrangeRows: boxes of a similar size share a row
  * and its height): one box per category with a header checkbox (ticked, cleared or mixed), the types of a category
- * with several as pill toggles inside the box. Counts per category and type, the certificates
- * with their kinds when given. A label row with "Select all" and "None".
+ * with several as pill toggles inside the box, with counts and, for certificates, their kinds. A label row holds
+ * "Select all" and "None".
  *
  * @param {Object}    props
  * @param {ReactNode} [props.label]             the field label shown above the boxes

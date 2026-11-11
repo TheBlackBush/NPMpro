@@ -7,7 +7,7 @@ import { T } from "src/locale";
 import { MANAGE } from "src/modules/Permissions";
 import { PRIMARY_ACCENT, sectionAccent } from "src/modules/SectionAccents";
 
-// Buttons use the one primary colour. The section key gives the icon circle its section accent.
+// the section key gives the icon circle its section accent
 function EmptyData({
 	tableInstance,
 	onNew,

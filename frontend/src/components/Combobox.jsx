@@ -8,12 +8,11 @@ import { SingleCombobox } from "./ComboboxSingle";
 /**
  * A searchable choice on Popover and Command (WAI-ARIA combobox): one value (a button that opens the list) or, with
  * multiple, a list of values as chips with a text input. creatable lets the user add values the options do not list.
- * Works inside a window (Dialog or Sheet): the list is portalled as a Radix layer above it, so Escape closes only the
- * list. Spread FormField's control on it (id, aria-invalid, aria-describedby, aria-required), or pass invalid and
- * describedBy.
+ * The list is portalled as a Radix layer above a window, so Escape closes only the list. Spread FormField's control
+ * on it, or pass invalid and describedBy.
  *
  * @param {Object}   props
- * @param {string}   [props.id]              the control's id (the label points at it)
+ * @param {string}   [props.id]              the control's id
  * @param {*}        props.value             the option value or null; an array with multiple
  * @param {Function} props.onChange          single: (value, option|null), null when cleared, option null when
  *                                           created; multiple: (values)
@@ -22,15 +21,15 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {boolean}  [props.creatable]
  * @param {boolean}  [props.clearable]       single: a clear button (and Backspace or Delete on the button)
  * @param {boolean}  [props.searchable]      single: the search box, true by default
- * @param {boolean}  [props.loading]         the list says it is loading instead of the empty text
+ * @param {boolean}  [props.loading]         shows "loading" instead of the empty text
  * @param {string}   [props.placeholder]
  * @param {boolean}  [props.disabled]
- * @param {boolean}  [props.readOnly]        shows the value, does not open, chips without remove buttons
- * @param {Function} [props.renderOption]    (option) => the row in the list (rich rows)
- * @param {Function} [props.getOptionLabel]  (option) => its label, used for filtering and display
+ * @param {boolean}  [props.readOnly]        no opening, no chip remove buttons
+ * @param {Function} [props.renderOption]    (option) => the row in the list
+ * @param {Function} [props.getOptionLabel]  (option) => label, for filtering and display
  * @param {Function} [props.getOptionValue]  (option) => its value
- * @param {string|Function} [props.emptyText]   or (query) => text, "Nothing found" by default
- * @param {string|Function} [props.createText]  or (query) => text, "Add "{value}"" by default
+ * @param {string|Function} [props.emptyText]   or (query) => text
+ * @param {string|Function} [props.createText]  or (query) => text
  * @param {Function} [props.isValidNew]      (query, values) => whether a typed value may be added
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
  * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
@@ -40,7 +39,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string}   [props.describedBy]
  * @param {Function} [props.onBlur]
  * @param {string}   [props.name]            a hidden input with the value (comma separated with multiple)
- * @param {*}        [props.ref]             the button or the input (react-hook-form focuses it)
+ * @param {*}        [props.ref]             the button or the input
  * @param {string}   [props.className]       of the wrapper
  */
 export function Combobox({

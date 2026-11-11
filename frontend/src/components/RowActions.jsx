@@ -20,9 +20,8 @@ import { ROW_EDIT_ATTR, restoreRowFocus } from "src/modules/FocusReturn";
  * already gone. When the item's work settles (its promise, if it returns one) and focus fell to the page body (the
  * row re-rendered or moved after a re-sort), focus goes back to this row's visible button, found by focusKey.
  * One item may be marked primary (with an ariaLabel such as "Edit <name>"): it is not in the menu but a ghost icon
- * button before the menu button, with its label as tooltip and as accessible name, carrying data-row-edit={focusKey}.
- * Its action runs on click; focus returns to it the same way (the window it opens records it as the opener, and
- * restoreRowFocus finds it again by key). With no other item left there is no menu button.
+ * button before the menu button, labelled by the ariaLabel and carrying data-row-edit={focusKey}. Focus returns to
+ * it the same way. With no other item left there is no menu button.
  * The menu holds no fixed ids: a row action cell may mount twice (phone layout).
  *
  * @param {Object} props

@@ -53,9 +53,8 @@ function Flag({ className, countryCode, tooltip = true }) {
 	if (!loaderOf(countryCode) || svg === null) {
 		return null;
 	}
-	// a thin themable edge (the theme border colour), so a white flag (Japan) does not melt into a light background
-	// the code in the themed tooltip (hover or focus; a tap on a flag does nothing else), the wrapper names the image
-	// until the flag's file is there, an empty box of the same size holds its place
+	// the thin border keeps a white flag (Japan) visible on a light background; until the file is there an empty box of
+	// the same size holds the place
 	const image = (
 		<span role="img" aria-label={countryCode} className={cn("inline-flex", className)}>
 			<svg
