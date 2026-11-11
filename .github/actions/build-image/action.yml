@@ -35,15 +35,12 @@ runs:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ inputs.token }}
-    - name: version
+    - name: build arguments
+      id: args
       shell: bash
       env:
         VERSION: ${{ inputs.version }}
-      run: |
-        v="$VERSION-$(git rev-parse --short HEAD)"
-        for pkg in frontend/package.json backend/package.json; do
-          jq --arg v "$v" '.version = $v' "$pkg" > "$pkg.tmp" && mv "$pkg.tmp" "$pkg"
-        done
+      run: echo "version=$VERSION-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
     - id: build
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
@@ -55,3 +52,4 @@ runs:
         cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max
         build-args: |
           FLAGS=${{ inputs.flags }}
+          VERSION=${{ steps.args.outputs.version }}
