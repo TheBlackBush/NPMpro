@@ -51,7 +51,7 @@ function SidebarLink({ item, active, onNavigate }) {
 
 /**
  * The sidebar layout's navigation: icon rail when collapsed, a sheet on phones (drawn by the sidebar itself). The
- * bottom holds the language and theme menus, then Settings, then the user menu (user decision 2026-11-03)
+ * bottom holds the language and theme menus, then Settings, then the user menu
  */
 export function AppSidebar() {
 	const items = useNavItems();

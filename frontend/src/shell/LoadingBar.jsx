@@ -2,10 +2,8 @@ import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { Progress } from "src/components/ui/progress";
 
 /**
- * The indeterminate Progress bar of the login page and the restore window, along the top edge of the page (the top of
- * the sticky header) while any request is running, 2px high (login and restore use 6px), which is lighter at the page
- * edge. It floats over the header, so nothing shifts, and is hidden from screen readers
- * and pointers: the pages announce their own loading states.
+ * Indeterminate bar along the top edge of the page (over the sticky header, so nothing shifts) while any request
+ * runs, 2px high (login and restore use 6px). Hidden from screen readers and pointers: pages announce their own loading.
  */
 export function LoadingBar() {
 	const busy = useIsFetching() + useIsMutating() > 0;
