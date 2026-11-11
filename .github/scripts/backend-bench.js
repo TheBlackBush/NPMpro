@@ -1,4 +1,4 @@
-// Benchmark of the backend refactor (roadmap 11 part 3), outside the image. Runs the real backend with a fake nginx.
+// Benchmark of the backend, outside the image. Runs the real backend with a fake nginx.
 // Usage: cd backend && node ../.github/scripts/backend-bench.js [hosts=300] [rounds=5] [auditRows=200000] [trafficHosts=200]
 // One JSON line per metric on stdout. Times are medians of the rounds, in milliseconds; counts are per round.
 import { performance } from "node:perf_hooks";
