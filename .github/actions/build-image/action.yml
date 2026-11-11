@@ -56,3 +56,5 @@ runs:
           FLAGS=${{ inputs.flags }}
           VERSION=${{ steps.args.outputs.version }}
           ALPINE_REFRESH=${{ steps.args.outputs.week }}
+        provenance: mode=max
+        sbom: true
