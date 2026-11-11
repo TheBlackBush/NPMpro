@@ -75,8 +75,8 @@ export const SECTIONS = [
 		icon: LayoutList,
 		element: Environment,
 	},
-	// Users and Audit Log keep the permission rule they had as pages (ADMIN/VIEW, checked by the Settings page and by
-	// each page component); the palette offers them to admins like every other section
+	// Users and Audit Log keep their own permission rule (ADMIN/VIEW, checked by the Settings page and by each page
+	// component); the palette offers them to admins like every other section
 	{ id: "users", category: "administration", labelKey: "users", icon: UsersIcon, element: Users },
 	{ id: "audit-log", category: "administration", labelKey: "auditlogs", icon: ScrollText, element: AuditLog },
 ];

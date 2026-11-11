@@ -69,9 +69,8 @@ export default function Setup() {
 			}
 			try {
 				await login(user.email, password);
-				// Trigger a Health change
+				// the health data now says a user exists
 				await queryClient.refetchQueries({ queryKey: ["health"] });
-				// window.location.reload();
 			} catch (err) {
 				setErrorMsg(<ApiErrorContent error={err} />);
 			}
