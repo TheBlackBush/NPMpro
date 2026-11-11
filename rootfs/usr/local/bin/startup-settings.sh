@@ -27,8 +27,8 @@ startup_settings_readable() {
     return 0
 }
 
-# prints the name of the setting the line $1 sets (GOA, TZ or a goaccess_ option) when the line is valid, nothing otherwise; $2 is the
-# zoneinfo folder
+# prints the name of the setting the line $1 sets (GOA, TZ or a goaccess_ option) when the line is valid, nothing
+# otherwise; $2 is the zoneinfo folder
 startup_setting_name() {
     case "$1" in
         GOA=true | GOA=false)
@@ -62,8 +62,8 @@ startup_setting_name() {
     esac
 }
 
-# prints the value of the setting $2 (GOA, TZ or a goaccess_ option) from the file $1, the last valid line wins; nothing when the file
-# does not set it. $3: the zoneinfo folder, /usr/share/zoneinfo by default
+# prints the value of the setting $2 (GOA, TZ or a goaccess_ option) from the file $1, the last valid line wins;
+# nothing when the file does not set it. $3: the zoneinfo folder, /usr/share/zoneinfo by default
 startup_setting() {
     startup_settings_readable "$1" || return 0
     startup_setting_value=""

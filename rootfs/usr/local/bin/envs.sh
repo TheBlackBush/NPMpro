@@ -207,7 +207,7 @@ export NGINX_LOAD_NJS_MODULE="${NGINX_LOAD_NJS_MODULE:-false}"
 export NGINX_LOAD_LDAP_MODULE="${NGINX_LOAD_LDAP_MODULE:-false}"
 export NGINX_LOAD_NTLM_MODULE="${NGINX_LOAD_NTLM_MODULE:-false}"
 export NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE="${NGINX_LOAD_VHOST_TRAFFIC_STATUS_MODULE:-false}"
-# /data/public/anubis since 2026-10; the first start after the upgrade checks the old folder (moved by data-setup.sh)
+# the first start after an upgrade checks the old folder /data/anubis (moved to /data/public/anubis by data-setup.sh)
 anubis_dir=/data/public/anubis
 [ -d /data/anubis ] && anubis_dir=/data/anubis
 if [ -s "$anubis_dir"/happy.webp ] && [ -s "$anubis_dir"/reject.webp ] && [ -s "$anubis_dir"/pensive.webp ]; then
