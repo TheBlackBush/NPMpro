@@ -200,8 +200,9 @@ if [ "$PUID" != "0" ]; then
     export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
     # nginx and the backend (its nginx -t binds every listen socket) keep one capability through the switch, binding
     # ports below 1024 (with host networking the host's ip_unprivileged_port_start applies); the other services drop it
-    # in their dinit commands. Only when the container
-    # may hold it (bit 10 of the bounding set); otherwise the switch stays plain
+    # in their dinit commands. Only when the container may hold it (bit 10 of the bounding set); otherwise the switch
+    # stays plain. HOME is set like su-exec did (the user's home from /etc/passwd), setpriv leaves the environment alone
+    HOME="$(getent passwd "$PUID" | cut -d: -f6)"; export HOME="${HOME:-/}"
     if [ $(( (0x$(awk '/^CapBnd:/ {print $2}' /proc/self/status) >> 10) & 1 )) = 1 ]; then
         exec /bin/setpriv --reuid "$PUID" --regid "$PGID" --groups "$PGID" \
             --inh-caps=-all,+net_bind_service --ambient-caps=-all,+net_bind_service launch.sh

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Runs an image with PUID set and the host-network rule for ports below 1024 restored inside a bridge container
 # (net.ipv4.ip_unprivileged_port_start=1024), with the compose capabilities and no-new-privileges, and checks that
-# nginx binds 80, 443 and 81 and and the backend are the only services holding net_bind_service.
+# nginx binds 80, 443 and 81, and nginx and the backend are the only services holding net_bind_service.
 # Usage: puid-low-ports.sh <image> [container name] [extra docker run args...]
 set -eu
 image=$1
@@ -47,4 +47,6 @@ sleep 10
 if docker logs "$name" 2>&1 | grep -E "Permission denied|do not pass nginx -t|Could not write .*ip_ranges|Could not apply the network runtime settings"; then
 	fail "the start log shows nginx -t failing"
 fi
+# the backend holds a capability, so only a process with CAP_SYS_PTRACE may read its environment (exec --privileged)
+docker exec --privileged "$name" sh -c "tr '\\0' '\\n' < /proc/$node/environ" | grep -qx 'HOME=/tmp' || fail "the backend's HOME is not /tmp (su-exec set the user's home)"
 echo "PUID with ports below 1024 reserved for root: nginx binds 80, 443 and 81; only nginx and the backend hold net_bind_service"
