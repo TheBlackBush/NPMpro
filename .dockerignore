@@ -1,1 +1,17 @@
 */node_modules
+.git
+.claude
+.claude-flow
+.swarm
+.superpowers
+tmp
+wiki
+**/ruvector.db
+**/agentdb.rvf*
+backend/coverage
+backend/test
+backend/coverage-floor.json
+backend/biome.json
+backend/biome.all.json
+backend/validate-schema.js
+frontend/dist
