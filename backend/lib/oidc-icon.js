@@ -189,7 +189,6 @@ const readLimited = async (response) => {
  * are followed manually, at most 3, each one re-checked. The body is cut off above 256 KB. Response bodies never end up
  * in error messages.
  *
- *
  * @param   {string}  value      the URL
  * @param   {number}  [timeout]  total timeout in ms (default 10 s)
  * @param   {Object}  [options]

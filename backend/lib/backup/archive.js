@@ -33,13 +33,12 @@ const checkPath = (rel, type, allow) => {
 };
 
 /**
- /**
-  * Extracts a backup's gzip tar into dir. tar only parses; the files are written here, so every write in flight is
-  * known. Every entry is checked before anything is written for it. The first bad entry, or an error from the source,
-  * tar, truncated input or a source closing early, destroys the source, starts no further entry and cuts the file being
-  * written short. The promise settles once, after every write has closed, so the caller may then remove dir. A bad entry
-  * rejects with BackupError("invalid-archive"); a source error (for example a BackupError from decryption) is passed
-  * on unchanged; any other error is wrapped as invalid-archive.
+ * Extracts a backup's gzip tar into dir. tar only parses; the files are written here, so every write in flight is
+ * known. Every entry is checked before anything is written for it. The first bad entry, or an error from the source,
+ * tar, truncated input or a source closing early, destroys the source, starts no further entry and cuts the file being
+ * written short. The promise settles once, after every write has closed, so the caller may then remove dir. A bad entry
+ * rejects with BackupError("invalid-archive"); a source error (for example a BackupError from decryption) is passed
+ * on unchanged; any other error is wrapped as invalid-archive.
  */
 const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
 	new Promise((resolve, reject) => {
