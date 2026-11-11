@@ -223,20 +223,15 @@ ARG LRL_VER=3ff6300e68b73ba20e909c7d16bd839aef2e5a4b # v0.15
 ARG LCSB_VER=4aad1dfa653d9d96fb5c0114ae930eb2353214c8 # main
 ARG COF_VER=da93e0cec7fdb1a80f4972f75b3638763d012c0e # main
 ARG NBF_VER=5cee8db2a505f2a253e24691399c828c043071fc # master
+# ISO week (2026-W46) from CI: reruns the package step weekly. Without it the step reruns only when its inputs change.
+ARG ALPINE_REFRESH=
 
-COPY --from=nginx /usr/local/nginx                                                                         /usr/local/nginx
-COPY --from=nginx /usr/local/bin/bssl                                                                      /usr/local/bin/bssl
-COPY --from=nginx /usr/local/lib/libssl.so                                                                 /usr/local/lib/libssl.so
-COPY --from=nginx /usr/local/lib/libcrypto.so                                                              /usr/local/lib/libcrypto.so
-
-COPY --from=backend  /app      /app
-
-COPY rootfs  /
-COPY MIT.LICENSE /MIT.LICENSE
-COPY COPYING /COPYING
-
+# First, so an app change keeps this layer and an update downloads only the app layers
 WORKDIR /app
-RUN apk upgrade --no-cache -a && \
+RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tmp/git-clone-commit.sh \
+    --mount=type=bind,source=backend/certbot/requirements.txt,target=/tmp/certbot-requirements.txt \
+    echo "Alpine packages of ${ALPINE_REFRESH:-any week}" && \
+    apk upgrade --no-cache -a && \
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
                        pcre2 luajit zlib-ng brotli zstd lua5.1-cjson libxml2 libldap quickjs-ng-libs libmaxminddb-libs \
                        curl coreutils findutils grep jq openssl shadow su-exec util-linux-misc \
@@ -253,15 +248,15 @@ RUN apk upgrade --no-cache -a && \
     git config --global advice.detachedHead false && \
     git config --global init.defaultBranch main && \
     \
-    git-clone-commit.sh https://github.com/openresty/lua-resty-core "$LRC_VER" /src/lua-resty-core && \
+    sh /tmp/git-clone-commit.sh https://github.com/openresty/lua-resty-core "$LRC_VER" /src/lua-resty-core && \
     cd /src/lua-resty-core && \
     make -j "$(nproc)" install LUA_LIB_DIR=/usr/local/share/lua/5.1 && \
     \
-    git-clone-commit.sh https://github.com/openresty/lua-resty-lrucache "$LRL_VER" /src/lua-resty-lrucache && \
+    sh /tmp/git-clone-commit.sh https://github.com/openresty/lua-resty-lrucache "$LRL_VER" /src/lua-resty-lrucache && \
     cd /src/lua-resty-lrucache && \
     make -j "$(nproc)" install LUA_LIB_DIR=/usr/local/share/lua/5.1 && \
     \
-    git-clone-commit.sh https://github.com/crowdsecurity/lua-cs-bouncer "$LCSB_VER" /src/lua-cs-bouncer && \
+    sh /tmp/git-clone-commit.sh https://github.com/crowdsecurity/lua-cs-bouncer "$LCSB_VER" /src/lua-cs-bouncer && \
     mv /src/lua-cs-bouncer/lib/* /usr/local/share/lua/5.1 && \
     mv /src/lua-cs-bouncer/templates/captcha.html /etc/captcha.html.original && \
     mv /src/lua-cs-bouncer/templates/ban.html /etc/ban.html.original && \
@@ -272,7 +267,7 @@ RUN apk upgrade --no-cache -a && \
     \
     python3 -m venv /usr/local && \
     sed -i "s|include-system-site-packages = false|include-system-site-packages = true|" /usr/local/pyvenv.cfg && \
-    pip install --no-cache-dir --require-hashes -r /app/certbot/requirements.txt && \
+    pip install --no-cache-dir --require-hashes -r /tmp/certbot-requirements.txt && \
     mkdir -p /usr/local/share/npmpro && \
     pip freeze --all --exclude pip > /usr/local/share/npmpro/certbot-constraints.txt && \
     \
@@ -285,21 +280,30 @@ RUN apk upgrade --no-cache -a && \
     wget -q https://raw.githubusercontent.com/vasilevich/nginxbeautifier/"$NBF_VER"/nginxbeautifier.js -O /usr/local/bin/nginxbeautifier.js && \
     echo "406f715ae944cc46ae31e79a1bc3ea758f91605621113b8a29f5332fe13f0a83  /usr/local/bin/nginxbeautifier.js" | sha256sum -c - && \
     sed -i "s|code.slice(0, startOfParanthesis - 1)|code.slice(0, startOfParanthesis)|g" /usr/local/bin/nginxbeautifier.js && \
+    chmod +x /usr/local/bin/* && \
     \
     ln -s /usr/local/nginx/sbin/nginx /usr/local/bin/nginx && \
     ln -s /app/password-reset.js /usr/local/bin/password-reset.js && \
     ln -s /app/index.js /usr/local/bin/index.js && \
     \
-    chmod +x /usr/local/bin/* && \
     addgroup -S -g 101 npmpro-worker && \
     adduser -S -D -H -u 101 -G npmpro-worker -h /nonexistent -s /sbin/nologin npmpro-worker && \
     find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 
+COPY --from=nginx /usr/local/nginx                                                                         /usr/local/nginx
+COPY --from=nginx /usr/local/bin/bssl                                                                      /usr/local/bin/bssl
+COPY --from=nginx /usr/local/lib/libssl.so                                                                 /usr/local/lib/libssl.so
+COPY --from=nginx /usr/local/lib/libcrypto.so                                                              /usr/local/lib/libcrypto.so
+COPY --from=backend  /app      /app
+COPY rootfs  /
+COPY MIT.LICENSE /MIT.LICENSE
+COPY COPYING /COPYING
 COPY --from=frontend /app/dist /app/frontend
 
-# CI passes the version; a plain build keeps 0.0.0
+# CI passes the version (a plain build keeps 0.0.0); chmod covers a checkout without file modes
 ARG VERSION
-RUN if [ -n "$VERSION" ]; then \
+RUN chmod +x /usr/local/bin/*.sh && \
+    if [ -n "$VERSION" ]; then \
         jq --arg v "$VERSION" ".version = \$v" /app/package.json > /tmp/package.json && \
         mv /tmp/package.json /app/package.json; \
     fi
