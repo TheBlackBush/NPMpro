@@ -2,9 +2,10 @@ import { Minus, Plus } from "lucide-react";
 import { useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { Button } from "src/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { currentLocale, intl } from "src/locale";
 import { alpha2Of, alpha2OfName } from "src/modules/CountryCodes";
-import { fitMercator, tipPosition } from "src/modules/MapLayout";
+import { fitMercator } from "src/modules/MapLayout";
 import { shadeIndex, shadeRanges } from "src/modules/MapShades";
 import { countryName, formatCount, isCountryCode, mapScale } from "src/modules/Monitoring";
 import world from "world-atlas/countries-110m.json" with { type: "json" };
@@ -85,25 +86,33 @@ const rawCounts = (countries) => {
 const clampZoom = (zoom) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
 /**
- * The hover tooltip. Its position is its own state, so moving the pointer does not render the countries again; the
- * position goes through React's style prop (the CSSOM), which the page CSP allows.
+ * The hover tooltip: the app's Tooltip on an invisible anchor under the pointer (or the focused country's centre). The
+ * anchor's position is this component's own state, so moving the pointer does not render the countries again; it goes
+ * through React's style prop (the CSSOM), which the page CSP allows, and the tooltip follows it every frame.
  */
 function MapTooltip({ ref, info, countMessage }) {
 	const [position, setPosition] = useState(null);
 	useImperativeHandle(ref, () => ({ move: setPosition }), []);
-	if (!(info && position)) return null;
+	const open = Boolean(info && position);
 	return (
-		<div
-			data-map-tooltip
-			aria-hidden="true"
-			className={`pointer-events-none absolute z-10 flex -translate-x-1/2 items-baseline gap-2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow-md ${position.below ? "translate-y-4" : "-translate-y-[calc(100%+0.75rem)]"}`}
-			style={{ left: position.left, top: position.top }}
-		>
-			<span className="font-medium">{info.name}</span>
-			<span className="text-muted-foreground tabular-nums">
-				{intl.formatMessage({ id: countMessage }, { count: info.count ?? 0 })}
-			</span>
-		</div>
+		<Tooltip open={open}>
+			<TooltipTrigger asChild>
+				<span
+					aria-hidden="true"
+					tabIndex={-1}
+					className="pointer-events-none absolute size-px"
+					style={position ?? undefined}
+				/>
+			</TooltipTrigger>
+			{open ? (
+				<TooltipContent data-map-tooltip side="top" sideOffset={6} updatePositionStrategy="always">
+					<span className="font-medium">{info.name}</span>
+					<span className="tabular-nums opacity-70">
+						{intl.formatMessage({ id: countMessage }, { count: info.count ?? 0 })}
+					</span>
+				</TooltipContent>
+			) : null}
+		</Tooltip>
 	);
 }
 
@@ -123,10 +132,10 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount, cou
 	const box = useRef(null);
 	const tooltip = useRef(null);
 
-	// pointer (or the focused shape's centre) to a tooltip position inside the map box
+	// pointer (or the focused shape's centre) to the tooltip anchor inside the map box
 	const place = (clientX, clientY) => {
 		const rect = box.current?.getBoundingClientRect();
-		if (rect) tooltip.current?.move(tipPosition(clientX - rect.left, clientY - rect.top, rect.width));
+		if (rect) tooltip.current?.move({ left: clientX - rect.left, top: clientY - rect.top });
 	};
 	const show = (geo, info, event) => {
 		setActive({ geo, info });

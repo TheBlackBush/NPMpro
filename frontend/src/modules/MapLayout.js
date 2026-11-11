@@ -1,4 +1,4 @@
-// Layout of the flat world map: the Mercator fit and where the hover tooltip sits.
+// Layout of the flat world map: the Mercator fit.
 
 // world-atlas 110m without Antarctica: Greenland's north coast and Tierra del Fuego
 const NORTH = 83.65;
@@ -26,23 +26,4 @@ const fitMercator = (width, margin = 8, north = NORTH, south = SOUTH) => {
 	};
 };
 
-// half the expected tooltip width, and the room it needs above the pointer
-const TIP_HALF = 72;
-const TIP_ABOVE = 44;
-
-/**
- * Tooltip anchor inside the map box: centred on the pointer but kept inside the box, and below the pointer when there
- * is no room above it.
- *
- * @param {number} x      pointer x in the box
- * @param {number} y      pointer y in the box
- * @param {number} width  box width
- * @returns {{ left: number, top: number, below: boolean }}
- */
-const tipPosition = (x, y, width) => ({
-	left: Math.min(Math.max(x, TIP_HALF), Math.max(TIP_HALF, width - TIP_HALF)),
-	top: y,
-	below: y < TIP_ABOVE,
-});
-
-export { fitMercator, mercatorLat, mercatorY, tipPosition };
+export { fitMercator, mercatorLat, mercatorY };
