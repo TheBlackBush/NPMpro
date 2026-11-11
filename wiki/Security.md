@@ -18,6 +18,23 @@ How NPMpro is hardened and the security options you can add. CrowdSec (with AppS
 
 Both are described on the CrowdSec page: [Bot detection](CrowdSec#bot-detection-optional) and [Rate limiting](CrowdSec#rate-limiting-optional).
 
+## Verify an image
+
+Every published image (`ghcr.io/theblackbush/npmpro` and `blackbush/npmpro`, every tag) is signed by the GitHub
+workflow that built it, without a key (Sigstore). To check one:
+
+    cosign verify ghcr.io/theblackbush/npmpro:latest \
+      --certificate-identity-regexp '^https://github.com/TheBlackBush/NPMpro/' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+## SBOM
+
+Every image carries a list of its packages (SPDX) and its build provenance. To see them:
+
+    docker buildx imagetools inspect ghcr.io/theblackbush/npmpro:latest --format '{{ json .SBOM }}'
+
+Scanners such as Trivy, Grype or Docker Scout read it from the registry.
+
 ## Encrypted Client Hello (ECH)
 
 - NPMpro supports generating and automatically rotating Encrypted Client Hello (ECH) keys. To enable and configure ECH, you need to set up a cron script that triggers the key generation and updates your DNS records.
