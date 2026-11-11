@@ -46,6 +46,8 @@ try {
 	try {
 		browser = cdp ? await chromium.connectOverCDP(cdp) : await (engine === "webkit" ? webkit : chromium).launch();
 	} catch (error) {
+		// with FLOWS_CDP the error holds the browser URL and its token, so it is not passed on as the cause
+		// biome-ignore lint/style/useErrorCause: the token stays out of the log
 		throw new Error(`the browser did not start: ${cdp ? "FLOWS_CDP did not connect" : firstLine(error)}`, {
 			cause: cdp ? undefined : error,
 		});

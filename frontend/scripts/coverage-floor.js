@@ -10,7 +10,9 @@ if (floors.length !== 3 || floors.some((n) => !Number.isFinite(n))) {
 	process.exit(2);
 }
 const report = readFileSync(0, "utf8");
-const row = /all files\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|/u.exec(report);
+const row = /all files\s*\|\s*(?<lines>[\d.]+)\s*\|\s*(?<branches>[\d.]+)\s*\|\s*(?<functions>[\d.]+)\s*\|/u.exec(
+	report,
+);
 if (!row) {
 	console.error('coverage-floor: no "all files" row in the coverage report');
 	process.exit(1);
@@ -18,7 +20,7 @@ if (!row) {
 const names = ["lines", "branches", "functions"];
 let failed = false;
 for (const [i, name] of names.entries()) {
-	const value = Number(row[i + 1]);
+	const value = Number(row.groups[name]);
 	const ok = value >= floors[i];
 	if (!ok) failed = true;
 	console.log(`${ok ? "ok" : "BELOW"} ${name}: ${value} (floor ${floors[i]})`);

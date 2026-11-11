@@ -106,7 +106,12 @@ const rowNames = (page) =>
 		.locator("tbody tr")
 		.filter({ visible: true })
 		.locator("[data-row-edit]:visible")
-		.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label").replace(/^Edit /u, "")));
+		.evaluateAll((buttons) =>
+			buttons.map((button) => {
+				const label = button.getAttribute("aria-label");
+				return label.startsWith("Edit ") ? label.slice("Edit ".length) : label;
+			}),
+		);
 
 // 27 access lists: the paging bars, page 2 in the same sort, the rows per page choice, a search back to page 1, and
 // the choice kept over a reload
