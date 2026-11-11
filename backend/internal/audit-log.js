@@ -4,8 +4,6 @@ import auditLogModel from "../models/audit-log.js";
 
 const internalAuditLog = {
 	/**
-	 * All logs, paged and filtered
-	 *
 	 * @param   {Access}  access
 	 * @param   {Object}  [options]
 	 * @param   {Array}   [options.expand]
@@ -67,9 +65,8 @@ const internalAuditLog = {
 	},
 
 	/**
-	 * This method should not be publicly used, it doesn't check certain things. It will be assumed
-	 * that permission to add to audit log is already considered, however the access token is used for
-	 * default user id determination.
+	 * Not for public use: permission to add is assumed to be checked already; the access token only gives the
+	 * default user id.
 	 *
 	 * @param   {Access}   access
 	 * @param   {Object}   data
@@ -85,7 +82,6 @@ const internalAuditLog = {
 
 		if (!data.action) throw new errs.InternalValidationError("Audit log entry must contain an Action");
 
-		// Make sure at least 1 of the IDs are set and action
 		return auditLogModel.query().insert({
 			user_id: data.user_id,
 			action: data.action,

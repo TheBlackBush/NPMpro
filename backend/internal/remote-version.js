@@ -28,7 +28,7 @@ const internalRemoteVersion = {
 	next_fetch_time: 0,
 
 	/**
-	 * Fetch the latest version info, using a cached result if within the cache timeout period.
+	 * Latest version info, cached for the cache timeout.
 	 * @return {Promise<{current: string, latest: string, update_available: boolean}>} Version info
 	 */
 	get: async () => {

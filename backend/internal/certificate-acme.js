@@ -128,7 +128,7 @@ const certificateAcme = {
 			]);
 			logger.info(revokeResult);
 		} catch {
-			// do nothing
+			// the revoke is best effort
 		}
 
 		return renewResult;
@@ -176,7 +176,6 @@ const certificateAcme = {
 	testHttpsChallenge: async (access, payload) => {
 		access.can("certificates:view");
 
-		// Create a test challenge file
 		await writeFile(rooted("/data/public/acme-challenge/.well-known/acme-challenge/test-challenge"), "Success", {
 			encoding: "utf8",
 		});
@@ -230,7 +229,6 @@ const certificateAcme = {
 		}
 
 		if (!result) {
-			// Some error occurred while trying to get the data
 			return "failed";
 		}
 		if (result.error) {
@@ -240,11 +238,9 @@ const certificateAcme = {
 			return `other:${result.error.msg}`;
 		}
 		if (`${result.responsecode}` === "200" && result.htmlresponse === "Success") {
-			// Server exists and has responded with the correct data
 			return "ok";
 		}
 		if (`${result.responsecode}` === "200") {
-			// Server exists but has responded with wrong data
 			logger.info(
 				`HTTP challenge test failed for domain ${domain} because of invalid returned data:`,
 				result.htmlresponse,
@@ -252,7 +248,6 @@ const certificateAcme = {
 			return "wrong-data";
 		}
 		if (`${result.responsecode}` === "404") {
-			// Server exists but responded with a 404
 			logger.info(`HTTP challenge test failed for domain ${domain} because code 404 was returned`);
 			return "404";
 		}
@@ -260,11 +255,9 @@ const certificateAcme = {
 			`${result.responsecode}` === "0" ||
 			(typeof result.reason === "string" && result.reason.toLowerCase() === "host unavailable")
 		) {
-			// Server does not exist at domain
 			logger.info(`HTTP challenge test failed for domain ${domain} the host was not found`);
 			return "no-host";
 		}
-		// Other errors
 		logger.info(`HTTP challenge test failed for domain ${domain} because code ${result.responsecode} was returned`);
 		return `other:${result.responsecode}`;
 	},

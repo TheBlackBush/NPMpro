@@ -100,8 +100,6 @@ const rebuildAccessListFiles = async () => {
 };
 
 /**
- * Writes the default site config from its setting
- *
  * @returns {Promise}
  */
 const regenerateDefaultSite = async () =>

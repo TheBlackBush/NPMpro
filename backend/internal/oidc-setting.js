@@ -17,8 +17,6 @@ import {
 const TEST_KEYS = ["issuer_url", "client_id", "client_secret"];
 
 /**
- * Upserts the `oidc` setting row
- *
  * @param {Object} meta
  */
 const saveStored = async (meta) => {
@@ -55,8 +53,6 @@ const saveIcon = async (access, icon, change) => {
 
 const internalOidcSetting = {
 	/**
-	 * Effective OIDC settings, never including the client secret
-	 *
 	 * @param   {Access}  access
 	 * @returns {Promise<Object>}
 	 */
@@ -123,8 +119,6 @@ const internalOidcSetting = {
 	},
 
 	/**
-	 * Stores an icon file for the login button
-	 *
 	 * @param   {Access}  access
 	 * @param   {Buffer}  buffer
 	 * @param   {string}  [change]  audit value, "uploaded" or "downloaded"
@@ -141,8 +135,6 @@ const internalOidcSetting = {
 	},
 
 	/**
-	 * Downloads the icon from a URL and stores it
-	 *
 	 * @param   {Access}  access
 	 * @param   {string}  url  http or https
 	 * @returns {Promise<Object>}  the same as get()
@@ -153,7 +145,7 @@ const internalOidcSetting = {
 	},
 
 	/**
-	 * Removes the icon file, the button falls back to the default builtin icon
+	 * The button falls back to the builtin icon
 	 *
 	 * @param   {Access}  access
 	 * @returns {Promise<Object>}  the same as get()

@@ -15,7 +15,6 @@ const checkHostnameRecordsTaken = (hostname, existingRows, ignoreId) =>
 	(existingRows || []).some(
 		(existingRow) =>
 			(!ignoreId || ignoreId !== existingRow.id) &&
-			// Does this domain match?
 			existingRow.domain_names.some(
 				(existingHostname) =>
 					(domainToASCII(existingHostname) || existingHostname).toLowerCase() ===

@@ -25,14 +25,12 @@ const getMergedItems = (accessLists) => {
 const getHostFilePrefix = (proxyHost) => `host-${proxyHost.id}`;
 
 /**
- *
  * @param {*} proxyHost
  * @returns
  */
 const getProxyHostFilename = (proxyHost) => `${GENERATED_DIR}/${getHostFilePrefix(proxyHost)}`;
 
 /**
- *
  * @param {*} proxyHost
  * @param {*} location
  * @returns
@@ -57,14 +55,13 @@ const writeHtpasswdFile = async (filename, items, label) => {
 };
 
 /**
- *
  * @param {*} proxyHost
  * @param {*} accessLists
  * @returns
  */
 const buildHostFile = async (proxyHost, accessLists) => {
 	if (accessLists.length < 2) {
-		// if size is 1 then use the default acl file. If empty, nothing to generate
+		// one list uses the default acl file, none needs no file
 		return;
 	}
 	const effectiveAccess = internalProxyHostAccessList.buildAclFile(accessLists);
@@ -74,7 +71,6 @@ const buildHostFile = async (proxyHost, accessLists) => {
 };
 
 /**
- *
  * @param {*} proxyHost
  * @param {*} location
  * @param {*} accessLists
@@ -82,7 +78,7 @@ const buildHostFile = async (proxyHost, accessLists) => {
  */
 const buildLocationFile = async (proxyHost, location, accessLists) => {
 	if (accessLists.length < 2) {
-		// if size is 1 then use the default acl file. If empty, nothing to generate
+		// one list uses the default acl file, none needs no file
 		return;
 	}
 	const effectiveAccess = internalProxyHostAccessList.buildAclFile(accessLists);
@@ -97,7 +93,6 @@ const buildLocationFile = async (proxyHost, location, accessLists) => {
 
 const internalProxyHostAccessList = {
 	/**
-	 *
 	 * @param {*} list
 	 * @returns
 	 */
@@ -132,7 +127,6 @@ const internalProxyHostAccessList = {
 	listFiles: () => readdir(GENERATED_DIR, { withFileTypes: true }),
 
 	/**
-	 *
 	 * @param {*} proxyHost
 	 */
 	delete: async (proxyHost, files) => {
@@ -143,7 +137,6 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 *
 	 * @param {*} proxyHost
 	 * @returns
 	 */
@@ -159,7 +152,6 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 *
 	 * @param {*} proxyHost
 	 * @param {*} location
 	 * @returns
@@ -179,7 +171,7 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 * Generates the output htpasswd file on the filesystem
+	 * Writes the htpasswd files of the host
 	 * @param {*} proxyHost
 	 */
 	build: async (host_type, proxyHost, files) => {
@@ -187,7 +179,6 @@ const internalProxyHostAccessList = {
 			return;
 		}
 
-		// cleanup all old files for this host and regenerate
 		await internalProxyHostAccessList.delete(proxyHost, files);
 
 		await buildHostFile(proxyHost, proxyHost.access_lists ?? []);
@@ -201,7 +192,6 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 * Ensures the provided acls are valid (if custom, at least 1 acl must be specified)
 	 * @param {Access} access
 	 * @param {*} proxyHost
 	 * @returns
@@ -234,7 +224,7 @@ const internalProxyHostAccessList = {
 				validateCustomSelection(location.npmpro_access_list_type, location.npmpro_access_list_ids);
 			}
 		}
-		// make sure no ACLs that are being uploaded have been deleted
+		// every uploaded access list must still exist
 		if (aclIds.size > 0) {
 			const query = accessListModel
 				.query()
@@ -252,7 +242,7 @@ const internalProxyHostAccessList = {
 	},
 
 	/**
-	 * used by the create/update functions of proxy_host, this sets the npmpro_access_list_ids
+	 * Sets npmpro_access_list_ids for create and update
 	 * @param {Object} proxyHost
 	 * @returns {Object}
 	 */

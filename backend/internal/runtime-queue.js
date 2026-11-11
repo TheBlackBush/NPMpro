@@ -10,8 +10,6 @@ import { createSerializer } from "../lib/serializer.js";
 const runtimeQueue = createSerializer();
 
 /**
- * Runs fn in the runtime settings queue
- *
  * @param   {Function}  fn
  * @returns {Promise<*>}
  */
