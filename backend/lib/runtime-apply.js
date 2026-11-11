@@ -185,21 +185,19 @@ const changedKeys = (next, prev) =>
  * @param   {Object}    [deps.fs]            node:fs/promises compatible
  * @param   {Object}    deps.nginx           { test, reload }
  * @param   {Function}  [deps.renderHosts]   (group, ctx) => files [{ path, content, nginx? }] written with the group's
- *                                           files (ctx: next, prev, changed, startup, env); called when a reload key changed
+ *                                           files; ctx: next, prev, changed, startup, env
  * @param   {Object}    [deps.timers]        { restartRenewal(hours) }
  * @param   {Object}    [deps.log]
  * @param   {Object}    [deps.paths]         file locations (tests)
  * @param   {Function}  [deps.env]           () => process env, for ACME_SERVER
- * @param   {Function}  [deps.effectiveEnv]  lib/runtime-config effectiveEnv
- * @param   {Function}  [deps.getConfig]     lib/runtime-config getRuntimeConfig
+ * @param   {Function}  [deps.effectiveEnv]
+ * @param   {Function}  [deps.getConfig]
  * @param   {Function}  [deps.fetchDirectory] (server) => { directory, profiles }
- * @param   {Function}  [deps.listCertificates] () => [{ id }], the certificates that exist
- * @param   {Object}    [deps.ocsp]           { fetch(kind) } fetches the OCSP responses of "acme" or "custom" certificates
- * @param   {Object}    [deps.ipRanges]       lib/ip-ranges instance { render, ranges, fetchCloudflare, start, stop };
- *                                            without it the network settings are only stored
- * @param   {Function}  [deps.proxyHostsUsingDefault] (provider) => proxy hosts that use the provider without their own
- *                                            upstream
- * @param   {Function}  [deps.accessLogOn]    (writeLogFiles) => whether the http access log is on
+ * @param   {Function}  [deps.listCertificates] () => [{ id }]
+ * @param   {Object}    [deps.ocsp]          { fetch(kind) }
+ * @param   {Object}    [deps.ipRanges]      lib/ip-ranges instance; without it the network settings are only stored
+ * @param   {Function}  [deps.proxyHostsUsingDefault] (provider) => proxy hosts that use it without their own upstream
+ * @param   {Function}  [deps.accessLogOn]   (writeLogFiles) => whether the http access log is on
  */
 const createRuntimeApplier = ({
 	fs = nodeFs,
