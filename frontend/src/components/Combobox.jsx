@@ -39,7 +39,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string}   [props.describedBy]
  * @param {Function} [props.onBlur]
  * @param {string}   [props.name]            a hidden input with the value (comma separated with multiple)
- * @param {*}        [props.ref]             the button or the input
+ * @param {*}        [props.ref]             the button or the input (react-hook-form focuses it)
  * @param {string}   [props.className]       of the wrapper
  */
 export function Combobox({

@@ -244,7 +244,8 @@ const countBy = (list, pick, label) => {
 };
 
 /**
- * Summarises the decisions: by_scenario / by_origin / by_type and countries as { name, count } arrays sorted by count,
+ * Summarises the decisions: by_scenario / by_origin / by_type and countries as { scenario|origin|type|country, count }
+ * arrays sorted by count,
  * newest (up to 100, highest id first; country null unless scope is Ip). added_24h counts decisions whose id is in
  * firstSeen (id -> ms) with a time within 24 hours; ids absent from the map are not counted (the caller seeds the map
  * on its first poll so old decisions are not "new").

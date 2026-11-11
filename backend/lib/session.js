@@ -101,6 +101,7 @@ const closeSessions = () => {
 	closing = true;
 };
 
+// for tests
 const reopenSessions = () => {
 	closing = false;
 };

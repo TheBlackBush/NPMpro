@@ -34,6 +34,7 @@ const readOptions = (knex) => {
 
 const SAFE_MIN = BigInt(Number.MIN_SAFE_INTEGER);
 const SAFE_MAX = BigInt(Number.MAX_SAFE_INTEGER);
+// a BigInt as a number when that is exact, else as its decimal text (what Postgres and MySQL give for big numbers)
 const fromBigInt = (value) => {
 	if (typeof value !== "bigint") return value;
 	return value >= SAFE_MIN && value <= SAFE_MAX ? Number(value) : value.toString();
@@ -79,6 +80,7 @@ const copyFailed = (table, rows, error) =>
 // MySQL errors for a value or a row the table does not take (null, range, truncation, date, string, length, JSON)
 const MYSQL_ROW_ERRORS = new Set([1048, 1062, 1264, 1265, 1292, 1366, 1406, 1452, 3140]);
 const SQLITE_ROW_ERROR = /^SQLITE_(?:CONSTRAINT|MISMATCH|TOOBIG|RANGE)/u;
+// SQLSTATE classes 22 (data exception) and 23 (integrity constraint violation)
 const DATA_STATE = /^2[23]/u;
 
 // True when the target refused the data (a constraint or a value of the wrong type), false for anything else, such
@@ -181,6 +183,7 @@ const copyTable = async ({ source, target, table, key, kinds, batchSize = BATCH_
 	return copied;
 };
 
+// the highest id of a table as a BigInt (ids above 2^53 stay exact)
 const maxId = async (knex, table) => {
 	const [row] = await readRows(knex, knex(table).max({ max: "id" }));
 	return BigInt(String(row?.max ?? 0));

@@ -106,8 +106,8 @@ const createMaintenance = () => {
 			});
 		},
 		/**
-		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused during a
-		 * move, else counted by idle() until the returned release is called (in a finally).
+		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused during
+		 * a move, else counted by idle() until the returned release is called (in a finally).
 		 *
 		 * @returns {Function}  release
 		 */

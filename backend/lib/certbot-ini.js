@@ -73,7 +73,7 @@ const listConfs = async (fs, dir) => {
 };
 
 /**
- * The renewal confs that hold a required_profile line, without those lines (start.sh:22 behaviour), so the next renewal
+ * The renewal confs that hold a required_profile line, without those lines (as data-setup.sh does), so the next renewal
  * uses the profile of certbot.ini
  *
  * @param   {string}  [dir]

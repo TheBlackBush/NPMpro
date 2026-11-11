@@ -11,7 +11,6 @@ const YIELD_EVERY = 5000;
  * Reads the access log and counts its lines. `settings` and `position` are the service's shared objects (read here,
  * written by the service and the aggregator); everything else stays private and is exposed through the methods.
  *
- *
  * @param   {Object}    deps
  * @param   {Function}  deps.createReader    (state) => { read() }
  * @param   {Object}    deps.counter

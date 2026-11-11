@@ -52,6 +52,7 @@ const columnKinds = (sourceInfo, targetInfo, table) => {
 
 const isJsonKind = (kind) => kind === "json" || kind === "jsontext";
 
+// a string from a JSON column is JSON text unless the driver parsed it (a json type on MySQL 8 or Postgres)
 const isJsonText = (kind, value, engine) => typeof value === "string" && (kind === "jsontext" || engine === "sqlite");
 
 // the kind each side's value is read with: its own, else bool or date from the other side (a MySQL tinyint against a

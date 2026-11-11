@@ -269,6 +269,7 @@ const internalAccessList = {
 			await accessListAuthModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListClientModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListModel.query(trx).deleteById(row.id);
+			// every host that used it, also those the user cannot edit
 			for (const host of affectedHosts) {
 				await proxyHostModel.query(trx).findById(host.id).patch({
 					npmpro_access_list_type: host.npmpro_access_list_type,

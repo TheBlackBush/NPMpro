@@ -21,9 +21,9 @@ const SOURCE_TEXT = {
 };
 const ENGINE_TEXT = { sqlite: "SQLite", mysql: "MySQL/MariaDB", postgres: "PostgreSQL" };
 
-// configure runs when the first module loads the models (before appStart): an invalid database.json must not throw here.
-// It is logged once and every query fails with the same message, so the startup retry shows it until the file is
-// deleted or renamed and NPMpro restarted. There is no fallback to SQLite.
+// configure runs when the first module loads the models (before appStart): an invalid database.json must not throw
+// here. It is logged once and every query fails with the same message, so the startup retry shows it until the file
+// is deleted or renamed and NPMpro restarted. There is no fallback to SQLite.
 const configure = () => {
 	let chosen;
 	try {

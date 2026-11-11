@@ -37,7 +37,8 @@ const groupError = (def) => {
 const filledGroups = (def, source) =>
 	def.one_of.filter((group) => def.fields.some((field) => field.group === group && isFilled(source, field.key)));
 
-/** The active group comes from the submitted input; with nothing submitted for a group, the group filled in the previous values is kept. */
+/** The active group comes from the submitted input; with nothing submitted for a group, the group filled in the
+ * previous values is kept. */
 const pickActiveGroup = (def, submitted, previous) => {
 	const fromInput = filledGroups(def, submitted);
 	if (fromInput.length > 1) throw groupError(def);

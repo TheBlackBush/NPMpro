@@ -206,6 +206,7 @@ const findAdmin = async (knex, adminUserId) => {
  * @param   {string[]}  options.types
  * @param   {number}    options.adminUserId
  * @param   {boolean}   [options.secrets]     whether the backup holds secrets
+ * @returns {Promise<{ references: Array, skippedUsers: Array, missingSecrets: string[] }>}
  */
 const previewReplace = async ({ knex, data, types, adminUserId, secrets = true }) => {
 	const chosen = RESTORE_ORDER.filter((typeId) => types.includes(typeId));

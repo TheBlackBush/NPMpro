@@ -216,7 +216,7 @@ const envConnection = (env) => {
 	return null;
 };
 
-/** Which database to use: complete DB_MYSQL_* or DB_POSTGRES_* env vars, then database.json, then the default SQLite file */
+/** Which database to use: complete DB_MYSQL_* or DB_POSTGRES_* env vars, then database.json, then the default SQLite */
 const chooseDatabase = ({ env, file = DATABASE_FILE, dataDir = DATA_DIR, exists, read, unseal }) => {
 	const fromEnv = envConnection(env);
 	if (fromEnv) return { source: "env", connection: fromEnv, moved_at: null, moved_from: null };
