@@ -13,8 +13,7 @@ const confirmLeave = async () => guards === 0 || (await askDiscard("unsaved-chan
 /**
  * Asks before leaving the page while dirty: links inside the app (the click is cancelled before React Router sees it,
  * BrowserRouter has no navigation blocker) and reloading or closing the tab (the browser's own prompt).
- * The browser's back button is not covered. For navigation that is not a link click (a select or button calling
- * navigate), ask with confirmLeave() first.
+ * The browser's back button is not covered; for other navigation ask with confirmLeave() first.
  */
 const useLeaveGuard = (dirty) => {
 	useEffect(() => {
