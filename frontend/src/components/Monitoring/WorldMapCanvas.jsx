@@ -13,9 +13,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
 
 // Shade 0 (no data) and 1 to 5 per tone, mixed with the card colour instead of made transparent, so every shade is
-// opaque: each country is stroked in its own fill colour, which hides the seams between shapes without drawing border
-// lines (a transparent stroke over a transparent fill would draw a darker edge). Whole class strings so Tailwind
-// finds them.
+// opaque and the borders drawn over them look the same everywhere. Whole class strings so Tailwind finds them.
 const FILLS = {
 	primary: [
 		"fill-[color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
@@ -32,26 +30,6 @@ const FILLS = {
 		"fill-[color-mix(in_oklab,var(--destructive)_55%,var(--card))]",
 		"fill-[color-mix(in_oklab,var(--destructive)_75%,var(--card))]",
 		"fill-destructive",
-	],
-};
-
-// the same shades as strokes
-const STROKES = {
-	primary: [
-		"stroke-[color:color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--primary)_20%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--primary)_35%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--primary)_55%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--primary)_75%,var(--card))]",
-		"stroke-primary",
-	],
-	destructive: [
-		"stroke-[color:color-mix(in_oklab,var(--foreground)_8%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--destructive)_20%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--destructive)_35%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--destructive)_55%,var(--card))]",
-		"stroke-[color:color-mix(in_oklab,var(--destructive)_75%,var(--card))]",
-		"stroke-destructive",
 	],
 };
 
@@ -76,7 +54,10 @@ const SWATCHES = {
 };
 
 // a thin stroke that keeps its screen width at any zoom
-const SHAPE = "stroke-[0.75] outline-none [vector-effect:non-scaling-stroke]";
+// a faint border on every country (user decision): a thin line in the card colour mixed with a little foreground, so
+// it is light on the light theme and soft on the dark one, and keeps its screen width at any zoom
+const SHAPE =
+	"stroke-[color:color-mix(in_oklab,var(--foreground)_18%,var(--card))] stroke-[0.5] outline-none [vector-effect:non-scaling-stroke]";
 
 // the hovered or focused country drawn again on top, outline only, so no neighbour covers part of its border
 const OUTLINE =
@@ -136,7 +117,6 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount, cou
 	const max = Math.max(0, ...Object.values(counts));
 	const ranges = useMemo(() => shadeRanges(max), [max]);
 	const fills = FILLS[tone] ?? FILLS.primary;
-	const strokes = STROKES[tone] ?? STROKES.primary;
 	const swatches = SWATCHES[tone] ?? SWATCHES.primary;
 	const [view, setView] = useState({ coordinates: CENTER, zoom: 1 });
 	const [active, setActive] = useState(null);
@@ -202,7 +182,7 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount, cou
 											<Geography
 												key={geo.rsmKey}
 												geography={geo}
-												className={`${SHAPE} ${fills[shade]} ${strokes[shade]}`}
+												className={`${SHAPE} ${fills[shade]}`}
 												tabIndex={focusable ? 0 : -1}
 												role={focusable ? "img" : undefined}
 												aria-label={focusable ? text : undefined}
