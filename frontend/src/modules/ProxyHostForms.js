@@ -72,8 +72,7 @@ export const newLocation = (location = {}) => ({
 });
 
 /**
- * The rows with a path: the "*" of the Custom locations tab and the
- * locations the mTLS options look at
+ * The rows with a path: the "*" of the Custom locations tab and the locations the mTLS options look at
  *
  * @param   {Object[]} rows
  * @returns {Object[]}

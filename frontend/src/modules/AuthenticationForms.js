@@ -1,6 +1,7 @@
 /**
- * The rules of Settings > Authentication (OIDC) on React Hook Form: starting values in the order the section shows
- * its fields, the validate function, the fields whose message follows another field, and the request. Pure, so node --test checks them without a DOM.
+ * The rules of Settings > Authentication (OIDC) on React Hook Form: starting values in the order the section shows its
+ * fields, the validate function, the fields whose message follows another field, and the request. Pure, so node --test
+ * checks them without a DOM.
  */
 import {
 	DEFAULT_OIDC_COLOR,

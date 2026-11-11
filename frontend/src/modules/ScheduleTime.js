@@ -1,5 +1,5 @@
-// Frontend copy of backend/lib/backup/schedule-time.js: when a backup schedule is due. Both files
-// must change together; the backend uses the process time zone (TZ), this copy the server's zone through zoneOf.
+// Frontend copy of backend/lib/backup/schedule-time.js: when a backup schedule is due. Both files must
+// change together; the backend uses the process time zone (TZ), this copy the server's zone through zoneOf.
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
