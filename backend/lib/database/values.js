@@ -1,8 +1,8 @@
 import { isoToLocal, JSON_COLUMNS, localToIso } from "../backup/rows.js";
 
 // Values between engines for the database move. A row is read from the source, made portable (portableRow), written in
-// the form the target takes (targetRow) and later compared by meaning (comparable). The time zone is the process zone
-// (TZ), the app's convention for naive dates (lib/backup/rows.js).
+// the form the target takes (targetRow) and later compared by meaning (comparable). Naive dates use the process time
+// zone (TZ), the app's convention (lib/backup/rows.js).
 
 const KIND_PATTERNS = [
 	["json", /json/iu],
@@ -52,7 +52,6 @@ const columnKinds = (sourceInfo, targetInfo, table) => {
 
 const isJsonKind = (kind) => kind === "json" || kind === "jsontext";
 
-// a string from a JSON column is JSON text unless the driver parsed it (a json type on MySQL 8 or Postgres)
 const isJsonText = (kind, value, engine) => typeof value === "string" && (kind === "jsontext" || engine === "sqlite");
 
 // the kind each side's value is read with: its own, else bool or date from the other side (a MySQL tinyint against a
@@ -212,7 +211,6 @@ const firstDifference = (kinds, sourceRow, copiedRow, sourceEngine, targetEngine
 	return null;
 };
 
-// a column whose values never appear in a message
 const isSecretColumn = (column) => SECRET_NAME.test(String(column));
 
 const holdsSecret = (value) => {
@@ -226,7 +224,6 @@ const textOf = (value) => {
 	return typeof value === "string" ? value : JSON.stringify(value);
 };
 
-// a string that looks like JSON text, parsed; anything else as it is
 const parsedIfJson = (value) => {
 	if (typeof value !== "string" || !JSON_LIKE.test(value)) return value;
 	try {

@@ -32,9 +32,9 @@ const defaultTimers = {
 };
 
 /**
- * Polls the active CrowdSec decisions every 60 s while the bouncer config is enabled and has credentials.
- * Keeps the last summary (also after a failed poll, with the error) and when each decision id was first seen:
- * the first poll after start (or after the config was off) seeds all ids so they do not count as added.
+ * Polls the active CrowdSec decisions every 60 s while the bouncer config is enabled and has credentials. Keeps the
+ * last summary (also after a failed poll, with the error) and when each decision id was first seen: the first poll
+ * after start (or after the config was off) seeds all ids so they do not count as added.
  *
  * @param   {Object}    [deps]
  * @param   {Function}  [deps.readConf]   () => Promise<string>  bouncer config text ("" when missing)

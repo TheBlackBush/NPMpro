@@ -21,9 +21,7 @@ const runMigrations = (knex, config = MIGRATIONS) => knex.migrate.latest(config)
 
 const dataTables = async (knex) => (await listTables(knex)).filter((table) => !MIGRATION_TABLES.has(table));
 
-/**
- * Every foreign key as { table, references }
- */
+/** Every foreign key as { table, references } */
 const foreignKeys = async (knex) => {
 	switch (engineOf(knex)) {
 		case "sqlite": {
@@ -57,9 +55,7 @@ const foreignKeys = async (knex) => {
 	}
 };
 
-/**
- * The tables parents first; tables that are ready together alphabetically
- */
+/** The tables parents first; tables that are ready together alphabetically */
 const tableOrder = (tables, keys) => {
 	const parents = new Map(tables.map((table) => [table, new Set()]));
 	for (const { table, references } of keys) {
@@ -112,10 +108,7 @@ const primaryKey = async (knex, table) => {
 	}
 };
 
-/**
- * The columns that identify a row: the primary key, or (a table without one) every column that can be compared in a
- * where clause, sorted
- */
+/** The columns that identify a row: the primary key, or (a table without one) every comparable column, sorted */
 const keyColumns = async (knex, table) => {
 	const key = await primaryKey(knex, table);
 	if (key.length > 0) return key;

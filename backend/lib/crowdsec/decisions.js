@@ -188,9 +188,9 @@ const isHttps = (apiUrl) => {
 };
 
 /**
- * Reads the active decisions from the LAPI (`GET /v1/decisions`) with the bouncer credentials.
- * Errors never contain the API key. With sslVerify false an https LAPI is reached over node:https without
- * certificate checks (like the bouncer's SSL_VERIFY=false); otherwise the API key path uses fetch.
+ * Reads the active decisions from the LAPI (`GET /v1/decisions`) with the bouncer credentials. Errors never contain
+ * the API key. With sslVerify false an https LAPI is reached over node:https without certificate checks (like the
+ * bouncer's SSL_VERIFY=false); otherwise the API key path uses fetch.
  * @param {{ apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify?: boolean }} conf
  * @param {{ fetch?: typeof fetch, timeoutMs?: number }} [opts] fetch is used for the verified API key path only
  * @returns {Promise<object[]>} the decisions (an empty list when the LAPI answers null)
@@ -244,12 +244,10 @@ const countBy = (list, pick, label) => {
 };
 
 /**
- * Summarises the decisions.
- * by_scenario / by_origin / by_type are arrays of { scenario|origin|type, count } and countries an array of
- * { country, count }, all sorted by count descending. newest holds up to 100 decisions, highest id first, as
- * { id, value, scope, scenario, origin, type, duration, seconds_left, country } (country null unless scope is Ip).
- * added_24h counts decisions whose id is in firstSeen (id -> ms) with a time within the last 24 hours; ids absent
- * from the map are not counted (the caller seeds the map on its first poll so old decisions are not "new").
+ * Summarises the decisions: by_scenario / by_origin / by_type and countries as { name, count } arrays sorted by count,
+ * newest (up to 100, highest id first; country null unless scope is Ip). added_24h counts decisions whose id is in
+ * firstSeen (id -> ms) with a time within 24 hours; ids absent from the map are not counted (the caller seeds the map
+ * on its first poll so old decisions are not "new").
  * @param {object[] | null} list
  * @param {number} now ms
  * @param {(ip: string) => string | null} geoLookup

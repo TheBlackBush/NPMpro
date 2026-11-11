@@ -38,7 +38,6 @@ const createMaintenance = () => {
 		for (const resolve of ready) resolve();
 	};
 
-	// counts one write until the returned release is called (once; later calls do nothing)
 	const claim = () => {
 		writes += 1;
 		let done = false;
@@ -81,8 +80,8 @@ const createMaintenance = () => {
 			moveId = null;
 		},
 		/**
-		 * Resolves once no write that started before the move is still running (the move waits for it before
-		 * copying). With timeoutMs it rejects with "writes-running" when they take longer.
+		 * Resolves once no write that started before the move is still running. With timeoutMs it rejects with
+		 * "writes-running" when they take longer.
 		 *
 		 * @param   {{ timeoutMs?: number }}  [options]
 		 * @returns {Promise<void>}
@@ -107,8 +106,8 @@ const createMaintenance = () => {
 			});
 		},
 		/**
-		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused
-		 * during a move, else counted by idle() until the returned release is called (in a finally).
+		 * Claims a write outside the guarded routes (login side effects, a GET that writes an audit entry): refused during a
+		 * move, else counted by idle() until the returned release is called (in a finally).
 		 *
 		 * @returns {Function}  release
 		 */

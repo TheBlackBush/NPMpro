@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { rooted } from "../paths.js";
 
-/** Default location of the bouncer config inside the container (copied from crowdsec.conf.example by start.sh). */
+/** Location of the bouncer config in the container (copied from crowdsec.conf.example by start.sh). */
 const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
 
 /** The bouncer config text, "" when the file does not exist. */
@@ -27,9 +27,10 @@ const parseValue = (raw) => {
 };
 
 /**
- * Parses the nginx lua bouncer config (KEY=value lines, # comments).
+ * Parses the nginx lua bouncer config (KEY=value lines, # comments). SSL_VERIFY defaults to true like the bouncer; only
+ * an explicit "false" turns certificate checks off.
+ *
  * @param {string} text
- * SSL_VERIFY defaults to true like the bouncer; only an explicit "false" turns certificate checks off.
  * @returns {{ enabled: boolean, apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify: boolean }}
  */
 export const parseCrowdsecConf = (text) => {
@@ -58,7 +59,7 @@ export const parseCrowdsecConf = (text) => {
 };
 
 /**
- * True when the bouncer is enabled and has credentials to reach the LAPI (API key, or TLS auth with cert and key).
+ * True when the bouncer is enabled and has credentials for the LAPI (API key, or TLS auth with cert and key).
  * @param {ReturnType<typeof parseCrowdsecConf>} conf
  */
 export const isCrowdsecConfigured = (conf) =>

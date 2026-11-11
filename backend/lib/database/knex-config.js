@@ -1,4 +1,3 @@
-// the pragmas every SQLite connection gets (moved from lib/config.js)
 const sqlitePragmas = (conn, done) => {
 	conn.pragma("synchronous = NORMAL");
 	// deleted rows (old secrets) are overwritten, not left in free pages
@@ -11,10 +10,8 @@ const sqlitePragmas = (conn, done) => {
 // MySQL and MariaDB answer ER_UNKNOWN_TIME_ZONE for a zone name when the server has no time zone tables
 const ER_UNKNOWN_TIME_ZONE = 1298;
 let offsetNoted = false;
-// a TZ of the form :Area/City (POSIX allows the colon)
 const TZ_COLON = /^:/u;
 
-/** The process's IANA time zone (the container's TZ), UTC when none is known */
 const processZone = () =>
 	process.env.TZ?.trim().replace(TZ_COLON, "") || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -32,9 +29,9 @@ const utcOffsetOf = (date) => {
 };
 
 /**
- * The pool's afterCreate for MySQL and MariaDB: the session uses the process's time zone, so NOW() writes the same
- * naive local time that mysql2 (timezone "local") reads and writes, and SQLite keeps. The zone name when the server
- * knows it, else the current UTC offset (noted once: without zone tables a DST change needs a restart).
+ * The pool's afterCreate for MySQL and MariaDB: the session uses the process's time zone, so NOW() writes the same naive
+ * local time that mysql2 (timezone "local") reads and writes, and SQLite keeps. The zone name when the server knows
+ * it, else the current UTC offset (noted once: without zone tables a DST change needs a restart).
  *
  * @param   {Object}    [options]
  * @param   {string}    [options.zone]  IANA zone, the process's by default

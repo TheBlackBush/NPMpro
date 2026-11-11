@@ -135,11 +135,9 @@ const sslOf = (connection) =>
 		: { enabled: Boolean(connection.ssl?.enabled) };
 
 /**
- * The content of database.json for a connection
- *
  * @param   {Object}    connection
  * @param   {Object}    options    { seal(password), movedAt, movedFrom }
- * @returns {Object}
+ * @returns {Object}  the content of database.json
  */
 const connectionFileOf = (connection, { seal, movedAt, movedFrom }) => {
 	// nothing is written for an unknown origin, the parser refuses null
@@ -162,9 +160,7 @@ const connectionFileOf = (connection, { seal, movedAt, movedFrom }) => {
 	};
 };
 
-/**
- * Writes the file atomically: a temporary file in the same folder, synced, then renamed over the old one
- */
+/** Writes the file atomically: a temporary file in the same folder, synced, then renamed over the old one */
 const writeConnectionFile = async (file, content) => {
 	const temporary = `${file}.${process.pid}.${randomUUID()}.tmp`;
 	try {
@@ -185,7 +181,7 @@ const writeConnectionFile = async (file, content) => {
 
 const toBool = (value) => TRUTHY.test(String(value ?? "").trim());
 
-// an unset password stays undefined, as before, so the drivers keep their own defaults (PGPASSWORD, .pgpass)
+// an unset password stays undefined so the drivers keep their own defaults (PGPASSWORD, .pgpass)
 const envConnection = (env) => {
 	if (env.DB_MYSQL_HOST && env.DB_MYSQL_USER && env.DB_MYSQL_NAME) {
 		return {
@@ -220,9 +216,7 @@ const envConnection = (env) => {
 	return null;
 };
 
-/**
- * Which database to use: complete DB_MYSQL_* or DB_POSTGRES_* env vars, then database.json, then the default SQLite file
- */
+/** Which database to use: complete DB_MYSQL_* or DB_POSTGRES_* env vars, then database.json, then the default SQLite file */
 const chooseDatabase = ({ env, file = DATABASE_FILE, dataDir = DATA_DIR, exists, read, unseal }) => {
 	const fromEnv = envConnection(env);
 	if (fromEnv) return { source: "env", connection: fromEnv, moved_at: null, moved_from: null };

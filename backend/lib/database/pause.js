@@ -16,8 +16,8 @@ const writerRunning = (name) =>
 	);
 
 /**
- * Waits for the work of a writer that is being paused. Without timeoutMs it waits without a limit; with it, it
- * rejects with "writer-running" when the work takes longer. The timer is always cleared.
+ * Waits for the work of a writer that is being paused: without timeoutMs without a limit, else it rejects with
+ * "writer-running" when the work takes longer. The timer is always cleared.
  *
  * @param   {Promise}  work
  * @param   {Object}   options
@@ -61,8 +61,8 @@ const resumeWriters = async (paused, { log = console } = {}) => {
 };
 
 /**
- * Pauses the background writers of a database move one after another, each with the same time limit. When one
- * fails (it leaves itself as it was) the ones paused before it resume in reverse order and the error is thrown.
+ * Pauses the background writers of a database move one after another, each with the same time limit. When one fails
+ * (it leaves itself as it was) the ones paused before it resume in reverse order and the error is thrown.
  *
  * @param   {Array<{ name: string, pause: Function, resume: Function }>}  writers  pause({ timeoutMs }) => Promise
  * @param   {Object}  [options]
