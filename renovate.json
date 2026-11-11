@@ -12,6 +12,20 @@
 	"prHourlyLimit": 0,
 	"lockFileMaintenance": { "enabled": true, "schedule": ["on monday"] },
 	"osvVulnerabilityAlerts": true,
+	"customDatasources": {
+		"luarocks-lua-resty-http": {
+			"defaultRegistryUrlTemplate": "https://luarocks.org/manifest-5.1.json",
+			"transformTemplates": ["{\"releases\": [$keys(repository.`lua-resty-http`).{\"version\": $}]}"]
+		},
+		"luarocks-lua-resty-string": {
+			"defaultRegistryUrlTemplate": "https://luarocks.org/manifest-5.1.json",
+			"transformTemplates": ["{\"releases\": [$keys(repository.`lua-resty-string`).{\"version\": $}]}"]
+		},
+		"luarocks-lua-resty-openssl": {
+			"defaultRegistryUrlTemplate": "https://luarocks.org/manifest-5.1.json",
+			"transformTemplates": ["{\"releases\": [$keys(repository.`lua-resty-openssl`).{\"version\": $}]}"]
+		}
+	},
 	"vulnerabilityAlerts": { "enabled": true, "schedule": ["at any time"] },
 	"customManagers": [
 		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG AWSLC_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "aws/aws-lc", "datasourceTemplate": "github-tags" },
@@ -32,6 +46,9 @@
 		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG NNTLM_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "gabihodoroaga/nginx-ntlm-module", "packageNameTemplate": "https://github.com/gabihodoroaga/nginx-ntlm-module", "datasourceTemplate": "git-refs" },
 		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LCSB_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "crowdsecurity/lua-cs-bouncer", "packageNameTemplate": "https://github.com/crowdsecurity/lua-cs-bouncer", "datasourceTemplate": "git-refs" },
 		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG COF_VER=(?<currentDigest>[0-9a-f]{40}) # (?<currentValue>\\S+)"], "depNameTemplate": "tomwassenberg/certbot-ocsp-fetcher", "packageNameTemplate": "https://github.com/tomwassenberg/certbot-ocsp-fetcher", "datasourceTemplate": "git-refs" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LRH_VER=(?<currentValue>\\S+) # lua-resty-http"], "depNameTemplate": "lua-resty-http", "datasourceTemplate": "custom.luarocks-lua-resty-http", "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?-(?<build>\\d+)$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LRS_VER=(?<currentValue>\\S+) # lua-resty-string"], "depNameTemplate": "lua-resty-string", "datasourceTemplate": "custom.luarocks-lua-resty-string", "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?-(?<build>\\d+)$" },
+		{ "customType": "regex", "managerFilePatterns": ["/^Dockerfile$/"], "matchStrings": ["ARG LRO_VER=(?<currentValue>\\S+) # lua-resty-openssl"], "depNameTemplate": "lua-resty-openssl", "datasourceTemplate": "custom.luarocks-lua-resty-openssl", "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)(\\.(?<patch>\\d+))?-(?<build>\\d+)$" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["hadolint/releases/download/(?<currentValue>v[0-9.]+)/"], "depNameTemplate": "hadolint/hadolint", "datasourceTemplate": "github-releases" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["actionlint/releases/download/v(?<currentValue>[0-9.]+)/", "actionlint_(?<currentValue>[0-9.]+)_linux"], "matchStringsStrategy": "any", "depNameTemplate": "rhysd/actionlint", "datasourceTemplate": "github-releases", "extractVersionTemplate": "^v(?<version>.*)$" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["nginxbeautifier@(?<currentValue>[0-9.]+)"], "depNameTemplate": "nginxbeautifier", "datasourceTemplate": "npm" }
@@ -47,7 +64,7 @@
 			"matchFileNames": ["Dockerfile"],
 			"separateMajorMinor": false
 		},
-		{ "groupName": "runtime tools", "matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"] },
+		{ "groupName": "runtime tools", "matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher", "lua-resty-http", "lua-resty-string", "lua-resty-openssl"] },
 		{
 			"matchDepNames": ["crowdsecurity/lua-cs-bouncer", "tomwassenberg/certbot-ocsp-fetcher"],
 			"postUpgradeTasks": {
