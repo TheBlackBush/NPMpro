@@ -84,7 +84,7 @@ If you moved from NPMplus, users only stay signed in through the upgrade when yo
 
 ## Prerun scripts (expert option)
 
-If you don't know what this is, ignore it. If you need to run scripts before NPMpro launches, put them under `/opt/npmpro/prerun/*.sh` (please add `#!/usr/bin/env sh` or `#!/usr/bin/env bash` to the top of the script). You need to create this folder yourself, and also set `ENABLE_PRERUN=true` in your `compose.yaml` (shown on the Environment page). The scripts run as root on every start, before the variables are checked, so they only run when root alone can change them: the folder and every script must be owned by root (`chown -R root:root /opt/npmpro/prerun`), not be links and not be writable by group or others; anything else is skipped with a message in the log.
+If you don't know what this is, ignore it. If you need to run scripts before NPMpro launches, put them under `/opt/npmpro/prerun/*.sh` (please add `#!/usr/bin/env sh` or `#!/usr/bin/env bash` to the top of the script). You need to create this folder yourself, and also set `ENABLE_PRERUN=true` in your `compose.yaml` (shown on the Environment page). The scripts run as root on every start, before the variables are checked, so they only run when root alone can change them: the folder and every script must be owned by root (`chown -R root:root /opt/npmpro/prerun`), not be links and not be writable by group or others; anything else is skipped with a message in the log. The image has `sh`, `bash`, `curl`, `jq`, `openssl` and `nano`; a tool that is not there can be installed with `apk add` in the script.
 
 ## Removed variables and upgrade notes
 
