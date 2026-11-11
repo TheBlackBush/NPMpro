@@ -198,7 +198,17 @@ if [ "$PUID" != "0" ]; then
     # certbot DNS plugins: the image's Python (/usr/local) is root's, so pip installs them for the PUID user into a
     # folder recreated on every start; only the PUID user ever runs certbot
     export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
-    exec su-exec "$PUID:$PGID" launch.sh
+    # nginx and the backend (its nginx -t binds every listen socket) keep one capability through the switch, binding
+    # ports below 1024 (with host networking the host's ip_unprivileged_port_start applies); the other services drop it
+    # in their dinit commands. Only when the container may hold it (bit 10 of the bounding set); otherwise the switch
+    # stays plain. HOME is set like su-exec did (the user's home from /etc/passwd), setpriv leaves the environment alone
+    HOME="$(getent passwd "$PUID" | cut -d: -f6)"; export HOME="${HOME:-/}"
+    if [ $(( (0x$(awk '/^CapBnd:/ {print $2}' /proc/self/status) >> 10) & 1 )) = 1 ]; then
+        exec /bin/setpriv --reuid "$PUID" --regid "$PGID" --groups "$PGID" \
+            --inh-caps=-all,+net_bind_service --ambient-caps=-all,+net_bind_service launch.sh
+    fi
+    echo "NET_BIND_SERVICE is not in the container's capabilities: with host networking nginx can not bind ports below 1024."
+    exec /bin/setpriv --reuid "$PUID" --regid "$PGID" --groups "$PGID" launch.sh
 else
     # The internet-facing workers run as npmpro-worker (uid/gid 101), the master stays root: it reads the TLS keys,
     # the configs and opens the logs before the workers start. The workers only get what they serve or check per

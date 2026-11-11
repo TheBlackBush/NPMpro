@@ -107,6 +107,8 @@ jobs:
         run: node .github/scripts/config-check.js https://127.0.0.1:81
       - name: nginx -t on the whole config
         run: docker exec npmpro nginx -t
+      - name: PUID binds ports below 1024 without the host sysctl
+        run: .github/scripts/puid-low-ports.sh npmpro:test npmpro-puid
       - name: container logs
         if: ${{ failure() }}
         run: docker logs npmpro

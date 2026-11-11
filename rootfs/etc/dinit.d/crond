@@ -1,5 +1,5 @@
 type = process
-command = crond -f -d 7 -c /tmp/crontabs
+command = /bin/setpriv --inh-caps=-all --ambient-caps=-all crond -f -d 7 -c /tmp/crontabs
 term-signal = TERM
 restart = yes
 options = shares-console
