@@ -4,3 +4,7 @@ allowBuilds:
   better-sqlite3: false
 overrides:
   debug>supports-color: '-'
+  # tar-stream loads bare-fs only under the Bare runtime ("imports" condition "bare"); Node uses fs
+  tar-stream>bare-fs: '-'
+  # events-universal loads bare-events only under the "bare" condition (bare.js); default.js is Node's events
+  events-universal>bare-events: '-'

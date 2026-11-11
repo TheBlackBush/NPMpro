@@ -203,6 +203,9 @@ RUN apk upgrade --no-cache -a && \
     find /app/node_modules -type f \( -name "*.d.ts" -o -name "*.d.mts" -o -name "*.d.cts" -o \( -iname "*.md" ! -iname "licen[cs]e*" \) \) -delete && \
     find /app/node_modules/.pnpm -maxdepth 1 -type d -name "@types+*" -exec rm -r {} + && \
     rm -vr /app/node_modules/better-sqlite3/deps/sqlite3 && \
+    # swagger-ui-express serves swagger-ui-bundle.js, swagger-ui-standalone-preset.js and swagger-ui.css only
+    find /app/node_modules/.pnpm -path "*/node_modules/swagger-ui-dist/*" -type f \
+         \( -name "swagger-ui-es-bundle*.js" -o -name "swagger-ui.js" \) -delete && \
     case "$TARGETARCH" in \
       amd64) keep="linuxmusl-x64.node" ;; \
       arm64) keep="linuxmusl-arm64.node" ;; \
@@ -235,7 +238,7 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
                        pcre2 luajit zlib-ng brotli zstd lua5.1-cjson libxml2 libldap quickjs-ng-libs libmaxminddb-libs \
                        curl coreutils findutils grep jq openssl shadow su-exec util-linux-misc \
-                       bash bash-completion nano \
+                       bash nano \
                        logrotate goaccess fcgi \
                        luarocks5.1 git make \
                        nodejs python3 && \
@@ -270,6 +273,7 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     pip install --no-cache-dir --require-hashes -r /tmp/certbot-requirements.txt && \
     mkdir -p /usr/local/share/npmpro && \
     pip freeze --all --exclude pip > /usr/local/share/npmpro/certbot-constraints.txt && \
+    rm -r /usr/lib/python3.*/ensurepip && \
     \
     wget -q https://raw.githubusercontent.com/tomwassenberg/certbot-ocsp-fetcher/"$COF_VER"/certbot-ocsp-fetcher -O /usr/local/bin/certbot-ocsp-fetcher.sh && \
     echo "60148ed2ffef2f1354427d3e080400d008132f8e5fb014f721f5986f438dd621  /usr/local/bin/certbot-ocsp-fetcher.sh" | sha256sum -c - && \
@@ -302,7 +306,8 @@ COPY --from=frontend /app/dist /app/frontend
 
 # CI passes the version (a plain build keeps 0.0.0); chmod covers a checkout without file modes
 ARG VERSION
-RUN chmod +x /usr/local/bin/*.sh && \
+RUN rm /usr/local/bin/git-clone-commit.sh && \
+    chmod +x /usr/local/bin/*.sh && \
     if [ -n "$VERSION" ]; then \
         jq --arg v "$VERSION" ".version = \$v" /app/package.json > /tmp/package.json && \
         mv /tmp/package.json /app/package.json; \
