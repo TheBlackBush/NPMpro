@@ -310,7 +310,7 @@ COPY --from=frontend /app/dist /app/frontend
 # CI passes the version (a plain build keeps 0.0.0); chmod covers a checkout without file modes
 ARG VERSION
 RUN rm /usr/local/bin/git-clone-commit.sh && \
-    chmod +x /usr/local/bin/*.sh && \
+    chmod +x /usr/local/bin/*.sh /app/index.js /app/password-reset.js && \
     if [ -n "$VERSION" ]; then \
         jq --arg v "$VERSION" ".version = \$v" /app/package.json > /tmp/package.json && \
         mv /tmp/package.json /app/package.json; \
