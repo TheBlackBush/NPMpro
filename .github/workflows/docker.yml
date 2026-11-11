@@ -82,12 +82,15 @@ jobs:
         working-directory: frontend
         run: |
           pnpm install --frozen-lockfile
-          for attempt in 1 2 3; do
-            pnpm exec playwright install --with-deps --only-shell chromium && exit 0
-            echo "::warning::browser install failed (attempt $attempt of 3)"
-            [ "$attempt" -lt 3 ] && sleep 10
+          # the system packages come from the Ubuntu mirror; the runner image already has Chrome's libraries, so when
+          # the mirror cannot be reached the browser alone is enough (the CSP check fails if a library is missing)
+          for attempt in 1 2; do
+            timeout 300 pnpm exec playwright install --with-deps --only-shell chromium && exit 0
+            echo "::warning::browser install with system packages failed (attempt $attempt of 2)"
+            [ "$attempt" -lt 2 ] && sleep 10
           done
-          exit 1
+          echo "::warning::installing the browser without system packages"
+          pnpm exec playwright install --only-shell chromium
       - name: no CSP violation or page error on any page, menu or window
         working-directory: frontend
         env:
