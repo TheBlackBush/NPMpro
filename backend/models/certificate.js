@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import { Model } from "objection";
 import db from "../db.js";
 import { convertBoolFieldsToInt, convertIntFieldsToBool } from "../lib/helpers.js";
@@ -20,13 +17,10 @@ class Certificate extends Model {
 		this.created_on = now();
 		this.modified_on = now();
 
-		// Default for expires_on
 		this.expires_on ??= now();
 
-		// Default for domain_names
 		this.domain_names ??= [];
 
-		// Default for meta
 		this.meta ??= {};
 	}
 

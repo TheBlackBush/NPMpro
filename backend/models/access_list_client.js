@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import { Model } from "objection";
 import db from "../db.js";
 import accessListModel from "./access_list.js";
@@ -13,7 +10,6 @@ class AccessListClient extends Model {
 		this.created_on = now();
 		this.modified_on = now();
 
-		// Default for meta
 		this.meta ??= {};
 	}
 
