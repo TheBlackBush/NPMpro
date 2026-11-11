@@ -213,10 +213,8 @@ function Result({ result, types, plan, onOpen }) {
 
 /**
  * Restore a stored backup (entry) or import a file on a list page (importKind and file, merge only, see
- * showImportItemsModal): the passphrase when the file is encrypted with one, then Replace or Merge (a file of single
- * items only merges). Replace shows what it holds as the type tree (all ticked) with what a restore of the selection
- * clears or skips; Merge shows the merge view (MergeView) with its dry run. Then a confirmation and the restore.
- * Closing before the restore releases the unpacked backup; while it runs the dialog cannot be closed.
+ * showImportItemsModal): passphrase if needed, Replace or Merge (a file of single items only merges), a confirmation,
+ * the restore. Closing before the restore releases the unpacked backup; the dialog stays open while it runs.
  */
 const RestoreBackupModal = EasyModal.create(({ entry, importKind, file, navigate, visible, remove }) => {
 	const importing = Boolean(importKind);

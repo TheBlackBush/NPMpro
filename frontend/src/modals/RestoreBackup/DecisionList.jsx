@@ -42,7 +42,6 @@ const ACTION_LOOKS = {
 	keep: { variant: "outline" },
 };
 
-// the badge look of each reason an item meets an instance row
 const REASON_LOOKS = {
 	"domain-in-use": { variant: "outline", className: TINT.warning },
 	"domain-in-use-several": { variant: "outline", className: TINT.warning },
@@ -84,7 +83,6 @@ const targetText = (item) => {
 	return item.reason === "same-certificate" ? `#${item.target.id} ${item.target.label}` : item.target.label;
 };
 
-// the reason badge of an item
 function ReasonBadge({ reason, className }) {
 	const look = REASON_LOOKS[reason] ?? { variant: "secondary" };
 	return (
