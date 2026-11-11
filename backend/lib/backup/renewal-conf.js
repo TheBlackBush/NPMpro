@@ -19,7 +19,6 @@ const VERSION = /^\d+(?:\.\d+)*$/u;
 const DOMAIN = /^(?:\*\.)?[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*$|^\[?[0-9A-Fa-f:.]+\]?$/u;
 const BOOLEAN = /^(?:true|false)$/iu;
 
-// [renewalparams] keys kept as they are when their value passes the check
 const CHECKED = {
 	server: /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?(?:\/[A-Za-z0-9._~/-]*)?$/u,
 	key_type: /^(?:rsa|ecdsa)$/u,
@@ -70,8 +69,6 @@ const parseRenewalConf = (text) => {
 };
 
 /**
- * The renewal conf rebuilt for the certificate with the id on this instance
- *
  * @param   {string}       text
  * @param   {Object}       options
  * @param   {number}       options.id        the certificate's id on this instance
@@ -150,8 +147,6 @@ const accountIds = async (dir) => {
 };
 
 /**
- * The account ids the renewal confs name
- *
  * @param   {string[]}  texts
  * @returns {Set<string>}
  */
@@ -168,7 +163,7 @@ const namedAccounts = (texts) =>
  * @param   {Object}    options
  * @param   {string}    options.stageDir
  * @param   {string}    options.dataDir
- * @param   {Object[]}  options.items     the plan's items
+ * @param   {Object[]}  options.items
  * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the certificate
  */
 const checkStagedRenewals = async ({ stageDir, dataDir, items }) => {

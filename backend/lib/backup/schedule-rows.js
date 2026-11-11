@@ -4,7 +4,6 @@ import { FREQUENCIES, TIME } from "./schedule-time.js";
 
 // Backup schedule rows: the body checks of the API, the database form of dates and the view the API returns.
 
-// the schedules table and its backup type id, shared by the backup types, the merge plan and the merge
 const TABLE = "npmpro_backup_schedule";
 const SCHEDULE_TYPE = "backup_schedules";
 const PROTECTIONS = ["passphrase", "instance_key", "none"];
@@ -17,10 +16,8 @@ const isInt = (value, min, max) => Number.isInteger(value) && value >= min && va
 const length = (text) => [...text.normalize("NFC")].length;
 
 /**
- * The fields of a create (current null) or an update (current: the parsed stored row) after the checks
- *
  * @param   {Object}    body        the API body
- * @param   {?Object}   current     parseRow() of the stored row
+ * @param   {?Object}   current     parseRow() of the stored row, null for a create
  * @param   {string[]}  knownTypes  the backup type ids
  * @returns {{ fields: Object, passphrase: string | null | undefined }}  passphrase undefined keeps the stored one
  */
@@ -92,7 +89,6 @@ const parseTypes = (value) => {
 	}
 };
 
-/** A stored row with JSON, booleans, numbers and dates as values */
 const parseRow = (row) => ({
 	...row,
 	id: Number(row.id),

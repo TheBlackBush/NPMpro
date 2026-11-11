@@ -1,7 +1,6 @@
-// Plans and applies the reference fixes needed after a replace restore.
-// Pure module: it only reads the rows it is given; applyReferences takes a knex transaction.
-// Empty values match what the app writes for "none": certificate_id and npmpro_mtls_certificate_id
-// are NOT NULL DEFAULT 0 columns, npmpro_dns_credential_id is a nullable column.
+// Plans and applies the reference fixes needed after a replace restore. Pure: it only reads the rows it is given;
+// applyReferences takes a knex transaction. Empty values match what the app writes for "none": certificate_id and
+// npmpro_mtls_certificate_id are NOT NULL DEFAULT 0 columns, npmpro_dns_credential_id is nullable.
 
 const HOST_TABLES = ["proxy_host", "redirection_host", "dead_host", "stream"];
 const OWNED_TABLES = [...HOST_TABLES, "certificate", "access_list", "npmpro_dns_credential"];
@@ -23,7 +22,6 @@ const rowLabel = (table, row) => {
 // names compare case-insensitively: MySQL's default collation does
 const nameKey = (name) => String(name ?? "").toLowerCase();
 
-// name, or name with the first free suffix " (2)", " (3)" ... when taken holds it
 const freeName = (name, taken) => {
 	const base = String(name ?? "");
 	if (!taken.has(nameKey(base))) return base;

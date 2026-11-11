@@ -6,7 +6,6 @@ import { global as defaultLogger } from "../../logger.js";
 import { BackupError, readHeader } from "./format.js";
 
 const NAME = /^npmpro-backup-[a-z0-9-]+-\d{8}-\d{6}(-\d{1,3})?(-s\d{1,10})?(-auto)?\.npmpro$/u;
-// a page export, offered as the name of its pending download
 const EXPORT_NAME = /^npmpro-export-[a-z0-9-]+-\d{8}-\d{6}\.npmpro$/u;
 const PENDING_ID = /^[A-Za-z0-9_-]{16,64}$/u;
 const MAX_SESSIONS = 5;
@@ -68,7 +67,6 @@ const createBackupStore = ({
 	const exportName = ({ kind, host, date }) =>
 		`npmpro-export-${cleanHost(String(kind).replaceAll("_", "-"))}-${cleanHost(host)}-${stamp(date)}.npmpro`;
 
-	// a name a pending download may be offered under: a backup or a page export
 	const isDownloadName = (name) => typeof name === "string" && (NAME.test(name) || EXPORT_NAME.test(name));
 
 	const pathOf = (name) => {
@@ -152,7 +150,6 @@ const createBackupStore = ({
 		}
 	};
 
-	// keeps the newest keepAuto automatic backups of Settings restores and, apart from them, of page imports
 	const pruneAuto = async () => {
 		const items = (await list()).filter((item) => item.auto);
 		for (const page of [false, true]) {
@@ -168,7 +165,6 @@ const createBackupStore = ({
 			.filter((item) => !item.auto && item.schedule_id === Number(id))
 			.sort((a, b) => b.modified.localeCompare(a.modified) || orderKey(b.name).localeCompare(orderKey(a.name)));
 
-	// the number of files per schedule id, from the names only (no header reads)
 	const scheduleCounts = async () => {
 		const counts = new Map();
 		for (const name of await names(dir)) {
@@ -180,8 +176,8 @@ const createBackupStore = ({
 		return counts;
 	};
 
-	// the schedule's files past the newest keep (at least one is always kept, nothing when keep is not an integer); a
-	// file removed meanwhile is skipped. keepName (the file just written) is never removed and counts as kept.
+	// the schedule's files past the newest keep (at least one is kept, none when keep is not an integer); a file removed
+	// meanwhile is skipped. keepName (the file just written) is never removed and counts as kept.
 	const pruneSchedule = async (id, keep, keepName = null) => {
 		const removed = [];
 		if (!Number.isInteger(keep)) return removed;
@@ -201,9 +197,8 @@ const createBackupStore = ({
 
 	const withoutSchedule = (name) => name.replace(SCHEDULE_PART, "");
 
-	// moves a file to a free name: a hard link never replaces a taken name (a name taken between the check and the
-	// link gets the next one); where hard links are not supported, a rename to the name just checked free. Returns the
-	// new name, or null when the file is gone.
+	// moves a file to a free name: a hard link never replaces a taken name (a name taken meanwhile gets the next one);
+	// without hard link support, a rename to the name just checked free. Returns the new name, or null when the file is gone.
 	const moveToFree = async (from, wanted) => {
 		for (let attempt = 0; ; attempt++) {
 			const name = uniqueName(wanted);
@@ -239,7 +234,6 @@ const createBackupStore = ({
 		return moved;
 	};
 
-	// every scheduled file (not automatic ones) detached from its schedule; returns the new names
 	const detachAllSchedules = async () => {
 		const ids = [
 			...new Set(
@@ -281,7 +275,6 @@ const createBackupStore = ({
 		pending.clear();
 	};
 
-	// takes the lock at once or throws busy; the returned function releases it (once)
 	const acquire = () => {
 		if (running) throw busy();
 		running = true;
@@ -316,7 +309,6 @@ const createBackupStore = ({
 	};
 
 	const createToken = ({ stageDir, file, manifest, owner, kind = null }) => {
-		// one session per owner, and the oldest goes when there are too many
 		for (const [token, session] of sessions) {
 			if (session.entry.owner === owner) dropToken(token);
 		}
@@ -381,7 +373,6 @@ const createBackupStore = ({
 		return id;
 	};
 
-	// the owner's pending entry; an expired one is removed
 	const pendingOf = (id, owner) => {
 		if (typeof id !== "string" || !PENDING_ID.test(id)) throw expired();
 		const entry = pending.get(id);
@@ -400,7 +391,6 @@ const createBackupStore = ({
 		return entry.target;
 	};
 
-	// the pending file and its kind, left in place
 	const peekPending = (id, { owner }) => {
 		const { target, kind } = pendingOf(id, owner);
 		return { file: target, kind };

@@ -56,8 +56,8 @@ const encodeHeader = (header) => {
 };
 
 /**
- * Writes a backup file: the header, then the gzip tar (encrypted unless mode is "none"). Written to a temporary name
- * and renamed, so a failed write never leaves a half file under the final name.
+ * Writes a backup file: the header, then the gzip tar (encrypted unless mode is "none"). Written under a temporary
+ * name and renamed, so a failed write never leaves a half file.
  */
 const writeBackupFile = async ({ source, file, mode, passphrase, instanceKey, summary }) => {
 	const header = {

@@ -10,15 +10,12 @@ import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 const DOMAIN_HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts"];
 const HOST_TYPES = [...DOMAIN_HOST_TYPES, "streams"];
 const LINK_TYPES = ["certificates", "access_lists", "dns_credentials"];
-// the setting row types; backup schedules are their own rows, planned by scheduleDiffs
 const SETTINGS_TYPES = CATEGORIES.find(({ id }) => id === "settings").types.filter(
 	(typeId) => typeId !== SCHEDULE_TYPE,
 );
 const FILE_TYPES = ["settings_default_site", "custom_nginx", "crowdsec_files"];
 const ACTIONS = ["add", "replace", "skip", "existing", "take", "keep"];
-// actions that write the backup row, and so carry its links
 const ACTIVE = new Set(["add", "replace"]);
-// link targets that stay linked: the added row or the matching instance row
 const KEPT_TARGETS = new Set(["add", "existing"]);
 const MATCH_CHOICES = {
 	proxy_hosts: ["skip", "replace"],
@@ -77,7 +74,6 @@ const parseJson = (value) => {
 	}
 };
 
-// the value with object keys sorted, for a comparison that ignores key order
 const canonical = (value) => {
 	if (Array.isArray(value)) return value.map(canonical);
 	if (value !== null && typeof value === "object") {
@@ -165,7 +161,6 @@ const targetLabel = ({ type, row }, scope) => {
 	return hidden ? `#${row.id}` : itemLabel(type, row);
 };
 
-// the item before limits and choices, with the instance row it matches
 const matchItem = (typeId, row, ctx) => {
 	const base = { key: `${typeId}:${row.id}`, type: typeId, id: row.id, label: itemLabel(typeId, row) };
 	const targets = findTargets(typeId, row, ctx);
@@ -227,7 +222,6 @@ const selectedRows = (typeId, ctx) => {
 	return selectRows(typeId, ctx.data[typeId], Array.isArray(ids) ? ids : undefined)[ITEM_TYPES[typeId].table] ?? [];
 };
 
-// the selected rows of the type and the rows the active items need
 const planLinked = (typeId, neededBy, ctx) => {
 	const selected = selectedRows(typeId, ctx);
 	const selectedIds = new Set(selected.map((row) => String(row.id)));
@@ -237,7 +231,6 @@ const planLinked = (typeId, neededBy, ctx) => {
 	return planRows(typeId, [...selected, ...needed], ctx, { neededBy, selectedIds });
 };
 
-// the data of the items that write their row, for linkedOf
 const activeData = (items, data) =>
 	Object.fromEntries(
 		Object.keys(ITEM_TYPES)
@@ -250,7 +243,6 @@ const activeData = (items, data) =>
 			}),
 	);
 
-// the compared part of a setting row: its value and its meta without secret keys
 const settingContent = (typeId, row) => {
 	const meta = parseJson(row.meta);
 	const stripped = TYPES[typeId].secrets.strip({ setting: [{ ...row, meta: meta ?? {} }] }).setting[0].meta;
@@ -272,7 +264,6 @@ const listedItem = ({ key, typeId, id, label, target }) => ({
 	unticked: false,
 });
 
-// setting rows whose value or meta, without secrets, differs from the instance's
 const settingDiffs = (ctx) =>
 	SETTINGS_TYPES.filter((typeId) => ctx.types.includes(typeId)).flatMap((typeId) =>
 		(ctx.data[typeId]?.setting ?? []).flatMap((row) => {
@@ -306,7 +297,6 @@ const scheduleContent = (row) =>
 		}),
 	);
 
-// backup schedules by name: new ones are added, ones that differ keep or take the backup's
 const scheduleDiffs = (ctx) => {
 	if (ctx.scope.page || !ctx.types.includes(SCHEDULE_TYPE)) return [];
 	return sortedRows(ctx.data[SCHEDULE_TYPE]?.[SCHEDULE_TABLE]).flatMap((row) => {
@@ -337,7 +327,6 @@ const scheduleDiffs = (ctx) => {
 	});
 };
 
-// staged files of the chosen file types that the instance lacks or holds with other content
 const fileDiffs = (ctx) => {
 	const types = FILE_TYPES.filter((typeId) => ctx.types.includes(typeId));
 	const current = ctx.instance.files ?? {};
@@ -353,7 +342,6 @@ const fileDiffs = (ctx) => {
 
 const rowOf = (data, item) => tableRows(data, item.type).find((row) => same(row.id, item.id));
 
-// [column, target type, target id] of the links a row carries
 const linksOf = (typeId, row, data) => {
 	if (typeId === "certificates") {
 		return row.npmpro_dns_credential_id > 0
@@ -377,7 +365,6 @@ const linksOf = (typeId, row, data) => {
 	return links;
 };
 
-// links of the written hosts and certificates whose target is neither added nor matched
 const clearedLinks = (items, data) => {
 	const byKey = new Map(items.map((item) => [item.key, item]));
 	const cleared = new Map();
@@ -492,7 +479,6 @@ const planMerge = ({ data, instance, stageFiles, types, items, choices, scope, s
 	return { ...plan, hash: planHash(plan) };
 };
 
-// a table's rows with only the columns the planner reads, domain_names parsed
 const readTable = async (knex, table) => {
 	const present = Object.keys(await knex(table).columnInfo());
 	const columns = INSTANCE_COLUMNS.filter((column) => present.includes(column));
@@ -504,8 +490,6 @@ const readTable = async (knex, table) => {
 };
 
 /**
- * The instance rows the planner matches against.
- *
  * @param   {import("knex").Knex}  knex
  * @returns {Promise<Object>}      { [table]: rows }
  */

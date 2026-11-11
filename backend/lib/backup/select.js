@@ -1,6 +1,5 @@
 import { TYPES } from "./types.js";
 
-// the main table of each type with items, and the child tables that follow a main row
 const ITEM_TYPES = {
 	proxy_hosts: {
 		table: "proxy_host",
@@ -52,8 +51,6 @@ const streamLabel = (row) => {
 };
 
 /**
- * A readable name for one item.
- *
  * @param   {string}  typeId
  * @param   {Object}  row     the main row
  * @returns {string}
@@ -127,12 +124,11 @@ const linkedOf = (data) => {
 	return linked;
 };
 
-// an ACME account folder name (certbot names them by a hash)
 const ACCOUNT_ID = /^[0-9a-f]{32}$/u;
 
 /**
- * A filter for the certificate files of the given certificate ids; the folders that lead to the certificates stay
- * allowed. The shared ACME accounts are all allowed, or only those in accounts (the folders leading to them stay).
+ * A filter for the certificate files of the given certificate ids; the folders leading to them stay allowed. The shared
+ * ACME accounts are all allowed, or only those in accounts.
  *
  * @param   {Array<string|number>}  ids
  * @param   {Set<string>}           [accounts]  the account ids allowed; all when not given

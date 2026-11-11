@@ -4,8 +4,8 @@ const MINUTE = 60_000;
 
 /**
  * The backup schedule timer (spec "Scheduler"): a tick every minute, the first 5 minutes after start (catch-up of
- * overdue schedules, once each); due schedules run one after another; one held back by the busy lock is retried on
- * each tick and given up after maxWaitMs. A tick that is still running makes the next one skip.
+ * overdue schedules, once each). Due schedules run one after another; one held back by the busy lock is retried on each
+ * tick and given up after maxWaitMs. A tick that is still running makes the next one skip.
  *
  * @param   {Object}    deps
  * @param   {Function}  deps.dueSchedules   (nowMs) => Promise<rows>, in run order
@@ -36,7 +36,6 @@ const createBackupScheduler = ({
 	let paused = false;
 	// when pause() was called, so resume() can leave the paused time out of the busy waits
 	let pausedAt = null;
-	// schedule id -> when it first found the lock held
 	const waiting = new Map();
 
 	const runOne = async (row) => {
@@ -87,9 +86,9 @@ const createBackupScheduler = ({
 	return {
 		tick,
 		/**
-		 * A database move: no runs until resume(). Waits for a run that is going on; with timeoutMs it rejects with
-		 * "writer-running" when that run takes longer, and the scheduler is not paused then. A pause has one owner
-		 * (the move): a second pause() resolves at once and one resume() ends the pause.
+		 * A database move: no runs until resume(). Waits for a running run; with timeoutMs it rejects with "writer-running"
+		 * when that takes longer (the scheduler is not paused then). A pause has one owner (the move): a second pause()
+		 * resolves at once and one resume() ends it.
 		 */
 		pause: async ({ timeoutMs } = {}) => {
 			if (paused) return;
@@ -104,8 +103,8 @@ const createBackupScheduler = ({
 			}
 		},
 		/**
-		 * Ends a pause: the timers were never stopped, the next tick runs as usual (an overdue schedule runs once) and
-		 * the paused time does not count toward a busy wait
+		 * Ends a pause: the timers were never stopped, so the next tick runs as usual (an overdue schedule runs once) and the
+		 * paused time does not count toward a busy wait
 		 */
 		resume: () => {
 			if (!paused) return;

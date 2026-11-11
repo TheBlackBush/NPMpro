@@ -1,7 +1,5 @@
 /**
- * "scope" in this file means "where did this token come from and what is using it". Tokens are created
- * with scope "user" (login) or "mfa-challenge". This is not to be confused with the "role" which could
- * be "user" or "admin".
+ * "scope" is where a token came from and what uses it ("user" or "mfa-challenge"); not the "role" ("user" or "admin").
  */
 
 import TokenModel from "../models/token.js";
@@ -16,8 +14,6 @@ export default function (tokenString) {
 	let permissions = {};
 
 	/**
-	 * Loads the Token object from the token string
-	 *
 	 * @returns {Promise}
 	 */
 	const init = async () => {
@@ -31,12 +27,8 @@ export default function (tokenString) {
 
 		const tokenData = Token.load(tokenString);
 
-		// At this point we need to load the user from the DB and make sure they:
-		// - exist (and not soft deleted)
-		// - still have the appropriate scopes for this token
-		// This is only required when the User ID is supplied or if the token scope has `user`
+		// The user must exist and still have the token's scopes; checked when the token has a user id or the `user` scope.
 		if (tokenData.attrs.id || tokenData.scope?.includes("user")) {
-			// Has token user id or token user scope
 			const user = await userModel
 				.query()
 				.where("id", tokenData.attrs.id)
@@ -50,8 +42,7 @@ export default function (tokenString) {
 					throw new errs.PermissionError("Token has been revoked");
 				}
 
-				// make sure user has all scopes of the token
-				// The `user` role is not added against the user row, so we have to just add it here to get past this check.
+				// The `user` role is not stored on the user row, so it is added here to pass this check.
 				user.roles.push("user");
 
 				if (!(tokenData.scope ?? []).every((scopeItem) => user.roles.includes(scopeItem))) {
