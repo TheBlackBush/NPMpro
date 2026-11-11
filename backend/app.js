@@ -10,9 +10,6 @@ import mainRoutes from "./routes/main.js";
 
 Object.assign(multer.MulterError.prototype, { public: true, status: 400 });
 
-/**
- * App
- */
 const app = express();
 
 app.set("trust proxy", 1);
@@ -23,9 +20,7 @@ app.set("json replacer", jsonReplacer);
 app.use(cookieParser(process.env.COOKIE_SECRET || crypto.randomBytes(16).toString("hex")));
 app.use(express.json());
 
-/**
- * General Logging, BEFORE routes
- */
+// request logging, before the routes
 
 app.use((req, res, next) => {
 	if (
@@ -57,8 +52,7 @@ app.use("/", mainRoutes);
 
 const COMMAND_OUTPUT_MAX = 8000;
 
-// production error handler
-// no stacktraces leaked to user
+// error handler: no stack traces reach the client
 app.use((err, req, res, _) => {
 	const status = err.status || 500;
 	const exposed = err.public || err.expose;
@@ -86,7 +80,7 @@ app.use((err, req, res, _) => {
 			err.details.length > COMMAND_OUTPUT_MAX ? `…${err.details.slice(-COMMAND_OUTPUT_MAX)}` : err.details;
 	}
 
-	// Not every error is worth logging - but this is good for now until it gets annoying.
+	// errors that are not exposed are logged
 	if (err.stack && !exposed) logger.warn(`${req.method} ${req.originalUrl}: ${err}`);
 
 	res.status(status).send(payload);

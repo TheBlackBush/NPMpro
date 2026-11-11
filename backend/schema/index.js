@@ -2,10 +2,7 @@ import $RefParser from "@apidevtools/json-schema-ref-parser";
 
 let compiledSchema = null;
 
-/**
- * Compiles the schema, by dereferencing it, only once
- * and returns the memory cached value
- */
+/** Dereferences the schema once and returns the cached result */
 const getCompiledSchema = async () => {
 	compiledSchema ??= await $RefParser.dereference(`${import.meta.dirname}/swagger.json`, {
 		mutateInputSchema: false,
@@ -14,8 +11,7 @@ const getCompiledSchema = async () => {
 };
 
 /**
- * Scans the schema for the validation schema for the given path and method
- * and returns it.
+ * Returns the validation schema of a path and method.
  *
  * @param {string} path
  * @param {string} method
