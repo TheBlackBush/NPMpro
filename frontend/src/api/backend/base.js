@@ -36,7 +36,6 @@ function camelizeResponse(payload, responseUrl) {
 }
 
 function logoutOnUnauthorized(reload) {
-	// Force logout user and reload the page if Unauthorized
 	AuthStore.clear();
 	queryClient.clear();
 	if (reload) {
@@ -155,13 +154,11 @@ export async function post({ url, params, data }, abortController) {
 	let headers = {};
 
 	let body;
-	// Check if the data is an instance of FormData
-	// If data is FormData, let the browser set the Content-Type header
+	// FormData: the browser sets the Content-Type header (with the boundary)
 	if (data instanceof FormData) {
 		if ((await new Response(data).blob()).size > 1024 * 1024) throw new Error("error.max-upload-size");
 		body = data;
 	} else {
-		// If data is JSON, set the Content-Type header to 'application/json'
 		headers = {
 			[contentTypeHeader]: "application/json",
 		};
