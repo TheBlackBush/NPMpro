@@ -57,7 +57,7 @@ RUN git-clone-commit.sh https://github.com/aws/aws-lc "$AWSLC_VER" /src/aws-lc &
     cmake /src/aws-lc -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DDISABLE_GO=ON -DDISABLE_PERL=ON -DBUILD_TESTING=OFF && \
     ninja install
 
-# the nginx patches and the lua-nginx-module patch, applied in the next step
+# the nginx and lua patches, applied by the next step
 COPY patches/nginx-*.patch patches/lua-nginx-module-aws-lc.patch /src/
 RUN git-clone-commit.sh https://github.com/nginx/nginx "$NGINX_VER" /src/nginx && \
     cd /src/nginx && \
@@ -297,7 +297,7 @@ RUN apk upgrade --no-cache -a && \
 
 COPY --from=frontend /app/dist /app/frontend
 
-# The version the start log and the web UI show; CI passes it, a plain build keeps 0.0.0 from package.json
+# CI passes the version; a plain build keeps 0.0.0
 ARG VERSION
 RUN if [ -n "$VERSION" ]; then \
         jq --arg v "$VERSION" ".version = \$v" /app/package.json > /tmp/package.json && \
