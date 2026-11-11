@@ -15,7 +15,6 @@ const startStep = Math.floor(Date.now() / 30000);
 
 const internalTotp = {
 	/**
-	 * Check if user has TOTP enabled
 	 * @param {number} userId
 	 * @returns {Promise<boolean>}
 	 */
@@ -23,7 +22,7 @@ const internalTotp = {
 		(await authModel.query(trx).where("user_id", userId).andWhere("type", "totp").resultSize()) > 0,
 
 	/**
-	 * Start TOTP setup - store pending secret
+	 * Stores the pending secret
 	 *
 	 * @param   {Access}  access
 	 * @param   {number} userId
@@ -35,7 +34,6 @@ const internalTotp = {
 		}
 		const user = await internalUser.get(access, { id: userId });
 
-		// ensure user isn't already setup for totp
 		if (await internalTotp.isEnabled(userId)) {
 			throw new errs.ValidationError("TOTP is already enabled");
 		}
@@ -58,8 +56,6 @@ const internalTotp = {
 	},
 
 	/**
-	 * Enable TOTP after verifying code
-	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
 	 * @param   {string}  code
@@ -128,7 +124,7 @@ const internalTotp = {
 	},
 
 	/**
-	 * Disable TOTP (checks and code verification happen on the MFA layer)
+	 * Checks and code verification happen on the MFA layer
 	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
@@ -156,8 +152,6 @@ const internalTotp = {
 	},
 
 	/**
-	 * Verify a TOTP code
-	 *
 	 * @param   {number} userId
 	 * @param   {string} code
 	 * @returns {Promise<boolean>}
@@ -179,10 +173,7 @@ const internalTotp = {
 		const result = await verify({
 			token: code,
 			secret,
-			// These guardrails lower the minimum length requirement for secrets.
-			// In v12 of otplib the default minimum length is 10 and in v13 it is 16.
-			// Since there are totp secrets in the wild generated with v12 we need to allow shorter secrets
-			// so people won't be locked out when upgrading.
+			// otplib v12 accepted secrets of 10 bytes (v13: 16); v12 secrets exist, so keep 10 or users are locked out
 			guardrails: createGuardrails({
 				MIN_SECRET_BYTES: 10,
 			}),

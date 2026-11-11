@@ -50,7 +50,6 @@ export default {
 			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_AUTH, ERROR_MESSAGE_INVALID_AUTH_I18N);
 		}
 
-		// Check if MFA is enabled
 		const hasMfa = await mfa.isAnyEnabled(user.id);
 		if (hasMfa) {
 			if (data.code) {
@@ -59,7 +58,6 @@ export default {
 					throw new errs.PermissionError(ERROR_MESSAGE_INVALID_CODE, ERROR_MESSAGE_INVALID_CODE_I18N);
 				}
 			} else {
-				// Return challenge token instead of full token
 				const challengeToken = Token.create({
 					iss: "api",
 					attrs: {
@@ -120,10 +118,8 @@ export default {
 
 		if (user.is_disabled) throw new OidcLoginError("user_disabled", `User for ${identity} is disabled`);
 
-		// Check if MFA is enabled
 		const hasMfa = await mfa.isAnyEnabled(user.id);
 		if (hasMfa && !config.skip_mfa) {
-			// Return challenge token instead of full token
 			const challengeToken = Token.create({
 				iss: "api",
 				attrs: {
@@ -187,7 +183,7 @@ export default {
 	},
 
 	/**
-	 * Verify TOTP code and return full token
+	 * Verifies the TOTP code and returns the full token
 	 * @param {string} challengeToken
 	 * @param {string} code
 	 * @returns {Promise}
@@ -195,7 +191,6 @@ export default {
 	verifyTotp: async (challengeToken, code) => {
 		const Token = TokenModel();
 
-		// Verify challenge token
 		let tokenData;
 		try {
 			tokenData = Token.load(challengeToken);
@@ -203,7 +198,6 @@ export default {
 			throw new errs.AuthError("Invalid or expired challenge token", undefined, { cause: err });
 		}
 
-		// Check scope
 		if (tokenData.scope?.[0] !== "mfa-challenge") {
 			throw new errs.AuthError("Invalid challenge token");
 		}
@@ -227,7 +221,6 @@ export default {
 		}
 		consumedChallenges.set(tokenData.jti, tokenData.exp);
 
-		// Verify TOTP code
 		let verified;
 		try {
 			verified = await mfa.verifyForLogin(userId, code);
