@@ -35,8 +35,6 @@ const certbotEnv = (env = process.env) =>
 	Object.fromEntries(CERTBOT_ENV_KEYS.filter((key) => env[key] !== undefined).map((key) => [key, env[key]]));
 
 /**
- * Runs certbot with the minimal environment
- *
  * @param   {String[]} args
  * @returns {Promise<String>}
  */
@@ -58,8 +56,8 @@ const pluginInstallArgs = (plugin) => [
 ];
 
 /**
- * A deprecated provider (its service is gone, or its plugin needs an older certbot than the image's) keeps working
- * for what already uses it, but is not offered for new certificates and DNS credentials
+ * A deprecated provider (its service is gone, or its plugin needs an older certbot than the image's) keeps working for
+ * what already uses it, but is not offered for new certificates and DNS credentials
  *
  * @param {String} pluginKey
  */
@@ -72,15 +70,13 @@ const assertProviderForNew = (pluginKey) => {
 };
 
 /**
- * Installs a cerbot plugin given the key for the object from
- * ../certbot/dns-plugins.json
+ * Installs a certbot plugin given its key in ../certbot/dns-plugins.json
  *
  * @param   {string}  pluginKey
  * @returns {Object}
  */
 const installPlugin = async (pluginKey) => {
 	if (dnsPlugins[pluginKey]?.package_name === undefined) {
-		// throw Error(`Certbot plugin ${pluginKey} not found`);
 		throw new errs.ItemNotFoundError(pluginKey);
 	}
 

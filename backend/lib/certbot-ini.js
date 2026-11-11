@@ -73,8 +73,8 @@ const listConfs = async (fs, dir) => {
 };
 
 /**
- * The renewal confs that hold a required_profile line, without those lines (start.sh:22 behaviour), so the next
- * renewal uses the profile of certbot.ini
+ * The renewal confs that hold a required_profile line, without those lines (start.sh:22 behaviour), so the next renewal
+ * uses the profile of certbot.ini
  *
  * @param   {string}  [dir]
  * @param   {Object}  [fs]   node:fs/promises compatible

@@ -24,11 +24,11 @@ const secretItem = (group, name) => item(group, name, null, true);
 const settingItem = (group, name, fallback, section) => ({ ...item(group, name, fallback), setting: section });
 
 /**
- * The startup (container) variables shown on the read-only Environment page. Variables that are also runtime
- * settings are not listed here (they are shown in their settings section). A variable is secret when its value is a
- * credential, personal data, or when it was not clear that it is safe to show: its value is then never returned.
- * The names must be listed in NPMPRO_STARTUP_ENVS in rootfs/usr/local/bin/envs.sh (checked by a test), so that values
- * filled in by its defaults do not look user-set.
+ * The startup (container) variables shown on the read-only Environment page. Variables that are also runtime settings
+ * are not listed here (they appear in their settings section). A variable is secret when its value is a credential,
+ * personal data, or not clearly safe to show: its value is then never returned. The names must be listed in
+ * NPMPRO_STARTUP_ENVS in rootfs/usr/local/bin/envs.sh (checked by a test), so that values filled in by its defaults do
+ * not look user-set.
  */
 const ENVIRONMENT_ITEMS = [
 	item("network", "NPM_PORT", "81"),
@@ -90,7 +90,6 @@ const ENVIRONMENT_ITEMS = [
 
 const ENVIRONMENT_NAMES = ENVIRONMENT_ITEMS.map((entry) => entry.name);
 
-// the settings sections in menu order (runtime groups and the oidc, monitoring and geoip rows)
 const LOCK_GROUP_ORDER = [
 	"oidc",
 	"certificates",
@@ -135,9 +134,9 @@ const lockedRuntimeOf = (runtimeLocked) =>
  * The OIDC, monitoring and GeoIP settings an env var locks, in the form of the runtime ones (each by its own variable)
  *
  * @param   {Object}  locked
- * @param   {string[]}  [locked.oidc]        mergeOidcConfig().locked
- * @param   {string[]}  [locked.monitoring]  mergeMonitoringConfig().locked
- * @param   {string[]}  [locked.geoip]       mergeGeoipConfig().locked
+ * @param   {string[]}  [locked.oidc]
+ * @param   {string[]}  [locked.monitoring]
+ * @param   {string[]}  [locked.geoip]
  * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
 const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
@@ -160,7 +159,7 @@ const SETTING_ENV_KEYS = { oidc: OIDC_ENV_KEYS, monitoring: MONITORING_ENV_KEYS,
  * variable NAME, never a value. A key without a name in the map has no entry.
  *
  * @param   {"oidc"|"monitoring"|"geoip"}  group
- * @param   {string[]}  [locked]  the locked keys of mergeOidcConfig() / mergeMonitoringConfig() / mergeGeoipConfig()
+ * @param   {string[]}  [locked]  the locked keys
  * @returns {Object<string, string>}
  */
 const lockedByOf = (group, locked) => {
@@ -172,8 +171,8 @@ const lockedByOf = (group, locked) => {
  * The Environment page data. A secret item has no `value` key, whether it is set or not.
  *
  * @param   {Object}  env            process.env or a test object
- * @param   {{group: string, key: string, env?: string, reason?: string|null}[]}  runtimeLocked  runtime settings
- *          locked by env, with the variable that locks each and the reason of an indirect lock
+ * @param   {{group: string, key: string, env?: string, reason?: string|null}[]}  runtimeLocked  runtime settings locked
+ *          by env, with the variable that locks each and the reason of an indirect lock
  * @returns {{groups: {id: string, items: Object[]}[], locked_runtime: {group: string, key: string, env: string, reason: string|null}[]}}
  */
 const environmentInfo = (env, runtimeLocked) => {

@@ -5,10 +5,6 @@ const controlCharPattern = /[\p{Cc}\u2028\u2029]/u;
 const needsQuotePattern = /[#,"']|^\s|\s$/u;
 
 /**
- * @param   {String}  provider
- * @returns {Object|null}
- */
-/**
  * Quotes a value the way certbot's ConfigObj parser expects it, or returns null when it cannot be stored.
  *
  * @param   {String}  value
@@ -38,14 +34,10 @@ const groupError = (def) => {
 	return new errs.ValidationError(`Fill in exactly one of: ${names}`);
 };
 
-/** Groups that have at least one filled field in the source. */
 const filledGroups = (def, source) =>
 	def.one_of.filter((group) => def.fields.some((field) => field.group === group && isFilled(source, field.key)));
 
-/**
- * The active group comes from the submitted input. When nothing was submitted for a group,
- * the group that is filled in the previous values is kept.
- */
+/** The active group comes from the submitted input; with nothing submitted for a group, the group filled in the previous values is kept. */
 const pickActiveGroup = (def, submitted, previous) => {
 	const fromInput = filledGroups(def, submitted);
 	if (fromInput.length > 1) throw groupError(def);
