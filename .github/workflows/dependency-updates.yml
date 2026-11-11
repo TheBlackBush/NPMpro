@@ -47,3 +47,15 @@ jobs:
           commit-message: update patches and pinned sources
           title: update patches and pinned sources
           body: Hashes and files that have no version Renovate can track, from update-sources.sh.
+
+  develop-image:
+    # The first run of the week builds :develop again, so its Alpine packages are refreshed weekly even in a week
+    # without a push (the image keys its package layer on the ISO week). The fallback run skips it.
+    if: github.event.schedule == '17 2 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow run docker.yml --repo "$GITHUB_REPOSITORY" --ref develop
+        env:
+          GH_TOKEN: ${{ github.token }}
