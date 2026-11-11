@@ -48,7 +48,6 @@ const DeleteConfirmModal = EasyModal.create(
 			try {
 				await onConfirm();
 				remove();
-				// invalidate caches as requested
 				await Promise.all(invalidations.map((inv) => queryClient.invalidateQueries({ queryKey: inv })));
 				// the window closed while its opener (the deleted row's action button) was still there and got the focus;
 				// now the row is gone, so the focus fell to the page: the list heading takes it (also on Safari)

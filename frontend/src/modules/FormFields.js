@@ -24,7 +24,7 @@ export function valueAt(object, path) {
 }
 
 /**
- * The value of a number input kept as a number, as the Formik forms kept it: the number typed, or "" while the input
+ * The value of a number input kept as a number: the number typed, or "" while the input
  * holds no number (empty). For register's setValueAs, where a field's logic compares it with numbers (a port that
  * follows the database engine).
  *

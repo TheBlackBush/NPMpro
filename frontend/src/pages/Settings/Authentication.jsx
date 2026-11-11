@@ -101,7 +101,7 @@ function AuthAccordion({ data, isLocked }) {
 					{summary}
 				</span>
 			</AccordionTrigger>
-			{/* closed groups stay mounted, as before: their fields keep their values and registration */}
+			{/* closed groups stay mounted: their fields keep their values and registration */}
 			<AccordionPanel
 				id={`auth-${key}-panel`}
 				aria-labelledby={`auth-${key}-trigger`}

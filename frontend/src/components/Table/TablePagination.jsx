@@ -31,7 +31,8 @@ function PageLink({ page, current, onPage }) {
 /**
  * One paging bar of a list (the shadcn data-table layout): "Showing 1 to 25 of 60" on the left, the rows per page
  * choice and the page buttons as one group on the right; on a phone the count and the rows per page choice share the
- * first line and the page buttons take the second. Renders nothing for 10 rows or fewer; the page buttons show from two pages.
+ * first line and the page buttons take the second. Renders nothing for 10 rows or fewer; the page buttons show from
+ * two pages.
  *
  * @param {Object}   props
  * @param {number}   props.pageIndex  zero-based current page

@@ -7,10 +7,10 @@ import { FormField } from "./FormField";
 import { useReadOnly } from "./HookForm";
 
 /**
- * The group of a host, on the Details tab (UX-03): the app's searchable dropdown (the combobox, as Domain Names and
- * the access lists). Its arrow lists the groups already used by any host type, typing filters them, a new name is
+ * The group of a host, on the Details tab: the app's searchable dropdown (the combobox, as Domain Names and the
+ * access lists). Its arrow lists the groups already used by any host type, typing filters them, a new name is
  * offered as "Create ...", the clear button (or Backspace) leaves the host without a group. The field holds the name
- * as text ("" for no group), as the text input did; disabled in a View window.
+ * as text ("" for no group); disabled in a View window.
  */
 export function DirectoryField({
 	labelId,

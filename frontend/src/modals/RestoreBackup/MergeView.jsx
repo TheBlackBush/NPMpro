@@ -149,7 +149,6 @@ export function useMergePlan({ token, types, enabled }) {
 	};
 }
 
-// why the item meets an instance row, with the row
 function Reason({ item }) {
 	if (!item.reason) return null;
 	return (

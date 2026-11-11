@@ -33,10 +33,10 @@ function FullText({ text, linked, children }) {
  * @param {{ key: string, label: import("react").ReactNode, title?: string, value: number,
  *          extra?: string, badge?: import("react").ReactNode, detail?: import("react").ReactNode, to?: string,
  *          ariaLabel?: string }[]} props.items
- *        rows in display order; `tip: false` leaves the tooltip out (the label has its own; `title` still names the share bar), `title` is the full text for the tooltip of a truncated name, `extra` a short
- *        marker after the name (such as "+2"), `badge` a badge after it, `detail` a small line under the name
- *        and `to` a route the whole row links to (`ariaLabel` names that link; its share bar is then hidden from
- *        assistive technology)
+ *        rows in display order; `title` is the full text for the tooltip of a truncated name (`tip: false` leaves
+ *        the tooltip out, `title` still names the share bar), `extra` a short marker after the name (such as "+2"),
+ *        `badge` a badge after it, `detail` a small line under the name and `to` a route the whole row links to
+ *        (`ariaLabel` names that link; its share bar is then hidden from assistive technology)
  * @param {number} [props.total]        the 100 % for the share bar and percentage, default the sum of the values
  * @param {(n: number) => string} [props.formatValue]  count text, default formatCount
  * @param {"primary"|"destructive"} [props.tone]  colour of the share bars, default "primary" (CrowdSec uses "destructive")

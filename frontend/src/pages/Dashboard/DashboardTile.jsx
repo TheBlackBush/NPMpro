@@ -8,10 +8,10 @@ import { sectionAccent } from "src/modules/SectionAccents";
  * of the host type (the same accents as the list pages); without a section the square is neutral.
  *
  * @param {object} props
- * @param {string} props.to                                route to link to
- * @param {import("react").ElementType} props.icon        lucide icon
+ * @param {string} props.to
+ * @param {import("react").ElementType} props.icon
  * @param {string} [props.section]                         a key of SECTIONS (SectionAccents.js) (proxyHosts, streams, ...)
- * @param {import("react").ReactNode} props.children       the count text or highlights
+ * @param {import("react").ReactNode} props.children
  */
 function DashboardTile({ to, icon: Icon, section, children }) {
 	const accent = section ? sectionAccent(section) : null;

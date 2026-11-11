@@ -1,8 +1,7 @@
 /**
  * The rules of the Settings sections on React Hook Form (Default site, the runtime sections, GeoIP, Logs & monitoring):
- * starting values in the order the section shows its fields, validate functions built from the rules the Formik
- * sections had (the same messages, through createValidations' message), and the requests. Pure, so node --test checks
- * them without a DOM.
+ * starting values in the order the section shows its fields, validate functions (through createValidations' message)
+ * and the requests. Pure, so node --test checks them without a DOM.
  */
 import { isEmptyPayload, parseTrustedIps, runtimeSettingsPayload } from "./RuntimeSettings.js";
 
@@ -198,7 +197,7 @@ export const FORWARD_AUTH_PROVIDERS = [
 
 /**
  * Each upstream: a URL (the trimmed value), at most 255 characters (the backend's limit,
- * schema/paths/settings/runtime/forward-auth/put.json); the rule each Formik field had
+ * schema/paths/settings/runtime/forward-auth/put.json)
  */
 export const forwardAuthValidate = (rules) => {
 	const checkUrl = rules.validateUpstreamUrl();

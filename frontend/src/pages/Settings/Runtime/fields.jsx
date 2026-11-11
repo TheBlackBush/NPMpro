@@ -11,7 +11,6 @@ import { useRuntimeSection } from "./RuntimeSection";
 const idOf = (name) => `runtime-${name}`;
 
 // one icon per kind of "applies" note (settings.runtime.applies.*)
-// settings.runtime.applies.immediately, .next-certificate, .reload
 const APPLIES_ICONS = {
 	"settings.runtime.applies.immediately": Zap,
 	"settings.runtime.applies.next-certificate": FileKey,
@@ -41,7 +40,6 @@ function useFieldBadges(name) {
 	if (applies)
 		badges.push(
 			<SettingBadge key="applies" icon={APPLIES_ICONS[applies]} description={formatMessage({ id: applies })}>
-				{/* settings.runtime.applies.immediately.short, .next-certificate.short, .reload.short */}
 				<T id={`${applies}.short`} />
 			</SettingBadge>,
 		);

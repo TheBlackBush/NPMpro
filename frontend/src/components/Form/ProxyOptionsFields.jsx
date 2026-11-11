@@ -103,8 +103,8 @@ export function ForwardFields({ base = "", idSuffix = "", className }) {
 }
 
 /**
- * The proxy options of a proxy host or of a custom location, one block for both (UX-37): the option switches (a
- * change sets what it turns off or on, ProxyOptions.js), X-Frame-Options, the auth request and its upstream
+ * The proxy options of a proxy host or of a custom location, one block for both: the option switches (a change
+ * sets what it turns off or on, ProxyOptions.js), X-Frame-Options, the auth request and its upstream
  *
  * @param {Object} props
  * @param {string} [props.base]      the row's path ("locations.2"), "" for the host

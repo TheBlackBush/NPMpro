@@ -11,7 +11,7 @@ const DomainLink = ({ domain, color }) => {
 	}
 	return (
 		// a long name wraps at its dots inside the badge instead of pushing the row menu off a phone screen;
-		// the old per-badge colour name now only chooses between the filled and the outline look
+		// color only chooses between the filled and the outline look
 		<Badge
 			asChild
 			variant={color ? "secondary" : "outline"}

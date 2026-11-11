@@ -45,7 +45,6 @@ function useStored(key, parse, serialize = String) {
 }
 
 export function PreferencesProvider({ children }) {
-	// rows per page of each paged list
 	const [pageSizes, setPageSizes] = useState(() =>
 		Object.fromEntries(
 			PAGED_LISTS.map((list) => [list, parsePageSize(read(pageSizeKey(list)), defaultPageSize(list))]),

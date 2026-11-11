@@ -114,15 +114,12 @@ function useLateStartField(content, open, isPhone) {
 	}, [content, open]);
 }
 
-// Windows open at the top (a dialog) or at the right edge (a sheet, by the user's preference), so their position stays
-// put when a tab, a step, a choice or a result changes their height. Small windows ("sm") are always dialogs, phones
-// always get a full screen window (WindowFrame.windowMode). The primitive (Dialog or Sheet) never depends on the
-// screen width (WindowFrame.windowPrimitive): a phone gets the preferred primitive full screen, so crossing the phone
-// breakpoint while a window is open only changes classes and keeps the form and its edits.
-// Props: show, onHide (undefined: the window cannot close, it is saving),
-// size ("sm", "lg", "xl"), backdrop ("static" ignores clicks outside), keyboard (false ignores Escape).
-// `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls between a fixed header and
-// footer, windows open at the top, and phones always get a full screen window.
+// A dialog opens at the top, a sheet at the right edge (the user's preference), so the position stays put when the
+// height changes. "sm" windows are always dialogs, phones get a full screen window (WindowFrame.windowMode). The
+// primitive never depends on the screen width (WindowFrame.windowPrimitive), so crossing the phone breakpoint with a
+// window open only changes classes and keeps the form and its edits.
+// onHide undefined: the window cannot close (it is saving). backdrop "static" ignores clicks outside, keyboard false
+// ignores Escape. `scrollable`, `centered` and `fullscreen` are accepted and ignored (always the case).
 function AppModal({
 	children,
 	show,
@@ -336,7 +333,7 @@ function AppModalFooter({ children, className, ...props }) {
 				"flex shrink-0 flex-wrap items-center justify-end gap-2 border-t bg-muted/50 px-4 py-3",
 				className,
 			)}
-			// NPMpro: a click on Cancel (any button that is not a submit) first blurs the focused field, whose required error
+			// a click on Cancel (any button that is not a submit) first blurs the focused field, whose required error
 			// then appears, the footer moves and the click misses. Keeping the focus in the field on mousedown leaves the
 			// click intact. Submit buttons handle this themselves (FormSubmit). A button that acts on the form's values sets
 			// data-blur-first: the blur then commits typed text first (the HTTP certificate window's Test reads the

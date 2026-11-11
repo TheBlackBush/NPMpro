@@ -49,8 +49,8 @@ function TlsSwitch({ name, onTlsChange, shown, reason, ...props }) {
  * The TLS options of a host window, under its certificate (SSLCertificateField): the mTLS CA certificate select, the
  * client certificate switches (mTLS), the HTTPS options (HTTP hosts) and, while a new certificate is requested, its
  * request (its key, the DNS challenge, for a stream its domain names, the DNS challenge box). The switches sit in one
- * column. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off
- * says why in its hint.
+ * column. Each switch is a controller, a change runs useTlsChange; a switch the TLS rules turn off says why in its
+ * hint.
  */
 export function SSLOptionsFields({ forHttp = true, forProxyHost = false }) {
 	const watched = useWatch({ name: TLS_FIELDS });

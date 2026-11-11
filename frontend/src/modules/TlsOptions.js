@@ -1,8 +1,7 @@
 /**
  * The rules that switch a control of a host window's TLS tab off, each with the message that says why: the HTTPS
- * options need a certificate, HSTS needs Force HTTPS, the mTLS options need an existing certificate, and so on (the
- * conditions SSLOptionsFields and SSLCertificateField had inline). A control that is not in the result is enabled.
- * Pure, so node --test checks them without a DOM.
+ * options need a certificate, HSTS needs Force HTTPS, the mTLS options need an existing certificate, and so on. A
+ * control that is not in the result is enabled. Pure, so node --test checks them without a DOM.
  */
 import { namedLocations } from "./ProxyHostForms.js";
 

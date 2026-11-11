@@ -45,7 +45,7 @@ export function NavLinks({ orientation = "row", onNavigate }) {
 						active && column && cn(accent.bg, "hover:bg-muted"),
 					);
 					return (
-						// the row ends with Settings on the right (user decision 2026-11-03)
+						// the row ends with Settings on the right
 						<li key={id} className={cn(!column && id === "settings" && "ms-auto")}>
 							{external ? (
 								<a href={to} target="_blank" rel="noopener" className={className} onClick={onNavigate}>

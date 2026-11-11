@@ -1,9 +1,9 @@
 /**
- * The field rules of the forms (formerly the body of Validations.jsx), built for one react-intl object so they run
- * in node --test with the English messages. Validations.jsx builds them once with the app's intl.
+ * The field rules of the forms, built for one react-intl object so they run in node --test with the English
+ * messages. Validations.jsx builds them once with the app's intl.
  */
 
-// an address with one @ and no spaces (what type="email" checked before the forms used noValidate)
+// an address with one @ and no spaces
 const emailPattern = /^[^\s@]+@[^\s@]+$/u;
 // the backend's rule (schema/common.json): a name that is not a regular expression has no nginx syntax characters
 const domainPattern = /^(?:~\S{0,252}|(?!.*:[0-9]+$)[^\s/;{}"'\\#]{1,253})$/u;

@@ -1,4 +1,4 @@
-// NPMpro: formatted with Biome; the initial state is read synchronously so a phone has no first frame in the desktop variant
+// the initial state is read synchronously so a phone has no first frame in the desktop variant
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
