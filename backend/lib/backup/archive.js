@@ -74,7 +74,8 @@ const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
 			}
 			maybeSettle();
 		};
-		// Every started piece of filesystem work is tracked until its file is closed; destroy, when set, cuts a running write short.
+		// Every started piece of filesystem work is tracked until its file is closed; destroy, when set, cuts a running
+		// write short.
 		const track = async (work) => {
 			const item = { destroy: null };
 			writing.add(item);

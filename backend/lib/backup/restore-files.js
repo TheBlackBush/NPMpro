@@ -116,7 +116,8 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 	const journal = createJournal({ dataDir, asideDir });
 	const inData = (rel) => path.join(dataDir, rel);
 
-	// moves the allowed entries at rel aside, noting the modes of regular files; folders below a root left empty are removed
+	// moves the allowed entries at rel aside, noting the modes of regular files; folders below a root left empty are
+	// removed
 	const moveAside = async (files, rel, modes, isRoot) => {
 		const info = await exists(inData(rel));
 		if (!(info && files.allow(rel)) || keep(rel)) return;
@@ -162,7 +163,7 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
  * @param   {string}    options.stageDir    holds files/<path below dataDir>
  * @param   {string[]}  options.types
  * @param   {string}    options.asideDir    an empty folder (mode 700), ideally on the same filesystem as dataDir
- * @param   {Function}  [options.keep]      (rel) => boolean: the instance's entry at rel stays and no staged one is placed
+ * @param   {Function}  [options.keep]      (rel) => boolean: the instance's entry at rel stays, no staged one is placed
  * @returns {Promise<{ undo: () => Promise<void> }>}  on failure everything is moved back before it rejects
  */
 const swapFiles = async ({ dataDir, stageDir, types, asideDir, keep = () => false }) => {

@@ -10,6 +10,7 @@ const sqlitePragmas = (conn, done) => {
 // MySQL and MariaDB answer ER_UNKNOWN_TIME_ZONE for a zone name when the server has no time zone tables
 const ER_UNKNOWN_TIME_ZONE = 1298;
 let offsetNoted = false;
+// a TZ of the form :Area/City (POSIX allows the colon)
 const TZ_COLON = /^:/u;
 
 const processZone = () =>
@@ -29,9 +30,9 @@ const utcOffsetOf = (date) => {
 };
 
 /**
- * The pool's afterCreate for MySQL and MariaDB: the session uses the process's time zone, so NOW() writes the same naive
- * local time that mysql2 (timezone "local") reads and writes, and SQLite keeps. The zone name when the server knows
- * it, else the current UTC offset (noted once: without zone tables a DST change needs a restart).
+ * The pool's afterCreate for MySQL and MariaDB: the session uses the process's time zone, so NOW() writes the same
+ * naive local time that mysql2 (timezone "local") reads and writes, and SQLite keeps. The zone name when the server
+ * knows it, else the current UTC offset (noted once: without zone tables a DST change needs a restart).
  *
  * @param   {Object}    [options]
  * @param   {string}    [options.zone]  IANA zone, the process's by default

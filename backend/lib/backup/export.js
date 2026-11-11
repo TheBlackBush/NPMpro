@@ -105,8 +105,10 @@ const numericItems = (items) =>
  * @param   {string[]} options.types     type ids
  * @param   {boolean}  options.secrets   whether secrets go into the backup
  * @param   {Object}   [options.items]   { [typeId]: ids[] }; only these rows (and child rows, certificate files) go in
- * @param   {string}   [options.accounts]  partial backups: ACME accounts: "named" (those the chosen certificates name), "none" or all
- * @param   {Object}   options.meta      { npmproVersion, dbVersion, dbMigrations, createdBy: { name, email }, createdAt }
+ * @param   {string}   [options.accounts]  partial backups: ACME accounts: "named" (those the chosen certificates name),
+ *                                         "none" or all
+ * @param   {Object}   options.meta      { npmproVersion, dbVersion, dbMigrations, createdBy: { name, email },
+ *                                         createdAt }
  * @returns {Promise<{ manifest: Object, summary: Object }>}
  */
 const exportStage = async ({ knex, box, dataDir, stageDir, types, secrets, items, accounts, meta }) => {

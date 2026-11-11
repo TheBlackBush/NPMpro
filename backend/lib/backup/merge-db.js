@@ -103,7 +103,8 @@ const checkedItems = (plan) => {
  *                     replacedUserIds: number[], avatarMoves: Array<{ from, to }>, cleared: number }>}
  *          maps: String(backup id) -> instance id per table, for added, replaced and matched rows (and the locations
  *          of written proxy hosts); certificateMoves: backup id -> new id of added certificates; avatarMoves: backup
- *          id -> instance id of every added or replaced user; cleared: links whose target is neither imported nor matched
+ *          id -> instance id of every added or replaced user; cleared: links whose target is neither imported nor
+ *          matched
  */
 const mergeTypes = async ({
 	knex,

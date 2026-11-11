@@ -119,7 +119,8 @@ function useLateStartField(content, open, isPhone) {
 // primitive never depends on the screen width (WindowFrame.windowPrimitive), so crossing the phone breakpoint with a
 // window open only changes classes and keeps the form and its edits.
 // onHide undefined: the window cannot close (it is saving). backdrop "static" ignores clicks outside, keyboard false
-// ignores Escape. `scrollable`, `centered` and `fullscreen` are accepted and ignored (always the case).
+// ignores Escape. `scrollable`, `centered` and `fullscreen` are accepted and ignored: the body always scrolls, windows
+// open at the top, phones always get a full screen window.
 function AppModal({
 	children,
 	show,

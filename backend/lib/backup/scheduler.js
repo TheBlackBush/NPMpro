@@ -103,8 +103,8 @@ const createBackupScheduler = ({
 			}
 		},
 		/**
-		 * Ends a pause: the timers were never stopped, so the next tick runs as usual (an overdue schedule runs once) and the
-		 * paused time does not count toward a busy wait
+		 * Ends a pause: the timers were never stopped, so the next tick runs as usual (an overdue schedule runs once) and
+		 * the paused time does not count toward a busy wait
 		 */
 		resume: () => {
 			if (!paused) return;

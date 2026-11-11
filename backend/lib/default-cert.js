@@ -19,6 +19,7 @@ const statOf = async (fs, file) => {
 };
 
 const isDir = async (fs, file) => (await statOf(fs, file))?.isDirectory() === true;
+// test -s: follows links (the certbot live files are links)
 const hasContent = async (fs, file) => ((await statOf(fs, file))?.size ?? 0) > 0;
 
 const builtIn = (tlsDir = TLS_DIR) => ({

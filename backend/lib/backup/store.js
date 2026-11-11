@@ -198,7 +198,8 @@ const createBackupStore = ({
 	const withoutSchedule = (name) => name.replace(SCHEDULE_PART, "");
 
 	// moves a file to a free name: a hard link never replaces a taken name (a name taken meanwhile gets the next one);
-	// without hard link support, a rename to the name just checked free. Returns the new name, or null when the file is gone.
+	// without hard link support, a rename to the name just checked free. Returns the new name, or null when the file is
+	// gone.
 	const moveToFree = async (from, wanted) => {
 		for (let attempt = 0; ; attempt++) {
 			const name = uniqueName(wanted);

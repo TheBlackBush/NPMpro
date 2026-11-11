@@ -86,9 +86,10 @@ const accessLogEnabled = (trafficEnabled, writeLogFiles) => trafficEnabled === t
 
 /**
  * The access log switch shared by the traffic statistics hook and the logs runtime settings: both compute the include
- * from accessLogEnabled() with the other setting's current value. The traffic hook runs before the monitoring setting is
- * stored, so the value it applied is remembered and used by enabled() (a logs save right after it must not read the old
- * stored value); it runs in the runtime settings queue, so it never writes the include at the same time as a logs save.
+ * from accessLogEnabled() with the other setting's current value. The traffic hook runs before the monitoring setting
+ * is stored, so the value it applied is remembered and used by enabled() (a logs save right after it must not read the
+ * old stored value); it runs in the runtime settings queue, so it never writes the include at the same time as a logs
+ * save.
  *
  * @param   {Object}    deps
  * @param   {Function}  deps.readTrafficEnabled  () => stored monitoring traffic_enabled

@@ -122,8 +122,9 @@ const hrefsAreLocal = (text) => {
  * @param   {string}  text
  * @returns {boolean}  false for anything that can run script or load a resource: scripts, event handlers, javascript:
  *                     URLs, entity and character references (except the five XML ones), foreignObject, handler
- *                     animations, processing instructions, iframe/embed/object, src attributes, href values that are not
- *                     a fragment or a raster data: URL, other data: URLs, CSS @import, url() outside the file, CSS escapes
+ *                     animations, processing instructions, iframe/embed/object, src attributes, href values that are
+ *                     not a fragment or a raster data: URL, other data: URLs, CSS @import, url() outside the file,
+ *                     CSS escapes
  */
 const svgIsSafe = (text) =>
 	!(

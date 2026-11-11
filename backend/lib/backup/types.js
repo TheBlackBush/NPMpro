@@ -3,9 +3,9 @@ import { RUNTIME_GROUPS } from "../runtime-rules.js";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
 
-// What a backup can hold, by type: tables, files under the data folder and how stored secrets are opened for an archive,
-// stripped, or sealed again with the target's secret box. Secret functions return new rows. Paths are relative to the
-// data folder, without a leading or trailing slash.
+// What a backup can hold, by type: tables, files under the data folder and how stored secrets are opened for an
+// archive, stripped, or sealed again with the target's secret box. Secret functions return new rows. Paths are
+// relative to the data folder, without a leading or trailing slash.
 
 const CATEGORIES = [
 	{ id: "hosts", types: ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"] },
