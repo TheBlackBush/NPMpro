@@ -16,8 +16,8 @@ const TIMEOUT_NAMES = new Set(["TimeoutError", "AbortError"]);
 class UpdateError extends Error {}
 
 /**
- * Archive entries that are extracted: directories and regular files named *.mmdb or *.txt up to MAX_BYTES.
- * Links and other entry types are skipped, also when their name matches.
+ * Archive entries that are extracted: directories and regular files named *.mmdb or *.txt up to MAX_BYTES; links and
+ * other types are skipped, also when their name matches.
  *
  * @param   {string}  entryPath
  * @param   {{type: string, size: number}}  entry
@@ -27,8 +27,6 @@ const archiveFilter = (entryPath, entry) =>
 	entry.type === "Directory" || (entry.type === "File" && WANTED_ENTRY.test(entryPath) && entry.size <= MAX_BYTES);
 
 /**
- * Finds `${edition}.mmdb` anywhere below dir
- *
  * @param   {string}  dir
  * @param   {string}  name
  * @returns {Promise<string|null>}
@@ -40,9 +38,7 @@ const findFile = async (dir, name) => {
 	return null;
 };
 
-/**
- * Streams the response body into file, failing when it exceeds MAX_BYTES
- */
+/** Streams the response body into file, failing when it exceeds MAX_BYTES */
 const saveBody = async (response, file) => {
 	const declared = Number(response.headers.get("content-length"));
 	if (declared > MAX_BYTES) {
@@ -60,9 +56,7 @@ const saveBody = async (response, file) => {
 	await pipeline(Readable.fromWeb(response.body), counter, createWriteStream(file));
 };
 
-/**
- * Downloads the archive, mapping every failure to a fixed message
- */
+/** Downloads the archive, mapping every failure to a fixed message */
 const download = async ({ url, authorization, fetch, file }) => {
 	try {
 		const response = await fetch(url, {
@@ -122,9 +116,7 @@ const updateEdition = async ({ edition, authorization, dir, fetch }) => {
 	}
 };
 
-/**
- * Removes work dirs left behind by an interrupted update
- */
+/** Removes work dirs left behind by an interrupted update */
 const sweepLeftovers = async (dir) => {
 	for (const entry of await readdir(dir)) {
 		if (entry.startsWith(".update-")) await rm(path.join(dir, entry), { recursive: true, force: true });
@@ -132,10 +124,9 @@ const sweepLeftovers = async (dir) => {
 };
 
 /**
- * Downloads the given MaxMind editions into dir (an existing file is only replaced by a valid new one)
- *
- * `ok` is true only when every requested edition succeeded; `updated` lists the editions whose file was replaced
- * (it can be non-empty while `ok` is false).
+ * Downloads the given MaxMind editions into dir (an existing file is only replaced by a valid new one). `ok` is true
+ * only when every requested edition succeeded; `updated` lists the editions whose file was replaced (it can be
+ * non-empty while `ok` is false).
  *
  * @param   {Object}    options
  * @param   {string}    options.accountId

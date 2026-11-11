@@ -3,14 +3,6 @@ import Access from "../access.js";
 export default () => async (req, res, next) => {
 	const token = req.signedCookies?.["__Host-Http-token"] || null;
 
-	//if (!token) {
-	//	return res.status(401).json({
-	//		error: {
-	//			message: "Missing token",
-	//		},
-	//	});
-	//}
-
 	try {
 		const access = new Access(token);
 		await access.load();

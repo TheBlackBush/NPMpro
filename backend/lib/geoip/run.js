@@ -4,10 +4,9 @@ let inFlight = null;
 let queued = null;
 
 /**
- * Updates the databases with the configured credentials, records the outcome and reloads the readers
- * when any file was replaced (`ok` means every requested edition succeeded, `updated` can be non-empty without it).
- * A call while a run is in progress queues one follow-up run (shared by all such calls), so newly saved
- * credentials are always used.
+ * Updates the databases with the configured credentials, records the outcome and reloads the readers when any file was
+ * replaced (`ok` means every requested edition succeeded, `updated` can be non-empty without it). A call while a run is
+ * in progress queues one follow-up run (shared by all such calls), so newly saved credentials are always used.
  *
  * @param   {Object}    options
  * @param   {Object}    options.geoip           createGeoip() instance

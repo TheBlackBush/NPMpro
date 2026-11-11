@@ -6,8 +6,6 @@ import jwtdecode from "./jwt-decode.js";
 import pathId from "./path-id.js";
 
 /**
- * The routes of a host type
- *
  * @param   {Object}    options
  * @param   {Object}    options.internal    the host service
  * @param   {String}    options.path        the path in the OpenAPI schema, /nginx/dead-hosts

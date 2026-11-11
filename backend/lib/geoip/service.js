@@ -15,9 +15,9 @@ const defaultTimers = {
 };
 
 /**
- * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an
- * automatic database update when credentials exist and the last update is missing or older than 3 days,
- * checked a minute after start and then hourly. The update records its own result (lib/geoip/run.js).
+ * Keeps the shared GeoIP readers current: reload() every 10 minutes (it only reopens changed files) and an automatic
+ * update when credentials exist and the last update is missing or older than 3 days, checked a minute after start and
+ * then hourly. The update records its own result (lib/geoip/run.js).
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.geoip      createGeoip() instance

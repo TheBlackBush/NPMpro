@@ -14,7 +14,6 @@ const ajv = new Ajv({
 });
 
 /**
- *
  * @param   {Object} schema
  * @param   {Object} payload
  * @returns {Object}
