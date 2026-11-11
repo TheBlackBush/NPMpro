@@ -117,7 +117,6 @@ RUN cd /src/nginx && \
     --build=NPMpro \
     --user=root \
     --group=root \
-    --with-debug \
     --with-compat \
     --with-threads \
     --with-file-aio \
@@ -226,6 +225,9 @@ ARG LRL_VER=3ff6300e68b73ba20e909c7d16bd839aef2e5a4b # v0.15
 ARG LCSB_VER=4aad1dfa653d9d96fb5c0114ae930eb2353214c8 # main
 ARG COF_VER=da93e0cec7fdb1a80f4972f75b3638763d012c0e # main
 ARG NBF_VER=5cee8db2a505f2a253e24691399c828c043071fc # master
+ARG LRH_VER=0.18.0-0 # lua-resty-http
+ARG LRS_VER=0.09-0 # lua-resty-string
+ARG LRO_VER=1.9.0-1 # lua-resty-openssl
 # ISO week (2026-W46) from CI: reruns the package step weekly. Without it the step reruns only when its inputs change.
 ARG ALPINE_REFRESH=
 
@@ -243,10 +245,11 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
                        luarocks5.1 git make \
                        nodejs python3 && \
     \
-    luarocks-5.1 install lua-resty-http && \
-    luarocks-5.1 install lua-resty-string && \
-    luarocks-5.1 install lua-resty-openssl && \
+    luarocks-5.1 install lua-resty-http "$LRH_VER" && \
+    luarocks-5.1 install lua-resty-string "$LRS_VER" && \
+    luarocks-5.1 install lua-resty-openssl "$LRO_VER" && \
     sed -i 's|^local legacy_nids = {}$|C.ERR_clear_error()\n&|' /usr/local/share/lua/5.1/resty/openssl/pkey.lua && \
+    grep -q '^C.ERR_clear_error()$' /usr/local/share/lua/5.1/resty/openssl/pkey.lua && \
     \
     git config --global advice.detachedHead false && \
     git config --global init.defaultBranch main && \
