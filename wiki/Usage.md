@@ -32,6 +32,10 @@ When you save a host, NPMpro first checks its certificates: the TLS certificate 
 
 When NPMpro saves a host it tests the nginx config. If the test fails, the host gets a red "Config error" status (click it for the nginx message), and the rest of your hosts keep working. See [Troubleshooting](Troubleshooting#a-host-shows-offline-or-config-error).
 
+Every host row has an edit button (a view button for users who may only view) next to the menu with the other actions.
+
+A host list, Certificates, Access Lists, the stored backups and the Audit Logs show a bar above and below the list when it has more than 10 rows: "Showing x to y of z", a "Rows per page" choice (10, 25, 50, 75, 100) and the page buttons. The default is 25 rows per page, and 10 for the stored backups. The choice is remembered for each list in this browser. A search, a filter or a new sort goes back to page 1.
+
 ## Appearance and navigation
 
 Open the user menu (your avatar, top right) and use **Appearance**:
@@ -163,6 +167,8 @@ Audit Logs lists who created, updated, enabled, disabled or deleted which object
 The web UI is available in 13 languages: English, Deutsch, Español, Français, Italiano, 日本語, 한국어, Nederlands, Polski, Português (Europeu), Русский, Українська and 中文.
 
 Choose the language with the languages button in the top bar (in the footer of the sidebar when you use the sidebar layout), or on the login and setup pages. The choice is stored in your browser (not in your account), and the page reloads in the new language. English is used until you choose another one.
+
+NPMpro has its own 13 languages and asks the browser not to translate its pages. A browser translation changes the page behind NPMpro's back and broke it, so turn it off for NPMpro if your browser offers it anyway.
 
 To fix or complete a translation, edit the files in [`frontend/translations`](https://github.com/TheBlackBush/NPMpro/tree/develop/frontend/translations) and open a pull request:
 
