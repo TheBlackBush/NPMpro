@@ -1,9 +1,10 @@
 // The CSP gate of the image smoke test (.github/workflows/docker.yml): opens every page and the listed menus and
 // windows of a fresh NPMpro in a real browser and fails on any Content Security Policy violation or page error.
 // The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
-// followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click,
-// waitFor (selectors), press (a key), viewport ([width, height], until the action ends) or skipIfDisabled (a selector:
-// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var), seedAccessLists (a
+// followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click, hover,
+// waitFor (selectors), press (a key), viewport ([width, height], until the action ends), skipIfDisabled (a selector:
+// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a
+// selector: the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists (a
 // number: that many access lists named flow-csp-NN are created through the API, so a list has a paging bar; they are
 // removed when the action ends) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
@@ -162,10 +163,26 @@ try {
 					console.log(`${page.step}: skipped (${step.skipIfDisabled} is disabled)`);
 					break;
 				}
+				// an action on a part that needs outside data (the map needs GeoIP databases): skipped, and said so, when absent
+				if (
+					step.skipIfMissing &&
+					!(await page
+						.locator(step.skipIfMissing)
+						.first()
+						.waitFor({ timeout: 5000 })
+						.then(
+							() => true,
+							() => false,
+						))
+				) {
+					console.log(`${page.step}: skipped (${step.skipIfMissing} is not on the page)`);
+					break;
+				}
 				if (step.seedAccessLists) await seedAccessLists(step.seedAccessLists);
 				if (step.reload) await page.reload();
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
 				if (step.click) await page.locator(step.click).first().click();
+				if (step.hover) await page.locator(step.hover).first().hover();
 				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
 				if (step.press) await page.keyboard.press(step.press);
 			}

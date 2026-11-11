@@ -1,9 +1,10 @@
 import { Minus, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { Button } from "src/components/ui/button";
 import { currentLocale, intl } from "src/locale";
 import { alpha2Of, alpha2OfName } from "src/modules/CountryCodes";
+import { fitMercator, tipPosition } from "src/modules/MapLayout";
 import { shadeIndex, shadeRanges } from "src/modules/MapShades";
 import { countryName, formatCount, isCountryCode, mapScale } from "src/modules/Monitoring";
 import world from "world-atlas/countries-110m.json" with { type: "json" };
@@ -74,16 +75,20 @@ const SWATCHES = {
 	],
 };
 
-// a thin stroke that keeps its screen width at any zoom; hover and keyboard focus outline the one country
-const SHAPE =
-	"stroke-[0.75] outline-none [vector-effect:non-scaling-stroke] hover:stroke-foreground hover:stroke-[1.25] focus-visible:stroke-foreground focus-visible:stroke-[1.25]";
+// a thin stroke that keeps its screen width at any zoom
+const SHAPE = "stroke-[0.75] outline-none [vector-effect:non-scaling-stroke]";
+
+// the hovered or focused country drawn again on top, outline only, so no neighbour covers part of its border
+const OUTLINE =
+	"pointer-events-none fill-none stroke-foreground stroke-[1.5] outline-none [vector-effect:non-scaling-stroke]";
 
 // Antarctica (id 010) is left out, as in most traffic maps: it has no visitors and takes a fifth of the height
 const ANTARCTICA = "010";
 
-// geoEqualEarth fitted to the world without Antarctica in 800 x 360 with an 8 px margin
-const CENTER = [0, 7];
-const PROJECTION = { scale: 147.6, center: CENTER };
+// a flat map (user decision): Mercator fitted to the world without Antarctica, 800 px wide with an 8 px margin
+const FIT = fitMercator(800);
+const CENTER = FIT.center;
+const PROJECTION = { scale: FIT.scale, center: CENTER };
 
 const rawCounts = (countries) => {
 	const counts = {};
@@ -99,6 +104,29 @@ const rawCounts = (countries) => {
 const clampZoom = (zoom) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 
 /**
+ * The hover tooltip. Its position is its own state, so moving the pointer does not render the countries again; the
+ * position goes through React's style prop (the CSSOM), which the page CSP allows.
+ */
+function MapTooltip({ ref, info, formatValue }) {
+	const [position, setPosition] = useState(null);
+	useImperativeHandle(ref, () => ({ move: setPosition }), []);
+	if (!(info && position)) return null;
+	return (
+		<div
+			data-map-tooltip
+			aria-hidden="true"
+			className={`pointer-events-none absolute z-10 flex -translate-x-1/2 items-baseline gap-2 rounded-md border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground shadow-md ${position.below ? "translate-y-4" : "-translate-y-[calc(100%+0.75rem)]"}`}
+			style={{ left: position.left, top: position.top }}
+		>
+			<span className="font-medium">{info.name}</span>
+			{info.count === undefined ? null : (
+				<span className="text-muted-foreground tabular-nums">{formatValue(info.count)}</span>
+			)}
+		</div>
+	);
+}
+
+/**
  * The map itself (react-simple-maps on the world-atlas shapes), loaded on first use by WorldMap. Colours are Tailwind
  * classes on the theme tokens, so light and dark follow by CSS.
  */
@@ -112,6 +140,24 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 	const swatches = SWATCHES[tone] ?? SWATCHES.primary;
 	const [view, setView] = useState({ coordinates: CENTER, zoom: 1 });
 	const [active, setActive] = useState(null);
+	const box = useRef(null);
+	const tooltip = useRef(null);
+
+	// pointer (or the focused shape's centre) to a tooltip position inside the map box
+	const place = (clientX, clientY) => {
+		const rect = box.current?.getBoundingClientRect();
+		if (rect) tooltip.current?.move(tipPosition(clientX - rect.left, clientY - rect.top, rect.width));
+	};
+	const show = (geo, info, event) => {
+		setActive({ geo, info });
+		place(event.clientX, event.clientY);
+	};
+	const showFocused = (geo, info, event) => {
+		setActive({ geo, info });
+		const shape = event.currentTarget.getBoundingClientRect();
+		place(shape.left + shape.width / 2, shape.top + shape.height / 2);
+	};
+	const hide = () => setActive(null);
 
 	const shapeInfo = (geo) => {
 		const code = alpha2Of(geo.id) ?? alpha2OfName(geo.properties?.name);
@@ -122,11 +168,11 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 
 	return (
 		<div className="flex flex-col gap-2">
-			<div className="relative">
+			<div ref={box} className="relative">
 				<ComposableMap
 					width={800}
-					height={360}
-					projection="geoEqualEarth"
+					height={FIT.height}
+					projection="geoMercator"
 					projectionConfig={PROJECTION}
 					role="group"
 					aria-label={label}
@@ -149,6 +195,7 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 									.filter((geo) => geo.id !== ANTARCTICA)
 									.map((geo) => {
 										const { code, name, count, text } = shapeInfo(geo);
+										const info = { name, count };
 										const shade = shadeIndex(code ? scale[code] : 0);
 										const focusable = count !== undefined;
 										return (
@@ -159,19 +206,24 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 												tabIndex={focusable ? 0 : -1}
 												role={focusable ? "img" : undefined}
 												aria-label={focusable ? text : undefined}
-												onMouseEnter={() => setActive(text)}
-												onMouseLeave={() => setActive(null)}
-												onFocus={() => setActive(text)}
-												onBlur={() => setActive(null)}
-											>
-												<title>{text || name}</title>
-											</Geography>
+												data-country={code ?? undefined}
+												onMouseEnter={(event) => show(geo, info, event)}
+												onMouseMove={(event) => place(event.clientX, event.clientY)}
+												onMouseLeave={hide}
+												onClick={(event) => show(geo, info, event)}
+												onFocus={(event) => showFocused(geo, info, event)}
+												onBlur={hide}
+											/>
 										);
 									})
 							}
 						</Geographies>
+						{active ? (
+							<Geography geography={active.geo} className={OUTLINE} tabIndex={-1} aria-hidden="true" />
+						) : null}
 					</ZoomableGroup>
 				</ComposableMap>
+				<MapTooltip ref={tooltip} info={active?.info} formatValue={formatValue} />
 				<div className="absolute top-2 right-2 flex flex-col gap-1">
 					<Button
 						type="button"
@@ -195,8 +247,6 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 					</Button>
 				</div>
 			</div>
-			{/* no live region: a focused country already reads its label */}
-			<p className="m-0 min-h-5 text-sm text-muted-foreground">{active}</p>
 			{ranges.length ? (
 				<ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-xs text-muted-foreground">
 					{ranges.map((range) => (

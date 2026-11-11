@@ -433,6 +433,15 @@
 			]
 		},
 		{
+			"name": "monitoring map tooltip",
+			"route": "/monitoring/traffic",
+			"steps": [
+				{ "skipIfMissing": "[data-country=DE]" },
+				{ "hover": "[data-country=DE]" },
+				{ "waitFor": "[data-map-tooltip]" }
+			]
+		},
+		{
 			"name": "monitoring theme switch",
 			"route": "/monitoring/traffic",
 			"steps": [
