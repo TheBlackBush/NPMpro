@@ -239,7 +239,7 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     apk upgrade --no-cache -a && \
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
                        pcre2 luajit zlib-ng brotli zstd lua5.1-cjson libxml2 libldap quickjs-ng-libs libmaxminddb-libs \
-                       curl coreutils findutils grep jq openssl shadow su-exec util-linux-misc \
+                       curl coreutils findutils grep jq openssl shadow su-exec util-linux-misc setpriv \
                        bash nano \
                        logrotate goaccess fcgi \
                        luarocks5.1 git make \

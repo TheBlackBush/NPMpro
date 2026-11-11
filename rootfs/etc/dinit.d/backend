@@ -1,5 +1,5 @@
 type = process
-command = index.js
+command = /bin/setpriv --inh-caps=-all --ambient-caps=-all index.js
 term-signal = TERM
 restart = yes
 options = shares-console
