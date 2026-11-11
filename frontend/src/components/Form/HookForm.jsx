@@ -206,9 +206,8 @@ function useFocusFirstError() {
  * After a save that keeps the window open (saved, but the nginx config needs fixing): call the returned function
  * inside the save handler once the save succeeded (the API answered), not before it and not when it failed. It
  * arms the reset; once handleSubmit has settled (isSubmitting drops), the current values become the starting values
- * (nothing to save, no messages, no refused save), as Formik's resetForm({ values }) did; list rows keep their keys.
- * React Hook Form marks the form submitted when handleSubmit ends, so the reset waits for that (the documented reset
- * after a submit).
+ * (nothing to save, no messages, no refused save); list rows keep their keys. React Hook Form marks the form
+ * submitted when handleSubmit ends, so the reset waits for that (the documented reset after a submit).
  *
  * @param   {Object}   methods  useAppForm's result
  * @returns {Function} () => void
@@ -226,10 +225,9 @@ function useResetToSaved(methods) {
 
 /**
  * The checks of a list (useFieldArray) after a change that concerns more than one row. afterRemove: the rows
- * shifted, so before a save was tried the list's messages go (they come back once a field is left, as the Formik
- * lists cleared their touched rows), after a refused save the list is checked again. recheckRows(field): a value the
- * other rows are compared with changed (a duplicate path or username), so the rows showing a message for that field
- * are checked again.
+ * shifted, so before a save was tried the list's messages go (they come back once a field is left), after a refused
+ * save the list is checked again. recheckRows(field): a value the other rows are compared with changed (a duplicate
+ * path or username), so the rows showing a message for that field are checked again.
  *
  * @param   {string} name  the list
  * @returns {{ afterRemove: Function, recheckRows: Function }}
@@ -254,9 +252,9 @@ function useListRecheck(name) {
 }
 
 /**
- * The <form> of a React Hook Form form (the same element Formik's Form rendered: action "#", noValidate, the
- * submit stays inside) with the methods for useFormContext; a refused save focuses the first error. A second submit
- * (Enter again) while a save runs is ignored, as React Hook Form does not block it.
+ * The <form> of a React Hook Form form (action "#", noValidate, the submit stays inside) with the methods for
+ * useFormContext; a refused save focuses the first error. A second submit (Enter again) while a save runs is
+ * ignored, as React Hook Form does not block it.
  *
  * @param {Object}   props
  * @param {Object}   props.methods       useAppForm's result

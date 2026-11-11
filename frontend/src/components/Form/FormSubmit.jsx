@@ -21,7 +21,7 @@ import { focusFirstError, useFieldOrder, useFormTabs, usePendingEntries } from "
  * @param {string}   [props.messageId]     the note's text (FormErrorNote)
  * @param {string}   [props.className]     of the wrapper, e.g. "ms-auto" in a modal footer
  * @param {boolean}  [props.stacked]       a full-width button with the note centred under it (login, setup)
- * @param {string}   [props.color]         the button colour, the one primary (violet) by default; danger for a destructive action
+ * @param {string}   [props.color]         the button colour, "primary" by default; "danger" for a destructive action
  * @param {Object}   props.buttonProps     the rest goes to Button (color, isLoading, ...)
  */
 function FormSubmit({

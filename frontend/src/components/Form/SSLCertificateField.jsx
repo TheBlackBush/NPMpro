@@ -17,7 +17,6 @@ import { useTlsChange } from "./useTlsChange";
 const CERTIFICATE = "certificateId";
 const MTLS_CERTIFICATE = "npmproMtlsCertificateId";
 
-// the option icons: an existing certificate (success), a new request (primary), none (destructive)
 // a certificate row in the list: the icon and name, the provider and expiry under it
 const renderOption = (option) => (
 	<div className="flex-1">
@@ -121,8 +120,8 @@ export function SSLCertificateField({ label, allowNew, forHttp = true }) {
 
 /**
  * The mTLS CA certificate of a host (the field npmproMtlsCertificateId, a controller), directly under the certificate
- * select (SSLOptionsFields renders it). reason is the TLS rule that turns it off (TlsOptions.js tlsDisabledReasons, a constant object): the hint says
- * why. A memo component, so a change elsewhere on the TLS tab (a location path) does not render the select again.
+ * select (SSLOptionsFields renders it). reason is the TLS rule that turns it off (TlsOptions.js tlsDisabledReasons, a
+ * constant object): the hint says why. A memo component, so a change elsewhere on the TLS tab (a location path) does not render the select again.
  */
 export const MtlsCertificateField = memo(({ forHttp = true, label = "mtls-certificate", reason }) => {
 	const { data } = useCertificates();

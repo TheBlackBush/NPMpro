@@ -35,8 +35,7 @@ function ErrorDescription({ id, count }) {
 
 /**
  * The tabs of a window's form (shadcn Tabs on Radix): one row that never wraps and scrolls sideways when the tabs do
- * not fit (phones), every tab with a shown error gets a red badge
- * with the count. Inside a HookForm, "jump to the first error" opens the tab that holds it and keeps it in view.
+ * not fit (phones), every tab with a shown error gets a red badge with the count. Inside a HookForm, "jump to the first error" opens the tab that holds it and keeps it in view.
  * Every pane stays mounted, so its fields keep their values and can be focused. Keyboard (Radix): Tab reaches the
  * open tab, the arrow keys (and Home, End) move between the tabs and open them.
  *
@@ -119,8 +118,8 @@ function ModalTabs({ tabs, markers = NO_ENTRIES, disabled = NO_ENTRIES, children
 			<TabsList
 				ref={listRef}
 				variant="line"
-				// shadcn sets the row to h-8 for horizontal tabs (a group variant that outranks a plain h-auto); the tabs are h-9, so
-				// the scrolling row clipped their active underline
+				// shadcn sets the row to h-8 for horizontal tabs (a group variant that outranks a plain h-auto); the tabs
+				// are h-9, so the scrolling row clipped their active underline
 				className={cn(
 					"h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b p-0 group-data-[orientation=horizontal]/tabs:h-auto",
 					// a fade (a mask) at the edge that has more tabs behind it
