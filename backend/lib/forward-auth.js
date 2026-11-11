@@ -44,8 +44,8 @@ const ownUpstream = (host, provider) => {
 };
 
 /**
- * The proxy hosts whose config follows the provider's default upstream: they use the provider (host or location)
- * and set no upstream of their own for it
+ * The proxy hosts whose config follows the provider's default upstream: they use the provider (host or location) and
+ * set no upstream of their own for it
  *
  * @param   {Object[]}  hosts
  * @param   {string}    provider

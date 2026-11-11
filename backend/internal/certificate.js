@@ -81,13 +81,10 @@ const internalCertificate = {
 	initTimer: () => {
 		if (!renewalTimer.start()) return;
 		logger.info(`Certbot Renewal Timer initialized (every ${renewalTimer.hours()} hours)`);
-		// And do this now as well
 		void internalCertificate.processExpiringHosts();
 	},
 
-	/**
-	 * Triggered by a timer, this will check for expiring hosts and renew their tls certs if required
-	 */
+	/** Timer run: renews the certificates of expiring hosts */
 	processExpiringHosts: async () => {
 		if (internalCertificate.intervalProcessing) {
 			return;
@@ -138,7 +135,7 @@ const internalCertificate = {
 								expires_on: dayjs.unix(certInfo.dates.to).format("YYYY-MM-DD HH:mm:ss"),
 							});
 					} catch (err) {
-						// Don't want to stop the train here, just log the error
+						// one failure must not stop the others
 						logger.error(err);
 					}
 				});
@@ -173,20 +170,17 @@ const internalCertificate = {
 			data.nice_name = getNiceName(data.domain_names);
 		}
 
-		// this command really should clean up and delete the cert if it can't fully succeed
 		const certificate = await certificateModel.query().insertAndFetch(data);
 
 		try {
 			if (certificate.provider === "letsencrypt") {
-				// Request a new Cert with Certbot. Let the fun begin.
 				if (certificate.npmpro_dns_challenge) {
 					await internalCertificate.requestCertbotWithDnsChallenge(certificate);
 				} else {
 					await internalCertificate.requestCertbot(certificate);
 				}
 
-				// At this point, the letsencrypt cert should exist on disk.
-				// Lets get the expiry date from the file and update the row silently
+				// the expiry date comes from the issued file
 				const certInfo = await internalCertificate.getCertificateInfoFromFile(
 					`${internalCertificate.getLiveCertPath(certificate.id)}/fullchain.pem`,
 				);
@@ -199,14 +193,13 @@ const internalCertificate = {
 				return savedRow;
 			}
 		} catch (err) {
-			// Delete the certificate here. This is a hard delete, since it never existed properly
+			// the certificate never existed properly: hard delete
 			await certificateModel.query().deleteById(certificate.id);
 			throw err;
 		}
 
 		const savedRow = await internalCertificate.get(access, { id: certificate.id });
 
-		// Add to audit log
 		await internalCertificate.addCreatedAuditLog(access, certificate.id, savedRow);
 
 		return savedRow;
@@ -235,7 +228,6 @@ const internalCertificate = {
 
 		const savedRow = await certificateModel.query().patchAndFetchById(row.id, data);
 
-		// Add to audit log
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "certificate",
@@ -366,7 +358,6 @@ const internalCertificate = {
 			await certificateModel.query().deleteById(row.id);
 		});
 
-		// Add to audit log
 		await internalAuditLog.add(access, {
 			action: "deleted",
 			object_type: "certificate",
@@ -375,7 +366,6 @@ const internalCertificate = {
 		});
 
 		if (row.provider === "letsencrypt") {
-			// Revoke the cert
 			await internalCertificate.revokeCertbot(row);
 		} else if (row.provider === "mtls") {
 			await rm(internalCertificate.getMtlsCertFile(row.id), { force: true });
@@ -387,8 +377,6 @@ const internalCertificate = {
 	},
 
 	/**
-	 * All Certs
-	 *
 	 * @param   {Access}  access
 	 * @param   {Array}   [expand]
 	 * @param   {String}  [searchQuery]
@@ -408,7 +396,6 @@ const internalCertificate = {
 			query.andWhere("owner_user_id", access.token.getUserId(1));
 		}
 
-		// Query is used for searching
 		if (typeof searchQuery === "string") {
 			query.where(function () {
 				this.where("nice_name", "like", `%${searchQuery}%`);
@@ -421,8 +408,6 @@ const internalCertificate = {
 	},
 
 	/**
-	 * Report use
-	 *
 	 * @param   {Number}  userId
 	 * @param   {String}  visibility
 	 */
@@ -552,7 +537,6 @@ const internalCertificate = {
 			try {
 				await internalNginx.reload();
 			} finally {
-				// Add to audit log
 				await internalAuditLog.add(access, {
 					action: "updated",
 					object_type: "certificate",

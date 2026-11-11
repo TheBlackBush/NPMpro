@@ -22,16 +22,16 @@ const readOrNull = async (fs, file) => {
 };
 
 /**
- * Turns OCSP stapling on for configs that were written while their OCSP response (.der file) did not exist yet. A
- * host and the default certificate include staple only when the .der file exists at render time; bulk renders, the
- * 10 minute fetch bound or a responder that was briefly down leave them without stapling, and nothing else renders
- * them again once a later fetch creates the file (must-staple certificates are then refused by browsers).
+ * Turns OCSP stapling on for configs written while their OCSP response (.der file) did not exist yet. A host and the
+ * default certificate include staple only when the .der file exists at render time; bulk renders, the 10 minute fetch
+ * bound or a briefly down responder leave them without stapling, and nothing else renders them again once a later
+ * fetch creates the file (must-staple certificates are then refused by browsers).
  *
  * recover() looks, in the runtime settings queue, for enabled hosts (and the default certificate include) whose
- * stapling kind is on, whose .der file now exists and whose config on disk has no ssl_stapling_file line; it
- * renders them again and writes them in one transaction with one nginx -t and one reload. A failure is logged and
- * the previous configs are put back. A config whose new render still has no stapling is not written; it is only
- * looked at again on the next call (after the next fetch that brought new .der files), so this cannot loop.
+ * stapling kind is on, whose .der file now exists and whose config has no ssl_stapling_file line; it renders them again
+ * and writes them in one transaction with one nginx -t and one reload (a failure is logged and the previous configs are
+ * put back). A config whose new render still has no stapling is not written and is looked at again only on the next
+ * call, so this cannot loop.
  *
  * @param   {Object}    deps
  * @param   {Array}     deps.hostTypes         [[model, hostType, graph]]
@@ -39,9 +39,9 @@ const readOrNull = async (fs, file) => {
  * @param   {Function}  deps.renderConfig      (hostType, host, { env, fetchMissingOcsp }) => config text
  * @param   {Object}    deps.nginx             { test, reload }
  * @param   {Function}  deps.exclusive         (fn) => runs fn in the runtime settings queue
- * @param   {Function}  deps.effectiveEnv      () => the env the templates read
- * @param   {Function}  deps.getConfig         (group) => { values }, the effective runtime settings
- * @param   {Function}  [deps.listCertificates] () => [{ id }], the certificates that can be the default one
+ * @param   {Function}  deps.effectiveEnv
+ * @param   {Function}  deps.getConfig         (group) => { values }
+ * @param   {Function}  [deps.listCertificates] () => [{ id }]
  * @param   {Object}    [deps.fs]
  * @param   {string}    [deps.tlsDir]
  * @param   {string}    [deps.defaultCertConf]

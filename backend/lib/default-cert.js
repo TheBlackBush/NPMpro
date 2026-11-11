@@ -19,7 +19,6 @@ const statOf = async (fs, file) => {
 };
 
 const isDir = async (fs, file) => (await statOf(fs, file))?.isDirectory() === true;
-// test -s: exists and is not empty (follows links, like the certbot live files)
 const hasContent = async (fs, file) => ((await statOf(fs, file))?.size ?? 0) > 0;
 
 const builtIn = (tlsDir = TLS_DIR) => ({
@@ -111,8 +110,8 @@ const hasStaplingFile = async (host, { fs = nodeFs, tlsDir = TLS_DIR } = {}) => 
 };
 
 /**
- * Whether a host's config depends on the changed stapling keys: certbot certificates follow ocsp_stapling, custom
- * ones custom_ocsp_stapling
+ * Whether a host's config depends on the changed stapling keys: certbot certificates follow ocsp_stapling, custom ones
+ * custom_ocsp_stapling
  *
  * @param   {Object}    host     with certificate_id and the certificate relation
  * @param   {string[]}  changed  changed keys

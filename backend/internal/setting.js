@@ -83,8 +83,6 @@ const internalSetting = {
 	},
 
 	/**
-	 * All settings
-	 *
 	 * @param   {Access}  access
 	 * @returns {Promise}
 	 */

@@ -37,9 +37,7 @@ const answerSent = (res) =>
 const createDatabaseRouter = ({ service, auth }) => {
 	const router = express.Router({ caseSensitive: true, strict: true, mergeParams: true });
 
-	/**
-	 * GET /api/database
-	 */
+	/** GET /api/database */
 	router
 		.route("/")
 		.all(auth())
@@ -48,9 +46,7 @@ const createDatabaseRouter = ({ service, auth }) => {
 			res.status(200).send(result);
 		});
 
-	/**
-	 * POST /api/database/test
-	 */
+	/** POST /api/database/test */
 	router
 		.route("/test")
 		.all(auth())
@@ -63,17 +59,13 @@ const createDatabaseRouter = ({ service, auth }) => {
 		.route("/move")
 		.all(auth())
 
-		/**
-		 * GET /api/database/move
-		 */
+		/** GET /api/database/move */
 		.get(async (_req, res) => {
 			const result = await service.progress(res.locals.access);
 			res.status(200).send(result);
 		})
 
-		/**
-		 * POST /api/database/move
-		 */
+		/** POST /api/database/move */
 		.post(async (req, res) => {
 			const body = validated("/database/move", req.body);
 			const sent = answerSent(res);

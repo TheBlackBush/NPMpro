@@ -71,11 +71,7 @@ router
 	.route("/")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/users
-	 *
-	 * Retrieve all users
-	 */
+	/** GET /api/users */
 	.get(async (req, res) => {
 		const data = validator(listSchema, {
 			query: typeof req.query.query === "string" ? req.query.query : null,
@@ -84,11 +80,7 @@ router
 		res.status(200).send(users);
 	})
 
-	/**
-	 * POST /api/users
-	 *
-	 * Create a new User
-	 */
+	/** POST /api/users */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/users", "post"), req.body);
 		const user = await internalUser.create(res.locals.access, payload);
@@ -96,8 +88,6 @@ router
 	});
 
 /**
- * Initial user
- *
  * /api/users/setup
  */
 router
@@ -122,7 +112,7 @@ router
 			const access = new Access(null);
 			await access.load(true);
 
-			// Force this first user to be an admin.
+			// the first user is always an admin
 			const payload = apiValidator(getValidationSchema("/users/setup", "post"), req.body);
 			const user = await internalUser.create(access, { ...payload, roles: ["admin"] });
 			res.status(201).send(user);
@@ -132,8 +122,6 @@ router
 	});
 
 /**
- * Specific user
- *
  * /api/users/123
  */
 router
@@ -141,11 +129,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * GET /users/123 or /users/me
-	 *
-	 * Retrieve a specific user
-	 */
+	/** GET /users/123 or /users/me */
 	.get(async (req, res) => {
 		const data = validator(userSchema, {
 			user_id: req.params.user_id,
@@ -161,11 +145,7 @@ router
 		res.status(200).send(user);
 	})
 
-	/**
-	 * PUT /api/users/123
-	 *
-	 * Update and existing user
-	 */
+	/** PUT /api/users/123 */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/users/{userID}", "put"), req.body);
 		payload.id = req.params.user_id;
@@ -173,11 +153,7 @@ router
 		res.status(200).send(result);
 	})
 
-	/**
-	 * DELETE /api/users/123
-	 *
-	 * Update and existing user
-	 */
+	/** DELETE /api/users/123 */
 	.delete(async (req, res) => {
 		const result = await internalUser.delete(res.locals.access, {
 			id: req.params.user_id,
@@ -186,8 +162,6 @@ router
 	});
 
 /**
- * Specific user auth
- *
  * /api/users/123/auth
  */
 router
@@ -195,11 +169,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * PUT /api/users/123/auth
-	 *
-	 * Update password for a user
-	 */
+	/** PUT /api/users/123/auth */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/users/{userID}/auth", "put"), req.body);
 		payload.id = req.params.user_id;
@@ -218,8 +188,6 @@ router
 	});
 
 /**
- * Specific user permissions
- *
  * /api/users/123/permissions
  */
 router
@@ -227,11 +195,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * PUT /api/users/123/permissions
-	 *
-	 * Set some or all permissions for a user
-	 */
+	/** PUT /api/users/123/permissions */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/users/{userID}/permissions", "put"), req.body);
 		payload.id = req.params.user_id;
@@ -240,8 +204,6 @@ router
 	});
 
 /**
- * User MFA
- *
  * /api/users/123/mfa
  */
 router
@@ -249,11 +211,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * GET /api/users/123/mfa
-	 *
-	 * Get MFA status for a user (all factors and backup codes)
-	 */
+	/** GET /api/users/123/mfa */
 	.get(async (req, res) => {
 		const status = await internalMfa.getStatus(res.locals.access, req.params.user_id);
 		res.status(200).send(status);
@@ -270,8 +228,6 @@ router
 	});
 
 /**
- * User TOTP
- *
  * /api/users/123/mfa/totp
  */
 router
@@ -279,19 +235,13 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * POST /api/users/123/mfa/totp
-	 *
-	 * Start TOTP setup, returns QR code URL
-	 */
+	/** POST /api/users/123/mfa/totp */
 	.post(async (req, res) => {
 		const result = await internalTotp.startSetup(res.locals.access, req.params.user_id);
 		res.status(200).send(result);
 	});
 
 /**
- * User TOTP enable
- *
  * /api/users/123/mfa/totp/enable
  */
 router
@@ -299,11 +249,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * POST /api/users/123/mfa/totp/enable
-	 *
-	 * Verify code and enable TOTP
-	 */
+	/** POST /api/users/123/mfa/totp/enable */
 	.post(async (req, res) => {
 		const { code } = apiValidator(getValidationSchema("/users/{userID}/mfa/totp/enable", "post"), req.body);
 		const result = await internalMfa.enableTotp(res.locals.access, req.params.user_id, code);
@@ -323,11 +269,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * POST /api/users/123/mfa/totp/disable
-	 *
-	 * Disable TOTP for a user
-	 */
+	/** POST /api/users/123/mfa/totp/disable */
 	.post(async (req, res) => {
 		const { code } = apiValidator(getValidationSchema("/users/{userID}/mfa/totp/disable", "post"), req.body);
 		await internalMfa.disableTotp(res.locals.access, req.params.user_id, code);
@@ -335,8 +277,6 @@ router
 	});
 
 /**
- * User TOTP backup codes
- *
  * /api/users/123/mfa/backup-codes
  */
 router
@@ -344,11 +284,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * POST /api/users/123/mfa/backup-codes
-	 *
-	 * Regenerate backup codes
-	 */
+	/** POST /api/users/123/mfa/backup-codes */
 	.post(async (req, res) => {
 		const { code } = apiValidator(getValidationSchema("/users/{userID}/mfa/backup-codes", "post"), req.body);
 		const result = await internalMfa.regenerateBackupCodes(res.locals.access, req.params.user_id, code);
@@ -391,8 +327,6 @@ router
 	});
 
 /**
- * User avatar
- *
  * /api/users/123/avatar
  */
 router
@@ -400,11 +334,7 @@ router
 	.all(jwtdecode())
 	.all(userIdFromMe)
 
-	/**
-	 * POST /api/users/123/avatar
-	 *
-	 * Upload a custom avatar
-	 */
+	/** POST /api/users/123/avatar */
 	.post(
 		multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } }).single("avatar"),
 		async (req, res) => {

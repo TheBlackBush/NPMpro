@@ -6,9 +6,8 @@ import { ITEM_TYPES } from "./select.js";
 import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
 
 // The merge apply in the database: writes a merge plan (merge-plan.js) in one transaction. Added rows get new ids,
-// replaced rows keep the instance row's id, and every link is mapped to the added or matching row or cleared. Nothing
-// on the instance is deleted, except the child rows of a replaced host or user, which the backup's replace. Files are
-// placed elsewhere.
+// replaced rows keep the instance row's id, links are mapped to the added or matching row or cleared. Nothing is
+// deleted except the child rows of a replaced host or user. Files are placed elsewhere.
 
 const HOST_TYPES = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"];
 const LINK_TYPES = ["dns_credentials", "certificates", "access_lists"];
@@ -18,7 +17,6 @@ const SETTINGS_TYPES = new Set(
 );
 const LINK_TABLE = "npmpro_proxy_host_access_list";
 const LOCATION_TABLE = "npmpro_location";
-// the actions each kind of item can have
 const ROW_ACTIONS = {
 	users: new Set(["add", "replace", "existing", "skip"]),
 	link: new Set(["add", "existing", "skip"]),
@@ -57,7 +55,6 @@ const kindOf = (typeId) => {
 	return HOST_TYPES.includes(typeId) ? "host" : "setting";
 };
 
-// the setting ids a settings type holds, read from its where clause
 const settingIdsOf = (knex, typeId) => {
 	const query = knex("setting");
 	for (const { where } of TYPES[typeId].tables) where?.(query);
@@ -72,7 +69,6 @@ const knownItem = (item) => {
 		: SETTINGS_TYPES.has(item.type) && String(item.key).startsWith("setting:");
 };
 
-// the plan's row, setting and schedule items in RESTORE_ORDER; file items are placed elsewhere
 const checkedItems = (plan) => {
 	const items = (plan?.items ?? []).filter((item) => !String(item.key).startsWith("file:"));
 	for (const item of items) {
@@ -107,8 +103,7 @@ const checkedItems = (plan) => {
  *                     replacedUserIds: number[], avatarMoves: Array<{ from, to }>, cleared: number }>}
  *          maps: String(backup id) -> instance id per table, for added, replaced and matched rows (and the locations
  *          of written proxy hosts); certificateMoves: backup id -> new id of added certificates; avatarMoves: backup
- *          id -> instance id of every added or replaced user, whose avatar path now names the instance id; cleared:
- *          links whose target is neither imported nor matched
+ *          id -> instance id of every added or replaced user; cleared: links whose target is neither imported nor matched
  */
 const mergeTypes = async ({
 	knex,
@@ -211,7 +206,6 @@ const mergeTypes = async ({
 			}
 		};
 
-		// the DNS credential names each owner holds, lower case
 		const credentialNames = new Map();
 		const namesOf = async (ownerId) => {
 			if (!credentialNames.has(key(ownerId))) {
@@ -277,7 +271,6 @@ const mergeTypes = async ({
 			count(item.type);
 		};
 
-		// a proxy host's locations and access list links, under its instance id
 		const writeProxyChildren = async (item, hostId) => {
 			const locations = new Map();
 			for (const location of prepared.proxy_hosts[LOCATION_TABLE].filter(

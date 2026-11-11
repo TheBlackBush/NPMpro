@@ -24,7 +24,6 @@ const checkMoves = (moves, what) => {
 	}
 };
 
-// root joined with rel, refused when the result leaves root
 const inside = (root, rel) => {
 	const full = path.resolve(root, rel);
 	if (full !== root && !full.startsWith(`${root}${path.sep}`)) throw invalid(`${rel} leaves its folder`);
@@ -65,7 +64,6 @@ const createPlacer = ({ dataDir, stageDir, asideDir }) => {
 		await journal.placeFile(destRel, from, await journal.setAside(destRel));
 	};
 
-	// places the staged account files the instance lacks
 	const addMissing = async (rel) => {
 		inData(rel);
 		const from = inStage(rel);
@@ -112,8 +110,8 @@ const rebuiltRenewals = async ({ dataDir, stageDir, certificateMoves, placeAccou
  * @param   {Array}     [options.avatarMoves]     [{ from, to }] backup user id -> instance user id
  * @param   {boolean}   [options.placeAccounts]   whether the staged ACME accounts the instance lacks are added
  * @returns {Promise<{ undo: () => Promise<void> }>}  staged files are moved, not copied (the stage is disposable);
- *          undo() restores the instance, not the stage. On failure everything is moved back before the original
- *          error rejects (a failing undo is attached as its cause).
+ *          undo() restores the instance, not the stage. On failure everything is moved back first (a failing undo is
+ *          attached as the cause).
  */
 const placeMergedFiles = async ({
 	dataDir,

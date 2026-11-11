@@ -47,8 +47,6 @@ const setMonitoringHooks = (next) => {
 };
 
 /**
- * Upserts a settings row
- *
  * @param {string} id
  * @param {string} name
  * @param {Object} meta
@@ -114,7 +112,7 @@ const internalMonitoringSetting = {
 	},
 
 	/**
-	 * Effective GeoIP settings, never including the license key
+	 * Never includes the license key
 	 *
 	 * @param   {Access}  access
 	 * @returns {Promise<Object>}
@@ -164,8 +162,6 @@ const internalMonitoringSetting = {
 	},
 
 	/**
-	 * Runs the GeoIP database update now
-	 *
 	 * @param   {Access}  access
 	 * @returns {Promise<{ok: boolean, updated?: string[], error?: string}>}  updated lists the replaced editions
 	 */

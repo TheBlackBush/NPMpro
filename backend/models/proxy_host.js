@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import { Model } from "objection";
 import AccessList from "./access_list.js";
 import Certificate from "./certificate.js";

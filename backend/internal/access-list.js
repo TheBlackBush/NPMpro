@@ -46,7 +46,6 @@ const internalAccessList = {
 				owner_user_id: access.token.getUserId(1),
 			});
 
-			// Items
 			await Promise.all(
 				(data.items ?? []).map(async (item) =>
 					accessListAuthModel.query(trx).insert({
@@ -57,7 +56,6 @@ const internalAccessList = {
 				),
 			);
 
-			// Clients
 			await Promise.all(
 				clientsWithAddress(data.clients).map((client) =>
 					accessListClientModel.query(trx).insert({
@@ -73,7 +71,6 @@ const internalAccessList = {
 
 		data.id = row.id;
 
-		// re-fetch with expansions
 		const freshRow = await internalAccessList.get(access, {
 			id: data.id,
 			expand: ["items", "clients"],
@@ -82,7 +79,6 @@ const internalAccessList = {
 		try {
 			await internalAccessList.build(freshRow);
 		} finally {
-			// Add to audit log
 			await internalAuditLog.add(access, {
 				action: "created",
 				object_type: "access-list",
@@ -119,7 +115,6 @@ const internalAccessList = {
 		assertAccessListRules(data);
 
 		await accessListModel.transaction(async (trx) => {
-			// patch name if specified
 			if (data.name !== undefined || data.satisfy_any !== undefined || data.pass_auth !== undefined) {
 				await accessListModel.query(trx).where({ id: data.id }).patch({
 					name: data.name,
@@ -128,7 +123,6 @@ const internalAccessList = {
 				});
 			}
 
-			// Check for items and add/update/remove them
 			if (data.items) {
 				// Items supplied with an empty password are kept, but their password is left untouched
 				await accessListAuthModel
@@ -139,7 +133,6 @@ const internalAccessList = {
 						"username",
 						data.items.filter((item) => !item.password).map((item) => item.username),
 					);
-				// Add new items
 				await Promise.all(
 					data.items
 						.filter((item) => item.password)
@@ -153,7 +146,6 @@ const internalAccessList = {
 				);
 			}
 
-			// Check for clients and add/update/remove them
 			if (data.clients) {
 				await accessListClientModel.query(trx).delete().where("access_list_id", data.id);
 
@@ -169,7 +161,6 @@ const internalAccessList = {
 			}
 		});
 
-		// re-fetch with expansions
 		const freshRow = await internalAccessList.get(access, {
 			id: data.id,
 			expand: ["items", "clients", `proxy_hosts.${PROXY_HOST_GRAPH}`],
@@ -182,7 +173,6 @@ const internalAccessList = {
 			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
 			await internalNginx.reload();
 		} finally {
-			// Add to audit log
 			await internalAuditLog.add(access, {
 				action: "updated",
 				object_type: "access-list",
@@ -251,7 +241,6 @@ const internalAccessList = {
 
 		const affectedHosts = (row.proxy_hosts || []).map((host) => {
 			const updatedHost = { ...host };
-			// update the access_lists object
 			if (!Array.isArray(updatedHost.access_lists)) {
 				updatedHost.access_lists = [];
 			}
@@ -276,12 +265,10 @@ const internalAccessList = {
 		const deletedRow = { ...row, proxy_hosts: undefined };
 
 		await accessListModel.transaction(async (trx) => {
-			// 1. update row to be deleted
 			await trx("npmpro_proxy_host_access_list").where("access_list_id", row.id).delete();
 			await accessListAuthModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListClientModel.query(trx).where("access_list_id", row.id).delete();
 			await accessListModel.query(trx).deleteById(row.id);
-			// 2. update any proxy hosts that were using it (ignoring permissions)
 			for (const host of affectedHosts) {
 				await proxyHostModel.query(trx).findById(host.id).patch({
 					npmpro_access_list_type: host.npmpro_access_list_type,
@@ -295,16 +282,12 @@ const internalAccessList = {
 		});
 
 		try {
-			// 3. Write the changes to the config
-			// Regenerate configs and htpasswd files
 			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
 
 			await internalNginx.reload();
 
-			// delete the htpasswd file
 			await rm(internalAccessList.getFilename(row), { force: true });
 		} finally {
-			// 4. audit log
 			await internalAuditLog.add(access, {
 				action: "deleted",
 				object_type: "access-list",
@@ -316,8 +299,6 @@ const internalAccessList = {
 	},
 
 	/**
-	 * All Lists
-	 *
 	 * @param   {Access}  access
 	 * @param   {Array}   [expand]
 	 * @param   {String}  [searchQuery]
@@ -339,7 +320,6 @@ const internalAccessList = {
 			query.andWhere("access_list.owner_user_id", access.token.getUserId(1));
 		}
 
-		// Query is used for searching
 		if (typeof searchQuery === "string") {
 			query.where(function () {
 				this.where("name", "like", `%${searchQuery}%`);
@@ -352,8 +332,6 @@ const internalAccessList = {
 	},
 
 	/**
-	 * Count is used in reports
-	 *
 	 * @param   {Integer} userId
 	 * @param   {String}  visibility
 	 * @returns {Promise}
@@ -376,7 +354,6 @@ const internalAccessList = {
 	getFilename: (list) => rooted(`/data/access/${list.id}`),
 
 	/**
-	 *
 	 * @param {*} htpasswdFile
 	 * @param {*} items
 	 */

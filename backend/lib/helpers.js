@@ -6,19 +6,7 @@ const datePeriodPattern = /^(?<amount>[0-9]+)(?<unit>y|Q|M|w|d|h|m|s|ms)$/mu;
 const localDateTimePattern = /^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/u;
 
 /**
- * Takes an expression such as 30d and returns a dayjs object of that date in future
- *
- * Key      Shorthand
- * ==================
- * years         y
- * quarters      Q
- * months        M
- * weeks         w
- * days          d
- * hours         h
- * minutes       m
- * seconds       s
- * milliseconds  ms
+ * Takes an expression such as 30d (units y, Q, M, w, d, h, m, s, ms) and returns a dayjs object of that date in the future
  *
  * @param {String}  expression
  * @returns {Object}

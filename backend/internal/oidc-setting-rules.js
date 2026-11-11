@@ -6,7 +6,7 @@ import errs from "../lib/error.js";
 import { mergeOidcConfig } from "../lib/oidc-rules.js";
 
 /**
- * Stored or effective OIDC values without the client secret in any form
+ * Values without the client secret in any form
  *
  * @param   {Object}  [meta]
  * @returns {Object}  meta without client_secret, plus client_secret_set
@@ -17,8 +17,6 @@ const sanitizeOidcRow = (meta) => {
 };
 
 /**
- * Trim, lower-case, drop empty and dedupe
- *
  * @param   {string[]}  domains
  * @returns {string[]}
  */
@@ -32,8 +30,6 @@ const normalizeDomains = (domains) => [
 ];
 
 /**
- * New stored meta from the current stored meta and a validated PUT body
- *
  * @param   {Object}    stored   current meta (client_secret encrypted)
  * @param   {Object}    body     validated request body
  * @param   {string[]}  locked   keys set by env vars, ignored in the body

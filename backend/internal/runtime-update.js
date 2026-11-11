@@ -13,8 +13,6 @@ import { global as logger } from "../logger.js";
 import { pickEditable } from "./monitoring-update.js";
 
 /**
- * GET/PUT response of a runtime settings group
- *
  * @param   {string}  group
  * @param   {{values: Object, locked: string[], locked_by?: Object, locked_reason?: Object}}  cfg
  * @param   {Object}  [env]  the env the container started with, for restart_pending

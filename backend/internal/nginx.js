@@ -66,13 +66,8 @@ const restoreConfigs = async (previous) => {
 
 const internalNginx = {
 	/**
-	 * This will:
-	 * - test the nginx config first to make sure it's OK
-	 * - create / recreate the config for the host
-	 * - test again
-	 * - IF OK:  save the online status
-	 * - IF BAD: save the offline status and rename the config
-	 * - then reload nginx
+	 * Tests nginx, rewrites the host's config and tests again. Good: saves the online status. Bad: saves the offline
+	 * status and renames the config. Then reloads nginx.
 	 *
 	 * Runs in the runtime settings queue: a runtime save cannot test or restore host configs meanwhile, and the
 	 * render reads the values of the last finished save.
@@ -83,14 +78,11 @@ const internalNginx = {
 	 * @returns {Promise}
 	 */
 	configure: async (model, host_type, host, options = {}) => {
-		// skip disabled hosts
 		if (!host.enabled) return {};
 		return await runtimeExclusive(() => internalNginx.configureNow(model, host_type, host, options));
 	},
 
-	/**
-	 * configure without the queue; only for code that runs in the runtime settings queue already
-	 */
+	/** configure without the queue, for code already in the runtime settings queue */
 	configureNow: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
 		let status = {};
 
@@ -106,7 +98,6 @@ const internalNginx = {
 		} catch (err) {
 			logger.error(err.message);
 
-			// config is bad, update status and rename config
 			status = { npmpro_nginx_online: false, npmpro_nginx_err: err.message };
 
 			await model.query().where("id", host.id).patch(status);
@@ -168,9 +159,7 @@ const internalNginx = {
 		}
 	},
 
-	/**
-	 * configureManyNow in the runtime settings queue, for the enabled hosts only; no enabled host, no nginx -t
-	 */
+	/** configureManyNow in the runtime settings queue, enabled hosts only; none, no nginx -t */
 	configureMany: async (entries, options) => {
 		const enabled = entries.filter(({ host }) => host.enabled);
 		if (enabled.length === 0) return;
@@ -225,7 +214,6 @@ const internalNginx = {
 	},
 
 	/**
-	 * Generates custom locations
 	 * @param   {Object}  host
 	 * @returns {Promise}
 	 */
@@ -248,7 +236,6 @@ const internalNginx = {
 	},
 
 	/**
-	 * Generates upstream blocks for main host and custom locations
 	 * @param   {Object}  host
 	 * @returns {Promise}
 	 */
@@ -303,7 +290,6 @@ const internalNginx = {
 	 * @returns {Promise<String>}
 	 */
 	renderConfig: async (host_type, host_row, { env, fetchMissingOcsp = true } = {}) => {
-		// Prevent modifying the original object:
 		const host = structuredClone(host_row);
 
 		host.env = env ?? effectiveEnv();
@@ -320,9 +306,7 @@ const internalNginx = {
 			host.server_names = serverNames(host.domain_names);
 		}
 		if (host.npmpro_access_list_type === "custom") {
-			// note that there is access_lists -> an array in the correct order
-			// and access_list -> an object used in the config generation
-			// note the (s) in the former and lack thereof in the latter
+			// access_lists is the ordered array, access_list the object the template reads
 			host.access_list = internalProxyHostAccessList.buildAclFile(host.access_lists);
 		}
 		const hostHtpasswdFileName = internalProxyHostAccessList.getHostFileName(host);
@@ -337,9 +321,7 @@ const internalNginx = {
 				if (location.npmpro_access_list_type === "global") {
 					location.access_list = host.access_list;
 				} else if (location.npmpro_access_list_type === "custom") {
-					// note that there is access_lists -> an array in the correct order
-					// and access_list -> an object used in the config generation
-					// note the (s) in the former and lack thereof in the latter
+					// access_lists is the ordered array, access_list the object the template reads
 					location.access_list = internalProxyHostAccessList.buildAclFile(location.access_lists);
 				}
 

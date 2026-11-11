@@ -21,9 +21,9 @@ const SOURCE_TEXT = {
 };
 const ENGINE_TEXT = { sqlite: "SQLite", mysql: "MySQL/MariaDB", postgres: "PostgreSQL" };
 
-// configure runs when the first module loads the models (before appStart): an invalid database.json must not throw
-// here. It is logged once, and every query fails with the same message, so the startup retry shows it until the file
-// is deleted or renamed and NPMpro restarted. There is no fallback to SQLite.
+// configure runs when the first module loads the models (before appStart): an invalid database.json must not throw here.
+// It is logged once and every query fails with the same message, so the startup retry shows it until the file is
+// deleted or renamed and NPMpro restarted. There is no fallback to SQLite.
 const configure = () => {
 	let chosen;
 	try {
@@ -66,7 +66,6 @@ const configure = () => {
 };
 
 const getKeys = () => {
-	// Get keys from file
 	logger.info("Checking for keys file:", keysFile);
 	if (!existsSync(keysFile)) {
 		generateKeys();
@@ -74,7 +73,6 @@ const getKeys = () => {
 		logger.info("Keys file exists OK");
 	}
 	try {
-		// Load this json keysFile synchronously and return the json object
 		const rawData = readFileSync(keysFile, "utf8");
 		return JSON.parse(rawData);
 	} catch (err) {
@@ -86,7 +84,6 @@ const getKeys = () => {
 const generateKeys = () => {
 	logger.info("Creating a new JWT key pair...");
 
-	// Now create the keys and save them in the config.
 	const { privateKey, publicKey } = crypto.generateKeyPairSync("ec", {
 		namedCurve: "P-521",
 		publicKeyEncoding: {
@@ -99,7 +96,6 @@ const generateKeys = () => {
 		},
 	});
 
-	// Write keys config
 	try {
 		writeFileSync(keysFile, JSON.stringify({ key: privateKey, pub: publicKey }, null, 2), { mode: 0o600 });
 	} catch (err) {
@@ -110,8 +106,6 @@ const generateKeys = () => {
 };
 
 /**
- * Gets a specific key from the top level
- *
  * @param {string} key
  * @returns {*}
  */
@@ -121,21 +115,13 @@ const configGet = (key) => {
 	return instance;
 };
 
-/**
- * Returns a public key
- *
- * @returns {string}
- */
+/** @returns {string} */
 const getPublicKey = () => {
 	instance ??= configure();
 	return instance.keys.pub;
 };
 
-/**
- * Returns a private key
- *
- * @returns {string}
- */
+/** @returns {string} */
 const getPrivateKey = () => {
 	instance ??= configure();
 	return instance.keys.key;

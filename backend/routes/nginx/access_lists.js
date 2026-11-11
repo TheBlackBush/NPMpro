@@ -50,11 +50,7 @@ router
 	.route("/")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/nginx/access-lists
-	 *
-	 * Retrieve all access-lists
-	 */
+	/** GET /api/nginx/access-lists */
 	.get(async (req, res) => {
 		const data = validator(listSchema, {
 			expand: typeof req.query.expand === "string" ? req.query.expand.split(",") : null,
@@ -64,11 +60,7 @@ router
 		res.status(200).send(rows);
 	})
 
-	/**
-	 * POST /api/nginx/access-lists
-	 *
-	 * Create a new access-list
-	 */
+	/** POST /api/nginx/access-lists */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/nginx/access-lists", "post"), req.body);
 		const result = await internalAccessList.create(res.locals.access, payload);
@@ -76,19 +68,13 @@ router
 	});
 
 /**
- * Specific access-list
- *
  * /api/nginx/access-lists/123
  */
 router
 	.route("/:list_id")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/nginx/access-lists/123
-	 *
-	 * Retrieve a specific access-list
-	 */
+	/** GET /api/nginx/access-lists/123 */
 	.get(async (req, res) => {
 		const data = validator(accessListSchema, {
 			list_id: req.params.list_id,
@@ -101,11 +87,7 @@ router
 		res.status(200).send(row);
 	})
 
-	/**
-	 * PUT /api/nginx/access-lists/123
-	 *
-	 * Update and existing access-list
-	 */
+	/** PUT /api/nginx/access-lists/123 */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/nginx/access-lists/{listID}", "put"), req.body);
 		payload.id = Number.parseInt(req.params.list_id, 10);
@@ -113,11 +95,7 @@ router
 		res.status(200).send(result);
 	})
 
-	/**
-	 * DELETE /api/nginx/access-lists/123
-	 *
-	 * Delete and existing access-list
-	 */
+	/** DELETE /api/nginx/access-lists/123 */
 	.delete(async (req, res) => {
 		const result = await internalAccessList.delete(res.locals.access, {
 			id: Number.parseInt(req.params.list_id, 10),

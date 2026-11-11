@@ -35,9 +35,7 @@ const REFERENCE_COLUMNS = [
 	"location_id",
 	"access_list_id",
 ];
-// tables without an integer id sequence
 const NO_SEQUENCE = new Set(["setting", "npmpro_proxy_host_access_list"]);
-// types with values a backup without secrets leaves out
 const SECRET_TYPES = new Set([
 	"certificates",
 	"access_lists",
@@ -138,7 +136,6 @@ const loadStageData = async (stageDir, types) => {
 	return data;
 };
 
-// the rows of a table planReferences needs, only the id and reference columns
 const readReferenceRows = async (knex, table) => {
 	const present = Object.keys(await knex(table).columnInfo());
 	const columns = REFERENCE_COLUMNS.filter((column) => present.includes(column));
@@ -175,13 +172,11 @@ const splitUsers = (rows, admin) => {
 	return out;
 };
 
-// auth and user_permission rows of the restored users only, user_id mapped
 const userRows = (rows, restoredIds, idMap) =>
 	rows
 		.filter((row) => restoredIds.has(key(row.user_id)))
 		.map((row) => (idMap.has(key(row.user_id)) ? { ...row, user_id: idMap.get(key(row.user_id)) } : row));
 
-// owner_user_id of every row mapped through idMap
 const remapOwners = (rowsByTable, idMap) =>
 	idMap.size === 0
 		? rowsByTable
@@ -210,8 +205,7 @@ const findAdmin = async (knex, adminUserId) => {
  * @param   {Object}    options.data          loadStageData() of the chosen types
  * @param   {string[]}  options.types
  * @param   {number}    options.adminUserId
- * @param   {boolean}   [options.secrets]     whether the backup holds secrets (its manifest)
- * @returns {Promise<{ references: Array, skippedUsers: Array, missingSecrets: string[] }>}
+ * @param   {boolean}   [options.secrets]     whether the backup holds secrets
  */
 const previewReplace = async ({ knex, data, types, adminUserId, secrets = true }) => {
 	const chosen = RESTORE_ORDER.filter((typeId) => types.includes(typeId));
@@ -259,7 +253,6 @@ const createInserter = (trx) => {
 	return {
 		touched,
 		resetSequence,
-		// rows with their ids, in chunks
 		insert: async (table, rows) => {
 			if (rows.length === 0) return;
 			const columns = await columnsOf(table);
@@ -270,7 +263,6 @@ const createInserter = (trx) => {
 			);
 			touched.add(table);
 		},
-		// one row without its id; resolves to the id it got
 		insertWithNewId: async (table, row) => {
 			const { id: _old, ...rest } = row;
 			const columns = await columnsOf(table);
@@ -356,11 +348,11 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
  * @param   {string[]}  options.types
  * @param   {number}    options.adminUserId   the restoring admin, kept as they are
  * @param   {Object}    options.box           the secret box that seals the secrets
- * @param   {?number}   [options.now]         seconds, npmpro_token_valid_after of the restored users; null keeps
- *                                            the backup's values (the rollback to the automatic backup)
+ * @param   {?number}   [options.now]         seconds, npmpro_token_valid_after of the restored users; null keeps the
+ *                                            backup's values (the rollback to the automatic backup)
  * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number>, users: ?Object }>}
- *          users, when users were restored: { ids: the restored users' ids, moved: { from, to } of the backup user
- *          that held the admin's id or null, skippedIds: the backup ids of the skipped users }
+ *          users, when users were restored: { ids, moved: { from, to } of the backup user that held the admin's id or
+ *          null, skippedIds: the backup ids of the skipped users }
  */
 const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.floor(Date.now() / 1000) }) => {
 	for (const typeId of types) typeOf(typeId);

@@ -10,7 +10,6 @@ const STAPLING_SERVERS = new Set(["https://dv.acme-v02.api.pki.goog/directory", 
 const KEY_SIZES = { ecdsa: ["secp256r1", "secp384r1", "secp521r1"], rsa: ["2048", "3072", "4096"] };
 const DEFAULT_KEY_SIZE = { ecdsa: "secp384r1", rsa: "4096" };
 const ANUBIS_IMAGES = ["happy", "reject", "pensive"].map((name) => rooted(`/data/public/anubis/${name}.webp`));
-// envs.sh:762-787
 // no whitespace and no nginx syntax characters: the value is written into the config (frontend upstreamUrlPattern,
 // the proxy host schema and envs.sh use the same rule)
 const UPSTREAM = /^https?:\/\/(?:(?:[^\s/:;{}#"'$\\]+|\[[a-fA-F0-9:]+\]):[0-9]+|cu_[^\s/:;{}#"'$\\]+)$/u;

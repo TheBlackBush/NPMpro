@@ -73,12 +73,12 @@ const listResponses = async (kind, { fs = nodeFs, dirs = OCSP_DIRS } = {}) => {
 };
 
 /**
- * Bounds the OCSP fetcher per kind: a call while one runs shares it, a call within minInterval of the last attempt
- * is skipped. Certificates without an OCSP responder (Let's Encrypt since 2025) never get a .der file, so without
- * the bound every host render and reload would run a full fetch. force (stapling switched on) skips the interval;
- * while a run is in flight it waits for it and starts a new one. A failed or timed out run is logged with its kind.
- * With listResponses, a run (also a failed one) that brought new .der files calls the onNewResponses listener with
- * the kind and their names; the listener is not awaited, so it may queue work behind the caller of the fetch.
+ * Bounds the OCSP fetcher per kind: a call while one runs shares it, a call within minInterval of the last attempt is
+ * skipped. Certificates without an OCSP responder (Let's Encrypt since 2025) never get a .der file, so without the bound
+ * every host render and reload would run a full fetch. force (stapling switched on) skips the interval; while a run is
+ * in flight it waits for it and starts a new one. A failed or timed out run is logged with its kind. With listResponses,
+ * a run (also a failed one) that brought new .der files calls the onNewResponses listener with the kind and their
+ * names; the listener is not awaited, so it may queue work behind the caller of the fetch.
  *
  * @param   {Object}    deps
  * @param   {Function}  deps.run            (kind) => Promise, runs the fetcher

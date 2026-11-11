@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import { Model } from "objection";
 import db from "../db.js";
 import { jsonReplacer } from "../lib/helpers.js";
@@ -14,7 +11,6 @@ class AuditLog extends Model {
 		this.created_on = now();
 		this.modified_on = now();
 
-		// Default for meta
 		this.meta ??= {};
 		this.meta = JSON.parse(JSON.stringify(this.meta, jsonReplacer));
 	}

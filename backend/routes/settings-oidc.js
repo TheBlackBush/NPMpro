@@ -29,11 +29,7 @@ router
 		res.status(200).send(await internalOidcSetting.get(res.locals.access));
 	})
 
-	/**
-	 * PUT /api/settings/oidc
-	 *
-	 * Save the OIDC settings
-	 */
+	/** PUT /api/settings/oidc */
 	.put(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/oidc", "put"), req.body);
 		res.status(200).send(await internalOidcSetting.update(res.locals.access, payload));
@@ -46,11 +42,7 @@ router
 	.route("/test")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/settings/oidc/test
-	 *
-	 * Run discovery with the effective or the submitted connection values
-	 */
+	/** POST /api/settings/oidc/test */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/oidc/test", "post"), req.body ?? {});
 		res.status(200).send(await internalOidcSetting.test(res.locals.access, payload));
@@ -116,11 +108,7 @@ router
 	.all(jwtdecode())
 	.all(requireAdmin)
 
-	/**
-	 * POST /api/settings/oidc/icon/url
-	 *
-	 * Download a login button icon from a URL
-	 */
+	/** POST /api/settings/oidc/icon/url */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/oidc/icon/url", "post"), req.body);
 		res.status(200).send(await internalOidcSetting.setIconFromUrl(res.locals.access, payload.url));

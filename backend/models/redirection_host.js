@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import { Model } from "objection";
 import Certificate from "./certificate.js";
 import HostModel from "./host-model.js";

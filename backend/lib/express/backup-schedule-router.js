@@ -31,9 +31,7 @@ const idOf = (req) => {
 	return Number.parseInt(req.params.id, 10);
 };
 
-/**
- * /api/backups/schedules, with the service and the login middleware injected
- */
+/** /api/backups/schedules, with the service and the login middleware injected */
 const createScheduleRouter = ({ service, auth }) => {
 	const router = express.Router({ caseSensitive: true, strict: true, mergeParams: true });
 
@@ -41,16 +39,12 @@ const createScheduleRouter = ({ service, auth }) => {
 		.route("/")
 		.all(auth())
 
-		/**
-		 * GET /api/backups/schedules
-		 */
+		/** GET /api/backups/schedules */
 		.get(async (_req, res) => {
 			res.status(200).send(await service.list(res.locals.access));
 		})
 
-		/**
-		 * POST /api/backups/schedules
-		 */
+		/** POST /api/backups/schedules */
 		.post(async (req, res) => {
 			const payload = validated("/backups/schedules", "post", req.body);
 			res.status(200).send(await service.create(res.locals.access, payload));
@@ -60,9 +54,7 @@ const createScheduleRouter = ({ service, auth }) => {
 		.route("/:id/run")
 		.all(auth())
 
-		/**
-		 * POST /api/backups/schedules/:id/run
-		 */
+		/** POST /api/backups/schedules/:id/run */
 		.post(async (req, res) => {
 			res.status(200).send(await service.runNow(res.locals.access, idOf(req)));
 		});
@@ -71,25 +63,19 @@ const createScheduleRouter = ({ service, auth }) => {
 		.route("/:id")
 		.all(auth())
 
-		/**
-		 * GET /api/backups/schedules/:id
-		 */
+		/** GET /api/backups/schedules/:id */
 		.get(async (req, res) => {
 			res.status(200).send(await service.get(res.locals.access, idOf(req)));
 		})
 
-		/**
-		 * PUT /api/backups/schedules/:id
-		 */
+		/** PUT /api/backups/schedules/:id */
 		.put(async (req, res) => {
 			const id = idOf(req);
 			const payload = validated("/backups/schedules/{id}", "put", req.body);
 			res.status(200).send(await service.update(res.locals.access, id, payload));
 		})
 
-		/**
-		 * DELETE /api/backups/schedules/:id?files=true
-		 */
+		/** DELETE /api/backups/schedules/:id?files=true */
 		.delete(async (req, res) => {
 			await service.remove(res.locals.access, idOf(req), { files: req.query.files === "true" });
 			res.status(200).send(true);

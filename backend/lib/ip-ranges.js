@@ -21,8 +21,6 @@ const linesMatching = (text, reg) =>
 		.filter((line) => reg.test(line));
 
 /**
- * The Cloudflare ranges from the ips-v4 and ips-v6 lists
- *
  * @param   {string}  v4
  * @param   {string}  v6
  * @returns {string[]}
@@ -49,8 +47,8 @@ const renderIpRanges = async (env, ranges, { fs = nodeFs } = {}) =>
 	utils.getRenderEngine().parseAndRender(await fs.readFile(TEMPLATE, "utf8"), { ip_ranges: ranges, env });
 
 /**
- * The trusted IP ranges (network runtime settings): Cloudflare range cache, the hourly refresh timer and the render
- * of ip_ranges.conf
+ * The trusted IP ranges (network runtime settings): Cloudflare range cache, the hourly refresh timer and the render of
+ * ip_ranges.conf
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.nginx           { test, reload }

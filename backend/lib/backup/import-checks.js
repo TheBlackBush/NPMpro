@@ -16,10 +16,8 @@ import {
 import { BackupError } from "./format.js";
 import { ITEM_TYPES } from "./select.js";
 
-// A merge writes rows only as far as the API would let its user: every row it adds or replaces passes the field types
-// and patterns of the API schemas (for everyone, administrators too, since those values reach the nginx templates as
-// they are), and for a user who is no administrator the host config guard too (raw nginx config and file serving are
-// admin-only).
+// A merge writes rows only as far as the API would let its user: every row passes the API schemas (administrators too,
+// the values reach the nginx templates as they are), and for a non-admin the host config guard as well.
 
 const WRITES = new Set(["add", "replace"]);
 const LOCATION_TABLE = "npmpro_location";
@@ -36,14 +34,12 @@ const LINKED = {
 	dns_credentials: dnsCredentialSchema,
 };
 const LOCATION_SCHEMA = proxyHostSchema.properties.locations.items;
-// the child rows of an access list: their columns and the API schema of each
 const ACCESS_CHILDREN = {
 	access_list_client: { address: common.properties.address, directive: common.properties.directive },
 	access_list_auth: { username: common.properties.access_items.items.properties.username },
 };
 // certificate domains reach certbot and the host configs: the host domain rule applies to them too
 const CERTIFICATE_DOMAINS = common.properties.domain_names;
-// the guard's errors, by their translation key, and the field they are about
 const GUARD_FIELDS = {
 	"error.advanced-config-admin-only": "advanced_config",
 	"error.path-scheme-webroot": "forward_host",
@@ -103,7 +99,6 @@ const hasType = (schema, rule, value) => {
 	return hasBasicType(rule, value);
 };
 
-// hasType for a rule without alternatives
 const hasBasicType = (rule, value) => {
 	if (rule.anyOf ?? rule.oneOf) return typeOf(value) !== "undefined";
 	if (rule.const !== undefined) return value === rule.const;
@@ -140,9 +135,9 @@ const fits = (rule, value) => {
 const RAW_CONFIG = new Set([...Object.values(CONFIG_FIELDS).flat(), "advanced_config"]);
 
 /**
- * Throws a FieldError for the first column of row whose value the schema's property rules refuse: a JSON type the
- * schema does not allow (null only where it allows null, or in a raw config field), then the patterns, enums, lengths
- * and ranges. Read-only properties are left alone; a missing value passes.
+ * Throws a FieldError for the first column of row the schema's property rules refuse: a JSON type the schema does
+ * not allow (null only where it allows null, or in a raw config field), then patterns, enums, lengths and ranges.
+ * Read-only properties are left alone; a missing value passes.
  */
 const checkSchema = (schema, row, { properties = schema.properties, prefix = "" } = {}) => {
 	for (const [name, raw] of Object.entries(properties)) {
@@ -257,8 +252,8 @@ const storedRow = async (knex, item) => {
 };
 
 /**
- * Runs the checks on every row the plan adds or replaces, item by item; a FieldError becomes BackupError("invalid-item")
- * naming the item, the field and why.
+ * Runs the checks on every row the plan adds or replaces; a FieldError becomes BackupError("invalid-item") naming the
+ * item, the field and why.
  */
 const checkWrittenRows = async ({ knex, plan, data, values, adminOnly }) => {
 	for (const item of plan.items) {
@@ -290,12 +285,12 @@ const checkWrittenRows = async ({ knex, plan, data, values, adminOnly }) => {
 };
 
 /**
- * Refuses a merge (a Settings merge or a page import, by anyone) whose plan adds or replaces a row with a value the
- * API would refuse everyone: a JSON type, pattern, enum, length or range outside the API schema, raw config that is
- * no text, two locations with the same path, a certificate domain or an access list entry outside its rule.
+ * Refuses a merge (Settings merge or page import, by anyone) whose plan adds or replaces a row with a value the API
+ * would refuse everyone: JSON type, pattern, enum, length or range outside the schema, raw config that is no text, two
+ * locations with the same path, a certificate domain or access list entry outside its rule.
  *
  * @param   {Object}    options
- * @param   {Object}    options.plan  planMerge() result
+ * @param   {Object}    options.plan
  * @param   {Object}    options.data  loadStageData() of the planned types
  * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the item and the field
  */
@@ -307,7 +302,7 @@ const checkItemValues = ({ plan, data }) => checkWrittenRows({ plan, data, value
  *
  * @param   {Object}    options
  * @param   {Object}    options.knex  reads the rows a replace overwrites
- * @param   {Object}    options.plan  planMerge() result
+ * @param   {Object}    options.plan
  * @param   {Object}    options.data  loadStageData() of the planned types
  * @returns {Promise<void>}  rejects with BackupError("invalid-item") naming the item and the field
  */

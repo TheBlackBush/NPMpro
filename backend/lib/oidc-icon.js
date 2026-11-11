@@ -6,10 +6,6 @@ import errs from "./error.js";
 import { blockedError, guardedAgent, isBlockedAddress } from "./outbound-guard.js";
 import { rooted } from "./paths.js";
 
-/**
- * OIDC login button icon: type detection, SVG checks, URL download and the stored file
- */
-
 const ICON_MAX_BYTES = 256 * 1024;
 const ICON_MIME = {
 	png: "image/png",
@@ -65,8 +61,8 @@ const STRIPPED = /[\s\u0000-\u001f]/gu;
 const tooLarge = () => new errs.ValidationError("Icon is too large (max 256 KB)");
 
 /**
- * SVG text when the buffer is valid UTF-8 starting with <svg after an optional
- * XML prolog, comments and a doctype without an internal subset
+ * SVG text when the buffer is valid UTF-8 starting with <svg after an optional XML prolog, comments and a doctype
+ * without an internal subset
  *
  * @param   {Buffer}  buffer
  * @returns {string|null}
@@ -124,11 +120,10 @@ const hrefsAreLocal = (text) => {
 
 /**
  * @param   {string}  text
- * @returns {boolean}  false for scripts, event handlers, javascript: URLs, entity and character
- *                     references (except the five XML ones), foreignObject, handler animations,
- *                     processing instructions other than the xml declaration, iframe/embed/object,
- *                     src attributes, href values that are not a fragment or a raster data: URL,
- *                     other data: URLs, CSS @import, url() outside the file and CSS escapes
+ * @returns {boolean}  false for anything that can run script or load a resource: scripts, event handlers, javascript:
+ *                     URLs, entity and character references (except the five XML ones), foreignObject, handler
+ *                     animations, processing instructions, iframe/embed/object, src attributes, href values that are not
+ *                     a fragment or a raster data: URL, other data: URLs, CSS @import, url() outside the file, CSS escapes
  */
 const svgIsSafe = (text) =>
 	!(
@@ -189,10 +184,10 @@ const readLimited = async (response) => {
 };
 
 /**
- * Downloads an icon over http or https. Private LAN addresses are allowed (a self-hosted identity provider), this
- * host, link-local (cloud metadata) and multicast addresses are not (lib/outbound-guard.js), also after a redirect.
- * Redirects are followed manually, at most 3, each one re-checked. The body is cut off above 256 KB.
- * Response bodies never end up in error messages.
+ * Downloads an icon over http or https. Private LAN addresses are allowed (a self-hosted identity provider), this host,
+ * link-local (cloud metadata) and multicast addresses are not (lib/outbound-guard.js), also after a redirect. Redirects
+ * are followed manually, at most 3, each one re-checked. The body is cut off above 256 KB. Response bodies never end up
+ * in error messages.
  *
  * @param   {string}  value      the URL
  * @param   {number}  [timeout]  total timeout in ms (default 10 s)

@@ -14,7 +14,6 @@ const engineOf = (knex) => {
 	throw new Error(`Unknown database client ${client}`);
 };
 
-// the rows of a knex.raw result
 const rawRows = (knex, result) => {
 	switch (engineOf(knex)) {
 		case "postgres":
@@ -26,9 +25,7 @@ const rawRows = (knex, result) => {
 	}
 };
 
-/**
- * The tables of the database (sorted); views too when asked (the emptiness check)
- */
+/** The tables of the database (sorted); views too when asked (the emptiness check) */
 const listTables = async (knex, { views = false } = {}) => {
 	let result;
 	switch (engineOf(knex)) {

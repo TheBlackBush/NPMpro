@@ -3,9 +3,8 @@ import path from "node:path";
 import { BackupError } from "./format.js";
 import { TYPES } from "./types.js";
 
-// Replace restore of the files: the instance's files of a type are moved aside, the staged ones moved into place, and
-// every step is journaled so undo() puts the folder back as it was. Symlinks in the instance are moved as links,
-// never followed.
+// Replace restore of the files: a type's instance files are moved aside, the staged ones moved into place, and every
+// step is journaled so undo() restores the folder. Symlinks in the instance are moved as links, never followed.
 
 const LIVE_NAMES = ["cert", "chain", "fullchain", "privkey"];
 const LIVE_FOLDER = /^npm-(?<id>\d+)$/u;
@@ -14,7 +13,6 @@ const DIGITS = /^\d+$/u;
 const AVATAR_DIR = "public/avatar";
 const GRAVATAR_DIR = "public/gravatar";
 
-// a user's picture files are named <user id>.<extension>
 const isPictureOf = (id, name) => name.startsWith(`${id}.`) && !name.includes("/");
 
 // files the nginx workers serve, and the folders that lead to them
@@ -75,13 +73,11 @@ const createJournal = ({ dataDir, asideDir }) => {
 		return info.isFile() ? permissions(info.mode) : undefined;
 	};
 
-	// removes a folder that is empty and notes how to bring it back
 	const removeEmptyFolder = async (rel, mode) => {
 		await rmdir(inData(rel));
 		journal.push({ op: "rmdir", rel, mode });
 	};
 
-	// moves the file at from to rel, with the given mode or the default of rel
 	const placeFile = async (rel, from, mode) => {
 		await ensureFolder(path.posix.dirname(rel));
 		if (await exists(inData(rel))) throw new Error(`${rel} is in the way of the restored file`);
@@ -120,8 +116,7 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 	const journal = createJournal({ dataDir, asideDir });
 	const inData = (rel) => path.join(dataDir, rel);
 
-	// moves the allowed entries at rel aside, noting the modes of the regular files in modes; folders below a root
-	// that end up empty are removed
+	// moves the allowed entries at rel aside, noting the modes of regular files; folders below a root left empty are removed
 	const moveAside = async (files, rel, modes, isRoot) => {
 		const info = await exists(inData(rel));
 		if (!(info && files.allow(rel)) || keep(rel)) return;
@@ -136,7 +131,6 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 		if (mode !== undefined) modes.set(rel, mode);
 	};
 
-	// moves the staged entries at rel into place
 	const place = async (files, rel, modes) => {
 		const from = path.join(stageDir, "files", rel);
 		const info = await exists(from);
@@ -167,9 +161,8 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
  * @param   {string}    options.dataDir
  * @param   {string}    options.stageDir    holds files/<path below dataDir>
  * @param   {string[]}  options.types
- * @param   {string}    options.asideDir    an empty folder (mode 700) on the same filesystem as dataDir, ideally
- * @param   {Function}  [options.keep]      (rel) => boolean: the instance's entry at rel stays as it is and a staged
- *                                          one is not placed
+ * @param   {string}    options.asideDir    an empty folder (mode 700), ideally on the same filesystem as dataDir
+ * @param   {Function}  [options.keep]      (rel) => boolean: the instance's entry at rel stays and no staged one is placed
  * @returns {Promise<{ undo: () => Promise<void> }>}  on failure everything is moved back before it rejects
  */
 const swapFiles = async ({ dataDir, stageDir, types, asideDir, keep = () => false }) => {
@@ -205,8 +198,8 @@ const namesIn = async (folder) => {
 };
 
 /**
- * Fits the staged picture files of a users restore to the ids the users got: the files of the backup user that held
- * the admin's id are renamed to its new id, the files of the admin's id and of the skipped users are removed.
+ * Fits the staged picture files of a users restore to the new user ids: the files of the backup user that held the
+ * admin's id are renamed to its new id; those of the admin's id and of skipped users are removed.
  *
  * @param   {Object}         options
  * @param   {string}         options.stageDir
@@ -266,8 +259,8 @@ const newestArchiveFiles = (names) => {
 };
 
 /**
- * Recreates tls/certbot/live/npm-<id>/{cert,chain,fullchain,privkey}.pem as relative links to the newest archive
- * files of each certificate id with an archive folder, and removes the live folders of other ids.
+ * Recreates tls/certbot/live/npm-<id>/{cert,chain,fullchain,privkey}.pem as relative links to the newest archive files
+ * of each certificate id with an archive folder, and removes the live folders of other ids.
  *
  * @param   {Object}              options
  * @param   {string}              options.dataDir

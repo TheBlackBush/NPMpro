@@ -33,9 +33,7 @@ const sslOf = (engine, ssl) => {
 	return { enabled: ssl.enabled ?? false };
 };
 
-/**
- * The target of a test or move from the request body
- */
+/** The target of a test or move from the request body */
 const validateTarget = (body) => {
 	if (!ENGINES.includes(body?.engine)) throw invalid(`engine must be one of ${ENGINES.join(", ")}`);
 	if (body.engine === "sqlite") return { engine: "sqlite" };
@@ -126,12 +124,10 @@ const settled = (promise) =>
 
 /**
  * Checks a move target without changing it: connect, version, empty, create and drop a table, not the database in use.
- * SQLite needs no test (a new file is used).
- *
- * Time: the checks get timeoutMs in all; after that a cancel flag stops them between steps, and one cleanup of at most
- * timeoutMs (wait for the running step, drop the probe table, close the connection) follows, so the answer comes after
- * at most twice the timeout. A step that never settles is not waited for beyond that; the error then says the probe
- * table may be left.
+ * SQLite needs no test (a new file is used). The checks get timeoutMs in all; after that a cancel flag stops them
+ * between steps and one cleanup of at most timeoutMs follows (wait for the running step, drop the probe table, close
+ * the connection), so the answer comes after at most twice the timeout. A step that never settles is not waited for
+ * beyond that; the error then says the probe table may be left.
  *
  * @param   {Object}    options
  * @param   {Object}    options.target      validateTarget()

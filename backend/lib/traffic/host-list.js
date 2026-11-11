@@ -4,13 +4,11 @@ import { ALL_HOSTS } from "./rollup.js";
 const OTHER_HOST = "_other";
 
 /**
- * Maps a request host to the host key that is stored: a managed domain name, the managed wildcard name it
- * matches (`*.example.com`, `.example.com`) or `_other` for everything else (default site, IPs, random names).
- * Storing the wildcard name instead of the real sub domain keeps the tables bounded.
- * Trailing wildcards (`www.example.*`) and regex names are not matched: their requests fall back to `_other`.
- * Every configured host counts as managed, also a disabled one (its requests reach the default site anyway).
- *
- * A name that is only "*" maps to _other: "*" is the key of the all-hosts totals.
+ * Maps a request host to the host key that is stored: a managed domain name, the managed wildcard name it matches
+ * (`*.example.com`, `.example.com`) or `_other` for everything else (default site, IPs, random names). Storing the
+ * wildcard name instead of the real sub domain keeps the tables bounded. Trailing wildcards (`www.example.*`) and regex
+ * names are not matched (`_other`). Every configured host counts as managed, also a disabled one (its requests reach
+ * the default site anyway). A name that is only "*" maps to _other: "*" is the key of the all-hosts totals.
  *
  * @param   {Iterable<string>}  domains  domain names of the managed hosts
  * @returns {((host: string) => string) & {keys: Set<string>}}  `keys` holds every key it can return

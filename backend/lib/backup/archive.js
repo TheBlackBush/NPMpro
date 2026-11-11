@@ -33,14 +33,12 @@ const checkPath = (rel, type, allow) => {
 };
 
 /**
- * Extracts a backup's gzip tar into dir. tar only parses; the files are written here, so this function knows exactly
- * which writes are in flight. Every entry is checked before anything is written for it. The first bad entry, an
- * error from the source or from tar, truncated input or a source that closes early ends the extraction: the source
- * is destroyed, no further entry is started and the file being written is cut short. The promise settles exactly
- * once, and only after every write it started has closed, so once it has settled nothing more is created or
- * written in dir and the caller may remove dir. A bad entry rejects with BackupError("invalid-archive"); an error
- * from the source (for example a BackupError from decryption) is passed on unchanged; any other error is wrapped
- * as invalid-archive.
+ * Extracts a backup's gzip tar into dir. tar only parses; the files are written here, so every write in flight is
+ * known. Every entry is checked before anything is written for it. The first bad entry, or an error from the source,
+ * tar, truncated input or a source closing early, destroys the source, starts no further entry and cuts the file being
+ * written short. The promise settles once, after every write has closed, so the caller may then remove dir. A bad entry
+ * rejects with BackupError("invalid-archive"); a source error (for example a BackupError from decryption) is passed
+ * on unchanged; any other error is wrapped as invalid-archive.
  */
 const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
 	new Promise((resolve, reject) => {
@@ -76,8 +74,7 @@ const extractTo = ({ source, dir, allow, limits = LIMITS }) =>
 			}
 			maybeSettle();
 		};
-		// Every started piece of filesystem work is tracked until it has finished and its file is closed.
-		// destroy, when set, cuts a running write short.
+		// Every started piece of filesystem work is tracked until its file is closed; destroy, when set, cuts a running write short.
 		const track = async (work) => {
 			const item = { destroy: null };
 			writing.add(item);

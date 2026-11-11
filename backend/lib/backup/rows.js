@@ -1,7 +1,6 @@
-// Rows in a form that does not depend on the database engine: JSON columns as values, dates as ISO strings with an
-// offset. Written into the backup by exportRows() and turned back into insertable rows for the target engine by
-// coerceRow(). The app stores local time (SQLite datetime('now','localtime'), MySQL NOW() read by mysql2 as local
-// time), so naive dates are read and written in the process time zone (TZ), which keeps the wall-clock time.
+// Rows independent of the database engine: JSON columns as values, dates as ISO strings with an offset (written by
+// exportRows(), turned back by coerceRow()). The app stores local time (SQLite datetime('now','localtime'), MySQL NOW()
+// read by mysql2), so naive dates are read and written in the process time zone (TZ), which keeps the wall-clock time.
 
 const JSON_COLUMNS = {
 	// locations: left over from before npmpro_location ("[]"), still a column
@@ -74,7 +73,6 @@ const exportRows = async (knex, table, where) => {
 
 const pad = (value) => String(value).padStart(2, "0");
 
-// YYYY-MM-DD HH:MM:SS read as process-local time, as ISO (UTC); other strings unchanged
 const localToIso = (value) => {
 	const match = NAIVE_DATE.exec(value);
 	if (!match) return value;
@@ -83,7 +81,6 @@ const localToIso = (value) => {
 	return Number.isNaN(date.getTime()) ? value : date.toISOString();
 };
 
-// an ISO date as process-local YYYY-MM-DD HH:MM:SS
 const isoToLocal = (iso) => {
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return iso;
@@ -102,10 +99,9 @@ const isPlainObject = (value) => {
  * @param   {Object}  columns  knex(table).columnInfo() of the target, plus __client (the knex client name)
  * @param   {string}  table
  * @param   {Object}  row      a row as exportRows() wrote it
- * @returns {Object}  only the columns the target has; JSON columns and any other plain object or array value
- *                    stringified; booleans as true/false for boolean columns (1/0 on SQLite, which cannot bind
- *                    booleans) and 1/0 for others; ISO dates as process-local YYYY-MM-DD HH:MM:SS on SQLite and
- *                    MySQL, kept as ISO on Postgres
+ * @returns {Object}  only the columns the target has; plain objects and arrays stringified; booleans as true/false for
+ *                    boolean columns (1/0 on SQLite, which cannot bind booleans), else 1/0; ISO dates as process-local
+ *                    YYYY-MM-DD HH:MM:SS on SQLite and MySQL, ISO on Postgres
  */
 const coerceRow = (columns, table, row) => {
 	const client = String(columns.__client ?? "");

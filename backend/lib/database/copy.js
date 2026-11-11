@@ -34,14 +34,12 @@ const readOptions = (knex) => {
 
 const SAFE_MIN = BigInt(Number.MIN_SAFE_INTEGER);
 const SAFE_MAX = BigInt(Number.MAX_SAFE_INTEGER);
-// a BigInt as a number when that is exact, else as its decimal text (what Postgres and MySQL give for big numbers)
 const fromBigInt = (value) => {
 	if (typeof value !== "bigint") return value;
 	return value >= SAFE_MIN && value <= SAFE_MAX ? Number(value) : value.toString();
 };
 const exactRow = (row) => Object.fromEntries(Object.entries(row).map(([column, value]) => [column, fromBigInt(value)]));
 
-// the rows of a query, with exact integers
 const readRows = async (knex, query) => (await query.options(readOptions(knex))).map(exactRow);
 
 const countRows = async (knex, table) => {
@@ -73,7 +71,6 @@ const refused = (table, key, row, error) =>
 		details: driverMessage(error, [row]),
 	});
 
-// the copy itself failed (the connection, the server): no row is to blame
 const copyFailed = (table, rows, error) =>
 	new errs.DatabaseMoveError("copy", `${table}: the copy failed`, {
 		details: driverMessage(error, rows),
@@ -82,7 +79,6 @@ const copyFailed = (table, rows, error) =>
 // MySQL errors for a value or a row the table does not take (null, range, truncation, date, string, length, JSON)
 const MYSQL_ROW_ERRORS = new Set([1048, 1062, 1264, 1265, 1292, 1366, 1406, 1452, 3140]);
 const SQLITE_ROW_ERROR = /^SQLITE_(?:CONSTRAINT|MISMATCH|TOOBIG|RANGE)/u;
-// SQLSTATE classes 22 (data exception) and 23 (integrity constraint violation)
 const DATA_STATE = /^2[23]/u;
 
 // True when the target refused the data (a constraint or a value of the wrong type), false for anything else, such
@@ -132,7 +128,7 @@ const insertRows = async (trx, table, key, rows) => {
 };
 
 /**
- * Copies every row of a table, in one target transaction, in pages ordered by the key
+ * Copies every row of a table in one target transaction, in pages ordered by the key
  *
  * @param   {Object}    options
  * @param   {Object}    options.source     knex of the database in use (frozen)
@@ -185,7 +181,6 @@ const copyTable = async ({ source, target, table, key, kinds, batchSize = BATCH_
 	return copied;
 };
 
-// the highest id of a table as a BigInt (ids above 2^53 stay exact)
 const maxId = async (knex, table) => {
 	const [row] = await readRows(knex, knex(table).max({ max: "id" }));
 	return BigInt(String(row?.max ?? 0));
@@ -196,11 +191,9 @@ const AUTOINCREMENT = /\bautoincrement\b/iu;
 const AUTO_INCREMENT_OPTION = /\bAUTO_INCREMENT=(?<next>\d+)/u;
 const AUTO_INCREMENT_EXTRA = /auto_increment/iu;
 
-// the Postgres sequence of a table's id, or null
 const pgSequence = async (knex, table) =>
 	rawRows(knex, await knex.raw("select pg_get_serial_sequence(?, 'id') as seq", [`"${table}"`]))[0]?.seq ?? null;
 
-// true when the SQLite table keeps an id counter (AUTOINCREMENT, in sqlite_sequence)
 const sqliteAutoincrement = async (knex, table) => {
 	const [row] = rawRows(
 		knex,
@@ -209,7 +202,6 @@ const sqliteAutoincrement = async (knex, table) => {
 	return AUTOINCREMENT.test(String(row?.sql ?? ""));
 };
 
-// true when the MySQL table's id is auto-increment
 const mysqlAutoincrement = async (knex, table) =>
 	rawRows(
 		knex,
@@ -252,7 +244,6 @@ const idCounter = async (knex, table) => {
 	}
 };
 
-// true when the table's id has a counter (an integer id handed out by the database)
 const hasCounter = async (knex, table) => {
 	switch (engineOf(knex)) {
 		case "sqlite":
@@ -264,7 +255,6 @@ const hasCounter = async (knex, table) => {
 	}
 };
 
-// sets the target's counter (hasCounter) so the next insert without an id gets next
 const setCounter = async (target, table, next) => {
 	switch (engineOf(target)) {
 		case "sqlite":
@@ -285,9 +275,9 @@ const setCounter = async (target, table, next) => {
 };
 
 /**
- * Sets every id counter of the target (SQLite sqlite_sequence, Postgres sequence, MySQL auto-increment) so the next
- * insert without an id gets max(the source's counter, the highest copied id) + 1: ids of rows deleted in the database
- * in use are never handed out again (old audit rows would attach to new objects).
+ * Sets every id counter of the target so the next insert without an id gets max(the source's counter, the highest
+ * copied id) + 1: ids of rows deleted in the database in use are never handed out again (old audit rows would attach
+ * to new objects).
  *
  * @param   {Object}    source  knex of the database in use
  * @param   {Object}    target  knex of the target
@@ -305,7 +295,6 @@ const resetSequences = async (source, target, tables) => {
 	}
 };
 
-// a where clause on the key; null keys (a table without a primary key) match with is null
 const whereKey = (query, key, row) => {
 	for (const column of key) {
 		if (row[column] === null || row[column] === undefined) query.whereNull(column);
@@ -315,9 +304,9 @@ const whereKey = (query, key, row) => {
 };
 
 /**
- * Same row count, and the first and last rows (by the source's key order) equal by meaning. Rows are matched by
- * their key, never by position: text keys sort differently per engine and collation. The key values are looked up in
- * the form the copy wrote them (targetRow), so booleans and dates in a key match on every engine.
+ * Same row count, and the first and last rows (by the source's key order) equal by meaning. Rows are matched by their
+ * key, never by position: text keys sort differently per engine and collation. Key values are looked up in the form
+ * the copy wrote them (targetRow), so booleans and dates in a key match on every engine.
  *
  * @param   {Object}    options
  * @param   {Object}    options.source

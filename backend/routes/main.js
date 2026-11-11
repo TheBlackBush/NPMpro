@@ -137,11 +137,7 @@ router.use("/api/nginx/access-lists", accessListsRoutes);
 router.use("/api/nginx/certificates", certificatesHostsRoutes);
 router.use("/api/nginx/dns-credentials", dnsCredentialsRoutes);
 
-/**
- * API 404 for all other routes
- *
- * ALL /api/*
- */
+/** ALL /api/*: 404 for every other route */
 router.all(/(?<path>.+)/u, (req, _, next) => {
 	next(new errs.ItemNotFoundError(req.params.path));
 });

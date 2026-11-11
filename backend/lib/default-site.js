@@ -57,10 +57,10 @@ const restoreDefaultSite = async (nginx, previous, { wroteHtml, writeHtml, logge
 };
 
 /**
- * Changes the default site in this order: write and test the next row's config, write its HTML page (html mode),
- * reload nginx, save the row. When a step fails, the saved row's page and config are put back (restoreDefaultSite)
- * and a ValidationError is thrown with the failure as its cause, so the saved row and the running config stay the
- * same. Run it in the runtime settings queue, so the row is saved before the next queued change starts.
+ * Changes the default site in this order: write and test the next row's config, write its HTML page (html mode), reload
+ * nginx, save the row. When a step fails, the saved row's page and config are put back (restoreDefaultSite) and a
+ * ValidationError is thrown with the failure as its cause, so the saved row and the running config stay the same. Run
+ * it in the runtime settings queue, so the row is saved before the next queued change starts.
  *
  * @param {{ generateConfig: Function, deleteConfig: Function, test: Function, reload: Function }} nginx  internal/nginx.js
  * @param {Object}   next                  the setting row to apply

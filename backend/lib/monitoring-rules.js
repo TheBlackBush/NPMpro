@@ -7,7 +7,6 @@ const MONITORING_DEFAULTS = {
 };
 const GEOIP_EDITIONS = ["GeoLite2-Country", "GeoLite2-ASN", "GeoLite2-City"];
 const GEOIP_DEFAULTS = { account_id: "", editions: ["GeoLite2-Country", "GeoLite2-ASN"] };
-// the env var of each field
 const MONITORING_ENV_KEYS = {
 	traffic_enabled: "TRAFFIC_STATS",
 	retention_days: "TRAFFIC_RETENTION_DAYS",

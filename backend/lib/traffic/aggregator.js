@@ -21,9 +21,8 @@ const mergeBatches = (batches) => ({
 });
 
 /**
- * Moves the counter into the database and keeps the reader position in step with the counts written.
- * `settings` and `position` are the service's shared objects; the pending batches and the flush errors stay
- * private and are exposed through the methods.
+ * Moves the counter into the database and keeps the reader position in step with the counts written. `settings` and
+ * `position` are the service's shared objects; the pending batches and the flush errors stay private.
  *
  * @param   {Object}    deps
  * @param   {Object}    deps.store

@@ -7,8 +7,6 @@ import authModel from "../models/auth.js";
 const codesOf = (userId, trx) => authModel.query(trx).where("user_id", userId).andWhere("type", "backup_code");
 
 /**
- * Generate backup codes
- *
  * @returns {Promise<{plain: string[], hashed: string[]}>}
  */
 const generate = async () => {
@@ -27,16 +25,12 @@ const generate = async () => {
 
 const internalBackupCodes = {
 	/**
-	 * Count the backup codes which are still unused
-	 *
 	 * @param   {number} userId
 	 * @returns {Promise<number>}
 	 */
 	count: async (userId, trx) => await codesOf(userId, trx).resultSize(),
 
 	/**
-	 * Replace all backup codes of a user with a freshly generated set
-	 *
 	 * @param   {number} userId
 	 * @returns {Promise<string[]>}
 	 */
@@ -54,8 +48,6 @@ const internalBackupCodes = {
 	},
 
 	/**
-	 * Remove all backup codes of a user
-	 *
 	 * @param   {number} userId
 	 * @returns {Promise<void>}
 	 */
@@ -64,8 +56,6 @@ const internalBackupCodes = {
 	},
 
 	/**
-	 * Verify a backup code and consume it
-	 *
 	 * @param   {number} userId
 	 * @param   {string} code
 	 * @returns {Promise<boolean>}
@@ -80,7 +70,7 @@ const internalBackupCodes = {
 				const match = row.secret.startsWith("$2")
 					? await bcrypt.compare(normalizedCode, row.secret)
 					: await verify(normalizedCode, row.secret);
-				// Remove used backup code, only the request that removes it counts as used
+				// only the request that removes the code counts as used
 				if (match) return (await authModel.query().findById(row.id).delete()) === 1;
 			}
 

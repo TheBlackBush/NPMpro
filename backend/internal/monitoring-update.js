@@ -5,9 +5,7 @@ import { global as logger } from "../logger.js";
 
 const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
 
-/**
- * Copies the editable keys of a validated body that are not locked
- */
+/** Copies the editable keys of a validated body that are not locked */
 const pickEditable = (body, locked, keys) =>
 	Object.fromEntries(keys.filter((key) => key in body && !locked.includes(key)).map((key) => [key, body[key]]));
 

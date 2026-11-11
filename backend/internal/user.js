@@ -11,8 +11,7 @@ import internalToken from "./token.js";
 
 const internalUser = {
 	/**
-	 * Create a user can happen unauthenticated only once and only when no active users exist.
-	 * Otherwise, a valid auth method is required.
+	 * Unauthenticated only once, and only while no active user exists; otherwise a valid auth method is required.
 	 *
 	 * @param   {Access}  access
 	 * @param   {Object}  data
@@ -44,7 +43,6 @@ const internalUser = {
 				});
 			}
 
-			// Create permissions row as well
 			await userPermissionModel.query(trx).insert({
 				user_id: insertedUser.id,
 				visibility: data.roles.includes("admin") ? "all" : "user",
@@ -132,7 +130,6 @@ const internalUser = {
 			throw new errs.PermissionError("You cannot change your own roles or disable yourself.");
 		}
 		const existingUser = await internalUser.get(access, { id: data.id });
-		// 2. if email is to be changed, find other users with that email
 		if (data.email !== undefined) {
 			data.email = data.email.toLowerCase();
 
@@ -194,8 +191,7 @@ const internalUser = {
 	},
 
 	/**
-	 * Checks if an email address is available, but if a user_id is supplied, it will ignore checking
-	 * against that user.
+	 * Whether the email is free, ignoring user_id when given.
 	 *
 	 * @param email
 	 * @param user_id
@@ -222,7 +218,6 @@ const internalUser = {
 
 		const user = await internalUser.get(access, { id: data.id });
 
-		// Make sure user can't delete themselves
 		if (user.id === access.token.getUserId(0)) {
 			throw new errs.PermissionError("You cannot delete yourself.");
 		}
@@ -245,8 +240,6 @@ const internalUser = {
 	},
 
 	/**
-	 * All users
-	 *
 	 * @param   {Access}  access
 	 * @param   {String}  [search_query]
 	 * @returns {Promise}
@@ -255,7 +248,6 @@ const internalUser = {
 		access.canAdmin();
 		const query = userModel.query().groupBy("id").orderBy("name", "ASC");
 
-		// Query is used for searching
 		if (typeof search_query === "string") {
 			query.where(function () {
 				this.whereILike("name", `%${search_query}%`).orWhereILike("email", `%${search_query}%`);

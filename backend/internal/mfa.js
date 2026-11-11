@@ -7,16 +7,12 @@ import internalUser from "./user.js";
 
 const internalMfa = {
 	/**
-	 * Check if any second factor is enabled for the user
-	 *
 	 * @param   {number} userId
 	 * @returns {Promise<boolean>}
 	 */
 	isAnyEnabled: async (userId, trx) => await totp.isEnabled(userId, trx),
 
 	/**
-	 * Get MFA status for user (all factors and backup codes)
-	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
 	 * @returns {Promise<{totp_enabled: boolean, backup_codes_remaining: number}>}
@@ -32,7 +28,7 @@ const internalMfa = {
 	},
 
 	/**
-	 * Generate backup codes if none exist yet (when the first factor gets enabled)
+	 * Only when none exist yet (the first factor gets enabled)
 	 *
 	 * @param   {number} userId
 	 * @returns {Promise<{backup_codes: string[]} | null>}
@@ -46,8 +42,6 @@ const internalMfa = {
 	},
 
 	/**
-	 * Enable TOTP and ensure backup codes exist
-	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
 	 * @param   {string}  code
@@ -62,7 +56,7 @@ const internalMfa = {
 	},
 
 	/**
-	 * Disable TOTP; removes backup codes if no factor is left
+	 * Also removes the backup codes when no factor is left
 	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
@@ -86,8 +80,6 @@ const internalMfa = {
 	},
 
 	/**
-	 * Verify a login code (TOTP code or backup code)
-	 *
 	 * @param   {number} userId
 	 * @param   {string} token
 	 * @returns {Promise<boolean>}
@@ -106,7 +98,7 @@ const internalMfa = {
 	},
 
 	/**
-	 * Admin reset: disable all second factors and backup codes for a user
+	 * Admin reset: all second factors and backup codes
 	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
@@ -138,8 +130,6 @@ const internalMfa = {
 	},
 
 	/**
-	 * Regenerate backup codes
-	 *
 	 * @param   {Access}  access
 	 * @param   {number}  userId
 	 * @param   {string}  token

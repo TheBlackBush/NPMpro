@@ -28,7 +28,7 @@ const avatarExt = (b) => {
 
 /**
  * Removes the user's fetched Gravatar picture and fetches it again; the default avatar when Gravatar is off
- * (advanced.gravatar, read per call), Gravatar has no photo for the email (404) or the fetch fails
+ * (advanced.gravatar, read per call), has no photo for the email (404) or the fetch fails
  *
  * @param   {number}  id
  * @param   {string}  email

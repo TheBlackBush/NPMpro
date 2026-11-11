@@ -23,9 +23,6 @@ const LOCK_REASONS = [
 // reasons of locks that no env var set by the user causes
 const SETTING_LOCK_REASONS = ["goaccess-setting", "force-mlkem-setting"];
 
-/**
- * The settings that apply at the next container start (TZ, GOA): envs.sh reads them from the startup settings file
- */
 const isRestartRule = (rule) => rule.applies === "restart";
 
 // NPMPRO_RUNTIME_ENVS in envs.sh; the restart settings are startup variables there (NPMPRO_STARTUP_ENVS) and stay
@@ -42,9 +39,9 @@ const rulesOf = (group) => RUNTIME_RULES.filter((rule) => rule.group === group);
 const isRuntimeGroup = (group) => RUNTIME_GROUPS.includes(group);
 
 /**
- * The given env var names the user set (non-empty after trimming). envs.sh exports a default for most runtime env
- * vars, so it records the runtime names set before its defaults in NPMPRO_USER_ENV; without that list every non-empty
- * value counts as set.
+ * The given env var names the user set (non-empty after trimming). envs.sh exports a default for most runtime env vars,
+ * so it records the runtime names set before its defaults in NPMPRO_USER_ENV; without that list every non-empty value
+ * counts as set.
  *
  * @param   {Object}    env
  * @param   {string[]}  names
@@ -138,14 +135,14 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 			values.must_staple = false;
 			lock("must_staple", "ACME_OCSP_STAPLING", "ocsp-stapling-off");
 		} else if (values.must_staple && !values.ocsp_stapling) {
-			// envs.sh:793 must-staple forces OCSP stapling on
+			// envs.sh: must-staple forces OCSP stapling on
 			values.ocsp_stapling = true;
 			if (locked.includes("must_staple") && !locked.includes("ocsp_stapling")) {
 				lock("ocsp_stapling", lockedBy.must_staple, "must-staple");
 			}
 		}
 	}
-	// envs.sh:827 GoAccess needs the log files
+	// envs.sh: GoAccess needs the log files
 	if (group === "logs" && env.GOA === "true") {
 		values.write_log_files = true;
 		// GOA is what keeps it on, also when LOGROTATE is set; without GOA from the user it runs from the GoAccess

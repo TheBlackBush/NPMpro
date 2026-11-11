@@ -26,9 +26,7 @@ const staplingRecovery = createStaplingRecovery({
  */
 const recoverStapling = () => staplingRecovery.recover();
 
-/**
- * Starts the recovery after each OCSP fetch that brings new .der files (from then on)
- */
+/** Starts the recovery after each OCSP fetch that brings new .der files */
 const watchOcspResponses = () => {
 	internalNginx.fetchOcsp.onNewResponses(() => {
 		void recoverStapling();

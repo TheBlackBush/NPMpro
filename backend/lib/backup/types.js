@@ -3,9 +3,9 @@ import { RUNTIME_GROUPS } from "../runtime-rules.js";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { nextRun } from "./schedule-time.js";
 
-// What a backup can hold, by type: the tables, the files under the data folder and how the stored secrets are opened
-// for an archive, stripped from it or sealed again with the target's secret box. Every secret function returns new
-// rows and leaves its input as it is. Paths are relative to the data folder, without a leading or trailing slash.
+// What a backup can hold, by type: tables, files under the data folder and how stored secrets are opened for an archive,
+// stripped, or sealed again with the target's secret box. Secret functions return new rows. Paths are relative to the
+// data folder, without a leading or trailing slash.
 
 const CATEGORIES = [
 	{ id: "hosts", types: ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams"] },
@@ -44,16 +44,13 @@ const PRIVATE_KEY = /^privkey\d*\.pem$/u;
 
 const isSealed = (value) => typeof value === "string" && value.startsWith(SEALED_PREFIX);
 
-// a relative path of plain names: no empty, "." or ".." parts
 const isPlainPath = (rel) =>
 	typeof rel === "string" &&
 	rel !== "" &&
 	rel.split("/").every((part) => part !== "" && part !== "." && part !== "..");
 
-// rel is root itself or lies below it
 const isUnder = (root) => (rel) => rel === root || rel.startsWith(`${root}/`);
 
-// the folders that lead to the given paths ("a/b/c" -> "a", "a/b")
 const parentsOf = (paths) =>
 	new Set(
 		paths.flatMap((rel) => {
@@ -86,13 +83,10 @@ const NO_SECRETS = {
 	seal: (rowsByTable) => rowsByTable,
 };
 
-// rowsByTable with fn applied to each row of table
 const mapRows = (rowsByTable, table, fn) =>
 	Array.isArray(rowsByTable[table]) ? { ...rowsByTable, [table]: rowsByTable[table].map(fn) } : rowsByTable;
 
 /**
- * Secret handling for one sealed key in the meta of the setting rows with the given id.
- *
  * @param   {string}  id
  * @param   {string}  key
  */
@@ -140,7 +134,6 @@ const withoutRunState = (rowsByTable) =>
 
 const hasText = (value) => typeof value === "string" && value !== "";
 
-// the schedule passphrase is sealed as { passphrase }
 const scheduleSecrets = {
 	export: (rowsByTable, box) =>
 		mapRows(withoutRunState(rowsByTable), SCHEDULE_TABLE, (row) =>
@@ -300,7 +293,7 @@ const FILES_PREFIX = "files/";
 /**
  * The allow callback for extractTo: whether one of the chosen types takes the archive path.
  *
- * @param   {string[]}  types             type ids
+ * @param   {string[]}  types
  * @param   {string}    relUnderArchive   e.g. files/custom_nginx/http.conf
  * @returns {boolean}
  */

@@ -81,11 +81,7 @@ router
 	.route("/")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/nginx/certificates
-	 *
-	 * Retrieve all certificates
-	 */
+	/** GET /api/nginx/certificates */
 	.get(async (req, res) => {
 		const data = validator(listSchema, {
 			expand: typeof req.query.expand === "string" ? req.query.expand.split(",") : null,
@@ -95,11 +91,7 @@ router
 		res.status(200).send(rows);
 	})
 
-	/**
-	 * POST /api/nginx/certificates
-	 *
-	 * Create a new certificate
-	 */
+	/** POST /api/nginx/certificates */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/nginx/certificates", "post"), req.body);
 		req.setTimeout(900000); // 15 minutes timeout
@@ -114,11 +106,7 @@ router
 	.route("/dns-providers")
 	.all(requireLogin())
 
-	/**
-	 * GET /api/nginx/certificates/dns-providers
-	 *
-	 * Get list of all supported DNS providers
-	 */
+	/** GET /api/nginx/certificates/dns-providers */
 	.get((_, res) => {
 		res.status(200).send(
 			Object.entries(dnsPlugins)
@@ -135,19 +123,13 @@ router
 	});
 
 /**
- * Test HTTP challenge for domains
- *
  * /api/nginx/certificates/test-http
  */
 router
 	.route("/test-http")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/nginx/certificates/test-http
-	 *
-	 * Test HTTP challenge for domains
-	 */
+	/** POST /api/nginx/certificates/test-http */
 	.post(async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/nginx/certificates/test-http", "post"), req.body);
 		req.setTimeout(60000); // 1 minute timeout
@@ -157,19 +139,13 @@ router
 	});
 
 /**
- * Validate Certs before saving
- *
  * /api/nginx/certificates/validate
  */
 router
 	.route("/validate")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/nginx/certificates/validate
-	 *
-	 * Validate certificates
-	 */
+	/** POST /api/nginx/certificates/validate */
 	.post(uploadCerts, (req, res) => {
 		if (!req.files?.certificate) throw new errs.ValidationError("certificate file is required");
 
@@ -180,19 +156,13 @@ router
 	});
 
 /**
- * Specific certificate
- *
  * /api/nginx/certificates/123
  */
 router
 	.route("/:certificate_id")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/nginx/certificates/123
-	 *
-	 * Retrieve a specific certificate
-	 */
+	/** GET /api/nginx/certificates/123 */
 	.get(async (req, res) => {
 		const data = validator(certificateSchema, {
 			certificate_id: req.params.certificate_id,
@@ -203,11 +173,7 @@ router
 		res.status(200).send(row);
 	})
 
-	/**
-	 * DELETE /api/nginx/certificates/123
-	 *
-	 * Update and existing certificate
-	 */
+	/** DELETE /api/nginx/certificates/123 */
 	.delete(async (req, res) => {
 		const result = await internalCertificate.delete(res.locals.access, {
 			id: Number.parseInt(req.params.certificate_id, 10),
@@ -216,8 +182,6 @@ router
 	});
 
 /**
- * Change the DNS credential of a certificate
- *
  * /api/nginx/certificates/123/dns-credential
  */
 router
@@ -240,19 +204,13 @@ router
 	});
 
 /**
- * Upload Certs
- *
  * /api/nginx/certificates/123/upload
  */
 router
 	.route("/:certificate_id/upload")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/nginx/certificates/123/upload
-	 *
-	 * Upload certificates
-	 */
+	/** POST /api/nginx/certificates/123/upload */
 	.post(uploadCerts, async (req, res) => {
 		if (!req.files?.certificate) throw new errs.ValidationError("certificate file is required");
 
@@ -264,19 +222,13 @@ router
 	});
 
 /**
- * Renew certbot Certs
- *
  * /api/nginx/certificates/123/renew
  */
 router
 	.route("/:certificate_id/renew")
 	.all(jwtdecode())
 
-	/**
-	 * POST /api/nginx/certificates/123/renew
-	 *
-	 * Renew certificate
-	 */
+	/** POST /api/nginx/certificates/123/renew */
 	.post(async (req, res) => {
 		req.setTimeout(900000); // 15 minutes timeout
 		const result = await internalCertificate.renew(res.locals.access, {
@@ -286,19 +238,13 @@ router
 	});
 
 /**
- * Download Certs
- *
  * /api/nginx/certificates/123/download
  */
 router
 	.route("/:certificate_id/download")
 	.all(jwtdecode())
 
-	/**
-	 * GET /api/nginx/certificates/123/download
-	 *
-	 * Download certificate
-	 */
+	/** GET /api/nginx/certificates/123/download */
 	.get(downloadLimiter, async (req, res) => {
 		await using dir = await mkdtempDisposable(path.join(tmpdir(), "npm-"));
 		const result = await internalCertificate.download(

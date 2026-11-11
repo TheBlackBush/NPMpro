@@ -1,6 +1,3 @@
-// Objection Docs:
-// http://vincit.github.io/objection.js/
-
 import bcrypt from "bcryptjs";
 import { Model } from "objection";
 import db from "../db.js";
@@ -20,7 +17,6 @@ class Auth extends Model {
 		this.created_on = now();
 		this.modified_on = now();
 
-		// Default for meta
 		this.meta ??= {};
 
 		return encryptPassword(this);
@@ -37,7 +33,7 @@ class Auth extends Model {
 	}
 
 	/**
-	 * Verify a plain password against the encrypted password, replacing a legacy bcrypt hash on success
+	 * A legacy bcrypt hash is replaced on success
 	 *
 	 * @param {String} password
 	 * @returns {Promise}
@@ -58,8 +54,6 @@ class Auth extends Model {
 	}
 
 	/**
-	 * Get the password auth row for a user, or undefined if none exists
-	 *
 	 * @param   {number} userId
 	 * @returns {Promise<object|undefined>}
 	 */

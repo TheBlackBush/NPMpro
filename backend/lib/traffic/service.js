@@ -18,7 +18,6 @@ const MAINTAIN_MS = 3600000;
 const READ_MAX_CHUNK = 8 * 1024 * 1024;
 // after "show visitor IPs" was switched off, a stale stored true is ignored this long (the hook runs before the save)
 const IPS_OFF_PIN_MS = 5 * 60000;
-// the same for "count unique visitors"
 const VISITORS_OFF_PIN_MS = 5 * 60000;
 const DAY = 86400000;
 // the API reloads the host list when it is older than this (the flush reloads it every minute while counting)
@@ -35,9 +34,9 @@ const defaultTimers = {
 };
 
 /**
- * Reader position and visitor key share the meta of the `traffic-state` settings row. Each write reads the
- * current meta first and only replaces its own fields, so neither overwrites the other.
- * `read()` gives the stored meta, `write(meta)` stores the whole meta.
+ * Reader position and visitor key share the meta of the `traffic-state` settings row. Each write reads the current meta
+ * first and only replaces its own fields, so neither overwrites the other. `read()` gives the stored meta, `write(meta)`
+ * stores the whole meta.
  */
 const createStateMeta = ({ read, write }) => ({
 	loadState: async () => {
@@ -59,11 +58,10 @@ const createStateMeta = ({ read, write }) => ({
 });
 
 /**
- * The traffic statistics pipeline: access log reader, parser, GeoIP, counter and store on timers.
- * Reads every 5 s while enabled, flushes every 60 s (and saves the reader position after a successful flush),
- * rolls up and prunes hourly. Failures never throw out of the timers: they are logged and exposed by status().
- * The deps are the stores and loaders (see test/monitoring-service.test.js); `loadVisitorKey`, `createReader`,
- * `statLog`, `now` and `timers` are optional seams.
+ * The traffic statistics pipeline: access log reader, parser, GeoIP, counter and store on timers. Reads every 5 s while
+ * enabled, flushes every 60 s (and saves the reader position after a successful flush), rolls up and prunes hourly.
+ * Failures never throw out of the timers: they are logged and exposed by status(). The deps are the stores and loaders
+ * (see test/monitoring-service.test.js); `loadVisitorKey`, `createReader`, `statLog`, `now` and `timers` are optional.
  */
 const createTrafficService = ({
 	store,

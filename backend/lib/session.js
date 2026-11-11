@@ -96,14 +96,11 @@ const revokeSession = async (tokenData, { knex } = {}) => {
 	}
 };
 
-/**
- * No logout is taken any more (a database move wrote the last ones and the process exits)
- */
+/** No logout is taken any more (a database move wrote the last ones and the process exits) */
 const closeSessions = () => {
 	closing = true;
 };
 
-// for tests
 const reopenSessions = () => {
 	closing = false;
 };

@@ -88,28 +88,27 @@ const nowOf = (knex) => {
  * @param   {Object}    deps.knex                 the database in use
  * @param   {Function}  deps.current              () => { source, connection, moved_at, moved_from } (lib/config.js)
  * @param   {Function}  deps.createKnex           (config) => knex
- * @param   {Object}    deps.box                  the secret box (seals the password in database.json)
+ * @param   {Object}    deps.box                  seals the password in database.json
  * @param   {string}    deps.dataDir              /data/npmpro: database.json and new SQLite files
  * @param   {Object}    [deps.migrations]         { tableName, directory }
- * @param   {Object}    deps.backup               { lockForMove(userId) => { safetyBackup(), release() } }, throws busy
- * @param   {Function}  deps.writers              () => [{ name, pause({ timeoutMs }), resume() }]: background writers
- * @param   {Object}    deps.maintenance          createMaintenance()
- * @param   {Object}    deps.revocations          { held() => rows (kept), write(knex) => Promise (takes them),
- *                                                close(): no logout is taken any more (right before the exit) }
- * @param   {Function}  deps.audit                (access, data) => Promise, into the database in use
- * @param   {Function}  deps.writeFile            (file, content) => Promise (writeConnectionFile)
- * @param   {Function}  deps.exit                 () => void, ends the process (dinit starts it again)
+ * @param   {Object}    deps.backup               { lockForMove(userId) => { safetyBackup(), release() } }
+ * @param   {Function}  deps.writers              () => [{ name, pause({ timeoutMs }), resume() }]
+ * @param   {Object}    deps.maintenance
+ * @param   {Object}    deps.revocations          { held(), write(knex), close() }
+ * @param   {Function}  deps.audit                (access, data) => Promise
+ * @param   {Function}  deps.writeFile            (file, content) => Promise
+ * @param   {Function}  deps.exit                 () => void
  * @param   {Function}  [deps.later]              (fn, ms) => void
  * @param   {Object}    [deps.clock]              { now() } in ms
  * @param   {Object}    [deps.log]
  * @param   {number}    [deps.batchSize]
  * @param   {number}    [deps.verifyRows]
- * @param   {number}    [deps.restartDelayMs]     the time the move window has to see "restarting"
- * @param   {number}    [deps.sentTimeoutMs]      the longest wait for the answer to the move request
- * @param   {number}    [deps.timeoutMs]          the target test timeout
- * @param   {number}    [deps.writesTimeoutMs]    the longest wait for the writes that started before the move
- * @param   {number}    [deps.pauseTimeoutMs]     the longest wait for one background writer
- * @param   {number}    [deps.closeTimeoutMs]     the longest wait for the target connection to close after a failure
+ * @param   {number}    [deps.restartDelayMs]     time the move window has to see "restarting"
+ * @param   {number}    [deps.sentTimeoutMs]      wait for the answer to the move request
+ * @param   {number}    [deps.timeoutMs]          target test timeout
+ * @param   {number}    [deps.writesTimeoutMs]    wait for writes started before the move
+ * @param   {number}    [deps.pauseTimeoutMs]     wait for one background writer
+ * @param   {number}    [deps.closeTimeoutMs]     wait for the target connection to close after a failure
  */
 const createDatabaseService = ({
 	knex,
@@ -472,14 +471,14 @@ const createDatabaseService = ({
 		},
 
 		/**
-		 * Starts a move; answers once the target passed its test and the backup lock is held, the steps run in the
+		 * Starts a move; answers once the target passed its test and the backup lock is held, the rest runs in the
 		 * background (progress()).
 		 *
 		 * @param   {Access}   access
 		 * @param   {Object}   body
 		 * @param   {Object}   [options]
-		 * @param   {Promise}  [options.sent]  settles once the answer to the move request went out (finish or close of
-		 *                                     the response): the process does not exit before it
+		 * @param   {Promise}  [options.sent]  settles once the answer to the move request went out; the process
+		 *                                     does not exit before it
 		 * @returns {Promise<{ id: string }>}
 		 */
 		move: async (access, body, { sent = Promise.resolve() } = {}) => {

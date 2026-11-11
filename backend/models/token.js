@@ -24,7 +24,6 @@ export default () => {
 			if (!getPrivateKey()) {
 				logger.error("Private key is empty!");
 			}
-			// sign with ECDSA P-521 SHA-512
 			const options = {
 				algorithm: ALGO,
 				expiresIn: payload.expiresIn || "1d",
@@ -57,8 +56,6 @@ export default () => {
 		},
 
 		/**
-		 * Does the token have the specified scope?
-		 *
 		 * @param   {String}  scope
 		 * @returns {Boolean}
 		 */

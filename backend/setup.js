@@ -33,7 +33,6 @@ const setupDefaultUser = async () => {
 
 	const userIsetup = await isSetup();
 	if (!userIsetup) {
-		// Create a new user and set password
 		logger.info(`Creating initial user: ${initialAdminEmail}`);
 
 		const access = new Access(null);
