@@ -28,7 +28,6 @@ ARG NNTLM_VER=3da77b0cb30e517dfee01d7e7f7d649144d24051 # master
 
 
 WORKDIR /src
-COPY patches/*.patch /src
 COPY rootfs/usr/local/bin/git-clone-commit.sh /usr/local/bin/git-clone-commit.sh
 
 RUN apk upgrade --no-cache -a && \
@@ -51,12 +50,15 @@ ARG LDFLAGS="-m64 -Wl,-s -Wl,-O2 -Wl,--lto-O3 -Wl,--icf=safe -Wl,--gc-sections -
 RUN git config --global advice.detachedHead false && \
     git config --global init.defaultBranch main
 
+COPY patches/aws-lc-tls13-cipher-preference.patch /src/
 RUN git-clone-commit.sh https://github.com/aws/aws-lc "$AWSLC_VER" /src/aws-lc && \
     cd /src/aws-lc && \
     git apply /src/aws-lc-tls13-cipher-preference.patch && \
     cmake /src/aws-lc -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DDISABLE_GO=ON -DDISABLE_PERL=ON -DBUILD_TESTING=OFF && \
     ninja install
 
+# the nginx patches and the lua-nginx-module patch, applied in the next step
+COPY patches/nginx-*.patch patches/lua-nginx-module-aws-lc.patch /src/
 RUN git-clone-commit.sh https://github.com/nginx/nginx "$NGINX_VER" /src/nginx && \
     cd /src/nginx && \
     wget -q https://patch-diff.githubusercontent.com/raw/nginx/nginx/pull/689.patch -O /src/nginx/1.patch && \
@@ -180,11 +182,9 @@ WORKDIR /app
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml /app/
 COPY frontend/patches /app/patches/
 RUN apk upgrade --no-cache -a && \
-    apk add --no-cache nodejs pnpm llvm file brotli && \
+    apk add --no-cache nodejs pnpm brotli && \
     pnpm install --frozen-lockfile && \
-    find /app/node_modules -name "*.map" -delete && \
-    find /app/node_modules -name "*.node" -type f -exec llvm-strip -s {} \; && \
-    find /app/node_modules -name "*.node" -type f -exec file {} \;
+    find /app/node_modules -name "*.map" -delete
 COPY frontend /app
 RUN pnpm vite build && \
     find /app/dist -type f ! -name "*.jpg" ! -name "*.png" -print0 | xargs -r0 -P "$(nproc)" -n 1 brotli -q 11 -sf
@@ -296,6 +296,13 @@ RUN apk upgrade --no-cache -a && \
     find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 
 COPY --from=frontend /app/dist /app/frontend
+
+# The version the start log and the web UI show; CI passes it, a plain build keeps 0.0.0 from package.json
+ARG VERSION
+RUN if [ -n "$VERSION" ]; then \
+        jq --arg v "$VERSION" ".version = \$v" /app/package.json > /tmp/package.json && \
+        mv /tmp/package.json /app/package.json; \
+    fi
 
 ENTRYPOINT ["tini", "--", "entrypoint.sh"]
 # checked every 2 s while starting (Docker 25+, older engines keep the 30 s interval), then every 30 s
