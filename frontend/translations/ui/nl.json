@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Actieve blokkades",
 	"monitoring.crowdsec.added-24h": "Toegevoegd in de afgelopen 24 uur",
 	"monitoring.crowdsec.added-24h.hint": "Voor het eerst gezien door NPMpro, geteld sinds de laatste start",
+	"monitoring.crowdsec.bans": "{count, plural, one {# blokkade} other {# blokkades}}",
 	"monitoring.crowdsec.by-country": "Toplanden",
 	"monitoring.crowdsec.by-origin": "Blokkades per herkomst",
 	"monitoring.crowdsec.by-scenario": "Blokkades per reden",

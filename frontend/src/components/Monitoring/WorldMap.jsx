@@ -30,13 +30,26 @@ class MapLoadBoundary extends Component {
  * @param {{ country: string, requests?: number, count?: number }[]} props.countries
  * @param {string} props.label                       accessible name of the map
  * @param {"primary"|"destructive"} [props.tone]     colour of the shades, default "primary" (CrowdSec uses "destructive")
- * @param {(n: number) => string} [props.formatValue] caption and legend number, default formatCount
+ * @param {(n: number) => string} [props.formatValue] legend number, default formatCount
+ * @param {string} [props.countMessage]            plural message of the tooltip count, default "monitoring.requests"
  */
-function WorldMap({ countries, label, tone = "primary", formatValue = formatCount }) {
+function WorldMap({
+	countries,
+	label,
+	tone = "primary",
+	formatValue = formatCount,
+	countMessage = "monitoring.requests",
+}) {
 	return (
 		<MapLoadBoundary>
 			<Suspense fallback={<Skeleton className="aspect-[800/360] w-full" />}>
-				<WorldMapCanvas countries={countries} label={label} tone={tone} formatValue={formatValue} />
+				<WorldMapCanvas
+					countries={countries}
+					label={label}
+					tone={tone}
+					formatValue={formatValue}
+					countMessage={countMessage}
+				/>
 			</Suspense>
 		</MapLoadBoundary>
 	);

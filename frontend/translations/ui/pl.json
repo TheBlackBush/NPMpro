@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Aktywne blokady",
 	"monitoring.crowdsec.added-24h": "Dodane w ciągu ostatnich 24 godzin",
 	"monitoring.crowdsec.added-24h.hint": "Pierwszy raz widziane przez NPMpro, liczone od jego ostatniego uruchomienia",
+	"monitoring.crowdsec.bans": "{count, plural, one {# blokada} few {# blokady} many {# blokad} other {# blokady}}",
 	"monitoring.crowdsec.by-country": "Najczęstsze kraje",
 	"monitoring.crowdsec.by-origin": "Blokady według źródła",
 	"monitoring.crowdsec.by-scenario": "Blokady według przyczyny",

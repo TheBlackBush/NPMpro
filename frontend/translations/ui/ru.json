@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Активные блокировки",
 	"monitoring.crowdsec.added-24h": "Добавлено за последние 24 часа",
 	"monitoring.crowdsec.added-24h.hint": "Впервые замечены NPMpro, считаются с его последнего запуска",
+	"monitoring.crowdsec.bans": "{count, plural, one {# блокировка} few {# блокировки} many {# блокировок} other {# блокировки}}",
 	"monitoring.crowdsec.by-country": "Топ стран",
 	"monitoring.crowdsec.by-origin": "Блокировки по источнику",
 	"monitoring.crowdsec.by-scenario": "Блокировки по причине",

@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "有効な禁止",
 	"monitoring.crowdsec.added-24h": "過去 24 時間に追加",
 	"monitoring.crowdsec.added-24h.hint": "NPMpro が最初に検出したもの。前回の起動以降にカウント",
+	"monitoring.crowdsec.bans": "{count, plural, other {# 件の禁止}}",
 	"monitoring.crowdsec.by-country": "上位の国",
 	"monitoring.crowdsec.by-origin": "発生元別の禁止",
 	"monitoring.crowdsec.by-scenario": "理由別の禁止",

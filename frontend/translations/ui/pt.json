@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Bloqueios ativos",
 	"monitoring.crowdsec.added-24h": "Adicionados nas últimas 24 horas",
 	"monitoring.crowdsec.added-24h.hint": "Vistos pela primeira vez pelo NPMpro, contados desde o último arranque",
+	"monitoring.crowdsec.bans": "{count, plural, one {# bloqueio} other {# bloqueios}}",
 	"monitoring.crowdsec.by-country": "Países principais",
 	"monitoring.crowdsec.by-origin": "Bloqueios por origem",
 	"monitoring.crowdsec.by-scenario": "Bloqueios por motivo",
