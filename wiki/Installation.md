@@ -44,6 +44,20 @@ Variables can also be put into `/opt/npmpro/.env` (the `.env` file in the data f
 
 To open the web UI with a domain and a real certificate, either choose that certificate as the default certificate (Settings, Certificates & TLS, it is used on the web UI port), or create a proxy host for the domain that forwards to `127.0.0.1` port `81` with the scheme **https** (the web UI only speaks https).
 
+## Build the image yourself
+
+The published images are built by CI. To build one from a clone:
+
+    git clone https://github.com/TheBlackBush/NPMpro.git && cd NPMpro
+    docker build --build-arg VERSION="local-$(git rev-parse --short HEAD)" -t npmpro:local .
+
+- `VERSION` is what the start log and the web UI show as the version. Without it they show `0.0.0`.
+- `ALPINE_REFRESH` (optional, any text; CI passes the ISO week, for example `2026-W46`) rebuilds the layer with the Alpine packages when its value changes: `--build-arg ALPINE_REFRESH="$(date -u +%G-W%V)"` gets the newest packages at most once a week. Without it that layer is rebuilt only when the Dockerfile or the files that step uses (such as the certbot requirements) change.
+- The first build compiles aws-lc and nginx and takes a while; later builds reuse Docker's build cache.
+- `.dockerignore` keeps local files (`.git`, `wiki`, the backend tests and coverage files) out of the build.
+
+Then use `image: npmpro:local` in `compose.yaml` (and remove `pull_policy: always`).
+
 ## Next steps
 
 - [Usage](Usage) for your first hosts and certificates
