@@ -223,12 +223,10 @@ ARG LRL_VER=3ff6300e68b73ba20e909c7d16bd839aef2e5a4b # v0.15
 ARG LCSB_VER=4aad1dfa653d9d96fb5c0114ae930eb2353214c8 # main
 ARG COF_VER=da93e0cec7fdb1a80f4972f75b3638763d012c0e # main
 ARG NBF_VER=5cee8db2a505f2a253e24691399c828c043071fc # master
-# The ISO week (2026-W46), set by CI: the package step below runs again once a week, so the Alpine packages are never
-# more than 7 days old. Without it the step reruns only when its own inputs change.
+# ISO week (2026-W46) from CI: reruns the package step weekly. Without it the step reruns only when its inputs change.
 ARG ALPINE_REFRESH=
 
-# Packages, Lua libraries, certbot and the downloaded tools first: an app change does not rebuild this layer, so an
-# update downloads only the app layers
+# First, so an app change keeps this layer and an update downloads only the app layers
 WORKDIR /app
 RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tmp/git-clone-commit.sh \
     --mount=type=bind,source=backend/certbot/requirements.txt,target=/tmp/certbot-requirements.txt \
@@ -302,8 +300,7 @@ COPY MIT.LICENSE /MIT.LICENSE
 COPY COPYING /COPYING
 COPY --from=frontend /app/dist /app/frontend
 
-# The version the start log and the web UI show; CI passes it, a plain build keeps 0.0.0 from package.json.
-# chmod: the scripts are executable in git, this keeps a checkout without file modes working.
+# CI passes the version (a plain build keeps 0.0.0); chmod covers a checkout without file modes
 ARG VERSION
 RUN chmod +x /usr/local/bin/*.sh && \
     if [ -n "$VERSION" ]; then \
