@@ -117,8 +117,17 @@ jobs:
           fi
           for image in "$@"; do
             cosign sign --yes "$image"
-            cosign verify "$image" \
-              --certificate-identity-regexp '^https://github.com/TheBlackBush/NPMpro/' \
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
-            echo "signed and verified: $image"
+            # Docker Hub lists a new signature a few seconds after the push, so the check is retried
+            for attempt in 1 2 3 4 5 6; do
+              if cosign verify "$image" \
+                --certificate-identity-regexp '^https://github.com/TheBlackBush/NPMpro/' \
+                --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null; then
+                echo "signed and verified: $image"
+                continue 2
+              fi
+              echo "::warning::signature of $image not found yet (attempt $attempt of 6)"
+              sleep 10
+            done
+            echo "::error::the signature of $image could not be verified"
+            exit 1
           done
