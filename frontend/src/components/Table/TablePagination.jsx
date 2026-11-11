@@ -109,7 +109,6 @@ function TablePagination({ pageIndex, pageSize, total, onPage, onSize, placement
 						</li>
 						{pageNumbers(pageIndex, count).map((page, index) =>
 							page === null ? (
-								// biome-ignore lint/suspicious/noArrayIndexKey: a gap has no identity of its own
 								<li key={`gap-${index}`} className="px-2 text-muted-foreground" aria-hidden="true">
 									…
 								</li>

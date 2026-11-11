@@ -106,7 +106,12 @@ const rowNames = (page) =>
 		.locator("tbody tr")
 		.filter({ visible: true })
 		.locator("[data-row-edit]:visible")
-		.evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label").replace(/^Edit /u, "")));
+		.evaluateAll((buttons) =>
+			buttons.map((button) => {
+				const label = button.getAttribute("aria-label");
+				return label.startsWith("Edit ") ? label.slice("Edit ".length) : label;
+			}),
+		);
 
 // 27 access lists: the paging bars, page 2 in the same sort, the rows per page choice, a search back to page 1, and
 // the choice kept over a reload
@@ -133,9 +138,10 @@ async function listPaging({ admin }) {
 		await bars.first().waitFor();
 		if ((await bars.count()) !== 2) throw new Error("the list does not show a paging bar above and below");
 		await size.filter({ hasText: "25" }).waitFor();
+		// the search filters after a short delay: read the rows once the bar counts only the flow's lists
+		await bars.first().getByText(`Showing 1 to 25 of ${total}`, { exact: true }).waitFor();
 		const first = await rowNames(page);
 		if (first.length !== 25) throw new Error(`the first page shows ${first.length} rows, expected 25`);
-		await bars.first().getByText(`Showing 1 to 25 of ${total}`, { exact: true }).waitFor();
 
 		// page 2 from the bar below: the next rows
 		await bars.last().getByRole("button", { name: "Page 2", exact: true }).click();

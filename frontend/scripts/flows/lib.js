@@ -23,12 +23,6 @@ function apiOf(context, base) {
 	};
 }
 
-/**
- * Signs in through the login page in a new browser context. errors collects the page errors of its page.
- *
- * @returns {Promise<{context: Object, page: Object, api: Function, errors: string[]}>}
- */
-// biome-ignore lint/complexity/useMaxParams: the one entry point of every flow session
 // waits until GET /api reports OK (at most 60 s), checking every half second
 async function apiAnswers(context) {
 	const until = Date.now() + 60_000;
@@ -41,6 +35,12 @@ async function apiAnswers(context) {
 	throw new Error("the API did not answer OK within 60 seconds");
 }
 
+/**
+ * Signs in through the login page in a new browser context. errors collects the page errors of its page.
+ *
+ * @returns {Promise<{context: Object, page: Object, api: Function, errors: string[]}>}
+ */
+// biome-ignore lint/complexity/useMaxParams: the one entry point of every flow session
 export async function signIn(browser, base, email, password, viewport = CONTEXT.viewport) {
 	const context = await browser.newContext({ ...CONTEXT, viewport, baseURL: base });
 	const page = await context.newPage();
@@ -222,12 +222,12 @@ export async function assertViewOnly(dialog, what) {
 	for (const tab of tabs) {
 		// biome-ignore lint/performance/noAwaitInLoops: one tab after another
 		await openTab(dialog, tab);
-		// biome-ignore lint/performance/noAwaitInLoops: one card after another
 		for (
 			let card = dialog
 				.locator("button[aria-expanded=false]:not([role=combobox])")
 				.filter({ visible: true })
 				.first();
+			// biome-ignore lint/performance/noAwaitInLoops: one card after another
 			await card.count();
 		) {
 			await card.click();

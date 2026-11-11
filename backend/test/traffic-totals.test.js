@@ -10,7 +10,6 @@ import { trafficTotalTests } from "./support/traffic-totals.js";
 
 const ctx = {};
 
-// biome-ignore lint/correctness/usePlaywrightValidDescribeCallback: node:test takes its options as the second argument
 describe("traffic totals on SQLite", () => {
 	before(async () => {
 		ctx.knex = knexFactory({

@@ -114,6 +114,16 @@
 			"assist": {
 				"enabled": false
 			}
+		},
+		{
+			"includes": ["scripts/**"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noNodejsModules": "off"
+					}
+				}
+			}
 		}
 	],
 	"css": {
