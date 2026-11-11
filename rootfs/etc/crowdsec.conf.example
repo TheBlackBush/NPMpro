@@ -40,12 +40,14 @@ CAPTCHA_TEMPLATE_PATH=/data/crowdsec/captcha.html
 CAPTCHA_EXPIRATION=3600
 
 APPSEC_URL=http://127.0.0.1:7422
-# deny or passthrough when AppSec can not be reached: deny blocks every request, including the admin UI and the health check
+# deny or passthrough when AppSec can not be reached: deny blocks every request, including the admin UI and the
+# health check
 APPSEC_FAILURE_ACTION=deny
 APPSEC_CONNECT_TIMEOUT=
 APPSEC_SEND_TIMEOUT=
 APPSEC_PROCESS_TIMEOUT=
 ALWAYS_SEND_TO_APPSEC=false
-# When true, drop requests whose body cannot be read (HTTP/2 or HTTP/3 requests without a content-length header, when using lua-nginx-module 0.10.26 or for gRPC requests) instead of forwarding them to AppSec without a body.
+# When true, drop requests whose body cannot be read (HTTP/2 or HTTP/3 requests without a content-length header, when
+# using lua-nginx-module 0.10.26 or for gRPC requests) instead of forwarding them to AppSec without a body.
 APPSEC_DROP_UNREADABLE_BODY=true
 SSL_VERIFY=true

@@ -14,8 +14,9 @@ php_setup() {
     sed -i "s|#\?listen =.*|listen = /run/php$1.sock|" /data/php/"$1"/php-fpm.d/www.conf
     sed -i "s|;error_log =.*|error_log = /proc/self/fd/2|g" /data/php/"$1"/php-fpm.conf
     sed -i "s|include=.*|include=/data/php/$1/php-fpm.d/*.conf|g" /data/php/"$1"/php-fpm.conf
-    # session upload progress off (CVE-2026-109618, CVE-2026-109619; defence in depth after the PHP fix). Written at every start; the files in conf.d are
-    # read in name order after php.ini, so a later file there (for example zz-local.ini) can turn it on again
+    # session upload progress off (CVE-2026-109618, CVE-2026-109619; defence in depth after the PHP fix). Written at
+    # every start; the files in conf.d are read in name order after php.ini, so a later file there (for example
+    # zz-local.ini) can turn it on again
     mkdir -p /data/php/"$1"/conf.d
     printf '%s\n' "; written by NPMpro at every start, a later file in this folder overrides it" "session.upload_progress.enabled = Off" > /data/php/"$1"/conf.d/00-npmpro.ini
     if [ "$PUID" != "0" ]; then
@@ -62,7 +63,7 @@ mkdir -vp /data/public/avatar \
 mkdir -vp /data/backups/auto /data/backups/database
 chmod 700 /data/backups /data/backups/auto /data/backups/database
 
-# database copies made before migrations moved from /data/npmpro/backups (2026-10)
+# database copies made before migrations moved from /data/npmpro/backups
 if [ -d /data/npmpro/backups ]; then
     find /data/npmpro/backups -maxdepth 1 -type f -name "database-*.sqlite" -exec mv -vn {} /data/backups/database/ \;
     rmdir /data/npmpro/backups 2>/dev/null || true
@@ -116,7 +117,7 @@ for dir in /data/tls/custom/npm-*; do
 done
 
 
-#tmp move to mointpoint if block
+#tmp move to mountpoint if block
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/etc/letsencrypt|/data/tls/certbot|g" {} \;
 find /data/tls/certbot/renewal -type f -name '*.conf' -exec sed -i "s|/data/tls/certbot/credentials|/tmp/certbot-credentials|g" {} \;
 # the folders the nginx workers serve live outside the root-only /data/tls and /data/npmpro (moved there before)

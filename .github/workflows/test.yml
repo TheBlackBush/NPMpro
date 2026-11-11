@@ -72,7 +72,8 @@ jobs:
           MYSQL_NPMPRO_PASS: ci-throwaway
           TEST_PG_URL: postgres://npmpro:ci-throwaway@127.0.0.1:5432/npmpro_test_unit
           TEST_MYSQL_URL: mysql://npmpro:ci-throwaway@127.0.0.1:3306/npmpro_test_unit
-        # one file at a time: they share one database and most start by dropping it; outside c8, the floor reads the step above
+        # one file at a time: they share one database and most start by dropping it; outside c8, the floor reads the
+        # step above
         run: |
           set -o pipefail
           node --test --test-concurrency=1 --test-reporter=tap \

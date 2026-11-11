@@ -114,7 +114,8 @@ done
 
 
 echo "0 */$ECH_ROTATION_INTERVAL * * * cron-ech.sh" | tee "/tmp/crontabs/$(id -un)"
-# always installed: the access log can be switched on at runtime (traffic statistics), missingok/notifempty skip absent or empty logs
+# always installed: the access log can be switched on at runtime (traffic statistics); missingok/notifempty skip
+# absent or empty logs
 logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate
 echo "0 * * * * logrotate --state /data/nginx/logs/logrotate.state /run/npmpro/logrotate" | tee -a "/tmp/crontabs/$(id -un)"
 
