@@ -198,8 +198,9 @@ if [ "$PUID" != "0" ]; then
     # certbot DNS plugins: the image's Python (/usr/local) is root's, so pip installs them for the PUID user into a
     # folder recreated on every start; only the PUID user ever runs certbot
     export PIP_USER=1 PYTHONUSERBASE=/tmp/certbot-python
-    # nginx keeps one capability through the switch, binding ports below 1024 (with host networking the host's
-    # ip_unprivileged_port_start applies); the other services drop it in their dinit commands. Only when the container
+    # nginx and the backend (its nginx -t binds every listen socket) keep one capability through the switch, binding
+    # ports below 1024 (with host networking the host's ip_unprivileged_port_start applies); the other services drop it
+    # in their dinit commands. Only when the container
     # may hold it (bit 10 of the bounding set); otherwise the switch stays plain
     if [ $(( (0x$(awk '/^CapBnd:/ {print $2}' /proc/self/status) >> 10) & 1 )) = 1 ]; then
         exec /bin/setpriv --reuid "$PUID" --regid "$PGID" --groups "$PGID" \

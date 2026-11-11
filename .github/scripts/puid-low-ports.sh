@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # Runs an image with PUID set and the host-network rule for ports below 1024 restored inside a bridge container
 # (net.ipv4.ip_unprivileged_port_start=1024), with the compose capabilities and no-new-privileges, and checks that
-# nginx binds 80, 443 and 81 and is the only service holding net_bind_service.
+# nginx binds 80, 443 and 81 and and the backend are the only services holding net_bind_service.
 # Usage: puid-low-ports.sh <image> [container name] [extra docker run args...]
 set -eu
 image=$1
@@ -35,8 +35,16 @@ nginx=$(docker exec "$name" pgrep -o -f '^nginx: master process') || fail "no ng
 node=$(docker exec "$name" pgrep -o -x node) || fail "no backend"
 crond=$(docker exec "$name" pgrep -o -x crond) || fail "no crond"
 [ "$(cap_amb "$nginx")" = 0000000000000400 ] || fail "nginx does not hold net_bind_service: $(cap_amb "$nginx")"
-[ "$(cap_amb "$node")" = 0000000000000000 ] || fail "the backend holds ambient capabilities: $(cap_amb "$node")"
+[ "$(cap_amb "$node")" = 0000000000000400 ] || fail "the backend does not hold only net_bind_service (nginx -t binds): $(cap_amb "$node")"
 [ "$(cap_amb "$crond")" = 0000000000000000 ] || fail "crond holds ambient capabilities: $(cap_amb "$crond")"
 groups=$(docker exec "$name" awk '/^Groups:/ {print $2}' "/proc/$node/status")
 [ "$groups" = 1000 ] || fail "the backend's supplementary groups are '$groups', want 1000 (as with su-exec)"
-echo "PUID with ports below 1024 reserved for root: nginx binds 80, 443 and 81; only nginx holds net_bind_service"
+php=$(docker exec "$name" pgrep -o -x php-fpm84 || true)
+if [ -n "$php" ]; then
+	[ "$(cap_amb "$php")" = 0000000000000000 ] || fail "php-fpm84 holds ambient capabilities: $(cap_amb "$php")"
+fi
+sleep 10
+if docker logs "$name" 2>&1 | grep -E "Permission denied|do not pass nginx -t|Could not write .*ip_ranges|Could not apply the network runtime settings"; then
+	fail "the start log shows nginx -t failing"
+fi
+echo "PUID with ports below 1024 reserved for root: nginx binds 80, 443 and 81; only nginx and the backend hold net_bind_service"
