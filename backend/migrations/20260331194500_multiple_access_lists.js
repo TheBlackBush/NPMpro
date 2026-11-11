@@ -32,8 +32,7 @@ const up = async (knex) => {
 		let npmplus_access_list_type = "public";
 		const acl_hosts = {};
 
-		// 0 was used for public but now its no longer used for that
-		// so ignore 0
+		// 0 once meant public and no longer does, so it is ignored
 		if (row.access_list_id && row.access_list_id !== 0) {
 			npmplus_access_list_ids = [row.access_list_id];
 			npmplus_access_list_type = "custom";
