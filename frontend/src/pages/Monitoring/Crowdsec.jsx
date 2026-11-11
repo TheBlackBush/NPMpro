@@ -233,6 +233,7 @@ function CrowdsecData({ data }) {
 									<WorldMap
 										countries={data.countries}
 										tone="destructive"
+										countMessage="monitoring.crowdsec.bans"
 										label={intl.formatMessage({ id: "monitoring.crowdsec.map" })}
 									/>
 									{data.total > 0 && data.countries.length === 0 ? (

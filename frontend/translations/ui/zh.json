@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "当前封禁",
 	"monitoring.crowdsec.added-24h": "过去 24 小时新增",
 	"monitoring.crowdsec.added-24h.hint": "由 NPMpro 首次发现，自上次启动以来计数",
+	"monitoring.crowdsec.bans": "{count, plural, other {# 个封禁}}",
 	"monitoring.crowdsec.by-country": "最多国家",
 	"monitoring.crowdsec.by-origin": "按来源的封禁",
 	"monitoring.crowdsec.by-scenario": "按原因的封禁",

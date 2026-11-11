@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Aktive Sperren",
 	"monitoring.crowdsec.added-24h": "In den letzten 24 Stunden hinzugefügt",
 	"monitoring.crowdsec.added-24h.hint": "Erstmals von NPMpro gesehen, gezählt seit dem letzten Start",
+	"monitoring.crowdsec.bans": "{count, plural, one {# Sperre} other {# Sperren}}",
 	"monitoring.crowdsec.by-country": "Häufigste Länder",
 	"monitoring.crowdsec.by-origin": "Sperren nach Herkunft",
 	"monitoring.crowdsec.by-scenario": "Sperren nach Grund",

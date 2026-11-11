@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "Active bans",
 	"monitoring.crowdsec.added-24h": "Added in the last 24 hours",
 	"monitoring.crowdsec.added-24h.hint": "First seen by NPMpro, counted since its last start",
+	"monitoring.crowdsec.bans": "{count, plural, one {# ban} other {# bans}}",
 	"monitoring.crowdsec.by-country": "Top countries",
 	"monitoring.crowdsec.by-origin": "Bans by origin",
 	"monitoring.crowdsec.by-scenario": "Bans by reason",

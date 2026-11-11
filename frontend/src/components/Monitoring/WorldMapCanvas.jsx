@@ -80,7 +80,7 @@ const SHAPE = "stroke-[0.75] outline-none [vector-effect:non-scaling-stroke]";
 
 // the hovered or focused country drawn again on top, outline only, so no neighbour covers part of its border
 const OUTLINE =
-	"pointer-events-none fill-none stroke-foreground stroke-[1.5] outline-none [vector-effect:non-scaling-stroke]";
+	"pointer-events-none fill-none stroke-foreground stroke-1 outline-none [vector-effect:non-scaling-stroke]";
 
 // Antarctica (id 010) is left out, as in most traffic maps: it has no visitors and takes a fifth of the height
 const ANTARCTICA = "010";
@@ -107,7 +107,7 @@ const clampZoom = (zoom) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
  * The hover tooltip. Its position is its own state, so moving the pointer does not render the countries again; the
  * position goes through React's style prop (the CSSOM), which the page CSP allows.
  */
-function MapTooltip({ ref, info, formatValue }) {
+function MapTooltip({ ref, info, countMessage }) {
 	const [position, setPosition] = useState(null);
 	useImperativeHandle(ref, () => ({ move: setPosition }), []);
 	if (!(info && position)) return null;
@@ -119,9 +119,9 @@ function MapTooltip({ ref, info, formatValue }) {
 			style={{ left: position.left, top: position.top }}
 		>
 			<span className="font-medium">{info.name}</span>
-			{info.count === undefined ? null : (
-				<span className="text-muted-foreground tabular-nums">{formatValue(info.count)}</span>
-			)}
+			<span className="text-muted-foreground tabular-nums">
+				{intl.formatMessage({ id: countMessage }, { count: info.count ?? 0 })}
+			</span>
 		</div>
 	);
 }
@@ -130,7 +130,7 @@ function MapTooltip({ ref, info, formatValue }) {
  * The map itself (react-simple-maps on the world-atlas shapes), loaded on first use by WorldMap. Colours are Tailwind
  * classes on the theme tokens, so light and dark follow by CSS.
  */
-function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
+function WorldMapCanvas({ countries, label, tone, formatValue = formatCount, countMessage = "monitoring.requests" }) {
 	const counts = useMemo(() => rawCounts(countries), [countries]);
 	const scale = useMemo(() => mapScale(countries), [countries]);
 	const max = Math.max(0, ...Object.values(counts));
@@ -223,7 +223,7 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount }) {
 						) : null}
 					</ZoomableGroup>
 				</ComposableMap>
-				<MapTooltip ref={tooltip} info={active?.info} formatValue={formatValue} />
+				<MapTooltip ref={tooltip} info={active?.info} countMessage={countMessage} />
 				<div className="absolute top-2 right-2 flex flex-col gap-1">
 					<Button
 						type="button"

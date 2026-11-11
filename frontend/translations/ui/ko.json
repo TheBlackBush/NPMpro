@@ -459,6 +459,7 @@
 	"monitoring.crowdsec.active-bans": "활성 차단",
 	"monitoring.crowdsec.added-24h": "지난 24시간 동안 추가됨",
 	"monitoring.crowdsec.added-24h.hint": "NPMpro가 처음 확인한 것으로, 마지막 시작 이후 집계됩니다",
+	"monitoring.crowdsec.bans": "{count, plural, other {차단 #건}}",
 	"monitoring.crowdsec.by-country": "상위 국가",
 	"monitoring.crowdsec.by-origin": "출처별 차단",
 	"monitoring.crowdsec.by-scenario": "사유별 차단",
