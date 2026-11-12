@@ -55,3 +55,43 @@ it("ignores locked fields in a save and stores none of them", async () => {
 	assert.match(file, /^API_KEY=env-key-secret$/mu);
 	assert.match(file, /^MODE=stream$/mu);
 });
+
+it("lists the CrowdSec locks on the Environment page", async () => {
+	const res = await admin.get("/settings/environment");
+	assert.equal(res.status, 200, res.text);
+	const crowdsec = res.body.locked_runtime.filter((entry) => entry.group === "crowdsec");
+	assert.deepEqual(
+		crowdsec.map(({ key, env }) => [key, env]),
+		[
+			["enabled", "CROWDSEC_ENABLED"],
+			["api_url", "CROWDSEC_LAPI_URL"],
+			["api_key", "CROWDSEC_API_KEY"],
+		],
+	);
+	assert.equal(res.text.includes("env-key-secret"), false);
+});
+
+it("prints the startup block without the key", async () => {
+	const { logCrowdsecBlock } = await import("../internal/crowdsec-setting.js");
+	const { CROWDSEC_DEFAULTS } = await import("../lib/crowdsec/settings.js");
+	const printed = [];
+	const values = { ...CROWDSEC_DEFAULTS, enabled: true, api_key: "env-key-secret" };
+	const test = async () => ({ ok: true, checks: [{ name: "lapi", result: "ok", message: "" }] });
+	await logCrowdsecBlock(
+		{ values, locked: ["api_key"], nginxError: null },
+		{ print: (text) => printed.push(text), test },
+	);
+	assert.equal(printed.length, 1);
+	assert.match(printed[0], /^Locked: {3}CROWDSEC_API_KEY$/mu);
+	assert.equal(printed[0].includes("env-key-secret"), false);
+	await logCrowdsecBlock(null);
+	await logCrowdsecBlock(
+		{ values, locked: [], nginxError: null },
+		{
+			print: () => {},
+			test: async () => {
+				throw new Error("boom");
+			},
+		},
+	);
+});

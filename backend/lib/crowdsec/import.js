@@ -77,7 +77,14 @@ const importCrowdsecFile = async ({
 	const kept = text === null ? null : await keepName(fs, CROWDSEC_CONF_PATH, now());
 	if (kept) await fs.copyFile(CROWDSEC_CONF_PATH, kept);
 	await saveStoredCrowdsec(meta);
-	if (local !== null) await fs.rename(LOCAL_PATH, await keepName(fs, LOCAL_PATH, now()));
+	if (local !== null) {
+		// the row is saved already: a failed rename is a warning, the start goes on (the startup block warns about the file)
+		try {
+			await fs.rename(LOCAL_PATH, await keepName(fs, LOCAL_PATH, now()));
+		} catch (err) {
+			log.warn(`CrowdSec: ${LOCAL_PATH} could not be renamed (${err.code ?? err.message}), remove it by hand`);
+		}
+	}
 	log.info(
 		`CrowdSec: the bouncer config was imported into Settings, CrowdSec${kept ? `, the old file is kept as ${kept}` : ""}`,
 	);

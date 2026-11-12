@@ -8,8 +8,10 @@ import {
 	CROWDSEC_FIELDS,
 	changedCrowdsecKeys,
 	isValidValue,
+	requiredFiles,
 	validateCrowdsec,
 } from "../lib/crowdsec/settings.js";
+import { renderStartupBlock, startupWarnings } from "../lib/crowdsec/startup-block.js";
 import { effectiveCrowdsec, getCrowdsecConfig, hasStoredCrowdsec, saveStoredCrowdsec } from "../lib/crowdsec/store.js";
 import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
@@ -117,6 +119,43 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 	}
 };
 
+const STARTUP_TEST_MS = 2000;
+const LOCAL_CONF = "/data/crowdsec/crowdsec.conf.local";
+
+/**
+ * Prints the CrowdSec block of the startup log; the connection checks have short timeouts and startup does not wait
+ * for this (prepareApp does not await it). Never throws.
+ *
+ * @param   {Object|null} start   startCrowdsec's result
+ * @param   {Object}      [deps]
+ * @param   {Function}    [deps.print]
+ * @param   {number}      [deps.timeoutMs]
+ * @param   {Function}    [deps.test]
+ * @returns {Promise<void>}
+ */
+const logCrowdsecBlock = async (
+	start,
+	{ print = (text) => console.log(text), timeoutMs = STARTUP_TEST_MS, test = testConnection } = {},
+) => {
+	if (!start) return;
+	try {
+		const { values, locked, nginxError } = start;
+		const active = values.enabled && !nginxError;
+		const checks = active ? (await test(values, { timeoutMs })).checks : [];
+		const missingFiles = active ? requiredFiles(values).filter((file) => !fileExists(file)) : [];
+		const warnings = startupWarnings({
+			values,
+			checks,
+			nginxError,
+			missingFiles,
+			localOverride: fileExists(LOCAL_CONF),
+		});
+		print(renderStartupBlock({ values, lockedBy: lockedByOf("crowdsec", locked), checks, warnings }));
+	} catch (err) {
+		logger.warn(`CrowdSec: the startup check failed: ${err.message}`);
+	}
+};
+
 const internalCrowdsecSetting = {
 	/**
 	 * @param   {Access}  access
@@ -210,5 +249,5 @@ const internalCrowdsecSetting = {
 	},
 };
 
-export { setCrowdsecHooks, startCrowdsec };
+export { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec };
 export default internalCrowdsecSetting;

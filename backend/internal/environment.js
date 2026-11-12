@@ -1,3 +1,4 @@
+import { getCrowdsecConfig } from "../lib/crowdsec/store.js";
 import { environmentInfo, settingLocksOf } from "../lib/environment-info.js";
 import { getGeoipConfig, getMonitoringConfig } from "../lib/monitoring-config.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
@@ -26,6 +27,7 @@ const internalEnvironment = {
 				oidc: (await getOidcConfig()).locked,
 				monitoring: (await getMonitoringConfig()).locked,
 				geoip: (await getGeoipConfig()).locked,
+				crowdsec: (await getCrowdsecConfig()).locked,
 			}),
 		);
 		return environmentInfo(process.env, locked);

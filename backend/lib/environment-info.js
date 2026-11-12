@@ -97,6 +97,7 @@ const LOCK_GROUP_ORDER = [
 	"network",
 	"nginx",
 	"forward-auth",
+	"crowdsec",
 	"logs",
 	"monitoring",
 	"geoip",
@@ -132,15 +133,16 @@ const lockedRuntimeOf = (runtimeLocked) =>
 		.map(({ entry }) => entry);
 
 /**
- * The OIDC, monitoring and GeoIP settings an env var locks, in the form of the runtime ones (each by its own variable)
+ * The OIDC, monitoring, GeoIP and CrowdSec settings an env var locks, in the form of the runtime ones (each by its own variable)
  *
  * @param   {Object}  locked
  * @param   {string[]}  [locked.oidc]
  * @param   {string[]}  [locked.monitoring]
  * @param   {string[]}  [locked.geoip]
+ * @param   {string[]}  [locked.crowdsec]
  * @returns {{group: string, key: string, env: string, reason: string|null}[]}
  */
-const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
+const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [], crowdsec = [] } = {}) => {
 	const entries = [];
 	const add = (group, keys, names) => {
 		for (const key of keys) {
@@ -150,6 +152,7 @@ const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
 	add("oidc", oidc, OIDC_ENV_KEYS);
 	add("monitoring", monitoring, MONITORING_ENV_KEYS);
 	add("geoip", geoip, GEOIP_ENV_KEYS);
+	add("crowdsec", crowdsec, CROWDSEC_ENV_KEYS);
 	return entries;
 };
 

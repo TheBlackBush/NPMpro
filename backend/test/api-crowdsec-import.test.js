@@ -111,6 +111,32 @@ it("never follows a link: a crowdsec.conf that is a link is not imported", async
 	}
 });
 
+it("warns and goes on when the .local file cannot be renamed after the import", async () => {
+	const { importCrowdsecFile } = await import("../lib/crowdsec/import.js");
+	const nodeFs = await import("node:fs/promises");
+	const local = path.join(api.root, "data/crowdsec/crowdsec.conf.local");
+	await writeFile(local, LOCAL);
+	const warned = [];
+	try {
+		const result = await importCrowdsecFile({
+			fs: {
+				...nodeFs,
+				rename: async () => {
+					throw Object.assign(new Error("denied"), { code: "EACCES" });
+				},
+			},
+			log: { info: () => {}, warn: (text) => warned.push(text) },
+		});
+		assert.equal(result.imported, true);
+		assert.equal(
+			warned.some((text) => text.includes("could not be renamed (EACCES)")),
+			true,
+		);
+	} finally {
+		await rm(local, { force: true });
+	}
+});
+
 it("hides the row from the generic settings list", async () => {
 	const admin = await api.admin();
 	const list = await admin.get("/settings");
