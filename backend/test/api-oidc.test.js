@@ -687,6 +687,23 @@ it("refuses a subject that is linked to another user, also for an account auto-c
 	assert.equal(listed.npmpro_has_password, false);
 });
 
+it("keeps the issuer and subject out of the audit meta of a deleted linked user (Review Focus 4)", async () => {
+	const created = await admin.post("/users", { name: "Doomed", email: "doomed@example.com", roles: [] });
+	assert.equal(created.status, 201, created.text);
+	const { id } = created.body;
+	assert.equal((await loginAs("doomed@example.com", "doomed-sub")).done.headers.get("location"), "/");
+	assert.equal((await api.db("user").where({ id }).first()).npmpro_oidc_subject, "doomed-sub");
+
+	const removed = await admin.delete(`/users/${id}`);
+	assert.equal(removed.status, 200, removed.text);
+	const row = await api.db("audit_log").where({ action: "deleted", object_type: "user", object_id: id }).first();
+	assert.ok(row);
+	const meta = JSON.parse(row.meta);
+	assert.equal("npmpro_oidc_subject" in meta, false);
+	assert.equal("npmpro_oidc_issuer" in meta, false);
+	assert.equal(row.meta.includes("doomed-sub"), false);
+});
+
 it("answers OIDC routes with an error code on the sign-in page while OIDC is off or the provider fails", async () => {
 	const failing = api.client();
 	await admin.put(SETTINGS, { enabled: false });
