@@ -16,7 +16,7 @@ const RECENT_LIMIT = 100;
 const TOP_BAN_REASONS = 5;
 
 /**
- * The most common ban reasons for the dashboard: by_scenario is already sorted by count. Decisions without a scenario
+ * The most common ban reasons for the dashboard: highest count first, equal counts by scenario name (by_scenario is ordered by count only, so ties would swap between polls). Decisions without a scenario
  * are left out (the dashboard counts them under "other").
  *
  * @param {Array<{scenario: string, count: number}>} byScenario
@@ -25,6 +25,7 @@ const TOP_BAN_REASONS = 5;
 const topBanReasons = (byScenario) =>
 	(Array.isArray(byScenario) ? byScenario : [])
 		.filter((r) => r.scenario)
+		.sort((a, b) => b.count - a.count || Number(a.scenario > b.scenario) - Number(a.scenario < b.scenario))
 		.slice(0, TOP_BAN_REASONS)
 		.map(({ scenario, count }) => ({ scenario, count }));
 const DAY = 86400000;

@@ -1929,6 +1929,28 @@ describe("monitoring API", () => {
 		assert.equal(noGeo.requests_today, 3);
 	});
 
+	it("summary orders ban reasons of equal count by name, also across the fifth place", async () => {
+		const out = await make({
+			crowdsec: {
+				total: 20,
+				added_24h: 1,
+				by_scenario: [
+					{ scenario: "zeta", count: 1 },
+					{ scenario: "gamma", count: 2 },
+					{ scenario: "beta", count: 1 },
+					{ scenario: "alpha", count: 1 },
+					{ scenario: "delta", count: 2 },
+					{ scenario: "top", count: 9 },
+					{ scenario: "epsilon", count: 1 },
+				],
+			},
+		}).api.getSummary(admin);
+		assert.deepEqual(
+			out.top_ban_reasons.map((r) => r.scenario),
+			["top", "delta", "gamma", "alpha", "beta"],
+		);
+	});
+
 	it("summary lists the five most common ban reasons and the bans of the last 24 hours", async () => {
 		const out = await make({
 			crowdsec: {
@@ -1951,7 +1973,7 @@ describe("monitoring API", () => {
 		assert.deepEqual(out.top_ban_reasons, [
 			{ scenario: "crowdsecurity/http-probing", count: 5 },
 			{ scenario: "crowdsecurity/ssh-bf", count: 2 },
-			{ scenario: "manual 'ban' from 'localhost'", count: 1 },
+			{ scenario: "crowdsecurity/http-crawl-non_statics", count: 1 },
 			{ scenario: "crowdsecurity/http-cve-2021-41773", count: 1 },
 			{ scenario: "crowdsecurity/ssh-slow-bf", count: 1 },
 		]);
