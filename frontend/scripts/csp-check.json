@@ -51,6 +51,20 @@
 			]
 		},
 		{
+			"name": "shell tooltips",
+			"route": "/",
+			"steps": [
+				{ "hover": "header >> role=button[name='Search']" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Search" },
+				{ "hover": "header >> role=button[name='Select language']" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Select language" },
+				{ "click": "header >> role=button[name='Select language']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "gone": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "user menu",
 			"route": "/",
 			"steps": [
@@ -372,6 +386,7 @@
 				{ "waitFor": "[data-slot=tooltip-content] >> text=Actions for" },
 				{ "click": "[data-row-actions]" },
 				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "waitFor": "[data-row-actions][data-state=open]" },
 				{ "gone": "[data-slot=tooltip-content]" },
 				{ "press": "Escape" }
 			]

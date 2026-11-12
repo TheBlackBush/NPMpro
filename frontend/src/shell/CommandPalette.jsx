@@ -1,6 +1,7 @@
 import { ExternalLink, Search } from "lucide-react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "src/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "src/components/ui/dialog";
@@ -30,23 +31,25 @@ export function CommandPaletteButton() {
 	const { setOpen, openerRef } = useContext(PaletteContext);
 	const label = intl.formatMessage({ id: "palette.button" });
 	return (
-		<Button
-			type="button"
-			variant="outline"
-			size="icon"
-			className="gap-2 sm:w-auto sm:px-2.5"
-			aria-label={label}
-			aria-keyshortcuts="Control+K Meta+K"
-			onClick={(event) => {
-				// the button itself: Safari does not focus a clicked button
-				openerRef.current = event.currentTarget;
-				setOpen(true);
-			}}
-		>
-			<Search aria-hidden="true" />
-			<span className="hidden text-muted-foreground sm:inline">{label}</span>
-			<Kbd className="hidden sm:inline-flex">{shortcutHint()}</Kbd>
-		</Button>
+		<TapTooltip content={label} tap={false}>
+			<Button
+				type="button"
+				variant="outline"
+				size="icon"
+				className="gap-2 sm:w-auto sm:px-2.5"
+				aria-label={label}
+				aria-keyshortcuts="Control+K Meta+K"
+				onClick={(event) => {
+					// the button itself: Safari does not focus a clicked button
+					openerRef.current = event.currentTarget;
+					setOpen(true);
+				}}
+			>
+				<Search aria-hidden="true" />
+				<span className="hidden text-muted-foreground sm:inline">{label}</span>
+				<Kbd className="hidden sm:inline-flex">{shortcutHint()}</Kbd>
+			</Button>
+		</TapTooltip>
 	);
 }
 
