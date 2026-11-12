@@ -12,7 +12,7 @@ import { formatCount } from "src/modules/Monitoring";
  */
 function TopCountries({ rows }) {
 	return (
-		<ul className="m-0 mt-1 flex list-none flex-col gap-1.5 p-0 text-sm">
+		<ul className="m-0 mt-1 flex list-none flex-col gap-1 p-0 text-sm">
 			{rows.map((row) => (
 				<li key={row.code} className="flex min-w-0 items-center gap-2">
 					<Flag countryCode={row.code} className="shrink-0" tooltip={false} />

@@ -6,8 +6,8 @@ import { formatCount } from "src/modules/Monitoring";
 const HEIGHT = 8;
 
 /**
- * The split bar of the most common ban reasons and "other", with a legend under it: a colour dot, the short reason
- * name and its count. Each reason's full scenario name is its tooltip (hover and focus: the card is a link). The bar
+ * The split bar of the most common ban reasons and "other", with a legend under it that wraps like text: per reason a
+ * colour dot, the short reason name and its count. Each reason's full scenario name is its tooltip (hover and focus: the card is a link). The bar
  * is an SVG with width attributes (the page CSP blocks style attributes); it repeats the legend, so it is hidden from
  * assistive technology.
  *
@@ -36,10 +36,10 @@ function BanReasons({ segments }) {
 					))}
 				</svg>
 			</div>
-			<ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm">
+			<ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-xs text-muted-foreground">
 				{segments.map((segment) => {
-					const name = (
-						<span className="flex min-w-0 flex-1 items-center gap-2">
+					const entry = (
+						<span className="flex min-w-0 items-center gap-1.5">
 							<span className={cn("size-2 shrink-0 rounded-full", segment.tone.dot)} aria-hidden="true" />
 							<span className="truncate">
 								{segment.scenario === null ? (
@@ -48,18 +48,20 @@ function BanReasons({ segments }) {
 									segment.short
 								)}
 							</span>
+							<strong className="shrink-0 font-semibold text-foreground tabular-nums">
+								{formatCount(segment.count)}
+							</strong>
 						</span>
 					);
 					return (
-						<li key={segment.key} className="flex min-w-0 items-center gap-2">
+						<li key={segment.key} className="flex min-w-0 max-w-full">
 							{segment.scenario === null ? (
-								name
+								entry
 							) : (
 								<TapTooltip content={segment.scenario} tap={false}>
-									{name}
+									{entry}
 								</TapTooltip>
 							)}
-							<strong className="ml-auto shrink-0 tabular-nums">{formatCount(segment.count)}</strong>
 						</li>
 					);
 				})}
