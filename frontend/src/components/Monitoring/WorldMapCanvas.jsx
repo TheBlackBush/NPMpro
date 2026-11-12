@@ -1,6 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 import { useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "src/components/ui/tooltip";
 import { currentLocale, intl } from "src/locale";
@@ -214,26 +215,30 @@ function WorldMapCanvas({ countries, label, tone, formatValue = formatCount, cou
 				</ComposableMap>
 				<MapTooltip ref={tooltip} info={active?.info} countMessage={countMessage} />
 				<div className="absolute top-2 right-2 flex flex-col gap-1">
-					<Button
-						type="button"
-						variant="outline"
-						size="icon-sm"
-						disabled={view.zoom >= MAX_ZOOM}
-						aria-label={intl.formatMessage({ id: "monitoring.map.zoom-in" })}
-						onClick={() => setView((v) => ({ ...v, zoom: clampZoom(v.zoom * 2) }))}
-					>
-						<Plus aria-hidden="true" />
-					</Button>
-					<Button
-						type="button"
-						variant="outline"
-						size="icon-sm"
-						disabled={view.zoom <= MIN_ZOOM}
-						aria-label={intl.formatMessage({ id: "monitoring.map.zoom-out" })}
-						onClick={() => setView((v) => ({ ...v, zoom: clampZoom(v.zoom / 2) }))}
-					>
-						<Minus aria-hidden="true" />
-					</Button>
+					<TapTooltip content={intl.formatMessage({ id: "monitoring.map.zoom-in" })} tap={false}>
+						<Button
+							type="button"
+							variant="outline"
+							size="icon-sm"
+							disabled={view.zoom >= MAX_ZOOM}
+							aria-label={intl.formatMessage({ id: "monitoring.map.zoom-in" })}
+							onClick={() => setView((v) => ({ ...v, zoom: clampZoom(v.zoom * 2) }))}
+						>
+							<Plus aria-hidden="true" />
+						</Button>
+					</TapTooltip>
+					<TapTooltip content={intl.formatMessage({ id: "monitoring.map.zoom-out" })} tap={false}>
+						<Button
+							type="button"
+							variant="outline"
+							size="icon-sm"
+							disabled={view.zoom <= MIN_ZOOM}
+							aria-label={intl.formatMessage({ id: "monitoring.map.zoom-out" })}
+							onClick={() => setView((v) => ({ ...v, zoom: clampZoom(v.zoom / 2) }))}
+						>
+							<Minus aria-hidden="true" />
+						</Button>
+					</TapTooltip>
 				</div>
 			</div>
 			{ranges.length ? (

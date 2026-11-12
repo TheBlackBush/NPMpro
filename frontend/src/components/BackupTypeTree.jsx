@@ -9,6 +9,7 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import { useId } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import { Checkbox } from "src/components/ui/checkbox";
@@ -73,20 +74,17 @@ function TypeCount({ typeId, counts, itemCounts }) {
 // joined to the type's pill, or for a box with one type a pill "Choose items 3 of 12"
 function ChooseButton({ typeId, part, single, open, menuId, onChoose, disabled }) {
 	const typeName = intl.formatMessage({ id: `settings.backup.type.${typeId}` });
-	return (
+	// joined to the type's pill the button shows only its icon: its name is also its tooltip
+	const iconLabel = single
+		? undefined
+		: intl.formatMessage({ id: "settings.backup.choose-type" }, { type: inSentence(typeName, intl.locale) });
+	const button = (
 		<Button
 			type="button"
 			variant="outline"
 			size={single ? "sm" : "default"}
 			className={cn(single ? "rounded-full" : "-ml-px rounded-l-none", "border-primary/40 text-primary")}
-			aria-label={
-				single
-					? undefined
-					: intl.formatMessage(
-							{ id: "settings.backup.choose-type" },
-							{ type: inSentence(typeName, intl.locale) },
-						)
-			}
+			aria-label={iconLabel}
 			aria-expanded={open}
 			aria-controls={open ? menuId : undefined}
 			onClick={(e) => onChoose(typeId, e.currentTarget)}
@@ -102,6 +100,13 @@ function ChooseButton({ typeId, part, single, open, menuId, onChoose, disabled }
 				</>
 			) : null}
 		</Button>
+	);
+	return iconLabel ? (
+		<TapTooltip content={iconLabel} tap={false}>
+			{button}
+		</TapTooltip>
+	) : (
+		button
 	);
 }
 

@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 import { AppSelect } from "src/components/AppSelect";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Label } from "src/components/ui/label";
 import { cn } from "src/lib/utils";
@@ -97,16 +98,18 @@ function TablePagination({ pageIndex, pageSize, total, onPage, onSize, placement
 				>
 					<ul className="m-0 flex list-none flex-wrap items-center gap-1 p-0">
 						<li>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								onClick={() => step(pageIndex - 1)}
-								disabled={pageIndex === 0}
-								aria-label={intl.formatMessage({ id: "pagination.previous" })}
-							>
-								<ChevronLeft aria-hidden="true" />
-							</Button>
+							<TapTooltip content={intl.formatMessage({ id: "pagination.previous" })} tap={false}>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									onClick={() => step(pageIndex - 1)}
+									disabled={pageIndex === 0}
+									aria-label={intl.formatMessage({ id: "pagination.previous" })}
+								>
+									<ChevronLeft aria-hidden="true" />
+								</Button>
+							</TapTooltip>
 						</li>
 						{pageNumbers(pageIndex, count).map((page, index) =>
 							page === null ? (
@@ -118,16 +121,18 @@ function TablePagination({ pageIndex, pageSize, total, onPage, onSize, placement
 							),
 						)}
 						<li>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								onClick={() => step(pageIndex + 1)}
-								disabled={pageIndex >= count - 1}
-								aria-label={intl.formatMessage({ id: "pagination.next" })}
-							>
-								<ChevronRight aria-hidden="true" />
-							</Button>
+							<TapTooltip content={intl.formatMessage({ id: "pagination.next" })} tap={false}>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									onClick={() => step(pageIndex + 1)}
+									disabled={pageIndex >= count - 1}
+									aria-label={intl.formatMessage({ id: "pagination.next" })}
+								>
+									<ChevronRight aria-hidden="true" />
+								</Button>
+							</TapTooltip>
 						</li>
 					</ul>
 				</nav>

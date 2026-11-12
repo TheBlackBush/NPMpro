@@ -1,6 +1,7 @@
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, SearchIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { BreakableHost } from "src/components";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import { Checkbox } from "src/components/ui/checkbox";
@@ -209,16 +210,18 @@ function GroupHeader({ group, choices, open, onFold, onSetAll, disabled }) {
 		<tr className="block bg-muted/50 md:table-row">
 			<th scope="rowgroup" colSpan={3} className="block px-3 py-2 text-left font-normal md:table-cell">
 				<div className="flex flex-wrap items-center gap-2">
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						aria-expanded={open}
-						aria-label={name}
-						onClick={onFold}
-					>
-						{open ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
-					</Button>
+					<TapTooltip content={name} tap={false}>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							aria-expanded={open}
+							aria-label={name}
+							onClick={onFold}
+						>
+							{open ? <ChevronUpIcon aria-hidden="true" /> : <ChevronDownIcon aria-hidden="true" />}
+						</Button>
+					</TapTooltip>
 					<span className="text-sm font-bold text-muted-foreground uppercase">{name}</span>
 					<Badge variant="secondary">{group.items.length}</Badge>
 					<span className="hidden text-sm text-muted-foreground sm:inline">{summary}</span>
