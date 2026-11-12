@@ -27,4 +27,13 @@ OIDC is set up under Settings, Authentication in the web UI (administrators only
 - Button icon: choose a built-in icon, upload a file or download one from a URL. PNG, JPEG, WebP and SVG are accepted, up to 256 KB. SVG files that contain scripts, event handlers, embedded documents or references to other files (anything but `#` fragments and inline PNG, JPEG or WebP images) are refused.
   Built-in icons: Login, Key, Lock, Shield, User and Cloud (generic), and the logos of Authentik, Authelia, Keycloak, Okta, Auth0, OpenID, Google, GitHub, GitLab and Gitea. They are shown in the button text colour. An icon saved earlier as Windows keeps working (it shows a grid icon) but is no longer offered.
   Logo credits: the provider logos come from [Simple Icons](https://simpleicons.org) (CC0), except the following. The [Authelia logo](https://www.authelia.com/reference/guides/branding) is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Keycloak is a trademark of The Linux Foundation, see its [trademark usage](https://www.linuxfoundation.org/legal/trademark-usage) page. All logos are trademarks of their respective owners; their use does not imply endorsement.
-- Sign-in errors are shown on the sign-in page by code: `not_configured`, `provider_error`, `no_email`, `email_not_verified`, `no_user` (no account and auto-create is off), `domain_not_allowed` (email domain not in the allowed list) and `user_disabled`.
+- Sign-in errors are shown on the sign-in page by code: `not_configured`, `provider_error`, `no_email`, `email_not_verified`, `no_user` (no account and auto-create is off), `domain_not_allowed` (email domain not in the allowed list), `user_disabled`, `identity_mismatch` (the account is linked to another identity at the provider) and `maintenance` (a database move is running, new accounts cannot be created).
+
+### Linked identities
+
+The first OIDC sign-in of a user links the account to the provider's identity (issuer and subject). An account created by the first sign-in is linked at once. Users who signed in with OIDC before this version link at their next OIDC sign-in.
+- A later sign-in for the same email address with another identity at the same provider is refused (`identity_mismatch`, "This account is linked to another account at the sign-in provider"), and so is an identity that is already linked to another user. The refusal is in the audit log. An administrator fixes it under Settings, Users: row menu, Unlink OIDC. The next OIDC sign-in links the account again.
+- Changing the provider (another issuer URL) links each user to the new provider at their next sign-in.
+- Changing a user's email address keeps the link.
+- The Users table has a Sign-in column: Local (the user has a password) and OIDC (linked; the tooltip shows when).
+- A backup merge clears the links of the users it adds or replaces; they link again at their next OIDC sign-in.
