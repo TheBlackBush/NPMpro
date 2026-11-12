@@ -200,6 +200,7 @@ export function MultipleCombobox({
 								<Badge
 									key={String(entry)}
 									variant="secondary"
+									data-window-start-skip=""
 									className="h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal"
 								>
 									<TruncatedText>{label}</TruncatedText>
@@ -213,7 +214,6 @@ export function MultipleCombobox({
 												variant="ghost"
 												size="icon-xs"
 												className="size-6 rounded-full"
-												data-window-start-skip=""
 												aria-label={intl.formatMessage(
 													{ id: "combobox.remove" },
 													{ value: label },
