@@ -1,5 +1,6 @@
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { Command, CommandInput } from "src/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "src/components/ui/popover";
@@ -136,21 +137,23 @@ export function SingleCombobox({
 					</Button>
 				</PopoverTrigger>
 				{clearable && !empty && !locked ? (
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-xs"
-						className="absolute top-1/2 right-7 -translate-y-1/2"
-						data-window-start-skip=""
-						aria-label={intl.formatMessage({ id: "action.clear" })}
-						onClick={() => {
-							onChange(null, null);
-							// this button goes away with the value: the focus stays in the field
-							focusRef.current?.focus();
-						}}
-					>
-						<XIcon aria-hidden="true" />
-					</Button>
+					<TapTooltip content={intl.formatMessage({ id: "action.clear" })} tap={false}>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-xs"
+							className="absolute top-1/2 right-7 -translate-y-1/2"
+							data-window-start-skip=""
+							aria-label={intl.formatMessage({ id: "action.clear" })}
+							onClick={() => {
+								onChange(null, null);
+								// this button goes away with the value: the focus stays in the field
+								focusRef.current?.focus();
+							}}
+						>
+							<XIcon aria-hidden="true" />
+						</Button>
+					</TapTooltip>
 				) : null}
 			</div>
 			<PopoverContent align="start" className={popoverClass} onOpenAutoFocus={onOpenAutoFocus} {...keepScroll}>

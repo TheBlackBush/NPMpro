@@ -73,6 +73,7 @@ function UserRow({ name, index, rowKey, savedUsers, onRemove, recheckRows, reche
 				)}
 				size="icon"
 				aria-label={intl.formatMessage({ id: "aria.remove" })}
+				title={intl.formatMessage({ id: "aria.remove" })}
 				onClick={onRemove}
 			>
 				<XIcon aria-hidden="true" />

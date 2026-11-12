@@ -56,6 +56,7 @@ function RuleRow({ name, index, onRemove, onAddressChange }) {
 				className={DESTRUCTIVE_TEXT}
 				size="icon"
 				aria-label={intl.formatMessage({ id: "aria.remove" })}
+				title={intl.formatMessage({ id: "aria.remove" })}
 				onClick={onRemove}
 			>
 				<XIcon aria-hidden="true" />

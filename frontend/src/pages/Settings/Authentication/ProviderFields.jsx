@@ -11,6 +11,7 @@ import {
 	TextField,
 	useRecheckDependent,
 } from "src/components";
+import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { useTestOidcSettings } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -184,14 +185,19 @@ function ProviderFields({ data, isLocked }) {
 					<InputGroup>
 						<InputGroupInput {...control} type="text" readOnly value={callbackUrl} />
 						<InputGroupAddon align="inline-end">
-							<InputGroupButton
-								size="icon-xs"
-								aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
-								disabled={!callbackUrl}
-								onClick={onCopy}
+							<TapTooltip
+								content={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+								tap={false}
 							>
-								{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-							</InputGroupButton>
+								<InputGroupButton
+									size="icon-xs"
+									aria-label={intl.formatMessage({ id: "settings.authentication.callback-url.copy" })}
+									disabled={!callbackUrl}
+									onClick={onCopy}
+								>
+									{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+								</InputGroupButton>
+							</TapTooltip>
 						</InputGroupAddon>
 					</InputGroup>
 				)}
