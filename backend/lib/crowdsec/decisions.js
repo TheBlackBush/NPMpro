@@ -8,7 +8,7 @@ const TRAILING_SLASHES = /\/+$/u;
 const LEADING_PLUS = /^\+/u;
 const DURATION_PART = /^(?<num>\d+(?:\.\d+)?|\.\d+)(?<unit>ns|us|µs|ms|h|m|s)/u;
 
-const decisionsUrl = (apiUrl) => `${String(apiUrl).replace(TRAILING_SLASHES, "")}/v1/decisions`;
+const decisionsUrl = (apiUrl, query = "") => `${String(apiUrl).replace(TRAILING_SLASHES, "")}/v1/decisions${query}`;
 
 const parseBody = (text) => {
 	let data;
@@ -31,10 +31,16 @@ const failure = (err) => {
 		return new Error("CrowdSec response is too large");
 	}
 	if (err?.name === "TimeoutError" || err?.name === "AbortError" || err?.message === "timed out") {
-		return new Error("CrowdSec request failed: timed out");
+		return Object.assign(new Error("CrowdSec request failed: timed out"), { code: "ETIMEDOUT" });
 	}
-	return new Error(`CrowdSec request failed: ${err?.cause?.code ?? err?.code ?? err?.name ?? "error"}`);
+	const code = err?.cause?.code ?? err?.code;
+	return Object.assign(new Error(`CrowdSec request failed: ${code ?? err?.name ?? "error"}`), { code });
 };
+
+// an HTTP answer that is not 2xx: the status for the connection test, the message as before
+const statusError = (status) => Object.assign(new Error(`CrowdSec answered with status ${status}`), { status });
+// the TLS client files or an http URL with TLS auth (a setup problem, shown as a TLS error by the connection test)
+const tlsSetupError = (message) => Object.assign(new Error(message), { code: "ERR_CROWDSEC_TLS_SETUP" });
 
 const deadline = (ms) => {
 	const controller = new AbortController();
@@ -93,7 +99,7 @@ const fetchPlain = async (conf, fetchFn, timeoutMs) => {
 	const { signal, clear } = deadline(timeoutMs);
 	let text;
 	try {
-		const res = await fetchFn(decisionsUrl(conf.apiUrl), {
+		const res = await fetchFn(decisionsUrl(conf.apiUrl, conf.query), {
 			headers: { "X-Api-Key": conf.apiKey, Accept: "application/json" },
 			signal,
 		});
@@ -109,7 +115,7 @@ const fetchPlain = async (conf, fetchFn, timeoutMs) => {
 		text = res.body ? await readLimited(res.body, { signal }) : await res.text();
 	} catch (err) {
 		if (err.status) {
-			throw new Error(`CrowdSec answered with status ${err.status}`);
+			throw statusError(err.status);
 		}
 		throw failure(err);
 	} finally {
@@ -120,12 +126,12 @@ const fetchPlain = async (conf, fetchFn, timeoutMs) => {
 
 const readCredentialFile = async (path, label) => {
 	if (!path) {
-		throw new Error(`CrowdSec TLS ${label} is not set`);
+		throw tlsSetupError(`CrowdSec TLS ${label} is not set`);
 	}
 	try {
 		return await readFile(path);
 	} catch (err) {
-		throw new Error(`Cannot read the CrowdSec TLS ${label} file (${err.code ?? "error"})`);
+		throw tlsSetupError(`Cannot read the CrowdSec TLS ${label} file (${err.code ?? "error"})`);
 	}
 };
 
@@ -146,7 +152,7 @@ const getHttps = (url, { headers, cert, key, rejectUnauthorized }, timeoutMs) =>
 			},
 			(res) => {
 				if (res.statusCode < 200 || res.statusCode > 299) {
-					reject(new Error(`CrowdSec answered with status ${res.statusCode}`));
+					reject(statusError(res.statusCode));
 					req.destroy();
 					return;
 				}
@@ -172,9 +178,9 @@ const getHttps = (url, { headers, cert, key, rejectUnauthorized }, timeoutMs) =>
 const fetchTls = async (conf, timeoutMs) => {
 	const cert = await readCredentialFile(conf.certFile, "client certificate");
 	const key = await readCredentialFile(conf.keyFile, "client key");
-	const url = new URL(decisionsUrl(conf.apiUrl));
+	const url = new URL(decisionsUrl(conf.apiUrl, conf.query));
 	if (url.protocol !== "https:") {
-		throw new Error("CrowdSec TLS authentication needs an https API URL");
+		throw tlsSetupError("CrowdSec TLS authentication needs an https API URL");
 	}
 	return getHttps(url, { cert, key, rejectUnauthorized: conf.sslVerify !== false }, timeoutMs);
 };
@@ -190,8 +196,9 @@ const isHttps = (apiUrl) => {
 /**
  * Reads the active decisions from the LAPI (`GET /v1/decisions`) with the bouncer credentials. Errors never contain
  * the API key. With sslVerify false an https LAPI is reached over node:https without certificate checks (like the
- * bouncer's SSL_VERIFY=false); otherwise the API key path uses fetch.
- * @param {{ apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify?: boolean }} conf
+ * bouncer's SSL_VERIFY=false); otherwise the API key path uses fetch. query is appended to `/v1/decisions`.
+ * Errors carry `status` (an HTTP answer) or `code` (network, TLS).
+ * @param {{ apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify?: boolean, query?: string }} conf
  * @param {{ fetch?: typeof fetch, timeoutMs?: number }} [opts] fetch is used for the verified API key path only
  * @returns {Promise<object[]>} the decisions (an empty list when the LAPI answers null)
  */
@@ -201,7 +208,7 @@ export const fetchDecisions = (conf, { fetch: fetchFn = globalThis.fetch, timeou
 	}
 	if (conf.sslVerify === false && isHttps(conf.apiUrl)) {
 		return getHttps(
-			new URL(decisionsUrl(conf.apiUrl)),
+			new URL(decisionsUrl(conf.apiUrl, conf.query)),
 			{ headers: { "X-Api-Key": conf.apiKey }, rejectUnauthorized: false },
 			timeoutMs,
 		);
