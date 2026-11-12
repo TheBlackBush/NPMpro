@@ -1,10 +1,12 @@
 import { FlagIcon, GaugeIcon, ShieldBanIcon, TriangleAlertIcon } from "lucide-react";
-import { CountryName } from "src/components/Monitoring/CountryName";
 import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
 import { cn } from "src/lib/utils";
 import { currentLocale, intl, T } from "src/locale";
-import { errorRateTone, formatCount, isCountryCode, sparklinePoints } from "src/modules/Monitoring";
+import { banSegments, topCountryRows } from "src/modules/DashboardCards";
+import { errorRateTone, formatCount, sparklinePoints } from "src/modules/Monitoring";
+import { BanReasons } from "./BanReasons";
+import { TopCountries } from "./TopCountries";
 
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
 
@@ -58,8 +60,18 @@ function MonitoringRow() {
 	const { data } = useMonitoringSummary();
 	if (!data) return null;
 
-	const { requestsToday, series24h, errorRateToday, activeBans, topCountryToday, visitorsToday } = data;
-	const hasCountry = isCountryCode(topCountryToday);
+	const {
+		requestsToday,
+		series24h,
+		errorRateToday,
+		activeBans,
+		bansAdded24h,
+		topBanReasons,
+		topCountriesToday,
+		visitorsToday,
+	} = data;
+	const countries = topCountryRows(topCountriesToday);
+	const reasons = banSegments(activeBans, topBanReasons);
 	const cards = [
 		requestsToday !== null && requestsToday !== undefined ? (
 			<StatCard
@@ -96,18 +108,30 @@ function MonitoringRow() {
 				icon={ShieldBanIcon}
 				tone="destructive"
 				label={<T id="monitoring.crowdsec.active-bans" />}
-				value={formatCount(activeBans)}
-			/>
+				value={
+					<>
+						{formatCount(activeBans)}
+						{bansAdded24h > 0 ? (
+							<span className="ms-2 text-sm font-medium text-destructive">
+								<T id="dashboard.monitoring.bans-added" data={{ count: formatCount(bansAdded24h) }} />
+							</span>
+						) : null}
+					</>
+				}
+			>
+				{reasons.length > 0 ? <BanReasons segments={reasons} /> : null}
+			</StatCard>
 		) : null,
-		hasCountry ? (
+		countries.length > 0 ? (
 			<StatCard
 				key="country"
 				to="/monitoring/traffic"
 				icon={FlagIcon}
 				tone="primary"
-				label={<T id="dashboard.monitoring.top-country" />}
-				value={<CountryName code={topCountryToday} />}
-			/>
+				label={<T id="dashboard.monitoring.top-countries" />}
+			>
+				<TopCountries rows={countries} />
+			</StatCard>
 		) : null,
 	].filter(Boolean);
 
