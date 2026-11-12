@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { rooted } from "../paths.js";
 
-/** Location of the bouncer config in the container (copied from crowdsec.conf.example by start.sh). */
-const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
+/** Location of the bouncer config in the container (written from Settings, CrowdSec). */
+export const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
 
 /** The bouncer config text, "" when the file does not exist. */
 export const readCrowdsecConf = async () => {
@@ -17,6 +17,7 @@ export const readCrowdsecConf = async () => {
 const INLINE_COMMENT = /\s+#.*$/u;
 const LINE_BREAK = /\r?\n/u;
 const EXPORT_PREFIX = /^export\s+/u;
+const BOM = /^\uFEFF/u;
 
 const parseValue = (raw) => {
 	if (raw[0] === '"' || raw[0] === "'") {
@@ -27,15 +28,18 @@ const parseValue = (raw) => {
 };
 
 /**
- * Parses the nginx lua bouncer config (KEY=value lines, # comments). SSL_VERIFY defaults to true like the bouncer; only
- * an explicit "false" turns certificate checks off.
+ * The KEY=value lines of a bouncer config: keys upper-cased, the last one wins, a leading BOM, CRLF line ends,
+ * `export ` prefixes, quotes and inline comments (a # after a space, outside quotes) removed; comment and broken lines
+ * skipped.
  *
- * @param {string} text
- * @returns {{ enabled: boolean, apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify: boolean }}
+ * @param   {string} text
+ * @returns {Record<string, string>}
  */
-export const parseCrowdsecConf = (text) => {
+export const parseConfLines = (text) => {
 	const values = {};
-	for (const raw of String(text ?? "").split(LINE_BREAK)) {
+	for (const raw of String(text ?? "")
+		.replace(BOM, "")
+		.split(LINE_BREAK)) {
 		const line = raw.trim().replace(EXPORT_PREFIX, "");
 		if (line === "" || line.startsWith("#")) {
 			continue;
@@ -46,6 +50,18 @@ export const parseCrowdsecConf = (text) => {
 		}
 		values[line.slice(0, eq).trim().toUpperCase()] = parseValue(line.slice(eq + 1).trim());
 	}
+	return values;
+};
+
+/**
+ * Parses the nginx lua bouncer config (KEY=value lines, # comments). SSL_VERIFY defaults to true like the bouncer; only
+ * an explicit "false" turns certificate checks off.
+ *
+ * @param {string} text
+ * @returns {{ enabled: boolean, apiUrl: string, apiKey: string, useTls: boolean, certFile: string, keyFile: string, sslVerify: boolean }}
+ */
+export const parseCrowdsecConf = (text) => {
+	const values = parseConfLines(text);
 	const isTrue = (key) => (values[key] ?? "").toLowerCase() === "true";
 	return {
 		enabled: isTrue("ENABLED"),
