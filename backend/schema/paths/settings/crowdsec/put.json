@@ -1,0 +1,62 @@
+{
+	"operationId": "updateCrowdsecSettings",
+	"summary": "Update and apply the CrowdSec bouncer settings",
+	"description": "Fields set by environment variables are ignored. While the bouncer is on, the connection test runs first and a failure answers 409 with its checks unless force is true. The file and the nginx includes are written, tested with nginx -t and reloaded; a failure puts everything back.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"$ref": "../../../components/crowdsec-setting-input.json"
+				},
+				"example": {
+					"enabled": true,
+					"api_url": "http://127.0.0.1:8080",
+					"api_key": "0123456789abcdef"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../components/crowdsec-setting-object.json"
+					}
+				}
+			}
+		},
+		"409": {
+			"description": "The connection test failed (error.checks: one entry per check)",
+			"content": {
+				"application/json": {
+					"example": {
+						"error": {
+							"code": 409,
+							"message": "The connection test failed",
+							"message_i18n": "error.crowdsec-test-failed",
+							"checks": [
+								{
+									"name": "lapi",
+									"result": "key_refused",
+									"message": "HTTP 403"
+								}
+							]
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,3 +1,4 @@
+import { CROWDSEC_ENV_KEYS } from "./crowdsec/settings.js";
 import { GEOIP_ENV_KEYS, MONITORING_ENV_KEYS } from "./monitoring-rules.js";
 import { ENV_KEYS as OIDC_ENV_KEYS } from "./oidc-rules.js";
 import { RUNTIME_RULES, SETTING_LOCK_REASONS, userSetNames } from "./runtime-rules.js";
@@ -152,13 +153,18 @@ const settingLocksOf = ({ oidc = [], monitoring = [], geoip = [] } = {}) => {
 	return entries;
 };
 
-const SETTING_ENV_KEYS = { oidc: OIDC_ENV_KEYS, monitoring: MONITORING_ENV_KEYS, geoip: GEOIP_ENV_KEYS };
+const SETTING_ENV_KEYS = {
+	oidc: OIDC_ENV_KEYS,
+	monitoring: MONITORING_ENV_KEYS,
+	geoip: GEOIP_ENV_KEYS,
+	crowdsec: CROWDSEC_ENV_KEYS,
+};
 
 /**
- * The variable that locks each locked key of the OIDC, monitoring or GeoIP setting (locked_by in the response): key to
+ * The variable that locks each locked key of the OIDC, monitoring, GeoIP or CrowdSec setting (locked_by in the response): key to
  * variable NAME, never a value. A key without a name in the map has no entry.
  *
- * @param   {"oidc"|"monitoring"|"geoip"}  group
+ * @param   {"oidc"|"monitoring"|"geoip"|"crowdsec"}  group
  * @param   {string[]}  [locked]  the locked keys
  * @returns {Object<string, string>}
  */

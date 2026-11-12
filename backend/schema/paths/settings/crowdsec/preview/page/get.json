@@ -1,0 +1,36 @@
+{
+	"operationId": "previewCrowdsecPage",
+	"summary": "The configured ban or captcha page, as HTML",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "page",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"ban",
+					"captcha"
+				]
+			},
+			"required": true,
+			"description": "Which page",
+			"example": "ban"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The page",
+			"content": {
+				"text/html": {}
+			}
+		}
+	}
+}

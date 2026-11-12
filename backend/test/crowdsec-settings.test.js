@@ -151,6 +151,24 @@ it("validates the cross-field rules", () => {
 	);
 	assert.equal(validateCrowdsec(on({ ban_response: "redirect" }), { exists }).length, 1);
 	assert.equal(validateCrowdsec(on({ ban_response: "status" }), { exists }).length, 1);
+	// an empty page path would be written as an empty value and read back as a bare status code
+	assert.equal(validateCrowdsec(on({ ban_template_path: "" }), { exists }).length, 1);
+	assert.deepEqual(
+		validateCrowdsec(on({ ban_response: "redirect", redirect_location: "/x", ban_template_path: "" }), { exists }),
+		[],
+	);
+	assert.equal(
+		validateCrowdsec(
+			on({
+				captcha_provider: "turnstile",
+				captcha_site_key: "s",
+				captcha_secret_key: "k",
+				captcha_template_path: "",
+			}),
+			{ exists },
+		).length,
+		1,
+	);
 	assert.equal(validateCrowdsec({ ...CROWDSEC_DEFAULTS, captcha_provider: "turnstile" }, { exists }).length, 2);
 	// files are only checked while the bouncer is on
 	assert.deepEqual(validateCrowdsec(CROWDSEC_DEFAULTS, { exists: () => false }), []);
@@ -203,7 +221,6 @@ it("applies a PUT body: locked fields and empty secrets kept, null clears, the b
 	assert.equal(next.redirect_location, "");
 	assert.equal(next.ret_code, 403);
 	assert.equal(next.mode, "stream");
-	assert.equal(next.import_pending, false);
 	assert.equal(applyCrowdsecUpdate(stored, { api_key: " new " }, [], encrypt).api_key, "sealed:new");
 	assert.equal(applyCrowdsecUpdate(stored, { api_key: "new" }, ["api_key"], encrypt).api_key, "sealed:old");
 	assert.equal(applyCrowdsecUpdate(stored, { ban_response: "redirect" }, [], encrypt).ret_code, null);
@@ -214,5 +231,8 @@ it("names the changed settings, secrets by name only", () => {
 	const after = { ...before, mode: "stream", api_key: "new" };
 	assert.deepEqual(changedCrowdsecKeys(before, after, { mode: "stream", api_key: "new" }), ["mode", "api_key"]);
 	assert.deepEqual(changedCrowdsecKeys(before, before, { api_key: "" }), []);
+	// a secret sent for a field the environment sets is ignored by the save, so it is not named
+	assert.deepEqual(changedCrowdsecKeys(before, before, { api_key: "typed" }, ["api_key"]), []);
+	assert.deepEqual(changedCrowdsecKeys(before, before, { api_key: null }, ["api_key"]), []);
 	assert.deepEqual(changedCrowdsecKeys(before, { ...before, api_key: "" }, { api_key: null }), ["api_key"]);
 });

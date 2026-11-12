@@ -1,0 +1,92 @@
+{
+	"operationId": "testCrowdsecSettings",
+	"summary": "Test the connection to the CrowdSec LAPI and AppSec",
+	"description": "Uses the submitted (unsaved) values over the saved ones; an empty secret uses the saved one. Fields set by environment variables always use the environment value. force is ignored.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Optional unsaved values",
+		"required": false,
+		"content": {
+			"application/json": {
+				"schema": {
+					"$ref": "../../../../components/crowdsec-setting-input.json"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"example": {
+						"ok": false,
+						"checks": [
+							{
+								"name": "lapi",
+								"result": "unreachable",
+								"message": "CrowdSec request failed: ECONNREFUSED"
+							}
+						]
+					},
+					"schema": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"ok",
+							"checks"
+						],
+						"properties": {
+							"ok": {
+								"type": "boolean"
+							},
+							"checks": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": [
+										"name",
+										"result",
+										"message"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"enum": [
+												"lapi",
+												"appsec"
+											]
+										},
+										"result": {
+											"type": "string",
+											"enum": [
+												"ok",
+												"no_key",
+												"key_refused",
+												"refused",
+												"unreachable",
+												"tls_error",
+												"status"
+											]
+										},
+										"message": {
+											"type": "string"
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

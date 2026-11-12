@@ -22,6 +22,8 @@ const agentFor = (verify) => {
 
 const checkLapi = async (values, { fetch, timeoutMs }) => {
 	if (values.api_url === "") return check("lapi", "unreachable", "No LAPI URL is set");
+	// no key and no client certificate: nothing to send (an empty key header would only be refused)
+	if (!values.use_tls_auth && values.api_key === "") return check("lapi", "no_key", "No API key is set");
 	try {
 		await fetchDecisions(
 			{
@@ -44,6 +46,7 @@ const checkLapi = async (values, { fetch, timeoutMs }) => {
 };
 
 const checkAppsec = async (values, { timeoutMs }) => {
+	if (values.api_key === "") return check("appsec", "no_key", "No API key is set");
 	try {
 		const res = await undiciFetch(values.appsec_url, {
 			method: "GET",

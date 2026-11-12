@@ -417,6 +417,24 @@
 				"$ref": "./paths/settings/geoip/update/post.json"
 			}
 		},
+		"/settings/crowdsec": {
+			"get": {
+				"$ref": "./paths/settings/crowdsec/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/crowdsec/put.json"
+			}
+		},
+		"/settings/crowdsec/test": {
+			"post": {
+				"$ref": "./paths/settings/crowdsec/test/post.json"
+			}
+		},
+		"/settings/crowdsec/preview/{page}": {
+			"get": {
+				"$ref": "./paths/settings/crowdsec/preview/page/get.json"
+			}
+		},
 		"/settings/runtime/certificates": {
 			"get": {
 				"$ref": "./paths/settings/runtime/certificates/get.json"

@@ -1,0 +1,216 @@
+{
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"enabled": {
+			"type": "boolean"
+		},
+		"api_url": {
+			"type": "string",
+			"maxLength": 2048,
+			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$"
+		},
+		"api_key": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 1024,
+			"pattern": "^[^\\r\\n#]*$",
+			"description": "Empty or missing keeps the saved key, null removes it"
+		},
+		"use_tls_auth": {
+			"type": "boolean"
+		},
+		"tls_client_cert": {
+			"type": "string",
+			"maxLength": 255,
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+		},
+		"tls_client_key": {
+			"type": "string",
+			"maxLength": 255,
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+		},
+		"cache_expiration": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 86400
+		},
+		"bouncing_on_type": {
+			"type": "string",
+			"enum": [
+				"all",
+				"ban",
+				"captcha"
+			]
+		},
+		"fallback_remediation": {
+			"type": "string",
+			"enum": [
+				"ban",
+				"captcha"
+			]
+		},
+		"request_timeout": {
+			"type": "integer",
+			"minimum": 100,
+			"maximum": 60000
+		},
+		"update_frequency": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 86400
+		},
+		"enable_internal": {
+			"type": "boolean"
+		},
+		"mode": {
+			"type": "string",
+			"enum": [
+				"live",
+				"stream"
+			]
+		},
+		"scenarios_containing": {
+			"type": "string",
+			"maxLength": 1024,
+			"pattern": "^[^\\r\\n#]*$"
+		},
+		"scenarios_not_containing": {
+			"type": "string",
+			"maxLength": 1024,
+			"pattern": "^[^\\r\\n#]*$"
+		},
+		"exclude_location": {
+			"type": "string",
+			"maxLength": 1024,
+			"pattern": "^$|^/[^\\s,#]*(,/[^\\s,#]*)*$"
+		},
+		"ban_response": {
+			"type": "string",
+			"enum": [
+				"page",
+				"redirect",
+				"status"
+			]
+		},
+		"ban_template_path": {
+			"type": "string",
+			"maxLength": 255,
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+		},
+		"redirect_location": {
+			"type": "string",
+			"maxLength": 2048,
+			"pattern": "^$|^(https?://[^\\s/?#@]+(/[^\\s#]*)?|/[^\\s#]+)$"
+		},
+		"ret_code": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"enum": [
+				200,
+				202,
+				204,
+				301,
+				302,
+				400,
+				401,
+				403,
+				404,
+				405,
+				406,
+				444,
+				500,
+				null
+			]
+		},
+		"captcha_provider": {
+			"type": "string",
+			"enum": [
+				"",
+				"recaptcha",
+				"hcaptcha",
+				"turnstile"
+			]
+		},
+		"captcha_site_key": {
+			"type": "string",
+			"maxLength": 1024,
+			"pattern": "^[^\\r\\n#]*$"
+		},
+		"captcha_secret_key": {
+			"type": [
+				"string",
+				"null"
+			],
+			"maxLength": 1024,
+			"pattern": "^[^\\r\\n#]*$",
+			"description": "Empty or missing keeps the saved secret, null removes it"
+		},
+		"captcha_template_path": {
+			"type": "string",
+			"maxLength": 255,
+			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
+		},
+		"captcha_expiration": {
+			"type": "integer",
+			"minimum": 60,
+			"maximum": 2592000
+		},
+		"appsec_url": {
+			"type": "string",
+			"maxLength": 2048,
+			"pattern": "^$|^https?://[^\\s/?#@]+(/[^\\s#]*)?$"
+		},
+		"appsec_failure_action": {
+			"type": "string",
+			"enum": [
+				"deny",
+				"passthrough"
+			]
+		},
+		"appsec_connect_timeout": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"maximum": 60000
+		},
+		"appsec_send_timeout": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"maximum": 60000
+		},
+		"appsec_process_timeout": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 1,
+			"maximum": 60000
+		},
+		"always_send_to_appsec": {
+			"type": "boolean"
+		},
+		"appsec_drop_unreadable_body": {
+			"type": "boolean"
+		},
+		"ssl_verify": {
+			"type": "boolean"
+		},
+		"admin_ui_excluded": {
+			"type": "boolean"
+		},
+		"force": {
+			"type": "boolean",
+			"description": "Save although the connection test fails (Save anyway)"
+		}
+	}
+}

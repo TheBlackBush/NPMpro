@@ -265,7 +265,11 @@ export const validateCrowdsec = (values, { exists }) => {
 	if (values.ban_response === "status" && values.ret_code === null) {
 		problems.push("Choose the status code of the answer to a ban.");
 	}
+	if (values.ban_response === "page" && values.ban_template_path === "") {
+		problems.push("Enter the ban page file under /data/crowdsec/, or choose another answer to a ban.");
+	}
 	if (values.captcha_provider !== "") {
+		if (values.captcha_template_path === "") problems.push("Enter the captcha page file under /data/crowdsec/.");
 		if (values.captcha_site_key === "") problems.push("Enter the captcha site key.");
 		if (values.captcha_secret_key === "") problems.push("Enter the captcha secret key.");
 	}
@@ -322,7 +326,6 @@ export const applyCrowdsecUpdate = (stored, body, locked, encrypt) => {
 	}
 	if ((next.ban_response ?? CROWDSEC_DEFAULTS.ban_response) === "redirect") next.ret_code = null;
 	else next.redirect_location = "";
-	next.import_pending = false;
 	return next;
 };
 
@@ -333,12 +336,13 @@ export const applyCrowdsecUpdate = (stored, body, locked, encrypt) => {
  * @param   {Object} before  effective values before the save, secrets in plain text
  * @param   {Object} after   effective values after it
  * @param   {Object} body
+ * @param   {string[]} [locked]  fields set by the environment: a secret sent for one is ignored, so it is not a change
  * @returns {string[]}
  */
-export const changedCrowdsecKeys = (before, after, body) => [
+export const changedCrowdsecKeys = (before, after, body, locked = []) => [
 	...EDITABLE_KEYS.filter((key) => before[key] !== after[key]),
 	...SECRET_KEYS.filter((key) => {
-		if (!Object.hasOwn(body, key)) return false;
+		if (locked.includes(key) || !Object.hasOwn(body, key)) return false;
 		if (body[key] === null) return before[key] !== "";
 		return typeof body[key] === "string" && body[key].trim() !== "" && body[key].trim() !== before[key];
 	}),
