@@ -31,7 +31,7 @@ OIDC is set up under Settings, Authentication in the web UI (administrators only
 
 ### Linked identities
 
-The first OIDC sign-in of a user links the account to the provider's identity (issuer and subject). An account created by the first sign-in is linked at once. Users who signed in with OIDC before this version link at their next OIDC sign-in.
+The first OIDC sign-in of a user links the account to the provider's identity (issuer and subject). An account created by the first sign-in is linked at once. For a user with two-factor authentication the link is made once the code is verified: a sign-in that stops at the code leaves the account unlinked, while a sign-in with a mismatching identity is refused before the code is asked for. Users who signed in with OIDC before this version link at their next OIDC sign-in.
 - A later sign-in for the same email address with another identity at the same provider is refused (`identity_mismatch`, "This account is linked to another account at the sign-in provider"), and so is an identity that is already linked to another user. The refusal is in the audit log. An administrator fixes it under Settings, Users: row menu, Unlink OIDC. The next OIDC sign-in links the account again.
 - Changing the provider (another issuer URL) links each user to the new provider at their next sign-in.
 - Changing a user's email address keeps the link.
