@@ -1,11 +1,15 @@
 import { Link } from "react-router";
 import { Card } from "src/components/ui/card";
 import { cn } from "src/lib/utils";
+import { CARD_LINK, CARD_POP } from "src/modules/CardLink";
 import { sectionAccent } from "src/modules/SectionAccents";
 
 /**
  * Dashboard count tile: a card that links to the page it counts, with the icon in a square tinted by the section accent
  * of the host type (the same accents as the list pages); without a section the square is neutral.
+ *
+ * Icon and text start at the top, and the text block is at least as high as the icon with its text centred: one line
+ * sits in the middle of the icon, a wrapped label grows downwards and its icon stays level with the row's other icons.
  *
  * @param {object} props
  * @param {string} props.to
@@ -16,12 +20,9 @@ import { sectionAccent } from "src/modules/SectionAccents";
 function DashboardTile({ to, icon: Icon, section, children }) {
 	const accent = section ? sectionAccent(section) : null;
 	return (
-		<Link
-			to={to}
-			className="block min-w-0 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-		>
-			<Card className="h-full transition-colors hover:bg-muted/50">
-				<div className="flex min-w-0 items-center gap-3 px-(--card-spacing)">
+		<Link to={to} className={CARD_LINK}>
+			<Card className={CARD_POP}>
+				<div className="flex min-w-0 items-start gap-3 px-(--card-spacing)">
 					<span
 						className={cn(
 							"flex size-10 shrink-0 items-center justify-center rounded-md",
@@ -30,7 +31,7 @@ function DashboardTile({ to, icon: Icon, section, children }) {
 					>
 						<Icon className="size-5" aria-hidden="true" />
 					</span>
-					<div className="min-w-0 flex-1 font-medium">{children}</div>
+					<div className="flex min-h-10 min-w-0 flex-1 flex-col justify-center font-medium">{children}</div>
 				</div>
 			</Card>
 		</Link>
