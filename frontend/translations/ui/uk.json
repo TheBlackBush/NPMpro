@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "Інші",
 	"dashboard.monitoring.bans-added": "+{count} за 24 год",
 	"dashboard.monitoring.error-rate": "Частка помилок сьогодні",
+	"dashboard.monitoring.last-24h": "Останні 24 години",
+	"dashboard.monitoring.now": "зараз",
 	"dashboard.monitoring.requests": "Запити сьогодні",
 	"dashboard.monitoring.sparkline": "{count, plural, one {# запит} few {# запити} many {# запитів} other {# запиту}} за останні 24 години",
 	"dashboard.monitoring.top-countries": "Топ країн сьогодні",

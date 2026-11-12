@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "기타",
 	"dashboard.monitoring.bans-added": "24시간 동안 +{count}",
 	"dashboard.monitoring.error-rate": "오늘 오류율",
+	"dashboard.monitoring.last-24h": "최근 24시간",
+	"dashboard.monitoring.now": "지금",
 	"dashboard.monitoring.requests": "오늘 요청 수",
 	"dashboard.monitoring.sparkline": "지난 24시간 동안 {count, plural, other {요청 #건}}",
 	"dashboard.monitoring.top-countries": "오늘 상위 국가",

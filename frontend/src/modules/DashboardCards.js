@@ -3,6 +3,7 @@ import { isCountryCode } from "./Monitoring.js";
 
 const TOP_COUNTRIES = 7;
 const TOP_REASONS = 5;
+const HOUR = 3_600_000;
 // "crowdsecurity/http-probing": an author, a slash, the name; a manual decision ("manual 'ban' from 'x'") or a
 // blocklist name has no such prefix and stays whole
 const SCENARIO_AUTHOR = /^[\w.-]+\/(?<name>.+)$/u;
@@ -128,4 +129,15 @@ const errorSegments = (clientErrors, serverErrors) => {
 	return entries.map((entry) => shown.find((s) => s.key === entry.key) ?? { ...entry, x: 0, width: 0 });
 };
 
-export { BAN_TONES, banSegments, errorSegments, OTHER_TONE, shortScenario, topCountryRows };
+/**
+ * The start of the requests graph: the first hour of the summary's 24 h series, for the time axis under the graph.
+ *
+ * @param {Array<{bucket: number}> | null | undefined} series  series24h of the summary (buckets are hours since 1970)
+ * @returns {number | null}  milliseconds since 1970, null without a series
+ */
+const seriesStart = (series) => {
+	const bucket = Array.isArray(series) ? Number(series[0]?.bucket) : Number.NaN;
+	return Number.isFinite(bucket) ? bucket * HOUR : null;
+};
+
+export { BAN_TONES, banSegments, errorSegments, OTHER_TONE, seriesStart, shortScenario, topCountryRows };

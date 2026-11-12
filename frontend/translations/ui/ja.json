@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "その他",
 	"dashboard.monitoring.bans-added": "24 時間で +{count}",
 	"dashboard.monitoring.error-rate": "本日のエラー率",
+	"dashboard.monitoring.last-24h": "過去 24 時間",
+	"dashboard.monitoring.now": "現在",
 	"dashboard.monitoring.requests": "本日のリクエスト数",
 	"dashboard.monitoring.sparkline": "過去 24 時間で {count, plural, other {# 件のリクエスト}}",
 	"dashboard.monitoring.top-countries": "本日の上位国",

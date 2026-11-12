@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "其他",
 	"dashboard.monitoring.bans-added": "24 小时内 +{count}",
 	"dashboard.monitoring.error-rate": "今日错误率",
+	"dashboard.monitoring.last-24h": "过去 24 小时",
+	"dashboard.monitoring.now": "现在",
 	"dashboard.monitoring.requests": "今日请求数",
 	"dashboard.monitoring.sparkline": "过去 24 小时内 {count, plural, other {# 个请求}}",
 	"dashboard.monitoring.top-countries": "今日访问最多的国家",
