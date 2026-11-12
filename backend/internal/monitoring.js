@@ -13,6 +13,21 @@ const CACHE_MS = {
 };
 const TOP_HOSTS = 10;
 const RECENT_LIMIT = 100;
+const TOP_BAN_REASONS = 5;
+
+/**
+ * The most common ban reasons for the dashboard: highest count first, equal counts by scenario name (by_scenario is ordered by count only, so ties would swap between polls). Decisions without a scenario
+ * are left out (the dashboard counts them under "other").
+ *
+ * @param {Array<{scenario: string, count: number}>} byScenario
+ * @returns {Array<{scenario: string, count: number}>}
+ */
+const topBanReasons = (byScenario) =>
+	(Array.isArray(byScenario) ? byScenario : [])
+		.filter((r) => r.scenario)
+		.sort((a, b) => b.count - a.count || Number(a.scenario > b.scenario) - Number(a.scenario < b.scenario))
+		.slice(0, TOP_BAN_REASONS)
+		.map(({ scenario, count }) => ({ scenario, count }));
 const DAY = 86400000;
 const RANGE_MS = { "1h": 3600000, "24h": DAY, "7d": 7 * DAY, "30d": 30 * DAY };
 
@@ -267,12 +282,19 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 			access.canAdmin();
 			const { values } = await getConfig();
 			const bans = crowdsec.result();
+			// the CrowdSec numbers are null while the bouncer is not configured or its last poll failed
+			const bansKnown = Boolean(bans.configured && bans.reachable);
 			const out = {
 				requests_today: null,
 				series_24h: null,
 				error_rate_today: null,
-				active_bans: bans.configured && bans.reachable ? bans.total : null,
+				client_errors_today: null,
+				server_errors_today: null,
+				active_bans: bansKnown ? bans.total : null,
+				bans_added_24h: bansKnown ? (bans.added_24h ?? 0) : null,
+				top_ban_reasons: bansKnown ? topBanReasons(bans.by_scenario) : null,
 				top_country_today: null,
+				top_countries_today: null,
 				visitors_today: null,
 			};
 			if (values.traffic_enabled) {
@@ -285,7 +307,11 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				out.requests_today = today.requests_today;
 				out.series_24h = today.series_24h;
 				out.error_rate_today = today.error_rate_today;
-				out.top_country_today = geoipAvailable() ? today.top_country_today : null;
+				out.client_errors_today = today.client_errors_today;
+				out.server_errors_today = today.server_errors_today;
+				const geo = geoipAvailable();
+				out.top_country_today = geo ? today.top_country_today : null;
+				out.top_countries_today = geo ? today.top_countries_today : null;
 				out.visitors_today = today.visitors_today;
 			}
 			return out;

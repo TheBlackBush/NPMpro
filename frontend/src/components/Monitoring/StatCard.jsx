@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { TruncatedText } from "src/components/TruncatedText";
 import { Card } from "src/components/ui/card";
 import { cn } from "src/lib/utils";
+import { CARD_LINK, CARD_POP } from "src/modules/CardLink";
 
 // icon colour per tone, whole class names so Tailwind finds them
 const ICON_TONES = {
@@ -18,7 +19,7 @@ const ICON_TONES = {
  *
  * @param {object} props
  * @param {import("react").ReactNode} props.label     label text
- * @param {import("react").ReactNode} props.value     the big value
+ * @param {import("react").ReactNode} [props.value]   the big value; left out, the card shows its label and children
  * @param {import("react").ReactNode} [props.hint]    small line under the value, cut with an ellipsis
  * @param {boolean} [props.hintWrap]                  wrap the hint instead of cutting it (a hint the user must read
  *                                                    in full, such as a link)
@@ -39,10 +40,12 @@ function StatCard({ label, value, hint, hintWrap = false, icon: Icon, tone = "mu
 					</div>
 				) : null}
 			</div>
-			{/* inside a link a tap must follow the link, so the tooltip opens on hover and focus only there */}
-			<TruncatedText className="text-2xl font-semibold" tap={!to}>
-				{value}
-			</TruncatedText>
+			{value === null || value === undefined ? null : (
+				// inside a link a tap must follow the link, so the tooltip opens on hover and focus only there
+				<TruncatedText className="text-2xl font-semibold" tap={!to}>
+					{value}
+				</TruncatedText>
+			)}
 			{hint ? (
 				<div className={cn("text-sm text-muted-foreground", hintWrap ? "text-wrap" : "truncate")}>{hint}</div>
 			) : null}
@@ -52,14 +55,8 @@ function StatCard({ label, value, hint, hintWrap = false, icon: Icon, tone = "mu
 	if (to) {
 		// the link is the grid item and carries the focus ring; the card fills it
 		return (
-			<Link
-				to={to}
-				className={cn(
-					"block min-w-0 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-					className,
-				)}
-			>
-				<Card className="h-full transition-colors hover:bg-muted/50">{body}</Card>
+			<Link to={to} className={cn(CARD_LINK, className)}>
+				<Card className={CARD_POP}>{body}</Card>
 			</Link>
 		);
 	}

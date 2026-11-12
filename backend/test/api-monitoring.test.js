@@ -234,8 +234,14 @@ it("shows the dashboard numbers of today, and nulls while a source is off", asyn
 	assert.equal(done.body.series_24h.length > 0, true);
 	assert.equal(done.body.active_bans, null);
 	assert.equal(done.body.top_country_today, null);
+	// no GeoIP database and no CrowdSec in the test root: the new fields follow the same rules
+	assert.equal(done.body.top_countries_today, null);
+	assert.equal(done.body.bans_added_24h, null);
+	assert.equal(done.body.top_ban_reasons, null);
 	assert.equal(done.body.visitors_today, null);
 	assert.equal(typeof done.body.error_rate_today, "number");
+	assert.equal(typeof done.body.client_errors_today, "number");
+	assert.equal(typeof done.body.server_errors_today, "number");
 });
 
 it("turns visitor IPs and unique visitors on, and off again deletes what they stored", async () => {

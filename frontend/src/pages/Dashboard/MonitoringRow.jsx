@@ -1,10 +1,14 @@
 import { FlagIcon, GaugeIcon, ShieldBanIcon, TriangleAlertIcon } from "lucide-react";
-import { CountryName } from "src/components/Monitoring/CountryName";
+import { Flag } from "src/components";
+import { countryLabel } from "src/components/Monitoring/CountryName";
 import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
 import { cn } from "src/lib/utils";
 import { currentLocale, intl, T } from "src/locale";
-import { errorRateTone, formatCount, isCountryCode, sparklinePoints } from "src/modules/Monitoring";
+import { banSegments, errorSegments, topCountryRows } from "src/modules/DashboardCards";
+import { errorRateTone, formatCount, sparklinePoints } from "src/modules/Monitoring";
+import { BanReasons, SplitBar } from "./BanReasons";
+import { TopCountries } from "./TopCountries";
 
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
 
@@ -20,9 +24,8 @@ function Sparkline({ series }) {
 	const { line, area } = sparklinePoints(values, WIDTH, HEIGHT);
 	return (
 		<svg
-			className="mt-2 block w-full text-primary"
+			className="block size-full text-primary"
 			viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-			height={HEIGHT}
 			preserveAspectRatio="none"
 			role="img"
 			aria-label={intl.formatMessage({ id: "dashboard.monitoring.sparkline" }, { count: total })}
@@ -39,6 +42,40 @@ function Sparkline({ series }) {
 			/>
 		</svg>
 	);
+}
+
+/**
+ * Today's 4xx and 5xx answers as a split bar in the lower part of the card's picture, with a legend of two columns
+ * under it: a colour dot, the class and its count.
+ *
+ * @param {object} props
+ * @param {ReturnType<typeof errorSegments>} props.segments
+ */
+function ErrorSplit({ segments }) {
+	return (
+		<div className="flex h-full flex-col justify-end gap-1.5">
+			<SplitBar segments={segments} />
+			<ul className="m-0 grid list-none grid-cols-2 gap-x-3 p-0 text-xs text-muted-foreground">
+				{segments.map((segment) => (
+					<li key={segment.key} className="flex min-w-0 items-center gap-1.5">
+						<span className={cn("size-2 shrink-0 rounded-full", segment.tone.dot)} aria-hidden="true" />
+						<span className="flex-1">{segment.label}</span>
+						<strong className="shrink-0 font-semibold text-foreground tabular-nums">
+							{formatCount(segment.count)}
+						</strong>
+					</li>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+/**
+ * The picture under a card's hint: the same height in every card, so the numbers, hints and pictures of the row line
+ * up.
+ */
+function CardPicture({ children }) {
+	return <div className="mt-2 h-18 min-w-0">{children}</div>;
 }
 
 // Grid columns by the number of cards shown, so the cards always fill their row; by the width of the dashboard
@@ -58,8 +95,20 @@ function MonitoringRow() {
 	const { data } = useMonitoringSummary();
 	if (!data) return null;
 
-	const { requestsToday, series24h, errorRateToday, activeBans, topCountryToday, visitorsToday } = data;
-	const hasCountry = isCountryCode(topCountryToday);
+	const {
+		requestsToday,
+		series24h,
+		errorRateToday,
+		clientErrorsToday,
+		serverErrorsToday,
+		activeBans,
+		bansAdded24h,
+		topBanReasons,
+		topCountriesToday,
+		visitorsToday,
+	} = data;
+	const countries = topCountryRows(topCountriesToday);
+	const reasons = banSegments(activeBans, topBanReasons);
 	const cards = [
 		requestsToday !== null && requestsToday !== undefined ? (
 			<StatCard
@@ -75,7 +124,7 @@ function MonitoringRow() {
 					) : undefined
 				}
 			>
-				{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}
+				<CardPicture>{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}</CardPicture>
 			</StatCard>
 		) : null,
 		errorRateToday !== null && errorRateToday !== undefined ? (
@@ -87,7 +136,11 @@ function MonitoringRow() {
 				label={<T id="dashboard.monitoring.error-rate" />}
 				value={percentFormat.format(errorRateToday)}
 				hint={<T id="monitoring.stat.error-rate.hint" />}
-			/>
+			>
+				<CardPicture>
+					<ErrorSplit segments={errorSegments(clientErrorsToday, serverErrorsToday)} />
+				</CardPicture>
+			</StatCard>
 		) : null,
 		activeBans !== null && activeBans !== undefined ? (
 			<StatCard
@@ -97,17 +150,32 @@ function MonitoringRow() {
 				tone="destructive"
 				label={<T id="monitoring.crowdsec.active-bans" />}
 				value={formatCount(activeBans)}
-			/>
+				hint={
+					<span className={bansAdded24h > 0 ? "font-medium text-destructive" : undefined}>
+						<T id="dashboard.monitoring.bans-added" data={{ count: formatCount(bansAdded24h ?? 0) }} />
+					</span>
+				}
+			>
+				<CardPicture>{reasons.length > 0 ? <BanReasons segments={reasons} /> : null}</CardPicture>
+			</StatCard>
 		) : null,
-		hasCountry ? (
+		countries.length > 0 ? (
 			<StatCard
 				key="country"
 				to="/monitoring/traffic"
 				icon={FlagIcon}
 				tone="primary"
-				label={<T id="dashboard.monitoring.top-country" />}
-				value={<CountryName code={topCountryToday} />}
-			/>
+				label={<T id="dashboard.monitoring.top-countries" />}
+				value={
+					<>
+						<Flag countryCode={countries[0].code} className="me-2 align-[-0.1em]" tooltip={false} />
+						{countryLabel(countries[0].code)}
+					</>
+				}
+				hint={<T id="monitoring.requests" data={{ count: countries[0].requests }} />}
+			>
+				<CardPicture>{countries.length > 1 ? <TopCountries rows={countries.slice(1)} /> : null}</CardPicture>
+			</StatCard>
 		) : null,
 	].filter(Boolean);
 

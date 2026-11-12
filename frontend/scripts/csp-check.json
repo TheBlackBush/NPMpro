@@ -491,7 +491,12 @@
 		{
 			"name": "dashboard",
 			"route": "/",
-			"steps": [{ "waitFor": "role=heading[name='Recent changes']" }]
+			"steps": [
+				{ "waitFor": "role=heading[name='Recent changes']" },
+				{ "hover": "main a[href='/nginx/proxy']:has([data-slot=card])" },
+				{ "waitFor": "main a[href='/nginx/proxy']:hover [data-slot=card]" },
+				{ "press": "Tab" }
+			]
 		}
 	]
 }
