@@ -146,3 +146,34 @@ it("hides the row from the generic settings list", async () => {
 		false,
 	);
 });
+
+it("imports the crowdsec.conf of an older backup after a restore and writes the files from the row", async () => {
+	const { reloadCrowdsecAfterRestore } = await import("../internal/crowdsec-setting.js");
+	await writeFile(
+		path.join(api.root, "data/crowdsec/crowdsec.conf"),
+		"ENABLED=false\nAPI_URL=http://127.0.0.1:10\nAPI_KEY=restored-key\n",
+	);
+	await reloadCrowdsecAfterRestore();
+	const meta = await storedMeta();
+	assert.equal(meta.enabled, false);
+	assert.equal(meta.api_url, "http://127.0.0.1:10");
+	assert.equal((await api.read("/data/crowdsec/crowdsec.conf")).split("\n")[0], HEADER);
+	assert.equal(
+		await api.read("/data/npmpro/nginx/crowdsec.conf"),
+		"# the CrowdSec bouncer is off (Settings, CrowdSec)\n",
+	);
+	assert.equal(JSON.stringify(meta).includes("restored-key"), false);
+});
+
+it("keeps the current settings when a restored database has no row and the file is the one NPMpro wrote", async () => {
+	const { reloadCrowdsecAfterRestore } = await import("../internal/crowdsec-setting.js");
+	const before = await storedMeta();
+	await api.db("setting").where({ id: "crowdsec" }).delete();
+	await reloadCrowdsecAfterRestore();
+	const meta = await storedMeta();
+	assert.equal(meta.enabled, before.enabled);
+	assert.equal(meta.api_url, before.api_url);
+	assert.equal((await api.read("/data/crowdsec/crowdsec.conf")).split("\n")[0], HEADER);
+	assert.match(await api.read("/data/crowdsec/crowdsec.conf"), /API_URL=http:\/\/127\.0\.0\.1:10\n/u);
+	assert.equal(JSON.stringify(meta).includes("restored-key"), false);
+});

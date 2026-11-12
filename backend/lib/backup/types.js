@@ -15,7 +15,14 @@ const CATEGORIES = [
 	{ id: "users", types: ["users"] },
 	{
 		id: "settings",
-		types: ["settings_runtime", "settings_default_site", "settings_oidc", "settings_monitoring", SCHEDULE_TYPE],
+		types: [
+			"settings_runtime",
+			"settings_default_site",
+			"settings_oidc",
+			"settings_monitoring",
+			"settings_crowdsec",
+			SCHEDULE_TYPE,
+		],
 	},
 	{ id: "custom_files", types: ["custom_nginx", "crowdsec_files"] },
 ];
@@ -33,6 +40,7 @@ const RESTORE_ORDER = [
 	"settings_default_site",
 	"settings_oidc",
 	"settings_monitoring",
+	"settings_crowdsec",
 	SCHEDULE_TYPE,
 	"custom_nginx",
 	"crowdsec_files",
@@ -64,11 +72,13 @@ const parentsOf = (paths) =>
  * @param   {string[]}    options.roots    the files and folders export copies (folders recursively, through allow)
  * @param   {Function[]}  options.matches  (rel) => boolean, the allowed files and folders
  * @param   {Function}    [options.secret] (rel) => boolean, files left out when a backup has no secrets
+ * @param   {string[]}    [options.importOnly] files an older backup holds: a restore places them, an export never writes them
  */
-const fileRules = ({ roots, matches, secret = () => false }) => {
-	const parents = parentsOf(roots);
+const fileRules = ({ roots, matches, secret = () => false, importOnly = [] }) => {
+	const parents = parentsOf([...roots, ...importOnly]);
 	return {
 		roots,
+		importOnly,
 		allow: (rel) =>
 			isPlainPath(rel) && (parents.has(rel) || roots.includes(rel) || matches.some((match) => match(rel))),
 		secret: (rel) => isPlainPath(rel) && secret(rel),
@@ -110,6 +120,21 @@ const settingMetaSecret = (id, key) => {
 					? { ...row, meta: { ...row.meta, [key]: box.encrypt(row.meta[key]) } }
 					: row,
 			)(rowsByTable),
+	};
+};
+
+/**
+ * settingMetaSecret for several keys of one setting row
+ *
+ * @param   {string}   id
+ * @param   {string[]} keys
+ */
+const settingMetaSecrets = (id, keys) => {
+	const parts = keys.map((key) => settingMetaSecret(id, key));
+	return {
+		export: (rowsByTable, box) => parts.reduce((rows, part) => part.export(rows, box), rowsByTable),
+		strip: (rowsByTable) => parts.reduce((rows, part) => part.strip(rows), rowsByTable),
+		seal: (rowsByTable, box) => parts.reduce((rows, part) => part.seal(rows, box), rowsByTable),
 	};
 };
 
@@ -161,7 +186,10 @@ const CERTIFICATE_FILES = [
 	/^tls\/mtls\/npm-\d+\.pem$/u,
 ].map((pattern) => (rel) => pattern.test(rel));
 
-const CROWDSEC_FILES = ["crowdsec/crowdsec.conf", "crowdsec/ban.html", "crowdsec/captcha.html"];
+// the pages the bouncer shows; crowdsec.conf is written from the crowdsec setting row (settings_crowdsec) and is no
+// longer exported, but older backups hold it: it stays allowed, and a restore imports it (reloadSettings.crowdsec)
+const CROWDSEC_FILES = ["crowdsec/ban.html", "crowdsec/captcha.html"];
+const LEGACY_CROWDSEC_CONF = "crowdsec/crowdsec.conf";
 
 const TYPES = {
 	proxy_hosts: {
@@ -253,6 +281,11 @@ const TYPES = {
 		files: NO_FILES,
 		secrets: settingMetaSecret("geoip", "license_key"),
 	},
+	settings_crowdsec: {
+		tables: settingRows(["crowdsec"]),
+		files: NO_FILES,
+		secrets: settingMetaSecrets("crowdsec", ["api_key", "captcha_secret_key"]),
+	},
 	custom_nginx: {
 		tables: [],
 		files: fileRules({ roots: ["custom_nginx"], matches: [isUnder("custom_nginx")] }),
@@ -262,9 +295,10 @@ const TYPES = {
 		tables: [],
 		files: fileRules({
 			roots: CROWDSEC_FILES,
-			matches: [(rel) => CROWDSEC_FILES.includes(rel)],
-			// holds the bouncer API key
-			secret: (rel) => rel === "crowdsec/crowdsec.conf",
+			importOnly: [LEGACY_CROWDSEC_CONF],
+			matches: [(rel) => CROWDSEC_FILES.includes(rel) || rel === LEGACY_CROWDSEC_CONF],
+			// an older backup's crowdsec.conf holds the bouncer API key
+			secret: (rel) => rel === LEGACY_CROWDSEC_CONF,
 		}),
 		secrets: NO_SECRETS,
 	},
@@ -303,4 +337,4 @@ const allowFile = (types, relUnderArchive) => {
 	return types.some((type) => Object.hasOwn(TYPES, type) && TYPES[type].files.allow(rel));
 };
 
-export { allowFile, CATEGORIES, RESTORE_ORDER, TYPES };
+export { allowFile, CATEGORIES, LEGACY_CROWDSEC_CONF, RESTORE_ORDER, TYPES };

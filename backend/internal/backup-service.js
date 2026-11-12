@@ -14,6 +14,7 @@ import internalAuditLog from "./audit-log.js";
 import { createBackupService } from "./backup.js";
 import { createScheduleService } from "./backup-schedules.js";
 import internalCertificate from "./certificate.js";
+import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
 import internalDnsCredential from "./dns-credential.js";
 import internalNginx from "./nginx.js";
 import {
@@ -52,7 +53,11 @@ const internalBackup = createBackupService({
 	renewals: { pause: internalCertificate.pauseRenewals, resume: internalCertificate.resumeRenewals },
 	regenerate: { loadEnabledHosts, rebuildAccessListFiles, regenerateAllHostsNow, regenerateDefaultSite },
 	runtime: { loadRuntimeConfig, applyAllRuntime },
-	reloadSettings: { oidc: clearDiscoveryCache, monitoring: () => geoip.reload() },
+	reloadSettings: {
+		oidc: clearDiscoveryCache,
+		monitoring: () => geoip.reload(),
+		crowdsec: reloadCrowdsecAfterRestore,
+	},
 	dnsCredentials: {
 		write: (certificate) => internalDnsCredential.writeCertificateFile(certificate),
 		remove: (certificateId) => internalDnsCredential.removeCertificateFile(certificateId),

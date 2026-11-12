@@ -980,6 +980,7 @@
 	"settings.backup.type.dns_credentials": "Credenciais DNS",
 	"settings.backup.type.proxy_hosts": "Hosts de proxy",
 	"settings.backup.type.redirection_hosts": "Hosts de redirecionamento",
+	"settings.backup.type.settings_crowdsec": "Definições do CrowdSec",
 	"settings.backup.type.settings_default_site": "Site predefinido",
 	"settings.backup.type.settings_monitoring": "Monitorização e GeoIP",
 	"settings.backup.type.settings_oidc": "Início de sessão OIDC",

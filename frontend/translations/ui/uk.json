@@ -980,6 +980,7 @@
 	"settings.backup.type.dns_credentials": "Облікові дані DNS",
 	"settings.backup.type.proxy_hosts": "Проксі-хости",
 	"settings.backup.type.redirection_hosts": "Редирект-хости",
+	"settings.backup.type.settings_crowdsec": "Налаштування CrowdSec",
 	"settings.backup.type.settings_default_site": "Сторінка за замовчуванням",
 	"settings.backup.type.settings_monitoring": "Моніторинг і GeoIP",
 	"settings.backup.type.settings_oidc": "Вхід через OIDC",

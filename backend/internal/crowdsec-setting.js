@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { testConnection } from "../lib/crowdsec/connection-test.js";
 import { applyCrowdsecFiles, bouncerLoaded } from "../lib/crowdsec/files.js";
-import { importCrowdsecFile } from "../lib/crowdsec/import.js";
+import { importCrowdsecFile, recoverCrowdsecFromWrittenFile } from "../lib/crowdsec/import.js";
 import {
 	applyCrowdsecUpdate,
 	CROWDSEC_FIELDS,
@@ -249,5 +249,26 @@ const internalCrowdsecSetting = {
 	},
 };
 
-export { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec };
+/**
+ * After a restore or merge of the CrowdSec row or files: without a restored row the current settings are read back
+ * from the file NPMpro wrote (never replaced by the defaults), otherwise an older backup's crowdsec.conf is imported
+ * into the row. Then the three files are written from the row. The restore runs nginx -t and the reload afterwards
+ * (applyRestored); this runs inside its queue job, so it does not queue itself.
+ *
+ * @returns {Promise<void>}
+ */
+const reloadCrowdsecAfterRestore = async () => {
+	if (!(await hasStoredCrowdsec()) && (await recoverCrowdsecFromWrittenFile())) {
+		logger.info("CrowdSec: the settings of this instance were kept through the restore");
+	} else {
+		await importCrowdsecFile();
+	}
+	const cfg = await getCrowdsecConfig();
+	await applyCrowdsecFiles(cfg.values);
+	void Promise.resolve()
+		.then(() => hooks.onApplied())
+		.catch((err) => logger.warn(`CrowdSec: the poll after the restore failed: ${err.message}`));
+};
+
+export { logCrowdsecBlock, reloadCrowdsecAfterRestore, setCrowdsecHooks, startCrowdsec };
 export default internalCrowdsecSetting;

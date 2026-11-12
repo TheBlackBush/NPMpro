@@ -25,7 +25,11 @@ const ROW_ACTIONS = {
 	schedule: new Set(["add", "keep", "take"]),
 };
 // the sealed meta key a setting row keeps from the instance when the backup has no secrets
-const SECRET_SETTING_KEYS = { oidc: "client_secret", geoip: "license_key" };
+const SECRET_SETTING_KEYS = {
+	oidc: ["client_secret"],
+	geoip: ["license_key"],
+	crowdsec: ["api_key", "captcha_secret_key"],
+};
 // the table each link column points to, and the value for "none" (null: the link row is not written)
 const LINKS = {
 	certificate_id: ["certificate", 0],
@@ -353,17 +357,11 @@ const mergeTypes = async ({
 				return;
 			}
 			const meta = { ...sealed.meta };
-			const secretKey = SECRET_SETTING_KEYS[key(source.id)];
 			const currentMeta = parseJson(current.meta);
-			if (
-				!secrets &&
-				SECRET_TYPES.has(item.type) &&
-				secretKey &&
-				currentMeta &&
-				typeof currentMeta === "object" &&
-				Object.hasOwn(currentMeta, secretKey)
-			) {
-				meta[secretKey] = currentMeta[secretKey];
+			if (!secrets && SECRET_TYPES.has(item.type) && currentMeta && typeof currentMeta === "object") {
+				for (const secretKey of SECRET_SETTING_KEYS[key(source.id)] ?? []) {
+					if (Object.hasOwn(currentMeta, secretKey)) meta[secretKey] = currentMeta[secretKey];
+				}
 			}
 			const columns = await columnsOf("setting");
 			const values = coerceRow(columns, "setting", {

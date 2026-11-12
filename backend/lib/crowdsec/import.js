@@ -93,4 +93,38 @@ const importCrowdsecFile = async ({
 	return { imported: true, unknown, dropped };
 };
 
-export { importCrowdsecFile };
+/**
+ * For a database without a crowdsec row while the data folder holds the file NPMpro wrote (a restore of an older
+ * backup): the row is made from that file, so the working settings are not replaced by the defaults. The file holds the
+ * effective values, so an environment override that was active is stored too.
+ *
+ * @param   {Object}   [deps]
+ * @param   {Object}   [deps.fs]
+ * @param   {Object}   [deps.log]
+ * @param   {Object}   [deps.box]
+ * @returns {Promise<boolean>} whether a row was made
+ */
+const recoverCrowdsecFromWrittenFile = async ({ fs = nodeFs, log = logger, box = defaultSecretBox } = {}) => {
+	let text;
+	try {
+		if (!(await fs.lstat(CROWDSEC_CONF_PATH)).isFile()) return false;
+		text = await fs.readFile(CROWDSEC_CONF_PATH, "utf8");
+	} catch (err) {
+		if (err.code === "ENOENT") return false;
+		throw err;
+	}
+	if (text.split(FIRST_LINE, 1)[0] !== HEADER) return false;
+	const { values } = valuesFromFile(parseConfLines(text));
+	const meta = { ...values };
+	for (const key of SECRET_KEYS) {
+		if (values[key] === "") delete meta[key];
+		else meta[key] = box.encrypt(values[key]);
+	}
+	await saveStoredCrowdsec(meta);
+	log.warn(
+		"CrowdSec: the restored database has no CrowdSec settings, the current ones were read back from the written file",
+	);
+	return true;
+};
+
+export { importCrowdsecFile, recoverCrowdsecFromWrittenFile };

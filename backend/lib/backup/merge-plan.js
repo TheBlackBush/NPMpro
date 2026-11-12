@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { TABLE as SCHEDULE_TABLE, SCHEDULE_TYPE } from "./schedule-rows.js";
 import { domainsOf, ITEM_TYPES, itemLabel, linkedOf, selectRows } from "./select.js";
-import { CATEGORIES, RESTORE_ORDER, TYPES } from "./types.js";
+import { CATEGORIES, LEGACY_CROWDSEC_CONF, RESTORE_ORDER, TYPES } from "./types.js";
 
 // The merge planner: decides per backup item whether it is added, replaces a matching instance row, is skipped or uses
 // the matching row, with the user's choices and the permission limits applied. It is pure and deterministic, so the
@@ -333,6 +333,8 @@ const fileDiffs = (ctx) => {
 	return Object.keys(ctx.stageFiles)
 		.sort(compareText)
 		.flatMap((rel) => {
+			// an older backup's crowdsec.conf: the settings come from the row, a restore imports it
+			if (rel === LEGACY_CROWDSEC_CONF) return [];
 			const typeId = types.find((type) => TYPES[type].files.allow(rel));
 			if (typeId === undefined || current[rel] === ctx.stageFiles[rel]) return [];
 			const target = Object.hasOwn(current, rel) ? { type: typeId, id: rel, label: rel } : null;

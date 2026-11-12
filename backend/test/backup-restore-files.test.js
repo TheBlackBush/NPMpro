@@ -159,6 +159,21 @@ it("swaps a single-file root and leaves the folder's other files alone", async (
 	await rm(root, { recursive: true });
 });
 
+it("leaves the written crowdsec.conf in place when the backup has none, and swaps it when an older backup holds it", async () => {
+	const { root, dataDir, stageDir, asideDir } = await setup();
+	await put(path.join(dataDir, "crowdsec/crowdsec.conf"), "written");
+	await put(path.join(dataDir, "crowdsec/ban.html"), "old ban");
+	await put(path.join(stageDir, "files/crowdsec/ban.html"), "new ban");
+	const before = await snapshot(dataDir);
+	const first = await swapFiles({ dataDir, stageDir, types: ["crowdsec_files"], asideDir });
+	const after = await snapshot(dataDir);
+	assert.equal(after["crowdsec/crowdsec.conf"], before["crowdsec/crowdsec.conf"]);
+	assert.equal(after["crowdsec/ban.html"], "file 600 new ban");
+	await first.undo();
+	assert.deepEqual(await snapshot(dataDir), before);
+	await rm(root, { recursive: true });
+});
+
 it("leaves certbot live folders in place and swaps the files certificates own", async () => {
 	const { root, dataDir, stageDir, asideDir } = await setup();
 	await put(path.join(dataDir, "tls/certbot/archive/npm-1/cert1.pem"), "old cert");

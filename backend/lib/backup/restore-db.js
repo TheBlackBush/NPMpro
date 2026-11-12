@@ -43,6 +43,7 @@ const SECRET_TYPES = new Set([
 	"users",
 	"settings_oidc",
 	"settings_monitoring",
+	"settings_crowdsec",
 	"crowdsec_files",
 	"backup_schedules",
 ]);

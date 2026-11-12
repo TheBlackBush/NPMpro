@@ -24,6 +24,7 @@ const ALL_TYPES = [
 	"settings_default_site",
 	"settings_oidc",
 	"settings_monitoring",
+	"settings_crowdsec",
 	"custom_nginx",
 	"crowdsec_files",
 	"backup_schedules",

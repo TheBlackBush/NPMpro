@@ -980,6 +980,7 @@
 	"settings.backup.type.dns_credentials": "DNS 凭据",
 	"settings.backup.type.proxy_hosts": "代理主机",
 	"settings.backup.type.redirection_hosts": "重定向主机",
+	"settings.backup.type.settings_crowdsec": "CrowdSec 设置",
 	"settings.backup.type.settings_default_site": "默认站点",
 	"settings.backup.type.settings_monitoring": "监控和 GeoIP",
 	"settings.backup.type.settings_oidc": "OIDC 登录",
