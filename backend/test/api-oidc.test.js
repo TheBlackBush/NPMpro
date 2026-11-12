@@ -49,20 +49,23 @@ const idToken = (claims) => {
 	const signature = sign("sha256", Buffer.from(`${header}.${payload}`), keys.privateKey).toString("base64url");
 	return `${header}.${payload}.${signature}`;
 };
-const metadata = {
-	issuer: ISSUER,
-	authorization_endpoint: `${ISSUER}/authorize`,
-	token_endpoint: `${ISSUER}/token`,
-	jwks_uri: `${ISSUER}/jwks`,
-	userinfo_endpoint: `${ISSUER}/userinfo`,
+const metadataOf = (issuer) => ({
+	issuer,
+	authorization_endpoint: `${issuer}/authorize`,
+	token_endpoint: `${issuer}/token`,
+	jwks_uri: `${issuer}/jwks`,
+	userinfo_endpoint: `${issuer}/userinfo`,
 	response_types_supported: ["code"],
 	subject_types_supported: ["public"],
 	id_token_signing_alg_values_supported: ["RS256"],
-};
+});
 // the identity provider answers discovery, its keys and the token request (which hands out the id token set in `seen`)
-const mockProvider = () => {
-	const provider = api.outside.http.get(ISSUER);
-	provider.intercept({ path: "/.well-known/openid-configuration", method: "GET" }).reply(200, metadata).persist();
+const mockProvider = (issuer = ISSUER) => {
+	const provider = api.outside.http.get(issuer);
+	provider
+		.intercept({ path: "/.well-known/openid-configuration", method: "GET" })
+		.reply(200, metadataOf(issuer))
+		.persist();
 	provider
 		.intercept({ path: "/jwks", method: "GET" })
 		.reply(200, { keys: [keys.jwk] })
@@ -775,6 +778,42 @@ it("takes the issuer and subject from the id token, not from the user info (F3)"
 	const done = await finishLogin(login.browser, login.params.get("state"));
 	assert.equal(done.headers.get("location"), "/");
 	assert.deepEqual(await linkOf(created.body.id), { npmpro_oidc_issuer: ISSUER, npmpro_oidc_subject: "info-sub" });
+});
+
+it("links a user again to the new issuer after the provider changed (R1)", async () => {
+	const ISSUER2 = "https://idp2.example.com";
+	const created = await admin.post("/users", { name: "Mover", email: "mover@example.com", roles: [] });
+	assert.equal(created.status, 201, created.text);
+	const { id } = created.body;
+	assert.equal((await loginAs("mover@example.com", "mover-sub")).done.headers.get("location"), "/");
+	assert.equal((await linkOf(id)).npmpro_oidc_issuer, ISSUER);
+
+	mockProvider(ISSUER2);
+	const moved = await admin.put(SETTINGS, { issuer_url: ISSUER2, client_secret: SECRET });
+	assert.equal(moved.status, 200, moved.text);
+	try {
+		const login = await startLogin();
+		seen.idToken = idToken({
+			iss: ISSUER2,
+			nonce: login.params.get("nonce"),
+			email: "mover@example.com",
+			email_verified: true,
+			sub: "mover-sub",
+		});
+		assert.equal((await finishLogin(login.browser, login.params.get("state"))).headers.get("location"), "/");
+		assert.deepEqual(await linkOf(id), { npmpro_oidc_issuer: ISSUER2, npmpro_oidc_subject: "mover-sub" });
+		const rows = await api.db("audit_log").where({ action: "oidc-linked", object_id: id }).orderBy("id");
+		assert.equal(rows.length, 2);
+		assert.deepEqual(JSON.parse(rows[1].meta), {
+			name: "Mover",
+			email: "mover@example.com",
+			issuer: ISSUER2,
+			relinked: true,
+		});
+	} finally {
+		const back = await admin.put(SETTINGS, { issuer_url: ISSUER, client_secret: SECRET });
+		assert.equal(back.status, 200, back.text);
+	}
 });
 
 it("keeps the issuer and subject out of the audit meta of a deleted linked user (Review Focus 4)", async () => {
