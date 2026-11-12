@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { accessSync, constants, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { testConnection } from "../lib/crowdsec/connection-test.js";
 import { applyCrowdsecFiles, bouncerLoaded } from "../lib/crowdsec/files.js";
@@ -42,6 +42,14 @@ const setCrowdsecHooks = (next) => {
 };
 
 const fileExists = (file) => existsSync(rooted(file));
+const fileReadable = (file) => {
+	try {
+		accessSync(rooted(file), constants.R_OK);
+		return true;
+	} catch {
+		return false;
+	}
+};
 const encrypt = (plain) => defaultSecretBox.encrypt(plain);
 
 const statusOf = async () => {
@@ -95,7 +103,7 @@ const applyCrowdsec = (values, { save, restore }) =>
  * @param   {Object} [deps]
  * @param   {Object} [deps.nginx]  { test }
  * @param   {Object} [deps.log]
- * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null } | null>}  null when the row could
+ * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null, missingFiles: string[] } | null>}  null when the row could
  *          not be read
  */
 const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
@@ -105,14 +113,19 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 		if (cfg.invalid.length > 0) log.warn(`CrowdSec: ignored invalid values of ${cfg.invalid.join(", ")}`);
 		if (cfg.secretError)
 			log.warn("CrowdSec: a saved key cannot be decrypted, enter it again in Settings, CrowdSec");
+		// the bouncer opens its files when nginx starts, which nginx -t does not do: a missing one would stop nginx
+		const missingFiles = cfg.values.enabled ? requiredFiles(cfg.values).filter((file) => !fileReadable(file)) : [];
+		const bouncerOff = missingFiles.length > 0;
+		if (bouncerOff)
+			log.warn(`CrowdSec: ${missingFiles.join(", ")} is missing or unreadable, the bouncer stays off`);
 		let nginxError = null;
 		try {
-			await runtimeExclusive(() => applyCrowdsecFiles(cfg.values, () => nginx.test()));
+			await runtimeExclusive(() => applyCrowdsecFiles(cfg.values, () => nginx.test(), { bouncerOff }));
 		} catch (err) {
 			nginxError = err.message;
 			log.error(`CrowdSec: the settings did not pass nginx -t and were not applied: ${err.message}`);
 		}
-		return { values: cfg.values, locked: cfg.locked, nginxError };
+		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles };
 	} catch (err) {
 		log.error(`Could not apply the CrowdSec settings at startup: ${err.message}`);
 		return null;
@@ -139,10 +152,10 @@ const logCrowdsecBlock = async (
 ) => {
 	if (!start) return;
 	try {
-		const { values, locked, nginxError } = start;
-		const active = values.enabled && !nginxError;
+		const { values, locked, nginxError, missingFiles = [] } = start;
+		const bouncerOff = missingFiles.length > 0;
+		const active = values.enabled && !nginxError && !bouncerOff;
 		const checks = active ? (await test(values, { timeoutMs })).checks : [];
-		const missingFiles = active ? requiredFiles(values).filter((file) => !fileExists(file)) : [];
 		const warnings = startupWarnings({
 			values,
 			checks,
@@ -150,7 +163,7 @@ const logCrowdsecBlock = async (
 			missingFiles,
 			localOverride: fileExists(LOCAL_CONF),
 		});
-		print(renderStartupBlock({ values, lockedBy: lockedByOf("crowdsec", locked), checks, warnings }));
+		print(renderStartupBlock({ values, lockedBy: lockedByOf("crowdsec", locked), checks, warnings, bouncerOff }));
 	} catch (err) {
 		logger.warn(`CrowdSec: the startup check failed: ${err.message}`);
 	}
@@ -187,7 +200,7 @@ const internalCrowdsecSetting = {
 		const before = await getCrowdsecConfig();
 		const next = applyCrowdsecUpdate(before.stored, changes, before.locked, encrypt);
 		const after = effectiveCrowdsec(next);
-		const problems = validateCrowdsec(after.values, { exists: fileExists });
+		const problems = validateCrowdsec(after.values, { exists: fileExists, readable: fileReadable });
 		if (problems.length > 0) throw new errs.ValidationError(problems.join(" "));
 		if (after.values.enabled && !force) {
 			const result = await testConnection(after.values, { timeoutMs: TEST_TIMEOUT_MS });

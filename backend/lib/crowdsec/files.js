@@ -16,11 +16,13 @@ const ADMIN_CHECKED = "# the admin UI is checked by CrowdSec (Settings, CrowdSec
 
 /**
  * @param   {Object} values  effective values, secrets in plain text
+ * @param   {Object} [options]
+ * @param   {boolean} [options.bouncerOff]  write the include that leaves the bouncer off, whatever the values say
  * @returns {{ path: string, content: string }[]}
  */
-const crowdsecFiles = (values) => [
+const crowdsecFiles = (values, { bouncerOff = false } = {}) => [
 	{ path: CROWDSEC_CONF_PATH, content: renderCrowdsecConf(values) },
-	{ path: BOUNCER_INCLUDE, content: values.enabled ? INCLUDE_ON : INCLUDE_OFF },
+	{ path: BOUNCER_INCLUDE, content: values.enabled && !bouncerOff ? INCLUDE_ON : INCLUDE_OFF },
 	{ path: ADMIN_INCLUDE, content: values.admin_ui_excluded ? ADMIN_EXCLUDED : ADMIN_CHECKED },
 ];
 
@@ -44,11 +46,12 @@ const ensurePrivate = async (fs, file) => {
  * @param   {Object}   [deps]
  * @param   {Object}   [deps.fs]
  * @param   {Object}   [deps.log]
+ * @param   {boolean}  [deps.bouncerOff]  see crowdsecFiles
  * @returns {Promise<*>} the result of fn
  */
-const applyCrowdsecFiles = async (values, fn, { fs = nodeFs, log } = {}) => {
+const applyCrowdsecFiles = async (values, fn, { fs = nodeFs, log, bouncerOff = false } = {}) => {
 	await ensurePrivate(fs, CROWDSEC_CONF_PATH);
-	return await withFiles(crowdsecFiles(values), fn, { fs, log });
+	return await withFiles(crowdsecFiles(values, { bouncerOff }), fn, { fs, log });
 };
 
 /**

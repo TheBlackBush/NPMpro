@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { chmod, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
@@ -91,6 +91,74 @@ it("keeps the previous files when nginx -t fails at start", async () => {
 	} finally {
 		await api.outside.passCommand("nginx");
 		await writeFile(path.join(api.root, "data/crowdsec/crowdsec.conf"), previous);
+	}
+});
+
+it("switches the bouncer off, not nginx, while a file it opens at start is missing, and back on once it is there", async () => {
+	const { startCrowdsec } = await import("../internal/crowdsec-setting.js");
+	const { renderStartupBlock, startupWarnings } = await import("../lib/crowdsec/startup-block.js");
+	const saved = await storedMeta();
+	const key = "/data/crowdsec/client.key";
+	const cert = "/data/crowdsec/client.crt";
+	const setMeta = (meta) =>
+		api
+			.db("setting")
+			.where({ id: "crowdsec" })
+			.update({ meta: JSON.stringify(meta) });
+	await writeFile(path.join(api.root, cert.slice(1)), "cert");
+	await setMeta({
+		...saved,
+		api_url: "https://127.0.0.1:9",
+		use_tls_auth: true,
+		tls_client_cert: cert,
+		tls_client_key: key,
+	});
+	try {
+		const off = await startCrowdsec();
+		assert.deepEqual(off.missingFiles, [key]);
+		assert.equal(off.nginxError, null);
+		assert.equal(
+			await api.read("/data/npmpro/nginx/crowdsec.conf"),
+			"# the CrowdSec bouncer is off (Settings, CrowdSec)\n",
+		);
+		assert.equal((await storedMeta()).use_tls_auth, true);
+		assert.equal((await storedMeta()).enabled, true);
+		const warnings = startupWarnings({ values: off.values, missingFiles: off.missingFiles });
+		assert.match(
+			renderStartupBlock({ values: off.values, warnings, bouncerOff: true }),
+			/^CrowdSec: off \(a file is missing, see the warning\)$/mu,
+		);
+		assert.deepEqual(warnings, [`${key} does not exist`]);
+		await writeFile(path.join(api.root, key.slice(1)), "key");
+		const on = await startCrowdsec();
+		assert.deepEqual(on.missingFiles, []);
+		assert.equal(
+			await api.read("/data/npmpro/nginx/crowdsec.conf"),
+			"include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n",
+		);
+	} finally {
+		await setMeta(saved);
+		await rm(path.join(api.root, key.slice(1)), { force: true });
+		await rm(path.join(api.root, cert.slice(1)), { force: true });
+		await startCrowdsec();
+	}
+});
+
+it("refuses a save while a file of the bouncer cannot be read", { skip: process.getuid?.() === 0 }, async () => {
+	const file = path.join(api.root, "data/crowdsec/ban-locked.html");
+	await writeFile(file, "<p>banned</p>");
+	await chmod(file, 0o000);
+	try {
+		const res = await (await api.admin()).put("/settings/crowdsec", {
+			ban_response: "page",
+			ban_template_path: "/data/crowdsec/ban-locked.html",
+			force: true,
+		});
+		assert.equal(res.status, 400);
+		assert.match(JSON.stringify(res.body), /cannot be read/u);
+	} finally {
+		await chmod(file, 0o600);
+		await rm(file);
 	}
 });
 

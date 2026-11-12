@@ -76,6 +76,37 @@ elif [ -s /data/tls/ech/nginx.conf ]; then
 fi
 
 
+# The CrowdSec bouncer opens its TLS client files and its ban and captcha pages when nginx starts, which nginx -t does
+# not do: a missing one stops nginx and with it the whole container. The bouncer stays off until the file is back (the
+# settings in the database stay as they are, the backend writes the include again from them at the next start).
+# crowdsec-files-check begin
+if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
+    crowdsec_value() {
+        tr -d '\r' < /data/crowdsec/crowdsec.conf 2> /dev/null | sed -n "s/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}$1[[:space:]]*=[[:space:]]*//p" | tail -n 1 | sed 's/[[:space:]]*$//'
+    }
+    crowdsec_files=""
+    if [ "$(crowdsec_value USE_TLS_AUTH | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+        crowdsec_files="$(crowdsec_value TLS_CLIENT_CERT)
+$(crowdsec_value TLS_CLIENT_KEY)"
+    fi
+    crowdsec_files="$crowdsec_files
+$(crowdsec_value BAN_TEMPLATE_PATH)
+$(crowdsec_value CAPTCHA_TEMPLATE_PATH)"
+    crowdsec_old_ifs="$IFS"
+    IFS="
+"
+    for crowdsec_file in $crowdsec_files; do
+        [ -n "$crowdsec_file" ] || continue
+        if [ ! -r "$crowdsec_file" ]; then
+            echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
+            echo "CrowdSec: $crowdsec_file is missing or unreadable, the bouncer stays off until it is fixed (Settings, CrowdSec)"
+            break
+        fi
+    done
+    IFS="$crowdsec_old_ifs"
+fi
+# crowdsec-files-check end
+
 # A full regeneration (REGENERATE_ALL) keeps the previous host configs, so the sites keep working until the backend
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.

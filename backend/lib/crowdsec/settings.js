@@ -243,9 +243,10 @@ const FILE_LABELS = {
  * @param   {Object}   values   effective values, secrets in plain text
  * @param   {Object}   options
  * @param   {Function} options.exists  (container path) => boolean
+ * @param   {Function} [options.readable]  (container path) => boolean, defaults to exists
  * @returns {string[]}
  */
-export const validateCrowdsec = (values, { exists }) => {
+export const validateCrowdsec = (values, { exists, readable = exists }) => {
 	const problems = [];
 	if (values.enabled) {
 		if (values.api_url === "") problems.push("Enter the LAPI URL.");
@@ -275,9 +276,9 @@ export const validateCrowdsec = (values, { exists }) => {
 	}
 	if (values.enabled) {
 		for (const [key, label] of Object.entries(FILE_LABELS)) {
-			if (requiredFiles(values).includes(values[key]) && !exists(values[key])) {
-				problems.push(`The ${label} ${values[key]} does not exist.`);
-			}
+			if (!requiredFiles(values).includes(values[key])) continue;
+			if (!exists(values[key])) problems.push(`The ${label} ${values[key]} does not exist.`);
+			else if (!readable(values[key])) problems.push(`The ${label} ${values[key]} cannot be read.`);
 		}
 	}
 	return problems;

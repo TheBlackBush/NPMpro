@@ -71,10 +71,12 @@ const startupWarnings = ({ values, checks = [], nginxError = null, missingFiles 
  * @param   {Object}   [input.lockedBy]  key -> variable name
  * @param   {Object[]} [input.checks]
  * @param   {string[]} [input.warnings]
+ * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is missing
  * @returns {string}
  */
-const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [] }) => {
+const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [], bouncerOff = false }) => {
 	const warningLines = warnings.map((warning) => `Warning:  ${warning}`);
+	if (bouncerOff) return ["CrowdSec: off (a file is missing, see the warning)", ...warningLines].join("\n");
 	if (!values.enabled) return ["CrowdSec: off (Settings, CrowdSec)", ...warningLines].join("\n");
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");
