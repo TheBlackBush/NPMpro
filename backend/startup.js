@@ -1,5 +1,6 @@
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
+import { startCrowdsec } from "./internal/crowdsec-setting.js";
 import internalIpRanges from "./internal/ip_ranges.js";
 import {
 	internalMonitoring,
@@ -71,6 +72,10 @@ const prepareApp = async ({ background = true } = {}) => {
 		logger.error(`Could not apply the runtime settings at startup: ${err.message}`);
 	}
 
+	// CrowdSec (Settings, CrowdSec): the one-time import of a hand-edited crowdsec.conf, then the file and the two
+	// includes from the row; the reload at the end loads them. Task 7 prints the startup block from the result.
+	const crowdsecStart = await startCrowdsec();
+
 	await setup();
 	// configs written while their OCSP response was missing staple once it arrives (also later fetches)
 	if (background) watchOcspResponses();
@@ -90,6 +95,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	});
 	await geoip.reload();
 	await internalNginx.reload();
+	void crowdsecStart;
 	if (background) startMonitoringServices();
 };
 

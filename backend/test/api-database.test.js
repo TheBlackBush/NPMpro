@@ -72,7 +72,8 @@ it("shows the database in use: engine, file, version, size, source and the rows 
 	const rows = Object.fromEntries(done.body.tables.map((table) => [table.name, table.rows]));
 	assert.equal(rows.proxy_host, 1);
 	assert.equal(rows.user, 1);
-	assert.equal(rows.setting, 1);
+	// the setup row and the crowdsec row the first start creates
+	assert.equal(rows.setting, 2);
 	for (const table of ["access_list", "certificate", "stream", "traffic_minute", "npmpro_backup_schedule"]) {
 		assert.ok(table in rows, table);
 	}

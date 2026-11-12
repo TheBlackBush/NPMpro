@@ -1,9 +1,10 @@
 import { RUNTIME_GROUPS } from "./runtime-rules.js";
 
 // Rows with their own API and endpoints: the generic API must not change them
-const DEDICATED_IDS = ["oidc", "monitoring", "geoip", "traffic-state", ...RUNTIME_GROUPS];
-// Not listed or returned by the generic API: the reader position is internal, the runtime groups have their own GET
-const HIDDEN_IDS = ["traffic-state", ...RUNTIME_GROUPS];
+const DEDICATED_IDS = ["oidc", "monitoring", "geoip", "crowdsec", "traffic-state", ...RUNTIME_GROUPS];
+// Not listed or returned by the generic API: the reader position is internal, the runtime groups and crowdsec (sealed
+// secrets) have their own GET
+const HIDDEN_IDS = ["traffic-state", "crowdsec", ...RUNTIME_GROUPS];
 
 /**
  * @param   {string}  id
