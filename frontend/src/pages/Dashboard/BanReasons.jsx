@@ -17,9 +17,13 @@ const HEIGHT = 8;
 function BanReasons({ segments }) {
 	return (
 		<div className="mt-2 flex flex-col gap-2">
-			<div className="h-2 overflow-hidden rounded-full" aria-hidden="true">
-				{/* biome-ignore lint/a11y/noSvgWithoutTitle: decorative, the legend under it says the same */}
-				<svg className="block size-full" viewBox={`0 0 100 ${HEIGHT}`} preserveAspectRatio="none">
+			<div className="h-2 overflow-hidden rounded-full">
+				<svg
+					className="block size-full"
+					aria-hidden="true"
+					viewBox={`0 0 100 ${HEIGHT}`}
+					preserveAspectRatio="none"
+				>
 					{segments.map((segment) => (
 						<rect
 							key={segment.key}
