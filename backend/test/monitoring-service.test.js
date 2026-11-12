@@ -1473,6 +1473,7 @@ describe("monitoring API", () => {
 						series_24h: [{ bucket: 1, requests: 3 }],
 						error_rate_today: 0,
 						top_country_today: "DE",
+						top_countries_today: [{ country: "DE", requests: 3 }],
 					});
 				},
 			},
@@ -1897,7 +1898,10 @@ describe("monitoring API", () => {
 			series_24h: [{ bucket: 1, requests: 3 }],
 			error_rate_today: 0,
 			active_bans: 4,
+			bans_added_24h: 1,
+			top_ban_reasons: [],
 			top_country_today: "DE",
+			top_countries_today: [{ country: "DE", requests: 3 }],
 			visitors_today: null,
 		});
 		assert.ok(validSummary(full), JSON.stringify(validSummary.errors));
@@ -1911,14 +1915,59 @@ describe("monitoring API", () => {
 			series_24h: null,
 			error_rate_today: null,
 			active_bans: null,
+			bans_added_24h: null,
+			top_ban_reasons: null,
 			top_country_today: null,
+			top_countries_today: null,
 			visitors_today: null,
 		});
 		assert.ok(validSummary(off), JSON.stringify(validSummary.errors));
 
 		const noGeo = await make({ available: { country: false, asn: false } }).api.getSummary(admin);
 		assert.equal(noGeo.top_country_today, null);
+		assert.equal(noGeo.top_countries_today, null);
 		assert.equal(noGeo.requests_today, 3);
+	});
+
+	it("summary lists the three most common ban reasons and the bans of the last 24 hours", async () => {
+		const out = await make({
+			crowdsec: {
+				total: 12,
+				added_24h: 3,
+				by_scenario: [
+					{ scenario: "crowdsecurity/http-probing", count: 5 },
+					{ scenario: "", count: 3 },
+					{ scenario: "crowdsecurity/ssh-bf", count: 2 },
+					{ scenario: "manual 'ban' from 'localhost'", count: 1 },
+					{ scenario: "crowdsecurity/http-cve-2021-41773", count: 1 },
+				],
+			},
+		}).api.getSummary(admin);
+		assert.equal(out.active_bans, 12);
+		assert.equal(out.bans_added_24h, 3);
+		// the decisions without a scenario are left out: the card counts them under "other"
+		assert.deepEqual(out.top_ban_reasons, [
+			{ scenario: "crowdsecurity/http-probing", count: 5 },
+			{ scenario: "crowdsecurity/ssh-bf", count: 2 },
+			{ scenario: "manual 'ban' from 'localhost'", count: 1 },
+		]);
+		assert.ok(validSummary(out), JSON.stringify(validSummary.errors));
+
+		const quiet = await make({ crowdsec: { total: 0, added_24h: 0 } }).api.getSummary(admin);
+		assert.equal(quiet.bans_added_24h, 0);
+		assert.deepEqual(quiet.top_ban_reasons, []);
+
+		const unconfigured = await make({ crowdsec: { configured: false, reachable: false } }).api.getSummary(admin);
+		assert.equal(unconfigured.active_bans, null);
+		assert.equal(unconfigured.bans_added_24h, null);
+		assert.equal(unconfigured.top_ban_reasons, null);
+		assert.ok(validSummary(unconfigured), JSON.stringify(validSummary.errors));
+
+		const unreachable = await make({
+			crowdsec: { reachable: false, error: "connect ECONNREFUSED" },
+		}).api.getSummary(admin);
+		assert.equal(unreachable.bans_added_24h, null);
+		assert.equal(unreachable.top_ban_reasons, null);
 	});
 });
 

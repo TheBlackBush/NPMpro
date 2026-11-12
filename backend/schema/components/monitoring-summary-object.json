@@ -7,7 +7,10 @@
 		"series_24h",
 		"error_rate_today",
 		"active_bans",
+		"bans_added_24h",
+		"top_ban_reasons",
 		"top_country_today",
+		"top_countries_today",
 		"visitors_today"
 	],
 	"properties": {
@@ -58,11 +61,70 @@
 			"minimum": 0,
 			"description": "Null when CrowdSec is not configured or the last poll failed"
 		},
+		"bans_added_24h": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"description": "Active bans first seen in the last 24 hours. Null when CrowdSec is not configured or the last poll failed"
+		},
+		"top_ban_reasons": {
+			"type": [
+				"array",
+				"null"
+			],
+			"maxItems": 3,
+			"description": "Up to three scenarios with the most active bans, most first; bans without a scenario are left out. Null when CrowdSec is not configured or the last poll failed",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"scenario",
+					"count"
+				],
+				"properties": {
+					"scenario": {
+						"type": "string",
+						"minLength": 1
+					},
+					"count": {
+						"type": "integer",
+						"minimum": 1
+					}
+				}
+			}
+		},
 		"top_country_today": {
 			"type": [
 				"string",
 				"null"
 			]
+		},
+		"top_countries_today": {
+			"type": [
+				"array",
+				"null"
+			],
+			"maxItems": 3,
+			"description": "Up to three countries with the most requests today, most first (equal counts by code); unknown left out. Null when traffic statistics are off or no GeoIP database is installed. top_country_today is the first of them",
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"country",
+					"requests"
+				],
+				"properties": {
+					"country": {
+						"type": "string"
+					},
+					"requests": {
+						"type": "integer",
+						"minimum": 0
+					}
+				}
+			}
 		},
 		"visitors_today": {
 			"type": [

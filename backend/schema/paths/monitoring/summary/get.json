@@ -25,8 +25,34 @@
 									}
 								],
 								"error_rate_today": 0.042,
-								"active_bans": 2,
-								"top_country_today": "DE"
+								"active_bans": 12,
+								"bans_added_24h": 3,
+								"top_ban_reasons": [
+									{
+										"scenario": "crowdsecurity/http-probing",
+										"count": 5
+									},
+									{
+										"scenario": "crowdsecurity/ssh-bf",
+										"count": 2
+									}
+								],
+								"top_country_today": "DE",
+								"top_countries_today": [
+									{
+										"country": "DE",
+										"requests": 610
+									},
+									{
+										"country": "US",
+										"requests": 402
+									},
+									{
+										"country": "FR",
+										"requests": 77
+									}
+								],
+								"visitors_today": 214
 							}
 						}
 					},

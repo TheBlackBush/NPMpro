@@ -1,6 +1,6 @@
 # Monitoring
 
-Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitoring/traffic`) and a CrowdSec tab (`/monitoring/crowdsec`), plus a short monitoring row on the dashboard. It is read-only.
+Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitoring/traffic`) and a CrowdSec tab (`/monitoring/crowdsec`), plus a short monitoring row on the dashboard (requests and error rate today, the active bans with the bans added in the last 24 hours and the three most common reasons, and the three busiest countries today). It is read-only.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/monitoring-traffic-dark.png">
