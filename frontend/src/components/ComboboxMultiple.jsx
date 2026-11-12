@@ -1,6 +1,7 @@
 import { Command as CommandRoot, useCommandState } from "cmdk";
 import { XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { TruncatedText } from "src/components/TruncatedText";
 import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "src/components/ui/popover";
@@ -200,7 +201,7 @@ export function MultipleCombobox({
 									variant="secondary"
 									className="h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal"
 								>
-									<span className="truncate">{label}</span>
+									<TruncatedText>{label}</TruncatedText>
 									{locked ? null : (
 										<Button
 											type="button"
