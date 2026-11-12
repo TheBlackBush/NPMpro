@@ -183,7 +183,14 @@ const mergeTypes = async ({
 		};
 
 		const writeUser = async (item) => {
-			const row = { ...rowOf(item), npmpro_token_valid_after: now };
+			const row = {
+				...rowOf(item),
+				npmpro_token_valid_after: now,
+				// a merged user links again at its next OIDC sign-in, so its link never collides with an instance user (R4)
+				npmpro_oidc_issuer: null,
+				npmpro_oidc_subject: null,
+				npmpro_oidc_linked_on: null,
+			};
 			let userId;
 			if (item.action === "add") {
 				userId = await inserter.insertWithNewId("user", row);

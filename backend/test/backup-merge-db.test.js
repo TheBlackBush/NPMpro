@@ -3,6 +3,7 @@ import { it } from "node:test";
 import knexFactory from "knex";
 import { mergeTypes } from "../lib/backup/merge-db.js";
 import { planMerge, readInstanceRows } from "../lib/backup/merge-plan.js";
+import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_link.js";
 import { createSchema } from "./support/backup-schema.js";
 
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (value) => JSON.parse(value.slice(3)) };
@@ -347,6 +348,44 @@ it("adds a user with a new id, sealed auth rows and a fresh token time; owners f
 		// carol by the user map, bob (not merged) by his email, dave is not on the instance: the importer
 		assert.deepEqual(owners, [carolId, 2, 1]);
 		assert.deepEqual(result.counts, { users: 1, redirection_hosts: 3 });
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("clears the OIDC link of an added user, also one that an instance user holds (Review Focus 3)", async () => {
+	const knex = await open();
+	try {
+		await upOidcLink(knex);
+		const link = { npmpro_oidc_issuer: "https://idp.example.com", npmpro_oidc_subject: "s1" };
+		await knex("user")
+			.where({ id: 1 })
+			.update({ ...link, npmpro_oidc_linked_on: "2026-11-12 12:00:00" });
+		const data = {
+			users: {
+				user: [
+					{
+						id: 1,
+						email: "carol@example.com",
+						name: "Carol",
+						roles: [],
+						...link,
+						npmpro_oidc_linked_on: "2026-11-01 12:00:00",
+					},
+				],
+				auth: [],
+				user_permission: [],
+			},
+		};
+		const { result } = await merge(knex, { data, types: ["users"], items: { users: [1] } });
+		const carol = await knex("user")
+			.where({ id: result.maps.user.get("1") })
+			.first();
+		assert.equal(carol.email, "carol@example.com");
+		assert.equal(carol.npmpro_oidc_issuer, null);
+		assert.equal(carol.npmpro_oidc_subject, null);
+		assert.equal(carol.npmpro_oidc_linked_on, null);
+		assert.equal((await knex("user").where({ id: 1 }).first()).npmpro_oidc_subject, "s1");
 	} finally {
 		await knex.destroy();
 	}

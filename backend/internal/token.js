@@ -1,13 +1,18 @@
 import { carryAuthMethod } from "../lib/auth-method.js";
+import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { parseDatePeriod } from "../lib/helpers.js";
+import { identityOf, linkAction } from "../lib/oidc-identity.js";
 import { OidcLoginError } from "../lib/oidc-login.js";
 import { emailDomainAllowed } from "../lib/oidc-rules.js";
 import { continueSession, newSession } from "../lib/session.js";
+import { oidc as logger } from "../logger.js";
+import auditLogModel from "../models/audit-log.js";
 import authModel from "../models/auth.js";
 import TokenModel from "../models/token.js";
 import userModel from "../models/user.js";
 import mfa from "./mfa.js";
+import { createOidcIdentity } from "./oidc-identity.js";
 import oidcProvision from "./oidc-provision.js";
 import totp from "./totp.js";
 
@@ -18,6 +23,38 @@ const ERROR_MESSAGE_INVALID_CODE_I18N = "error.invalid-code";
 
 const consumedChallenges = new Map();
 const startTime = Math.floor(Date.now() / 1000);
+
+// internal/user.js builds its own instance with the same options (it imports this file, so it cannot be shared)
+const oidcIdentity = createOidcIdentity({
+	knex: userModel.knex(),
+	audit: (row) => auditLogModel.query().insert(row),
+	tryBeginWrite: maintenance.tryBeginWrite,
+});
+
+/**
+ * Refuses a sign-in whose identity is linked elsewhere: audited (skipped during a database move, R3) and logged
+ *
+ * @param   {Object}  user
+ * @param   {{issuer: string, subject: string}}  identity
+ */
+const refuseMismatch = async (user, identity) => {
+	logger.error(`Sign-in of user ${user.id} refused, it is linked to another identity`);
+	const release = maintenance.tryBeginWrite();
+	if (release) {
+		try {
+			await auditLogModel.query().insert({
+				user_id: user.id,
+				action: "oidc-refused",
+				object_type: "user",
+				object_id: user.id,
+				meta: { name: user.name, email: user.email, issuer: identity.issuer },
+			});
+		} finally {
+			release();
+		}
+	}
+	throw new OidcLoginError("identity_mismatch", `User ${user.id} is linked to another identity`);
+};
 
 export default {
 	/**
@@ -104,19 +141,33 @@ export default {
 	 */
 	getTokenFromOAuthClaim: async ({ identity: rawIdentity, claims, config }) => {
 		const Token = TokenModel();
-		const identity = String(rawIdentity).toLowerCase().trim();
+		const email = String(rawIdentity).toLowerCase().trim();
+		const identity = identityOf(claims);
+		if (!identity) throw new OidcLoginError("provider_error", "The provider sent no usable issuer and subject");
 
-		let user = await userModel.query().where("email", identity).orderBy("is_disabled").orderBy("id").first();
+		let user = await userModel.query().where("email", email).orderBy("is_disabled").orderBy("id").first();
+		const holderId = await oidcIdentity.holderOf(identity);
 
+		// a subject linked to another user may not create a second account (R2)
+		if (!user && holderId !== null) {
+			throw new OidcLoginError("identity_mismatch", `The identity is linked to user ${holderId}`);
+		}
 		if (!user) {
-			if (!config.auto_create?.enabled) throw new OidcLoginError("no_user", `No user for ${identity}`);
-			if (!emailDomainAllowed(identity, config.auto_create.allowed_domains)) {
-				throw new OidcLoginError("domain_not_allowed", `Domain of ${identity} is not allowed`);
+			if (!config.auto_create?.enabled) throw new OidcLoginError("no_user", `No user for ${email}`);
+			if (!emailDomainAllowed(email, config.auto_create.allowed_domains)) {
+				throw new OidcLoginError("domain_not_allowed", `Domain of ${email} is not allowed`);
 			}
-			user = await oidcProvision.createUser({ ...claims, email: identity }, config.auto_create.permissions);
+			user = await oidcProvision.createUser({ ...claims, email }, config.auto_create.permissions);
 		}
 
-		if (user.is_disabled) throw new OidcLoginError("user_disabled", `User for ${identity} is disabled`);
+		if (user.is_disabled) throw new OidcLoginError("user_disabled", `User for ${email} is disabled`);
+
+		// the link is written before the MFA challenge: the provider has proven the identity (R7)
+		const action = linkAction(user, identity, holderId);
+		const outcome =
+			action === "link" || action === "relink" ? await oidcIdentity.link(user, identity, action) : action;
+		if (outcome === "skipped") logger.info(`Link of user ${user.id} skipped, a database move is running`);
+		if (outcome === "mismatch") await refuseMismatch(user, identity);
 
 		const hasMfa = await mfa.isAnyEnabled(user.id);
 		if (hasMfa && !config.skip_mfa) {

@@ -93,7 +93,10 @@
 					"merged",
 					"imported",
 					"exported",
-					"downloaded"
+					"downloaded",
+					"oidc-linked",
+					"oidc-unlinked",
+					"oidc-refused"
 				]
 			}
 		},

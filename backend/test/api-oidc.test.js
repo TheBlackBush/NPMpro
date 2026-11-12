@@ -26,6 +26,8 @@ let keys;
 let seen;
 
 const base64url = (value) => Buffer.from(value).toString("base64url");
+// one subject per address, as a provider keeps it: a user signs in with the same subject every time
+const subOf = (email) => `sub-${String(email).toLowerCase().trim()}`;
 const makeKeys = () => {
 	const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 	const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg: "RS256", use: "sig" };
@@ -35,7 +37,14 @@ const idToken = (claims) => {
 	const header = base64url(JSON.stringify({ alg: "RS256", kid: "k1", typ: "JWT" }));
 	const now = Math.floor(Date.now() / 1000);
 	const payload = base64url(
-		JSON.stringify({ iss: ISSUER, aud: CLIENT, sub: randomUUID(), iat: now, exp: now + 300, ...claims }),
+		JSON.stringify({
+			iss: ISSUER,
+			aud: CLIENT,
+			sub: claims.email ? subOf(claims.email) : randomUUID(),
+			iat: now,
+			exp: now + 300,
+			...claims,
+		}),
 	);
 	const signature = sign("sha256", Buffer.from(`${header}.${payload}`), keys.privateKey).toString("base64url");
 	return `${header}.${payload}.${signature}`;
@@ -487,7 +496,7 @@ it("signs a known user in with the claims of the provider and marks the session 
 
 it("reads the email from the user info when the id token has none", async () => {
 	const login = await startLogin();
-	const sub = randomUUID();
+	const sub = subOf("admin@example.com");
 	seen.idToken = idToken({ nonce: login.params.get("nonce"), sub });
 	seen.userinfo = { sub, email: "admin@example.com", email_verified: true };
 	const done = await finishLogin(login.browser, login.params.get("state"));
@@ -532,6 +541,9 @@ it("creates a user on the first login when auto creation allows the domain, with
 	assert.equal(permissions.redirection_hosts, "view");
 	const audit = await api.db("audit_log").where({ object_type: "user", object_id: user.id }).first();
 	assert.equal(JSON.parse(audit.meta).via, "oidc");
+	// the new user is linked to the identity that created it
+	assert.equal(user.npmpro_oidc_issuer, ISSUER);
+	assert.equal(user.npmpro_oidc_subject, subOf("new.person@example.org"));
 	const me = await login.browser.get("/users/me");
 	assert.equal(me.body.email, "new.person@example.org");
 	// the second login finds the same user
@@ -592,6 +604,87 @@ it("asks for the second factor of a user who has one, unless the settings skip i
 		mock.timers.reset();
 		await admin.put(SETTINGS, { skip_mfa: false });
 	}
+});
+
+// a login of `email` with the provider subject `sub`, answered by the callback
+const loginAs = async (email, sub) => {
+	const login = await startLogin();
+	seen.idToken = idToken({ nonce: login.params.get("nonce"), email, email_verified: true, sub });
+	return { login, done: await finishLogin(login.browser, login.params.get("state")) };
+};
+const auditOf = (action, objectId) => api.db("audit_log").where({ action, object_id: objectId }).first();
+
+it("links a user at the first OIDC sign-in, refuses another subject for its email, and links again after an unlink", async () => {
+	const created = await admin.post("/users", {
+		name: "Linked Person",
+		email: "linked@example.com",
+		roles: [],
+		auth: { type: "password", secret: PASSWORD },
+	});
+	assert.equal(created.status, 201, created.text);
+	const { id } = created.body;
+
+	const first = await loginAs("linked@example.com", "first");
+	assert.equal(first.done.headers.get("location"), "/");
+	const row = await api.db("user").where({ id }).first();
+	assert.equal(row.npmpro_oidc_issuer, ISSUER);
+	assert.equal(row.npmpro_oidc_subject, "first");
+	assert.ok(row.npmpro_oidc_linked_on);
+	assert.equal(JSON.parse((await auditOf("oidc-linked", id)).meta).issuer, ISSUER);
+
+	// the API sends the link date and the password flag, never the issuer or the subject (Review Focus 4)
+	const listed = (await admin.get("/users")).body.find((user) => user.id === id);
+	assert.equal(listed.npmpro_has_password, true);
+	assert.ok(listed.npmpro_oidc_linked_on);
+	for (const answer of [
+		listed,
+		(await admin.get(`/users/${id}`)).body,
+		(await first.login.browser.get("/users/me")).body,
+	]) {
+		assert.equal("npmpro_oidc_subject" in answer, false);
+		assert.equal("npmpro_oidc_issuer" in answer, false);
+	}
+
+	const other = await loginAs("linked@example.com", "second");
+	assert.equal(errorOf(other.done), "identity_mismatch");
+	assert.equal(setCookie(other.done, "__Host-Http-token"), undefined);
+	assert.ok(await auditOf("oidc-refused", id));
+
+	const user = await api.limited({ visibility: "all" });
+	assert.equal((await api.client().delete(`/users/${id}/oidc`)).status, 401);
+	assert.equal((await user.delete(`/users/${id}/oidc`)).status, 403);
+	assert.equal((await admin.delete("/users/9999/oidc")).status, 404);
+	const unlinked = await admin.delete(`/users/${id}/oidc`);
+	assert.equal(unlinked.status, 200, unlinked.text);
+	assert.equal(unlinked.body, true);
+	assert.equal((await api.db("user").where({ id }).first()).npmpro_oidc_subject, null);
+	assert.ok(await auditOf("oidc-unlinked", id));
+	assert.equal((await admin.get("/users")).body.find((item) => item.id === id).npmpro_oidc_linked_on, null);
+
+	const again = await loginAs("linked@example.com", "second");
+	assert.equal(again.done.headers.get("location"), "/");
+	assert.equal((await api.db("user").where({ id }).first()).npmpro_oidc_subject, "second");
+});
+
+it("refuses a subject that is linked to another user, also for an account auto-create would make (R2)", async () => {
+	for (const email of ["holder@example.com", "taker@example.com"]) {
+		const created = await admin.post("/users", { name: email, email, roles: [] });
+		assert.equal(created.status, 201, created.text);
+	}
+	assert.equal((await loginAs("holder@example.com", "shared")).done.headers.get("location"), "/");
+	assert.equal(errorOf((await loginAs("taker@example.com", "shared")).done), "identity_mismatch");
+	assert.equal((await api.db("user").where({ email: "taker@example.com" }).first()).npmpro_oidc_subject, null);
+
+	await admin.put(SETTINGS, { auto_create: { enabled: true, allowed_domains: ["example.org"] } });
+	try {
+		assert.equal(errorOf((await loginAs("second.account@example.org", "shared")).done), "identity_mismatch");
+		assert.equal(await api.db("user").where({ email: "second.account@example.org" }).first(), undefined);
+	} finally {
+		await admin.put(SETTINGS, { auto_create: { enabled: false } });
+	}
+	// a user without a password row is listed without the password flag
+	const listed = (await admin.get("/users")).body.find((user) => user.email === "holder@example.com");
+	assert.equal(listed.npmpro_has_password, false);
 });
 
 it("answers OIDC routes with an error code on the sign-in page while OIDC is off or the provider fails", async () => {

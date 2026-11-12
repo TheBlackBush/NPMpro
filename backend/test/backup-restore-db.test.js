@@ -5,6 +5,7 @@ import path from "node:path";
 import { it } from "node:test";
 import knexFactory from "knex";
 import { loadStageData, previewReplace, replaceTypes, sequenceResetQuery } from "../lib/backup/restore-db.js";
+import { up as upOidcLink } from "../migrations/20261112120000_oidc_identity_link.js";
 
 process.env.TZ = "UTC";
 
@@ -253,6 +254,33 @@ it("keeps the users' own session cut-off when now is null (the rollback to the a
 		assert.equal(users.find((row) => row.email === "six@example.com").npmpro_token_valid_after, 1234);
 		assert.equal(users.find((row) => row.email === "someone@example.com").npmpro_token_valid_after, 0);
 		assert.equal(users.find((row) => row.id === 1).npmpro_token_valid_after, 5);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("clears the link of a restored user that holds the restoring admin's OIDC identity, and keeps the others", async () => {
+	const knex = await sqlite();
+	try {
+		await upOidcLink(knex);
+		const issuer = "https://idp.example.com";
+		const linked = (subject) => ({
+			npmpro_oidc_issuer: issuer,
+			npmpro_oidc_subject: subject,
+			npmpro_oidc_linked_on: "2026-11-12 12:00:00",
+		});
+		await knex("user").where({ id: 1 }).update(linked("admin-sub"));
+		const data = usersData();
+		Object.assign(data.users.user[0], linked("one-sub"));
+		Object.assign(data.users.user[2], linked("admin-sub"));
+		await replaceTypes({ knex, data, types: ["users"], adminUserId: 1, box, now: NOW });
+		const users = await knex("user").orderBy("id");
+		assert.equal(users.find((row) => row.id === 1).npmpro_oidc_subject, "admin-sub");
+		assert.equal(users.find((row) => row.email === "someone@example.com").npmpro_oidc_subject, "one-sub");
+		const six = users.find((row) => row.email === "six@example.com");
+		assert.equal(six.npmpro_oidc_issuer, null);
+		assert.equal(six.npmpro_oidc_subject, null);
+		assert.equal(six.npmpro_oidc_linked_on, null);
 	} finally {
 		await knex.destroy();
 	}
