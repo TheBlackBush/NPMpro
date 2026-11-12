@@ -1929,7 +1929,7 @@ describe("monitoring API", () => {
 		assert.equal(noGeo.requests_today, 3);
 	});
 
-	it("summary lists the three most common ban reasons and the bans of the last 24 hours", async () => {
+	it("summary lists the five most common ban reasons and the bans of the last 24 hours", async () => {
 		const out = await make({
 			crowdsec: {
 				total: 12,
@@ -1940,6 +1940,8 @@ describe("monitoring API", () => {
 					{ scenario: "crowdsecurity/ssh-bf", count: 2 },
 					{ scenario: "manual 'ban' from 'localhost'", count: 1 },
 					{ scenario: "crowdsecurity/http-cve-2021-41773", count: 1 },
+					{ scenario: "crowdsecurity/ssh-slow-bf", count: 1 },
+					{ scenario: "crowdsecurity/http-crawl-non_statics", count: 1 },
 				],
 			},
 		}).api.getSummary(admin);
@@ -1950,6 +1952,8 @@ describe("monitoring API", () => {
 			{ scenario: "crowdsecurity/http-probing", count: 5 },
 			{ scenario: "crowdsecurity/ssh-bf", count: 2 },
 			{ scenario: "manual 'ban' from 'localhost'", count: 1 },
+			{ scenario: "crowdsecurity/http-cve-2021-41773", count: 1 },
+			{ scenario: "crowdsecurity/ssh-slow-bf", count: 1 },
 		]);
 		assert.ok(validSummary(out), JSON.stringify(validSummary.errors));
 

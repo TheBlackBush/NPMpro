@@ -5,7 +5,7 @@ import { BAN_TONES, banSegments, OTHER_TONE, shortScenario, topCountryRows } fro
 const ends = (segments) => segments.at(-1).x + segments.at(-1).width;
 const close = (a, b) => Math.abs(a - b) < 1e-9;
 
-it("keeps up to three country rows, upper-case, and drops what is not a country code", () => {
+it("keeps up to five country rows, upper-case, and drops what is not a country code", () => {
 	assert.deepEqual(
 		topCountryRows([
 			{ country: "de", requests: 10 },
@@ -14,11 +14,16 @@ it("keeps up to three country rows, upper-case, and drops what is not a country 
 			{ country: null, requests: 7 },
 			{ country: "FR", requests: 4 },
 			{ country: "NL", requests: 3 },
+			{ country: "JP", requests: 2 },
+			{ country: "BR", requests: 2 },
+			{ country: "IN", requests: 1 },
 		]),
 		[
 			{ code: "DE", requests: 10 },
 			{ code: "US", requests: 8 },
 			{ code: "FR", requests: 4 },
+			{ code: "NL", requests: 3 },
+			{ code: "JP", requests: 2 },
 		],
 	);
 });
@@ -60,6 +65,30 @@ it("splits the bar into the reasons and other, gaps and minimum included, ending
 	// 100 minus 3 gaps minus 4 minimum widths, shared by count: 89 * 5 / 10 = 44.5
 	assert.ok(close(segments[0].width, 46.5));
 	assert.ok(close(segments[1].x, 47.5));
+	assert.ok(close(ends(segments), 100));
+});
+
+it("shows up to five reasons with their own tones, the sixth is cut, and other follows", () => {
+	assert.equal(BAN_TONES.length, 5);
+	assert.equal(new Set(BAN_TONES.map((t) => t.fill)).size, 5);
+	const segments = banSegments(40, [
+		{ scenario: "a/one", count: 9 },
+		{ scenario: "a/two", count: 8 },
+		{ scenario: "a/three", count: 7 },
+		{ scenario: "a/four", count: 6 },
+		{ scenario: "a/five", count: 1 },
+		{ scenario: "a/six", count: 1 },
+	]);
+	assert.deepEqual(
+		segments.map((s) => s.key),
+		["a/one", "a/two", "a/three", "a/four", "a/five", "other"],
+	);
+	assert.deepEqual(
+		segments.slice(0, 5).map((s) => s.tone),
+		BAN_TONES,
+	);
+	assert.equal(segments[5].tone, OTHER_TONE);
+	assert.ok(segments.every((s) => s.width >= 2));
 	assert.ok(close(ends(segments), 100));
 });
 

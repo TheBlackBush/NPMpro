@@ -169,7 +169,7 @@ it("summary counts only the UTC day so far across midnight", async () => {
 
 const country = (bucket, code, requests) => ({ bucket, host: "a", country: code, requests });
 
-it("summary lists the three busiest countries of today, ties by code, unknown and yesterday left out", async () => {
+it("summary lists the five busiest countries of today, ties by code, unknown and yesterday left out", async () => {
 	const { knex, store } = await setup();
 	const hour = Math.floor(NOW / 3600000);
 	await store.flush({
@@ -181,7 +181,9 @@ it("summary lists the three busiest countries of today, ties by code, unknown an
 			country(hour, "US", 9),
 			country(hour, "NL", 4),
 			country(hour, "FR", 4),
-			country(hour, "JP", 1),
+			country(hour, "JP", 3),
+			country(hour, "BR", 2),
+			country(hour, "IN", 1),
 			country(hour - 24, "CN", 100),
 		],
 	});
@@ -190,6 +192,8 @@ it("summary lists the three busiest countries of today, ties by code, unknown an
 		{ country: "DE", requests: 10 },
 		{ country: "US", requests: 9 },
 		{ country: "FR", requests: 4 },
+		{ country: "NL", requests: 4 },
+		{ country: "JP", requests: 3 },
 	]);
 	assert.equal(s.top_country_today, "DE");
 	await knex.destroy();

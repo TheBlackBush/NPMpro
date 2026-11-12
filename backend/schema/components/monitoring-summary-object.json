@@ -74,8 +74,8 @@
 				"array",
 				"null"
 			],
-			"maxItems": 3,
-			"description": "Up to three scenarios with the most active bans, most first; bans without a scenario are left out. Null when CrowdSec is not configured or the last poll failed",
+			"maxItems": 5,
+			"description": "Up to five scenarios with the most active bans, most first; bans without a scenario are left out. Null when CrowdSec is not configured or the last poll failed",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,
@@ -106,8 +106,8 @@
 				"array",
 				"null"
 			],
-			"maxItems": 3,
-			"description": "Up to three countries with the most requests today, most first (equal counts by code); unknown left out. Null when traffic statistics are off or no GeoIP database is installed. top_country_today is the first of them",
+			"maxItems": 5,
+			"description": "Up to five countries with the most requests today, most first (equal counts by code); unknown left out. Null when traffic statistics are off or no GeoIP database is installed. top_country_today is the first of them",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,

@@ -1,18 +1,27 @@
 // The lists of the dashboard's monitoring cards, shaped from the summary. Pure functions, no React.
 import { isCountryCode } from "./Monitoring.js";
 
-const TOP = 3;
+const TOP_COUNTRIES = 5;
+const TOP_REASONS = 5;
 // "crowdsecurity/http-probing": an author, a slash, the name; a manual decision ("manual 'ban' from 'x'") or a
 // blocklist name has no such prefix and stays whole
 const SCENARIO_AUTHOR = /^[\w.-]+\/(?<name>.+)$/u;
 
-// the three reasons from the destructive to the warning colour, "other" in muted grey; whole class strings so Tailwind
+// the five reasons from the destructive to the warning colour, "other" in muted grey; whole class strings so Tailwind
 // finds them (fill for the bar, bg for the legend dot)
 const BAN_TONES = [
 	{ fill: "fill-destructive", dot: "bg-destructive" },
 	{
+		fill: "fill-[color-mix(in_oklab,var(--destructive)_75%,var(--warning))]",
+		dot: "bg-[color-mix(in_oklab,var(--destructive)_75%,var(--warning))]",
+	},
+	{
 		fill: "fill-[color-mix(in_oklab,var(--destructive)_50%,var(--warning))]",
 		dot: "bg-[color-mix(in_oklab,var(--destructive)_50%,var(--warning))]",
+	},
+	{
+		fill: "fill-[color-mix(in_oklab,var(--destructive)_25%,var(--warning))]",
+		dot: "bg-[color-mix(in_oklab,var(--destructive)_25%,var(--warning))]",
 	},
 	{ fill: "fill-warning", dot: "bg-warning" },
 ];
@@ -28,12 +37,12 @@ const MIN_WIDTH = 2;
  * The rows of the "Top countries today" card.
  *
  * @param {Array<{country: string, requests: number}> | null | undefined} list  topCountriesToday of the summary
- * @returns {Array<{code: string, requests: number}>}  at most three, codes in upper case
+ * @returns {Array<{code: string, requests: number}>}  at most five, codes in upper case
  */
 const topCountryRows = (list) =>
 	(Array.isArray(list) ? list : [])
 		.filter((row) => isCountryCode(row?.country))
-		.slice(0, TOP)
+		.slice(0, TOP_COUNTRIES)
 		.map((row) => ({ code: row.country.toUpperCase(), requests: Number(row.requests) || 0 }));
 
 /**
@@ -59,7 +68,7 @@ const shortScenario = (scenario) => {
 const banSegments = (activeBans, reasons) => {
 	const top = (Array.isArray(reasons) ? reasons : [])
 		.filter((r) => typeof r?.scenario === "string" && r.scenario !== "" && Number(r.count) > 0)
-		.slice(0, TOP)
+		.slice(0, TOP_REASONS)
 		.map((r, index) => ({
 			key: r.scenario,
 			scenario: r.scenario,

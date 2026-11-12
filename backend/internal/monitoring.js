@@ -13,7 +13,7 @@ const CACHE_MS = {
 };
 const TOP_HOSTS = 10;
 const RECENT_LIMIT = 100;
-const TOP_BAN_REASONS = 3;
+const TOP_BAN_REASONS = 5;
 
 /**
  * The most common ban reasons for the dashboard: by_scenario is already sorted by count. Decisions without a scenario

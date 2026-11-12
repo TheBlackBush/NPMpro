@@ -16,7 +16,7 @@ const RANGES = {
 const TOP = 10;
 const TOP_IPS = 10;
 // countries on the dashboard card
-const TOP_COUNTRIES_TODAY = 3;
+const TOP_COUNTRIES_TODAY = 5;
 
 const num = (v) => Number(v);
 
