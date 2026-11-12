@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "Overig",
 	"dashboard.monitoring.bans-added": "+{count} in 24 uur",
 	"dashboard.monitoring.error-rate": "Foutpercentage vandaag",
+	"dashboard.monitoring.last-24h": "Afgelopen 24 uur",
+	"dashboard.monitoring.now": "nu",
 	"dashboard.monitoring.requests": "Verzoeken vandaag",
 	"dashboard.monitoring.sparkline": "{count, plural, one {# verzoek} other {# verzoeken}} in de afgelopen 24 uur",
 	"dashboard.monitoring.top-countries": "Toplanden vandaag",

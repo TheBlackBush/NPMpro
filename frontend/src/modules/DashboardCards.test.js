@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { BAN_TONES, banSegments, errorSegments, OTHER_TONE, shortScenario, topCountryRows } from "./DashboardCards.js";
+import {
+	BAN_TONES,
+	banSegments,
+	errorSegments,
+	OTHER_TONE,
+	seriesStart,
+	shortScenario,
+	topCountryRows,
+} from "./DashboardCards.js";
 
 const ends = (segments) => segments.at(-1).x + segments.at(-1).width;
 const close = (a, b) => Math.abs(a - b) < 1e-9;
@@ -199,4 +207,11 @@ it("has no segments without a reason, and skips empty or zero reasons", () => {
 		]),
 		[],
 	);
+});
+
+it("starts the requests graph's time axis at the first hour of the series", () => {
+	assert.equal(seriesStart([{ bucket: 492_000 }, { bucket: 492_001 }]), 492_000 * 3_600_000);
+	assert.equal(seriesStart([]), null);
+	assert.equal(seriesStart(null), null);
+	assert.equal(seriesStart([{ bucket: "x" }]), null);
 });

@@ -5,12 +5,13 @@ import { StatCard } from "src/components/Monitoring/StatCard";
 import { useMonitoringSummary } from "src/hooks/useMonitoring";
 import { cn } from "src/lib/utils";
 import { currentLocale, intl, T } from "src/locale";
-import { banSegments, errorSegments, topCountryRows } from "src/modules/DashboardCards";
+import { banSegments, errorSegments, seriesStart, topCountryRows } from "src/modules/DashboardCards";
 import { errorRateTone, formatCount, sparklinePoints } from "src/modules/Monitoring";
 import { BanReasons, SplitBar } from "./BanReasons";
 import { TopCountries } from "./TopCountries";
 
 const percentFormat = new Intl.NumberFormat(currentLocale, { style: "percent", maximumFractionDigits: 1 });
+const hourFormat = new Intl.DateTimeFormat(currentLocale, { hour: "numeric", minute: "2-digit" });
 
 const WIDTH = 120;
 const HEIGHT = 32;
@@ -71,6 +72,28 @@ function ErrorSplit({ segments }) {
 }
 
 /**
+ * The requests graph with a time axis under it (the first hour of the series on the left, "now" on the right). The
+ * axis has the height of the error card's legend, so the graph ends on the line of the error card's bar.
+ *
+ * @param {object} props
+ * @param {Array<{bucket: number, requests: number}>} props.series  series24h of the summary, two points or more
+ */
+function RequestsGraph({ series }) {
+	const start = seriesStart(series);
+	return (
+		<div className="flex h-full flex-col gap-1.5">
+			<div className="min-h-0 flex-1">
+				<Sparkline series={series} />
+			</div>
+			<div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+				<span>{start === null ? null : hourFormat.format(start)}</span>
+				<T id="dashboard.monitoring.now" />
+			</div>
+		</div>
+	);
+}
+
+/**
  * The picture under a card's hint: the same height in every card, so the numbers, hints and pictures of the row line
  * up.
  */
@@ -118,13 +141,17 @@ function MonitoringRow() {
 				tone="info"
 				label={<T id="dashboard.monitoring.requests" />}
 				value={formatCount(requestsToday)}
+				// the hint line is always there (the visitors, or the graph's span while they are off), so the graph
+				// lines up with the pictures of the other cards
 				hint={
 					typeof visitorsToday === "number" ? (
 						<T id="monitoring.visitors" data={{ count: visitorsToday }} />
-					) : undefined
+					) : (
+						<T id="dashboard.monitoring.last-24h" />
+					)
 				}
 			>
-				<CardPicture>{series24h?.length > 1 ? <Sparkline series={series24h} /> : null}</CardPicture>
+				<CardPicture>{series24h?.length > 1 ? <RequestsGraph series={series24h} /> : null}</CardPicture>
 			</StatCard>
 		) : null,
 		errorRateToday !== null && errorRateToday !== undefined ? (

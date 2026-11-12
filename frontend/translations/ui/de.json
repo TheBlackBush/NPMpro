@@ -209,6 +209,8 @@
 	"dashboard.monitoring.ban-reasons.other": "Andere",
 	"dashboard.monitoring.bans-added": "+{count} in 24 Std.",
 	"dashboard.monitoring.error-rate": "Fehlerquote heute",
+	"dashboard.monitoring.last-24h": "Letzte 24 Stunden",
+	"dashboard.monitoring.now": "jetzt",
 	"dashboard.monitoring.requests": "Anfragen heute",
 	"dashboard.monitoring.sparkline": "{count, plural, one {# Anfrage} other {# Anfragen}} in den letzten 24 Stunden",
 	"dashboard.monitoring.top-countries": "Häufigste Länder heute",
