@@ -304,10 +304,21 @@ const movedAvatar = (avatar, from, to) => {
 	return null;
 };
 
+// The restoring admin's row stays, so a restored user linked to the admin's OIDC identity would break the unique
+// identity index: that user loses its link and links again at its next OIDC sign-in. Every other link is restored.
+const unlinkAdminIdentity = (admin) => (row) =>
+	typeof admin.npmpro_oidc_subject === "string" &&
+	row.npmpro_oidc_issuer === admin.npmpro_oidc_issuer &&
+	row.npmpro_oidc_subject === admin.npmpro_oidc_subject
+		? { ...row, npmpro_oidc_issuer: null, npmpro_oidc_subject: null, npmpro_oidc_linked_on: null }
+		: row;
+
 const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => {
 	const admin = await findAdmin(trx, adminUserId);
 	const split = splitUsers(rowsByTable.user, admin);
-	const stamp = now === null ? (row) => row : (row) => ({ ...row, npmpro_token_valid_after: now });
+	const unlinked = unlinkAdminIdentity(admin);
+	const stamp =
+		now === null ? (row) => unlinked(row) : (row) => ({ ...unlinked(row), npmpro_token_valid_after: now });
 	await inserter.insert("user", split.users.map(stamp));
 	let moved = null;
 	if (split.moved) {

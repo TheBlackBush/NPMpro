@@ -1,13 +1,23 @@
 import { rm, writeFile } from "node:fs/promises";
+import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { avatarExt, AVATAR_EXTS as avatarExts, fetchGravatar } from "../lib/gravatar.js";
 import { validateDefaultPermissions } from "../lib/oidc-rules.js";
 import { rooted } from "../lib/paths.js";
+import { withPasswordFlag } from "../lib/user-json.js";
+import auditLogModel from "../models/audit-log.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
 import internalAuditLog from "./audit-log.js";
+import { createOidcIdentity } from "./oidc-identity.js";
 import internalToken from "./token.js";
+
+const oidcIdentity = createOidcIdentity({
+	knex: userModel.knex(),
+	audit: (row) => auditLogModel.query().insert(row),
+	tryBeginWrite: maintenance.tryBeginWrite,
+});
 
 const internalUser = {
 	/**
@@ -244,7 +254,7 @@ const internalUser = {
 	 * @param   {String}  [search_query]
 	 * @returns {Promise}
 	 */
-	getAll: (access, search_query) => {
+	getAll: async (access, search_query) => {
 		access.canAdmin();
 		const query = userModel.query().groupBy("id").orderBy("name", "ASC");
 
@@ -254,7 +264,14 @@ const internalUser = {
 			});
 		}
 
-		return query;
+		const [users, passwords] = await Promise.all([
+			query,
+			authModel.query().select("user_id").where("type", "password"),
+		]);
+		return withPasswordFlag(
+			users.map((user) => user.toJSON()),
+			passwords.map((row) => row.user_id),
+		);
 	},
 
 	/**
@@ -391,6 +408,29 @@ const internalUser = {
 			},
 		});
 
+		return true;
+	},
+
+	/**
+	 * Removes the OIDC link: the next OIDC sign-in with this email links again. The DELETE request is a guarded write
+	 * (lib/database/maintenance.js guard), so it needs no claim of its own.
+	 *
+	 * @param   {Access}   access
+	 * @param   {Integer}  userId
+	 * @returns {Promise<boolean>}
+	 */
+	unlinkOidc: async (access, userId) => {
+		access.canAdmin();
+		const user = await userModel.query().findById(userId);
+		if (!user) throw new errs.ItemNotFoundError(userId);
+		if (await oidcIdentity.unlink(user.id)) {
+			await internalAuditLog.add(access, {
+				action: "oidc-unlinked",
+				object_type: "user",
+				object_id: user.id,
+				meta: { name: user.name, email: user.email },
+			});
+		}
 		return true;
 	},
 };

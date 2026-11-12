@@ -1,0 +1,48 @@
+{
+	"operationId": "unlinkUserOidc",
+	"summary": "Remove a user's OIDC identity link",
+	"tags": ["users"],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "userID",
+			"schema": {
+				"oneOf": [
+					{
+						"type": "string",
+						"pattern": "^me$"
+					},
+					{
+						"type": "integer",
+						"minimum": 1
+					}
+				]
+			},
+			"required": true,
+			"description": "User ID or 'me' for yourself",
+			"example": 2
+		}
+	],
+	"responses": {
+		"200": {
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": true
+						}
+					},
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			},
+			"description": "200 response"
+		}
+	}
+}

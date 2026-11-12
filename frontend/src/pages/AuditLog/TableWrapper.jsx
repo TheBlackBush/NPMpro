@@ -40,6 +40,9 @@ const ACTIONS = [
 	"exported",
 	"uploaded",
 	"downloaded",
+	"oidc-linked",
+	"oidc-unlinked",
+	"oidc-refused",
 ];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md

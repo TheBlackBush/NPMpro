@@ -564,6 +564,11 @@
 				"$ref": "./paths/users/userID/sessions/delete.json"
 			}
 		},
+		"/users/{userID}/oidc": {
+			"delete": {
+				"$ref": "./paths/users/userID/oidc/delete.json"
+			}
+		},
 		"/users/{userID}/auth": {
 			"put": {
 				"$ref": "./paths/users/userID/auth/put.json"

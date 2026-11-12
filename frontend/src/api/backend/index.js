@@ -69,6 +69,7 @@ export * from "./testHttpCertificate";
 export * from "./testOidcSettings";
 export * from "./toggleUser";
 export * from "./totp";
+export * from "./unlinkUserOidc";
 export * from "./updateAccessList";
 export * from "./updateAuth";
 export * from "./updateBackupSchedule";

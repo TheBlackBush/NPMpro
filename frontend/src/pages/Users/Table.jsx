@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Lock, MonitorOff, Power, ShieldCheck, ShieldOff, SquarePen, Trash2, Users } from "lucide-react";
+import { Lock, MonitorOff, Power, ShieldCheck, ShieldOff, SquarePen, Trash2, Unlink, Users } from "lucide-react";
 import { useMemo } from "react";
 import {
 	EmailFormatter,
@@ -7,18 +7,25 @@ import {
 	GravatarFormatter,
 	RolesFormatter,
 	RowActions,
+	SignInFormatter,
 	TrueFalseFormatter,
 	ValueWithDateFormatter,
 } from "src/components";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
 import { intl, T } from "src/locale";
+import { signInMethods } from "src/modules/SignInMethods";
 
 const columnHelper = createColumnHelper();
 
 const rolesSummary = (row) =>
 	(row.roles.length ? row.roles : ["standard-user"])
 		.map((role) => intl.formatMessage({ id: `role.${role}` }))
+		.join(", ");
+
+const signInSummary = (row) =>
+	signInMethods(row)
+		.map((method) => intl.formatMessage({ id: `user.sign-in.${method}` }))
 		.join(", ");
 
 function UserActions({
@@ -30,6 +37,7 @@ function UserActions({
 	onSetPassword,
 	onResetMfa,
 	onRevokeSessions,
+	onUnlinkOidc,
 	onDeleteUser,
 	onDisableToggle,
 }) {
@@ -78,6 +86,14 @@ function UserActions({
 					icon: MonitorOff,
 					onSelect: () => onRevokeSessions?.(user.id),
 					hidden: !other,
+				},
+				{
+					key: "unlink-oidc",
+					label: <T id="user.unlink-oidc" />,
+					icon: Unlink,
+					onSelect: () => onUnlinkOidc?.(user.id),
+					// nothing to unlink without a link (R5)
+					hidden: !(other && user.npmproOidcLinkedOn),
 				},
 				{
 					key: "toggle",
@@ -147,6 +163,12 @@ export function useColumns() {
 				header: intl.formatMessage({ id: "column.roles" }),
 				cell: (info) => <RolesFormatter roles={info.row.original.roles} />,
 			}),
+			columnHelper.accessor((row) => signInMethods(row).join(","), {
+				id: "signIn",
+				meta: { mobile: "summary", summaryText: signInSummary },
+				header: intl.formatMessage({ id: "column.sign-in" }),
+				cell: (info) => <SignInFormatter user={info.row.original} />,
+			}),
 			columnHelper.accessor((row) => row.isDisabled, {
 				id: "isDisabled",
 				meta: { mobile: "title-below" },
@@ -187,6 +209,7 @@ export default function Table({
 	onSetPassword,
 	onResetMfa,
 	onRevokeSessions,
+	onUnlinkOidc,
 	onDeleteUser,
 	onDisableToggle,
 	onNewUser,
@@ -209,6 +232,7 @@ export default function Table({
 				onSetPassword,
 				onResetMfa,
 				onRevokeSessions,
+				onUnlinkOidc,
 				onDeleteUser,
 				onDisableToggle,
 			},

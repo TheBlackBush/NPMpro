@@ -76,6 +76,18 @@
 			"readOnly": true,
 			"example": 0
 		},
+		"npmpro_oidc_linked_on": {
+			"type": ["string", "null"],
+			"description": "When the user was linked to an OIDC identity, null when not linked",
+			"readOnly": true,
+			"example": "2026-11-12 12:00:00"
+		},
+		"npmpro_has_password": {
+			"type": "boolean",
+			"description": "Whether the user has a password (users list only)",
+			"readOnly": true,
+			"example": true
+		},
 		"goaccess": {
 			"type": "boolean",
 			"description": "Is goaccess enabled, only sent for the requesting user itself",

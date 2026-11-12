@@ -84,6 +84,7 @@ jobs:
             test/database-schema.test.js \
             test/database-target.test.js \
             test/database-values.test.js \
+            test/oidc-identity-servers.test.js \
             test/rename-migration-servers.test.js \
             test/servers-mysql.test.js \
             test/servers-postgres.test.js \

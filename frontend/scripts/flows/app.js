@@ -2,7 +2,17 @@
 // (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
-import { ADMIN_EMAIL, cleanUp, revealRow, rowOf, signIn, VIEWER_EMAIL, windowClosed, withToast } from "./lib.js";
+import {
+	ADMIN_EMAIL,
+	cleanUp,
+	revealRow,
+	rowOf,
+	rowShows,
+	signIn,
+	VIEWER_EMAIL,
+	windowClosed,
+	withToast,
+} from "./lib.js";
 
 // the German strings are a chunk of their own, named after de.json
 const GERMAN_CHUNK = /\/assets\/de-[\w-]+\.js$/u;
@@ -95,6 +105,19 @@ async function mfaWindow({ browser, base, viewerPassword }) {
 	} finally {
 		await viewer.context.close();
 	}
+}
+
+// The Sign-in column of the Users table: the viewer (a password, no OIDC link) shows Local, and its row menu has no
+// Unlink OIDC, which only a linked user offers (R5). The API cannot link a user, so the live check covers a linked row.
+async function usersSignIn({ admin }) {
+	const { page } = admin;
+	await page.goto("/settings/users");
+	await rowShows(page, "Flow Viewer", "Local");
+	await page.getByRole("button", { name: "Actions for Flow Viewer", exact: true }).filter({ visible: true }).click();
+	await page.getByRole("menuitem", { name: "Revoke sessions", exact: true }).waitFor();
+	if ((await page.getByRole("menuitem", { name: "Unlink OIDC", exact: true }).count()) > 0)
+		throw new Error("Unlink OIDC is offered for a user without an OIDC link");
+	await page.keyboard.press("Escape");
 }
 
 const PAGE_NAMES = Array.from({ length: 27 }, (_, index) => `flow-page-${String(index + 1).padStart(2, "0")}`);
@@ -227,6 +250,7 @@ export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
+	{ name: "users sign-in", run: usersSignIn },
 	{ name: "help sheet", run: helpSheet },
 	{ name: "list paging", run: listPaging },
 	{ name: "language fallback", run: languageFallback },

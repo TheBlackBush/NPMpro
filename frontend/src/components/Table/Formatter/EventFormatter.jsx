@@ -45,10 +45,12 @@ const getColorForAction = (action) => {
 		case "created":
 		case "backup-succeeded":
 		case "moved":
+		case "oidc-linked":
 			return "text-success";
 		case "deleted":
 		case "backup-failed":
 		case "move-failed":
+		case "oidc-refused":
 			return "text-destructive";
 		default:
 			return "text-primary";

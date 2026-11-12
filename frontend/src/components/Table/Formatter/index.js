@@ -8,6 +8,7 @@ export * from "./EventFormatter";
 export * from "./ExpiryFormatter";
 export * from "./GravatarFormatter";
 export * from "./RolesFormatter";
+export * from "./SignInFormatter";
 export * from "./StatusFormatter";
 export * from "./TrueFalseFormatter";
 export * from "./ValueWithDateFormatter";

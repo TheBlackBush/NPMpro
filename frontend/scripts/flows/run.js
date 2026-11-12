@@ -1,7 +1,7 @@
 // The browser flows of the image smoke test (.github/workflows/docker.yml), run after the CSP check on the same
 // container: the four host lists and their windows, the View window of a limited user, a proxy host with a location
 // and an access list, a save nginx refuses and its re-save, the unsaved-changes question, a settings save, the phone
-// list, the MFA and help windows and the language switch. Flows create their data and remove it (names flow-...).
+// list, the MFA and help windows, the Users sign-in column and the language switch. Flows create their data and remove it (names flow-...).
 // Usage: FLOWS_PASSWORD=... node scripts/flows/run.js <base URL> [chromium|webkit] [flow name ...]
 // The instance must be set up (the CSP check does that); FLOWS_PASSWORD is the password of admin@example.com.
 import { randomBytes } from "node:crypto";

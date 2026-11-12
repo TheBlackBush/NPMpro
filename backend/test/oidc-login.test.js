@@ -35,6 +35,7 @@ it("error codes are the documented list", () => {
 		"domain_not_allowed",
 		"user_disabled",
 		"maintenance",
+		"identity_mismatch",
 	]);
 });
 

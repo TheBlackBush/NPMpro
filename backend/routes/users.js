@@ -327,6 +327,24 @@ router
 	});
 
 /**
+ * /api/users/123/oidc
+ */
+router
+	.route("/:user_id/oidc")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+
+	/**
+	 * DELETE /api/users/123/oidc
+	 *
+	 * Remove the user's OIDC identity link (admin)
+	 */
+	.delete(async (req, res) => {
+		await internalUser.unlinkOidc(res.locals.access, req.params.user_id);
+		res.status(200).send(true);
+	});
+
+/**
  * /api/users/123/avatar
  */
 router

@@ -24,6 +24,7 @@ it("picks the text colour with the higher contrast", () => {
 
 it("maps error codes to message keys, unknown codes to provider_error", () => {
 	assert.equal(oidcErrorKey("no_user"), "login.oidc-error.no_user");
+	assert.equal(oidcErrorKey("identity_mismatch"), "login.oidc-error.identity_mismatch");
 	assert.equal(oidcErrorKey("whatever"), "login.oidc-error.provider_error");
 });
 

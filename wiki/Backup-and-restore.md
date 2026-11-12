@@ -90,7 +90,7 @@ The restore window has two modes at the top: **Replace** swaps whole parts of th
 What happens:
 
 - The chosen parts on this instance are replaced by the ones in the backup, with the same ids. Parts you did not choose stay as they are.
-- You stay signed in with your own account, password and two-factor setup. All other restored users are signed out and sign in again with their password and two-factor setup from the backup.
+- You stay signed in with your own account, password and two-factor setup. All other restored users are signed out and sign in again with their password and two-factor setup from the backup. Restored users keep their OIDC links, except a user linked to your own OIDC identity, whose link is cleared.
 - NPMpro makes an automatic backup first. If the restore fails (for example because nginx rejects a restored custom nginx file), everything is rolled back and the error shows the nginx message.
 - Hosts that nginx rejects on their own are taken offline and listed in the result; fix them on their host page.
 - When restored settings only apply at start-up, the result asks you to restart the container.
@@ -107,7 +107,7 @@ Choose **Merge** in the restore window to add the items of a backup to this inst
    - a proxy, redirection or 404 host whose domain is already used by a host here, or a stream with the same port and protocol: **Skip** or **Replace the existing one** (the existing host is overwritten and keeps its id). A host that meets several hosts, or a host of another type, can only be skipped.
    - a certificate with the same domains: **Use the existing one** or **Add as new**
    - an access list or DNS credential with the same name: **Use the existing one** or **Add as new** (a DNS credential gets " (2)" after its name)
-   - a user with the same email: **Use the existing one** or **Replace the existing one**. Your own account is never replaced.
+   - a user with the same email: **Use the existing one** or **Replace the existing one**. Your own account is never replaced. A merged user's OIDC link is cleared; the user links again at the next OIDC sign-in.
    - a settings group or custom file that differs from this instance: **Keep this instance's** or **Take the backup's**
 4. Check the linked items and the lists below them, then tick the confirmation and click **Restore** (in a page import the button is **Import**, see below).
 

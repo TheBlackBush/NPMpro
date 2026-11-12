@@ -9,6 +9,7 @@ const OIDC_ERROR_CODES = [
 	"domain_not_allowed",
 	"user_disabled",
 	"maintenance",
+	"identity_mismatch",
 ];
 
 /**

@@ -31,6 +31,12 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_user_oidc_identity",
+		"table": "user",
+		"sql": "CREATE UNIQUE INDEX `npmpro_user_oidc_identity` on `user` (`npmpro_oidc_issuer`, `npmpro_oidc_subject`)"
+	},
+	{
+		"type": "index",
 		"name": "session_revocation_expires",
 		"table": "session_revocation",
 		"sql": "CREATE INDEX `session_revocation_expires` on `session_revocation` (`expires_at`)"
@@ -255,7 +261,7 @@
 		"type": "table",
 		"name": "user",
 		"table": "user",
-		"sql": "CREATE TABLE \"user\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `is_disabled` integer NOT NULL DEFAULT '0', `email` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `nickname` varchar(255) NOT NULL DEFAULT '', `avatar` varchar(255) NOT NULL, `roles` json NOT NULL, \"npmpro_token_valid_after\" bigint NOT NULL DEFAULT '<migration time>')"
+		"sql": "CREATE TABLE \"user\" (`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL, `created_on` datetime NOT NULL, `modified_on` datetime NOT NULL, `is_deleted` integer NOT NULL DEFAULT '0', `is_disabled` integer NOT NULL DEFAULT '0', `email` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `nickname` varchar(255) NOT NULL DEFAULT '', `avatar` varchar(255) NOT NULL, `roles` json NOT NULL, \"npmpro_token_valid_after\" bigint NOT NULL DEFAULT '<migration time>', `npmpro_oidc_issuer` varchar(255) null, `npmpro_oidc_subject` varchar(255) null, `npmpro_oidc_linked_on` datetime null)"
 	},
 	{
 		"type": "table",

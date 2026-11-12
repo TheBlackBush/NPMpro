@@ -7,6 +7,7 @@ const OIDC_ERROR_CODES = [
 	"domain_not_allowed",
 	"user_disabled",
 	"maintenance",
+	"identity_mismatch",
 ];
 
 // Preset colours of the sign-in button (hex values; "dark" is a slate grey, so that the button still stands out on
