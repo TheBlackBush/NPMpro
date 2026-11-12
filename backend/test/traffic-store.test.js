@@ -71,6 +71,7 @@ it("summary reports today and deleteIps clears the ip table", async () => {
 	assert.equal(s.requests_today, 4);
 	assert.equal(s.error_rate_today, 0.25);
 	assert.equal(s.top_country_today, "FR");
+	assert.deepEqual(s.top_countries_today, [{ country: "FR", requests: 3 }]);
 	assert.equal(s.series_24h.length, 24);
 	await store.deleteIps();
 	assert.equal((await knex("traffic_ip_hour")).length, 0);
@@ -157,10 +158,50 @@ it("summary counts only the UTC day so far across midnight", async () => {
 	const s = await store.summary({ now });
 	assert.equal(s.requests_today, 1);
 	assert.equal(s.error_rate_today, 1);
+	assert.deepEqual(s.top_countries_today, []);
+	assert.equal(s.top_country_today, null);
 	assert.equal(
 		s.series_24h.reduce((n, p) => n + p.requests, 0),
 		5,
 	);
+	await knex.destroy();
+});
+
+const country = (bucket, code, requests) => ({ bucket, host: "a", country: code, requests });
+
+it("summary lists the three busiest countries of today, ties by code, unknown and yesterday left out", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({
+		minutes: [m(MIN, "2xx", 1)],
+		countries: [
+			country(hour, "--", 50),
+			country(hour, "DE", 7),
+			country(hour - 1, "DE", 3),
+			country(hour, "US", 9),
+			country(hour, "NL", 4),
+			country(hour, "FR", 4),
+			country(hour, "JP", 1),
+			country(hour - 24, "CN", 100),
+		],
+	});
+	const s = await store.summary({ now: NOW });
+	assert.deepEqual(s.top_countries_today, [
+		{ country: "DE", requests: 10 },
+		{ country: "US", requests: 9 },
+		{ country: "FR", requests: 4 },
+	]);
+	assert.equal(s.top_country_today, "DE");
+	await knex.destroy();
+});
+
+it("summary has no top countries when only unknown countries were seen today", async () => {
+	const { knex, store } = await setup();
+	const hour = Math.floor(NOW / 3600000);
+	await store.flush({ minutes: [m(MIN, "2xx", 5)], countries: [country(hour, "--", 5)] });
+	const s = await store.summary({ now: NOW });
+	assert.deepEqual(s.top_countries_today, []);
+	assert.equal(s.top_country_today, null);
 	await knex.destroy();
 });
 

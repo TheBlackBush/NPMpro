@@ -15,6 +15,8 @@ const RANGES = {
 
 const TOP = 10;
 const TOP_IPS = 10;
+// countries on the dashboard card
+const TOP_COUNTRIES_TODAY = 3;
 
 const num = (v) => Number(v);
 
@@ -373,7 +375,8 @@ export const createStore = (knex) => {
 	/**
 	 * Numbers for the dashboard. "Today" is the UTC day so far (since 00:00 UTC).
 	 *
-	 * @returns {Promise<{requests_today: Number, series_24h: Array, error_rate_today: Number, top_country_today: String|null}>}
+	 * @returns {Promise<{requests_today: Number, series_24h: Array, error_rate_today: Number,
+	 *   top_country_today: String|null, top_countries_today: Array<{country: String, requests: Number}>}>}
 	 */
 	const summary = async ({ now = Date.now() } = {}) => {
 		const currentHour = Math.floor(now / HOUR);
@@ -382,11 +385,14 @@ export const createStore = (knex) => {
 		const rows = (await hourSeries(startHour, "")).filter((r) => r.bucket >= startHour);
 		const today = rows.filter((r) => r.bucket >= todayHour);
 		const countries = await hourTop("traffic_country_hour", todayHour, "", ["country"]);
-		const best = sumBy(
+		// most requests first and equal counts by code, so two reads give the same order; unknown (--) left out
+		const known = sumBy(
 			countries,
 			(r) => r.country,
 			(r) => ({ country: r.country, requests: 0 }),
-		).find((r) => r.country !== "--");
+		)
+			.filter((r) => r.country !== "--")
+			.sort((a, b) => b.requests - a.requests || (a.country < b.country ? -1 : 1));
 		return {
 			requests_today: today.reduce((n, r) => n + r.requests, 0),
 			series_24h: fillSeries(rows, startHour, 24).map((p) => ({
@@ -394,7 +400,8 @@ export const createStore = (knex) => {
 				requests: Object.values(p.by_class).reduce((a, b) => a + b, 0),
 			})),
 			error_rate_today: errorRate(today),
-			top_country_today: best ? best.country : null,
+			top_country_today: known[0]?.country ?? null,
+			top_countries_today: known.slice(0, TOP_COUNTRIES_TODAY),
 		};
 	};
 
