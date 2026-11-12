@@ -1,8 +1,8 @@
 import { engineOf } from "../lib/database/engine.js";
 
-// a second user with the same identity: SQLite "UNIQUE constraint failed", MySQL "Duplicate entry", Postgres
-// "duplicate key value violates unique constraint"
-const UNIQUE_VIOLATION = /unique|duplicate/iu;
+// a second user with the same identity, by driver code (the message holds the SQL with the provider's values):
+// SQLite (better-sqlite3 and sqlite3) constraint codes, MySQL ER_DUP_ENTRY, Postgres 23505
+const UNIQUE_CODES = new Set(["SQLITE_CONSTRAINT_UNIQUE", "SQLITE_CONSTRAINT_PRIMARYKEY", "ER_DUP_ENTRY", "23505"]);
 
 // "now" as models/now_helper.js writes it: SQLite local time text, the server's NOW() elsewhere
 const nowOf = (knex) => (engineOf(knex) === "sqlite" ? knex.raw("datetime('now','localtime')") : knex.raw("NOW()"));
@@ -49,8 +49,9 @@ const createOidcIdentity = ({ knex, audit, tryBeginWrite }) => {
 						npmpro_oidc_linked_on: nowOf(knex),
 					});
 			} catch (err) {
-				if (UNIQUE_VIOLATION.test(String(err.message))) return "mismatch";
-				throw err;
+				if (UNIQUE_CODES.has(err?.code)) return "mismatch";
+				// knex puts the SQL with the subject into the message: keep only the driver code
+				throw Object.assign(new Error("Could not save the OIDC identity link"), { code: err?.code });
 			}
 			await audit({
 				user_id: user.id,

@@ -109,6 +109,19 @@ it("a unique violation becomes a mismatch, not an error (Review Focus 2)", async
 	assert.equal(releases.length, 1);
 });
 
+it("a failure that is not a unique violation is rethrown without the subject", async () => {
+	const { service, knex, audits, releases, row } = await make();
+	const user = await row(1);
+	await knex.schema.dropTable("user");
+	await assert.rejects(service.link(user, { issuer: ISS, subject: "unique-duplicate-x" }, "link"), (err) => {
+		assert.equal(err.code, "SQLITE_ERROR");
+		assert.doesNotMatch(err.message, /unique-duplicate-x/u);
+		return true;
+	});
+	assert.equal(audits.length, 0);
+	assert.equal(releases.length, 1);
+});
+
 it("skips the write during a database move (R3)", async () => {
 	const { service, audits, row } = await make({ writable: false });
 	assert.equal(await service.link(await row(1), { issuer: ISS, subject: "s1" }, "link"), "skipped");
