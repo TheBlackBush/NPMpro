@@ -185,6 +185,11 @@
 	[role="button"]:not([aria-disabled="true"]) {
 		cursor: pointer;
 	}
+	/* NPMpro: a tooltip that is not hoverable (TapTooltip hoverable={false}) lets the pointer through, also its
+	   positioning wrapper, so the entry under it gets the hover while it fades out */
+	[data-radix-popper-content-wrapper]:has(> [data-tooltip-passthrough]) {
+		pointer-events: none;
+	}
 	/* NPMpro: the option list in the popover colours, for browsers that draw it from the option styles */
 	option {
 		@apply bg-popover text-popover-foreground;

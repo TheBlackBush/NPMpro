@@ -16,9 +16,12 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
  * @param {*} props.content  the tooltip's text
  * @param {boolean} [props.tap]  false: hover and keyboard focus only (the child keeps its own click and focus
  *                               behaviour); use it on a button, a link or anything inside one
+ * @param {boolean} [props.hoverable]  false: the tooltip closes as soon as the pointer leaves the trigger, also on its
+ *                                     way into the tooltip; for rows of small triggers, where the tooltip covers the
+ *                                     row above and would otherwise keep it from its own tooltip
  * @param {import("react").ReactElement} props.children  one element that forwards its props and ref to the DOM
  */
-export function TapTooltip({ content, tap = true, children }) {
+export function TapTooltip({ content, tap = true, hoverable = true, children }) {
 	const [open, setOpen] = useState(false);
 	// whether the tooltip was open when the press started: a tap toggles it, and the press itself closes it first
 	const wasOpen = useRef(false);
@@ -26,16 +29,18 @@ export function TapTooltip({ content, tap = true, children }) {
 		return (
 			// a press closes it even when the child's own handler prevented the default (a menu trigger does), which
 			// would otherwise leave the tooltip over the opened menu
-			<Tooltip open={open} onOpenChange={setOpen}>
+			<Tooltip open={open} onOpenChange={setOpen} disableHoverableContent={!hoverable}>
 				<TooltipTrigger asChild onFocus={keyboardFocusOnly} onPointerDown={() => setOpen(false)}>
 					{children}
 				</TooltipTrigger>
-				<TooltipContent className="wrap-anywhere">{content}</TooltipContent>
+				<TooltipContent className="wrap-anywhere" data-tooltip-passthrough={hoverable ? undefined : ""}>
+					{content}
+				</TooltipContent>
 			</Tooltip>
 		);
 	}
 	return (
-		<Tooltip open={open} onOpenChange={setOpen}>
+		<Tooltip open={open} onOpenChange={setOpen} disableHoverableContent={!hoverable}>
 			<TooltipTrigger
 				asChild
 				tabIndex={0}
@@ -51,7 +56,9 @@ export function TapTooltip({ content, tap = true, children }) {
 			>
 				{children}
 			</TooltipTrigger>
-			<TooltipContent className="wrap-anywhere">{content}</TooltipContent>
+			<TooltipContent className="wrap-anywhere" data-tooltip-passthrough={hoverable ? undefined : ""}>
+				{content}
+			</TooltipContent>
 		</Tooltip>
 	);
 }

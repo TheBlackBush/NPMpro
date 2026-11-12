@@ -15,9 +15,10 @@ import { isCut } from "src/modules/Overflow";
  * @param {import("react").ReactNode} props.children  the text
  * @param {import("react").ReactNode} [props.content]  the tooltip's text, when it differs from the children
  * @param {boolean} [props.tap]  false inside a link or a button
+ * @param {boolean} [props.hoverable]  false in a row of small entries (see TapTooltip)
  * @param {string} [props.className]  font and colour of the line
  */
-function TruncatedText({ children, content, tap = true, className }) {
+function TruncatedText({ children, content, tap = true, hoverable = true, className }) {
 	const element = useRef(null);
 	const [cut, setCut] = useState(false);
 	const observe = useCallback((node) => {
@@ -37,7 +38,7 @@ function TruncatedText({ children, content, tap = true, className }) {
 		</span>
 	);
 	return cut ? (
-		<TapTooltip content={content ?? children} tap={tap}>
+		<TapTooltip content={content ?? children} tap={tap} hoverable={hoverable}>
 			{text}
 		</TapTooltip>
 	) : (
