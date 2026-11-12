@@ -4,7 +4,7 @@ const MAX_LENGTH = 255;
 /**
  * The provider identity of an OIDC sign-in: the id token's issuer and subject
  *
- * @param   {Object}  claims  id token claims merged with userinfo
+ * @param   {Object}  claims  id token claims merged with userinfo, iss and sub always from the id token
  * @returns {{issuer: string, subject: string}|null}  null when either is missing, empty or longer than its column
  */
 const identityOf = (claims) => {

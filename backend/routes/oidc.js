@@ -142,7 +142,8 @@ const exchangeCode = async (req, values) => {
 	if (idTokenClaims.email) return idTokenClaims;
 
 	const userinfo = await fetchUserInfo(config, tokens.access_token, idTokenClaims.sub);
-	return { ...idTokenClaims, ...userinfo };
+	// the identity (issuer and subject) comes from the verified id token, never from the user info
+	return { ...idTokenClaims, ...userinfo, iss: idTokenClaims.iss, sub: idTokenClaims.sub };
 };
 
 router

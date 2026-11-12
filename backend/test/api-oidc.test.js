@@ -761,6 +761,22 @@ it("refuses the session after the code when another user took the identity durin
 	}
 });
 
+it("takes the issuer and subject from the id token, not from the user info (F3)", async () => {
+	const created = await admin.post("/users", { name: "Info", email: "info@example.com", roles: [] });
+	assert.equal(created.status, 201, created.text);
+	const login = await startLogin();
+	seen.idToken = idToken({ nonce: login.params.get("nonce"), sub: "info-sub" });
+	seen.userinfo = {
+		sub: "info-sub",
+		email: "info@example.com",
+		email_verified: true,
+		iss: "https://other.example.com",
+	};
+	const done = await finishLogin(login.browser, login.params.get("state"));
+	assert.equal(done.headers.get("location"), "/");
+	assert.deepEqual(await linkOf(created.body.id), { npmpro_oidc_issuer: ISSUER, npmpro_oidc_subject: "info-sub" });
+});
+
 it("keeps the issuer and subject out of the audit meta of a deleted linked user (Review Focus 4)", async () => {
 	const created = await admin.post("/users", { name: "Doomed", email: "doomed@example.com", roles: [] });
 	assert.equal(created.status, 201, created.text);
