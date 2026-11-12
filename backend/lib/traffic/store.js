@@ -16,7 +16,7 @@ const RANGES = {
 const TOP = 10;
 const TOP_IPS = 10;
 // countries on the dashboard card
-const TOP_COUNTRIES_TODAY = 5;
+const TOP_COUNTRIES_TODAY = 7;
 
 const num = (v) => Number(v);
 
@@ -376,8 +376,12 @@ export const createStore = (knex) => {
 	 * Numbers for the dashboard. "Today" is the UTC day so far (since 00:00 UTC).
 	 *
 	 * @returns {Promise<{requests_today: Number, series_24h: Array, error_rate_today: Number,
-	 *   top_country_today: String|null, top_countries_today: Array<{country: String, requests: Number}>}>}
+	 *   client_errors_today: Number, server_errors_today: Number, top_country_today: String|null, top_countries_today: Array<{country: String, requests: Number}>}>}
 	 */
+	// the requests of one status class ("4xx", "5xx") in hour rows
+	const countClass = (rows, statusClass) =>
+		rows.reduce((n, r) => (r.status_class === statusClass ? n + Number(r.requests) : n), 0);
+
 	const summary = async ({ now = Date.now() } = {}) => {
 		const currentHour = Math.floor(now / HOUR);
 		const startHour = currentHour - 23;
@@ -400,6 +404,8 @@ export const createStore = (knex) => {
 				requests: Object.values(p.by_class).reduce((a, b) => a + b, 0),
 			})),
 			error_rate_today: errorRate(today),
+			client_errors_today: countClass(today, "4xx"),
+			server_errors_today: countClass(today, "5xx"),
 			top_country_today: known[0]?.country ?? null,
 			top_countries_today: known.slice(0, TOP_COUNTRIES_TODAY),
 		};

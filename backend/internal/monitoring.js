@@ -288,6 +288,8 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				requests_today: null,
 				series_24h: null,
 				error_rate_today: null,
+				client_errors_today: null,
+				server_errors_today: null,
 				active_bans: bansKnown ? bans.total : null,
 				bans_added_24h: bansKnown ? (bans.added_24h ?? 0) : null,
 				top_ban_reasons: bansKnown ? topBanReasons(bans.by_scenario) : null,
@@ -305,6 +307,8 @@ const createMonitoring = ({ traffic, crowdsec, geoip, store, getConfig, now = Da
 				out.requests_today = today.requests_today;
 				out.series_24h = today.series_24h;
 				out.error_rate_today = today.error_rate_today;
+				out.client_errors_today = today.client_errors_today;
+				out.server_errors_today = today.server_errors_today;
 				const geo = geoipAvailable();
 				out.top_country_today = geo ? today.top_country_today : null;
 				out.top_countries_today = geo ? today.top_countries_today : null;

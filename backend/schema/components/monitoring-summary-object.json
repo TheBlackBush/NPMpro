@@ -6,6 +6,8 @@
 		"requests_today",
 		"series_24h",
 		"error_rate_today",
+		"client_errors_today",
+		"server_errors_today",
 		"active_bans",
 		"bans_added_24h",
 		"top_ban_reasons",
@@ -52,6 +54,22 @@
 			],
 			"minimum": 0,
 			"maximum": 1
+		},
+		"client_errors_today": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"description": "4xx responses today (UTC day so far); null when traffic statistics are off"
+		},
+		"server_errors_today": {
+			"type": [
+				"integer",
+				"null"
+			],
+			"minimum": 0,
+			"description": "5xx responses today (UTC day so far); null when traffic statistics are off"
 		},
 		"active_bans": {
 			"type": [
@@ -106,8 +124,8 @@
 				"array",
 				"null"
 			],
-			"maxItems": 5,
-			"description": "Up to five countries with the most requests today, most first (equal counts by code); unknown left out. Null when traffic statistics are off or no GeoIP database is installed. top_country_today is the first of them",
+			"maxItems": 7,
+			"description": "Up to seven countries with the most requests today, most first (equal counts by code); unknown left out. Null when traffic statistics are off or no GeoIP database is installed. top_country_today is the first of them",
 			"items": {
 				"type": "object",
 				"additionalProperties": false,

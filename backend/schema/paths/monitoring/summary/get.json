@@ -25,6 +25,8 @@
 									}
 								],
 								"error_rate_today": 0.042,
+								"client_errors_today": 37,
+								"server_errors_today": 5,
 								"active_bans": 12,
 								"bans_added_24h": 3,
 								"top_ban_reasons": [

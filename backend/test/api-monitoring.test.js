@@ -240,6 +240,8 @@ it("shows the dashboard numbers of today, and nulls while a source is off", asyn
 	assert.equal(done.body.top_ban_reasons, null);
 	assert.equal(done.body.visitors_today, null);
 	assert.equal(typeof done.body.error_rate_today, "number");
+	assert.equal(typeof done.body.client_errors_today, "number");
+	assert.equal(typeof done.body.server_errors_today, "number");
 });
 
 it("turns visitor IPs and unique visitors on, and off again deletes what they stored", async () => {

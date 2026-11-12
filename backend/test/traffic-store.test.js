@@ -70,6 +70,8 @@ it("summary reports today and deleteIps clears the ip table", async () => {
 	const s = await store.summary({ now: NOW });
 	assert.equal(s.requests_today, 4);
 	assert.equal(s.error_rate_today, 0.25);
+	assert.equal(s.client_errors_today, 1);
+	assert.equal(s.server_errors_today, 0);
 	assert.equal(s.top_country_today, "FR");
 	assert.deepEqual(s.top_countries_today, [{ country: "FR", requests: 3 }]);
 	assert.equal(s.series_24h.length, 24);
@@ -158,6 +160,9 @@ it("summary counts only the UTC day so far across midnight", async () => {
 	const s = await store.summary({ now });
 	assert.equal(s.requests_today, 1);
 	assert.equal(s.error_rate_today, 1);
+	// yesterday's requests are left out of today's counts
+	assert.equal(s.client_errors_today, 0);
+	assert.equal(s.server_errors_today, 1);
 	assert.deepEqual(s.top_countries_today, []);
 	assert.equal(s.top_country_today, null);
 	assert.equal(
@@ -169,7 +174,7 @@ it("summary counts only the UTC day so far across midnight", async () => {
 
 const country = (bucket, code, requests) => ({ bucket, host: "a", country: code, requests });
 
-it("summary lists the five busiest countries of today, ties by code, unknown and yesterday left out", async () => {
+it("summary lists the seven busiest countries of today, ties by code, unknown and yesterday left out", async () => {
 	const { knex, store } = await setup();
 	const hour = Math.floor(NOW / 3600000);
 	await store.flush({
@@ -184,6 +189,7 @@ it("summary lists the five busiest countries of today, ties by code, unknown and
 			country(hour, "JP", 3),
 			country(hour, "BR", 2),
 			country(hour, "IN", 1),
+			country(hour, "AU", 1),
 			country(hour - 24, "CN", 100),
 		],
 	});
@@ -194,6 +200,8 @@ it("summary lists the five busiest countries of today, ties by code, unknown and
 		{ country: "FR", requests: 4 },
 		{ country: "NL", requests: 4 },
 		{ country: "JP", requests: 3 },
+		{ country: "BR", requests: 2 },
+		{ country: "AU", requests: 1 },
 	]);
 	assert.equal(s.top_country_today, "DE");
 	await knex.destroy();
