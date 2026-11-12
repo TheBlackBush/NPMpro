@@ -80,20 +80,34 @@ fi
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
-    # The saved nginx settings (Settings > nginx) can be what fails, e.g. after an image update. Try the files written
-    # from the environment first (cp -p and writing into the existing files keep owner and mode), else put them back.
-    core_backup="$(mktemp -d)"
-    for core_name in main events http stream; do
-        cp -p "/data/npmpro/nginx/core-$core_name.conf" "$core_backup/" 2> /dev/null || true
-    done
-    if nginx-core-files.sh /data/npmpro/nginx && nginx -tq; then
-        echo "The saved nginx settings did not pass nginx -t, the nginx settings files were rewritten from the environment."
-    else
-        for core_name in main events http stream; do
-            [ -f "$core_backup/core-$core_name.conf" ] && cp -p "$core_backup/core-$core_name.conf" /data/npmpro/nginx/
-        done
+    # A CrowdSec bouncer config nginx rejects (for example a TLS client file that is gone) must not keep nginx from
+    # starting: the bouncer is off until the backend writes it again from Settings, CrowdSec.
+    crowdsec_off=false
+    if grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
+        echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
+        if nginx -tq; then
+            crowdsec_off=true
+            echo "The CrowdSec bouncer did not pass nginx -t and is off until its settings pass (Settings, CrowdSec)."
+        else
+            echo "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" > /data/npmpro/nginx/crowdsec.conf
+        fi
     fi
-    rm -rf "$core_backup"
+    if [ "$crowdsec_off" = false ]; then
+        # The saved nginx settings (Settings > nginx) can be what fails, e.g. after an image update. Try the files written
+        # from the environment first (cp -p and writing into the existing files keep owner and mode), else put them back.
+        core_backup="$(mktemp -d)"
+        for core_name in main events http stream; do
+            cp -p "/data/npmpro/nginx/core-$core_name.conf" "$core_backup/" 2> /dev/null || true
+        done
+        if nginx-core-files.sh /data/npmpro/nginx && nginx -tq; then
+            echo "The saved nginx settings did not pass nginx -t, the nginx settings files were rewritten from the environment."
+        else
+            for core_name in main events http stream; do
+                [ -f "$core_backup/core-$core_name.conf" ] && cp -p "$core_backup/core-$core_name.conf" /data/npmpro/nginx/
+            done
+        fi
+        rm -rf "$core_backup"
+    fi
 fi
 if ! nginx -tq; then
     if [ "$REGENERATE_ALL" = "true" ]; then
