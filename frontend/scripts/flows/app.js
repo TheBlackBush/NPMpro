@@ -120,6 +120,30 @@ async function usersSignIn({ admin }) {
 	await page.keyboard.press("Escape");
 }
 
+// A window opened with the mouse focuses its first element, and closing it gives the focus back to the button that
+// opened it; neither is keyboard focus, so no tooltip may open by itself (the avatar's and the eye button's did).
+async function windowFocusTooltip({ admin }) {
+	const { page } = admin;
+	const noTooltip = async (where) => {
+		await page.waitForTimeout(700);
+		if ((await page.locator("[data-slot=tooltip-content]").count()) > 0)
+			throw new Error(`a tooltip opened by itself ${where}`);
+	};
+	await page.goto("/settings/audit-log");
+	await page.locator('button[aria-label^="Details: "]').filter({ visible: true }).first().click();
+	await page.getByRole("dialog").waitFor();
+	await noTooltip("when the event details window opened");
+	await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
+	await windowClosed(page);
+	await noTooltip("on the button the closed window gave the focus back to");
+	await page.goto("/settings/users");
+	await page.getByRole("button", { name: "Edit Flow Viewer", exact: true }).filter({ visible: true }).click();
+	await page.getByRole("dialog").waitFor();
+	await noTooltip("when the user window opened");
+	await page.keyboard.press("Escape");
+	await windowClosed(page);
+}
+
 const PAGE_NAMES = Array.from({ length: 27 }, (_, index) => `flow-page-${String(index + 1).padStart(2, "0")}`);
 const SIZE_KEY = "npmpro-page-size-access-lists";
 
@@ -251,6 +275,7 @@ export const appFlows = [
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "users sign-in", run: usersSignIn },
+	{ name: "window focus tooltip", run: windowFocusTooltip },
 	{ name: "help sheet", run: helpSheet },
 	{ name: "list paging", run: listPaging },
 	{ name: "language fallback", run: languageFallback },
