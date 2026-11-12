@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { adminDisableMfa, deleteUser, revokeSessions, toggleUser } from "src/api/backend";
+import { adminDisableMfa, deleteUser, revokeSessions, toggleUser, unlinkUserOidc } from "src/api/backend";
 import { Button, ErrorAlert, ListToolbar, LoadingPage } from "src/components";
 import { useListFilters, useUser, useUsers, useUsersMfa } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -113,6 +113,20 @@ export default function TableWrapper() {
 									onConfirm: async () => {
 										await revokeSessions(id);
 										showSuccess(intl.formatMessage({ id: "notification.user-sessions-revoked" }));
+									},
+									invalidations: [["users"], ["user", id]],
+								});
+							}}
+							onUnlinkOidc={(id) => {
+								const user = data?.find((item) => item.id === id);
+								showDeleteConfirmModal({
+									tTitle: "user.unlink-oidc",
+									children: <T id="user.unlink-oidc.content" />,
+									subject: user?.name,
+									details: user?.email,
+									onConfirm: async () => {
+										await unlinkUserOidc(id);
+										showObjectSuccess("user", "updated");
 									},
 									invalidations: [["users"], ["user", id]],
 								});
