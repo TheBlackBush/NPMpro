@@ -1,14 +1,14 @@
 // The CSP gate of the image smoke test (.github/workflows/docker.yml): opens every page and the listed menus and
 // windows of a fresh NPMpro in a real browser and fails on any Content Security Policy violation or page error.
-// The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
-// followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click,
-// hover (the pointer moves to the element's centre in steps),
-// waitFor (selectors), gone (a selector: waits until it is hidden or removed, e.g. a tooltip after its menu opened),
-// press (a key), viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the
-// action is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector: the
-// same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists (a
-// number: that many access lists named flow-csp-NN are created through the API, so a list has a paging bar; they are
-// removed when the action ends) or reload (the page is reloaded).
+// The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the
+// pages are followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with
+// one of: click, hover (the pointer moves to the element's centre in steps), waitFor (selectors), gone (a
+// selector: waits until it is hidden or removed, e.g. a tooltip after its menu opened), press (a key),
+// viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the action
+// is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector:
+// the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
+// (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
+// bar; they are removed when the action ends) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
