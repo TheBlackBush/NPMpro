@@ -1,6 +1,7 @@
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { useRef, useState } from "react";
 import { Tooltip, TooltipContent } from "src/components/ui/tooltip";
+import { keyboardFocusOnly } from "src/modules/TooltipFocus";
 
 // The Radix trigger itself, not the ui wrapper: that one sets data-slot="tooltip-trigger", which would replace the
 // data-slot of the element it wraps (a Button's or a Badge's styles select on it)
@@ -8,7 +9,8 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
 
 /**
  * A tooltip on a small label: hover or keyboard focus opens it, a tap toggles it (touch screens have no hover), a tap
- * elsewhere or Escape closes it. The label becomes focusable, and a click on it never reaches a switch's label.
+ * elsewhere or Escape closes it. The label becomes focusable, and a click on it never reaches a switch's label. Focus
+ * that is not keyboard focus (a window opened with the mouse focuses its first element) does not open it.
  *
  * @param {Object} props
  * @param {*} props.content  the tooltip's text
@@ -25,7 +27,7 @@ export function TapTooltip({ content, tap = true, children }) {
 			// a press closes it even when the child's own handler prevented the default (a menu trigger does), which
 			// would otherwise leave the tooltip over the opened menu
 			<Tooltip open={open} onOpenChange={setOpen}>
-				<TooltipTrigger asChild onPointerDown={() => setOpen(false)}>
+				<TooltipTrigger asChild onFocus={keyboardFocusOnly} onPointerDown={() => setOpen(false)}>
 					{children}
 				</TooltipTrigger>
 				<TooltipContent className="wrap-anywhere">{content}</TooltipContent>
@@ -37,6 +39,7 @@ export function TapTooltip({ content, tap = true, children }) {
 			<TooltipTrigger
 				asChild
 				tabIndex={0}
+				onFocus={keyboardFocusOnly}
 				onPointerDown={() => {
 					wasOpen.current = open;
 				}}
