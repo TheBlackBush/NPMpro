@@ -19,8 +19,10 @@ const up = async (knex) => {
 	// MySQL DDL is not transactional, so a rerun must be safe
 	if (!(await knex.schema.hasColumn("user", "npmpro_oidc_subject"))) {
 		await knex.schema.alterTable("user", (table) => {
-			table.string("npmpro_oidc_issuer", 255).nullable();
-			table.string("npmpro_oidc_subject", 255).nullable();
+			// compared byte for byte on MySQL too (its default collation ignores case and accents); knex applies
+			// collate on MySQL only, SQLite and Postgres compare exactly anyway
+			table.string("npmpro_oidc_issuer", 255).nullable().collate("utf8mb4_bin");
+			table.string("npmpro_oidc_subject", 255).nullable().collate("utf8mb4_bin");
 			table.dateTime("npmpro_oidc_linked_on").nullable();
 		});
 		logger.info(`[${migrateName}] user link columns added`);

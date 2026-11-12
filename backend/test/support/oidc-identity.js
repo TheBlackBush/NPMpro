@@ -3,7 +3,7 @@ import { it } from "node:test";
 import { up } from "../../migrations/20261112120000_oidc_identity_link.js";
 
 // 20261112120000_oidc_identity_link on each database engine: many unlinked users (NULL pairs), one user per linked
-// identity, and the same subject at another issuer is another identity.
+// identity, the same subject at another issuer is another identity, and values compare exactly (case too).
 // ctx.knex: a database with a user table of id, email and name.
 
 const ISSUER = "https://idp.example.com";
@@ -33,6 +33,19 @@ const oidcLinkTests = (ctx) => {
 		await knex("user")
 			.where({ email: "b@example.com" })
 			.update({ npmpro_oidc_issuer: "https://other.example.com", npmpro_oidc_subject: "s1" });
+	});
+
+	it("compares the issuer and subject exactly: a subject that differs only in case is another identity", async () => {
+		const { knex } = ctx;
+		await knex("user").insert({ email: "c@example.com", name: "C" });
+		await knex("user")
+			.where({ email: "c@example.com" })
+			.update({ npmpro_oidc_issuer: ISSUER, npmpro_oidc_subject: "S1" });
+		const found = await knex("user").where({ npmpro_oidc_issuer: ISSUER, npmpro_oidc_subject: "s1" });
+		assert.deepEqual(
+			found.map((row) => row.email),
+			["a@example.com"],
+		);
 	});
 };
 
