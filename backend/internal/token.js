@@ -31,29 +31,85 @@ const oidcIdentity = createOidcIdentity({
 	tryBeginWrite: maintenance.tryBeginWrite,
 });
 
+// the identity an OIDC sign-in links once its second factor is verified (R7): challenge jti => {issuer, subject, exp},
+// kept here so the subject never reaches the browser; a restart drops it, and the challenge tokens with it
+const pendingLinks = new Map();
+const CHALLENGE_SECONDS = 180;
+
+const prunePendingLinks = () => {
+	const now = Math.floor(Date.now() / 1000);
+	for (const [jti, pending] of pendingLinks) if (pending.exp <= now) pendingLinks.delete(jti);
+};
+
 /**
- * Refuses a sign-in whose identity is linked elsewhere: audited (skipped during a database move, R3) and logged
+ * Audits (skipped during a database move, R3) and logs a refused OIDC sign-in, without the subject
+ *
+ * @param   {Object}  user    the user the refusal is filed under
+ * @param   {string}  issuer
+ * @param   {string}  reason  the log line
+ */
+const recordRefusal = async (user, issuer, reason) => {
+	logger.error(reason);
+	const release = maintenance.tryBeginWrite();
+	if (!release) return;
+	try {
+		await auditLogModel.query().insert({
+			user_id: user.id,
+			action: "oidc-refused",
+			object_type: "user",
+			object_id: user.id,
+			meta: { name: user.name, email: user.email, issuer },
+		});
+	} finally {
+		release();
+	}
+};
+
+/**
+ * Refuses a sign-in whose identity is linked elsewhere: audited and logged
  *
  * @param   {Object}  user
  * @param   {{issuer: string, subject: string}}  identity
  */
 const refuseMismatch = async (user, identity) => {
-	logger.error(`Sign-in of user ${user.id} refused, it is linked to another identity`);
-	const release = maintenance.tryBeginWrite();
-	if (release) {
-		try {
-			await auditLogModel.query().insert({
-				user_id: user.id,
-				action: "oidc-refused",
-				object_type: "user",
-				object_id: user.id,
-				meta: { name: user.name, email: user.email, issuer: identity.issuer },
-			});
-		} finally {
-			release();
-		}
-	}
+	await recordRefusal(user, identity.issuer, `Sign-in of user ${user.id} refused, it is linked to another identity`);
 	throw new OidcLoginError("identity_mismatch", `User ${user.id} is linked to another identity`);
+};
+
+/**
+ * Writes the link (R7: once the session is granted); a unique violation means another user took the identity first
+ *
+ * @param   {Object}  user
+ * @param   {{issuer: string, subject: string}}  identity
+ * @param   {"link"|"relink"}  action
+ * @returns {Promise<boolean>}  false when the identity belongs to another user (refuse the sign-in)
+ */
+const writeLink = async (user, identity, action) => {
+	const outcome = await oidcIdentity.link(user, identity, action);
+	if (outcome === "skipped") logger.info(`Link of user ${user.id} skipped, a database move is running`);
+	return outcome !== "mismatch";
+};
+
+/**
+ * Links the identity an OIDC challenge waited for, after its code was verified. The decision is made again on the
+ * current rows: another user may have taken the identity while the challenge was open, which refuses the session.
+ *
+ * @param   {Object}  user  the user row, read after the challenge
+ * @param   {{issuer: string, subject: string}}  identity
+ */
+const linkAfterChallenge = async (user, identity) => {
+	const action = linkAction(user, identity, await oidcIdentity.holderOf(identity));
+	if (action === "ok") return;
+	if (action !== "mismatch" && (await writeLink(user, identity, action))) return;
+	await recordRefusal(
+		user,
+		identity.issuer,
+		`Sign-in of user ${user.id} refused after the second factor, the identity is linked elsewhere`,
+	);
+	throw new errs.PermissionError(
+		"This account is linked to another account at the sign-in provider",
+		"login.oidc-error.identity_mismatch",
+	);
 };
 
 export default {
@@ -148,8 +204,13 @@ export default {
 		let user = await userModel.query().where("email", email).orderBy("is_disabled").orderBy("id").first();
 		const holderId = await oidcIdentity.holderOf(identity);
 
-		// a subject linked to another user may not create a second account (R2)
+		// a subject linked to another user may not create a second account (R2): filed under the holder
 		if (!user && holderId !== null) {
+			const reason = `Sign-in refused, the identity is linked to user ${holderId} and may not create another account`;
+			const holder = await userModel.query().findById(holderId);
+			// a holder deleted in between leaves no user to file the refusal under: logged only
+			if (holder) await recordRefusal(holder, identity.issuer, reason);
+			else logger.error(reason);
 			throw new OidcLoginError("identity_mismatch", `The identity is linked to user ${holderId}`);
 		}
 		if (!user) {
@@ -162,12 +223,9 @@ export default {
 
 		if (user.is_disabled) throw new OidcLoginError("user_disabled", `User for ${email} is disabled`);
 
-		// the link is written before the MFA challenge: the provider has proven the identity (R7)
+		// a mismatch is refused before any challenge; the link itself is written once the session is granted (R7)
 		const action = linkAction(user, identity, holderId);
-		const outcome =
-			action === "link" || action === "relink" ? await oidcIdentity.link(user, identity, action) : action;
-		if (outcome === "skipped") logger.info(`Link of user ${user.id} skipped, a database move is running`);
-		if (outcome === "mismatch") await refuseMismatch(user, identity);
+		if (action === "mismatch") await refuseMismatch(user, identity);
 
 		const hasMfa = await mfa.isAnyEnabled(user.id);
 		if (hasMfa && !config.skip_mfa) {
@@ -178,8 +236,16 @@ export default {
 					auth_method: "oidc",
 				},
 				scope: ["mfa-challenge"],
-				expiresIn: "3m",
+				expiresIn: `${CHALLENGE_SECONDS}s`,
 			});
+			if (action !== "ok") {
+				prunePendingLinks();
+				pendingLinks.set(challengeToken.payload.jti, {
+					issuer: identity.issuer,
+					subject: identity.subject,
+					exp: Math.floor(Date.now() / 1000) + CHALLENGE_SECONDS,
+				});
+			}
 
 			return {
 				requiresTotp: await totp.isEnabled(user.id),
@@ -187,6 +253,8 @@ export default {
 				expires: parseDatePeriod("3m").toISOString(),
 			};
 		}
+
+		if (action !== "ok" && !(await writeLink(user, identity, action))) await refuseMismatch(user, identity);
 
 		const signed = Token.create({
 			iss: "api",
@@ -284,6 +352,10 @@ export default {
 			consumedChallenges.delete(tokenData.jti);
 			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_CODE, ERROR_MESSAGE_INVALID_CODE_I18N);
 		}
+
+		const pending = pendingLinks.get(tokenData.jti);
+		pendingLinks.delete(tokenData.jti);
+		if (pending) await linkAfterChallenge(user, { issuer: pending.issuer, subject: pending.subject });
 
 		const signed = Token.create({
 			iss: "api",

@@ -679,12 +679,86 @@ it("refuses a subject that is linked to another user, also for an account auto-c
 	try {
 		assert.equal(errorOf((await loginAs("second.account@example.org", "shared")).done), "identity_mismatch");
 		assert.equal(await api.db("user").where({ email: "second.account@example.org" }).first(), undefined);
+		// the refusal is audited on the user that holds the identity, without the subject
+		const holder = await api.db("user").where({ email: "holder@example.com" }).first();
+		const refused = await api.db("audit_log").where({ action: "oidc-refused", object_id: holder.id });
+		assert.equal(refused.length, 1);
+		assert.equal(refused[0].user_id, holder.id);
+		assert.deepEqual(JSON.parse(refused[0].meta), {
+			name: "holder@example.com",
+			email: "holder@example.com",
+			issuer: ISSUER,
+		});
 	} finally {
 		await admin.put(SETTINGS, { auto_create: { enabled: false } });
 	}
 	// a user without a password row is listed without the password flag
 	const listed = (await admin.get("/users")).body.find((user) => user.email === "holder@example.com");
 	assert.equal(listed.npmpro_has_password, false);
+});
+
+// a user with TOTP enabled, signed in later than the tokens its enabling revoked (the caller resets the timers)
+const totpUser = async () => {
+	const user = await api.limited({ visibility: "user" });
+	const setup = await user.post(`/users/${user.user.id}/mfa/totp`);
+	assert.equal(setup.status, 200, setup.text);
+	const enabled = await user.post(`/users/${user.user.id}/mfa/totp/enable`, {
+		code: await generate({ secret: setup.body.secret }),
+	});
+	assert.equal(enabled.status, 200, enabled.text);
+	mock.timers.enable({ apis: ["Date"], now: Date.now() });
+	mock.timers.tick(2000);
+	return { id: user.user.id, email: user.user.email, backupCodes: enabled.body.backup_codes };
+};
+const linkOf = (id) => api.db("user").select("npmpro_oidc_issuer", "npmpro_oidc_subject").where({ id }).first();
+
+it("links a user with a second factor only once the code is verified (R7)", async () => {
+	try {
+		const user = await totpUser();
+		const { login, done } = await loginAs(user.email, "after-totp");
+		assert.ok(setCookie(done, "__Host-Http-challenge_token"));
+		// the sign-in stopped at the challenge: no link and no audit row yet
+		assert.deepEqual(await linkOf(user.id), { npmpro_oidc_issuer: null, npmpro_oidc_subject: null });
+		assert.equal(await auditOf("oidc-linked", user.id), undefined);
+
+		const wrong = await login.browser.post("/tokens/totp", { code: "00000000" });
+		assert.equal(wrong.status, 403, wrong.text);
+		assert.equal(wrong.text.includes("after-totp"), false);
+		assert.deepEqual(await linkOf(user.id), { npmpro_oidc_issuer: null, npmpro_oidc_subject: null });
+		assert.equal(await auditOf("oidc-linked", user.id), undefined);
+
+		const verified = await login.browser.post("/tokens/totp", { code: user.backupCodes[0] });
+		assert.equal(verified.status, 200, verified.text);
+		assert.equal(verified.text.includes("after-totp"), false);
+		assert.deepEqual(await linkOf(user.id), { npmpro_oidc_issuer: ISSUER, npmpro_oidc_subject: "after-totp" });
+		assert.equal(JSON.parse((await auditOf("oidc-linked", user.id)).meta).issuer, ISSUER);
+		assert.equal((await login.browser.get("/users/me")).body.email, user.email);
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+it("refuses the session after the code when another user took the identity during the challenge (R7)", async () => {
+	try {
+		const user = await totpUser();
+		const { login } = await loginAs(user.email, "raced");
+		const taker = await admin.post("/users", { name: "Taker", email: "racer@example.com", roles: [] });
+		assert.equal(taker.status, 201, taker.text);
+		assert.equal((await loginAs("racer@example.com", "raced")).done.headers.get("location"), "/");
+
+		const refused = await login.browser.post("/tokens/totp", { code: user.backupCodes[0] });
+		assert.equal(refused.status, 403, refused.text);
+		assert.equal(refused.body.error.message_i18n, "login.oidc-error.identity_mismatch");
+		assert.equal(refused.text.includes("raced"), false);
+		assert.equal(setCookie(refused, "__Host-Http-token"), undefined);
+		assert.equal((await login.browser.get("/users/me")).status, 401);
+		assert.deepEqual(await linkOf(user.id), { npmpro_oidc_issuer: null, npmpro_oidc_subject: null });
+		const audit = await auditOf("oidc-refused", user.id);
+		assert.ok(audit);
+		assert.equal(audit.meta.includes("raced"), false);
+	} finally {
+		mock.timers.reset();
+	}
 });
 
 it("keeps the issuer and subject out of the audit meta of a deleted linked user (Review Focus 4)", async () => {
