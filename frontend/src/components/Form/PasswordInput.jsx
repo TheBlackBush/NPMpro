@@ -1,5 +1,6 @@
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useState } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Field, FieldLabel } from "src/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { intl } from "src/locale";
@@ -24,14 +25,16 @@ function PasswordControl({ invalid = false, className, ...inputProps }) {
 				className={className}
 			/>
 			<InputGroupAddon align="inline-end">
-				<InputGroupButton
-					size="icon-xs"
-					aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
-					aria-pressed={visible}
-					onClick={() => setVisible((v) => !v)}
-				>
-					{visible ? <EyeOffIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
-				</InputGroupButton>
+				<TapTooltip content={intl.formatMessage({ id: "password.toggle-visibility" })} tap={false}>
+					<InputGroupButton
+						size="icon-xs"
+						aria-label={intl.formatMessage({ id: "password.toggle-visibility" })}
+						aria-pressed={visible}
+						onClick={() => setVisible((v) => !v)}
+					>
+						{visible ? <EyeOffIcon aria-hidden="true" /> : <EyeIcon aria-hidden="true" />}
+					</InputGroupButton>
+				</TapTooltip>
 			</InputGroupAddon>
 		</InputGroup>
 	);

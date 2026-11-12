@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { TruncatedText } from "src/components/TruncatedText";
 import { Card } from "src/components/ui/card";
 import { cn } from "src/lib/utils";
 
@@ -38,7 +39,10 @@ function StatCard({ label, value, hint, hintWrap = false, icon: Icon, tone = "mu
 					</div>
 				) : null}
 			</div>
-			<div className="truncate text-2xl font-semibold">{value}</div>
+			{/* inside a link a tap must follow the link, so the tooltip opens on hover and focus only there */}
+			<TruncatedText className="text-2xl font-semibold" tap={!to}>
+				{value}
+			</TruncatedText>
 			{hint ? (
 				<div className={cn("text-sm text-muted-foreground", hintWrap ? "text-wrap" : "truncate")}>{hint}</div>
 			) : null}

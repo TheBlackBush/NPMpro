@@ -1,6 +1,6 @@
 import { Menu } from "lucide-react";
 import { useState } from "react";
-import { Button } from "src/components/ui/button";
+import { Button } from "src/components/Button";
 import {
 	Sheet,
 	SheetContent,
@@ -26,6 +26,7 @@ export function MobileNav() {
 					size="icon"
 					className="lg:hidden"
 					aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })}
+					title={intl.formatMessage({ id: "aria.toggle-navigation" })}
 				>
 					<Menu aria-hidden="true" />
 				</Button>

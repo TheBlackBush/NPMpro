@@ -1,5 +1,6 @@
 import { ChevronsUpDown, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
 import { useRef } from "react";
+import { TruncatedText } from "src/components/TruncatedText";
 import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -113,10 +114,13 @@ export function UserMenu({ variant = "topbar" }) {
 						sidebar ? "flex flex-1 group-data-[collapsible=icon]:hidden" : "hidden md:flex",
 					)}
 				>
-					<span className="truncate text-sm font-medium">{user?.name}</span>
-					<span className="truncate text-xs text-muted-foreground">
+					{/* inside the menu button: hover only, the press opens the menu */}
+					<TruncatedText className="text-sm font-medium" tap={false}>
+						{user?.name}
+					</TruncatedText>
+					<TruncatedText className="text-xs text-muted-foreground" tap={false}>
 						<T id={role} />
-					</span>
+					</TruncatedText>
 				</span>
 				{sidebar ? (
 					<ChevronsUpDown

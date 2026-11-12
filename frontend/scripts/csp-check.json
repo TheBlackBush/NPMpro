@@ -51,6 +51,20 @@
 			]
 		},
 		{
+			"name": "shell tooltips",
+			"route": "/",
+			"steps": [
+				{ "hover": "header >> role=button[name='Search']" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Search" },
+				{ "hover": "header >> role=button[name='Select language']" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Select language" },
+				{ "click": "header >> role=button[name='Select language']" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "gone": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" }
+			]
+		},
+		{
 			"name": "user menu",
 			"route": "/",
 			"steps": [
@@ -352,6 +366,29 @@
 				{ "click": "role=option[name='10']" },
 				{ "click": "role=button[name='Page 2']" },
 				{ "waitFor": "role=button[name='Page 1']" }
+			]
+		},
+		{
+			"name": "list tooltips",
+			"route": "/access",
+			"steps": [
+				{ "seedAccessLists": 11 },
+				{ "reload": true },
+				{ "waitFor": "[data-slot=table-pagination]" },
+				{ "click": "role=combobox[name='Rows per page']" },
+				{ "waitFor": "[data-slot=select-content]" },
+				{ "click": "role=option[name='10']" },
+				{ "hover": "role=button[name='Next page']" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Next page" },
+				{ "hover": "[data-row-edit]:visible" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Edit" },
+				{ "hover": "[data-row-actions]:visible" },
+				{ "waitFor": "[data-slot=tooltip-content] >> text=Actions for" },
+				{ "click": "[data-row-actions]:visible" },
+				{ "waitFor": "[data-slot=dropdown-menu-content]" },
+				{ "waitFor": "[data-row-actions][data-state=open]" },
+				{ "gone": "[data-slot=tooltip-content]" },
+				{ "press": "Escape" }
 			]
 		},
 		{

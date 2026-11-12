@@ -5,6 +5,7 @@ import { disableTotp, enableTotp, getMfaStatus, regenerateBackupCodes, startTotp
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
 import { CodeEntry, HookForm, useAppForm, useRefusedCodeReset } from "src/components/Form";
 import { StatusBadge } from "src/components/StatusBadge";
+import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
 import { intl, T } from "src/locale";
@@ -67,13 +68,15 @@ function SecretKey({ secret }) {
 					onClick={(e) => e.target.select()}
 				/>
 				<InputGroupAddon align="inline-end">
-					<InputGroupButton
-						size="icon-xs"
-						aria-label={intl.formatMessage({ id: "aria.copy" })}
-						onClick={() => navigator.clipboard.writeText(secret)}
-					>
-						<CopyIcon aria-hidden="true" />
-					</InputGroupButton>
+					<TapTooltip content={intl.formatMessage({ id: "aria.copy" })} tap={false}>
+						<InputGroupButton
+							size="icon-xs"
+							aria-label={intl.formatMessage({ id: "aria.copy" })}
+							onClick={() => navigator.clipboard.writeText(secret)}
+						>
+							<CopyIcon aria-hidden="true" />
+						</InputGroupButton>
+					</TapTooltip>
 				</InputGroupAddon>
 			</InputGroup>
 		</div>

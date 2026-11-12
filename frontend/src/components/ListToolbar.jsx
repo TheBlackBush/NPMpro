@@ -1,6 +1,7 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { AppSelect } from "src/components/AppSelect";
+import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
 import { intl, T } from "src/locale";
@@ -154,20 +155,22 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 						onValueChange={(id) => sorting.onChange([{ id, desc: sortValue.desc }])}
 						options={sortChoices.map((option) => ({ value: option.id, label: option.label }))}
 					/>
-					<Button
-						variant="outline"
-						size="icon-sm"
-						aria-label={intl.formatMessage({ id: "list.sort-desc" })}
-						aria-pressed={sortValue.desc}
-						disabled={!sortValue.id}
-						onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}
-					>
-						{sortValue.desc ? (
-							<ArrowDownWideNarrow aria-hidden="true" />
-						) : (
-							<ArrowUpNarrowWide aria-hidden="true" />
-						)}
-					</Button>
+					<TapTooltip content={intl.formatMessage({ id: "list.sort-desc" })} tap={false}>
+						<Button
+							variant="outline"
+							size="icon-sm"
+							aria-label={intl.formatMessage({ id: "list.sort-desc" })}
+							aria-pressed={sortValue.desc}
+							disabled={!sortValue.id}
+							onClick={() => sorting.onChange([{ id: sortValue.id, desc: !sortValue.desc }])}
+						>
+							{sortValue.desc ? (
+								<ArrowDownWideNarrow aria-hidden="true" />
+							) : (
+								<ArrowUpNarrowWide aria-hidden="true" />
+							)}
+						</Button>
+					</TapTooltip>
 				</div>
 			) : null}
 		</div>

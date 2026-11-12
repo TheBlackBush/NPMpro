@@ -1,5 +1,6 @@
 import { EllipsisVertical } from "lucide-react";
 import { Fragment, useRef } from "react";
+import { Button as AppButton } from "src/components/Button";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Button } from "src/components/ui/button";
 import {
@@ -70,15 +71,17 @@ function RowActions({ label, focusKey, title, items }) {
 			{visible.length > 0 ? (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button
+						{/* the app Button puts the tooltip inside the menu trigger, so the menu's open state wins */}
+						<AppButton
 							type="button"
 							variant="ghost"
 							size="icon-sm"
 							aria-label={label}
+							title={label}
 							data-row-actions={focusKey}
 						>
 							<EllipsisVertical aria-hidden="true" />
-						</Button>
+						</AppButton>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
 						align="end"

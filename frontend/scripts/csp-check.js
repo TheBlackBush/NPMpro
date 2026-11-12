@@ -1,12 +1,14 @@
 // The CSP gate of the image smoke test (.github/workflows/docker.yml): opens every page and the listed menus and
 // windows of a fresh NPMpro in a real browser and fails on any Content Security Policy violation or page error.
-// The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the pages are
-// followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with one of: click, hover,
-// waitFor (selectors), press (a key), viewport ([width, height], until the action ends), skipIfDisabled (a selector:
-// the rest of the action is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a
-// selector: the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists (a
-// number: that many access lists named flow-csp-NN are created through the API, so a list has a paging bar; they are
-// removed when the action ends) or reload (the page is reloaded).
+// The pages and actions are in scripts/csp-check.json; new UI parts add theirs there. Links found on the
+// pages are followed too (the Settings sections, the Monitoring tabs). An action's steps are objects with
+// one of: click, hover (the pointer moves to the element's centre in steps), waitFor (selectors), gone (a
+// selector: waits until it is hidden or removed, e.g. a tooltip after its menu opened), press (a key),
+// viewport ([width, height], until the action ends), skipIfDisabled (a selector: the rest of the action
+// is skipped, and logged, when that control is disabled, e.g. by an env var), skipIfMissing (a selector:
+// the same when it is not on the page within 5 s, e.g. the map without GeoIP databases), seedAccessLists
+// (a number: that many access lists named flow-csp-NN are created through the API, so a list has a paging
+// bar; they are removed when the action ends) or reload (the page is reloaded).
 // Usage: node scripts/csp-check.js <base URL> [chromium|webkit]
 // The browser flows (scripts/flows/run.js) run after it on the same instance.
 // A fresh instance gets its first user through the setup page (a random password); for an instance that is already
@@ -182,8 +184,20 @@ try {
 				if (step.reload) await page.reload();
 				if (step.viewport) await page.setViewportSize({ width: step.viewport[0], height: step.viewport[1] });
 				if (step.click) await page.locator(step.click).first().click();
-				if (step.hover) await page.locator(step.hover).first().hover();
+				if (step.hover) {
+					// stepped pointer moves: a teleported pointer does not open a second tooltip while the first is open
+					const target = page.locator(step.hover).first();
+					await target.waitFor({ state: "visible" });
+					await target.scrollIntoViewIfNeeded();
+					const box = await target.boundingBox();
+					const x = box.x + box.width / 2;
+					const y = box.y + box.height / 2;
+					await page.mouse.move(x, y, { steps: 8 });
+					// a small move inside the element: the tooltip of the previous trigger leaves its pointer state on the last move
+					await page.mouse.move(x + 3, y, { steps: 3 });
+				}
 				if (step.waitFor) await page.locator(step.waitFor).first().waitFor();
+				if (step.gone) await page.locator(step.gone).first().waitFor({ state: "hidden" });
 				if (step.press) await page.keyboard.press(step.press);
 			}
 			// biome-ignore lint/suspicious/noPlaywrightWaitForTimeout: what opened may still add its styles

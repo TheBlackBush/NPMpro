@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
 import { SidebarProvider, SidebarTrigger } from "src/components/ui/sidebar";
 import { usePreferences } from "src/context";
 import { useMediaQuery } from "src/hooks/useMediaQuery";
@@ -57,7 +58,9 @@ function Layout({ children }) {
 				{/* Not SidebarInset: it renders a main element, and the page already has one */}
 				<div className="relative flex min-h-dvh w-full min-w-0 flex-1 flex-col bg-background text-foreground">
 					<header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:px-5">
-						<SidebarTrigger aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })} />
+						<TapTooltip content={intl.formatMessage({ id: "aria.toggle-navigation" })} tap={false}>
+							<SidebarTrigger aria-label={intl.formatMessage({ id: "aria.toggle-navigation" })} />
+						</TapTooltip>
 						<div className="ml-auto flex items-center gap-1">
 							<CommandPaletteButton />
 						</div>

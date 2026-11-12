@@ -224,6 +224,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 									variant="ghost"
 									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-up" })}
+									title={intl.formatMessage({ id: "aria.move-up" })}
 									onClick={() => {
 										handleMoveUp(idx);
 									}}
@@ -236,6 +237,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 									variant="ghost"
 									size="icon-sm"
 									aria-label={intl.formatMessage({ id: "aria.move-down" })}
+									title={intl.formatMessage({ id: "aria.move-down" })}
 									onClick={() => {
 										handleMoveDown(idx);
 									}}
@@ -248,6 +250,7 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 								className={DESTRUCTIVE_TEXT}
 								size="icon-sm"
 								aria-label={intl.formatMessage({ id: "aria.remove" })}
+								title={intl.formatMessage({ id: "aria.remove" })}
 								onClick={() => {
 									handleRemove(item);
 								}}

@@ -1,5 +1,5 @@
 import { Languages } from "lucide-react";
-import { Button } from "src/components/ui/button";
+import { Button } from "src/components/Button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -16,7 +16,12 @@ export function LanguageMenu() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" aria-label={intl.formatMessage({ id: "aria.select-language" })}>
+				<Button
+					variant="ghost"
+					size="icon"
+					aria-label={intl.formatMessage({ id: "aria.select-language" })}
+					title={intl.formatMessage({ id: "aria.select-language" })}
+				>
 					<Languages aria-hidden="true" />
 				</Button>
 			</DropdownMenuTrigger>

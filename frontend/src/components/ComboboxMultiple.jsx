@@ -1,6 +1,8 @@
 import { Command as CommandRoot, useCommandState } from "cmdk";
 import { XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { TapTooltip } from "src/components/TapTooltip";
+import { TruncatedText } from "src/components/TruncatedText";
 import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "src/components/ui/popover";
@@ -198,21 +200,29 @@ export function MultipleCombobox({
 								<Badge
 									key={String(entry)}
 									variant="secondary"
+									data-window-start-skip=""
 									className="h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal"
 								>
-									<span className="truncate">{label}</span>
+									<TruncatedText>{label}</TruncatedText>
 									{locked ? null : (
-										<Button
-											type="button"
-											variant="ghost"
-											size="icon-xs"
-											className="size-6 rounded-full"
-											data-window-start-skip=""
-											aria-label={intl.formatMessage({ id: "combobox.remove" }, { value: label })}
-											onClick={() => remove(index)}
+										<TapTooltip
+											content={intl.formatMessage({ id: "combobox.remove" }, { value: label })}
+											tap={false}
 										>
-											<XIcon aria-hidden="true" />
-										</Button>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon-xs"
+												className="size-6 rounded-full"
+												aria-label={intl.formatMessage(
+													{ id: "combobox.remove" },
+													{ value: label },
+												)}
+												onClick={() => remove(index)}
+											>
+												<XIcon aria-hidden="true" />
+											</Button>
+										</TapTooltip>
 									)}
 								</Badge>
 							);
