@@ -125,10 +125,7 @@ it("the captcha page keeps the bouncer's placeholders, form and callback", () =>
 
 it("moves only without prefers-reduced-motion, and the logo in both schemes", () => {
 	for (const { file, html } of built) {
-		const outside = html.replace(
-			/@media \(prefers-reduced-motion:no-preference\)\{[^}]*\{[^}]*\}[^}]*\{[^}]*\}\}/u,
-			"",
-		);
+		const outside = html.replace(/@media \(prefers-reduced-motion:no-preference\)\{(?:[^{}]*\{[^{}]*\})*\}/u, "");
 		assert.ok(!/animation:/u.test(outside), `${file} animates outside the reduced-motion query`);
 		assert.ok(html.includes('class="logo logo-light" src="data:image/svg+xml;base64,'), file);
 		assert.ok(html.includes('class="logo logo-dark" src="data:image/svg+xml;base64,'), file);
