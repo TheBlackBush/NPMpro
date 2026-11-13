@@ -110,8 +110,8 @@ export const pageFile = (type, choice, kind, id) => {
 	}
 };
 
-// the relations a list can expand that hold rows with page HTML of their own
-const RELATIONS = ["access_lists", "locations", "proxy_hosts"];
+// the relations an answer can expand that hold rows with page HTML of their own (certificates expand their hosts)
+const RELATIONS = ["access_lists", "locations", "proxy_hosts", "dead_hosts", "mtls_proxy_hosts", "mtls_dead_hosts"];
 
 /**
  * @param   {Object} row  a host or access list row (a model instance too), changed in place
@@ -125,11 +125,33 @@ export const withoutPageHtml = (row) => {
 };
 
 /**
+ * @param   {Object} row  a host or access list row, changed in place
+ * @returns {Object}  the row with its own page HTML, its expanded relations without theirs (a proxy host's access lists)
+ */
+export const withoutRelatedPageHtml = (row) => {
+	if (!row || typeof row !== "object") return row;
+	for (const key of RELATIONS) if (Array.isArray(row[key])) row[key].forEach(withoutPageHtml);
+	return row;
+};
+
+// a copy without page HTML, also in the expanded relations; the row itself is not changed
+const copyWithoutPageHtml = (row) => {
+	if (!row || typeof row !== "object") return row;
+	const copy = { ...row };
+	for (const field of PAGE_HTML_FIELDS) delete copy[field];
+	for (const key of RELATIONS) if (Array.isArray(copy[key])) copy[key] = copy[key].map(copyWithoutPageHtml);
+	return copy;
+};
+
+/**
  * @param   {Object} row
- * @returns {Object}  a copy for the audit log: each page as its size
+ * @returns {Object}  a copy for the audit log: each page as its size, the expanded relations without their pages
  */
 export const auditPageHtml = (row) => ({
 	...row,
+	...Object.fromEntries(
+		RELATIONS.filter((key) => Array.isArray(row?.[key])).map((key) => [key, row[key].map(copyWithoutPageHtml)]),
+	),
 	...Object.fromEntries(
 		PAGE_HTML_FIELDS.filter((field) => typeof row?.[field] === "string" && row[field] !== "").map((field) => [
 			field,

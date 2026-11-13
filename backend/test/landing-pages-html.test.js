@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import { assertPageFields, MAX_PAGE_BYTES, pageHtmlProblems } from "../lib/landing-pages/html.js";
-import { auditPageHtml, PLACES, pageFile, withoutPageHtml } from "../lib/landing-pages/types.js";
+import {
+	auditPageHtml,
+	PLACES,
+	pageFile,
+	withoutPageHtml,
+	withoutRelatedPageHtml,
+} from "../lib/landing-pages/types.js";
 
 it("checks size in UTF-8 bytes, well-formed text, NUL and SSI", () => {
 	assert.deepEqual(pageHtmlProblems("<h1>ok</h1>"), []);
@@ -83,4 +89,41 @@ it("lists leave the HTML out, the audit log keeps only its size", () => {
 		locations: [{ access_lists: [{ npmpro_denied_page_html: "y" }] }],
 	});
 	assert.deepEqual(listed, { id: 2, access_lists: [{ id: 3 }], locations: [{ access_lists: [{}] }] });
+});
+
+it("expanded hosts and access lists lose their HTML, also in a host's own answer and its audit entry", () => {
+	// a certificate list expands its hosts
+	const certificate = withoutPageHtml({
+		id: 1,
+		dead_hosts: [{ id: 2, npmpro_page_html: "<p>d</p>" }],
+		mtls_proxy_hosts: [{ id: 3, npmpro_page_upstream_html: "<p>p</p>" }],
+		mtls_dead_hosts: [{ id: 4, npmpro_page_html: "<p>m</p>" }],
+	});
+	assert.deepEqual(certificate, {
+		id: 1,
+		dead_hosts: [{ id: 2 }],
+		mtls_proxy_hosts: [{ id: 3 }],
+		mtls_dead_hosts: [{ id: 4 }],
+	});
+	const host = () => ({
+		id: 5,
+		npmpro_page_upstream_html: "<p>own</p>",
+		access_lists: [{ id: 6, npmpro_denied_page_html: "<p>x</p>" }],
+		locations: [{ access_lists: [{ id: 6, npmpro_denied_page_html: "<p>x</p>" }] }],
+	});
+	assert.deepEqual(withoutRelatedPageHtml(host()), {
+		id: 5,
+		npmpro_page_upstream_html: "<p>own</p>",
+		access_lists: [{ id: 6 }],
+		locations: [{ access_lists: [{ id: 6 }] }],
+	});
+	const row = host();
+	assert.deepEqual(auditPageHtml(row), {
+		id: 5,
+		npmpro_page_upstream_html: "(10 bytes)",
+		access_lists: [{ id: 6 }],
+		locations: [{ access_lists: [{ id: 6 }] }],
+	});
+	// the row itself keeps its relations' pages (the config is rendered from it)
+	assert.deepEqual(row, host());
 });

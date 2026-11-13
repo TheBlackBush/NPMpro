@@ -10,6 +10,7 @@ import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import { expiryBounds } from "../lib/expiry.js";
 import { pickCertificateFields } from "../lib/helpers.js";
+import { withoutPageHtml } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
 import { createRenewalTimer } from "../lib/renewal-timer.js";
 import { getRuntimeConfig } from "../lib/runtime-config.js";
@@ -403,6 +404,8 @@ const internalCertificate = {
 		}
 
 		if (expand) query.withGraphFetched(`[${expand.join(", ")}]`);
+		// the expanded hosts without their page HTML (one page can be 1 MiB)
+		query.runAfter((rows) => (Array.isArray(rows) ? rows.map(withoutPageHtml) : rows));
 
 		return query;
 	},
