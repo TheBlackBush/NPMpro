@@ -38,7 +38,7 @@
 			}
 		},
 		"409": {
-			"description": "The connection test failed (error.checks: one entry per check)",
+			"description": "The connection test failed (error.checks: one entry per check; error.force_blocked is \"appsec_deny_admin\" when saving anyway is refused because it would lock the admin UI out too)",
 			"content": {
 				"application/json": {
 					"example": {

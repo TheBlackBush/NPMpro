@@ -116,25 +116,31 @@ if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro
         '
     }
     crowdsec_unusable=""
+    crowdsec_reason=""
     if [ ! -f /data/crowdsec/crowdsec.conf ] || [ ! -r /data/crowdsec/crowdsec.conf ]; then
         crowdsec_unusable=/data/crowdsec/crowdsec.conf
+        crowdsec_reason="is missing or cannot be read"
     elif [ "$(crowdsec_value USE_TLS_AUTH | tr '[:upper:]' '[:lower:]')" = "true" ]; then
         # the bouncer takes PEM only, and has no passphrase for an encrypted key
         crowdsec_cert="$(crowdsec_value TLS_CLIENT_CERT)"
         crowdsec_key="$(crowdsec_value TLS_CLIENT_KEY)"
         if [ -z "$crowdsec_cert" ]; then
             crowdsec_unusable=TLS_CLIENT_CERT
+            crowdsec_reason="is not set"
         elif ! openssl x509 -inform PEM -noout -in "$crowdsec_cert" < /dev/null > /dev/null 2>&1; then
             crowdsec_unusable="$crowdsec_cert"
+            crowdsec_reason="is missing, cannot be read or is not a PEM certificate"
         elif [ -z "$crowdsec_key" ]; then
             crowdsec_unusable=TLS_CLIENT_KEY
+            crowdsec_reason="is not set"
         elif ! openssl pkey -inform PEM -passin pass: -noout -in "$crowdsec_key" < /dev/null > /dev/null 2>&1; then
             crowdsec_unusable="$crowdsec_key"
+            crowdsec_reason="is missing, cannot be read or is not an unencrypted PEM key"
         fi
     fi
     if [ -n "$crowdsec_unusable" ]; then
         echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
-        echo "CrowdSec: $crowdsec_unusable is not set, missing, unreadable or not valid PEM, the bouncer stays off until it is fixed (Settings, CrowdSec)"
+        echo "CrowdSec: $crowdsec_unusable $crowdsec_reason, the bouncer stays off until it is fixed (Settings, CrowdSec)"
     fi
 fi
 # crowdsec-files-check end

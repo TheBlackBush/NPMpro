@@ -1,5 +1,5 @@
-// A settings save with its toast, the phone layout of a host list, the MFA and help windows, and the language switch
-// (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, the phone layout of a host list, the MFA and help windows, and
+// the language switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -51,6 +51,37 @@ async function settingsSave({ admin }) {
 	} finally {
 		if ((await storedSwitch(api)) !== before)
 			await api("PUT", "/settings/runtime/nginx", { log_not_found: before });
+	}
+}
+
+const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
+
+// Settings, CrowdSec: the section opens, Test connection answers with one line per check (the CI instance has no
+// CrowdSec, so they fail, which is fine here), and a harmless field (the captcha expiration) is saved and read back.
+// The bouncer stays off, so the save never runs the connection test against a CrowdSec this instance does not have.
+async function crowdsecSettings({ admin }) {
+	const { page, api } = admin;
+	const before = await api("GET", "/settings/crowdsec");
+	const wanted = before.captcha_expiration === 3600 ? 3601 : 3600;
+	try {
+		await page.goto("/settings/crowdsec");
+		await page.locator("#crowdsec-api-url").waitFor();
+		await page.getByRole("button", { name: "Test connection", exact: true }).click();
+		await page.locator("[data-crowdsec-check=lapi]").waitFor();
+		await page.locator(CAPTCHA_EXPIRATION).fill(String(wanted));
+		await withToast(page, "Setting has been saved", () =>
+			page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+		);
+		const after = await api("GET", "/settings/crowdsec");
+		if (after.captcha_expiration !== wanted) {
+			throw new Error(`the saved captcha expiration is ${after.captcha_expiration}, expected ${wanted}`);
+		}
+		if (after.enabled !== before.enabled) throw new Error("the save changed whether the bouncer is on");
+	} finally {
+		const now = await api("GET", "/settings/crowdsec");
+		if (now.captcha_expiration !== before.captcha_expiration) {
+			await api("PUT", "/settings/crowdsec", { captcha_expiration: before.captcha_expiration, force: true });
+		}
 	}
 }
 
@@ -272,6 +303,7 @@ async function languageFallback({ browser, base, password }) {
 
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
+	{ name: "crowdsec settings", run: crowdsecSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "users sign-in", run: usersSignIn },

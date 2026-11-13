@@ -116,6 +116,77 @@ it("refuses a failed connection test with its checks, then saves with force and 
 	}
 });
 
+it("refuses even a forced save that would lock the admin UI out, and allows the other forced saves", async () => {
+	const appsec = http.createServer((req, res) => {
+		res.writeHead(req.headers["x-crowdsec-appsec-api-key"] === KEY ? 200 : 401);
+		res.end("{}");
+	});
+	await new Promise((resolve) => appsec.listen(0, "127.0.0.1", resolve));
+	const appsecUrl = `http://127.0.0.1:${appsec.address().port}`;
+	const body = {
+		enabled: true,
+		api_url: lapiUrl,
+		api_key: KEY,
+		appsec_url: appsecUrl,
+		appsec_failure_action: "deny",
+	};
+	try {
+		await admin.put("/settings/crowdsec", { enabled: false });
+		const confBefore = await conf();
+		const calls = reloads(api);
+		const refused = await admin.put("/settings/crowdsec", { ...body, api_key: "wrong-key-secret", force: true });
+		assert.equal(refused.status, 409, refused.text);
+		assert.equal(refused.body.error.message_i18n, "error.crowdsec-test-failed");
+		assert.equal(refused.body.error.force_blocked, "appsec_deny_admin");
+		assert.equal(refused.text.includes("wrong-key-secret"), false);
+		assert.equal((await settings()).enabled, false);
+		assert.equal(await conf(), confBefore);
+		assert.equal(reloads(api), calls);
+
+		// the refused test without force names the block too
+		const unforced = await admin.put("/settings/crowdsec", { ...body, api_key: "wrong-key-secret" });
+		assert.equal(unforced.status, 409, unforced.text);
+		assert.equal(unforced.body.error.force_blocked, "appsec_deny_admin");
+
+		// a failing LAPI alone (AppSec takes the key) stays forceable
+		const lapiOnly = await admin.put("/settings/crowdsec", { ...body, api_url: "http://127.0.0.1:9" });
+		assert.equal(lapiOnly.status, 409, lapiOnly.text);
+		assert.equal(lapiOnly.body.error.force_blocked, undefined);
+		const forcedLapi = await admin.put("/settings/crowdsec", {
+			...body,
+			api_url: "http://127.0.0.1:9",
+			force: true,
+		});
+		assert.equal(forcedLapi.status, 200, forcedLapi.text);
+		await admin.put("/settings/crowdsec", { enabled: false });
+
+		// passthrough and a left-out admin UI are never a lockout
+		const passthrough = await admin.put("/settings/crowdsec", {
+			...body,
+			api_key: "wrong-key-secret",
+			appsec_failure_action: "passthrough",
+			force: true,
+		});
+		assert.equal(passthrough.status, 200, passthrough.text);
+		await admin.put("/settings/crowdsec", { enabled: false });
+		const excluded = await admin.put("/settings/crowdsec", {
+			...body,
+			api_key: "wrong-key-secret",
+			admin_ui_excluded: true,
+			force: true,
+		});
+		assert.equal(excluded.status, 200, excluded.text);
+	} finally {
+		await admin.put("/settings/crowdsec", {
+			enabled: false,
+			appsec_url: "",
+			appsec_failure_action: "deny",
+			admin_ui_excluded: false,
+		});
+		await new Promise((resolve) => appsec.close(resolve));
+	}
+});
+
 it("keeps the saved key for an empty one and removes it for null", async () => {
 	const saved = await admin.put("/settings/crowdsec", { api_key: KEY });
 	assert.equal(saved.status, 200, saved.text);

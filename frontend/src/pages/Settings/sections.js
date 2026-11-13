@@ -10,6 +10,7 @@ import {
 	Network as NetworkIcon,
 	ScrollText,
 	ServerCog,
+	ShieldBan,
 	ShieldCheck,
 	SlidersHorizontal,
 	Users as UsersIcon,
@@ -20,6 +21,7 @@ import Advanced from "./Advanced";
 import Authentication from "./Authentication";
 import Backup from "./Backup";
 import Certificates from "./Certificates";
+import Crowdsec from "./Crowdsec";
 import Database from "./Database";
 import DefaultSite from "./DefaultSite";
 import Environment from "./Environment";
@@ -49,6 +51,7 @@ export const SECTIONS = [
 		icon: ShieldCheck,
 		element: ForwardAuth,
 	},
+	{ id: "crowdsec", category: "security", labelKey: "settings.crowdsec", icon: ShieldBan, element: Crowdsec },
 	{
 		id: "certificates",
 		category: "security",
