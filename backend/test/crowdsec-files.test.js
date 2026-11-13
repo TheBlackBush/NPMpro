@@ -55,8 +55,12 @@ const runCheck = (root, conf) => {
 	assert.equal(run.status, 0, run.stderr);
 	return { out: run.stdout, include: readFileSync(path.join(root, "data/npmpro/nginx/crowdsec.conf"), "utf8") };
 };
-const offLine = (file) =>
-	`CrowdSec: ${file} is not set, missing, unreadable or not valid PEM, the bouncer stays off until it is fixed (Settings, CrowdSec)\n`;
+const offLine = (file, reason) =>
+	`CrowdSec: ${file} ${reason}, the bouncer stays off until it is fixed (Settings, CrowdSec)\n`;
+const CONF_REASON = "is missing or cannot be read";
+const CERT_REASON = "is missing, cannot be read or is not a PEM certificate";
+const KEY_REASON = "is missing, cannot be read or is not an unencrypted PEM key";
+const UNSET = "is not set";
 
 it("launch.sh turns the bouncer off while crowdsec.conf is missing or not a readable file", () => {
 	const root = mkdtempSync(path.join(os.tmpdir(), "csl-"));
@@ -64,7 +68,7 @@ it("launch.sh turns the bouncer off while crowdsec.conf is missing or not a read
 		const conf = `${root}/data/crowdsec/crowdsec.conf`;
 		const missing = runCheck(root, null);
 		assert.equal(missing.include, INCLUDE_OFF);
-		assert.equal(missing.out, offLine(conf));
+		assert.equal(missing.out, offLine(conf, CONF_REASON));
 		mkdirSync(conf);
 		assert.equal(runCheck(root, undefined).include, INCLUDE_OFF);
 		rmSync(conf, { recursive: true });
@@ -117,25 +121,25 @@ it("launch.sh turns the bouncer off while a TLS client file is not set, missing 
 		const gone = `${dir}/gone.key`;
 		const missing = runCheck(root, tls(pem.crt, gone));
 		assert.equal(missing.include, INCLUDE_OFF);
-		assert.equal(missing.out, offLine(gone));
+		assert.equal(missing.out, offLine(gone, KEY_REASON));
 		// an empty certificate, a corrupt key, a DER certificate, an encrypted key, the two files swapped
 		const empty = `${dir}/empty.crt`;
 		writeFileSync(empty, "");
 		const corrupt = `${dir}/corrupt.key`;
 		writeFileSync(corrupt, readFileSync(pem.key, "utf8").slice(0, 60));
 		const cases = [
-			[tls(empty, pem.key), empty],
-			[tls(pem.crt, corrupt), corrupt],
-			[tls(pem.der, pem.key), pem.der],
-			[tls(pem.crt, pem.encrypted), pem.encrypted],
-			[tls(pem.key, pem.crt), pem.key],
-			[tls("", pem.key), "TLS_CLIENT_CERT"],
-			[tls(pem.crt, ""), "TLS_CLIENT_KEY"],
+			[tls(empty, pem.key), empty, CERT_REASON],
+			[tls(pem.crt, corrupt), corrupt, KEY_REASON],
+			[tls(pem.der, pem.key), pem.der, CERT_REASON],
+			[tls(pem.crt, pem.encrypted), pem.encrypted, KEY_REASON],
+			[tls(pem.key, pem.crt), pem.key, CERT_REASON],
+			[tls("", pem.key), "TLS_CLIENT_CERT", UNSET],
+			[tls(pem.crt, ""), "TLS_CLIENT_KEY", UNSET],
 		];
-		for (const [conf, named] of cases) {
+		for (const [conf, named, reason] of cases) {
 			const result = runCheck(root, conf);
 			assert.equal(result.include, INCLUDE_OFF, conf);
-			assert.equal(result.out, offLine(named), conf);
+			assert.equal(result.out, offLine(named, reason), conf);
 		}
 		// TLS auth off: the TLS files are not opened
 		assert.equal(runCheck(root, `USE_TLS_AUTH=false\nTLS_CLIENT_KEY=${gone}\n`).include, INCLUDE_ON);
@@ -149,7 +153,7 @@ it("launch.sh turns the bouncer off while a TLS client file is not set, missing 
 		for (const form of forms) {
 			const result = runCheck(root, form);
 			assert.equal(result.include, INCLUDE_OFF, form);
-			assert.equal(result.out, offLine(gone), form);
+			assert.equal(result.out, offLine(gone, KEY_REASON), form);
 		}
 		// a # inside quotes is part of the path, a # without a space before it too; a glob character is not expanded
 		const odd = `${dir}/c#1*`;
