@@ -1,5 +1,5 @@
-// A settings save with its toast, the CrowdSec section, the phone layout of a host list, the MFA and help windows, and
-// the language switch (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, the Landing pages section, the phone layout of a host list,
+// the MFA and help windows, and the language switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -85,8 +85,52 @@ async function crowdsecSettings({ admin }) {
 	}
 }
 
+const MAINTENANCE_PAGE = '<!DOCTYPE html><p>flow maintenance <!--# echo var="host" --></p>';
+
+// Settings, Landing pages: a custom maintenance page is pasted and saved, the API returns it, the old
+// /settings/default-site address leads here, and the page is set back
+async function landingPagesSettings({ admin }) {
+	const { page, api } = admin;
+	const before = await api("GET", "/settings/landing-pages");
+	try {
+		await page.goto("/settings/landing-pages");
+		// an untouched custom box left and the row set back: no error stays behind to block Save
+		await page.locator("#landing-ban").click();
+		await page.getByRole("option", { name: "Custom page", exact: true }).click();
+		await page.locator("#landing-ban-html").click();
+		await page.getByRole("heading", { name: "Landing pages" }).first().click();
+		await page.locator("#landing-ban").click();
+		await page.getByRole("option", { name: "Access blocked page", exact: true }).click();
+		if (await page.getByText("Fix before saving").count()) {
+			throw new Error("leaving Custom page kept the HTML field's error");
+		}
+		await page.locator("#landing-maintenance").click();
+		await page.getByRole("option", { name: "Custom page", exact: true }).click();
+		await page.locator("#landing-maintenance-html").fill(MAINTENANCE_PAGE);
+		await withToast(page, "Setting has been saved", () =>
+			page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+		);
+		const after = await api("GET", "/settings/landing-pages");
+		if (after.pages.maintenance.choice !== "custom" || after.pages.maintenance.html !== MAINTENANCE_PAGE) {
+			throw new Error(`the maintenance page was not saved: ${JSON.stringify(after.pages.maintenance)}`);
+		}
+		await page.goto("/settings/default-site");
+		await page.waitForURL("**/settings/landing-pages");
+		await page.locator("#landing-maintenance-html").waitFor();
+		if ((await page.locator("#landing-maintenance-html").inputValue()) !== MAINTENANCE_PAGE) {
+			throw new Error("the page shows another maintenance page than the saved one");
+		}
+	} finally {
+		const { choice, html } = before.pages.maintenance;
+		await api("PUT", "/settings/landing-pages", {
+			pages: { maintenance: choice === "custom" ? { choice, html } : { choice } },
+		});
+	}
+}
+
 // The phone session signs in first: creating the host reloads nginx, and a login page that opens during a reload can
-// wait on its health check for seconds (it shows the form only after the check answers), longer than the wait for a field.
+// wait on its health check for seconds (it shows the form only after the check answers), longer than the wait for a
+// field.
 async function phoneList({ browser, base, admin, password }) {
 	const phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
 	let host;
@@ -304,6 +348,7 @@ async function languageFallback({ browser, base, password }) {
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "crowdsec settings", run: crowdsecSettings },
+	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "users sign-in", run: usersSignIn },

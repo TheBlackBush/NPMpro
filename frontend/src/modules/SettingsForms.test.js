@@ -85,12 +85,10 @@ it("default site: names the fields an option hides", () => {
 it("default site: sends the chosen option with its fields and keeps the others' saved values", () => {
 	const data = { value: "html", meta: { redirect: "https://old", html: "<old>", status: 503 } };
 	assert.deepEqual(defaultSitePayload({ value: "redirect", redirect: " https://new ", html: "", status: "" }, data), {
-		id: "default-site",
 		value: "redirect",
 		meta: { redirect: "https://new", html: "<old>", status: 503 },
 	});
 	assert.deepEqual(defaultSitePayload({ value: "html", redirect: "", html: "<new>", status: "" }, data), {
-		id: "default-site",
 		value: "html",
 		meta: { redirect: "https://old", html: "<new>", status: undefined },
 	});
@@ -100,7 +98,6 @@ it("default site: sends the chosen option with its fields and keeps the others' 
 		status: 404,
 	});
 	assert.deepEqual(defaultSitePayload({ value: "444", redirect: "x", html: "y", status: "" }, data), {
-		id: "default-site",
 		value: "444",
 		meta: { redirect: "https://old", html: "<old>", status: 503 },
 	});

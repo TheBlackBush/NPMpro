@@ -35,6 +35,10 @@ Un emplacement envoie un chemin de l'hôte (par exemple `/api/`) vers un autre s
 - **HSTS activé (2 ans)** : demande Forcer HTTPS. **HSTS sous-domaines + preload** demande HSTS.
 - Pour un nouveau certificat : **Réutiliser la clé (déconseillé)** et **Utiliser le challenge DNS**, avec fournisseur, identifiants et secondes de propagation.
 
+### Pages
+
+**Mode maintenance** montre la page de maintenance (503) à chaque visiteur de cet hôte, sauf aux vérifications de Let's Encrypt ; désactivez-le pour remettre le site en ligne. **Page introuvable** (404), **Erreur de l'upstream** (502, 503, 504) et **Maintenance** (503) choisissent ce que voient les visiteurs : **Réglage global** (la page de Paramètres, Pages d'accueil), la version NPMpro de cette page (**Page d'erreur 404**, **Page « Site indisponible »**, **Page de maintenance**), une **Page personnalisée** pour cet hôte seulement (collez ou téléversez un fichier HTML), ou la réponse propre du site. « L'erreur propre à l'upstream » laisse intactes les erreurs JSON d'une API. Un 401 ou 403 venant de l'upstream lui-même passe toujours.
+
 ### Avancé
 
 Configuration nginx personnalisée pour tout l'hôte (bloc server) et pour l'emplacement principal `location /`. Seuls les administrateurs peuvent la modifier.

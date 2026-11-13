@@ -35,6 +35,10 @@ Una ubicación envía una ruta del host (por ejemplo `/api/`) a otro servicio. C
 - **HSTS habilitado (2 años)**: necesita Forzar HTTPS. **HSTS subdominios + preload** necesita HSTS.
 - Para un certificado nuevo: **Reutilizar clave (no recomendado)** y **Usar Desafío DNS**, con proveedor, credencial y segundos de propagación.
 
+### Páginas
+
+**Modo de mantenimiento** muestra la página de mantenimiento (503) a todos los visitantes de este host, salvo a las comprobaciones de Let's Encrypt; desactívalo para recuperar el sitio. **Página no encontrada** (404), **Error del upstream** (502, 503, 504) y **Mantenimiento** (503) eligen lo que ven los visitantes: **Ajuste global** (la página de Configuración, Páginas de destino), la versión de NPMpro de esa página (**Página de error 404**, **Página «Sitio no disponible»**, **Página de mantenimiento**), una **Página personalizada** solo para este host (pega o sube un archivo HTML) o la respuesta propia del sitio. «El error propio del upstream» deja tal cual los errores JSON de una API. Un 401 o 403 del propio upstream siempre pasa.
+
 ### Avanzado
 
 Configuración de nginx propia para todo el host (bloque server) y para la ubicación principal `location /`. Solo los administradores pueden cambiarla.

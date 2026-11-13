@@ -35,6 +35,10 @@ A location sends one path of the host (for example `/api/`) to a different servi
 - **HSTS Enabled (2 Years)**: needs Force HTTPS. **HSTS Subdomains+Preload** needs HSTS.
 - For a new certificate: **Reuse Key (not recommended)** and **Use DNS Challenge**, with provider, credential and propagation seconds.
 
+### Pages
+
+**Maintenance mode** shows the maintenance page (503) to every visitor of this host, except Let's Encrypt's checks; turn it off to bring the site back. **Page not found** (404), **Upstream error** (502, 503, 504) and **Maintenance** (503) choose what visitors see: **Global setting** (the page of Settings, Landing pages), that page's NPMpro version (**Not found page**, **Site unavailable page**, **Maintenance page**), a **Custom page** for this host only (paste or upload one HTML file), or the site's own answer. "The upstream's own error" leaves an API's JSON errors as they are. A 401 or 403 from the upstream itself always passes through.
+
 ### Advanced
 
 Custom nginx config for the whole host (server block) and for the main location `location /`. Only administrators can change it.

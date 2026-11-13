@@ -25,3 +25,7 @@ In un host proxy, scegli la lista sotto **Liste di accesso globali** nella sched
 Puoi collegare più liste a un host o a un percorso. Vengono controllate dall'alto verso il basso, nell'ordine mostrato, e puoi spostarle su e giù. **Soddisfa Qualsiasi** e **Passa Autenticazione all'Upstream** contano solo sulla prima lista. Con CrowdSec, gli IP bannati vedono la pagina di ban prima della richiesta della password.
 
 Altro nel wiki: Host options.
+
+### Pagina di rifiuto
+
+**Negato** (401, 403) è ciò che vede un visitatore quando la lista lo respinge (non sugli host con autenticazione delegata): **Impostazione globale** (la pagina di Impostazioni, Pagine di destinazione), la **Pagina «Accesso negato»**, una **Pagina personalizzata** solo per questa lista (incolla o carica un file HTML) oppure **La pagina semplice di nginx**, che mantiene quella di nginx.

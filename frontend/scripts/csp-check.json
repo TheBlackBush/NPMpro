@@ -11,7 +11,7 @@
 		"/audit-log",
 		"/users",
 		"/settings",
-		"/settings/default-site",
+		"/settings/landing-pages",
 		"/settings/network",
 		"/settings/nginx",
 		"/settings/authentication",
@@ -76,11 +76,23 @@
 		},
 		{
 			"name": "toast",
-			"route": "/settings/default-site",
+			"route": "/settings/landing-pages",
 			"steps": [
-				{ "click": "label:has-text('404 Page')" },
+				{ "click": "#landing-default-site" },
+				{ "click": "role=option[name='404 Page']" },
 				{ "click": "form >> role=button[name='Save']" },
 				{ "waitFor": "[data-sonner-toast]" }
+			]
+		},
+		{
+			"name": "landing pages custom page",
+			"route": "/settings/landing-pages",
+			"steps": [
+				{ "click": "#landing-maintenance" },
+				{ "click": "role=option[name='Custom page']" },
+				{ "waitFor": "#landing-maintenance-html" },
+				{ "click": "#landing-maintenance" },
+				{ "click": "role=option[name='Maintenance page']" }
 			]
 		},
 		{

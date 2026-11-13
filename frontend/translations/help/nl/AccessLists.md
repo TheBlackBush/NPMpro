@@ -25,3 +25,7 @@ Kies bij een proxy host de lijst onder **Globale toegangslijst** op het tabblad 
 U kunt meerdere lijsten aan één host of locatie koppelen. Ze worden van boven naar beneden gecontroleerd, in de getoonde volgorde, en u kunt ze omhoog en omlaag verplaatsen. **Voldoen aan minstens een** en **Authenticatie naar upstream doorgeven** tellen alleen bij de eerste lijst. Met CrowdSec zien geblokkeerde IP's de blokkadepagina vóór de wachtwoordvraag.
 
 Meer in de wiki: Host options.
+
+### Weigerpagina
+
+**Geweigerd** (401, 403) is wat een bezoeker ziet wanneer de lijst hem weigert (niet op hosts met forward-authenticatie): **Globale instelling** (de pagina van Instellingen, Landingspagina's), de **Pagina ‘Toegang geweigerd’**, een **Aangepaste pagina** alleen voor deze lijst (plak of upload één HTML-bestand) of **De gewone pagina van nginx**, die die van nginx behoudt.

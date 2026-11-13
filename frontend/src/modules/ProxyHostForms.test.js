@@ -113,6 +113,13 @@ it("starts a new proxy host with complete values in the window's order", () => {
 		...Object.keys(CERTIFICATE_REQUEST_DEFAULTS),
 		"advancedConfig",
 		"npmproDirectory",
+		"npmproMaintenance",
+		"npmproPageNotFound",
+		"npmproPageNotFoundHtml",
+		"npmproPageUpstream",
+		"npmproPageUpstreamHtml",
+		"npmproPageMaintenance",
+		"npmproPageMaintenanceHtml",
 	]);
 	assert.equal(values.forwardPort, "");
 });
@@ -263,6 +270,7 @@ it("puts every field of the proxy host window on exactly one tab, the location r
 			["details", "column.details", false],
 			["locations", "column.custom-locations", false],
 			["tls", "column.ssl", false],
+			["pages", "landing-pages.tab", false],
 			["advanced", "domains.advanced", false],
 		],
 	);
@@ -272,4 +280,57 @@ it("puts every field of the proxy host window on exactly one tab, the location r
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproDirectory"), "details");
 	assert.deepEqual(PROXY_HOST_TABS.at(-1).fields, ["advancedConfig", "npmproLocationConfig"]);
 	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproLocationConfig"), "advanced");
+});
+
+it("the Pages tab sits between TLS and Advanced and holds the page fields", () => {
+	assert.deepEqual(
+		PROXY_HOST_TABS.map(({ id }) => id),
+		["details", "locations", "tls", "pages", "advanced"],
+	);
+	assert.deepEqual(PROXY_HOST_TABS.find(({ id }) => id === "pages").fields, [
+		"npmproMaintenance",
+		"npmproPageNotFound",
+		"npmproPageNotFoundHtml",
+		"npmproPageUpstream",
+		"npmproPageUpstreamHtml",
+		"npmproPageMaintenance",
+		"npmproPageMaintenanceHtml",
+	]);
+});
+
+it("a proxy host's page defaults, errors and payload", () => {
+	const values = proxyHostDefaults(newHost);
+	assert.equal(values.npmproMaintenance, false);
+	assert.equal(values.npmproPageNotFound, "upstream");
+	assert.equal(values.npmproPageUpstream, "global");
+	assert.equal(values.npmproPageMaintenance, "global");
+	const filled = { ...values, domainNames: ["a.example.com"], forwardHost: "10.0.0.1", forwardPort: "80" };
+	const errors = proxyHostValidate(rules)({ ...filled, npmproPageUpstream: "custom", npmproPageUpstreamHtml: "" });
+	assert.ok(errors.npmproPageUpstreamHtml);
+	assert.equal(proxyHostValidate(rules)(filled).npmproPageUpstreamHtml, undefined);
+	const payload = proxyHostPayload({
+		...values,
+		npmproPageMaintenance: "custom",
+		npmproPageMaintenanceHtml: "<p>x</p>",
+	});
+	assert.equal(payload.npmproPageMaintenance, "custom");
+	assert.equal(payload.npmproPageMaintenanceHtml, "<p>x</p>");
+	// another choice sends no html, so the backend keeps a saved custom page
+	assert.equal("npmproPageUpstreamHtml" in payload, false);
+	assert.equal(payload.npmproPageUpstream, "global");
+});
+
+it("a saved custom page comes from the single row and is valid; the list row without html would not be", () => {
+	const single = { ...newHost, npmproPageNotFound: "custom", npmproPageNotFoundHtml: "<p>404</p>" };
+	const filled = (data) => ({
+		...proxyHostDefaults(data),
+		domainNames: ["a.example.com"],
+		forwardHost: "10.0.0.1",
+		forwardPort: "80",
+	});
+	const validate = proxyHostValidate(rules);
+	assert.equal(proxyHostDefaults(single).npmproPageNotFoundHtml, "<p>404</p>");
+	assert.equal(validate(filled(single)).npmproPageNotFoundHtml, undefined);
+	// what a list answer holds (the backend strips the html): required, so a window must never start from it
+	assert.ok(validate(filled({ ...single, npmproPageNotFoundHtml: undefined })).npmproPageNotFoundHtml);
 });

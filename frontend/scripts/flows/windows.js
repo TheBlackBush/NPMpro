@@ -1,5 +1,6 @@
-// The proxy host window with a custom location, an access list and a certificate (and the lists that must follow), a
-// save that nginx refuses and its re-save, and the unsaved-changes question of all four host windows.
+// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list
+// and a certificate (and the lists that must follow), a save that nginx refuses and its re-save, and the
+// unsaved-changes question of all four host windows.
 import { TYPES, unsavedChanges, viewOnly } from "./hosts.js";
 import {
 	addDomain,
@@ -172,8 +173,89 @@ async function closeWithoutErrors({ admin }) {
 		throw new Error("a required error showed while the window closed");
 }
 
+const UPSTREAM_PAGE = "<p>flow upstream down</p>";
+
+// The proxy host's Pages tab: maintenance on and a custom upstream error page by upload; the stored host has both,
+// and the reopened window shows the saved page in its paste box (the single-row load path)
+async function proxyHostPages({ admin }) {
+	const { page, api } = admin;
+	try {
+		const host = await api("POST", "/nginx/proxy-hosts", {
+			domain_names: ["flow-pages.example.com"],
+			forward_scheme: "http",
+			forward_host: "127.0.0.1",
+			forward_port: 8080,
+		});
+		await page.goto("/nginx/proxy");
+		await rowAction(page, "flow-pages.example.com", "Edit");
+		await windowTitled(page, "Edit Proxy Host");
+		const dialog = page.getByRole("dialog");
+		await openTab(dialog, "pages");
+		await dialog.locator("#npmproMaintenance").click();
+		await dialog.locator("#npmproPageUpstream").click();
+		await page.getByRole("option", { name: "Custom page", exact: true }).click();
+		await dialog.locator("[data-page-upload=npmproPageUpstreamHtml]").setInputFiles({
+			name: "down.html",
+			mimeType: "text/html",
+			buffer: Buffer.from(UPSTREAM_PAGE),
+		});
+		if ((await dialog.locator("#npmproPageUpstream-html").inputValue()) !== UPSTREAM_PAGE) {
+			throw new Error("the uploaded file did not fill the field");
+		}
+		await saveWindow(page, "Proxy Host");
+		const stored = await api("GET", `/nginx/proxy-hosts/${host.id}`);
+		if (!(stored.npmpro_maintenance && stored.npmpro_page_upstream === "custom")) {
+			throw new Error(`the pages were not stored: ${stored.npmpro_maintenance} ${stored.npmpro_page_upstream}`);
+		}
+		if (stored.npmpro_page_upstream_html !== UPSTREAM_PAGE) throw new Error("the page was not stored");
+
+		// reopened: the saved page is in the paste box
+		await rowAction(page, "flow-pages.example.com", "Edit");
+		await windowTitled(page, "Edit Proxy Host");
+		await openTab(dialog, "pages");
+		await dialog.locator("#npmproPageUpstream-html").waitFor();
+		if ((await dialog.locator("#npmproPageUpstream-html").inputValue()) !== UPSTREAM_PAGE) {
+			throw new Error("the reopened window does not show the saved page");
+		}
+		// Preview follows the saved choice: the site's own 404 (the default) has no page of NPMpro to preview
+		const preview = (type) => dialog.locator(`a[href$="/preview/proxy-host/${host.id}/${type}"]`).count();
+		if ((await preview("upstream_error")) !== 1 || (await preview("not_found")) !== 0) {
+			throw new Error("Preview does not follow the saved choices of the Pages tab");
+		}
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await windowClosed(page);
+	} finally {
+		await cleanUp(api);
+	}
+}
+
+// The access list's Denied page: nginx's plain page is stored, and the list answer holds no page HTML
+async function accessListDeniedPage({ admin }) {
+	const { page, api } = admin;
+	try {
+		await page.goto("/access");
+		await page.getByRole("button", { name: "Add Access List", exact: true }).first().click();
+		await windowTitled(page, "Add Access List");
+		const dialog = page.getByRole("dialog");
+		await dialog.locator("input[name=name]").fill("flow-denied");
+		await dialog.locator("#npmproDeniedPage").click();
+		await page.getByRole("option", { name: "nginx's plain page", exact: true }).click();
+		await openTab(dialog, "rules");
+		await dialog.getByRole("button", { name: "Add", exact: true }).click();
+		await dialog.locator('input[name="clients.0.address"]').fill("10.0.0.0/8");
+		await saveWindow(page, "Access List");
+		const list = (await api("GET", "/nginx/access-lists")).find((row) => row.name === "flow-denied");
+		if (list?.npmpro_denied_page !== "plain") throw new Error(`the denied page is ${list?.npmpro_denied_page}`);
+		if (Object.hasOwn(list, "npmpro_denied_page_html")) throw new Error("the list answer holds the page HTML");
+	} finally {
+		await cleanUp(api);
+	}
+}
+
 export const windowFlows = [
 	{ name: "proxy location and access list", run: proxyLocationAccess },
+	{ name: "proxy host pages", run: proxyHostPages },
+	{ name: "access list denied page", run: accessListDeniedPage },
 	{ name: "nginx error and re-save", run: nginxErrorResave },
 	{ name: "unsaved changes", run: unsavedChangesOfAllWindows },
 	{ name: "close without errors", run: closeWithoutErrors },

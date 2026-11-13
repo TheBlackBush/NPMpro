@@ -13,6 +13,8 @@ import {
 	HookForm,
 	Loading,
 	ModalTabs,
+	PageChoiceField,
+	PageLines,
 	SwitchField,
 	SwitchList,
 	TabPane,
@@ -21,7 +23,14 @@ import {
 	useReadOnly,
 } from "src/components";
 import { FieldMessage } from "src/components/Form/FieldMessage";
-import { DirtyTracker, useAccessList, useCanManage, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
+import {
+	DirtyTracker,
+	useAccessList,
+	useCanManage,
+	useIsAdmin,
+	useSetAccessList,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import {
@@ -32,6 +41,7 @@ import {
 } from "src/modules/AccessListForms";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
+import { PLACE_FIELDS, previewPath } from "src/modules/LandingPageForms";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
@@ -52,6 +62,7 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { errors, isSubmitted, isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
+	const isAdmin = useIsAdmin();
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
@@ -86,6 +97,19 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 								/>
 							</SwitchList>
 						</FormSection>
+						<PageLines className="mt-4">
+							<PageChoiceField
+								name="npmproDeniedPage"
+								htmlName="npmproDeniedPageHtml"
+								title={<T id="landing-pages.type.denied" />}
+								codes={PLACE_FIELDS.accessList[0].codes}
+								choices={PLACE_FIELDS.accessList[0].choices}
+								field={PLACE_FIELDS.accessList[0]}
+								previewHref={
+									isAdmin && data.id ? previewPath({ source: "access-list", id: data.id }) : null
+								}
+							/>
+						</PageLines>
 					</TabPane>
 					<TabPane id="auth">
 						<BasicAuthFields savedUsers={savedUsers} />

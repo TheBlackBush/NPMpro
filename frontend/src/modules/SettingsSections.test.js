@@ -12,14 +12,14 @@ const NAMES_CATEGORY = /"other"/u;
 it("groups the sections by category in the categories' order, keeping each section's place", () => {
 	const sections = [
 		{ id: "geoip", category: "monitoring" },
-		{ id: "default-site", category: "sites" },
+		{ id: "landing-pages", category: "sites" },
 		{ id: "network", category: "sites" },
 		{ id: "environment", category: "system" },
 	];
 	assert.deepEqual(
 		groupSections(sections).map(({ id, sections: list }) => [id, list.map((section) => section.id)]),
 		[
-			["sites", ["default-site", "network"]],
+			["sites", ["landing-pages", "network"]],
 			["monitoring", ["geoip"]],
 			["system", ["environment"]],
 		],
@@ -51,7 +51,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 	assert.deepEqual(
 		groupSections(entries).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
 		[
-			["sites", ["default-site", "network", "nginx"]],
+			["sites", ["landing-pages", "network", "nginx"]],
 			["security", ["authentication", "forward-auth", "crowdsec", "certificates"]],
 			["monitoring", ["monitoring", "geoip"]],
 			["data", ["backup", "database"]],

@@ -35,6 +35,10 @@ Eine Location leitet einen Pfad des Hosts (zum Beispiel `/api/`) an einen andere
 - **HSTS aktiviert (2 Jahre)**: braucht Erzwinge HTTPS. **HSTS für Subdomains + Preload** braucht HSTS.
 - Für ein neues Zertifikat: **Schlüssel wiederverwenden (nicht empfohlen)** und **Nutze DNS Challenge**, mit Anbieter, Zugangsdaten und Wartezeit für die Propagierung in Sekunden.
 
+### Seiten
+
+**Wartungsmodus** zeigt jedem Besucher dieses Hosts die Wartungsseite (503), außer den Prüfungen von Let's Encrypt; schalten Sie ihn aus, um die Website zurückzubringen. **Seite nicht gefunden** (404), **Upstream-Fehler** (502, 503, 504) und **Wartung** (503) bestimmen, was Besucher sehen: **Globale Einstellung** (die Seite aus Einstellungen, Landing Pages), die NPMpro-Version dieser Seite (**404-Fehlerseite**, **Seite „Website nicht erreichbar“**, **Wartungsseite**), eine **Benutzerdefinierte Seite** nur für diesen Host (eine HTML-Datei einfügen oder hochladen) oder die eigene Antwort der Website. „Der eigene Fehler des Upstreams“ lässt die JSON-Fehler einer API unverändert. Ein 401 oder 403 vom Upstream selbst wird immer durchgereicht.
+
 ### Erweitert
 
 Eigene nginx-Konfiguration für den ganzen Host (Server-Block) und für die Haupt-Location `location /`. Nur Administratoren können sie ändern.

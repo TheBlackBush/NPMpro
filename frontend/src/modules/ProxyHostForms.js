@@ -14,6 +14,7 @@ import {
 	TLS_TAB_FIELDS,
 	tlsRules,
 } from "./HostForms.js";
+import { htmlName, PLACE_FIELDS, placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 
 // the backend's rules (schema/components/proxy-host-object.json, lib/host-config-guard.js)
 const PATH = /^\S{1,255}$/u;
@@ -178,6 +179,8 @@ export function proxyHostDefaults(data, { isClone = false, isAdmin = false } = {
 		...CERTIFICATE_REQUEST_DEFAULTS,
 		advancedConfig: dropConfig ? "" : data.advancedConfig,
 		npmproDirectory: data.npmproDirectory,
+		npmproMaintenance: data.npmproMaintenance ?? false,
+		...placeDefaults("proxyHost", data),
 	};
 }
 
@@ -209,6 +212,11 @@ export const PROXY_HOST_TABS = Object.freeze([
 	},
 	{ id: "locations", labelId: "column.custom-locations", fields: ["locations"] },
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
+	{
+		id: "pages",
+		labelId: "landing-pages.tab",
+		fields: ["npmproMaintenance", ...PLACE_FIELDS.proxyHost.flatMap(({ name }) => [name, htmlName(name)])],
+	},
 	advancedTab("advancedConfig", "npmproLocationConfig"),
 ]);
 
@@ -232,6 +240,7 @@ export const proxyHostValidate = (rules) =>
 			if (values.npmproAccessListType === "custom" && !(values.npmproAccessListIds?.length > 0)) {
 				errors.npmproAccessListIds = rules.message("error.required");
 			}
+			Object.assign(errors, placeErrors(rules, "proxyHost", values));
 			const rows = locationErrors(rules, values.locations);
 			return rows ? mergeErrors(errors, { locations: rows }) : errors;
 		},
@@ -245,7 +254,7 @@ export const proxyHostValidate = (rules) =>
  * @returns {Object}
  */
 export const proxyHostPayload = (values) => ({
-	...requestValues(values),
+	...placePayload("proxyHost", requestValues(values)),
 	npmproAccessListIds: values.npmproAccessListType === "public" ? [] : values.npmproAccessListIds,
 	forwardPort: Number(values.forwardPort) || 0,
 	locations: values.locations.map((location) => ({ ...location, forwardPort: Number(location.forwardPort) || 0 })),

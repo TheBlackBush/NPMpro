@@ -46,7 +46,7 @@ function HostEditorForm({ config, data, isClone, isAdmin, savedId, errorMsg, onC
 				<ErrorAlert className="mb-3" onClose={onCloseError}>
 					{errorMsg}
 				</ErrorAlert>
-				<Fields isAdmin={isAdmin} />
+				<Fields isAdmin={isAdmin} hostId={savedId ?? (isClone ? undefined : data.id)} />
 				<RequestProgress
 					running={isSubmitting && certificateId === "new"}
 					propagationSeconds={npmproPropagationSeconds}
@@ -169,7 +169,7 @@ function HostEditorWindow({ config, id, isClone, visible, remove }) {
  * @param {Function} config.defaults     (data, { isClone, isAdmin }) => the form's values
  * @param {Function} config.validate     (values) => errors
  * @param {Function} config.payload      (values) => the request body
- * @param {Function} config.Fields       ({ isAdmin }) => the type's tabs
+ * @param {Function} config.Fields       ({ isAdmin, hostId }) => the type's tabs
  * @param {Object}   [config.fieldLabels]       field name -> label id for the note next to Save
  * @param {Function} [config.useSettleOptions]  () => more reads the window waits for (useTlsQueriesSettled)
  * @returns {(id: number|string, isClone?: boolean) => void}

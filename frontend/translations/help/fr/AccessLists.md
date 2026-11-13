@@ -25,3 +25,7 @@ Sur un hôte proxy, choisissez la liste sous **Listes d'accès globales** dans l
 Vous pouvez associer plusieurs listes à un hôte ou à un emplacement. Elles sont vérifiées de haut en bas, dans l'ordre affiché, et vous pouvez les monter et les descendre. **Satisfaire au moins une condition** et **Transmettre l'authentification au serveur en amont** ne comptent que pour la première liste. Avec CrowdSec, les IP bannies voient la page de bannissement avant la demande de mot de passe.
 
 Plus dans le wiki : Host options.
+
+### Page de refus
+
+**Refusé** (401, 403) est ce que voit un visiteur quand la liste le refuse (pas sur les hôtes avec authentification déléguée) : **Réglage global** (la page de Paramètres, Pages d'accueil), la **Page « Accès refusé »**, une **Page personnalisée** pour cette liste seulement (collez ou téléversez un fichier HTML), ou **La page simple de nginx**, qui garde celle de nginx.

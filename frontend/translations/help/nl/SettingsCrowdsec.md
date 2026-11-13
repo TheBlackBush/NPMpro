@@ -2,7 +2,7 @@
 
 Verbindt de in NPMpro ingebouwde CrowdSec-bouncer met uw CrowdSec-container. Elk verzoek aan uw hosts wordt gecontroleerd aan de hand van de besluiten van de CrowdSec Local API (LAPI) en, met een AppSec-URL, aan de hand van de AppSec-regels. Opslaan past de instellingen direct toe met een nginx-reload; de container wordt niet herstart.
 
-NPMpro schrijft `/data/crowdsec/crowdsec.conf` op basis van deze instellingen. Handmatige wijzigingen in dat bestand worden overschreven. `ban.html` en `captcha.html` in dezelfde map kunt u zelf bewerken.
+NPMpro schrijft `/data/crowdsec/crowdsec.conf` op basis van deze instellingen. Handmatige wijzigingen in dat bestand worden overschreven. De blokkade- en captcha-pagina's kiest u in **Instellingen**, **Landingspagina's**, waar u ook een eigen pagina kunt plakken of uploaden.
 
 Een variabele die op de container is ingesteld, wint van de interface en vergrendelt het veld: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
 
@@ -40,7 +40,7 @@ De aanbieder (reCAPTCHA, hCaptcha, Cloudflare Turnstile), de sitesleutel en gehe
 
 ### Geavanceerd
 
-De LAPI-verzoektimeout, scenariofilters, uitgesloten paden, interne verzoeken, de AppSec-timeouts en -opties, en de bestanden van de ban- en captchapagina's met een **Voorbeeld**.
+De LAPI-verzoektimeout, scenariofilters, uitgesloten paden, interne verzoeken, en de AppSec-timeouts en -opties.
 
 ### Buitengesloten?
 

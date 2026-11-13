@@ -25,3 +25,7 @@ On a proxy host, choose the list under **Global Access Lists** on the Details ta
 You can attach several lists to one host or location. They are checked from top to bottom, in the order shown, and you can move them up and down. **Satisfy Any** and **Pass Auth to Upstream** only count on the first list. With CrowdSec, banned IPs see the ban page before the password prompt.
 
 More in the wiki: Host options.
+
+### Denied page
+
+**Denied** (401, 403) is what a visitor sees when the list refuses them (not on hosts with forward authentication): **Global setting** (the page of Settings, Landing pages), the **Access denied page**, a **Custom page** for this list only (paste or upload one HTML file), or **nginx's plain page**, which keeps nginx's own.

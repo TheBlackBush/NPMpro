@@ -25,3 +25,7 @@ Wählen Sie bei einem Proxy-Host die Liste unter **Globale Zugriffslisten** auf 
 Sie können mehrere Listen an einen Host oder eine Location hängen. Sie werden von oben nach unten in der angezeigten Reihenfolge geprüft, und Sie können sie nach oben und unten verschieben. **Eine Bedingung genügt (Satisfy Any)** und **Authentifizierung an Upstream weiterleiten** zählen nur bei der ersten Liste. Mit CrowdSec sehen gesperrte IPs die Sperrseite vor der Passwortabfrage.
 
 Mehr im Wiki: Host options.
+
+### Abgelehnte Seite
+
+**Verweigert** (401, 403) ist das, was ein Besucher sieht, wenn die Liste ihn abweist (nicht bei Hosts mit Forward-Authentifizierung): **Globale Einstellung** (die Seite aus Einstellungen, Landing Pages), die **Seite „Zugriff verweigert“**, eine **Benutzerdefinierte Seite** nur für diese Liste (eine HTML-Datei einfügen oder hochladen) oder **Die schlichte Seite von nginx**, die die Seite von nginx beibehält.

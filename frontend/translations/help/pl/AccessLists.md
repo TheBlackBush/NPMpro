@@ -25,3 +25,7 @@ W hoście proxy wybierz listę w polu **Globalne listy dostępu** na karcie Szcz
 Do jednego hosta lub lokalizacji możesz dołączyć kilka list. Są sprawdzane od góry do dołu, w pokazanej kolejności, i możesz je przesuwać w górę i w dół. **Spełnij dowolny warunek** i **Przekaż uwierzytelnienie do serwera docelowego** liczą się tylko na pierwszej liście. Przy CrowdSec zablokowane adresy IP widzą stronę blokady przed monitem o hasło.
 
 Więcej w wiki: Host options.
+
+### Strona odmowy
+
+**Odmowa** (401, 403) to to, co widzi odwiedzający, gdy lista go odrzuca (nie dotyczy hostów z uwierzytelnianiem przekazywanym): **Ustawienie globalne** (strona z Ustawienia, Strony docelowe), **Strona „Odmowa dostępu”**, **Własna strona** tylko dla tej listy (wklej lub prześlij jeden plik HTML) albo **Zwykła strona nginx**, która zachowuje stronę nginx.

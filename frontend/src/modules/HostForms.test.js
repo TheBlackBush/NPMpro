@@ -9,6 +9,7 @@ import {
 	cloneValues,
 	DEAD_HOST_TABS,
 	deadHostDefaults,
+	deadHostPayload,
 	deadHostValidate,
 	domainNamesOptions,
 	forwardHostError,
@@ -533,4 +534,16 @@ it("clone: empties what must be unique, keeps the rest, drops the raw nginx conf
 	// not a clone: the values as they are
 	const plain = { incomingPort: "80" };
 	assert.equal(cloneValues(plain, CLONE_RULES.stream), plain);
+});
+
+it("404 host: the Page field's default, tab, errors and payload", () => {
+	assert.deepEqual(DEAD_HOST_TABS[0].fields.slice(-2), ["npmproPage", "npmproPageHtml"]);
+	const fresh = deadHostDefaults({ ...newRedirection, forwardDomainName: undefined });
+	assert.equal(fresh.npmproPage, "global");
+	const validate = deadHostValidate(rules);
+	const custom = { ...fresh, domainNames: ["example.com"], npmproPage: "custom" };
+	assert.deepEqual(validate(custom), { npmproPageHtml: "This is required" });
+	assert.deepEqual(validate({ ...custom, npmproPageHtml: "<p>x</p>" }), {});
+	assert.equal(deadHostPayload({ ...custom, npmproPageHtml: "<p>x</p>" }).npmproPageHtml, "<p>x</p>");
+	assert.equal("npmproPageHtml" in deadHostPayload({ ...custom, npmproPage: "npmpro" }), false);
 });

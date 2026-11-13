@@ -25,3 +25,7 @@ Num host proxy, escolha a lista em **Listas de Acesso Globais** no separador Det
 Pode associar várias listas a um host ou a uma location. São verificadas de cima para baixo, pela ordem apresentada, e pode movê-las para cima e para baixo. **Satisfazer Qualquer** e **Passar Autenticação para o Upstream** só contam na primeira lista. Com o CrowdSec, os IPs banidos veem a página de banimento antes do pedido de palavra-passe.
 
 Mais na wiki: Host options.
+
+### Página de recusa
+
+**Negado** (401, 403) é o que um visitante vê quando a lista o recusa (não em hosts com autenticação encaminhada): **Definição global** (a página de Definições, Páginas de destino), a **Página «Acesso negado»**, uma **Página personalizada** só para esta lista (cole ou carregue um ficheiro HTML) ou **A página simples do nginx**, que mantém a do nginx.

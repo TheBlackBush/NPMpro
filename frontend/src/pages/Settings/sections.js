@@ -3,11 +3,11 @@ import {
 	ChartColumn,
 	DatabaseBackup,
 	Database as DatabaseIcon,
-	Globe,
 	LayoutList,
 	Lock,
 	MapPin,
 	Network as NetworkIcon,
+	PanelsTopLeft,
 	ScrollText,
 	ServerCog,
 	ShieldBan,
@@ -23,10 +23,10 @@ import Backup from "./Backup";
 import Certificates from "./Certificates";
 import Crowdsec from "./Crowdsec";
 import Database from "./Database";
-import DefaultSite from "./DefaultSite";
 import Environment from "./Environment";
 import ForwardAuth from "./ForwardAuth";
 import Geoip from "./Geoip";
+import LandingPages from "./LandingPages";
 import Monitoring from "./Monitoring";
 import Network from "./Network";
 import Nginx from "./Nginx";
@@ -34,7 +34,13 @@ import Nginx from "./Nginx";
 // each section names its category (modules/SettingsSections.js); the menu shows them category by category, in
 // this order. The URLs are the ids and do not change with the category.
 export const SECTIONS = [
-	{ id: "default-site", category: "sites", labelKey: "settings.default-site", icon: Globe, element: DefaultSite },
+	{
+		id: "landing-pages",
+		category: "sites",
+		labelKey: "settings.landing-pages",
+		icon: PanelsTopLeft,
+		element: LandingPages,
+	},
 	{ id: "network", category: "sites", labelKey: "settings.network", icon: NetworkIcon, element: Network },
 	{ id: "nginx", category: "sites", labelKey: "settings.nginx", icon: ServerCog, element: Nginx },
 	{

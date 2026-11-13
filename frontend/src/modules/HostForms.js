@@ -5,6 +5,7 @@
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
+import { placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 import { ACCESS_LISTS, CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
 import { HOST_PATTERN } from "./ValidationRules.js";
 
@@ -342,6 +343,7 @@ export const deadHostDefaults = (data, options) =>
 			...CERTIFICATE_REQUEST_DEFAULTS,
 			advancedConfig: data.advancedConfig,
 			npmproDirectory: data.npmproDirectory,
+			...placeDefaults("deadHost", data),
 		},
 		CLONE_RULES.deadHost,
 		options,
@@ -351,7 +353,11 @@ export const deadHostDefaults = (data, options) =>
  * The tabs of the 404 host window (ModalTabs)
  */
 export const DEAD_HOST_TABS = Object.freeze([
-	{ id: "details", labelId: "column.details", fields: ["domainNames", "npmproDirectory"] },
+	{
+		id: "details",
+		labelId: "column.details",
+		fields: ["domainNames", "npmproDirectory", "npmproPage", "npmproPageHtml"],
+	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),
 ]);
@@ -360,10 +366,21 @@ export const DEAD_HOST_TABS = Object.freeze([
  * 404 host: the domain names and the TLS tab
  */
 export const deadHostValidate = (rules) =>
-	fieldsValidate((values) => ({
-		domainNames: domainNamesRule(rules, domainNamesOptions(values)),
-		...tlsRules(rules, values),
-	}));
+	fieldsValidate(
+		(values) => ({
+			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
+			...tlsRules(rules, values),
+		}),
+		(values) => placeErrors(rules, "deadHost", values),
+	);
+
+/**
+ * The request of a 404 host: its page html only for a custom page
+ *
+ * @param   {Object} values
+ * @returns {Object}
+ */
+export const deadHostPayload = (values) => placePayload("deadHost", requestValues(values));
 
 /**
  * The starting values of a stream; its domain names only belong to a requested certificate; a clone's as cloneValues

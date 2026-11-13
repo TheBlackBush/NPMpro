@@ -16,6 +16,7 @@ export * from "./HookForm";
 export * from "./LocationsFields";
 export * from "./ModalTabs";
 export * from "./NginxConfigField";
+export * from "./PageChoiceField";
 export * from "./PasswordInput";
 export * from "./ProxyOptionsFields";
 export * from "./SettingBadge";

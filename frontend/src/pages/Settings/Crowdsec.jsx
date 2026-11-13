@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, CircleDashed, CircleX, ExternalLink, Info, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { Link } from "react-router";
 import {
 	ApiErrorContent,
 	Button,
@@ -319,6 +320,12 @@ function BlockingCard() {
 					},
 				]}
 			/>
+			<p className="text-sm text-muted-foreground">
+				<T id="settings.crowdsec.pages-link" />{" "}
+				<Link to="/settings/landing-pages" className="text-primary underline underline-offset-4">
+					<T id="settings.landing-pages" />
+				</Link>
+			</p>
 			{banResponse === "redirect" ? (
 				<TextField
 					name="redirectLocation"
