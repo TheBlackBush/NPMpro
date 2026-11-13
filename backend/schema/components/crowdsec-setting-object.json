@@ -123,6 +123,7 @@
 			]
 		},
 		"ban_template_path": {
+			"description": "The file the bouncer reads (Settings, Landing pages)",
 			"type": "string"
 		},
 		"redirect_location": {
@@ -151,6 +152,7 @@
 			"type": "string"
 		},
 		"captcha_template_path": {
+			"description": "The file the bouncer reads (Settings, Landing pages)",
 			"type": "string"
 		},
 		"captcha_expiration": {

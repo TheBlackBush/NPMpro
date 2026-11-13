@@ -15,6 +15,9 @@ it("a missing row is null, a save creates it and a second save updates it", asyn
 	const { LANDING_ID, readStoredLandingPages, saveStoredLandingPages } = await import(
 		"../lib/landing-pages/store.js"
 	);
+	// the first start created the row (the import of the old CrowdSec pages): without it the store reads null
+	assert.notEqual(await readStoredLandingPages(), null);
+	await api.db("setting").where({ id: LANDING_ID }).delete();
 	assert.equal(await readStoredLandingPages(), null);
 	await saveStoredLandingPages({ pages: { ban: { choice: "custom", html: "<p>b</p>" } } });
 	assert.deepEqual(await readStoredLandingPages(), { pages: { ban: { choice: "custom", html: "<p>b</p>" } } });

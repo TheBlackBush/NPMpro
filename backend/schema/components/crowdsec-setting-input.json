@@ -96,6 +96,7 @@
 			]
 		},
 		"ban_template_path": {
+			"description": "Ignored: the page is chosen in Settings, Landing pages",
 			"type": "string",
 			"maxLength": 255,
 			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"
@@ -151,6 +152,7 @@
 			"description": "Empty or missing keeps the saved secret, null removes it"
 		},
 		"captcha_template_path": {
+			"description": "Ignored: the page is chosen in Settings, Landing pages",
 			"type": "string",
 			"maxLength": 255,
 			"pattern": "^$|^/data/crowdsec/[^\\s#]+$"

@@ -2,6 +2,7 @@ import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
 import internalIpRanges from "./internal/ip_ranges.js";
+import { startLandingPages } from "./internal/landing-pages.js";
 import {
 	crowdsecService,
 	internalMonitoring,
@@ -41,6 +42,10 @@ const prepareApp = async ({ background = true } = {}) => {
 	} catch (err) {
 		logger.warn(`Could not clean up the backup folder: ${err.message}`);
 	}
+
+	// Settings, Landing pages: the one import of the old CrowdSec pages, then the global page files. Before the first
+	// config generation and reload (the runtime settings below), since the host configs and crowdsec.conf point at them
+	await startLandingPages();
 
 	// the http access log is on while traffic statistics or Write log files is on
 	const accessLog = createAccessLogSwitch({

@@ -417,6 +417,14 @@
 				"$ref": "./paths/settings/geoip/update/post.json"
 			}
 		},
+		"/settings/landing-pages": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/landing-pages/put.json"
+			}
+		},
 		"/settings/crowdsec": {
 			"get": {
 				"$ref": "./paths/settings/crowdsec/get.json"

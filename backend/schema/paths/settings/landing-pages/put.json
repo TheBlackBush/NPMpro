@@ -1,0 +1,206 @@
+{
+	"operationId": "updateLandingPages",
+	"summary": "Update Settings, Landing pages",
+	"description": "Admins only. An empty html with the custom choice keeps the saved page; another choice keeps the saved html for later. The files are written, nginx is tested and reloaded; a failure puts everything back.",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"requestBody": {
+		"description": "Settings payload",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"minProperties": 1,
+					"properties": {
+						"default_site": {
+							"type": "object",
+							"required": [
+								"value"
+							],
+							"additionalProperties": false,
+							"properties": {
+								"value": {
+									"type": "string",
+									"enum": [
+										"congratulations",
+										"404",
+										"444",
+										"redirect",
+										"html"
+									]
+								},
+								"meta": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"redirect": {
+											"type": "string"
+										},
+										"html": {
+											"type": "string",
+											"maxLength": 1048576
+										},
+										"status": {
+											"type": [
+												"integer",
+												"null"
+											],
+											"minimum": 400,
+											"maximum": 599
+										}
+									}
+								}
+							}
+						},
+						"pages": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"not_found": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"upstream_error": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"denied": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"maintenance": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"certificate": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"ban": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								},
+								"captcha": {
+									"type": "object",
+									"additionalProperties": false,
+									"properties": {
+										"choice": {
+											"type": "string",
+											"enum": [
+												"npmpro",
+												"custom"
+											]
+										},
+										"html": {
+											"$ref": "../../../common.json#/properties/npmpro_page_html"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"example": {
+					"pages": {
+						"upstream_error": {
+							"choice": "custom",
+							"html": "<p>down</p>"
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../components/landing-pages-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
