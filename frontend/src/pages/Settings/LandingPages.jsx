@@ -169,7 +169,7 @@ function LandingPagesForm({ data }) {
 				<T id="landing-pages.lead" />
 			</p>
 			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-			<div className="-mt-4">
+			<div className="-mt-2">
 				<PageGroup labelId="landing-pages.group.default">
 					<DefaultPageRow isAdmin={isAdmin} />
 				</PageGroup>
