@@ -16,6 +16,7 @@
 		"/settings/nginx",
 		"/settings/authentication",
 		"/settings/forward-auth",
+		"/settings/crowdsec",
 		"/settings/certificates",
 		"/settings/geoip",
 		"/settings/advanced",
@@ -414,6 +415,17 @@
 				{ "click": "#auth-rules-trigger" },
 				{ "click": "#auth-new-users-trigger" },
 				{ "click": "#auth-permissions-trigger" }
+			]
+		},
+		{
+			"name": "crowdsec section",
+			"route": "/settings/crowdsec",
+			"steps": [
+				{ "click": "#crowdsec-advanced-trigger" },
+				{ "waitFor": "#crowdsec-advanced-trigger[aria-expanded=true]" },
+				{ "click": "role=button[name='Test connection']" },
+				{ "waitFor": "[data-crowdsec-check=lapi]" },
+				{ "click": "#crowdsec-advanced-trigger" }
 			]
 		},
 		{
