@@ -8,4 +8,4 @@ indicizzatori di ricerca che le pagine del dominio non esistono più.
 Un altro vantaggio di avere questo host è quello di tracciare i log degli accessi e
 visualizzare i referrer.
 
-**Pagina** (404) sceglie ciò che vedono i visitatori: **Impostazione globale** (la pagina 404 di Impostazioni, Pagine di destinazione), la **Pagina non trovata** o una **Pagina personalizzata** solo per questo host (incolla o carica un file HTML).
+**Pagina** (404) sceglie ciò che vedono i visitatori: **Impostazione globale** (la pagina 404 di Impostazioni, Pagine di destinazione), la **Pagina di errore 404** o una **Pagina personalizzata** solo per questo host (incolla o carica un file HTML).

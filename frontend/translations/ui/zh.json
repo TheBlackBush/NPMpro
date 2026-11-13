@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "“无法建立安全连接”页面",
 	"landing-pages.choice.npmpro.denied": "“访问被拒绝”页面",
 	"landing-pages.choice.npmpro.maintenance": "维护页面",
-	"landing-pages.choice.npmpro.not_found": "页面未找到",
+	"landing-pages.choice.npmpro.not_found": "404 错误页面",
 	"landing-pages.choice.npmpro.upstream_error": "“网站暂时无法访问”页面",
 	"landing-pages.choice.plain": "nginx 的简易页面",
 	"landing-pages.choice.upstream-error": "上游自身的错误",

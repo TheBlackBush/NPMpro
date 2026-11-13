@@ -37,7 +37,7 @@ Uma location envia um caminho do host (por exemplo `/api/`) para outro serviço.
 
 ### Páginas
 
-**Modo de manutenção** mostra a página de manutenção (503) a todos os visitantes deste host, exceto às verificações do Let's Encrypt; desative-o para repor o site. **Página não encontrada** (404), **Erro do upstream** (502, 503, 504) e **Manutenção** (503) escolhem o que os visitantes veem: **Definição global** (a página de Definições, Páginas de destino), a versão do NPMpro dessa página (**Página não encontrada**, **Página «Site indisponível»**, **Página de manutenção**), uma **Página personalizada** só para este host (cole ou carregue um ficheiro HTML) ou a resposta própria do site. «O erro próprio do upstream» deixa os erros JSON de uma API como estão. Um 401 ou 403 do próprio upstream passa sempre.
+**Modo de manutenção** mostra a página de manutenção (503) a todos os visitantes deste host, exceto às verificações do Let's Encrypt; desative-o para repor o site. **Página não encontrada** (404), **Erro do upstream** (502, 503, 504) e **Manutenção** (503) escolhem o que os visitantes veem: **Definição global** (a página de Definições, Páginas de destino), a versão do NPMpro dessa página (**Página de erro 404**, **Página «Site indisponível»**, **Página de manutenção**), uma **Página personalizada** só para este host (cole ou carregue um ficheiro HTML) ou a resposta própria do site. «O erro próprio do upstream» deixa os erros JSON de uma API como estão. Um 401 ou 403 do próprio upstream passa sempre.
 
 ### Avançado
 

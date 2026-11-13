@@ -2,7 +2,7 @@
 
 将 NPMpro 内置的 CrowdSec bouncer 连接到你的 CrowdSec 容器。发往你的主机的每个请求都会根据 CrowdSec 本地 API（LAPI）的决策进行检查，设置了 AppSec 地址时还会根据 AppSec 规则检查。保存后会立即通过重新加载 nginx 应用设置；容器不会重启。
 
-NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的手动修改会被覆盖。同一文件夹中的 `ban.html` 和 `captcha.html` 可以由你自行编辑。
+NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的手动修改会被覆盖。封禁页面和验证码页面在**设置**、**着陆页**中选择，也可以在那里粘贴或上传自定义页面。
 
 在容器上设置的变量优先于界面并锁定对应字段：`CROWDSEC_ENABLED`、`CROWDSEC_LAPI_URL`、`CROWDSEC_API_KEY`、`CROWDSEC_APPSEC_URL`。
 
@@ -40,7 +40,7 @@ NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的
 
 ### 高级
 
-LAPI 请求超时、场景过滤、排除的路径、内部请求、AppSec 超时和选项，以及封禁页面和验证码页面的文件（带**预览**）。
+LAPI 请求超时、场景过滤、排除的路径、内部请求，以及 AppSec 超时和选项。
 
 ### 被锁在外面了？
 

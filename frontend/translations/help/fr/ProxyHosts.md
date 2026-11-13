@@ -37,7 +37,7 @@ Un emplacement envoie un chemin de l'hôte (par exemple `/api/`) vers un autre s
 
 ### Pages
 
-**Mode maintenance** montre la page de maintenance (503) à chaque visiteur de cet hôte, sauf aux vérifications de Let's Encrypt ; désactivez-le pour remettre le site en ligne. **Page introuvable** (404), **Erreur de l'upstream** (502, 503, 504) et **Maintenance** (503) choisissent ce que voient les visiteurs : **Réglage global** (la page de Paramètres, Pages d'accueil), la version NPMpro de cette page (**Page introuvable**, **Page « Site indisponible »**, **Page de maintenance**), une **Page personnalisée** pour cet hôte seulement (collez ou téléversez un fichier HTML), ou la réponse propre du site. « L'erreur propre à l'upstream » laisse intactes les erreurs JSON d'une API. Un 401 ou 403 venant de l'upstream lui-même passe toujours.
+**Mode maintenance** montre la page de maintenance (503) à chaque visiteur de cet hôte, sauf aux vérifications de Let's Encrypt ; désactivez-le pour remettre le site en ligne. **Page introuvable** (404), **Erreur de l'upstream** (502, 503, 504) et **Maintenance** (503) choisissent ce que voient les visiteurs : **Réglage global** (la page de Paramètres, Pages d'accueil), la version NPMpro de cette page (**Page d'erreur 404**, **Page « Site indisponible »**, **Page de maintenance**), une **Page personnalisée** pour cet hôte seulement (collez ou téléversez un fichier HTML), ou la réponse propre du site. « L'erreur propre à l'upstream » laisse intactes les erreurs JSON d'une API. Un 401 ou 403 venant de l'upstream lui-même passe toujours.
 
 ### Avancé
 

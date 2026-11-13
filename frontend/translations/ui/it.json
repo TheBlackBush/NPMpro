@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "Pagina «Connessione sicura non disponibile»",
 	"landing-pages.choice.npmpro.denied": "Pagina «Accesso negato»",
 	"landing-pages.choice.npmpro.maintenance": "Pagina di manutenzione",
-	"landing-pages.choice.npmpro.not_found": "Pagina non trovata",
+	"landing-pages.choice.npmpro.not_found": "Pagina di errore 404",
 	"landing-pages.choice.npmpro.upstream_error": "Pagina «Sito non disponibile»",
 	"landing-pages.choice.plain": "La pagina semplice di nginx",
 	"landing-pages.choice.upstream-error": "L'errore proprio dell'upstream",

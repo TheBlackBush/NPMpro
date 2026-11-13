@@ -37,7 +37,7 @@ Een locatie stuurt één pad van de host (bijvoorbeeld `/api/`) naar een andere 
 
 ### Pagina's
 
-**Onderhoudsmodus** toont de onderhoudspagina (503) aan elke bezoeker van deze host, behalve aan de controles van Let's Encrypt; schakel het uit om de site terug te brengen. **Pagina niet gevonden** (404), **Upstream-fout** (502, 503, 504) en **Onderhoud** (503) kiezen wat bezoekers zien: **Globale instelling** (de pagina van Instellingen, Landingspagina's), de NPMpro-versie van die pagina (**Pagina niet gevonden**, **Pagina ‘Site niet beschikbaar’**, **Onderhoudspagina**), een **Aangepaste pagina** alleen voor deze host (plak of upload één HTML-bestand) of het eigen antwoord van de site. ‘De eigen fout van de upstream’ laat de JSON-fouten van een API ongewijzigd. Een 401 of 403 van de upstream zelf gaat altijd door.
+**Onderhoudsmodus** toont de onderhoudspagina (503) aan elke bezoeker van deze host, behalve aan de controles van Let's Encrypt; schakel het uit om de site terug te brengen. **Pagina niet gevonden** (404), **Upstream-fout** (502, 503, 504) en **Onderhoud** (503) kiezen wat bezoekers zien: **Globale instelling** (de pagina van Instellingen, Landingspagina's), de NPMpro-versie van die pagina (**404-foutpagina**, **Pagina ‘Site niet beschikbaar’**, **Onderhoudspagina**), een **Aangepaste pagina** alleen voor deze host (plak of upload één HTML-bestand) of het eigen antwoord van de site. ‘De eigen fout van de upstream’ laat de JSON-fouten van een API ongewijzigd. Een 401 of 403 van de upstream zelf gaat altijd door.
 
 ### Geavanceerd
 

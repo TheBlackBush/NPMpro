@@ -37,7 +37,7 @@ Eine Location leitet einen Pfad des Hosts (zum Beispiel `/api/`) an einen andere
 
 ### Seiten
 
-**Wartungsmodus** zeigt jedem Besucher dieses Hosts die Wartungsseite (503), außer den Prüfungen von Let's Encrypt; schalten Sie ihn aus, um die Website zurückzubringen. **Seite nicht gefunden** (404), **Upstream-Fehler** (502, 503, 504) und **Wartung** (503) bestimmen, was Besucher sehen: **Globale Einstellung** (die Seite aus Einstellungen, Landing Pages), die NPMpro-Version dieser Seite (**Seite nicht gefunden**, **Seite „Website nicht erreichbar“**, **Wartungsseite**), eine **Benutzerdefinierte Seite** nur für diesen Host (eine HTML-Datei einfügen oder hochladen) oder die eigene Antwort der Website. „Der eigene Fehler des Upstreams“ lässt die JSON-Fehler einer API unverändert. Ein 401 oder 403 vom Upstream selbst wird immer durchgereicht.
+**Wartungsmodus** zeigt jedem Besucher dieses Hosts die Wartungsseite (503), außer den Prüfungen von Let's Encrypt; schalten Sie ihn aus, um die Website zurückzubringen. **Seite nicht gefunden** (404), **Upstream-Fehler** (502, 503, 504) und **Wartung** (503) bestimmen, was Besucher sehen: **Globale Einstellung** (die Seite aus Einstellungen, Landing Pages), die NPMpro-Version dieser Seite (**404-Fehlerseite**, **Seite „Website nicht erreichbar“**, **Wartungsseite**), eine **Benutzerdefinierte Seite** nur für diesen Host (eine HTML-Datei einfügen oder hochladen) oder die eigene Antwort der Website. „Der eigene Fehler des Upstreams“ lässt die JSON-Fehler einer API unverändert. Ein 401 oder 403 vom Upstream selbst wird immer durchgereicht.
 
 ### Erweitert
 

@@ -2,7 +2,7 @@
 
 Liga o bouncer do CrowdSec integrado no NPMpro ao seu contentor CrowdSec. Cada pedido aos seus anfitriões é verificado com as decisões da API local do CrowdSec (LAPI) e, com um URL do AppSec, com as regras do AppSec. Ao guardar, as definições são aplicadas de imediato com um recarregamento do nginx; o contentor não reinicia.
 
-O NPMpro escreve `/data/crowdsec/crowdsec.conf` a partir destas definições. As alterações manuais a esse ficheiro são substituídas. `ban.html` e `captcha.html` na mesma pasta são para editar por si.
+O NPMpro escreve `/data/crowdsec/crowdsec.conf` a partir destas definições. As alterações manuais a esse ficheiro são substituídas. As páginas de bloqueio e de captcha escolhem-se em **Definições**, **Páginas de destino**, onde também pode colar ou carregar uma página personalizada.
 
 Uma variável definida no contentor prevalece sobre a interface e bloqueia o campo: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
 
@@ -40,7 +40,7 @@ O fornecedor (reCAPTCHA, hCaptcha, Cloudflare Turnstile), a sua chave do site e 
 
 ### Avançado
 
-O tempo limite dos pedidos à LAPI, os filtros de cenários, os caminhos excluídos, os pedidos internos, os tempos limite e opções do AppSec, e os ficheiros das páginas de bloqueio e de captcha com uma **Pré-visualização**.
+O tempo limite dos pedidos à LAPI, os filtros de cenários, os caminhos excluídos, os pedidos internos, e os tempos limite e opções do AppSec.
 
 ### Ficou sem acesso?
 

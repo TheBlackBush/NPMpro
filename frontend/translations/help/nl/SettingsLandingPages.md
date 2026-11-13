@@ -4,11 +4,11 @@ De pagina's die bezoekers zien in plaats van een site: wanneer voor een adres ni
 
 ### Standaardpagina
 
-Wat een adres zonder host toont: de **Felicitatiepagina**, de **404-pagina**, **Geen respons (444)**, een **Omleiden** of uw eigen **Aangepaste HTML**.
+Wat een adres zonder host toont: **Felicitatiepagina**, **404-pagina**, **Geen respons (444)**, **Omleiden** (naar een adres dat u opgeeft) of **Aangepaste HTML** (uw eigen pagina).
 
 ### Globale pagina's
 
-Voor elke pagina: haar NPMpro-pagina (bijvoorbeeld **Pagina niet gevonden** of **Pagina ‘Toegang geweigerd’**) of een **Aangepaste pagina**. Een aangepaste pagina is één HTML-bestand (maximaal 1 MB, UTF-8) met de stijlen en afbeeldingen erin; plak het of gebruik **.html uploaden**. Ze kan het IP-adres van de bezoeker, de tijd, de statuscode en de hostnaam tonen met `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` en `host`; andere server-side includes worden geweigerd.
+Voor elke pagina: haar NPMpro-pagina (bijvoorbeeld **404-foutpagina** of **Pagina ‘Toegang geweigerd’**) of een **Aangepaste pagina**. Een aangepaste pagina is één HTML-bestand (maximaal 1 MB, UTF-8) met de stijlen en afbeeldingen erin; plak het of gebruik **.html uploaden**. Ze kan het IP-adres van de bezoeker, de tijd, de statuscode en de hostnaam tonen met `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` en `host`; andere server-side includes worden geweigerd.
 
 Proxyhosts, 404-hosts en toegangslijsten gebruiken deze pagina's tenzij ze hun eigen kiezen (het tabblad **Pagina's** van een proxyhost, het veld **Pagina** van een 404-host, **Geweigerd** van een toegangslijst).
 

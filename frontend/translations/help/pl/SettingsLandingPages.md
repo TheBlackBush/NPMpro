@@ -4,7 +4,7 @@ Strony, które odwiedzający widzą zamiast witryny: gdy dla adresu nic nie skon
 
 ### Strona domyślna
 
-Co pokazuje adres bez hosta: **Strona gratulacyjna**, **Strona 404**, **Brak odpowiedzi (444)**, **Przekierowanie** lub Twój własny **Własny HTML**.
+Co pokazuje adres bez hosta: **Strona gratulacyjna**, **Strona 404**, **Brak odpowiedzi (444)**, **Przekierowanie** (na podany adres) lub **Własny HTML** (Twoja własna strona).
 
 ### Strony globalne
 

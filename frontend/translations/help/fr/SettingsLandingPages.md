@@ -4,11 +4,11 @@ Les pages que voient les visiteurs à la place d'un site : quand rien n'est conf
 
 ### Page par défaut
 
-Ce que montre une adresse sans hôte : la **Page de félicitations**, la **Page 404**, **Aucune réponse (444)**, une **Redirection** ou votre propre **HTML personnalisé**.
+Ce que montre une adresse sans hôte : **Page de félicitations**, **Page 404**, **Aucune réponse (444)**, **Redirection** (vers une adresse que vous indiquez) ou **HTML personnalisé** (votre propre page).
 
 ### Pages globales
 
-Pour chaque page : sa page NPMpro (par exemple **Page introuvable** ou **Page « Accès refusé »**) ou une **Page personnalisée**. Une page personnalisée est un fichier HTML (1 MB au plus, UTF-8) avec ses styles et ses images à l'intérieur ; collez-le ou utilisez **Téléverser un .html**. Elle peut afficher l'IP du visiteur, l'heure, le code d'état et le nom d'hôte avec `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` et `host` ; les autres inclusions côté serveur sont refusées.
+Pour chaque page : sa page NPMpro (par exemple **Page d'erreur 404** ou **Page « Accès refusé »**) ou une **Page personnalisée**. Une page personnalisée est un fichier HTML (1 MB au plus, UTF-8) avec ses styles et ses images à l'intérieur ; collez-le ou utilisez **Téléverser un .html**. Elle peut afficher l'IP du visiteur, l'heure, le code d'état et le nom d'hôte avec `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` et `host` ; les autres inclusions côté serveur sont refusées.
 
 Les hôtes proxy, les hôtes 404 et les listes d'accès utilisent ces pages sauf s'ils choisissent les leurs (l'onglet **Pages** d'un hôte proxy, le champ **Page** d'un hôte 404, **Refusé** d'une liste d'accès).
 

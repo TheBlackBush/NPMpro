@@ -4,7 +4,7 @@ The pages visitors see instead of a site: when nothing is set up for an address,
 
 ### Default page
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+What an address without a host shows: **Congratulations Page**, **404 Page**, **No Response (444)**, **Redirect** (to an address you enter) or **Custom HTML** (your own page).
 
 ### Global pages
 

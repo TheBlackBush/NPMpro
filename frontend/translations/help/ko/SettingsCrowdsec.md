@@ -2,7 +2,7 @@
 
 NPMpro에 내장된 CrowdSec bouncer를 CrowdSec 컨테이너에 연결합니다. 호스트로 들어오는 모든 요청은 CrowdSec Local API(LAPI)의 결정에 따라 검사되며, AppSec URL이 있으면 AppSec 규칙으로도 검사됩니다. 저장하면 nginx를 다시 로드해 설정이 즉시 적용되며 컨테이너는 재시작되지 않습니다.
 
-NPMpro는 이 설정으로 `/data/crowdsec/crowdsec.conf`를 작성합니다. 이 파일을 직접 수정하면 덮어써집니다. 같은 폴더의 `ban.html`과 `captcha.html`은 직접 편집할 수 있습니다.
+NPMpro는 이 설정으로 `/data/crowdsec/crowdsec.conf`를 작성합니다. 이 파일을 직접 수정하면 덮어써집니다. 차단 페이지와 캡차 페이지는 **설정**, **랜딩 페이지**에서 선택합니다. 그곳에서 사용자 지정 페이지를 붙여 넣거나 업로드할 수도 있습니다.
 
 컨테이너에 설정한 변수는 UI보다 우선하며 해당 필드를 잠급니다: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
 
@@ -40,7 +40,7 @@ AppSec이 실패하고 **AppSec에 연결할 수 없을 때**가 **요청 거부
 
 ### 고급
 
-LAPI 요청 제한 시간, 시나리오 필터, 제외할 경로, 내부 요청, AppSec 제한 시간과 옵션, 그리고 **미리보기**가 있는 차단 페이지와 캡차 페이지 파일.
+LAPI 요청 제한 시간, 시나리오 필터, 제외할 경로, 내부 요청, AppSec 제한 시간과 옵션.
 
 ### 접속할 수 없나요?
 

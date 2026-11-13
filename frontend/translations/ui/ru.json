@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "Страница «Защищённое соединение недоступно»",
 	"landing-pages.choice.npmpro.denied": "Страница «Доступ запрещён»",
 	"landing-pages.choice.npmpro.maintenance": "Страница обслуживания",
-	"landing-pages.choice.npmpro.not_found": "Страница не найдена",
+	"landing-pages.choice.npmpro.not_found": "Страница ошибки 404",
 	"landing-pages.choice.npmpro.upstream_error": "Страница «Сайт недоступен»",
 	"landing-pages.choice.plain": "Простая страница nginx",
 	"landing-pages.choice.upstream-error": "Собственная ошибка upstream",

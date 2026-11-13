@@ -9,4 +9,4 @@ las páginas del dominio ya no existen.
 Otro beneficio de tener este host es rastrear los registros de visitas a él y
 ver los referentes.
 
-**Página** (404) elige lo que ven los visitantes: **Ajuste global** (la página 404 de Configuración, Páginas de destino), la **Página no encontrada** o una **Página personalizada** solo para este host (pega o sube un archivo HTML).
+**Página** (404) elige lo que ven los visitantes: **Ajuste global** (la página 404 de Configuración, Páginas de destino), la **Página de error 404** o una **Página personalizada** solo para este host (pega o sube un archivo HTML).

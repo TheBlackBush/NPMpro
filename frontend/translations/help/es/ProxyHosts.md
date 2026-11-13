@@ -37,7 +37,7 @@ Una ubicación envía una ruta del host (por ejemplo `/api/`) a otro servicio. C
 
 ### Páginas
 
-**Modo de mantenimiento** muestra la página de mantenimiento (503) a todos los visitantes de este host, salvo a las comprobaciones de Let's Encrypt; desactívalo para recuperar el sitio. **Página no encontrada** (404), **Error del upstream** (502, 503, 504) y **Mantenimiento** (503) eligen lo que ven los visitantes: **Ajuste global** (la página de Configuración, Páginas de destino), la versión de NPMpro de esa página (**Página no encontrada**, **Página «Sitio no disponible»**, **Página de mantenimiento**), una **Página personalizada** solo para este host (pega o sube un archivo HTML) o la respuesta propia del sitio. «El error propio del upstream» deja tal cual los errores JSON de una API. Un 401 o 403 del propio upstream siempre pasa.
+**Modo de mantenimiento** muestra la página de mantenimiento (503) a todos los visitantes de este host, salvo a las comprobaciones de Let's Encrypt; desactívalo para recuperar el sitio. **Página no encontrada** (404), **Error del upstream** (502, 503, 504) y **Mantenimiento** (503) eligen lo que ven los visitantes: **Ajuste global** (la página de Configuración, Páginas de destino), la versión de NPMpro de esa página (**Página de error 404**, **Página «Sitio no disponible»**, **Página de mantenimiento**), una **Página personalizada** solo para este host (pega o sube un archivo HTML) o la respuesta propia del sitio. «El error propio del upstream» deja tal cual los errores JSON de una API. Un 401 o 403 del propio upstream siempre pasa.
 
 ### Avanzado
 

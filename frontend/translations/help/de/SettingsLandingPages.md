@@ -4,11 +4,11 @@ Die Seiten, die Besucher statt einer Website sehen: wenn für eine Adresse nicht
 
 ### Standardseite
 
-Was eine Adresse ohne Host zeigt: die **Glückwunschseite**, die **404-Seite**, **Keine Antwort (444)**, eine **Weiterleitung** oder Ihr eigenes **Benutzerdefinierte HTML**.
+Was eine Adresse ohne Host zeigt: **Glückwunschseite**, **404-Seite**, **Keine Antwort (444)**, **Weiterleitung** (zu einer Adresse, die Sie angeben) oder **Benutzerdefinierte HTML** (Ihre eigene Seite).
 
 ### Globale Seiten
 
-Für jede Seite: ihre NPMpro-Seite (zum Beispiel **Seite nicht gefunden** oder **Seite „Zugriff verweigert“**) oder eine **Benutzerdefinierte Seite**. Eine benutzerdefinierte Seite ist eine HTML-Datei (höchstens 1 MB, UTF-8) mit ihren Stilen und Bildern darin; fügen Sie sie ein oder nutzen Sie **.html hochladen**. Sie kann die IP des Besuchers, die Zeit, den Statuscode und den Hostnamen mit `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` und `host` anzeigen; andere Server-Side Includes werden abgelehnt.
+Für jede Seite: ihre NPMpro-Seite (zum Beispiel **404-Fehlerseite** oder **Seite „Zugriff verweigert“**) oder eine **Benutzerdefinierte Seite**. Eine benutzerdefinierte Seite ist eine HTML-Datei (höchstens 1 MB, UTF-8) mit ihren Stilen und Bildern darin; fügen Sie sie ein oder nutzen Sie **.html hochladen**. Sie kann die IP des Besuchers, die Zeit, den Statuscode und den Hostnamen mit `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` und `host` anzeigen; andere Server-Side Includes werden abgelehnt.
 
 Proxy-Hosts, 404-Hosts und Zugriffslisten verwenden diese Seiten, sofern sie keine eigenen wählen (der Tab **Seiten** eines Proxy-Hosts, das Feld **Seite** eines 404-Hosts, **Verweigert** einer Zugriffsliste).
 

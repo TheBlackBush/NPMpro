@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "Pagina ‘Beveiligde verbinding niet beschikbaar’",
 	"landing-pages.choice.npmpro.denied": "Pagina ‘Toegang geweigerd’",
 	"landing-pages.choice.npmpro.maintenance": "Onderhoudspagina",
-	"landing-pages.choice.npmpro.not_found": "Pagina niet gevonden",
+	"landing-pages.choice.npmpro.not_found": "404-foutpagina",
 	"landing-pages.choice.npmpro.upstream_error": "Pagina ‘Site niet beschikbaar’",
 	"landing-pages.choice.plain": "De gewone pagina van nginx",
 	"landing-pages.choice.upstream-error": "De eigen fout van de upstream",

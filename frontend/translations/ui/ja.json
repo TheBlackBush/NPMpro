@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "「安全な接続を利用できません」ページ",
 	"landing-pages.choice.npmpro.denied": "「アクセスが拒否されました」ページ",
 	"landing-pages.choice.npmpro.maintenance": "メンテナンスページ",
-	"landing-pages.choice.npmpro.not_found": "ページが見つかりません",
+	"landing-pages.choice.npmpro.not_found": "404エラーページ",
 	"landing-pages.choice.npmpro.upstream_error": "「サイトに接続できません」ページ",
 	"landing-pages.choice.plain": "nginx のシンプルなページ",
 	"landing-pages.choice.upstream-error": "アップストリーム自身のエラー",
