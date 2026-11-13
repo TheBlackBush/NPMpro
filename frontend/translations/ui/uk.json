@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Відповідає кодом стану без сторінки.",
 	"settings.crowdsec.ban-template": "Файл сторінки бану",
 	"settings.crowdsec.blocking": "Блокування",
+	"settings.crowdsec.bouncer-off.appsec-key": "Bouncer увімкнено, але він залишається вимкненим, доки AppSec не має ключа API: без ключа AppSec відхиляв би кожен запит. Введіть ключ API або очистьте URL AppSec.",
 	"settings.crowdsec.bouncer-off.other": "Bouncer увімкнено, але nginx не завантажив його. Усуньте причину нижче або вимкніть bouncer.",
 	"settings.crowdsec.bouncer-off.reason": "Причина: {error}",
 	"settings.crowdsec.bouncer-off.tls": "Bouncer увімкнено, але nginx не завантажив його. Йому потрібні клієнтські файли TLS {files}, і один із них відсутній або пошкоджений. Поверніть файл на місце або вимкніть автентифікацію TLS чи bouncer.",

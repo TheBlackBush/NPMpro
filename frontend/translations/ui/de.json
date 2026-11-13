@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Antwortet mit einem Statuscode und ohne Seite.",
 	"settings.crowdsec.ban-template": "Datei der Sperrseite",
 	"settings.crowdsec.blocking": "Blockierung",
+	"settings.crowdsec.bouncer-off.appsec-key": "Der Bouncer ist aktiviert, bleibt aber aus, solange AppSec keinen API-Schlüssel hat: Ohne den Schlüssel würde AppSec jede Anfrage ablehnen. Geben Sie den API-Schlüssel ein oder leeren Sie die AppSec-URL.",
 	"settings.crowdsec.bouncer-off.other": "Der Bouncer ist aktiviert, wurde aber von nginx nicht geladen. Beheben Sie die Ursache unten oder schalten Sie den Bouncer aus.",
 	"settings.crowdsec.bouncer-off.reason": "Grund: {error}",
 	"settings.crowdsec.bouncer-off.tls": "Der Bouncer ist aktiviert, wurde aber von nginx nicht geladen. Er benötigt die TLS-Client-Dateien {files}, und eine davon fehlt oder ist defekt. Legen Sie die Datei wieder ab oder schalten Sie die TLS-Authentifizierung oder den Bouncer aus.",

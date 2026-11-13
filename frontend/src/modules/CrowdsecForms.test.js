@@ -287,6 +287,13 @@ it("names the files when the enabled bouncer is not loaded", () => {
 	assert.equal(bouncerOffWarning({ ...on, status: { ...DATA.status, loaded: true } }), null);
 	assert.equal(bouncerOffWarning({ ...on, status: undefined }), null);
 	assert.deepEqual(bouncerOffWarning(on), { kind: "off", files: [] });
+	// an AppSec URL without a key keeps the bouncer off, also with TLS authentication; a key or no URL does not
+	const appsec = { ...on, appsecUrl: " http://127.0.0.1:7422 ", apiKeySet: false };
+	assert.deepEqual(bouncerOffWarning(appsec), { kind: "appsec-key", files: [] });
+	assert.deepEqual(bouncerOffWarning({ ...appsec, useTlsAuth: true }), { kind: "appsec-key", files: [] });
+	assert.deepEqual(bouncerOffWarning({ ...appsec, apiKeySet: true }), { kind: "off", files: [] });
+	assert.deepEqual(bouncerOffWarning({ ...appsec, appsecUrl: "  " }), { kind: "off", files: [] });
+	assert.equal(bouncerOffWarning({ ...appsec, status: { ...DATA.status, loaded: true } }), null);
 	assert.deepEqual(
 		bouncerOffWarning({ ...on, useTlsAuth: true, tlsClientCert: "/data/crowdsec/c.crt", tlsClientKey: "" }),
 		{

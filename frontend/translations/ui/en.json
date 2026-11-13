@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Answers with a status code and no page.",
 	"settings.crowdsec.ban-template": "Ban page file",
 	"settings.crowdsec.blocking": "Blocking",
+	"settings.crowdsec.bouncer-off.appsec-key": "The bouncer is on, but it stays off while AppSec has no API key: without the key AppSec would refuse every request. Enter the API key, or clear the AppSec URL.",
 	"settings.crowdsec.bouncer-off.other": "The bouncer is on, but nginx did not load it. Fix the cause below, or switch the bouncer off.",
 	"settings.crowdsec.bouncer-off.reason": "Reason: {error}",
 	"settings.crowdsec.bouncer-off.tls": "The bouncer is on, but nginx did not load it. It needs the TLS client files {files}, and one of them is missing or broken. Put the file back, or switch TLS authentication or the bouncer off.",

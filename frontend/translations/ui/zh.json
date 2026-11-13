@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "只返回状态码，不显示页面。",
 	"settings.crowdsec.ban-template": "封禁页面文件",
 	"settings.crowdsec.blocking": "拦截",
+	"settings.crowdsec.bouncer-off.appsec-key": "bouncer 已开启，但在 AppSec 没有 API 密钥期间保持关闭：没有密钥时 AppSec 会拒绝所有请求。请输入 API 密钥，或清空 AppSec 地址。",
 	"settings.crowdsec.bouncer-off.other": "bouncer 已开启，但 nginx 未加载它。请解决下方的原因，或关闭 bouncer。",
 	"settings.crowdsec.bouncer-off.reason": "原因：{error}",
 	"settings.crowdsec.bouncer-off.tls": "bouncer 已开启，但 nginx 未加载它。它需要 TLS 客户端文件 {files}，其中一个缺失或已损坏。请放回该文件，或关闭 TLS 认证或 bouncer。",

@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Antwoordt met een statuscode en zonder pagina.",
 	"settings.crowdsec.ban-template": "Bestand van de banpagina",
 	"settings.crowdsec.blocking": "Blokkering",
+	"settings.crowdsec.bouncer-off.appsec-key": "De bouncer staat aan, maar blijft uit zolang AppSec geen API-sleutel heeft: zonder de sleutel zou AppSec elk verzoek weigeren. Voer de API-sleutel in of maak de AppSec-URL leeg.",
 	"settings.crowdsec.bouncer-off.other": "De bouncer staat aan, maar nginx heeft hem niet geladen. Los de oorzaak hieronder op of zet de bouncer uit.",
 	"settings.crowdsec.bouncer-off.reason": "Reden: {error}",
 	"settings.crowdsec.bouncer-off.tls": "De bouncer staat aan, maar nginx heeft hem niet geladen. Hij heeft de TLS-clientbestanden {files} nodig en een daarvan ontbreekt of is defect. Zet het bestand terug of zet TLS-authenticatie of de bouncer uit.",

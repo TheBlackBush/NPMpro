@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Отвечает кодом состояния без страницы.",
 	"settings.crowdsec.ban-template": "Файл страницы бана",
 	"settings.crowdsec.blocking": "Блокировка",
+	"settings.crowdsec.bouncer-off.appsec-key": "Bouncer включён, но остаётся выключенным, пока у AppSec нет ключа API: без ключа AppSec отклонял бы каждый запрос. Введите ключ API или очистите URL AppSec.",
 	"settings.crowdsec.bouncer-off.other": "Bouncer включён, но nginx не загрузил его. Устраните причину ниже или выключите bouncer.",
 	"settings.crowdsec.bouncer-off.reason": "Причина: {error}",
 	"settings.crowdsec.bouncer-off.tls": "Bouncer включён, но nginx не загрузил его. Ему нужны клиентские файлы TLS {files}, и один из них отсутствует или повреждён. Верните файл на место или выключите аутентификацию TLS или bouncer.",

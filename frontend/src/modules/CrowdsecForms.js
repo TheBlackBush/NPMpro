@@ -302,16 +302,19 @@ export const appsecDenyWarning = (values) =>
 	trimmed(values.appsecUrl) !== "" && values.appsecFailureAction === "deny" && !values.adminUiExcluded;
 
 /**
- * What to tell the admin when the bouncer is switched on in the settings but nginx does not load it: the saved files
- * the settings use that keep it off. The GET answer only says that it is not loaded (status.loaded), so the file is
- * named from the TLS settings: with TLS authentication the client certificate and key are the files the bouncer
- * cannot start without. The way out is to put the files back, or switch TLS authentication or the bouncer off.
+ * What to tell the admin when the bouncer is switched on in the settings but nginx does not load it. An AppSec URL
+ * without an API key (a restore without secrets, an import) keeps it off on purpose, since AppSec would refuse every
+ * request: the way out is to enter the key or clear the AppSec URL. Otherwise the GET answer only says that it is not
+ * loaded (status.loaded), so the file is named from the TLS settings: with TLS authentication the client certificate
+ * and key are the files the bouncer cannot start without. The way out is to put the files back, or switch TLS
+ * authentication or the bouncer off.
  *
  * @param   {Object} data  the loaded settings (camelized GET answer)
- * @returns {{ kind: "tls", files: string[] } | { kind: "off", files: string[] } | null}  null while nothing is wrong
+ * @returns {{ kind: "appsec-key" | "tls" | "off", files: string[] } | null}  null while nothing is wrong
  */
 export const bouncerOffWarning = (data) => {
 	if (!data?.enabled || data.status?.loaded !== false) return null;
+	if (trimmed(data.appsecUrl) !== "" && !data.apiKeySet) return { kind: "appsec-key", files: [] };
 	if (data.useTlsAuth) return { kind: "tls", files: [data.tlsClientCert, data.tlsClientKey].filter(Boolean) };
 	return { kind: "off", files: [] };
 };

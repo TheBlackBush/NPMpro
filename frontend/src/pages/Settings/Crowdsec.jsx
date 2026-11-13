@@ -572,7 +572,11 @@ function BouncerOffAlert({ data }) {
 	return (
 		<StatusAlert variant="warning" icon={TriangleAlert}>
 			<div className="space-y-1">
-				{warning.kind === "tls" ? (
+				{warning.kind === "appsec-key" ? (
+					<p>
+						<T id="settings.crowdsec.bouncer-off.appsec-key" />
+					</p>
+				) : warning.kind === "tls" ? (
 					<p>
 						<T id="settings.crowdsec.bouncer-off.tls" data={{ files: warning.files.join(", ") }} />
 					</p>

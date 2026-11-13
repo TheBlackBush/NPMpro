@@ -1071,6 +1071,7 @@
 	"settings.crowdsec.ban-response.status.hint": "Odpowiada kodem statusu i bez strony.",
 	"settings.crowdsec.ban-template": "Plik strony bana",
 	"settings.crowdsec.blocking": "Blokowanie",
+	"settings.crowdsec.bouncer-off.appsec-key": "Bouncer jest włączony, ale pozostaje wyłączony, dopóki AppSec nie ma klucza API: bez klucza AppSec odrzucałby każde żądanie. Wpisz klucz API albo wyczyść adres URL AppSec.",
 	"settings.crowdsec.bouncer-off.other": "Bouncer jest włączony, ale nginx go nie załadował. Usuń przyczynę poniżej lub wyłącz bouncera.",
 	"settings.crowdsec.bouncer-off.reason": "Przyczyna: {error}",
 	"settings.crowdsec.bouncer-off.tls": "Bouncer jest włączony, ale nginx go nie załadował. Wymaga plików klienta TLS {files}, a jednego z nich brakuje lub jest uszkodzony. Przywróć plik albo wyłącz uwierzytelnianie TLS lub bouncera.",
