@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import {
@@ -7,7 +8,6 @@ import {
 	PageChoiceField,
 	PageEditor,
 	PageLine,
-	PageLines,
 	PreviewLink,
 	SelectField,
 	TextField,
@@ -29,8 +29,10 @@ import { DEFAULT_SITE_OPTIONS, defaultSiteHiddenFields } from "src/modules/Setti
 import { validations } from "src/modules/Validations";
 import { showObjectSuccess } from "src/notifications";
 import { SaveBar } from "./SaveBar";
+import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
+import { StatusAlert } from "./StatusAlert";
 
 const validate = landingValidate(validations);
 const GLOBAL_CHOICES = ["npmpro", "custom"];
@@ -124,22 +126,16 @@ function DefaultPageRow({ isAdmin }) {
 	);
 }
 
-function GroupLabel({ children }) {
+function PageGroup({ labelId, descriptionId, children }) {
 	return (
-		<h3 className="mt-5 mb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+		<SettingsCard
+			title={<T id={labelId} />}
+			description={<T id={descriptionId} />}
+			className="overflow-hidden"
+			bodyClassName="space-y-0 divide-y p-0"
+		>
 			{children}
-		</h3>
-	);
-}
-
-function PageGroup({ labelId, children }) {
-	return (
-		<section>
-			<GroupLabel>
-				<T id={labelId} />
-			</GroupLabel>
-			<PageLines>{children}</PageLines>
-		</section>
+		</SettingsCard>
 	);
 }
 
@@ -164,17 +160,22 @@ function LandingPagesForm({ data }) {
 
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
-			<SettingsHeading titleId="settings.landing-pages" className="mb-1" />
-			<p className="-mt-1 text-sm text-muted-foreground">
-				<T id="landing-pages.lead" />
-			</p>
+			<SettingsHeading titleId="settings.landing-pages" />
+			<StatusAlert variant="secondary" icon={Info} id="landing-pages.lead" />
 			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-			<div className="-mt-2">
-				<PageGroup labelId="landing-pages.group.default">
+			<>
+				<PageGroup
+					labelId="landing-pages.group.default"
+					descriptionId="landing-pages.group.default.description"
+				>
 					<DefaultPageRow isAdmin={isAdmin} />
 				</PageGroup>
 				{PAGE_GROUPS.map((group) => (
-					<PageGroup key={group.id} labelId={group.labelId}>
+					<PageGroup
+						key={group.id}
+						labelId={group.labelId}
+						descriptionId={`landing-pages.group.${group.id}.description`}
+					>
 						{group.keys.map((key) => {
 							const page = PAGE_TYPES.find((type) => type.key === key);
 							return (
@@ -194,7 +195,7 @@ function LandingPagesForm({ data }) {
 						})}
 					</PageGroup>
 				))}
-			</div>
+			</>
 			<SaveBar />
 		</HookForm>
 	);
