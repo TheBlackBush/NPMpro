@@ -7,58 +7,39 @@ import { defaultSitePayload, defaultSiteValidate, defaultSiteValues } from "./Se
 
 export const MAX_PAGE_BYTES = 1024 * 1024;
 
-// the global types as the API names them (camelized), in the order Settings shows them; tone, icon and code draw the
-// row's picture (components/PageThumbnail.jsx)
+// the global types as the API names them (camelized), in the order Settings shows them
 export const PAGE_TYPES = Object.freeze([
 	{
 		key: "notFound",
 		api: "not_found",
-		tone: "neutral",
-		icon: "searchMinus",
-		code: 404,
 		labelId: "landing-pages.type.not-found",
 	},
 	{
 		key: "upstreamError",
 		api: "upstream_error",
-		tone: "red",
-		icon: "unplug",
-		code: 502,
 		labelId: "landing-pages.type.upstream-error",
 	},
-	{ key: "denied", api: "denied", tone: "red", icon: "lock", code: 403, labelId: "landing-pages.type.denied" },
+	{ key: "denied", api: "denied", labelId: "landing-pages.type.denied" },
 	{
 		key: "maintenance",
 		api: "maintenance",
-		tone: "amber",
-		icon: "wrench",
-		code: 503,
 		labelId: "landing-pages.type.maintenance",
 	},
 	{
 		key: "certificate",
 		api: "certificate",
-		tone: "amber",
-		icon: "triangleAlert",
-		code: 495,
 		labelId: "landing-pages.type.certificate",
 	},
-	{ key: "ban", api: "ban", tone: "red", icon: "shieldOff", code: 403, labelId: "landing-pages.type.ban" },
+	{ key: "ban", api: "ban", labelId: "landing-pages.type.ban" },
 	{
 		key: "captcha",
 		api: "captcha",
-		tone: "amber",
-		icon: "puzzle",
-		code: null,
 		labelId: "landing-pages.type.captcha",
 	},
 ]);
 export const DEFAULT_PAGE = Object.freeze({
 	key: "defaultSite",
 	api: "default_site",
-	tone: "blue",
-	icon: "house",
-	code: null,
 	labelId: "landing-pages.type.default-site",
 });
 

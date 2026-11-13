@@ -5,7 +5,6 @@ import {
 	ErrorAlert,
 	HookForm,
 	PageChoiceField,
-	PageThumbnail,
 	SelectField,
 	TextField,
 	useAppForm,
@@ -37,9 +36,8 @@ const DEFAULT_PREVIEW = { congratulations: "default_site", 404: "not_found", htm
 
 function Row({ page, id, hideTitle = false, children }) {
 	return (
-		<div className="flex flex-col gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:flex-row sm:items-start">
-			<PageThumbnail page={page} />
-			<div className="min-w-0 flex-1 space-y-1">
+		<div className="border-b pb-4 last:border-b-0 last:pb-0">
+			<div className="min-w-0 space-y-1">
 				{hideTitle ? null : (
 					<p className="text-sm font-medium">
 						<T id={page.labelId} />
