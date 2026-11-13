@@ -1040,6 +1040,7 @@
 	"settings.crowdsec.always-send-to-appsec": "常に AppSec に送信する",
 	"settings.crowdsec.always-send-to-appsec.hint": "すでに判定がある IP のリクエストも AppSec に送信します。",
 	"settings.crowdsec.api-key": "API キー",
+	"settings.crowdsec.api-key.appsec-hint": "AppSec は TLS クライアント証明書を使う場合も API キーで認証します。暗号化して保存され、再表示されません。",
 	"settings.crowdsec.api-key.hint": "cscli bouncers add で取得した bouncer のキー。暗号化して保存され、再表示されません。",
 	"settings.crowdsec.api-key.keep": "保存済みのキーを保持する",
 	"settings.crowdsec.api-key.remove": "保存済みのキーを削除する",

@@ -186,7 +186,10 @@ export const crowdsecValidate = (rules, isLocked, data) => (values) => {
 				fail(key, "settings.crowdsec.error.path");
 			}
 		}
-	} else if (values.enabled && trimmed(values.apiKey) === "" && !(data.apiKeySet && !values.clearApiKey)) {
+	}
+	// AppSec authenticates with the API key, also with a TLS client certificate
+	const needsKey = values.auth !== "tls" || appsecUrl !== "";
+	if (values.enabled && needsKey && trimmed(values.apiKey) === "" && !(data.apiKeySet && !values.clearApiKey)) {
 		fail("apiKey", "error.required");
 	}
 	for (const key of ["banTemplatePath", "captchaTemplatePath"]) {

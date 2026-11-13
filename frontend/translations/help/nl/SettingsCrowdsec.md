@@ -19,7 +19,7 @@ Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die misl
 - **De bouncer inschakelen**: controleert elk verzoek.
 - **LAPI-URL**: bijvoorbeeld `http://127.0.0.1:8080`.
 - **API-sleutel**: uit `docker exec crowdsec cscli bouncers add npmpro`. Versleuteld opgeslagen, nooit meer getoond. **Opgeslagen sleutel verwijderen** wist hem.
-- **TLS-clientcertificaat**: in plaats van de sleutel een certificaat- en een sleutelbestand onder `/data/crowdsec/`; vereist een LAPI-URL met `https://`.
+- **TLS-clientcertificaat**: in plaats van de sleutel een certificaat- en een sleutelbestand onder `/data/crowdsec/`; vereist een LAPI-URL met `https://`. Zodra een AppSec-URL is ingesteld, wordt het veld **API-sleutel** ook met een TLS-clientcertificaat getoond en is het verplicht, omdat AppSec met de API-sleutel authenticeert; zonder sleutel weigert AppSec elk verzoek.
 - **TLS-certificaten verifiëren**: controleert het certificaat van een https-LAPI- of AppSec-URL.
 
 ### Blokkering

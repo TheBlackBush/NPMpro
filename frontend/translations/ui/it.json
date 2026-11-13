@@ -1040,6 +1040,7 @@
 	"settings.crowdsec.always-send-to-appsec": "Invia sempre ad AppSec",
 	"settings.crowdsec.always-send-to-appsec.hint": "Invia ad AppSec anche le richieste degli IP che hanno già una decisione.",
 	"settings.crowdsec.api-key": "Chiave API",
+	"settings.crowdsec.api-key.appsec-hint": "AppSec si autentica con la chiave API, anche con un certificato client TLS. Salvata cifrata e non più mostrata.",
 	"settings.crowdsec.api-key.hint": "La chiave del bouncer ottenuta con cscli bouncers add. Memorizzata cifrata e non più mostrata.",
 	"settings.crowdsec.api-key.keep": "Mantieni la chiave salvata",
 	"settings.crowdsec.api-key.remove": "Rimuovi la chiave salvata",

@@ -1040,6 +1040,7 @@
 	"settings.crowdsec.always-send-to-appsec": "항상 AppSec으로 보내기",
 	"settings.crowdsec.always-send-to-appsec.hint": "이미 결정이 있는 IP의 요청도 AppSec으로 보냅니다.",
 	"settings.crowdsec.api-key": "API 키",
+	"settings.crowdsec.api-key.appsec-hint": "AppSec은 TLS 클라이언트 인증서를 사용할 때도 API 키로 인증합니다. 암호화되어 저장되며 다시 표시되지 않습니다.",
 	"settings.crowdsec.api-key.hint": "cscli bouncers add로 받은 bouncer 키입니다. 암호화되어 저장되며 다시 표시되지 않습니다.",
 	"settings.crowdsec.api-key.keep": "저장된 키 유지",
 	"settings.crowdsec.api-key.remove": "저장된 키 삭제",

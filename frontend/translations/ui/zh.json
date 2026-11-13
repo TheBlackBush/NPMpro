@@ -1040,6 +1040,7 @@
 	"settings.crowdsec.always-send-to-appsec": "始终发送到 AppSec",
 	"settings.crowdsec.always-send-to-appsec.hint": "已有决策的 IP 的请求也会发送到 AppSec。",
 	"settings.crowdsec.api-key": "API 密钥",
+	"settings.crowdsec.api-key.appsec-hint": "AppSec 使用 API 密钥进行认证，使用 TLS 客户端证书时也是如此。密钥加密存储，不会再次显示。",
 	"settings.crowdsec.api-key.hint": "来自 cscli bouncers add 的 bouncer 密钥。加密存储，之后不再显示。",
 	"settings.crowdsec.api-key.keep": "保留已保存的密钥",
 	"settings.crowdsec.api-key.remove": "删除已保存的密钥",

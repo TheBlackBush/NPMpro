@@ -19,7 +19,7 @@ AppSec が失敗し、**AppSec に接続できないとき**が**リクエスト
 - **bouncer を有効にする**：すべてのリクエストを検査します。
 - **LAPI の URL**：例：`http://127.0.0.1:8080`。
 - **API キー**：`docker exec crowdsec cscli bouncers add npmpro` で取得します。暗号化して保存され、再表示されません。**保存済みのキーを削除する**で削除できます。
-- **TLS クライアント証明書**：キーの代わりに、`/data/crowdsec/` 内の証明書ファイルとキーファイルを使います。`https://` の LAPI URL が必要です。
+- **TLS クライアント証明書**：キーの代わりに、`/data/crowdsec/` 内の証明書ファイルとキーファイルを使います。`https://` の LAPI URL が必要です。 AppSec URL を設定すると、TLS クライアント証明書を使う場合でも **API キー** 欄が表示され、入力が必須になります。AppSec は API キーで認証するため、キーがないと AppSec はすべてのリクエストを拒否します。
 - **TLS 証明書を検証する**：https の LAPI または AppSec URL の証明書を確認します。
 
 ### ブロック

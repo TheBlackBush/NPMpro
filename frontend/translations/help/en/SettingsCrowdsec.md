@@ -19,7 +19,7 @@ Saving while the bouncer is on runs the same test first. When it fails, the reas
 - **Enable the bouncer**: checks every request.
 - **LAPI URL**: for example `http://127.0.0.1:8080`.
 - **API key**: from `docker exec crowdsec cscli bouncers add npmpro`. Stored encrypted, never shown again. **Remove the saved key** deletes it.
-- **TLS client certificate**: instead of the key, a certificate and key file under `/data/crowdsec/`; needs an `https://` LAPI URL.
+- **TLS client certificate**: instead of the key, a certificate and key file under `/data/crowdsec/`; needs an `https://` LAPI URL. Once an AppSec URL is set, the **API key** field is shown and required with a TLS client certificate too, because AppSec authenticates with the API key; without it AppSec refuses every request.
 - **Verify TLS certificates**: checks the certificate of an https LAPI or AppSec URL.
 
 ### Blocking

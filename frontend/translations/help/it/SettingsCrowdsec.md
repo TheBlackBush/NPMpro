@@ -19,7 +19,7 @@ Salvando con il bouncer attivo viene eseguito prima lo stesso test. Se fallisce,
 - **Attiva il bouncer**: controlla ogni richiesta.
 - **URL della LAPI**: ad esempio `http://127.0.0.1:8080`.
 - **Chiave API**: ottenuta con `docker exec crowdsec cscli bouncers add npmpro`. Memorizzata cifrata e non più mostrata. **Rimuovi la chiave salvata** la elimina.
-- **Certificato client TLS**: al posto della chiave, un file di certificato e uno di chiave in `/data/crowdsec/`; richiede un URL LAPI `https://`.
+- **Certificato client TLS**: al posto della chiave, un file di certificato e uno di chiave in `/data/crowdsec/`; richiede un URL LAPI `https://`. Quando è impostato un URL AppSec, il campo **Chiave API** viene mostrato ed è obbligatorio anche con un certificato client TLS, perché AppSec si autentica con la chiave API; senza di essa AppSec rifiuta ogni richiesta.
 - **Verifica i certificati TLS**: controlla il certificato di un URL https della LAPI o di AppSec.
 
 ### Blocco
