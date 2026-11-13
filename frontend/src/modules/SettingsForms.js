@@ -98,7 +98,7 @@ export const defaultSitePayload = (values, data) => {
 	if (values.value === "html") {
 		meta = { ...data?.meta, html: values.html, status: values.status === "" ? undefined : Number(values.status) };
 	}
-	return { id: "default-site", value: values.value, meta };
+	return { value: values.value, meta };
 };
 
 // Certificates & TLS

@@ -312,8 +312,7 @@ export const landingPayload = (values, saved) => {
 	const { meta: _meta, ...site } = values.defaultSite;
 	const { meta: savedMeta, ...savedSite } = saved.defaultSite;
 	if (JSON.stringify(site) !== JSON.stringify(savedSite)) {
-		const { id: _id, ...payload } = defaultSitePayload(values.defaultSite, { meta: savedMeta ?? {} });
-		body.defaultSite = payload;
+		body.defaultSite = defaultSitePayload(values.defaultSite, { meta: savedMeta ?? {} });
 	}
 	const pages = Object.fromEntries(
 		PAGE_TYPES.filter(

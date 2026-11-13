@@ -28,7 +28,6 @@ export * from "./useProxyHost";
 export * from "./useRecentAuditLogs";
 export * from "./useRedirectionHost";
 export * from "./useRuntimeSettings";
-export * from "./useSetting";
 export * from "./useStream";
 export * from "./useTlsQueriesSettled";
 export * from "./useUnsavedChangesGuard";
