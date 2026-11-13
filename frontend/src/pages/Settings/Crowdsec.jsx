@@ -139,8 +139,11 @@ function StatusCard({ data, request }) {
 			<div className="text-sm text-muted-foreground">
 				<T id="settings.crowdsec.test.hint" />
 			</div>
-			{result?.error ? <ErrorAlert error={result.error} /> : null}
-			{result?.checks ? <CheckList checks={result.checks} /> : null}
+			{/* always mounted, so a screen reader announces the result that appears in it */}
+			<div role="status" aria-live="polite" className="space-y-2 empty:hidden">
+				{result?.error ? <ErrorAlert error={result.error} /> : null}
+				{result?.checks ? <CheckList checks={result.checks} /> : null}
+			</div>
 		</SettingsCard>
 	);
 }
