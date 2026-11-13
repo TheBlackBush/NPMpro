@@ -144,6 +144,9 @@ it("Settings: values, validation, and a payload of what changed only", () => {
 });
 
 it("PAGE_GROUPS lists every page type exactly once", () => {
-	const listed = PAGE_GROUPS.flatMap((group) => group.keys).sort();
-	assert.deepEqual(listed, PAGE_TYPES.map((page) => page.key).sort());
+	const listed = PAGE_GROUPS.flatMap((group) => group.keys).sort((a, b) => a.localeCompare(b));
+	assert.deepEqual(
+		listed,
+		PAGE_TYPES.map((page) => page.key).sort((a, b) => a.localeCompare(b)),
+	);
 });

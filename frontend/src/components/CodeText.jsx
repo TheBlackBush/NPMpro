@@ -15,7 +15,6 @@ function CodeText({ children, className }) {
 	return children.split(COMMAND).map((part, index) =>
 		index % 2 === 1 ? (
 			// the parts are in a fixed order, the index is their identity
-			// biome-ignore lint/suspicious/noArrayIndexKey: a split text never reorders
 			<code key={index} className={cn("font-mono text-[0.9em] [font-variant-ligatures:none]", className)}>
 				{part}
 			</code>

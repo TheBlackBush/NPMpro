@@ -160,39 +160,34 @@ function LandingPagesForm({ data }) {
 			<SettingsHeading titleId="settings.landing-pages" />
 			<StatusAlert variant="secondary" icon={Info} id="landing-pages.lead" />
 			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-			<>
+			<PageGroup labelId="landing-pages.group.default" descriptionId="landing-pages.group.default.description">
+				<DefaultPageRow isAdmin={isAdmin} />
+			</PageGroup>
+			{PAGE_GROUPS.map((group) => (
 				<PageGroup
-					labelId="landing-pages.group.default"
-					descriptionId="landing-pages.group.default.description"
+					key={group.id}
+					labelId={group.labelId}
+					descriptionId={`landing-pages.group.${group.id}.description`}
 				>
-					<DefaultPageRow isAdmin={isAdmin} />
+					{group.keys.map((key) => {
+						const page = PAGE_TYPES.find((type) => type.key === key);
+						return (
+							<PageChoiceField
+								key={key}
+								name={`pages.${key}.choice`}
+								htmlName={`pages.${key}.html`}
+								id={`landing-${key}`}
+								title={<T id={page.labelId} />}
+								codes={page.codes}
+								hint={<T id={`${page.labelId}.description`} />}
+								choices={GLOBAL_CHOICES}
+								field={page}
+								previewHref={isAdmin ? previewPath({ source: "global", type: page.api }) : null}
+							/>
+						);
+					})}
 				</PageGroup>
-				{PAGE_GROUPS.map((group) => (
-					<PageGroup
-						key={group.id}
-						labelId={group.labelId}
-						descriptionId={`landing-pages.group.${group.id}.description`}
-					>
-						{group.keys.map((key) => {
-							const page = PAGE_TYPES.find((type) => type.key === key);
-							return (
-								<PageChoiceField
-									key={key}
-									name={`pages.${key}.choice`}
-									htmlName={`pages.${key}.html`}
-									id={`landing-${key}`}
-									title={<T id={page.labelId} />}
-									codes={page.codes}
-									hint={<T id={`${page.labelId}.description`} />}
-									choices={GLOBAL_CHOICES}
-									field={page}
-									previewHref={isAdmin ? previewPath({ source: "global", type: page.api }) : null}
-								/>
-							);
-						})}
-					</PageGroup>
-				))}
-			</>
+			))}
 			<SaveBar />
 		</HookForm>
 	);
