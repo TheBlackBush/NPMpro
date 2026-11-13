@@ -249,8 +249,9 @@ export const landingValidate = (rules) => {
 		if (Object.keys(siteErrors).length > 0) errors.defaultSite = siteErrors;
 		for (const { key } of PAGE_TYPES) {
 			const page = values.pages[key];
-			const id = page.choice === "custom" || page.html !== "" ? pageHtmlError(page.html) : null;
-			if (id && !(page.choice !== "custom" && id === "error.required")) {
+			// only a custom page is checked: another choice does not send its html (landingPayload)
+			const id = page.choice === "custom" ? pageHtmlError(page.html) : null;
+			if (id) {
 				errors.pages ??= {};
 				errors.pages[key] = { html: rules.message(id) };
 			}
@@ -276,8 +277,12 @@ export const landingPayload = (values, saved) => {
 		PAGE_TYPES.filter(
 			({ key }) =>
 				values.pages[key].choice !== saved.pages[key].choice ||
-				values.pages[key].html !== saved.pages[key].html,
-		).map(({ key }) => [key, { choice: values.pages[key].choice, html: values.pages[key].html }]),
+				(values.pages[key].choice === "custom" && values.pages[key].html !== saved.pages[key].html),
+		).map(({ key }) => {
+			const { choice, html } = values.pages[key];
+			// html only with a custom page: with another choice the backend keeps the saved custom page
+			return [key, choice === "custom" ? { choice, html } : { choice }];
+		}),
 	);
 	if (Object.keys(pages).length > 0) body.pages = pages;
 	return body;

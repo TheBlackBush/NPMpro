@@ -1,6 +1,7 @@
 import { ExternalLink, Upload } from "lucide-react";
 import { useRef } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { CodeText } from "src/components/CodeText";
 import { Button } from "src/components/ui/button";
 import { intl, T } from "src/locale";
 import { choiceLabelId, readPageFile } from "src/modules/LandingPageForms";
@@ -37,6 +38,16 @@ function UploadButton({ htmlName }) {
 	);
 }
 
+// a label that also names the row for a screen reader ("Page: Page not found (404)")
+function NamedLabel({ typeLabel, children }) {
+	return (
+		<>
+			{children}
+			{typeLabel ? <span className="sr-only">: {typeLabel}</span> : null}
+		</>
+	);
+}
+
 // opens the saved page in a new tab; with unsaved changes in the row it says that the saved page is shown
 function PreviewLink({ href, names }) {
 	const { getFieldState } = useFormContext();
@@ -64,6 +75,8 @@ function PreviewLink({ href, names }) {
  * @param {string}   props.htmlName   the HTML field
  * @param {string}   [props.id]
  * @param {*}        props.label
+ * @param {*}        [props.typeLabel]   the page type, read by screen readers after each label (rows share labels)
+ * @param {string}   [props.describedBy]  the id of the row's description
  * @param {string[]} props.choices
  * @param {{ api: string }} props.field  for the choice labels (choiceLabelId)
  * @param {*}        [props.hint]
@@ -75,6 +88,8 @@ function PageChoiceField({
 	htmlName,
 	id = name.replaceAll(".", "-"),
 	label,
+	typeLabel,
+	describedBy,
 	choices,
 	field,
 	hint,
@@ -85,7 +100,14 @@ function PageChoiceField({
 	const readOnly = useReadOnly();
 	return (
 		<div className={className}>
-			<SelectField name={name} id={id} label={label} hint={hint} className="mb-0">
+			<SelectField
+				name={name}
+				id={id}
+				label={<NamedLabel typeLabel={typeLabel}>{label}</NamedLabel>}
+				hint={hint}
+				describedBy={describedBy}
+				className="mb-0"
+			>
 				{choices.map((value) => (
 					<option key={value} value={value}>
 						{intl.formatMessage({ id: choiceLabelId(field, value) })}
@@ -97,8 +119,13 @@ function PageChoiceField({
 					<TextField
 						name={htmlName}
 						id={`${id}-html`}
-						label={<T id="landing-pages.html" />}
-						hint={<T id="landing-pages.html.hint" />}
+						label={
+							<NamedLabel typeLabel={typeLabel}>
+								<T id="landing-pages.html" />
+							</NamedLabel>
+						}
+						hint={<CodeText>{intl.formatMessage({ id: "landing-pages.html.hint" })}</CodeText>}
+						describedBy={describedBy}
 						as="textarea"
 						rows={10}
 						controlClassName="font-mono text-xs"
@@ -118,4 +145,4 @@ function PageChoiceField({
 	);
 }
 
-export { PageChoiceField };
+export { PageChoiceField, PreviewLink };

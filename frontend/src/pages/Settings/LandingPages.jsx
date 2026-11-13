@@ -11,6 +11,7 @@ import {
 	useAppForm,
 	useResetToSaved,
 } from "src/components";
+import { PreviewLink } from "src/components/Form/PageChoiceField";
 import { useIsAdmin, useLandingPages, useSaveLandingPages } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
@@ -34,15 +35,17 @@ const GLOBAL_CHOICES = ["npmpro", "custom"];
 // the Default page's previews: its NPMpro page, the global 404 page, its custom HTML
 const DEFAULT_PREVIEW = { congratulations: "default_site", 404: "not_found", html: "default_site" };
 
-function Row({ page, children }) {
+function Row({ page, id, hideTitle = false, children }) {
 	return (
 		<div className="flex flex-col gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:flex-row sm:items-start">
 			<PageThumbnail page={page} />
 			<div className="min-w-0 flex-1 space-y-1">
-				<p className="text-sm font-medium">
-					<T id={page.labelId} />
-				</p>
-				<p className="text-sm text-muted-foreground">
+				{hideTitle ? null : (
+					<p className="text-sm font-medium">
+						<T id={page.labelId} />
+					</p>
+				)}
+				<p id={`${id}-description`} className="mb-2 text-sm text-muted-foreground">
 					<T id={`${page.labelId}.description`} />
 				</p>
 				{children}
@@ -56,11 +59,12 @@ function DefaultPageRow({ isAdmin }) {
 	const value = useWatch({ name: "defaultSite.value" });
 	const source = value === "404" || value === "html" ? "global" : "npmpro";
 	return (
-		<Row page={DEFAULT_PAGE}>
+		<Row page={DEFAULT_PAGE} id="landing-default" hideTitle>
 			<SelectField
 				name="defaultSite.value"
 				id="landing-default-site"
 				label={<T id="landing-pages.default-site.answer" />}
+				describedBy="landing-default-description"
 				className="mb-0"
 				registerOptions={{
 					onChange: (event) =>
@@ -106,14 +110,10 @@ function DefaultPageRow({ isAdmin }) {
 				</>
 			) : null}
 			{isAdmin && DEFAULT_PREVIEW[value] ? (
-				<a
+				<PreviewLink
 					href={previewPath({ source, type: DEFAULT_PREVIEW[value] })}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="text-sm text-primary underline underline-offset-4"
-				>
-					<T id="landing-pages.preview" />
-				</a>
+					names={["defaultSite.value", "defaultSite.html"]}
+				/>
 			) : null}
 		</Row>
 	);
@@ -150,12 +150,14 @@ function LandingPagesForm({ data }) {
 				description={<T id="landing-pages.global.description" />}
 			>
 				{PAGE_TYPES.map((page) => (
-					<Row key={page.key} page={page}>
+					<Row key={page.key} page={page} id={`landing-${page.key}`}>
 						<PageChoiceField
 							name={`pages.${page.key}.choice`}
 							htmlName={`pages.${page.key}.html`}
 							id={`landing-${page.key}`}
 							label={<T id="landing-pages.page" />}
+							typeLabel={<T id={page.labelId} />}
+							describedBy={`landing-${page.key}-description`}
 							choices={GLOBAL_CHOICES}
 							field={page}
 							previewHref={isAdmin ? previewPath({ source: "global", type: page.api }) : null}

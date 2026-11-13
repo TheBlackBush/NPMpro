@@ -107,9 +107,19 @@ it("Settings: values, validation, and a payload of what changed only", () => {
 	assert.equal(errors.defaultSite.redirect, "error.required");
 	assert.deepEqual(landingValidate(rules)(values), {});
 	const stray = structuredClone(values);
-	stray.pages.ban = { choice: "npmpro", html: "<!--# include virtual='x' -->" };
+	stray.pages.ban = { choice: "custom", html: "<!--# include virtual='x' -->" };
 	assert.equal(landingValidate(rules)(stray).pages.ban.html, "landing-pages.error.ssi");
-	stray.pages.ban = { choice: "npmpro", html: "  " };
+	// a failing paste, then back to the NPMpro page: Save goes through and sends no html
+	stray.pages.ban = { choice: "npmpro", html: "<!--# include virtual='x' -->" };
 	assert.deepEqual(landingValidate(rules)(stray), {});
+	assert.deepEqual(landingPayload(stray, values), {});
+	const saved = structuredClone(values);
+	saved.pages.ban = { choice: "custom", html: "<p>kept</p>" };
+	stray.pages.ban = { choice: "npmpro", html: "<p>kept</p>edited" };
+	assert.deepEqual(landingPayload(stray, saved), { pages: { ban: { choice: "npmpro" } } });
+	// a second save diffs against the first
+	const second = structuredClone(saved);
+	second.pages.ban.html = "<p>again</p>";
+	assert.deepEqual(landingPayload(second, saved), { pages: { ban: { choice: "custom", html: "<p>again</p>" } } });
 	assert.deepEqual(landingValues({ defaultSite: DATA.defaultSite }).pages.ban, { choice: "npmpro", html: "" });
 });
