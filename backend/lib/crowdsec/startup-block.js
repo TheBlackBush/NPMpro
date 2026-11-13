@@ -36,7 +36,7 @@ const appsecText = (values, check) => {
  * @param   {Object}   input.values
  * @param   {Object[]} [input.checks]        testConnection checks
  * @param   {string}   [input.nginxError]    the nginx -t output when the files were not applied
- * @param   {string[]} [input.missingFiles]  files the bouncer reads that do not exist
+ * @param   {string[]} [input.missingFiles]  files the bouncer reads that are missing or unreadable
  * @param   {boolean}  [input.localOverride] crowdsec.conf.local exists
  * @returns {string[]}
  */
@@ -61,7 +61,7 @@ const startupWarnings = ({ values, checks = [], nginxError = null, missingFiles 
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
-	for (const file of missingFiles) warnings.push(`${file} does not exist`);
+	for (const file of missingFiles) warnings.push(`${file} does not exist or cannot be read`);
 	return [...warnings, ...override];
 };
 

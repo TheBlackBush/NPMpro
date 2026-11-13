@@ -75,7 +75,7 @@ it("shows failed checks and only the warnings that apply", () => {
 	assert.deepEqual(warnings, [
 		"the LAPI check failed, decisions are not applied until it passes",
 		"AppSec cannot be reached: requests are blocked while AppSec is down",
-		"/data/crowdsec/ban.html does not exist",
+		"/data/crowdsec/ban.html does not exist or cannot be read",
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
 	]);
 	const text = renderStartupBlock({ values, checks, warnings });

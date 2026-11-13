@@ -128,7 +128,7 @@ it("switches the bouncer off, not nginx, while a file it opens at start is missi
 			renderStartupBlock({ values: off.values, warnings, bouncerOff: true }),
 			/^CrowdSec: off \(a file is missing, see the warning\)$/mu,
 		);
-		assert.deepEqual(warnings, [`${key} does not exist`]);
+		assert.deepEqual(warnings, [`${key} does not exist or cannot be read`]);
 		await writeFile(path.join(api.root, key.slice(1)), "key");
 		const on = await startCrowdsec();
 		assert.deepEqual(on.missingFiles, []);

@@ -83,6 +83,27 @@ it("launch.sh turns the bouncer off while a file it opens at start is missing", 
 		assert.equal(banned.include, INCLUDE_OFF);
 		const captcha = runCheck(root, `CAPTCHA_TEMPLATE_PATH=${root}/data/crowdsec/captcha.html\n`);
 		assert.equal(captcha.include, INCLUDE_OFF);
+		// the reading of the backend: key case, export, quotes, inline comments, tabs
+		const gone = `${root}/gone/k`;
+		const forms = [
+			`USE_TLS_AUTH="true"\nTLS_CLIENT_CERT=${crt}\nTLS_CLIENT_KEY=${gone}\n`,
+			`use_tls_auth='TRUE'\nTLS_CLIENT_CERT=${crt}\ntls_client_key = "${gone}"\n`,
+			`export USE_TLS_AUTH=true # on\nTLS_CLIENT_CERT=${crt}\nexport TLS_CLIENT_KEY=${gone}\t# gone\n`,
+			`USE_TLS_AUTH=true\nTLS_CLIENT_CERT=${crt}\nTLS_CLIENT_KEY='${gone}'\t\n`,
+			`BAN_TEMPLATE_PATH=${gone} # c\n`,
+		];
+		for (const form of forms) {
+			const result = runCheck(root, form);
+			assert.equal(result.include, INCLUDE_OFF, form);
+			assert.ok(result.out.startsWith(`CrowdSec: ${gone} is missing`), form);
+		}
+		// a # inside quotes is part of the path, a # without a space before it too
+		writeFileSync(`${crt}#1`, "x");
+		assert.equal(
+			runCheck(root, `BAN_TEMPLATE_PATH="${crt}#1"\nCAPTCHA_TEMPLATE_PATH=${crt}#1\n`).include,
+			INCLUDE_ON,
+		);
+		assert.equal(runCheck(root, `BAN_TEMPLATE_PATH=${crt} # a note\n`).include, INCLUDE_ON);
 		if (process.getuid?.() !== 0) {
 			chmodSync(key, 0o000);
 			assert.equal(runCheck(root, conf).include, INCLUDE_OFF);

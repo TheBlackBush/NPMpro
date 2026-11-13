@@ -81,8 +81,35 @@ fi
 # settings in the database stay as they are, the backend writes the include again from them at the next start).
 # crowdsec-files-check begin
 if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
+    # the same reading as the backend's parseConfLines: key in any case, an optional "export ", one pair of quotes, an
+    # unquoted " #" tail removed, the last line of a key wins
     crowdsec_value() {
-        tr -d '\r' < /data/crowdsec/crowdsec.conf 2> /dev/null | sed -n "s/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}$1[[:space:]]*=[[:space:]]*//p" | tail -n 1 | sed 's/[[:space:]]*$//'
+        tr -d '\r' < /data/crowdsec/crowdsec.conf 2> /dev/null | awk -v key="$1" '
+            {
+                line = $0
+                sub(/^[ \t]*(export[ \t]+)?/, "", line)
+                eq = index(line, "=")
+                if (eq < 2) next
+                name = substr(line, 1, eq - 1)
+                gsub(/[ \t]/, "", name)
+                if (toupper(name) != key) next
+                val = substr(line, eq + 1)
+                sub(/^[ \t]+/, "", val)
+                quote = substr(val, 1, 1)
+                if (quote == "\"" || quote == "\047") {
+                    end = index(substr(val, 2), quote)
+                    if (end > 0) {
+                        found = substr(val, 2, end - 1)
+                        next
+                    }
+                } else {
+                    sub(/[ \t]+#.*$/, "", val)
+                }
+                sub(/[ \t]+$/, "", val)
+                found = val
+            }
+            END { print found }
+        '
     }
     crowdsec_files=""
     if [ "$(crowdsec_value USE_TLS_AUTH | tr '[:upper:]' '[:lower:]')" = "true" ]; then
