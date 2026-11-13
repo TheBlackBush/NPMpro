@@ -59,6 +59,8 @@ const checkAppsec = async (values, { timeoutMs }) => {
 				"x-crowdsec-appsec-user-agent": "NPMpro connection test",
 			},
 			dispatcher: agentFor(values.ssl_verify !== false),
+			// the key header must not follow a redirect to a host nobody entered: a 3xx is reported as a status
+			redirect: "manual",
 			signal: AbortSignal.timeout(timeoutMs),
 		});
 		await res.body?.cancel().catch(() => undefined);

@@ -99,8 +99,10 @@ const fetchPlain = async (conf, fetchFn, timeoutMs) => {
 	const { signal, clear } = deadline(timeoutMs);
 	let text;
 	try {
+		// a redirect is not followed: the key header would go to a host nobody entered (a 3xx is an error status)
 		const res = await fetchFn(decisionsUrl(conf.apiUrl, conf.query), {
 			headers: { "X-Api-Key": conf.apiKey, Accept: "application/json" },
+			redirect: "manual",
 			signal,
 		});
 		if (!res.ok) {

@@ -116,6 +116,35 @@ it("counts a 403 of AppSec as an answer and reports other status codes", async (
 	}
 });
 
+it("does not follow a redirect with the key: a 3xx is reported as a status", async () => {
+	const seen = [];
+	const target = http.createServer((req, res) => {
+		seen.push(req.headers);
+		res.writeHead(200, { "content-type": "application/json" });
+		res.end("null");
+	});
+	const targetUrl = `http://127.0.0.1:${await listen(target)}`;
+	const redirect = http.createServer((req, res) => {
+		res.writeHead(302, { location: `${targetUrl}${req.url}` });
+		res.end();
+	});
+	const url = `http://127.0.0.1:${await listen(redirect)}`;
+	try {
+		const result = await testConnection(valuesOf({ api_url: url, appsec_url: `${url}/appsec` }));
+		assert.deepEqual(
+			result.checks.map((check) => [check.name, check.result, check.message]),
+			[
+				["lapi", "status", "HTTP 302"],
+				["appsec", "status", "HTTP 302"],
+			],
+		);
+		assert.deepEqual(seen, []);
+	} finally {
+		await close(redirect);
+		await close(target);
+	}
+});
+
 const selfSigned = () => {
 	const dir = mkdtempSync(path.join(os.tmpdir(), "cs-tls-"));
 	const crt = path.join(dir, "server.crt");
