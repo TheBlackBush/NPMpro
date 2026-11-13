@@ -122,3 +122,29 @@ it("keeps the .local warning while the bouncer is off", () => {
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
 	]);
 });
+
+const NO_KEY_WARNING =
+	"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL";
+
+it("says the bouncer is off while AppSec has no API key, also with TLS authentication", () => {
+	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny", admin_ui_excluded: true });
+	const warnings = startupWarnings({ values: noKey });
+	assert.deepEqual(warnings, [NO_KEY_WARNING]);
+	assert.equal(
+		renderStartupBlock({ values: noKey, warnings, bouncerOff: true }),
+		`CrowdSec: off (AppSec has no API key, see the warning)\nWarning:  ${NO_KEY_WARNING}`,
+	);
+	assert.deepEqual(startupWarnings({ values: { ...noKey, appsec_failure_action: "passthrough" } }), [NO_KEY_WARNING]);
+	// a key, no AppSec URL or the bouncer off: no such warning
+	for (const values of [on(), { ...noKey, appsec_url: "" }, { ...noKey, enabled: false }]) {
+		assert.equal(
+			startupWarnings({ values, checks: ok }).some((line) => line.includes("no API key")),
+			false,
+		);
+	}
+	// a file that is not usable keeps its own reason
+	assert.match(
+		renderStartupBlock({ values: on(), bouncerOff: true }),
+		/^CrowdSec: off \(a file it needs is not usable, see the warning\)$/u,
+	);
+});

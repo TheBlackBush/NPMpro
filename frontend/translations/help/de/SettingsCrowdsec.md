@@ -19,7 +19,7 @@ Beim Speichern mit eingeschaltetem Bouncer läuft zuerst derselbe Test. Schlägt
 - **Bouncer aktivieren**: prüft jede Anfrage.
 - **LAPI-URL**: zum Beispiel `http://127.0.0.1:8080`.
 - **API-Schlüssel**: aus `docker exec crowdsec cscli bouncers add npmpro`. Verschlüsselt gespeichert, nie wieder angezeigt. **Gespeicherten Schlüssel entfernen** löscht ihn.
-- **TLS-Clientzertifikat**: anstelle des Schlüssels eine Zertifikats- und eine Schlüsseldatei unter `/data/crowdsec/`; erfordert eine LAPI-URL mit `https://`.
+- **TLS-Clientzertifikat**: anstelle des Schlüssels eine Zertifikats- und eine Schlüsseldatei unter `/data/crowdsec/`; erfordert eine LAPI-URL mit `https://`. Sobald eine AppSec-URL gesetzt ist, wird das Feld **API-Schlüssel** auch mit einem TLS-Clientzertifikat angezeigt und ist erforderlich, weil AppSec sich mit dem API-Schlüssel authentifiziert; ohne ihn lehnt AppSec jede Anfrage ab.
 - **TLS-Zertifikate prüfen**: prüft das Zertifikat einer https-LAPI- oder AppSec-URL.
 
 ### Blockierung

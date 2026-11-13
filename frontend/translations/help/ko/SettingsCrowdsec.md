@@ -19,7 +19,7 @@ AppSec이 실패하고 **AppSec에 연결할 수 없을 때**가 **요청 거부
 - **bouncer 사용**: 모든 요청을 검사합니다.
 - **LAPI URL**: 예: `http://127.0.0.1:8080`.
 - **API 키**: `docker exec crowdsec cscli bouncers add npmpro`로 받습니다. 암호화되어 저장되며 다시 표시되지 않습니다. **저장된 키 삭제**로 지울 수 있습니다.
-- **TLS 클라이언트 인증서**: 키 대신 `/data/crowdsec/` 아래의 인증서 파일과 키 파일을 사용합니다. `https://` LAPI URL이 필요합니다.
+- **TLS 클라이언트 인증서**: 키 대신 `/data/crowdsec/` 아래의 인증서 파일과 키 파일을 사용합니다. `https://` LAPI URL이 필요합니다. AppSec URL을 설정하면 TLS 클라이언트 인증서를 사용할 때도 **API 키** 필드가 표시되며 필수입니다. AppSec은 API 키로 인증하므로 키가 없으면 AppSec이 모든 요청을 거부합니다.
 - **TLS 인증서 확인**: https LAPI 또는 AppSec URL의 인증서를 확인합니다.
 
 ### 차단

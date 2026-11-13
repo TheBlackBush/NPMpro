@@ -8,6 +8,7 @@ import { readStoredCrowdsec, saveStoredCrowdsec } from "./store.js";
 const LOCAL_PATH = `${CROWDSEC_CONF_PATH}.local`;
 const FIRST_LINE = /\r?\n/u;
 const NOT_DIGITS = /[^\d]/gu;
+const LEADING_BOM = /^\uFEFF/u;
 
 // the text of a file a person wrote; null when it is missing, not a regular file (a link is never followed) or
 // already written by NPMpro
@@ -24,7 +25,7 @@ const readHandEdited = async (fs, file, log) => {
 		return null;
 	}
 	const text = await fs.readFile(file, "utf8");
-	return text.replace(/^﻿/u, "").split(FIRST_LINE, 1)[0] === HEADER ? null : text;
+	return text.replace(LEADING_BOM, "").split(FIRST_LINE, 1)[0] === HEADER ? null : text;
 };
 
 // <file>.before-settings, with the time when that name is taken

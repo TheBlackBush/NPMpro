@@ -258,6 +258,25 @@ it("refuses invalid bodies and keeps the settings", async () => {
 	assert.equal(await conf(), previous);
 });
 
+it("refuses AppSec without an API key with TLS authentication, also with force", async () => {
+	const previous = await conf();
+	const body = {
+		enabled: true,
+		api_url: "https://lapi.invalid:8080",
+		use_tls_auth: true,
+		tls_client_cert: "/data/crowdsec/c.crt",
+		tls_client_key: "/data/crowdsec/c.key",
+		appsec_url: "http://appsec.invalid:7422",
+		api_key: null,
+	};
+	for (const force of [false, true]) {
+		const res = await admin.put("/settings/crowdsec", { ...body, force });
+		assert.equal(res.status, 400, res.text);
+		assert.match(res.text, /AppSec uses the API key of the bouncer/u);
+	}
+	assert.equal(await conf(), previous);
+});
+
 it("leaves the admin UI out of CrowdSec", async () => {
 	const res = await admin.put("/settings/crowdsec", { admin_ui_excluded: true });
 	assert.equal(res.status, 200, res.text);
@@ -357,5 +376,49 @@ it("keeps both changes of two saves that overlap", async () => {
 		release();
 		await admin.put("/settings/crowdsec", { enabled: false });
 		await new Promise((resolve) => slow.close(resolve));
+	}
+});
+
+it("restores a backup without secrets with the bouncer off while AppSec has no key, and a save with the key turns it on", async () => {
+	const appsec = http.createServer((req, res) => {
+		res.writeHead(req.headers["x-crowdsec-appsec-api-key"] === KEY ? 200 : 401);
+		res.end("{}");
+	});
+	await new Promise((resolve) => appsec.listen(0, "127.0.0.1", resolve));
+	const appsecUrl = `http://127.0.0.1:${appsec.address().port}`;
+	const bouncerOn = "include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n";
+	const bouncerOff = "# the CrowdSec bouncer is off (Settings, CrowdSec)\n";
+	try {
+		const body = {
+			enabled: true,
+			api_url: lapiUrl,
+			api_key: KEY,
+			appsec_url: appsecUrl,
+			appsec_failure_action: "deny",
+		};
+		const saved = await admin.put("/settings/crowdsec", body);
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), bouncerOn);
+		const made = await admin.post("/backups", { types: ["settings_crowdsec"], secrets: false, keep: true });
+		assert.equal(made.status, 200, made.text);
+		const opened = await admin.post(`/backups/${made.body.entry.name}/inspect`, {});
+		assert.equal(opened.status, 200, opened.text);
+		const restored = await admin.post(`/backups/restore/${opened.body.token}`, {
+			types: ["settings_crowdsec"],
+			confirm: true,
+		});
+		assert.equal(restored.status, 200, restored.text);
+		// the row keeps the restored settings (on, the AppSec URL) without the key; the include leaves the bouncer off
+		const after = await settings();
+		assert.equal(after.enabled, true);
+		assert.equal(after.appsec_url, appsecUrl);
+		assert.equal(after.api_key_set, false);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), bouncerOff);
+		const keyed = await admin.put("/settings/crowdsec", { api_key: KEY });
+		assert.equal(keyed.status, 200, keyed.text);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), bouncerOn);
+	} finally {
+		await admin.put("/settings/crowdsec", { enabled: false, appsec_url: "" });
+		await new Promise((resolve) => appsec.close(resolve));
 	}
 });

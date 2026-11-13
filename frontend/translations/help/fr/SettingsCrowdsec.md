@@ -19,7 +19,7 @@ L'enregistrement avec le bouncer activé lance d'abord le même test. S'il écho
 - **Activer le bouncer** : vérifie chaque requête.
 - **URL de la LAPI** : par exemple `http://127.0.0.1:8080`.
 - **Clé API** : obtenue avec `docker exec crowdsec cscli bouncers add npmpro`. Stockée chiffrée, jamais réaffichée. **Supprimer la clé enregistrée** la supprime.
-- **Certificat client TLS** : à la place de la clé, un fichier de certificat et un fichier de clé sous `/data/crowdsec/` ; nécessite une URL de LAPI en `https://`.
+- **Certificat client TLS** : à la place de la clé, un fichier de certificat et un fichier de clé sous `/data/crowdsec/` ; nécessite une URL de LAPI en `https://`. Dès qu'une URL AppSec est définie, le champ **Clé d'API** s'affiche et est obligatoire aussi avec un certificat client TLS, car AppSec s'authentifie avec la clé d'API ; sans elle, AppSec refuse toutes les requêtes.
 - **Vérifier les certificats TLS** : vérifie le certificat d'une URL de LAPI ou d'AppSec en https.
 
 ### Blocage

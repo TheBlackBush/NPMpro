@@ -350,3 +350,38 @@ it("restores TLS auth onto an instance without the client files with the bouncer
 		await startCrowdsec();
 	}
 });
+
+it("starts with the bouncer off while AppSec has no API key, with the reason in the startup block", async () => {
+	const { logCrowdsecBlock, startCrowdsec } = await import("../internal/crowdsec-setting.js");
+	const saved = await storedMeta();
+	// an imported file or a restore without secrets: the bouncer on, an AppSec URL, no key
+	const { api_key: _key, ...noKey } = { ...saved, enabled: true, appsec_url: "http://127.0.0.1:7422" };
+	await setMeta(noKey);
+	try {
+		const started = await startCrowdsec();
+		assert.equal(started.appsecNoKey, true);
+		assert.deepEqual(started.missingFiles, []);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
+		assert.deepEqual(await storedMeta(), noKey);
+		const printed = [];
+		let tested = false;
+		await logCrowdsecBlock(started, {
+			print: (text) => printed.push(text),
+			test: () => {
+				tested = true;
+				return { checks: [] };
+			},
+		});
+		assert.equal(tested, false);
+		assert.match(printed[0], /^CrowdSec: off \(AppSec has no API key, see the warning\)$/mu);
+		assert.match(printed[0], /^Warning: {2}the bouncer is off: AppSec has no API key/mu);
+		// the key is back: the next start loads the bouncer
+		await setMeta({ ...noKey, api_key: saved.api_key });
+		const on = await startCrowdsec();
+		assert.equal(on.appsecNoKey, false);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
+	} finally {
+		await setMeta(saved);
+		await startCrowdsec();
+	}
+});

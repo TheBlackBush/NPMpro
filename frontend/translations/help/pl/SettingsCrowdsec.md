@@ -19,7 +19,7 @@ Zapis przy włączonym bouncerze najpierw uruchamia ten sam test. Gdy się nie p
 - **Włącz bouncera**: sprawdza każde żądanie.
 - **Adres URL LAPI**: na przykład `http://127.0.0.1:8080`.
 - **Klucz API**: z `docker exec crowdsec cscli bouncers add npmpro`. Przechowywany w postaci zaszyfrowanej, nigdy więcej nie pokazywany. **Usuń zapisany klucz** go kasuje.
-- **Certyfikat klienta TLS**: zamiast klucza plik certyfikatu i plik klucza w `/data/crowdsec/`; wymaga adresu URL LAPI z `https://`.
+- **Certyfikat klienta TLS**: zamiast klucza plik certyfikatu i plik klucza w `/data/crowdsec/`; wymaga adresu URL LAPI z `https://`. Gdy ustawiono adres URL AppSec, pole **Klucz API** jest wyświetlane i wymagane także przy certyfikacie klienta TLS, ponieważ AppSec uwierzytelnia się kluczem API; bez niego AppSec odrzuca każde żądanie.
 - **Weryfikuj certyfikaty TLS**: sprawdza certyfikat adresu URL LAPI lub AppSec z https.
 
 ### Blokowanie

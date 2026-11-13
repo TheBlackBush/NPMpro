@@ -151,7 +151,9 @@ function StatusCard({ data, request }) {
 
 function ConnectionCard({ data, locks }) {
 	const { register, setValue } = useFormContext();
-	const [auth, clearApiKey] = useWatch({ name: ["auth", "clearApiKey"] });
+	const [auth, clearApiKey, appsecUrl] = useWatch({ name: ["auth", "clearApiKey", "appsecUrl"] });
+	// AppSec authenticates with the API key, also with a TLS client certificate
+	const showKey = auth === "key" || String(appsecUrl ?? "").trim() !== "";
 	const keyLocked = locks.isLocked("apiKey");
 	let keyPlaceholder = "";
 	if (keyLocked) keyPlaceholder = label("settings.authentication.locked");
@@ -189,14 +191,22 @@ function ConnectionCard({ data, locks }) {
 					{ value: "tls", label: <T id="settings.crowdsec.auth.tls" /> },
 				]}
 			/>
-			{auth === "key" ? (
+			{showKey ? (
 				<div className="space-y-2">
 					{/* a locked or saved key stays empty: it is never shown */}
 					<PasswordField
 						name="apiKey"
 						id="crowdsec-api-key"
 						label={<T id="settings.crowdsec.api-key" />}
-						hint={<T id="settings.crowdsec.api-key.hint" />}
+						hint={
+							<T
+								id={
+									auth === "key"
+										? "settings.crowdsec.api-key.hint"
+										: "settings.crowdsec.api-key.appsec-hint"
+								}
+							/>
+						}
 						badges={locks.badge("apiKey")}
 						autoComplete="new-password"
 						disabled={keyLocked || clearApiKey}
@@ -215,7 +225,8 @@ function ConnectionCard({ data, locks }) {
 						</Button>
 					) : null}
 				</div>
-			) : (
+			) : null}
+			{auth === "tls" ? (
 				<>
 					<TextField
 						name="tlsClientCert"
@@ -234,7 +245,7 @@ function ConnectionCard({ data, locks }) {
 						spellCheck={false}
 					/>
 				</>
-			)}
+			) : null}
 			<SwitchList>
 				<SwitchField
 					id="crowdsec-ssl-verify"
@@ -561,7 +572,11 @@ function BouncerOffAlert({ data }) {
 	return (
 		<StatusAlert variant="warning" icon={TriangleAlert}>
 			<div className="space-y-1">
-				{warning.kind === "tls" ? (
+				{warning.kind === "appsec-key" ? (
+					<p>
+						<T id="settings.crowdsec.bouncer-off.appsec-key" />
+					</p>
+				) : warning.kind === "tls" ? (
 					<p>
 						<T id="settings.crowdsec.bouncer-off.tls" data={{ files: warning.files.join(", ") }} />
 					</p>

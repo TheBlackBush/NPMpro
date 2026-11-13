@@ -19,7 +19,7 @@ NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的
 - **启用 bouncer**：检查每个请求。
 - **LAPI 地址**：例如 `http://127.0.0.1:8080`。
 - **API 密钥**：来自 `docker exec crowdsec cscli bouncers add npmpro`。加密存储，之后不再显示。**删除已保存的密钥**会将其删除。
-- **TLS 客户端证书**：代替密钥，使用 `/data/crowdsec/` 下的证书文件和密钥文件；需要 `https://` 的 LAPI 地址。
+- **TLS 客户端证书**：代替密钥，使用 `/data/crowdsec/` 下的证书文件和密钥文件；需要 `https://` 的 LAPI 地址。 设置 AppSec URL 后，即使使用 TLS 客户端证书，也会显示并必须填写 **API 密钥**，因为 AppSec 使用 API 密钥认证；没有密钥时 AppSec 会拒绝所有请求。
 - **验证 TLS 证书**：检查 https 的 LAPI 或 AppSec 地址的证书。
 
 ### 拦截

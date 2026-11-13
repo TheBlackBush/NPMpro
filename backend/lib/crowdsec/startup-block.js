@@ -1,5 +1,8 @@
+import { appsecKeyMissing } from "./settings.js";
+
 // The CrowdSec block of the startup log (spec section 4), in the style of the launch.sh banner. Pure: the caller runs
-// the connection test and the file checks. It never holds the API key or the captcha secret.
+// the connection test and the file checks. It reads whether an API key is set but never prints the key or the
+// captcha secret.
 
 const LINE = "-------------------------------------";
 const firstLine = (text) => String(text ?? "").split("\n")[0];
@@ -69,6 +72,12 @@ const startupWarnings = ({
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
+	// the start gate keeps the bouncer off in this case (appsecKeyMissing): AppSec would refuse every request
+	if (appsecKeyMissing(values)) {
+		warnings.push(
+			"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL",
+		);
+	}
 	for (const file of missingFiles)
 		warnings.push(`${file} is not set, does not exist, cannot be read or is not valid PEM`);
 	for (const file of missingPages) {
@@ -83,13 +92,16 @@ const startupWarnings = ({
  * @param   {Object}   [input.lockedBy]  key -> variable name
  * @param   {Object[]} [input.checks]
  * @param   {string[]} [input.warnings]
- * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable
+ * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable or
+ *                                          AppSec has no API key
  * @returns {string}
  */
 const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [], bouncerOff = false }) => {
 	const warningLines = warnings.map((warning) => `Warning:  ${warning}`);
-	if (bouncerOff)
-		return ["CrowdSec: off (a file it needs is not usable, see the warning)", ...warningLines].join("\n");
+	if (bouncerOff) {
+		const reason = appsecKeyMissing(values) ? "AppSec has no API key" : "a file it needs is not usable";
+		return [`CrowdSec: off (${reason}, see the warning)`, ...warningLines].join("\n");
+	}
 	if (!values.enabled) return ["CrowdSec: off (Settings, CrowdSec)", ...warningLines].join("\n");
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");

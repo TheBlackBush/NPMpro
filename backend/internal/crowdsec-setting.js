@@ -5,6 +5,7 @@ import { applyCrowdsecFiles, bouncerLoaded } from "../lib/crowdsec/files.js";
 import { importCrowdsecFile, recoverCrowdsecFromWrittenFile } from "../lib/crowdsec/import.js";
 import {
 	applyCrowdsecUpdate,
+	appsecKeyMissing,
 	CROWDSEC_FIELDS,
 	changedCrowdsecKeys,
 	isValidValue,
@@ -117,21 +118,28 @@ const missingPagesOf = (values) =>
 	values.enabled ? requiredFiles({ ...values, use_tls_auth: false }).filter((file) => !fileReadable(file)) : [];
 
 /**
- * The start gate, shared by the start and a restore: the files the bouncer cannot start without (unusableStartFiles);
- * while one is unusable the include leaves the bouncer off and the row stays as it is.
+ * The start gate, shared by the start and a restore: the files the bouncer cannot start without (unusableStartFiles),
+ * and an AppSec URL without an API key (appsecKeyMissing); while either applies the include leaves the bouncer off and
+ * the row stays as it is.
  *
  * @param   {Object} values
  * @param   {Object} log
- * @returns {string[]}
+ * @returns {{ missingFiles: string[], appsecNoKey: boolean, bouncerOff: boolean }}
  */
 const startGate = (values, log) => {
-	const unusable = unusableStartFiles(values);
-	if (unusable.length > 0) {
+	const missingFiles = unusableStartFiles(values);
+	if (missingFiles.length > 0) {
 		log.warn(
-			`CrowdSec: ${unusable.join(", ")} is not set, missing, unreadable or not valid PEM, the bouncer stays off`,
+			`CrowdSec: ${missingFiles.join(", ")} is not set, missing, unreadable or not valid PEM, the bouncer stays off`,
 		);
 	}
-	return unusable;
+	const appsecNoKey = appsecKeyMissing(values);
+	if (appsecNoKey) {
+		log.warn(
+			"CrowdSec: AppSec has no API key, the bouncer stays off until the key is entered in Settings, CrowdSec",
+		);
+	}
+	return { missingFiles, appsecNoKey, bouncerOff: missingFiles.length > 0 || appsecNoKey };
 };
 
 /**
@@ -143,8 +151,9 @@ const startGate = (values, log) => {
  * @param   {Object} [deps.nginx]  { test }
  * @param   {Object} [deps.log]
  * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null, missingFiles: string[],
- *          missingPages: string[] } | null>}  null when the row could not be read; missingFiles: the files that keep
- *          the bouncer off, missingPages: the pages it runs without
+ *          appsecNoKey: boolean, missingPages: string[] } | null>}  null when the row could not be read; missingFiles:
+ *          the files that keep the bouncer off, appsecNoKey: an AppSec URL without a key keeps it off, missingPages:
+ *          the pages it runs without
  */
 const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 	try {
@@ -155,9 +164,8 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 			log.warn("CrowdSec: a saved key cannot be decrypted, enter it again in Settings, CrowdSec");
 		// the bouncer parses its TLS client files when nginx starts, which nginx -t does not do: one it cannot parse
 		// would stop nginx
-		const missingFiles = startGate(cfg.values, log);
+		const { missingFiles, appsecNoKey, bouncerOff } = startGate(cfg.values, log);
 		const missingPages = missingPagesOf(cfg.values);
-		const bouncerOff = missingFiles.length > 0;
 		let nginxError = null;
 		try {
 			await runtimeExclusive(() => applyCrowdsecFiles(cfg.values, () => nginx.test(), { bouncerOff }));
@@ -165,7 +173,7 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 			nginxError = err.message;
 			log.error(`CrowdSec: the settings did not pass nginx -t and were not applied: ${err.message}`);
 		}
-		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles, missingPages };
+		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles, appsecNoKey, missingPages };
 	} catch (err) {
 		log.error(`Could not apply the CrowdSec settings at startup: ${err.message}`);
 		return null;
@@ -192,8 +200,8 @@ const logCrowdsecBlock = async (
 ) => {
 	if (!start) return;
 	try {
-		const { values, locked, nginxError, missingFiles = [], missingPages = [] } = start;
-		const bouncerOff = missingFiles.length > 0;
+		const { values, locked, nginxError, missingFiles = [], appsecNoKey = false, missingPages = [] } = start;
+		const bouncerOff = missingFiles.length > 0 || appsecNoKey;
 		const active = values.enabled && !nginxError && !bouncerOff;
 		const checks = active ? (await test(values, { timeoutMs })).checks : [];
 		const warnings = startupWarnings({
@@ -330,8 +338,9 @@ const reloadCrowdsecAfterRestore = async () => {
 		await importCrowdsecFile();
 	}
 	const cfg = await getCrowdsecConfig();
-	// the TLS client files are in no backup: restoring TLS auth onto an instance without them keeps the bouncer off
-	await applyCrowdsecFiles(cfg.values, undefined, { bouncerOff: startGate(cfg.values, logger).length > 0 });
+	// the TLS client files are in no backup, and a backup without secrets has no API key: restoring TLS auth onto an
+	// instance without the files, or an AppSec URL without a key, keeps the bouncer off
+	await applyCrowdsecFiles(cfg.values, undefined, { bouncerOff: startGate(cfg.values, logger).bouncerOff });
 	void Promise.resolve()
 		.then(() => hooks.onApplied())
 		.catch((err) => logger.warn(`CrowdSec: the poll after the restore failed: ${err.message}`));
