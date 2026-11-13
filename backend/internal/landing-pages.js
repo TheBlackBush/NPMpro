@@ -231,9 +231,42 @@ const internalLandingPages = {
 	},
 };
 
+// the tables of the places that hold custom pages, by the backup type that restores them
+const PLACE_TYPES = {
+	proxy_hosts: ["proxy_host", proxyHostModel],
+	dead_hosts: ["dead_host", deadHostModel],
+	access_lists: ["access_list", accessListModel],
+};
+
+// the custom pages of every host and access list, at start and after a restore. A disabled host has none (as a disable
+// removes them), and no folder of a row that is gone stays. The columns come as the database holds them (null without
+// a page).
+const writePlacePagesOf = async (kind, model) => {
+	const columns = PLACES[kind].fields.flatMap(({ column }) => [column, `${column}_html`]);
+	const hosts = kind !== "access_list";
+	const rows = await model.query().select("id", ...(hosts ? ["enabled"] : []), ...columns);
+	const ids = new Set();
+	for (const row of rows) {
+		const id = Number(row.id);
+		if (!Number.isSafeInteger(id) || id < 1) continue;
+		if (hosts && !row.enabled) continue;
+		ids.add(id);
+		const full = { ...row, id };
+		for (const { column } of PLACES[kind].fields) full[`${column}_html`] ??= "";
+		await writePlacePages(kind, full);
+	}
+	const folder = new RegExp(`^${PLACES[kind].dir}-([1-9][0-9]*)$`, "u");
+	for (const name of await readdir(rooted(PAGES_DIR)).catch(() => [])) {
+		const match = folder.exec(name);
+		if (match && !ids.has(Number(match[1])))
+			await rm(rooted(`${PAGES_DIR}/${name}`), { recursive: true, force: true });
+	}
+};
+
 /**
- * At every start, before the CrowdSec start (crowdsec.conf points at the global files): the one import of the old
- * CrowdSec pages when there is no row yet, then the global files. Never throws.
+ * At every start, before the CrowdSec start (crowdsec.conf points at the global files) and the first config generation:
+ * the one import of the old CrowdSec pages when there is no row yet, then the global files, then the custom pages of
+ * every enabled host and access list (a lost pages folder heals on restart). Never throws.
  *
  * @param   {Object} [deps]
  * @returns {Promise<void>}
@@ -250,35 +283,17 @@ const startLandingPages = async ({ log = logger } = {}) => {
 			`Landing pages: could not write the global pages at startup, the CrowdSec ban and captcha pages are unavailable until the files are written (the bouncer turns captcha off): ${err.message}`,
 		);
 	}
-};
-
-// the tables of the places that hold custom pages, by the backup type that restores them
-const PLACE_TYPES = {
-	proxy_hosts: ["proxy_host", proxyHostModel],
-	dead_hosts: ["dead_host", deadHostModel],
-	access_lists: ["access_list", accessListModel],
-};
-
-// the custom pages of every restored host and access list (also the disabled ones, whose configs a restore does not
-// write) and no folder of a row that is gone. The columns come as the database holds them (null without a page).
-const writeRestoredPlacePages = async (kind, model) => {
-	const columns = PLACES[kind].fields.flatMap(({ column }) => [column, `${column}_html`]);
-	const rows = await model.query().select("id", ...columns);
-	const ids = new Set();
-	for (const row of rows) {
-		const id = Number(row.id);
-		if (!Number.isSafeInteger(id) || id < 1) continue;
-		ids.add(id);
-		const full = { ...row, id };
-		for (const { column } of PLACES[kind].fields) full[`${column}_html`] ??= "";
-		await writePlacePages(kind, full);
-	}
-	const folder = new RegExp(`^${PLACES[kind].dir}-([1-9][0-9]*)$`, "u");
-	for (const name of await readdir(rooted(PAGES_DIR)).catch(() => [])) {
-		const match = folder.exec(name);
-		if (match && !ids.has(Number(match[1])))
-			await rm(rooted(`${PAGES_DIR}/${name}`), { recursive: true, force: true });
-	}
+	await runtimeExclusive(async () => {
+		for (const [kind, model] of Object.values(PLACE_TYPES)) {
+			try {
+				await writePlacePagesOf(kind, model);
+			} catch (err) {
+				log.error(
+					`Landing pages: could not write the custom pages of the ${kind} rows at startup: ${err.message}`,
+				);
+			}
+		}
+	});
 };
 
 /**
@@ -292,7 +307,7 @@ const writeRestoredPlacePages = async (kind, model) => {
  */
 const reloadLandingPagesAfterRestore = async (types = []) => {
 	for (const [typeId, [kind, model]] of Object.entries(PLACE_TYPES)) {
-		if (types.includes(typeId)) await writeRestoredPlacePages(kind, model);
+		if (types.includes(typeId)) await writePlacePagesOf(kind, model);
 	}
 	if (!(types.includes("settings_landing_pages") || types.includes("crowdsec_files"))) return;
 	let stored = (await readStoredLandingPages()) ?? {};

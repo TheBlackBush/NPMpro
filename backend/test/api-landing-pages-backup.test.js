@@ -132,6 +132,30 @@ it("a restore writes the page files of every restored host and access list and d
 	assert.equal(await fileExists(api, "data/public/pages/proxy-host-9999/maintenance.html"), false);
 });
 
+it("a restore writes no page files for a disabled host, as a disable removes them", async () => {
+	const host = await proxy({ npmpro_page_upstream: "custom", npmpro_page_upstream_html: "<p>off</p>" });
+	const dead = await admin.post("/nginx/dead-hosts", {
+		domain_names: ["bk-pages-dead-off.example.com"],
+		npmpro_page: "custom",
+		npmpro_page_html: "<p>dead off</p>",
+	});
+	assert.equal(dead.status, 201, dead.text);
+	assert.equal((await admin.post(`/nginx/proxy-hosts/${host.id}/disable`, {})).status, 200);
+	assert.equal((await admin.post(`/nginx/dead-hosts/${dead.body.id}/disable`, {})).status, 200);
+	const hostDir = `data/public/pages/proxy-host-${host.id}`;
+	const deadDir = `data/public/pages/dead-host-${dead.body.id}`;
+	assert.equal(await fileExists(api, hostDir), false);
+	assert.equal(await fileExists(api, deadDir), false);
+	const entry = await keep(["proxy_hosts", "dead_hosts"]);
+	// a folder left over from before the disable is dropped too
+	await mkdir(path.join(api.root, hostDir), { recursive: true });
+	await writeFile(path.join(api.root, hostDir, "upstream-error.html"), "<p>old</p>");
+	await restore(entry, ["proxy_hosts", "dead_hosts"]);
+	assert.equal(await fileExists(api, hostDir), false);
+	assert.equal(await fileExists(api, deadDir), false);
+	assert.equal((await rowOf("proxy_host", host.id)).npmpro_page_upstream_html, "<p>off</p>");
+});
+
 it("a restore and a merge leave out a host page that fails the API checks", async () => {
 	const host = await proxy({ npmpro_page_maintenance: "custom", npmpro_page_maintenance_html: "<p>m2</p>" });
 	await api.db("proxy_host").where({ id: host.id }).update({ npmpro_page_maintenance_html: BAD });

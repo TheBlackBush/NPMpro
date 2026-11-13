@@ -16,6 +16,7 @@ import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 const proxyHostEntries = (hosts) => hosts.map((host) => ({ model: proxyHostModel, hostType: "proxy_host", host }));
 
@@ -83,7 +84,8 @@ const internalAccessList = {
 		});
 
 		try {
-			await internalAccessList.build(freshRow);
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
+			await runtimeExclusive(() => internalAccessList.build(freshRow));
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "created",
@@ -180,7 +182,8 @@ const internalAccessList = {
 		const savedRow = { ...freshRow, proxy_hosts: undefined };
 
 		try {
-			await internalAccessList.build(freshRow);
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
+			await runtimeExclusive(() => internalAccessList.build(freshRow));
 			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
 			await internalNginx.reload();
 		} finally {
