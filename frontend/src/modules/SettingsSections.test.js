@@ -52,7 +52,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 		groupSections(entries).map(({ id, sections }) => [id, sections.map((section) => section.id)]),
 		[
 			["sites", ["default-site", "network", "nginx"]],
-			["security", ["authentication", "forward-auth", "certificates"]],
+			["security", ["authentication", "forward-auth", "crowdsec", "certificates"]],
 			["monitoring", ["monitoring", "geoip"]],
 			["data", ["backup", "database"]],
 			["system", ["advanced", "environment"]],
