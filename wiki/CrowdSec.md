@@ -174,7 +174,7 @@ With the switch on, the admin UI port (`NPM_PORT`, 81 by default) is not checked
 
 ### TLS client authentication and AppSec
 
-AppSec authenticates with the API key, not with the TLS client certificate. With **TLS client certificate** as the authentication and an AppSec URL, **Test connection** reports "No API key set for AppSec". AppSec needs the API key, so either enter an API key as well (create it with `cscli bouncers add`; the LAPI still uses the certificate), or leave the AppSec URL empty.
+AppSec authenticates with the API key, not with the TLS client certificate. With **TLS client certificate** as the authentication, the **API key** field therefore appears as soon as an **AppSec URL** is filled in, and it is required then (create the key with `cscli bouncers add`; the LAPI still uses the certificate). Without a key AppSec answers every request with 401: with **Deny the request** every checked request on every host is refused, with **Let the request through** AppSec silently checks nothing. Settings, CrowdSec therefore refuses to save an AppSec URL without a key, and the startup log warns about it when the settings came from an import, a restore or `CROWDSEC_APPSEC_URL`. Or leave the AppSec URL empty.
 
 ### Environment variables
 
@@ -284,11 +284,11 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 - The LAPI URL must be reachable from NPMpro. With `network_mode: host` and the compose file above that is `http://127.0.0.1:8080`. Test it from the host with `curl http://127.0.0.1:8080/v1/decisions -H "X-Api-Key: <key>"`: a working key returns `null` or a list, a wrong key returns 403.
 - A wrong or deleted key: create a new one (step 6), enter it in Settings, CrowdSec and save.
 - A field that is greyed out is locked by an environment variable (see [Environment variables](#environment-variables)).
-- "Save anyway" is not offered when it would lock you out: AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is not left out. There are three ways out: fix the API key or the AppSec URL, set the failure action to **Let the request through**, or turn on **Leave the admin UI out of CrowdSec**.
+- "Save anyway" is not offered when it would lock you out: AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is not left out. There are three ways out: fix the API key or the AppSec URL, set the failure action to **Let the request through**, or turn on **Leave the admin UI out of CrowdSec**. The last one only protects the admin UI: your hosts are still blocked while AppSec fails with deny, so fix AppSec or the failure action as well.
 
 ### Locked out of the admin UI
 
-This happens when AppSec is set to deny, CrowdSec is down and the admin UI is not left out of CrowdSec. Start CrowdSec again; the admin UI works again at once. If that is not possible, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it, then turn on **Leave the admin UI out of CrowdSec** (or set the failure action to **Let the request through**), fix the settings and remove the variable. A bouncer config nginx rejects (for example a TLS client file that was deleted) never stops NPMpro from starting: the bouncer stays off and the startup log says why, see [If the bouncer file is broken](#if-the-bouncer-file-is-broken).
+This happens when AppSec is set to deny, CrowdSec is down and the admin UI is not left out of CrowdSec. Start CrowdSec again; the admin UI works again at once. If that is not possible, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it, then turn on **Leave the admin UI out of CrowdSec** (this restores only the admin UI, not your hosts) and set the failure action to **Let the request through** or fix AppSec, fix the settings and remove the variable. A bouncer config nginx rejects (for example a TLS client file that was deleted) never stops NPMpro from starting: the bouncer stays off and the startup log says why, see [If the bouncer file is broken](#if-the-bouncer-file-is-broken).
 
 ### The CrowdSec tab says "CrowdSec is not configured"
 
