@@ -1,47 +1,47 @@
 ## CrowdSec
 
-Connects the CrowdSec bouncer built into NPMpro to your CrowdSec container. Every request to your hosts is checked against the decisions of the CrowdSec Local API (LAPI) and, with an AppSec URL, against the AppSec rules. Saving applies the settings at once with an nginx reload; the container does not restart.
+将 NPMpro 内置的 CrowdSec bouncer 连接到你的 CrowdSec 容器。发往你的主机的每个请求都会根据 CrowdSec 本地 API（LAPI）的决策进行检查，设置了 AppSec 地址时还会根据 AppSec 规则检查。保存后会立即通过重新加载 nginx 应用设置；容器不会重启。
 
-NPMpro writes `/data/crowdsec/crowdsec.conf` from these settings. Changes to that file by hand are overwritten. `ban.html` and `captcha.html` in the same folder are yours to edit.
+NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的手动修改会被覆盖。同一文件夹中的 `ban.html` 和 `captcha.html` 可以由你自行编辑。
 
-A variable set on the container wins over the UI and locks the field: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
+在容器上设置的变量优先于界面并锁定对应字段：`CROWDSEC_ENABLED`、`CROWDSEC_LAPI_URL`、`CROWDSEC_API_KEY`、`CROWDSEC_APPSEC_URL`。
 
-### Status and Test connection
+### 状态与测试连接
 
-Shows whether nginx loads the bouncer and when NPMpro last reached the LAPI. **Test connection** checks the values in the form: one decisions request to the LAPI with the key (or the TLS client certificate), and with an AppSec URL one request to AppSec. A key field left empty uses the saved key.
+显示 nginx 是否已加载 bouncer，以及 NPMpro 上次连接 LAPI 的时间。**测试连接**会检查表单中的值：使用密钥（或 TLS 客户端证书）向 LAPI 发送一次决策请求，设置了 AppSec 地址时再向 AppSec 发送一次请求。密钥字段留空则使用已保存的密钥。
 
-Saving while the bouncer is on runs the same test first. When it fails, the reasons are shown and **Save anyway** saves all the same, for example when CrowdSec is not running yet.
+在 bouncer 开启的情况下保存时，会先运行同样的测试。失败时会显示原因，**仍然保存**仍可保存，例如 CrowdSec 尚未运行时。
 
-### Connection
+### 连接
 
-- **Enable the bouncer**: checks every request.
-- **LAPI URL**: for example `http://127.0.0.1:8080`.
-- **API key**: from `docker exec crowdsec cscli bouncers add npmpro`. Stored encrypted, never shown again. **Remove the saved key** deletes it.
-- **TLS client certificate**: instead of the key, a certificate and key file under `/data/crowdsec/`; needs an `https://` LAPI URL.
-- **Verify TLS certificates**: checks the certificate of an https LAPI or AppSec URL.
+- **启用 bouncer**：检查每个请求。
+- **LAPI 地址**：例如 `http://127.0.0.1:8080`。
+- **API 密钥**：来自 `docker exec crowdsec cscli bouncers add npmpro`。加密存储，之后不再显示。**删除已保存的密钥**会将其删除。
+- **TLS 客户端证书**：代替密钥，使用 `/data/crowdsec/` 下的证书文件和密钥文件；需要 `https://` 的 LAPI 地址。
+- **验证 TLS 证书**：检查 https 的 LAPI 或 AppSec 地址的证书。
 
-### Blocking
+### 拦截
 
-- **Mode**: live asks the LAPI per client IP and caches the answer for the given seconds; stream downloads all decisions at the given interval.
-- **Answer to a ban**: the ban page (with an optional status code, 403 by default), a redirect, or a status code without a page.
-- **Fallback remediation** and **Decision types**: how decisions the bouncer cannot apply are handled, and which types are enforced.
-- **Leave the admin UI out of CrowdSec**: requests to the admin UI skip the bouncer and AppSec. Turn it on before you use AppSec with deny, so a CrowdSec outage cannot lock you out.
+- **模式**：实时模式为每个客户端 IP 向 LAPI 查询，并将响应缓存指定的秒数；流式模式按指定间隔下载所有决策。
+- **对封禁的响应**：封禁页面（可选状态码，默认 403）、重定向，或不带页面的状态码。
+- **后备处置**和**决策类型**：bouncer 无法执行的决策如何处理，以及执行哪些类型。
+- **将管理界面排除在 CrowdSec 之外**：对管理界面的请求会跳过 bouncer 和 AppSec。在使用 AppSec 的拒绝方式之前先开启它，这样 CrowdSec 故障就不会把你锁在外面。
 
-### Captcha
+### 验证码
 
-The provider (reCAPTCHA, hCaptcha, Cloudflare Turnstile), its site key and secret key, and how long a solved captcha stays valid. Used for decisions of type captcha.
+提供商（reCAPTCHA、hCaptcha、Cloudflare Turnstile）、其站点密钥和密钥，以及已通过的验证码保持有效的时长。用于验证码类型的决策。
 
 ### AppSec
 
-- **AppSec URL**: for example `http://127.0.0.1:7422`; empty turns AppSec off.
-- **When AppSec cannot be reached**: deny blocks every checked request while AppSec is down, let through leaves them unchecked.
+- **AppSec 地址**：例如 `http://127.0.0.1:7422`；留空则关闭 AppSec。
+- **无法连接 AppSec 时**：AppSec 不可用时，拒绝会拦截每个受检请求；放行则不检查这些请求。
 
-### Advanced
+### 高级
 
-The LAPI request timeout, scenario filters, excluded paths, internal requests, the AppSec timeouts and options, and the files of the ban and captcha pages with a **Preview**.
+LAPI 请求超时、场景过滤、排除的路径、内部请求、AppSec 超时和选项，以及封禁页面和验证码页面的文件（带**预览**）。
 
-### Locked out?
+### 被锁在外面了？
 
-Start CrowdSec again, or set `CROWDSEC_ENABLED=false` on the container and recreate it; then fix the settings here.
+重新启动 CrowdSec，或在容器上设置 `CROWDSEC_ENABLED=false` 并重新创建容器；然后在此修正设置。
 
-More in the wiki: CrowdSec.
+更多内容见 wiki：CrowdSec。

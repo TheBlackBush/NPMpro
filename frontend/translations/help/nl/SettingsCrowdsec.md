@@ -1,47 +1,47 @@
 ## CrowdSec
 
-Connects the CrowdSec bouncer built into NPMpro to your CrowdSec container. Every request to your hosts is checked against the decisions of the CrowdSec Local API (LAPI) and, with an AppSec URL, against the AppSec rules. Saving applies the settings at once with an nginx reload; the container does not restart.
+Verbindt de in NPMpro ingebouwde CrowdSec-bouncer met uw CrowdSec-container. Elk verzoek aan uw hosts wordt gecontroleerd aan de hand van de besluiten van de CrowdSec Local API (LAPI) en, met een AppSec-URL, aan de hand van de AppSec-regels. Opslaan past de instellingen direct toe met een nginx-reload; de container wordt niet herstart.
 
-NPMpro writes `/data/crowdsec/crowdsec.conf` from these settings. Changes to that file by hand are overwritten. `ban.html` and `captcha.html` in the same folder are yours to edit.
+NPMpro schrijft `/data/crowdsec/crowdsec.conf` op basis van deze instellingen. Handmatige wijzigingen in dat bestand worden overschreven. `ban.html` en `captcha.html` in dezelfde map kunt u zelf bewerken.
 
-A variable set on the container wins over the UI and locks the field: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
+Een variabele die op de container is ingesteld, wint van de interface en vergrendelt het veld: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
 
-### Status and Test connection
+### Status en Verbinding testen
 
-Shows whether nginx loads the bouncer and when NPMpro last reached the LAPI. **Test connection** checks the values in the form: one decisions request to the LAPI with the key (or the TLS client certificate), and with an AppSec URL one request to AppSec. A key field left empty uses the saved key.
+Toont of nginx de bouncer laadt en wanneer NPMpro de LAPI voor het laatst heeft bereikt. **Verbinding testen** controleert de waarden in het formulier: één besluitenverzoek aan de LAPI met de sleutel (of het TLS-clientcertificaat) en, met een AppSec-URL, één verzoek aan AppSec. Een leeg gelaten sleutelveld gebruikt de opgeslagen sleutel.
 
-Saving while the bouncer is on runs the same test first. When it fails, the reasons are shown and **Save anyway** saves all the same, for example when CrowdSec is not running yet.
+Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die mislukt, worden de redenen getoond en slaat **Toch opslaan** toch op, bijvoorbeeld als CrowdSec nog niet draait.
 
-### Connection
+### Verbinding
 
-- **Enable the bouncer**: checks every request.
-- **LAPI URL**: for example `http://127.0.0.1:8080`.
-- **API key**: from `docker exec crowdsec cscli bouncers add npmpro`. Stored encrypted, never shown again. **Remove the saved key** deletes it.
-- **TLS client certificate**: instead of the key, a certificate and key file under `/data/crowdsec/`; needs an `https://` LAPI URL.
-- **Verify TLS certificates**: checks the certificate of an https LAPI or AppSec URL.
+- **De bouncer inschakelen**: controleert elk verzoek.
+- **LAPI-URL**: bijvoorbeeld `http://127.0.0.1:8080`.
+- **API-sleutel**: uit `docker exec crowdsec cscli bouncers add npmpro`. Versleuteld opgeslagen, nooit meer getoond. **Opgeslagen sleutel verwijderen** wist hem.
+- **TLS-clientcertificaat**: in plaats van de sleutel een certificaat- en een sleutelbestand onder `/data/crowdsec/`; vereist een LAPI-URL met `https://`.
+- **TLS-certificaten verifiëren**: controleert het certificaat van een https-LAPI- of AppSec-URL.
 
-### Blocking
+### Blokkering
 
-- **Mode**: live asks the LAPI per client IP and caches the answer for the given seconds; stream downloads all decisions at the given interval.
-- **Answer to a ban**: the ban page (with an optional status code, 403 by default), a redirect, or a status code without a page.
-- **Fallback remediation** and **Decision types**: how decisions the bouncer cannot apply are handled, and which types are enforced.
-- **Leave the admin UI out of CrowdSec**: requests to the admin UI skip the bouncer and AppSec. Turn it on before you use AppSec with deny, so a CrowdSec outage cannot lock you out.
+- **Modus**: live vraagt de LAPI om elk client-IP en cachet het antwoord voor het opgegeven aantal seconden; stream downloadt alle besluiten met het opgegeven interval.
+- **Antwoord op een ban**: de banpagina (met een optionele statuscode, standaard 403), een omleiding, of een statuscode zonder pagina.
+- **Terugvalmaatregel** en **Besluittypen**: hoe besluiten worden behandeld die de bouncer niet kan toepassen, en welke typen worden afgedwongen.
+- **De beheerinterface uitsluiten van CrowdSec**: verzoeken aan de beheerinterface slaan de bouncer en AppSec over. Zet dit aan voordat u AppSec met weigeren gebruikt, zodat een CrowdSec-storing u niet kan buitensluiten.
 
 ### Captcha
 
-The provider (reCAPTCHA, hCaptcha, Cloudflare Turnstile), its site key and secret key, and how long a solved captcha stays valid. Used for decisions of type captcha.
+De aanbieder (reCAPTCHA, hCaptcha, Cloudflare Turnstile), de sitesleutel en geheime sleutel ervan, en hoe lang een opgeloste captcha geldig blijft. Gebruikt voor besluiten van het type captcha.
 
 ### AppSec
 
-- **AppSec URL**: for example `http://127.0.0.1:7422`; empty turns AppSec off.
-- **When AppSec cannot be reached**: deny blocks every checked request while AppSec is down, let through leaves them unchecked.
+- **AppSec-URL**: bijvoorbeeld `http://127.0.0.1:7422`; leeg schakelt AppSec uit.
+- **Wanneer AppSec niet bereikbaar is**: weigeren blokkeert elk gecontroleerd verzoek zolang AppSec onbereikbaar is; doorlaten laat ze ongecontroleerd door.
 
-### Advanced
+### Geavanceerd
 
-The LAPI request timeout, scenario filters, excluded paths, internal requests, the AppSec timeouts and options, and the files of the ban and captcha pages with a **Preview**.
+De LAPI-verzoektimeout, scenariofilters, uitgesloten paden, interne verzoeken, de AppSec-timeouts en -opties, en de bestanden van de ban- en captchapagina's met een **Voorbeeld**.
 
-### Locked out?
+### Buitengesloten?
 
-Start CrowdSec again, or set `CROWDSEC_ENABLED=false` on the container and recreate it; then fix the settings here.
+Start CrowdSec opnieuw, of stel `CROWDSEC_ENABLED=false` in op de container en maak hem opnieuw aan; corrigeer daarna de instellingen hier.
 
-More in the wiki: CrowdSec.
+Meer in de wiki: CrowdSec.

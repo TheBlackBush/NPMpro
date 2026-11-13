@@ -1,47 +1,47 @@
 ## CrowdSec
 
-Connects the CrowdSec bouncer built into NPMpro to your CrowdSec container. Every request to your hosts is checked against the decisions of the CrowdSec Local API (LAPI) and, with an AppSec URL, against the AppSec rules. Saving applies the settings at once with an nginx reload; the container does not restart.
+Підключає вбудований у NPMpro bouncer CrowdSec до вашого контейнера CrowdSec. Кожен запит до ваших хостів перевіряється за рішеннями локального API CrowdSec (LAPI) та, за наявності URL AppSec, за правилами AppSec. Під час збереження налаштування застосовуються одразу перезавантаженням nginx; контейнер не перезапускається.
 
-NPMpro writes `/data/crowdsec/crowdsec.conf` from these settings. Changes to that file by hand are overwritten. `ban.html` and `captcha.html` in the same folder are yours to edit.
+NPMpro записує `/data/crowdsec/crowdsec.conf` із цих налаштувань. Ручні зміни цього файлу перезаписуються. `ban.html` і `captcha.html` у тій самій теці ви можете редагувати самі.
 
-A variable set on the container wins over the UI and locks the field: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
+Змінна, задана для контейнера, має пріоритет над інтерфейсом і блокує поле: `CROWDSEC_ENABLED`, `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`.
 
-### Status and Test connection
+### Стан і Перевірити підключення
 
-Shows whether nginx loads the bouncer and when NPMpro last reached the LAPI. **Test connection** checks the values in the form: one decisions request to the LAPI with the key (or the TLS client certificate), and with an AppSec URL one request to AppSec. A key field left empty uses the saved key.
+Показує, чи завантажує nginx bouncer і коли NPMpro востаннє зв'язувався з LAPI. **Перевірити підключення** перевіряє значення з форми: один запит рішень до LAPI з ключем (або клієнтським сертифікатом TLS) та, за наявності URL AppSec, один запит до AppSec. Порожнє поле ключа використовує збережений ключ.
 
-Saving while the bouncer is on runs the same test first. When it fails, the reasons are shown and **Save anyway** saves all the same, for example when CrowdSec is not running yet.
+Під час збереження з увімкненим bouncer спочатку виконується та сама перевірка. Якщо вона не вдалася, показуються причини, а **Усе одно зберегти** зберігає налаштування попри це, наприклад коли CrowdSec ще не запущено.
 
-### Connection
+### Підключення
 
-- **Enable the bouncer**: checks every request.
-- **LAPI URL**: for example `http://127.0.0.1:8080`.
-- **API key**: from `docker exec crowdsec cscli bouncers add npmpro`. Stored encrypted, never shown again. **Remove the saved key** deletes it.
-- **TLS client certificate**: instead of the key, a certificate and key file under `/data/crowdsec/`; needs an `https://` LAPI URL.
-- **Verify TLS certificates**: checks the certificate of an https LAPI or AppSec URL.
+- **Увімкнути bouncer**: перевіряє кожен запит.
+- **URL LAPI**: наприклад `http://127.0.0.1:8080`.
+- **Ключ API**: із `docker exec crowdsec cscli bouncers add npmpro`. Зберігається в зашифрованому вигляді й більше не показується. **Видалити збережений ключ** видаляє його.
+- **Клієнтський сертифікат TLS**: замість ключа файл сертифіката і файл ключа в `/data/crowdsec/`; потрібен URL LAPI з `https://`.
+- **Перевіряти сертифікати TLS**: перевіряє сертифікат URL LAPI або AppSec з https.
 
-### Blocking
+### Блокування
 
-- **Mode**: live asks the LAPI per client IP and caches the answer for the given seconds; stream downloads all decisions at the given interval.
-- **Answer to a ban**: the ban page (with an optional status code, 403 by default), a redirect, or a status code without a page.
-- **Fallback remediation** and **Decision types**: how decisions the bouncer cannot apply are handled, and which types are enforced.
-- **Leave the admin UI out of CrowdSec**: requests to the admin UI skip the bouncer and AppSec. Turn it on before you use AppSec with deny, so a CrowdSec outage cannot lock you out.
+- **Режим**: live запитує LAPI для кожної IP-адреси клієнта та кешує відповідь на вказану кількість секунд; stream завантажує всі рішення із вказаним інтервалом.
+- **Відповідь на бан**: сторінка бану (з необов'язковим кодом стану, типово 403), перенаправлення або код стану без сторінки.
+- **Запасна дія** і **Типи рішень**: як обробляються рішення, які bouncer не може виконати, і які типи застосовуються.
+- **Виключити інтерфейс адміністратора з CrowdSec**: запити до інтерфейсу адміністратора оминають bouncer і AppSec. Увімкніть це перед використанням AppSec із забороною, щоб збій CrowdSec не заблокував вам доступ.
 
-### Captcha
+### Капча
 
-The provider (reCAPTCHA, hCaptcha, Cloudflare Turnstile), its site key and secret key, and how long a solved captcha stays valid. Used for decisions of type captcha.
+Провайдер (reCAPTCHA, hCaptcha, Cloudflare Turnstile), його ключ сайту й секретний ключ, а також строк дії розв'язаної капчі. Використовується для рішень типу captcha.
 
 ### AppSec
 
-- **AppSec URL**: for example `http://127.0.0.1:7422`; empty turns AppSec off.
-- **When AppSec cannot be reached**: deny blocks every checked request while AppSec is down, let through leaves them unchecked.
+- **URL AppSec**: наприклад `http://127.0.0.1:7422`; порожньо вимикає AppSec.
+- **Коли AppSec недоступний**: відхилення блокує кожен перевірюваний запит, поки AppSec недоступний; пропуск залишає їх без перевірки.
 
-### Advanced
+### Розширені
 
-The LAPI request timeout, scenario filters, excluded paths, internal requests, the AppSec timeouts and options, and the files of the ban and captcha pages with a **Preview**.
+Тайм-аут запитів до LAPI, фільтри сценаріїв, виключені шляхи, внутрішні запити, тайм-аути та параметри AppSec, а також файли сторінок бану й капчі з **Попереднім переглядом**.
 
-### Locked out?
+### Втратили доступ?
 
-Start CrowdSec again, or set `CROWDSEC_ENABLED=false` on the container and recreate it; then fix the settings here.
+Запустіть CrowdSec знову або задайте `CROWDSEC_ENABLED=false` для контейнера й створіть його заново; потім виправте налаштування тут.
 
-More in the wiki: CrowdSec.
+Докладніше у вікі: CrowdSec.
