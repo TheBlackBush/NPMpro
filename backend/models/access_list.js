@@ -17,6 +17,7 @@ class AccessList extends Model {
 		this.modified_on = now();
 
 		this.meta ??= {};
+		this.npmpro_denied_page ??= "global";
 	}
 
 	$beforeUpdate() {
@@ -26,6 +27,7 @@ class AccessList extends Model {
 	$parseDatabaseJson(json) {
 		const { is_deleted, meta, ...thisJson } = super.$parseDatabaseJson(json);
 		thisJson.proxy_host_count &&= Number(thisJson.proxy_host_count);
+		if (Object.hasOwn(thisJson, "npmpro_denied_page_html")) thisJson.npmpro_denied_page_html ??= "";
 		return convertIntFieldsToBool(thisJson, boolFields);
 	}
 

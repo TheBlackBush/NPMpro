@@ -21,6 +21,7 @@ class ProxyHost extends HostModel {
 		"npmpro_nginx_online",
 		"npmpro_mtls_verify_client_optional",
 		"npmpro_mtls_bypass_auth_request",
+		"npmpro_maintenance",
 	];
 
 	static droppedColumns = [
@@ -37,6 +38,8 @@ class ProxyHost extends HostModel {
 
 	static writeOnlyFields = ["npmpro_access_list_ids"];
 
+	static emptyWhenNull = ["npmpro_page_not_found_html", "npmpro_page_upstream_html", "npmpro_page_maintenance_html"];
+
 	static insertDefaults() {
 		return {
 			domain_names: [],
@@ -45,6 +48,9 @@ class ProxyHost extends HostModel {
 			npmpro_location_config: "",
 			npmpro_nginx_err: "",
 			npmpro_access_list_type: "public",
+			npmpro_page_not_found: "upstream",
+			npmpro_page_upstream: "global",
+			npmpro_page_maintenance: "global",
 		};
 	}
 

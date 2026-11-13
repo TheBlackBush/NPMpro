@@ -1,4 +1,5 @@
 import { PROXY_HOST_EXPAND, PROXY_HOST_GRAPH } from "../lib/host-expand.js";
+import { assertPageFields, keepSavedPages } from "../lib/landing-pages/html.js";
 import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalHost from "./host.js";
@@ -60,6 +61,8 @@ const internalProxyHost = createHostService({
 	hooks: {
 		// the access list check runs here, so it stays before the new certificate is requested
 		cleanData: async (access, createCertificate, data, existingRow) => {
+			assertPageFields("proxy_host", data, existingRow ?? {});
+			keepSavedPages("proxy_host", data, existingRow);
 			const cleaned = internalProxyHostAccessList.cleanAccessListTypes(
 				internalHost.cleanSslHstsData(createCertificate, data, existingRow),
 			);

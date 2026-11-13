@@ -162,6 +162,12 @@
 						},
 						"npmpro_propagation_seconds": {
 							"$ref": "../../../../components/certificate-object.json#/properties/npmpro_propagation_seconds"
+						},
+						"npmpro_page": {
+							"$ref": "../../../../components/dead-host-object.json#/properties/npmpro_page"
+						},
+						"npmpro_page_html": {
+							"$ref": "../../../../components/dead-host-object.json#/properties/npmpro_page_html"
 						}
 					}
 				}
@@ -194,7 +200,8 @@
 								"npmpro_http3_support": false,
 								"enabled": true,
 								"hsts_enabled": false,
-								"hsts_subdomains": false
+								"hsts_subdomains": false,
+								"npmpro_page": "global"
 							}
 						}
 					},

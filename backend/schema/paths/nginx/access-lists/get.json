@@ -37,7 +37,8 @@
 						"name": "test1234",
 						"satisfy_any": true,
 						"pass_auth": false,
-						"proxy_host_count": 0
+						"proxy_host_count": 0,
+						"npmpro_denied_page": "global"
 					},
 					"schema": {
 						"$ref": "../../../components/access-list-object.json"

@@ -13,6 +13,7 @@ import {
 	assertUniqueLocations,
 	CONFIG_FIELDS,
 } from "../host-config-guard.js";
+import { PAGE_HTML_FIELDS } from "../landing-pages/types.js";
 import { BackupError } from "./format.js";
 import { ITEM_TYPES } from "./select.js";
 
@@ -132,7 +133,8 @@ const fits = (rule, value) => {
 };
 
 // raw config fields: blank (null) or text, nothing else, since the guard reads anything else as blank
-const RAW_CONFIG = new Set([...Object.values(CONFIG_FIELDS).flat(), "advanced_config"]);
+// the custom page HTML columns are nullable too (rows of a backup that has none)
+const RAW_CONFIG = new Set([...Object.values(CONFIG_FIELDS).flat(), "advanced_config", ...PAGE_HTML_FIELDS]);
 
 /**
  * Throws a FieldError for the first column of row the schema's property rules refuse: a JSON type the schema does

@@ -35,7 +35,7 @@ const KEPT = {
 	proxy: [],
 };
 const DEFAULTS = {
-	dead: { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" },
+	dead: { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "", npmpro_page: "global" },
 	redirection: { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" },
 	stream: { meta: {}, npmpro_advanced_config: "", npmpro_nginx_err: "" },
 	proxy: {
@@ -45,6 +45,9 @@ const DEFAULTS = {
 		npmpro_location_config: "",
 		npmpro_nginx_err: "",
 		npmpro_access_list_type: "public",
+		npmpro_page_not_found: "upstream",
+		npmpro_page_upstream: "global",
+		npmpro_page_maintenance: "global",
 	},
 };
 const TABLES = { dead: "dead_host", redirection: "redirection_host", stream: "stream", proxy: "proxy_host" };

@@ -36,3 +36,19 @@ export const assertPageFields = (kind, data, existing) => {
 		if (problems.length > 0) throw new errs.ValidationError(`${htmlKey}: ${problems.join(" ")}`);
 	}
 };
+
+/**
+ * An empty page sent with the custom choice keeps the saved page (an update that does not touch the page). Any other
+ * choice with an empty page clears it. Changes the payload in place.
+ *
+ * @param {"proxy_host"|"dead_host"|"access_list"} kind
+ * @param {Object} data
+ * @param {Object} existing  the saved row ({} for a create)
+ */
+export const keepSavedPages = (kind, data, existing) => {
+	for (const field of PLACES[kind].fields) {
+		const htmlKey = `${field.column}_html`;
+		const choice = data[field.column] ?? existing?.[field.column] ?? field.default;
+		if (data[htmlKey] === "" && choice === "custom") delete data[htmlKey];
+	}
+};

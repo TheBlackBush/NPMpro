@@ -18,7 +18,8 @@
 		"npmpro_nginx_err",
 		"npmpro_directory",
 		"npmpro_mtls_certificate_id",
-		"npmpro_mtls_verify_client_optional"
+		"npmpro_mtls_verify_client_optional",
+		"npmpro_page"
 	],
 	"additionalProperties": false,
 	"properties": {
@@ -90,6 +91,12 @@
 		},
 		"owner": {
 			"$ref": "./user-object.json"
+		},
+		"npmpro_page": {
+			"$ref": "../common.json#/properties/npmpro_page"
+		},
+		"npmpro_page_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
 		}
 	}
 }

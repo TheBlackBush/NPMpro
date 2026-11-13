@@ -65,7 +65,11 @@
 								"enabled": false,
 								"locations": [],
 								"hsts_enabled": false,
-								"hsts_subdomains": false
+								"hsts_subdomains": false,
+								"npmpro_maintenance": false,
+								"npmpro_page_not_found": "upstream",
+								"npmpro_page_upstream": "global",
+								"npmpro_page_maintenance": "global"
 							}
 						}
 					},

@@ -48,7 +48,8 @@
 								"npmpro_http3_support": false,
 								"enabled": false,
 								"hsts_enabled": false,
-								"hsts_subdomains": false
+								"hsts_subdomains": false,
+								"npmpro_page": "global"
 							}
 						}
 					},
