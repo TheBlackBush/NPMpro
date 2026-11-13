@@ -96,6 +96,14 @@ const list = await must("POST", "/nginx/access-lists", {
 	items: [{ username: "check", password: "config-check-password" }],
 	clients: [{ address: "10.0.0.0/8", directive: "allow" }],
 });
+const deniedList = await must("POST", "/nginx/access-lists", {
+	name: "config check denied page",
+	npmpro_denied_page: "custom",
+	npmpro_denied_page_html: '<p>denied <!--# echo var="remote_addr" --></p>',
+	items: [],
+	clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+});
+const PAGE = '<!DOCTYPE html><p><!--# config timefmt="%Y-%m-%d" --><!--# echo var="date_gmt" --> <!--# echo var="status" --></p>';
 
 const tls = { certificate_id: certificateId, ssl_forced: true, hsts_enabled: true, hsts_subdomains: true };
 const plainProxy = (name) => ({
@@ -188,6 +196,29 @@ const hosts = [
 		},
 	],
 	[
+		"proxy-hosts",
+		"proxy with every landing page: custom pages, maintenance, a denied page on the host and a location",
+		{
+			...tls,
+			...plainProxy("pages"),
+			npmpro_maintenance: true,
+			npmpro_page_not_found: "custom",
+			npmpro_page_not_found_html: PAGE,
+			npmpro_page_upstream: "npmpro",
+			npmpro_page_maintenance: "custom",
+			npmpro_page_maintenance_html: PAGE,
+			npmpro_access_list_type: "custom",
+			npmpro_access_list_ids: [deniedList.id],
+			locations: [
+				{ path: "/app", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081, npmpro_access_list_type: "global" },
+				{ path: "/grpc", forward_scheme: "grpc", forward_host: "127.0.0.1", forward_port: 8082 },
+			],
+		},
+	],
+	["proxy-hosts", "proxy with the upstream's own errors", { ...plainProxy("own-errors"), npmpro_page_upstream: "upstream" }],
+	["proxy-hosts", "proxy with its own proxy_intercept_errors in the location config", { ...plainProxy("own-intercept"), npmpro_location_config: "proxy_intercept_errors off;" }],
+	["proxy-hosts", "proxy with its own error_page at server level", { ...plainProxy("own-error-page"), advanced_config: "error_page 418 /teapot.html;" }],
+	[
 		"redirection-hosts",
 		"redirection",
 		{
@@ -200,6 +231,7 @@ const hosts = [
 			npmpro_http3_support: true,
 		},
 	],
+	["dead-hosts", "dead host with a custom page", { domain_names: ["dead-page.check.example.com"], npmpro_page: "custom", npmpro_page_html: PAGE }],
 	["dead-hosts", "dead host", { ...tls, domain_names: ["dead.check.example.com"], npmpro_http3_support: true }],
 	[
 		"streams",
