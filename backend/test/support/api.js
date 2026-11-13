@@ -1,6 +1,6 @@
 import { argon2 } from "node:crypto";
 import dns from "node:dns";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import http from "node:http";
 import { syncBuiltinESMExports } from "node:module";
 import { isIP } from "node:net";
@@ -144,6 +144,14 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 	let server;
 	try {
 		for (const dir of DIRS) await mkdir(path.join(root, dir), { recursive: true });
+		// the built-in landing pages, where the image has them
+		await cp(
+			path.join(import.meta.dirname, "../../../rootfs/usr/local/nginx/html/npmpro"),
+			path.join(root, "usr/local/nginx/html/npmpro"),
+			{
+				recursive: true,
+			},
+		);
 		for (const [file, content] of Object.entries(files)) {
 			await mkdir(path.dirname(path.join(root, file)), { recursive: true });
 			await writeFile(path.join(root, file), content);

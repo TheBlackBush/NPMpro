@@ -2,6 +2,7 @@ import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { pageWiring } from "../lib/landing-pages/wiring.js";
 import { beautify } from "../lib/nginx-beautify.js";
 import { quoteLocation, serverNames } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
@@ -337,6 +338,13 @@ const internalNginx = {
 			if (usesProvider({ locations: host.locations }, provider)) host[`create_${provider}_locations`] = true;
 			host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
 		}
+
+		// the landing pages (lib/landing-pages/wiring.js): the page locations and each location's error pages
+		const pages = pageWiring(host_type, host);
+		host.npmpro_page_locations = pages.locations;
+		host.npmpro_pages = pages.host;
+		for (const [index, location] of (host.locations ?? []).entries())
+			location.npmpro_pages = pages.byLocation[index];
 
 		if (host.locations) host.locations = await internalNginx.renderLocations(host);
 

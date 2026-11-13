@@ -115,6 +115,13 @@ const internalProxyHostAccessList = {
 			clients,
 			satisfy_any: Boolean(first?.satisfy_any),
 			pass_auth: Boolean(first?.pass_auth),
+			// the denied page of the first list counts, like satisfy any and pass auth; a custom page without html has
+			// no file, so the global page stands in
+			denied_page:
+				first?.npmpro_denied_page === "custom" && !first.npmpro_denied_page_html
+					? "global"
+					: (first?.npmpro_denied_page ?? "global"),
+			denied_list_id: first?.id ?? 0,
 			source_acl_ids: lists.map((l) => l.id).filter((id) => Number.isInteger(id)),
 		};
 	},
