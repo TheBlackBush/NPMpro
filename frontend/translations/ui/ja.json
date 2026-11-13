@@ -983,6 +983,7 @@
 	"settings.backup.type.redirection_hosts": "リダイレクトホスト",
 	"settings.backup.type.settings_crowdsec": "CrowdSec の設定",
 	"settings.backup.type.settings_default_site": "デフォルトサイト",
+	"settings.backup.type.settings_landing_pages": "ランディングページ",
 	"settings.backup.type.settings_monitoring": "モニタリングと GeoIP",
 	"settings.backup.type.settings_oidc": "OIDC サインイン",
 	"settings.backup.type.settings_runtime": "ランタイム設定",

@@ -18,6 +18,7 @@ const CATEGORIES = [
 		types: [
 			"settings_runtime",
 			"settings_default_site",
+			"settings_landing_pages",
 			"settings_oidc",
 			"settings_monitoring",
 			"settings_crowdsec",
@@ -38,6 +39,7 @@ const RESTORE_ORDER = [
 	"streams",
 	"settings_runtime",
 	"settings_default_site",
+	"settings_landing_pages",
 	"settings_oidc",
 	"settings_monitoring",
 	"settings_crowdsec",
@@ -271,6 +273,8 @@ const TYPES = {
 		files: fileRules({ roots: ["public/html"], matches: [isUnder("public/html")] }),
 		secrets: NO_SECRETS,
 	},
+	// the choices and custom pages; their files under /data/public/pages are written from the database
+	settings_landing_pages: { tables: settingRows(["landing_pages"]), files: NO_FILES, secrets: NO_SECRETS },
 	settings_oidc: {
 		tables: settingRows(["oidc"]),
 		files: NO_FILES,

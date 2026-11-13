@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { global as logger } from "../../logger.js";
+import { withValidPages } from "../landing-pages/backup-rows.js";
 import { BackupError } from "./format.js";
 import { applyReferences, planReferences } from "./references.js";
 import { coerceRow } from "./rows.js";
@@ -370,7 +372,9 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
 const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.floor(Date.now() / 1000) }) => {
 	for (const typeId of types) typeOf(typeId);
 	const chosen = RESTORE_ORDER.filter((typeId) => types.includes(typeId) && TYPES[typeId].tables.length > 0);
-	const prepared = Object.fromEntries(chosen.map((typeId) => [typeId, typeData(data, typeId)]));
+	const prepared = Object.fromEntries(
+		chosen.map((typeId) => [typeId, withValidPages(typeData(data, typeId), logger)]),
+	);
 	return await knex.transaction(async (trx) => {
 		const inserter = createInserter(trx);
 		const counts = {};

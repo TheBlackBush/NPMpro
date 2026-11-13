@@ -66,7 +66,12 @@ it("a place's page: its own, the global one, nothing for the upstream's own answ
 });
 
 it("admins only", async () => {
-	const user = await api.limited({ visibility: "all", access_lists: "manage", proxy_hosts: "manage", certificates: "view" });
+	const user = await api.limited({
+		visibility: "all",
+		access_lists: "manage",
+		proxy_hosts: "manage",
+		certificates: "view",
+	});
 	assert.equal((await user.get("/settings/landing-pages/preview/npmpro/ban")).status, 403);
 });
 

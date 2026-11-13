@@ -983,6 +983,7 @@
 	"settings.backup.type.redirection_hosts": "Omgeleide hosts",
 	"settings.backup.type.settings_crowdsec": "CrowdSec-instellingen",
 	"settings.backup.type.settings_default_site": "Standaardsite",
+	"settings.backup.type.settings_landing_pages": "Landingspagina's",
 	"settings.backup.type.settings_monitoring": "Monitoring en GeoIP",
 	"settings.backup.type.settings_oidc": "Inloggen met OIDC",
 	"settings.backup.type.settings_runtime": "Runtime-instellingen",

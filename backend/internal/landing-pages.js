@@ -1,9 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { applyDefaultSite, assertDefaultSiteMeta } from "../lib/default-site.js";
 import errs from "../lib/error.js";
-import { globalPageFiles, makeReadable } from "../lib/landing-pages/files.js";
+import { globalPageFiles, makeReadable, writePlacePages } from "../lib/landing-pages/files.js";
 import { pageHtmlProblems } from "../lib/landing-pages/html.js";
-import { importLegacyPages } from "../lib/landing-pages/legacy.js";
+import { importLegacyPage, importLegacyPages, LEGACY_PAGES } from "../lib/landing-pages/legacy.js";
 import { previewHtml } from "../lib/landing-pages/preview.js";
 import {
 	applyPagesUpdate,
@@ -12,7 +12,7 @@ import {
 	readStoredLandingPages,
 	saveStoredLandingPages,
 } from "../lib/landing-pages/store.js";
-import { BUILTIN_DIR, GLOBAL_DIR, PAGE_FILES, PAGE_TYPES, PLACES } from "../lib/landing-pages/types.js";
+import { BUILTIN_DIR, GLOBAL_DIR, PAGE_FILES, PAGE_TYPES, PAGES_DIR, PLACES } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
 import { withFiles } from "../lib/runtime-apply.js";
 import { global as logger } from "../logger.js";
@@ -252,5 +252,63 @@ const startLandingPages = async ({ log = logger } = {}) => {
 	}
 };
 
-export { startLandingPages, writeGlobalPages };
+// the tables of the places that hold custom pages, by the backup type that restores them
+const PLACE_TYPES = {
+	proxy_hosts: ["proxy_host", proxyHostModel],
+	dead_hosts: ["dead_host", deadHostModel],
+	access_lists: ["access_list", accessListModel],
+};
+
+// the custom pages of every restored host and access list (also the disabled ones, whose configs a restore does not
+// write) and no folder of a row that is gone. The columns come as the database holds them (null without a page).
+const writeRestoredPlacePages = async (kind, model) => {
+	const columns = PLACES[kind].fields.flatMap(({ column }) => [column, `${column}_html`]);
+	const rows = await model.query().select("id", ...columns);
+	const ids = new Set();
+	for (const row of rows) {
+		const id = Number(row.id);
+		if (!Number.isSafeInteger(id) || id < 1) continue;
+		ids.add(id);
+		const full = { ...row, id };
+		for (const { column } of PLACES[kind].fields) full[`${column}_html`] ??= "";
+		await writePlacePages(kind, full);
+	}
+	const folder = new RegExp(`^${PLACES[kind].dir}-([1-9][0-9]*)$`, "u");
+	for (const name of await readdir(rooted(PAGES_DIR)).catch(() => [])) {
+		const match = folder.exec(name);
+		if (match && !ids.has(Number(match[1])))
+			await rm(rooted(`${PAGES_DIR}/${name}`), { recursive: true, force: true });
+	}
+};
+
+/**
+ * After a restore or merge: the page files of the restored hosts and access lists, and for the landing pages row or an
+ * older backup's CrowdSec pages the global files. An older backup's hand-edited ban or captcha page becomes the custom
+ * page (as the start does). A missing landing_pages row reads as the defaults. Runs inside the restore's queue job,
+ * which tests and reloads nginx afterwards.
+ *
+ * @param   {string[]} types  the restored types
+ * @returns {Promise<void>}
+ */
+const reloadLandingPagesAfterRestore = async (types = []) => {
+	for (const [typeId, [kind, model]] of Object.entries(PLACE_TYPES)) {
+		if (types.includes(typeId)) await writeRestoredPlacePages(kind, model);
+	}
+	if (!(types.includes("settings_landing_pages") || types.includes("crowdsec_files"))) return;
+	let stored = (await readStoredLandingPages()) ?? {};
+	if (types.includes("crowdsec_files")) {
+		let taken = false;
+		for (const [type, legacy] of Object.entries(LEGACY_PAGES)) {
+			const page = await importLegacyPage(type, legacy.file, { log: logger });
+			if (page.choice === "custom") {
+				stored = applyPagesUpdate(stored, { [type]: page });
+				taken = true;
+			}
+		}
+		if (taken) await saveStoredLandingPages(stored);
+	}
+	await writeGlobalPages(effectivePages(stored));
+};
+
+export { reloadLandingPagesAfterRestore, startLandingPages, writeGlobalPages };
 export default internalLandingPages;

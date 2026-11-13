@@ -983,6 +983,7 @@
 	"settings.backup.type.redirection_hosts": "Редирект-хости",
 	"settings.backup.type.settings_crowdsec": "Налаштування CrowdSec",
 	"settings.backup.type.settings_default_site": "Сторінка за замовчуванням",
+	"settings.backup.type.settings_landing_pages": "Цільові сторінки",
 	"settings.backup.type.settings_monitoring": "Моніторинг і GeoIP",
 	"settings.backup.type.settings_oidc": "Вхід через OIDC",
 	"settings.backup.type.settings_runtime": "Налаштування середовища виконання",

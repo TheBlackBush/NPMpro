@@ -983,6 +983,7 @@
 	"settings.backup.type.redirection_hosts": "重定向主机",
 	"settings.backup.type.settings_crowdsec": "CrowdSec 设置",
 	"settings.backup.type.settings_default_site": "默认站点",
+	"settings.backup.type.settings_landing_pages": "着陆页",
 	"settings.backup.type.settings_monitoring": "监控和 GeoIP",
 	"settings.backup.type.settings_oidc": "OIDC 登录",
 	"settings.backup.type.settings_runtime": "运行时设置",

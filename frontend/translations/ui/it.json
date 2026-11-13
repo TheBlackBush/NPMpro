@@ -983,6 +983,7 @@
 	"settings.backup.type.redirection_hosts": "Host di reindirizzamento",
 	"settings.backup.type.settings_crowdsec": "Impostazioni CrowdSec",
 	"settings.backup.type.settings_default_site": "Sito predefinito",
+	"settings.backup.type.settings_landing_pages": "Pagine di destinazione",
 	"settings.backup.type.settings_monitoring": "Monitoraggio e GeoIP",
 	"settings.backup.type.settings_oidc": "Accesso OIDC",
 	"settings.backup.type.settings_runtime": "Impostazioni di runtime",

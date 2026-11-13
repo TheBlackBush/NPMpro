@@ -22,6 +22,7 @@ const ALL_TYPES = [
 	"users",
 	"settings_runtime",
 	"settings_default_site",
+	"settings_landing_pages",
 	"settings_oidc",
 	"settings_monitoring",
 	"settings_crowdsec",
@@ -75,6 +76,7 @@ it("answers the backup types with the categories, the counts of what exists and 
 	assert.equal(empty.body.counts.proxy_hosts, 0);
 	assert.equal(empty.body.counts.users, 1);
 	assert.equal(empty.body.counts.settings_default_site, 1);
+	assert.equal(empty.body.counts.settings_landing_pages, 1);
 	assert.deepEqual(empty.body.certificateKinds, { letsencrypt: 0, other: 0, mtls: 0 });
 	// the schedules show times in this zone
 	assert.equal(empty.body.time_zone, "Europe/Berlin");
