@@ -1,4 +1,4 @@
-// A settings save with its toast, the CrowdSec section, the phone layout of a host list, the MFA and help windows, and
+// A settings save with its toast, the CrowdSec section, the Landing pages section, the phone layout of a host list, the MFA and help windows, and
 // the language switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
@@ -82,6 +82,39 @@ async function crowdsecSettings({ admin }) {
 		if (now.captcha_expiration !== before.captcha_expiration) {
 			await api("PUT", "/settings/crowdsec", { captcha_expiration: before.captcha_expiration, force: true });
 		}
+	}
+}
+
+const MAINTENANCE_PAGE = '<!DOCTYPE html><p>flow maintenance <!--# echo var="host" --></p>';
+
+// Settings, Landing pages: a custom maintenance page is pasted and saved, the API returns it, the old
+// /settings/default-site address leads here, and the page is set back
+async function landingPagesSettings({ admin }) {
+	const { page, api } = admin;
+	const before = await api("GET", "/settings/landing-pages");
+	try {
+		await page.goto("/settings/landing-pages");
+		await page.locator("#landing-maintenance").click();
+		await page.getByRole("option", { name: "Custom page", exact: true }).click();
+		await page.locator("#landing-maintenance-html").fill(MAINTENANCE_PAGE);
+		await withToast(page, "Setting has been saved", () =>
+			page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+		);
+		const after = await api("GET", "/settings/landing-pages");
+		if (after.pages.maintenance.choice !== "custom" || after.pages.maintenance.html !== MAINTENANCE_PAGE) {
+			throw new Error(`the maintenance page was not saved: ${JSON.stringify(after.pages.maintenance)}`);
+		}
+		await page.goto("/settings/default-site");
+		await page.waitForURL("**/settings/landing-pages");
+		await page.locator("#landing-maintenance-html").waitFor();
+		if ((await page.locator("#landing-maintenance-html").inputValue()) !== MAINTENANCE_PAGE) {
+			throw new Error("the page shows another maintenance page than the saved one");
+		}
+	} finally {
+		const { choice, html } = before.pages.maintenance;
+		await api("PUT", "/settings/landing-pages", {
+			pages: { maintenance: choice === "custom" ? { choice, html } : { choice } },
+		});
 	}
 }
 
@@ -304,6 +337,7 @@ async function languageFallback({ browser, base, password }) {
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "crowdsec settings", run: crowdsecSettings },
+	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },
 	{ name: "users sign-in", run: usersSignIn },
