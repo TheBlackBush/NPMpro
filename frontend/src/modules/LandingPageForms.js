@@ -242,6 +242,29 @@ export const previewPath = ({ source, type, id }) => {
 	return `${base}/${source}/${type}`;
 };
 
+// the saved choices the backend previews (backend/internal/landing-pages.js preview); the others show no NPMpro page
+export const PREVIEW_CHOICES = Object.freeze(["global", "npmpro", "custom"]);
+
+/**
+ * @param   {string} saved  the saved choice of a place or global page (not the form's current one: the preview
+ *                          reads the saved row)
+ * @returns {boolean}  whether the line offers a Preview
+ */
+export const hasPreview = (saved) => PREVIEW_CHOICES.includes(saved);
+
+// the saved default site values whose page the backend previews; a redirect and 444 have none
+export const DEFAULT_SITE_PREVIEWS = Object.freeze(["congratulations", "404", "html"]);
+
+/**
+ * @param   {string} [saved]  the saved default site value (none: the congratulations page, as the backend)
+ * @returns {string|null}  the preview of the saved default page (the backend resolves congratulations, 404 and html
+ *                         from the saved row), null for a redirect or 444
+ */
+export const defaultSitePreview = (saved) =>
+	DEFAULT_SITE_PREVIEWS.includes(saved ?? "congratulations")
+		? previewPath({ source: "global", type: DEFAULT_PAGE.api })
+		: null;
+
 /**
  * @param   {Object} data  GET /settings/landing-pages, camelized
  * @returns {Object}  { defaultSite: the default site's form values, pages: { [key]: { choice, html } } }

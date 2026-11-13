@@ -13,11 +13,13 @@ import {
 	TextField,
 	useAppForm,
 	useResetToSaved,
+	useSavedValue,
 } from "src/components";
 import { useIsAdmin, useLandingPages, useSaveLandingPages } from "src/hooks";
 import { intl, T } from "src/locale";
 import {
 	DEFAULT_PAGE,
+	defaultSitePreview,
 	landingPayload,
 	landingValidate,
 	landingValues,
@@ -36,13 +38,12 @@ import { StatusAlert } from "./StatusAlert";
 
 const validate = landingValidate(validations);
 const GLOBAL_CHOICES = ["npmpro", "custom"];
-// the Default page's previews: its NPMpro page, the global 404 page, its custom HTML
-const DEFAULT_PREVIEW = { congratulations: "default_site", 404: "not_found", html: "default_site" };
 
 function DefaultPageRow({ isAdmin }) {
 	const { clearErrors } = useFormContext();
 	const value = useWatch({ name: "defaultSite.value" });
-	const source = value === "404" || value === "html" ? "global" : "npmpro";
+	// the preview shows the saved default page, so the saved value decides whether there is one
+	const previewHref = defaultSitePreview(useSavedValue("defaultSite.value"));
 	const title = <T id={DEFAULT_PAGE.labelId} />;
 	const extra = value === "redirect" || value === "html";
 	return (
@@ -72,12 +73,8 @@ function DefaultPageRow({ isAdmin }) {
 				</SelectField>
 			}
 			preview={
-				isAdmin && DEFAULT_PREVIEW[value] ? (
-					<PreviewLink
-						href={previewPath({ source, type: DEFAULT_PREVIEW[value] })}
-						names={["defaultSite.value", "defaultSite.html"]}
-						title={title}
-					/>
+				isAdmin && previewHref ? (
+					<PreviewLink href={previewHref} names={["defaultSite.value", "defaultSite.html"]} title={title} />
 				) : null
 			}
 			editor={

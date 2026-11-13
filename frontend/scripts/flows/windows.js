@@ -1,5 +1,6 @@
-// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list and a certificate (and the lists that must follow), a
-// save that nginx refuses and its re-save, and the unsaved-changes question of all four host windows.
+// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list
+// and a certificate (and the lists that must follow), a save that nginx refuses and its re-save, and the
+// unsaved-changes question of all four host windows.
 import { TYPES, unsavedChanges, viewOnly } from "./hosts.js";
 import {
 	addDomain,
@@ -215,6 +216,11 @@ async function proxyHostPages({ admin }) {
 		await dialog.locator("#npmproPageUpstream-html").waitFor();
 		if ((await dialog.locator("#npmproPageUpstream-html").inputValue()) !== UPSTREAM_PAGE) {
 			throw new Error("the reopened window does not show the saved page");
+		}
+		// Preview follows the saved choice: the site's own 404 (the default) has no page of NPMpro to preview
+		const preview = (type) => dialog.locator(`a[href$="/preview/proxy-host/${host.id}/${type}"]`).count();
+		if ((await preview("upstream_error")) !== 1 || (await preview("not_found")) !== 0) {
+			throw new Error("Preview does not follow the saved choices of the Pages tab");
 		}
 		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
 		await windowClosed(page);

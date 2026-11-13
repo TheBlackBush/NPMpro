@@ -1,5 +1,5 @@
-// A settings save with its toast, the CrowdSec section, the Landing pages section, the phone layout of a host list, the MFA and help windows, and
-// the language switch (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, the Landing pages section, the phone layout of a host list,
+// the MFA and help windows, and the language switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -119,7 +119,8 @@ async function landingPagesSettings({ admin }) {
 }
 
 // The phone session signs in first: creating the host reloads nginx, and a login page that opens during a reload can
-// wait on its health check for seconds (it shows the form only after the check answers), longer than the wait for a field.
+// wait on its health check for seconds (it shows the form only after the check answers), longer than the wait for a
+// field.
 async function phoneList({ browser, base, admin, password }) {
 	const phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
 	let host;

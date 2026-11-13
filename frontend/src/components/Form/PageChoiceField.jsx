@@ -1,11 +1,11 @@
 import { ExternalLink, Upload } from "lucide-react";
 import { useRef } from "react";
-import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { get, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { CodeText } from "src/components/CodeText";
 import { Button } from "src/components/ui/button";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { choiceLabelId, readPageFile } from "src/modules/LandingPageForms";
+import { choiceLabelId, hasPreview, readPageFile } from "src/modules/LandingPageForms";
 import { SelectField, TextField } from "./FormField";
 import { useReadOnly } from "./HookForm";
 
@@ -37,6 +37,18 @@ function UploadButton({ htmlName }) {
 			</Button>
 		</>
 	);
+}
+
+/**
+ * The saved value of a field (the form's defaultValues). dirtyFields is read so that a reset to the saved values
+ * (useResetToSaved after a save) renders the caller again.
+ *
+ * @param   {string} name
+ * @returns {*}
+ */
+function useSavedValue(name) {
+	const { defaultValues, dirtyFields: _dirtyFields } = useFormState({ name });
+	return get(defaultValues, name);
 }
 
 // opens the saved page in a new tab; with unsaved changes in the row it says that the saved page is shown
@@ -124,7 +136,8 @@ function PageEditor({ children }) {
 
 /**
  * A landing page choice of the form around it as one PageLine: the dropdown and the Preview icon (admins:
- * previewHref, the saved page), and for "Custom page" the HTML field with "Upload .html", for this place only.
+ * previewHref, the saved page; only when the saved choice shows a page, as the backend preview reads the saved row),
+ * and for "Custom page" the HTML field with "Upload .html", for this place only.
  *
  * @param {Object}   props
  * @param {string}   props.name       the choice field
@@ -149,6 +162,7 @@ function PageChoiceField({
 	previewHref,
 }) {
 	const choice = useWatch({ name });
+	const saved = useSavedValue(name);
 	const readOnly = useReadOnly();
 	return (
 		<PageLine
@@ -171,7 +185,11 @@ function PageChoiceField({
 					))}
 				</SelectField>
 			}
-			preview={previewHref ? <PreviewLink href={previewHref} names={[name, htmlName]} title={title} /> : null}
+			preview={
+				previewHref && hasPreview(saved) ? (
+					<PreviewLink href={previewHref} names={[name, htmlName]} title={title} />
+				) : null
+			}
 			editor={
 				choice === "custom" ? (
 					<PageEditor>
@@ -200,4 +218,4 @@ function PageChoiceField({
 	);
 }
 
-export { PageChoiceField, PageEditor, PageLine, PageLines, PreviewLink };
+export { PageChoiceField, PageEditor, PageLine, PageLines, PreviewLink, useSavedValue };

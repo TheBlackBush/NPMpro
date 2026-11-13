@@ -2,12 +2,16 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	choiceLabelId,
+	DEFAULT_SITE_PREVIEWS,
+	defaultSitePreview,
+	hasPreview,
 	landingPayload,
 	landingValidate,
 	landingValues,
 	MAX_PAGE_BYTES,
 	PAGE_GROUPS,
 	PAGE_TYPES,
+	PREVIEW_CHOICES,
 	pageHtmlError,
 	placeDefaults,
 	placeErrors,
@@ -90,6 +94,18 @@ it("preview paths", () => {
 	);
 	assert.equal(previewPath({ source: "dead-host", id: 2 }), "/api/settings/landing-pages/preview/dead-host/2");
 	assert.equal(previewPath({ source: "access-list", id: 9 }), "/api/settings/landing-pages/preview/access-list/9");
+});
+
+it("Preview follows the saved choice, as the backend preview does", () => {
+	assert.deepEqual(PREVIEW_CHOICES, ["global", "npmpro", "custom"]);
+	for (const choice of PREVIEW_CHOICES) assert.equal(hasPreview(choice), true, choice);
+	// the site's own page, the upstream's own error, nginx's plain page, an unsaved host: no page to preview
+	for (const choice of ["upstream", "plain", undefined, null, ""]) assert.equal(hasPreview(choice), false, choice);
+	assert.deepEqual(DEFAULT_SITE_PREVIEWS, ["congratulations", "404", "html"]);
+	const saved = "/api/settings/landing-pages/preview/global/default_site";
+	for (const value of [...DEFAULT_SITE_PREVIEWS, undefined]) assert.equal(defaultSitePreview(value), saved, value);
+	assert.equal(defaultSitePreview("redirect"), null);
+	assert.equal(defaultSitePreview("444"), null);
 });
 
 it("Settings: values, validation, and a payload of what changed only", () => {
