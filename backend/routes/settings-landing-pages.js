@@ -9,7 +9,8 @@ import { getValidationSchema } from "../schema/index.js";
  */
 const router = express.Router({ caseSensitive: true, strict: true, mergeParams: true });
 
-const idOf = (value) => (/^[0-9]{1,15}$/u.test(value) ? Number(value) : 0);
+const ID = /^[0-9]{1,15}$/u;
+const idOf = (value) => (ID.test(value) ? Number(value) : 0);
 const sendPreview = (what) => async (req, res) => {
 	const html = await internalLandingPages.preview(res.locals.access, what(req.params));
 	res.status(200).type("html").send(html);

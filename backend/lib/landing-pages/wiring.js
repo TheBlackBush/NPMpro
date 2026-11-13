@@ -51,10 +51,10 @@ export const pageWiring = (hostType, host) => {
 		host.npmpro_certificate_unusable === true && host.ssl_forced === true
 			? use("certificate", `${GLOBAL_DIR}/${PAGE_FILES.certificate}`)
 			: "";
-	const result = (own, byLocation = []) => ({
+	const result = (hostPages, locationPages = []) => ({
 		locations: [...files].map(([name, file]) => ({ name, file })),
-		host: own,
-		byLocation,
+		host: hostPages,
+		byLocation: locationPages,
 	});
 
 	if (hostType === "default") return result({ not_found: use("not-found", `${GLOBAL_DIR}/${PAGE_FILES.not_found}`) });

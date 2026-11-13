@@ -28,8 +28,9 @@ const checked = (html) => {
 };
 
 // what a log line may name of a backup's data: a positive integer id and keys from the known lists, never other text
+const DIGITS = /^[0-9]+$/u;
 const idOf = (id) =>
-	Number.isSafeInteger(Number(id)) && Number(id) >= 1 && /^[0-9]+$/u.test(String(id)) ? String(id) : "invalid id";
+	Number.isSafeInteger(Number(id)) && Number(id) >= 1 && DIGITS.test(String(id)) ? String(id) : "invalid id";
 const keyOf = (key, known) => (known.includes(key) ? key : "unknown");
 
 const placeRow = (kind, table, row, log) => {

@@ -1,6 +1,18 @@
 // The landing page types, their files and the page fields of each place: Settings, Landing pages (the global pages),
 // the proxy host's Pages tab, the 404 host's Page field and the access list's Denied page. Pure.
 
+// the relations an answer can expand that hold rows with page HTML of their own (certificates expand their hosts)
+const RELATIONS = ["access_lists", "locations", "proxy_hosts", "dead_hosts", "mtls_proxy_hosts", "mtls_dead_hosts"];
+
+// a copy without page HTML, also in the expanded relations; the row itself is not changed
+const copyWithoutPageHtml = (row) => {
+	if (!row || typeof row !== "object") return row;
+	const copy = { ...row };
+	for (const field of PAGE_HTML_FIELDS) delete copy[field];
+	for (const key of RELATIONS) if (Array.isArray(copy[key])) copy[key] = copy[key].map(copyWithoutPageHtml);
+	return copy;
+};
+
 export const BUILTIN_DIR = "/usr/local/nginx/html/npmpro";
 // read by the nginx workers (npmpro-worker), so under /data/public and not /data/npmpro (700/600, data-setup.sh)
 export const PAGES_DIR = "/data/public/pages";
@@ -110,9 +122,6 @@ export const pageFile = (type, choice, kind, id) => {
 	}
 };
 
-// the relations an answer can expand that hold rows with page HTML of their own (certificates expand their hosts)
-const RELATIONS = ["access_lists", "locations", "proxy_hosts", "dead_hosts", "mtls_proxy_hosts", "mtls_dead_hosts"];
-
 /**
  * @param   {Object} row  a host or access list row (a model instance too), changed in place
  * @returns {Object}  the row without its page HTML, also in its expanded relations (lists: one page can be 1 MiB)
@@ -132,15 +141,6 @@ export const withoutRelatedPageHtml = (row) => {
 	if (!row || typeof row !== "object") return row;
 	for (const key of RELATIONS) if (Array.isArray(row[key])) row[key].forEach(withoutPageHtml);
 	return row;
-};
-
-// a copy without page HTML, also in the expanded relations; the row itself is not changed
-const copyWithoutPageHtml = (row) => {
-	if (!row || typeof row !== "object") return row;
-	const copy = { ...row };
-	for (const field of PAGE_HTML_FIELDS) delete copy[field];
-	for (const key of RELATIONS) if (Array.isArray(copy[key])) copy[key] = copy[key].map(copyWithoutPageHtml);
-	return copy;
 };
 
 /**

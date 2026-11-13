@@ -11,24 +11,27 @@ const memoryFs = (files = {}) => {
 	return {
 		store,
 		calls,
-		readFile: async (file) => {
-			if (!store.has(file)) throw Object.assign(new Error(`ENOENT ${file}`), { code: "ENOENT" });
-			return store.get(file);
-		},
-		writeFile: async (file, content) => {
+		readFile: (file) =>
+			store.has(file)
+				? Promise.resolve(store.get(file))
+				: Promise.reject(Object.assign(new Error(`ENOENT ${file}`), { code: "ENOENT" })),
+		writeFile: (file, content) => {
 			calls.push(["write", file]);
 			store.set(file, content);
+			return Promise.resolve();
 		},
-		rename: async (from, to) => {
+		rename: (from, to) => {
 			calls.push(["rename", from, to]);
 			store.set(to, store.get(from));
 			store.delete(from);
+			return Promise.resolve();
 		},
 		chmod: async (file, mode) => calls.push(["chmod", file, mode]),
 		mkdir: async (dir) => calls.push(["mkdir", dir]),
-		rm: async (target) => {
+		rm: (target) => {
 			calls.push(["rm", target]);
 			for (const key of [...store.keys()]) if (key === target || key.startsWith(`${target}/`)) store.delete(key);
+			return Promise.resolve();
 		},
 	};
 };
@@ -123,9 +126,7 @@ it("a page is written to a temporary file and renamed, and the temporary file go
 	);
 	assert.equal(fs.store.get("/data/public/pages/global/ban.html"), "<p>x</p>");
 	assert.equal(fs.store.size, 1);
-	fs.rename = async () => {
-		throw new Error("boom");
-	};
+	fs.rename = () => Promise.reject(new Error("boom"));
 	await assert.rejects(writePageFile("/data/public/pages/global/ban.html", "<p>y</p>", { fs }), /boom/u);
 	assert.equal(fs.store.size, 1);
 	assert.equal(fs.store.get("/data/public/pages/global/ban.html"), "<p>x</p>");

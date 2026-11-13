@@ -10,6 +10,8 @@ import { MAX_PAGE_BYTES, pageHtmlProblems } from "./html.js";
 // at the first start after the update (and after a restore of an older backup's CrowdSec files): a stock page is
 // removed, a hand-edited one becomes the custom page and is kept as <file>.before-pages.
 
+const NPMPRO = { choice: "npmpro", html: "" };
+
 export const LEGACY_PAGES = {
 	ban: {
 		file: "/data/crowdsec/ban.html",
@@ -24,7 +26,6 @@ export const LEGACY_PAGES = {
 		line: "CAPTCHA_TEMPLATE_PATH",
 	},
 };
-const NPMPRO = { choice: "npmpro", html: "" };
 
 const underData = (value) =>
 	typeof value === "string" &&

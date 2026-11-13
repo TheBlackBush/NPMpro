@@ -7,8 +7,9 @@ import { GLOBAL_CHOICES, PAGE_TYPES } from "./types.js";
 
 const settingModel = async () => (await import("../../models/setting.js")).default;
 
-export const LANDING_ID = "landing_pages";
 const NPMPRO = { choice: "npmpro", html: "" };
+
+export const LANDING_ID = "landing_pages";
 
 /**
  * @param   {Object|null} stored  the row's meta
