@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import nodeFs from "node:fs/promises";
 import { rooted } from "../paths.js";
 import { BUILTIN_DIR, GLOBAL_DIR, PAGE_FILES, PAGE_TYPES, PLACES, placeDir } from "./types.js";
@@ -30,7 +31,7 @@ export const globalPageFiles = async (pages, { fs = nodeFs } = {}) =>
  * @param {Object} [deps]
  */
 export const writePageFile = async (file, content, { fs = nodeFs } = {}) => {
-	const temp = `${file}.tmp-${process.pid}`;
+	const temp = `${file}.tmp-${process.pid}-${randomUUID()}`;
 	try {
 		await fs.writeFile(temp, content, { encoding: "utf8", mode: FILE_MODE });
 		await fs.chmod(temp, FILE_MODE);

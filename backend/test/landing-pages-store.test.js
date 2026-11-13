@@ -150,3 +150,12 @@ it("an id that is not a positive integer never reaches a path", async () => {
 	assert.throws(() => pageFile("nope", "global", "access_list", 1), /Unknown page type/u);
 	assert.equal(fs.calls.length, 0);
 });
+
+it("two overlapping writes of one file both finish and leave one complete page and no temporary file", async () => {
+	const fs = memoryFs();
+	const file = "/data/public/pages/global/ban.html";
+	await Promise.all([writePageFile(file, "<p>first</p>", { fs }), writePageFile(file, "<p>second</p>", { fs })]);
+	assert.ok(["<p>first</p>", "<p>second</p>"].includes(fs.store.get(file)));
+	assert.deepEqual([...fs.store.keys()], [file]);
+	assert.equal(new Set(fs.calls.filter(([call]) => call === "write").map(([, name]) => name)).size, 2);
+});
