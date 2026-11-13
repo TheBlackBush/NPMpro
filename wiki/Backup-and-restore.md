@@ -25,7 +25,7 @@ A backup never holds traffic statistics (they are not backed up at all), logs, t
 2. Keep **Include secrets** on for a complete backup and enter a passphrase twice (at least 12 characters). Private keys, password hashes, two-factor secrets, DNS credential values, the OIDC client secret, the GeoIP license key, the CrowdSec API key and captcha secret are then included, and the whole file is encrypted with the passphrase. NPMpro does not store the passphrase: write it down, without it the backup cannot be restored.
 3. Click **Download** to save the file on your computer, or **Keep on server** to store it in `/data/backups`.
 
-With **Include secrets** off the file is not encrypted and leaves the secrets out. It still contains host names, users and settings, so keep it private as well. After restoring it, enter the passwords, keys and credentials again (the restore lists the parts that came without them).
+With **Include secrets** off the file is not encrypted and leaves the secrets out. It still contains host names, users and settings, so keep it private as well. After restoring it, enter the passwords, keys and credentials again (the restore lists the parts that came without them). Enter the CrowdSec API key again in Settings, CrowdSec right away: the restore applies the CrowdSec settings without the key, and with an AppSec URL AppSec then refuses every request. With **Deny the request** every checked request on every host is blocked, the admin UI too unless it is left out of CrowdSec; with **Let the request through** AppSec checks nothing. See [Locked out of the admin UI](CrowdSec#locked-out-of-the-admin-ui) if the admin UI is blocked.
 
 ## Stored backups
 
