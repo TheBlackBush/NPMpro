@@ -438,6 +438,31 @@
 				"$ref": "./paths/settings/crowdsec/test/post.json"
 			}
 		},
+		"/settings/landing-pages/preview/global/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/global/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/npmpro/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/npmpro/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/proxy-host/{id}/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/proxy-host/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/dead-host/{id}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/dead-host/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/access-list/{id}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/access-list/get.json"
+			}
+		},
 		"/settings/crowdsec/preview/{page}": {
 			"get": {
 				"$ref": "./paths/settings/crowdsec/preview/page/get.json"

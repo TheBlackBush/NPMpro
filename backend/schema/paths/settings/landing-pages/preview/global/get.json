@@ -1,0 +1,45 @@
+{
+	"operationId": "previewLandingPageGlobal",
+	"summary": "A global page as saved, as HTML",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "type",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"not_found",
+					"upstream_error",
+					"denied",
+					"maintenance",
+					"certificate",
+					"ban",
+					"captcha",
+					"default_site"
+				]
+			},
+			"required": true,
+			"description": "Which page",
+			"example": "ban"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The page, with sample values",
+			"content": {
+				"text/html": {}
+			}
+		},
+		"404": {
+			"description": "The place shows no page of its own"
+		}
+	}
+}
