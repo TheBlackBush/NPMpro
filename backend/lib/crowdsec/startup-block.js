@@ -36,11 +36,19 @@ const appsecText = (values, check) => {
  * @param   {Object}   input.values
  * @param   {Object[]} [input.checks]        testConnection checks
  * @param   {string}   [input.nginxError]    the nginx -t output when the files were not applied
- * @param   {string[]} [input.missingFiles]  files the bouncer reads that are missing or unreadable
+ * @param   {string[]} [input.missingFiles]  files the bouncer cannot start without that are unusable (bouncer off)
+ * @param   {string[]} [input.missingPages]  ban or captcha pages that are missing or unreadable (bouncer on)
  * @param   {boolean}  [input.localOverride] crowdsec.conf.local exists
  * @returns {string[]}
  */
-const startupWarnings = ({ values, checks = [], nginxError = null, missingFiles = [], localOverride = false }) => {
+const startupWarnings = ({
+	values,
+	checks = [],
+	nginxError = null,
+	missingFiles = [],
+	missingPages = [],
+	localOverride = false,
+}) => {
 	const warnings = [];
 	if (nginxError)
 		warnings.push(`the bouncer config did not pass nginx -t, the bouncer is off: ${firstLine(nginxError)}`);
@@ -61,7 +69,11 @@ const startupWarnings = ({ values, checks = [], nginxError = null, missingFiles 
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
-	for (const file of missingFiles) warnings.push(`${file} does not exist or cannot be read`);
+	for (const file of missingFiles)
+		warnings.push(`${file} is not set, does not exist, cannot be read or is not valid PEM`);
+	for (const file of missingPages) {
+		warnings.push(`${file} does not exist or cannot be read, the bouncer runs without this page`);
+	}
 	return [...warnings, ...override];
 };
 
@@ -71,12 +83,13 @@ const startupWarnings = ({ values, checks = [], nginxError = null, missingFiles 
  * @param   {Object}   [input.lockedBy]  key -> variable name
  * @param   {Object[]} [input.checks]
  * @param   {string[]} [input.warnings]
- * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is missing
+ * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable
  * @returns {string}
  */
 const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [], bouncerOff = false }) => {
 	const warningLines = warnings.map((warning) => `Warning:  ${warning}`);
-	if (bouncerOff) return ["CrowdSec: off (a file is missing, see the warning)", ...warningLines].join("\n");
+	if (bouncerOff)
+		return ["CrowdSec: off (a file it needs is not usable, see the warning)", ...warningLines].join("\n");
 	if (!values.enabled) return ["CrowdSec: off (Settings, CrowdSec)", ...warningLines].join("\n");
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");

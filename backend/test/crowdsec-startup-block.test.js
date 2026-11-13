@@ -69,13 +69,15 @@ it("shows failed checks and only the warnings that apply", () => {
 	const warnings = startupWarnings({
 		values,
 		checks,
-		missingFiles: ["/data/crowdsec/ban.html"],
+		missingFiles: ["/data/crowdsec/client.key"],
+		missingPages: ["/data/crowdsec/ban.html"],
 		localOverride: true,
 	});
 	assert.deepEqual(warnings, [
 		"the LAPI check failed, decisions are not applied until it passes",
 		"AppSec cannot be reached: requests are blocked while AppSec is down",
-		"/data/crowdsec/ban.html does not exist or cannot be read",
+		"/data/crowdsec/client.key is not set, does not exist, cannot be read or is not valid PEM",
+		"/data/crowdsec/ban.html does not exist or cannot be read, the bouncer runs without this page",
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
 	]);
 	const text = renderStartupBlock({ values, checks, warnings });

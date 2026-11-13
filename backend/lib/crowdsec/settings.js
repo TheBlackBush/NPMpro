@@ -71,7 +71,8 @@ export const CROWDSEC_FIELDS = [
 	bool("ssl_verify", "SSL_VERIFY", true),
 ];
 
-// settings of NPMpro that are not bouncer keys: how a ban answers (ruling 6) and the admin UI exemption
+// settings of NPMpro that are not bouncer keys: how a ban answers (page, redirect or status code, it decides which of
+// the ban keys are written) and the admin UI exemption
 const EXTRA_FIELDS = [
 	{ key: "ban_response", kind: "enum", values: BAN_RESPONSES, default: "page" },
 	{ key: "admin_ui_excluded", kind: "bool", default: false },
@@ -218,7 +219,9 @@ export const mergeCrowdsecConfig = (stored, env) => {
 };
 
 /**
- * The files the bouncer reads with these values (TLS client files, the ban page, the captcha page)
+ * The files the bouncer reads with these values (TLS client files, the ban page, the captcha page), checked on save.
+ * Only the TLS client files stop the bouncer from starting (tls-files.js); a missing page is logged by the bouncer,
+ * which then answers a ban with the status code and leaves the captcha off.
  *
  * @param   {Object} values
  * @returns {string[]}
@@ -236,6 +239,11 @@ const FILE_LABELS = {
 	captcha_template_path: "captcha page file",
 };
 
+const PEM_KINDS = {
+	tls_client_cert: "a PEM certificate",
+	tls_client_key: "an unencrypted PEM private key",
+};
+
 /**
  * The rules between fields (the API schema checks each field on its own). Files must exist only while the bouncer is
  * on. Messages are English sentences for the API error.
@@ -244,9 +252,10 @@ const FILE_LABELS = {
  * @param   {Object}   options
  * @param   {Function} options.exists  (container path) => boolean
  * @param   {Function} [options.readable]  (container path) => boolean, defaults to exists
+ * @param   {Function} [options.parses]  (key, container path) => boolean for the TLS client files, see tls-files.js
  * @returns {string[]}
  */
-export const validateCrowdsec = (values, { exists, readable = exists }) => {
+export const validateCrowdsec = (values, { exists, readable = exists, parses = () => true }) => {
 	const problems = [];
 	if (values.enabled) {
 		if (values.api_url === "") problems.push("Enter the LAPI URL.");
@@ -279,6 +288,9 @@ export const validateCrowdsec = (values, { exists, readable = exists }) => {
 			if (!requiredFiles(values).includes(values[key])) continue;
 			if (!exists(values[key])) problems.push(`The ${label} ${values[key]} does not exist.`);
 			else if (!readable(values[key])) problems.push(`The ${label} ${values[key]} cannot be read.`);
+			else if (Object.hasOwn(PEM_KINDS, key) && !parses(key, values[key])) {
+				problems.push(`The ${label} ${values[key]} is not ${PEM_KINDS[key]}.`);
+			}
 		}
 	}
 	return problems;

@@ -76,13 +76,17 @@ elif [ -s /data/tls/ech/nginx.conf ]; then
 fi
 
 
-# The CrowdSec bouncer opens its TLS client files and its ban and captcha pages when nginx starts, which nginx -t does
-# not do: a missing one stops nginx and with it the whole container. The bouncer stays off until the file is back (the
-# settings in the database stay as they are, the backend writes the include again from them at the next start).
+# The CrowdSec bouncer reads crowdsec.conf and parses its TLS client certificate and key when nginx starts, which
+# nginx -t does not do: a missing crowdsec.conf or a TLS client file it cannot parse stops nginx and with it the whole
+# container. The bouncer stays off until the file is fixed (the settings in the database stay as they are, the backend
+# writes the include again from them at the next start). A missing ban or captcha page does not stop the bouncer (it
+# logs it and answers with the status code), so the pages are not checked here.
 # crowdsec-files-check begin
 if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
     # the same reading as the backend's parseConfLines: key in any case, an optional "export ", one pair of quotes, an
-    # unquoted " #" tail removed, the last line of a key wins
+    # unquoted " #" tail removed, the last line of a key wins. The bouncer's own reader is simpler; it differs only on a
+    # hand-edited file at the first start (afterwards the backend writes a file both read the same), so this follows
+    # the backend's parser, not the bouncer's.
     crowdsec_value() {
         tr -d '\r' < /data/crowdsec/crowdsec.conf 2> /dev/null | awk -v key="$1" '
             {
@@ -111,26 +115,27 @@ if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro
             END { print found }
         '
     }
-    crowdsec_files=""
-    if [ "$(crowdsec_value USE_TLS_AUTH | tr '[:upper:]' '[:lower:]')" = "true" ]; then
-        crowdsec_files="$(crowdsec_value TLS_CLIENT_CERT)
-$(crowdsec_value TLS_CLIENT_KEY)"
-    fi
-    crowdsec_files="$crowdsec_files
-$(crowdsec_value BAN_TEMPLATE_PATH)
-$(crowdsec_value CAPTCHA_TEMPLATE_PATH)"
-    crowdsec_old_ifs="$IFS"
-    IFS="
-"
-    for crowdsec_file in $crowdsec_files; do
-        [ -n "$crowdsec_file" ] || continue
-        if [ ! -r "$crowdsec_file" ]; then
-            echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
-            echo "CrowdSec: $crowdsec_file is missing or unreadable, the bouncer stays off until it is fixed (Settings, CrowdSec)"
-            break
+    crowdsec_unusable=""
+    if [ ! -f /data/crowdsec/crowdsec.conf ] || [ ! -r /data/crowdsec/crowdsec.conf ]; then
+        crowdsec_unusable=/data/crowdsec/crowdsec.conf
+    elif [ "$(crowdsec_value USE_TLS_AUTH | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+        # the bouncer takes PEM only, and has no passphrase for an encrypted key
+        crowdsec_cert="$(crowdsec_value TLS_CLIENT_CERT)"
+        crowdsec_key="$(crowdsec_value TLS_CLIENT_KEY)"
+        if [ -z "$crowdsec_cert" ]; then
+            crowdsec_unusable=TLS_CLIENT_CERT
+        elif ! openssl x509 -inform PEM -noout -in "$crowdsec_cert" < /dev/null > /dev/null 2>&1; then
+            crowdsec_unusable="$crowdsec_cert"
+        elif [ -z "$crowdsec_key" ]; then
+            crowdsec_unusable=TLS_CLIENT_KEY
+        elif ! openssl pkey -inform PEM -passin pass: -noout -in "$crowdsec_key" < /dev/null > /dev/null 2>&1; then
+            crowdsec_unusable="$crowdsec_key"
         fi
-    done
-    IFS="$crowdsec_old_ifs"
+    fi
+    if [ -n "$crowdsec_unusable" ]; then
+        echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
+        echo "CrowdSec: $crowdsec_unusable is not set, missing, unreadable or not valid PEM, the bouncer stays off until it is fixed (Settings, CrowdSec)"
+    fi
 fi
 # crowdsec-files-check end
 
@@ -138,8 +143,10 @@ fi
 # has written the new ones and reloads once. Only when nginx rejects them (an update changed what nginx accepts) they
 # are moved aside and nginx starts without them; the backend removes the moved files after the regeneration.
 if ! nginx -tq; then
-    # A CrowdSec bouncer config nginx rejects (for example a TLS client file that is gone) must not keep nginx from
-    # starting: the bouncer is off until the backend writes it again from Settings, CrowdSec.
+    # A CrowdSec bouncer config nginx rejects must not keep nginx from starting: the bouncer is off until the backend
+    # writes it again from Settings, CrowdSec. nginx -t does not run the bouncer's init, so this only catches a
+    # directive conflict (for example a custom include that also declares lua_shared_dict crowdsec_cache); the files
+    # the bouncer opens at init are checked above.
     crowdsec_off=false
     if grep -q "^include" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
         echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf

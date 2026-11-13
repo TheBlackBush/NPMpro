@@ -130,8 +130,14 @@ it("keeps the saved key for an empty one and removes it for null", async () => {
 	assert.equal(saved.text.includes(KEY), false);
 });
 
+const includes = async () => [
+	await api.read("/data/npmpro/nginx/crowdsec.conf"),
+	await api.read("/data/npmpro/nginx/crowdsec-admin.conf"),
+];
+
 it("puts the file and the row back when nginx -t fails", async () => {
 	const previous = await conf();
+	const previousIncludes = await includes();
 	await api.outside.failCommand("nginx", "nginx: [emerg] lua error");
 	try {
 		const res = await admin.put("/settings/crowdsec", { captcha_expiration: 900 });
@@ -141,15 +147,19 @@ it("puts the file and the row back when nginx -t fails", async () => {
 		await api.outside.passCommand("nginx");
 	}
 	assert.equal(await conf(), previous);
+	assert.deepEqual(await includes(), previousIncludes);
 	assert.equal((await settings()).captcha_expiration, 7200);
 });
 
 it("puts the file and the row back when the reload fails", async () => {
 	const previous = await conf();
+	const previousIncludes = await includes();
 	api.outside.control.failNext = "reload refused";
-	const res = await admin.put("/settings/crowdsec", { captcha_expiration: 901 });
+	// admin_ui_excluded changes the admin include, so its rollback is seen too
+	const res = await admin.put("/settings/crowdsec", { captcha_expiration: 901, admin_ui_excluded: true });
 	assert.equal(res.status, 400, res.text);
 	assert.equal(await conf(), previous);
+	assert.deepEqual(await includes(), previousIncludes);
 	assert.equal((await settings()).captcha_expiration, 7200);
 });
 

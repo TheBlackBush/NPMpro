@@ -4,6 +4,7 @@ import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { fileExists } from "./support/hosts.js";
+import { clientPemFiles, opensslMissing } from "./support/tls-files.js";
 
 // The first start after the update: a hand-edited crowdsec.conf (and a .local) becomes the crowdsec row
 const HAND_EDITED = [
@@ -94,52 +95,97 @@ it("keeps the previous files when nginx -t fails at start", async () => {
 	}
 });
 
-it("switches the bouncer off, not nginx, while a file it opens at start is missing, and back on once it is there", async () => {
+const setMeta = (meta) =>
+	api
+		.db("setting")
+		.where({ id: "crowdsec" })
+		.update({ meta: JSON.stringify(meta) });
+const BOUNCER_OFF = "# the CrowdSec bouncer is off (Settings, CrowdSec)\n";
+const BOUNCER_ON = "include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n";
+const CERT = "/data/crowdsec/client.crt";
+const KEY = "/data/crowdsec/client.key";
+// a PEM pair under the test root at CERT and KEY
+const writeClientPem = () => {
+	const made = clientPemFiles(path.join(api.root, "data/crowdsec"));
+	return { cert: made.crt, key: made.key };
+};
+const removeClientPem = () =>
+	Promise.all(
+		["client.crt", "client.key", "client.der", "client-enc.key"].map((name) =>
+			rm(path.join(api.root, "data/crowdsec", name), { force: true }),
+		),
+	);
+
+it("switches the bouncer off, not nginx, while a TLS client file is missing or does not parse, and back on once it does", {
+	skip: opensslMissing && "openssl not available",
+}, async () => {
 	const { startCrowdsec } = await import("../internal/crowdsec-setting.js");
 	const { renderStartupBlock, startupWarnings } = await import("../lib/crowdsec/startup-block.js");
 	const saved = await storedMeta();
-	const key = "/data/crowdsec/client.key";
-	const cert = "/data/crowdsec/client.crt";
-	const setMeta = (meta) =>
-		api
-			.db("setting")
-			.where({ id: "crowdsec" })
-			.update({ meta: JSON.stringify(meta) });
-	await writeFile(path.join(api.root, cert.slice(1)), "cert");
 	await setMeta({
 		...saved,
 		api_url: "https://127.0.0.1:9",
 		use_tls_auth: true,
-		tls_client_cert: cert,
-		tls_client_key: key,
+		tls_client_cert: CERT,
+		tls_client_key: KEY,
 	});
 	try {
+		const files = writeClientPem();
+		const pemKey = await readFile(files.key, "utf8");
+		await rm(files.key);
 		const off = await startCrowdsec();
-		assert.deepEqual(off.missingFiles, [key]);
+		assert.deepEqual(off.missingFiles, [KEY]);
 		assert.equal(off.nginxError, null);
-		assert.equal(
-			await api.read("/data/npmpro/nginx/crowdsec.conf"),
-			"# the CrowdSec bouncer is off (Settings, CrowdSec)\n",
-		);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
 		assert.equal((await storedMeta()).use_tls_auth, true);
 		assert.equal((await storedMeta()).enabled, true);
 		const warnings = startupWarnings({ values: off.values, missingFiles: off.missingFiles });
 		assert.match(
 			renderStartupBlock({ values: off.values, warnings, bouncerOff: true }),
-			/^CrowdSec: off \(a file is missing, see the warning\)$/mu,
+			/^CrowdSec: off \(a file it needs is not usable, see the warning\)$/mu,
 		);
-		assert.deepEqual(warnings, [`${key} does not exist or cannot be read`]);
-		await writeFile(path.join(api.root, key.slice(1)), "key");
+		assert.deepEqual(warnings, [`${KEY} is not set, does not exist, cannot be read or is not valid PEM`]);
+		// a key that exists and is readable but is cut short: the bouncer could not parse it either
+		await writeFile(files.key, pemKey.slice(0, 60));
+		assert.deepEqual((await startCrowdsec()).missingFiles, [KEY]);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
+		await writeFile(files.key, "");
+		await writeFile(files.cert, "");
+		assert.deepEqual((await startCrowdsec()).missingFiles, [CERT, KEY]);
+		await removeClientPem();
+		writeClientPem();
 		const on = await startCrowdsec();
 		assert.deepEqual(on.missingFiles, []);
-		assert.equal(
-			await api.read("/data/npmpro/nginx/crowdsec.conf"),
-			"include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n",
-		);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
 	} finally {
 		await setMeta(saved);
-		await rm(path.join(api.root, key.slice(1)), { force: true });
-		await rm(path.join(api.root, cert.slice(1)), { force: true });
+		await removeClientPem();
+		await startCrowdsec();
+	}
+});
+
+it("keeps the bouncer on while a ban or captcha page is missing, with a warning", async () => {
+	const { startCrowdsec } = await import("../internal/crowdsec-setting.js");
+	const { startupWarnings } = await import("../lib/crowdsec/startup-block.js");
+	const saved = await storedMeta();
+	await setMeta({
+		...saved,
+		ban_response: "page",
+		ban_template_path: "/data/crowdsec/gone-ban.html",
+		captcha_provider: "turnstile",
+		captcha_template_path: "/data/crowdsec/gone-captcha.html",
+	});
+	try {
+		const started = await startCrowdsec();
+		assert.deepEqual(started.missingFiles, []);
+		assert.deepEqual(started.missingPages, ["/data/crowdsec/gone-ban.html", "/data/crowdsec/gone-captcha.html"]);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
+		assert.deepEqual(startupWarnings({ values: started.values, missingPages: started.missingPages }), [
+			"/data/crowdsec/gone-ban.html does not exist or cannot be read, the bouncer runs without this page",
+			"/data/crowdsec/gone-captcha.html does not exist or cannot be read, the bouncer runs without this page",
+		]);
+	} finally {
+		await setMeta(saved);
 		await startCrowdsec();
 	}
 });
@@ -244,4 +290,63 @@ it("keeps the current settings when a restored database has no row and the file 
 	assert.equal((await api.read("/data/crowdsec/crowdsec.conf")).split("\n")[0], HEADER);
 	assert.match(await api.read("/data/crowdsec/crowdsec.conf"), /API_URL=http:\/\/127\.0\.0\.1:10\n/u);
 	assert.equal(JSON.stringify(meta).includes("restored-key"), false);
+});
+
+it("refuses a save with a TLS client key that does not parse", {
+	skip: opensslMissing && "openssl not available",
+}, async () => {
+	const files = writeClientPem();
+	const before = await storedMeta();
+	const previous = await api.read("/data/crowdsec/crowdsec.conf");
+	await writeFile(files.key, (await readFile(files.key, "utf8")).slice(0, 60));
+	try {
+		const res = await (await api.admin()).put("/settings/crowdsec", {
+			enabled: true,
+			api_url: "https://127.0.0.1:9",
+			use_tls_auth: true,
+			tls_client_cert: CERT,
+			tls_client_key: KEY,
+			force: true,
+		});
+		assert.equal(res.status, 400, res.text);
+		assert.match(res.body.error.message, /client\.key is not an unencrypted PEM private key/u);
+		assert.deepEqual(await storedMeta(), before);
+		assert.equal(await api.read("/data/crowdsec/crowdsec.conf"), previous);
+	} finally {
+		await removeClientPem();
+	}
+});
+
+it("restores TLS auth onto an instance without the client files with the bouncer off, and writes both includes", {
+	skip: opensslMissing && "openssl not available",
+}, async () => {
+	const { reloadCrowdsecAfterRestore, startCrowdsec } = await import("../internal/crowdsec-setting.js");
+	const saved = await storedMeta();
+	// the restored row: TLS auth, the bouncer on, the admin UI left out; the client files are in no backup
+	const restored = {
+		...saved,
+		enabled: true,
+		api_url: "https://127.0.0.1:9",
+		use_tls_auth: true,
+		tls_client_cert: CERT,
+		tls_client_key: KEY,
+		admin_ui_excluded: true,
+	};
+	await setMeta(restored);
+	try {
+		await reloadCrowdsecAfterRestore();
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $npmpro_crowdsec_skip 1;\n");
+		assert.match(await api.read("/data/crowdsec/crowdsec.conf"), /^USE_TLS_AUTH=true$/mu);
+		assert.deepEqual(await storedMeta(), restored);
+		// once the files are there, the next restore (or start) turns it on
+		writeClientPem();
+		await reloadCrowdsecAfterRestore();
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $npmpro_crowdsec_skip 1;\n");
+	} finally {
+		await setMeta(saved);
+		await removeClientPem();
+		await startCrowdsec();
+	}
 });

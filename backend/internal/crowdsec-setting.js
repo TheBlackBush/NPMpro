@@ -13,6 +13,7 @@ import {
 } from "../lib/crowdsec/settings.js";
 import { renderStartupBlock, startupWarnings } from "../lib/crowdsec/startup-block.js";
 import { effectiveCrowdsec, getCrowdsecConfig, hasStoredCrowdsec, saveStoredCrowdsec } from "../lib/crowdsec/store.js";
+import { tlsFileParses, unusableStartFiles } from "../lib/crowdsec/tls-files.js";
 import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
 import { rooted } from "../lib/paths.js";
@@ -51,6 +52,7 @@ const fileReadable = (file) => {
 	}
 };
 const encrypt = (plain) => defaultSecretBox.encrypt(plain);
+const FILE_CHECKS = { exists: fileExists, readable: fileReadable, parses: tlsFileParses };
 
 const statusOf = async () => {
 	const last = hooks.result();
@@ -95,6 +97,28 @@ const applyCrowdsec = (values, { save, restore }) =>
 		}),
 	);
 
+// the pages the bouncer reads (ban, captcha): a missing one is only a warning, the bouncer runs without it
+const missingPagesOf = (values) =>
+	values.enabled ? requiredFiles({ ...values, use_tls_auth: false }).filter((file) => !fileReadable(file)) : [];
+
+/**
+ * The start gate, shared by the start and a restore: the files the bouncer cannot start without (unusableStartFiles);
+ * while one is unusable the include leaves the bouncer off and the row stays as it is.
+ *
+ * @param   {Object} values
+ * @param   {Object} log
+ * @returns {string[]}
+ */
+const startGate = (values, log) => {
+	const unusable = unusableStartFiles(values);
+	if (unusable.length > 0) {
+		log.warn(
+			`CrowdSec: ${unusable.join(", ")} is not set, missing, unreadable or not valid PEM, the bouncer stays off`,
+		);
+	}
+	return unusable;
+};
+
 /**
  * At every start: the one-time import, then crowdsec.conf and the two includes written from the row and checked with
  * nginx -t (the reload at the end of prepareApp loads them). A failed nginx -t puts the previous files back (the
@@ -103,8 +127,9 @@ const applyCrowdsec = (values, { save, restore }) =>
  * @param   {Object} [deps]
  * @param   {Object} [deps.nginx]  { test }
  * @param   {Object} [deps.log]
- * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null, missingFiles: string[] } | null>}  null when the row could
- *          not be read
+ * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null, missingFiles: string[],
+ *          missingPages: string[] } | null>}  null when the row could not be read; missingFiles: the files that keep
+ *          the bouncer off, missingPages: the pages it runs without
  */
 const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 	try {
@@ -113,11 +138,11 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 		if (cfg.invalid.length > 0) log.warn(`CrowdSec: ignored invalid values of ${cfg.invalid.join(", ")}`);
 		if (cfg.secretError)
 			log.warn("CrowdSec: a saved key cannot be decrypted, enter it again in Settings, CrowdSec");
-		// the bouncer opens its files when nginx starts, which nginx -t does not do: a missing one would stop nginx
-		const missingFiles = cfg.values.enabled ? requiredFiles(cfg.values).filter((file) => !fileReadable(file)) : [];
+		// the bouncer parses its TLS client files when nginx starts, which nginx -t does not do: one it cannot parse
+		// would stop nginx
+		const missingFiles = startGate(cfg.values, log);
+		const missingPages = missingPagesOf(cfg.values);
 		const bouncerOff = missingFiles.length > 0;
-		if (bouncerOff)
-			log.warn(`CrowdSec: ${missingFiles.join(", ")} is missing or unreadable, the bouncer stays off`);
 		let nginxError = null;
 		try {
 			await runtimeExclusive(() => applyCrowdsecFiles(cfg.values, () => nginx.test(), { bouncerOff }));
@@ -125,7 +150,7 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 			nginxError = err.message;
 			log.error(`CrowdSec: the settings did not pass nginx -t and were not applied: ${err.message}`);
 		}
-		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles };
+		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles, missingPages };
 	} catch (err) {
 		log.error(`Could not apply the CrowdSec settings at startup: ${err.message}`);
 		return null;
@@ -152,7 +177,7 @@ const logCrowdsecBlock = async (
 ) => {
 	if (!start) return;
 	try {
-		const { values, locked, nginxError, missingFiles = [] } = start;
+		const { values, locked, nginxError, missingFiles = [], missingPages = [] } = start;
 		const bouncerOff = missingFiles.length > 0;
 		const active = values.enabled && !nginxError && !bouncerOff;
 		const checks = active ? (await test(values, { timeoutMs })).checks : [];
@@ -161,6 +186,7 @@ const logCrowdsecBlock = async (
 			checks,
 			nginxError,
 			missingFiles,
+			missingPages,
 			localOverride: fileExists(LOCAL_CONF),
 		});
 		print(renderStartupBlock({ values, lockedBy: lockedByOf("crowdsec", locked), checks, warnings, bouncerOff }));
@@ -200,7 +226,7 @@ const internalCrowdsecSetting = {
 		const before = await getCrowdsecConfig();
 		const next = applyCrowdsecUpdate(before.stored, changes, before.locked, encrypt);
 		const after = effectiveCrowdsec(next);
-		const problems = validateCrowdsec(after.values, { exists: fileExists, readable: fileReadable });
+		const problems = validateCrowdsec(after.values, FILE_CHECKS);
 		if (problems.length > 0) throw new errs.ValidationError(problems.join(" "));
 		if (after.values.enabled && !force) {
 			const result = await testConnection(after.values, { timeoutMs: TEST_TIMEOUT_MS });
@@ -265,8 +291,8 @@ const internalCrowdsecSetting = {
 /**
  * After a restore or merge of the CrowdSec row or files: without a restored row the current settings are read back
  * from the file NPMpro wrote (never replaced by the defaults), otherwise an older backup's crowdsec.conf is imported
- * into the row. Then the three files are written from the row. The restore runs nginx -t and the reload afterwards
- * (applyRestored); this runs inside its queue job, so it does not queue itself.
+ * into the row. Then the three files are written from the row, through the start gate of startCrowdsec. The restore
+ * runs nginx -t and the reload afterwards (applyRestored); this runs inside its queue job, so it does not queue itself.
  *
  * @returns {Promise<void>}
  */
@@ -277,7 +303,8 @@ const reloadCrowdsecAfterRestore = async () => {
 		await importCrowdsecFile();
 	}
 	const cfg = await getCrowdsecConfig();
-	await applyCrowdsecFiles(cfg.values);
+	// the TLS client files are in no backup: restoring TLS auth onto an instance without them keeps the bouncer off
+	await applyCrowdsecFiles(cfg.values, undefined, { bouncerOff: startGate(cfg.values, logger).length > 0 });
 	void Promise.resolve()
 		.then(() => hooks.onApplied())
 		.catch((err) => logger.warn(`CrowdSec: the poll after the restore failed: ${err.message}`));
