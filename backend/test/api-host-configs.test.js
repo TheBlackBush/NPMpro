@@ -823,7 +823,7 @@ it("writes the 404 page of a 404 host as an internal location", async () => {
 		"dead",
 	);
 	const config = await read(`data/nginx/dead_host/${dead.id}.conf`);
-	assert.match(config, /location \/ \{\s+error_page 404 \/\.npmpro-page\/not-found;\s+return 404;\s+\}/u);
+	assert.match(config, /error_page 404 \/\.npmpro-page\/not-found;\s+location \/ \{\s+return 404;\s+\}/u);
 	assert.match(
 		config,
 		/location = \/\.npmpro-page\/not-found \{[^}]*internal;[^}]*alias \/data\/public\/pages\/global\/404\.html;/u,

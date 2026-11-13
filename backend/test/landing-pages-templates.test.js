@@ -214,8 +214,6 @@ it("an error_page in location / config or a custom location's config replaces ou
 	assert.equal(config.match(/location = \/\.npmpro-page\//gu).length, 1);
 });
 
-const serverHead = (config) => config.slice(0, config.indexOf("location"));
-
 it("maintenance: 503 before any location, ACME and the page pass, 497 repeated", async () => {
 	const config = await render(
 		proxyHost({
@@ -277,7 +275,7 @@ it("a redirection host with a missing certificate shows the certificate page too
 	assert.match(config, /error_page 495 \/\.npmpro-page\/certificate;/u);
 });
 
-it("404 host: the page in location /, nothing at server level", async () => {
+it("404 host: the page at server level (ACME and Advanced locations get it too)", async () => {
 	const dead = (extra) =>
 		internalNginx.renderConfig("dead_host", {
 			id: 4,
@@ -286,8 +284,8 @@ it("404 host: the page in location /, nothing at server level", async () => {
 			...extra,
 		});
 	const config = await dead();
-	assert.match(locationBlock(config, "/"), /error_page 404 \/\.npmpro-page\/not-found;\s*return 404;/u);
-	assert.doesNotMatch(serverHead(config), /error_page/u);
+	assert.match(config, /error_page 404 \/\.npmpro-page\/not-found;\s*location \/ \{\s*return 404;/u);
+	assert.doesNotMatch(locationBlock(config, "/"), /error_page/u);
 	assert.match(config, /alias \/data\/public\/pages\/global\/404\.html;/u);
 	assert.match(
 		await dead({ npmpro_page: "custom", npmpro_page_html: "<p>x</p>" }),
@@ -303,7 +301,36 @@ it("default server: the NPMpro default page and the global 404 page", async () =
 		/root \/usr\/local\/nginx\/html\/npmpro;\s*try_files \/default\.html =404;/u,
 	);
 	const notFound = await site("404");
-	assert.match(notFound, /error_page 404 \/\.npmpro-page\/not-found;\s*return 404;/u);
+	assert.match(notFound, /error_page 404 \/\.npmpro-page\/not-found;\s*location \/ \{\s*return 404;/u);
 	assert.match(notFound, /alias \/data\/public\/pages\/global\/404\.html;/u);
 	assert.doesNotMatch(await site("444"), /npmpro-page/u);
+});
+
+const MISSING = { ssl_forced: true, certificate_id: 97, certificate: { id: 97, provider: "other" } };
+const noSslListener = (config) => {
+	assert.doesNotMatch(config, /listen [^;]* ssl|ssl_certificate /u);
+	assert.match(config, /error_page 495 \/\.npmpro-page\/certificate;/u);
+	assert.match(config, /location = \/\.npmpro-page\/certificate/u);
+};
+
+it("a missing certificate file is found for every host type and forward scheme", async () => {
+	noSslListener(
+		await internalNginx.renderConfig("dead_host", {
+			id: 4,
+			domain_names: ["gone.example.com"],
+			npmpro_page: "global",
+			...MISSING,
+		}),
+	);
+	noSslListener(
+		await internalNginx.renderConfig("redirection_host", {
+			id: 6,
+			domain_names: ["redir.example.com"],
+			forward_http_code: 301,
+			forward_scheme: "$scheme",
+			forward_domain_name: "example.org",
+			...MISSING,
+		}),
+	);
+	noSslListener(await render(proxyHost({ forward_scheme: "path", forward_host: "/srv/site", ...MISSING })));
 });

@@ -246,8 +246,6 @@ const internalNginx = {
 		let renderedUpstreams = "";
 
 		if (["http", "https", "grpc", "grpcs"].includes(host.forward_scheme)) {
-			host.npmpro_certificate_unusable = await certificateUnusable(host);
-
 			splitForwardHost(host);
 
 			if (setUpstreamName(host, `upstream_${host.id}`)) {
@@ -319,6 +317,8 @@ const internalNginx = {
 			host.filename = hostHtpasswdFileName;
 		}
 
+		host.npmpro_certificate_unusable = await certificateUnusable(host);
+
 		host.upstreams = await internalNginx.renderUpstreams(host);
 
 		if (host.locations) {
@@ -388,10 +388,10 @@ const internalNginx = {
 	removeConfig: (host_type, host, { also } = {}) =>
 		runtimeExclusive(async () => {
 			await internalNginx.deleteConfig(host_type, host);
-			// a disabled or deleted host's pages go; enabling writes them again
-			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 			await also?.();
 			await internalNginx.reload();
+			// a disabled or deleted host's pages go once the reload no longer serves them; enabling writes them again
+			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 		}),
 
 	/**

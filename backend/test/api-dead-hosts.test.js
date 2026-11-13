@@ -34,7 +34,7 @@ hostTests(ctx, {
 	search: (host) => host.domain_names[0],
 	written: (host) =>
 		new RegExp(
-			`server_name "${dotted(host.domain_names[0])}";[\\s\\S]*location / \\{\\s*error_page 404 /\\.npmpro-page/not-found;\\s*return 404;\\s*\\}`,
+			`server_name "${dotted(host.domain_names[0])}";[\\s\\S]*error_page 404 /\\.npmpro-page/not-found;\\s*location / \\{\\s*return 404;\\s*\\}`,
 			"u",
 		),
 	edit: () => {
