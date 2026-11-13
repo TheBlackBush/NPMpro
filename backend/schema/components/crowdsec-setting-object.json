@@ -1,0 +1,255 @@
+{
+	"type": "object",
+	"description": "Effective CrowdSec bouncer settings (the API key and the captcha secret are never returned)",
+	"additionalProperties": false,
+	"required": [
+		"enabled",
+		"api_url",
+		"api_key_set",
+		"use_tls_auth",
+		"tls_client_cert",
+		"tls_client_key",
+		"cache_expiration",
+		"bouncing_on_type",
+		"fallback_remediation",
+		"request_timeout",
+		"update_frequency",
+		"enable_internal",
+		"mode",
+		"scenarios_containing",
+		"scenarios_not_containing",
+		"exclude_location",
+		"ban_response",
+		"ban_template_path",
+		"redirect_location",
+		"ret_code",
+		"captcha_provider",
+		"captcha_secret_set",
+		"captcha_site_key",
+		"captcha_template_path",
+		"captcha_expiration",
+		"appsec_url",
+		"appsec_failure_action",
+		"appsec_connect_timeout",
+		"appsec_send_timeout",
+		"appsec_process_timeout",
+		"always_send_to_appsec",
+		"appsec_drop_unreadable_body",
+		"ssl_verify",
+		"admin_ui_excluded",
+		"locked",
+		"locked_by",
+		"secret_error",
+		"status"
+	],
+	"properties": {
+		"enabled": {
+			"type": "boolean",
+			"description": "ENABLED: the bouncer checks every request"
+		},
+		"api_url": {
+			"type": "string",
+			"description": "API_URL: the CrowdSec Local API"
+		},
+		"api_key_set": {
+			"type": "boolean",
+			"description": "An API key is saved or set by the environment"
+		},
+		"use_tls_auth": {
+			"type": "boolean",
+			"description": "USE_TLS_AUTH: a TLS client certificate instead of the API key"
+		},
+		"tls_client_cert": {
+			"type": "string",
+			"description": "TLS_CLIENT_CERT: a file under /data/crowdsec/"
+		},
+		"tls_client_key": {
+			"type": "string",
+			"description": "TLS_CLIENT_KEY: a file under /data/crowdsec/"
+		},
+		"cache_expiration": {
+			"type": "integer",
+			"description": "CACHE_EXPIRATION in seconds (live mode)"
+		},
+		"bouncing_on_type": {
+			"type": "string",
+			"enum": [
+				"all",
+				"ban",
+				"captcha"
+			]
+		},
+		"fallback_remediation": {
+			"type": "string",
+			"enum": [
+				"ban",
+				"captcha"
+			]
+		},
+		"request_timeout": {
+			"type": "integer",
+			"description": "REQUEST_TIMEOUT in milliseconds"
+		},
+		"update_frequency": {
+			"type": "integer",
+			"description": "UPDATE_FREQUENCY in seconds (stream mode)"
+		},
+		"enable_internal": {
+			"type": "boolean"
+		},
+		"mode": {
+			"type": "string",
+			"enum": [
+				"live",
+				"stream"
+			]
+		},
+		"scenarios_containing": {
+			"type": "string"
+		},
+		"scenarios_not_containing": {
+			"type": "string"
+		},
+		"exclude_location": {
+			"type": "string",
+			"description": "Comma-separated paths that are never checked"
+		},
+		"ban_response": {
+			"type": "string",
+			"enum": [
+				"page",
+				"redirect",
+				"status"
+			]
+		},
+		"ban_template_path": {
+			"type": "string"
+		},
+		"redirect_location": {
+			"type": "string"
+		},
+		"ret_code": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"captcha_provider": {
+			"type": "string",
+			"enum": [
+				"",
+				"recaptcha",
+				"hcaptcha",
+				"turnstile"
+			]
+		},
+		"captcha_secret_set": {
+			"type": "boolean",
+			"description": "A captcha secret key is saved"
+		},
+		"captcha_site_key": {
+			"type": "string"
+		},
+		"captcha_template_path": {
+			"type": "string"
+		},
+		"captcha_expiration": {
+			"type": "integer",
+			"description": "CAPTCHA_EXPIRATION in seconds"
+		},
+		"appsec_url": {
+			"type": "string",
+			"description": "APPSEC_URL, empty: AppSec off"
+		},
+		"appsec_failure_action": {
+			"type": "string",
+			"enum": [
+				"deny",
+				"passthrough"
+			]
+		},
+		"appsec_connect_timeout": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"appsec_send_timeout": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"appsec_process_timeout": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"always_send_to_appsec": {
+			"type": "boolean"
+		},
+		"appsec_drop_unreadable_body": {
+			"type": "boolean"
+		},
+		"ssl_verify": {
+			"type": "boolean"
+		},
+		"admin_ui_excluded": {
+			"type": "boolean",
+			"description": "Requests to the admin UI skip the bouncer and AppSec"
+		},
+		"locked": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"description": "Fields set by environment variables"
+		},
+		"locked_by": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "The environment variable that sets each locked field (name only, never the value)"
+		},
+		"secret_error": {
+			"type": "boolean",
+			"description": "A saved key cannot be decrypted"
+		},
+		"status": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"loaded",
+				"reachable",
+				"last_contact",
+				"error"
+			],
+			"properties": {
+				"loaded": {
+					"type": "boolean",
+					"description": "nginx loads the bouncer"
+				},
+				"reachable": {
+					"type": "boolean",
+					"description": "The last poll of the monitoring reader reached the LAPI"
+				},
+				"last_contact": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Time of that poll"
+				},
+				"error": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Its error"
+				}
+			}
+		}
+	}
+}

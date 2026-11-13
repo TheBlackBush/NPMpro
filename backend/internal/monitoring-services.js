@@ -176,6 +176,7 @@ const resumeMonitoringWriters = () => {
 };
 
 export {
+	crowdsec as crowdsecService,
 	internalMonitoring,
 	pauseMonitoringWriters,
 	resumeMonitoringWriters,

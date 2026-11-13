@@ -148,8 +148,13 @@ const createSwap = ({ dataDir, stageDir, asideDir, keep }) => {
 
 	const swapType = async (files) => {
 		const modes = new Map();
-		for (const root of files.roots) await moveAside(files, root, modes, true);
-		for (const root of files.roots) await place(files, root, modes);
+		// a file only older backups hold replaces the instance's only when the backup has it
+		const imported = [];
+		for (const rel of files.importOnly ?? []) {
+			if (await exists(path.join(stageDir, "files", rel))) imported.push(rel);
+		}
+		for (const root of [...files.roots, ...imported]) await moveAside(files, root, modes, true);
+		for (const root of [...files.roots, ...imported]) await place(files, root, modes);
 	};
 
 	return { swapType, undo: journal.undo };

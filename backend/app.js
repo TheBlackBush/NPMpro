@@ -67,6 +67,11 @@ app.use((err, req, res, _) => {
 		payload.error.message_i18n = err.message_i18n;
 	}
 
+	// the checks of a refused CrowdSec save (one line per check, never a key)
+	if (err instanceof errs.ConnectionTestError) {
+		payload.error.checks = err.checks;
+	}
+
 	// on purpose, although the error is not public: the UI shows the certbot or nginx output so a failed certificate
 	// request or config can be fixed (DNS, rate limits, a rejected directive). Only the end, where the cause is.
 	if (err instanceof errs.CommandError) {

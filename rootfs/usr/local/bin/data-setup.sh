@@ -213,12 +213,8 @@ if [ ! -s /data/crowdsec/captcha.html ]; then
 fi
 cp -a /etc/captcha.html.original /data/crowdsec/captcha.html.example
 
-if [ ! -s /data/crowdsec/crowdsec.conf ]; then
-    cp -van /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf
-fi
-cp -a /etc/crowdsec.conf.example /data/crowdsec/crowdsec.conf.example
-# trailing spaces and Windows line endings would silently keep the bouncer off (and break values like API_KEY)
-sed -i "s/[[:space:]]*$//" /data/crowdsec/crowdsec.conf
+# crowdsec.conf is written by the backend from Settings, CrowdSec; the copy of the example went with the old setup
+rm -f /data/crowdsec/crowdsec.conf.example
 
 
 if [ "$DEFAULT_CERT_ID" = "0" ]; then
@@ -316,6 +312,21 @@ if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; th
 # nginx core and module settings (Settings > nginx): the backend writes these files on every save and start; here
 # only when one is missing (first start, upgrade), so nginx starts with the modules the last apply loaded
 nginx-core-files.sh --if-missing /data/npmpro/nginx
+
+# The CrowdSec includes of nginx.conf and of the admin UI, written by the backend from Settings, CrowdSec. Missing only
+# at the first start of this version: a bouncer the old crowdsec.conf turned on stays on until the backend has
+# imported that file, and the admin UI stays checked as before.
+mkdir -p /data/npmpro/nginx
+if [ ! -e /data/npmpro/nginx/crowdsec.conf ]; then
+    if [ -f /data/crowdsec/crowdsec.conf ] && [ ! -L /data/crowdsec/crowdsec.conf ] && tr -d '\r' < /data/crowdsec/crowdsec.conf | grep -iq "^ENABLED *= *true *$"; then
+        echo "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" > /data/npmpro/nginx/crowdsec.conf
+    else
+        echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
+    fi
+fi
+if [ ! -e /data/npmpro/nginx/crowdsec-admin.conf ]; then
+    echo "# the admin UI is checked by CrowdSec (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec-admin.conf
+fi
 
 # http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
 # setting changes

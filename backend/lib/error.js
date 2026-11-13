@@ -68,6 +68,19 @@ const errs = {
 		}
 	},
 
+	// the connection test of a CrowdSec save failed: the answer lists the checks, the UI offers "Save anyway"
+	ConnectionTestError: class extends Error {
+		name = this.constructor.name;
+		public = true;
+		status = 409;
+
+		constructor(checks, options) {
+			super("The connection test failed", options);
+			this.checks = checks;
+			this.message_i18n = "error.crowdsec-test-failed";
+		}
+	},
+
 	AssertionFailedError: class extends Error {
 		name = this.constructor.name;
 		public = false;

@@ -35,6 +35,30 @@ it("allows only the chosen types' files", () => {
 	assert.equal(allowFile(["crowdsec_files"], "files/crowdsec/acquis.yaml"), false);
 });
 
+it("opens, strips and seals both CrowdSec secrets", () => {
+	const rows = {
+		setting: [
+			{ id: "crowdsec", meta: { mode: "live", api_key: box.encrypt("k"), captcha_secret_key: box.encrypt("c") } },
+		],
+	};
+	const { secrets } = TYPES.settings_crowdsec;
+	const opened = secrets.export(rows, box);
+	assert.equal(opened.setting[0].meta.api_key, "k");
+	assert.equal(opened.setting[0].meta.captcha_secret_key, "c");
+	assert.deepEqual(secrets.strip(opened).setting[0].meta, { mode: "live" });
+	const sealed = secrets.seal(opened, otherBox).setting[0].meta;
+	assert.equal(sealed.api_key, 'v1:other:"k"');
+	assert.equal(sealed.captcha_secret_key, 'v1:other:"c"');
+});
+
+it("exports the ban and captcha pages but no longer crowdsec.conf, and still opens older backups that hold it", () => {
+	assert.deepEqual(TYPES.crowdsec_files.files.roots, ["crowdsec/ban.html", "crowdsec/captcha.html"]);
+	assert.equal(allowFile(["crowdsec_files"], "files/crowdsec/crowdsec.conf"), true);
+	assert.equal(TYPES.settings_crowdsec.files.roots.length, 0);
+	assert.equal(CATEGORIES.find((category) => category.id === "settings").types.includes("settings_crowdsec"), true);
+	assert.equal(RESTORE_ORDER.indexOf("settings_crowdsec"), RESTORE_ORDER.indexOf("settings_monitoring") + 1);
+});
+
 it("allows the certificate files and not the live symlinks", () => {
 	const ok = [
 		"tls/certbot/archive/npm-3/privkey1.pem",

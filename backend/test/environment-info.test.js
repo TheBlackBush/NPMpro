@@ -248,6 +248,19 @@ it("leaves the locks of the GoAccess report setting out of the env locked list",
 	assert.deepEqual(settingLocksOf({ monitoring: mergeMonitoringConfig({}, fromSetting).locked }), []);
 });
 
+it("lists the CrowdSec env locks after forward authentication", () => {
+	const locks = settingLocksOf({ crowdsec: ["enabled", "api_key"] });
+	const info = environmentInfo({ NPMPRO_USER_ENV: "" }, [{ group: "advanced", key: "gravatar" }, ...locks]);
+	assert.deepEqual(
+		info.locked_runtime.map(({ group, key, env: name }) => [group, key, name]),
+		[
+			["crowdsec", "enabled", "CROWDSEC_ENABLED"],
+			["crowdsec", "api_key", "CROWDSEC_API_KEY"],
+			["advanced", "gravatar", "DISABLE_GRAVATAR"],
+		],
+	);
+});
+
 it("names the variable of every locked oidc, monitoring and geoip key (locked_by), names only", async () => {
 	const { lockedByOf } = await import("../lib/environment-info.js");
 	assert.deepEqual(lockedByOf("oidc", ["issuer_url", "client_secret"]), {

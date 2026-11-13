@@ -980,6 +980,7 @@
 	"settings.backup.type.dns_credentials": "DNS 자격 증명",
 	"settings.backup.type.proxy_hosts": "프록시 호스트",
 	"settings.backup.type.redirection_hosts": "리다이렉션 호스트",
+	"settings.backup.type.settings_crowdsec": "CrowdSec 설정",
 	"settings.backup.type.settings_default_site": "기본 사이트",
 	"settings.backup.type.settings_monitoring": "모니터링 및 GeoIP",
 	"settings.backup.type.settings_oidc": "OIDC 로그인",

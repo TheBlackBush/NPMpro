@@ -104,6 +104,7 @@
 							"network",
 							"nginx",
 							"forward-auth",
+							"crowdsec",
 							"logs",
 							"monitoring",
 							"geoip",

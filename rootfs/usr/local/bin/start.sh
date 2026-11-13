@@ -163,13 +163,9 @@ if [ -f /data/logrotate.state ] && [ -e /data/nginx/logs/logrotate.state ]; then
 fi
 
 
-if [ -f /data/crowdsec/crowdsec.conf ] && [ ! -L /data/crowdsec/crowdsec.conf ] && grep -iq "^ENABLED *= *true$" /data/crowdsec/crowdsec.conf; then
-    if [ ! -s /usr/local/nginx/conf/conf.d/crowdsec.conf ]; then
-        cp -van /usr/local/nginx/conf/conf.d/crowdsec.conf.disabled /usr/local/nginx/conf/conf.d/crowdsec.conf
-    fi
-else
-    rm -vf /usr/local/nginx/conf/conf.d/crowdsec.conf
-fi
+# the bouncer is switched by /data/npmpro/nginx/crowdsec.conf (Settings, CrowdSec); a copy of the old include in
+# conf.d would load it a second time
+rm -f /usr/local/nginx/conf/conf.d/crowdsec.conf
 
 sed -i "s|#\?listen 0.0.0.0:81 |listen $NPM_IPV4_BINDING:$NPM_PORT |g" /usr/local/nginx/conf/conf.d/npmpro.conf
 

@@ -112,6 +112,7 @@ const createRestore = (
 	const reloadRestoredSettings = async (types) => {
 		if (types.includes("settings_oidc")) await reloadSettings.oidc?.();
 		if (types.includes("settings_monitoring")) await reloadSettings.monitoring?.();
+		if (types.includes("settings_crowdsec") || types.includes("crowdsec_files")) await reloadSettings.crowdsec?.();
 	};
 
 	// the staged files of the chosen types in place; a users restore leaves the admin's picture files alone
