@@ -176,7 +176,8 @@ it("a server level error_page of the host wins: no page error_page lines, no pag
 	assert.deepEqual(wiring.byLocation[0], { not_found: "", upstream_error: "", denied: "", intercept: false });
 	assert.deepEqual(wiring.locations, []);
 	const inLocation = pageWiring("proxy_host", host({ npmpro_location_config: "error_page 502 /x.html;" }));
-	assert.equal(inLocation.host.upstream_error, "upstream-error");
+	// location level text silences that location only; here it is the only one, so nothing is wired
+	assert.equal(inLocation.host.upstream_error, "");
 });
 
 it("disabled locations register no page location", () => {
@@ -202,4 +203,32 @@ it("a custom choice on a host without a valid id falls back to the global page",
 	assert.equal(wiring.locations[0].file, "/data/public/pages/global/upstream-error.html");
 	const list = pageWiring("proxy_host", host({ access_list: { ...LIST, denied_page: "custom", denied_list_id: 0 } }));
 	assert.equal(list.locations.at(-1).file, "/data/public/pages/global/denied.html");
+});
+
+it("an error_page in a location's own config leaves that location alone", () => {
+	const plain = { forward_scheme: "http", npmpro_auth_request: "none" };
+	const wiring = pageWiring(
+		"proxy_host",
+		host({
+			npmpro_location_config: "error_page 502 /mine.html;",
+			locations: [plain, { ...plain, advanced_config: "# error_page 1 /x;\nerror_page 404 /y.html;" }],
+		}),
+	);
+	assert.deepEqual(wiring.host, {
+		not_found: "",
+		upstream_error: "",
+		denied: "",
+		intercept: false,
+		maintenance: "",
+		certificate: "",
+	});
+	assert.equal(wiring.byLocation[0].upstream_error, "upstream-error");
+	assert.equal(wiring.byLocation[0].intercept, true);
+	assert.deepEqual(wiring.byLocation[1], { not_found: "", upstream_error: "", denied: "", intercept: false });
+	assert.deepEqual(
+		wiring.locations.map(({ name }) => name),
+		["upstream-error"],
+	);
+	const none = pageWiring("proxy_host", host({ npmpro_location_config: "error_page 502 /mine.html;" }));
+	assert.deepEqual(none.locations, []);
 });

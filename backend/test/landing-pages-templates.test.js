@@ -176,3 +176,40 @@ it("a host error_page or proxy_intercept_errors of its own is not doubled", asyn
 	const flag = await render(proxyHost({ npmpro_location_config: "proxy_intercept_errors off;" }));
 	assert.equal(flag.match(/proxy_intercept_errors/gu).length, 1);
 });
+
+it("an error_page in location / config or a custom location's config replaces ours there only", async () => {
+	const config = await render(
+		proxyHost({
+			npmpro_location_config: "error_page 502 /mine.html;",
+			locations: [
+				{
+					id: 1,
+					path: "/app",
+					location_type: "",
+					forward_scheme: "http",
+					forward_host: "10.0.0.2",
+					forward_port: 80,
+					npmpro_access_list_type: "public",
+					npmpro_auth_request: "none",
+				},
+				{
+					id: 2,
+					path: "/api",
+					location_type: "",
+					forward_scheme: "http",
+					forward_host: "10.0.0.3",
+					forward_port: 80,
+					npmpro_access_list_type: "public",
+					npmpro_auth_request: "none",
+					advanced_config: "error_page 502 /api.html;",
+				},
+			],
+		}),
+	);
+	const root = locationBlock(config, "/");
+	assert.equal(root.match(/error_page/gu).length, 1);
+	assert.doesNotMatch(root, /proxy_intercept_errors/u);
+	assert.match(locationBlock(config, '"/app"'), /error_page 502 503 504 \/\.npmpro-page\/upstream-error;/u);
+	assert.equal(locationBlock(config, '"/api"').match(/error_page/gu).length, 1);
+	assert.equal(config.match(/location = \/\.npmpro-page\//gu).length, 1);
+});

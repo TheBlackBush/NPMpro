@@ -96,8 +96,8 @@ export const pageWiring = (hostType, host) => {
 		denials += 1;
 		return use(`denied-${denials}`, file);
 	};
-	const pagesOf = (item, accessList, ownIntercept) => {
-		if (ownErrorPage) return NO_PAGES;
+	const pagesOf = (item, accessList, ownIntercept, ownLocationErrorPage) => {
+		if (ownErrorPage || ownLocationErrorPage) return NO_PAGES;
 		const deniedChoice = accessList?.denied_page ?? "global";
 		const denied =
 			refuses(accessList) && !hasForwardAuth(item)
@@ -126,6 +126,7 @@ export const pageWiring = (hostType, host) => {
 		host,
 		host.access_list,
 		hasDirective("proxy_intercept_errors", host.advanced_config, host.npmpro_location_config),
+		hasDirective("error_page", host.npmpro_location_config),
 	);
 	// a disabled location is not rendered (renderLocations), so it registers no page location either
 	const byLocation = (host.locations ?? []).map((location) =>
@@ -135,7 +136,14 @@ export const pageWiring = (hostType, host) => {
 					location,
 					location.access_list,
 					hasDirective("proxy_intercept_errors", host.advanced_config, location.advanced_config),
+					hasDirective("error_page", location.advanced_config),
 				),
 	);
+	// a page location only stays when a location uses it (its error_page lines may all be left out above)
+	const used = new Set([maintenance, certificate]);
+	for (const pages of [own, ...byLocation]) {
+		for (const name of [pages.not_found, pages.upstream_error, pages.denied]) used.add(name);
+	}
+	for (const name of files.keys()) if (!used.has(name)) files.delete(name);
 	return result({ ...own, maintenance, certificate }, byLocation);
 };
