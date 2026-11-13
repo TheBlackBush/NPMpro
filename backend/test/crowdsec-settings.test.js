@@ -149,6 +149,19 @@ it("validates the cross-field rules", () => {
 		),
 		["The TLS client key file /data/crowdsec/c.key does not exist."],
 	);
+	// AppSec authenticates with the API key, also with a TLS client certificate
+	const tlsAppsec = {
+		api_key: "",
+		api_url: "https://lapi:8080",
+		use_tls_auth: true,
+		tls_client_cert: "/data/crowdsec/c.crt",
+		tls_client_key: "/data/crowdsec/c.key",
+	};
+	assert.deepEqual(validateCrowdsec(on({ ...tlsAppsec, appsec_url: "" }), { exists }), []);
+	assert.deepEqual(validateCrowdsec(on({ ...tlsAppsec, appsec_url: "http://a:7422" }), { exists }), [
+		"AppSec uses the API key of the bouncer, also with a TLS client certificate. Enter the API key.",
+	]);
+	assert.deepEqual(validateCrowdsec(on({ ...tlsAppsec, appsec_url: "http://a:7422", api_key: "k" }), { exists }), []);
 	assert.equal(validateCrowdsec(on({ ban_response: "redirect" }), { exists }).length, 1);
 	assert.equal(validateCrowdsec(on({ ban_response: "status" }), { exists }).length, 1);
 	// an empty page path would be written as an empty value and read back as a bare status code

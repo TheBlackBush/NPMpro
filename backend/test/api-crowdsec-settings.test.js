@@ -258,6 +258,25 @@ it("refuses invalid bodies and keeps the settings", async () => {
 	assert.equal(await conf(), previous);
 });
 
+it("refuses AppSec without an API key with TLS authentication, also with force", async () => {
+	const previous = await conf();
+	const body = {
+		enabled: true,
+		api_url: "https://lapi.invalid:8080",
+		use_tls_auth: true,
+		tls_client_cert: "/data/crowdsec/c.crt",
+		tls_client_key: "/data/crowdsec/c.key",
+		appsec_url: "http://appsec.invalid:7422",
+		api_key: null,
+	};
+	for (const force of [false, true]) {
+		const res = await admin.put("/settings/crowdsec", { ...body, force });
+		assert.equal(res.status, 400, res.text);
+		assert.match(res.text, /AppSec uses the API key of the bouncer/u);
+	}
+	assert.equal(await conf(), previous);
+});
+
 it("leaves the admin UI out of CrowdSec", async () => {
 	const res = await admin.put("/settings/crowdsec", { admin_ui_excluded: true });
 	assert.equal(res.status, 200, res.text);

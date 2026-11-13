@@ -260,6 +260,11 @@ export const validateCrowdsec = (values, { exists, readable = exists, parses = (
 	if (values.enabled) {
 		if (values.api_url === "") problems.push("Enter the LAPI URL.");
 		if (!values.use_tls_auth && values.api_key === "") problems.push("Enter the API key of the bouncer.");
+		if (values.use_tls_auth && values.appsec_url !== "" && values.api_key === "") {
+			problems.push(
+				"AppSec uses the API key of the bouncer, also with a TLS client certificate. Enter the API key.",
+			);
+		}
 	}
 	if (values.use_tls_auth && values.enabled) {
 		if (values.api_url !== "" && !values.api_url.startsWith("https://")) {

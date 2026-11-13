@@ -122,3 +122,24 @@ it("keeps the .local warning while the bouncer is off", () => {
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
 	]);
 });
+
+it("warns when AppSec has no API key, also with TLS authentication", () => {
+	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny" });
+	assert.ok(
+		startupWarnings({ values: noKey, checks: ok }).includes(
+			"AppSec has no API key and refuses every request (with deny every request is blocked): enter the key in Settings, CrowdSec",
+		),
+	);
+	const passthrough = startupWarnings({ values: { ...noKey, appsec_failure_action: "passthrough" }, checks: ok });
+	assert.ok(passthrough.some((line) => line.startsWith("AppSec has no API key and refuses every request:")));
+	assert.equal(
+		startupWarnings({ values: on(), checks: ok }).some((line) => line.includes("no API key")),
+		false,
+	);
+	assert.equal(
+		startupWarnings({ values: { ...noKey, appsec_url: "" }, checks: ok }).some((line) =>
+			line.includes("no API key"),
+		),
+		false,
+	);
+});

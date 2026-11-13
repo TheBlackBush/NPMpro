@@ -69,6 +69,11 @@ const startupWarnings = ({
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
+	if (values.appsec_url && !values.api_key) {
+		warnings.push(
+			`AppSec has no API key and refuses every request${values.appsec_failure_action === "deny" ? " (with deny every request is blocked)" : ""}: enter the key in Settings, CrowdSec`,
+		);
+	}
 	for (const file of missingFiles)
 		warnings.push(`${file} is not set, does not exist, cannot be read or is not valid PEM`);
 	for (const file of missingPages) {
