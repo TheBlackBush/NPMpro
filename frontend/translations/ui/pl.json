@@ -428,6 +428,8 @@
 	"landing-pages.group.default.description": "The answer to a request that matches no host: a page, a redirect or no answer at all.",
 	"landing-pages.group.errors": "Errors",
 	"landing-pages.group.errors.description": "When a host cannot answer.",
+	"landing-pages.hint.dead-host": "Shown at every address of this host",
+	"landing-pages.hint.proxy-not-found": "When nothing at this host matches the address",
 	"landing-pages.html": "Your page (HTML)",
 	"landing-pages.html.hint": "One HTML file, at most 1 MB, with its styles and images inside. <!--# echo var=\"remote_addr\" -->, date_gmt, status and host show the visitor's IP, the time, the status code and the host name.",
 	"landing-pages.lead": "What visitors see when NPMpro answers instead of the site. Hosts can choose their own in their window.",

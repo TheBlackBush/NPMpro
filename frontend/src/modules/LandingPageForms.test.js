@@ -6,6 +6,7 @@ import {
 	landingValidate,
 	landingValues,
 	MAX_PAGE_BYTES,
+	PAGE_GROUPS,
 	PAGE_TYPES,
 	pageHtmlError,
 	placeDefaults,
@@ -124,4 +125,9 @@ it("Settings: values, validation, and a payload of what changed only", () => {
 	second.pages.ban.html = "<p>again</p>";
 	assert.deepEqual(landingPayload(second, saved), { pages: { ban: { choice: "custom", html: "<p>again</p>" } } });
 	assert.deepEqual(landingValues({ defaultSite: DATA.defaultSite }).pages.ban, { choice: "npmpro", html: "" });
+});
+
+it("PAGE_GROUPS lists every page type exactly once", () => {
+	const listed = PAGE_GROUPS.flatMap((group) => group.keys).sort();
+	assert.deepEqual(listed, PAGE_TYPES.map((page) => page.key).sort());
 });

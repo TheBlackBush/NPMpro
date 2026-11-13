@@ -67,6 +67,7 @@ export const PLACE_FIELDS = Object.freeze({
 			default: "upstream",
 			labelId: "landing-pages.type.not-found",
 			codes: ["404"],
+			hintId: "landing-pages.hint.proxy-not-found",
 		},
 		{
 			name: "npmproPageUpstream",
@@ -95,6 +96,7 @@ export const PLACE_FIELDS = Object.freeze({
 			default: "global",
 			labelId: "landing-pages.field.page",
 			codes: ["404"],
+			hintId: "landing-pages.hint.dead-host",
 		},
 	],
 	accessList: [
