@@ -1,6 +1,8 @@
 // The eight built-in landing pages (Settings, Landing pages). build.js renders each with page-template.html and the
 // texts of texts/<code>.json into rootfs/usr/local/nginx/html/npmpro/<file>. status: the code line shows the status
-// nginx answers with (SSI), with this value as its default; null shows no code. chips: the visitor's IP and the time.
+// nginx answers with (SSI), with this value as its default; null shows no code. fixedStatus: the code line shows status
+// as written, without SSI (nginx answers an error_page 495 with 400, so $status would show 400). chips: the visitor's
+// IP and the time.
 // footer: the key of the line under the card.
 
 export const TONES = {
@@ -103,6 +105,7 @@ export const PAGES = [
 		tone: "amber",
 		icon: "triangleAlert",
 		status: 495,
+		fixedStatus: true,
 		chips: false,
 		footer: "npmpro",
 		captcha: false,

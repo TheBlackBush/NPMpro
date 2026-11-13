@@ -21,7 +21,7 @@
 	"certificate.text": "O certificado de segurança deste site não pôde ser renovado ou não existe, por isso não é possível aceder-lhe em segurança neste momento. O proprietário do site tem de o renovar.",
 	"certificate.witty": "O nosso cadeado está na oficina.",
 	"default_site.title": "O NPMpro está a funcionar",
-	"default_site.text": "Este endereço aponta para um servidor NPMpro, mas ainda não há nenhum site configurado para ele. Se for o proprietário, adicione um anfitrião na interface de administração.",
+	"default_site.text": "Este endereço aponta para um servidor NPMpro, mas ainda não há nenhum site configurado para ele. Se for o proprietário, adicione um host na interface de administração.",
 	"default_site.witty": "Um novo começo, à espera do primeiro site.",
 	"footer.npmpro": "Servido por NPMpro",
 	"footer.crowdsec": "Protegido por CrowdSec"

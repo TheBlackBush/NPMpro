@@ -54,7 +54,7 @@ it("every language has every text of every page, and no em dash", () => {
 			for (const key of ["title", "text", "witty"]) {
 				const text = texts[code][`${page.id}.${key}`];
 				assert.ok(typeof text === "string" && text.trim() !== "", `${code}: ${page.id}.${key}`);
-				assert.ok(!text.includes("—"), `${code}: ${page.id}.${key} has an em dash`);
+				assert.ok(!text.includes("\u2014"), `${code}: ${page.id}.${key} has an em dash`);
 			}
 		}
 		for (const key of ["footer.npmpro", "footer.crowdsec"]) assert.ok(texts[code][key], `${code}: ${key}`);
@@ -105,7 +105,9 @@ it("SSI values: allowed commands only, filled by the preview fill, chips on four
 		const filled = fillPlaceholders(html, { remote_addr: "203.0.113.7", status: 418, host: "example.com" });
 		assert.ok(!filled.includes("<!--#"), page.file);
 		assert.equal(filled.includes("IP 203.0.113.7"), page.chips, page.file);
-		assert.equal(filled.includes('<div class="code">418</div>'), page.status !== null, page.file);
+		const code = page.fixedStatus ? page.status : 418;
+		assert.equal(filled.includes(`<div class="code">${code}</div>`), page.status !== null, page.file);
+		assert.equal(html.includes('<!--# echo var="status"'), page.status !== null && !page.fixedStatus, page.file);
 		if (page.chips) assert.equal(runScript(html, ["en"]).time.textContent.endsWith(" UTC"), true);
 	}
 });

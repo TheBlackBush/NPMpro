@@ -56,10 +56,11 @@ const textsOf = (page, texts) =>
 		}),
 	);
 
-const codeLine = (page) =>
-	page.status === null
-		? '<div class="gap"></div>'
-		: `<div class="code"><!--# echo var="status" default="${page.status}" --></div>`;
+const codeLine = (page) => {
+	if (page.status === null) return '<div class="gap"></div>';
+	if (page.fixedStatus) return `<div class="code">${page.status}</div>`;
+	return `<div class="code"><!--# echo var="status" default="${page.status}" --></div>`;
+};
 
 /**
  * @param   {Object} page   an entry of PAGES

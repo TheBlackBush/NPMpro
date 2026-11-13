@@ -22,7 +22,7 @@
 	"certificate.witty": "Наш замок у ремонті.",
 	"default_site.title": "NPMpro працює",
 	"default_site.text": "Ця адреса вказує на сервер NPMpro, але для неї ще не налаштовано жодного сайту. Якщо ви власник, додайте хост в інтерфейсі адміністратора.",
-	"default_site.witty": "Новий початок у чеканні на перший сайт.",
+	"default_site.witty": "Новий початок, що чекає на свій перший сайт.",
 	"footer.npmpro": "Працює на NPMpro",
 	"footer.crowdsec": "Захищено CrowdSec"
 }
