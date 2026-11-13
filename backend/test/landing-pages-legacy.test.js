@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { after, before, it } from "node:test";
-import { importLegacyPage, legacyPagePaths } from "../lib/landing-pages/legacy.js";
+import { importLegacyPage, importLegacyPages, legacyPagePaths, readLegacyPage } from "../lib/landing-pages/legacy.js";
 
 let dir;
 const logs = [];
@@ -18,7 +18,14 @@ after(() => rm(dir, { recursive: true, force: true }));
 
 // the files of the test, at their own paths: the import gets the full paths through `at`
 const at = (name) => path.join(dir, name);
-const deps = { log, at: (file) => file, stockOf: () => at("stock.html") };
+const deps = {
+	log,
+	at: (file) => file,
+	get root() {
+		return dir;
+	},
+	stockOf: () => at("stock.html"),
+};
 
 it("reads the old paths: the item 30 row, else crowdsec.conf, else the defaults; only files under /data/", () => {
 	assert.deepEqual(legacyPagePaths({ stored: null, lines: {} }), {
@@ -73,4 +80,44 @@ it("a page the checks refuse is kept as a file and named in the log; a link and 
 	assert.deepEqual(await importLegacyPage("ban", at("link.html"), deps), { choice: "npmpro", html: "" });
 	assert.ok((await stat(at("link.html"))).isFile());
 	assert.deepEqual(await importLegacyPage("ban", at("nothing.html"), deps), { choice: "npmpro", html: "" });
+});
+
+it("a file that is not a page is left where it is and logged by its path only", async () => {
+	logs.length = 0;
+	await writeFile(at("cert.pem"), "SECRET-CONTENT");
+	assert.deepEqual(await importLegacyPage("ban", at("cert.pem"), deps), { choice: "npmpro", html: "" });
+	assert.equal(await readFile(at("cert.pem"), "utf8"), "SECRET-CONTENT");
+	await writeFile(at("big.html"), "a".repeat(1024 * 1024 + 1));
+	await importLegacyPage("ban", at("big.html"), deps);
+	assert.ok((await stat(at("big.html"))).isFile());
+	const outside = await mkdtemp(path.join(os.tmpdir(), "legacy-outside-"));
+	await writeFile(path.join(outside, "x.html"), "<p>x</p>");
+	await symlink(outside, at("folder-link"));
+	await importLegacyPage("ban", at("folder-link/x.html"), deps);
+	assert.ok((await stat(path.join(outside, "x.html"))).isFile());
+	await rm(outside, { recursive: true, force: true });
+	assert.ok(logs.every(([, text]) => !text.includes("SECRET-CONTENT")));
+	assert.ok(logs.filter(([level]) => level === "warn").length >= 3);
+});
+
+it("reading changes nothing, the move happens in finish() after the row is saved", async () => {
+	await writeFile(at("keep.html"), "<p>mine</p>");
+	const { page, finish } = await readLegacyPage("ban", at("keep.html"), deps);
+	assert.deepEqual(page, { choice: "custom", html: "<p>mine</p>" });
+	assert.ok((await stat(at("keep.html"))).isFile());
+	await finish();
+	await assert.rejects(stat(at("keep.html")));
+	assert.equal(await readFile(at("keep.html.before-pages"), "utf8"), "<p>mine</p>");
+	assert.ok(logs.some(([, text]) => text.includes("keep.html.before-pages")));
+});
+
+it("importLegacyPages saves the row before it moves any file", async () => {
+	const order = [];
+	await importLegacyPages({
+		log,
+		save: async () => order.push("save"),
+		readCrowdsec: async () => ({}),
+		fs: { lstat: async () => null, readFile: async () => "" },
+	});
+	assert.deepEqual(order, ["save"]);
 });

@@ -3,7 +3,7 @@ import nodeFs from "node:fs/promises";
 import path from "node:path";
 import { CROWDSEC_CONF_PATH, parseConfLines } from "../crowdsec/config.js";
 import { rooted } from "../paths.js";
-import { pageHtmlProblems } from "./html.js";
+import { MAX_PAGE_BYTES, pageHtmlProblems } from "./html.js";
 
 // The ban and captcha pages from before Landing pages: the bouncer read them from BAN_TEMPLATE_PATH and
 // CAPTCHA_TEMPLATE_PATH (default /data/crowdsec/ban.html and captcha.html, copies of the image's stock pages). Once,
@@ -59,57 +59,101 @@ const freeName = async (fs, full) => {
 	}
 };
 
+const PAGE_EXTENSION = /\.html?$/iu;
+
+// the file when it is a page: .html or .htm, a regular file (never a link), its real path (symlinked folders
+// resolved) under the data folder, within the page size limit; null otherwise (the file is not touched)
+const pageFileInfo = async (fs, full, root) => {
+	if (!PAGE_EXTENSION.test(full)) return null;
+	const info = await fs.lstat(full).catch(() => null);
+	if (!info?.isFile() || info.size > MAX_PAGE_BYTES) return null;
+	const [real, base] = await Promise.all([fs.realpath(full).catch(() => null), fs.realpath(root).catch(() => null)]);
+	if (real === null || base === null || !real.startsWith(`${base}${path.sep}`)) return null;
+	return info;
+};
+
 /**
+ * Reads the old page without changing anything. finish() then moves the file: nothing is moved before the caller has
+ * saved the result.
+ *
  * @param   {"ban"|"captcha"} type
  * @param   {string} file  container path
  * @param   {Object} [deps]
  * @param   {Object} [deps.fs]
  * @param   {Object} deps.log
  * @param   {Function} [deps.at]       (container path) => real path, rooted by default
+ * @param   {string}   [deps.root]     real path of the data folder
  * @param   {Function} [deps.stockOf]  (type) => container path of the stock page
- * @returns {Promise<{ choice: string, html: string }>}
+ * @returns {Promise<{ page: { choice: string, html: string }, finish: Function }>}
  */
-export const importLegacyPage = async (
+export const readLegacyPage = async (
 	type,
 	file,
-	{ fs = nodeFs, log, at = rooted, stockOf = (name) => LEGACY_PAGES[name].stock } = {},
+	{ fs = nodeFs, log, at = rooted, root = at("/data"), stockOf = (name) => LEGACY_PAGES[name].stock } = {},
 ) => {
+	const skipped = { page: NPMPRO, finish: async () => {} };
 	const full = at(file);
-	const info = await fs.lstat(full).catch(() => null);
-	// missing, a folder or a link (never followed)
-	if (!info?.isFile()) return NPMPRO;
+	const exists = await fs.lstat(full).catch(() => null);
+	// missing, a folder or a link (never followed): nothing to import
+	if (!exists?.isFile()) return skipped;
+	if (!(await pageFileInfo(fs, full, root))) {
+		log.warn(
+			`Landing pages: ${file} is not a page file (.html or .htm under /data/, up to 1 MiB), it is left as it is`,
+		);
+		return skipped;
+	}
 	const html = await fs.readFile(full, "utf8");
 	const stock = await fs.readFile(at(stockOf(type)), "utf8").catch(() => null);
 	if (stock !== null && sha256(stock) === sha256(html)) {
-		await fs.rm(full, { force: true });
-		log.info(`Landing pages: ${file} was the stock ${type} page, the NPMpro page takes its place`);
-		return NPMPRO;
+		return {
+			page: NPMPRO,
+			finish: async () => {
+				await fs.rm(full, { force: true });
+				log.info(
+					`Landing pages: ${file} was the stock ${type} page, it is removed, the NPMpro page takes its place`,
+				);
+			},
+		};
 	}
-	const kept = await freeName(fs, full);
-	await fs.rename(full, kept);
-	const shown = kept.slice(full.length - file.length);
 	const problems = pageHtmlProblems(html);
-	if (problems.length > 0) {
-		log.warn(
-			`Landing pages: ${file} could not become the custom ${type} page (${problems.join(" ")}); it is kept as ${shown} and the NPMpro page is shown`,
-		);
-		return NPMPRO;
-	}
-	log.info(
-		`Landing pages: ${file} is now the custom ${type} page (Settings, Landing pages), the file is kept as ${shown}`,
-	);
-	return { choice: "custom", html };
+	return {
+		page: problems.length > 0 ? NPMPRO : { choice: "custom", html },
+		finish: async () => {
+			const kept = await freeName(fs, full);
+			await fs.rename(full, kept);
+			const shown = kept.slice(full.length - file.length);
+			if (problems.length > 0) {
+				log.warn(
+					`Landing pages: ${file} could not become the custom ${type} page (${problems.join(" ")}); it is kept as ${shown} and the NPMpro page is shown`,
+				);
+				return;
+			}
+			log.info(
+				`Landing pages: ${file} is now the custom ${type} page (Settings, Landing pages), the file is kept as ${shown}`,
+			);
+		},
+	};
+};
+
+/** readLegacyPage and finish in one step */
+export const importLegacyPage = async (type, file, deps) => {
+	const { page, finish } = await readLegacyPage(type, file, deps);
+	await finish();
+	return page;
 };
 
 /**
- * The one import at the first start: the old paths from the item 30 row or the old crowdsec.conf
+ * The one import at the first start: the old paths from the item 30 row or the old crowdsec.conf. The pages are read
+ * first, save(meta) stores the row, and only then the old files are removed or renamed to .before-pages.
  *
  * @param   {Object} deps
- * @returns {Promise<{ pages: Object, imported_on: string }>}  the meta of a new landing_pages row
+ * @param   {Function} deps.save  async (meta) => void
+ * @returns {Promise<{ pages: Object, imported_on: string }>}  the meta of the new landing_pages row
  */
 export const importLegacyPages = async ({
 	fs = nodeFs,
 	log,
+	save = async () => {},
 	readCrowdsec = readStoredCrowdsec,
 	now = () => new Date(),
 }) => {
@@ -118,6 +162,14 @@ export const importLegacyPages = async ({
 	const lines = hasRow ? null : parseConfLines(await fs.readFile(rooted(CROWDSEC_CONF_PATH), "utf8").catch(() => ""));
 	const paths = legacyPagePaths({ stored: hasRow ? stored : null, lines });
 	const pages = {};
-	for (const type of Object.keys(LEGACY_PAGES)) pages[type] = await importLegacyPage(type, paths[type], { fs, log });
-	return { pages, imported_on: now().toISOString() };
+	const finishes = [];
+	for (const type of Object.keys(LEGACY_PAGES)) {
+		const read = await readLegacyPage(type, paths[type], { fs, log });
+		pages[type] = read.page;
+		finishes.push(read.finish);
+	}
+	const meta = { pages, imported_on: now().toISOString() };
+	await save(meta);
+	for (const finish of finishes) await finish();
+	return meta;
 };

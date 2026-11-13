@@ -115,36 +115,42 @@ const internalLandingPages = {
 					throw new errs.ValidationError(`pages.${type}.html is required for a custom page`);
 				}
 			}
-			const existingSite = await readDefaultSite();
+			const existingSite = (await readDefaultSite()) ?? {
+				id: DEFAULT_SITE_ID,
+				value: "congratulations",
+				meta: {},
+			};
 			await writeGlobalPages(after, async () => {
-				if (site) {
-					const next = { ...existingSite, value: site.value, meta: site.meta ?? existingSite.meta };
-					await applyDefaultSite(internalNginx, next, existingSite, {
-						writeHtml: (html) =>
-							writeFile(rooted("/data/public/html/index.html"), html, { encoding: "utf8" }),
-						save: () =>
-							settingModel
-								.query()
-								.where({ id: DEFAULT_SITE_ID })
-								.patch({ value: next.value, meta: next.meta }),
-					});
-				} else {
-					try {
-						await internalNginx.test();
-					} catch (err) {
-						throw new errs.ValidationError(err.message || "nginx config test failed", undefined, {
-							cause: err,
-						});
-					}
-				}
+				// the row first, then one test and one reload (the default site's own apply reloads); a failure puts the
+				// row back, the files are put back by writeGlobalPages and the default site by applyDefaultSite
 				await saveStoredLandingPages(nextStored);
 				try {
-					await internalNginx.reload();
+					if (site) {
+						const next = { ...existingSite, value: site.value, meta: site.meta ?? existingSite.meta };
+						await applyDefaultSite(internalNginx, next, existingSite, {
+							writeHtml: (html) =>
+								writeFile(rooted("/data/public/html/index.html"), html, { encoding: "utf8" }),
+							save: () =>
+								settingModel
+									.query()
+									.where({ id: DEFAULT_SITE_ID })
+									.patch({ value: next.value, meta: next.meta }),
+						});
+					} else {
+						try {
+							await internalNginx.test();
+							await internalNginx.reload();
+						} catch (err) {
+							throw new errs.ValidationError(err.message || "nginx config test failed", undefined, {
+								cause: err,
+							});
+						}
+					}
 				} catch (err) {
 					await saveStoredLandingPages(stored).catch((restoreErr) =>
 						logger.error(`Landing pages: the settings could not be put back: ${restoreErr.message}`),
 					);
-					throw new errs.ValidationError(err.message || "nginx reload failed", undefined, { cause: err });
+					throw err;
 				}
 			});
 			return [...changedPageTypes(before, after), ...(site ? ["default_site"] : [])];
@@ -169,12 +175,13 @@ const startLandingPages = async ({ log = logger } = {}) => {
 	try {
 		let stored = await readStoredLandingPages();
 		if (stored === null) {
-			stored = await importLegacyPages({ log });
-			await saveStoredLandingPages(stored);
+			stored = await importLegacyPages({ log, save: saveStoredLandingPages });
 		}
 		await runtimeExclusive(() => writeGlobalPages(effectivePages(stored)));
 	} catch (err) {
-		log.error(`Landing pages: could not write the global pages at startup: ${err.message}`);
+		log.error(
+			`Landing pages: could not write the global pages at startup, the CrowdSec ban and captcha pages are unavailable until the files are written (the bouncer turns captcha off): ${err.message}`,
+		);
 	}
 };
 
