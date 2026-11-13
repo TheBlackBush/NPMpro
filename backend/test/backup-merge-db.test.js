@@ -522,6 +522,30 @@ it("replaces a user in place with the backup's auth rows and a fresh token time;
 	}
 });
 
+it("takes the landing pages row with a crafted page as the NPMpro page", async () => {
+	const knex = await open();
+	try {
+		const meta = {
+			pages: {
+				ban: { choice: "custom", html: '<!--# include virtual="/" -->' },
+				captcha: { choice: "custom", html: "<p>c</p>" },
+			},
+		};
+		const data = { settings_landing_pages: { setting: [{ id: "landing_pages", name: "Landing pages", meta }] } };
+		const { result } = await merge(knex, {
+			data,
+			types: ["settings_landing_pages"],
+			choices: { "setting:landing_pages": "take" },
+		});
+		const row = await knex("setting").where({ id: "landing_pages" }).first();
+		assert.deepEqual(json(row.meta).pages.ban, { choice: "npmpro", html: "" });
+		assert.deepEqual(json(row.meta).pages.captcha, { choice: "custom", html: "<p>c</p>" });
+		assert.deepEqual(result.counts, { settings_landing_pages: 1 });
+	} finally {
+		await knex.destroy();
+	}
+});
+
 it("takes an oidc setting without secrets and keeps the instance client secret", async () => {
 	const knex = await open();
 	await knex("setting").insert({

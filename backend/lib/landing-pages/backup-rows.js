@@ -1,6 +1,6 @@
 import { pageHtmlProblems } from "./html.js";
 import { LANDING_ID } from "./store.js";
-import { PLACES } from "./types.js";
+import { PAGE_TYPES, PLACES } from "./types.js";
 
 // A restore or merge brings page HTML in from a backup file: every page passes the checks of the API (pageHtmlProblems)
 // before its row is written. A page that fails is not kept: its place falls back to the global page (a custom choice
@@ -21,7 +21,16 @@ const parseMeta = (meta) => {
 	}
 };
 
-const checked = (html) => typeof html === "string" && html !== "" && pageHtmlProblems(html).length > 0;
+// null, a missing value and "" are "no custom page"; any other value that is not a page the API accepts fails
+const checked = (html) => {
+	if (html === null || html === undefined || html === "") return false;
+	return typeof html !== "string" || pageHtmlProblems(html).length > 0;
+};
+
+// what a log line may name of a backup's data: a positive integer id and keys from the known lists, never other text
+const idOf = (id) =>
+	Number.isSafeInteger(Number(id)) && Number(id) >= 1 && /^[0-9]+$/u.test(String(id)) ? String(id) : "invalid id";
+const keyOf = (key, known) => (known.includes(key) ? key : "unknown");
 
 const placeRow = (kind, table, row, log) => {
 	let out = row;
@@ -29,7 +38,7 @@ const placeRow = (kind, table, row, log) => {
 		const key = `${field.column}_html`;
 		if (!checked(row[key])) continue;
 		log.warn(
-			`Backup: ${table} #${row.id} ${key} is not a valid page, it is not restored (the global page is shown)`,
+			`Backup: ${table} #${idOf(row.id)} ${key} is not a valid page, it is not restored (the global page is shown)`,
 		);
 		out = { ...out, [key]: null };
 	}
@@ -44,7 +53,9 @@ const settingRow = (row, log) => {
 	const pages = Object.fromEntries(
 		Object.entries(meta.pages).map(([type, page]) => {
 			if (!checked(page?.html)) return [type, page];
-			log.warn(`Backup: setting ${LANDING_ID} pages.${type}.html is not a valid page, it is not restored`);
+			log.warn(
+				`Backup: setting ${LANDING_ID} pages.${keyOf(type, PAGE_TYPES)}.html is not a valid page, it is not restored`,
+			);
 			changed = true;
 			return [type, { ...page, choice: "npmpro", html: "" }];
 		}),
