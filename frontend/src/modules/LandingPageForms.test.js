@@ -72,6 +72,8 @@ it("place defaults and errors: a custom choice needs a valid page", () => {
 	assert.deepEqual(placeErrors(rules, "deadHost", { npmproPage: "global", npmproPageHtml: "" }), {});
 	assert.equal(choiceLabelId({ api: "not_found" }, "upstream"), "landing-pages.choice.upstream-site");
 	assert.equal(choiceLabelId({ api: "upstream_error" }, "upstream"), "landing-pages.choice.upstream-error");
+	assert.equal(choiceLabelId({ api: "denied" }, "npmpro"), "landing-pages.choice.npmpro.denied");
+	assert.equal(choiceLabelId({ api: "captcha" }, "custom"), "landing-pages.choice.custom");
 	assert.equal(choiceLabelId({ api: "denied" }, "plain"), "landing-pages.choice.plain");
 });
 

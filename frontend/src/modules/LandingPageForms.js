@@ -121,6 +121,7 @@ export const choiceLabelId = (field, choice) => {
 	if (choice === "upstream") {
 		return field.api === "not_found" ? "landing-pages.choice.upstream-site" : "landing-pages.choice.upstream-error";
 	}
+	if (choice === "npmpro") return `landing-pages.choice.npmpro.${field.api}`;
 	return `landing-pages.choice.${choice}`;
 };
 

@@ -28,4 +28,4 @@ More in the wiki: Host options.
 
 ### Denied page
 
-**Denied page (401, 403)** is what a visitor sees when the list refuses them (not on hosts with forward authentication): **Global setting** (the page of Settings, Landing pages), the **NPMpro page**, a **Custom page** for this list only (paste or upload one HTML file), or **nginx's plain page**, which keeps nginx's own.
+**Denied page (401, 403)** is what a visitor sees when the list refuses them (not on hosts with forward authentication): **Global setting** (the page of Settings, Landing pages), the **Access denied page**, a **Custom page** for this list only (paste or upload one HTML file), or **nginx's plain page**, which keeps nginx's own.
