@@ -74,9 +74,11 @@ const errs = {
 		public = true;
 		status = 409;
 
-		constructor(checks, options) {
+		constructor(checks, options, forceBlocked) {
 			super("The connection test failed", options);
 			this.checks = checks;
+			// set when forcing the save is not possible (it would lock the admin UI out too)
+			this.forceBlocked = forceBlocked;
 			this.message_i18n = "error.crowdsec-test-failed";
 		}
 	},

@@ -250,9 +250,17 @@ const internalCrowdsecSetting = {
 		};
 		// the connection test (up to 5 s) runs before the queue, so it does not hold the other runtime changes
 		const tested = await plan();
-		if (tested.after.values.enabled && !force) {
-			const result = await testConnection(tested.after.values, { timeoutMs: TEST_TIMEOUT_MS });
-			if (!result.ok) throw new errs.ConnectionTestError(result.checks);
+		const values = tested.after.values;
+		// AppSec answers 401 to a wrong key and with "deny" every request is refused, the admin UI included: saving
+		// that is never allowed, not even forced
+		const lockoutRisk =
+			values.appsec_url !== "" && values.appsec_failure_action === "deny" && !values.admin_ui_excluded;
+		if (values.enabled && (!force || lockoutRisk)) {
+			const result = await testConnection(values, { timeoutMs: TEST_TIMEOUT_MS });
+			const blocked = lockoutRisk && result.checks.some((item) => item.name === "appsec" && item.result !== "ok");
+			if (blocked || (!result.ok && !force)) {
+				throw new errs.ConnectionTestError(result.checks, undefined, blocked ? "appsec_deny_admin" : undefined);
+			}
 		}
 		const { before, after } = await applyCrowdsec(plan);
 		await internalAuditLog.add(access, {

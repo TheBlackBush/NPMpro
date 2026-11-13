@@ -70,6 +70,7 @@ app.use((err, req, res, _) => {
 	// the checks of a refused CrowdSec save (one line per check, never a key)
 	if (err instanceof errs.ConnectionTestError) {
 		payload.error.checks = err.checks;
+		if (err.forceBlocked) payload.error.force_blocked = err.forceBlocked;
 	}
 
 	// on purpose, although the error is not public: the UI shows the certbot or nginx output so a failed certificate
