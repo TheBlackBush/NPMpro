@@ -67,4 +67,15 @@ it("npmpro_pages.lua knows the same variables and default timefmt", () => {
 			'require("npmpro_pages").wrap(require "plugins.crowdsec.ban", require "plugins.crowdsec.captcha")',
 		),
 	);
+	assert.ok(conf.includes("pcall(function()"), "the wrap call is guarded");
+	assert.ok(lua.includes("pcall(M.fill"), "the fill is guarded");
+	const dockerfile = readFileSync(new URL("../../Dockerfile", import.meta.url), "utf8");
+	for (const file of ["ban", "captcha"]) {
+		assert.match(
+			dockerfile,
+			new RegExp(`"[0-9a-f]{64}" /src/lua-cs-bouncer/lib/plugins/crowdsec/${file}\\.lua`, "u"),
+			file,
+		);
+	}
+	assert.ok(dockerfile.includes("| sha256sum -c"));
 });

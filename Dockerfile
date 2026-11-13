@@ -264,6 +264,9 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     make -j "$(nproc)" install LUA_LIB_DIR=/usr/local/share/lua/5.1 && \
     \
     sh /tmp/git-clone-commit.sh https://github.com/crowdsecurity/lua-cs-bouncer "$LCSB_VER" /src/lua-cs-bouncer && \
+    # npmpro_pages.lua mirrors ban.apply and captcha.apply of these two files: on a hash mismatch (new LCSB_VER) compare
+    # them with the copy, then update the hashes
+    printf "%s  %s\n" "46635660fbab6a53854a3d08f8384b5dbeaae08cffefadbcb48f10473b552e5e" /src/lua-cs-bouncer/lib/plugins/crowdsec/ban.lua "c9ed3881c7f58d75306840b86c6b24687faf341cdfce48293cbf7d39e713c370" /src/lua-cs-bouncer/lib/plugins/crowdsec/captcha.lua | sha256sum -c && \
     mv /src/lua-cs-bouncer/lib/* /usr/local/share/lua/5.1 && \
     mv /src/lua-cs-bouncer/templates/captcha.html /etc/captcha.html.original && \
     mv /src/lua-cs-bouncer/templates/ban.html /etc/ban.html.original && \

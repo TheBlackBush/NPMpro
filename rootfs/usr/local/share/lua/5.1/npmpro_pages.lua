@@ -49,32 +49,52 @@ function M.fill(html, status)
   end))
 end
 
+-- The page filled, or nil with the error logged: the caller then falls back to the bouncer's own answer.
+local function filled(html, status)
+  if type(html) ~= "string" then
+    ngx.log(ngx.ERR, "[NPMpro pages] the page is not a string, using the bouncer's own answer")
+    return nil
+  end
+  local ok, page = pcall(M.fill, html, status)
+  if not ok then
+    ngx.log(ngx.ERR, "[NPMpro pages] filling the page failed, using the bouncer's own answer: ", tostring(page))
+    return nil
+  end
+  return page
+end
+
 -- The bouncer's own ban.apply and captcha.apply (lib/plugins/crowdsec/ban.lua and captcha.lua at LCSB_VER), with the
--- page filled. Compare them with the new upstream files when LCSB_VER changes.
+-- page filled. Compare them with the new upstream files when LCSB_VER changes (the Dockerfile checks their hashes).
+-- When the fill fails, the original function answers with the unfilled page.
 function M.wrap(ban, captcha)
+  local ban_apply, captcha_apply = ban.apply, captcha.apply
   ban.apply = function(ret_code)
     local status = ret_code or ban.ret_code
-    if ban.redirect_location ~= "" then
-      ngx.redirect(ban.redirect_location)
-      return
+    if ban.redirect_location ~= "" or ban.template_str == "" then
+      return ban_apply(ret_code)
     end
-    if ban.template_str ~= "" then
-      ngx.header.content_type = "text/html"
-      ngx.header.cache_control = "no-cache"
-      ngx.status = status
-      ngx.say(M.fill(ban.template_str, status))
-      ngx.exit(status)
-      return
+    local page = filled(ban.template_str, status)
+    if page == nil then
+      return ban_apply(ret_code)
     end
+    ngx.header.content_type = "text/html"
+    ngx.header.cache_control = "no-cache"
+    ngx.status = status
+    ngx.say(page)
     ngx.exit(status)
   end
   captcha.apply = function()
+    local page = filled(captcha.Template, captcha.ret_code)
+    if page == nil then
+      return captcha_apply()
+    end
     ngx.header.content_type = "text/html"
     ngx.header.cache_control = "no-cache"
     ngx.status = captcha.ret_code
-    ngx.say(M.fill(captcha.Template, captcha.ret_code))
+    ngx.say(page)
     ngx.exit(captcha.ret_code)
   end
+  ngx.log(ngx.INFO, "[NPMpro pages] the ban and captcha pages are filled")
 end
 
 return M
