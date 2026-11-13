@@ -425,7 +425,7 @@
 	"landing-pages.group.access": "Access and security",
 	"landing-pages.group.access.description": "When a visitor is turned away.",
 	"landing-pages.group.default": "Default site",
-	"landing-pages.group.default.description": "What visitors see at an address no host is set up for.",
+	"landing-pages.group.default.description": "The answer to a request that matches no host: a page, a redirect or no answer at all.",
 	"landing-pages.group.errors": "Errors",
 	"landing-pages.group.errors.description": "When a host cannot answer.",
 	"landing-pages.html": "Your page (HTML)",
