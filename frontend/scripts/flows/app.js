@@ -94,6 +94,16 @@ async function landingPagesSettings({ admin }) {
 	const before = await api("GET", "/settings/landing-pages");
 	try {
 		await page.goto("/settings/landing-pages");
+		// an untouched custom box left and the row set back: no error stays behind to block Save
+		await page.locator("#landing-ban").click();
+		await page.getByRole("option", { name: "Custom page", exact: true }).click();
+		await page.locator("#landing-ban-html").click();
+		await page.getByRole("heading", { name: "Landing pages" }).first().click();
+		await page.locator("#landing-ban").click();
+		await page.getByRole("option", { name: "Access blocked page", exact: true }).click();
+		if (await page.getByText("Fix before saving").count()) {
+			throw new Error("leaving Custom page kept the HTML field's error");
+		}
 		await page.locator("#landing-maintenance").click();
 		await page.getByRole("option", { name: "Custom page", exact: true }).click();
 		await page.locator("#landing-maintenance-html").fill(MAINTENANCE_PAGE);

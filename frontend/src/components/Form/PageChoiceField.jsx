@@ -164,6 +164,12 @@ function PageChoiceField({
 	const choice = useWatch({ name });
 	const saved = useSavedValue(name);
 	const readOnly = useReadOnly();
+	const { clearErrors } = useFormContext();
+	// the form re-checks only the field that changed: leaving "Custom page" drops the hidden HTML field's error, or a
+	// stale "required" would block Save
+	const onChoice = (event) => {
+		if (event.target.value !== "custom") clearErrors(htmlName);
+	};
 	return (
 		<PageLine
 			id={id}
@@ -177,6 +183,7 @@ function PageChoiceField({
 					label={<span className="sr-only">{title}</span>}
 					describedBy={hint ? `${id}-description` : undefined}
 					className="mb-0 gap-0"
+					registerOptions={{ onChange: onChoice }}
 				>
 					{choices.map((value) => (
 						<option key={value} value={value}>
