@@ -1,19 +1,19 @@
-## Landing pages
+## Landingspagina's
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+De pagina's die bezoekers zien in plaats van een site: wanneer voor een adres niets is ingesteld, een pagina niet wordt gevonden, de server achter een host niet antwoordt, een toegangslijst hen weigert, een host in onderhoud is, een certificaat ontbreekt, of CrowdSec hen blokkeert of controleert. Elke pagina verschijnt in de browsertaal van de bezoeker, in licht en donker.
 
-### Default page
+### Standaardpagina
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+Wat een adres zonder host toont: de **Felicitatiepagina**, de **404-pagina**, **Geen respons (444)**, een **Omleiden** of uw eigen **Aangepaste HTML**.
 
-### Global pages
+### Globale pagina's
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+Voor elke pagina: haar NPMpro-pagina (bijvoorbeeld **Pagina niet gevonden** of **Pagina ‘Toegang geweigerd’**) of een **Aangepaste pagina**. Een aangepaste pagina is één HTML-bestand (maximaal 1 MB, UTF-8) met de stijlen en afbeeldingen erin; plak het of gebruik **.html uploaden**. Ze kan het IP-adres van de bezoeker, de tijd, de statuscode en de hostnaam tonen met `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` en `host`; andere server-side includes worden geweigerd.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+Proxyhosts, 404-hosts en toegangslijsten gebruiken deze pagina's tenzij ze hun eigen kiezen (het tabblad **Pagina's** van een proxyhost, het veld **Pagina** van een 404-host, **Geweigerd** van een toegangslijst).
 
-**Preview** opens the saved page in a new tab with sample values.
+**Voorbeeld** opent de opgeslagen pagina in een nieuw tabblad met voorbeeldwaarden.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+Instellingen, CrowdSec bepaalt of een blokkade een pagina toont, omleidt of alleen met een statuscode antwoordt; deze sectie bepaalt hoe de blokkade- en captcha-pagina's eruitzien.

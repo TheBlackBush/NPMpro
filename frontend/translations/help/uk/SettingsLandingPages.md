@@ -1,19 +1,19 @@
-## Landing pages
+## Цільові сторінки
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+Сторінки, які відвідувачі бачать замість сайту: коли для адреси нічого не налаштовано, сторінку не знайдено, сервер за хостом не відповідає, список доступу відхиляє відвідувача, хост на обслуговуванні, відсутній сертифікат або CrowdSec блокує чи перевіряє відвідувача. Кожна сторінка відображається мовою браузера відвідувача, у світлій і темній темі.
 
-### Default page
+### Сторінка за замовчуванням
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+Що показує адреса без хоста: **Сторінка привітання**, **404-сторінка**, **Немає відповіді (444)**, **Перенаправлення** або ваш власний **Власний HTML**.
 
-### Global pages
+### Глобальні сторінки
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+Для кожної сторінки: її сторінка NPMpro (наприклад, **Сторінку не знайдено** або **Сторінка «Доступ заборонено»**) або **Власна сторінка**. Власна сторінка це один HTML-файл (не більше 1 MB, UTF-8) зі стилями та зображеннями всередині; вставте його або скористайтеся кнопкою **Завантажити .html**. Вона може показувати IP відвідувача, час, код відповіді та ім'я хоста за допомогою `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` і `host`; інші серверні включення відхиляються.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+Проксі-хости, 404-хости та списки доступу використовують ці сторінки, якщо не вибрали власні (вкладка **Сторінки** проксі-хоста, поле **Сторінка** 404-хоста, **Відмовлено** списку доступу).
 
-**Preview** opens the saved page in a new tab with sample values.
+**Попередній перегляд** відкриває збережену сторінку в новій вкладці з прикладами значень.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+Налаштування, CrowdSec визначають, чи блокування показує сторінку, перенаправляє, чи відповідає лише кодом відповіді; цей розділ визначає, як виглядають сторінки блокування та капчі.

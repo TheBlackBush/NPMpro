@@ -35,6 +35,10 @@ Un percorso (location) invia un percorso dell'host (ad esempio `/api/`) a un alt
 - **HSTS abilitato (2 anni)**: richiede Forza HTTPS. **HSTS sottodomini + preload** richiede HSTS.
 - Per un nuovo certificato: **Riusa la chiave (sconsigliato)** e **Usa Challenge DNS**, con provider, credenziale e secondi di propagazione.
 
+### Pagine
+
+**Modalità manutenzione** mostra la pagina di manutenzione (503) a ogni visitatore di questo host, tranne ai controlli di Let's Encrypt; disattivalo per riportare online il sito. **Pagina non trovata** (404), **Errore dell'upstream** (502, 503, 504) e **Manutenzione** (503) scelgono ciò che vedono i visitatori: **Impostazione globale** (la pagina di Impostazioni, Pagine di destinazione), la versione NPMpro di quella pagina (**Pagina non trovata**, **Pagina «Sito non disponibile»**, **Pagina di manutenzione**), una **Pagina personalizzata** solo per questo host (incolla o carica un file HTML) o la risposta propria del sito. «L'errore proprio dell'upstream» lascia invariati gli errori JSON di un'API. Un 401 o 403 dello stesso upstream passa sempre.
+
 ### Avanzate
 
 Configurazione nginx personalizzata per l'intero host (blocco server) e per la location principale `location /`. Solo gli amministratori possono modificarla.

@@ -7,3 +7,5 @@ uma página de erro mais agradável ou indicar especificamente aos indexadores d
 que as páginas desse domínio já não existem.
 
 Outra vantagem é permitir consultar os registos de acessos a este host e ver os referenciadores.
+
+**Página** (404) escolhe o que os visitantes veem: **Definição global** (a página 404 de Definições, Páginas de destino), a **Página não encontrada** ou uma **Página personalizada** só para este host (cole ou carregue um ficheiro HTML).

@@ -35,6 +35,10 @@ Uma location envia um caminho do host (por exemplo `/api/`) para outro serviço.
 - **HSTS Ativado (2 Anos)**: precisa de Forçar HTTPS. **HSTS Subdomínios+Preload** precisa de HSTS.
 - Para um novo certificado: **Reutilizar Chave (não recomendado)** e **Utilizar DNS Challenge**, com fornecedor, credencial e segundos de propagação.
 
+### Páginas
+
+**Modo de manutenção** mostra a página de manutenção (503) a todos os visitantes deste host, exceto às verificações do Let's Encrypt; desative-o para repor o site. **Página não encontrada** (404), **Erro do upstream** (502, 503, 504) e **Manutenção** (503) escolhem o que os visitantes veem: **Definição global** (a página de Definições, Páginas de destino), a versão do NPMpro dessa página (**Página não encontrada**, **Página «Site indisponível»**, **Página de manutenção**), uma **Página personalizada** só para este host (cole ou carregue um ficheiro HTML) ou a resposta própria do site. «O erro próprio do upstream» deixa os erros JSON de uma API como estão. Um 401 ou 403 do próprio upstream passa sempre.
+
 ### Avançado
 
 Configuração nginx personalizada para o host inteiro (bloco server) e para a location principal `location /`. Só os administradores a podem alterar.

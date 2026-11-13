@@ -1,19 +1,19 @@
-## Landing pages
+## 着陆页
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+访客代替网站看到的页面：地址没有设置任何内容、页面未找到、主机后面的服务器没有响应、访问列表拒绝了访客、主机处于维护状态、证书缺失，或 CrowdSec 阻止或检查访客时。每个页面都使用访客的浏览器语言，并支持浅色和深色。
 
-### Default page
+### 默认页面
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+没有主机的地址显示什么：**成功页面**、**错误页面 (404)**、**无响应 (444)**、**重定向**，或您自己的 **自定义 HTML**。
 
-### Global pages
+### 全局页面
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+每个页面可选：其 NPMpro 页面（例如**页面未找到**或**“访问被拒绝”页面**）或**自定义页面**。自定义页面是一个 HTML 文件（最大 1 MB，UTF-8），样式和图片都包含在内；可以粘贴，或使用**上传 .html**。它可以用 `<!--# echo var="remote_addr" -->`、`date_gmt`、`status` 和 `host` 显示访客的 IP、时间、状态码和主机名；其他服务器端包含会被拒绝。
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+代理主机、404 主机和访问列表使用这些页面，除非它们选择自己的页面（代理主机的**页面**选项卡、404 主机的**页面**字段、访问列表的**已拒绝**）。
 
-**Preview** opens the saved page in a new tab with sample values.
+**预览**会在新标签页中用示例值打开已保存的页面。
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+“设置”中的 CrowdSec 决定封禁时显示页面、重定向还是只返回状态码；本部分决定封禁页面和验证码页面的外观。

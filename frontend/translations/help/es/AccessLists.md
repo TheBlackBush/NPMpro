@@ -25,3 +25,7 @@ En un host proxy, elige la lista en **Listas de acceso globales** de la pestaña
 Puedes asociar varias listas a un host o ubicación. Se comprueban de arriba abajo, en el orden mostrado, y puedes moverlas hacia arriba y hacia abajo. **Satisfacer Cualquiera** y **Pasar Autenticación al Upstream** solo cuentan en la primera lista. Con CrowdSec, las IP bloqueadas ven la página de bloqueo antes de la petición de contraseña.
 
 Más en la wiki: Host options.
+
+### Página de denegación
+
+**Denegado** (401, 403) es lo que ve un visitante cuando la lista lo rechaza (no en hosts con autenticación delegada): **Ajuste global** (la página de Configuración, Páginas de destino), la **Página «Acceso denegado»**, una **Página personalizada** solo para esta lista (pega o sube un archivo HTML) o **La página simple de nginx**, que conserva la de nginx.

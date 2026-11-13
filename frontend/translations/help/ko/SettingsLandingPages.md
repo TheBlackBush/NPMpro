@@ -1,19 +1,19 @@
-## Landing pages
+## 랜딩 페이지
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+사이트 대신 방문자가 보는 페이지입니다. 주소에 아무것도 설정되어 있지 않을 때, 페이지를 찾을 수 없을 때, 호스트 뒤의 서버가 응답하지 않을 때, 접근 정책이 방문자를 거부할 때, 호스트가 점검 중일 때, 인증서가 없을 때, CrowdSec이 방문자를 차단하거나 확인할 때 표시됩니다. 모든 페이지는 방문자의 브라우저 언어로, 라이트와 다크 모두에서 표시됩니다.
 
-### Default page
+### 기본 페이지
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+호스트가 없는 주소가 보여 주는 것: **축하 페이지**, **404 페이지**, **응답 없음 (444)**, **리다이렉트** 또는 직접 만든 **사용자 지정 HTML**.
 
-### Global pages
+### 전역 페이지
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+각 페이지마다 NPMpro 페이지(예: **페이지를 찾을 수 없습니다** 또는 **“접근이 거부되었습니다” 페이지**)나 **사용자 지정 페이지**를 고릅니다. 사용자 지정 페이지는 스타일과 이미지를 안에 포함한 HTML 파일 하나(최대 1 MB, UTF-8)입니다. 붙여 넣거나 **.html 업로드**를 사용하세요. `<!--# echo var="remote_addr" -->`, `date_gmt`, `status`, `host`로 방문자의 IP, 시간, 상태 코드, 호스트 이름을 표시할 수 있으며, 다른 서버 측 포함은 거부됩니다.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+프록시 호스트, 404 호스트, 접근 정책은 자기 페이지를 고르지 않으면 이 페이지를 사용합니다(프록시 호스트의 **페이지** 탭, 404 호스트의 **페이지** 필드, 접근 정책의 **거부됨**).
 
-**Preview** opens the saved page in a new tab with sample values.
+**미리보기**는 저장된 페이지를 예시 값과 함께 새 탭에서 엽니다.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+설정의 CrowdSec은 차단 시 페이지를 보여 줄지, 리디렉션할지, 상태 코드로만 응답할지를 정합니다. 이 섹션은 차단 페이지와 캡차 페이지의 모양을 정합니다.

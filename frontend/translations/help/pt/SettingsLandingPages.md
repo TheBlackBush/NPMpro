@@ -1,19 +1,19 @@
-## Landing pages
+## Páginas de destino
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+As páginas que os visitantes veem em vez de um site: quando nada está configurado para um endereço, uma página não é encontrada, o servidor por trás de um host não responde, uma lista de acesso os recusa, um host está em manutenção, falta um certificado ou o CrowdSec os bloqueia ou verifica. Cada página aparece no idioma do navegador do visitante, em claro e em escuro.
 
-### Default page
+### Página predefinida
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+O que mostra um endereço sem host: a **Página de Parabéns**, a **Página 404**, **Sem Resposta (444)**, um **Redirecionar** ou o seu próprio **HTML Personalizado**.
 
-### Global pages
+### Páginas globais
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+Para cada página: a sua página do NPMpro (por exemplo **Página não encontrada** ou **Página «Acesso negado»**) ou uma **Página personalizada**. Uma página personalizada é um ficheiro HTML (até 1 MB, UTF-8) com os seus estilos e imagens lá dentro; cole-o ou use **Carregar .html**. Pode mostrar o IP do visitante, a hora, o código de estado e o nome do host com `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` e `host`; as outras inclusões do lado do servidor são recusadas.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+Os proxy hosts, os hosts 404 e as listas de acesso usam estas páginas, a menos que escolham as suas (o separador **Páginas** de um proxy host, o campo **Página** de um host 404, **Negado** de uma lista de acesso).
 
-**Preview** opens the saved page in a new tab with sample values.
+**Pré-visualização** abre a página guardada num novo separador com valores de exemplo.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+Definições, CrowdSec decide se um bloqueio mostra uma página, redireciona ou só responde com um código de estado; esta secção decide o aspeto das páginas de bloqueio e de captcha.

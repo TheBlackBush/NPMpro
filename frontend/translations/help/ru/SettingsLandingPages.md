@@ -1,19 +1,19 @@
-## Landing pages
+## Целевые страницы
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+Страницы, которые посетители видят вместо сайта: когда для адреса ничего не настроено, страница не найдена, сервер за хостом не отвечает, список доступа отклоняет посетителя, хост находится на обслуживании, отсутствует сертификат или CrowdSec блокирует либо проверяет посетителя. Каждая страница отображается на языке браузера посетителя, в светлой и тёмной теме.
 
-### Default page
+### Страница по умолчанию
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+Что показывает адрес без хоста: **Страница поздравления**, **404-страница**, **Нет ответа (444)**, **Перенаправление** или ваш собственный **Свой HTML**.
 
-### Global pages
+### Глобальные страницы
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+Для каждой страницы: её страница NPMpro (например, **Страница не найдена** или **Страница «Доступ запрещён»**) или **Своя страница**. Своя страница это один HTML-файл (не больше 1 MB, UTF-8) со стилями и изображениями внутри; вставьте его или воспользуйтесь кнопкой **Загрузить .html**. Она может показывать IP посетителя, время, код ответа и имя хоста с помощью `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` и `host`; другие серверные включения отклоняются.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+Прокси-хосты, 404-хосты и списки доступа используют эти страницы, если не выбрали свои (вкладка **Страницы** прокси-хоста, поле **Страница** 404-хоста, **Отказано** списка доступа).
 
-**Preview** opens the saved page in a new tab with sample values.
+**Предпросмотр** открывает сохранённую страницу в новой вкладке с примерами значений.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+Настройки, CrowdSec определяют, показывает ли блокировка страницу, перенаправляет или отвечает только кодом ответа; этот раздел определяет, как выглядят страницы блокировки и капчи.

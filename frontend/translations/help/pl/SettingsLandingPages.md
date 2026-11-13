@@ -1,19 +1,19 @@
-## Landing pages
+## Strony docelowe
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+Strony, które odwiedzający widzą zamiast witryny: gdy dla adresu nic nie skonfigurowano, nie znaleziono strony, serwer za hostem nie odpowiada, lista dostępu ich odrzuca, host jest w konserwacji, brakuje certyfikatu albo CrowdSec ich blokuje lub sprawdza. Każda strona pojawia się w języku przeglądarki odwiedzającego, w jasnym i ciemnym motywie.
 
-### Default page
+### Strona domyślna
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+Co pokazuje adres bez hosta: **Strona gratulacyjna**, **Strona 404**, **Brak odpowiedzi (444)**, **Przekierowanie** lub Twój własny **Własny HTML**.
 
-### Global pages
+### Strony globalne
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+Dla każdej strony: jej strona NPMpro (na przykład **Nie znaleziono strony** lub **Strona „Odmowa dostępu”**) albo **Własna strona**. Własna strona to jeden plik HTML (najwyżej 1 MB, UTF-8) ze stylami i obrazami w środku; wklej go lub użyj **Prześlij .html**. Może pokazywać IP odwiedzającego, czas, kod statusu i nazwę hosta za pomocą `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` i `host`; inne dołączenia po stronie serwera są odrzucane.
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+Hosty proxy, hosty 404 i listy dostępu używają tych stron, chyba że wybiorą własne (karta **Strony** hosta proxy, pole **Strona** hosta 404, **Odmowa** listy dostępu).
 
-**Preview** opens the saved page in a new tab with sample values.
+**Podgląd** otwiera zapisaną stronę w nowej karcie z przykładowymi wartościami.
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+Ustawienia, CrowdSec decydują, czy blokada pokazuje stronę, przekierowuje, czy odpowiada tylko kodem statusu; ta sekcja decyduje, jak wyglądają strony blokady i captcha.

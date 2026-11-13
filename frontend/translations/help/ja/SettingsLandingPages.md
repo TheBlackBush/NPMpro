@@ -1,19 +1,19 @@
-## Landing pages
+## ランディングページ
 
-The pages visitors see instead of a site: when nothing is set up for an address, a page is not found, the server behind a host does not answer, an access list turns them away, a host is in maintenance, a certificate is missing, or CrowdSec blocks or checks them. Every page comes in the visitor's browser language and in light and dark.
+サイトの代わりに訪問者が見るページです。アドレスに何も設定されていないとき、ページが見つからないとき、ホストの背後のサーバーが応答しないとき、アクセスリストが拒否したとき、ホストがメンテナンス中のとき、証明書がないとき、CrowdSec がブロックまたは確認するときに表示されます。各ページは訪問者のブラウザの言語で、ライトとダークの両方で表示されます。
 
-### Default page
+### デフォルトページ
 
-What an address without a host shows: the **NPMpro page**, the **404** page, **no answer** (444), a **redirect**, or your own **HTML**.
+ホストのないアドレスが表示するもの: **お祝いページ**、**404ページ**、**返答しない (444)**、**リダイレクト**、または独自の **カスタムHTML**。
 
-### Global pages
+### グローバルページ
 
-For each page: the **NPMpro page** or a **Custom page**. A custom page is one HTML file (at most 1 MB, UTF-8) with its styles and images inside; paste it or use **Upload .html**. It can show the visitor's IP, the time, the status code and the host name with `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` and `host`; other server-side includes are refused.
+ページごとに、NPMpro のページ(たとえば**ページが見つかりません**や**「アクセスが拒否されました」ページ**)か**カスタムページ**を選びます。カスタムページは、スタイルと画像を内部に含めた HTML ファイル 1 つ(最大 1 MB、UTF-8)です。貼り付けるか、**.html をアップロード**を使います。`<!--# echo var="remote_addr" -->`、`date_gmt`、`status`、`host` で、訪問者の IP、時刻、ステータスコード、ホスト名を表示できます。その他のサーバーサイドインクルードは拒否されます。
 
-Proxy hosts, 404 hosts and access lists use these pages unless they choose their own (the **Pages** tab of a proxy host, the **Page** field of a 404 host, the **Denied page** of an access list).
+プロキシホスト、404 ホスト、アクセスリストは、独自のページを選ばない限りこれらのページを使います(プロキシホストの**ページ**タブ、404 ホストの**ページ**フィールド、アクセスリストの**拒否**)。
 
-**Preview** opens the saved page in a new tab with sample values.
+**プレビュー**は、保存済みのページをサンプル値付きで新しいタブに開きます。
 
 ### CrowdSec
 
-Settings, CrowdSec decides whether a ban shows a page, redirects or only answers with a status code; this section decides what the ban and captcha pages look like.
+設定の CrowdSec は、ブロック時にページを表示するか、リダイレクトするか、ステータスコードだけで応答するかを決めます。このセクションは、ブロックページとキャプチャページの見た目を決めます。
