@@ -301,8 +301,10 @@ const internalAccessList = {
 
 			await internalNginx.reload();
 
-			await rm(internalAccessList.getFilename(row), { force: true });
-			await removePlacePages("access_list", row.id);
+			await runtimeExclusive(async () => {
+				await rm(internalAccessList.getFilename(row), { force: true });
+				await removePlacePages("access_list", row.id);
+			});
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "deleted",

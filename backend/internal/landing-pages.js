@@ -240,8 +240,9 @@ const PLACE_TYPES = {
 
 // the custom pages of every host and access list, at start and after a restore. A disabled host has none (as a disable
 // removes them), and no folder of a row that is gone stays. The columns come as the database holds them (null without
-// a page).
-const writePlacePagesOf = async (kind, model) => {
+// a page). With onRowError (the start) a row that fails is reported and the others still get their pages; without it
+// (a restore) the first failure throws.
+const writePlacePagesOf = async (kind, model, { onRowError } = {}) => {
 	const columns = PLACES[kind].fields.flatMap(({ column }) => [column, `${column}_html`]);
 	const hosts = kind !== "access_list";
 	const rows = await model.query().select("id", ...(hosts ? ["enabled"] : []), ...columns);
@@ -253,7 +254,12 @@ const writePlacePagesOf = async (kind, model) => {
 		ids.add(id);
 		const full = { ...row, id };
 		for (const { column } of PLACES[kind].fields) full[`${column}_html`] ??= "";
-		await writePlacePages(kind, full);
+		try {
+			await writePlacePages(kind, full);
+		} catch (err) {
+			if (!onRowError) throw err;
+			onRowError(id, err);
+		}
 	}
 	const folder = new RegExp(`^${PLACES[kind].dir}-([1-9][0-9]*)$`, "u");
 	for (const name of await readdir(rooted(PAGES_DIR)).catch(() => [])) {
@@ -286,7 +292,12 @@ const startLandingPages = async ({ log = logger } = {}) => {
 	await runtimeExclusive(async () => {
 		for (const [kind, model] of Object.values(PLACE_TYPES)) {
 			try {
-				await writePlacePagesOf(kind, model);
+				await writePlacePagesOf(kind, model, {
+					onRowError: (id, err) =>
+						log.error(
+							`Landing pages: could not write the custom pages of ${kind} #${id} at startup: ${err.message}`,
+						),
+				});
 			} catch (err) {
 				log.error(
 					`Landing pages: could not write the custom pages of the ${kind} rows at startup: ${err.message}`,

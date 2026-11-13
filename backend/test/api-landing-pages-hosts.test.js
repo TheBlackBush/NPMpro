@@ -303,7 +303,7 @@ it("the custom pages of every enabled host and access list are written again at 
 	assert.equal(await fileExists(api, `data/public/pages/proxy-host-${disabled.body.id}`), false);
 });
 
-it("a failure writing the custom pages at start is logged and does not throw", async () => {
+it("a failure writing one row's custom pages at start is logged, the other rows still get theirs", async () => {
 	const { startLandingPages } = await import("../internal/landing-pages.js");
 	const made = await admin.post("/nginx/dead-hosts", {
 		domain_names: ["pages-start-fail.example.com"],
@@ -311,14 +311,26 @@ it("a failure writing the custom pages at start is logged and does not throw", a
 		npmpro_page_html: "<p>x</p>",
 	});
 	assert.equal(made.status, 201, made.text);
+	const other = await admin.post("/nginx/dead-hosts", {
+		domain_names: ["pages-start-fail-other.example.com"],
+		npmpro_page: "custom",
+		npmpro_page_html: "<p>other</p>",
+	});
+	assert.equal(other.status, 201, other.text);
 	const folder = path.join(api.root, `data/public/pages/dead-host-${made.body.id}`);
+	const otherFile = path.join(api.root, `data/public/pages/dead-host-${other.body.id}/404.html`);
 	await rm(folder, { recursive: true, force: true });
 	await writeFile(folder, "not a folder");
+	await rm(otherFile, { force: true });
 	const errors = [];
 	try {
 		await startLandingPages({ log: { error: (text) => errors.push(text), info: () => {}, warn: () => {} } });
 		assert.equal(errors.length, 1);
-		assert.match(errors[0], /could not write the custom pages of the dead_host rows/u);
+		assert.match(
+			errors[0],
+			new RegExp(`could not write the custom pages of dead_host #${made.body.id} at startup`, "u"),
+		);
+		assert.equal(await api.read(`/data/public/pages/dead-host-${other.body.id}/404.html`), "<p>other</p>");
 	} finally {
 		await rm(folder, { force: true });
 	}
