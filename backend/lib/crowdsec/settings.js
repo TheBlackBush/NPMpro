@@ -30,7 +30,7 @@ const MAX_URL = 2048;
 const MAX_PATH = 255;
 
 const bool = (key, file, value) => ({ key, file, kind: "bool", default: value });
-const int = (key, file, min, max, value) => ({ key, file, kind: "int", min, max, default: value });
+const int = (key, file, [min, max], value) => ({ key, file, kind: "int", min, max, default: value });
 const optInt = (key, file) => ({ key, file, kind: "optint", min: 1, max: 60000, default: null });
 const choice = (key, file, values, value) => ({ key, file, kind: "enum", values, default: value });
 const text = (key, file, kind, value = "") => ({ key, file, kind, default: value });
@@ -42,11 +42,11 @@ export const CROWDSEC_FIELDS = [
 	bool("use_tls_auth", "USE_TLS_AUTH", false),
 	text("tls_client_cert", "TLS_CLIENT_CERT", "path"),
 	text("tls_client_key", "TLS_CLIENT_KEY", "path"),
-	int("cache_expiration", "CACHE_EXPIRATION", 1, 86400, 1),
+	int("cache_expiration", "CACHE_EXPIRATION", [1, 86400], 1),
 	choice("bouncing_on_type", "BOUNCING_ON_TYPE", ["all", "ban", "captcha"], "all"),
 	choice("fallback_remediation", "FALLBACK_REMEDIATION", ["ban", "captcha"], "ban"),
-	int("request_timeout", "REQUEST_TIMEOUT", 100, 60000, 3000),
-	int("update_frequency", "UPDATE_FREQUENCY", 1, 86400, 10),
+	int("request_timeout", "REQUEST_TIMEOUT", [100, 60000], 3000),
+	int("update_frequency", "UPDATE_FREQUENCY", [1, 86400], 10),
 	bool("enable_internal", "ENABLE_INTERNAL", false),
 	choice("mode", "MODE", ["live", "stream"], "live"),
 	text("scenarios_containing", "SCENARIOS_CONTAINING", "text"),
@@ -59,7 +59,7 @@ export const CROWDSEC_FIELDS = [
 	text("captcha_secret_key", "SECRET_KEY", "secret"),
 	text("captcha_site_key", "SITE_KEY", "text"),
 	text("captcha_template_path", "CAPTCHA_TEMPLATE_PATH", "path", "/data/crowdsec/captcha.html"),
-	int("captcha_expiration", "CAPTCHA_EXPIRATION", 60, 2592000, 3600),
+	int("captcha_expiration", "CAPTCHA_EXPIRATION", [60, 2592000], 3600),
 	// empty on new installs (user decision 2026-11-12): AppSec is off until the admin sets it up
 	text("appsec_url", "APPSEC_URL", "url", ""),
 	choice("appsec_failure_action", "APPSEC_FAILURE_ACTION", ["deny", "passthrough"], "deny"),
@@ -78,7 +78,6 @@ const EXTRA_FIELDS = [
 	{ key: "admin_ui_excluded", kind: "bool", default: false },
 ];
 const ALL_FIELDS = [...CROWDSEC_FIELDS, ...EXTRA_FIELDS];
-const FIELD_OF = new Map(ALL_FIELDS.map((field) => [field.key, field]));
 
 export const CROWDSEC_DEFAULTS = Object.fromEntries(ALL_FIELDS.map((field) => [field.key, field.default]));
 export const EDITABLE_KEYS = ALL_FIELDS.map((field) => field.key).filter((key) => !SECRET_KEYS.includes(key));
