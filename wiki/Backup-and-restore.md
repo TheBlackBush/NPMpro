@@ -12,15 +12,17 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files
 - Access lists, DNS credentials and users
-- Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP, backup schedules
-- Custom files: everything in `custom_nginx/` and the CrowdSec files `crowdsec.conf`, `ban.html` and `captcha.html`
+- Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
+- Custom files: everything in `custom_nginx/` and the CrowdSec pages `ban.html` and `captcha.html`
+
+A backup from an older version that holds `crowdsec.conf` restores into the CrowdSec settings. A merge does not import a `crowdsec.conf` from an older backup: use **Replace** (restore) for old backups.
 
 A backup never holds traffic statistics (they are not backed up at all), logs, the audit log, sessions, the database file `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, or other backups (`/data/backups`). Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
 
 ## Creating a backup
 
 1. Tick the parts you want (all are ticked at first).
-2. Keep **Include secrets** on for a complete backup and enter a passphrase twice (at least 12 characters). Private keys, password hashes, two-factor secrets, DNS credential values, the OIDC client secret, the GeoIP license key and `crowdsec.conf` are then included, and the whole file is encrypted with the passphrase. NPMpro does not store the passphrase: write it down, without it the backup cannot be restored.
+2. Keep **Include secrets** on for a complete backup and enter a passphrase twice (at least 12 characters). Private keys, password hashes, two-factor secrets, DNS credential values, the OIDC client secret, the GeoIP license key, the CrowdSec API key and captcha secret are then included, and the whole file is encrypted with the passphrase. NPMpro does not store the passphrase: write it down, without it the backup cannot be restored.
 3. Click **Download** to save the file on your computer, or **Keep on server** to store it in `/data/backups`.
 
 With **Include secrets** off the file is not encrypted and leaves the secrets out. It still contains host names, users and settings, so keep it private as well. After restoring it, enter the passwords, keys and credentials again (the restore lists the parts that came without them).
