@@ -551,13 +551,15 @@ function AdvancedFields() {
 							"settings.crowdsec.drop-unreadable-body",
 						)}
 					</SwitchList>
-					<div className="space-y-1">
-						{text("banTemplatePath", "crowdsec-ban-template", "settings.crowdsec.template.hint")}
-						<PreviewLink page="ban" />
-					</div>
-					<div className="space-y-1">
-						{text("captchaTemplatePath", "crowdsec-captcha-template", "settings.crowdsec.template.hint")}
-						<PreviewLink page="captcha" />
+					<div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+						<span className="inline-flex items-center gap-2">
+							<T id="settings.crowdsec.ban-response.page" />
+							<PreviewLink page="ban" />
+						</span>
+						<span className="inline-flex items-center gap-2">
+							<T id="settings.crowdsec.captcha" />
+							<PreviewLink page="captcha" />
+						</span>
 					</div>
 				</AccordionPanel>
 			</AccordionItem>

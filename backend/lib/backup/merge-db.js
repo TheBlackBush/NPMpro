@@ -1,3 +1,5 @@
+import { global as logger } from "../../logger.js";
+import { withValidPages } from "../landing-pages/backup-rows.js";
 import { freeName } from "./references.js";
 import { clientOf, createInserter, key, movedAvatar, SECRET_TYPES, typeData } from "./restore-db.js";
 import { coerceRow } from "./rows.js";
@@ -123,7 +125,9 @@ const mergeTypes = async ({
 }) => {
 	const items = checkedItems(plan);
 	const types = [...new Set(items.map((item) => item.type))];
-	const prepared = Object.fromEntries(types.map((typeId) => [typeId, typeData(data, typeId)]));
+	const prepared = Object.fromEntries(
+		types.map((typeId) => [typeId, withValidPages(typeData(data, typeId), logger)]),
+	);
 	const backupUsers = Array.isArray(data?.users?.user) ? data.users.user : [];
 	const rowOf = (item) => {
 		let table = "setting";

@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
 import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
+import { removePlacePages, writePlacePages } from "../lib/landing-pages/files.js";
+import { assertPageFields, keepSavedPages } from "../lib/landing-pages/html.js";
+import { auditPageHtml, withoutPageHtml } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
 import { writeSecretFile } from "../lib/secret-file.js";
 import { access as logger } from "../logger.js";
@@ -13,6 +16,7 @@ import locationModel from "../models/location.js";
 import proxyHostModel from "../models/proxy_host.js";
 import internalAuditLog from "./audit-log.js";
 import internalNginx from "./nginx.js";
+import { runtimeExclusive } from "./runtime-queue.js";
 
 const proxyHostEntries = (hosts) => hosts.map((host) => ({ model: proxyHostModel, hostType: "proxy_host", host }));
 
@@ -37,12 +41,15 @@ const internalAccessList = {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
 		assertAccessListRules(data);
+		assertPageFields("access_list", data, {});
 
 		const row = await accessListModel.transaction(async (trx) => {
 			const insertedRow = await accessListModel.query(trx).insertAndFetch({
 				name: data.name,
 				satisfy_any: data.satisfy_any,
 				pass_auth: data.pass_auth,
+				npmpro_denied_page: data.npmpro_denied_page,
+				npmpro_denied_page_html: data.npmpro_denied_page_html,
 				owner_user_id: access.token.getUserId(1),
 			});
 
@@ -77,13 +84,14 @@ const internalAccessList = {
 		});
 
 		try {
-			await internalAccessList.build(freshRow);
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
+			await runtimeExclusive(() => internalAccessList.build(freshRow));
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "created",
 				object_type: "access-list",
 				object_id: freshRow.id,
-				meta: freshRow,
+				meta: auditPageHtml(freshRow),
 			});
 		}
 
@@ -113,14 +121,19 @@ const internalAccessList = {
 			throw new errs.ValidationError("Access list needs at least one user or one rule that is not all");
 		}
 		assertAccessListRules(data);
+		assertPageFields("access_list", data, row);
+		keepSavedPages("access_list", data, row);
 
 		await accessListModel.transaction(async (trx) => {
-			if (data.name !== undefined || data.satisfy_any !== undefined || data.pass_auth !== undefined) {
-				await accessListModel.query(trx).where({ id: data.id }).patch({
-					name: data.name,
-					satisfy_any: data.satisfy_any,
-					pass_auth: data.pass_auth,
-				});
+			const columns = {
+				name: data.name,
+				satisfy_any: data.satisfy_any,
+				pass_auth: data.pass_auth,
+				npmpro_denied_page: data.npmpro_denied_page,
+				npmpro_denied_page_html: data.npmpro_denied_page_html,
+			};
+			if (Object.values(columns).some((value) => value !== undefined)) {
+				await accessListModel.query(trx).where({ id: data.id }).patch(columns);
 			}
 
 			if (data.items) {
@@ -169,7 +182,8 @@ const internalAccessList = {
 		const savedRow = { ...freshRow, proxy_hosts: undefined };
 
 		try {
-			await internalAccessList.build(freshRow);
+			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
+			await runtimeExclusive(() => internalAccessList.build(freshRow));
 			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
 			await internalNginx.reload();
 		} finally {
@@ -177,7 +191,7 @@ const internalAccessList = {
 				action: "updated",
 				object_type: "access-list",
 				object_id: data.id,
-				meta: savedRow,
+				meta: auditPageHtml(savedRow),
 			});
 		}
 
@@ -287,13 +301,16 @@ const internalAccessList = {
 
 			await internalNginx.reload();
 
-			await rm(internalAccessList.getFilename(row), { force: true });
+			await runtimeExclusive(async () => {
+				await rm(internalAccessList.getFilename(row), { force: true });
+				await removePlacePages("access_list", row.id);
+			});
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "deleted",
 				object_type: "access-list",
 				object_id: row.id,
-				meta: deletedRow,
+				meta: auditPageHtml(deletedRow),
 			});
 		}
 		return deletedRow;
@@ -328,6 +345,8 @@ const internalAccessList = {
 		}
 
 		if (expand) query.withGraphFetched(`[${expand.join(", ")}]`);
+
+		query.runAfter((rows) => (Array.isArray(rows) ? rows.map(withoutPageHtml) : rows));
 
 		return query;
 	},
@@ -380,6 +399,7 @@ const internalAccessList = {
 
 		await rm(htpasswdFile, { force: true });
 		await internalAccessList.writeData(htpasswdFile, list.items);
+		await writePlacePages("access_list", list);
 
 		logger.success(`Built Access file #${list.id} for: ${list.name}`);
 	},

@@ -215,7 +215,7 @@ else
         mkdir -p /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
         chown 101:101 /tmp/nginx /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi /tmp/nginx/uwsgi /tmp/nginx/scgi
         # /data/public (ACME http challenges, avatars) and the htpasswd files; nothing in /data/tls or /data/npmpro
-        for dir in /data/public/acme-challenge /data/access /data/public/avatar /data/public/gravatar; do
+        for dir in /data/public/acme-challenge /data/access /data/public/avatar /data/public/gravatar /data/public/pages; do
             [ -d "$dir" ] || continue
             find "$dir" \( -type d -o -type f \) -links 1 -exec chgrp -h 101 {} +
             find "$dir" -type d -exec chmod 750 {} +

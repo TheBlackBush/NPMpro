@@ -896,7 +896,7 @@ if [ "$GOA" = "true" ] && [ "$LOGROTATE" = "false" ]; then
 fi
 
 
-TV="22"
+TV="23"
 # NPMPRO_USER_RUNTIME_ENV: which runtime vars the env sets decides whether a template reads the env or the stored
 # setting; the startup vars (TZ, PUID, ...) are left out, setting or unsetting them does not regenerate the hosts
 ENV_SHA512SUM="$( (grep "env\.[A-Z0-9_]\+" -roh /app/templates | sed "s|env.||g" | sort | uniq | xargs printenv; echo "$NPMPRO_USER_RUNTIME_ENV"; echo "$TV") | tr -d "\n" | sha512sum | cut -d" " -f1)"

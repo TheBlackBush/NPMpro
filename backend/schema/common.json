@@ -340,6 +340,70 @@
 					}
 				}
 			}
+		},
+		"npmpro_maintenance": {
+			"description": "Maintenance mode: every request gets the maintenance page (503), except ACME challenges",
+			"type": "boolean",
+			"example": false
+		},
+		"npmpro_page_not_found": {
+			"description": "Page for 404: global (Settings, Landing pages), npmpro (the built-in page), custom, upstream (the upstream's own answer)",
+			"type": "string",
+			"enum": [
+				"global",
+				"npmpro",
+				"custom",
+				"upstream"
+			],
+			"example": "upstream"
+		},
+		"npmpro_page_upstream": {
+			"description": "Page for 502, 503 and 504: global, npmpro, custom, upstream (the upstream's own error)",
+			"type": "string",
+			"enum": [
+				"global",
+				"npmpro",
+				"custom",
+				"upstream"
+			],
+			"example": "global"
+		},
+		"npmpro_page_maintenance": {
+			"description": "Maintenance page: global, npmpro, custom",
+			"type": "string",
+			"enum": [
+				"global",
+				"npmpro",
+				"custom"
+			],
+			"example": "global"
+		},
+		"npmpro_page": {
+			"description": "Page of a 404 host: global, npmpro, custom",
+			"type": "string",
+			"enum": [
+				"global",
+				"npmpro",
+				"custom"
+			],
+			"example": "global"
+		},
+		"npmpro_denied_page": {
+			"description": "Page for 401 and 403 of an access list: global, npmpro, custom, plain (nginx's plain page)",
+			"type": "string",
+			"enum": [
+				"global",
+				"npmpro",
+				"custom",
+				"plain"
+			],
+			"example": "global"
+		},
+		"npmpro_page_html": {
+			"description": "Custom page: one HTML file, at most 1 MiB in UTF-8; SSI only echo of remote_addr, date_gmt, date_local, status, host and config timefmt",
+			"type": "string",
+			"maxLength": 1048576,
+			"example": ""
 		}
 	}
 }

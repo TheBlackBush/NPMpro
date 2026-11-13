@@ -50,6 +50,7 @@ mkdir -vp /data/public/avatar \
           /data/tls/mtls \
           /data/tls/ech \
           /data/public/html \
+          /data/public/pages/global \
           /data/access \
           /data/public/anubis \
           /data/crowdsec \
@@ -203,14 +204,8 @@ touch /data/tls/ech/nginx.conf \
       /data/custom_nginx/server_stream_udp.conf
 
 
-if [ ! -s /data/crowdsec/ban.html ]; then
-    cp -van /etc/ban.html.original /data/crowdsec/ban.html
-fi
 cp -a /etc/ban.html.original /data/crowdsec/ban.html.example
 
-if [ ! -s /data/crowdsec/captcha.html ]; then
-    cp -van /etc/captcha.html.original /data/crowdsec/captcha.html
-fi
 cp -a /etc/captcha.html.original /data/crowdsec/captcha.html.example
 
 # crowdsec.conf is written by the backend from Settings, CrowdSec; the copy of the example went with the old setup

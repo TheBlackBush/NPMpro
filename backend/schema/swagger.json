@@ -417,6 +417,14 @@
 				"$ref": "./paths/settings/geoip/update/post.json"
 			}
 		},
+		"/settings/landing-pages": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/get.json"
+			},
+			"put": {
+				"$ref": "./paths/settings/landing-pages/put.json"
+			}
+		},
 		"/settings/crowdsec": {
 			"get": {
 				"$ref": "./paths/settings/crowdsec/get.json"
@@ -428,6 +436,31 @@
 		"/settings/crowdsec/test": {
 			"post": {
 				"$ref": "./paths/settings/crowdsec/test/post.json"
+			}
+		},
+		"/settings/landing-pages/preview/global/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/global/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/npmpro/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/npmpro/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/proxy-host/{id}/{type}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/proxy-host/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/dead-host/{id}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/dead-host/get.json"
+			}
+		},
+		"/settings/landing-pages/preview/access-list/{id}": {
+			"get": {
+				"$ref": "./paths/settings/landing-pages/preview/access-list/get.json"
 			}
 		},
 		"/settings/crowdsec/preview/{page}": {

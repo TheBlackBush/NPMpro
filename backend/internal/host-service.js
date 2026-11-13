@@ -1,6 +1,7 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
+import { auditPageHtml, withoutPageHtml } from "../lib/landing-pages/types.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalHost from "./host.js";
@@ -50,7 +51,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 	const flow = { ...domainHooks(model, takenType), ...hooks };
 
 	const audit = (access, action, id, meta) =>
-		internalAuditLog.add(access, { action, object_type: auditType, object_id: id, meta });
+		internalAuditLog.add(access, { action, object_type: auditType, object_id: id, meta: auditPageHtml(meta) });
 
 	const auditAfter = async (access, action, id, step) => {
 		let savedRow;
@@ -199,6 +200,9 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 			}
 
 			if (expandList) query.withGraphFetched(`[${expandList.join(", ")}]`);
+
+			// the list has no page HTML, neither its own nor that of the access lists it expands
+			query.runAfter((rows) => (Array.isArray(rows) ? rows.map(withoutPageHtml) : rows));
 
 			return query;
 		},

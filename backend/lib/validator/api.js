@@ -25,6 +25,19 @@ const untrimmedPaths = new Set([
 	"/meta/html",
 	"/client_secret",
 	"/password",
+	"/npmpro_page_not_found_html",
+	"/npmpro_page_upstream_html",
+	"/npmpro_page_maintenance_html",
+	"/npmpro_page_html",
+	"/npmpro_denied_page_html",
+	"/default_site/meta/html",
+	"/pages/not_found/html",
+	"/pages/upstream_error/html",
+	"/pages/denied/html",
+	"/pages/maintenance/html",
+	"/pages/certificate/html",
+	"/pages/ban/html",
+	"/pages/captcha/html",
 ]);
 
 const trimStrings = (value, path = "", depth = 0) => {

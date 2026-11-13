@@ -48,6 +48,7 @@
 									"users",
 									"settings_runtime",
 									"settings_default_site",
+									"settings_landing_pages",
 									"settings_oidc",
 									"settings_monitoring",
 									"settings_crowdsec",

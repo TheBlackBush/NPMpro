@@ -1,0 +1,51 @@
+{
+	"operationId": "previewLandingPageProxyHost",
+	"summary": "The page a proxy host shows, as HTML",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "id",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"description": "Proxy host id",
+			"example": 1
+		},
+		{
+			"in": "path",
+			"name": "type",
+			"schema": {
+				"type": "string",
+				"enum": [
+					"not_found",
+					"upstream_error",
+					"maintenance"
+				]
+			},
+			"required": true,
+			"description": "Which page",
+			"example": "maintenance"
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "The page, with sample values",
+			"content": {
+				"text/html": {}
+			}
+		},
+		"404": {
+			"description": "The place shows no page of its own"
+		}
+	}
+}

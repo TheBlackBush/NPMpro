@@ -9,7 +9,8 @@
 		"name",
 		"satisfy_any",
 		"pass_auth",
-		"proxy_host_count"
+		"proxy_host_count",
+		"npmpro_denied_page"
 	],
 	"properties": {
 		"id": {
@@ -44,6 +45,12 @@
 			"type": "integer",
 			"minimum": 0,
 			"example": 3
+		},
+		"npmpro_denied_page": {
+			"$ref": "../common.json#/properties/npmpro_denied_page"
+		},
+		"npmpro_denied_page_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
 		}
 	}
 }

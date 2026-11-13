@@ -16,6 +16,8 @@ class HostModel extends Model {
 	static droppedColumns = [];
 	// payload fields with no column
 	static writeOnlyFields = [];
+	// nullable text columns read as "" (the page HTML: MySQL gives TEXT no default)
+	static emptyWhenNull = [];
 
 	/** @returns {Object}  a new object each call, the insert defaults */
 	static insertDefaults() {
@@ -37,6 +39,7 @@ class HostModel extends Model {
 	$parseDatabaseJson(json) {
 		const thisJson = { ...super.$parseDatabaseJson(json) };
 		for (const column of this.constructor.droppedColumns) delete thisJson[column];
+		for (const column of this.constructor.emptyWhenNull) thisJson[column] ??= "";
 		return convertIntFieldsToBool(thisJson, this.constructor.boolFields);
 	}
 

@@ -2,6 +2,9 @@ import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
+import { certificateUnusable } from "../lib/landing-pages/certificate.js";
+import { removePlacePages, writePlacePages } from "../lib/landing-pages/files.js";
+import { pageWiring } from "../lib/landing-pages/wiring.js";
 import { beautify } from "../lib/nginx-beautify.js";
 import { quoteLocation, serverNames } from "../lib/nginx-quote.js";
 import { fetchOcsp, staplingFileReady } from "../lib/ocsp-fetch.js";
@@ -314,6 +317,8 @@ const internalNginx = {
 			host.filename = hostHtpasswdFileName;
 		}
 
+		host.npmpro_certificate_unusable = await certificateUnusable(host);
+
 		host.upstreams = await internalNginx.renderUpstreams(host);
 
 		if (host.locations) {
@@ -338,6 +343,13 @@ const internalNginx = {
 			host[`auth_request_${provider}_upstream_resolved`] = ownUpstream(host, provider);
 		}
 
+		// the landing pages (lib/landing-pages/wiring.js): the page locations and each location's error pages
+		const pages = pageWiring(host_type, host);
+		host.npmpro_page_locations = pages.locations;
+		host.npmpro_pages = pages.host;
+		for (const [index, location] of (host.locations ?? []).entries())
+			location.npmpro_pages = pages.byLocation[index];
+
 		if (host.locations) host.locations = await internalNginx.renderLocations(host);
 
 		const config_text = await utils.renderTemplate(`${host_type}.conf`, host);
@@ -355,6 +367,8 @@ const internalNginx = {
 	 */
 	generateConfig: async (host_type, host_row, { fetchMissingOcsp = true } = {}) => {
 		const filename = internalNginx.getConfigName(host_type, host_row.id);
+		// a host's custom landing pages are files nginx serves; written with every config (a save, a restore, a start)
+		if (host_type === "proxy_host" || host_type === "dead_host") await writePlacePages(host_type, host_row);
 		const text = await internalNginx.renderConfig(host_type, host_row, { fetchMissingOcsp });
 		await writeFile(filename, text, { encoding: "utf8" });
 		logger.debug("Wrote config:", filename);
@@ -376,6 +390,8 @@ const internalNginx = {
 			await internalNginx.deleteConfig(host_type, host);
 			await also?.();
 			await internalNginx.reload();
+			// a disabled or deleted host's pages go once the reload no longer serves them; enabling writes them again
+			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 		}),
 
 	/**

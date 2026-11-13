@@ -7,6 +7,7 @@ import {
 	CROWDSEC_DEFAULTS,
 	CROWDSEC_FIELDS,
 	changedCrowdsecKeys,
+	EDITABLE_KEYS,
 	HEADER,
 	mergeCrowdsecConfig,
 	renderCrowdsecConf,
@@ -46,7 +47,7 @@ it("writes the file from the values: header, every key in order, booleans, empty
 	assert.match(text, /^ENABLED=false$/mu);
 	assert.match(text, /^RET_CODE=$/mu);
 	assert.match(text, /^APPSEC_CONNECT_TIMEOUT=$/mu);
-	assert.match(text, /^BAN_TEMPLATE_PATH=\/data\/crowdsec\/ban\.html$/mu);
+	assert.match(text, /^BAN_TEMPLATE_PATH=\/data\/public\/pages\/global\/ban\.html$/mu);
 	// the written file reads back to the same values
 	assert.deepEqual(valuesFromFile(parseConfLines(text)).values, CROWDSEC_DEFAULTS);
 });
@@ -86,16 +87,16 @@ it("imports a hand-edited file: invalid values default, unknown keys listed, the
 	assert.equal(values.mode, "stream");
 	assert.equal(values.cache_expiration, 1);
 	assert.equal(values.ret_code, null);
-	assert.equal(values.ban_template_path, "/data/crowdsec/ban.html");
+	assert.equal(values.ban_template_path, "/data/public/pages/global/ban.html");
 	assert.equal(values.ban_response, "redirect");
 	assert.equal(values.tls_client_cert, "");
 	assert.equal(values.appsec_process_timeout, null);
-	assert.deepEqual(dropped.sort(), ["BAN_TEMPLATE_PATH", "CACHE_EXPIRATION", "RET_CODE"]);
+	assert.deepEqual(dropped.sort(), ["CACHE_EXPIRATION", "RET_CODE"]);
 	assert.deepEqual(unknown.sort(), ["CACHE_SIZE", "STREAM_REQUEST_TIMEOUT"]);
 	assert.equal(valuesFromFile({ BAN_TEMPLATE_PATH: "", RET_CODE: "403" }).values.ban_response, "status");
 	assert.equal(
 		valuesFromFile({ BAN_TEMPLATE_PATH: "", RET_CODE: "403" }).values.ban_template_path,
-		"/data/crowdsec/ban.html",
+		"/data/public/pages/global/ban.html",
 	);
 	assert.equal(valuesFromFile({}).values.ban_response, "page");
 });
@@ -164,23 +165,12 @@ it("validates the cross-field rules", () => {
 	assert.deepEqual(validateCrowdsec(on({ ...tlsAppsec, appsec_url: "http://a:7422", api_key: "k" }), { exists }), []);
 	assert.equal(validateCrowdsec(on({ ban_response: "redirect" }), { exists }).length, 1);
 	assert.equal(validateCrowdsec(on({ ban_response: "status" }), { exists }).length, 1);
-	// an empty page path would be written as an empty value and read back as a bare status code
-	assert.equal(validateCrowdsec(on({ ban_template_path: "" }), { exists }).length, 1);
-	assert.deepEqual(
-		validateCrowdsec(on({ ban_response: "redirect", redirect_location: "/x", ban_template_path: "" }), { exists }),
-		[],
-	);
+	// the page paths are managed, so they are never empty and are not checked for being empty
 	assert.equal(
-		validateCrowdsec(
-			on({
-				captcha_provider: "turnstile",
-				captcha_site_key: "s",
-				captcha_secret_key: "k",
-				captcha_template_path: "",
-			}),
-			{ exists },
-		).length,
-		1,
+		validateCrowdsec(on({ captcha_provider: "turnstile", captcha_site_key: "s", captcha_secret_key: "k" }), {
+			exists,
+		}).length,
+		0,
 	);
 	assert.equal(validateCrowdsec({ ...CROWDSEC_DEFAULTS, captcha_provider: "turnstile" }, { exists }).length, 2);
 	// files are only checked while the bouncer is on
@@ -189,7 +179,7 @@ it("validates the cross-field rules", () => {
 });
 
 it("lists the files the bouncer reads", () => {
-	assert.deepEqual(requiredFiles(on()), ["/data/crowdsec/ban.html"]);
+	assert.deepEqual(requiredFiles(on()), ["/data/public/pages/global/ban.html"]);
 	assert.deepEqual(
 		requiredFiles(
 			on({
@@ -201,7 +191,7 @@ it("lists the files the bouncer reads", () => {
 				tls_client_key: "/data/crowdsec/b",
 			}),
 		),
-		["/data/crowdsec/a", "/data/crowdsec/b", "/data/crowdsec/captcha.html"],
+		["/data/crowdsec/a", "/data/crowdsec/b", "/data/public/pages/global/captcha.html"],
 	);
 });
 
@@ -248,4 +238,16 @@ it("names the changed settings, secrets by name only", () => {
 	assert.deepEqual(changedCrowdsecKeys(before, before, { api_key: "typed" }, ["api_key"]), []);
 	assert.deepEqual(changedCrowdsecKeys(before, before, { api_key: null }, ["api_key"]), []);
 	assert.deepEqual(changedCrowdsecKeys(before, { ...before, api_key: "" }, { api_key: null }), ["api_key"]);
+});
+
+it("the page paths are managed by Landing pages", () => {
+	const conf = renderCrowdsecConf({ ...CROWDSEC_DEFAULTS, ban_template_path: "/data/crowdsec/mine.html" });
+	assert.match(conf, /^BAN_TEMPLATE_PATH=\/data\/public\/pages\/global\/ban\.html$/mu);
+	assert.match(conf, /^CAPTCHA_TEMPLATE_PATH=\/data\/public\/pages\/global\/captcha\.html$/mu);
+	assert.equal(
+		mergeCrowdsecConfig({ ban_template_path: "/data/crowdsec/mine.html" }, {}).values.ban_template_path,
+		"/data/public/pages/global/ban.html",
+	);
+	assert.ok(!EDITABLE_KEYS.includes("ban_template_path"));
+	assert.ok(!EDITABLE_KEYS.includes("captcha_template_path"));
 });

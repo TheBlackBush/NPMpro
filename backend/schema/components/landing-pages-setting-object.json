@@ -1,0 +1,41 @@
+{
+	"type": "object",
+	"description": "Settings, Landing pages: the Default page (the default-site setting) and the seven global pages",
+	"required": ["default_site", "pages"],
+	"additionalProperties": false,
+	"properties": {
+		"default_site": {
+			"type": "object",
+			"required": ["value", "meta"],
+			"additionalProperties": false,
+			"properties": {
+				"value": { "type": "string", "enum": ["congratulations", "404", "444", "redirect", "html"] },
+				"meta": { "type": "object" }
+			}
+		},
+		"pages": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["not_found", "upstream_error", "denied", "maintenance", "certificate", "ban", "captcha"],
+			"properties": {
+				"not_found": { "$ref": "#/$defs/page" },
+				"upstream_error": { "$ref": "#/$defs/page" },
+				"denied": { "$ref": "#/$defs/page" },
+				"maintenance": { "$ref": "#/$defs/page" },
+				"certificate": { "$ref": "#/$defs/page" },
+				"ban": { "$ref": "#/$defs/page" },
+				"captcha": { "$ref": "#/$defs/page" }
+			}
+		}
+	},
+	"$defs": {
+		"page": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"choice": { "type": "string", "enum": ["npmpro", "custom"] },
+				"html": { "$ref": "../common.json#/properties/npmpro_page_html" }
+			}
+		}
+	}
+}

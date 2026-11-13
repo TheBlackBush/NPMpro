@@ -16,6 +16,7 @@ import { createScheduleService } from "./backup-schedules.js";
 import internalCertificate from "./certificate.js";
 import { reloadCrowdsecAfterRestore } from "./crowdsec-setting.js";
 import internalDnsCredential from "./dns-credential.js";
+import { reloadLandingPagesAfterRestore } from "./landing-pages.js";
 import internalNginx from "./nginx.js";
 import {
 	loadEnabledHosts,
@@ -56,6 +57,7 @@ const internalBackup = createBackupService({
 	reloadSettings: {
 		oidc: clearDiscoveryCache,
 		monitoring: () => geoip.reload(),
+		landingPages: reloadLandingPagesAfterRestore,
 		crowdsec: reloadCrowdsecAfterRestore,
 	},
 	dnsCredentials: {

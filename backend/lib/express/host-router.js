@@ -1,5 +1,6 @@
 import express from "express";
 import { getValidationSchema } from "../../schema/index.js";
+import { withoutRelatedPageHtml } from "../landing-pages/types.js";
 import apiValidator from "../validator/api.js";
 import validator from "../validator/index.js";
 import jwtdecode from "./jwt-decode.js";
@@ -65,7 +66,7 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 		.post(async (req, res) => {
 			const payload = apiValidator(getValidationSchema(path, "post"), req.body);
 			const result = await internal.create(res.locals.access, payload);
-			res.status(201).send(result);
+			res.status(201).send(withoutRelatedPageHtml(result));
 		});
 
 	router
@@ -78,17 +79,17 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 			const row = await internal.get(res.locals.access, {
 				id: Number.parseInt(data[idParam], 10),
 			});
-			res.status(200).send(row);
+			res.status(200).send(withoutRelatedPageHtml(row));
 		})
 		.put(async (req, res) => {
 			const payload = apiValidator(getValidationSchema(itemPath, "put"), req.body);
 			payload.id = idOf(req);
 			const result = await internal.update(res.locals.access, payload);
-			res.status(200).send(result);
+			res.status(200).send(withoutRelatedPageHtml(result));
 		})
 		.delete(async (req, res) => {
 			const result = await internal.delete(res.locals.access, { id: idOf(req) });
-			res.status(200).send(result);
+			res.status(200).send(withoutRelatedPageHtml(result));
 		});
 
 	router
@@ -96,7 +97,7 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 		.all(jwtdecode())
 		.post(async (req, res) => {
 			const result = await internal.enable(res.locals.access, { id: idOf(req) });
-			res.status(200).send(result);
+			res.status(200).send(withoutRelatedPageHtml(result));
 		});
 
 	router
@@ -104,7 +105,7 @@ const hostRouter = ({ internal, path, expandEnum, idParam }) => {
 		.all(jwtdecode())
 		.post(async (req, res) => {
 			const result = await internal.disable(res.locals.access, { id: idOf(req) });
-			res.status(200).send(result);
+			res.status(200).send(withoutRelatedPageHtml(result));
 		});
 
 	return router;

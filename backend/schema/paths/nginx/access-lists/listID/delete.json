@@ -65,7 +65,8 @@
 										"address": "127.0.0.1",
 										"directive": "allow"
 									}
-								]
+								],
+								"npmpro_denied_page": "global"
 							}
 						}
 					},

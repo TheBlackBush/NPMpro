@@ -33,6 +33,7 @@ const bool = (key, file, value) => ({ key, file, kind: "bool", default: value })
 const int = (key, file, [min, max], value) => ({ key, file, kind: "int", min, max, default: value });
 const optInt = (key, file) => ({ key, file, kind: "optint", min: 1, max: 60000, default: null });
 const choice = (key, file, values, value) => ({ key, file, kind: "enum", values, default: value });
+const managed = (key, file, value) => ({ key, file, kind: "managed", default: value });
 const text = (key, file, kind, value = "") => ({ key, file, kind, default: value });
 
 export const CROWDSEC_FIELDS = [
@@ -52,13 +53,14 @@ export const CROWDSEC_FIELDS = [
 	text("scenarios_containing", "SCENARIOS_CONTAINING", "text"),
 	text("scenarios_not_containing", "SCENARIOS_NOT_CONTAINING", "text"),
 	text("exclude_location", "EXCLUDE_LOCATION", "paths"),
-	text("ban_template_path", "BAN_TEMPLATE_PATH", "path", "/data/crowdsec/ban.html"),
+	// the ban and captcha pages are Settings, Landing pages (lib/landing-pages): always its global files
+	managed("ban_template_path", "BAN_TEMPLATE_PATH", "/data/public/pages/global/ban.html"),
 	text("redirect_location", "REDIRECT_LOCATION", "redirect"),
 	{ key: "ret_code", file: "RET_CODE", kind: "code", default: null },
 	choice("captcha_provider", "CAPTCHA_PROVIDER", ["", "recaptcha", "hcaptcha", "turnstile"], ""),
 	text("captcha_secret_key", "SECRET_KEY", "secret"),
 	text("captcha_site_key", "SITE_KEY", "text"),
-	text("captcha_template_path", "CAPTCHA_TEMPLATE_PATH", "path", "/data/crowdsec/captcha.html"),
+	managed("captcha_template_path", "CAPTCHA_TEMPLATE_PATH", "/data/public/pages/global/captcha.html"),
 	int("captcha_expiration", "CAPTCHA_EXPIRATION", [60, 2592000], 3600),
 	// empty on new installs (user decision 2026-11-12): AppSec is off until the admin sets it up
 	text("appsec_url", "APPSEC_URL", "url", ""),
@@ -80,7 +82,9 @@ const EXTRA_FIELDS = [
 const ALL_FIELDS = [...CROWDSEC_FIELDS, ...EXTRA_FIELDS];
 
 export const CROWDSEC_DEFAULTS = Object.fromEntries(ALL_FIELDS.map((field) => [field.key, field.default]));
-export const EDITABLE_KEYS = ALL_FIELDS.map((field) => field.key).filter((key) => !SECRET_KEYS.includes(key));
+export const EDITABLE_KEYS = ALL_FIELDS.filter((field) => field.kind !== "managed")
+	.map((field) => field.key)
+	.filter((key) => !SECRET_KEYS.includes(key));
 
 const safeText = (value, max) => typeof value === "string" && value.length <= max && SAFE.test(value);
 
@@ -111,6 +115,8 @@ export const isValidValue = (field, value) => {
 			return field.values.includes(value);
 		case "code":
 			return value === null || RET_CODES.includes(value);
+		case "managed":
+			return value === field.default;
 		case "url":
 			return value === "" || (safeText(value, MAX_URL) && HTTP_URL.test(value));
 		case "redirect":
@@ -161,7 +167,8 @@ export const valuesFromFile = (lines) => {
 	const dropped = [];
 	for (const [file, raw] of Object.entries(lines)) {
 		const field = byFile.get(file);
-		if (!field) continue;
+		// a hand-edited page path is neither dropped nor unknown: Landing pages imports the page
+		if (!field || field.kind === "managed") continue;
 		const value = parseFileValue(field, raw);
 		if (value !== undefined && isValidValue(field, value)) values[field.key] = value;
 		else dropped.push(file);
@@ -290,11 +297,7 @@ export const validateCrowdsec = (values, { exists, readable = exists, parses = (
 	if (values.ban_response === "status" && values.ret_code === null) {
 		problems.push("Choose the status code of the answer to a ban.");
 	}
-	if (values.ban_response === "page" && values.ban_template_path === "") {
-		problems.push("Enter the ban page file under /data/crowdsec/, or choose another answer to a ban.");
-	}
 	if (values.captcha_provider !== "") {
-		if (values.captcha_template_path === "") problems.push("Enter the captcha page file under /data/crowdsec/.");
 		if (values.captcha_site_key === "") problems.push("Enter the captcha site key.");
 		if (values.captcha_secret_key === "") problems.push("Enter the captcha secret key.");
 	}
@@ -313,6 +316,7 @@ export const validateCrowdsec = (values, { exists, readable = exists, parses = (
 
 const fileValue = (field, values) => {
 	if (field.key === "ban_template_path" && values.ban_response === "status") return "";
+	if (field.kind === "managed") return field.default;
 	if (field.key === "redirect_location" && values.ban_response !== "redirect") return "";
 	if (field.key === "ret_code" && values.ban_response === "redirect") return "";
 	const value = values[field.key];

@@ -27,6 +27,10 @@
 		"hsts_enabled",
 		"hsts_subdomains",
 		"npmpro_noindex",
+		"npmpro_maintenance",
+		"npmpro_page_not_found",
+		"npmpro_page_upstream",
+		"npmpro_page_maintenance",
 		"npmpro_crowdsec_appsec",
 		"npmpro_proxy_request_buffering",
 		"npmpro_proxy_response_buffering",
@@ -81,6 +85,27 @@
 		},
 		"npmpro_noindex": {
 			"$ref": "../common.json#/properties/npmpro_noindex"
+		},
+		"npmpro_maintenance": {
+			"$ref": "../common.json#/properties/npmpro_maintenance"
+		},
+		"npmpro_page_not_found": {
+			"$ref": "../common.json#/properties/npmpro_page_not_found"
+		},
+		"npmpro_page_upstream": {
+			"$ref": "../common.json#/properties/npmpro_page_upstream"
+		},
+		"npmpro_page_maintenance": {
+			"$ref": "../common.json#/properties/npmpro_page_maintenance"
+		},
+		"npmpro_page_not_found_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
+		},
+		"npmpro_page_upstream_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
+		},
+		"npmpro_page_maintenance_html": {
+			"$ref": "../common.json#/properties/npmpro_page_html"
 		},
 		"npmpro_crowdsec_appsec": {
 			"$ref": "../common.json#/properties/npmpro_crowdsec_appsec"

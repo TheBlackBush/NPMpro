@@ -45,7 +45,7 @@ it("imports the file and its .local into the row, the key sealed", async () => {
 	assert.equal(meta.api_url, "http://127.0.0.1:9");
 	assert.equal(meta.mode, "stream");
 	assert.equal(meta.appsec_failure_action, "passthrough");
-	assert.equal(meta.ban_template_path, "/data/crowdsec/ban.html");
+	assert.equal(meta.ban_template_path, "/data/public/pages/global/ban.html");
 	assert.match(meta.api_key, /^v1:/u);
 	assert.equal(JSON.stringify(meta).includes("old-key"), false);
 });
@@ -168,43 +168,38 @@ it("keeps the bouncer on while a ban or captcha page is missing, with a warning"
 	const { startCrowdsec } = await import("../internal/crowdsec-setting.js");
 	const { startupWarnings } = await import("../lib/crowdsec/startup-block.js");
 	const saved = await storedMeta();
-	await setMeta({
-		...saved,
-		ban_response: "page",
-		ban_template_path: "/data/crowdsec/gone-ban.html",
-		captcha_provider: "turnstile",
-		captcha_template_path: "/data/crowdsec/gone-captcha.html",
-	});
+	const globalPages = ["/data/public/pages/global/ban.html", "/data/public/pages/global/captcha.html"];
+	const kept = await Promise.all(globalPages.map((file) => api.read(file)));
+	await setMeta({ ...saved, ban_response: "page", captcha_provider: "turnstile" });
+	for (const file of globalPages) await rm(path.join(api.root, file));
 	try {
 		const started = await startCrowdsec();
 		assert.deepEqual(started.missingFiles, []);
-		assert.deepEqual(started.missingPages, ["/data/crowdsec/gone-ban.html", "/data/crowdsec/gone-captcha.html"]);
+		assert.deepEqual(started.missingPages, globalPages);
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
 		assert.deepEqual(startupWarnings({ values: started.values, missingPages: started.missingPages }), [
-			"/data/crowdsec/gone-ban.html does not exist or cannot be read, the bouncer runs without this page",
-			"/data/crowdsec/gone-captcha.html does not exist or cannot be read, the bouncer runs without this page",
+			`${globalPages[0]} does not exist or cannot be read, the bouncer runs without this page`,
+			`${globalPages[1]} does not exist or cannot be read, the bouncer runs without this page`,
 		]);
 	} finally {
+		for (const [index, file] of globalPages.entries()) await writeFile(path.join(api.root, file), kept[index]);
 		await setMeta(saved);
 		await startCrowdsec();
 	}
 });
 
 it("refuses a save while a file of the bouncer cannot be read", { skip: process.getuid?.() === 0 }, async () => {
-	const file = path.join(api.root, "data/crowdsec/ban-locked.html");
-	await writeFile(file, "<p>banned</p>");
+	const file = path.join(api.root, "data/public/pages/global/ban.html");
 	await chmod(file, 0o000);
 	try {
 		const res = await (await api.admin()).put("/settings/crowdsec", {
 			ban_response: "page",
-			ban_template_path: "/data/crowdsec/ban-locked.html",
 			force: true,
 		});
 		assert.equal(res.status, 400);
 		assert.match(JSON.stringify(res.body), /cannot be read/u);
 	} finally {
-		await chmod(file, 0o600);
-		await rm(file);
+		await chmod(file, 0o644);
 	}
 });
 

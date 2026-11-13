@@ -189,3 +189,9 @@ it("opens, strips and seals the oidc client secret and the geoip license key", (
 		'v1:other:"k"',
 	);
 });
+
+it("puts the landing pages after the default site in the settings category and the restore order", () => {
+	const settings = CATEGORIES.find((category) => category.id === "settings").types;
+	assert.equal(settings.indexOf("settings_landing_pages"), settings.indexOf("settings_default_site") + 1);
+	assert.equal(RESTORE_ORDER.indexOf("settings_landing_pages"), RESTORE_ORDER.indexOf("settings_default_site") + 1);
+});

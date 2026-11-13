@@ -18,6 +18,11 @@ app.set("json spaces", 2);
 app.set("json replacer", jsonReplacer);
 
 app.use(cookieParser(process.env.COOKIE_SECRET || crypto.randomBytes(16).toString("hex")));
+// custom landing pages (up to 1 MiB each) travel in these bodies; every other route keeps the 100 kB default
+app.use(
+	["/api/settings/landing-pages", "/api/nginx/proxy-hosts", "/api/nginx/dead-hosts", "/api/nginx/access-lists"],
+	express.json({ limit: "16mb" }),
+);
 app.use(express.json());
 
 // request logging, before the routes

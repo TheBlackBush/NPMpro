@@ -1,5 +1,4 @@
 import { accessSync, constants, existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { testConnection } from "../lib/crowdsec/connection-test.js";
 import { applyCrowdsecFiles, bouncerLoaded } from "../lib/crowdsec/files.js";
 import { importCrowdsecFile, recoverCrowdsecFromWrittenFile } from "../lib/crowdsec/import.js";
@@ -21,11 +20,11 @@ import { rooted } from "../lib/paths.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
+import internalLandingPages from "./landing-pages.js";
 import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const TEST_TIMEOUT_MS = 5000;
-const PREVIEW_MAX = 1024 * 1024;
 const PAGES = { ban: "ban_template_path", captcha: "captcha_template_path" };
 const FIELD_OF_KEY = new Map(CROWDSEC_FIELDS.map((field) => [field.key, field]));
 
@@ -311,15 +310,8 @@ const internalCrowdsecSetting = {
 	 */
 	preview: async (access, page) => {
 		access.canAdmin();
-		const { values } = await getCrowdsecConfig();
-		const file = Object.hasOwn(PAGES, page) ? values[PAGES[page]] : "";
-		if (!file) throw new errs.ItemNotFoundError(page);
-		try {
-			return (await readFile(rooted(file), "utf8")).slice(0, PREVIEW_MAX);
-		} catch (err) {
-			if (err.code === "ENOENT") throw new errs.ItemNotFoundError(file);
-			throw err;
-		}
+		if (!Object.hasOwn(PAGES, page)) throw new errs.ItemNotFoundError(page);
+		return await internalLandingPages.preview(access, { source: "global", type: page });
 	},
 };
 

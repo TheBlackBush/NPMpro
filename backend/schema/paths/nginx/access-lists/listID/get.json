@@ -50,7 +50,8 @@
 								"name": "My Access List",
 								"satisfy_any": false,
 								"pass_auth": false,
-								"proxy_host_count": 1
+								"proxy_host_count": 1,
+								"npmpro_denied_page": "global"
 							}
 						}
 					},

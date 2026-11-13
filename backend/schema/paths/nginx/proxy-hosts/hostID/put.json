@@ -251,6 +251,27 @@
 						},
 						"locations": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/locations"
+						},
+						"npmpro_maintenance": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_maintenance"
+						},
+						"npmpro_page_not_found": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_not_found"
+						},
+						"npmpro_page_upstream": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_upstream"
+						},
+						"npmpro_page_maintenance": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_maintenance"
+						},
+						"npmpro_page_not_found_html": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_not_found_html"
+						},
+						"npmpro_page_upstream_html": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_upstream_html"
+						},
+						"npmpro_page_maintenance_html": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_page_maintenance_html"
 						}
 					}
 				}
@@ -299,7 +320,11 @@
 								"enabled": true,
 								"locations": [],
 								"hsts_enabled": false,
-								"hsts_subdomains": false
+								"hsts_subdomains": false,
+								"npmpro_maintenance": false,
+								"npmpro_page_not_found": "upstream",
+								"npmpro_page_upstream": "global",
+								"npmpro_page_maintenance": "global"
 							}
 						}
 					},

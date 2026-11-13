@@ -16,8 +16,10 @@ class DeadHost extends HostModel {
 
 	static droppedColumns = ["is_deleted", "meta", "http2_support"];
 
+	static emptyWhenNull = ["npmpro_page_html"];
+
 	static insertDefaults() {
-		return { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" };
+		return { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "", npmpro_page: "global" };
 	}
 
 	static tableName = "dead_host";

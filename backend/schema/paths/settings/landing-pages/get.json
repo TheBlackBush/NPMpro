@@ -1,0 +1,25 @@
+{
+	"operationId": "getLandingPages",
+	"summary": "Get Settings, Landing pages",
+	"description": "Admins only: the Default page and the seven global pages",
+	"tags": [
+		"settings"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"$ref": "../../../components/landing-pages-setting-object.json"
+					}
+				}
+			}
+		}
+	}
+}
