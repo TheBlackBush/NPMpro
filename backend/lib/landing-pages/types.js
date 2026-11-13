@@ -83,7 +83,11 @@ export const PAGE_HTML_FIELDS = Object.values(PLACES).flatMap(({ fields }) =>
  * @param   {number} id
  * @returns {string}  the folder of the place's custom pages
  */
-export const placeDir = (kind, id) => `${PAGES_DIR}/${PLACES[kind].dir}-${id}`;
+export const placeDir = (kind, id) => {
+	if (!Object.hasOwn(PLACES, kind)) throw new Error(`Unknown page place: ${kind}`);
+	if (!Number.isSafeInteger(id) || id < 1) throw new Error(`Invalid id for a page folder: ${id}`);
+	return `${PAGES_DIR}/${PLACES[kind].dir}-${id}`;
+};
 
 /**
  * @param   {string} type
@@ -93,6 +97,7 @@ export const placeDir = (kind, id) => `${PAGES_DIR}/${PLACES[kind].dir}-${id}`;
  * @returns {string}  the file nginx serves, "" when nothing replaces the answer (upstream, plain)
  */
 export const pageFile = (type, choice, kind, id) => {
+	if (!Object.hasOwn(PAGE_FILES, type)) throw new Error(`Unknown page type: ${type}`);
 	switch (choice) {
 		case "global":
 			return `${GLOBAL_DIR}/${PAGE_FILES[type]}`;

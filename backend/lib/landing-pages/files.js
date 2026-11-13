@@ -23,6 +23,25 @@ export const globalPageFiles = async (pages, { fs = nodeFs } = {}) =>
 	);
 
 /**
+ * Writes a page so that nginx never reads a partial file: a temporary file next to it, then a rename.
+ *
+ * @param {string} file     rooted path
+ * @param {string} content
+ * @param {Object} [deps]
+ */
+export const writePageFile = async (file, content, { fs = nodeFs } = {}) => {
+	const temp = `${file}.tmp-${process.pid}`;
+	try {
+		await fs.writeFile(temp, content, { encoding: "utf8", mode: FILE_MODE });
+		await fs.chmod(temp, FILE_MODE);
+		await fs.rename(temp, file);
+	} catch (err) {
+		await fs.rm(temp, { force: true });
+		throw err;
+	}
+};
+
+/**
  * @param {string[]} paths  rooted files
  * @param {Object}   [deps]
  */
@@ -34,11 +53,17 @@ export const makeReadable = async (paths, { fs = nodeFs } = {}) => {
  * Writes the custom pages of a place and removes the files of its other pages (the folder when none is custom)
  *
  * @param {"proxy_host"|"dead_host"|"access_list"} kind
- * @param {Object} row  with its page columns
+ * @param {Object} row  the full saved row: every page column and its _html column (a row without them, as a list
+ *                      returns it, would read as "no custom page" and wipe the saved pages, so it is refused)
  * @param {Object} [deps]
  */
 export const writePlacePages = async (kind, row, { fs = nodeFs } = {}) => {
 	const dir = rooted(placeDir(kind, row.id));
+	for (const field of PLACES[kind].fields) {
+		if (typeof row[`${field.column}_html`] !== "string") {
+			throw new Error(`writePlacePages needs the full saved row: ${field.column}_html is missing`);
+		}
+	}
 	const custom = PLACES[kind].fields.filter(
 		(field) =>
 			row[field.column] === "custom" &&
@@ -53,8 +78,7 @@ export const writePlacePages = async (kind, row, { fs = nodeFs } = {}) => {
 	for (const field of PLACES[kind].fields) {
 		const file = `${dir}/${PAGE_FILES[field.type]}`;
 		if (custom.includes(field)) {
-			await fs.writeFile(file, row[`${field.column}_html`], { encoding: "utf8", mode: FILE_MODE });
-			await fs.chmod(file, FILE_MODE);
+			await writePageFile(file, row[`${field.column}_html`], { fs });
 		} else {
 			await fs.rm(file, { force: true });
 		}
@@ -66,5 +90,5 @@ export const writePlacePages = async (kind, row, { fs = nodeFs } = {}) => {
  * @param {number} id
  * @param {Object} [deps]
  */
-export const removePlacePages = (kind, id, { fs = nodeFs } = {}) =>
+export const removePlacePages = async (kind, id, { fs = nodeFs } = {}) =>
 	fs.rm(rooted(placeDir(kind, id)), { recursive: true, force: true });
