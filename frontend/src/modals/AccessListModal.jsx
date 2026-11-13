@@ -14,6 +14,7 @@ import {
 	Loading,
 	ModalTabs,
 	PageChoiceField,
+	PageLines,
 	SwitchField,
 	SwitchList,
 	TabPane,
@@ -96,17 +97,19 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 								/>
 							</SwitchList>
 						</FormSection>
-						<PageChoiceField
-							name="npmproDeniedPage"
-							htmlName="npmproDeniedPageHtml"
-							label={<T id="landing-pages.field.denied" />}
-							choices={PLACE_FIELDS.accessList[0].choices}
-							field={PLACE_FIELDS.accessList[0]}
-							previewHref={
-								isAdmin && data.id ? previewPath({ source: "access-list", id: data.id }) : null
-							}
-							className="mt-4"
-						/>
+						<PageLines className="mt-4">
+							<PageChoiceField
+								name="npmproDeniedPage"
+								htmlName="npmproDeniedPageHtml"
+								title={<T id="landing-pages.type.denied" />}
+								codes={PLACE_FIELDS.accessList[0].codes}
+								choices={PLACE_FIELDS.accessList[0].choices}
+								field={PLACE_FIELDS.accessList[0]}
+								previewHref={
+									isAdmin && data.id ? previewPath({ source: "access-list", id: data.id }) : null
+								}
+							/>
+						</PageLines>
 					</TabPane>
 					<TabPane id="auth">
 						<BasicAuthFields savedUsers={savedUsers} />

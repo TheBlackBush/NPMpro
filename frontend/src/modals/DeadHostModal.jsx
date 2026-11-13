@@ -5,6 +5,7 @@ import {
 	ModalTabs,
 	NginxConfigField,
 	PageChoiceField,
+	PageLines,
 	SSLCertificateField,
 	SSLOptionsFields,
 	TabPane,
@@ -32,14 +33,17 @@ function DeadHostFields({ isAdmin, hostId }) {
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
 				<DirectoryField labelId="dead-host.directory" />
-				<PageChoiceField
-					name="npmproPage"
-					htmlName="npmproPageHtml"
-					label={<T id="landing-pages.field.page" />}
-					choices={PLACE_FIELDS.deadHost[0].choices}
-					field={PLACE_FIELDS.deadHost[0]}
-					previewHref={isAdmin && hostId ? previewPath({ source: "dead-host", id: hostId }) : null}
-				/>
+				<PageLines className="mt-4">
+					<PageChoiceField
+						name="npmproPage"
+						htmlName="npmproPageHtml"
+						title={<T id="landing-pages.field.page" />}
+						codes={PLACE_FIELDS.deadHost[0].codes}
+						choices={PLACE_FIELDS.deadHost[0].choices}
+						field={PLACE_FIELDS.deadHost[0]}
+						previewHref={isAdmin && hostId ? previewPath({ source: "dead-host", id: hostId }) : null}
+					/>
+				</PageLines>
 			</TabPane>
 			<TabPane id="tls">
 				<SSLCertificateField label="ssl-certificate" allowNew />

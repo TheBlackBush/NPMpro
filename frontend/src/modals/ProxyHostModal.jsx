@@ -9,6 +9,7 @@ import {
 	ModalTabs,
 	NginxConfigField,
 	PageChoiceField,
+	PageLines,
 	ProxyOptionsFields,
 	SSLCertificateField,
 	SSLOptionsFields,
@@ -100,13 +101,15 @@ function ProxyHostFields({ isAdmin, hostId }) {
 				<p className="mt-1 mb-4 text-sm text-muted-foreground">
 					<T id="landing-pages.maintenance-mode.hint" />
 				</p>
-				<div className="space-y-4">
+				<PageLines>
 					{PLACE_FIELDS.proxyHost.map((field) => (
 						<PageChoiceField
 							key={field.name}
 							name={field.name}
 							htmlName={htmlName(field.name)}
-							label={<T id={field.labelId} />}
+							title={<T id={field.labelId} />}
+							codes={field.codes}
+							hint={field.hintId ? <T id={field.hintId} /> : null}
 							choices={field.choices}
 							field={field}
 							previewHref={
@@ -116,7 +119,7 @@ function ProxyHostFields({ isAdmin, hostId }) {
 							}
 						/>
 					))}
-				</div>
+				</PageLines>
 				<p className="mt-4 text-sm text-muted-foreground">
 					<T id="landing-pages.global.hint" />
 				</p>

@@ -13,22 +13,26 @@ export const PAGE_TYPES = Object.freeze([
 		key: "notFound",
 		api: "not_found",
 		labelId: "landing-pages.type.not-found",
+		codes: ["404"],
 	},
 	{
 		key: "upstreamError",
 		api: "upstream_error",
 		labelId: "landing-pages.type.upstream-error",
+		codes: ["502", "503", "504"],
 	},
-	{ key: "denied", api: "denied", labelId: "landing-pages.type.denied" },
+	{ key: "denied", api: "denied", labelId: "landing-pages.type.denied", codes: ["401", "403"] },
 	{
 		key: "maintenance",
 		api: "maintenance",
 		labelId: "landing-pages.type.maintenance",
+		codes: ["503"],
 	},
 	{
 		key: "certificate",
 		api: "certificate",
 		labelId: "landing-pages.type.certificate",
+		codes: ["495"],
 	},
 	{ key: "ban", api: "ban", labelId: "landing-pages.type.ban" },
 	{
@@ -36,6 +40,16 @@ export const PAGE_TYPES = Object.freeze([
 		api: "captcha",
 		labelId: "landing-pages.type.captcha",
 	},
+]);
+
+// the groups of Settings, Landing pages, in order, with the pages of each
+export const PAGE_GROUPS = Object.freeze([
+	{
+		id: "errors",
+		labelId: "landing-pages.group.errors",
+		keys: ["notFound", "upstreamError", "maintenance", "certificate"],
+	},
+	{ id: "access", labelId: "landing-pages.group.access", keys: ["denied", "ban", "captcha"] },
 ]);
 export const DEFAULT_PAGE = Object.freeze({
 	key: "defaultSite",
@@ -51,21 +65,26 @@ export const PLACE_FIELDS = Object.freeze({
 			api: "not_found",
 			choices: ["global", "npmpro", "custom", "upstream"],
 			default: "upstream",
-			labelId: "landing-pages.field.not-found",
+			labelId: "landing-pages.type.not-found",
+			codes: ["404"],
 		},
 		{
 			name: "npmproPageUpstream",
 			api: "upstream_error",
 			choices: ["global", "npmpro", "custom", "upstream"],
 			default: "global",
-			labelId: "landing-pages.field.upstream-error",
+			labelId: "landing-pages.type.upstream-error",
+			codes: ["502", "503", "504"],
+			hintId: "landing-pages.type.upstream-error.description",
 		},
 		{
 			name: "npmproPageMaintenance",
 			api: "maintenance",
 			choices: ["global", "npmpro", "custom"],
 			default: "global",
-			labelId: "landing-pages.field.maintenance",
+			labelId: "landing-pages.type.maintenance",
+			codes: ["503"],
+			hintId: "landing-pages.type.maintenance.description",
 		},
 	],
 	deadHost: [
@@ -75,6 +94,7 @@ export const PLACE_FIELDS = Object.freeze({
 			choices: ["global", "npmpro", "custom"],
 			default: "global",
 			labelId: "landing-pages.field.page",
+			codes: ["404"],
 		},
 	],
 	accessList: [
@@ -83,7 +103,8 @@ export const PLACE_FIELDS = Object.freeze({
 			api: "denied",
 			choices: ["global", "npmpro", "custom", "plain"],
 			default: "global",
-			labelId: "landing-pages.field.denied",
+			labelId: "landing-pages.type.denied",
+			codes: ["401", "403"],
 		},
 	],
 });
