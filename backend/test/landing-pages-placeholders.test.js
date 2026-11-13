@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { it } from "node:test";
-import { DEFAULT_TIMEFMT, fillPlaceholders, ssiProblems } from "../lib/landing-pages/placeholders.js";
+import { DEFAULT_TIMEFMT, ECHO_VARS, fillPlaceholders, ssiProblems } from "../lib/landing-pages/placeholders.js";
 
 const NOW = new Date(Date.UTC(2026, 10, 13, 9, 41, 7));
 const VALUES = { remote_addr: "203.0.113.7", status: 502, host: "example.com", now: NOW };
@@ -51,4 +52,19 @@ it("uses default for an empty value and drops what is not allowed", () => {
 	assert.equal(fillPlaceholders('<!--# echo var="host" default="none" -->', { ...VALUES, host: "" }), "none");
 	assert.equal(fillPlaceholders('a<!--# include virtual="/" -->b', VALUES), "ab");
 	assert.equal(fillPlaceholders('a<!--# echo var="http_cookie" -->b', VALUES), "ab");
+});
+
+it("npmpro_pages.lua knows the same variables and default timefmt", () => {
+	const lua = readFileSync(new URL("../../rootfs/usr/local/share/lua/5.1/npmpro_pages.lua", import.meta.url), "utf8");
+	for (const name of ECHO_VARS) assert.ok(lua.includes(`values.var == "${name}"`), name);
+	assert.ok(lua.includes(`local DEFAULT_TIMEFMT = "${DEFAULT_TIMEFMT}"`));
+	const conf = readFileSync(
+		new URL("../../rootfs/usr/local/nginx/conf/crowdsec-bouncer.conf", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		conf.includes(
+			'require("npmpro_pages").wrap(require "plugins.crowdsec.ban", require "plugins.crowdsec.captcha")',
+		),
+	);
 });

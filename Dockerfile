@@ -222,6 +222,7 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS=--use-openssl-ca
 ARG LRC_VER=873d072635fd408d81a0abd4187392f3f128ceb9 # v0.1.35rc2
 ARG LRL_VER=3ff6300e68b73ba20e909c7d16bd839aef2e5a4b # v0.15
+# rootfs/usr/local/share/lua/5.1/npmpro_pages.lua copies ban.apply and captcha.apply: compare them on an update
 ARG LCSB_VER=4aad1dfa653d9d96fb5c0114ae930eb2353214c8 # main
 ARG COF_VER=da93e0cec7fdb1a80f4972f75b3638763d012c0e # main
 ARG NBF_VER=5cee8db2a505f2a253e24691399c828c043071fc # master
