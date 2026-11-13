@@ -3,7 +3,7 @@ import { it } from "node:test";
 import { isPaletteShortcut, paletteGroups } from "./CommandPalette.js";
 
 const sections = [
-	{ id: "default-site", labelKey: "settings.default-site" },
+	{ id: "landing-pages", labelKey: "settings.landing-pages" },
 	{ id: "nginx", labelKey: "settings.nginx" },
 	{ id: "users", labelKey: "users" },
 	{ id: "audit-log", labelKey: "auditlogs" },
@@ -17,7 +17,7 @@ it("an admin gets the pages and every Settings section, Users and Audit Log amon
 	assert.ok(!pages.items.some((i) => i.to === "/audit-log"));
 	assert.deepEqual(
 		settings.items.map((i) => i.to),
-		["/settings/default-site", "/settings/nginx", "/settings/users", "/settings/audit-log"],
+		["/settings/landing-pages", "/settings/nginx", "/settings/users", "/settings/audit-log"],
 	);
 });
 

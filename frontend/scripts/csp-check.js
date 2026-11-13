@@ -25,7 +25,7 @@ const EMAIL = "admin@example.com";
 const password = process.env.CSP_CHECK_PASSWORD || `Ci-${randomBytes(12).toString("hex")}-9`;
 const VIOLATION = /Content Security Policy/iu;
 const problems = [];
-// the paths opened and the paths they ended on (/settings redirects to /settings/default-site)
+// the paths opened and the paths they ended on (/settings redirects to /settings/landing-pages)
 const visited = new Set();
 
 // the access lists an action made with seedAccessLists, removed when it ends

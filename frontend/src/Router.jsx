@@ -64,7 +64,11 @@ function Router() {
 						<Route path="/certificates/dns-credentials" element={<DnsCredentials />} />
 						<Route path="/access" element={<Access />} />
 						<Route path="/audit-log" element={<MovedToSettings />} />
-						<Route path="/settings" element={<Navigate to="/settings/default-site" replace />} />
+						<Route path="/settings" element={<Navigate to="/settings/landing-pages" replace />} />
+						<Route
+							path="/settings/default-site"
+							element={<Navigate to="/settings/landing-pages" replace />}
+						/>
 						<Route path="/settings/:section" element={<Settings />} />
 						<Route path="/users" element={<MovedToSettings />} />
 						<Route path="/monitoring" element={<Navigate to="/monitoring/traffic" replace />} />

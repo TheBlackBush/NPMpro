@@ -19,6 +19,7 @@ export * from "./LoadingPage";
 export * from "./NoticeAlert";
 export * from "./OidcButton";
 export * from "./PageHeader";
+export * from "./PageThumbnail";
 export * from "./RequestProgress";
 export * from "./RowActions";
 export * from "./SecretsFields";
