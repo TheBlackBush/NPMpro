@@ -10,6 +10,7 @@ wiki
 **/agentdb.rvf*
 backend/coverage
 backend/test
+backend/landing-pages
 backend/coverage-floor.json
 backend/biome.json
 backend/biome.all.json

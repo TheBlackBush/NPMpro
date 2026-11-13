@@ -169,5 +169,5 @@ jobs:
         with:
           check_filenames: true
           check_hidden: true
-          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches
+          skip: pnpm-lock.yaml,./frontend/translations,./frontend/patches,./backend/landing-pages/texts,./rootfs/usr/local/nginx/html/npmpro
           ignore_words_list: afterAll,alog,clen,Nd,hasTable,MapPin
