@@ -45,10 +45,8 @@ const TEXTS = [
 	"scenariosContaining",
 	"scenariosNotContaining",
 	"excludeLocation",
-	"banTemplatePath",
 	"redirectLocation",
 	"captchaSiteKey",
-	"captchaTemplatePath",
 	"appsecUrl",
 ];
 const CHOICES = ["mode", "bouncingOnType", "fallbackRemediation", "banResponse", "appsecFailureAction"];
@@ -80,8 +78,6 @@ export const ADVANCED_FIELDS = [
 	"appsecProcessTimeout",
 	"alwaysSendToAppsec",
 	"appsecDropUnreadableBody",
-	"banTemplatePath",
-	"captchaTemplatePath",
 ];
 
 // field name -> label translation id, for the note next to Save (the inputs' ids differ from the field names)
@@ -105,8 +101,6 @@ export const CROWDSEC_FIELD_LABELS = {
 	appsecConnectTimeout: "settings.crowdsec.appsec-connect-timeout",
 	appsecSendTimeout: "settings.crowdsec.appsec-send-timeout",
 	appsecProcessTimeout: "settings.crowdsec.appsec-process-timeout",
-	banTemplatePath: "settings.crowdsec.ban-template",
-	captchaTemplatePath: "settings.crowdsec.captcha-template",
 };
 
 const numberText = (value) => (value === null || value === undefined ? "" : String(value));
@@ -135,13 +129,11 @@ export const crowdsecValues = (data) => ({
 	bouncingOnType: data.bouncingOnType ?? "all",
 	fallbackRemediation: data.fallbackRemediation ?? "ban",
 	banResponse: data.banResponse ?? "page",
-	banTemplatePath: data.banTemplatePath ?? "",
 	redirectLocation: data.redirectLocation ?? "",
 	retCode: data.retCode === null || data.retCode === undefined ? "default" : String(data.retCode),
 	captchaProvider: data.captchaProvider || "none",
 	captchaSiteKey: data.captchaSiteKey ?? "",
 	captchaSecretKey: "",
-	captchaTemplatePath: data.captchaTemplatePath ?? "",
 	captchaExpiration: numberText(data.captchaExpiration),
 	appsecUrl: data.appsecUrl ?? "",
 	appsecFailureAction: data.appsecFailureAction ?? "deny",
@@ -191,15 +183,6 @@ export const crowdsecValidate = (rules, isLocked, data) => (values) => {
 	const needsKey = values.auth !== "tls" || appsecUrl !== "";
 	if (values.enabled && needsKey && trimmed(values.apiKey) === "" && !(data.apiKeySet && !values.clearApiKey)) {
 		fail("apiKey", "error.required");
-	}
-	for (const key of ["banTemplatePath", "captchaTemplatePath"]) {
-		if (trimmed(values[key]) !== "" && !isCrowdsecPath(trimmed(values[key])))
-			fail(key, "settings.crowdsec.error.path");
-	}
-	if (values.banResponse === "page" && trimmed(values.banTemplatePath) === "")
-		fail("banTemplatePath", "error.required");
-	if (values.captchaProvider !== "none" && trimmed(values.captchaTemplatePath) === "") {
-		fail("captchaTemplatePath", "error.required");
 	}
 	if (values.banResponse === "redirect") {
 		const target = trimmed(values.redirectLocation);

@@ -143,10 +143,6 @@ it("checks URLs, paths, lists and numbers like the backend", () => {
 		excludeLocation: en["settings.crowdsec.error.exclude"],
 	});
 	assert.deepEqual(validate({ ...base, excludeLocation: "/health,/.well-known/" }), {});
-	assert.deepEqual(validate({ ...base, banTemplatePath: "/etc/ban.html" }), { banTemplatePath: PATH_ERROR });
-	assert.deepEqual(validate({ ...base, captchaTemplatePath: "/data/crowdsec/../npmpro/x" }), {
-		captchaTemplatePath: PATH_ERROR,
-	});
 	assert.deepEqual(validate({ ...base, cacheExpiration: "0" }), {
 		cacheExpiration: "Enter a whole number from 1 to 86400",
 	});
@@ -266,18 +262,13 @@ it("warns about AppSec deny while the admin UI is checked", () => {
 	assert.equal(appsecDenyWarning({ ...deny, appsecUrl: " " }), false);
 });
 
-it("requires the ban and captcha page files while they are used", () => {
-	assert.deepEqual(validate({ ...base, banTemplatePath: "" }), { banTemplatePath: REQUIRED });
-	assert.deepEqual(validate({ ...base, banResponse: "status", retCode: "403", banTemplatePath: "" }), {});
+it("leaves the ban and captcha pages to Landing pages: the page paths the API sends are not form fields", () => {
+	const values = crowdsecValues({ ...DATA, banTemplatePath: "/data/public/pages/global/ban.html" });
+	assert.equal("banTemplatePath" in values, false);
+	assert.equal("captchaTemplatePath" in values, false);
 	assert.deepEqual(
-		validate({
-			...base,
-			captchaProvider: "turnstile",
-			captchaSiteKey: "s",
-			captchaSecretKey: "k",
-			captchaTemplatePath: "",
-		}),
-		{ captchaTemplatePath: REQUIRED },
+		validate({ ...base, captchaProvider: "turnstile", captchaSiteKey: "s", captchaSecretKey: "k" }),
+		{},
 	);
 });
 
@@ -315,14 +306,7 @@ it("falls back to the defaults for an answer without fields", () => {
 	assert.equal(empty.appsecFailureAction, "deny");
 	assert.equal(empty.retCode, "default");
 	assert.equal(empty.captchaProvider, "none");
-	for (const key of [
-		"apiUrl",
-		"tlsClientCert",
-		"banTemplatePath",
-		"captchaSiteKey",
-		"excludeLocation",
-		"cacheExpiration",
-	]) {
+	for (const key of ["apiUrl", "tlsClientCert", "captchaSiteKey", "excludeLocation", "cacheExpiration"]) {
 		assert.equal(empty[key], "", key);
 	}
 	assert.equal(crowdsecValues({ sslVerify: false, appsecDropUnreadableBody: false }).sslVerify, false);
