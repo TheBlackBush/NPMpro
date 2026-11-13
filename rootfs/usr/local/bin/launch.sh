@@ -79,8 +79,9 @@ fi
 # The CrowdSec bouncer reads crowdsec.conf and parses its TLS client certificate and key when nginx starts, which
 # nginx -t does not do: a missing crowdsec.conf or a TLS client file it cannot parse stops nginx and with it the whole
 # container. The bouncer stays off until the file is fixed (the settings in the database stay as they are, the backend
-# writes the include again from them at the next start). A missing ban or captcha page does not stop the bouncer (it
-# logs it and answers with the status code), so the pages are not checked here.
+# writes the include again from them at the next start). An AppSec URL without an API key keeps it off too. A missing
+# ban or captcha page does not stop the bouncer (it logs it and answers with the status code), so the pages are not
+# checked here.
 # crowdsec-files-check begin
 if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro/nginx/crowdsec.conf 2> /dev/null; then
     # the same reading as the backend's parseConfLines: key in any case, an optional "export ", one pair of quotes, an
@@ -138,9 +139,17 @@ if grep -qxF "include /usr/local/nginx/conf/crowdsec-bouncer.conf;" /data/npmpro
             crowdsec_reason="is missing, cannot be read or is not an unencrypted PEM key"
         fi
     fi
+    crowdsec_message=""
     if [ -n "$crowdsec_unusable" ]; then
+        crowdsec_message="CrowdSec: $crowdsec_unusable $crowdsec_reason, the bouncer stays off until it is fixed (Settings, CrowdSec)"
+    elif [ -n "$(crowdsec_value APPSEC_URL)" ] && [ -z "$(crowdsec_value API_KEY)" ]; then
+        # AppSec always authenticates with the API key, also with TLS client authentication: without one it refuses
+        # every request (a restore without secrets, an import), so the bouncer stays off like the backend keeps it
+        crowdsec_message="CrowdSec: AppSec has no API key, the bouncer stays off until the key is entered (Settings, CrowdSec)"
+    fi
+    if [ -n "$crowdsec_message" ]; then
         echo "# the CrowdSec bouncer is off (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec.conf
-        echo "CrowdSec: $crowdsec_unusable $crowdsec_reason, the bouncer stays off until it is fixed (Settings, CrowdSec)"
+        echo "$crowdsec_message"
     fi
 fi
 # crowdsec-files-check end

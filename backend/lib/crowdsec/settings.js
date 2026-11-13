@@ -245,6 +245,17 @@ const PEM_KINDS = {
 };
 
 /**
+ * The bouncer is on and has an AppSec URL but no API key (none stored, none from CROWDSEC_API_KEY): AppSec always
+ * authenticates with the key, also with TLS client authentication, so it would refuse every request. A save refuses
+ * this (validateCrowdsec); settings that did not come through a save (a restore without secrets, an import, the
+ * environment) are applied with the bouncer off until the key is entered.
+ *
+ * @param   {Object}  values  effective values, secrets in plain text
+ * @returns {boolean}
+ */
+export const appsecKeyMissing = (values) => Boolean(values.enabled && values.appsec_url && !values.api_key);
+
+/**
  * The rules between fields (the API schema checks each field on its own). Files must exist only while the bouncer is
  * on. Messages are English sentences for the API error.
  *

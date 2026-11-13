@@ -117,47 +117,34 @@ it("shows a missing key as a clear line, not as refused", () => {
 	assert.doesNotMatch(text, /refused/u);
 });
 
-it("gives a missing AppSec key one warning, not the cannot be reached one", () => {
-	const values = on({ api_key: "", appsec_failure_action: "deny", admin_ui_excluded: true });
-	const checks = [
-		{ name: "lapi", result: "no_key", message: "No API key is set" },
-		{ name: "appsec", result: "no_key", message: "No API key is set" },
-	];
-	const warnings = startupWarnings({ values, checks });
-	assert.equal(
-		warnings.some((line) => line.startsWith("AppSec cannot be reached")),
-		false,
-	);
-	assert.ok(warnings.some((line) => line.startsWith("AppSec has no API key")));
-});
-
 it("keeps the .local warning while the bouncer is off", () => {
 	assert.deepEqual(startupWarnings({ values: CROWDSEC_DEFAULTS, localOverride: true }), [
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
 	]);
 });
 
-it("warns when AppSec has no API key, also with TLS authentication", () => {
-	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny" });
-	assert.ok(
-		startupWarnings({ values: noKey, checks: ok }).includes(
-			"AppSec has no API key and refuses every request (with deny every request is blocked): enter the key in Settings, CrowdSec",
-		),
-	);
-	const passthrough = startupWarnings({ values: { ...noKey, appsec_failure_action: "passthrough" }, checks: ok });
-	assert.ok(
-		passthrough.includes(
-			"AppSec has no API key and refuses every request (with passthrough AppSec checks nothing): enter the key in Settings, CrowdSec",
-		),
-	);
+const NO_KEY_WARNING =
+	"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL";
+
+it("says the bouncer is off while AppSec has no API key, also with TLS authentication", () => {
+	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny", admin_ui_excluded: true });
+	const warnings = startupWarnings({ values: noKey });
+	assert.deepEqual(warnings, [NO_KEY_WARNING]);
 	assert.equal(
-		startupWarnings({ values: on(), checks: ok }).some((line) => line.includes("no API key")),
-		false,
+		renderStartupBlock({ values: noKey, warnings, bouncerOff: true }),
+		`CrowdSec: off (AppSec has no API key, see the warning)\nWarning:  ${NO_KEY_WARNING}`,
 	);
-	assert.equal(
-		startupWarnings({ values: { ...noKey, appsec_url: "" }, checks: ok }).some((line) =>
-			line.includes("no API key"),
-		),
-		false,
+	assert.deepEqual(startupWarnings({ values: { ...noKey, appsec_failure_action: "passthrough" } }), [NO_KEY_WARNING]);
+	// a key, no AppSec URL or the bouncer off: no such warning
+	for (const values of [on(), { ...noKey, appsec_url: "" }, { ...noKey, enabled: false }]) {
+		assert.equal(
+			startupWarnings({ values, checks: ok }).some((line) => line.includes("no API key")),
+			false,
+		);
+	}
+	// a file that is not usable keeps its own reason
+	assert.match(
+		renderStartupBlock({ values: on(), bouncerOff: true }),
+		/^CrowdSec: off \(a file it needs is not usable, see the warning\)$/u,
 	);
 });

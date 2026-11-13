@@ -1,3 +1,5 @@
+import { appsecKeyMissing } from "./settings.js";
+
 // The CrowdSec block of the startup log (spec section 4), in the style of the launch.sh banner. Pure: the caller runs
 // the connection test and the file checks. It reads whether an API key is set but never prints the key or the
 // captcha secret.
@@ -58,8 +60,7 @@ const startupWarnings = ({
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");
 	if (lapi && lapi.result !== "ok") warnings.push("the LAPI check failed, decisions are not applied until it passes");
-	// no_key has its own warning below: AppSec is reachable but refuses every request without a key
-	if (appsec && appsec.result !== "ok" && appsec.result !== "no_key") {
+	if (appsec && appsec.result !== "ok") {
 		warnings.push(
 			values.appsec_failure_action === "deny"
 				? "AppSec cannot be reached: requests are blocked while AppSec is down"
@@ -71,9 +72,10 @@ const startupWarnings = ({
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
-	if (values.appsec_url && !values.api_key) {
+	// the start gate keeps the bouncer off in this case (appsecKeyMissing): AppSec would refuse every request
+	if (appsecKeyMissing(values)) {
 		warnings.push(
-			`AppSec has no API key and refuses every request${values.appsec_failure_action === "deny" ? " (with deny every request is blocked)" : " (with passthrough AppSec checks nothing)"}: enter the key in Settings, CrowdSec`,
+			"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL",
 		);
 	}
 	for (const file of missingFiles)
@@ -90,13 +92,16 @@ const startupWarnings = ({
  * @param   {Object}   [input.lockedBy]  key -> variable name
  * @param   {Object[]} [input.checks]
  * @param   {string[]} [input.warnings]
- * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable
+ * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable or
+ *                                          AppSec has no API key
  * @returns {string}
  */
 const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [], bouncerOff = false }) => {
 	const warningLines = warnings.map((warning) => `Warning:  ${warning}`);
-	if (bouncerOff)
-		return ["CrowdSec: off (a file it needs is not usable, see the warning)", ...warningLines].join("\n");
+	if (bouncerOff) {
+		const reason = appsecKeyMissing(values) ? "AppSec has no API key" : "a file it needs is not usable";
+		return [`CrowdSec: off (${reason}, see the warning)`, ...warningLines].join("\n");
+	}
 	if (!values.enabled) return ["CrowdSec: off (Settings, CrowdSec)", ...warningLines].join("\n");
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");

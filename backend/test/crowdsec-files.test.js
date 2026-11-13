@@ -103,6 +103,34 @@ it("launch.sh does not check the ban and captcha pages: the bouncer runs without
 	}
 });
 
+it("launch.sh turns the bouncer off while AppSec has an URL but no API key", () => {
+	const root = mkdtempSync(path.join(os.tmpdir(), "csl-"));
+	const noKeyLine =
+		"CrowdSec: AppSec has no API key, the bouncer stays off until the key is entered (Settings, CrowdSec)\n";
+	try {
+		for (const conf of [
+			"ENABLED=true\nAPI_KEY=\nAPPSEC_URL=http://127.0.0.1:7422\n",
+			"ENABLED=true\nAPPSEC_URL=http://127.0.0.1:7422\n",
+			'ENABLED=true\nAPI_KEY="" # removed\nexport appsec_url="http://127.0.0.1:7422"\r\n',
+		]) {
+			const result = runCheck(root, conf);
+			assert.equal(result.include, INCLUDE_OFF, conf);
+			assert.equal(result.out, noKeyLine, conf);
+		}
+		// a key, or no AppSec URL: the bouncer stays on
+		for (const conf of [
+			"ENABLED=true\nAPI_KEY=k1\nAPPSEC_URL=http://127.0.0.1:7422\n",
+			"ENABLED=true\nAPI_KEY=\nAPPSEC_URL=\n",
+		]) {
+			const result = runCheck(root, conf);
+			assert.equal(result.include, INCLUDE_ON, conf);
+			assert.equal(result.out, "", conf);
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 it("launch.sh turns the bouncer off while a TLS client file is not set, missing or not valid PEM", {
 	skip: opensslMissing && "openssl not available",
 }, () => {
