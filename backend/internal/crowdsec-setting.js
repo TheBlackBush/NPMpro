@@ -78,24 +78,39 @@ const viewOf = async (cfg) => {
 	};
 };
 
-// the files of the new values, nginx -t, the row, the reload; a failed test or reload puts the files and the row back
-const applyCrowdsec = (values, { save, restore }) =>
-	runtimeExclusive(() =>
-		applyCrowdsecFiles(values, async () => {
+/**
+ * Inside the runtime queue: plan() reads the row and works out the new settings (so a save that committed meanwhile is
+ * not lost), then the files of the new values, nginx -t, the row, the reload; a failed test or reload puts the files
+ * and that row back.
+ *
+ * @param   {Function} plan  async () => { before, next, after }
+ * @returns {Promise<{ before: Object, next: Object, after: Object }>}
+ */
+const applyCrowdsec = (plan) =>
+	runtimeExclusive(async () => {
+		const planned = await plan();
+		await applyCrowdsecFiles(planned.after.values, async () => {
 			try {
 				await internalNginx.test();
 			} catch (err) {
 				throw new errs.ValidationError(err.message || "nginx config test failed", undefined, { cause: err });
 			}
-			await save();
+			await saveStoredCrowdsec(planned.next);
 			try {
 				await internalNginx.reload();
 			} catch (err) {
-				await restore();
+				try {
+					await saveStoredCrowdsec(planned.before.stored);
+				} catch (restoreErr) {
+					logger.error(
+						`CrowdSec: the settings could not be put back after the failed reload: ${restoreErr.message}`,
+					);
+				}
 				throw new errs.ValidationError(err.message || "nginx reload failed", undefined, { cause: err });
 			}
-		}),
-	);
+		});
+		return planned;
+	});
 
 // the pages the bouncer reads (ban, captcha): a missing one is only a warning, the bouncer runs without it
 const missingPagesOf = (values) =>
@@ -206,8 +221,9 @@ const internalCrowdsecSetting = {
 	},
 
 	/**
-	 * Validates, runs the connection test while the bouncer is on (unless force), then writes the files, tests nginx,
-	 * saves the row and reloads; any failure from nginx on puts the files and the row back.
+	 * Validates, runs the connection test while the bouncer is on (unless force), then in the runtime queue reads the
+	 * row again, applies the changes to it, validates again, writes the files, tests nginx, saves the row and reloads;
+	 * any failure from nginx on puts the files and the row back.
 	 *
 	 * @param   {Access}  access
 	 * @param   {Object}  body  validated against the PUT schema
@@ -223,19 +239,22 @@ const internalCrowdsecSetting = {
 				FIELD_OF_KEY.has(key) && changes[key] !== null && !isValidValue(FIELD_OF_KEY.get(key), changes[key]),
 		);
 		if (refused.length > 0) throw new errs.ValidationError(`Invalid value of ${refused.join(", ")}.`);
-		const before = await getCrowdsecConfig();
-		const next = applyCrowdsecUpdate(before.stored, changes, before.locked, encrypt);
-		const after = effectiveCrowdsec(next);
-		const problems = validateCrowdsec(after.values, FILE_CHECKS);
-		if (problems.length > 0) throw new errs.ValidationError(problems.join(" "));
-		if (after.values.enabled && !force) {
-			const result = await testConnection(after.values, { timeoutMs: TEST_TIMEOUT_MS });
+		// read again inside the runtime queue, so two saves that overlap both keep their changes
+		const plan = async () => {
+			const before = await getCrowdsecConfig();
+			const next = applyCrowdsecUpdate(before.stored, changes, before.locked, encrypt);
+			const after = effectiveCrowdsec(next);
+			const problems = validateCrowdsec(after.values, FILE_CHECKS);
+			if (problems.length > 0) throw new errs.ValidationError(problems.join(" "));
+			return { before, next, after };
+		};
+		// the connection test (up to 5 s) runs before the queue, so it does not hold the other runtime changes
+		const tested = await plan();
+		if (tested.after.values.enabled && !force) {
+			const result = await testConnection(tested.after.values, { timeoutMs: TEST_TIMEOUT_MS });
 			if (!result.ok) throw new errs.ConnectionTestError(result.checks);
 		}
-		await applyCrowdsec(after.values, {
-			save: () => saveStoredCrowdsec(next),
-			restore: () => saveStoredCrowdsec(before.stored),
-		});
+		const { before, after } = await applyCrowdsec(plan);
 		await internalAuditLog.add(access, {
 			action: "updated",
 			object_type: "setting",

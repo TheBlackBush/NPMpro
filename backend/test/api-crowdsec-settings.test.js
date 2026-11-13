@@ -242,3 +242,49 @@ it("tells a missing key apart from a refused one and never answers 401 or 403 fo
 	assert.equal(put.status, 409, put.text);
 	await admin.put("/settings/crowdsec", { api_key: KEY });
 });
+
+it("keeps both changes of two saves that overlap", async () => {
+	// a slow LAPI holds the first save in its connection test while the second one (forced, no test) is applied
+	let release;
+	const held = new Promise((resolve) => {
+		release = resolve;
+	});
+	let asked;
+	const testing = new Promise((resolve) => {
+		asked = resolve;
+	});
+	const slow = http.createServer(async (_req, res) => {
+		asked();
+		await held;
+		res.writeHead(200, { "content-type": "application/json" });
+		res.end("null");
+	});
+	await new Promise((resolve) => slow.listen(0, "127.0.0.1", resolve));
+	const slowUrl = `http://127.0.0.1:${slow.address().port}`;
+	try {
+		assert.equal((await settings()).enabled, false);
+		const first = admin.put("/settings/crowdsec", {
+			enabled: true,
+			api_url: slowUrl,
+			api_key: KEY,
+			appsec_url: "",
+			captcha_expiration: 1111,
+		});
+		await testing;
+		const second = await admin.put("/settings/crowdsec", { update_frequency: 33, force: true });
+		assert.equal(second.status, 200, second.text);
+		release();
+		const done = await first;
+		assert.equal(done.status, 200, done.text);
+		const now = await settings();
+		assert.equal(now.enabled, true);
+		assert.equal(now.captcha_expiration, 1111);
+		assert.equal(now.update_frequency, 33);
+		assert.match(await conf(), /^UPDATE_FREQUENCY=33$/mu);
+		assert.match(await conf(), /^CAPTCHA_EXPIRATION=1111$/mu);
+	} finally {
+		release();
+		await admin.put("/settings/crowdsec", { enabled: false });
+		await new Promise((resolve) => slow.close(resolve));
+	}
+});
