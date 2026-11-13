@@ -119,3 +119,87 @@ it("a custom choice without html falls back to the global page", () => {
 	);
 	assert.equal(filled.locations[0].file, "/data/public/pages/proxy-host-7/upstream-error.html");
 });
+
+it("the host's own proxy_intercept_errors replaces ours; comments do not count", () => {
+	const intercepting = (extra) => pageWiring("proxy_host", host(extra));
+	assert.equal(intercepting({ advanced_config: "proxy_intercept_errors off;" }).host.intercept, false);
+	assert.equal(intercepting({ npmpro_location_config: "proxy_intercept_errors on;" }).host.intercept, false);
+	assert.equal(intercepting({ advanced_config: "# proxy_intercept_errors off;" }).host.intercept, true);
+	const wiring = pageWiring(
+		"proxy_host",
+		host({
+			advanced_config: "proxy_intercept_errors on;",
+			locations: [
+				{ forward_scheme: "http", npmpro_auth_request: "none" },
+				{ forward_scheme: "http", npmpro_auth_request: "none", advanced_config: "proxy_intercept_errors off;" },
+			],
+		}),
+	);
+	assert.deepEqual(
+		wiring.byLocation.map(({ intercept }) => intercept),
+		[false, false],
+	);
+	const other = pageWiring(
+		"proxy_host",
+		host({
+			npmpro_location_config: "proxy_intercept_errors off;",
+			locations: [
+				{ forward_scheme: "http", npmpro_auth_request: "none", advanced_config: "proxy_intercept_errors off;" },
+			],
+		}),
+	);
+	assert.equal(other.byLocation[0].intercept, false);
+	const onlyLocationConfig = pageWiring(
+		"proxy_host",
+		host({ locations: [{ forward_scheme: "http", npmpro_auth_request: "none" }], npmpro_location_config: "x" }),
+	);
+	assert.equal(onlyLocationConfig.byLocation[0].intercept, true);
+});
+
+it("a server level error_page of the host wins: no page error_page lines, no page locations", () => {
+	const wiring = pageWiring(
+		"proxy_host",
+		host({
+			access_list: LIST,
+			advanced_config: "error_page 502 /x.html;",
+			locations: [{ forward_scheme: "http", access_list: LIST, npmpro_auth_request: "none" }],
+		}),
+	);
+	assert.deepEqual(wiring.host, {
+		not_found: "",
+		upstream_error: "",
+		denied: "",
+		intercept: false,
+		maintenance: "",
+		certificate: "",
+	});
+	assert.deepEqual(wiring.byLocation[0], { not_found: "", upstream_error: "", denied: "", intercept: false });
+	assert.deepEqual(wiring.locations, []);
+	const inLocation = pageWiring("proxy_host", host({ npmpro_location_config: "error_page 502 /x.html;" }));
+	assert.equal(inLocation.host.upstream_error, "upstream-error");
+});
+
+it("disabled locations register no page location", () => {
+	const wiring = pageWiring(
+		"proxy_host",
+		host({
+			locations: [
+				{ forward_scheme: "http", npmpro_enabled: false, access_list: LIST, npmpro_auth_request: "none" },
+			],
+		}),
+	);
+	assert.deepEqual(
+		wiring.locations.map(({ name }) => name),
+		["upstream-error"],
+	);
+});
+
+it("a custom choice on a host without a valid id falls back to the global page", () => {
+	const wiring = pageWiring(
+		"proxy_host",
+		host({ id: undefined, npmpro_page_upstream: "custom", npmpro_page_upstream_html: "<p>x</p>" }),
+	);
+	assert.equal(wiring.locations[0].file, "/data/public/pages/global/upstream-error.html");
+	const list = pageWiring("proxy_host", host({ access_list: { ...LIST, denied_page: "custom", denied_list_id: 0 } }));
+	assert.equal(list.locations.at(-1).file, "/data/public/pages/global/denied.html");
+});

@@ -157,3 +157,22 @@ it("a custom choice without html points at the global page, never at a missing f
 	assert.match(denied, /alias \/data\/public\/pages\/global\/denied\.html;/u);
 	assert.doesNotMatch(denied, /access-list-3/u);
 });
+
+it("every page location is internal, serves html and runs SSI", async () => {
+	const config = await render(
+		proxyHost({ npmpro_page_not_found: "npmpro", npmpro_access_list_type: "custom", access_lists: [LIST] }),
+	);
+	for (const name of ["upstream-error", "not-found", "denied-1"]) {
+		const page = locationBlock(config, `= /.npmpro-page/${name}`);
+		assert.match(page, /default_type text\/html;/u, name);
+		assert.match(page, /internal;/u, name);
+		assert.match(page, /ssi on;/u, name);
+	}
+});
+
+it("a host error_page or proxy_intercept_errors of its own is not doubled", async () => {
+	const own = await render(proxyHost({ advanced_config: "error_page 502 /x.html;" }));
+	assert.doesNotMatch(own, /npmpro-page|proxy_intercept_errors/u);
+	const flag = await render(proxyHost({ npmpro_location_config: "proxy_intercept_errors off;" }));
+	assert.equal(flag.match(/proxy_intercept_errors/gu).length, 1);
+});
