@@ -15,6 +15,7 @@
 
 **Hosts and traffic**
 - [Host options](Host-options)
+- [Landing pages](Landing-pages)
 - [Load balancing](Load-balancing)
 - [PHP](PHP)
 - [Monitoring](Monitoring)

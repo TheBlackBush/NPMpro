@@ -12,10 +12,12 @@ NPMpro saves your hosts, certificates, users and settings to a single `.npmpro` 
 - Hosts: proxy hosts (with their custom locations and access list links), redirection hosts, 404 hosts and streams
 - Certificates: Let's Encrypt, custom and mTLS CA certificates with their files
 - Access lists, DNS credentials and users
-- Settings: runtime settings, default site, OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
-- Custom files: everything in `custom_nginx/` and the CrowdSec pages `ban.html` and `captcha.html`
+- Settings: runtime settings, Landing pages (the default site, the page choices and custom pages), OIDC sign-in, monitoring and GeoIP, backup schedules and the CrowdSec settings
+- Custom files: everything in `custom_nginx/`, and the CrowdSec pages `ban.html` and `captcha.html` of older versions
 
 A backup from an older version that holds `crowdsec.conf` restores into the CrowdSec settings. A merge does not import a `crowdsec.conf` from an older backup: use **Replace** (restore) for old backups.
+
+The page files under `/data/public/pages/` are written again from the database after a restore. A hand-edited `ban.html` or `captcha.html` in an older backup becomes the custom ban or captcha page on a full restore of the CrowdSec files; a merge restore does not import it (nor the page settings of an older backup's `crowdsec.conf`). See [Landing pages](Landing-pages).
 
 A backup never holds traffic statistics (they are not backed up at all), logs, the audit log, sessions, the database file `npmpro/database.sqlite` itself, the key files `npmpro/keys-ec.json` and `npmpro/dns-credentials.key`, or other backups (`/data/backups`). Host configs and access list password files are not in it either: NPMpro writes them again after a restore.
 
