@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { assertAccessListRules, clientsWithAddress } from "../lib/access-list-rules.js";
 import errs from "../lib/error.js";
 import { PROXY_HOST_GRAPH } from "../lib/host-expand.js";
+import { removePlacePages, writePlacePages } from "../lib/landing-pages/files.js";
 import { assertPageFields, keepSavedPages } from "../lib/landing-pages/html.js";
 import { auditPageHtml, withoutPageHtml } from "../lib/landing-pages/types.js";
 import { rooted } from "../lib/paths.js";
@@ -298,6 +299,7 @@ const internalAccessList = {
 			await internalNginx.reload();
 
 			await rm(internalAccessList.getFilename(row), { force: true });
+			await removePlacePages("access_list", row.id);
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "deleted",
@@ -392,6 +394,7 @@ const internalAccessList = {
 
 		await rm(htpasswdFile, { force: true });
 		await internalAccessList.writeData(htpasswdFile, list.items);
+		await writePlacePages("access_list", list);
 
 		logger.success(`Built Access file #${list.id} for: ${list.name}`);
 	},

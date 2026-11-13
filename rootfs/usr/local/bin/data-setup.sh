@@ -50,6 +50,7 @@ mkdir -vp /data/public/avatar \
           /data/tls/mtls \
           /data/tls/ech \
           /data/public/html \
+          /data/public/pages/global \
           /data/access \
           /data/public/anubis \
           /data/crowdsec \

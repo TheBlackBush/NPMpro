@@ -213,3 +213,97 @@ it("an error_page in location / config or a custom location's config replaces ou
 	assert.equal(locationBlock(config, '"/api"').match(/error_page/gu).length, 1);
 	assert.equal(config.match(/location = \/\.npmpro-page\//gu).length, 1);
 });
+
+const serverHead = (config) => config.slice(0, config.indexOf("location"));
+
+it("maintenance: 503 before any location, ACME and the page pass, 497 repeated", async () => {
+	const config = await render(
+		proxyHost({
+			npmpro_maintenance: true,
+			locations: [
+				{
+					id: 1,
+					path: "/app",
+					location_type: "",
+					forward_scheme: "http",
+					forward_host: "10.0.0.2",
+					forward_port: 80,
+					npmpro_access_list_type: "public",
+					npmpro_auth_request: "none",
+				},
+			],
+		}),
+	);
+	assert.match(config, /error_page 497 =308 https:\/\/\$host\$is_request_port\$request_port\$request_uri;/u);
+	assert.match(config, /error_page 503 \/\.npmpro-page\/maintenance;/u);
+	assert.match(config, /if \(\$uri ~ "\^\/\(\\\.well-known\/acme-challenge\/\|\\\.npmpro-page\/\)"\)/u);
+	assert.match(config, /return 503;/u);
+	assert.match(
+		locationBlock(config, "= /.npmpro-page/maintenance"),
+		/alias \/data\/public\/pages\/global\/maintenance\.html;/u,
+	);
+	const off = await render(proxyHost());
+	assert.doesNotMatch(off, /return 503|maintenance/u);
+});
+
+it("certificate files missing with Force HTTPS: no HTTPS listener, 495 page on plain HTTP", async () => {
+	const host = proxyHost({ ssl_forced: true, certificate_id: 99, certificate: { id: 99, provider: "other" } });
+	const config = await render(host);
+	assert.doesNotMatch(config, /listen [^;]* ssl|ssl_certificate /u);
+	assert.doesNotMatch(config, /return 301 https/u);
+	assert.match(config, /error_page 495 \/\.npmpro-page\/certificate;/u);
+	assert.match(config, /return 495;/u);
+	assert.match(config, /location \/\.well-known\/acme-challenge\//u);
+	assert.match(
+		locationBlock(config, "= /.npmpro-page/certificate"),
+		/alias \/data\/public\/pages\/global\/certificate\.html;/u,
+	);
+	const noForce = await render({ ...host, ssl_forced: false });
+	assert.match(noForce, /ssl_certificate \/data\/tls\/custom\/npm-99\/fullchain\.pem;/u);
+	assert.doesNotMatch(noForce, /495/u);
+});
+
+it("a redirection host with a missing certificate shows the certificate page too", async () => {
+	const config = await internalNginx.renderConfig("redirection_host", {
+		id: 6,
+		domain_names: ["redir.example.com"],
+		forward_http_code: 301,
+		forward_scheme: "https",
+		forward_domain_name: "example.org",
+		ssl_forced: true,
+		certificate_id: 98,
+		certificate: { id: 98, provider: "other" },
+	});
+	assert.match(config, /error_page 495 \/\.npmpro-page\/certificate;/u);
+});
+
+it("404 host: the page in location /, nothing at server level", async () => {
+	const dead = (extra) =>
+		internalNginx.renderConfig("dead_host", {
+			id: 4,
+			domain_names: ["gone.example.com"],
+			npmpro_page: "global",
+			...extra,
+		});
+	const config = await dead();
+	assert.match(locationBlock(config, "/"), /error_page 404 \/\.npmpro-page\/not-found;\s*return 404;/u);
+	assert.doesNotMatch(serverHead(config), /error_page/u);
+	assert.match(config, /alias \/data\/public\/pages\/global\/404\.html;/u);
+	assert.match(
+		await dead({ npmpro_page: "custom", npmpro_page_html: "<p>x</p>" }),
+		/alias \/data\/public\/pages\/dead-host-4\/404\.html;/u,
+	);
+	assert.doesNotMatch(config, /dead\.html/u);
+});
+
+it("default server: the NPMpro default page and the global 404 page", async () => {
+	const site = (value) => internalNginx.renderConfig("default", { id: "default-site", value, meta: {} });
+	assert.match(
+		await site("congratulations"),
+		/root \/usr\/local\/nginx\/html\/npmpro;\s*try_files \/default\.html =404;/u,
+	);
+	const notFound = await site("404");
+	assert.match(notFound, /error_page 404 \/\.npmpro-page\/not-found;\s*return 404;/u);
+	assert.match(notFound, /alias \/data\/public\/pages\/global\/404\.html;/u);
+	assert.doesNotMatch(await site("444"), /npmpro-page/u);
+});

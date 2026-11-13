@@ -32,6 +32,7 @@ const DIRS = [
 	"data/public/avatar",
 	"data/public/gravatar",
 	"data/public/html",
+	"data/public/pages",
 	"data/tls/certbot/live",
 	"data/tls/certbot/renewal",
 	"data/tls/custom",

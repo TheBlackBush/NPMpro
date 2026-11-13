@@ -140,3 +140,41 @@ it("access list pages are stored and left out of the list", async () => {
 	assert.equal(updated.status, 200);
 	assert.equal(updated.body.npmpro_denied_page_html, "<p>new</p>");
 });
+
+it("writes a host's custom pages with its config and removes them with the host", async () => {
+	const made = await admin.post(
+		"/nginx/proxy-hosts",
+		proxy("pages-files", { npmpro_page_upstream: "custom", npmpro_page_upstream_html: "<p>mine</p>" }),
+	);
+	assert.equal(made.status, 201);
+	const file = `/data/public/pages/proxy-host-${made.body.id}/upstream-error.html`;
+	assert.equal(await api.read(file), "<p>mine</p>");
+	assert.match(
+		await api.read(`/data/nginx/proxy_host/${made.body.id}.conf`),
+		/proxy-host-\d+\/upstream-error\.html/u,
+	);
+	await admin.put(`/nginx/proxy-hosts/${made.body.id}`, { npmpro_page_upstream: "global" });
+	await assert.rejects(api.read(file));
+	await admin.put(`/nginx/proxy-hosts/${made.body.id}`, {
+		npmpro_page_upstream: "custom",
+		npmpro_page_upstream_html: "<p>again</p>",
+	});
+	assert.equal(await api.read(file), "<p>again</p>");
+	await admin.delete(`/nginx/proxy-hosts/${made.body.id}`);
+	await assert.rejects(api.read(file));
+});
+
+it("writes an access list's denied page and removes it with the list", async () => {
+	const list = await admin.post("/nginx/access-lists", {
+		name: "pages-files",
+		npmpro_denied_page: "custom",
+		npmpro_denied_page_html: "<p>no</p>",
+		items: [],
+		clients: [{ address: "10.0.0.0/8", directive: "allow" }],
+	});
+	assert.equal(list.status, 201);
+	const file = `/data/public/pages/access-list-${list.body.id}/denied.html`;
+	assert.equal(await api.read(file), "<p>no</p>");
+	await admin.delete(`/nginx/access-lists/${list.body.id}`);
+	await assert.rejects(api.read(file));
+});

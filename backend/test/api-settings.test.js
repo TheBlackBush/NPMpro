@@ -121,8 +121,8 @@ it("writes the default config and reloads nginx for each fixed answer, and audit
 	assert.equal(notFound.status, 200, notFound.text);
 	assert.equal(notFound.body.value, "404");
 	const site404 = location(await api.read(DEFAULT_CONF));
-	assert.match(site404, /location \/ \{\s+return 404;/u);
-	assert.match(site404, /error_page 404 \/dead\.html;/u);
+	assert.match(site404, /location \/ \{\s+error_page 404 \/\.npmpro-page\/not-found;\s+return 404;/u);
+	assert.match(site404, /alias \/data\/public\/pages\/global\/404\.html;/u);
 	assert.doesNotMatch(site404, /default\.html/u);
 	assert.equal(reloads(api), calls + 1);
 	assert.equal((await stored()).value, "404");
