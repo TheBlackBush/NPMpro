@@ -21,6 +21,14 @@ Notes on some options of proxy hosts, redirection hosts, 404 hosts and streams. 
 - PROXY protocol (for Streams): sends the client address to the upstream as PROXY protocol v1 or v2. nginx only supports v2 over UDP, so a stream with UDP forwarding saves v1 as v2, and then the TCP side of a stream with both TCP and UDP forwarding also sends v2
 - X-Frame-Options: will control the X-Frame-Options header, none will remove the header, SAMEORIGIN/DENY will set it to these values and upstream will keep what upstream sends
 
+## Landing pages per host
+
+What visitors see when a host cannot answer is chosen per host, with **Global setting** following Settings, Landing pages. See [Landing pages](Landing-pages).
+
+- Proxy host, Pages tab: the **Maintenance mode** switch and the choices for **Page not found**, **Upstream error** and **Maintenance**, each with an NPMpro page, a **Custom page** or (for the first two) the site's or the upstream's own answer.
+- 404 host, **Page**: the page shown for every request.
+- Access list, **Denied page**: what an access list shows to a visitor it turns away, also **nginx's plain page**.
+
 ## Access lists
 
 When using multiple Access Lists on a Proxy Host or a Proxy Location, they are evaluated in a top-down order from the UI.

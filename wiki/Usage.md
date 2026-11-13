@@ -117,7 +117,7 @@ With CrowdSec enabled, banned IPs get the ban page before the access list asks f
 
 ## Settings
 
-Settings (administrators) has these pages: Default Site, Authentication, Certificates & TLS, Network, nginx, Forward authentication, Logs & monitoring, GeoIP, Advanced, Backup and restore, Database and Environment. On phones and tablets the side menu is a select at the top of the page.
+Settings (administrators) has these pages: Landing pages, Authentication, Certificates & TLS, Network, nginx, Forward authentication, Logs & monitoring, GeoIP, Advanced, Backup and restore, Database and Environment. On phones and tablets the side menu is a select at the top of the page.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/settings-nginx-dark.png">
@@ -129,7 +129,7 @@ Settings (administrators) has these pages: Default Site, Authentication, Certifi
 - **"Restart required" fields** (Time zone in Advanced, GoAccess report and GoAccess options in Logs & monitoring) are read when the container starts. After saving, the section lists them under "Restart the container to apply" until you run `docker restart npmpro`.
 - **Environment** is read-only: the startup variables (ports, bindings, users, nginx and TLS switches, modules and PHP, database and first start, the ACME account) with their value or default, and the list of settings that a variable locks. Passwords, email addresses and keys are only shown as "set" or "not set". To change one, edit `compose.yaml` and recreate the container.
 
-- **Default Site** sets what nginx answers for a domain that no host uses: **Congratulations Page**, **404 Page**, **No Response (444)**, **Redirect** or **Custom HTML**. A new choice is tested with nginx before it is saved; if the test fails, nothing is saved, the previous default site stays in place, and the nginx error is in `docker logs npmpro`.
+- **Landing pages** sets the default site (what nginx answers for a domain that no host uses: **Congratulations Page**, **404 Page**, **No Response (444)**, **Redirect** or **Custom HTML**) and the pages visitors see for errors, maintenance, denied access and CrowdSec bans and captchas. A new default site is tested with nginx before it is saved; if the test fails, nothing is saved, the previous default site stays in place, and the nginx error is in `docker logs npmpro`. See [Landing pages](Landing-pages).
 - **nginx** holds the nginx settings for all hosts. **Workers:** **Worker processes** (**Automatic (one per CPU thread)**, or a number), **Connections per worker** and **Worker shutdown timeout**. **Logging:** **Log file not found errors**. **TLS for all hosts:** **Allow TLS 1.2**, **Post-quantum key exchange only** (which turns TLS 1.2 and the NIST P curves off while it is on), **Allow the NIST P curves** and **Allow RSA PKCS#1 signatures**; turning TLS 1.2 or the P curves off shuts out older browsers and clients. **Modules:** njs, LDAP authentication, NTLM upstreams and virtual host traffic status. Saving tests the config and reloads nginx; if the test fails nothing is applied and the form shows the nginx message (for example when you turn off a module that a custom config still uses). Each field has its `NGINX_*` variable, which wins and locks the field as described above.
 - **Backup and restore** and **Database** are described on their own pages: [Backup and restore](Backup-and-restore) and [Database](Database).
 
