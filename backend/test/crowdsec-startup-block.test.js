@@ -117,6 +117,20 @@ it("shows a missing key as a clear line, not as refused", () => {
 	assert.doesNotMatch(text, /refused/u);
 });
 
+it("gives a missing AppSec key one warning, not the cannot be reached one", () => {
+	const values = on({ api_key: "", appsec_failure_action: "deny", admin_ui_excluded: true });
+	const checks = [
+		{ name: "lapi", result: "no_key", message: "No API key is set" },
+		{ name: "appsec", result: "no_key", message: "No API key is set" },
+	];
+	const warnings = startupWarnings({ values, checks });
+	assert.equal(
+		warnings.some((line) => line.startsWith("AppSec cannot be reached")),
+		false,
+	);
+	assert.ok(warnings.some((line) => line.startsWith("AppSec has no API key")));
+});
+
 it("keeps the .local warning while the bouncer is off", () => {
 	assert.deepEqual(startupWarnings({ values: CROWDSEC_DEFAULTS, localOverride: true }), [
 		"/data/crowdsec/crowdsec.conf.local overrides these settings, remove it",
@@ -131,7 +145,11 @@ it("warns when AppSec has no API key, also with TLS authentication", () => {
 		),
 	);
 	const passthrough = startupWarnings({ values: { ...noKey, appsec_failure_action: "passthrough" }, checks: ok });
-	assert.ok(passthrough.some((line) => line.startsWith("AppSec has no API key and refuses every request:")));
+	assert.ok(
+		passthrough.includes(
+			"AppSec has no API key and refuses every request (with passthrough AppSec checks nothing): enter the key in Settings, CrowdSec",
+		),
+	);
 	assert.equal(
 		startupWarnings({ values: on(), checks: ok }).some((line) => line.includes("no API key")),
 		false,

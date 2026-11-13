@@ -1,5 +1,6 @@
 // The CrowdSec block of the startup log (spec section 4), in the style of the launch.sh banner. Pure: the caller runs
-// the connection test and the file checks. It never holds the API key or the captcha secret.
+// the connection test and the file checks. It reads whether an API key is set but never prints the key or the
+// captcha secret.
 
 const LINE = "-------------------------------------";
 const firstLine = (text) => String(text ?? "").split("\n")[0];
@@ -57,7 +58,8 @@ const startupWarnings = ({
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");
 	if (lapi && lapi.result !== "ok") warnings.push("the LAPI check failed, decisions are not applied until it passes");
-	if (appsec && appsec.result !== "ok") {
+	// no_key has its own warning below: AppSec is reachable but refuses every request without a key
+	if (appsec && appsec.result !== "ok" && appsec.result !== "no_key") {
 		warnings.push(
 			values.appsec_failure_action === "deny"
 				? "AppSec cannot be reached: requests are blocked while AppSec is down"
@@ -71,7 +73,7 @@ const startupWarnings = ({
 	}
 	if (values.appsec_url && !values.api_key) {
 		warnings.push(
-			`AppSec has no API key and refuses every request${values.appsec_failure_action === "deny" ? " (with deny every request is blocked)" : ""}: enter the key in Settings, CrowdSec`,
+			`AppSec has no API key and refuses every request${values.appsec_failure_action === "deny" ? " (with deny every request is blocked)" : " (with passthrough AppSec checks nothing)"}: enter the key in Settings, CrowdSec`,
 		);
 	}
 	for (const file of missingFiles)
