@@ -6,4 +6,4 @@ Może to być przydatne, gdy twoja domena jest indeksowana w wyszukiwarkach i ch
 
 Kolejną zaletą posiadania tego hosta jest możliwość śledzenia logów dla odwiedzin oraz przeglądania źródeł ruchu (referrerów).
 
-**Strona** (404) wybiera, co widzą odwiedzający: **Ustawienie globalne** (strona 404 z Ustawienia, Strony docelowe), **Nie znaleziono strony** albo **Własna strona** tylko dla tego hosta (wklej lub prześlij jeden plik HTML).
+**Strona** (404) wybiera, co widzą odwiedzający: **Ustawienie globalne** (strona 404 z Ustawienia, Strony docelowe), **Strona błędu 404** albo **Własna strona** tylko dla tego hosta (wklej lub prześlij jeden plik HTML).

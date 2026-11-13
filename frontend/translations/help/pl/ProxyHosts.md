@@ -37,7 +37,7 @@ Lokalizacja kieruje jedną ścieżkę hosta (na przykład `/api/`) do innej usł
 
 ### Strony
 
-**Tryb konserwacji** pokazuje stronę konserwacji (503) każdemu odwiedzającemu ten host, z wyjątkiem sprawdzeń Let's Encrypt; wyłącz go, aby przywrócić witrynę. **Nie znaleziono strony** (404), **Błąd upstreamu** (502, 503, 504) i **Konserwacja** (503) wybierają, co widzą odwiedzający: **Ustawienie globalne** (strona z Ustawienia, Strony docelowe), wersja NPMpro tej strony (**Nie znaleziono strony**, **Strona „Witryna niedostępna”**, **Strona konserwacji**), **Własna strona** tylko dla tego hosta (wklej lub prześlij jeden plik HTML) albo własna odpowiedź witryny. „Własny błąd upstreamu” pozostawia błędy JSON API bez zmian. Odpowiedź 401 lub 403 od samego upstreamu zawsze przechodzi.
+**Tryb konserwacji** pokazuje stronę konserwacji (503) każdemu odwiedzającemu ten host, z wyjątkiem sprawdzeń Let's Encrypt; wyłącz go, aby przywrócić witrynę. **Nie znaleziono strony** (404), **Błąd upstreamu** (502, 503, 504) i **Konserwacja** (503) wybierają, co widzą odwiedzający: **Ustawienie globalne** (strona z Ustawienia, Strony docelowe), wersja NPMpro tej strony (**Strona błędu 404**, **Strona „Witryna niedostępna”**, **Strona konserwacji**), **Własna strona** tylko dla tego hosta (wklej lub prześlij jeden plik HTML) albo własna odpowiedź witryny. „Własny błąd upstreamu” pozostawia błędy JSON API bez zmian. Odpowiedź 401 lub 403 od samego upstreamu zawsze przechodzi.
 
 ### Zaawansowane
 

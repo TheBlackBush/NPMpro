@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "Сторінка «Захищене з'єднання недоступне»",
 	"landing-pages.choice.npmpro.denied": "Сторінка «Доступ заборонено»",
 	"landing-pages.choice.npmpro.maintenance": "Сторінка обслуговування",
-	"landing-pages.choice.npmpro.not_found": "Сторінку не знайдено",
+	"landing-pages.choice.npmpro.not_found": "Сторінка помилки 404",
 	"landing-pages.choice.npmpro.upstream_error": "Сторінка «Сайт недоступний»",
 	"landing-pages.choice.plain": "Проста сторінка nginx",
 	"landing-pages.choice.upstream-error": "Власна помилка upstream",

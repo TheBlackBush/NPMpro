@@ -8,7 +8,7 @@ Co pokazuje adres bez hosta: **Strona gratulacyjna**, **Strona 404**, **Brak odp
 
 ### Strony globalne
 
-Dla każdej strony: jej strona NPMpro (na przykład **Nie znaleziono strony** lub **Strona „Odmowa dostępu”**) albo **Własna strona**. Własna strona to jeden plik HTML (najwyżej 1 MB, UTF-8) ze stylami i obrazami w środku; wklej go lub użyj **Prześlij .html**. Może pokazywać IP odwiedzającego, czas, kod statusu i nazwę hosta za pomocą `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` i `host`; inne dołączenia po stronie serwera są odrzucane.
+Dla każdej strony: jej strona NPMpro (na przykład **Strona błędu 404** lub **Strona „Odmowa dostępu”**) albo **Własna strona**. Własna strona to jeden plik HTML (najwyżej 1 MB, UTF-8) ze stylami i obrazami w środku; wklej go lub użyj **Prześlij .html**. Może pokazywać IP odwiedzającego, czas, kod statusu i nazwę hosta za pomocą `<!--# echo var="remote_addr" -->`, `date_gmt`, `status` i `host`; inne dołączenia po stronie serwera są odrzucane.
 
 Hosty proxy, hosty 404 i listy dostępu używają tych stron, chyba że wybiorą własne (karta **Strony** hosta proxy, pole **Strona** hosta 404, **Odmowa** listy dostępu).
 

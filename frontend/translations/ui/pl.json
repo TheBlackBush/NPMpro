@@ -412,7 +412,7 @@
 	"landing-pages.choice.npmpro.certificate": "Strona „Bezpieczne połączenie niedostępne”",
 	"landing-pages.choice.npmpro.denied": "Strona „Odmowa dostępu”",
 	"landing-pages.choice.npmpro.maintenance": "Strona konserwacji",
-	"landing-pages.choice.npmpro.not_found": "Nie znaleziono strony",
+	"landing-pages.choice.npmpro.not_found": "Strona błędu 404",
 	"landing-pages.choice.npmpro.upstream_error": "Strona „Witryna niedostępna”",
 	"landing-pages.choice.plain": "Zwykła strona nginx",
 	"landing-pages.choice.upstream-error": "Własny błąd upstreamu",
