@@ -4,6 +4,7 @@
  * Pure, so node --test checks them without a DOM.
  */
 import { fieldsValidate } from "./HookForm.js";
+import { placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 
 // the backend's rules (schema/common.json, internal/access-list.js); bcrypt reads at most 72 bytes
 const USERNAME = /^[^:\p{Cc}]{1,255}$/u;
@@ -113,13 +114,18 @@ export const accessListDefaults = (data) => ({
 	passAuth: data.passAuth,
 	items: userRows(data.items),
 	clients: ruleRows(data.clients),
+	...placeDefaults("accessList", data),
 });
 
 /**
  * The tabs of the access list window (ModalTabs); the message that asks for a user or a rule shows above them
  */
 export const ACCESS_LIST_TABS = Object.freeze([
-	{ id: "details", labelId: "column.details", fields: ["name", "satisfyAny", "passAuth"] },
+	{
+		id: "details",
+		labelId: "column.details",
+		fields: ["name", "satisfyAny", "passAuth", "npmproDeniedPage", "npmproDeniedPageHtml"],
+	},
 	{ id: "auth", labelId: "column.authorizations", fields: ["items"] },
 	{ id: "rules", labelId: "column.rules", fields: ["clients"] },
 ]);
@@ -144,6 +150,7 @@ export const accessListValidate = (rules, { savedUsers }) =>
 			...(items ? { items } : {}),
 			...(clients ? { clients } : {}),
 			...(noRules ? { accessRules: rules.message("error.access.at-least-one") } : {}),
+			...placeErrors(rules, "accessList", values),
 		};
 	});
 
@@ -164,5 +171,9 @@ export function accessListPayload(values, savedClients) {
 		passAuth: values.passAuth,
 		items: named(values.items).map(({ username, password }) => ({ username, password })),
 		clients: (unchanged ? savedClients : rules).map(({ directive, address }) => ({ directive, address })),
+		...placePayload("accessList", {
+			npmproDeniedPage: values.npmproDeniedPage,
+			npmproDeniedPageHtml: values.npmproDeniedPageHtml,
+		}),
 	};
 }

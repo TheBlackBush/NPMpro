@@ -61,6 +61,8 @@ it("starts a new and a saved list with complete values", () => {
 		passAuth: false,
 		items: [blankUser()],
 		clients: [blankRule(), { directive: "deny", address: "all" }],
+		npmproDeniedPage: "global",
+		npmproDeniedPageHtml: "",
 	});
 	assert.deepEqual(accessListDefaults(savedList).items, [{ username: "ann", password: "" }]);
 });
@@ -142,6 +144,7 @@ it("sends the users with a name and the rules with an address, unchanged rules a
 		passAuth: false,
 		items: [{ username: "u", password: "p" }],
 		clients: [],
+		npmproDeniedPage: "global",
 	});
 	const changed = accessListPayload(
 		{
@@ -199,4 +202,20 @@ it("puts every field of the access list window on exactly one tab, the message a
 	assert.equal(tabOfPath(ACCESS_LIST_TABS, "items[0].password"), "auth");
 	assert.equal(tabOfPath(ACCESS_LIST_TABS, "clients[1].address"), "rules");
 	assert.equal(tabOfPath(ACCESS_LIST_TABS, "accessRules"), null);
+});
+
+it("access list: the Denied page's default, tab, errors and payload", () => {
+	assert.deepEqual(ACCESS_LIST_TABS[0].fields.slice(-2), ["npmproDeniedPage", "npmproDeniedPageHtml"]);
+	const values = accessListDefaults(savedList);
+	assert.equal(values.npmproDeniedPage, "global");
+	const validate = accessListValidate(rules, { savedUsers: new Set(["ann"]) });
+	const custom = { ...values, npmproDeniedPage: "custom" };
+	assert.deepEqual(validate(custom), { npmproDeniedPageHtml: "This is required" });
+	assert.deepEqual(validate({ ...custom, npmproDeniedPageHtml: "<p>no</p>" }), {});
+	const payload = accessListPayload({ ...custom, npmproDeniedPageHtml: "<p>no</p>" }, savedList.clients);
+	assert.equal(payload.npmproDeniedPage, "custom");
+	assert.equal(payload.npmproDeniedPageHtml, "<p>no</p>");
+	const other = accessListPayload({ ...values, npmproDeniedPage: "plain" }, savedList.clients);
+	assert.equal(other.npmproDeniedPage, "plain");
+	assert.equal("npmproDeniedPageHtml" in other, false);
 });

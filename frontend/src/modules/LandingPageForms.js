@@ -179,6 +179,20 @@ export const placeDefaults = (kind, data) =>
 	);
 
 /**
+ * @param   {"proxyHost"|"deadHost"|"accessList"} kind
+ * @param   {Object} values  the form's values
+ * @returns {Object}  the values for the request: the html of a place only with a custom choice (with another choice
+ *                    the backend keeps the saved custom page)
+ */
+export const placePayload = (kind, values) => {
+	const body = { ...values };
+	for (const { name } of PLACE_FIELDS[kind]) {
+		if (body[name] !== "custom") delete body[htmlName(name)];
+	}
+	return body;
+};
+
+/**
  * @param   {Object} rules  createValidations(intl)
  * @param   {"proxyHost"|"deadHost"|"accessList"} kind
  * @param   {Object} values

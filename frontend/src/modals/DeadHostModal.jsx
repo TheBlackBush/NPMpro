@@ -4,23 +4,26 @@ import {
 	DomainNamesField,
 	ModalTabs,
 	NginxConfigField,
+	PageChoiceField,
 	SSLCertificateField,
 	SSLOptionsFields,
 	TabPane,
 } from "src/components";
 import { useDeadHost, useSetDeadHost } from "src/hooks";
+import { T } from "src/locale";
 import {
 	DEAD_HOST_TABS,
 	deadHostDefaults,
+	deadHostPayload,
 	deadHostValidate,
 	domainNamesOptions,
-	requestValues,
 } from "src/modules/HostForms";
+import { PLACE_FIELDS, previewPath } from "src/modules/LandingPageForms";
 import { DEAD_HOSTS } from "src/modules/Permissions";
 import { validations } from "src/modules/Validations";
 import { createHostEditorModal } from "./HostEditorModal";
 
-function DeadHostFields() {
+function DeadHostFields({ isAdmin, hostId }) {
 	const [certificateId, npmproDnsChallenge, advancedConfig] = useWatch({
 		name: ["certificateId", "npmproDnsChallenge", "advancedConfig"],
 	});
@@ -28,7 +31,15 @@ function DeadHostFields() {
 		<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
-				<DirectoryField labelId="dead-host.directory" className="mb-0" />
+				<DirectoryField labelId="dead-host.directory" />
+				<PageChoiceField
+					name="npmproPage"
+					htmlName="npmproPageHtml"
+					label={<T id="landing-pages.field.page" />}
+					choices={PLACE_FIELDS.deadHost[0].choices}
+					field={PLACE_FIELDS.deadHost[0]}
+					previewHref={isAdmin && hostId ? previewPath({ source: "dead-host", id: hostId }) : null}
+				/>
 			</TabPane>
 			<TabPane id="tls">
 				<SSLCertificateField label="ssl-certificate" allowNew />
@@ -50,7 +61,7 @@ const showDeadHostModal = createHostEditorModal({
 	useSave: useSetDeadHost,
 	defaults: deadHostDefaults,
 	validate: deadHostValidate(validations),
-	payload: requestValues,
+	payload: deadHostPayload,
 	Fields: DeadHostFields,
 });
 

@@ -13,6 +13,7 @@ import {
 	HookForm,
 	Loading,
 	ModalTabs,
+	PageChoiceField,
 	SwitchField,
 	SwitchList,
 	TabPane,
@@ -21,7 +22,14 @@ import {
 	useReadOnly,
 } from "src/components";
 import { FieldMessage } from "src/components/Form/FieldMessage";
-import { DirtyTracker, useAccessList, useCanManage, useSetAccessList, useUnsavedChangesGuard } from "src/hooks";
+import {
+	DirtyTracker,
+	useAccessList,
+	useCanManage,
+	useIsAdmin,
+	useSetAccessList,
+	useUnsavedChangesGuard,
+} from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
 import {
@@ -32,6 +40,7 @@ import {
 } from "src/modules/AccessListForms";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
+import { PLACE_FIELDS, previewPath } from "src/modules/LandingPageForms";
 import { ACCESS_LISTS, MANAGE } from "src/modules/Permissions";
 import { sectionAccent } from "src/modules/SectionAccents";
 import { validations } from "src/modules/Validations";
@@ -52,6 +61,7 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 	const { register } = useFormContext();
 	const { errors, isSubmitted, isSubmitting } = useFormState();
 	const readOnly = useReadOnly();
+	const isAdmin = useIsAdmin();
 	return (
 		<>
 			<AppModal.Header closeButton={!isSubmitting}>
@@ -86,6 +96,17 @@ function AccessListForm({ data, savedUsers, errorMsg, onCloseError, close }) {
 								/>
 							</SwitchList>
 						</FormSection>
+						<PageChoiceField
+							name="npmproDeniedPage"
+							htmlName="npmproDeniedPageHtml"
+							label={<T id="landing-pages.field.denied" />}
+							choices={PLACE_FIELDS.accessList[0].choices}
+							field={PLACE_FIELDS.accessList[0]}
+							previewHref={
+								isAdmin && data.id ? previewPath({ source: "access-list", id: data.id }) : null
+							}
+							className="mt-4"
+						/>
 					</TabPane>
 					<TabPane id="auth">
 						<BasicAuthFields savedUsers={savedUsers} />

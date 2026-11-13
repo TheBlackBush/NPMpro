@@ -1,4 +1,4 @@
-import { useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import {
 	AccessFields,
 	DirectoryField,
@@ -8,14 +8,18 @@ import {
 	LocationsFields,
 	ModalTabs,
 	NginxConfigField,
+	PageChoiceField,
 	ProxyOptionsFields,
 	SSLCertificateField,
 	SSLOptionsFields,
+	SwitchField,
+	SwitchList,
 	TabPane,
 } from "src/components";
 import { useAccessLists, useProxyHost, useSetProxyHost } from "src/hooks";
 import { T } from "src/locale";
 import { domainNamesOptions } from "src/modules/HostForms";
+import { htmlName, PLACE_FIELDS, previewPath } from "src/modules/LandingPageForms";
 import { PROXY_HOSTS } from "src/modules/Permissions";
 import {
 	namedLocations,
@@ -40,10 +44,19 @@ function LocationsTabMarker() {
 	return namedLocations(locations).length > 0 ? "*" : "";
 }
 
-function ProxyHostFields({ isAdmin }) {
-	const [certificateId, npmproDnsChallenge, npmproLocationConfig, npmproAuthRequest, advancedConfig] = useWatch({
-		name: ["certificateId", "npmproDnsChallenge", "npmproLocationConfig", "npmproAuthRequest", "advancedConfig"],
-	});
+function ProxyHostFields({ isAdmin, hostId }) {
+	const { register } = useFormContext();
+	const [certificateId, npmproDnsChallenge, npmproLocationConfig, npmproAuthRequest, advancedConfig, maintenance] =
+		useWatch({
+			name: [
+				"certificateId",
+				"npmproDnsChallenge",
+				"npmproLocationConfig",
+				"npmproAuthRequest",
+				"advancedConfig",
+				"npmproMaintenance",
+			],
+		});
 	// a non-admin with no config at all gets the one hint, not one per field
 	const isEmptyBoth = !(isAdmin || advancedConfig?.trim() || npmproLocationConfig?.trim());
 	return (
@@ -51,6 +64,7 @@ function ProxyHostFields({ isAdmin }) {
 			tabs={PROXY_HOST_TABS}
 			markers={{
 				locations: <LocationsTabMarker />,
+				pages: maintenance ? "*" : null,
 				advanced: advancedConfig?.trim() || npmproLocationConfig?.trim() ? "*" : null,
 			}}
 		>
@@ -74,6 +88,38 @@ function ProxyHostFields({ isAdmin }) {
 				<SSLCertificateField label="ssl-certificate" allowNew />
 
 				<SSLOptionsFields forProxyHost />
+			</TabPane>
+			<TabPane id="pages">
+				<SwitchList>
+					<SwitchField
+						id="npmproMaintenance"
+						label={<T id="landing-pages.maintenance-mode" />}
+						{...register("npmproMaintenance")}
+					/>
+				</SwitchList>
+				<p className="mt-1 mb-4 text-sm text-muted-foreground">
+					<T id="landing-pages.maintenance-mode.hint" />
+				</p>
+				<div className="space-y-4">
+					{PLACE_FIELDS.proxyHost.map((field) => (
+						<PageChoiceField
+							key={field.name}
+							name={field.name}
+							htmlName={htmlName(field.name)}
+							label={<T id={field.labelId} />}
+							choices={field.choices}
+							field={field}
+							previewHref={
+								isAdmin && hostId
+									? previewPath({ source: "proxy-host", id: hostId, type: field.api })
+									: null
+							}
+						/>
+					))}
+				</div>
+				<p className="mt-4 text-sm text-muted-foreground">
+					<T id="landing-pages.global.hint" />
+				</p>
 			</TabPane>
 			{/* the config fields are read-only in a View window themselves, so they can still be focused and scrolled */}
 			<TabPane id="advanced" selfReadOnly>
