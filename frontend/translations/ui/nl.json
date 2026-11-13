@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer uit",
 	"settings.crowdsec.template.hint": "Een bestand onder /data/crowdsec/. Bewerk het daar; het wordt opnieuw geladen wanneer u hier opslaat.",
 	"settings.crowdsec.test": "Verbinding testen",
+	"settings.crowdsec.test-failed": "De verbindingstest is mislukt.",
 	"settings.crowdsec.test.hint": "Test de waarden in het formulier; een leeg sleutelveld gebruikt de opgeslagen sleutel.",
 	"settings.crowdsec.tls-cert": "Bestand van het clientcertificaat",
 	"settings.crowdsec.tls-cert.hint": "Een bestand onder /data/crowdsec/, bijvoorbeeld /data/crowdsec/client.crt.",

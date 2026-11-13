@@ -12,6 +12,8 @@ Muestra si nginx carga el bouncer y cuándo llegó NPMpro por última vez a la L
 
 Al guardar con el bouncer activado se ejecuta primero la misma prueba. Si falla, se muestran los motivos y **Guardar de todos modos** guarda igualmente, por ejemplo cuando CrowdSec aún no está en marcha.
 
+**Guardar de todos modos** no se ofrece cuando AppSec falla, **Cuando no se puede acceder a AppSec** está en **Denegar la solicitud** y la interfaz de administración se comprueba, porque ese guardado le dejaría fuera de la interfaz de administración: corrija la **Clave de API** o la **URL de AppSec**, cambie la acción en caso de fallo a **Dejar pasar la solicitud**, o active **Excluir la interfaz de administración de CrowdSec**.
+
 ### Conexión
 
 - **Activar el bouncer**: comprueba cada solicitud.

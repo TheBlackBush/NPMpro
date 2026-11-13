@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer désactivé",
 	"settings.crowdsec.template.hint": "Un fichier sous /data/crowdsec/. Modifiez-le à cet endroit ; il est rechargé à l'enregistrement ici.",
 	"settings.crowdsec.test": "Tester la connexion",
+	"settings.crowdsec.test-failed": "Le test de connexion a échoué.",
 	"settings.crowdsec.test.hint": "Teste les valeurs du formulaire ; un champ de clé vide utilise la clé enregistrée.",
 	"settings.crowdsec.tls-cert": "Fichier du certificat client",
 	"settings.crowdsec.tls-cert.hint": "Un fichier sous /data/crowdsec/, par exemple /data/crowdsec/client.crt.",

@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer off",
 	"settings.crowdsec.template.hint": "A file under /data/crowdsec/. Edit it there; it is loaded again when you save here.",
 	"settings.crowdsec.test": "Test connection",
+	"settings.crowdsec.test-failed": "The connection test failed.",
 	"settings.crowdsec.test.hint": "Tests the values in the form; an empty key field uses the saved key.",
 	"settings.crowdsec.tls-cert": "Client certificate file",
 	"settings.crowdsec.tls-cert.hint": "A file under /data/crowdsec/, for example /data/crowdsec/client.crt.",

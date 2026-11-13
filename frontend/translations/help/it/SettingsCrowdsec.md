@@ -12,6 +12,8 @@ Mostra se nginx carica il bouncer e quando NPMpro ha raggiunto la LAPI l'ultima 
 
 Salvando con il bouncer attivo viene eseguito prima lo stesso test. Se fallisce, vengono mostrati i motivi e **Salva comunque** salva ugualmente, ad esempio quando CrowdSec non è ancora in esecuzione.
 
+**Salva comunque** non viene offerto quando AppSec fallisce, **Quando AppSec non è raggiungibile** è su **Rifiuta la richiesta** e l'interfaccia di amministrazione è controllata, perché quel salvataggio ti chiuderebbe fuori dall'interfaccia di amministrazione: correggi la **Chiave API** o l'**URL di AppSec**, imposta l'azione in caso di errore su **Lascia passare la richiesta**, oppure attiva **Escludi l'interfaccia di amministrazione da CrowdSec**.
+
 ### Connessione
 
 - **Attiva il bouncer**: controlla ogni richiesta.

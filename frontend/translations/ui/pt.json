@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer desligado",
 	"settings.crowdsec.template.hint": "Um ficheiro em /data/crowdsec/. Edite-o aí; é carregado de novo quando guarda aqui.",
 	"settings.crowdsec.test": "Testar ligação",
+	"settings.crowdsec.test-failed": "O teste de ligação falhou.",
 	"settings.crowdsec.test.hint": "Testa os valores do formulário; um campo de chave vazio usa a chave guardada.",
 	"settings.crowdsec.tls-cert": "Ficheiro do certificado de cliente",
 	"settings.crowdsec.tls-cert.hint": "Um ficheiro em /data/crowdsec/, por exemplo /data/crowdsec/client.crt.",

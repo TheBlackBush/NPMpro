@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer wyłączony",
 	"settings.crowdsec.template.hint": "Plik w /data/crowdsec/. Edytuj go tam; jest ładowany ponownie po zapisie tutaj.",
 	"settings.crowdsec.test": "Testuj połączenie",
+	"settings.crowdsec.test-failed": "Test połączenia nie powiódł się.",
 	"settings.crowdsec.test.hint": "Testuje wartości z formularza; puste pole klucza używa zapisanego klucza.",
 	"settings.crowdsec.tls-cert": "Plik certyfikatu klienta",
 	"settings.crowdsec.tls-cert.hint": "Plik w /data/crowdsec/, na przykład /data/crowdsec/client.crt.",

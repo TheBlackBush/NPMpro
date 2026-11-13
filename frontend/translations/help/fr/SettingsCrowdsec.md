@@ -12,6 +12,8 @@ Indique si nginx charge le bouncer et quand NPMpro a joint la LAPI pour la derni
 
 L'enregistrement avec le bouncer activé lance d'abord le même test. S'il échoue, les raisons s'affichent et **Enregistrer quand même** enregistre malgré tout, par exemple quand CrowdSec ne tourne pas encore.
 
+**Enregistrer quand même** n'est pas proposé quand AppSec échoue, que **Quand AppSec est injoignable** vaut **Refuser la requête** et que l'interface d'administration est vérifiée, car cet enregistrement vous bloquerait l'accès à l'interface d'administration : corrigez la **Clé API** ou l'**URL d'AppSec**, réglez l'action en cas d'échec sur **Laisser passer la requête**, ou activez **Exclure l'interface d'administration de CrowdSec**.
+
 ### Connexion
 
 - **Activer le bouncer** : vérifie chaque requête.

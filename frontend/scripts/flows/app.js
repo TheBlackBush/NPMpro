@@ -1,5 +1,5 @@
-// A settings save with its toast, the CrowdSec section, the phone layout of a host list, the MFA and help windows, and the language switch
-// (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, the phone layout of a host list, the MFA and help windows, and
+// the language switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -58,7 +58,7 @@ const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
 
 // Settings, CrowdSec: the section opens, Test connection answers with one line per check (the CI instance has no
 // CrowdSec, so they fail, which is fine here), and a harmless field (the captcha expiration) is saved and read back.
-// The bouncer is never turned on: with the default AppSec URL and deny that would block this instance.
+// The bouncer stays off, so the save never runs the connection test against a CrowdSec this instance does not have.
 async function crowdsecSettings({ admin }) {
 	const { page, api } = admin;
 	const before = await api("GET", "/settings/crowdsec");

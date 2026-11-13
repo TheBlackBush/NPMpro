@@ -12,6 +12,8 @@ Zeigt, ob nginx den Bouncer lädt und wann NPMpro die LAPI zuletzt erreicht hat.
 
 Beim Speichern mit eingeschaltetem Bouncer läuft zuerst derselbe Test. Schlägt er fehl, werden die Gründe angezeigt, und **Trotzdem speichern** speichert dennoch, zum Beispiel wenn CrowdSec noch nicht läuft.
 
+**Trotzdem speichern** wird nicht angeboten, wenn AppSec fehlschlägt, **Wenn AppSec nicht erreichbar ist** auf **Anfrage verweigern** steht und die Admin-Oberfläche geprüft wird, denn dieses Speichern würde Sie aus der Admin-Oberfläche aussperren: Korrigieren Sie den **API-Schlüssel** oder die **AppSec-URL**, stellen Sie die Ausfallaktion auf **Anfrage durchlassen** oder schalten Sie **Admin-Oberfläche von CrowdSec ausnehmen** ein.
+
 ### Verbindung
 
 - **Bouncer aktivieren**: prüft jede Anfrage.

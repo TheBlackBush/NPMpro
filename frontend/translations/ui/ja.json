@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer オフ",
 	"settings.crowdsec.template.hint": "/data/crowdsec/ 内のファイル。そこで編集してください。ここで保存すると再読み込みされます。",
 	"settings.crowdsec.test": "接続テスト",
+	"settings.crowdsec.test-failed": "接続テストに失敗しました。",
 	"settings.crowdsec.test.hint": "フォームの値をテストします。キー欄が空の場合は保存済みのキーを使用します。",
 	"settings.crowdsec.tls-cert": "クライアント証明書ファイル",
 	"settings.crowdsec.tls-cert.hint": "/data/crowdsec/ 内のファイル。例：/data/crowdsec/client.crt",

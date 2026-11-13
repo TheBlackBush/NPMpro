@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer 已关闭",
 	"settings.crowdsec.template.hint": "/data/crowdsec/ 下的文件。请在那里编辑；在此保存时会重新加载。",
 	"settings.crowdsec.test": "测试连接",
+	"settings.crowdsec.test-failed": "连接测试失败。",
 	"settings.crowdsec.test.hint": "测试表单中的值；密钥字段留空则使用已保存的密钥。",
 	"settings.crowdsec.tls-cert": "客户端证书文件",
 	"settings.crowdsec.tls-cert.hint": "/data/crowdsec/ 下的文件，例如 /data/crowdsec/client.crt。",

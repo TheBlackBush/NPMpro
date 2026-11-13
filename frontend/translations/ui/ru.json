@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer выключен",
 	"settings.crowdsec.template.hint": "Файл в /data/crowdsec/. Изменяйте его там; он загружается заново при сохранении здесь.",
 	"settings.crowdsec.test": "Проверить подключение",
+	"settings.crowdsec.test-failed": "Проверка подключения не удалась.",
 	"settings.crowdsec.test.hint": "Проверяет значения из формы; пустое поле ключа использует сохранённый ключ.",
 	"settings.crowdsec.tls-cert": "Файл клиентского сертификата",
 	"settings.crowdsec.tls-cert.hint": "Файл в /data/crowdsec/, например /data/crowdsec/client.crt.",

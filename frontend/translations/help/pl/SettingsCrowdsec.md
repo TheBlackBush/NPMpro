@@ -12,6 +12,8 @@ Pokazuje, czy nginx ładuje bouncera i kiedy NPMpro ostatnio połączył się z 
 
 Zapis przy włączonym bouncerze najpierw uruchamia ten sam test. Gdy się nie powiedzie, pokazywane są przyczyny, a **Zapisz mimo to** zapisuje mimo wszystko, na przykład gdy CrowdSec jeszcze nie działa.
 
+**Zapisz mimo to** nie jest dostępne, gdy AppSec zawodzi, **Gdy AppSec jest nieosiągalny** ma wartość **Odrzuć żądanie**, a interfejs administracyjny jest sprawdzany, bo taki zapis odciąłby Ci dostęp do interfejsu administracyjnego: popraw **Klucz API** lub **Adres URL AppSec**, ustaw działanie przy awarii na **Przepuść żądanie** albo włącz **Wyłącz interfejs administracyjny spod kontroli CrowdSec**.
+
 ### Połączenie
 
 - **Włącz bouncera**: sprawdza każde żądanie.

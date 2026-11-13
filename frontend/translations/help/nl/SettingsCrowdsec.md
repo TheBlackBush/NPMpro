@@ -12,6 +12,8 @@ Toont of nginx de bouncer laadt en wanneer NPMpro de LAPI voor het laatst heeft 
 
 Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die mislukt, worden de redenen getoond en slaat **Toch opslaan** toch op, bijvoorbeeld als CrowdSec nog niet draait.
 
+**Toch opslaan** wordt niet aangeboden als AppSec faalt, **Wanneer AppSec niet bereikbaar is** op **Het verzoek weigeren** staat en de beheerinterface wordt gecontroleerd, omdat u zich met die opslag uit de beheerinterface zou buitensluiten: corrigeer de **API-sleutel** of de **AppSec-URL**, zet de actie bij uitval op **Het verzoek doorlaten**, of zet **De beheerinterface uitsluiten van CrowdSec** aan.
+
 ### Verbinding
 
 - **De bouncer inschakelen**: controleert elk verzoek.

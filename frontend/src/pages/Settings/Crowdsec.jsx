@@ -586,7 +586,7 @@ function RefusedSave({ checks, blocked, onSaveAnyway }) {
 		<StatusAlert variant="danger" icon={CircleAlert}>
 			<div className="space-y-2">
 				<p className="font-medium">
-					<T id="error.crowdsec-test-failed" />
+					<T id={blocked ? "settings.crowdsec.test-failed" : "error.crowdsec-test-failed"} />
 				</p>
 				<CheckList checks={checks} />
 				{blocked ? (

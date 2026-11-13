@@ -12,6 +12,8 @@ Shows whether nginx loads the bouncer and when NPMpro last reached the LAPI. **T
 
 Saving while the bouncer is on runs the same test first. When it fails, the reasons are shown and **Save anyway** saves all the same, for example when CrowdSec is not running yet.
 
+**Save anyway** is not offered when AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is checked, because that save would lock you out of the admin UI: fix the **API key** or the **AppSec URL**, set the failure action to **Let the request through**, or turn on **Leave the admin UI out of CrowdSec**.
+
 ### Connection
 
 - **Enable the bouncer**: checks every request.

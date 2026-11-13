@@ -12,6 +12,8 @@ Mostra se o nginx carrega o bouncer e quando o NPMpro contactou a LAPI pela últ
 
 Ao guardar com o bouncer ativo, o mesmo teste corre primeiro. Se falhar, os motivos são mostrados e **Guardar mesmo assim** guarda na mesma, por exemplo quando o CrowdSec ainda não está a correr.
 
+**Guardar mesmo assim** não é oferecido quando o AppSec falha, **Quando não é possível aceder ao AppSec** está em **Recusar o pedido** e a interface de administração é verificada, porque esse guardar deixá-lo-ia sem acesso à interface de administração: corrija a **Chave de API** ou o **URL do AppSec**, defina a ação em caso de falha como **Deixar passar o pedido**, ou ative **Excluir a interface de administração do CrowdSec**.
+
 ### Ligação
 
 - **Ativar o bouncer**: verifica cada pedido.

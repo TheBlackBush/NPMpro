@@ -1160,6 +1160,7 @@
 	"settings.crowdsec.status.off": "Bouncer disattivato",
 	"settings.crowdsec.template.hint": "Un file in /data/crowdsec/. Modificalo lì; viene ricaricato quando salvi qui.",
 	"settings.crowdsec.test": "Verifica connessione",
+	"settings.crowdsec.test-failed": "Il test di connessione non è riuscito.",
 	"settings.crowdsec.test.hint": "Verifica i valori nel modulo; un campo chiave vuoto usa la chiave salvata.",
 	"settings.crowdsec.tls-cert": "File del certificato client",
 	"settings.crowdsec.tls-cert.hint": "Un file in /data/crowdsec/, ad esempio /data/crowdsec/client.crt.",
