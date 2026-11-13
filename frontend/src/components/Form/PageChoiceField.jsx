@@ -103,7 +103,7 @@ function PageLine({ id, title, codes, hint, control, preview, editor }) {
 					) : null}
 				</div>
 				<div className="flex items-center gap-2 @lg:shrink-0">
-					<div className="min-w-0 flex-1 @lg:w-48 @lg:flex-none">{control}</div>
+					<div className="min-w-0 flex-1 @lg:w-56 @lg:flex-none">{control}</div>
 					{preview ?? null}
 				</div>
 			</div>
