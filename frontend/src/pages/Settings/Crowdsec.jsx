@@ -30,6 +30,7 @@ import {
 	crowdsecValidate,
 	crowdsecValues,
 	failedChecks,
+	forceBlocked,
 } from "src/modules/CrowdsecForms";
 import { lockedIn } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -580,7 +581,7 @@ function BouncerOffAlert({ data }) {
 }
 
 // the checks of a save the connection test refused, and Save anyway
-function RefusedSave({ checks, onSaveAnyway }) {
+function RefusedSave({ checks, blocked, onSaveAnyway }) {
 	return (
 		<StatusAlert variant="danger" icon={CircleAlert}>
 			<div className="space-y-2">
@@ -588,14 +589,20 @@ function RefusedSave({ checks, onSaveAnyway }) {
 					<T id="error.crowdsec-test-failed" />
 				</p>
 				<CheckList checks={checks} />
-				<div className="flex flex-wrap items-center gap-2">
-					<Button color="danger" outline size="sm" onClick={onSaveAnyway}>
-						<T id="settings.crowdsec.save-anyway" />
-					</Button>
-					<span className="text-muted-foreground">
-						<T id="settings.crowdsec.save-anyway.hint" />
-					</span>
-				</div>
+				{blocked ? (
+					<p>
+						<T id="settings.crowdsec.save-blocked" />
+					</p>
+				) : (
+					<div className="flex flex-wrap items-center gap-2">
+						<Button color="danger" outline size="sm" onClick={onSaveAnyway}>
+							<T id="settings.crowdsec.save-anyway" />
+						</Button>
+						<span className="text-muted-foreground">
+							<T id="settings.crowdsec.save-anyway.hint" />
+						</span>
+					</div>
+				)}
 			</div>
 		</StatusAlert>
 	);
@@ -636,7 +643,7 @@ function CrowdsecForm({ data }) {
 			showObjectSuccess("setting", "saved");
 		} catch (err) {
 			const checks = failedChecks(err);
-			if (checks) setRefused(checks);
+			if (checks) setRefused({ checks, blocked: forceBlocked(err) });
 			else setErrorMsg(<ApiErrorContent error={err} />);
 		}
 	};
@@ -644,11 +651,12 @@ function CrowdsecForm({ data }) {
 	return (
 		<HookForm methods={methods} onSubmit={(values) => submit(values, false)} className="space-y-4">
 			<SettingsHeading titleId="settings.crowdsec" />
-			<div ref={errorRef} tabIndex={-1} className="space-y-2 empty:hidden">
+			<div ref={errorRef} tabIndex={-1} className="scroll-mt-32 space-y-2 empty:hidden">
 				<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 				{refused ? (
 					<RefusedSave
-						checks={refused}
+						checks={refused.checks}
+						blocked={refused.blocked}
 						onSaveAnyway={methods.handleSubmit((values) => submit(values, true))}
 					/>
 				) : null}

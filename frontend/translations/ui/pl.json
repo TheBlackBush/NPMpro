@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "Status HTTP odpowiedzi na bana.",
 	"settings.crowdsec.save-anyway": "Zapisz mimo to",
 	"settings.crowdsec.save-anyway.hint": "Zapisuje i stosuje ustawienia, chociaż test się nie powiódł.",
+	"settings.crowdsec.save-blocked": "Zapis teraz zablokowałby także interfejs administracyjny, ponieważ AppSec zawodzi, a jego działanie przy awarii to odrzucenie. Popraw klucz lub adres AppSec, ustaw działanie przy awarii na Przepuść żądanie albo wyłącz interfejs administracyjny spod kontroli CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Tylko scenariusze zawierające",
 	"settings.crowdsec.scenarios-containing.hint": "Oddzielone przecinkami, na przykład http-,wordpress. Puste: wszystkie scenariusze.",
 	"settings.crowdsec.scenarios-not-containing": "Ignoruj scenariusze zawierające",

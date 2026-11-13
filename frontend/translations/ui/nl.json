@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "De HTTP-status van het antwoord op een ban.",
 	"settings.crowdsec.save-anyway": "Toch opslaan",
 	"settings.crowdsec.save-anyway.hint": "Slaat de instellingen op en past ze toe, ook al is de test mislukt.",
+	"settings.crowdsec.save-blocked": "Nu opslaan zou ook de beheerinterface blokkeren, omdat AppSec faalt en de actie bij uitval weigeren is. Corrigeer de sleutel of de AppSec-URL, zet de actie bij uitval op Het verzoek doorlaten, of sluit de beheerinterface uit van CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Alleen scenario's die bevatten",
 	"settings.crowdsec.scenarios-containing.hint": "Gescheiden door komma's, bijvoorbeeld http-,wordpress. Leeg: alle scenario's.",
 	"settings.crowdsec.scenarios-not-containing": "Scenario's negeren die bevatten",

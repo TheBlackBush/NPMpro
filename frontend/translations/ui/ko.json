@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "차단에 대한 응답의 HTTP 상태입니다.",
 	"settings.crowdsec.save-anyway": "그래도 저장",
 	"settings.crowdsec.save-anyway.hint": "테스트에 실패했더라도 설정을 저장하고 적용합니다.",
+	"settings.crowdsec.save-blocked": "지금 저장하면 관리자 UI도 차단됩니다. AppSec이 실패하고 실패 시 동작이 거부이기 때문입니다. 키 또는 AppSec URL을 수정하거나, 실패 시 동작을 '요청 통과'로 바꾸거나, 관리자 UI를 CrowdSec에서 제외하세요.",
 	"settings.crowdsec.scenarios-containing": "다음을 포함하는 시나리오만",
 	"settings.crowdsec.scenarios-containing.hint": "쉼표로 구분합니다. 예: http-,wordpress. 비움: 모든 시나리오.",
 	"settings.crowdsec.scenarios-not-containing": "다음을 포함하는 시나리오 무시",

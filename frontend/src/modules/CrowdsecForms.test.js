@@ -10,6 +10,7 @@ import {
 	crowdsecValidate,
 	crowdsecValues,
 	failedChecks,
+	forceBlocked,
 } from "./CrowdsecForms.js";
 import { lockedIn } from "./SettingsForms.js";
 import { createValidations } from "./ValidationRules.js";
@@ -227,6 +228,15 @@ it("tells a save the test refused from other errors", () => {
 	assert.equal(failedChecks({ payload: { error: { message_i18n: "error.other", checks } } }), null);
 	assert.equal(failedChecks(new Error("x")), null);
 	assert.equal(failedChecks(undefined), null);
+});
+
+it("reads the flag that forbids Save anyway", () => {
+	const error = { message_i18n: "error.crowdsec-test-failed", checks: [], force_blocked: "appsec_deny_admin" };
+	assert.equal(forceBlocked({ payload: { error } }), true);
+	assert.equal(forceBlocked({ payload: { error: { ...error, force_blocked: undefined } } }), false);
+	assert.equal(forceBlocked({ payload: { error: { ...error, message_i18n: "error.other" } } }), false);
+	assert.equal(forceBlocked(new Error("x")), false);
+	assert.equal(forceBlocked(undefined), false);
 });
 
 it("warns about AppSec deny while the admin UI is checked", () => {

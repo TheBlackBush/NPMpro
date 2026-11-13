@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "HTTP-статус відповіді на бан.",
 	"settings.crowdsec.save-anyway": "Усе одно зберегти",
 	"settings.crowdsec.save-anyway.hint": "Зберігає та застосовує налаштування, хоча перевірка не вдалася.",
+	"settings.crowdsec.save-blocked": "Якщо зберегти зараз, інтерфейс адміністратора теж буде заблоковано: AppSec не працює коректно, а дія при збої відхиляє запити. Виправте ключ або адресу AppSec, виберіть для дії при збої варіант «Пропустити запит» або виключіть інтерфейс адміністратора з CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Лише сценарії, що містять",
 	"settings.crowdsec.scenarios-containing.hint": "Через кому, наприклад http-,wordpress. Порожньо: усі сценарії.",
 	"settings.crowdsec.scenarios-not-containing": "Ігнорувати сценарії, що містять",

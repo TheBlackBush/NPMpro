@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "对封禁响应的 HTTP 状态码。",
 	"settings.crowdsec.save-anyway": "仍然保存",
 	"settings.crowdsec.save-anyway.hint": "即使测试失败，也保存并应用设置。",
+	"settings.crowdsec.save-blocked": "现在保存会连管理界面一起拦截，因为 AppSec 失败且失败处理方式为拒绝。请修正密钥或 AppSec 地址，把失败处理方式改为放行请求，或将管理界面排除在 CrowdSec 之外。",
 	"settings.crowdsec.scenarios-containing": "仅包含以下内容的场景",
 	"settings.crowdsec.scenarios-containing.hint": "以逗号分隔，例如 http-,wordpress。留空：所有场景。",
 	"settings.crowdsec.scenarios-not-containing": "忽略包含以下内容的场景",

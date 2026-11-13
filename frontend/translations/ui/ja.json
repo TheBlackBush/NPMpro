@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "BAN への応答の HTTP ステータス。",
 	"settings.crowdsec.save-anyway": "それでも保存",
 	"settings.crowdsec.save-anyway.hint": "テストに失敗しても、設定を保存して適用します。",
+	"settings.crowdsec.save-blocked": "今保存すると管理画面もブロックされます。AppSec が失敗し、失敗時の動作が拒否になっているためです。キーまたは AppSec の URL を修正するか、失敗時の動作を「リクエストを通過させる」に変更するか、管理画面を CrowdSec の対象から除外してください。",
 	"settings.crowdsec.scenarios-containing": "次を含むシナリオのみ",
 	"settings.crowdsec.scenarios-containing.hint": "カンマ区切り。例：http-,wordpress。空：すべてのシナリオ。",
 	"settings.crowdsec.scenarios-not-containing": "次を含むシナリオを無視",

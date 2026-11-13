@@ -279,6 +279,17 @@ export const failedChecks = (err) => {
 };
 
 /**
+ * Whether the backend refused the save for good ("Save anyway" would lock the admin UI out too): error.force_blocked
+ *
+ * @param   {unknown} err  an error of src/api/backend/base.js
+ * @returns {boolean}
+ */
+export const forceBlocked = (err) => {
+	const error = err?.payload?.error;
+	return error?.message_i18n === "error.crowdsec-test-failed" && error.force_blocked === "appsec_deny_admin";
+};
+
+/**
  * AppSec deny while the admin UI is checked: a CrowdSec outage blocks the admin UI too
  *
  * @param   {{ appsecUrl: string, appsecFailureAction: string, adminUiExcluded: boolean }} values

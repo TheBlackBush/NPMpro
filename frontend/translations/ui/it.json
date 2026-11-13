@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "Lo stato HTTP della risposta a un ban.",
 	"settings.crowdsec.save-anyway": "Salva comunque",
 	"settings.crowdsec.save-anyway.hint": "Salva e applica le impostazioni anche se il test non è riuscito.",
+	"settings.crowdsec.save-blocked": "Salvare ora bloccherebbe anche l'interfaccia di amministrazione, perché AppSec fallisce e la sua azione in caso di errore è negare. Correggi la chiave o l'URL di AppSec, imposta l'azione in caso di errore su Lascia passare la richiesta, oppure escludi l'interfaccia di amministrazione da CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Solo scenari che contengono",
 	"settings.crowdsec.scenarios-containing.hint": "Separati da virgole, ad esempio http-,wordpress. Vuoto: tutti gli scenari.",
 	"settings.crowdsec.scenarios-not-containing": "Ignora scenari che contengono",

@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "O estado HTTP da resposta a um bloqueio.",
 	"settings.crowdsec.save-anyway": "Guardar mesmo assim",
 	"settings.crowdsec.save-anyway.hint": "Guarda e aplica as definições embora o teste tenha falhado.",
+	"settings.crowdsec.save-blocked": "Guardar agora bloquearia também a interface de administração, porque o AppSec falha e a sua ação em caso de falha é negar. Corrija a chave ou o URL do AppSec, defina a ação em caso de falha como Deixar passar o pedido, ou exclua a interface de administração do CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Apenas cenários que contenham",
 	"settings.crowdsec.scenarios-containing.hint": "Separados por vírgulas, por exemplo http-,wordpress. Vazio: todos os cenários.",
 	"settings.crowdsec.scenarios-not-containing": "Ignorar cenários que contenham",

@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "Le statut HTTP de la réponse à un bannissement.",
 	"settings.crowdsec.save-anyway": "Enregistrer quand même",
 	"settings.crowdsec.save-anyway.hint": "Enregistre et applique les paramètres bien que le test ait échoué.",
+	"settings.crowdsec.save-blocked": "Enregistrer maintenant bloquerait aussi l'interface d'administration, car AppSec échoue et son action en cas d'échec est le refus. Corrigez la clé ou l'URL d'AppSec, réglez l'action en cas d'échec sur Laisser passer la requête, ou excluez l'interface d'administration de CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Seulement les scénarios contenant",
 	"settings.crowdsec.scenarios-containing.hint": "Séparés par des virgules, par exemple http-,wordpress. Vide : tous les scénarios.",
 	"settings.crowdsec.scenarios-not-containing": "Ignorer les scénarios contenant",

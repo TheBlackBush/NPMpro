@@ -1137,6 +1137,7 @@
 	"settings.crowdsec.ret-code.hint": "The HTTP status of the answer to a ban.",
 	"settings.crowdsec.save-anyway": "Save anyway",
 	"settings.crowdsec.save-anyway.hint": "Saves and applies the settings although the test failed.",
+	"settings.crowdsec.save-blocked": "Saving now would block the admin UI too, because AppSec fails and its failure action is deny. Fix the key or the AppSec URL, set the failure action to Let the request through, or leave the admin UI out of CrowdSec.",
 	"settings.crowdsec.scenarios-containing": "Only scenarios containing",
 	"settings.crowdsec.scenarios-containing.hint": "Comma-separated, for example http-,wordpress. Empty: all scenarios.",
 	"settings.crowdsec.scenarios-not-containing": "Ignore scenarios containing",
