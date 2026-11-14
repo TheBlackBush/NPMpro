@@ -1,5 +1,6 @@
 import { domainToASCII } from "node:url";
 import errs from "../lib/error.js";
+import { locationAuthRequest } from "../lib/forward-auth.js";
 import deadHostModel from "../models/dead_host.js";
 import proxyHostModel from "../models/proxy_host.js";
 import redirectionHostModel from "../models/redirection_host.js";
@@ -63,9 +64,10 @@ const internalHost = {
 		combinedData.npmpro_mtls_bypass_auth_request &&=
 			combinedData.npmpro_mtls_certificate_id > 0 &&
 			combinedData.npmpro_mtls_verify_client_optional === true &&
-			[combinedData, ...(combinedData.locations ?? [])].some(
-				({ npmpro_auth_request = "none" }) => npmpro_auth_request !== "none",
-			);
+			[
+				combinedData.npmpro_auth_request ?? "none",
+				...(combinedData.locations ?? []).map((location) => locationAuthRequest(combinedData, location)),
+			].some((value) => value !== "none");
 
 		return combinedData;
 	},

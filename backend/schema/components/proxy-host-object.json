@@ -312,7 +312,21 @@
 						"$ref": "#/properties/npmpro_x_frame_options"
 					},
 					"npmpro_auth_request": {
-						"$ref": "#/properties/npmpro_auth_request"
+						"description": "global (Same as host) uses the host's Auth Request and its upstream; none makes the location public on purpose. New locations default to global.",
+						"type": "string",
+						"enum": [
+							"global",
+							"none",
+							"anubis",
+							"tinyauth",
+							"oauth2proxy",
+							"voidauth",
+							"authelia",
+							"authentik",
+							"authentik-send-basic-auth"
+						],
+						"default": "global",
+						"example": "global"
 					},
 					"npmpro_auth_request_upstream": {
 						"$ref": "#/properties/npmpro_auth_request_upstream"

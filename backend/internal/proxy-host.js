@@ -1,3 +1,5 @@
+import errs from "../lib/error.js";
+import { upstreamConflict } from "../lib/forward-auth.js";
 import { PROXY_HOST_EXPAND, PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { assertPageFields, keepSavedPages } from "../lib/landing-pages/html.js";
 import locationModel from "../models/location.js";
@@ -45,7 +47,8 @@ const cleanForwardOptions = (item) => {
 		}
 	}
 	if (!item.npmpro_crowdsec_appsec) item.npmpro_proxy_request_buffering = false;
-	if ((item.npmpro_auth_request ?? "none") === "none") item.npmpro_auth_request_upstream = "";
+	// none has no upstream, global uses the host's
+	if (["none", "global"].includes(item.npmpro_auth_request ?? "none")) item.npmpro_auth_request_upstream = "";
 };
 
 const internalProxyHost = createHostService({
@@ -66,7 +69,19 @@ const internalProxyHost = createHostService({
 			const cleaned = internalProxyHostAccessList.cleanAccessListTypes(
 				internalHost.cleanSslHstsData(createCertificate, data, existingRow),
 			);
+			// an API request that leaves out a location's Auth Request means Same as host
+			for (const location of cleaned.locations ?? []) location.npmpro_auth_request ??= "global";
 			for (const item of [cleaned, ...(cleaned.locations ?? [])]) cleanForwardOptions(item);
+			const conflict = upstreamConflict(cleaned);
+			// a host stored with such a pair keeps saving while the upstreams stay
+			const storedConflict = existingRow ? upstreamConflict(existingRow) : null;
+			if (conflict && JSON.stringify(conflict) !== JSON.stringify(storedConflict)) {
+				throw new errs.ValidationError(
+					`The host and its custom locations set different Auth Request upstreams for ${conflict.provider} (${conflict.upstreams.join(", ")}). Use one upstream per provider, or leave the location's upstream empty.`,
+					"error.auth-request-upstream-conflict",
+					{ values: { provider: conflict.provider } },
+				);
+			}
 			await internalProxyHostAccessList.validateAccessLists(access, cleaned);
 			return cleaned;
 		},

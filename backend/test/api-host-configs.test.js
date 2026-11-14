@@ -24,6 +24,9 @@ const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
 const PASS_AUTH_CLEARED = /proxy_set_header Authorization "";/u;
 const AUTHORIZATION_EMPTY = /Authorization ""/u;
+const AUTHELIA_CHECK = /auth_request \/internal\/authelia\/authz;/u;
+const ANY_AUTH_REQUEST = /auth_request/u;
+const NO_PROVIDER_CHECK = /auth_request \/|authelia\/authz|goauthentik|\/tinyauth/u;
 
 const read = (file) => readConfig(ctx.api, file);
 const configOf = async (host) => read(confOf(host.id));
@@ -827,6 +830,78 @@ it("forward auth: a custom location with its own provider gets the check, its he
 		config,
 		new RegExp(`upstream auth_request_authelia_${host.id} \\{[\\s\\S]*server auth\\.internal:9091 resolve;`, "u"),
 	);
+});
+
+it("forward auth: a location on Same as host gets the host's check, with the host on none it stays public", async () => {
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://auth.internal:9091",
+		locations: [
+			{ path: "/same", forward_host: "10.9.8.5", forward_port: 80, npmpro_auth_request: "global" },
+			{ path: "/open", forward_host: "10.9.8.4", forward_port: 80, npmpro_auth_request: "none" },
+			{ path: "/default", forward_host: "10.9.8.3", forward_port: 80 },
+		],
+	});
+	const config = await configOf(host);
+	assert.match(block(config, 'location "/same" {'), AUTHELIA_CHECK);
+	assert.match(block(config, 'location "/default" {'), AUTHELIA_CHECK);
+	assert.doesNotMatch(block(config, 'location "/open" {'), ANY_AUTH_REQUEST);
+	const stored = await ctx.api.db("npmpro_location").where({ proxy_host_id: host.id }).orderBy("id");
+	assert.deepEqual(
+		stored.map((row) => row.npmpro_auth_request),
+		["global", "none", "global"],
+	);
+
+	const bare = await make({
+		locations: [{ path: "/same", forward_host: "10.9.8.2", forward_port: 80, npmpro_auth_request: "global" }],
+	});
+	assert.doesNotMatch(await configOf(bare), NO_PROVIDER_CHECK);
+});
+
+it("forward auth: a global location never keeps the mTLS bypass on a host without a provider", async () => {
+	const certificate = await addCertificate(ctx.api, { domain: "global-bypass.example.com" });
+	const ca = await addCertificate(ctx.api, { provider: "mtls", domain: "global-bypass-ca.example.com" });
+	const host = await make({
+		domain_names: ["global-bypass.example.com"],
+		certificate_id: certificate,
+		npmpro_mtls_certificate_id: ca,
+		npmpro_mtls_verify_client_optional: true,
+		npmpro_mtls_bypass_auth_request: true,
+		locations: [{ path: "/g", forward_host: "10.9.8.1", forward_port: 80, npmpro_auth_request: "global" }],
+	});
+	assert.equal(host.npmpro_mtls_bypass_auth_request, false);
+});
+
+it("forward auth: refuses two upstreams for one provider, keeps a stored pair", async () => {
+	const pair = {
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://a.internal:9091",
+		locations: [
+			{
+				path: "/b",
+				forward_host: "10.9.7.1",
+				forward_port: 80,
+				npmpro_auth_request: "authelia",
+				npmpro_auth_request_upstream: "http://b.internal:9091",
+			},
+		],
+	};
+	const refused = await ctx.admin.post(URL, body(pair));
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.auth-request-upstream-conflict");
+	assert.equal(refused.body.error.message_values.provider, "authelia");
+	// a host stored before the rule keeps saving while its upstreams stay
+	const host = await make({ ...pair, locations: [{ ...pair.locations[0], npmpro_auth_request_upstream: "" }] });
+	await ctx.api
+		.db("npmpro_location")
+		.where({ proxy_host_id: host.id })
+		.update({ npmpro_auth_request_upstream: "http://b.internal:9091" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8111 });
+	assert.equal(kept.status, 200, kept.text);
+	const changed = await ctx.admin.put(`${URL}/${host.id}`, {
+		npmpro_auth_request_upstream: "http://c.internal:9091",
+	});
+	assert.equal(changed.status, 400, changed.text);
 });
 
 it("forward auth: an upstream with a variable or a quote is refused", async () => {
