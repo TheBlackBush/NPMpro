@@ -479,7 +479,7 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 	const redirectConfig = await read(`data/nginx/redirection_host/${redirect.id}.conf`);
 	assert.match(
 		redirectConfig,
-		/return 308 \$scheme:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
+		/return 308 \$npmpro_forwarded_proto:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
 	);
 	const dead = await created(
 		await ctx.admin.post("/nginx/dead-hosts", {
@@ -489,6 +489,28 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 		"dead",
 	);
 	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
+});
+
+it("a redirection host that keeps the scheme follows a trusted proxy's X-Forwarded-Proto, a fixed scheme stays", async () => {
+	const configFor = async (name, scheme) => {
+		const host = await created(
+			await ctx.admin.post("/nginx/redirection-hosts", {
+				domain_names: [`${name}.example.com`],
+				forward_domain_name: "t.example.org",
+				forward_scheme: scheme,
+				forward_http_code: 301,
+				preserve_path: true,
+			}),
+			name,
+		);
+		assert.equal(host.forward_scheme, scheme);
+		return read(`data/nginx/redirection_host/${host.id}.conf`);
+	};
+	const keep = await configFor("keep-scheme", "$scheme");
+	assert.match(keep, /return 301 \$npmpro_forwarded_proto:\/\/t\.example\.org\$request_uri;/u);
+	assert.doesNotMatch(keep, /\$scheme:\/\//u);
+	assert.match(await configFor("fixed-https", "https"), /return 301 https:\/\/t\.example\.org\$request_uri;/u);
+	assert.match(await configFor("fixed-http", "http"), /return 301 http:\/\/t\.example\.org\$request_uri;/u);
 });
 
 it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3 header of the shared block", async () => {
