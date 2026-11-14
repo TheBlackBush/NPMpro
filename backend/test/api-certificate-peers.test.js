@@ -73,6 +73,48 @@ it("saves a host whose certificate lost its key together with the other hosts on
 	}
 });
 
+it("marks only the peer that is broken for another reason, not the hosts that share its certificate", async () => {
+	const certificate = await addCertificate(api, { domain: "peers-bad.example.com" });
+	const a = await created(await admin.post("/nginx/proxy-hosts", proxy("peer-bad-a", certificate)), "create a");
+	const b = await created(await admin.post("/nginx/proxy-hosts", proxy("peer-bad-b", certificate)), "create b");
+	const c = await created(await admin.post("/nginx/proxy-hosts", proxy("peer-bad-c", certificate)), "create c");
+	await rm(path.join(api.root, `data/tls/custom/npm-${certificate}/privkey.pem`));
+	// nginx refuses the configs that name the missing key, and B's config for its own reason
+	const key = `npm-${certificate}/privkey.pem`;
+	const dir = `${api.root}/data/nginx/proxy_host`;
+	const broken = `[ -e "${dir}/${b.id}.conf" ]`;
+	const stale = `grep -qs "${key}" "${dir}"/*.conf`;
+	await api.outside.hookCommand(
+		"nginx",
+		`#!/bin/sh\nif ${stale} || ${broken}; then echo "nginx: [emerg] broken" >&2; exit 1; fi\n`,
+	);
+	api.outside.control.check = () => {
+		try {
+			execSync(`${stale} || ${broken}`);
+			return "nginx: [emerg] broken";
+		} catch {
+			return null;
+		}
+	};
+	try {
+		const saved = await admin.put(`/nginx/proxy-hosts/${a.id}`, { forward_port: 81 });
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal(saved.body.npmpro_nginx_online, true, saved.body.npmpro_nginx_err);
+		const rows = await api.db("proxy_host").whereIn("id", [a.id, b.id, c.id]).orderBy("id");
+		assert.deepEqual(
+			rows.map((row) => row.npmpro_nginx_online),
+			[1, 0, 1],
+		);
+		for (const id of [a.id, c.id])
+			assert.doesNotMatch(await api.read(`data/nginx/proxy_host/${id}.conf`), /privkey\.pem/u);
+		await api.read(`data/nginx/proxy_host/${b.id}.conf.err`);
+		await assert.rejects(api.read(`data/nginx/proxy_host/${b.id}.conf`));
+	} finally {
+		api.outside.control.check = null;
+		await rm(path.join(api.root, "fake/nginx.hook"), { force: true });
+	}
+});
+
 it("leaves the other hosts alone while the certificate is usable", async () => {
 	const certificate = await addCertificate(api, { domain: "peers-ok.example.com" });
 	const a = await created(await admin.post("/nginx/proxy-hosts", proxy("peer-ok-a", certificate)), "create a");

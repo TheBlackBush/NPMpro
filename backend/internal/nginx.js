@@ -99,6 +99,10 @@ const internalNginx = {
 	 * nginx checks every config, so their old configs (with the missing files) would fail this save. One batch renders
 	 * them all without the HTTPS listener, one reload follows. For code in the runtime settings queue.
 	 *
+	 * The batch runs without keepPrevious: when its nginx -t fails (a peer is broken for another reason), the old
+	 * configs must not come back, they still name the missing files and could never pass. The hosts are checked one by
+	 * one with fresh configs instead, so only a host that is broken itself ends up as .err.
+	 *
 	 * @returns {Promise<Object>}  the saved host's status
 	 */
 	configureWithCertificatePeers: async (model, host_type, host) => {
@@ -106,7 +110,7 @@ const internalNginx = {
 		const { loadCertificatePeers } = await import("./regenerate.js");
 		const peers = await loadCertificatePeers(host.certificate_id, { hostType: host_type, id: host.id });
 		if (peers.length === 0) return internalNginx.configureNow(model, host_type, host);
-		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers], { keepPrevious: true });
+		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers]);
 		await internalNginx.reloadOrRaise(host);
 		const { npmpro_nginx_online, npmpro_nginx_err } = await model.query().findById(host.id);
 		return { npmpro_nginx_online, npmpro_nginx_err };
