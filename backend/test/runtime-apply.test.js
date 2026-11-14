@@ -687,6 +687,14 @@ it("startup with a stored default certificate rewrites the include and tests ngi
 const CF_V4 = "173.245.48.0/20\n103.21.244.0/22\nnot a range\n";
 const CF_V6 = "2400:cb00::/32\n";
 const CF_LINES = ["  set_real_ip_from 173.245.48.0/20;", "  set_real_ip_from 103.21.244.0/22;"];
+// ip_ranges.conf: the real IP lines, then the geo of the proxies whose X-Forwarded-Proto counts
+const rangeLines = (ranges) => [
+	...ranges.map((range) => `  set_real_ip_from ${range};`),
+	"  geo $realip_remote_addr $npmpro_trusted_proxy {",
+	"    default 0;",
+	...ranges.map((range) => `    ${range} 1;`),
+	"  }",
+];
 const quietConfig = (stored = {}, env = {}) =>
 	createRuntimeConfig({ env, readStored: async (group) => stored[group] ?? {}, log: quietLog() });
 const netValues = (overrides = {}) => ({ ...mergeRuntimeConfig("network", {}, {}).values, ...overrides });
@@ -737,10 +745,7 @@ it("renders the trusted IPs (IPv4, IPv6, CIDR) into ip_ranges.conf, then tests a
 	const trusted = ["10.0.0.1", "fd00::1", "192.168.0.0/16", "2001:db8::/32"];
 	const result = await n.applyGroup("network", netValues({ trusted_ips: trusted }), netValues());
 	assert.deepEqual(result, { changed: ["trusted_ips"], reloaded: true });
-	assert.deepEqual(
-		await lines(n.paths.ipRangesConf),
-		trusted.map((ip) => `  set_real_ip_from ${ip};`),
-	);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), rangeLines(trusted));
 	assert.deepEqual(n.nginx.calls, ["test", "reload"]);
 	assert.deepEqual(n.fetches, []);
 	assert.equal(n.ipRanges.running(), false);
@@ -751,11 +756,10 @@ it("Cloudflare on fetches the ranges and starts the timer, off stops it and remo
 	const on = netValues({ trusted_ips: ["10.0.0.1"], trust_cloudflare: true });
 	await n.applyGroup("network", on, netValues({ trusted_ips: ["10.0.0.1"] }));
 	assert.equal(n.fetches.length, 2);
-	assert.deepEqual(await lines(n.paths.ipRangesConf), [
-		"  set_real_ip_from 10.0.0.1;",
-		...CF_LINES,
-		"  set_real_ip_from 2400:cb00::/32;",
-	]);
+	assert.deepEqual(
+		await lines(n.paths.ipRangesConf),
+		rangeLines(["10.0.0.1", "173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32"]),
+	);
 	assert.equal(n.ipRanges.running(), true);
 	assert.deepEqual(
 		[...n.clock.timers.values()].map(({ ms }) => ms),
@@ -769,10 +773,7 @@ it("Cloudflare on fetches the ranges and starts the timer, off stops it and remo
 	assert.ok((await lines(n.paths.ipRangesConf)).includes(CF_LINES[0]));
 
 	await n.applyGroup("network", { ...more, trust_cloudflare: false }, more);
-	assert.deepEqual(await lines(n.paths.ipRangesConf), [
-		"  set_real_ip_from 10.0.0.1;",
-		"  set_real_ip_from 10.0.0.2;",
-	]);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), rangeLines(["10.0.0.1", "10.0.0.2"]));
 	assert.equal(n.ipRanges.running(), false);
 	assert.equal(n.clock.timers.size, 0);
 	assert.deepEqual(n.nginx.calls, ["test", "reload", "test", "reload", "test", "reload"]);
@@ -803,11 +804,10 @@ it("startup renders ip_ranges.conf with the stored values, fetches Cloudflare an
 	const stored = { network: { trusted_ips: ["fd00::/8"], trust_cloudflare: true } };
 	const n = await networkSetup({ stored });
 	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
-	assert.deepEqual(await lines(n.paths.ipRangesConf), [
-		"  set_real_ip_from fd00::/8;",
-		...CF_LINES,
-		"  set_real_ip_from 2400:cb00::/32;",
-	]);
+	assert.deepEqual(
+		await lines(n.paths.ipRangesConf),
+		rangeLines(["fd00::/8", "173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32"]),
+	);
 	assert.deepEqual(n.nginx.calls, ["test"]);
 	assert.equal(n.ipRanges.running(), true);
 });
@@ -816,7 +816,7 @@ it("startup with Cloudflare unreachable still writes the trusted IPs and starts 
 	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
 	const n = await networkSetup({ stored, fetchError: "offline" });
 	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
-	assert.deepEqual(await lines(n.paths.ipRangesConf), ["  set_real_ip_from 10.0.0.1;"]);
+	assert.deepEqual(await lines(n.paths.ipRangesConf), rangeLines(["10.0.0.1"]));
 	assert.equal(n.ipRanges.running(), true);
 });
 
@@ -827,11 +827,10 @@ it("the refresh timer writes new Cloudflare ranges with the saved trusted IPs, a
 	await writeFile(n.paths.ipRangesConf, "stale\n");
 	const [{ fn }] = [...n.clock.timers.values()];
 	await fn();
-	assert.deepEqual(await lines(n.paths.ipRangesConf), [
-		"  set_real_ip_from 10.0.0.1;",
-		...CF_LINES,
-		"  set_real_ip_from 2400:cb00::/32;",
-	]);
+	assert.deepEqual(
+		await lines(n.paths.ipRangesConf),
+		rangeLines(["10.0.0.1", "173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32"]),
+	);
 	assert.deepEqual(n.cfNginx.calls, ["test", "reload"]);
 
 	// turned off (saved): a tick that was already running does not write
@@ -865,7 +864,10 @@ it("the refresh writes inside the runtime settings queue, an empty Cloudflare li
 	await ipRanges.refresh();
 	assert.deepEqual(order, ["queue start", "queue end"]);
 	assert.deepEqual(nginx.calls, ["test", "reload"]);
-	assert.equal((await lines(file)).length, 4);
+	assert.equal(
+		(await lines(file)).length,
+		rangeLines(["10.0.0.1", "173.245.48.0/20", "103.21.244.0/22", "2400:cb00::/32"]).length,
+	);
 
 	body = { v4: "", v6: "" };
 	await writeFile(file, "kept\n");

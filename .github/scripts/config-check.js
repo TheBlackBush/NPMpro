@@ -268,6 +268,22 @@ for (const [type, label, body] of hosts) {
 	else console.log(`online: ${label}`);
 }
 
+// the geo of the trusted proxies, with filled ranges and with none, through a real nginx -t
+await must("PUT", "/settings/runtime/network", { trusted_ips: ["10.0.0.0/8", "fd00::/8", "203.0.113.7"] });
+const trusted = await must("POST", "/nginx/proxy-hosts", {
+	domain_names: ["trusted.check.example.com"],
+	forward_scheme: "http",
+	forward_host: "127.0.0.1",
+	forward_port: 8080,
+	ssl_forced: false,
+});
+const trustedState = await stateOf("proxy-hosts", trusted.id);
+if (trustedState.npmpro_nginx_online !== true) {
+	failures.push(`proxy with trusted proxy ranges: ${trustedState.npmpro_nginx_err}`);
+} else console.log("online: proxy with trusted proxy ranges");
+await must("DELETE", `/nginx/proxy-hosts/${trusted.id}`);
+await must("PUT", "/settings/runtime/network", { trusted_ips: [] });
+
 const broken = await must("POST", "/nginx/proxy-hosts", {
 	domain_names: ["broken.check.example.com"],
 	forward_scheme: "http",

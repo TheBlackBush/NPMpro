@@ -189,15 +189,26 @@ it("announces HTTP/3 only when the host asks for it", async () => {
 	assert.equal(bare.npmpro_http3_support, false);
 });
 
+it("forces HTTPS and HSTS by the forwarded proto of a trusted proxy", async () => {
+	const certificate = await addCertificate(ctx.api, { domain: "proto.example.com" });
+	const host = await make({
+		domain_names: ["proto.example.com"],
+		certificate_id: certificate,
+		ssl_forced: true,
+		hsts_enabled: true,
+	});
+	const config = await configOf(host);
+	assert.match(config, /if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:/u);
+	assert.doesNotMatch(config, /\$http_x_forwarded_proto|if \(\$scheme = "http"\)/u);
+});
 it("redirects HTTP to HTTPS when SSL is forced, and writes HSTS with or without subdomains", async () => {
 	const certificate = await addCertificate(ctx.api, { domain: "hsts.example.com" });
 	const forced = await make({ domain_names: ["hsts.example.com"], certificate_id: certificate, ssl_forced: true });
 	const forcedConfig = await configOf(forced);
 	assert.match(
 		forcedConfig,
-		/if \(\$scheme = "http"\) \{\s+return 301 https:\/\/\$host\$is_request_port\$request_port\$request_uri;/u,
+		/if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:\/\/\$host\$is_request_port\$request_port\$request_uri;/u,
 	);
-	assert.match(forcedConfig, /if \(\$http_x_forwarded_proto = "http"\) \{\s+return 301 https:/u);
 	assert.match(forcedConfig, /more_clear_headers "Strict-Transport-Security";/u);
 	assert.doesNotMatch(forcedConfig, /more_set_headers "Strict-Transport-Security/u);
 	const hsts = await ctx.admin.put(`${URL}/${forced.id}`, { hsts_enabled: true });
