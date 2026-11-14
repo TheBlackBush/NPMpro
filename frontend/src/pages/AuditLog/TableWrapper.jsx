@@ -8,6 +8,7 @@ import { useAuditLogs, usePaging, useUsers } from "src/hooks";
 import { intl, T } from "src/locale";
 import { showEventDetailsModal } from "src/modals";
 import { SettingsHeading } from "../Settings/SettingsHeading";
+import { SettingsLead } from "../Settings/SettingsLead";
 import Table from "./Table";
 
 const OBJECT_TYPES = [
@@ -108,8 +109,9 @@ export default function TableWrapper() {
 	};
 
 	return (
-		<section>
+		<section className="space-y-4">
 			<SettingsHeading titleId="auditlogs" />
+			<SettingsLead id="auditlogs.lead" />
 			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
 				<div className="flex flex-wrap items-center gap-2 border-b p-3">
 					<InputGroup className="w-full md:min-w-64 md:flex-1">

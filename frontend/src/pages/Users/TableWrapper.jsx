@@ -10,6 +10,7 @@ import { showDeleteConfirmModal, showPermissionsModal, showSetPasswordModal, sho
 import { activeFilterCount } from "src/modules/ListFilters";
 import { showApiError, showObjectSuccess, showSuccess } from "src/notifications";
 import { SettingsHeading } from "../Settings/SettingsHeading";
+import { SettingsLead } from "../Settings/SettingsLead";
 import Table, { useColumns } from "./Table";
 
 export default function TableWrapper() {
@@ -45,7 +46,7 @@ export default function TableWrapper() {
 	const loaded = !(isPending || isError);
 
 	return (
-		<section>
+		<section className="space-y-4">
 			<SettingsHeading
 				titleId="users"
 				actions={
@@ -57,6 +58,7 @@ export default function TableWrapper() {
 					) : null
 				}
 			/>
+			<SettingsLead id="users.lead" />
 			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
 				<div className="border-b px-4 py-3 text-sm text-muted-foreground">
 					<T id="users.oidc-hint" />{" "}

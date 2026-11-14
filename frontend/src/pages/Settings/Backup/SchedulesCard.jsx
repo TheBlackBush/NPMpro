@@ -3,6 +3,7 @@ import { CalendarClock, Pause, Play, Plus, SquarePen, Trash2 } from "lucide-reac
 import { useId, useMemo, useState } from "react";
 import { deleteBackupSchedule } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
+import { SettingLineNote } from "src/components/Form/SettingLine";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
@@ -382,14 +383,8 @@ function SchedulesCard() {
 		<SettingsCard
 			title={<T id="settings.backup.schedules" />}
 			actions={data?.length ? addButton : null}
+			info={<T id="settings.backup.schedules.info" />}
 			bodyClassName="space-y-0 p-0"
-			footer={
-				data?.length && timeZone ? (
-					<span className="mr-auto text-sm text-muted-foreground">
-						<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
-					</span>
-				) : null
-			}
 		>
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
@@ -398,9 +393,9 @@ function SchedulesCard() {
 				</div>
 			) : null}
 			{data?.some((schedule) => schedule.fileCount === null) ? (
-				<div className="px-4 py-2 text-sm text-destructive">
+				<SettingLineNote className="text-sm text-destructive">
 					<T id="settings.backup.schedule.count-error" />
-				</div>
+				</SettingLineNote>
 			) : null}
 			{data ? (
 				<Table
@@ -411,6 +406,11 @@ function SchedulesCard() {
 					addButton={addButton}
 					handlers={handlers}
 				/>
+			) : null}
+			{data?.length && timeZone ? (
+				<SettingLineNote className="border-t text-sm text-muted-foreground">
+					<T id="settings.backup.schedule.zone" data={{ zone: timeZone }} />
+				</SettingLineNote>
 			) : null}
 		</SettingsCard>
 	);

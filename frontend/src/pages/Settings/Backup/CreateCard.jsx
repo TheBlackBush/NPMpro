@@ -55,7 +55,8 @@ function CreateForm({ data, error, keepRef }) {
 	return (
 		<SettingsCard
 			title={<T id="settings.backup.create" />}
-			footer={
+			info={<T id="settings.backup.create.info" />}
+			actions={
 				<>
 					<FormErrorNote id={noteId} className="text-right" />
 					{showReason ? (

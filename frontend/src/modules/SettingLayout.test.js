@@ -125,5 +125,16 @@ it("opens a card on a refused save with an error inside, once per save", () => {
 	assert.deepEqual(openOnRefusedSave({ open: true, seenSubmits: 1 }, { submitCount: 2, errors: {}, names: [] }), {
 		open: true,
 		seenSubmits: 2,
-	});
+	}); // other keys of the caller's state are kept
+	assert.deepEqual(
+		openOnRefusedSave(
+			{ open: false, seenSubmits: 0, shown: "x" },
+			{ submitCount: 1, errors, names: ["requestTimeout"] },
+		),
+		{
+			open: true,
+			seenSubmits: 1,
+			shown: "x",
+		},
+	);
 });

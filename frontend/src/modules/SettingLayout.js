@@ -110,5 +110,5 @@ export function hasErrorIn(errors, names) {
  */
 export function openOnRefusedSave(state, { submitCount, errors, names }) {
 	if (submitCount === state.seenSubmits) return state;
-	return { open: state.open || hasErrorIn(errors, names), seenSubmits: submitCount };
+	return { ...state, open: state.open || hasErrorIn(errors, names), seenSubmits: submitCount };
 }
