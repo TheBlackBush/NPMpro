@@ -16,7 +16,9 @@ import { effectiveCrowdsec, getCrowdsecConfig, hasStoredCrowdsec, saveStoredCrow
 import { tlsFileParses, unusableStartFiles } from "../lib/crowdsec/tls-files.js";
 import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
+import { logFilesOn, prepareLogFiles } from "../lib/log-files.js";
 import { rooted } from "../lib/paths.js";
+import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
 import { global as logger } from "../logger.js";
 import internalAuditLog from "./audit-log.js";
@@ -25,6 +27,7 @@ import internalNginx from "./nginx.js";
 import { runtimeExclusive } from "./runtime-queue.js";
 
 const TEST_TIMEOUT_MS = 5000;
+const NGINX_DIR = rooted("/data/nginx");
 const PAGES = { ban: "ban_template_path", captcha: "captcha_template_path" };
 const FIELD_OF_KEY = new Map(CROWDSEC_FIELDS.map((field) => [field.key, field]));
 
@@ -86,29 +89,49 @@ const viewOf = async (cfg) => {
  * @param   {Function} plan  async () => { before, next, after }
  * @returns {Promise<{ before: Object, next: Object, after: Object }>}
  */
+const testSaveReload = (planned) => async () => {
+	try {
+		await internalNginx.test();
+	} catch (err) {
+		throw new errs.ValidationError(err.message || "nginx config test failed", undefined, { cause: err });
+	}
+	await saveStoredCrowdsec(planned.next);
+	try {
+		await internalNginx.reload();
+	} catch (err) {
+		try {
+			await saveStoredCrowdsec(planned.before.stored);
+		} catch (restoreErr) {
+			logger.error(`CrowdSec: the settings could not be put back after the failed reload: ${restoreErr.message}`);
+		}
+		throw new errs.ValidationError(err.message || "nginx reload failed", undefined, { cause: err });
+	}
+};
+
+/**
+ * CrowdSec reads the log files: turning it on writes them (Write log files stays as stored, the rules lock it). The
+ * file on disk still says the old CrowdSec state, so its value tells whether the includes are off now.
+ *
+ * @param   {Object}  values  the CrowdSec values about to be written
+ * @returns {Promise<{ turnsOn: boolean, extraFiles: Object[] }>}
+ */
+const logFilesForCrowdsec = async (values) => {
+	const logsOn = (await getRuntimeConfig("logs")).values.write_log_files;
+	const turnsOn = !logsOn && Boolean(values.enabled);
+	if (turnsOn) await prepareLogFiles({ nginxDir: NGINX_DIR });
+	return { turnsOn, extraFiles: turnsOn ? logFilesOn() : [] };
+};
+
 const applyCrowdsec = (plan) =>
 	runtimeExclusive(async () => {
 		const planned = await plan();
-		await applyCrowdsecFiles(planned.after.values, async () => {
-			try {
-				await internalNginx.test();
-			} catch (err) {
-				throw new errs.ValidationError(err.message || "nginx config test failed", undefined, { cause: err });
-			}
-			await saveStoredCrowdsec(planned.next);
-			try {
-				await internalNginx.reload();
-			} catch (err) {
-				try {
-					await saveStoredCrowdsec(planned.before.stored);
-				} catch (restoreErr) {
-					logger.error(
-						`CrowdSec: the settings could not be put back after the failed reload: ${restoreErr.message}`,
-					);
-				}
-				throw new errs.ValidationError(err.message || "nginx reload failed", undefined, { cause: err });
-			}
-		});
+		const { extraFiles } = await logFilesForCrowdsec(planned.after.values);
+		try {
+			await applyCrowdsecFiles(planned.after.values, testSaveReload(planned), { extraFiles });
+		} finally {
+			// the CrowdSec lock of Write log files follows the saved state
+			invalidate("logs");
+		}
 		return planned;
 	});
 
@@ -364,7 +387,15 @@ const reloadCrowdsecAfterRestore = async () => {
 	const cfg = await getCrowdsecConfig();
 	// the TLS client files are in no backup, and a backup without secrets has no API key: restoring TLS auth onto an
 	// instance without the files, or an AppSec URL without a key, keeps the bouncer off
-	await applyCrowdsecFiles(cfg.values, undefined, { bouncerOff: startGate(cfg.values, logger).bouncerOff });
+	const { extraFiles } = await logFilesForCrowdsec(cfg.values);
+	try {
+		await applyCrowdsecFiles(cfg.values, undefined, {
+			bouncerOff: startGate(cfg.values, logger).bouncerOff,
+			extraFiles,
+		});
+	} finally {
+		invalidate("logs");
+	}
 	void Promise.resolve()
 		.then(() => hooks.onApplied())
 		.catch((err) => logger.warn(`CrowdSec: the poll after the restore failed: ${err.message}`));

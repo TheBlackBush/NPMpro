@@ -422,3 +422,75 @@ it("restores a backup without secrets with the bouncer off while AppSec has no k
 		await new Promise((resolve) => appsec.close(resolve));
 	}
 });
+
+const ERROR_ON = "error_log /data/nginx/logs/error.log warn;\n";
+const ERROR_OFF = "# no error log file, errors go to stderr\n";
+const includeOf = (name) => api.read(`/data/npmpro/nginx/${name}`);
+const WORKING = () => ({ enabled: true, api_url: lapiUrl, api_key: KEY, force: true });
+
+// CrowdSec off and Write log files off with the includes on their off lines, whatever the earlier tests left
+const logsOff = async () => {
+	await admin.put("/settings/crowdsec", { enabled: false });
+	await admin.put("/settings/runtime/logs", { write_log_files: true });
+	await admin.put("/settings/runtime/logs", { write_log_files: false });
+};
+
+it("a save that turns CrowdSec on writes the log includes and locks Write log files; off keeps the includes", async () => {
+	await logsOff();
+	assert.equal(await includeOf("error-log.conf"), ERROR_OFF);
+
+	const saved = await admin.put("/settings/crowdsec", WORKING());
+	assert.equal(saved.status, 200, saved.text);
+	assert.equal(await includeOf("error-log.conf"), ERROR_ON);
+	assert.equal(await includeOf("stream-log.conf"), "access_log /data/nginx/logs/stream.log slog;\n");
+	assert.equal(await includeOf("access-log.conf"), "access_log /data/nginx/logs/access.log alog;\n");
+	assert.equal(await api.read("/data/nginx/logs/access.log"), "");
+	const logs = (await admin.get("/settings/runtime/logs")).body;
+	assert.equal(logs.write_log_files, true);
+	assert.deepEqual(logs.locked_reason, { write_log_files: "crowdsec-setting" });
+
+	assert.equal((await admin.put("/settings/crowdsec", { enabled: false })).status, 200);
+	assert.equal(await includeOf("error-log.conf"), ERROR_ON);
+	const unlocked = (await admin.get("/settings/runtime/logs")).body;
+	assert.equal(unlocked.write_log_files, false);
+	assert.deepEqual(unlocked.locked, []);
+});
+
+it("a CrowdSec save refused by nginx -t leaves the log includes on their off lines", async () => {
+	await logsOff();
+	assert.equal(await includeOf("error-log.conf"), ERROR_OFF);
+
+	await api.outside.failCommand("nginx", "nginx: [emerg] lua error");
+	try {
+		const refused = await admin.put("/settings/crowdsec", WORKING());
+		assert.equal(refused.status, 400, refused.text);
+	} finally {
+		await api.outside.passCommand("nginx");
+	}
+	assert.equal(await includeOf("error-log.conf"), ERROR_OFF);
+	assert.equal((await settings()).enabled, false);
+	const logs = (await admin.get("/settings/runtime/logs")).body;
+	assert.deepEqual(logs.locked, []);
+});
+
+it("a restore that turns CrowdSec on writes the log includes", async () => {
+	await logsOff();
+	const saved = await admin.put("/settings/crowdsec", WORKING());
+	assert.equal(saved.status, 200, saved.text);
+	const made = await admin.post("/backups", { types: ["settings_crowdsec"], secrets: false, keep: true });
+	assert.equal(made.status, 200, made.text);
+	await logsOff();
+	assert.equal(await includeOf("error-log.conf"), ERROR_OFF);
+
+	const opened = await admin.post(`/backups/${made.body.entry.name}/inspect`, {});
+	assert.equal(opened.status, 200, opened.text);
+	const restored = await admin.post(`/backups/restore/${opened.body.token}`, {
+		types: ["settings_crowdsec"],
+		confirm: true,
+	});
+	assert.equal(restored.status, 200, restored.text);
+	assert.equal((await settings()).enabled, true);
+	assert.equal(await includeOf("error-log.conf"), ERROR_ON);
+	assert.equal((await admin.get("/settings/runtime/logs")).body.write_log_files, true);
+	await admin.put("/settings/crowdsec", { enabled: false });
+});
