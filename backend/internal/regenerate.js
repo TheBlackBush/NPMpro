@@ -86,6 +86,28 @@ const loadEnabledHosts = async () => {
 };
 
 /**
+ * The other enabled hosts that force HTTPS with the certificate (proxy, redirection and 404 hosts), with their graphs.
+ * They name the same certificate files, so a host saved while those files are gone is rendered together with them.
+ *
+ * @param   {Number}  certificateId
+ * @param   {Object}  self  { hostType, id } of the saved host, left out
+ * @returns {Promise<Array<{model: Object, hostType: String, host: Object}>>}
+ */
+const loadCertificatePeers = async (certificateId, self) => {
+	const peers = [];
+	for (const [model, hostType, graph] of HOST_TYPES) {
+		if (hostType === "stream") continue;
+		const query = model
+			.query()
+			.where({ enabled: 1, certificate_id: certificateId, ssl_forced: 1 })
+			.withGraphFetched(graph);
+		if (hostType === self.hostType) query.whereNot("id", self.id);
+		for (const host of await query) peers.push({ model, hostType, host });
+	}
+	return peers;
+};
+
+/**
  * Writes the htpasswd file of every access list and removes the files of lists that no longer exist
  *
  * @returns {Promise}
@@ -107,6 +129,7 @@ const regenerateDefaultSite = async () =>
 
 export {
 	HOST_TYPES,
+	loadCertificatePeers,
 	loadEnabledHosts,
 	rebuildAccessListFiles,
 	regenerateAllHosts,

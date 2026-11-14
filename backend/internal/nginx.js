@@ -75,6 +75,9 @@ const internalNginx = {
 	 * Runs in the runtime settings queue: a runtime save cannot test or restore host configs meanwhile, and the
 	 * render reads the values of the last finished save.
 	 *
+	 * When the host's certificate files are gone, the other enabled hosts that force HTTPS with that certificate are
+	 * rendered in one batch with it (configureWithCertificatePeers).
+	 *
 	 * @param   {Object|String}  model
 	 * @param   {String}         host_type
 	 * @param   {Object}         host
@@ -82,7 +85,31 @@ const internalNginx = {
 	 */
 	configure: async (model, host_type, host, options = {}) => {
 		if (!host.enabled) return {};
-		return await runtimeExclusive(() => internalNginx.configureNow(model, host_type, host, options));
+		return await runtimeExclusive(async () => {
+			// streams always name the certificate files (templates/stream.conf), the startup check reloads once itself
+			if (host_type !== "stream" && !options.skipReload && (await certificateUnusable(host))) {
+				return internalNginx.configureWithCertificatePeers(model, host_type, host);
+			}
+			return internalNginx.configureNow(model, host_type, host, options);
+		});
+	},
+
+	/**
+	 * A host whose certificate files are gone, with the other enabled hosts that force HTTPS with that certificate:
+	 * nginx checks every config, so their old configs (with the missing files) would fail this save. One batch renders
+	 * them all without the HTTPS listener, one reload follows. For code in the runtime settings queue.
+	 *
+	 * @returns {Promise<Object>}  the saved host's status
+	 */
+	configureWithCertificatePeers: async (model, host_type, host) => {
+		// loaded on this path only: regenerate.js imports this module
+		const { loadCertificatePeers } = await import("./regenerate.js");
+		const peers = await loadCertificatePeers(host.certificate_id, { hostType: host_type, id: host.id });
+		if (peers.length === 0) return internalNginx.configureNow(model, host_type, host);
+		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers], { keepPrevious: true });
+		await internalNginx.reloadOrRaise(host);
+		const { npmpro_nginx_online, npmpro_nginx_err } = await model.query().findById(host.id);
+		return { npmpro_nginx_online, npmpro_nginx_err };
 	},
 
 	/** configure without the queue, for code already in the runtime settings queue */
