@@ -168,7 +168,9 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await model.query().where("id", row.id).patch({ enabled: 1 });
 
-			return auditAfter(access, "enabled", row.id, () => internalNginx.configure(model, hostType, row));
+			return auditAfter(access, "enabled", row.id, () =>
+				internalNginx.configure(model, hostType, row, { change: true }),
+			);
 		},
 
 		disable: async (access, data) => {

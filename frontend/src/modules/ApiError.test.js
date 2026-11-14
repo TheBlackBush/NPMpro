@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { formatApiError, savedOf } from "./ApiError.js";
+import { formatApiError, reloadFailedAfterChange, savedOf } from "./ApiError.js";
 
 const messages = { "error.known": "Translated text" };
 const has = (id) => id in messages;
@@ -65,4 +65,14 @@ it("reads the row a failed reload saved anyway", () => {
 	assert.equal(savedOf({ payload: { error: { saved_id: "7" } } }), null);
 	assert.equal(savedOf(new Error("x")), null);
 	assert.equal(savedOf(null), null);
+});
+
+it("tells an error whose change is stored although nginx did not reload from a refused one", () => {
+	const answer = (error) => ({ payload: { error } });
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.nginx-reload-after-change" })), true);
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.nginx-reload-after-save", saved_id: 4 })), true);
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.not-found" })), false);
+	assert.equal(reloadFailedAfterChange(answer({ message: "x" })), false);
+	assert.equal(reloadFailedAfterChange(new Error("HTTP 500")), false);
+	assert.equal(reloadFailedAfterChange(null), false);
 });

@@ -356,6 +356,7 @@
 	"error.maximum": "Maximaal {max}",
 	"error.min-character-length": "Minimale lengte is {min} teken{min, plural, one {} other {s}}",
 	"error.minimum": "Minimaal {min}",
+	"error.nginx-reload-after-change": "Gewijzigd, maar nginx kon niet opnieuw laden. De wijziging blijft behouden; de nginx-uitvoer hieronder toont waarom: de oorzaak kan een andere host of een eigen configuratie zijn. Los de oorzaak op, de volgende herlaadbeurt past de wijziging toe.",
 	"error.nginx-reload-after-save": "Opgeslagen, maar nginx kon niet opnieuw laden. De nginx-uitvoer hieronder toont waarom: de oorzaak kan een andere host of een eigen configuratie zijn. Los het op en sla opnieuw op.",
 	"error.number-range": "Voer een geheel getal van {min} tot {max} in",
 	"error.oidc-disable-password-session": "Inloggen met wachtwoord kan alleen worden uitgeschakeld als je met OIDC bent ingelogd. Vink Inloggen met wachtwoord uitschakelen uit om deze instellingen nu op te slaan.",

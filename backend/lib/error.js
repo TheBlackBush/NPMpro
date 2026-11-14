@@ -91,18 +91,24 @@ const errs = {
 		status = 400;
 	},
 
-	// a save is stored, but nginx refused the reload (the cause may be another host or a custom config). The message
-	// names the first line of nginx's text and details holds all of it (shown as the output); savedId and
-	// certificateId let a window turn into the edit window of the saved row
+	// a save (or with change, a disable, enable or delete) is stored, but nginx refused the reload (the cause may be
+	// another host or a custom config). The message names nginx's first [emerg] line (else its first line) and details
+	// holds all of it (shown as the output); savedId and certificateId let a window turn into the edit window of the
+	// saved row
 	ReloadError: class extends Error {
 		name = this.constructor.name;
 		public = true;
 		status = 500;
-		message_i18n = "error.nginx-reload-after-save";
 
-		constructor(output, { savedId, certificateId, cause } = {}) {
+		constructor(output, { savedId, certificateId, cause, change = false } = {}) {
 			const text = String(output ?? "");
-			super(`Saved, but nginx could not reload: ${text.split("\n")[0]}`, cause ? { cause } : undefined);
+			const lines = text.split("\n");
+			const first = lines.find((line) => line.includes("[emerg]")) ?? lines[0];
+			super(
+				`${change ? "Changed" : "Saved"}, but nginx could not reload: ${first}`,
+				cause ? { cause } : undefined,
+			);
+			this.message_i18n = change ? "error.nginx-reload-after-change" : "error.nginx-reload-after-save";
 			this.details = text;
 			this.savedId = savedId;
 			this.certificateId = certificateId;

@@ -356,6 +356,7 @@
 	"error.maximum": "最大值为 {max}",
 	"error.min-character-length": "最小长度为 {min} 个字符",
 	"error.minimum": "最小值为 {min}",
+	"error.nginx-reload-after-change": "已更改，但 nginx 无法重新加载。更改已保留；下方的 nginx 输出显示了原因：原因可能是另一个主机或自定义配置。请修复原因，下次重新加载时会应用此更改。",
 	"error.nginx-reload-after-save": "已保存，但 nginx 无法重新加载。下方的 nginx 输出显示了原因：原因可能是另一个主机或自定义配置。请修复后再次保存。",
 	"error.number-range": "请输入 {min} 到 {max} 之间的整数",
 	"error.oidc-disable-password-session": "只有在使用 OIDC 登录时才能禁用密码登录。如需现在保存这些设置，请取消勾选“禁用密码登录”。",

@@ -356,6 +356,7 @@
 	"error.maximum": "Máximo permitido: {max}",
 	"error.min-character-length": "Tamanho mínimo: {min} caractere{min, plural, one {} other {s}}",
 	"error.minimum": "Mínimo permitido: {min}",
+	"error.nginx-reload-after-change": "Alterado, mas o nginx não conseguiu recarregar. A alteração é mantida; a saída do nginx abaixo mostra o motivo: a causa pode ser outro host ou uma configuração personalizada. Corrija a causa; o próximo recarregamento aplica a alteração.",
 	"error.nginx-reload-after-save": "Guardado, mas o nginx não conseguiu recarregar. A saída do nginx abaixo mostra o motivo: a causa pode ser outro host ou uma configuração personalizada. Corrija-o e guarde novamente.",
 	"error.number-range": "Introduza um número inteiro de {min} a {max}",
 	"error.oidc-disable-password-session": "O início de sessão com palavra-passe só pode ser desativado com sessão iniciada via OIDC. Desmarque Desativar início de sessão com palavra-passe para guardar estas definições agora.",

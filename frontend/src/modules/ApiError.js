@@ -40,3 +40,17 @@ export function savedOf(err) {
 	const certificateId = Number.isInteger(apiError.saved_certificate_id) ? apiError.saved_certificate_id : undefined;
 	return { id: apiError.saved_id, certificateId };
 }
+
+// the answers of a request whose save, disable, enable or delete is stored although nginx could not reload
+const RELOAD_FAILED = new Set(["error.nginx-reload-after-save", "error.nginx-reload-after-change"]);
+
+/**
+ * True when the request's change is stored and only the nginx reload failed: a list must be refreshed, and a delete
+ * or disable must not be offered again
+ *
+ * @param   {unknown} err
+ * @returns {boolean}
+ */
+export function reloadFailedAfterChange(err) {
+	return RELOAD_FAILED.has(err?.payload?.error?.message_i18n);
+}

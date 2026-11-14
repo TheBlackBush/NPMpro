@@ -101,21 +101,59 @@ it("names the certificate of the saved host, so a new certificate is not request
 	assert.equal(answer.body.error.saved_certificate_id, certificate);
 });
 
-it("a disable whose reload fails keeps the change and names the host; a delete names nothing", async () => {
+it("a disable, enable or delete whose reload fails keeps the change and says so, not that it saved", async () => {
 	const host = await created(
 		await admin.post("/nginx/dead-hosts", { domain_names: ["reload-off.example.com"] }),
 		"create",
 	);
+	const changed = (answer) => {
+		assert.equal(answer.status, 500, answer.text);
+		assert.equal(answer.body.error.message_i18n, "error.nginx-reload-after-change");
+		assert.match(answer.body.error.message, /^Changed, but nginx could not reload: nginx: \[emerg\] other host/u);
+		assert.match(answer.body.error.output, /other host broken/u);
+	};
 	api.outside.control.failNext = "nginx: [emerg] other host broken";
 	const disabled = await admin.post(`/nginx/dead-hosts/${host.id}/disable`);
-	assert.equal(disabled.status, 500, disabled.text);
+	changed(disabled);
 	assert.equal(disabled.body.error.saved_id, host.id);
 	assert.equal((await api.db("dead_host").where({ id: host.id }).first()).enabled, 0);
+	failEveryReload("nginx: [emerg] other host broken");
+	const enabled = await admin.post(`/nginx/dead-hosts/${host.id}/enable`);
+	passReloads();
+	changed(enabled);
+	assert.equal((await api.db("dead_host").where({ id: host.id }).first()).enabled, 1);
 	api.outside.control.failNext = "nginx: [emerg] other host broken";
 	const deleted = await admin.delete(`/nginx/dead-hosts/${host.id}`);
-	assert.equal(deleted.status, 500, deleted.text);
-	assert.equal(deleted.body.error.message_i18n, "error.nginx-reload-after-save");
+	changed(deleted);
 	assert.equal("saved_id" in deleted.body.error, false);
+	assert.equal(await api.db("dead_host").where({ id: host.id }).first(), undefined);
+});
+
+it("an access list delete whose reload fails keeps the delete and says so", async () => {
+	const list = await created(
+		await admin.post("/nginx/access-lists", {
+			name: "reload-gone",
+			items: [{ username: "g", password: "reload-password-2" }],
+		}),
+		"create list",
+	);
+	api.outside.control.failNext = "nginx: [emerg] other host broken";
+	const deleted = await admin.delete(`/nginx/access-lists/${list.id}`);
+	assert.equal(deleted.status, 500, deleted.text);
+	assert.equal(deleted.body.error.message_i18n, "error.nginx-reload-after-change");
+	assert.equal(await api.db("access_list").where({ id: list.id }).first(), undefined);
+});
+
+it("the message names nginx's first [emerg] line, not a warning before it", async () => {
+	failEveryReload('nginx: [warn] duplicate MIME type "text/html"\nnginx: [emerg] host not found in upstream "x"');
+	const answer = await admin.post("/nginx/dead-hosts", { domain_names: ["reload-warn.example.com"] });
+	passReloads();
+	assert.equal(answer.status, 500, answer.text);
+	assert.equal(
+		answer.body.error.message,
+		'Saved, but nginx could not reload: nginx: [emerg] host not found in upstream "x"',
+	);
+	assert.match(answer.body.error.output, /duplicate MIME type/u);
 });
 
 it("an access list update whose reload fails keeps the list and names it", async () => {

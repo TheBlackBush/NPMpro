@@ -356,6 +356,7 @@
 	"error.maximum": "최댓값은 {max}입니다.",
 	"error.min-character-length": "최소 길이는 {min}자입니다.",
 	"error.minimum": "최솟값은 {min}입니다.",
+	"error.nginx-reload-after-change": "변경했지만 nginx를 다시 불러오지 못했습니다. 변경 내용은 유지됩니다. 아래 nginx 출력에서 이유를 확인하세요. 원인은 다른 호스트나 사용자 지정 설정일 수 있습니다. 원인을 해결하면 다음 다시 불러오기에서 변경이 적용됩니다.",
 	"error.nginx-reload-after-save": "저장했지만 nginx를 다시 불러오지 못했습니다. 아래 nginx 출력에서 이유를 확인하세요. 원인은 다른 호스트나 사용자 지정 설정일 수 있습니다. 문제를 해결한 뒤 다시 저장하세요.",
 	"error.number-range": "{min}에서 {max} 사이의 정수를 입력하세요",
 	"error.oidc-disable-password-session": "비밀번호 로그인은 OIDC로 로그인한 상태에서만 비활성화할 수 있습니다. 지금 이 설정을 저장하려면 비밀번호 로그인 비활성화의 선택을 해제하세요.",

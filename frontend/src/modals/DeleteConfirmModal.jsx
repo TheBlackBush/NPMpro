@@ -12,7 +12,9 @@ import {
 	AlertDialogTitle,
 } from "src/components/ui/alert-dialog";
 import { T } from "src/locale";
+import { reloadFailedAfterChange } from "src/modules/ApiError";
 import EasyModal, { useWindowFocusReturn } from "src/modules/easyModal";
+import { showApiError } from "src/notifications";
 
 const showDeleteConfirmModal = (props) => {
 	EasyModal.show(DeleteConfirmModal, props);
@@ -41,19 +43,29 @@ const DeleteConfirmModal = EasyModal.create(
 		const [error, setError] = useState(null);
 		const [isSubmitting, setIsSubmitting] = useState(false);
 
+		const closeAndRefresh = async () => {
+			remove();
+			await Promise.all(invalidations.map((inv) => queryClient.invalidateQueries({ queryKey: inv })));
+			// the window closed while its opener (the deleted row's action button) was still there and got the focus;
+			// now the row is gone, so the focus fell to the page: the list heading takes it (also on Safari)
+			giveFocusBack?.();
+		};
+
 		const onSubmit = async () => {
 			if (isSubmitting) return;
 			setIsSubmitting(true);
 			setError(null);
 			try {
 				await onConfirm();
-				remove();
-				await Promise.all(invalidations.map((inv) => queryClient.invalidateQueries({ queryKey: inv })));
-				// the window closed while its opener (the deleted row's action button) was still there and got the focus;
-				// now the row is gone, so the focus fell to the page: the list heading takes it (also on Safari)
-				giveFocusBack?.();
+				await closeAndRefresh();
 			} catch (err) {
-				setError(<ApiErrorContent error={err} />);
+				if (reloadFailedAfterChange(err)) {
+					// done, only nginx did not reload: a second try would find nothing to delete or disable
+					showApiError(err);
+					await closeAndRefresh();
+				} else {
+					setError(<ApiErrorContent error={err} />);
+				}
 			}
 			setIsSubmitting(false);
 		};

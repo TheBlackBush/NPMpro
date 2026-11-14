@@ -56,12 +56,17 @@ export function HostListPage({ list }) {
 	const isFiltered = activeFilterCount(filters, FILTERS) > 0 && Boolean(data?.length);
 	const groupingActive = displayedHosts.some(getDirectory);
 
-	// turns the host on or off and says how it went; throws when the request fails
+	// turns the host on or off and says how it went; throws when the request fails. The list is refreshed also then:
+	// a change whose reload failed is stored
 	const toggle = async (id, enabled) => {
-		const row = await list.toggle(id, enabled);
-		await Promise.all(
-			toggleInvalidations(list.type, id).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-		);
+		let row;
+		try {
+			row = await list.toggle(id, enabled);
+		} finally {
+			await Promise.all(
+				toggleInvalidations(list.type, id).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+			);
+		}
 		const nginxErr = getNginxConfigError(row);
 		if (nginxErr === null) {
 			showObjectSuccess(list.object, enabled ? "enabled" : "disabled");

@@ -299,7 +299,7 @@ const internalAccessList = {
 		try {
 			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
 
-			await internalNginx.reloadOrRaise();
+			await internalNginx.reloadOrRaise(undefined, { change: true });
 
 			await runtimeExclusive(async () => {
 				await rm(internalAccessList.getFilename(row), { force: true });

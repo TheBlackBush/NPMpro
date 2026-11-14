@@ -81,6 +81,8 @@ const internalNginx = {
 	 * @param   {Object|String}  model
 	 * @param   {String}         host_type
 	 * @param   {Object}         host
+	 * @param   {Object}         [options]  skipReload, fetchMissingOcsp, change (an enable: a reload error says the
+	 *                                      change is kept)
 	 * @returns {Promise}
 	 */
 	configure: async (model, host_type, host, options = {}) => {
@@ -88,7 +90,7 @@ const internalNginx = {
 		return await runtimeExclusive(async () => {
 			// streams always name the certificate files (templates/stream.conf), the startup check reloads once itself
 			if (host_type !== "stream" && !options.skipReload && (await certificateUnusable(host))) {
-				return internalNginx.configureWithCertificatePeers(model, host_type, host);
+				return internalNginx.configureWithCertificatePeers(model, host_type, host, options);
 			}
 			return internalNginx.configureNow(model, host_type, host, options);
 		});
@@ -105,19 +107,26 @@ const internalNginx = {
 	 *
 	 * @returns {Promise<Object>}  the saved host's status
 	 */
-	configureWithCertificatePeers: async (model, host_type, host) => {
+	configureWithCertificatePeers: async (model, host_type, host, options = {}) => {
 		// loaded on this path only: regenerate.js imports this module
 		const { loadCertificatePeers } = await import("./regenerate.js");
 		const peers = await loadCertificatePeers(host.certificate_id, { hostType: host_type, id: host.id });
-		if (peers.length === 0) return internalNginx.configureNow(model, host_type, host);
-		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers]);
-		await internalNginx.reloadOrRaise(host);
+		if (peers.length === 0) return internalNginx.configureNow(model, host_type, host, options);
+		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers], {
+			fetchMissingOcsp: options.fetchMissingOcsp,
+		});
+		await internalNginx.reloadOrRaise(host, { change: options.change });
 		const { npmpro_nginx_online, npmpro_nginx_err } = await model.query().findById(host.id);
 		return { npmpro_nginx_online, npmpro_nginx_err };
 	},
 
 	/** configure without the queue, for code already in the runtime settings queue */
-	configureNow: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
+	configureNow: async (
+		model,
+		host_type,
+		host,
+		{ skipReload = false, fetchMissingOcsp = true, change = false } = {},
+	) => {
 		let status = {};
 
 		await internalProxyHostAccessList.build(host_type, host);
@@ -137,7 +146,7 @@ const internalNginx = {
 			await model.query().where("id", host.id).patch(status);
 
 			await internalNginx.renameConfigAsError(host_type, host);
-			if (!skipReload) await internalNginx.reloadOrRaise(host);
+			if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
 		}
 
 		return status;
@@ -238,10 +247,12 @@ const internalNginx = {
 	/**
 	 * reload for a save that is already stored: a failure becomes a public ReloadError naming the saved row
 	 *
-	 * @param   {Object}  [saved]  the saved row: id, certificate_id
+	 * @param   {Object}   [saved]           the saved row: id, certificate_id
+	 * @param   {Object}   [options]
+	 * @param   {boolean}  [options.change]  a disable, enable or delete, not a save: the error says the change is kept
 	 * @returns {Promise<String>}
 	 */
-	reloadOrRaise: async (saved) => {
+	reloadOrRaise: async (saved, { change = false } = {}) => {
 		try {
 			return await internalNginx.reload();
 		} catch (err) {
@@ -250,6 +261,7 @@ const internalNginx = {
 				savedId: saved?.id,
 				certificateId: saved?.certificate_id,
 				cause: err,
+				change,
 			});
 		}
 	},
@@ -440,7 +452,7 @@ const internalNginx = {
 		runtimeExclusive(async () => {
 			await internalNginx.deleteConfig(host_type, host);
 			await also?.();
-			await internalNginx.reloadOrRaise(saved);
+			await internalNginx.reloadOrRaise(saved, { change: true });
 			// a disabled or deleted host's pages go once the reload no longer serves them; enabling writes them again
 			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 		}),

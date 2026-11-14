@@ -356,6 +356,7 @@
 	"error.maximum": "Le maximum est {max}",
 	"error.min-character-length": "La longueur minimale est {min} caractère{min, plural, one {} other {s}}",
 	"error.minimum": "Le minimum est {min}",
+	"error.nginx-reload-after-change": "Modifié, mais nginx n'a pas pu se recharger. La modification est conservée ; la sortie de nginx ci-dessous en indique la raison : la cause peut être un autre hôte ou une configuration personnalisée. Corrigez la cause, le prochain rechargement appliquera la modification.",
 	"error.nginx-reload-after-save": "Enregistré, mais nginx n'a pas pu se recharger. La sortie de nginx ci-dessous en indique la raison : la cause peut être un autre hôte ou une configuration personnalisée. Corrigez-la et enregistrez à nouveau.",
 	"error.number-range": "Saisissez un nombre entier de {min} à {max}",
 	"error.oidc-disable-password-session": "La connexion par mot de passe ne peut être désactivée qu'en étant connecté via OIDC. Décochez Désactiver la connexion par mot de passe pour enregistrer ces paramètres maintenant.",
