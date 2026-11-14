@@ -172,13 +172,18 @@ function MoveForm({ tested, status }) {
 	const canMove = passed(current) && !isSubmitting;
 	const hint = isSubmitting ? null : moveHint(current);
 
-	// the card opens on a refused save with an error in its fields, and once a test result or a failed move is there to
-	// be seen; it is controlled so that this also works while the page is open (the user may close it again)
+	// the card opens on a refused save with an error in its fields, and for every new test result or failed move (Test
+	// and Move sit in the title bar, so they run while the card is closed); it is controlled so that this also works
+	// while the page is open, and the user may close it again until the next result
 	const failed = status?.move?.state === "failed";
-	const wantsOpen = failed || Boolean(current);
-	const [card, setCard] = useState(() => ({ open: failed, seenSubmits: submitCount, shown: failed }));
+	const showing = failed ? "failed" : (current ?? null);
+	const [card, setCard] = useState(() => ({
+		open: failed,
+		seenSubmits: submitCount,
+		shown: failed ? "failed" : null,
+	}));
 	let nextCard = openOnRefusedSave(card, { submitCount, errors, names: TARGET_FIELDS });
-	if (wantsOpen && !nextCard.shown) nextCard = { ...nextCard, open: true, shown: true };
+	if (showing && showing !== nextCard.shown) nextCard = { ...nextCard, open: true, shown: showing };
 	if (nextCard.open !== card.open || nextCard.seenSubmits !== card.seenSubmits || nextCard.shown !== card.shown) {
 		setCard(nextCard);
 	}
