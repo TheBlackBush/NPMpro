@@ -189,6 +189,9 @@ it("announces HTTP/3 only when the host asks for it", async () => {
 	assert.equal(bare.npmpro_http3_support, false);
 });
 
+const FORWARDED_PROTO_REDIRECT = /if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:/u;
+const OLD_PROTO_CHECKS = /\$http_x_forwarded_proto|if \(\$scheme = "http"\)/u;
+
 it("forces HTTPS and HSTS by the forwarded proto of a trusted proxy", async () => {
 	const certificate = await addCertificate(ctx.api, { domain: "proto.example.com" });
 	const host = await make({
@@ -198,8 +201,8 @@ it("forces HTTPS and HSTS by the forwarded proto of a trusted proxy", async () =
 		hsts_enabled: true,
 	});
 	const config = await configOf(host);
-	assert.match(config, /if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:/u);
-	assert.doesNotMatch(config, /\$http_x_forwarded_proto|if \(\$scheme = "http"\)/u);
+	assert.match(config, FORWARDED_PROTO_REDIRECT);
+	assert.doesNotMatch(config, OLD_PROTO_CHECKS);
 });
 it("redirects HTTP to HTTPS when SSL is forced, and writes HSTS with or without subdomains", async () => {
 	const certificate = await addCertificate(ctx.api, { domain: "hsts.example.com" });

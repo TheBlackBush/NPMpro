@@ -812,6 +812,16 @@ it("startup renders ip_ranges.conf with the stored values, fetches Cloudflare an
 	assert.equal(n.ipRanges.running(), true);
 });
 
+it("a trusted IP that repeats a Cloudflare range or another entry is rendered once", async () => {
+	const stored = { network: { trusted_ips: ["173.245.48.0/20", "10.0.0.1", "10.0.0.1"], trust_cloudflare: true } };
+	const n = await networkSetup({ stored });
+	await n.applyGroup("network", (await n.config.getRuntimeConfig("network")).values);
+	assert.deepEqual(
+		await lines(n.paths.ipRangesConf),
+		rangeLines(["173.245.48.0/20", "10.0.0.1", "103.21.244.0/22", "2400:cb00::/32"]),
+	);
+});
+
 it("startup with Cloudflare unreachable still writes the trusted IPs and starts the timer", async () => {
 	const stored = { network: { trusted_ips: ["10.0.0.1"], trust_cloudflare: true } };
 	const n = await networkSetup({ stored, fetchError: "offline" });

@@ -33,6 +33,7 @@ const get = async (group) => {
 	return done.body;
 };
 const put = (group, body, session = admin) => session.put(`${BASE}/${group}`, body);
+const EMPTY_GEO = /geo \$realip_remote_addr \$npmpro_trusted_proxy \{\s+default 0;\s+\}/u;
 const saved = async (group, body) => {
 	const done = await put(group, body);
 	assert.equal(done.status, 200, done.text);
@@ -172,7 +173,7 @@ it("writes the trusted IPs to ip_ranges.conf, reloads nginx and audits the save"
 	assert.deepEqual(cleared.trusted_ips, []);
 	const emptied = await api.read("usr/local/nginx/conf/conf.d/ip_ranges.conf");
 	assert.doesNotMatch(emptied, /203\.0\.113\.7/u);
-	assert.match(emptied, /geo \$realip_remote_addr \$npmpro_trusted_proxy \{\s+default 0;\s+\}/u);
+	assert.match(emptied, EMPTY_GEO);
 });
 
 it("refuses invalid network values with 400 and changes nothing", async () => {
