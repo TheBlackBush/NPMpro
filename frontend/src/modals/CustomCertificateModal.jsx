@@ -18,6 +18,7 @@ import { Input } from "src/components/ui/input";
 import { DirtyTracker, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
+import { savedOf } from "src/modules/ApiError";
 import { customCertificateValidate } from "src/modules/CertificateForms";
 import EasyModal from "src/modules/easyModal";
 import { sectionAccent } from "src/modules/SectionAccents";
@@ -63,9 +64,15 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 	const { dirtyRef, close } = useUnsavedChangesGuard(remove);
 	const queryClient = useQueryClient();
 	const [errorMsg, setErrorMsg] = useState(null);
-	const isEdit = Boolean(cert);
+	// set once the certificate row exists, so a retry uploads to it instead of creating a second one
+	const [savedCertId, setSavedCertId] = useState(null);
+	const certId = cert?.id ?? savedCertId;
+	const isEdit = Boolean(certId);
 	const isMtls = (cert?.provider ?? provider) === "mtls";
-	const validate = useMemo(() => customCertificateValidate(validations, { isEdit, isMtls }), [isEdit, isMtls]);
+	const validate = useMemo(
+		() => customCertificateValidate(validations, { isEdit: Boolean(cert), isMtls }),
+		[cert, isMtls],
+	);
 	const methods = useAppForm({
 		defaultValues: { niceName: cert?.niceName || "", certificate: null, certificateKey: null },
 		validate,
@@ -87,19 +94,22 @@ const CustomCertificateModal = EasyModal.create(({ visible, remove, cert, provid
 			await validateCertificate(formData);
 
 			if (isEdit) {
-				await uploadCertificate(cert.id, formData);
+				await uploadCertificate(certId, formData);
 			} else {
 				const newCert = await createCertificate({
 					niceName,
 					provider,
 				});
 
+				setSavedCertId(newCert.id);
 				await uploadCertificate(newCert.id, formData);
 			}
 
 			showObjectSuccess("certificate", "saved");
 			remove();
 		} catch (err) {
+			const saved = savedOf(err);
+			if (saved) setSavedCertId(saved.id);
 			setErrorMsg(<ApiErrorContent error={err} />);
 		} finally {
 			// also after a failed upload, as the certificate may already have been created

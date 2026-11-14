@@ -355,6 +355,7 @@
 	"error.maximum": "Maximum ist {max}",
 	"error.min-character-length": "Die minimale Länge beträgt {min} Zeichen",
 	"error.minimum": "Minimum ist {min}",
+	"error.nginx-reload-after-save": "Gespeichert, aber nginx konnte nicht neu geladen werden. Die nginx-Ausgabe unten zeigt den Grund: Die Ursache kann ein anderer Host oder eine eigene Konfiguration sein. Beheben Sie sie und speichern Sie erneut.",
 	"error.number-range": "Geben Sie eine ganze Zahl von {min} bis {max} ein",
 	"error.oidc-disable-password-session": "Die Passwortanmeldung kann nur deaktiviert werden, wenn Sie mit OIDC angemeldet sind. Entfernen Sie den Haken bei „Passwortanmeldung deaktivieren“, um diese Einstellungen jetzt zu speichern.",
 	"error.oidc-icon-too-large": "Das Symbol ist größer als 256 KB",

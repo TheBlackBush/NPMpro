@@ -355,6 +355,7 @@
 	"error.maximum": "El máximo es {max}",
 	"error.min-character-length": "La longitud mínima es {min} caracter{min, plural, one {} other {es}}",
 	"error.minimum": "El mínimo es {min}",
+	"error.nginx-reload-after-save": "Guardado, pero nginx no pudo recargarse. La salida de nginx que aparece abajo muestra el motivo: la causa puede ser otro host o una configuración personalizada. Corríjalo y guarde de nuevo.",
 	"error.number-range": "Introduce un número entero de {min} a {max}",
 	"error.oidc-disable-password-session": "El inicio de sesión con contraseña solo se puede desactivar con una sesión iniciada mediante OIDC. Desmarca Desactivar inicio de sesión con contraseña para guardar estos ajustes ahora.",
 	"error.oidc-icon-too-large": "El icono supera los 256 KB",

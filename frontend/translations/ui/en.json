@@ -355,6 +355,7 @@
 	"error.maximum": "Maximum is {max}",
 	"error.min-character-length": "Minimum length is {min} character{min, plural, one {} other {s}}",
 	"error.minimum": "Minimum is {min}",
+	"error.nginx-reload-after-save": "Saved, but nginx could not reload. The nginx output below shows why: the cause can be another host or a custom config. Fix it and save again.",
 	"error.number-range": "Enter a whole number from {min} to {max}",
 	"error.oidc-disable-password-session": "Password login can only be disabled while signed in with OIDC. Untick Disable password login to save these settings now.",
 	"error.oidc-icon-too-large": "The icon is larger than 256 KB",

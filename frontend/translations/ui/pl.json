@@ -355,6 +355,7 @@
 	"error.maximum": "Maksimum to {max}",
 	"error.min-character-length": "Minimalna długość to {min} {min, plural, one {znak} few {znaki} other {znaków}}",
 	"error.minimum": "Minimum to {min}",
+	"error.nginx-reload-after-save": "Zapisano, ale nginx nie mógł się przeładować. Poniższe dane wyjściowe nginx pokazują powód: przyczyną może być inny host lub własna konfiguracja. Napraw to i zapisz ponownie.",
 	"error.number-range": "Wpisz liczbę całkowitą od {min} do {max}",
 	"error.oidc-disable-password-session": "Logowanie hasłem można wyłączyć tylko po zalogowaniu przez OIDC. Odznacz Wyłącz logowanie hasłem, aby zapisać teraz te ustawienia.",
 	"error.oidc-icon-too-large": "Ikona jest większa niż 256 KB",

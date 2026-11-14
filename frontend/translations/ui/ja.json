@@ -355,6 +355,7 @@
 	"error.maximum": "最大値は{max}です",
 	"error.min-character-length": "文字数は少なくとも{min}文字です",
 	"error.minimum": "最小値は{min}です",
+	"error.nginx-reload-after-save": "保存しましたが、nginx を再読み込みできませんでした。下の nginx の出力に原因が表示されます。原因は別のホストやカスタム設定にある場合があります。修正してからもう一度保存してください。",
 	"error.number-range": "{min} から {max} までの整数を入力してください",
 	"error.oidc-disable-password-session": "パスワードログインは OIDC でサインインしている間のみ無効にできます。これらの設定を今すぐ保存するには、「パスワードログインを無効化」のチェックを外してください。",
 	"error.oidc-icon-too-large": "アイコンが 256 KB を超えています",

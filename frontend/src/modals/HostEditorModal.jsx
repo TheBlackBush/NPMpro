@@ -17,6 +17,7 @@ import {
 import { DirtyTracker, useCanManage, useIsAdmin, useTlsQueriesSettled, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
+import { savedOf } from "src/modules/ApiError";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
 import { MANAGE } from "src/modules/Permissions";
@@ -78,7 +79,7 @@ function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef
 	const methods = useAppForm({ defaultValues, validate: config.validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
-	// set once a new host was created but its nginx config failed, so saving again updates it
+	// set once a new host was saved but its nginx config or the reload failed, so saving again updates it
 	const [savedId, setSavedId] = useState(null);
 
 	const onSubmit = async (values) => {
@@ -101,6 +102,14 @@ function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef
 			resetToSaved();
 			setErrorMsg(<NginxConfigErrorMsg obj={config.object} nginxErr={nginxErr} />);
 		} catch (err) {
+			const saved = savedOf(err);
+			if (saved) {
+				// stored, only the nginx reload failed: the next save updates this row instead of creating another one,
+				// and keeps the certificate the backend created
+				setSavedId(saved.id);
+				if (saved.certificateId !== undefined) methods.setValue("certificateId", saved.certificateId);
+				resetToSaved();
+			}
 			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 	};

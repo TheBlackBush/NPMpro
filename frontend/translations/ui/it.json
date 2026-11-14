@@ -355,6 +355,7 @@
 	"error.maximum": "Massimo {max}",
 	"error.min-character-length": "Lunghezza minima {min} caratter{min, plural, one {e} other {i}}",
 	"error.minimum": "Minimo {min}",
+	"error.nginx-reload-after-save": "Salvato, ma nginx non è riuscito a ricaricarsi. L'output di nginx qui sotto ne mostra il motivo: la causa può essere un altro host o una configurazione personalizzata. Correggila e salva di nuovo.",
 	"error.number-range": "Inserisci un numero intero da {min} a {max}",
 	"error.oidc-disable-password-session": "L'accesso con password può essere disattivato solo dopo aver effettuato l'accesso con OIDC. Deseleziona Disattiva accesso con password per salvare ora queste impostazioni.",
 	"error.oidc-icon-too-large": "L'icona supera i 256 KB",

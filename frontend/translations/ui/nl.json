@@ -355,6 +355,7 @@
 	"error.maximum": "Maximaal {max}",
 	"error.min-character-length": "Minimale lengte is {min} teken{min, plural, one {} other {s}}",
 	"error.minimum": "Minimaal {min}",
+	"error.nginx-reload-after-save": "Opgeslagen, maar nginx kon niet opnieuw laden. De nginx-uitvoer hieronder toont waarom: de oorzaak kan een andere host of een eigen configuratie zijn. Los het op en sla opnieuw op.",
 	"error.number-range": "Voer een geheel getal van {min} tot {max} in",
 	"error.oidc-disable-password-session": "Inloggen met wachtwoord kan alleen worden uitgeschakeld als je met OIDC bent ingelogd. Vink Inloggen met wachtwoord uitschakelen uit om deze instellingen nu op te slaan.",
 	"error.oidc-icon-too-large": "Het pictogram is groter dan 256 KB",
