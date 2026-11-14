@@ -1,7 +1,7 @@
 import { Info, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
-import { ErrorAlert, FormSection, HookForm, useAppForm, useFieldOrder } from "src/components";
+import { ErrorAlert, HookForm, useAppForm, useFieldOrder } from "src/components";
 import { useRuntimeSettings, useSaveRuntimeSettings } from "src/hooks";
 import { intl, T } from "src/locale";
 import { formatApiError } from "src/modules/ApiError";
@@ -21,6 +21,7 @@ import { SaveBar } from "../SaveBar";
 import { SettingsCard } from "../SettingsCard";
 import { SettingsForm } from "../SettingsForm";
 import { SettingsHeading } from "../SettingsHeading";
+import { SettingsLead } from "../SettingsLead";
 import { StatusAlert } from "../StatusAlert";
 
 const camel = (s) => s.replaceAll(/_(?<c>[a-z])/gu, (...m) => m.at(-1).c.toUpperCase());
@@ -159,7 +160,7 @@ const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
  * The form of a loaded group: the saved settings are its values, also after a save or a refetch (new settings
  * replace every field)
  */
-function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }) {
+function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, children }) {
 	const { mutateAsync: save } = useSaveRuntimeSettings(group);
 	const { alert, setErrorMsg } = useSaveError();
 	const ctx = runtimeContextOf(group, data);
@@ -190,6 +191,7 @@ function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }
 			<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
 				<Heading titleId={titleId} />
 				{alert}
+				{leadId ? <SettingsLead id={leadId} /> : null}
 				{ctx.anyLocked ? (
 					<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
 				) : null}
@@ -208,12 +210,13 @@ function RuntimeForm({ group, titleId, data, toForm, toApi, validate, children }
  * @param {Object}    props
  * @param {string}    props.group     runtime settings group
  * @param {string}    props.titleId   heading translation id
+ * @param {string}    [props.leadId]  the lead note's translation id
  * @param {Function}  props.toForm    (data) => the form's values, in the order the section shows its fields
  * @param {Function}  props.toApi     (form values) => API values (camelCase, comparable with the loaded data)
  * @param {Function}  [props.validate]  (values) => errors of translated messages (a locked field's are dropped)
  * @param {*}         props.children  the fields
  */
-function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
+function RuntimeSection({ group, titleId, leadId, toForm, toApi, validate, children }) {
 	const { data, isPending, error } = useRuntimeSettings(group);
 
 	return (
@@ -222,6 +225,7 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 				<RuntimeForm
 					group={group}
 					titleId={titleId}
+					leadId={leadId}
 					data={data}
 					toForm={toForm}
 					toApi={toApi}
@@ -235,15 +239,24 @@ function RuntimeSection({ group, titleId, toForm, toApi, validate, children }) {
 }
 
 /**
- * A titled group of fields inside a section: the form layer's FormSection with its heading (a fieldset named by
- * its legend), the switches of the group in a SwitchList
+ * A titled group of settings inside a section: a SettingsCard with its title, a one-line description and the
+ * settings as lines (RuntimeSwitch, RuntimeText, RuntimeNumber, RuntimeSelect, or a SettingLineNote)
+ *
+ * @param {Object} props
+ * @param {string} props.titleId
+ * @param {string} [props.descriptionId]
+ * @param {*}      [props.actions]
+ * @param {*}      props.children
  */
-function Part({ titleId, children }) {
+function Part({ titleId, descriptionId, actions, children }) {
 	return (
-		<SettingsCard>
-			<FormSection heading legend={<T id={titleId} />} className="mb-0">
-				{children}
-			</FormSection>
+		<SettingsCard
+			title={<T id={titleId} />}
+			description={descriptionId ? <T id={descriptionId} /> : null}
+			actions={actions}
+			lines
+		>
+			{children}
 		</SettingsCard>
 	);
 }

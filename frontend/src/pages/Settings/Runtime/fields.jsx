@@ -58,7 +58,7 @@ function useFieldHint(name, hint) {
 		<>
 			{hint}
 			{reason ? (
-				<span className="block text-sm text-muted-foreground">
+				<span className="block">
 					<LockReason env={envOf(name)} reason={reason} />
 				</span>
 			) : null}
@@ -67,7 +67,7 @@ function useFieldHint(name, hint) {
 }
 
 /**
- * A boolean setting as a switch row, for a SwitchList. `forced` shows it on and read-only (another
+ * A boolean setting as a switch line. `forced` shows it on and read-only (another
  * setting needs it), `forcedOff` shows it off and read-only (another setting rules it out); a controller, as the
  * switch may show another state than the field holds.
  */
@@ -78,6 +78,7 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 	const fieldHint = useFieldHint(name, hint);
 	return (
 		<SwitchField
+			line
 			id={idOf(name)}
 			label={label}
 			badges={badges}
@@ -93,39 +94,37 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
 }
 
 /**
- * One setting on the form layer's FormField: the label with its badges (lock, restart, applies), the control
- * (narrow: a third of the row from lg, half from sm), the error and the hint with when the change applies
+ * One setting as a line of the form layer's FormField: the label with its badges (lock, restart, applies) as the
+ * line's name, the hint with when the change applies, the control on the right (inline) or under the name (block)
  *
  * @param {Object}   props
  * @param {string}   props.name
  * @param {*}        props.label
  * @param {*}        [props.hint]
- * @param {boolean}  [props.narrow]
- * @param {string}   [props.className]  the field's wrapper class, `mb-3` by default; "" for the last field of a group
+ * @param {"inline"|"block"} [props.layout]  the control on the right (default) or under the name
  * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
  *   (aria-invalid gives it the red border)
  */
-function RuntimeControl({ name, label, hint, narrow = false, className, children }) {
+function RuntimeControl({ name, label, hint, layout = "inline", children }) {
 	const error = useFieldError(name);
 	const badges = useFieldBadges(name);
 	const fieldHint = useFieldHint(name, hint);
 	return (
-		<FormField id={idOf(name)} label={label} badges={badges} hint={fieldHint} error={error} className={className}>
-			{(control) =>
-				narrow ? <div className="w-full sm:w-1/2 lg:w-1/3">{children(control)}</div> : children(control)
-			}
+		<FormField id={idOf(name)} line={layout} label={label} badges={badges} hint={fieldHint} error={error}>
+			{children}
 		</FormField>
 	);
 }
 
 /**
- * Whole number with an optional unit (input group addon); the value stays text, as the input holds it
+ * Whole number with an optional unit (input group addon) as an inline line; the value stays text, as the input
+ * holds it
  */
-function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
+function RuntimeNumber({ name, label, hint, min, max, unit }) {
 	const { register } = useFormContext();
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow className={className}>
+		<RuntimeControl name={name} label={label} hint={hint}>
 			{(control) => (
 				<InputGroup data-disabled={isLocked(name) || undefined}>
 					<InputGroupInput
@@ -150,17 +149,18 @@ function RuntimeNumber({ name, label, hint, min, max, unit, className }) {
 }
 
 /**
- * Text input, or a textarea with rows (the form layer's TextField)
+ * Text input, or a textarea with rows (the form layer's TextField), as a line: a textarea or a URL goes under its
+ * name (block), any other input on the right (inline), unless layout says otherwise
  */
-function RuntimeText({ name, label, hint, placeholder, rows, type = "text", className }) {
+function RuntimeText({ name, label, hint, placeholder, rows, type = "text", layout }) {
 	const { isLocked } = useRuntimeSection();
 	const badges = useFieldBadges(name);
 	const fieldHint = useFieldHint(name, hint);
 	return (
 		<TextField
 			name={name}
-			className={className}
 			id={idOf(name)}
+			line={layout ?? (rows || type === "url" ? "block" : "inline")}
 			label={label}
 			badges={badges}
 			hint={fieldHint}
@@ -182,11 +182,11 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", clas
  * the form is open (key sizes follow the key type, the certificates load later), and the shown option must follow the
  * value.
  */
-function RuntimeSelect({ name, label, hint, options, onChange, narrow = true, className }) {
+function RuntimeSelect({ name, label, hint, options, onChange, layout = "inline" }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} narrow={narrow} className={className}>
+		<RuntimeControl name={name} label={label} hint={hint} layout={layout}>
 			{(control) => (
 				<AppSelect
 					{...control}
