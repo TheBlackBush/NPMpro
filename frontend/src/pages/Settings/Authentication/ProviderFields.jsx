@@ -180,6 +180,7 @@ function ProviderFields({ data, isLocked }) {
 				name="clientId"
 				line="block"
 				label={<T id="settings.authentication.client-id" />}
+				hint={<T id="settings.authentication.client-id.hint" />}
 				locked={isLocked("clientId")}
 				env={envOf("clientId")}
 				onChange={recheckAfter("clientId")}
@@ -189,6 +190,7 @@ function ProviderFields({ data, isLocked }) {
 				name="clientSecret"
 				id="oidc-clientSecret"
 				label={<T id="settings.authentication.client-secret" />}
+				hint={<T id="settings.authentication.client-secret.hint" />}
 				badges={secretLocked ? <LockedBadge env={envOf("clientSecret")} /> : null}
 				autoComplete="new-password"
 				line="block"
