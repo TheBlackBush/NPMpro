@@ -322,3 +322,62 @@ it("checks a location without a scheme as http, the scheme it is saved with", ()
 		assertHostConfig(user, "proxy_host", { locations: [{ path: "/f/", forward_host: "app" }] }, stored),
 	);
 });
+
+const UNIX_REFUSED = { status: 400, message_i18n: "error.unix-upstream-admin-only" };
+const REGEX_REFUSED = { status: 400, message_i18n: "error.regex-domain-admin-only" };
+
+it("non-admins cannot forward to a unix socket, in any case or spacing; admins can", () => {
+	for (const forward_host of ["unix:/run/npmpro.sock", "UNIX:/run/x.sock", " unix:/run/x.sock"]) {
+		assert.throws(() => assertHostConfig(user, "proxy_host", { forward_host }), UNIX_REFUSED);
+		assert.throws(
+			() => assertHostConfig(user, "proxy_host", { locations: [{ path: "/a", forward_host }] }),
+			UNIX_REFUSED,
+		);
+		assert.throws(() => assertHostConfig(user, "stream", { forwarding_host: forward_host }), UNIX_REFUSED);
+		assert.throws(
+			() => assertHostConfig(user, "redirection_host", { forward_domain_name: forward_host }),
+			UNIX_REFUSED,
+		);
+		assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { forward_host }));
+	}
+	assert.doesNotThrow(() => assertHostConfig(user, "proxy_host", { forward_host: "unixhost.lan" }));
+});
+
+it("non-admins keep a stored unix socket, per location by type and path", () => {
+	const stored = { forward_host: "unix:/run/a.sock", locations: [{ path: "/a", forward_host: "unix:/run/b.sock" }] };
+	assert.doesNotThrow(() =>
+		assertHostConfig(user, "proxy_host", { ...stored, locations: [...stored.locations] }, stored),
+	);
+	assert.throws(
+		() => assertHostConfig(user, "proxy_host", { forward_host: "unix:/run/c.sock" }, stored),
+		UNIX_REFUSED,
+	);
+	assert.throws(
+		() =>
+			assertHostConfig(
+				user,
+				"proxy_host",
+				{ locations: [{ path: "/b", forward_host: "unix:/run/b.sock" }] },
+				stored,
+			),
+		UNIX_REFUSED,
+	);
+});
+
+it("non-admins cannot add a regular expression domain, keep a stored one; admins can", () => {
+	for (const hostType of ["proxy_host", "redirection_host", "dead_host"]) {
+		assert.throws(
+			() => assertHostConfig(user, hostType, { domain_names: ["a.example.com", "~^b\\.example\\.com$"] }),
+			REGEX_REFUSED,
+		);
+		assert.doesNotThrow(() => assertHostConfig(admin, hostType, { domain_names: ["~^b\\.example\\.com$"] }));
+		const stored = { domain_names: ["~^b\\.example\\.com$"] };
+		assert.doesNotThrow(() =>
+			assertHostConfig(user, hostType, { domain_names: ["~^b\\.example\\.com$", "c.example.com"] }, stored),
+		);
+		assert.throws(
+			() => assertHostConfig(user, hostType, { domain_names: ["~^d\\.example\\.com$"] }, stored),
+			REGEX_REFUSED,
+		);
+	}
+});
