@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
+import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
 import { addCertificate, countRows, created } from "./support/hosts.js";
 
 // A save whose nginx reload fails twice (the cause is outside the saved host): the row is kept, the answer is a public
@@ -99,6 +101,29 @@ it("names the certificate of the saved host, so a new certificate is not request
 	passReloads();
 	assert.equal(answer.status, 500, answer.text);
 	assert.equal(answer.body.error.saved_certificate_id, certificate);
+});
+
+it("a host saved with a new certificate whose reload fails names it, the second save requests no other", async () => {
+	const pair = await makeCertificate(path.join(api.root, "fake"), "reload-new.example.com");
+	await certbotSucceeds(api, pair);
+	const certificates = await countRows(api, "certificate");
+	failEveryReload("nginx: [emerg] other host broken");
+	const answer = await admin.post("/nginx/proxy-hosts", {
+		domain_names: ["reload-new.example.com"],
+		forward_scheme: "http",
+		forward_host: "10.0.9.5",
+		forward_port: 80,
+		certificate_id: "new",
+	});
+	passReloads();
+	assert.equal(answer.status, 500, answer.text);
+	assert.equal(await countRows(api, "certificate"), certificates + 1);
+	const { saved_id: id, saved_certificate_id: certificate } = answer.body.error;
+	assert.ok(Number.isInteger(certificate));
+	const again = await admin.put(`/nginx/proxy-hosts/${id}`, { forward_port: 81, certificate_id: certificate });
+	assert.equal(again.status, 200, again.text);
+	assert.equal(again.body.certificate_id, certificate);
+	assert.equal(await countRows(api, "certificate"), certificates + 1);
 });
 
 it("a disable, enable or delete whose reload fails keeps the change and says so, not that it saved", async () => {
