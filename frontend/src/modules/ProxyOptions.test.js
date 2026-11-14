@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	AUTH_REQUEST_OPTIONS,
+	authRequestOptions,
+	effectiveAuthRequest,
 	FORWARD_SCHEME_OPTIONS,
 	getOptionHintId,
 	getOptionsResetByScheme,
+	hasOwnUpstream,
 	optionField,
 	optionId,
 	proxyOptionChanges,
@@ -120,4 +123,29 @@ it("names the fields and ids of the host and of a location row", () => {
 	assert.equal(optionField("locations.2", "forwardScheme"), "locations.2.forwardScheme");
 	assert.equal(optionId("forwardScheme"), "forwardScheme");
 	assert.equal(optionId("forwardScheme", "abc"), "forwardScheme-abc");
+});
+
+it("offers Same as host first for a location only", () => {
+	assert.equal(authRequestOptions({ location: true })[0].value, "global");
+	assert.equal(authRequestOptions({ location: true })[0].labelId, "host.auth-request.global");
+	assert.equal(
+		authRequestOptions({ location: false }).some((option) => option.value === "global"),
+		false,
+	);
+});
+
+it("has an own upstream only with a provider of its own", () => {
+	assert.equal(hasOwnUpstream("authelia"), true);
+	assert.equal(hasOwnUpstream("none"), false);
+	assert.equal(hasOwnUpstream("global"), false);
+	assert.equal(hasOwnUpstream(undefined), false);
+	assert.deepEqual(proxyOptionChanges("npmproAuthRequest", "global"), {
+		npmproAuthRequest: "global",
+		npmproAuthRequestUpstream: "",
+	});
+	assert.equal(effectiveAuthRequest("tinyauth", "global"), "tinyauth");
+	assert.equal(effectiveAuthRequest("tinyauth", "none"), "none");
+	assert.equal(effectiveAuthRequest("tinyauth", "authelia"), "authelia");
+	assert.equal(effectiveAuthRequest(undefined, "global"), "none");
+	assert.equal(effectiveAuthRequest("tinyauth", undefined), "none");
 });

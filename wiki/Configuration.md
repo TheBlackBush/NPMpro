@@ -46,6 +46,8 @@ When a saved setting applies:
 | Advanced | Gravatar profile pictures (a real photo only; a user without one, or with Gravatar off, gets their initials drawn by NPMpro) | `DISABLE_GRAVATAR` (inverted) | immediately (a user's picture is refreshed when the user is created (also by the first OIDC sign-in) or saved) |
 | Advanced | Time zone | `TZ` | after a restart |
 
+The proxies in Trusted proxy IPs (and Cloudflare's ranges with Trust Cloudflare) are also trusted for `X-Forwarded-Proto` (`http` or `https` only): the upstream gets their value, and Force HTTPS, HSTS and redirection hosts that keep the scheme (Scheme "keep") follow it, so a TLS-terminating proxy or tunnel in front of NPMpro no longer causes a redirect loop. Other clients keep the connection's own scheme. Loopback and unix peers are not trusted for X-Forwarded-Proto: a TLS-terminating proxy on the same host (127.0.0.1) must be added to Trusted proxy IPs. With PROXY protocol listeners, the address that must be trusted is the load balancer's (the connection's peer), not the client address from the PROXY header.
+
 Turning on post-quantum only (by `NGINX_FORCE_X25519MLKEM768` or in Settings) overrides `NGINX_DISABLE_TLS12` and `NGINX_TRUST_SECPR1`; the stored TLS 1.2 and P curve settings are not changed.
 
 Changes that need an nginx reload are tested with `nginx -t` first: if the test fails, nothing is saved, the previous files are kept and the nginx message is shown.

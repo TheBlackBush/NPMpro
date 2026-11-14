@@ -5,9 +5,10 @@ import { intl, T } from "src/locale";
 import { applyChanges } from "src/modules/HookForm";
 import { hostRecheckOnScheme } from "src/modules/ProxyHostForms";
 import {
-	AUTH_REQUEST_OPTIONS,
+	authRequestOptions,
 	FORWARD_SCHEME_OPTIONS,
 	getOptionsResetByScheme,
+	hasOwnUpstream,
 	optionField,
 	optionId,
 	proxyOptionChanges,
@@ -164,18 +165,18 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 						onChange: (e) => {
 							applyOption("npmproAuthRequest", e.target.value);
 							// the upstream is hidden without an auth request
-							if (e.target.value === "none") clearErrors(field("npmproAuthRequestUpstream"));
+							if (!hasOwnUpstream(e.target.value)) clearErrors(field("npmproAuthRequestUpstream"));
 						},
 					}}
 				>
-					{AUTH_REQUEST_OPTIONS.map((option) => (
+					{authRequestOptions({ location: Boolean(base) }).map((option) => (
 						<option key={option.value} value={option.value}>
-							{option.label}
+							{option.label ?? intl.formatMessage({ id: option.labelId })}
 						</option>
 					))}
 				</SelectField>
 			</div>
-			{npmproAuthRequest === "none" ? null : (
+			{hasOwnUpstream(npmproAuthRequest) ? (
 				<TextField
 					name={field("npmproAuthRequestUpstream")}
 					id={id("npmproAuthRequestUpstream")}
@@ -185,7 +186,7 @@ export function ProxyOptionsFields({ base = "", idSuffix = "" }) {
 					maxLength={255}
 					placeholder={intl.formatMessage({ id: "host.auth-request-upstream.placeholder" })}
 				/>
-			)}
+			) : null}
 		</FormSection>
 	);
 }

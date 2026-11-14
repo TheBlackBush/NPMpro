@@ -167,3 +167,9 @@ it("mtlsBypassPossible: optional mTLS and an Auth Request on the host or a locat
 	assert.equal(mtlsBypassPossible({ npmproMtlsVerifyClientOptional: true, npmproAuthRequest: "none" }), false);
 	assert.equal(mtlsBypassPossible({ npmproMtlsVerifyClientOptional: true, locations: [{ path: "/b" }] }), false);
 });
+
+it("a Same as host location counts as forward authentication only when the host has it", () => {
+	const base = { npmproMtlsVerifyClientOptional: true, locations: [{ path: "/g", npmproAuthRequest: "global" }] };
+	assert.equal(mtlsBypassPossible({ ...base, npmproAuthRequest: "none" }), false);
+	assert.equal(mtlsBypassPossible({ ...base, npmproAuthRequest: "authelia" }), true);
+});

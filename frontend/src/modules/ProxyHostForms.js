@@ -15,6 +15,7 @@ import {
 	tlsRules,
 } from "./HostForms.js";
 import { htmlName, PLACE_FIELDS, placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
+import { hasOwnUpstream } from "./ProxyOptions.js";
 
 // the backend's rules (schema/components/proxy-host-object.json, lib/host-config-guard.js)
 const PATH = /^\S{1,255}$/u;
@@ -66,11 +67,22 @@ export const newLocation = (location = {}) => ({
 	npmproUpstreamCompression: false,
 	npmproFancyindex: false,
 	npmproXFrameOptions: "SAMEORIGIN",
-	npmproAuthRequest: "none",
+	npmproAuthRequest: "global",
 	npmproAuthRequestUpstream: "",
 	npmproAccessListType: "global",
 	...location,
 });
+
+/**
+ * Whether a location shows the notice that it is public on a protected host: the host uses forward authentication and
+ * the location is set to none on purpose
+ *
+ * @param   {string}  hostValue  the host's Auth Request
+ * @param   {Object}  row
+ * @returns {boolean}
+ */
+export const locationAuthNotice = (hostValue, row) =>
+	(hostValue ?? "none") !== "none" && row.npmproAuthRequest === "none";
 
 /**
  * The rows with a path: the "*" of the Custom locations tab and the locations the mTLS options look at
@@ -143,7 +155,7 @@ export function locationErrors(rules, rows, savedRows = []) {
 		if (port !== "" && port !== "0" && !(PORT.test(port) && Number(port) >= 1 && Number(port) <= 65535)) {
 			error.forwardPort = rules.message("error.number-range", { min: 1, max: 65535 });
 		}
-		if (row.npmproAuthRequest !== "none" && row.npmproAuthRequestUpstream) {
+		if (hasOwnUpstream(row.npmproAuthRequest) && row.npmproAuthRequestUpstream) {
 			const upstream = rules.validateUpstreamUrl()(row.npmproAuthRequestUpstream);
 			if (upstream) error.npmproAuthRequestUpstream = upstream;
 		}

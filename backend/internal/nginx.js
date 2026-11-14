@@ -385,6 +385,11 @@ const internalNginx = {
 
 		if (host.locations) {
 			for (const location of host.locations) {
+				// Same as host: the location renders the host's provider; the host's upstream applies
+				if (location.npmpro_auth_request === "global") {
+					location.npmpro_auth_request = host.npmpro_auth_request ?? "none";
+					location.npmpro_auth_request_upstream = "";
+				}
 				if (location.npmpro_access_list_type === "global") {
 					location.access_list = host.access_list;
 				} else if (location.npmpro_access_list_type === "custom") {

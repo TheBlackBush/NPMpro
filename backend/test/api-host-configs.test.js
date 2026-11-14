@@ -24,6 +24,9 @@ const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
 const PASS_AUTH_CLEARED = /proxy_set_header Authorization "";/u;
 const AUTHORIZATION_EMPTY = /Authorization ""/u;
+const AUTHELIA_CHECK = /auth_request \/internal\/authelia\/authz;/u;
+const ANY_AUTH_REQUEST = /auth_request/u;
+const NO_PROVIDER_CHECK = /auth_request \/|authelia\/authz|goauthentik|\/tinyauth/u;
 
 const read = (file) => readConfig(ctx.api, file);
 const configOf = async (host) => read(confOf(host.id));
@@ -186,15 +189,29 @@ it("announces HTTP/3 only when the host asks for it", async () => {
 	assert.equal(bare.npmpro_http3_support, false);
 });
 
+const FORWARDED_PROTO_REDIRECT = /if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:/u;
+const OLD_PROTO_CHECKS = /\$http_x_forwarded_proto|if \(\$scheme = "http"\)/u;
+
+it("forces HTTPS and HSTS by the forwarded proto of a trusted proxy", async () => {
+	const certificate = await addCertificate(ctx.api, { domain: "proto.example.com" });
+	const host = await make({
+		domain_names: ["proto.example.com"],
+		certificate_id: certificate,
+		ssl_forced: true,
+		hsts_enabled: true,
+	});
+	const config = await configOf(host);
+	assert.match(config, FORWARDED_PROTO_REDIRECT);
+	assert.doesNotMatch(config, OLD_PROTO_CHECKS);
+});
 it("redirects HTTP to HTTPS when SSL is forced, and writes HSTS with or without subdomains", async () => {
 	const certificate = await addCertificate(ctx.api, { domain: "hsts.example.com" });
 	const forced = await make({ domain_names: ["hsts.example.com"], certificate_id: certificate, ssl_forced: true });
 	const forcedConfig = await configOf(forced);
 	assert.match(
 		forcedConfig,
-		/if \(\$scheme = "http"\) \{\s+return 301 https:\/\/\$host\$is_request_port\$request_port\$request_uri;/u,
+		/if \(\$npmpro_forwarded_proto = "http"\) \{\s+return 301 https:\/\/\$host\$is_request_port\$request_port\$request_uri;/u,
 	);
-	assert.match(forcedConfig, /if \(\$http_x_forwarded_proto = "http"\) \{\s+return 301 https:/u);
 	assert.match(forcedConfig, /more_clear_headers "Strict-Transport-Security";/u);
 	assert.doesNotMatch(forcedConfig, /more_set_headers "Strict-Transport-Security/u);
 	const hsts = await ctx.admin.put(`${URL}/${forced.id}`, { hsts_enabled: true });
@@ -462,7 +479,7 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 	const redirectConfig = await read(`data/nginx/redirection_host/${redirect.id}.conf`);
 	assert.match(
 		redirectConfig,
-		/return 308 \$scheme:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
+		/return 308 \$npmpro_forwarded_proto:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
 	);
 	const dead = await created(
 		await ctx.admin.post("/nginx/dead-hosts", {
@@ -472,6 +489,33 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 		"dead",
 	);
 	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
+});
+
+const KEEP_SCHEME_REDIRECT = /return 301 \$npmpro_forwarded_proto:\/\/t\.example\.org\$request_uri;/u;
+const CONNECTION_SCHEME_REDIRECT = /\$scheme:\/\//u;
+const HTTPS_REDIRECT = /return 301 https:\/\/t\.example\.org\$request_uri;/u;
+const HTTP_REDIRECT = /return 301 http:\/\/t\.example\.org\$request_uri;/u;
+
+it("a redirection host that keeps the scheme follows a trusted proxy's X-Forwarded-Proto, a fixed scheme stays", async () => {
+	const configFor = async (name, scheme) => {
+		const host = await created(
+			await ctx.admin.post("/nginx/redirection-hosts", {
+				domain_names: [`${name}.example.com`],
+				forward_domain_name: "t.example.org",
+				forward_scheme: scheme,
+				forward_http_code: 301,
+				preserve_path: true,
+			}),
+			name,
+		);
+		assert.equal(host.forward_scheme, scheme);
+		return read(`data/nginx/redirection_host/${host.id}.conf`);
+	};
+	const keep = await configFor("keep-scheme", "$scheme");
+	assert.match(keep, KEEP_SCHEME_REDIRECT);
+	assert.doesNotMatch(keep, CONNECTION_SCHEME_REDIRECT);
+	assert.match(await configFor("fixed-https", "https"), HTTPS_REDIRECT);
+	assert.match(await configFor("fixed-http", "http"), HTTP_REDIRECT);
 });
 
 it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3 header of the shared block", async () => {
@@ -827,6 +871,132 @@ it("forward auth: a custom location with its own provider gets the check, its he
 		config,
 		new RegExp(`upstream auth_request_authelia_${host.id} \\{[\\s\\S]*server auth\\.internal:9091 resolve;`, "u"),
 	);
+});
+
+it("forward auth: a location on Same as host gets the host's check, with the host on none it stays public", async () => {
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://auth.internal:9091",
+		locations: [
+			{ path: "/same", forward_host: "10.9.8.5", forward_port: 80, npmpro_auth_request: "global" },
+			{ path: "/open", forward_host: "10.9.8.4", forward_port: 80, npmpro_auth_request: "none" },
+			{ path: "/default", forward_host: "10.9.8.3", forward_port: 80 },
+		],
+	});
+	const config = await configOf(host);
+	assert.match(block(config, 'location "/same" {'), AUTHELIA_CHECK);
+	assert.match(block(config, 'location "/default" {'), AUTHELIA_CHECK);
+	assert.doesNotMatch(block(config, 'location "/open" {'), ANY_AUTH_REQUEST);
+	const stored = await ctx.api.db("npmpro_location").where({ proxy_host_id: host.id }).orderBy("id");
+	assert.deepEqual(
+		stored.map((row) => row.npmpro_auth_request),
+		["global", "none", "global"],
+	);
+
+	const bare = await make({
+		locations: [{ path: "/same", forward_host: "10.9.8.2", forward_port: 80, npmpro_auth_request: "global" }],
+	});
+	assert.doesNotMatch(await configOf(bare), NO_PROVIDER_CHECK);
+});
+
+it("forward auth: a global location never keeps the mTLS bypass on a host without a provider", async () => {
+	const certificate = await addCertificate(ctx.api, { domain: "global-bypass.example.com" });
+	const ca = await addCertificate(ctx.api, { provider: "mtls", domain: "global-bypass-ca.example.com" });
+	const host = await make({
+		domain_names: ["global-bypass.example.com"],
+		certificate_id: certificate,
+		npmpro_mtls_certificate_id: ca,
+		npmpro_mtls_verify_client_optional: true,
+		npmpro_mtls_bypass_auth_request: true,
+		locations: [{ path: "/g", forward_host: "10.9.8.1", forward_port: 80, npmpro_auth_request: "global" }],
+	});
+	assert.equal(host.npmpro_mtls_bypass_auth_request, false);
+});
+
+it("forward auth: refuses two upstreams for one provider, keeps a stored pair", async () => {
+	const pair = {
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://a.internal:9091",
+		locations: [
+			{
+				path: "/b",
+				forward_host: "10.9.7.1",
+				forward_port: 80,
+				npmpro_auth_request: "authelia",
+				npmpro_auth_request_upstream: "http://b.internal:9091",
+			},
+		],
+	};
+	const refused = await ctx.admin.post(URL, body(pair));
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.auth-request-upstream-conflict");
+	assert.equal(refused.body.error.message_values.provider, "authelia");
+	// a host stored before the rule keeps saving while its upstreams stay
+	const host = await make({ ...pair, locations: [{ ...pair.locations[0], npmpro_auth_request_upstream: "" }] });
+	await ctx.api
+		.db("npmpro_location")
+		.where({ proxy_host_id: host.id })
+		.update({ npmpro_auth_request_upstream: "http://b.internal:9091" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8111 });
+	assert.equal(kept.status, 200, kept.text);
+	const changed = await ctx.admin.put(`${URL}/${host.id}`, {
+		npmpro_auth_request_upstream: "http://c.internal:9091",
+	});
+	assert.equal(changed.status, 400, changed.text);
+});
+
+it("forward auth: a stored pair keeps saving when its locations change order", async () => {
+	const location = (name, upstream) => ({
+		path: `/${name}`,
+		forward_host: "10.9.5.1",
+		forward_port: 80,
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: upstream,
+	});
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		locations: [location("b", ""), location("c", "")],
+	});
+	for (const name of ["b", "c"]) {
+		await ctx.api
+			.db("npmpro_location")
+			.where({ proxy_host_id: host.id, path: `/${name}` })
+			.update({ npmpro_auth_request_upstream: `http://${name}.internal:9091` });
+	}
+	const reordered = await ctx.admin.put(`${URL}/${host.id}`, {
+		locations: [location("c", "http://c.internal:9091"), location("b", "http://b.internal:9091")],
+	});
+	assert.equal(reordered.status, 200, reordered.text);
+});
+
+it("forward auth: a stored conflict on one provider does not hide a new conflict on another", async () => {
+	const location = (provider, upstream) => ({
+		path: `/${provider}`,
+		forward_host: "10.9.6.1",
+		forward_port: 80,
+		npmpro_auth_request: provider,
+		npmpro_auth_request_upstream: upstream,
+	});
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://a.internal:9091",
+		locations: [location("authelia", "")],
+	});
+	await ctx.api
+		.db("npmpro_location")
+		.where({ proxy_host_id: host.id })
+		.update({ npmpro_auth_request_upstream: "http://b.internal:9091" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8112 });
+	assert.equal(kept.status, 200, kept.text);
+	const second = await ctx.admin.put(`${URL}/${host.id}`, {
+		locations: [
+			location("authelia", "http://b.internal:9091"),
+			location("authentik", "http://t1.internal:1"),
+			{ ...location("authentik", "http://t2.internal:1"), path: "/authentik2" },
+		],
+	});
+	assert.equal(second.status, 400, second.text);
+	assert.equal(second.body.error.message_values.provider, "authentik");
 });
 
 it("forward auth: an upstream with a variable or a quote is refused", async () => {

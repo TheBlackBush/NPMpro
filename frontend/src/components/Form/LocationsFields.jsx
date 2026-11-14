@@ -11,7 +11,8 @@ import { useIsAdmin } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
-import { newLocation } from "src/modules/ProxyHostForms";
+import { locationAuthNotice, newLocation } from "src/modules/ProxyHostForms";
+import { effectiveAuthRequest } from "src/modules/ProxyOptions";
 import { NoticeAlert } from "../NoticeAlert";
 import { FormField, TextField } from "./FormField";
 import { FormSection } from "./FormSection";
@@ -30,6 +31,7 @@ function LocationRow({
 	index,
 	rowKey,
 	row,
+	hostAuthRequest,
 	isAdmin,
 	readOnly,
 	open,
@@ -149,12 +151,17 @@ function LocationRow({
 						)}
 					<ForwardFields base={base} idSuffix={rowKey} />
 					<ProxyOptionsFields base={base} idSuffix={rowKey} />
+					{locationAuthNotice(hostAuthRequest, row) ? (
+						<NoticeAlert role="status">
+							<T id="proxy-host.location-auth-request-none-warning" />
+						</NoticeAlert>
+					) : null}
 					<FormSection heading legend={<T id="proxy-host.access-lists" />} className="mb-0">
 						<AccessFields
 							name={`${base}.npmproAccessListIds`}
 							typeName={`${base}.npmproAccessListType`}
 							location={row.path}
-							authRequest={row.npmproAuthRequest}
+							authRequest={effectiveAuthRequest(hostAuthRequest, row.npmproAuthRequest)}
 						/>
 					</FormSection>
 				</fieldset>
@@ -193,6 +200,7 @@ export function LocationsFields({ name = "locations" }) {
 	const readOnly = useReadOnly();
 	const { fields, append, remove } = useFieldArray({ name });
 	const rows = useWatch({ name });
+	const hostAuthRequest = useWatch({ name: "npmproAuthRequest" });
 	// the documented controlled field array: the keys of fields with the current values of the rows (useWatch may
 	// still hold the list before an append or a removal)
 	const controlledFields = fields.map((field, index) => ({ ...field, ...rows?.[index] }));
@@ -307,6 +315,7 @@ export function LocationsFields({ name = "locations" }) {
 					index={index}
 					rowKey={field.id}
 					row={field}
+					hostAuthRequest={hostAuthRequest}
 					isAdmin={isAdmin}
 					readOnly={readOnly}
 					open={expanded.includes(field.id) || forcedOpen(index)}
