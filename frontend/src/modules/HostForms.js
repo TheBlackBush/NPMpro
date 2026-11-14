@@ -442,11 +442,15 @@ export const STREAM_TABS = Object.freeze([
 	advancedTab("npmproAdvancedConfig"),
 ]);
 
+// the backend's cap (lib/stream-rules.js): a range opens one socket per port
+export const STREAM_PORT_RANGE_MAX = 1000;
+
 /**
- * Stream: the incoming port (a port or a range), the description (at most 255), the forward host, the forward port
- * (a port, $server_port or empty), the TLS tab
+ * Stream: the incoming port (a port or a range of at most 1000 ports; a saved range, savedIncomingPort, keeps
+ * saving), the description (at most 255), the forward host, the forward port (a port, $server_port or empty), the
+ * TLS tab
  */
-export const streamValidate = (rules) =>
+export const streamValidate = (rules, { savedIncomingPort } = {}) =>
 	fieldsValidate((values) => ({
 		incomingPort: (value) => {
 			const text = String(value ?? "").trim();
@@ -457,7 +461,13 @@ export const streamValidate = (rules) =>
 				isPort(match.groups.from) &&
 				(match.groups.to === undefined ||
 					(isPort(match.groups.to) && Number(match.groups.from) <= Number(match.groups.to)));
-			return valid ? undefined : rules.message("stream.incoming-port.invalid");
+			if (!valid) return rules.message("stream.incoming-port.invalid");
+			const size = match.groups.to === undefined ? 1 : Number(match.groups.to) - Number(match.groups.from) + 1;
+			// a stored range keeps saving, as in the backend
+			if (size > STREAM_PORT_RANGE_MAX && text !== savedIncomingPort) {
+				return rules.message("error.stream-port-range-too-wide");
+			}
+			return undefined;
 		},
 		npmproDescription: rules.validateString(0, 255),
 		forwardingHost: (value) => forwardHostError(rules, value),

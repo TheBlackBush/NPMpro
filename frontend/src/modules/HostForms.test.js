@@ -140,6 +140,16 @@ it("404 host: the same errors as the Formik fields", () => {
 	);
 });
 
+it("stream: a new range spans at most 1000 ports, a saved one keeps saving", () => {
+	const filled = { ...streamDefaults(newStream), incomingPort: "8000-8999", forwardingHost: "10.0.0.1" };
+	assert.deepEqual(streamValidate(rules)(filled), {});
+	const tooWide = { ...filled, incomingPort: "8000-9000" };
+	assert.deepEqual(streamValidate(rules)(tooWide), {
+		incomingPort: "A port range can span at most 1000 ports. Split a bigger range into several streams.",
+	});
+	assert.deepEqual(streamValidate(rules, { savedIncomingPort: "8000-9000" })(tooWide), {});
+});
+
 it("stream: the same errors as the Formik fields", () => {
 	const validate = streamValidate(rules);
 	const fresh = streamDefaults(newStream);
