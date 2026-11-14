@@ -90,3 +90,15 @@ it("lays out a switch list in one or two columns", () => {
 	assert.equal(switchListClass(1), "flex flex-col gap-3");
 	assert.equal(switchListClass(2), "grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2");
 });
+
+it("names the parts of a field the way SettingLine uses them", () => {
+	const aria = controlAria({ id: "runtime-workerProcesses", hasHint: true, hasBadges: true, error: "Bad" });
+	assert.equal(aria.labelId, "runtime-workerProcesses-label");
+	assert.equal(aria.hintId, "runtime-workerProcesses-hint");
+	assert.equal(aria.errorId, "runtime-workerProcesses-error");
+	assert.equal(aria.badgesId, "runtime-workerProcesses-badges");
+	assert.equal(
+		aria["aria-describedby"],
+		"runtime-workerProcesses-error runtime-workerProcesses-hint runtime-workerProcesses-badges",
+	);
+});

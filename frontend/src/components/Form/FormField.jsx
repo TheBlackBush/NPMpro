@@ -11,6 +11,7 @@ import { FieldMessage } from "./FieldMessage";
 import { useFieldError, useReadOnly } from "./HookForm";
 import { PasswordControl } from "./PasswordInput";
 import { SettingBadges } from "./SettingBadge";
+import { SettingLine } from "./SettingLine";
 import { useBadgesFit } from "./useBadgesFit";
 
 /**
@@ -27,9 +28,12 @@ import { useBadgesFit } from "./useBadgesFit";
  *                                           at the bottom after the hint; they describe the control
  * @param {string|null} [props.error]        the message that shows
  * @param {string}      [props.describedBy]  more ids that describe the control
- * @param {string}      [props.className]    of the wrapper, "mb-3" by default
+ * @param {string}      [props.className]    of the wrapper, "mb-3" by default (none in a line)
  * @param {Function}    [props.onLabelClick] of the label (onClick); a select passes one that focuses its trigger
  *                                           instead of letting the label open the list
+ * @param {"inline"|"block"} [props.line]  one SettingLine of a Settings card: the control on the right (inline) or
+ *                                           under the name (block); without it the stacked field
+ * @param {*}           [props.aside]        beside the control of a line
  * @param {Function}    props.children       (control) => the control, with control = { id, aria-invalid,
  *                                           aria-describedby, aria-required } to spread on it
  */
@@ -41,15 +45,53 @@ function FormField({
 	badges,
 	error = null,
 	describedBy,
-	className = "mb-3",
+	className,
 	onLabelClick,
+	line,
+	aside,
 	children,
 }) {
 	const hasBadges = Children.toArray(badges).length > 0;
 	const aria = controlAria({ id, hasHint: Boolean(hint), hasBadges, error, describedBy });
 	// a read-only form (a window opened to view) asks for nothing, so it shows no required marks
 	const readOnly = useReadOnly();
-	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({ enabled: hasBadges && Boolean(label) });
+	// a line puts the badges beside its title and lets them wrap, so only the stacked field measures
+	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({ enabled: hasBadges && Boolean(label) && !line });
+	const control = children({
+		id,
+		"aria-invalid": aria["aria-invalid"],
+		"aria-describedby": aria["aria-describedby"],
+		"aria-required": required ? "true" : undefined,
+	});
+	if (line) {
+		return (
+			<SettingLine
+				id={id}
+				layout={line}
+				labelFor={id}
+				titleId={aria.labelId}
+				hintId={aria.hintId}
+				errorId={aria.errorId}
+				onTitleClick={onLabelClick}
+				title={
+					<>
+						{label}
+						{required && !readOnly ? (
+							<span aria-hidden="true" className="ms-0.5 text-destructive" data-slot="required-mark">
+								*
+							</span>
+						) : null}
+					</>
+				}
+				hint={hint}
+				badges={hasBadges ? <SettingBadges id={aria.badgesId}>{badges}</SettingBadges> : null}
+				error={error}
+				control={control}
+				aside={aside}
+				className={className}
+			/>
+		);
+	}
 	const badgesRow = hasBadges ? (
 		<SettingBadges id={aria.badgesId} ref={badgesRef}>
 			{badges}
@@ -67,7 +109,7 @@ function FormField({
 	) : null;
 	return (
 		// no group role: the label already names the control, a named group around it only adds noise
-		<Field role="none" className={className} data-invalid={error ? true : undefined}>
+		<Field role="none" className={className ?? "mb-3"} data-invalid={error ? true : undefined}>
 			{hasBadges && label ? (
 				// badges beside the label when both fit the row, else at the bottom of the setting after the hint
 				<div ref={rowRef} className="flex items-center gap-2">
@@ -77,12 +119,7 @@ function FormField({
 			) : (
 				labelNode
 			)}
-			{children({
-				id,
-				"aria-invalid": aria["aria-invalid"],
-				"aria-describedby": aria["aria-describedby"],
-				"aria-required": required ? "true" : undefined,
-			})}
+			{control}
 			{error ? <FieldMessage id={aria.errorId}>{error}</FieldMessage> : null}
 			{hint ? <FieldDescription id={aria.hintId}>{hint}</FieldDescription> : null}
 			{inline ? null : badgesRow}
@@ -102,6 +139,8 @@ function FormField({
  * @param {*}       [props.badges]
  * @param {string}  [props.describedBy]
  * @param {string}  [props.className]          of the field
+ * @param {"inline"|"block"} [props.line]      a Settings card line (see FormField)
+ * @param {*}       [props.aside]              beside the control of a line
  * @param {Object}  [props.registerOptions]    register's options (onChange, setValueAs)
  * @param {"input"|"textarea"} [props.as]
  * @param {string}  [props.controlClassName]   more classes of the control (font-mono)
@@ -116,6 +155,8 @@ function TextField({
 	badges,
 	describedBy,
 	className,
+	line,
+	aside,
 	registerOptions,
 	as = "input",
 	controlClassName,
@@ -134,6 +175,8 @@ function TextField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			line={line}
+			aside={aside}
 		>
 			{(control) => (
 				<Control
@@ -162,6 +205,8 @@ function SelectField({
 	badges,
 	describedBy,
 	className,
+	line,
+	aside,
 	registerOptions,
 	children,
 	...selectProps
@@ -179,6 +224,8 @@ function SelectField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			line={line}
+			aside={aside}
 			// a click on the label focuses the trigger (Space or Enter then opens the list), it does not open it
 			onLabelClick={(event) => {
 				event.preventDefault();
@@ -211,6 +258,8 @@ function PasswordField({
 	badges,
 	describedBy,
 	className,
+	line,
+	aside,
 	registerOptions,
 	...inputProps
 }) {
@@ -226,6 +275,8 @@ function PasswordField({
 			error={error}
 			describedBy={describedBy}
 			className={className}
+			line={line}
+			aside={aside}
 		>
 			{(control) => (
 				<PasswordControl
