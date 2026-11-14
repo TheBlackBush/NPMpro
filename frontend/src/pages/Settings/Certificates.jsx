@@ -48,7 +48,7 @@ function RequestFields() {
 		}
 	};
 	return (
-		<Part titleId="settings.certificates.requests">
+		<Part titleId="settings.certificates.requests" infoId="settings.certificates.requests.description">
 			<RuntimeSelect
 				name="keyType"
 				label={<T id="settings.certificates.key-type" />}
@@ -88,7 +88,7 @@ function StaplingFields() {
 	// must-staple forces OCSP stapling on, unless the environment sets stapling itself
 	const forced = mustStaple && !isLocked("ocspStapling");
 	return (
-		<Part titleId="settings.certificates.stapling">
+		<Part titleId="settings.certificates.stapling" infoId="settings.certificates.stapling.description">
 			<RuntimeSwitch
 				name="ocspStapling"
 				forced={forced}
@@ -134,7 +134,10 @@ function DefaultCertificateField() {
 		});
 	}
 	return (
-		<Part titleId="settings.certificates.default-certificate">
+		<Part
+			titleId="settings.certificates.default-certificate"
+			infoId="settings.certificates.default-certificate.description"
+		>
 			<RuntimeSelect
 				name="defaultCertificateId"
 				layout="block"
@@ -159,7 +162,7 @@ function Fields() {
 	return (
 		<>
 			<RequestFields />
-			<Part titleId="settings.certificates.renewal">
+			<Part titleId="settings.certificates.renewal" infoId="settings.certificates.renewal.description">
 				<RuntimeNumber
 					name="renewalInterval"
 					label={<T id="settings.certificates.renewal-interval" />}
@@ -170,7 +173,7 @@ function Fields() {
 			</Part>
 			<StaplingFields />
 			<DefaultCertificateField />
-			<Part titleId="settings.certificates.ech">
+			<Part titleId="settings.certificates.ech" infoId="settings.certificates.ech.description">
 				<RuntimeNumber
 					name="echRotationInterval"
 					label={<T id="settings.certificates.ech-interval" />}

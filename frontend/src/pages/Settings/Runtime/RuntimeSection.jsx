@@ -239,23 +239,18 @@ function RuntimeSection({ group, titleId, leadId, toForm, toApi, validate, child
 }
 
 /**
- * A titled group of settings inside a section: a SettingsCard with its title, a one-line description and the
+ * A titled group of settings inside a section: a SettingsCard with its title, an info tooltip and the
  * settings as lines (RuntimeSwitch, RuntimeText, RuntimeNumber, RuntimeSelect, or a SettingLineNote)
  *
  * @param {Object} props
  * @param {string} props.titleId
- * @param {string} [props.descriptionId]
+ * @param {string} [props.infoId]
  * @param {*}      [props.actions]
  * @param {*}      props.children
  */
-function Part({ titleId, descriptionId, actions, children }) {
+function Part({ titleId, infoId, actions, children }) {
 	return (
-		<SettingsCard
-			title={<T id={titleId} />}
-			description={descriptionId ? <T id={descriptionId} /> : null}
-			actions={actions}
-			lines
-		>
+		<SettingsCard title={<T id={titleId} />} info={infoId ? <T id={infoId} /> : null} actions={actions} lines>
 			{children}
 		</SettingsCard>
 	);

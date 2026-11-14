@@ -36,14 +36,14 @@ export default function Advanced() {
 			toForm={toForm}
 			toApi={toApi}
 		>
-			<Part titleId="settings.advanced.configs">
+			<Part titleId="settings.advanced.configs" infoId="settings.advanced.configs.description">
 				<RuntimeSwitch
 					name="configBeautifier"
 					label={<T id="settings.advanced.beautifier" />}
 					hint={<T id="settings.advanced.beautifier.hint" />}
 				/>
 			</Part>
-			<Part titleId="settings.advanced.users">
+			<Part titleId="settings.advanced.users" infoId="settings.advanced.users.description">
 				<RuntimeSwitch
 					name="gravatar"
 					label={<T id="settings.advanced.gravatar" />}
@@ -53,7 +53,7 @@ export default function Advanced() {
 					<StatusAlert variant="secondary" icon={ShieldCheck} id="settings.advanced.gravatar.privacy" />
 				</SettingLineNote>
 			</Part>
-			<Part titleId="settings.advanced.time">
+			<Part titleId="settings.advanced.time" infoId="settings.advanced.time.description">
 				<TimeZoneField />
 			</Part>
 		</RuntimeSection>
