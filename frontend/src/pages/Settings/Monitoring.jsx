@@ -227,8 +227,8 @@ function DataOffConfirm({ ipsOff, visitorsOff, confirmKey }) {
 }
 
 /**
- * A number of the traffic statistics on the form layer's FormField: its label with the lock badge under it, the
- * input (with an optional unit), the error and the hint
+ * A number of the traffic statistics as an inline line of the form layer's FormField: the name with its lock badge,
+ * the hint, the input (with an optional unit) on the right and its error
  */
 function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, envOf }) {
 	const { register } = useFormContext();

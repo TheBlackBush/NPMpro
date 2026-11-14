@@ -1071,7 +1071,7 @@
 	"settings.certificates.ech-interval": "Rotatie-interval van ECH-sleutels",
 	"settings.certificates.ech-interval.hint": "{min} tot {max} uur tussen uitvoeringen van je ECH-script (/data/tls/ech/cron.sh). Alleen gebruikt als het script niet leeg is.",
 	"settings.certificates.ech.description": "De rotatie van de Encrypted Client Hello-sleutels door uw eigen script.",
-	"settings.certificates.intro": "Hoe NPMpro certificaten aanvraagt, verlengt en nietjes, en welk certificaat het toont als geen host overeenkomt.",
+	"settings.certificates.intro": "Hoe NPMpro certificaten aanvraagt, verlengt en via OCSP-stapling aanbiedt, en welk certificaat het toont als geen host overeenkomt.",
 	"settings.certificates.key-size": "Sleutelgrootte",
 	"settings.certificates.key-size.hint": "De curve voor ECDSA (secp384r1 aanbevolen) of het aantal bits voor RSA (4096 aanbevolen).",
 	"settings.certificates.key-type": "Sleuteltype",

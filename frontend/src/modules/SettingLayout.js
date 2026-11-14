@@ -12,12 +12,14 @@ export const LINE_LAYOUTS = Object.freeze(["inline", "block", "switch", "value"]
 const TITLE = "text-sm font-semibold";
 const HINT = "mt-0.5 text-[0.8rem] text-muted-foreground";
 
-// the line stacks (text, then the control at full width) while its container is under the lg width (32rem)
+// the line stacks (text, then the control at full width) while its container is under the lg width (32rem); a line
+// whose control shows an error aligns to the top (the error grows the control box downward) and the text gets the
+// top padding that centres it against a plain control
 const ROWS = {
-	inline: "flex flex-col gap-2 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4",
+	inline: "group/row flex flex-col gap-2 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4 @lg:has-[[data-slot=field-error]]:items-start",
 	block: "flex flex-col gap-2 px-4 py-3",
 	switch: "flex items-start justify-between gap-4 px-4 py-3 has-[:disabled]:opacity-50",
-	value: "flex flex-col gap-1 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4",
+	value: "group/row flex flex-col gap-1 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4 @lg:has-[[data-slot=field-error]]:items-start",
 };
 
 // the box around the control and the things beside it (a Preview icon, a button)
@@ -47,7 +49,7 @@ export function settingLineClass(layout = "inline") {
 	return {
 		container: "@container",
 		row: ROWS[layout],
-		text: "min-w-0 flex-1",
+		text: "min-w-0 flex-1 @lg:group-has-[[data-slot=field-error]]/row:pt-1.5",
 		titleRow: "flex flex-wrap items-center gap-x-2 gap-y-1",
 		title: TITLE,
 		hint: HINT,
