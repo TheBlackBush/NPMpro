@@ -26,7 +26,7 @@ export default function ForwardAuth() {
 			toApi={toApi}
 			validate={validate}
 		>
-			<Part titleId="settings.forward-auth.upstreams" descriptionId="settings.forward-auth.upstreams.description">
+			<Part titleId="settings.forward-auth.upstreams">
 				{FORWARD_AUTH_PROVIDERS.map(({ name, provider, example }) => (
 					<RuntimeText
 						key={name}
@@ -41,7 +41,7 @@ export default function ForwardAuth() {
 					/>
 				))}
 			</Part>
-			<Part titleId="settings.forward-auth.anubis" descriptionId="settings.forward-auth.anubis.description">
+			<Part titleId="settings.forward-auth.anubis">
 				<RuntimeSwitch
 					name="anubisCustomImages"
 					label={<T id="settings.forward-auth.anubis-images" />}

@@ -24,7 +24,7 @@ export default function Network() {
 			toApi={toApi}
 			validate={validate}
 		>
-			<Part titleId="settings.network.client-ip" descriptionId="settings.network.client-ip.description">
+			<Part titleId="settings.network.client-ip">
 				<RuntimeText
 					name="trustedIps"
 					rows={5}

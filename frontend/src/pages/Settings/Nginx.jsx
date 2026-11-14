@@ -59,7 +59,7 @@ function Tls() {
 	// post-quantum only needs TLS 1.3 and X25519MLKEM768, so these two show off as soon as it is switched on
 	const off = Boolean(useWatch({ name: "forceMlkem" }));
 	return (
-		<Part titleId="settings.nginx.tls" descriptionId="settings.nginx.tls.description">
+		<Part titleId="settings.nginx.tls">
 			<SettingLineNote>
 				<StatusAlert variant="warning" icon={TriangleAlert} id="settings.nginx.tls.warning" />
 			</SettingLineNote>
@@ -99,7 +99,7 @@ export default function Nginx() {
 			toApi={toApi}
 			validate={validate}
 		>
-			<Part titleId="settings.nginx.workers-part" descriptionId="settings.nginx.workers-part.description">
+			<Part titleId="settings.nginx.workers-part">
 				<WorkerProcesses />
 				<RuntimeNumber
 					name="workerConnections"
@@ -114,7 +114,7 @@ export default function Nginx() {
 					hint={<T id="settings.nginx.shutdown-timeout.hint" />}
 				/>
 			</Part>
-			<Part titleId="settings.nginx.logging" descriptionId="settings.nginx.logging.description">
+			<Part titleId="settings.nginx.logging">
 				<RuntimeSwitch
 					name="logNotFound"
 					label={<T id="settings.nginx.log-not-found" />}
@@ -122,7 +122,7 @@ export default function Nginx() {
 				/>
 			</Part>
 			<Tls />
-			<Part titleId="settings.nginx.modules" descriptionId="settings.nginx.modules.description">
+			<Part titleId="settings.nginx.modules">
 				<RuntimeSwitch
 					name="moduleNjs"
 					label={<T id="settings.nginx.module.njs" />}

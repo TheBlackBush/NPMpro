@@ -54,7 +54,7 @@ function SaveButton({ allLocked }) {
 // Write log files and rotations: the logs runtime settings group (with GoAccess below), saved with its own request
 function LogFields() {
 	return (
-		<Part titleId="settings.logs.files" descriptionId="settings.logs.files.description">
+		<Part titleId="settings.logs.files">
 			<RuntimeSwitch
 				name="writeLogFiles"
 				label={<T id="settings.logs.write" />}
@@ -116,7 +116,7 @@ function GoAccessFields() {
 	const goaccess = useWatch({ name: "goaccess" });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<Part titleId="settings.logs.goaccess.title" descriptionId="settings.logs.goaccess.title.description">
+		<Part titleId="settings.logs.goaccess.title">
 			<RuntimeSwitch
 				name="goaccess"
 				label={<T id="settings.logs.goaccess" />}
@@ -271,7 +271,7 @@ function Fields({ isLocked, envOf }) {
 	const uniqueVisitors = useWatch({ name: "uniqueVisitors" });
 	const lock = (key) => (isLocked(key) ? <LockedBadge env={envOf(key)} /> : null);
 	return (
-		<Part titleId="settings.monitoring.statistics" descriptionId="settings.monitoring.statistics.description">
+		<Part titleId="settings.monitoring.statistics">
 			<SwitchField
 				line
 				{...register("trafficEnabled")}

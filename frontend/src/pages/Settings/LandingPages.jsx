@@ -122,9 +122,9 @@ function DefaultPageRow({ isAdmin }) {
 	);
 }
 
-function PageGroup({ labelId, descriptionId, children }) {
+function PageGroup({ labelId, children }) {
 	return (
-		<SettingsCard title={<T id={labelId} />} description={<T id={descriptionId} />} lines>
+		<SettingsCard title={<T id={labelId} />} lines>
 			{children}
 		</SettingsCard>
 	);
@@ -154,15 +154,11 @@ function LandingPagesForm({ data }) {
 			<SettingsHeading titleId="settings.landing-pages" />
 			<SettingsLead id="landing-pages.lead" />
 			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
-			<PageGroup labelId="landing-pages.group.default" descriptionId="landing-pages.group.default.description">
+			<PageGroup labelId="landing-pages.group.default">
 				<DefaultPageRow isAdmin={isAdmin} />
 			</PageGroup>
 			{PAGE_GROUPS.map((group) => (
-				<PageGroup
-					key={group.id}
-					labelId={group.labelId}
-					descriptionId={`landing-pages.group.${group.id}.description`}
-				>
+				<PageGroup key={group.id} labelId={group.labelId}>
 					{group.keys.map((key) => {
 						const page = PAGE_TYPES.find((type) => type.key === key);
 						return (
