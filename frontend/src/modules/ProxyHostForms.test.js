@@ -8,6 +8,7 @@ import { tabOfPath } from "./ModalTabs.js";
 import {
 	hostRecheckOnScheme,
 	insideWebroot,
+	locationAuthNotice,
 	locationErrors,
 	namedLocations,
 	newLocation,
@@ -345,4 +346,16 @@ it("a saved custom page comes from the single row and is valid; the list row wit
 	assert.equal(validate(filled(single)).npmproPageNotFoundHtml, undefined);
 	// what a list answer holds (the backend strips the html): required, so a window must never start from it
 	assert.ok(validate(filled({ ...single, npmproPageNotFoundHtml: undefined })).npmproPageNotFoundHtml);
+});
+
+it("a new location follows the host's Auth Request, a notice marks a public one on a protected host", () => {
+	assert.equal(newLocation().npmproAuthRequest, "global");
+	assert.equal(locationAuthNotice("authelia", newLocation({ npmproAuthRequest: "none" })), true);
+	assert.equal(locationAuthNotice("authelia", newLocation()), false);
+	assert.equal(locationAuthNotice("none", newLocation({ npmproAuthRequest: "none" })), false);
+	assert.equal(locationAuthNotice(undefined, newLocation({ npmproAuthRequest: "none" })), false);
+	assert.equal(
+		locationErrors(rules, [newLocation({ path: "/g", forwardHost: "h", npmproAuthRequestUpstream: "bad" })]),
+		undefined,
+	);
 });

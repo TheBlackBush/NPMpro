@@ -49,7 +49,7 @@ const proxyOptionChanges = (name, value) => {
 	}
 	if (name === "npmproCrowdsecAppsec" && value === false) changes.npmproProxyRequestBuffering = false;
 	if (name === "npmproProxyRequestBuffering" && value === true) changes.npmproCrowdsecAppsec = true;
-	if (name === "npmproAuthRequest" && value === "none") changes.npmproAuthRequestUpstream = "";
+	if (name === "npmproAuthRequest" && !hasOwnUpstream(value)) changes.npmproAuthRequestUpstream = "";
 	return changes;
 };
 
@@ -65,6 +65,9 @@ const FORWARD_SCHEME_OPTIONS = Object.freeze([
 
 const X_FRAME_OPTIONS = Object.freeze(["SAMEORIGIN", "DENY", "none", "upstream"]);
 
+// the location's own choice to use the host's Auth Request and upstream (backend value "global")
+const SAME_AS_HOST = Object.freeze({ value: "global", labelId: "host.auth-request.global" });
+
 const AUTH_REQUEST_OPTIONS = Object.freeze([
 	{ value: "none", label: "none" },
 	{ value: "anubis", label: "anubis" },
@@ -75,6 +78,34 @@ const AUTH_REQUEST_OPTIONS = Object.freeze([
 	{ value: "authentik", label: "authentik" },
 	{ value: "authentik-send-basic-auth", label: "authentik-send-basic-auth" },
 ]);
+
+/**
+ * The Auth Request choices: a custom location offers Same as host first
+ *
+ * @param   {Object}  options
+ * @param   {boolean} options.location  the choices of a custom location
+ * @returns {Object[]} { value, label | labelId }
+ */
+const authRequestOptions = ({ location }) =>
+	location ? [SAME_AS_HOST, ...AUTH_REQUEST_OPTIONS] : AUTH_REQUEST_OPTIONS;
+
+/**
+ * Whether the value has an upstream field of its own (not none, not Same as host)
+ *
+ * @param   {string} value
+ * @returns {boolean}
+ */
+const hasOwnUpstream = (value) => !["none", "global"].includes(value ?? "none");
+
+/**
+ * The Auth Request that applies to a row: Same as host takes the host's
+ *
+ * @param   {string} hostValue  the host's Auth Request
+ * @param   {string} rowValue   the row's Auth Request
+ * @returns {string}
+ */
+const effectiveAuthRequest = (hostValue, rowValue) =>
+	rowValue === "global" ? (hostValue ?? "none") : (rowValue ?? "none");
 
 // the option switches in the order they show, with their labels
 const OPTION_SWITCHES = [
@@ -125,9 +156,12 @@ const optionId = (field, suffix = "") => (suffix ? `${field}-${suffix}` : field)
 
 export {
 	AUTH_REQUEST_OPTIONS,
+	authRequestOptions,
+	effectiveAuthRequest,
 	FORWARD_SCHEME_OPTIONS,
 	getOptionHintId,
 	getOptionsResetByScheme,
+	hasOwnUpstream,
 	optionField,
 	optionId,
 	proxyOptionChanges,

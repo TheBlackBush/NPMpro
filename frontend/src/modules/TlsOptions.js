@@ -4,6 +4,7 @@
  * control that is not in the result is enabled. Pure, so node --test checks them without a DOM.
  */
 import { namedLocations } from "./ProxyHostForms.js";
+import { effectiveAuthRequest } from "./ProxyOptions.js";
 
 // the messages; tData names the label (a translation id) the message quotes
 const NO_CERTIFICATE = Object.freeze({ id: "tls.disabled.no-certificate" });
@@ -16,16 +17,19 @@ const needs = (option) => Object.freeze({ id: "tls.disabled.needs-option", tData
 
 /**
  * Whether "mTLS bypass Auth Request" can be used: mTLS is optional and the host or one of its custom locations
- * (rows with a path) has an Auth Request
+ * (rows with a path) has an Auth Request (a Same as host location counts as the host's)
  *
  * @param   {Object}  values
  * @returns {boolean}
  */
 export function mtlsBypassPossible(values) {
 	if (!values.npmproMtlsVerifyClientOptional) return false;
-	return [{ npmproAuthRequest: values.npmproAuthRequest }, ...namedLocations(values.locations ?? [])].some(
-		({ npmproAuthRequest: authRequest = "none" }) => authRequest !== "none",
-	);
+	return [
+		values.npmproAuthRequest,
+		...namedLocations(values.locations ?? []).map((row) =>
+			effectiveAuthRequest(values.npmproAuthRequest, row.npmproAuthRequest),
+		),
+	].some((value) => (value ?? "none") !== "none");
 }
 
 /**

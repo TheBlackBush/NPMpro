@@ -54,6 +54,13 @@ async function proxyLocationAccess(env) {
 		await dialog.locator('input[name="locations.0.path"]').fill("/flow");
 		await dialog.locator('input[name="locations.0.forwardHost"]').fill("127.0.0.1");
 		await dialog.locator('input[name="locations.0.forwardPort"]').fill("8081");
+		// a new location follows the host's Auth Request (the host's select is on the other tab, so it is not visible)
+		const locationAuth = dialog
+			.getByRole("combobox", { name: "Auth Request", exact: true })
+			.filter({ visible: true });
+		if (!(await locationAuth.first().textContent()).includes("Same as host")) {
+			throw new Error("a new location does not show Same as host");
+		}
 		await openTab(dialog, "tls");
 		await dialog.locator("#certificateId").click();
 		await page.getByRole("option", { name: FLOW_CERTIFICATE_OPTION }).click();
@@ -67,6 +74,9 @@ async function proxyLocationAccess(env) {
 		if (host.locations?.[0]?.path !== "/flow") throw new Error("the location was not stored");
 		if (!host.access_lists?.some((row) => row.id === list.id)) throw new Error("the access list was not stored");
 		if (!host.certificate_id) throw new Error("the certificate was not stored");
+		if (host.locations?.[0]?.npmpro_auth_request !== "global") {
+			throw new Error("the location did not store Same as host");
+		}
 
 		// a host with a certificate: the TLS tab controls are open to the rules, so only the View window locks them
 		await viewOnly(
@@ -91,7 +101,20 @@ async function proxyLocationAccess(env) {
 		if ((await dialog.locator('input[name="locations.0.path"]').inputValue()) !== "/flow") {
 			throw new Error("the Edit window does not show the location");
 		}
-		await page.keyboard.press("Escape");
+		// a location set to none on a host with forward authentication shows the notice; Same as host does not
+		const notice = dialog.getByText("this location is set to none");
+		if (await notice.count()) throw new Error("the notice shows for a Same as host location");
+		await openTab(dialog, "details");
+		await dialog.getByRole("combobox", { name: "Auth Request", exact: true }).filter({ visible: true }).click();
+		await page.getByRole("option", { name: "anubis", exact: true }).click();
+		await openTab(dialog, "locations");
+		await dialog.locator("button[aria-controls^=location-body-]").click();
+		await dialog.getByRole("combobox", { name: "Auth Request", exact: true }).filter({ visible: true }).click();
+		await page.getByRole("option", { name: "none", exact: true }).click();
+		await notice.waitFor();
+		// the window was changed: closing it asks, and discarding stores nothing
+		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await page.getByRole("alertdialog").getByRole("button", { name: "Discard changes", exact: true }).click();
 		await windowClosed(page);
 
 		// and a delete frees them again
