@@ -5,6 +5,7 @@ import { useNavigate } from "react-router";
 import { deleteBackup, downloadBackup } from "src/api/backend";
 import { Button, EmptyData, ErrorAlert, Loading, RowActions } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
+import { SettingLineNote } from "src/components/Form/SettingLine";
 import { StatusBadge } from "src/components/StatusBadge";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { PagedTable } from "src/components/Table/TablePagination";
@@ -316,6 +317,7 @@ function StoredTable() {
 	return (
 		<SettingsCard
 			title={<T id="settings.backup.stored" />}
+			info={<T id="settings.backup.stored.info" />}
 			bodyClassName="space-y-0 p-0"
 			actions={
 				<>
@@ -345,19 +347,27 @@ function StoredTable() {
 				</>
 			}
 		>
-			{uploading ? (
-				<div className="space-y-2 border-b p-4">
-					<div className="flex items-center gap-2">
-						<span className="text-muted-foreground" role="status">
-							<T id="settings.backup.uploading" data={{ percent }} />
-						</span>
-						<Button size="sm" variant="ghost" className="ms-auto" onClick={() => abortRef.current?.abort()}>
-							<T id="cancel" />
-						</Button>
-					</div>
-					<Progress value={percent} aria-label={label("settings.backup.upload")} />
-				</div>
-			) : null}
+			{/* always mounted, so a screen reader announces the progress that appears in it */}
+			<SettingLineNote role="status" aria-live="polite" className="space-y-2 border-b empty:hidden">
+				{uploading ? (
+					<>
+						<div className="flex items-center gap-2">
+							<span className="text-sm text-muted-foreground">
+								<T id="settings.backup.uploading" data={{ percent }} />
+							</span>
+							<Button
+								size="sm"
+								variant="ghost"
+								className="ms-auto"
+								onClick={() => abortRef.current?.abort()}
+							>
+								<T id="cancel" />
+							</Button>
+						</div>
+						<Progress value={percent} aria-label={label("settings.backup.upload")} />
+					</>
+				) : null}
+			</SettingLineNote>
 			{uploadError ? (
 				<div className="border-b p-4">
 					<ErrorAlert error={uploadError} onClose={() => setUploadError(null)} className="mb-0" />
