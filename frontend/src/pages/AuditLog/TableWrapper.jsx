@@ -110,7 +110,7 @@ export default function TableWrapper() {
 
 	return (
 		<section className="space-y-4">
-			<SettingsHeading titleId="auditlogs" className="mb-0" />
+			<SettingsHeading titleId="auditlogs" />
 			<SettingsLead id="auditlogs.lead" />
 			<div className="overflow-hidden rounded-xl border bg-card text-card-foreground">
 				<div className="flex flex-wrap items-center gap-2 border-b p-3">

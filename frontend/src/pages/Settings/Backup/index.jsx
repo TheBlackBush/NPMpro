@@ -7,7 +7,7 @@ import { StoredTable } from "./StoredTable";
 export default function Backup() {
 	return (
 		<div className="space-y-4">
-			<SettingsHeading titleId="settings.backup" className="mb-0" />
+			<SettingsHeading titleId="settings.backup" />
 			<SettingsLead id="settings.backup.intro" />
 			<CreateCard />
 			<SchedulesCard />

@@ -11,7 +11,6 @@ function CardFrame({
 	title,
 	info,
 	actions,
-	footer,
 	children,
 	className,
 	bodyClassName,
@@ -91,9 +90,6 @@ function CardFrame({
 			) : (
 				<div className={cn(card.body, bodyClassName)}>{children}</div>
 			)}
-			{footer && open ? (
-				<div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">{footer}</div>
-			) : null}
 		</div>
 	);
 }
@@ -132,7 +128,6 @@ function OpeningCard({ defaultOpen, openOn, ...props }) {
  * @param {React.ReactNode} [props.title]
  * @param {React.ReactNode} [props.info]         the description: a tooltip on an info icon after the title
  * @param {React.ReactNode} [props.actions]      buttons that act at once, right aligned in the title bar
- * @param {React.ReactNode} [props.footer]       notes after the body (no buttons)
  * @param {string}          [props.className]    of the card
  * @param {string}          [props.bodyClassName] of the body ("p-0" for a table that runs edge to edge)
  * @param {boolean}         [props.lines]        the body holds SettingLine lines

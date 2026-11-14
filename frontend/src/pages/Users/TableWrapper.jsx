@@ -49,7 +49,6 @@ export default function TableWrapper() {
 		<section className="space-y-4">
 			<SettingsHeading
 				titleId="users"
-				className="mb-0"
 				actions={
 					data?.length ? (
 						<Button color="primary" size="sm" onClick={() => showUserModal("new")}>

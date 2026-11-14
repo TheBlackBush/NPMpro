@@ -16,7 +16,7 @@ import { TablesCard } from "./TablesCard";
 // a connection from the DB_* environment variables cannot be moved here: the variables would win at the next start
 function EnvLock() {
 	return (
-		<StatusAlert variant="warning" icon={Lock}>
+		<StatusAlert variant="warning" icon={Lock} live={false}>
 			<div className="font-medium">
 				<T id="settings.database.env.title" />
 			</div>
@@ -49,7 +49,7 @@ export default function Database() {
 
 	return (
 		<div className="space-y-4">
-			<SettingsHeading titleId="settings.database" className="mb-0" />
+			<SettingsHeading titleId="settings.database" />
 			<SettingsLead id="settings.database.intro" />
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
