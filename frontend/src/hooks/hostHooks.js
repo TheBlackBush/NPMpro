@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HOST_TYPES, saveInvalidations } from "src/modules/HostTypes";
+import { HOST_TYPES, saveErrorInvalidations, saveInvalidations } from "src/modules/HostTypes";
 
 const STALE_MS = 60 * 1000;
 
@@ -36,6 +36,11 @@ export function createHostHooks(type, { get, getAll, create, update, empty }) {
 			onSuccess: async ({ id }) => {
 				await Promise.all(
 					saveInvalidations(type, id).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+				);
+			},
+			onError: async (err) => {
+				await Promise.all(
+					saveErrorInvalidations(type, err).map((queryKey) => queryClient.invalidateQueries({ queryKey })),
 				);
 			},
 		});

@@ -1,3 +1,4 @@
+import { savedOf } from "./ApiError.js";
 import { DEAD_HOSTS, PROXY_HOSTS, REDIRECTION_HOSTS, STREAMS } from "./Permissions.js";
 
 // The four host types of the lists and windows: names, query keys, expand lists, and the caches each change
@@ -68,3 +69,10 @@ export const saveInvalidations = (type, id) => [
 	["certificates"],
 	...accessLists(type),
 ];
+
+// a save that answered an error but is stored (nginx could not reload) changed the same caches as a successful one: the
+// new host and a newly requested certificate must show in the lists and pickers even if the window is closed
+export const saveErrorInvalidations = (type, err) => {
+	const saved = savedOf(err);
+	return saved ? saveInvalidations(type, saved.id) : [];
+};
