@@ -46,9 +46,9 @@ The **Anubis** part of the page has the **Custom Anubis images** switch, see [An
 2. **Auth Request Upstream** appears below it. Keep it empty to use the default from Settings, Forward authentication, or enter an upstream for this host only (same format as above). A host's own value wins over the default.
 3. Save. NPMpro writes the config, tests it, and the host is protected.
 
-**Custom locations** have their own **Auth Request** and **Auth Request Upstream** fields: open the location on the **Custom Locations** tab, the fields are in its **Options**. A custom location does not take over the Auth Request of the host: set it on every location that needs protection, or leave it on `none` to make that path public on purpose.
+**Custom locations** have their own **Auth Request** and **Auth Request Upstream** fields: open the location on the **Custom Locations** tab, the fields are in its **Options**. A custom location's **Auth Request** offers **Same as host** first, the default for new locations: the location is protected like the host, with the host's upstream (with the host on `none` it stays public). Choose `none` to make the path public on purpose: the form then shows a notice while the host itself uses forward authentication. Locations saved before keep their value.
 
-One host has one upstream per provider. When the host and several custom locations use the same provider, the host's own upstream is used; if the host has none, the upstream of the first enabled location that has one; otherwise the default.
+One host has one upstream per provider: a save that sets two different upstreams for one provider (on the host and a location, or on two locations) is refused; leave the location's upstream empty to use the host's. The upstream used is the host's own; if the host has none, the one an enabled location sets; otherwise the default from Settings, Forward authentication.
 
 ### Things to know for every provider
 
@@ -239,6 +239,6 @@ Steps in NPMpro:
 - **"Config error" on the host:** click the status to see the nginx message. Usually no upstream is set for the chosen provider, or the custom or advanced config of the host conflicts with a helper path.
 - **500 error on every request:** the provider cannot be reached at the upstream, or it answers with something other than 2xx, 401 or 403. Check that the container runs, that its port is published on `127.0.0.1`, and test it from the host, for example `curl -i http://127.0.0.1:9091`. The nginx error log in `docker logs npmpro` names the failing auth request.
 - **Login loop:** the cookie of the provider is not sent back. Check the cookie domain and app URL settings of the provider and that the protected host and the provider domain share the parent domain.
-- **The service is reachable without login on some paths:** these paths are custom locations without their own Auth Request, or the first access list uses Satisfy Any.
+- **The service is reachable without login on some paths:** these paths are custom locations set to `none` (or saved before Same as host existed), or the first access list uses Satisfy Any.
 
 For other problems see [Troubleshooting](Troubleshooting).
