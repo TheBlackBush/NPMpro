@@ -323,24 +323,16 @@ if [ ! -e /data/npmpro/nginx/crowdsec-admin.conf ]; then
     echo "# the admin UI is checked by CrowdSec (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec-admin.conf
 fi
 
-# http access log: included by nginx.conf, the backend rewrites it when the traffic statistics or Write log files
-# setting changes
+# http access log, error log and stream access log: included by nginx.conf, the backend rewrites them when the traffic
+# statistics, Write log files or CrowdSec changes. log-includes.sh turns the files on for CrowdSec too, since it reads them.
 mkdir -p /data/npmpro/nginx
-if [ "$LOGROTATE" = "true" ] || [ "$TRAFFIC_STATS" = "true" ]; then
-    echo "access_log /data/nginx/logs/access.log alog;" > /data/npmpro/nginx/access-log.conf
+log-includes.sh /data/npmpro/nginx /data/crowdsec/crowdsec.conf
+if grep -q "^access_log /" /data/npmpro/nginx/access-log.conf; then
     if [ ! -L /data/nginx/access.log ] && [ ! -f /data/nginx/logs/access.log ]; then mv -vn /data/nginx/access.log* /data/nginx/logs; fi
     touch /data/nginx/logs/access.log
     if [ ! -L /data/nginx/access.log ]; then rm -f /data/nginx/access.log; ln -rs /data/nginx/logs/access.log /data/nginx/access.log; fi
-else
-    echo "access_log off;" > /data/npmpro/nginx/access-log.conf
 fi
-
-# error log and stream access log: included by nginx.conf, the backend rewrites them when Write log files changes
-# (the same lines as lib/log-files.js logIncludes)
-if [ "$LOGROTATE" = "true" ]; then
-    echo "error_log /data/nginx/logs/error.log warn;" > /data/npmpro/nginx/error-log.conf
-    echo "access_log /data/nginx/logs/stream.log slog;" > /data/npmpro/nginx/stream-log.conf
-
+if grep -q "^error_log /" /data/npmpro/nginx/error-log.conf; then
     if [ ! -L /data/nginx/stream.log ] && [ ! -f /data/nginx/logs/stream.log ]; then mv -vn /data/nginx/stream.log* /data/nginx/logs; fi
     if [ ! -L /data/nginx/error.log ] && [ ! -f /data/nginx/logs/error.log ]; then mv -vn /data/nginx/error.log* /data/nginx/logs; fi
 
@@ -349,9 +341,6 @@ if [ "$LOGROTATE" = "true" ]; then
 
     if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
     if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
-else
-    echo "# no error log file, errors go to stderr" > /data/npmpro/nginx/error-log.conf
-    echo "access_log off;" > /data/npmpro/nginx/stream-log.conf
 fi
 
 # secrets live here: TLS keys, htpasswd files, the database and keys, logs, the CrowdSec API key and custom nginx
