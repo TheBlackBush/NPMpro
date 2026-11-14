@@ -106,6 +106,8 @@ const DECRYPT_OFF = /^CrowdSec: off \(a saved key cannot be decrypted, see the w
 const DECRYPT_WARNING =
 	/^Warning: {2}a saved CrowdSec key cannot be decrypted \(instance key changed or data restored\?\): enter it again in Settings, CrowdSec \(api_key\)$/mu;
 const NO_KEY_LINE = /the bouncer is off: AppSec has no API key/u;
+const GATE_DECRYPT = /^CrowdSec: the saved API key cannot be decrypted, the bouncer stays off/u;
+const GATE_NO_KEY = /AppSec has no API key/u;
 const CERT = "/data/crowdsec/client.crt";
 const KEY = "/data/crowdsec/client.key";
 // a PEM pair under the test root at CERT and KEY
@@ -391,7 +393,13 @@ it("starts with the bouncer off while a saved key cannot be decrypted, the block
 	// a key sealed by another instance: the start cannot decrypt it
 	await setMeta({ ...saved, enabled: true, appsec_url: "http://127.0.0.1:7422", api_key: "not-a-ciphertext" });
 	try {
-		const started = await startCrowdsec();
+		const warned = [];
+		const started = await startCrowdsec({ log: { warn: (text) => warned.push(text), error: () => {} } });
+		assert.ok(
+			warned.some((text) => GATE_DECRYPT.test(text)),
+			warned.join("\n"),
+		);
+		assert.ok(!warned.some((text) => GATE_NO_KEY.test(text)), warned.join("\n"));
 		assert.equal(started.secretError, true);
 		assert.deepEqual(started.failedSecrets, ["api_key"]);
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);

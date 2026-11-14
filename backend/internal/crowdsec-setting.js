@@ -121,11 +121,13 @@ const missingPagesOf = (values) =>
  * and an AppSec URL without an API key (appsecKeyMissing); while either applies the include leaves the bouncer off and
  * the row stays as it is.
  *
- * @param   {Object} values
- * @param   {Object} log
+ * @param   {Object}   values
+ * @param   {Object}   log
+ * @param   {string[]} [failedSecrets]  saved keys that cannot be decrypted: the AppSec key is then not missing but
+ *                                      unreadable, and the log says so
  * @returns {{ missingFiles: string[], appsecNoKey: boolean, bouncerOff: boolean }}
  */
-const startGate = (values, log) => {
+const startGate = (values, log, failedSecrets = []) => {
 	const missingFiles = unusableStartFiles(values);
 	if (missingFiles.length > 0) {
 		log.warn(
@@ -135,7 +137,9 @@ const startGate = (values, log) => {
 	const appsecNoKey = appsecKeyMissing(values);
 	if (appsecNoKey) {
 		log.warn(
-			"CrowdSec: AppSec has no API key, the bouncer stays off until the key is entered in Settings, CrowdSec",
+			failedSecrets.includes("api_key")
+				? "CrowdSec: the saved API key cannot be decrypted, the bouncer stays off until the key is entered again in Settings, CrowdSec"
+				: "CrowdSec: AppSec has no API key, the bouncer stays off until the key is entered in Settings, CrowdSec",
 		);
 	}
 	return { missingFiles, appsecNoKey, bouncerOff: missingFiles.length > 0 || appsecNoKey };
@@ -163,7 +167,7 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 		const failedSecrets = cfg.failed.filter((key) => !cfg.locked.includes(key));
 		// the bouncer parses its TLS client files when nginx starts, which nginx -t does not do: one it cannot parse
 		// would stop nginx
-		const { missingFiles, appsecNoKey, bouncerOff } = startGate(cfg.values, log);
+		const { missingFiles, appsecNoKey, bouncerOff } = startGate(cfg.values, log, failedSecrets);
 		const missingPages = missingPagesOf(cfg.values);
 		let nginxError = null;
 		try {
