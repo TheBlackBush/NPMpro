@@ -14,7 +14,7 @@ The paths below assume the default volumes: NPMpro data in `/opt/npmpro` and Cro
 
 - NPMpro with `network_mode: host` (the default in `compose.yaml`). Then nginx sees the real client IPs and reaches the CrowdSec ports on `127.0.0.1`. Without host networking, the LAPI and AppSec ports must be reachable from inside the NPMpro container and you have to change the LAPI URL and the AppSec URL in step 7 to match.
 - If NPMpro sits behind another proxy, CDN or tunnel, set up Trusted proxy IPs (or Trust Cloudflare) first, see [Troubleshooting](Troubleshooting#the-logs-show-the-wrong-client-ips). Otherwise CrowdSec bans the IP of that proxy.
-- Write log files turned on (step 3): CrowdSec reads `access.log` from the NPMpro data folder.
+- Write log files (step 3): CrowdSec reads `access.log` from the NPMpro data folder. NPMpro turns it on by itself while CrowdSec is enabled.
 - The host ports 8080 (LAPI) and 7422 (AppSec) free on `127.0.0.1`. If something else uses 8080 there, for example NPMpro itself with `HTTP_PORT=8080`, publish the LAPI on another host port and use that port in the LAPI URL (Settings, CrowdSec).
 
 ## Setup step by step
@@ -74,11 +74,11 @@ docker restart crowdsec
 
 Run the two `cscli hub` commands again from time to time (or after pulling a new CrowdSec image) to get updated parsers, scenarios and AppSec rules.
 
-### 3. Turn on Write log files
+### 3. Log files (on by themselves)
 
-In the NPMpro web UI open Settings, Logs & monitoring and turn on **Write log files**, then save. It applies on save. Or set `LOGROTATE=true` in the `npmpro` service and run `docker compose up -d`.
+Nothing to do here: once you enable CrowdSec in step 7 (Settings, CrowdSec, or `CROWDSEC_ENABLED=true`), **Write log files** (Settings, Logs & monitoring) is on and locked, with the badge "Required by CrowdSec" ("Required by CROWDSEC_ENABLED" when the variable enables it). `LOGROTATE` is no longer needed for CrowdSec. When CrowdSec is turned off, the switch unlocks with the value you saved earlier.
 
-nginx then writes `/opt/npmpro/nginx/logs/access.log` (and `error.log` and `stream.log`), rotated daily.
+nginx writes `/opt/npmpro/nginx/logs/access.log` (and `error.log` and `stream.log`), rotated daily.
 
 ### 4. Create the acquisition file
 
@@ -296,7 +296,7 @@ The tab needs the bouncer enabled and a LAPI URL and an API key (or TLS client a
 
 ### No alerts and no bans
 
-- Check that Write log files is on and `/opt/npmpro/nginx/logs/access.log` grows.
+- Check that Write log files is on (CrowdSec turns it on by itself) and `/opt/npmpro/nginx/logs/access.log` grows.
 - Check that the CrowdSec container mounts the log folder (step 1) and that `cscli metrics` shows the file with parsed lines.
 - "Lines unparsed" grows while "Lines parsed" stays at 0 or low: the parser is outdated. Run `docker exec crowdsec cscli hub update`, `docker exec crowdsec cscli hub upgrade` and `docker restart crowdsec` (step 2).
 - Normal traffic does not create bans. Use the test ban above to check the bouncer.

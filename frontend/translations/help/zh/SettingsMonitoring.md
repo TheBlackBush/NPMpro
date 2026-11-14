@@ -6,7 +6,7 @@
 
 ### 日志文件
 
-- **写入日志文件**：把 nginx 的错误日志、stream 日志和访问日志写入 `/data/nginx/logs`，并每天轮换。默认值：关闭。变量：`LOGROTATE`。在保存时执行的 nginx 重新加载之后生效。GoAccess 运行期间它会保持开启。
+- **写入日志文件**：把 nginx 的错误日志、stream 日志和访问日志写入 `/data/nginx/logs`，并每天轮换。默认值：关闭。变量：`LOGROTATE`。在保存时执行的 nginx 重新加载之后生效。GoAccess 运行期间它会保持开启。CrowdSec 启用期间它同样保持开启并被锁定。
 - **保留的日志轮换数**：在删除最旧的文件之前保留多少个已轮换的日志文件，1 到 1000。默认值：3。变量：`LOGROTATIONS`。立即生效。
 
 ### GoAccess

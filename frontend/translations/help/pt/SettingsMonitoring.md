@@ -6,7 +6,7 @@ Uma variável definida no contentor tem prioridade sobre a interface e bloqueia 
 
 ### Ficheiros de registo
 
-- **Escrever ficheiros de registo**: escreve os registos de erro, stream e acesso do nginx em `/data/nginx/logs` e roda-os diariamente. Predefinição: desativado. Variável: `LOGROTATE`. Aplica-se após o reload do nginx que o guardar executa. Fica ativado enquanto o GoAccess estiver a correr.
+- **Escrever ficheiros de registo**: escreve os registos de erro, stream e acesso do nginx em `/data/nginx/logs` e roda-os diariamente. Predefinição: desativado. Variável: `LOGROTATE`. Aplica-se após o reload do nginx que o guardar executa. Fica ativado enquanto o GoAccess estiver a correr. Também fica ativado e bloqueado enquanto o CrowdSec estiver ativado.
 - **Rotações de registo mantidas**: quantos ficheiros de registo rodados são mantidos antes de o mais antigo ser eliminado, de 1 a 1000. Predefinição: 3. Variável: `LOGROTATIONS`. Aplica-se logo.
 
 ### GoAccess

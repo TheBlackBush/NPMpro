@@ -6,7 +6,7 @@ Una variable definida en el contenedor tiene prioridad sobre la interfaz y bloqu
 
 ### Archivos de registro
 
-- **Escribir archivos de registro**: escribe los registros de errores, de stream y de acceso de nginx en `/data/nginx/logs` y los rota a diario. Por defecto: desactivado. Variable: `LOGROTATE`. Se aplica tras la recarga de nginx que ejecuta el guardado. Se mantiene activado mientras GoAccess está en marcha.
+- **Escribir archivos de registro**: escribe los registros de errores, de stream y de acceso de nginx en `/data/nginx/logs` y los rota a diario. Por defecto: desactivado. Variable: `LOGROTATE`. Se aplica tras la recarga de nginx que ejecuta el guardado. Se mantiene activado mientras GoAccess está en marcha. También se mantiene activado y bloqueado mientras CrowdSec está activado.
 - **Rotaciones de registros conservadas**: cuántos archivos de registro rotados se conservan antes de borrar el más antiguo, de 1 a 1000. Por defecto: 3. Variable: `LOGROTATIONS`. Se aplica de inmediato.
 
 ### GoAccess

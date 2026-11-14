@@ -6,7 +6,7 @@ Une variable définie sur le conteneur l'emporte sur l'interface et verrouille l
 
 ### Fichiers journaux
 
-- **Écrire les fichiers journaux** : écrit les journaux d'erreurs, de flux et d'accès de nginx dans `/data/nginx/logs` et les fait tourner chaque jour. Par défaut : désactivé. Variable : `LOGROTATE`. S'applique après le rechargement de nginx que lance l'enregistrement. Reste activé tant que GoAccess fonctionne.
+- **Écrire les fichiers journaux** : écrit les journaux d'erreurs, de flux et d'accès de nginx dans `/data/nginx/logs` et les fait tourner chaque jour. Par défaut : désactivé. Variable : `LOGROTATE`. S'applique après le rechargement de nginx que lance l'enregistrement. Reste activé tant que GoAccess fonctionne. Il reste aussi activé et verrouillé tant que CrowdSec est activé.
 - **Rotations de journaux conservées** : combien de fichiers journaux archivés sont conservés avant que le plus ancien soit supprimé, de 1 à 1000. Par défaut : 3. Variable : `LOGROTATIONS`. S'applique immédiatement.
 
 ### GoAccess

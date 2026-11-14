@@ -6,7 +6,7 @@ Una variabile impostata sul container ha la precedenza sull'interfaccia e blocca
 
 ### File di log
 
-- **Scrivi file di log**: scrive i log di errore, stream e accesso di nginx in `/data/nginx/logs` e li ruota ogni giorno. Predefinito: disattivato. Variabile: `LOGROTATE`. Si applica dopo il reload di nginx eseguito dal salvataggio. Resta attivo finché GoAccess è in esecuzione.
+- **Scrivi file di log**: scrive i log di errore, stream e accesso di nginx in `/data/nginx/logs` e li ruota ogni giorno. Predefinito: disattivato. Variabile: `LOGROTATE`. Si applica dopo il reload di nginx eseguito dal salvataggio. Resta attivo finché GoAccess è in esecuzione. Resta attivo e bloccato anche finché CrowdSec è abilitato.
 - **Rotazioni dei log conservate**: quanti file di log ruotati vengono conservati prima che il più vecchio sia eliminato, da 1 a 1000. Predefinito: 3. Variabile: `LOGROTATIONS`. Si applica subito.
 
 ### GoAccess
