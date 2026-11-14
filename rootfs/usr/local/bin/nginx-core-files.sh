@@ -28,9 +28,43 @@ tls() {
     echo "ssl_sigalgs $sigalgs;"
     if [ "$NGINX_LOAD_NJS_MODULE" = "true" ]; then echo "js_engine qjs;"; fi
 }
+# Pin workers to CPUs (NGINX_CPU_AFFINITY off, auto or a CPU list): nginx's mask (CPU 0 right-most) of the allowed
+# CPUs (Cpus_allowed_list) or of the list cut to them; no line and a note on stderr (the start log) when that is empty or
+# the list cannot be read (backend/lib/nginx-core.js affinityOf does the same)
+cpus_of() {
+    echo "$1" | grep -Eq "^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$" || return 0
+    out="$(echo "$1" | awk -F, '{
+        for (i = 1; i <= NF; i++) {
+            n = split($i, r, "-"); lo = r[1] + 0; hi = (n == 2 ? r[2] : r[1]) + 0
+            if (hi < lo || hi >= 1024) exit 1
+            for (c = lo; c <= hi; c++) print c
+        }
+    }')" || return 0
+    echo "$out"
+}
+affinity_line() {
+    [ "$NGINX_CPU_AFFINITY" = "off" ] && return 0
+    allowed="$(sed -n "s/^Cpus_allowed_list:[[:space:]]*//p" "${NPMPRO_PROC_STATUS:-/proc/self/status}" 2> /dev/null | tr -d " \t")"
+    allowed_cpus="$(cpus_of "$allowed")"
+    if [ -z "$allowed_cpus" ]; then
+        echo "Pin workers to CPUs: the container's CPU list cannot be read, workers are not pinned" >&2
+        return 0
+    fi
+    if [ "$NGINX_CPU_AFFINITY" = "auto" ]; then
+        cpus="$allowed_cpus"
+    else
+        cpus="$(cpus_of "$NGINX_CPU_AFFINITY" | grep -Fx "$allowed_cpus" || true)"
+    fi
+    if [ -z "$cpus" ]; then
+        echo "Pin workers to CPUs: none of the CPUs $NGINX_CPU_AFFINITY is allowed in this container ($allowed), workers are not pinned" >&2
+        return 0
+    fi
+    echo "worker_cpu_affinity auto $(echo "$cpus" | awk '{ on[$1] = 1; if ($1 > top) top = $1 } END { s = ""; for (c = top; c >= 0; c--) s = s (on[c] ? "1" : "0"); print s }');"
+}
 {
     echo "$header"
     echo "worker_processes $NGINX_WORKER_PROCESSES;"
+    affinity_line
     if [ "$NGINX_WORKER_SHUTDOWN_TIMEOUT" != "0" ]; then echo "worker_shutdown_timeout $NGINX_WORKER_SHUTDOWN_TIMEOUT;"; fi
     if [ "$NGINX_LOAD_NJS_MODULE" = "true" ]; then
         echo "load_module modules/ngx_http_js_module.so;"

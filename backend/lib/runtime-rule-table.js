@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
+import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
 import { rooted } from "./paths.js";
 import { isTimeZone } from "./time-zones.js";
 
@@ -23,6 +24,17 @@ const TIME_VALUE = /^[0-9]+(?:ms|s|m|h|d|w|M|y)?(?:[0-9]+(?:ms|s|m|h|d|w|M|y))*$
 
 const TIME_TOKEN = /([0-9]+)(ms|s|m|h|d|w|M|y)?/gu;
 const TIME_UNITS = ["y", "M", "w", "d", "h", "m", "s", "ms"];
+
+const isCpuAffinity = (value) => value === "off" || value === "auto" || parseCpuList(value) !== null;
+
+// the CPUs of a new list that the container may not use, as the message of a refused save
+const cpusOutside = (value, allowedText) => {
+	const allowed = parseCpuList(allowedText);
+	const wanted = parseCpuList(value);
+	if (value === "off" || value === "auto" || !allowed || !wanted) return null;
+	const outside = [...wanted].filter((cpu) => !allowed.has(cpu));
+	return outside.length === 0 ? null : `CPUs ${value} are not allowed in this container (allowed: ${allowedText})`;
+};
 
 // nginx's time parser: "0", or tokens of digits plus a unit with the units strictly decreasing, each at most once;
 // a bare number (seconds) is only valid as the whole value
@@ -394,6 +406,22 @@ const RUNTIME_RULES = [
 		parseEnv: (raw) => (isNginxTime(raw) ? raw : undefined),
 		toEnv: String,
 		default: "1h",
+		applies: "reload",
+	},
+	{
+		group: "nginx",
+		key: "cpu_affinity",
+		env: "NGINX_CPU_AFFINITY",
+		type: "string",
+		// the syntax only: a stored or env value is never dropped because the container's CPUs changed (it is cut to
+		// the allowed CPUs when the config is written)
+		validate: (value) =>
+			isCpuAffinity(value) ? null : "must be off, auto or a CPU list such as 16-19 or 16,18,20",
+		// only on a save that changes it: every CPU of a new list must be one the container may use
+		validateSave: (value) => cpusOutside(value, readCpusAllowed()),
+		parseEnv: (raw) => (isCpuAffinity(raw.trim()) ? raw.trim() : undefined),
+		toEnv: String,
+		default: "off",
 		applies: "reload",
 	},
 	nginxSwitch("log_not_found", "NGINX_LOG_NOT_FOUND"),

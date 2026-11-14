@@ -1,15 +1,16 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { renderNginxCore } from "../lib/nginx-core.js";
+import { affinityOf, cpuAffinityMask, parseCpuList, readCpusAllowed, renderNginxCore } from "../lib/nginx-core.js";
 
 const DEFAULTS = {
 	worker_processes: "4",
 	worker_connections: 512,
 	worker_shutdown_timeout: "1h",
+	cpu_affinity: "off",
 	log_not_found: false,
 	tls12: true,
 	force_mlkem: false,
@@ -22,6 +23,9 @@ const DEFAULTS = {
 };
 const SIGALGS =
 	"mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256";
+const NONE_ALLOWED = /none of the CPUs 0-3 is allowed/u;
+const UNREADABLE = /cannot be read/u;
+const ALLOWED_LIST = /Cpus_allowed_list:\t(?<list>\S+)/u;
 const lines = (text) => text.split("\n").filter((line) => line && !line.startsWith("#"));
 
 it("renders today's nginx.conf values for the defaults", () => {
@@ -72,19 +76,72 @@ it("post-quantum only offers X25519MLKEM768", () => {
 	assert.ok(out.stream.includes("ssl_ecdh_curve X25519MLKEM768;"));
 });
 
+it("parses CPU lists and builds the affinity mask, CPU 0 right-most", () => {
+	assert.deepEqual([...parseCpuList("16,18,20")], [16, 18, 20]);
+	assert.equal(cpuAffinityMask(parseCpuList("0-1,3")), "1011");
+	assert.equal(cpuAffinityMask(parseCpuList("5")), "100000");
+	assert.equal(cpuAffinityMask(parseCpuList("16-23")), `11111111${"0".repeat(16)}`);
+	assert.equal(cpuAffinityMask(parseCpuList("0-3,8-11")), "111100001111");
+	assert.equal(cpuAffinityMask(new Set()), null);
+	for (const bad of ["", "3-1", "a-b", "1,,2", "0-1024", " 1", "1 ,2", "-1"])
+		assert.equal(parseCpuList(bad), null, bad);
+	assert.equal(parseCpuList(5), null);
+});
+
+it("reads Cpus_allowed_list", () => {
+	const status = "Name:\tnode\nCpus_allowed:\tff0000\nCpus_allowed_list:\t16-23\n";
+	assert.equal(readCpusAllowed({ readText: () => status }), "16-23");
+	assert.equal(readCpusAllowed({ readText: () => "Name:\tnode\n" }), null);
+	assert.equal(readCpusAllowed({ readText: () => null }), null);
+	assert.equal(readCpusAllowed({ statusFile: "/nonexistent/status" }), null);
+	assert.equal(affinityOf("off", null).note, null);
+});
+
+it("writes the affinity line for auto and custom lists, cut to the allowed CPUs", () => {
+	const mainOf = (setting, cpusAllowed) => renderNginxCore({ ...DEFAULTS, cpu_affinity: setting }, { cpusAllowed });
+	const second = (out) => lines(out.main)[1];
+	assert.equal(mainOf("off", "16-23").main.includes("affinity"), false);
+	assert.equal(second(mainOf("auto", "16-23")), `worker_cpu_affinity auto 11111111${"0".repeat(16)};`);
+	assert.equal(second(mainOf("16,18,20", "16-23")), `worker_cpu_affinity auto 10101${"0".repeat(16)};`);
+	// cut to the allowed CPUs: 15 is not allowed, 16 and 17 stay
+	assert.equal(second(mainOf("15-17", "16-23")), `worker_cpu_affinity auto 11${"0".repeat(16)};`);
+	const empty = mainOf("0-3", "16-23");
+	assert.equal(empty.main.includes("affinity"), false);
+	assert.match(empty.affinityNote, NONE_ALLOWED);
+	const unreadable = mainOf("auto", null);
+	assert.equal(unreadable.main.includes("affinity"), false);
+	assert.match(unreadable.affinityNote, UNREADABLE);
+	assert.equal(mainOf("off", null).affinityNote, null);
+});
+
 // the shell twin (data-setup.sh at the first start) writes what the backend writes for the same values
 const SCRIPT = path.join(import.meta.dirname, "../../rootfs/usr/local/bin/nginx-core-files.sh");
-const shellFiles = (env) => {
+// the note goes to stderr; statusText is the status file (none when null)
+const shellRun = (env, statusText = null) => {
 	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
-	execFileSync("sh", [SCRIPT, dir], { env: { PATH: process.env.PATH, ...env } });
+	const status = path.join(dir, "status");
+	if (statusText !== null) writeFileSync(status, statusText);
+	const result = spawnSync("sh", [SCRIPT, dir], {
+		env: { PATH: process.env.PATH, NPMPRO_PROC_STATUS: status, ...env },
+		encoding: "utf8",
+	});
+	if (result.status !== 0) throw new Error(result.stderr);
 	const read = (name) => readFileSync(path.join(dir, `core-${name}.conf`), "utf8");
-	return { main: read("main"), events: read("events"), http: read("http"), stream: read("stream") };
+	const files = { main: read("main"), events: read("events"), http: read("http"), stream: read("stream") };
+	return { files, note: result.stderr.trim() || null };
+};
+const shellFiles = (env, statusText) => shellRun(env, statusText).files;
+// the renderer's files without the note
+const renderedFiles = (values, options) => {
+	const { affinityNote, ...files } = renderNginxCore(values, options);
+	return files;
 };
 // envs.sh exports (defaults filled in, the force rule applied)
 const ENVS = {
 	NGINX_WORKER_PROCESSES: "4",
 	NGINX_WORKER_CONNECTIONS: "512",
 	NGINX_WORKER_SHUTDOWN_TIMEOUT: "1h",
+	NGINX_CPU_AFFINITY: "off",
 	NGINX_LOG_NOT_FOUND: "false",
 	NGINX_FORCE_X25519MLKEM768: "false",
 	NGINX_DISABLE_TLS12: "false",
@@ -97,7 +154,7 @@ const ENVS = {
 };
 
 it("the shell twin matches the renderer", () => {
-	assert.deepEqual(shellFiles(ENVS), renderNginxCore(DEFAULTS));
+	assert.deepEqual(shellFiles(ENVS), renderedFiles(DEFAULTS, { cpusAllowed: null }));
 	const variant = {
 		...ENVS,
 		NGINX_WORKER_PROCESSES: "auto",
@@ -115,7 +172,7 @@ it("the shell twin matches the renderer", () => {
 	};
 	assert.deepEqual(
 		shellFiles(variant),
-		renderNginxCore({
+		renderedFiles({
 			worker_processes: "auto",
 			worker_connections: 4096,
 			worker_shutdown_timeout: "0",
@@ -130,6 +187,33 @@ it("the shell twin matches the renderer", () => {
 			module_vts: true,
 		}),
 	);
+});
+
+it("the shell twin matches the renderer for every affinity mode", () => {
+	const allowed = (list) => `Name:\tnode\nCpus_allowed_list:\t${list}\n`;
+	const cases = [
+		["off", allowed("16-23")],
+		["auto", allowed("16-23")],
+		["16,18,20", allowed("16-23")],
+		["15-17", allowed("16-23")],
+		["0-3", allowed("16-23")],
+		["auto", "Name:\tnode\n"],
+		["auto", null],
+		["auto", allowed("0-3,8-11")],
+		["2,9-10,12", allowed("0-3,8-11")],
+		["3-1", allowed("0-3")],
+	];
+	for (const [setting, status] of cases) {
+		const { files, note } = shellRun({ ...ENVS, NGINX_CPU_AFFINITY: setting }, status);
+		const cpusAllowed = status?.match(ALLOWED_LIST)?.groups.list ?? null;
+		const options = { cpusAllowed };
+		assert.deepEqual(
+			files,
+			renderedFiles({ ...DEFAULTS, cpu_affinity: setting }, options),
+			`${setting} ${cpusAllowed}`,
+		);
+		assert.equal(note, renderNginxCore({ ...DEFAULTS, cpu_affinity: setting }, options).affinityNote, setting);
+	}
 });
 
 // data-setup.sh runs the script with --if-missing: files the backend wrote (with the modules of the last apply) stay

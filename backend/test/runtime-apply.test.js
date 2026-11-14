@@ -1654,6 +1654,32 @@ it("a nginx save writes the four include files, tests and reloads", async () => 
 	assert.ok((await readFile(paths.nginxCore.main, "utf8")).includes("ngx_http_vhost_traffic_status_module.so"));
 });
 
+it("a nginx save writes the affinity line and logs the note once per distinct note", async () => {
+	const { dir, paths } = await setup();
+	const status = path.join(dir, "status");
+	await writeFile(status, "Cpus_allowed_list:\t16-23\n");
+	process.env.NPMPRO_PROC_STATUS = status;
+	try {
+		const a = applier(paths);
+		const prev = mergeRuntimeConfig("nginx", {}, BOOT_ENV).values;
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "auto" }, prev);
+		assert.ok(
+			(await readFile(paths.nginxCore.main, "utf8")).includes(
+				`worker_cpu_affinity auto 11111111${"0".repeat(16)};`,
+			),
+		);
+		assert.deepEqual(a.log.lines, []);
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "0-3" }, prev);
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "0-3", worker_connections: 600 }, prev);
+		assert.equal((await readFile(paths.nginxCore.main, "utf8")).includes("affinity"), false);
+		assert.deepEqual(a.log.lines, [
+			"Pin workers to CPUs: none of the CPUs 0-3 is allowed in this container (16-23), workers are not pinned",
+		]);
+	} finally {
+		delete process.env.NPMPRO_PROC_STATUS;
+	}
+});
+
 it("a failing nginx -t puts the four files back and reports nginx's message", async () => {
 	const { paths } = await setup();
 	const before = await readFile(paths.nginxCore.main, "utf8");

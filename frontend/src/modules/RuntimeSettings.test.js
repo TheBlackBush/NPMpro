@@ -5,6 +5,7 @@ import {
 	appliesMessageId,
 	defaultKeySize,
 	fieldOfError,
+	formFieldOf,
 	GROUP_KEYS,
 	isEmptyPayload,
 	isRestartField,
@@ -122,6 +123,7 @@ it("GROUP_KEYS match the backend response schemas", () => {
 					"restart_pending",
 					"time_zones",
 					"cpu_count",
+					"cpus_allowed",
 				].includes(key),
 		);
 		assert.deepEqual([...GROUP_KEYS[group]].sort(), props.map(camel).sort(), group);
@@ -137,6 +139,13 @@ it("appliesMessageId maps the applies values to their translation ids", () => {
 	assert.equal(appliesMessageId(applies, "x"), null);
 	assert.equal(appliesMessageId(applies, "missing"), null);
 	assert.equal(appliesMessageId(undefined, "keyType"), null);
+});
+
+it("an error of cpu_affinity shows on the list field", () => {
+	const field = fieldOfError("nginx", "cpu_affinity: CPUs 0-3 are not allowed in this container (allowed: 16-23)");
+	assert.equal(field.key, "cpuAffinity");
+	assert.equal(formFieldOf(field.key), "cpuAffinityList");
+	assert.equal(formFieldOf("workerConnections"), "workerConnections");
 });
 
 it("fieldOfError finds the field of a prefixed backend error of the group", () => {

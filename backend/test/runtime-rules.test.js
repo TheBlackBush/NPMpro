@@ -45,6 +45,7 @@ const BOOT_ENV = {
 	NGINX_WORKER_PROCESSES: "4",
 	NGINX_WORKER_CONNECTIONS: "512",
 	NGINX_WORKER_SHUTDOWN_TIMEOUT: "1h",
+	NGINX_CPU_AFFINITY: "off",
 	NGINX_LOG_NOT_FOUND: "false",
 	NGINX_FORCE_X25519MLKEM768: "false",
 	NGINX_DISABLE_TLS12: "false",
@@ -655,6 +656,29 @@ it("refuses invalid nginx values and falls back to the default for a stored one"
 	const { values, invalid } = mergeRuntimeConfig("nginx", { worker_processes: "999" }, BOOT_ENV);
 	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
 	assert.deepEqual(invalid, [{ key: "worker_processes", source: "stored" }]);
+});
+
+it("cpu_affinity is off by default, takes an env value and keeps a stored list the container no longer allows", () => {
+	assert.equal(mergeRuntimeConfig("nginx", {}, BOOT_ENV).values.cpu_affinity, "off");
+	for (const value of ["auto", "16-19", "16,18,20"]) {
+		const {
+			values,
+			locked,
+			locked_by: lockedBy,
+		} = mergeRuntimeConfig("nginx", {}, userEnv({ NGINX_CPU_AFFINITY: value }));
+		assert.equal(values.cpu_affinity, value);
+		assert.deepEqual(locked, ["cpu_affinity"]);
+		assert.equal(lockedBy.cpu_affinity, "NGINX_CPU_AFFINITY");
+	}
+	const bad = mergeRuntimeConfig("nginx", { cpu_affinity: "off" }, userEnv({ NGINX_CPU_AFFINITY: "3-1" }));
+	assert.equal(bad.values.cpu_affinity, "off");
+	assert.deepEqual(bad.invalid, [{ key: "cpu_affinity", source: "env" }]);
+	// the syntax only: a list outside the container's CPUs stays stored
+	assert.equal(mergeRuntimeConfig("nginx", { cpu_affinity: "0-3" }, BOOT_ENV).values.cpu_affinity, "0-3");
+	assert.notEqual(rule("cpu_affinity").validate("1 ,2"), null);
+	assert.equal(rule("cpu_affinity").validate("auto"), null);
+	assert.equal(rule("cpu_affinity").parseEnv(" 16-19 "), "16-19");
+	assert.equal(rule("cpu_affinity").parseEnv("0-1024"), undefined);
 });
 
 it("an env var locks its nginx field, NGINX_DISABLE_TLS12 inverted", () => {

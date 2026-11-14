@@ -8,6 +8,7 @@ import { formatApiError } from "src/modules/ApiError";
 import {
 	appliesMessageId,
 	fieldOfError,
+	formFieldOf,
 	GROUP_KEYS,
 	isEmptyPayload,
 	isRestartField,
@@ -153,7 +154,7 @@ const reportSaveError = (group, err, { setErrorMsg, setError, lead }) => {
 	const text = field ? field.message : message;
 	setErrorMsg(<SaveErrorContent message={text} lead={lead} />);
 	showError(<SaveErrorContent message={text} lead={lead} />);
-	if (field && setError) setError(field.key, { type: "server", message: field.message });
+	if (field && setError) setError(formFieldOf(field.key), { type: "server", message: field.message });
 };
 
 /**
@@ -170,7 +171,7 @@ function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, ch
 		values: saved,
 		keepEdits: false,
 		// a value set by env is the admin's (the backend takes it as it is): it never blocks saving the other fields
-		validate: (values) => unlockedErrors(validate?.(values), ctx.isLocked),
+		validate: (values) => unlockedErrors(validate?.(values, data), ctx.isLocked),
 	});
 
 	const onSubmit = async (values) => {
@@ -213,7 +214,7 @@ function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, ch
  * @param {string}    [props.leadId]  the lead note's translation id
  * @param {Function}  props.toForm    (data) => the form's values, in the order the section shows its fields
  * @param {Function}  props.toApi     (form values) => API values (camelCase, comparable with the loaded data)
- * @param {Function}  [props.validate]  (values) => errors of translated messages (a locked field's are dropped)
+ * @param {Function}  [props.validate]  (values, data) => errors of translated messages (a locked field's are dropped)
  * @param {*}         props.children  the fields
  */
 function RuntimeSection({ group, titleId, leadId, toForm, toApi, validate, children }) {

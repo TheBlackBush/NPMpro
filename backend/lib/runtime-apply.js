@@ -435,6 +435,8 @@ const createRuntimeApplier = ({
 		// failing test keeps the files from the last start)
 		nginx: ({ next }) => {
 			const content = renderNginxCore(next);
+			// once per distinct note: a reload loop or repeated saves do not repeat it
+			if (content.affinityNote) logOnce(content.affinityNote, content.affinityNote);
 			return {
 				files: Object.entries(paths.nginxCore).map(([part, file]) => ({
 					path: file,

@@ -17,6 +17,7 @@ const GROUP_KEYS = {
 		"workerProcesses",
 		"workerConnections",
 		"workerShutdownTimeout",
+		"cpuAffinity",
 		"logNotFound",
 		"tls12",
 		"forceMlkem",
@@ -251,6 +252,10 @@ const timeZoneOptions = (zones, current) => {
  * @param   {string}  text  the API error message
  * @returns {{ key: string, message: string } | null}
  */
+// the form field that shows the error of a key, when the form names it differently
+const FORM_FIELDS = { cpuAffinity: "cpuAffinityList" };
+const formFieldOf = (key) => FORM_FIELDS[key] ?? key;
+
 const fieldOfError = (group, text) => {
 	const match = FIELD_ERROR.exec(String(text ?? ""));
 	if (!match) return null;
@@ -273,6 +278,7 @@ export {
 	appliesMessageId,
 	defaultKeySize,
 	fieldOfError,
+	formFieldOf,
 	GROUP_KEYS,
 	isEmptyPayload,
 	isRestartField,

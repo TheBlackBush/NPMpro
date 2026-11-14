@@ -21,13 +21,13 @@ const APPLIES_ICONS = {
  * The badges under a setting's label: set by an env var (or locked by another setting), restart required, and when
  * a saved change takes effect; null when none applies
  */
-function useFieldBadges(name) {
+function useFieldBadges(name, lockName = name) {
 	const { formatMessage } = useIntl();
 	const { isLocked, envOf, reasonOf, isRestart, appliesId } = useRuntimeSection();
-	const applies = appliesId(name);
+	const applies = appliesId(lockName);
 	const badges = [];
-	if (isLocked(name)) badges.push(<LockedBadge key="lock" env={envOf(name)} reason={reasonOf(name)} />);
-	if (isRestart(name))
+	if (isLocked(lockName)) badges.push(<LockedBadge key="lock" env={envOf(lockName)} reason={reasonOf(lockName)} />);
+	if (isRestart(lockName))
 		badges.push(
 			<SettingBadge
 				key="restart"
@@ -50,16 +50,16 @@ function useFieldBadges(name) {
  * The field hint and, for a setting locked by another setting's env var, why (one sentence); null when there is
  * neither, so the field has no empty description for aria-describedby to point at
  */
-function useFieldHint(name, hint) {
+function useFieldHint(name, hint, lockName = name) {
 	const { isLocked, envOf, reasonOf } = useRuntimeSection();
-	const reason = isLocked(name) ? reasonOf(name) : null;
+	const reason = isLocked(lockName) ? reasonOf(lockName) : null;
 	if (!(hint || reason)) return null;
 	return (
 		<>
 			{hint}
 			{reason ? (
 				<span className="block">
-					<LockReason env={envOf(name)} reason={reason} />
+					<LockReason env={envOf(lockName)} reason={reason} />
 				</span>
 			) : null}
 		</>
@@ -99,16 +99,17 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
  *
  * @param {Object}   props
  * @param {string}   props.name
+ * @param {string}   [props.lockName]  the setting whose lock, env and applies notes the field shows (default name)
  * @param {*}        props.label
  * @param {*}        [props.hint]
  * @param {"inline"|"block"} [props.layout]  the control on the right (default) or under the name
  * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
  *   (aria-invalid gives it the red border)
  */
-function RuntimeControl({ name, label, hint, layout = "inline", children }) {
+function RuntimeControl({ name, lockName = name, label, hint, layout = "inline", children }) {
 	const error = useFieldError(name);
-	const badges = useFieldBadges(name);
-	const fieldHint = useFieldHint(name, hint);
+	const badges = useFieldBadges(name, lockName);
+	const fieldHint = useFieldHint(name, hint, lockName);
 	return (
 		<FormField id={idOf(name)} line={layout} label={label} badges={badges} hint={fieldHint} error={error}>
 			{children}
@@ -152,10 +153,10 @@ function RuntimeNumber({ name, label, hint, min, max, unit }) {
  * Text input, or a textarea with rows (the form layer's TextField), as a line: a textarea or a URL goes under its
  * name (block), any other input on the right (inline), unless layout says otherwise
  */
-function RuntimeText({ name, label, hint, placeholder, rows, type = "text", layout }) {
+function RuntimeText({ name, lockName = name, label, hint, placeholder, rows, type = "text", layout }) {
 	const { isLocked } = useRuntimeSection();
-	const badges = useFieldBadges(name);
-	const fieldHint = useFieldHint(name, hint);
+	const badges = useFieldBadges(name, lockName);
+	const fieldHint = useFieldHint(name, hint, lockName);
 	return (
 		<TextField
 			name={name}
@@ -166,7 +167,7 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", layo
 			hint={fieldHint}
 			as={rows ? "textarea" : "input"}
 			controlClassName={rows ? "font-mono" : undefined}
-			disabled={isLocked(name)}
+			disabled={isLocked(lockName)}
 			rows={rows}
 			type={rows ? undefined : type}
 			autoComplete={rows ? undefined : "off"}
@@ -182,15 +183,15 @@ function RuntimeText({ name, label, hint, placeholder, rows, type = "text", layo
  * the form is open (key sizes follow the key type, the certificates load later), and the shown option must follow the
  * value.
  */
-function RuntimeSelect({ name, label, hint, options, onChange, layout = "inline" }) {
+function RuntimeSelect({ name, lockName = name, label, hint, options, onChange, layout = "inline" }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} label={label} hint={hint} layout={layout}>
+		<RuntimeControl name={name} lockName={lockName} label={label} hint={hint} layout={layout}>
 			{(control) => (
 				<AppSelect
 					{...control}
-					disabled={isLocked(name)}
+					disabled={isLocked(lockName)}
 					name={field.name}
 					triggerRef={field.ref}
 					value={field.value}

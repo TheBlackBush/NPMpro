@@ -1,5 +1,6 @@
 import { availableParallelism } from "node:os";
 import errs from "../lib/error.js";
+import { readCpusAllowed } from "../lib/nginx-core.js";
 import {
 	acmeServerOf,
 	appliesOf,
@@ -29,12 +30,13 @@ const runtimeView = (group, cfg, env = process.env) => ({
 });
 
 /**
- * The nginx view also carries the CPU threads (the worker_processes maximum), not a setting
+ * The nginx view also carries the CPU threads (the worker_processes maximum) and the CPUs the container may use,
+ * not settings
  *
  * @param   {Object}  view  runtimeView("nginx", ...)
  * @returns {Object}
  */
-const withCpuCount = (view) => ({ ...view, cpu_count: availableParallelism() });
+const withCpuCount = (view) => ({ ...view, cpu_count: availableParallelism(), cpus_allowed: readCpusAllowed() });
 
 /**
  * Builds the runtime settings update. All groups share one queue: each update (read stored, validate, apply, save)
@@ -96,6 +98,10 @@ const createRuntimeUpdater = ({
 			if (!(rule.key in changes)) continue;
 			const message = rule.validate(changes[rule.key], target);
 			if (message !== null) throw new errs.ValidationError(`${rule.key}: ${message}`);
+			// a value the save keeps is never refused (the CPUs of the container may have changed)
+			if (changes[rule.key] === prev.values[rule.key]) continue;
+			const saveMessage = rule.validateSave?.(changes[rule.key], target) ?? null;
+			if (saveMessage !== null) throw new errs.ValidationError(`${rule.key}: ${saveMessage}`);
 		}
 		const certId = changes.default_certificate_id;
 		if (Number.isInteger(certId) && certId !== 0) {
