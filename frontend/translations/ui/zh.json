@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "每个 worker 的连接数",
 	"settings.nginx.connections.hint": "每个 worker 同时处理的打开连接数（64 到 65535）。",
 	"settings.nginx.cpu-affinity": "将工作进程绑定到 CPU",
-	"settings.nginx.cpu-affinity.auto": "自动（容器的 CPU）",
+	"settings.nginx.cpu-affinity.auto": "自动",
 	"settings.nginx.cpu-affinity.custom": "自定义 CPU",
 	"settings.nginx.cpu-affinity.hint": "将工作进程依次绑定到此容器可使用的 CPU（{cpus}）。关闭：由内核分配工作进程。保存后生效，并重新加载 nginx。",
 	"settings.nginx.cpu-affinity.hint-unknown": "将工作进程依次绑定到此容器可使用的 CPU。此处无法读取 CPU 列表，因此不会绑定任何 CPU。保存后生效，并重新加载 nginx。",

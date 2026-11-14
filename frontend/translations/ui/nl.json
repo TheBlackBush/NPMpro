@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "Verbindingen per worker",
 	"settings.nginx.connections.hint": "Open verbindingen die elke worker tegelijk afhandelt (64 tot 65535).",
 	"settings.nginx.cpu-affinity": "Workers aan CPU's koppelen",
-	"settings.nginx.cpu-affinity.auto": "Automatisch (de CPU's van de container)",
+	"settings.nginx.cpu-affinity.auto": "Automatisch",
 	"settings.nginx.cpu-affinity.custom": "Eigen CPU's",
 	"settings.nginx.cpu-affinity.hint": "Koppelt de workers om de beurt aan CPU's die deze container mag gebruiken ({cpus}). Uit: de kernel verdeelt de workers. Geldt na opslaan, met een nginx-reload.",
 	"settings.nginx.cpu-affinity.hint-unknown": "Koppelt de workers om de beurt aan CPU's die deze container mag gebruiken. De CPU-lijst kan hier niet worden gelezen, dus er wordt niets gekoppeld. Geldt na opslaan, met een nginx-reload.",

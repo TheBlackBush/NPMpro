@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "ワーカーあたりの接続数",
 	"settings.nginx.connections.hint": "各ワーカーが同時に処理するオープン接続数 (64 から 65535)。",
 	"settings.nginx.cpu-affinity": "ワーカーを CPU に固定",
-	"settings.nginx.cpu-affinity.auto": "自動（コンテナの CPU）",
+	"settings.nginx.cpu-affinity.auto": "自動",
 	"settings.nginx.cpu-affinity.custom": "カスタム CPU",
 	"settings.nginx.cpu-affinity.hint": "ワーカーを、このコンテナが使用できる CPU（{cpus}）に順番に割り当てます。オフ：カーネルがワーカーを配置します。保存時に適用され、nginx がリロードされます。",
 	"settings.nginx.cpu-affinity.hint-unknown": "ワーカーを、このコンテナが使用できる CPU に順番に割り当てます。ここでは CPU リストを読み取れないため、何も固定されません。保存時に適用され、nginx がリロードされます。",

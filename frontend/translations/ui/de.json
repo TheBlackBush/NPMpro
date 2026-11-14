@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "Verbindungen pro Worker",
 	"settings.nginx.connections.hint": "Offene Verbindungen, die jeder Worker gleichzeitig verarbeitet (64 bis 65535).",
 	"settings.nginx.cpu-affinity": "Worker an CPUs binden",
-	"settings.nginx.cpu-affinity.auto": "Automatisch (die CPUs des Containers)",
+	"settings.nginx.cpu-affinity.auto": "Automatisch",
 	"settings.nginx.cpu-affinity.custom": "Eigene CPUs",
 	"settings.nginx.cpu-affinity.hint": "Bindet die Worker der Reihe nach an CPUs, die dieser Container nutzen darf ({cpus}). Aus: Der Kernel verteilt die Worker. Gilt nach dem Speichern, mit einem nginx-Reload.",
 	"settings.nginx.cpu-affinity.hint-unknown": "Bindet die Worker der Reihe nach an CPUs, die dieser Container nutzen darf. Die CPU-Liste kann hier nicht gelesen werden, daher wird nichts gebunden. Gilt nach dem Speichern, mit einem nginx-Reload.",

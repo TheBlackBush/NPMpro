@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "Połączenia na workera",
 	"settings.nginx.connections.hint": "Otwarte połączenia obsługiwane jednocześnie przez każdego workera (od 64 do 65535).",
 	"settings.nginx.cpu-affinity": "Przypnij workery do CPU",
-	"settings.nginx.cpu-affinity.auto": "Automatycznie (procesory kontenera)",
+	"settings.nginx.cpu-affinity.auto": "Automatycznie",
 	"settings.nginx.cpu-affinity.custom": "Własne CPU",
 	"settings.nginx.cpu-affinity.hint": "Przypina workery kolejno do procesorów, z których ten kontener może korzystać ({cpus}). Wyłączone: workery rozmieszcza jądro. Obowiązuje po zapisaniu, z przeładowaniem nginx.",
 	"settings.nginx.cpu-affinity.hint-unknown": "Przypina workery kolejno do procesorów, z których ten kontener może korzystać. Nie można tu odczytać listy CPU, więc nic nie jest przypinane. Obowiązuje po zapisaniu, z przeładowaniem nginx.",

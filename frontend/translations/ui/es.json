@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "Conexiones por worker",
 	"settings.nginx.connections.hint": "Conexiones abiertas que gestiona cada worker a la vez (de 64 a 65535).",
 	"settings.nginx.cpu-affinity": "Fijar los workers a CPU",
-	"settings.nginx.cpu-affinity.auto": "Automático (las CPU del contenedor)",
+	"settings.nginx.cpu-affinity.auto": "Automático",
 	"settings.nginx.cpu-affinity.custom": "CPU personalizadas",
 	"settings.nginx.cpu-affinity.hint": "Fija los workers por turnos a las CPU que este contenedor puede usar ({cpus}). Desactivado: el kernel reparte los workers. Se aplica al guardar, con una recarga de nginx.",
 	"settings.nginx.cpu-affinity.hint-unknown": "Fija los workers por turnos a las CPU que este contenedor puede usar. Aquí no se puede leer la lista de CPU, así que no se fija nada. Se aplica al guardar, con una recarga de nginx.",

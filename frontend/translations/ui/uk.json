@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "З'єднань на воркер",
 	"settings.nginx.connections.hint": "Кількість відкритих з'єднань, які одночасно обробляє кожен воркер (від 64 до 65535).",
 	"settings.nginx.cpu-affinity": "Прив'язати воркери до CPU",
-	"settings.nginx.cpu-affinity.auto": "Автоматично (CPU контейнера)",
+	"settings.nginx.cpu-affinity.auto": "Автоматично",
 	"settings.nginx.cpu-affinity.custom": "Власні CPU",
 	"settings.nginx.cpu-affinity.hint": "По черзі прив'язує воркери до CPU, які може використовувати цей контейнер ({cpus}). Вимк.: воркери розподіляє ядро. Застосовується після збереження, з перезавантаженням nginx.",
 	"settings.nginx.cpu-affinity.hint-unknown": "По черзі прив'язує воркери до CPU, які може використовувати цей контейнер. Список CPU тут прочитати неможливо, тому прив'язка не виконується. Застосовується після збереження, з перезавантаженням nginx.",

@@ -1496,7 +1496,7 @@
 	"settings.nginx.connections": "Connexions par worker",
 	"settings.nginx.connections.hint": "Connexions ouvertes que chaque worker gère simultanément (64 à 65535).",
 	"settings.nginx.cpu-affinity": "Lier les workers aux CPU",
-	"settings.nginx.cpu-affinity.auto": "Automatique (les CPU du conteneur)",
+	"settings.nginx.cpu-affinity.auto": "Automatique",
 	"settings.nginx.cpu-affinity.custom": "CPU personnalisés",
 	"settings.nginx.cpu-affinity.hint": "Lie les workers tour à tour aux CPU que ce conteneur peut utiliser ({cpus}). Désactivé : le noyau place les workers. S'applique à l'enregistrement, avec un rechargement de nginx.",
 	"settings.nginx.cpu-affinity.hint-unknown": "Lie les workers tour à tour aux CPU que ce conteneur peut utiliser. La liste des CPU est illisible ici, donc rien n'est lié. S'applique à l'enregistrement, avec un rechargement de nginx.",
