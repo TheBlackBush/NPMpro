@@ -181,7 +181,9 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 			await model.query().where("id", row.id).patch({ enabled: 0 });
 
-			return auditAfter(access, "disabled", row.id, () => internalNginx.removeConfig(hostType, row));
+			return auditAfter(access, "disabled", row.id, () =>
+				internalNginx.removeConfig(hostType, row, { saved: row }),
+			);
 		},
 
 		getAll: (access, expandList, searchQuery) => {

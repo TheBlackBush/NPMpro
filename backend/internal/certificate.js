@@ -487,7 +487,7 @@ const internalCertificate = {
 		});
 
 		await internalCertificate.writeCustomCert({ ...certificate, ...certs });
-		await internalNginx.reload();
+		await internalNginx.reloadOrRaise({ id: certificate.id });
 		return certificate;
 	},
 

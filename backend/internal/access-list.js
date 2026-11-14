@@ -185,7 +185,7 @@ const internalAccessList = {
 			// in the runtime queue like the host writes: a restore or another save never interleaves with the page write
 			await runtimeExclusive(() => internalAccessList.build(freshRow));
 			await internalNginx.configureMany(proxyHostEntries(freshRow.proxy_hosts));
-			await internalNginx.reload();
+			await internalNginx.reloadOrRaise({ id: data.id });
 		} finally {
 			await internalAuditLog.add(access, {
 				action: "updated",
@@ -299,7 +299,7 @@ const internalAccessList = {
 		try {
 			await internalNginx.configureMany(proxyHostEntries(affectedHosts));
 
-			await internalNginx.reload();
+			await internalNginx.reloadOrRaise();
 
 			await runtimeExclusive(async () => {
 				await rm(internalAccessList.getFilename(row), { force: true });

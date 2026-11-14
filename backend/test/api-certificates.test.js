@@ -132,6 +132,21 @@ it("uploads a custom certificate: files on disk, the key private, the row filled
 	assert.equal(audit.meta.includes("PRIVATE KEY"), false);
 });
 
+it("an upload whose reload fails keeps the files and names the certificate", async () => {
+	const row = await make("other", "Upload reload fails");
+	api.outside.control.check = () => "nginx: [emerg] other host broken";
+	const done = await upload(admin, row.id, {
+		certificate: await read(pair.certificate),
+		certificate_key: await read(pair.key),
+	});
+	api.outside.control.check = null;
+	assert.equal(done.status, 500, done.text);
+	assert.equal(done.body.error.message_i18n, "error.nginx-reload-after-save");
+	assert.equal(done.body.error.saved_id, row.id);
+	const dir = path.join(api.root, `data/tls/custom/npm-${row.id}`);
+	assert.equal(await read(path.join(dir, "privkey.pem")), await read(pair.key));
+});
+
 it("replaces the files of a custom certificate by a second upload", async () => {
 	const id = await uploaded();
 	const again = await upload(admin, id, {

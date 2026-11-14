@@ -106,7 +106,7 @@ const internalNginx = {
 			await model.query().where("id", host.id).patch(status);
 
 			await internalNginx.renameConfigAsError(host_type, host);
-			if (!skipReload) await internalNginx.reload();
+			if (!skipReload) await internalNginx.reloadOrRaise(host);
 		}
 
 		return status;
@@ -202,6 +202,25 @@ const internalNginx = {
 			throw new errs.CommandError(logs || `nginx reload failed with status ${res.status}, see container logs`);
 		}
 		return logs;
+	},
+
+	/**
+	 * reload for a save that is already stored: a failure becomes a public ReloadError naming the saved row
+	 *
+	 * @param   {Object}  [saved]  the saved row: id, certificate_id
+	 * @returns {Promise<String>}
+	 */
+	reloadOrRaise: async (saved) => {
+		try {
+			return await internalNginx.reload();
+		} catch (err) {
+			logger.error(`nginx could not reload after a save: ${err.message}`);
+			throw new errs.ReloadError(err.message, {
+				savedId: saved?.id,
+				certificateId: saved?.certificate_id,
+				cause: err,
+			});
+		}
 	},
 
 	/**
@@ -383,13 +402,14 @@ const internalNginx = {
 	 * @param   {Object}    host
 	 * @param   {Object}    [options]
 	 * @param   {Function}  [options.also]  runs after the delete, before the reload (access list files)
+	 * @param   {Object}    [options.saved]  the row a disable keeps, named in the error
 	 * @returns {Promise}
 	 */
-	removeConfig: (host_type, host, { also } = {}) =>
+	removeConfig: (host_type, host, { also, saved } = {}) =>
 		runtimeExclusive(async () => {
 			await internalNginx.deleteConfig(host_type, host);
 			await also?.();
-			await internalNginx.reload();
+			await internalNginx.reloadOrRaise(saved);
 			// a disabled or deleted host's pages go once the reload no longer serves them; enabling writes them again
 			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 		}),

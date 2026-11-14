@@ -62,9 +62,11 @@ const errs = {
 		public = true;
 		status = 400;
 
-		constructor(message, messageI18n, options) {
+		// values: the placeholders of the translated message (message_values in the answer)
+		constructor(message, messageI18n, { values, ...options } = {}) {
 			super(message, options);
 			this.message_i18n = messageI18n;
+			if (values) this.message_values = values;
 		}
 	},
 
@@ -87,6 +89,24 @@ const errs = {
 		name = this.constructor.name;
 		public = false;
 		status = 400;
+	},
+
+	// a save is stored, but nginx refused the reload (the cause may be another host or a custom config). The message
+	// names the first line of nginx's text and details holds all of it (shown as the output); savedId and
+	// certificateId let a window turn into the edit window of the saved row
+	ReloadError: class extends Error {
+		name = this.constructor.name;
+		public = true;
+		status = 500;
+		message_i18n = "error.nginx-reload-after-save";
+
+		constructor(output, { savedId, certificateId, cause } = {}) {
+			const text = String(output ?? "");
+			super(`Saved, but nginx could not reload: ${text.split("\n")[0]}`, cause ? { cause } : undefined);
+			this.details = text;
+			this.savedId = savedId;
+			this.certificateId = certificateId;
+		}
 	},
 
 	CommandError: class extends Error {

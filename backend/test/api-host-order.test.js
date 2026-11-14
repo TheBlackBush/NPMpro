@@ -216,12 +216,12 @@ for (const type of TYPES) {
 		const host = await created(await admin.post(type.url, type.make()), "create");
 		api.outside.control.failNext = "reload refused";
 		const disabled = await admin.post(`${type.url}/${host.id}/disable`);
-		assert.equal(disabled.status >= 400, true, disabled.text);
+		assert.equal(disabled.status, 500, disabled.text);
 		assert.equal((await auditRows(type, host.id, "disabled")).length, 1);
 		assert.equal((await api.db(type.table).where({ id: host.id }).first()).enabled, 0);
 		api.outside.control.failNext = "reload refused";
 		const deleted = await admin.delete(`${type.url}/${host.id}`);
-		assert.equal(deleted.status >= 400, true, deleted.text);
+		assert.equal(deleted.status, 500, deleted.text);
 		assert.equal((await auditRows(type, host.id, "deleted")).length, 1);
 		assert.equal(await api.db(type.table).where({ id: host.id }).first(), undefined);
 	});
