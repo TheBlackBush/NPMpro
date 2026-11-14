@@ -362,3 +362,40 @@ it("lets a save that keeps an out of range forwarding port work on an older row"
 	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70000" })).status, 200);
 	assert.equal((await ctx.admin.put(`${URL}/${stream.id}`, { forwarding_port: "70001" })).status, 400);
 });
+
+it("refuses a stream on a port NPMpro listens on, per protocol, and lets a stored one keep saving", async () => {
+	const rows = await countRows(ctx.api, "stream");
+	for (const [extra, setting] of [
+		[{ incoming_port: "443" }, "HTTPS_PORT"],
+		[{ incoming_port: 443 }, "HTTPS_PORT"],
+		[{ incoming_port: "79-82" }, "HTTP_PORT"],
+		[{ incoming_port: "81" }, "NPM_PORT"],
+		[{ incoming_port: "443", tcp_forwarding: false, udp_forwarding: true }, "HTTPS_PORT"],
+	]) {
+		const answer = await ctx.admin.post(URL, body(extra));
+		assert.equal(answer.status, 400, JSON.stringify(extra));
+		assert.equal(answer.body.error.message_i18n, "error.stream-port-reserved");
+		assert.equal(answer.body.error.message_values.setting, setting);
+	}
+	assert.equal(await countRows(ctx.api, "stream"), rows);
+	// UDP on the HTTP and admin ports is free
+	const udp = await ctx.admin.post(URL, body({ incoming_port: "80", tcp_forwarding: false, udp_forwarding: true }));
+	assert.equal(udp.status, 201, udp.text);
+	// a row stored before the rule keeps saving while its listener stays
+	const stored = await created(await ctx.admin.post(URL, body()), "create");
+	await ctx.api.db("stream").where({ id: stored.id }).update({ incoming_port: "443" });
+	const kept = await ctx.admin.put(`${URL}/${stored.id}`, { npmpro_description: "kept" });
+	assert.equal(kept.status, 200, kept.text);
+	// enabling it again meets the rule
+	assert.equal((await ctx.admin.post(`${URL}/${stored.id}/disable`)).status, 200);
+	const enabled = await ctx.admin.post(`${URL}/${stored.id}/enable`);
+	assert.equal(enabled.status, 400, enabled.text);
+	assert.equal(enabled.body.error.message_i18n, "error.stream-port-reserved");
+});
+
+it("refuses a port range wider than 1000 ports", async () => {
+	const answer = await ctx.admin.post(URL, body({ incoming_port: "20000-21000" }));
+	assert.equal(answer.status, 400, answer.text);
+	assert.equal(answer.body.error.message_i18n, "error.stream-port-range-too-wide");
+	assert.equal((await ctx.admin.post(URL, body({ incoming_port: "21000-21999" }))).status, 201);
+});
