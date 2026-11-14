@@ -92,13 +92,37 @@ export const namedLocations = (rows) => rows.filter((row) => String(row.path ?? 
 export const hostRecheckOnScheme = (previous, scheme) => scheme === "empty" || previous !== "empty";
 
 /**
+ * The backend's alias rule (lib/host-config-guard.js): a prefix location that serves a folder (a "path" target ending
+ * in /) must itself end in /, unless it is the saved location (same type and path) with the same folder
+ *
+ * @param   {Object}   row
+ * @param   {Object[]} [savedRows]  the saved locations
+ * @returns {boolean}  true when the row breaks the rule
+ */
+export const aliasPrefixError = (row, savedRows = []) => {
+	const folder = String(row.forwardHost ?? "");
+	if (row.forwardScheme !== "path" || !folder.endsWith("/")) return false;
+	if (!["", "^~ "].includes(row.locationType ?? "")) return false;
+	const path = String(row.path ?? "").trim();
+	if (path.endsWith("/")) return false;
+	return !savedRows.some(
+		(saved) =>
+			(saved.locationType ?? "") === (row.locationType ?? "") &&
+			saved.path === path &&
+			saved.forwardScheme === "path" &&
+			saved.forwardHost === row.forwardHost,
+	);
+};
+
+/**
  * The errors of the location rows (blank ones included), one object per row in the same order, or undefined
  *
  * @param   {Object}   rules  createValidations(intl)
  * @param   {Object[]} rows
+ * @param   {Object[]} [savedRows]  the saved locations (the alias rule keeps a saved one)
  * @returns {Object[]|undefined}
  */
-export function locationErrors(rules, rows) {
+export function locationErrors(rules, rows, savedRows = []) {
 	const seen = new Set();
 	const errors = rows.map((row) => {
 		const error = {};
@@ -109,6 +133,9 @@ export function locationErrors(rules, rows) {
 			const key = `${row.locationType}${path}`;
 			if (seen.has(key)) error.path = rules.message("location.path.duplicate");
 			seen.add(key);
+			if (!error.path && aliasPrefixError(row, savedRows)) {
+				error.path = rules.message("error.path-scheme-alias-prefix");
+			}
 		}
 		const host = forwardHostError(rules, row.forwardHost, { proxy: true, scheme: row.forwardScheme });
 		if (host) error.forwardHost = host;
@@ -223,9 +250,9 @@ export const PROXY_HOST_TABS = Object.freeze([
 /**
  * Proxy host: the domain names, the forward host (required unless the scheme is "empty", the backend's rule), the
  * port (1 to 65535 or empty), the auth upstream while an auth request is chosen, the custom access lists, every
- * location row, the TLS tab
+ * location row (the alias rule keeps a saved location), the TLS tab
  */
-export const proxyHostValidate = (rules) =>
+export const proxyHostValidate = (rules, { savedLocations = [] } = {}) =>
 	fieldsValidate(
 		(values) => ({
 			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
@@ -241,7 +268,7 @@ export const proxyHostValidate = (rules) =>
 				errors.npmproAccessListIds = rules.message("error.required");
 			}
 			Object.assign(errors, placeErrors(rules, "proxyHost", values));
-			const rows = locationErrors(rules, values.locations);
+			const rows = locationErrors(rules, values.locations, savedLocations);
 			return rows ? mergeErrors(errors, { locations: rows }) : errors;
 		},
 	);

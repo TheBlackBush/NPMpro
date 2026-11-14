@@ -119,7 +119,7 @@ const assertForwardHostPlain = (isAdmin, item, stored, field = "forward_host") =
 /**
  * A custom prefix location renders a folder path (ending in `/`) as `alias`. nginx then replaces the location path
  * with the folder, so a location path without the trailing slash (`/x` with `/var/www/a/`) lets `/x../` reach the
- * parent folder. Non-admins must end such a location path in `/`, unless the location is the stored one.
+ * parent folder. Everyone must end such a location path in `/`, administrators too, unless the location is the stored one.
  *
  * @param {Object} location  location payload
  * @param {Object} [stored]  the matching stored location
@@ -137,27 +137,30 @@ const assertAliasPrefix = (location, stored) => {
 const locationKey = (location) => `${location.location_type ?? ""}\u0000${location.path ?? ""}`;
 
 /**
- * Applies both rules to custom locations. A location matches a stored one with the same type and path. A non-admin
- * payload without `advanced_config` keeps the stored value of the matching location.
+ * The rules of custom locations. A location matches a stored one with the same type and path. The alias rule is for
+ * everyone; the other rules are for non-admins, and a non-admin payload without `advanced_config` keeps the stored
+ * value of the matching location.
  *
  * @param {Boolean}  isAdmin
  * @param {Object[]} [locations]        payload locations (changed in place)
  * @param {Object[]} [storedLocations]
  */
 const assertLocations = (isAdmin, locations, storedLocations = []) => {
-	if (isAdmin || !Array.isArray(locations)) return;
+	if (!Array.isArray(locations)) return;
 	const stored = new Map((storedLocations ?? []).map((location) => [locationKey(location), location]));
 	for (const payload of locations) {
 		// a saved location without a scheme gets the column default, so the checks use it too
 		const location = { ...payload, forward_scheme: payload.forward_scheme ?? "http" };
 		const match = stored.get(locationKey(location));
-		if (payload.advanced_config === undefined) {
-			payload.advanced_config = match?.advanced_config ?? "";
-		} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
-			throw advancedConfigError();
+		if (!isAdmin) {
+			if (payload.advanced_config === undefined) {
+				payload.advanced_config = match?.advanced_config ?? "";
+			} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
+				throw advancedConfigError();
+			}
+			assertForwardHostPlain(false, location, match);
+			assertPathScheme(false, location, match);
 		}
-		assertForwardHostPlain(false, location, match);
-		assertPathScheme(false, location, match);
 		assertAliasPrefix(location, match);
 	}
 };

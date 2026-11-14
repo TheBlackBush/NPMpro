@@ -225,6 +225,18 @@ it("locations: the same errors as the Formik rows, blank rows included, one entr
 	assert.equal(locationErrors(rules, []), undefined);
 });
 
+it("refuses a folder location without the trailing slash before the request, unless it is the saved one", () => {
+	const folder = newLocation({ path: "/files", forwardScheme: "path", forwardHost: "/var/www/a/" });
+	const message = "A custom location that serves a folder (a path ending in /) must itself end in /.";
+	assert.deepEqual(locationErrors(rules, [folder]), [{ path: message }]);
+	assert.deepEqual(locationErrors(rules, [{ ...folder, locationType: "^~ " }]), [{ path: message }]);
+	assert.equal(locationErrors(rules, [{ ...folder, path: "/files/" }]), undefined);
+	assert.equal(locationErrors(rules, [{ ...folder, locationType: "= " }]), undefined);
+	assert.equal(locationErrors(rules, [{ ...folder, forwardHost: "/var/www/a" }]), undefined);
+	assert.equal(locationErrors(rules, [folder], [folder]), undefined);
+	assert.deepEqual(locationErrors(rules, [folder], [{ ...folder, forwardHost: "/var/www/b/" }]), [{ path: message }]);
+});
+
 it("counts only the rows with a path as locations, as the Formik value did", () => {
 	assert.deepEqual(namedLocations([{ path: "/a" }, { path: "  " }, { path: "" }]), [{ path: "/a" }]);
 });

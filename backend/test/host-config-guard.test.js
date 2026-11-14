@@ -24,7 +24,7 @@ it("admins may set every free-form field on every host type", () => {
 		assertHostConfig(admin, "proxy_host", {
 			advanced_config: LUA,
 			npmpro_location_config: LUA,
-			locations: [{ path: "/a", advanced_config: LUA, forward_scheme: "path", forward_host: "/" }],
+			locations: [{ path: "/a/", advanced_config: LUA, forward_scheme: "path", forward_host: "/" }],
 			forward_scheme: "path",
 			forward_host: "/data/npmpro/",
 		}),
@@ -239,12 +239,17 @@ const folderLocation = (path, location_type = "") => ({
 	forward_host: "/var/www/a/",
 });
 
-it("non-admin prefix locations that serve a folder must end in a slash", () => {
+it("prefix locations that serve a folder must end in a slash, for every user", () => {
 	for (const type of ["", "^~ "]) {
 		assert.throws(
 			() => assertHostConfig(user, "proxy_host", { locations: [folderLocation("/x", type)] }),
 			ALIAS_REFUSED,
 		);
+		assert.throws(
+			() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x", type)] }),
+			ALIAS_REFUSED,
+		);
+		assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x/", type)] }));
 		assert.throws(
 			() =>
 				assertHostConfig(user, "proxy_host", {
@@ -262,7 +267,7 @@ it("non-admin prefix locations that serve a folder must end in a slash", () => {
 			locations: [{ ...folderLocation("/x"), forward_host: "/var/www/a" }],
 		}),
 	);
-	assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x")] }));
+	assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x", "= ")] }));
 });
 
 it("non-admins may keep a stored folder location without the slash", () => {
@@ -272,6 +277,21 @@ it("non-admins may keep a stored folder location without the slash", () => {
 		() =>
 			assertHostConfig(
 				user,
+				"proxy_host",
+				{ locations: [{ ...folderLocation("/x"), forward_host: "/var/www/b/" }] },
+				stored,
+			),
+		ALIAS_REFUSED,
+	);
+});
+
+it("admins may keep a stored folder location without the slash", () => {
+	const stored = { locations: [folderLocation("/x")] };
+	assert.doesNotThrow(() => assertHostConfig(admin, "proxy_host", { locations: [folderLocation("/x")] }, stored));
+	assert.throws(
+		() =>
+			assertHostConfig(
+				admin,
 				"proxy_host",
 				{ locations: [{ ...folderLocation("/x"), forward_host: "/var/www/b/" }] },
 				stored,

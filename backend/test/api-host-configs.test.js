@@ -558,6 +558,18 @@ it("does not let a user with manage set a custom location's advanced config or a
 	assert.match(await configOf(allowed.body), /root \/var\/www\/mine;/u);
 });
 
+it("refuses an administrator's folder location without the trailing slash, and keeps a stored one", async () => {
+	const folder = { path: "/p", forward_scheme: "path", forward_host: "/var/www/a/", forward_port: 0 };
+	const refused = await ctx.admin.post(URL, body({ locations: [folder] }));
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.path-scheme-alias-prefix");
+	const host = await make({ locations: [{ ...folder, path: "/p/" }] });
+	// a location stored before the rule (written to the table directly) keeps saving
+	await ctx.api.db("npmpro_location").where({ proxy_host_id: host.id }).update({ path: "/p" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8099, locations: [folder] });
+	assert.equal(kept.status, 200, kept.text);
+});
+
 it("lets a user with manage keep what an administrator set, and refuses a change of it", async () => {
 	const user = await ctx.api.limited({
 		visibility: "user",
