@@ -6,7 +6,7 @@ Notes for installs that update to a newer NPMpro, and the variables that are not
 
 For installs that update to this version:
 
-- **Admin-only targets and names:** users who are not administrators can no longer set a unix socket (unix:...) as the forward host of a proxy host, a custom location or a stream, or as the target of a redirection host, and cannot add a domain name that is a regular expression (starting with ~). Values an administrator already stored stay and can be kept on save.
+- **Admin-only targets and names:** users who are not administrators can no longer set a unix socket (unix:...) as the forward host of a proxy host, a custom location or a stream, or as the target of a redirection host, and cannot add a domain name that is a regular expression (starting with ~). Values an administrator already stored stay and can be kept on save. The import on the list pages applies the same rules, so such a host cannot come in through a `.npmpro` file either.
 - **Saves whose nginx reload fails:** when nginx cannot reload after a host, access list or custom certificate is saved (the cause is elsewhere, for example another host or a custom config), the save is kept and the answer says "Saved, but nginx could not reload" with the nginx output; the window then switches to edit mode, so saving again does not create a second host.
 - **Streams:** a new or changed stream cannot use a port NPMpro listens on (HTTP_PORT, HTTPS_PORT, NPM_PORT for the protocols they use) or a range wider than 1000 ports. Streams already stored keep saving.
 - **Pass Auth to Upstream with several access lists:** the Authorization header now reaches the upstream only when every assigned list with users has Pass Auth to Upstream on; before, the first list decided.

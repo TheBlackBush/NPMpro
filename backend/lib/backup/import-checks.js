@@ -8,8 +8,8 @@ import redirectionHostSchema from "../../schema/components/redirection-host-obje
 import streamSchema from "../../schema/components/stream-object.json" with { type: "json" };
 import {
 	assertConfigFields,
+	assertHostConfig,
 	assertLocations,
-	assertPathScheme,
 	assertUniqueLocations,
 	CONFIG_FIELDS,
 } from "../host-config-guard.js";
@@ -22,12 +22,13 @@ import { ITEM_TYPES } from "./select.js";
 
 const WRITES = new Set(["add", "replace"]);
 const LOCATION_TABLE = "npmpro_location";
-// the host types, the key of their config guard rules and the schema their API create and update use
+// the host types, the key of their config guard rules, the schema their API create and update use and their forward
+// target field
 const HOSTS = {
-	proxy_hosts: { guard: "proxy_host", schema: proxyHostSchema },
-	redirection_hosts: { guard: "redirection_host", schema: redirectionHostSchema },
-	dead_hosts: { guard: "dead_host", schema: deadHostSchema },
-	streams: { guard: "stream", schema: streamSchema },
+	proxy_hosts: { guard: "proxy_host", schema: proxyHostSchema, target: "forward_host" },
+	redirection_hosts: { guard: "redirection_host", schema: redirectionHostSchema, target: "forward_domain_name" },
+	dead_hosts: { guard: "dead_host", schema: deadHostSchema, target: "forward_host" },
+	streams: { guard: "stream", schema: streamSchema, target: "forwarding_host" },
 };
 const LINKED = {
 	certificates: certificateSchema,
@@ -41,10 +42,18 @@ const ACCESS_CHILDREN = {
 };
 // certificate domains reach certbot and the host configs: the host domain rule applies to them too
 const CERTIFICATE_DOMAINS = common.properties.domain_names;
+// the field a refusal of the host config guard names; "target" stands for the forward target field of the host type
 const GUARD_FIELDS = {
 	"error.advanced-config-admin-only": "advanced_config",
 	"error.path-scheme-webroot": "forward_host",
 	"error.path-scheme-alias-prefix": "path",
+	"error.unix-upstream-admin-only": "target",
+	"error.forward-host-variable-admin-only": "target",
+	"error.regex-domain-admin-only": "domain_names",
+};
+const guardField = (error, target) => {
+	const field = GUARD_FIELDS[error.message_i18n];
+	return field === "target" ? target : field;
 };
 
 class FieldError extends Error {
@@ -215,8 +224,8 @@ const checkRowValues = ({ typeId, row, data }) => {
 	}
 };
 
-// the host config guard for one host row, as for a non-admin create (stored: undefined) or update: raw nginx config
-// and file serving are admin-only
+// the host config guard for one host row, as for a non-admin create (stored: undefined) or update: raw nginx config,
+// file serving, unix: targets, request variables in the target and regex domain names are admin-only
 const checkRowAdminOnly = ({ typeId, row, data, stored }) => {
 	if (!Object.hasOwn(HOSTS, typeId)) return;
 	const { guard } = HOSTS[typeId];
@@ -228,17 +237,19 @@ const checkRowAdminOnly = ({ typeId, row, data, stored }) => {
 			throw new FieldError(field);
 		}
 	}
-	if (typeId !== "proxy_hosts") return;
+	// the host-level rules of a non-admin save: forward target (unix:, $, the path scheme) and regex domain names; the
+	// locations are checked one by one below, so that the refusal names the location
+	const withDomains = (values) => values && { ...values, domain_names: parseList(values.domain_names) };
 	try {
-		assertPathScheme(false, row, stored);
-	} catch {
-		throw new FieldError("forward_host");
+		assertHostConfig({ isAdmin: false }, guard, { ...withDomains(row), locations: undefined }, withDomains(stored));
+	} catch (error) {
+		throw new FieldError(guardField(error, HOSTS[typeId].target) ?? HOSTS[typeId].target);
 	}
 	for (const [index, location] of locationsOf(typeId, row, data).entries()) {
 		try {
 			assertLocations(false, [{ ...location }], stored?.locations ?? []);
 		} catch (error) {
-			throw new FieldError(`locations[${index}].${GUARD_FIELDS[error.message_i18n] ?? "path"}`);
+			throw new FieldError(`locations[${index}].${guardField(error, "forward_host") ?? "path"}`);
 		}
 	}
 };
@@ -300,7 +311,7 @@ const checkItemValues = ({ plan, data }) => checkWrittenRows({ plan, data, value
 
 /**
  * Refuses a non-admin page import whose plan adds or replaces a row with what only an administrator may set: raw nginx
- * config or file serving outside /var/www (the host config guard).
+ * config, file serving outside /var/www, a unix: or $ forward target or a regex domain name (the host config guard).
  *
  * @param   {Object}    options
  * @param   {Object}    options.knex  reads the rows a replace overwrites
