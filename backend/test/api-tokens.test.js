@@ -120,6 +120,26 @@ it("refuses a disabled user like a wrong password and ends the sessions it had",
 	assert.equal((await session.get("/users/me")).status, 401);
 });
 
+it("runs a password check for an unknown, a disabled and a passwordless account, with the same answer", async () => {
+	const { loginTiming } = await import("../lib/argon2.js");
+	const spy = mock.method(loginTiming, "verifyDummy");
+	try {
+		const disabled = await account();
+		assert.equal((await admin.put(`/users/${disabled.id}`, { is_disabled: true })).status, 200);
+		const passwordless = await account();
+		await api.db("auth").where({ user_id: passwordless.id }).delete();
+		for (const identity of ["nobody@example.com", disabled.email, passwordless.email]) {
+			const before = spy.mock.callCount();
+			const answer = await api.client().post("/tokens", { identity, secret: PASSWORD });
+			assert.equal(answer.status, 403, answer.text);
+			assert.equal(answer.body.error.message_i18n, "error.invalid-auth");
+			assert.equal(spy.mock.callCount(), before + 1, identity);
+		}
+	} finally {
+		spy.mock.restore();
+	}
+});
+
 it("limits the sixth failed login of an address and keeps it out even with the right password", async () => {
 	const { email } = await account();
 	const client = api.client();
