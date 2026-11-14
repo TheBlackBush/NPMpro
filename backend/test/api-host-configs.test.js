@@ -940,6 +940,30 @@ it("forward auth: refuses two upstreams for one provider, keeps a stored pair", 
 	assert.equal(changed.status, 400, changed.text);
 });
 
+it("forward auth: a stored pair keeps saving when its locations change order", async () => {
+	const location = (name, upstream) => ({
+		path: `/${name}`,
+		forward_host: "10.9.5.1",
+		forward_port: 80,
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: upstream,
+	});
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		locations: [location("b", ""), location("c", "")],
+	});
+	for (const name of ["b", "c"]) {
+		await ctx.api
+			.db("npmpro_location")
+			.where({ proxy_host_id: host.id, path: `/${name}` })
+			.update({ npmpro_auth_request_upstream: `http://${name}.internal:9091` });
+	}
+	const reordered = await ctx.admin.put(`${URL}/${host.id}`, {
+		locations: [location("c", "http://c.internal:9091"), location("b", "http://b.internal:9091")],
+	});
+	assert.equal(reordered.status, 200, reordered.text);
+});
+
 it("forward auth: a stored conflict on one provider does not hide a new conflict on another", async () => {
 	const location = (provider, upstream) => ({
 		path: `/${provider}`,

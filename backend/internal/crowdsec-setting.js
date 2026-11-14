@@ -157,7 +157,8 @@ const startGate = (values, log, failedSecrets = []) => {
  *          appsecNoKey: boolean, missingPages: string[], secretError: boolean, failedSecrets: string[] } | null>}
  *          null when the row could not be read; missingFiles: the files that keep the bouncer off, appsecNoKey: an
  *          AppSec URL without a key keeps it off, missingPages: the pages it runs without, failedSecrets: the saved
- *          keys that cannot be decrypted and are not set by a variable (secretError is true when there is one)
+ *          keys that cannot be decrypted and are not set by a variable (secretError is true exactly when
+ *          failedSecrets is not empty)
  */
 const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 	try {

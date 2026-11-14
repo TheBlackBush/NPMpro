@@ -268,7 +268,9 @@ for (const [type, label, body] of hosts) {
 	else console.log(`online: ${label}`);
 }
 
-// the geo of the trusted proxies, with filled ranges and with none, through a real nginx -t
+// the geo of the trusted proxies, with filled ranges and with none, through a real nginx -t; the saved list is put
+// back afterwards
+const { trusted_ips: savedTrustedIps } = await must("GET", "/settings/runtime/network");
 try {
 	await must("PUT", "/settings/runtime/network", { trusted_ips: ["10.0.0.0/8", "fd00::/8", "203.0.113.7"] });
 	const trusted = await must("POST", "/nginx/proxy-hosts", {
@@ -284,7 +286,7 @@ try {
 	} else console.log("online: proxy with trusted proxy ranges");
 	await must("DELETE", `/nginx/proxy-hosts/${trusted.id}`);
 } finally {
-	await must("PUT", "/settings/runtime/network", { trusted_ips: [] });
+	await must("PUT", "/settings/runtime/network", { trusted_ips: savedTrustedIps });
 }
 
 const broken = await must("POST", "/nginx/proxy-hosts", {

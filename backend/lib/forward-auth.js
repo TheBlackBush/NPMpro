@@ -78,14 +78,6 @@ const upstreamConflicts = (host) => {
 };
 
 /**
- * The first conflict of upstreamConflicts, or null
- *
- * @param   {Object}  host
- * @returns {{ provider: string, upstreams: string[] }|null}
- */
-const upstreamConflict = (host) => upstreamConflicts(host)[0] ?? null;
-
-/**
  * The proxy hosts whose config follows the provider's default upstream: they use the provider (host or location) and
  * set no upstream of their own for it
  *
@@ -117,7 +109,6 @@ export {
 	locationAuthRequest,
 	ownUpstream,
 	proxyHostsForProvider,
-	upstreamConflict,
 	upstreamConflicts,
 	usesProvider,
 };

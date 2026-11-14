@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import {
-	locationAuthRequest,
-	ownUpstream,
-	upstreamConflict,
-	upstreamConflicts,
-	usesProvider,
-} from "../lib/forward-auth.js";
+import { locationAuthRequest, ownUpstream, upstreamConflicts, usesProvider } from "../lib/forward-auth.js";
 
 it("a location on global takes the host's provider, none stays none", () => {
 	const host = { npmpro_auth_request: "authelia" };
@@ -38,23 +32,25 @@ it("finds two different upstreams for one provider across the host and its enabl
 		],
 	};
 	const [first] = host.locations;
-	assert.deepEqual(upstreamConflict(host), { provider: "authelia", upstreams: ["http://a:9091", "http://b:9091"] });
-	assert.equal(upstreamConflict({ ...host, locations: [{ ...first, npmpro_enabled: false }] }), null);
-	assert.equal(upstreamConflict({ ...host, locations: [{ ...first, npmpro_auth_request_upstream: "" }] }), null);
-	assert.equal(
-		upstreamConflict({ ...host, locations: [{ ...first, npmpro_auth_request_upstream: "http://a:9091" }] }),
-		null,
+	assert.deepEqual(upstreamConflicts(host), [
+		{ provider: "authelia", upstreams: ["http://a:9091", "http://b:9091"] },
+	]);
+	assert.deepEqual(upstreamConflicts({ ...host, locations: [{ ...first, npmpro_enabled: false }] }), []);
+	assert.deepEqual(upstreamConflicts({ ...host, locations: [{ ...first, npmpro_auth_request_upstream: "" }] }), []);
+	assert.deepEqual(
+		upstreamConflicts({ ...host, locations: [{ ...first, npmpro_auth_request_upstream: "http://a:9091" }] }),
+		[],
 	);
 	// authentik and authentik-send-basic-auth are one provider
 	assert.deepEqual(
-		upstreamConflict({
+		upstreamConflicts({
 			npmpro_auth_request: "authentik",
 			npmpro_auth_request_upstream: "http://a:9000",
 			locations: [
 				{ npmpro_auth_request: "authentik-send-basic-auth", npmpro_auth_request_upstream: "http://b:9000" },
 			],
 		}),
-		{ provider: "authentik", upstreams: ["http://a:9000", "http://b:9000"] },
+		[{ provider: "authentik", upstreams: ["http://a:9000", "http://b:9000"] }],
 	);
 });
 

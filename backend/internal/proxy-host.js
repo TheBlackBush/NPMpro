@@ -72,13 +72,13 @@ const internalProxyHost = createHostService({
 			// an API request that leaves out a location's Auth Request means Same as host
 			for (const location of cleaned.locations ?? []) location.npmpro_auth_request ??= "global";
 			for (const item of [cleaned, ...(cleaned.locations ?? [])]) cleanForwardOptions(item);
-			// a host stored with such a pair keeps saving while that pair stays; any other conflict is refused
+			// a host stored with such a pair keeps saving while that pair stays (in any location order); any other
+			// conflict is refused
+			const sameSet = (left, right) => left.toSorted().join("\n") === right.toSorted().join("\n");
 			const stored = existingRow ? upstreamConflicts(existingRow) : [];
 			const conflict = upstreamConflicts(cleaned).find(
 				(entry) =>
-					!stored.some(
-						(old) => old.provider === entry.provider && old.upstreams.join() === entry.upstreams.join(),
-					),
+					!stored.some((old) => old.provider === entry.provider && sameSet(old.upstreams, entry.upstreams)),
 			);
 			if (conflict) {
 				throw new errs.ValidationError(
