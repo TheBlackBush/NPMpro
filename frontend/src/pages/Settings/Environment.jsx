@@ -1,4 +1,4 @@
-import { Info, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Link } from "react-router";
 import { BreakableHost, ErrorAlert, Loading } from "src/components";
 import { Badge } from "src/components/ui/badge";
@@ -10,7 +10,7 @@ import { PHONE_HIDDEN_CELL, titleClass } from "src/modules/MobileColumns";
 import { hasLockReason, LockedBadge, LockReason } from "./Authentication/LockedBadge";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsHeading } from "./SettingsHeading";
-import { StatusAlert } from "./StatusAlert";
+import { SettingsLead } from "./SettingsLead";
 
 // provider names are product names, shown as they are
 const PROVIDERS = {
@@ -104,8 +104,8 @@ const label = (id) => intl.formatMessage({ id });
 const STACKED_TABLE = "max-md:block max-md:[&>tbody]:block";
 const CARD_ROW = "max-md:mb-3 max-md:flex max-md:flex-col max-md:gap-1 max-md:rounded-lg max-md:border max-md:p-3";
 const CARD_CELL =
-	"whitespace-normal max-md:px-0 max-md:py-1 max-md:data-label:before:block max-md:data-label:before:text-xs max-md:data-label:before:text-muted-foreground max-md:data-label:before:content-[attr(data-label)]";
-const HEAD = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+	"whitespace-normal md:first:ps-4 md:last:pe-4 max-md:px-0 max-md:py-1 max-md:data-label:before:block max-md:data-label:before:text-xs max-md:data-label:before:text-muted-foreground max-md:data-label:before:content-[attr(data-label)]";
+const HEAD = "md:first:ps-4 md:last:pe-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 /**
  * The phone part of a stacked row, inside its title cell: the title with `end` on its right and the grey summary
@@ -136,7 +136,7 @@ function SettingLabel({ group, name }) {
 function LockedSettings({ locked }) {
 	if (locked.length === 0) {
 		return (
-			<p className="text-muted-foreground">
+			<p className="px-4 py-3 text-muted-foreground">
 				<T id="settings.environment.locked.none" />
 			</p>
 		);
@@ -328,7 +328,7 @@ export default function Environment() {
 			{isPending ? <Loading noLogo /> : null}
 			{data ? (
 				<>
-					<StatusAlert variant="info" icon={Info} id="settings.environment.note" />
+					<SettingsLead id="settings.environment.note" />
 					<SettingsCard
 						title={
 							<span className="inline-flex items-center gap-2">
@@ -336,10 +336,16 @@ export default function Environment() {
 								<T id="settings.environment.locked" />
 							</span>
 						}
+						info={<T id="settings.environment.locked.description" />}
+						bodyClassName="space-y-0 p-0 max-md:p-3"
 					>
 						<LockedSettings locked={data.lockedRuntime ?? []} />
 					</SettingsCard>
-					<SettingsCard>
+					<SettingsCard
+						title={<T id="settings.environment.variables" />}
+						info={<T id="settings.environment.variables.description" />}
+						bodyClassName="space-y-0 p-0 max-md:p-3"
+					>
 						<GroupTable groups={data.groups} />
 					</SettingsCard>
 				</>

@@ -82,6 +82,7 @@
 	"audit-log.filter.user": "User",
 	"auditlog.details-for": "Details: {name}",
 	"auditlogs": "Audit Logs",
+	"auditlogs.lead": "Who changed what in NPMpro, and when.",
 	"auto": "Auto",
 	"avatar.remove": "Remove avatar",
 	"avatar.upload": "Upload avatar",
@@ -1357,6 +1358,7 @@
 	"settings.environment.group.users": "User and time zone",
 	"settings.environment.locked": "Settings set by environment variables",
 	"settings.environment.locked-by": "Locked by",
+	"settings.environment.locked.description": "Settings whose value comes from a variable; their fields are locked.",
 	"settings.environment.locked.none": "No setting is set by an environment variable.",
 	"settings.environment.note": "These variables are read when the container starts and cannot be changed here. To change one, edit your compose file (or container template) and recreate the container. Values of passwords, e-mail addresses and keys are never shown.",
 	"settings.environment.secret.set": "set",
@@ -1367,6 +1369,8 @@
 	"settings.environment.status": "Status",
 	"settings.environment.value": "Value",
 	"settings.environment.variable": "Variable",
+	"settings.environment.variables": "Variables",
+	"settings.environment.variables.description": "Every variable NPMpro reads, with its value and what it does.",
 	"settings.forward-auth": "Forward authentication",
 	"settings.forward-auth.anubis": "Anubis",
 	"settings.forward-auth.anubis-images": "Custom Anubis images",
@@ -1638,6 +1642,7 @@
 	"user.unlink-oidc.content": "The next OIDC sign-in with this email address links the account again, to the provider account that signs in. Continue?",
 	"username": "Username",
 	"users": "Users",
+	"users.lead": "Who can sign in to NPMpro and what each account may do.",
 	"users.oidc-hint": "Users can also sign in with OIDC.",
 	"users.oidc-hint.link": "Settings, Authentication"
 }
