@@ -16,6 +16,9 @@ const FieldOrderContext = createContext([]);
 const ReadOnlyContext = createContext(false);
 // the ModalTabs of the form: { current: { tabs, open(id, then) } | null }, so the first error's tab opens
 const FormTabsContext = createContext(null);
+// HookForm's refused-save handler: a caller that checks the form itself (useFocusFirstError) hands it the errors, so
+// the first error is focused after the render that shows the messages and opens a collapsed card holding one
+const RefusedContext = createContext(null);
 // the fields holding typed text that is not a value yet: { entries: Set, setPending(name, on) } | null, and the set
 // of their names
 const PendingRegistryContext = createContext(null);
@@ -186,7 +189,9 @@ function focusFirstError(errors, order, setFocus, tabs = null) {
  * For a button that is blocked while a message shows: checks the whole form (handleSubmit, which saves nothing here)
  * and focuses the first error in field order. Only the fields left so far show a message, so the messages on screen
  * may not hold the first one in the page (Enter in the ACME profile with the renewal interval already refused):
- * the click handler gets the same answer as a save would.
+ * the click handler gets the same answer as a save would. Inside a HookForm the focus moves in HookForm's layout
+ * effect, after the render that shows the messages (a collapsed Settings card with the first error opens in that
+ * render).
  *
  * @returns {Function} () => void, for onBlockedClick
  */
@@ -194,10 +199,14 @@ function useFocusFirstError() {
 	const { handleSubmit, setFocus } = useFormContext();
 	const order = useFieldOrder();
 	const tabs = useFormTabs();
+	const refuse = useContext(RefusedContext);
 	return () => {
 		void handleSubmit(
 			() => undefined,
-			(errors) => focusFirstError(errors, order, setFocus, tabs?.current),
+			(errors) => {
+				if (refuse) refuse({ errors });
+				else focusFirstError(errors, order, setFocus, tabs?.current);
+			},
 		)();
 	};
 }
@@ -294,55 +303,57 @@ function HookForm({ methods, onSubmit, fieldOrder, className, readOnly = false, 
 	}));
 	return (
 		<FormProvider {...methods}>
-			<FieldOrderContext.Provider value={order}>
-				<FormTabsContext.Provider value={tabsRef}>
-					<PendingRegistryContext.Provider value={pending}>
-						<PendingNamesContext.Provider value={pendingNames}>
-							<ReadOnlyContext.Provider value={readOnly}>
-								<form
-									className={
-										frame
-											? ["flex min-h-0 flex-1 flex-col", className].filter(Boolean).join(" ")
-											: className
-									}
-									action="#"
-									noValidate
-									onSubmit={(event) => {
-										event.stopPropagation();
-										if (readOnly || submitting.current) {
-											event.preventDefault();
-											return;
+			<RefusedContext.Provider value={setRefused}>
+				<FieldOrderContext.Provider value={order}>
+					<FormTabsContext.Provider value={tabsRef}>
+						<PendingRegistryContext.Provider value={pending}>
+							<PendingNamesContext.Provider value={pendingNames}>
+								<ReadOnlyContext.Provider value={readOnly}>
+									<form
+										className={
+											frame
+												? ["flex min-h-0 flex-1 flex-col", className].filter(Boolean).join(" ")
+												: className
 										}
-										// typed text becomes a value first (the Save button keeps the focus in the field, so its
-										// blur never committed it); refused text stops the save with a message on its field
-										const typed = commitPendingEntries(pending.entries);
-										if (typed) {
-											event.preventDefault();
-											const error = { type: "pending", message: typed.message };
-											methods.setError(typed.name, error);
-											focusFirstError(
-												setIn({}, typed.name, error),
-												order,
-												methods.setFocus,
-												tabsRef.current,
-											);
-											return;
-										}
-										submitting.current = true;
-										void methods
-											.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
-											.finally(() => {
-												submitting.current = false;
-											});
-									}}
-								>
-									{children}
-								</form>
-							</ReadOnlyContext.Provider>
-						</PendingNamesContext.Provider>
-					</PendingRegistryContext.Provider>
-				</FormTabsContext.Provider>
-			</FieldOrderContext.Provider>
+										action="#"
+										noValidate
+										onSubmit={(event) => {
+											event.stopPropagation();
+											if (readOnly || submitting.current) {
+												event.preventDefault();
+												return;
+											}
+											// typed text becomes a value first (the Save button keeps the focus in the field, so its
+											// blur never committed it); refused text stops the save with a message on its field
+											const typed = commitPendingEntries(pending.entries);
+											if (typed) {
+												event.preventDefault();
+												const error = { type: "pending", message: typed.message };
+												methods.setError(typed.name, error);
+												focusFirstError(
+													setIn({}, typed.name, error),
+													order,
+													methods.setFocus,
+													tabsRef.current,
+												);
+												return;
+											}
+											submitting.current = true;
+											void methods
+												.handleSubmit(onSubmit, (errors) => setRefused({ errors }))(event)
+												.finally(() => {
+													submitting.current = false;
+												});
+										}}
+									>
+										{children}
+									</form>
+								</ReadOnlyContext.Provider>
+							</PendingNamesContext.Provider>
+						</PendingRegistryContext.Provider>
+					</FormTabsContext.Provider>
+				</FieldOrderContext.Provider>
+			</RefusedContext.Provider>
 		</FormProvider>
 	);
 }
