@@ -182,6 +182,9 @@ export const valuesFromFile = (lines) => {
 	return { values, unknown: Object.keys(lines).filter((file) => !byFile.has(file)), dropped };
 };
 
+/** CROWDSEC_ENABLED as the settings read it: true, false (any case, trimmed) or undefined for anything else */
+export const parseCrowdsecEnabledEnv = (raw) => ENV_PARSERS.enabled(String(raw ?? "").trim());
+
 const ENV_PARSERS = {
 	enabled: (raw) => {
 		const lower = raw.toLowerCase();

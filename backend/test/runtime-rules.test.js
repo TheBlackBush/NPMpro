@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { availableParallelism } from "node:os";
 import { performance } from "node:perf_hooks";
 import { it } from "node:test";
+import { crowdsecEnabledNow } from "../lib/crowdsec/config.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
 	appliesOf,
@@ -280,6 +281,44 @@ it("forces OCSP stapling on with must-staple and locks it when must-staple is se
 	const env = mergeRuntimeConfig("certificates", { ocsp_stapling: false }, userEnv({ ACME_MUST_STAPLE: "true" }));
 	assert.equal(env.values.ocsp_stapling, true);
 	assert.deepEqual(sorted(env.locked), ["must_staple", "ocsp_stapling"]);
+});
+
+it("locks write_log_files on while CrowdSec is enabled, by the env var or by the stored setting", () => {
+	const on = () => true;
+	const stored = mergeRuntimeConfig("logs", { write_log_files: false }, BOOT_ENV, { crowdsecEnabled: on });
+	assert.equal(stored.values.write_log_files, true);
+	assert.deepEqual(stored.locked_by, { write_log_files: "CROWDSEC_ENABLED" });
+	assert.deepEqual(stored.locked_reason, { write_log_files: "crowdsec-setting" });
+
+	const env = mergeRuntimeConfig("logs", { write_log_files: false }, { ...BOOT_ENV, CROWDSEC_ENABLED: "true" });
+	assert.deepEqual(env.locked_reason, { write_log_files: "crowdsec" });
+
+	// LOGROTATE=false from the user is overridden like GOA does
+	const both = mergeRuntimeConfig("logs", {}, userEnv({ LOGROTATE: "false" }), { crowdsecEnabled: on });
+	assert.equal(both.values.write_log_files, true);
+	assert.equal(both.locked_reason.write_log_files, "crowdsec-setting");
+});
+
+it("leaves write_log_files as stored when CrowdSec is off, also with ENABLED=true on disk and CROWDSEC_ENABLED=false", () => {
+	const off = mergeRuntimeConfig("logs", { write_log_files: false }, BOOT_ENV, { crowdsecEnabled: () => false });
+	assert.equal(off.values.write_log_files, false);
+	assert.deepEqual(off.locked, []);
+	const envOff = mergeRuntimeConfig(
+		"logs",
+		{ write_log_files: false },
+		{ ...BOOT_ENV, CROWDSEC_ENABLED: "false" },
+		{
+			crowdsecEnabled: () =>
+				crowdsecEnabledNow({ CROWDSEC_ENABLED: "false" }, { readText: () => "ENABLED=true" }),
+		},
+	);
+	assert.equal(envOff.values.write_log_files, false);
+});
+
+it("gives GOA the reason when GOA and CrowdSec both keep the log files on", () => {
+	const both = mergeRuntimeConfig("logs", {}, userEnv({ GOA: "true" }), { crowdsecEnabled: () => true });
+	assert.equal(both.locked_by.write_log_files, "GOA");
+	assert.equal(both.locked_reason.write_log_files, "goaccess");
 });
 
 it("locks write_log_files on when GOA is on", () => {

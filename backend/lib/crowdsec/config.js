@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { rooted } from "../paths.js";
+import { parseCrowdsecEnabledEnv } from "./settings.js";
 
 /** Location of the bouncer config in the container (written from Settings, CrowdSec). */
 export const CROWDSEC_CONF_PATH = rooted("/data/crowdsec/crowdsec.conf");
@@ -80,3 +82,27 @@ export const parseCrowdsecConf = (text) => {
  */
 export const isCrowdsecConfigured = (conf) =>
 	Boolean(conf.enabled && conf.apiUrl && (conf.useTls ? conf.certFile && conf.keyFile : conf.apiKey));
+
+const readTextSync = (file) => {
+	try {
+		return readFileSync(file, "utf8");
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * Whether CrowdSec is enabled now: a valid CROWDSEC_ENABLED wins, else ENABLED of the crowdsec.conf the backend writes
+ * from Settings, CrowdSec (log-includes.sh reads the same file at boot). Synchronous: the runtime rules merge is.
+ *
+ * @param   {Object}   env
+ * @param   {Object}   [deps]
+ * @param   {Function} [deps.readText]  (path) => text or null
+ * @returns {boolean}
+ */
+export const crowdsecEnabledNow = (env, { readText = readTextSync } = {}) => {
+	const fromEnv = parseCrowdsecEnabledEnv(env?.CROWDSEC_ENABLED);
+	if (fromEnv !== undefined) return fromEnv;
+	const text = readText(CROWDSEC_CONF_PATH);
+	return text === null ? false : parseCrowdsecConf(text).enabled;
+};
