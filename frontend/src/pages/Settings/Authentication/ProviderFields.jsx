@@ -6,8 +6,8 @@ import {
 	ErrorAlert,
 	FormField,
 	PasswordField,
+	SettingLineNote,
 	SwitchField,
-	SwitchList,
 	TextField,
 	useRecheckDependent,
 } from "src/components";
@@ -26,7 +26,7 @@ const WATCHED = ["issuerUrl", "clientId", "clientSecret"];
 /**
  * A text setting of the provider on the form layer's TextField: the lock badge in its label, disabled while locked
  */
-function ProviderText({ name, label, hint, locked, env, type = "text", placeholder, onChange }) {
+function ProviderText({ name, label, hint, locked, env, line = "inline", type = "text", placeholder, onChange }) {
 	return (
 		<TextField
 			name={name}
@@ -34,7 +34,7 @@ function ProviderText({ name, label, hint, locked, env, type = "text", placehold
 			label={label}
 			badges={locked ? <LockedBadge env={env} /> : null}
 			hint={hint}
-			className=""
+			line={line}
 			registerOptions={onChange ? { onChange } : undefined}
 			type={type}
 			autoComplete="off"
@@ -121,25 +121,53 @@ function ProviderFields({ data, isLocked }) {
 	const secretPlaceholder = data.secretError && !secretLocked ? "" : intl.formatMessage({ id: secretKey() });
 
 	return (
-		<SettingsCard title={<T id="settings.authentication.provider" />}>
-			<SwitchList>
-				<SwitchField
-					id="oidc-enabled"
-					label={<T id="settings.authentication.enabled" />}
-					badges={enabledLocked ? <LockedBadge env={envOf("enabled")} /> : null}
-					name={enabledField.name}
-					ref={enabledField.ref}
-					onBlur={enabledField.onBlur}
-					disabled={enabledLocked}
-					checked={envOnly || Boolean(enabledField.value)}
-					onChange={(e) => {
-						enabledField.onChange(e.target.checked);
-						recheckAfter("enabled")();
-					}}
-				/>
-			</SwitchList>
+		<SettingsCard
+			title={<T id="settings.authentication.provider" />}
+			info={<T id="settings.authentication.provider.description" />}
+			lines
+			actions={
+				<Button
+					outline
+					color="secondary"
+					isLoading={isTesting}
+					disabled={isTesting || !(values.issuerUrl && values.clientId)}
+					onClick={onTest}
+				>
+					<T id="settings.authentication.test" />
+				</Button>
+			}
+		>
+			{/* the result of Test connection, first under the title bar (always mounted, so it is announced) */}
+			<SettingLineNote role="status" className="space-y-2 empty:hidden">
+				{result?.ok ? (
+					<StatusAlert
+						variant="success"
+						icon={CircleCheck}
+						id="settings.authentication.test.ok"
+						data={{ issuer: result.issuer }}
+						live={false}
+					/>
+				) : null}
+				{result && !result.ok ? <ErrorAlert error={result.error}>{result.message}</ErrorAlert> : null}
+			</SettingLineNote>
+			<SwitchField
+				line
+				id="oidc-enabled"
+				label={<T id="settings.authentication.enabled" />}
+				badges={enabledLocked ? <LockedBadge env={envOf("enabled")} /> : null}
+				name={enabledField.name}
+				ref={enabledField.ref}
+				onBlur={enabledField.onBlur}
+				disabled={enabledLocked}
+				checked={envOnly || Boolean(enabledField.value)}
+				onChange={(e) => {
+					enabledField.onChange(e.target.checked);
+					recheckAfter("enabled")();
+				}}
+			/>
 			<ProviderText
 				name="issuerUrl"
+				line="block"
 				type="url"
 				label={<T id="settings.authentication.issuer-url" />}
 				hint={<T id="settings.authentication.issuer-url.hint" />}
@@ -150,6 +178,7 @@ function ProviderFields({ data, isLocked }) {
 			/>
 			<ProviderText
 				name="clientId"
+				line="block"
 				label={<T id="settings.authentication.client-id" />}
 				locked={isLocked("clientId")}
 				env={envOf("clientId")}
@@ -162,7 +191,7 @@ function ProviderFields({ data, isLocked }) {
 				label={<T id="settings.authentication.client-secret" />}
 				badges={secretLocked ? <LockedBadge env={envOf("clientSecret")} /> : null}
 				autoComplete="new-password"
-				className=""
+				line="block"
 				disabled={secretLocked}
 				placeholder={secretPlaceholder}
 				registerOptions={{ onChange: recheckAfter("clientSecret") }}
@@ -177,9 +206,9 @@ function ProviderFields({ data, isLocked }) {
 			/>
 			<FormField
 				id="oidc-callbackUrl"
+				line="block"
 				label={<T id="settings.authentication.callback-url" />}
 				hint={<T id="settings.authentication.callback-url.hint" />}
-				className=""
 			>
 				{(control) => (
 					<InputGroup>
@@ -211,27 +240,6 @@ function ProviderFields({ data, isLocked }) {
 				locked={isLocked("scopes")}
 				env={envOf("scopes")}
 			/>
-			<Button
-				outline
-				color="secondary"
-				isLoading={isTesting}
-				disabled={isTesting || !(values.issuerUrl && values.clientId)}
-				onClick={onTest}
-			>
-				<T id="settings.authentication.test" />
-			</Button>
-			<div role="status">
-				{result?.ok ? (
-					<StatusAlert
-						variant="success"
-						icon={CircleCheck}
-						id="settings.authentication.test.ok"
-						data={{ issuer: result.issuer }}
-						live={false}
-					/>
-				) : null}
-				{result && !result.ok ? <ErrorAlert error={result.error}>{result.message}</ErrorAlert> : null}
-			</div>
 		</SettingsCard>
 	);
 }

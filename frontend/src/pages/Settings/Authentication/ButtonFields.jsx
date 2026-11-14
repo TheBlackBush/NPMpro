@@ -1,7 +1,7 @@
 import { CircleCheck } from "lucide-react";
 import { useId, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
-import { ApiErrorContent, Button, ErrorAlert, OidcButton, TextField } from "src/components";
+import { ApiErrorContent, Button, ErrorAlert, OidcButton, SettingLine, TextField } from "src/components";
 import { BrandIcon } from "src/components/BrandIcon";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Input } from "src/components/ui/input";
@@ -54,62 +54,64 @@ function ColorFields() {
 		void trigger("buttonColor");
 	};
 	return (
-		<div className="space-y-2">
-			<div className="text-sm font-medium" id={`${groupId}-label`}>
-				<T id="settings.authentication.button.color" />
-			</div>
-			<div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
-				{OIDC_COLOR_PRESETS.map((preset) => (
-					<label className="cursor-pointer" key={preset.name}>
+		<SettingLine
+			id={groupId}
+			titleId={`${groupId}-label`}
+			title={<T id="settings.authentication.button.color" />}
+			controlClassName="@lg:w-auto"
+			error={invalid ? fieldState.error?.message : null}
+			errorId={`${groupId}-hex-error`}
+			control={
+				<div className="flex flex-wrap items-center gap-2">
+					<div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+						{OIDC_COLOR_PRESETS.map((preset) => (
+							<label className="cursor-pointer" key={preset.name}>
+								<input
+									type="radio"
+									name={`${groupId}-preset`}
+									className="peer sr-only"
+									value={preset.value}
+									aria-label={intl.formatMessage({
+										id: `settings.authentication.button.color.${preset.name}`,
+									})}
+									checked={color.toLowerCase() === preset.value}
+									onChange={() => setColor(preset.value)}
+								/>
+								{/* inline because the preset colours are data (preset palette values), not classes */}
+								<span
+									className="block size-7 rounded-md border ring-offset-background peer-checked:ring-2 peer-checked:ring-ring peer-checked:ring-offset-2 peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
+									style={{ backgroundColor: preset.value }}
+								/>
+							</label>
+						))}
+					</div>
+					<div className="flex items-center gap-2">
 						<input
-							type="radio"
-							name={`${groupId}-preset`}
-							className="peer sr-only"
-							value={preset.value}
-							aria-label={intl.formatMessage({
-								id: `settings.authentication.button.color.${preset.name}`,
-							})}
-							checked={color.toLowerCase() === preset.value}
-							onChange={() => setColor(preset.value)}
+							type="color"
+							className="h-9 w-12 cursor-pointer rounded-md border bg-transparent p-1"
+							aria-label={intl.formatMessage({ id: "settings.authentication.button.color.custom" })}
+							value={validOidcColor(color).toLowerCase()}
+							onChange={(e) => setColor(e.target.value)}
 						/>
-						{/* inline because the preset colours are data (preset palette values), not classes */}
-						<span
-							className="block size-7 rounded-md border ring-offset-background peer-checked:ring-2 peer-checked:ring-ring peer-checked:ring-offset-2 peer-focus-visible:ring-2 peer-focus-visible:ring-ring"
-							style={{ backgroundColor: preset.value }}
+						<Input
+							ref={field.ref}
+							name={field.name}
+							type="text"
+							aria-label={intl.formatMessage({ id: "settings.authentication.button.color.hex" })}
+							aria-invalid={invalid}
+							aria-describedby={invalid ? `${groupId}-hex-error` : undefined}
+							autoComplete="off"
+							spellCheck={false}
+							maxLength={7}
+							placeholder="#rrggbb"
+							value={color}
+							onBlur={field.onBlur}
+							onChange={(e) => setColor(e.target.value.trim())}
 						/>
-					</label>
-				))}
-			</div>
-			<div className="flex items-center gap-2">
-				<input
-					type="color"
-					className="h-9 w-12 cursor-pointer rounded-md border bg-transparent p-1"
-					aria-label={intl.formatMessage({ id: "settings.authentication.button.color.custom" })}
-					value={validOidcColor(color).toLowerCase()}
-					onChange={(e) => setColor(e.target.value)}
-				/>
-				<Input
-					ref={field.ref}
-					name={field.name}
-					type="text"
-					aria-label={intl.formatMessage({ id: "settings.authentication.button.color.hex" })}
-					aria-invalid={invalid}
-					aria-describedby={invalid ? `${groupId}-hex-error` : undefined}
-					autoComplete="off"
-					spellCheck={false}
-					maxLength={7}
-					placeholder="#rrggbb"
-					value={color}
-					onBlur={field.onBlur}
-					onChange={(e) => setColor(e.target.value.trim())}
-				/>
-			</div>
-			{invalid ? (
-				<div className="text-sm text-destructive" id={`${groupId}-hex-error`}>
-					{fieldState.error?.message}
+					</div>
 				</div>
-			) : null}
-		</div>
+			}
+		/>
 	);
 }
 
@@ -167,155 +169,163 @@ function IconFields({ storedIcon }) {
 	const selected = field.value ?? storedName;
 
 	return (
-		<div className="space-y-2">
-			<div className="text-sm font-medium" id={`${groupId}-label`}>
-				<T id="settings.authentication.button.icon" />
-			</div>
-			<div
-				className="flex flex-wrap gap-2"
-				role="radiogroup"
-				aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source" })}
-			>
-				{SOURCES.map((s) => (
-					<label className="cursor-pointer" key={s}>
-						<input
-							type="radio"
-							name={`${groupId}-source`}
-							value={s}
-							className="peer sr-only"
-							checked={source === s}
-							onChange={() => {
-								setSource(s);
-								setResult(null);
-							}}
-						/>
-						<span className={PICK_CARD}>
-							<T id={`settings.authentication.button.icon.source.${s}`} />
-						</span>
-					</label>
-				))}
-			</div>
-			{source === "builtin" ? (
-				// one radio group, so the arrow keys walk through every tile; the headings are plain text
-				<div className="space-y-3" role="radiogroup" aria-labelledby={`${groupId}-label`}>
-					{ICON_GROUPS.map((group) => {
-						const entries = pickerEntries(selected, storedName).filter(
-							(entry) => entry.kind === group.kind,
-						);
-						return (
-							<div className="space-y-1.5" key={group.kind}>
-								<div className="text-xs text-muted-foreground">
-									<T id={group.headingId} />
-								</div>
-								<div className="flex flex-wrap gap-2">
-									{entries.map((entry) => {
-										const label = iconLabel(entry);
-										return (
-											<TapTooltip key={entry.name} content={label} tap={false}>
-												<label className="cursor-pointer">
-													<input
-														ref={entry.name === firstName ? field.ref : undefined}
-														type="radio"
-														name={`${groupId}-builtin`}
-														value={entry.name}
-														className="peer sr-only"
-														aria-label={label}
-														checked={selected === entry.name}
-														onBlur={field.onBlur}
-														onChange={() => {
-															field.onChange(entry.name);
-															setResult(null);
-														}}
-													/>
-													<span className={PICK_CARD}>
-														{entry.kind === "brand" ? (
-															<BrandIcon icon={entry.icon} className="size-5" />
-														) : (
-															<entry.icon className="size-5" aria-hidden="true" />
-														)}
-													</span>
-												</label>
-											</TapTooltip>
-										);
-									})}
-								</div>
-							</div>
-						);
-					})}
+		<SettingLine
+			id={groupId}
+			titleId={`${groupId}-label`}
+			title={<T id="settings.authentication.button.icon" />}
+			controlClassName="@lg:w-auto"
+			control={
+				<div
+					className="flex flex-wrap gap-2"
+					role="radiogroup"
+					aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source" })}
+				>
+					{SOURCES.map((s) => (
+						<label className="cursor-pointer" key={s}>
+							<input
+								type="radio"
+								name={`${groupId}-source`}
+								value={s}
+								className="peer sr-only"
+								checked={source === s}
+								onChange={() => {
+									setSource(s);
+									setResult(null);
+								}}
+							/>
+							<span className={PICK_CARD}>
+								<T id={`settings.authentication.button.icon.source.${s}`} />
+							</span>
+						</label>
+					))}
 				</div>
-			) : null}
-			{source === "upload" ? (
-				<>
-					<Input
-						type="file"
-						accept={ICON_ACCEPT}
-						aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.upload" })}
-						aria-describedby={`${groupId}-upload-hint`}
-						aria-disabled={busy}
-						onChange={onFile}
-					/>
-					<div className="text-sm text-muted-foreground" id={`${groupId}-upload-hint`}>
-						<T
-							id="settings.authentication.button.icon.upload.hint"
-							data={{ kb: OIDC_ICON_MAX_BYTES / 1024 }}
-						/>
+			}
+		>
+			<div className="space-y-2 px-4 pb-3">
+				{source === "builtin" ? (
+					// one radio group, so the arrow keys walk through every tile; the headings are plain text
+					<div className="space-y-3" role="radiogroup" aria-labelledby={`${groupId}-label`}>
+						{ICON_GROUPS.map((group) => {
+							const entries = pickerEntries(selected, storedName).filter(
+								(entry) => entry.kind === group.kind,
+							);
+							return (
+								<div className="space-y-1.5" key={group.kind}>
+									<div className="text-xs text-muted-foreground">
+										<T id={group.headingId} />
+									</div>
+									<div className="flex flex-wrap gap-2">
+										{entries.map((entry) => {
+											const label = iconLabel(entry);
+											return (
+												<TapTooltip key={entry.name} content={label} tap={false}>
+													<label className="cursor-pointer">
+														<input
+															ref={entry.name === firstName ? field.ref : undefined}
+															type="radio"
+															name={`${groupId}-builtin`}
+															value={entry.name}
+															className="peer sr-only"
+															aria-label={label}
+															checked={selected === entry.name}
+															onBlur={field.onBlur}
+															onChange={() => {
+																field.onChange(entry.name);
+																setResult(null);
+															}}
+														/>
+														<span className={PICK_CARD}>
+															{entry.kind === "brand" ? (
+																<BrandIcon icon={entry.icon} className="size-5" />
+															) : (
+																<entry.icon className="size-5" aria-hidden="true" />
+															)}
+														</span>
+													</label>
+												</TapTooltip>
+											);
+										})}
+									</div>
+								</div>
+							);
+						})}
 					</div>
-				</>
-			) : null}
-			{source === "url" ? (
-				<>
-					<div className="flex gap-2">
+				) : null}
+				{source === "upload" ? (
+					<>
 						<Input
-							type="url"
-							aria-invalid={urlInvalid ? "true" : undefined}
-							aria-describedby={urlInvalid ? "oidc-icon-url-error" : undefined}
-							aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.url" })}
-							placeholder="https://"
-							autoComplete="off"
-							value={url}
-							disabled={busy}
-							onChange={(e) => setUrl(e.target.value)}
+							type="file"
+							accept={ICON_ACCEPT}
+							aria-label={intl.formatMessage({ id: "settings.authentication.button.icon.source.upload" })}
+							aria-describedby={`${groupId}-upload-hint`}
+							aria-disabled={busy}
+							onChange={onFile}
 						/>
+						<div className="text-sm text-muted-foreground" id={`${groupId}-upload-hint`}>
+							<T
+								id="settings.authentication.button.icon.upload.hint"
+								data={{ kb: OIDC_ICON_MAX_BYTES / 1024 }}
+							/>
+						</div>
+					</>
+				) : null}
+				{source === "url" ? (
+					<>
+						<div className="flex gap-2">
+							<Input
+								type="url"
+								aria-invalid={urlInvalid ? "true" : undefined}
+								aria-describedby={urlInvalid ? "oidc-icon-url-error" : undefined}
+								aria-label={intl.formatMessage({
+									id: "settings.authentication.button.icon.source.url",
+								})}
+								placeholder="https://"
+								autoComplete="off"
+								value={url}
+								disabled={busy}
+								onChange={(e) => setUrl(e.target.value)}
+							/>
+							<Button
+								isLoading={download.isPending}
+								disabled={busy || !url.trim() || urlInvalid}
+								onClick={onDownload}
+							>
+								<T id="settings.authentication.button.icon.download" />
+							</Button>
+						</div>
+						{urlInvalid ? (
+							<div className="text-sm text-destructive" id="oidc-icon-url-error">
+								<T id="settings.authentication.button.icon.url.invalid" />
+							</div>
+						) : null}
+					</>
+				) : null}
+				{storedIcon?.type === "file" ? (
+					<div>
 						<Button
-							isLoading={download.isPending}
-							disabled={busy || !url.trim() || urlInvalid}
-							onClick={onDownload}
+							outline
+							color="danger"
+							size="sm"
+							isLoading={remove.isPending}
+							disabled={busy}
+							onClick={onRemove}
 						>
-							<T id="settings.authentication.button.icon.download" />
+							<T id="settings.authentication.button.icon.remove" />
 						</Button>
 					</div>
-					{urlInvalid ? (
-						<div className="text-sm text-destructive" id="oidc-icon-url-error">
-							<T id="settings.authentication.button.icon.url.invalid" />
-						</div>
+				) : null}
+				<div role="status">
+					{result?.ok ? (
+						<StatusAlert variant="success" icon={CircleCheck} id={result.messageId} live={false} />
 					) : null}
-				</>
-			) : null}
-			{storedIcon?.type === "file" ? (
-				<div>
-					<Button
-						outline
-						color="danger"
-						size="sm"
-						isLoading={remove.isPending}
-						disabled={busy}
-						onClick={onRemove}
-					>
-						<T id="settings.authentication.button.icon.remove" />
-					</Button>
 				</div>
-			) : null}
-			<div role="status">
-				{result?.ok ? (
-					<StatusAlert variant="success" icon={CircleCheck} id={result.messageId} live={false} />
+				{result && !result.ok ? (
+					<ErrorAlert onClose={() => setResult(null)}>
+						<ApiErrorContent error={result.error} />
+					</ErrorAlert>
 				) : null}
 			</div>
-			{result && !result.ok ? (
-				<ErrorAlert onClose={() => setResult(null)}>
-					<ApiErrorContent error={result.error} />
-				</ErrorAlert>
-			) : null}
-		</div>
+		</SettingLine>
 	);
 }
 
@@ -326,28 +336,34 @@ function ButtonFields({ data }) {
 	const [buttonLabel, buttonColor, buttonIcon] = watched;
 	const icon = effectiveIcon(buttonIcon, data.button?.icon);
 	return (
-		<SettingsCard title={<T id="settings.authentication.button" />}>
+		<SettingsCard
+			title={<T id="settings.authentication.button" />}
+			info={<T id="settings.authentication.button.description" />}
+			lines
+		>
 			<TextField
 				name="buttonLabel"
 				id="oidc-buttonLabel"
+				line="inline"
 				label={<T id="settings.authentication.button.label" />}
 				hint={<T id="settings.authentication.button.label.hint" />}
 				type="text"
 				maxLength={40}
 				autoComplete="off"
-				className=""
 			/>
 			<ColorFields />
 			<IconFields storedIcon={data.button?.icon} />
-			<div className="rounded-lg border p-4">
-				<div className="mb-2 text-sm font-medium">
-					<T id="settings.authentication.button.preview" />
-				</div>
-				{/* inert: the preview is not interactive and stays out of the tab order */}
-				<div inert>
-					<OidcButton label={buttonLabel} color={buttonColor} icon={icon} />
-				</div>
-			</div>
+			<SettingLine
+				id="oidc-button-preview"
+				title={<T id="settings.authentication.button.preview" />}
+				controlClassName="@lg:w-auto"
+				control={
+					// inert: the preview is not interactive and stays out of the tab order
+					<div inert>
+						<OidcButton label={buttonLabel} color={buttonColor} icon={icon} />
+					</div>
+				}
+			/>
 		</SettingsCard>
 	);
 }
