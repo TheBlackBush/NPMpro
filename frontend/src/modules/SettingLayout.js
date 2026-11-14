@@ -58,7 +58,8 @@ export function settingLineClass(layout = "inline") {
 
 /**
  * The classes of a Settings card: the title bar (a divider under it while the body shows), the collapse trigger
- * stretched over the bar, and the body (padded, or lines edge to edge with hairlines)
+ * stretched over the bar, and the body (padded, or lines edge to edge with hairlines). Lines and a collapsible title
+ * bar clip to the rounded corners (the hover background of the bar, the hairlines)
  *
  * @param   {Object}  [options]
  * @param   {boolean} [options.lines]
@@ -68,7 +69,7 @@ export function settingLineClass(layout = "inline") {
  */
 export function settingsCardClass({ lines = false, open = true, collapsible = false } = {}) {
 	return {
-		card: cn("rounded-lg border bg-card text-card-foreground", lines && "overflow-hidden"),
+		card: cn("rounded-lg border bg-card text-card-foreground", (lines || collapsible) && "overflow-hidden"),
 		header: cn(
 			"relative flex flex-wrap items-center gap-2 px-4 py-3",
 			open && "border-b",

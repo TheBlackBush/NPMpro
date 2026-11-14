@@ -77,6 +77,7 @@ it("draws a lines card edge to edge with hairlines between the lines", () => {
 
 it("draws a closed collapsible card without the divider and with a hover on its title bar", () => {
 	const closed = settingsCardClass({ collapsible: true, open: false });
+	has(closed.card, "overflow-hidden");
 	lacks(closed.header, "border-b");
 	has(closed.header, "hover:bg-muted/50");
 	has(closed.trigger, "after:absolute", "after:inset-0", "focus-visible:after:ring-3");
