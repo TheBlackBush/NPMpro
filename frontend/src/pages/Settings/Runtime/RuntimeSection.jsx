@@ -1,4 +1,4 @@
-import { Info, RefreshCw } from "lucide-react";
+import { Lock, RefreshCw } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ErrorAlert, HookForm, useAppForm, useFieldOrder } from "src/components";
@@ -193,7 +193,7 @@ function RuntimeForm({ group, titleId, leadId, data, toForm, toApi, validate, ch
 				{alert}
 				{leadId ? <SettingsLead id={leadId} /> : null}
 				{ctx.anyLocked ? (
-					<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+					<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 				) : null}
 				<RestartPendingAlert data={data} />
 				{children}

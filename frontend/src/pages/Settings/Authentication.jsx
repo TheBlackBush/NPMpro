@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleDashed, Info, Lock } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useFormState, useWatch } from "react-hook-form";
 import { ApiErrorContent, ErrorAlert, HookForm, StatusBadge, useAppForm } from "src/components";
@@ -190,7 +190,7 @@ function AuthenticationForm({ data }) {
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.authentication.status.secret-error" />
 			) : null}
 			{locked.size > 0 ? (
-				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+				<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 			) : null}
 			<ProviderFields data={data} isLocked={isLocked} />
 			<ButtonFields data={data} />

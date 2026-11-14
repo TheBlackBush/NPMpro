@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, ExternalLink, Info } from "lucide-react";
+import { CircleAlert, CircleCheck, ExternalLink, Info, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormState } from "react-hook-form";
 import {
@@ -265,7 +265,7 @@ function GeoipForm({ data, background, setBackground }) {
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.geoip.secret-error" />
 			) : null}
 			{lockedKeys.length > 0 ? (
-				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+				<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 			) : null}
 			{background ? <StatusAlert variant="info" icon={Info} id="settings.geoip.background" /> : null}
 			<AccountFields data={data} isLocked={isLocked} />

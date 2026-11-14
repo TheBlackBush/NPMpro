@@ -1,4 +1,4 @@
-import { ExternalLink, Info } from "lucide-react";
+import { ExternalLink, Lock } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { FormField, HookForm, SettingLineNote, SwitchField, useAppForm, useFieldError } from "src/components";
@@ -418,7 +418,7 @@ function MonitoringForm({ data, logs }) {
 			{alert}
 			<SettingsLead id="settings.monitoring.intro" />
 			{lockedKeys.length > 0 || logsCtx.anyLocked ? (
-				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+				<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 			) : null}
 			<RestartPendingAlert data={logs} />
 			<RuntimeContext.Provider value={logsCtx}>
