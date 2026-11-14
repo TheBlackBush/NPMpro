@@ -1,8 +1,7 @@
 import { CircleAlert, CircleCheck, CircleDashed, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useFormState, useWatch } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import { ApiErrorContent, ErrorAlert, HookForm, StatusBadge, useAppForm } from "src/components";
-import { Accordion, AccordionItem, AccordionPanel, AccordionTrigger } from "src/components/ui/accordion";
 import { Badge } from "src/components/ui/badge";
 import { useOidcSettings, useSaveOidcSettings } from "src/hooks";
 import { T } from "src/locale";
@@ -15,8 +14,10 @@ import { DefaultPermissionsFields, NewUsersFields } from "./Authentication/NewUs
 import { ProviderFields } from "./Authentication/ProviderFields";
 import { SignInRules } from "./Authentication/SignInRules";
 import { SaveBar } from "./SaveBar";
+import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
+import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
 const RULE_FIELDS = ["requireVerifiedEmail", "skipMfa", "disablePassword"];
@@ -76,54 +77,44 @@ function NewUsersSummary() {
 	);
 }
 
-// Collapsible groups below the always visible provider and button settings. A group holding a validation error is
-// opened by a refused save (while rendering, so it is open when the first error gets the focus), so an error is never
-// hidden.
-function AuthAccordion({ data, isLocked }) {
-	const { errors, submitCount } = useFormState({ name: "autoCreateDomains" });
-	const [openKeys, setOpenKeys] = useState([]);
-	const [seenSubmits, setSeenSubmits] = useState(submitCount);
-	if (submitCount !== seenSubmits) {
-		setSeenSubmits(submitCount);
-		if (errors.autoCreateDomains && !openKeys.includes("new-users")) setOpenKeys([...openKeys, "new-users"]);
-	}
-	const item = (key, titleId, summary, children) => (
-		<AccordionItem value={key}>
-			<AccordionTrigger
-				className="items-center hover:no-underline"
-				id={`auth-${key}-trigger`}
-				aria-controls={`auth-${key}-panel`}
-			>
-				<span className="flex flex-1 flex-wrap items-center justify-between gap-2 pe-2">
-					<span className="text-base font-medium">
-						<T id={titleId} />
-					</span>
-					{summary}
-				</span>
-			</AccordionTrigger>
-			{/* closed groups stay mounted: their fields keep their values and registration */}
-			<AccordionPanel
-				id={`auth-${key}-panel`}
-				aria-labelledby={`auth-${key}-trigger`}
-				open={openKeys.includes(key)}
-				className="space-y-4"
-			>
-				{children}
-			</AccordionPanel>
-		</AccordionItem>
-	);
+const PERMISSION_FIELDS = ["autoCreatePermissions"];
 
+// The rarely changed groups as collapsed cards; a refused save opens the one holding the error
+function AuthGroups({ data, isLocked }) {
 	return (
-		<Accordion type="multiple" value={openKeys} onValueChange={setOpenKeys} className="rounded-lg border px-4">
-			{item(
-				"rules",
-				"settings.authentication.rules",
-				<RulesSummary isLocked={isLocked} />,
-				<SignInRules data={data} isLocked={isLocked} />,
-			)}
-			{item("new-users", "settings.authentication.new-users", <NewUsersSummary />, <NewUsersFields />)}
-			{item("permissions", "settings.authentication.default-permissions", null, <DefaultPermissionsFields />)}
-		</Accordion>
+		<>
+			<SettingsCard
+				id="auth-rules"
+				collapsible
+				openOn={RULE_FIELDS}
+				lines
+				title={<T id="settings.authentication.rules" />}
+				info={<T id="settings.authentication.rules.description" />}
+				actions={<RulesSummary isLocked={isLocked} />}
+			>
+				<SignInRules data={data} isLocked={isLocked} />
+			</SettingsCard>
+			<SettingsCard
+				id="auth-new-users"
+				collapsible
+				openOn={NEW_USER_FIELDS}
+				lines
+				title={<T id="settings.authentication.new-users" />}
+				info={<T id="settings.authentication.new-users.description" />}
+				actions={<NewUsersSummary />}
+			>
+				<NewUsersFields />
+			</SettingsCard>
+			<SettingsCard
+				id="auth-permissions"
+				collapsible
+				openOn={PERMISSION_FIELDS}
+				title={<T id="settings.authentication.default-permissions" />}
+				info={<T id="settings.authentication.default-permissions.description" />}
+			>
+				<DefaultPermissionsFields />
+			</SettingsCard>
+		</>
 	);
 }
 
@@ -181,6 +172,7 @@ function AuthenticationForm({ data }) {
 			<div ref={errorRef} tabIndex={-1} className="empty:hidden">
 				<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 			</div>
+			<SettingsLead id="settings.authentication.intro" />
 			{data.active ? (
 				<StatusAlert variant="success" icon={CircleCheck} id="settings.authentication.status.active" />
 			) : (
@@ -194,7 +186,7 @@ function AuthenticationForm({ data }) {
 			) : null}
 			<ProviderFields data={data} isLocked={isLocked} />
 			<ButtonFields data={data} />
-			<AuthAccordion data={data} isLocked={isLocked} />
+			<AuthGroups data={data} isLocked={isLocked} />
 			<SaveBar labels={FIELD_LABELS} />
 		</HookForm>
 	);

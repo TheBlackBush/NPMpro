@@ -1,5 +1,6 @@
-// A settings save with its toast, the CrowdSec section, the Landing pages section, the phone layout of a host list,
-// the MFA and help windows, and the language switch (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages
+// section, the phone layout of a host list, the MFA and help windows, and the language switch (last: it reloads the
+// page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -83,6 +84,55 @@ async function crowdsecSettings({ admin }) {
 			await api("PUT", "/settings/crowdsec", { captcha_expiration: before.captcha_expiration, force: true });
 		}
 	}
+}
+
+const ADVANCED = "#crowdsec-advanced-trigger";
+const REQUEST_TIMEOUT = "#crowdsec-request-timeout";
+
+const focusIs = (page, id) => page.waitForFunction((target) => document.activeElement?.id === target, id);
+
+// waits until the Advanced card is open or closed (a re-render may lag behind the click)
+const expanded = async (page, expected) => {
+	try {
+		await page.locator(`${ADVANCED}[aria-expanded="${expected}"]`).waitFor({ timeout: 5000 });
+	} catch {
+		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`);
+	}
+};
+
+// Settings, CrowdSec: a wrong value in the collapsed Advanced card, which is closed again, is not hidden by a refused
+// save: a click on the blocked Save and Enter in a field of another card (the implicit submission clicks the blocked
+// Save, the form's default button) both open the card and focus the field. Nothing is saved, and the field gets its
+// value back, so the section has no changes when the flow leaves.
+async function collapsedCardOpens({ admin }) {
+	const { page, api } = admin;
+	const before = await api("GET", "/settings/crowdsec");
+	await page.goto("/settings/crowdsec");
+	await page.locator("#crowdsec-api-url").waitFor();
+	await expanded(page, false);
+	await page.locator(ADVANCED).click();
+	const field = page.locator(REQUEST_TIMEOUT);
+	const saved = await field.inputValue();
+	await field.fill("5");
+	// closing the card leaves the field: its message shows and Save is blocked
+	await page.locator(ADVANCED).click();
+	await expanded(page, false);
+	// the blocked Save is aria-disabled (still clickable), which Playwright counts as not enabled
+	const save = page.locator("form").getByRole("button", { name: "Save", exact: true });
+	await page.locator('form button[aria-disabled="true"]', { hasText: "Save" }).waitFor({ timeout: 5000 });
+	await save.click({ force: true });
+	await focusIs(page, "crowdsec-request-timeout");
+	await expanded(page, true);
+	// the same from the keyboard: Enter in a field of another card
+	await page.locator(ADVANCED).click();
+	await expanded(page, false);
+	await page.locator(CAPTCHA_EXPIRATION).press("Enter");
+	await focusIs(page, "crowdsec-request-timeout");
+	await expanded(page, true);
+	await field.fill(saved);
+	const after = await api("GET", "/settings/crowdsec");
+	if (after.request_timeout !== before.request_timeout)
+		throw new Error("the refused save changed the request timeout");
 }
 
 const MAINTENANCE_PAGE = '<!DOCTYPE html><p>flow maintenance <!--# echo var="host" --></p>';
@@ -348,6 +398,7 @@ async function languageFallback({ browser, base, password }) {
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "crowdsec settings", run: crowdsecSettings },
+	{ name: "collapsed card opens", run: collapsedCardOpens },
 	{ name: "landing pages settings", run: landingPagesSettings },
 	{ name: "phone list", run: phoneList },
 	{ name: "mfa window", run: mfaWindow },

@@ -1,21 +1,20 @@
-import { CircleAlert, CircleCheck, CircleDashed, CircleX, ExternalLink, Info, Lock, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, CircleX, ExternalLink, Lock, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 import { Link } from "react-router";
 import {
 	ApiErrorContent,
 	Button,
-	ChoiceGroup,
 	ErrorAlert,
 	HookForm,
 	PasswordField,
 	SelectField,
+	SettingLine,
+	SettingLineNote,
 	SwitchField,
-	SwitchList,
 	TextField,
 	useAppForm,
 } from "src/components";
-import { Accordion, AccordionItem, AccordionPanel, AccordionTrigger } from "src/components/ui/accordion";
 import { useCrowdsecSettings, useSaveCrowdsecSettings, useTestCrowdsecSettings } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { formatDateTime, intl, T } from "src/locale";
@@ -41,6 +40,7 @@ import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
+import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
 const label = (id) => intl.formatMessage({ id });
@@ -51,23 +51,12 @@ const useLocks = (data) => {
 	return { isLocked, badge: (name) => (isLocked(name) ? <LockedBadge env={data.lockedBy?.[name]} /> : null) };
 };
 
-// a ChoiceGroup bound to one field of the form
-function Choice({ name, legendId, options, variant = "boxes" }) {
-	const { field } = useController({ name });
-	return (
-		<ChoiceGroup
-			name={`crowdsec-${name}`}
-			legend={<T id={legendId} />}
-			variant={variant}
-			fill
-			value={field.value}
-			inputRef={field.ref}
-			onBlur={field.onBlur}
-			onChange={field.onChange}
-			options={options}
-		/>
-	);
-}
+const MODE_HINTS = { live: "settings.crowdsec.mode.live.hint", stream: "settings.crowdsec.mode.stream.hint" };
+const BAN_HINTS = {
+	page: "settings.crowdsec.ban-response.page.hint",
+	redirect: "settings.crowdsec.ban-response.redirect.hint",
+	status: "settings.crowdsec.ban-response.status.hint",
+};
 
 function CheckList({ checks }) {
 	return (
@@ -102,50 +91,54 @@ function StatusCard({ data, request }) {
 	};
 	return (
 		<SettingsCard
+			id="crowdsec-status"
+			lines
 			title={<T id="settings.crowdsec.status" />}
+			info={<T id="settings.crowdsec.test.hint" />}
 			actions={
 				<Button outline color="secondary" isLoading={isPending} disabled={isPending} onClick={onTest}>
 					<T id="settings.crowdsec.test" />
 				</Button>
 			}
 		>
-			<dl className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:grid-cols-[minmax(0,3fr)_minmax(0,9fr)]">
-				<dt className="text-muted-foreground">
-					<T id="settings.crowdsec.status.bouncer" />
-				</dt>
-				<dd className="flex items-center gap-1.5">
-					{status.loaded ? (
-						<CircleCheck className="size-4 text-success" aria-hidden="true" />
-					) : (
-						<CircleDashed className="size-4 text-muted-foreground" aria-hidden="true" />
-					)}
-					<T id={status.loaded ? "settings.crowdsec.status.loaded" : "settings.crowdsec.status.off"} />
-				</dd>
-				<dt className="text-muted-foreground">
-					<T id="settings.crowdsec.status.last-contact" />
-				</dt>
-				<dd>
-					{status.lastContact ? (
-						formatDateTime(status.lastContact)
-					) : (
-						<T id="settings.crowdsec.status.never" />
-					)}
-				</dd>
-				<dt className="text-muted-foreground">
-					<T id="settings.crowdsec.status.error" />
-				</dt>
-				<dd className={cn("break-words", status.error && "text-destructive")}>
-					{status.error ?? <T id="settings.crowdsec.status.no-error" />}
-				</dd>
-			</dl>
-			<div className="text-sm text-muted-foreground">
-				<T id="settings.crowdsec.test.hint" />
-			</div>
 			{/* always mounted, so a screen reader announces the result that appears in it */}
-			<div role="status" aria-live="polite" className="space-y-2 empty:hidden">
+			<SettingLineNote role="status" aria-live="polite" className="space-y-2 empty:hidden">
 				{result?.error ? <ErrorAlert error={result.error} /> : null}
 				{result?.checks ? <CheckList checks={result.checks} /> : null}
-			</div>
+			</SettingLineNote>
+			<SettingLine
+				id="crowdsec-status-bouncer"
+				layout="value"
+				title={<T id="settings.crowdsec.status.bouncer" />}
+				control={
+					<span className="inline-flex items-center gap-1.5">
+						{status.loaded ? (
+							<CircleCheck className="size-4 text-success" aria-hidden="true" />
+						) : (
+							<CircleDashed className="size-4 text-muted-foreground" aria-hidden="true" />
+						)}
+						<T id={status.loaded ? "settings.crowdsec.status.loaded" : "settings.crowdsec.status.off"} />
+					</span>
+				}
+			/>
+			<SettingLine
+				id="crowdsec-status-last-contact"
+				layout="value"
+				title={<T id="settings.crowdsec.status.last-contact" />}
+				control={
+					status.lastContact ? formatDateTime(status.lastContact) : <T id="settings.crowdsec.status.never" />
+				}
+			/>
+			<SettingLine
+				id="crowdsec-status-error"
+				layout="value"
+				title={<T id="settings.crowdsec.status.error" />}
+				control={
+					<span className={cn("break-words", status.error && "text-destructive")}>
+						{status.error ?? <T id="settings.crowdsec.status.no-error" />}
+					</span>
+				}
+			/>
 		</SettingsCard>
 	);
 }
@@ -161,18 +154,23 @@ function ConnectionCard({ data, locks }) {
 	else if (data.apiKeySet && !data.secretError && !clearApiKey)
 		keyPlaceholder = label("settings.crowdsec.api-key.saved");
 	return (
-		<SettingsCard title={<T id="settings.crowdsec.connection" />}>
-			<SwitchList>
-				<SwitchField
-					id="crowdsec-enabled"
-					label={<T id="settings.crowdsec.enabled" />}
-					hint={<T id="settings.crowdsec.enabled.hint" />}
-					badges={locks.badge("enabled")}
-					disabled={locks.isLocked("enabled")}
-					{...register("enabled")}
-				/>
-			</SwitchList>
+		<SettingsCard
+			id="crowdsec-connection"
+			lines
+			title={<T id="settings.crowdsec.connection" />}
+			info={<T id="settings.crowdsec.connection.description" />}
+		>
+			<SwitchField
+				line
+				id="crowdsec-enabled"
+				label={<T id="settings.crowdsec.enabled" />}
+				hint={<T id="settings.crowdsec.enabled.hint" />}
+				badges={locks.badge("enabled")}
+				disabled={locks.isLocked("enabled")}
+				{...register("enabled")}
+			/>
 			<TextField
+				line="block"
 				name="apiUrl"
 				id="crowdsec-api-url"
 				label={<T id="settings.crowdsec.api-url" />}
@@ -183,53 +181,54 @@ function ConnectionCard({ data, locks }) {
 				autoComplete="off"
 				spellCheck={false}
 			/>
-			<Choice
-				name="auth"
-				legendId="settings.crowdsec.auth"
-				variant="pills"
-				options={[
-					{ value: "key", label: <T id="settings.crowdsec.auth.key" /> },
-					{ value: "tls", label: <T id="settings.crowdsec.auth.tls" /> },
-				]}
-			/>
+			<SelectField name="auth" id="crowdsec-auth" line="inline" label={<T id="settings.crowdsec.auth" />}>
+				<option value="key">{label("settings.crowdsec.auth.key")}</option>
+				<option value="tls">{label("settings.crowdsec.auth.tls")}</option>
+			</SelectField>
 			{showKey ? (
-				<div className="space-y-2">
-					{/* a locked or saved key stays empty: it is never shown */}
-					<PasswordField
-						name="apiKey"
-						id="crowdsec-api-key"
-						label={<T id="settings.crowdsec.api-key" />}
-						hint={
-							<T
-								id={
-									auth === "key"
-										? "settings.crowdsec.api-key.hint"
-										: "settings.crowdsec.api-key.appsec-hint"
-								}
-							/>
-						}
-						badges={locks.badge("apiKey")}
-						autoComplete="new-password"
-						disabled={keyLocked || clearApiKey}
-						placeholder={keyPlaceholder}
-					/>
-					{data.apiKeySet && !keyLocked ? (
-						<Button
-							outline
-							color="secondary"
-							size="sm"
-							onClick={() => setValue("clearApiKey", !clearApiKey, { shouldDirty: true })}
-						>
-							<T
-								id={clearApiKey ? "settings.crowdsec.api-key.keep" : "settings.crowdsec.api-key.remove"}
-							/>
-						</Button>
-					) : null}
-				</div>
+				// a locked or saved key stays empty: it is never shown
+				<PasswordField
+					line="block"
+					name="apiKey"
+					id="crowdsec-api-key"
+					label={<T id="settings.crowdsec.api-key" />}
+					hint={
+						<T
+							id={
+								auth === "key"
+									? "settings.crowdsec.api-key.hint"
+									: "settings.crowdsec.api-key.appsec-hint"
+							}
+						/>
+					}
+					badges={locks.badge("apiKey")}
+					autoComplete="new-password"
+					disabled={keyLocked || clearApiKey}
+					placeholder={keyPlaceholder}
+					aside={
+						data.apiKeySet && !keyLocked ? (
+							<Button
+								outline
+								color="secondary"
+								size="sm"
+								onClick={() => setValue("clearApiKey", !clearApiKey, { shouldDirty: true })}
+							>
+								<T
+									id={
+										clearApiKey
+											? "settings.crowdsec.api-key.keep"
+											: "settings.crowdsec.api-key.remove"
+									}
+								/>
+							</Button>
+						) : null
+					}
+				/>
 			) : null}
 			{auth === "tls" ? (
 				<>
 					<TextField
+						line="block"
 						name="tlsClientCert"
 						id="crowdsec-tls-cert"
 						label={<T id="settings.crowdsec.tls-cert" />}
@@ -238,6 +237,7 @@ function ConnectionCard({ data, locks }) {
 						spellCheck={false}
 					/>
 					<TextField
+						line="block"
 						name="tlsClientKey"
 						id="crowdsec-tls-key"
 						label={<T id="settings.crowdsec.tls-key" />}
@@ -247,14 +247,13 @@ function ConnectionCard({ data, locks }) {
 					/>
 				</>
 			) : null}
-			<SwitchList>
-				<SwitchField
-					id="crowdsec-ssl-verify"
-					label={<T id="settings.crowdsec.ssl-verify" />}
-					hint={<T id="settings.crowdsec.ssl-verify.hint" />}
-					{...register("sslVerify")}
-				/>
-			</SwitchList>
+			<SwitchField
+				line
+				id="crowdsec-ssl-verify"
+				label={<T id="settings.crowdsec.ssl-verify" />}
+				hint={<T id="settings.crowdsec.ssl-verify.hint" />}
+				{...register("sslVerify")}
+			/>
 		</SettingsCard>
 	);
 }
@@ -263,25 +262,25 @@ function BlockingCard() {
 	const { register } = useFormContext();
 	const [mode, banResponse] = useWatch({ name: ["mode", "banResponse"] });
 	return (
-		<SettingsCard title={<T id="settings.crowdsec.blocking" />}>
-			<Choice
+		<SettingsCard
+			id="crowdsec-blocking"
+			lines
+			title={<T id="settings.crowdsec.blocking" />}
+			info={<T id="settings.crowdsec.blocking.description" />}
+		>
+			<SelectField
 				name="mode"
-				legendId="settings.crowdsec.mode"
-				options={[
-					{
-						value: "live",
-						label: <T id="settings.crowdsec.mode.live" />,
-						description: <T id="settings.crowdsec.mode.live.hint" />,
-					},
-					{
-						value: "stream",
-						label: <T id="settings.crowdsec.mode.stream" />,
-						description: <T id="settings.crowdsec.mode.stream.hint" />,
-					},
-				]}
-			/>
+				id="crowdsec-mode"
+				line="inline"
+				label={<T id="settings.crowdsec.mode" />}
+				hint={MODE_HINTS[mode] ? <T id={MODE_HINTS[mode]} /> : null}
+			>
+				<option value="live">{label("settings.crowdsec.mode.live")}</option>
+				<option value="stream">{label("settings.crowdsec.mode.stream")}</option>
+			</SelectField>
 			{mode === "live" ? (
 				<TextField
+					line="inline"
 					name="cacheExpiration"
 					id="crowdsec-cache-expiration"
 					label={<T id="settings.crowdsec.cache-expiration" />}
@@ -291,6 +290,7 @@ function BlockingCard() {
 				/>
 			) : (
 				<TextField
+					line="inline"
 					name="updateFrequency"
 					id="crowdsec-update-frequency"
 					label={<T id="settings.crowdsec.update-frequency" />}
@@ -299,35 +299,28 @@ function BlockingCard() {
 					autoComplete="off"
 				/>
 			)}
-			<Choice
+			<SelectField
 				name="banResponse"
-				legendId="settings.crowdsec.ban-response"
-				options={[
-					{
-						value: "page",
-						label: <T id="settings.crowdsec.ban-response.page" />,
-						description: <T id="settings.crowdsec.ban-response.page.hint" />,
-					},
-					{
-						value: "redirect",
-						label: <T id="settings.crowdsec.ban-response.redirect" />,
-						description: <T id="settings.crowdsec.ban-response.redirect.hint" />,
-					},
-					{
-						value: "status",
-						label: <T id="settings.crowdsec.ban-response.status" />,
-						description: <T id="settings.crowdsec.ban-response.status.hint" />,
-					},
-				]}
-			/>
-			<p className="text-sm text-muted-foreground">
-				<T id="settings.crowdsec.pages-link" />{" "}
-				<Link to="/settings/landing-pages" className="text-primary underline underline-offset-4">
-					<T id="settings.landing-pages" />
-				</Link>
-			</p>
+				id="crowdsec-ban-response"
+				line="inline"
+				label={<T id="settings.crowdsec.ban-response" />}
+				hint={BAN_HINTS[banResponse] ? <T id={BAN_HINTS[banResponse]} /> : null}
+			>
+				<option value="page">{label("settings.crowdsec.ban-response.page")}</option>
+				<option value="redirect">{label("settings.crowdsec.ban-response.redirect")}</option>
+				<option value="status">{label("settings.crowdsec.ban-response.status")}</option>
+			</SelectField>
+			<SettingLineNote>
+				<p className="text-sm text-muted-foreground">
+					<T id="settings.crowdsec.pages-link" />{" "}
+					<Link to="/settings/landing-pages" className="text-primary underline underline-offset-4">
+						<T id="settings.landing-pages" />
+					</Link>
+				</p>
+			</SettingLineNote>
 			{banResponse === "redirect" ? (
 				<TextField
+					line="block"
 					name="redirectLocation"
 					id="crowdsec-redirect-location"
 					label={<T id="settings.crowdsec.redirect-location" />}
@@ -337,6 +330,7 @@ function BlockingCard() {
 				/>
 			) : (
 				<SelectField
+					line="inline"
 					name="retCode"
 					id="crowdsec-ret-code"
 					label={<T id="settings.crowdsec.ret-code" />}
@@ -353,6 +347,7 @@ function BlockingCard() {
 				</SelectField>
 			)}
 			<SelectField
+				line="inline"
 				name="fallbackRemediation"
 				id="crowdsec-fallback"
 				label={<T id="settings.crowdsec.fallback" />}
@@ -362,6 +357,7 @@ function BlockingCard() {
 				<option value="captcha">{label("settings.crowdsec.fallback.captcha")}</option>
 			</SelectField>
 			<SelectField
+				line="inline"
 				name="bouncingOnType"
 				id="crowdsec-bouncing-on-type"
 				label={<T id="settings.crowdsec.bouncing-on-type" />}
@@ -371,14 +367,13 @@ function BlockingCard() {
 				<option value="ban">{label("settings.crowdsec.bouncing-on-type.ban")}</option>
 				<option value="captcha">{label("settings.crowdsec.bouncing-on-type.captcha")}</option>
 			</SelectField>
-			<SwitchList>
-				<SwitchField
-					id="crowdsec-admin-ui-excluded"
-					label={<T id="settings.crowdsec.admin-ui-excluded" />}
-					hint={<T id="settings.crowdsec.admin-ui-excluded.hint" />}
-					{...register("adminUiExcluded")}
-				/>
-			</SwitchList>
+			<SwitchField
+				line
+				id="crowdsec-admin-ui-excluded"
+				label={<T id="settings.crowdsec.admin-ui-excluded" />}
+				hint={<T id="settings.crowdsec.admin-ui-excluded.hint" />}
+				{...register("adminUiExcluded")}
+			/>
 		</SettingsCard>
 	);
 }
@@ -388,8 +383,14 @@ function CaptchaCard({ data }) {
 	const secretPlaceholder =
 		data.captchaSecretSet && !data.secretError ? label("settings.crowdsec.secret-key.saved") : "";
 	return (
-		<SettingsCard title={<T id="settings.crowdsec.captcha" />}>
+		<SettingsCard
+			id="crowdsec-captcha"
+			lines
+			title={<T id="settings.crowdsec.captcha" />}
+			info={<T id="settings.crowdsec.captcha.description" />}
+		>
 			<SelectField
+				line="inline"
 				name="captchaProvider"
 				id="crowdsec-captcha-provider"
 				label={<T id="settings.crowdsec.captcha-provider" />}
@@ -404,6 +405,7 @@ function CaptchaCard({ data }) {
 			{provider === "none" ? null : (
 				<>
 					<TextField
+						line="block"
 						name="captchaSiteKey"
 						id="crowdsec-site-key"
 						label={<T id="settings.crowdsec.site-key" />}
@@ -412,6 +414,7 @@ function CaptchaCard({ data }) {
 						spellCheck={false}
 					/>
 					<PasswordField
+						line="block"
 						name="captchaSecretKey"
 						id="crowdsec-secret-key"
 						label={<T id="settings.crowdsec.secret-key" />}
@@ -422,6 +425,7 @@ function CaptchaCard({ data }) {
 				</>
 			)}
 			<TextField
+				line="inline"
 				name="captchaExpiration"
 				id="crowdsec-captcha-expiration"
 				label={<T id="settings.crowdsec.captcha-expiration" />}
@@ -438,8 +442,14 @@ function AppsecCard({ locks }) {
 		name: ["appsecUrl", "appsecFailureAction", "adminUiExcluded"],
 	});
 	return (
-		<SettingsCard title={<T id="settings.crowdsec.appsec" />}>
+		<SettingsCard
+			id="crowdsec-appsec"
+			lines
+			title={<T id="settings.crowdsec.appsec" />}
+			info={<T id="settings.crowdsec.appsec.description" />}
+		>
 			<TextField
+				line="block"
 				name="appsecUrl"
 				id="crowdsec-appsec-url"
 				label={<T id="settings.crowdsec.appsec-url" />}
@@ -451,6 +461,7 @@ function AppsecCard({ locks }) {
 				spellCheck={false}
 			/>
 			<SelectField
+				line="inline"
 				name="appsecFailureAction"
 				id="crowdsec-appsec-failure"
 				label={<T id="settings.crowdsec.appsec-failure" />}
@@ -460,7 +471,9 @@ function AppsecCard({ locks }) {
 				<option value="passthrough">{label("settings.crowdsec.appsec-failure.passthrough")}</option>
 			</SelectField>
 			{appsecDenyWarning({ appsecUrl, appsecFailureAction, adminUiExcluded }) ? (
-				<StatusAlert variant="warning" icon={TriangleAlert} id="settings.crowdsec.appsec-deny-warning" />
+				<SettingLineNote>
+					<StatusAlert variant="warning" icon={TriangleAlert} id="settings.crowdsec.appsec-deny-warning" />
+				</SettingLineNote>
 			) : null}
 		</SettingsCard>
 	);
@@ -480,21 +493,15 @@ function PreviewLink({ page }) {
 	);
 }
 
-// The collapsed Advanced part; a refused save opens it when one of its fields holds the error (while rendering, so it
-// is open when the first error gets the focus). Closed, its fields stay mounted and keep their values.
+// The collapsed Advanced card; a refused save opens it when one of its fields holds the error. Closed, its fields stay
+// mounted and keep their values.
 function AdvancedFields() {
 	const { register } = useFormContext();
-	const { errors, submitCount } = useFormState();
-	const [open, setOpen] = useState([]);
-	const [seenSubmits, setSeenSubmits] = useState(submitCount);
-	if (submitCount !== seenSubmits) {
-		setSeenSubmits(submitCount);
-		if (ADVANCED_FIELDS.some((name) => errors[name]) && !open.includes("advanced")) setOpen(["advanced"]);
-	}
-	const text = (name, id, hintId) => (
+	const text = (name, id, hintId, layout = "inline") => (
 		<TextField
 			name={name}
 			id={id}
+			line={layout}
 			label={<T id={CROWDSEC_FIELD_LABELS[name]} />}
 			hint={hintId ? <T id={hintId} /> : undefined}
 			autoComplete="off"
@@ -502,75 +509,52 @@ function AdvancedFields() {
 		/>
 	);
 	const toggle = (name, id, labelId) => (
-		<SwitchField id={id} label={<T id={labelId} />} hint={<T id={`${labelId}.hint`} />} {...register(name)} />
+		<SwitchField line id={id} label={<T id={labelId} />} hint={<T id={`${labelId}.hint`} />} {...register(name)} />
 	);
 	return (
-		<Accordion type="multiple" value={open} onValueChange={setOpen} className="rounded-lg border px-4">
-			<AccordionItem value="advanced">
-				<AccordionTrigger
-					className="items-center hover:no-underline"
-					id="crowdsec-advanced-trigger"
-					aria-controls="crowdsec-advanced-panel"
-				>
-					<span className="text-base font-medium">
-						<T id="settings.crowdsec.advanced" />
-					</span>
-				</AccordionTrigger>
-				<AccordionPanel
-					id="crowdsec-advanced-panel"
-					aria-labelledby="crowdsec-advanced-trigger"
-					open={open.includes("advanced")}
-					className="space-y-4"
-				>
-					{text("requestTimeout", "crowdsec-request-timeout", "settings.crowdsec.request-timeout.hint")}
-					{text(
-						"scenariosContaining",
-						"crowdsec-scenarios-containing",
-						"settings.crowdsec.scenarios-containing.hint",
-					)}
-					{text(
-						"scenariosNotContaining",
-						"crowdsec-scenarios-not-containing",
-						"settings.crowdsec.scenarios-not-containing.hint",
-					)}
-					{text("excludeLocation", "crowdsec-exclude-location", "settings.crowdsec.exclude-location.hint")}
-					{text(
-						"appsecConnectTimeout",
-						"crowdsec-appsec-connect-timeout",
-						"settings.crowdsec.appsec-timeout.hint",
-					)}
-					{text("appsecSendTimeout", "crowdsec-appsec-send-timeout", "settings.crowdsec.appsec-timeout.hint")}
-					{text(
-						"appsecProcessTimeout",
-						"crowdsec-appsec-process-timeout",
-						"settings.crowdsec.appsec-timeout.hint",
-					)}
-					<SwitchList>
-						{toggle("enableInternal", "crowdsec-enable-internal", "settings.crowdsec.enable-internal")}
-						{toggle(
-							"alwaysSendToAppsec",
-							"crowdsec-always-send-to-appsec",
-							"settings.crowdsec.always-send-to-appsec",
-						)}
-						{toggle(
-							"appsecDropUnreadableBody",
-							"crowdsec-drop-unreadable-body",
-							"settings.crowdsec.drop-unreadable-body",
-						)}
-					</SwitchList>
-					<div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-						<span className="inline-flex items-center gap-2">
-							<T id="settings.crowdsec.ban-response.page" />
-							<PreviewLink page="ban" />
-						</span>
-						<span className="inline-flex items-center gap-2">
-							<T id="settings.crowdsec.captcha" />
-							<PreviewLink page="captcha" />
-						</span>
-					</div>
-				</AccordionPanel>
-			</AccordionItem>
-		</Accordion>
+		<SettingsCard
+			id="crowdsec-advanced"
+			collapsible
+			openOn={ADVANCED_FIELDS}
+			lines
+			title={<T id="settings.crowdsec.advanced" />}
+			info={<T id="settings.crowdsec.advanced.description" />}
+		>
+			{text("requestTimeout", "crowdsec-request-timeout", "settings.crowdsec.request-timeout.hint")}
+			{text(
+				"scenariosContaining",
+				"crowdsec-scenarios-containing",
+				"settings.crowdsec.scenarios-containing.hint",
+				"block",
+			)}
+			{text(
+				"scenariosNotContaining",
+				"crowdsec-scenarios-not-containing",
+				"settings.crowdsec.scenarios-not-containing.hint",
+				"block",
+			)}
+			{text("excludeLocation", "crowdsec-exclude-location", "settings.crowdsec.exclude-location.hint", "block")}
+			{text("appsecConnectTimeout", "crowdsec-appsec-connect-timeout", "settings.crowdsec.appsec-timeout.hint")}
+			{text("appsecSendTimeout", "crowdsec-appsec-send-timeout", "settings.crowdsec.appsec-timeout.hint")}
+			{text("appsecProcessTimeout", "crowdsec-appsec-process-timeout", "settings.crowdsec.appsec-timeout.hint")}
+			{toggle("enableInternal", "crowdsec-enable-internal", "settings.crowdsec.enable-internal")}
+			{toggle("alwaysSendToAppsec", "crowdsec-always-send-to-appsec", "settings.crowdsec.always-send-to-appsec")}
+			{toggle(
+				"appsecDropUnreadableBody",
+				"crowdsec-drop-unreadable-body",
+				"settings.crowdsec.drop-unreadable-body",
+			)}
+			<SettingLineNote className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+				<span className="inline-flex items-center gap-2">
+					<T id="settings.crowdsec.ban-response.page" />
+					<PreviewLink page="ban" />
+				</span>
+				<span className="inline-flex items-center gap-2">
+					<T id="settings.crowdsec.captcha" />
+					<PreviewLink page="captcha" />
+				</span>
+			</SettingLineNote>
+		</SettingsCard>
 	);
 }
 
@@ -686,7 +670,7 @@ function CrowdsecForm({ data }) {
 				) : null}
 			</div>
 			<BouncerOffAlert data={data} />
-			<StatusAlert variant="secondary" icon={Info} id="settings.crowdsec.intro" />
+			<SettingsLead id="settings.crowdsec.intro" />
 			{data.secretError ? (
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.crowdsec.secret-error" />
 			) : null}

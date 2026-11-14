@@ -5,11 +5,11 @@ import {
 	ApiErrorContent,
 	Button,
 	ErrorAlert,
-	FormSection,
 	HookForm,
 	PasswordField,
+	SettingLine,
+	SettingLineNote,
 	SwitchField,
-	SwitchList,
 	TextField,
 	useAppForm,
 } from "src/components";
@@ -31,6 +31,7 @@ import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
+import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
 const SIGNUP_URL = "https://www.maxmind.com/en/geolite2/signup";
@@ -65,41 +66,46 @@ function AccountFields({ data, isLocked }) {
 		keyPlaceholder = intl.formatMessage({ id: "settings.authentication.client-secret.saved" });
 	}
 	return (
-		<SettingsCard>
-			<FormSection heading legend={<T id="settings.geoip.account" />} className="mb-0">
-				<TextField
-					name="accountId"
-					id="geoip-account-id"
-					label={<T id="settings.geoip.account-id" />}
-					badges={isLocked("accountId") ? <LockedBadge env={data.lockedBy?.accountId} /> : null}
-					type="text"
-					inputMode="numeric"
-					autoComplete="off"
-					disabled={isLocked("accountId")}
-				/>
-				{/* a locked key stays empty: the environment's key is never shown */}
-				<PasswordField
-					name="licenseKey"
-					id="geoip-license-key"
-					label={<T id="settings.geoip.license-key" />}
-					badges={keyLocked ? <LockedBadge env={data.lockedBy?.licenseKey} /> : null}
-					autoComplete="new-password"
-					disabled={keyLocked}
-					placeholder={keyPlaceholder}
-				/>
-				<div className="text-sm text-muted-foreground">
-					<T id="settings.geoip.account.hint" />{" "}
-					<a
-						href={SIGNUP_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-primary underline underline-offset-4"
-					>
-						<T id="settings.geoip.signup" />
-						<ExternalLink className="ms-1 inline size-3.5 align-text-bottom" aria-hidden="true" />
-					</a>
-				</div>
-			</FormSection>
+		<SettingsCard
+			lines
+			title={<T id="settings.geoip.account" />}
+			info={<T id="settings.geoip.account.description" />}
+		>
+			<TextField
+				line="inline"
+				name="accountId"
+				id="geoip-account-id"
+				label={<T id="settings.geoip.account-id" />}
+				hint={<T id="settings.geoip.account-id.hint" />}
+				badges={isLocked("accountId") ? <LockedBadge env={data.lockedBy?.accountId} /> : null}
+				type="text"
+				inputMode="numeric"
+				autoComplete="off"
+				disabled={isLocked("accountId")}
+			/>
+			{/* a locked key stays empty: the environment's key is never shown */}
+			<PasswordField
+				line="block"
+				name="licenseKey"
+				id="geoip-license-key"
+				label={<T id="settings.geoip.license-key" />}
+				badges={keyLocked ? <LockedBadge env={data.lockedBy?.licenseKey} /> : null}
+				autoComplete="new-password"
+				disabled={keyLocked}
+				placeholder={keyPlaceholder}
+			/>
+			<SettingLineNote className="text-[0.8rem] text-muted-foreground">
+				<T id="settings.geoip.account.hint" />{" "}
+				<a
+					href={SIGNUP_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-primary underline underline-offset-4"
+				>
+					<T id="settings.geoip.signup" />
+					<ExternalLink className="ms-1 inline size-3.5 align-text-bottom" aria-hidden="true" />
+				</a>
+			</SettingLineNote>
 		</SettingsCard>
 	);
 }
@@ -109,38 +115,31 @@ function EditionFields({ data, isLocked }) {
 	const { field } = useController({ name: "editions" });
 	const locked = isLocked("editions");
 	return (
-		<SettingsCard>
-			<FormSection
-				heading
-				legend={
-					<>
-						<T id="settings.geoip.editions" />
-						{locked ? <LockedBadge env={data.lockedBy?.editions} className="ms-2" /> : null}
-					</>
-				}
-				className="mb-0"
-			>
-				<SwitchList>
-					{GEOIP_EDITIONS.map(({ value, key }, index) => (
-						<SwitchField
-							key={value}
-							ref={index === 0 ? field.ref : undefined}
-							id={`geoip-edition-${key}`}
-							label={<T id={`settings.geoip.edition.${key}`} />}
-							hint={<T id={`settings.geoip.edition.${key}.hint`} />}
-							disabled={locked}
-							checked={field.value.includes(value)}
-							onBlur={field.onBlur}
-							onChange={(e) => field.onChange(toggleEdition(field.value, value, e.target.checked))}
-						/>
-					))}
-				</SwitchList>
-				{field.value.length === 0 ? (
-					<div className="text-sm text-muted-foreground">
-						<T id="settings.geoip.editions.none" />
-					</div>
-				) : null}
-			</FormSection>
+		<SettingsCard
+			lines
+			title={<T id="settings.geoip.editions" />}
+			info={<T id="settings.geoip.editions.description" />}
+			actions={locked ? <LockedBadge env={data.lockedBy?.editions} /> : null}
+		>
+			{GEOIP_EDITIONS.map(({ value, key }, index) => (
+				<SwitchField
+					line
+					key={value}
+					ref={index === 0 ? field.ref : undefined}
+					id={`geoip-edition-${key}`}
+					label={<T id={`settings.geoip.edition.${key}`} />}
+					hint={<T id={`settings.geoip.edition.${key}.hint`} />}
+					disabled={locked}
+					checked={field.value.includes(value)}
+					onBlur={field.onBlur}
+					onChange={(e) => field.onChange(toggleEdition(field.value, value, e.target.checked))}
+				/>
+			))}
+			{field.value.length === 0 ? (
+				<SettingLineNote className="text-sm text-muted-foreground">
+					<T id="settings.geoip.editions.none" />
+				</SettingLineNote>
+			) : null}
 		</SettingsCard>
 	);
 }
@@ -159,20 +158,11 @@ function UpdateStatus({ data }) {
 	};
 
 	return (
-		<SettingsCard title={<T id="settings.geoip.status" />}>
-			<dl className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:grid-cols-[minmax(0,3fr)_minmax(0,9fr)]">
-				<dt className="text-muted-foreground">
-					<T id="settings.geoip.last-update" />
-				</dt>
-				<dd>{data.lastUpdate ? formatDateTime(data.lastUpdate) : <T id="settings.geoip.never" />}</dd>
-				<dt className="text-muted-foreground">
-					<T id="settings.geoip.last-error" />
-				</dt>
-				<dd className={cn("break-words", data.lastError && "text-destructive")}>
-					{data.lastError ?? <T id="settings.geoip.no-error" />}
-				</dd>
-			</dl>
-			<div className="space-y-2">
+		<SettingsCard
+			lines
+			title={<T id="settings.geoip.status" />}
+			info={<T id={canUpdate ? "settings.geoip.update-now.hint" : "settings.geoip.update-now.needs-account"} />}
+			actions={
 				<Button
 					outline
 					color="secondary"
@@ -182,28 +172,46 @@ function UpdateStatus({ data }) {
 				>
 					<T id="settings.geoip.update-now" />
 				</Button>
-				<div className="text-sm text-muted-foreground">
-					<T id={canUpdate ? "settings.geoip.update-now.hint" : "settings.geoip.update-now.needs-account"} />
-				</div>
-			</div>
-			{result?.updated?.length > 0 ? (
-				<StatusAlert
-					variant="success"
-					icon={CircleCheck}
-					id="settings.geoip.update.ok"
-					data={{ editions: result.updated.join(", ") }}
-				/>
-			) : null}
-			{result?.ok && !(result.updated?.length > 0) ? (
-				<StatusAlert variant="secondary" icon={Info} id="settings.geoip.update.unchanged" />
-			) : null}
-			{result && !result.ok ? (
-				<ErrorAlert error={result.requestError}>
-					{result.requestError ? null : (
-						<T id="settings.geoip.update.failed" data={{ error: result.error }} />
-					)}
-				</ErrorAlert>
-			) : null}
+			}
+		>
+			{/* always mounted, so a screen reader announces the result that appears in it */}
+			<SettingLineNote role="status" aria-live="polite" className="space-y-2 empty:hidden">
+				{result?.updated?.length > 0 ? (
+					<StatusAlert
+						variant="success"
+						icon={CircleCheck}
+						id="settings.geoip.update.ok"
+						data={{ editions: result.updated.join(", ") }}
+						live={false}
+					/>
+				) : null}
+				{result?.ok && !(result.updated?.length > 0) ? (
+					<StatusAlert variant="secondary" icon={Info} id="settings.geoip.update.unchanged" live={false} />
+				) : null}
+				{result && !result.ok ? (
+					<ErrorAlert error={result.requestError}>
+						{result.requestError ? null : (
+							<T id="settings.geoip.update.failed" data={{ error: result.error }} />
+						)}
+					</ErrorAlert>
+				) : null}
+			</SettingLineNote>
+			<SettingLine
+				id="geoip-last-update"
+				layout="value"
+				title={<T id="settings.geoip.last-update" />}
+				control={data.lastUpdate ? formatDateTime(data.lastUpdate) : <T id="settings.geoip.never" />}
+			/>
+			<SettingLine
+				id="geoip-last-error"
+				layout="value"
+				title={<T id="settings.geoip.last-error" />}
+				control={
+					<span className={cn("break-words", data.lastError && "text-destructive")}>
+						{data.lastError ?? <T id="settings.geoip.no-error" />}
+					</span>
+				}
+			/>
 		</SettingsCard>
 	);
 }
@@ -260,7 +268,7 @@ function GeoipForm({ data, background, setBackground }) {
 			<div ref={errorRef} tabIndex={-1}>
 				<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 			</div>
-			<StatusAlert variant="secondary" icon={Info} id="settings.geoip.intro" />
+			<SettingsLead id="settings.geoip.intro" />
 			{data.secretError ? (
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.geoip.secret-error" />
 			) : null}
