@@ -66,7 +66,7 @@ it("answers the post without the target with the missing property", async () => 
 	assert.match((await ctx.admin.post(URL, noDomains)).body.error.message, /domain_names/u);
 });
 
-it("keeps the path of the request when preserve_path is set, and the scheme of the request by default", async () => {
+it("keeps the path of the request when preserve_path is set, and the scheme of the request (or a trusted proxy's) by default", async () => {
 	const keep = await created(
 		await ctx.admin.post(URL, body({ preserve_path: true, forward_scheme: "$scheme" })),
 		"create",
@@ -74,7 +74,7 @@ it("keeps the path of the request when preserve_path is set, and the scheme of t
 	assert.equal(keep.preserve_path, true);
 	assert.match(
 		await ctx.api.read(confOf(keep.id)),
-		new RegExp(`return 301 \\$scheme://${dotted(keep.forward_domain_name)}\\$request_uri;`, "u"),
+		new RegExp(`return 301 \\$npmpro_forwarded_proto://${dotted(keep.forward_domain_name)}\\$request_uri;`, "u"),
 	);
 	const defaults = await created(
 		await ctx.admin.post(URL, { domain_names: ["defaults.example.com"], forward_domain_name: "d.example.org" }),
@@ -85,7 +85,7 @@ it("keeps the path of the request when preserve_path is set, and the scheme of t
 	assert.equal(defaults.preserve_path, false);
 	assert.match(
 		await ctx.api.read(confOf(defaults.id)),
-		/location \/ \{ return 302 \$scheme:\/\/d\.example\.org; \}/u,
+		/location \/ \{ return 302 \$npmpro_forwarded_proto:\/\/d\.example\.org; \}/u,
 	);
 });
 

@@ -491,6 +491,11 @@ it("writes the advanced config of a redirection host and a 404 host into their s
 	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
 });
 
+const KEEP_SCHEME_REDIRECT = /return 301 \$npmpro_forwarded_proto:\/\/t\.example\.org\$request_uri;/u;
+const CONNECTION_SCHEME_REDIRECT = /\$scheme:\/\//u;
+const HTTPS_REDIRECT = /return 301 https:\/\/t\.example\.org\$request_uri;/u;
+const HTTP_REDIRECT = /return 301 http:\/\/t\.example\.org\$request_uri;/u;
+
 it("a redirection host that keeps the scheme follows a trusted proxy's X-Forwarded-Proto, a fixed scheme stays", async () => {
 	const configFor = async (name, scheme) => {
 		const host = await created(
@@ -507,10 +512,10 @@ it("a redirection host that keeps the scheme follows a trusted proxy's X-Forward
 		return read(`data/nginx/redirection_host/${host.id}.conf`);
 	};
 	const keep = await configFor("keep-scheme", "$scheme");
-	assert.match(keep, /return 301 \$npmpro_forwarded_proto:\/\/t\.example\.org\$request_uri;/u);
-	assert.doesNotMatch(keep, /\$scheme:\/\//u);
-	assert.match(await configFor("fixed-https", "https"), /return 301 https:\/\/t\.example\.org\$request_uri;/u);
-	assert.match(await configFor("fixed-http", "http"), /return 301 http:\/\/t\.example\.org\$request_uri;/u);
+	assert.match(keep, KEEP_SCHEME_REDIRECT);
+	assert.doesNotMatch(keep, CONNECTION_SCHEME_REDIRECT);
+	assert.match(await configFor("fixed-https", "https"), HTTPS_REDIRECT);
+	assert.match(await configFor("fixed-http", "http"), HTTP_REDIRECT);
 });
 
 it("gives a redirection host and a 404 host the certificate, HSTS and the HTTP/3 header of the shared block", async () => {
