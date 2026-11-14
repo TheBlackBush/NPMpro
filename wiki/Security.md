@@ -13,6 +13,8 @@ How NPMpro is hardened and the security options you can add. CrowdSec (with AppS
 - forward authentication in front of your services: [Forward authentication](Forward-Authentication)
 - HTTP/3: expose the https port over udp too (443/udp)
 - HSTS: add your domain to the [HSTS preload list](https://hstspreload.org) if you enabled HSTS for it
+- users who are not administrators cannot set raw nginx config, a request variable ($) or a unix socket (unix:) as a forward target, serve files from outside /var/www, or use a regular expression (a name starting with ~) as a domain name; values an administrator stored stay and can be kept
+- a sign-in for an unknown or passwordless account takes as long as a wrong password, so the answer time does not tell which email addresses exist
 
 ## Bot detection and rate limiting
 
