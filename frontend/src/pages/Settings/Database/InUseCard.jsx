@@ -1,7 +1,7 @@
 import { FileText, Lock } from "lucide-react";
+import { SettingLine } from "src/components";
 import { StatusBadge } from "src/components/StatusBadge";
 import { Badge } from "src/components/ui/badge";
-import { cn } from "src/lib/utils";
 import { formatDateTime, intl, T } from "src/locale";
 import { sourceBadge } from "src/modules/DatabaseMove";
 import { formatBytes } from "src/modules/Monitoring";
@@ -35,15 +35,8 @@ function SourceBadge({ source }) {
 	);
 }
 
-function Item({ titleId, className, children }) {
-	return (
-		<div className="min-w-0">
-			<dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-				<T id={titleId} />
-			</dt>
-			<dd className={cn("mt-1", className)}>{children}</dd>
-		</div>
-	);
+function Item({ id, titleId, children }) {
+	return <SettingLine id={`database-in-use-${id}`} layout="value" title={<T id={titleId} />} control={children} />;
 }
 
 /**
@@ -51,55 +44,59 @@ function Item({ titleId, className, children }) {
  */
 function InUseCard({ data }) {
 	return (
-		<SettingsCard title={<T id="settings.database.in-use" />}>
-			<dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				<Item titleId="settings.database.engine">
-					{engineLabel(data.engine)} {data.version}
+		<SettingsCard
+			lines
+			title={<T id="settings.database.in-use" />}
+			info={<T id="settings.database.in-use.description" />}
+		>
+			<Item id="engine-name" titleId="settings.database.engine">
+				{engineLabel(data.engine)} {data.version}
+			</Item>
+			<Item id="source" titleId="settings.database.source">
+				<SourceBadge source={data.source} />
+			</Item>
+			{data.engine === "sqlite" ? (
+				<Item id="file" titleId="settings.database.file">
+					{data.file}
 				</Item>
-				<Item titleId="settings.database.source">
-					<SourceBadge source={data.source} />
-				</Item>
-				{data.engine === "sqlite" ? (
-					<Item titleId="settings.database.file" className="break-words">
-						{data.file}
+			) : (
+				<>
+					<Item id="host" titleId="settings.database.host">
+						{data.host}
 					</Item>
+					<Item id="port" titleId="settings.database.port">
+						{data.port}
+					</Item>
+					<Item id="name" titleId="settings.database.name">
+						{data.name}
+					</Item>
+					<Item id="user" titleId="settings.database.user">
+						{data.user}
+					</Item>
+				</>
+			)}
+			<Item id="size" titleId="settings.database.size">
+				{data.size === null || data.size === undefined ? (
+					<T id="settings.database.size.unknown" />
 				) : (
-					<>
-						<Item titleId="settings.database.host" className="break-words">
-							{data.host}
-						</Item>
-						<Item titleId="settings.database.port">{data.port}</Item>
-						<Item titleId="settings.database.name" className="break-words">
-							{data.name}
-						</Item>
-						<Item titleId="settings.database.user" className="break-words">
-							{data.user}
-						</Item>
-					</>
+					formatBytes(data.size)
 				)}
-				<Item titleId="settings.database.size">
-					{data.size === null || data.size === undefined ? (
-						<T id="settings.database.size.unknown" />
+			</Item>
+			{data.movedAt ? (
+				<Item id="moved" titleId="settings.database.moved.title">
+					{data.movedFrom?.engine ? (
+						<T
+							id="settings.database.moved"
+							data={{
+								engine: engineLabel(data.movedFrom.engine),
+								date: formatDateTime(data.movedAt),
+							}}
+						/>
 					) : (
-						formatBytes(data.size)
+						<T id="settings.database.moved.date" data={{ date: formatDateTime(data.movedAt) }} />
 					)}
 				</Item>
-				{data.movedAt ? (
-					<Item titleId="settings.database.moved.title">
-						{data.movedFrom?.engine ? (
-							<T
-								id="settings.database.moved"
-								data={{
-									engine: engineLabel(data.movedFrom.engine),
-									date: formatDateTime(data.movedAt),
-								}}
-							/>
-						) : (
-							<T id="settings.database.moved.date" data={{ date: formatDateTime(data.movedAt) }} />
-						)}
-					</Item>
-				) : null}
-			</dl>
+			) : null}
 		</SettingsCard>
 	);
 }

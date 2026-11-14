@@ -1,11 +1,10 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { TableLayout } from "src/components/Table/TableLayout";
 import { useAppTable } from "src/components/Table/useAppTable";
-import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { readTablesOpen, tablesSummary, writeTablesOpen } from "src/modules/DatabaseMove";
+import { SettingsCard } from "../SettingsCard";
 
 const label = (id) => intl.formatMessage({ id });
 
@@ -13,11 +12,10 @@ const label = (id) => intl.formatMessage({ id });
  * The tables of the database in use with their row counts, sorted by name
  */
 function TablesCard({ tables }) {
-	const bodyId = useId();
 	const [open, setOpen] = useState(() => readTablesOpen(globalThis.localStorage));
-	const toggle = () => {
-		writeTablesOpen(globalThis.localStorage, !open);
-		setOpen(!open);
+	const onOpenChange = (next) => {
+		writeTablesOpen(globalThis.localStorage, next);
+		setOpen(next);
 	};
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
@@ -45,39 +43,19 @@ function TablesCard({ tables }) {
 	});
 
 	return (
-		<div className="overflow-hidden rounded-lg border bg-card text-card-foreground">
-			<button
-				type="button"
-				className={cn(
-					"flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset",
-					open && "border-b",
-				)}
-				aria-expanded={open}
-				aria-controls={bodyId}
-				onClick={toggle}
-			>
-				<div className="min-w-0">
-					<h3 className="text-base font-medium">
-						<T id="settings.database.tables" />
-					</h3>
-					<div className="text-sm text-muted-foreground">{tablesSummary(tables, intl.formatMessage)}</div>
-				</div>
-				{open ? (
-					<ChevronDown className="ms-auto size-4 shrink-0" aria-hidden="true" />
-				) : (
-					<ChevronRight className="ms-auto size-4 shrink-0" aria-hidden="true" />
-				)}
-			</button>
-			<div id={bodyId} hidden={!open}>
-				{open ? (
-					<TableLayout
-						tableInstance={tableInstance}
-						layout="scroll"
-						label={label("settings.database.tables")}
-					/>
-				) : null}
-			</div>
-		</div>
+		<SettingsCard
+			id="database-tables"
+			collapsible
+			open={open}
+			onOpenChange={onOpenChange}
+			title={<T id="settings.database.tables" />}
+			info={tablesSummary(tables, intl.formatMessage)}
+			bodyClassName="p-0"
+		>
+			{open ? (
+				<TableLayout tableInstance={tableInstance} layout="scroll" label={label("settings.database.tables")} />
+			) : null}
+		</SettingsCard>
 	);
 }
 

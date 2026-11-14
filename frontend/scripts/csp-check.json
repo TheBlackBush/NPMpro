@@ -459,7 +459,8 @@
 			"name": "database move window",
 			"route": "/settings/database",
 			"steps": [
-				{ "click": "[id$='-engine']" },
+				{ "click": "#database-move-trigger" },
+				{ "click": "[role=combobox][id$='-engine']" },
 				{ "click": "role=option[name='SQLite']" },
 				{ "click": "role=button[name='Test connection']" },
 				{ "waitFor": "text=Nothing to test" },

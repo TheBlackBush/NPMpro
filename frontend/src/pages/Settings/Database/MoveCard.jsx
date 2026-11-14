@@ -6,15 +6,14 @@ import {
 	Button,
 	ErrorAlert,
 	FormErrorNote,
-	focusFirstError,
 	HookForm,
 	PasswordField,
 	SelectField,
+	SettingLineNote,
 	SwitchField,
-	SwitchList,
 	TextField,
 	useAppForm,
-	useFieldOrder,
+	useFocusFirstError,
 	useRecheckDependent,
 } from "src/components";
 import { useTestDatabase } from "src/hooks";
@@ -36,6 +35,7 @@ import {
 } from "src/modules/DatabaseMove";
 import { numberInputValue } from "src/modules/FormFields";
 import { errorPaths, translateErrors } from "src/modules/HookForm";
+import { openOnRefusedSave } from "src/modules/SettingLayout";
 import { SettingsCard } from "../SettingsCard";
 import { StatusAlert } from "../StatusAlert";
 
@@ -52,20 +52,22 @@ function LastFailedMove({ move }) {
 	const [hidden, setHidden] = useState(false);
 	if (hidden || move?.state !== "failed") return null;
 	return (
-		<ErrorAlert onClose={() => setHidden(true)}>
-			<div className="font-medium">
-				<T
-					id="settings.database.move.failed"
-					data={{ step: stepName(failedStepOf(move), (id) => intl.formatMessage({ id })) }}
-				/>
-			</div>
-			<ApiErrorContent error={moveAsApiError(move.error)} />
-		</ErrorAlert>
+		<SettingLineNote>
+			<ErrorAlert onClose={() => setHidden(true)}>
+				<div className="font-medium">
+					<T
+						id="settings.database.move.failed"
+						data={{ step: stepName(failedStepOf(move), (id) => intl.formatMessage({ id })) }}
+					/>
+				</div>
+				<ApiErrorContent error={moveAsApiError(move.error)} />
+			</ErrorAlert>
+		</SettingLineNote>
 	);
 }
 
 // a field of the target on the form layer's TextField (its error shows once the field was left or a test was tried)
-function InputField({ name, id, labelId, className, required, registerOptions, ...inputProps }) {
+function InputField({ name, id, labelId, line = "inline", required, registerOptions, ...inputProps }) {
 	return (
 		<TextField
 			{...inputProps}
@@ -73,7 +75,7 @@ function InputField({ name, id, labelId, className, required, registerOptions, .
 			id={id}
 			label={<T id={labelId} />}
 			required={required}
-			className={className}
+			line={line}
 			registerOptions={registerOptions}
 		/>
 	);
@@ -81,77 +83,69 @@ function InputField({ name, id, labelId, className, required, registerOptions, .
 
 function SwitchRow({ name, id, labelId }) {
 	const { register } = useFormContext();
-	return <SwitchField {...register(name)} id={id} label={<T id={labelId} />} />;
+	return <SwitchField line {...register(name)} id={id} label={<T id={labelId} />} />;
 }
 
 function ServerFields({ baseId }) {
 	const [engine, sslEnabled] = useWatch({ name: ["engine", "sslEnabled"] });
 	return (
 		<>
-			<div className="grid gap-2 md:grid-cols-12">
-				<InputField
-					name="host"
-					id={`${baseId}-host`}
-					labelId="settings.database.host"
-					className="md:col-span-8"
-					required
-					autoComplete="off"
-					spellCheck={false}
+			<InputField
+				name="host"
+				id={`${baseId}-host`}
+				labelId="settings.database.host"
+				required
+				autoComplete="off"
+				spellCheck={false}
+			/>
+			<InputField
+				name="port"
+				id={`${baseId}-port`}
+				labelId="settings.database.port"
+				// a number, as changeEngine compares it with the engines' default ports
+				registerOptions={{ setValueAs: numberInputValue }}
+				type="number"
+				min={1}
+				max={65_535}
+			/>
+			<InputField
+				name="name"
+				id={`${baseId}-name`}
+				labelId="settings.database.name"
+				required
+				autoComplete="off"
+				spellCheck={false}
+			/>
+			<InputField
+				name="user"
+				id={`${baseId}-user`}
+				labelId="settings.database.user"
+				required
+				autoComplete="off"
+				spellCheck={false}
+			/>
+			<PasswordField
+				line="block"
+				name="password"
+				id={`${baseId}-password`}
+				label={<T id="settings.database.password" />}
+				autoComplete="new-password"
+			/>
+			<SwitchRow name="sslEnabled" id={`${baseId}-ssl`} labelId="settings.database.ssl" />
+			{engine === "mysql" && sslEnabled ? (
+				<SwitchRow
+					name="sslRejectUnauthorized"
+					id={`${baseId}-ssl-reject`}
+					labelId="settings.database.ssl.reject-unauthorized"
 				/>
-				<InputField
-					name="port"
-					id={`${baseId}-port`}
-					labelId="settings.database.port"
-					className="md:col-span-4"
-					// a number, as changeEngine compares it with the engines' default ports
-					registerOptions={{ setValueAs: numberInputValue }}
-					type="number"
-					min={1}
-					max={65_535}
+			) : null}
+			{engine === "mysql" && sslEnabled ? (
+				<SwitchRow
+					name="sslVerifyIdentity"
+					id={`${baseId}-ssl-identity`}
+					labelId="settings.database.ssl.verify-identity"
 				/>
-				<InputField
-					name="name"
-					id={`${baseId}-name`}
-					labelId="settings.database.name"
-					className="md:col-span-6"
-					required
-					autoComplete="off"
-					spellCheck={false}
-				/>
-				<InputField
-					name="user"
-					id={`${baseId}-user`}
-					labelId="settings.database.user"
-					className="md:col-span-6"
-					required
-					autoComplete="off"
-					spellCheck={false}
-				/>
-				<PasswordField
-					name="password"
-					id={`${baseId}-password`}
-					label={<T id="settings.database.password" />}
-					autoComplete="new-password"
-					className="md:col-span-12"
-				/>
-			</div>
-			<SwitchList>
-				<SwitchRow name="sslEnabled" id={`${baseId}-ssl`} labelId="settings.database.ssl" />
-				{engine === "mysql" && sslEnabled ? (
-					<SwitchRow
-						name="sslRejectUnauthorized"
-						id={`${baseId}-ssl-reject`}
-						labelId="settings.database.ssl.reject-unauthorized"
-					/>
-				) : null}
-				{engine === "mysql" && sslEnabled ? (
-					<SwitchRow
-						name="sslVerifyIdentity"
-						id={`${baseId}-ssl-identity`}
-						labelId="settings.database.ssl.verify-identity"
-					/>
-				) : null}
-			</SwitchList>
+			) : null}
 		</>
 	);
 }
@@ -162,9 +156,9 @@ function ServerFields({ baseId }) {
  * @param {Object} props.status  GET /database, for the move window's summary
  */
 function MoveForm({ tested, status }) {
-	const { getValues, setValue, clearErrors, setFocus } = useFormContext();
-	const { isSubmitting, errors } = useFormState();
-	const order = useFieldOrder();
+	const { getValues, setValue, clearErrors } = useFormContext();
+	const { isSubmitting, errors, submitCount } = useFormState();
+	const focusFirstError = useFocusFirstError();
 	const recheckPort = useRecheckDependent("port");
 	const list = useWatch({ name: TARGET_FIELDS });
 	const values = Object.fromEntries(TARGET_FIELDS.map((name, index) => [name, list[index]]));
@@ -178,6 +172,17 @@ function MoveForm({ tested, status }) {
 	const canMove = passed(current) && !isSubmitting;
 	const hint = isSubmitting ? null : moveHint(current);
 
+	// the card opens on a refused save with an error in its fields, and once a test result or a failed move is there to
+	// be seen; it is controlled so that this also works while the page is open (the user may close it again)
+	const failed = status?.move?.state === "failed";
+	const wantsOpen = failed || Boolean(current);
+	const [card, setCard] = useState(() => ({ open: failed, seenSubmits: submitCount, shown: failed }));
+	let nextCard = openOnRefusedSave(card, { submitCount, errors, names: TARGET_FIELDS });
+	if (wantsOpen && !nextCard.shown) nextCard = { ...nextCard, open: true, shown: true };
+	if (nextCard.open !== card.open || nextCard.seenSubmits !== card.seenSubmits || nextCard.shown !== card.shown) {
+		setCard(nextCard);
+	}
+
 	// the port follows the engine while it is still the old engine's default; SQLite hides the server fields
 	const onEngine = (event) => {
 		const engine = event.target.value;
@@ -190,8 +195,14 @@ function MoveForm({ tested, status }) {
 
 	return (
 		<SettingsCard
+			id="database-move"
+			collapsible
+			open={nextCard.open}
+			onOpenChange={(open) => setCard({ ...nextCard, open })}
+			lines
 			title={<T id="settings.database.move" />}
-			footer={
+			info={<T id="settings.database.move.description" />}
+			actions={
 				<>
 					<FormErrorNote id={noteId} className="text-right" />
 					{hint && !blocked ? (
@@ -204,7 +215,7 @@ function MoveForm({ tested, status }) {
 						id={testId}
 						isLoading={isSubmitting}
 						blocked={blocked}
-						onBlockedClick={() => focusFirstError(errors, order, setFocus)}
+						onBlockedClick={focusFirstError}
 						// keeps the focus in the field until the click is done (a blur error would move the button)
 						onMouseDown={(e) => e.preventDefault()}
 						aria-describedby={blocked ? noteId : undefined}
@@ -231,11 +242,32 @@ function MoveForm({ tested, status }) {
 				</>
 			}
 		>
+			{/* always mounted, so a screen reader announces the result that appears in it */}
+			<SettingLineNote role="status" aria-live="polite" className="empty:hidden">
+				{current?.result ? (
+					<StatusAlert variant="success" icon={CircleCheck} live={false}>
+						{current.result.engine === "sqlite" ? (
+							<T id="settings.database.test.ok-sqlite" />
+						) : (
+							<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
+						)}
+					</StatusAlert>
+				) : null}
+			</SettingLineNote>
+			{/* outside the polite region: the alert's own role="alert" announces it once */}
+			{current?.error ? (
+				<SettingLineNote>
+					<ErrorAlert>
+						<ApiErrorContent error={current.error} />
+					</ErrorAlert>
+				</SettingLineNote>
+			) : null}
 			<LastFailedMove move={status?.move} />
-			<p className="text-muted-foreground">
+			<SettingLineNote className="text-sm text-muted-foreground">
 				<T id="settings.database.move.intro" />
-			</p>
+			</SettingLineNote>
 			<SelectField
+				line="inline"
 				name="engine"
 				id={`${baseId}-engine`}
 				label={<T id="settings.database.engine" />}
@@ -248,28 +280,12 @@ function MoveForm({ tested, status }) {
 				))}
 			</SelectField>
 			{values.engine === "sqlite" ? (
-				<StatusAlert variant="info" icon={Info} id="settings.database.move.sqlite-note" />
+				<SettingLineNote>
+					<StatusAlert variant="info" icon={Info} id="settings.database.move.sqlite-note" />
+				</SettingLineNote>
 			) : (
 				<ServerFields baseId={baseId} />
 			)}
-			{/* always mounted, so a screen reader announces the result that appears in it */}
-			<div aria-live="polite">
-				{current?.result ? (
-					<StatusAlert variant="success" icon={CircleCheck} live={false}>
-						{current.result.engine === "sqlite" ? (
-							<T id="settings.database.test.ok-sqlite" />
-						) : (
-							<T id="settings.database.test.ok" data={{ version: current.result.version ?? "" }} />
-						)}
-					</StatusAlert>
-				) : null}
-			</div>
-			{/* outside the polite region: the alert's own role="alert" announces it once */}
-			{current?.error ? (
-				<ErrorAlert>
-					<ApiErrorContent error={current.error} />
-				</ErrorAlert>
-			) : null}
 		</SettingsCard>
 	);
 }

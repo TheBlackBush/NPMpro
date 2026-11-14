@@ -7,6 +7,7 @@ import { T } from "src/locale";
 import { showDatabaseMoveModal } from "src/modals";
 import { isMoveActive } from "src/modules/DatabaseMove";
 import { SettingsHeading } from "../SettingsHeading";
+import { SettingsLead } from "../SettingsLead";
 import { StatusAlert } from "../StatusAlert";
 import { InUseCard } from "./InUseCard";
 import { MoveCard } from "./MoveCard";
@@ -49,9 +50,7 @@ export default function Database() {
 	return (
 		<div className="space-y-4">
 			<SettingsHeading titleId="settings.database" className="mb-0" />
-			<p className="text-muted-foreground">
-				<T id="settings.database.intro" />
-			</p>
+			<SettingsLead id="settings.database.intro" />
 			{isPending ? <Loading noLogo /> : null}
 			{error ? (
 				<ErrorAlert>
