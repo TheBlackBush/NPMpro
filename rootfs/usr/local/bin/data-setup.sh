@@ -307,6 +307,8 @@ if [ -f /data/logrotate.state ] && [ ! -e /data/nginx/logs/logrotate.state ]; th
 # nginx core and module settings (Settings > nginx): the backend writes these files on every save and start; here
 # only when one is missing (first start, upgrade), so nginx starts with the modules the last apply loaded
 nginx-core-files.sh --if-missing /data/npmpro/nginx
+# a mask kept from another CPU set must not name a CPU this container may not use (nginx would log an alert)
+nginx-core-files.sh --trim-affinity /data/npmpro/nginx
 
 # The CrowdSec includes of nginx.conf and of the admin UI, written by the backend from Settings, CrowdSec. Missing only
 # at the first start of this version: a bouncer the old crowdsec.conf turned on stays on until the backend has

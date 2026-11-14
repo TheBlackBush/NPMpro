@@ -252,3 +252,34 @@ it("--if-missing writes all four files when one is missing", () => {
 	assert.equal(readFileSync(path.join(dir, "core-stream.conf"), "utf8"), expected.stream);
 	assert.equal(readFileSync(path.join(dir, "core-main.conf"), "utf8"), expected.main);
 });
+
+// data-setup.sh also runs --trim-affinity: a mask kept from another CPU set must not name a CPU outside the allowed ones
+const trimAffinity = (mainText, allowed) => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	const status = path.join(dir, "status");
+	writeFileSync(status, allowed === null ? "Name:\tnginx\n" : `Cpus_allowed_list:\t${allowed}\n`);
+	writeFileSync(path.join(dir, "core-main.conf"), mainText);
+	execFileSync("sh", [SCRIPT, "--trim-affinity", dir], {
+		env: { PATH: process.env.PATH, NPMPRO_PROC_STATUS: status, ...ENVS },
+	});
+	return readFileSync(path.join(dir, "core-main.conf"), "utf8");
+};
+const MAIN_4_7 = "# header\nworker_processes auto;\nworker_cpu_affinity auto 11110000;\nworker_shutdown_timeout 5;\n";
+
+it("--trim-affinity cuts a stale mask to the allowed CPUs and drops it when none is left", () => {
+	assert.equal(trimAffinity(MAIN_4_7, "4-7"), MAIN_4_7);
+	assert.equal(
+		trimAffinity(MAIN_4_7, "5-6"),
+		"# header\nworker_processes auto;\nworker_cpu_affinity auto 1100000;\nworker_shutdown_timeout 5;\n",
+	);
+	assert.equal(trimAffinity(MAIN_4_7, "0-3"), "# header\nworker_processes auto;\nworker_shutdown_timeout 5;\n");
+	assert.equal(trimAffinity(MAIN_4_7, null), "# header\nworker_processes auto;\nworker_shutdown_timeout 5;\n");
+	const noLine = "# header\nworker_processes auto;\n";
+	assert.equal(trimAffinity(noLine, "0-3"), noLine);
+});
+
+it("--trim-affinity leaves a missing core-main.conf alone", () => {
+	const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+	execFileSync("sh", [SCRIPT, "--trim-affinity", dir], { env: { PATH: process.env.PATH, ...ENVS } });
+	assert.equal(existsSync(path.join(dir, "core-main.conf")), false);
+});

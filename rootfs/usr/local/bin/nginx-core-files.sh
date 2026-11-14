@@ -2,7 +2,55 @@
 # Writes the nginx include files of Settings > nginx into $1 from the NGINX_* env vars envs.sh exported. The same
 # output as backend/lib/nginx-core.js (backend/test/nginx-core.test.js compares them). data-setup.sh runs it with
 # --if-missing: then nothing is written while all four files exist (the backend writes them on every save and start).
+# --trim-affinity cuts the affinity line of an existing core-main.conf to the CPUs allowed now (see below).
 set -eu
+# Pin workers to CPUs (NGINX_CPU_AFFINITY off, auto or a CPU list): nginx's mask (CPU 0 right-most) of the allowed
+# CPUs (Cpus_allowed_list) or of the list cut to them; no line and a note on stderr (the start log) when that is empty or
+# the list cannot be read (backend/lib/nginx-core.js affinityOf does the same)
+cpus_of() {
+    echo "$1" | grep -Eq "^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$" || return 0
+    out="$(echo "$1" | awk -F, '{
+        for (i = 1; i <= NF; i++) {
+            n = split($i, r, "-"); lo = r[1] + 0; hi = (n == 2 ? r[2] : r[1]) + 0
+            if (hi < lo || hi >= 1024) exit 1
+            for (c = lo; c <= hi; c++) print c
+        }
+    }')" || return 0
+    echo "$out"
+}
+# --trim-affinity: at boot, before nginx starts, an existing core-main.conf may hold a mask of an earlier CPU set (the
+# container was pinned to other CPUs since), and nginx logs sched_setaffinity() failed for a CPU it may not use. Only
+# that line is cut to the CPUs allowed now (CPU 0 right-most, the mask as long as its highest CPU, like affinity_line
+# writes it) and dropped when none is left or the allowed list cannot be read. The backend rewrites the whole file from
+# the setting a moment later.
+if [ "$1" = "--trim-affinity" ]; then
+    file="$2/core-main.conf"
+    [ -f "$file" ] || exit 0
+    grep -Eq "^worker_cpu_affinity auto [01]+;$" "$file" || exit 0
+    allowed="$(sed -n "s/^Cpus_allowed_list:[[:space:]]*//p" "${NPMPRO_PROC_STATUS:-/proc/self/status}" 2> /dev/null | tr -d " \t")"
+    mask="$(awk -v allowed="$(cpus_of "$allowed" | tr "\n" " ")" '
+        BEGIN { n = split(allowed, a, " "); for (i = 1; i <= n; i++) ok[a[i]] = 1 }
+        /^worker_cpu_affinity auto [01]+;$/ {
+            m = $3; sub(/;$/, "", m); len = length(m); top = -1
+            for (i = 1; i <= len; i++) {
+                c = len - i
+                if (substr(m, i, 1) == "1" && (c in ok)) { keep[c] = 1; if (c > top) top = c }
+            }
+            r = ""
+            for (c = top; c >= 0; c--) r = r (keep[c] ? "1" : "0")
+            print r
+            exit
+        }' "$file")"
+    tmp="$file.trim"
+    if [ -n "$mask" ]; then
+        sed "s/^worker_cpu_affinity auto [01]*;$/worker_cpu_affinity auto $mask;/" "$file" > "$tmp"
+    else
+        grep -v "^worker_cpu_affinity auto [01]*;$" "$file" > "$tmp" || true
+    fi
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+    exit 0
+fi
 if [ "$1" = "--if-missing" ]; then
     dir="$2"
     if [ -f "$dir/core-main.conf" ] && [ -f "$dir/core-events.conf" ] && [ -f "$dir/core-http.conf" ] && [ -f "$dir/core-stream.conf" ]; then
@@ -27,20 +75,6 @@ tls() {
     echo "ssl_ecdh_curve $curves;"
     echo "ssl_sigalgs $sigalgs;"
     if [ "$NGINX_LOAD_NJS_MODULE" = "true" ]; then echo "js_engine qjs;"; fi
-}
-# Pin workers to CPUs (NGINX_CPU_AFFINITY off, auto or a CPU list): nginx's mask (CPU 0 right-most) of the allowed
-# CPUs (Cpus_allowed_list) or of the list cut to them; no line and a note on stderr (the start log) when that is empty or
-# the list cannot be read (backend/lib/nginx-core.js affinityOf does the same)
-cpus_of() {
-    echo "$1" | grep -Eq "^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$" || return 0
-    out="$(echo "$1" | awk -F, '{
-        for (i = 1; i <= NF; i++) {
-            n = split($i, r, "-"); lo = r[1] + 0; hi = (n == 2 ? r[2] : r[1]) + 0
-            if (hi < lo || hi >= 1024) exit 1
-            for (c = lo; c <= hi; c++) print c
-        }
-    }')" || return 0
-    echo "$out"
 }
 affinity_line() {
     [ "$NGINX_CPU_AFFINITY" = "off" ] && return 0
