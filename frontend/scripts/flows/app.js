@@ -1,5 +1,6 @@
-// A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages section, the phone layout of a host list,
-// the MFA and help windows, and the language switch (last: it reloads the page).
+// A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages
+// section, the phone layout of a host list, the MFA and help windows, and the language switch (last: it reloads the
+// page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -90,9 +91,13 @@ const REQUEST_TIMEOUT = "#crowdsec-request-timeout";
 
 const focusIs = (page, id) => page.waitForFunction((target) => document.activeElement?.id === target, id);
 
+// waits until the Advanced card is open or closed (a re-render may lag behind the click)
 const expanded = async (page, expected) => {
-	const value = await page.locator(ADVANCED).getAttribute("aria-expanded");
-	if (value !== String(expected)) throw new Error(`the Advanced card is ${value === "true" ? "open" : "closed"}`);
+	try {
+		await page.locator(`${ADVANCED}[aria-expanded="${expected}"]`).waitFor({ timeout: 5000 });
+	} catch {
+		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`);
+	}
 };
 
 // Settings, CrowdSec: a wrong value in the collapsed Advanced card, which is closed again, is not hidden by a refused
@@ -113,7 +118,9 @@ async function collapsedCardOpens({ admin }) {
 	await page.locator(ADVANCED).click();
 	await expanded(page, false);
 	// the blocked Save is aria-disabled (still clickable), which Playwright counts as not enabled
-	await page.locator("form").getByRole("button", { name: "Save", exact: true }).click({ force: true });
+	const save = page.locator("form").getByRole("button", { name: "Save", exact: true });
+	await page.locator('form button[aria-disabled="true"]', { hasText: "Save" }).waitFor({ timeout: 5000 });
+	await save.click({ force: true });
 	await focusIs(page, "crowdsec-request-timeout");
 	await expanded(page, true);
 	// the same from the keyboard: Enter in a field of another card
