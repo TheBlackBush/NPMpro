@@ -1,7 +1,7 @@
 import { ExternalLink, Info } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
-import { FormField, HookForm, SwitchField, SwitchList, useAppForm, useFieldError } from "src/components";
+import { FormField, HookForm, SettingLineNote, SwitchField, useAppForm, useFieldError } from "src/components";
 import { Checkbox } from "src/components/ui/checkbox";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
@@ -36,6 +36,7 @@ import {
 import { SaveBar } from "./SaveBar";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
+import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
 const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
@@ -53,20 +54,17 @@ function SaveButton({ allLocked }) {
 // Write log files and rotations: the logs runtime settings group (with GoAccess below), saved with its own request
 function LogFields() {
 	return (
-		<Part titleId="settings.logs.files">
-			<SwitchList className="mb-3">
-				<RuntimeSwitch
-					name="writeLogFiles"
-					label={<T id="settings.logs.write" />}
-					hint={<T id="settings.logs.write.hint" />}
-				/>
-			</SwitchList>
+		<Part titleId="settings.logs.files" descriptionId="settings.logs.files.description">
+			<RuntimeSwitch
+				name="writeLogFiles"
+				label={<T id="settings.logs.write" />}
+				hint={<T id="settings.logs.write.hint" />}
+			/>
 			<RuntimeNumber
 				name="logRotations"
 				label={<T id="settings.logs.rotations" />}
 				hint={<T id="settings.logs.rotations.hint" data={ROTATIONS} />}
 				{...ROTATIONS}
-				className=""
 			/>
 		</Part>
 	);
@@ -80,7 +78,7 @@ function GoAccessOptions() {
 		label: intl.formatMessage({ id: `settings.logs.goaccess.anonymize.${value}` }),
 	}));
 	return (
-		<div className="mt-3">
+		<>
 			<RuntimeNumber
 				name="goaccessKeepDays"
 				label={<T id="settings.logs.goaccess.keep-days" />}
@@ -94,24 +92,22 @@ function GoAccessOptions() {
 				hint={<T id="settings.logs.goaccess.anonymize.hint" />}
 				options={anonymize}
 			/>
-			<SwitchList>
-				<RuntimeSwitch
-					name="goaccessDropQueryStrings"
-					label={<T id="settings.logs.goaccess.drop-query-strings" />}
-					hint={<T id="settings.logs.goaccess.drop-query-strings.hint" />}
-				/>
-				<RuntimeSwitch
-					name="goaccessRealOs"
-					label={<T id="settings.logs.goaccess.real-os" />}
-					hint={<T id="settings.logs.goaccess.real-os.hint" />}
-				/>
-				<RuntimeSwitch
-					name="goaccessResolveHosts"
-					label={<T id="settings.logs.goaccess.resolve-hosts" />}
-					hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
-				/>
-			</SwitchList>
-		</div>
+			<RuntimeSwitch
+				name="goaccessDropQueryStrings"
+				label={<T id="settings.logs.goaccess.drop-query-strings" />}
+				hint={<T id="settings.logs.goaccess.drop-query-strings.hint" />}
+			/>
+			<RuntimeSwitch
+				name="goaccessRealOs"
+				label={<T id="settings.logs.goaccess.real-os" />}
+				hint={<T id="settings.logs.goaccess.real-os.hint" />}
+			/>
+			<RuntimeSwitch
+				name="goaccessResolveHosts"
+				label={<T id="settings.logs.goaccess.resolve-hosts" />}
+				hint={<T id="settings.logs.goaccess.resolve-hosts.hint" />}
+			/>
+		</>
 	);
 }
 
@@ -120,25 +116,25 @@ function GoAccessFields() {
 	const goaccess = useWatch({ name: "goaccess" });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<Part titleId="settings.logs.goaccess.title">
-			<SwitchList>
-				<RuntimeSwitch
-					name="goaccess"
-					label={<T id="settings.logs.goaccess" />}
-					hint={<T id="settings.logs.goaccess.hint" />}
-				/>
-			</SwitchList>
+		<Part titleId="settings.logs.goaccess.title" descriptionId="settings.logs.goaccess.title.description">
+			<RuntimeSwitch
+				name="goaccess"
+				label={<T id="settings.logs.goaccess" />}
+				hint={<T id="settings.logs.goaccess.hint" />}
+			/>
 			{goaccess || isLocked("goaccess") ? <GoAccessOptions /> : null}
 			{user?.goaccess ? (
-				<a
-					href="/goaccess"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
-				>
-					<ExternalLink className="size-4" aria-hidden="true" />
-					<T id="settings.logs.goaccess.open" />
-				</a>
+				<SettingLineNote>
+					<a
+						href="/goaccess"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+					>
+						<ExternalLink className="size-4" aria-hidden="true" />
+						<T id="settings.logs.goaccess.open" />
+					</a>
+				</SettingLineNote>
 			) : null}
 		</Part>
 	);
@@ -240,33 +236,31 @@ function StatisticsNumber({ name, id, labelId, hint, range, unit, isLocked, envO
 	return (
 		<FormField
 			id={id}
-			className=""
+			line="inline"
 			label={<T id={labelId} />}
 			badges={isLocked(name) ? <LockedBadge env={envOf(name)} /> : null}
 			hint={hint}
 			error={error}
 		>
 			{(control) => (
-				<div className="sm:max-w-xs">
-					<InputGroup>
-						<InputGroupInput
-							{...register(name)}
-							{...control}
-							aria-invalid={error ? true : undefined}
-							type="number"
-							inputMode="numeric"
-							min={range.min}
-							max={range.max}
-							step={1}
-							disabled={isLocked(name)}
-						/>
-						{unit ? (
-							<InputGroupAddon align="inline-end">
-								<InputGroupText>{unit}</InputGroupText>
-							</InputGroupAddon>
-						) : null}
-					</InputGroup>
-				</div>
+				<InputGroup>
+					<InputGroupInput
+						{...register(name)}
+						{...control}
+						aria-invalid={error ? true : undefined}
+						type="number"
+						inputMode="numeric"
+						min={range.min}
+						max={range.max}
+						step={1}
+						disabled={isLocked(name)}
+					/>
+					{unit ? (
+						<InputGroupAddon align="inline-end">
+							<InputGroupText>{unit}</InputGroupText>
+						</InputGroupAddon>
+					) : null}
+				</InputGroup>
 			)}
 		</FormField>
 	);
@@ -277,59 +271,60 @@ function Fields({ isLocked, envOf }) {
 	const uniqueVisitors = useWatch({ name: "uniqueVisitors" });
 	const lock = (key) => (isLocked(key) ? <LockedBadge env={envOf(key)} /> : null);
 	return (
-		<Part titleId="settings.monitoring.statistics">
-			<SwitchList>
-				<SwitchField
-					{...register("trafficEnabled")}
-					id="monitoring-traffic-enabled"
-					label={<T id="settings.monitoring.traffic" />}
-					badges={lock("trafficEnabled")}
-					hint={<T id="settings.monitoring.traffic.hint" />}
-					disabled={isLocked("trafficEnabled")}
-				/>
+		<Part titleId="settings.monitoring.statistics" descriptionId="settings.monitoring.statistics.description">
+			<SwitchField
+				line
+				{...register("trafficEnabled")}
+				id="monitoring-traffic-enabled"
+				label={<T id="settings.monitoring.traffic" />}
+				badges={lock("trafficEnabled")}
+				hint={<T id="settings.monitoring.traffic.hint" />}
+				disabled={isLocked("trafficEnabled")}
+			/>
+			<StatisticsNumber
+				name="retentionDays"
+				id="monitoring-retention-days"
+				labelId="settings.monitoring.retention"
+				hint={<T id="settings.monitoring.retention.hint" data={RETENTION} />}
+				range={RETENTION}
+				unit={<T id="settings.monitoring.retention.days" />}
+				isLocked={isLocked}
+				envOf={envOf}
+			/>
+			<SwitchField
+				line
+				{...register("showIps")}
+				id="monitoring-show-ips"
+				label={<T id="settings.monitoring.show-ips" />}
+				badges={lock("showIps")}
+				hint={<T id="settings.monitoring.show-ips.hint" />}
+				disabled={isLocked("showIps")}
+			/>
+			<SwitchField
+				line
+				{...register("uniqueVisitors", {
+					// the cap is hidden while unique visitors are off: its message goes with it
+					onChange: (event) => {
+						if (!event.target.checked) clearErrors("visitorsCap");
+					},
+				})}
+				id="monitoring-unique-visitors"
+				label={<T id="settings.monitoring.unique-visitors" />}
+				badges={lock("uniqueVisitors")}
+				hint={<T id="settings.monitoring.unique-visitors.hint" />}
+				disabled={isLocked("uniqueVisitors")}
+			/>
+			{uniqueVisitors ? (
 				<StatisticsNumber
-					name="retentionDays"
-					id="monitoring-retention-days"
-					labelId="settings.monitoring.retention"
-					hint={<T id="settings.monitoring.retention.hint" data={RETENTION} />}
-					range={RETENTION}
-					unit={<T id="settings.monitoring.retention.days" />}
+					name="visitorsCap"
+					id="monitoring-visitors-cap"
+					labelId="settings.monitoring.visitors-cap"
+					hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
+					range={VISITORS_CAP}
 					isLocked={isLocked}
 					envOf={envOf}
 				/>
-				<SwitchField
-					{...register("showIps")}
-					id="monitoring-show-ips"
-					label={<T id="settings.monitoring.show-ips" />}
-					badges={lock("showIps")}
-					hint={<T id="settings.monitoring.show-ips.hint" />}
-					disabled={isLocked("showIps")}
-				/>
-				<SwitchField
-					{...register("uniqueVisitors", {
-						// the cap is hidden while unique visitors are off: its message goes with it
-						onChange: (event) => {
-							if (!event.target.checked) clearErrors("visitorsCap");
-						},
-					})}
-					id="monitoring-unique-visitors"
-					label={<T id="settings.monitoring.unique-visitors" />}
-					badges={lock("uniqueVisitors")}
-					hint={<T id="settings.monitoring.unique-visitors.hint" />}
-					disabled={isLocked("uniqueVisitors")}
-				/>
-				{uniqueVisitors ? (
-					<StatisticsNumber
-						name="visitorsCap"
-						id="monitoring-visitors-cap"
-						labelId="settings.monitoring.visitors-cap"
-						hint={<T id="settings.monitoring.visitors-cap.hint" data={VISITORS_CAP} />}
-						range={VISITORS_CAP}
-						isLocked={isLocked}
-						envOf={envOf}
-					/>
-				) : null}
-			</SwitchList>
+			) : null}
 		</Part>
 	);
 }
@@ -421,6 +416,7 @@ function MonitoringForm({ data, logs }) {
 		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
 			<Heading />
 			{alert}
+			<SettingsLead id="settings.monitoring.intro" />
 			{lockedKeys.length > 0 || logsCtx.anyLocked ? (
 				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
 			) : null}
