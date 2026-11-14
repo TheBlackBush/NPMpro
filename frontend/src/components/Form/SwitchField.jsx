@@ -2,6 +2,7 @@ import { Children } from "react";
 import { controlAria } from "src/modules/FormFields";
 import { FieldMessage } from "./FieldMessage";
 import { SettingBadges } from "./SettingBadge";
+import { SettingLine } from "./SettingLine";
 import { useBadgesFit } from "./useBadgesFit";
 
 // A native checkbox drawn as a switch with the tokens of the shadcn switch. Not Radix's Switch: that is a button, and
@@ -20,9 +21,10 @@ function textColumnWidth(row) {
 /**
  * A settings row: text (and an optional hint) on the left, a switch on the right. The switch is described by its
  * error and its hint; the error shows under the row. Badges sit beside the label when they fit the text column, else
- * at the bottom of the text after the hint. A list of rows is a SwitchList.
+ * at the bottom of the text after the hint. A list of rows is a SwitchList. With line: one SettingLine with the switch
+ * on the right, in a Settings card.
  */
-function SwitchField({ id, label, hint, badges, error, className, ...inputProps }) {
+function SwitchField({ id, label, hint, badges, error, className, line = false, ...inputProps }) {
 	const hasBadges = Children.toArray(badges).length > 0;
 	const aria = controlAria({
 		id,
@@ -31,7 +33,42 @@ function SwitchField({ id, label, hint, badges, error, className, ...inputProps 
 		error,
 		describedBy: inputProps["aria-describedby"],
 	});
-	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({ enabled: hasBadges, getRowWidth: textColumnWidth });
+	const { inline, rowRef, labelRef, badgesRef } = useBadgesFit({
+		enabled: hasBadges && !line,
+		getRowWidth: textColumnWidth,
+	});
+	const input = (
+		<input
+			{...inputProps}
+			id={id}
+			className={SWITCH_INPUT}
+			type="checkbox"
+			// biome-ignore lint/a11y/useAriaPropsForRole: a checkbox input exposes its checked state itself
+			role="switch"
+			// named by the label text alone: the hint is not part of the name, it is the description
+			aria-labelledby={aria.labelId}
+			aria-invalid={aria["aria-invalid"]}
+			aria-describedby={aria["aria-describedby"]}
+		/>
+	);
+	if (line) {
+		return (
+			<SettingLine
+				id={id}
+				layout="switch"
+				labelFor={id}
+				titleId={aria.labelId}
+				hintId={aria.hintId}
+				errorId={aria.errorId}
+				title={label}
+				hint={hint}
+				badges={hasBadges ? <SettingBadges id={aria.badgesId}>{badges}</SettingBadges> : null}
+				error={error}
+				control={input}
+				className={className}
+			/>
+		);
+	}
 	const badgesRow = hasBadges ? (
 		<SettingBadges id={aria.badgesId} ref={badgesRef}>
 			{badges}
@@ -65,19 +102,7 @@ function SwitchField({ id, label, hint, badges, error, className, ...inputProps 
 					) : null}
 					{inline ? null : badgesRow}
 				</span>
-				<input
-					{...inputProps}
-					id={id}
-					className={SWITCH_INPUT}
-					type="checkbox"
-					// biome-ignore lint/a11y/useAriaPropsForRole: a checkbox input exposes its checked state itself
-					role="switch"
-					// named by the label text alone: the hint sits inside the label element, so it would be read
-					// twice, in the name and as the description
-					aria-labelledby={aria.labelId}
-					aria-invalid={aria["aria-invalid"]}
-					aria-describedby={aria["aria-describedby"]}
-				/>
+				{input}
 			</label>
 			{error ? (
 				<FieldMessage id={aria.errorId} className="mt-1">

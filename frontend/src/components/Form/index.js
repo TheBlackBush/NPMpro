@@ -20,6 +20,7 @@ export * from "./PageChoiceField";
 export * from "./PasswordInput";
 export * from "./ProxyOptionsFields";
 export * from "./SettingBadge";
+export * from "./SettingLine";
 export * from "./SSLCertificateField";
 export * from "./SSLOptionsFields";
 export * from "./SwitchField";

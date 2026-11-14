@@ -1,4 +1,3 @@
-import { Info } from "lucide-react";
 import { useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import {
@@ -34,7 +33,7 @@ import { SaveBar } from "./SaveBar";
 import { SettingsCard } from "./SettingsCard";
 import { SettingsForm } from "./SettingsForm";
 import { SettingsHeading } from "./SettingsHeading";
-import { StatusAlert } from "./StatusAlert";
+import { SettingsLead } from "./SettingsLead";
 
 const validate = landingValidate(validations);
 const GLOBAL_CHOICES = ["npmpro", "custom"];
@@ -125,12 +124,7 @@ function DefaultPageRow({ isAdmin }) {
 
 function PageGroup({ labelId, descriptionId, children }) {
 	return (
-		<SettingsCard
-			title={<T id={labelId} />}
-			description={<T id={descriptionId} />}
-			className="overflow-hidden"
-			bodyClassName="space-y-0 divide-y p-0"
-		>
+		<SettingsCard title={<T id={labelId} />} description={<T id={descriptionId} />} lines>
 			{children}
 		</SettingsCard>
 	);
@@ -158,7 +152,7 @@ function LandingPagesForm({ data }) {
 	return (
 		<HookForm methods={methods} onSubmit={onSubmit} className="space-y-4">
 			<SettingsHeading titleId="settings.landing-pages" />
-			<StatusAlert variant="secondary" icon={Info} id="landing-pages.lead" />
+			<SettingsLead id="landing-pages.lead" />
 			<ErrorAlert onClose={() => setErrorMsg(null)}>{errorMsg}</ErrorAlert>
 			<PageGroup labelId="landing-pages.group.default" descriptionId="landing-pages.group.default.description">
 				<DefaultPageRow isAdmin={isAdmin} />

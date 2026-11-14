@@ -3,11 +3,11 @@ import { useRef } from "react";
 import { get, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { CodeText } from "src/components/CodeText";
 import { Button } from "src/components/ui/button";
-import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { choiceLabelId, hasPreview, readPageFile } from "src/modules/LandingPageForms";
 import { SelectField, TextField } from "./FormField";
 import { useReadOnly } from "./HookForm";
+import { SettingLine, SettingLines } from "./SettingLine";
 
 // "Upload .html": the file replaces the field's text; a file that is too large or not UTF-8 shows on the field
 function UploadButton({ htmlName }) {
@@ -99,34 +99,24 @@ function CodeBadges({ codes }) {
  */
 function PageLine({ id, title, codes, hint, control, preview, editor }) {
 	return (
-		<div className="@container">
-			<div className="flex flex-col gap-2 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4">
-				<div className="min-w-0 flex-1">
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-						<p id={`${id}-title`} className="text-sm font-semibold">
-							{title}
-						</p>
-						<CodeBadges codes={codes} />
-					</div>
-					{hint ? (
-						<p id={`${id}-description`} className="mt-0.5 text-[0.8rem] text-muted-foreground">
-							{hint}
-						</p>
-					) : null}
-				</div>
-				<div className="flex items-center gap-2 @lg:shrink-0">
-					<div className="min-w-0 flex-1 @lg:w-56 @lg:flex-none">{control}</div>
-					{preview ?? null}
-				</div>
-			</div>
+		<SettingLine
+			id={id}
+			titleId={`${id}-title`}
+			hintId={`${id}-description`}
+			title={title}
+			badges={codes?.length ? <CodeBadges codes={codes} /> : null}
+			hint={hint}
+			control={control}
+			aside={preview}
+		>
 			{editor}
-		</div>
+		</SettingLine>
 	);
 }
 
 /** The bordered card that holds PageLine lines, a hairline between them. */
 function PageLines({ children, className }) {
-	return <div className={cn("divide-y overflow-hidden rounded-lg border bg-card", className)}>{children}</div>;
+	return <SettingLines className={className}>{children}</SettingLines>;
 }
 
 /** The area under a line while it needs more fields: a muted background and a dashed top border. */
