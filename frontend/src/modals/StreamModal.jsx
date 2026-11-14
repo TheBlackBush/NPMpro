@@ -74,6 +74,7 @@ function StreamFields() {
 					minLength={1}
 					maxLength={11}
 					required
+					hint={<T id="stream.incoming-port.hint" />}
 					placeholder={intl.formatMessage({ id: "form.example" }, { example: "8080" })}
 				/>
 				<TextField
@@ -157,7 +158,8 @@ const showStreamModal = createHostEditorModal({
 	useHost: useStream,
 	useSave: useSetStream,
 	defaults: streamDefaults,
-	validate: streamValidate(validations),
+	validateFor: (data, { isClone }) =>
+		streamValidate(validations, { savedIncomingPort: isClone ? undefined : data.incomingPort }),
 	payload: streamPayload,
 	Fields: StreamFields,
 });

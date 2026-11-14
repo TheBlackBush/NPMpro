@@ -487,3 +487,17 @@ it("refuses to create or link without the permission, or another user's credenti
 	assert.deepEqual(await certbotCalls(), []);
 	assert.deepEqual(await pipCalls(), []);
 });
+
+it("the HTTP challenge test needs certificates:manage (it writes into the public ACME folder)", async () => {
+	const viewer = await api.limited({
+		visibility: "all",
+		certificates: "view",
+		proxy_hosts: "hidden",
+		redirection_hosts: "hidden",
+		dead_hosts: "hidden",
+		streams: "hidden",
+		access_lists: "hidden",
+	});
+	const answer = await viewer.post("/nginx/certificates/test-http", { domains: ["view.example.com"] });
+	assert.equal(answer.status, 403, answer.text);
+});

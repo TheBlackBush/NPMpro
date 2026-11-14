@@ -1,3 +1,4 @@
+import { loginTiming } from "../lib/argon2.js";
 import { carryAuthMethod } from "../lib/auth-method.js";
 import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
@@ -129,12 +130,14 @@ export default {
 			.first();
 
 		if (!user) {
+			await loginTiming.verifyDummy(data.secret);
 			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_AUTH, ERROR_MESSAGE_INVALID_AUTH_I18N);
 		}
 
 		const auth = await authModel.getPasswordAuth(user.id);
 
 		if (!auth) {
+			await loginTiming.verifyDummy(data.secret);
 			throw new errs.PermissionError(ERROR_MESSAGE_INVALID_AUTH, ERROR_MESSAGE_INVALID_AUTH_I18N);
 		}
 

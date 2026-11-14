@@ -22,6 +22,9 @@ const body = (overrides = {}) => {
 };
 const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
+const PASS_AUTH_CLEARED = /proxy_set_header Authorization "";/u;
+const AUTHORIZATION_EMPTY = /Authorization ""/u;
+
 const read = (file) => readConfig(ctx.api, file);
 const configOf = async (host) => read(confOf(host.id));
 const make = async (overrides, who = ctx.admin) => created(await who.post(URL, body(overrides)), "create");
@@ -305,6 +308,35 @@ it("passes the Authorization header on when the access list has pass_auth", asyn
 	assert.doesNotMatch(main, /Authorization ""/u);
 });
 
+it("passes the Authorization header on only when every list with users has pass_auth", async () => {
+	const lists = [];
+	for (const [name, pass_auth] of [
+		["Pass-1", true],
+		["NoPass-2", false],
+	]) {
+		const list = await ctx.admin.post("/nginx/access-lists", {
+			name,
+			pass_auth,
+			items: [{ username: name.toLowerCase(), password: `${name}-password-1` }],
+		});
+		assert.equal(list.status, 201, list.text);
+		lists.push(list.body.id);
+	}
+	const mixed = await make({ npmpro_access_list_type: "custom", npmpro_access_list_ids: lists });
+	assert.match(block(await configOf(mixed), "location / {"), PASS_AUTH_CLEARED);
+	// a list without users (rules only) does not count
+	const rulesOnly = await ctx.admin.post("/nginx/access-lists", {
+		name: "Rules-3",
+		pass_auth: false,
+		clients: [{ address: "10.1.0.0/16", directive: "allow" }],
+	});
+	const passing = await make({
+		npmpro_access_list_type: "custom",
+		npmpro_access_list_ids: [lists[0], rulesOnly.body.id],
+	});
+	assert.doesNotMatch(block(await configOf(passing), "location / {"), AUTHORIZATION_EMPTY);
+});
+
 it("merges two access lists into one file for the host and removes the file with the host", async () => {
 	const lists = [];
 	for (const name of ["First", "Second"]) {
@@ -556,6 +588,18 @@ it("does not let a user with manage set a custom location's advanced config or a
 	);
 	assert.equal(allowed.status, 201, allowed.text);
 	assert.match(await configOf(allowed.body), /root \/var\/www\/mine;/u);
+});
+
+it("refuses an administrator's folder location without the trailing slash, and keeps a stored one", async () => {
+	const folder = { path: "/p", forward_scheme: "path", forward_host: "/var/www/a/", forward_port: 0 };
+	const refused = await ctx.admin.post(URL, body({ locations: [folder] }));
+	assert.equal(refused.status, 400, refused.text);
+	assert.equal(refused.body.error.message_i18n, "error.path-scheme-alias-prefix");
+	const host = await make({ locations: [{ ...folder, path: "/p/" }] });
+	// a location stored before the rule (written to the table directly) keeps saving
+	await ctx.api.db("npmpro_location").where({ proxy_host_id: host.id }).update({ path: "/p" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8099, locations: [folder] });
+	assert.equal(kept.status, 200, kept.text);
 });
 
 it("lets a user with manage keep what an administrator set, and refuses a change of it", async () => {

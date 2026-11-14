@@ -48,10 +48,11 @@ if [ -f "${root}/fake/${name}.fail" ]; then cat "${root}/fake/${name}.fail" >&2;
 `;
 
 const startControlSocket = async (socket) => {
-	const control = { reloads: 0, failNext: null };
+	// failNext fails the next reload once; check (a function) decides every reload until it is set back to null
+	const control = { reloads: 0, failNext: null, check: null };
 	const server = http.createServer((_, res) => {
 		control.reloads += 1;
-		const failure = control.failNext;
+		const failure = control.failNext ?? control.check?.() ?? null;
 		control.failNext = null;
 		res.statusCode = failure === null ? 200 : 500;
 		res.setHeader("content-type", "application/json");

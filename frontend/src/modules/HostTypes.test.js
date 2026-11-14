@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { deleteInvalidations, HOST_TYPES, saveInvalidations, toggleInvalidations } from "./HostTypes.js";
+import {
+	deleteInvalidations,
+	HOST_TYPES,
+	saveErrorInvalidations,
+	saveInvalidations,
+	toggleInvalidations,
+} from "./HostTypes.js";
 
 it("refreshes the list and the host after an enable or disable", () => {
 	assert.deepEqual(toggleInvalidations("dead", 4), [["dead-hosts"], ["dead-host", 4]]);
@@ -47,4 +53,12 @@ it("names the list keys, expand lists, sections and help documents of each type"
 			["proxyHosts", "proxy_hosts", "ProxyHosts", "proxy-host.no-directory"],
 		],
 	);
+});
+
+it("refreshes after a save whose reload failed as after a save, and nothing after a refused one", () => {
+	const reloadFailed = { payload: { error: { message_i18n: "error.nginx-reload-after-save", saved_id: 9 } } };
+	assert.deepEqual(saveErrorInvalidations("proxy", reloadFailed), saveInvalidations("proxy", 9));
+	assert.deepEqual(saveErrorInvalidations("stream", reloadFailed), saveInvalidations("stream", 9));
+	assert.deepEqual(saveErrorInvalidations("dead", { payload: { error: { message: "refused" } } }), []);
+	assert.deepEqual(saveErrorInvalidations("dead", new Error("HTTP 502")), []);
 });

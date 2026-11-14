@@ -140,11 +140,13 @@ function LocationRow({
 							</div>
 						)}
 					</FormField>
-					{!row.path?.endsWith("/") && (row.locationType === "" || row.locationType === "^~ ") && (
-						<NoticeAlert role="status">
-							<T id="proxy-host.location-no-trailing-slash-warning" />
-						</NoticeAlert>
-					)}
+					{!pathError &&
+						!row.path?.endsWith("/") &&
+						(row.locationType === "" || row.locationType === "^~ ") && (
+							<NoticeAlert role="status">
+								<T id="proxy-host.location-no-trailing-slash-warning" />
+							</NoticeAlert>
+						)}
 					<ForwardFields base={base} idSuffix={rowKey} />
 					<ProxyOptionsFields base={base} idSuffix={rowKey} />
 					<FormSection heading legend={<T id="proxy-host.access-lists" />} className="mb-0">

@@ -71,6 +71,15 @@ app.use((err, req, res, _) => {
 	if (err.message_i18n) {
 		payload.error.message_i18n = err.message_i18n;
 	}
+	if (err.message_values) payload.error.message_values = err.message_values;
+
+	// a save that is stored although nginx did not reload: the window keeps the row (and its certificate)
+	if (err instanceof errs.ReloadError) {
+		if (err.savedId !== undefined) payload.error.saved_id = err.savedId;
+		if (err.certificateId !== undefined && err.certificateId !== null) {
+			payload.error.saved_certificate_id = err.certificateId;
+		}
+	}
 
 	// the checks of a refused CrowdSec save (one line per check, never a key)
 	if (err instanceof errs.ConnectionTestError) {

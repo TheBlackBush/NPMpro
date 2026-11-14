@@ -4,8 +4,8 @@ import errs from "./error.js";
 /**
  * Raw nginx config and file serving are admin-only: every host field below is rendered verbatim into an nginx template,
  * so whoever sets it controls nginx (which runs as root). Non-admins may keep a value an admin set, but not set or
- * change one. The "path" forward scheme turns forward_host into `root`/`alias`, so non-admins may only serve files from
- * below WEBROOT.
+ * change one. `unix:` targets and regular expression domain names are admin-only too. The "path" forward scheme turns
+ * forward_host into `root`/`alias`, so non-admins may only serve files from below WEBROOT.
  */
 
 const WEBROOT = "/var/www";
@@ -116,10 +116,50 @@ const assertForwardHostPlain = (isAdmin, item, stored, field = "forward_host") =
 	);
 };
 
+// nginx reads the unix: prefix of an address without regard to case
+const UNIX_SOCKET = /^\s*unix:/iu;
+
+/**
+ * A `unix:` forward target lets nginx connect to the container's own sockets (the nginx control socket, the backend,
+ * php-fpm). Non-admins are refused, unless the value is the stored one.
+ *
+ * @param {Boolean} isAdmin
+ * @param {Object}  item      host or location payload
+ * @param {Object}  [stored]  the stored host or location
+ * @param {String}  [field]   forward_host, forwarding_host (stream) or forward_domain_name (redirection)
+ */
+const assertNoUnixSocket = (isAdmin, item, stored, field = "forward_host") => {
+	if (isAdmin || typeof item[field] !== "string" || !UNIX_SOCKET.test(item[field])) return;
+	if (item[field] === stored?.[field]) return;
+	throw new errs.ValidationError(
+		"Only administrators can forward to a unix socket (unix:).",
+		"error.unix-upstream-admin-only",
+	);
+};
+
+/**
+ * A domain name starting with `~` is a regular expression server_name that can take the requests of other hosts.
+ * Non-admins are refused a new one; the names stored on the host stay.
+ *
+ * @param {Boolean} isAdmin
+ * @param {Object}  data      the create or update payload
+ * @param {Object}  [stored]  the stored row on update
+ */
+const assertNoRegexDomain = (isAdmin, data, stored) => {
+	if (isAdmin || !Array.isArray(data.domain_names)) return;
+	const kept = new Set(Array.isArray(stored?.domain_names) ? stored.domain_names : []);
+	if (data.domain_names.some((name) => typeof name === "string" && name.startsWith("~") && !kept.has(name))) {
+		throw new errs.ValidationError(
+			"Only administrators can use a regular expression (a name starting with ~) as a domain name.",
+			"error.regex-domain-admin-only",
+		);
+	}
+};
+
 /**
  * A custom prefix location renders a folder path (ending in `/`) as `alias`. nginx then replaces the location path
  * with the folder, so a location path without the trailing slash (`/x` with `/var/www/a/`) lets `/x../` reach the
- * parent folder. Non-admins must end such a location path in `/`, unless the location is the stored one.
+ * parent folder. Everyone must end such a location path in `/`, administrators too, unless the location is the stored one.
  *
  * @param {Object} location  location payload
  * @param {Object} [stored]  the matching stored location
@@ -137,27 +177,31 @@ const assertAliasPrefix = (location, stored) => {
 const locationKey = (location) => `${location.location_type ?? ""}\u0000${location.path ?? ""}`;
 
 /**
- * Applies both rules to custom locations. A location matches a stored one with the same type and path. A non-admin
- * payload without `advanced_config` keeps the stored value of the matching location.
+ * The rules of custom locations. A location matches a stored one with the same type and path. The alias rule is for
+ * everyone; the other rules are for non-admins, and a non-admin payload without `advanced_config` keeps the stored
+ * value of the matching location.
  *
  * @param {Boolean}  isAdmin
  * @param {Object[]} [locations]        payload locations (changed in place)
  * @param {Object[]} [storedLocations]
  */
 const assertLocations = (isAdmin, locations, storedLocations = []) => {
-	if (isAdmin || !Array.isArray(locations)) return;
+	if (!Array.isArray(locations)) return;
 	const stored = new Map((storedLocations ?? []).map((location) => [locationKey(location), location]));
 	for (const payload of locations) {
 		// a saved location without a scheme gets the column default, so the checks use it too
 		const location = { ...payload, forward_scheme: payload.forward_scheme ?? "http" };
 		const match = stored.get(locationKey(location));
-		if (payload.advanced_config === undefined) {
-			payload.advanced_config = match?.advanced_config ?? "";
-		} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
-			throw advancedConfigError();
+		if (!isAdmin) {
+			if (payload.advanced_config === undefined) {
+				payload.advanced_config = match?.advanced_config ?? "";
+			} else if (!sameConfig(location.advanced_config, match?.advanced_config)) {
+				throw advancedConfigError();
+			}
+			assertForwardHostPlain(false, location, match);
+			assertNoUnixSocket(false, location, match);
+			assertPathScheme(false, location, match);
 		}
-		assertForwardHostPlain(false, location, match);
-		assertPathScheme(false, location, match);
 		assertAliasPrefix(location, match);
 	}
 };
@@ -188,19 +232,27 @@ const assertUniqueLocations = (locations) => {
 const assertHostConfig = (access, hostType, data, stored) => {
 	const isAdmin = access.isAdmin === true;
 	assertConfigFields(isAdmin, data, stored, CONFIG_FIELDS[hostType]);
+	if (hostType !== "stream") assertNoRegexDomain(isAdmin, data, stored);
 	if (hostType === "proxy_host") {
 		assertUniqueLocations(data.locations);
 		assertForwardHostPlain(isAdmin, data, stored);
+		assertNoUnixSocket(isAdmin, data, stored);
 		assertPathScheme(isAdmin, data, stored);
 		assertLocations(isAdmin, data.locations, stored?.locations);
 	}
-	if (hostType === "stream") assertForwardHostPlain(isAdmin, data, stored, "forwarding_host");
+	if (hostType === "redirection_host") assertNoUnixSocket(isAdmin, data, stored, "forward_domain_name");
+	if (hostType === "stream") {
+		assertForwardHostPlain(isAdmin, data, stored, "forwarding_host");
+		assertNoUnixSocket(isAdmin, data, stored, "forwarding_host");
+	}
 };
 
 export {
 	assertConfigFields,
 	assertHostConfig,
 	assertLocations,
+	assertNoRegexDomain,
+	assertNoUnixSocket,
 	assertPathScheme,
 	assertUniqueLocations,
 	CONFIG_FIELDS,

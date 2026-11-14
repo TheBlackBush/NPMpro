@@ -7,8 +7,9 @@
  */
 export function certificateActionKeys(row, { canManage }) {
 	const keys = [];
-	// the HTTP challenge reachability check: only for Let's Encrypt without a DNS provider, whoever may manage
-	if (row.provider === "letsencrypt" && !row.npmproDnsProvider) keys.push("test");
+	// the HTTP challenge reachability check writes a file into the public ACME folder: for managers, Let's Encrypt
+	// without a DNS provider only
+	if (canManage && row.provider === "letsencrypt" && !row.npmproDnsProvider) keys.push("test");
 	if (canManage && (row.provider === "other" || row.provider === "mtls")) keys.push("edit");
 	if (canManage && row.provider === "letsencrypt") keys.push("renew");
 	if (canManage && row.provider === "letsencrypt" && row.npmproDnsChallenge) keys.push("change-dns");

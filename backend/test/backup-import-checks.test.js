@@ -216,3 +216,103 @@ it("checks the values of every merge apart from the admin-only fields", async ()
 		await knex.destroy();
 	}
 });
+
+it("refuses unix: targets, request variables and regex domains on the hosts of a non-admin import", async () => {
+	const knex = await database();
+	try {
+		const proxy = (values) => ({
+			proxy_hosts: {
+				proxy_host: [
+					{ id: 1, domain_names: '["a.example.com"]', forward_host: "app", forward_port: 80, ...values },
+				],
+			},
+		});
+		const stream = (values) => ({
+			streams: {
+				stream: [{ id: 1, incoming_port: "8443", forwarding_host: "db", tcp_forwarding: 1, ...values }],
+			},
+		});
+		const redirection = (values) => ({
+			redirection_hosts: {
+				redirection_host: [
+					{ id: 1, domain_names: '["a.example.com"]', forward_domain_name: "b.com", ...values },
+				],
+			},
+		});
+		for (const [type, data, field] of [
+			["proxy_hosts", proxy({ forward_host: "unix:/run/nginx-control.sock" }), "forward_host"],
+			["proxy_hosts", proxy({ forward_host: "UNIX:/run/npmpro.sock" }), "forward_host"],
+			["proxy_hosts", proxy({ forward_host: "$http_x" }), "forward_host"],
+			["proxy_hosts", proxy({ domain_names: '["~^.*$"]' }), "domain_names"],
+			["streams", stream({ forwarding_host: "unix:/run/npmpro.sock" }), "forwarding_host"],
+			["streams", stream({ forwarding_host: "$remote_addr" }), "forwarding_host"],
+			["redirection_hosts", redirection({ forward_domain_name: "unix:/x" }), "forward_domain_name"],
+			["redirection_hosts", redirection({ domain_names: '["~x"]' }), "domain_names"],
+		]) {
+			await assert.rejects(check(knex, [item(type, 1)], data), refuses(field), `${type} ${field}`);
+			// an administrator's merge may set them
+			await checkItemValues({ plan: { items: [item(type, 1)] }, data });
+		}
+		// a location's unix: target is named by its field
+		await assert.rejects(
+			check(knex, [item("proxy_hosts", 1)], {
+				proxy_hosts: {
+					...proxy({}).proxy_hosts,
+					npmpro_location: [{ id: 5, proxy_host_id: 1, path: "/x/", forward_host: "unix:/run/x.sock" }],
+				},
+			}),
+			refuses("locations[0].forward_host"),
+		);
+		// a replace keeps the stored values
+		await knex("proxy_host").insert({
+			id: 9,
+			domain_names: '["~^x$"]',
+			forward_host: "unix:/run/app.sock",
+		});
+		const replace = item("proxy_hosts", 1, "replace", { type: "proxy_hosts", id: 9 });
+		await check(knex, [replace], proxy({ domain_names: '["~^x$"]', forward_host: "unix:/run/app.sock" }));
+		await assert.rejects(
+			check(knex, [replace], proxy({ forward_host: "unix:/run/other.sock" })),
+			refuses("forward_host"),
+		);
+	} finally {
+		await knex.destroy();
+	}
+});
+
+it("refuses an imported stream on a port NPMpro listens on or with a range wider than 1000 ports, for everyone", async () => {
+	const knex = await database();
+	try {
+		const stream = (overrides) => ({
+			streams: {
+				stream: [
+					{
+						id: 1,
+						incoming_port: "8443",
+						forwarding_host: "db",
+						tcp_forwarding: 1,
+						enabled: 1,
+						...overrides,
+					},
+				],
+			},
+		});
+		const values = (data) => checkItemValues({ plan: { items: [item("streams", 1)] }, data });
+		await values(stream({}));
+		for (const port of ["443", "80", "81", "440-450", "1-65535", "2000-3000"]) {
+			await assert.rejects(values(stream({ incoming_port: port })), refuses("incoming_port"), port);
+			await assert.rejects(
+				check(knex, [item("streams", 1)], stream({ incoming_port: port })),
+				refuses("incoming_port"),
+			);
+		}
+		// UDP on the HTTP and admin ports stays possible, a disabled stream listens nowhere, 1000 ports pass
+		await values(stream({ incoming_port: "80", tcp_forwarding: 0, udp_forwarding: 1 }));
+		await values(stream({ incoming_port: "443", enabled: 0 }));
+		await values(stream({ incoming_port: "2000-2999" }));
+		// the range cap holds for a disabled stream too, it is refused on save as well
+		await assert.rejects(values(stream({ incoming_port: "1-65535", enabled: 0 })), refuses("incoming_port"));
+	} finally {
+		await knex.destroy();
+	}
+});

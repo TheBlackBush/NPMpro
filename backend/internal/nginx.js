@@ -75,18 +75,58 @@ const internalNginx = {
 	 * Runs in the runtime settings queue: a runtime save cannot test or restore host configs meanwhile, and the
 	 * render reads the values of the last finished save.
 	 *
+	 * When the host's certificate files are gone, the other enabled hosts that force HTTPS with that certificate are
+	 * rendered in one batch with it (configureWithCertificatePeers).
+	 *
 	 * @param   {Object|String}  model
 	 * @param   {String}         host_type
 	 * @param   {Object}         host
+	 * @param   {Object}         [options]  skipReload, fetchMissingOcsp, change (an enable: a reload error says the
+	 *                                      change is kept)
 	 * @returns {Promise}
 	 */
 	configure: async (model, host_type, host, options = {}) => {
 		if (!host.enabled) return {};
-		return await runtimeExclusive(() => internalNginx.configureNow(model, host_type, host, options));
+		return await runtimeExclusive(async () => {
+			// streams always name the certificate files (templates/stream.conf), the startup check reloads once itself
+			if (host_type !== "stream" && !options.skipReload && (await certificateUnusable(host))) {
+				return internalNginx.configureWithCertificatePeers(model, host_type, host, options);
+			}
+			return internalNginx.configureNow(model, host_type, host, options);
+		});
+	},
+
+	/**
+	 * A host whose certificate files are gone, with the other enabled hosts that force HTTPS with that certificate:
+	 * nginx checks every config, so their old configs (with the missing files) would fail this save. One batch renders
+	 * them all without the HTTPS listener, one reload follows. For code in the runtime settings queue.
+	 *
+	 * The batch runs without keepPrevious: when its nginx -t fails (a peer is broken for another reason), the old
+	 * configs must not come back, they still name the missing files and could never pass. The hosts are checked one by
+	 * one with fresh configs instead, so only a host that is broken itself ends up as .err.
+	 *
+	 * @returns {Promise<Object>}  the saved host's status
+	 */
+	configureWithCertificatePeers: async (model, host_type, host, options = {}) => {
+		// loaded on this path only: regenerate.js imports this module
+		const { loadCertificatePeers } = await import("./regenerate.js");
+		const peers = await loadCertificatePeers(host.certificate_id, { hostType: host_type, id: host.id });
+		if (peers.length === 0) return internalNginx.configureNow(model, host_type, host, options);
+		await internalNginx.configureManyNow([{ model, hostType: host_type, host }, ...peers], {
+			fetchMissingOcsp: options.fetchMissingOcsp,
+		});
+		await internalNginx.reloadOrRaise(host, { change: options.change });
+		const { npmpro_nginx_online, npmpro_nginx_err } = await model.query().findById(host.id);
+		return { npmpro_nginx_online, npmpro_nginx_err };
 	},
 
 	/** configure without the queue, for code already in the runtime settings queue */
-	configureNow: async (model, host_type, host, { skipReload = false, fetchMissingOcsp = true } = {}) => {
+	configureNow: async (
+		model,
+		host_type,
+		host,
+		{ skipReload = false, fetchMissingOcsp = true, change = false } = {},
+	) => {
 		let status = {};
 
 		await internalProxyHostAccessList.build(host_type, host);
@@ -106,7 +146,7 @@ const internalNginx = {
 			await model.query().where("id", host.id).patch(status);
 
 			await internalNginx.renameConfigAsError(host_type, host);
-			if (!skipReload) await internalNginx.reload();
+			if (!skipReload) await internalNginx.reloadOrRaise(host, { change });
 		}
 
 		return status;
@@ -202,6 +242,28 @@ const internalNginx = {
 			throw new errs.CommandError(logs || `nginx reload failed with status ${res.status}, see container logs`);
 		}
 		return logs;
+	},
+
+	/**
+	 * reload for a save that is already stored: a failure becomes a public ReloadError naming the saved row
+	 *
+	 * @param   {Object}   [saved]           the saved row: id, certificate_id
+	 * @param   {Object}   [options]
+	 * @param   {boolean}  [options.change]  a disable, enable or delete, not a save: the error says the change is kept
+	 * @returns {Promise<String>}
+	 */
+	reloadOrRaise: async (saved, { change = false } = {}) => {
+		try {
+			return await internalNginx.reload();
+		} catch (err) {
+			logger.error(`nginx could not reload after a save: ${err.message}`);
+			throw new errs.ReloadError(err.message, {
+				savedId: saved?.id,
+				certificateId: saved?.certificate_id,
+				cause: err,
+				change,
+			});
+		}
 	},
 
 	/**
@@ -383,13 +445,14 @@ const internalNginx = {
 	 * @param   {Object}    host
 	 * @param   {Object}    [options]
 	 * @param   {Function}  [options.also]  runs after the delete, before the reload (access list files)
+	 * @param   {Object}    [options.saved]  the row a disable keeps, named in the error
 	 * @returns {Promise}
 	 */
-	removeConfig: (host_type, host, { also } = {}) =>
+	removeConfig: (host_type, host, { also, saved } = {}) =>
 		runtimeExclusive(async () => {
 			await internalNginx.deleteConfig(host_type, host);
 			await also?.();
-			await internalNginx.reload();
+			await internalNginx.reloadOrRaise(saved, { change: true });
 			// a disabled or deleted host's pages go once the reload no longer serves them; enabling writes them again
 			if (host_type === "proxy_host" || host_type === "dead_host") await removePlacePages(host_type, host.id);
 		}),

@@ -47,4 +47,23 @@ const verify = async (plain, stored) => {
 	}
 };
 
-export { hash, verify };
+let dummyHash;
+
+/**
+ * Runs a full verify against a fixed hash and answers false: a sign-in for an unknown, disabled or passwordless account
+ * then costs the same time as a wrong password, so the answer time does not tell which emails exist. The hash is made
+ * once, at first use, with the default parameters of hash().
+ *
+ * @param   {String} plain
+ * @returns {Promise<false>}
+ */
+const verifyDummy = async (plain) => {
+	dummyHash ??= hash(randomBytes(32).toString("base64"));
+	await verify(String(plain ?? ""), await dummyHash);
+	return false;
+};
+
+// an object, so the sign-in calls it through a property a test can watch
+const loginTiming = { verifyDummy };
+
+export { hash, loginTiming, verify };

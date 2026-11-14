@@ -4,6 +4,7 @@ import { useController, useWatch } from "react-hook-form";
 import { Button, DESTRUCTIVE_TEXT } from "src/components/Button";
 import { Combobox } from "src/components/Combobox";
 import { ApiErrorContent } from "src/components/ErrorAlert";
+import { FieldDescription } from "src/components/ui/field";
 import { Skeleton } from "src/components/ui/skeleton";
 import { useAccessLists } from "src/hooks";
 import { formatDateTime, intl, T } from "src/locale";
@@ -259,6 +260,11 @@ export function AccessFields({ name, typeName, location, authRequest }) {
 							</Button>
 						</div>
 					))}
+					{values.length > 1 ? (
+						<FieldDescription>
+							<T id="access-list.pass-auth-all-hint" />
+						</FieldDescription>
+					) : null}
 					{values.length === 0 ? (
 						<>
 							<input name={name} className="sr-only" tabIndex={-1} required defaultValue="" />

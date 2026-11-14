@@ -17,15 +17,68 @@ const parsePortRange = (value) => {
 	return { start, end };
 };
 
+// a range opens one socket per port, address family and worker (reuseport): 1000 covers game servers and FTP
+// passive ranges with room to spare, a bigger span can be split into several streams
+const STREAM_RANGE_MAX = 1000;
+
+/**
+ * @param   {{start: Number, end: Number}}  range
+ * @returns {Number}  the number of ports in it
+ */
+const rangeSize = ({ start, end }) => end - start + 1;
+
 /**
  * @param {*} value  the incoming port of a stream
  */
 const assertIncomingPort = (value) => {
-	if (parsePortRange(value) === null) {
+	const range = parsePortRange(value);
+	if (range === null) {
 		throw new errs.ValidationError(
 			"The incoming port must be a port from 1 to 65535 or a range of them (for example 8000-8010), lowest first",
 		);
 	}
+	if (rangeSize(range) > STREAM_RANGE_MAX) {
+		throw new errs.ValidationError(
+			`A port range can span at most ${STREAM_RANGE_MAX} ports, ${value} spans ${rangeSize(range)}. Split a bigger range into several streams.`,
+			"error.stream-port-range-too-wide",
+		);
+	}
+};
+
+/**
+ * The ports nginx itself listens on (envs.sh defaults 80, 443, 81), with the protocol each really uses: HTTP_PORT over
+ * TCP unless DISABLE_HTTP, HTTPS_PORT over TCP and, unless DISABLE_H3_QUIC, over UDP (HTTP/3), NPM_PORT over TCP
+ *
+ * @param   {Object}  env  effectiveEnv()
+ * @returns {{port: Number, protocol: "tcp"|"udp", setting: String}[]}
+ */
+const reservedPorts = (env) => {
+	const https = Number(env.HTTPS_PORT || 443);
+	return [
+		...(env.DISABLE_HTTP === "true"
+			? []
+			: [{ port: Number(env.HTTP_PORT || 80), protocol: "tcp", setting: "HTTP_PORT" }]),
+		{ port: https, protocol: "tcp", setting: "HTTPS_PORT" },
+		...(env.DISABLE_H3_QUIC === "true" ? [] : [{ port: https, protocol: "udp", setting: "HTTPS_PORT" }]),
+		{ port: Number(env.NPM_PORT || 81), protocol: "tcp", setting: "NPM_PORT" },
+	];
+};
+
+/**
+ * The first reserved port the stream's port or range covers on a protocol it forwards, or null
+ *
+ * @param   {Object}  stream  incoming_port, tcp_forwarding, udp_forwarding
+ * @param   {Object}  env
+ * @returns {{port: Number, protocol: String, setting: String}|null}
+ */
+const reservedPortClash = (stream, env) => {
+	const range = parsePortRange(stream.incoming_port);
+	if (!range) return null;
+	const uses = { tcp: Boolean(stream.tcp_forwarding), udp: Boolean(stream.udp_forwarding) };
+	return (
+		reservedPorts(env).find(({ port, protocol }) => uses[protocol] && range.start <= port && port <= range.end) ??
+		null
+	);
 };
 
 /**
@@ -106,4 +159,12 @@ const cleanStreamData = (data, existingData) => {
 	return combinedData;
 };
 
-export { cleanStreamData, streamsConflict };
+export {
+	assertIncomingPort,
+	cleanStreamData,
+	rangeSize,
+	reservedPortClash,
+	reservedPorts,
+	STREAM_RANGE_MAX,
+	streamsConflict,
+};

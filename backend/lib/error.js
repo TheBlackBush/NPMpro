@@ -62,9 +62,11 @@ const errs = {
 		public = true;
 		status = 400;
 
-		constructor(message, messageI18n, options) {
+		// values: the placeholders of the translated message (message_values in the answer)
+		constructor(message, messageI18n, { values, ...options } = {}) {
 			super(message, options);
 			this.message_i18n = messageI18n;
+			if (values) this.message_values = values;
 		}
 	},
 
@@ -87,6 +89,30 @@ const errs = {
 		name = this.constructor.name;
 		public = false;
 		status = 400;
+	},
+
+	// a save (or with change, a disable, enable or delete) is stored, but nginx refused the reload (the cause may be
+	// another host or a custom config). The message names nginx's first [emerg] line (else its first line) and details
+	// holds all of it (shown as the output); savedId and certificateId let a window turn into the edit window of the
+	// saved row
+	ReloadError: class extends Error {
+		name = this.constructor.name;
+		public = true;
+		status = 500;
+
+		constructor(output, { savedId, certificateId, cause, change = false } = {}) {
+			const text = String(output ?? "");
+			const lines = text.split("\n");
+			const first = lines.find((line) => line.includes("[emerg]")) ?? lines[0];
+			super(
+				`${change ? "Changed" : "Saved"}, but nginx could not reload: ${first}`,
+				cause ? { cause } : undefined,
+			);
+			this.message_i18n = change ? "error.nginx-reload-after-change" : "error.nginx-reload-after-save";
+			this.details = text;
+			this.savedId = savedId;
+			this.certificateId = certificateId;
+		}
 	},
 
 	CommandError: class extends Error {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { formatApiError } from "./ApiError.js";
+import { formatApiError, reloadFailedAfterChange, savedOf } from "./ApiError.js";
 
 const messages = { "error.known": "Translated text" };
 const has = (id) => id in messages;
@@ -42,4 +42,37 @@ it("translates client side errors that carry a translation id", () => {
 it("formats a bare HTTP status fallback as a generic request failure", () => {
 	const msgs = (id, values) => (id === "error.request-failed" ? `Request failed (HTTP ${values.status})` : id);
 	assert.equal(formatApiError(new Error("HTTP 502"), () => false, msgs).message, "Request failed (HTTP 502)");
+});
+
+it("passes the values of a translated message", () => {
+	const values = { port: 443 };
+	const err = { payload: { error: { message: "x", message_i18n: "error.known", message_values: values } } };
+	let seen;
+	formatApiError(err, has, (id, given) => {
+		seen = given;
+		return messages[id];
+	});
+	assert.deepEqual(seen, values);
+});
+
+it("reads the row a failed reload saved anyway", () => {
+	assert.deepEqual(savedOf({ payload: { error: { saved_id: 7, saved_certificate_id: 3 } } }), {
+		id: 7,
+		certificateId: 3,
+	});
+	assert.deepEqual(savedOf({ payload: { error: { saved_id: 7 } } }), { id: 7, certificateId: undefined });
+	assert.equal(savedOf({ payload: { error: { message: "x" } } }), null);
+	assert.equal(savedOf({ payload: { error: { saved_id: "7" } } }), null);
+	assert.equal(savedOf(new Error("x")), null);
+	assert.equal(savedOf(null), null);
+});
+
+it("tells an error whose change is stored although nginx did not reload from a refused one", () => {
+	const answer = (error) => ({ payload: { error } });
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.nginx-reload-after-change" })), true);
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.nginx-reload-after-save", saved_id: 4 })), true);
+	assert.equal(reloadFailedAfterChange(answer({ message_i18n: "error.not-found" })), false);
+	assert.equal(reloadFailedAfterChange(answer({ message: "x" })), false);
+	assert.equal(reloadFailedAfterChange(new Error("HTTP 500")), false);
+	assert.equal(reloadFailedAfterChange(null), false);
 });

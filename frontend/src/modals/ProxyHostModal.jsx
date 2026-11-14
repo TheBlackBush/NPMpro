@@ -160,7 +160,8 @@ const showProxyHostModal = createHostEditorModal({
 	useHost: useProxyHost,
 	useSave: useSetProxyHost,
 	defaults: proxyHostDefaults,
-	validate: proxyHostValidate(validations),
+	validateFor: (data, { isClone }) =>
+		proxyHostValidate(validations, { savedLocations: isClone ? [] : data.locations }),
 	payload: proxyHostPayload,
 	Fields: ProxyHostFields,
 	fieldLabels: FIELD_LABELS,

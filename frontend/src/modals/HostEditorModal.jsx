@@ -17,6 +17,7 @@ import {
 import { DirtyTracker, useCanManage, useIsAdmin, useTlsQueriesSettled, useUnsavedChangesGuard } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { T } from "src/locale";
+import { savedOf } from "src/modules/ApiError";
 import EasyModal from "src/modules/easyModal";
 import { windowTitleId } from "src/modules/HostForms";
 import { MANAGE } from "src/modules/Permissions";
@@ -75,10 +76,11 @@ function HostEditorForm({ config, data, isClone, isAdmin, savedId, errorMsg, onC
 // complete defaultValues from the first render, no reset on a refetch
 function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef, readOnly, close }) {
 	const [defaultValues] = useState(() => config.defaults(data, { isClone, isAdmin }));
-	const methods = useAppForm({ defaultValues, validate: config.validate });
+	const [validate] = useState(() => config.validateFor?.(data, { isClone }) ?? config.validate);
+	const methods = useAppForm({ defaultValues, validate });
 	const resetToSaved = useResetToSaved(methods);
 	const [errorMsg, setErrorMsg] = useState(null);
-	// set once a new host was created but its nginx config failed, so saving again updates it
+	// set once a new host was saved but its nginx config or the reload failed, so saving again updates it
 	const [savedId, setSavedId] = useState(null);
 
 	const onSubmit = async (values) => {
@@ -101,6 +103,14 @@ function HostEditor({ config, id, isClone, isAdmin, data, save, remove, dirtyRef
 			resetToSaved();
 			setErrorMsg(<NginxConfigErrorMsg obj={config.object} nginxErr={nginxErr} />);
 		} catch (err) {
+			const saved = savedOf(err);
+			if (saved) {
+				// stored, only the nginx reload failed: the next save updates this row instead of creating another one,
+				// and keeps the certificate the backend created
+				setSavedId(saved.id);
+				if (saved.certificateId !== undefined) methods.setValue("certificateId", saved.certificateId);
+				resetToSaved();
+			}
 			setErrorMsg(<ApiErrorContent error={err} />);
 		}
 	};
@@ -168,6 +178,7 @@ function HostEditorWindow({ config, id, isClone, visible, remove }) {
  * @param {Function} config.useSave      () => the save mutation
  * @param {Function} config.defaults     (data, { isClone, isAdmin }) => the form's values
  * @param {Function} config.validate     (values) => errors
+ * @param {Function} [config.validateFor] (data, { isClone }) => validate, for rules that keep a saved value (used instead of validate)
  * @param {Function} config.payload      (values) => the request body
  * @param {Function} config.Fields       ({ isAdmin, hostId }) => the type's tabs
  * @param {Object}   [config.fieldLabels]       field name -> label id for the note next to Save

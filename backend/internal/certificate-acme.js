@@ -174,7 +174,7 @@ const certificateAcme = {
 
 	/** Writes a test challenge file, then asks an outside service to fetch it for each domain */
 	testHttpsChallenge: async (access, payload) => {
-		access.can("certificates:view");
+		access.can("certificates:manage");
 
 		await writeFile(rooted("/data/public/acme-challenge/.well-known/acme-challenge/test-challenge"), "Success", {
 			encoding: "utf8",

@@ -1,15 +1,26 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
-import { cleanStreamData, streamsConflict } from "../lib/stream-rules.js";
+import { effectiveEnv } from "../lib/runtime-config.js";
+import { cleanStreamData, reservedPortClash, streamsConflict } from "../lib/stream-rules.js";
 import streamModel from "../models/stream.js";
 import createHostService from "./host-service.js";
 
 /**
  * An incoming port is unique per protocol (nginx refuses a second listen). Only enabled streams count, and every
- * owner's streams are checked, not only the caller's. `ownId` is the stream being updated.
+ * owner's streams are checked, not only the caller's. `ownId` is the stream being updated. An enabled stream may not
+ * cover a port NPMpro itself listens on, for the protocols the stream uses.
  */
 const assertPortFree = async (stream, ownId) => {
 	if (!stream.enabled) return;
+	const reserved = reservedPortClash(stream, effectiveEnv());
+	if (reserved) {
+		const protocol = reserved.protocol.toUpperCase();
+		throw new errs.ValidationError(
+			`The incoming port ${stream.incoming_port} covers port ${reserved.port} (${protocol}), which NPMpro itself listens on (${reserved.setting}). Choose another port.`,
+			"error.stream-port-reserved",
+			{ values: { port: reserved.port, protocol, setting: reserved.setting } },
+		);
+	}
 	const query = streamModel.query().where("enabled", 1);
 	if (ownId) query.whereNot("id", ownId);
 	const clash = (await query).find((other) => streamsConflict(stream, other));
