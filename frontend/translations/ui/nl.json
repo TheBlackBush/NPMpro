@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "Deze laatste regel wordt alleen toegevoegd als er minstens één andere regel is",
 	"access-list.help.rules-order": "Houd er rekening mee dat de regels worden toegepast in de volgorde waarin ze zijn gedefinieerd.",
 	"access-list.pass-auth": "Authenticatie naar upstream doorgeven",
+	"access-list.pass-auth-all-hint": "\"Voldoen aan minstens een\" en de pagina voor geweigerde toegang komen van de eerste lijst. De Authorization-header bereikt de upstream alleen als bij elke lijst met gebruikers \"Authenticatie naar upstream doorgeven\" aan staat.",
 	"access-list.public": "Publiekelijk toegankelijk",
 	"access-list.public.subtitle": "Geen basisautentificatie vereist",
 	"access-list.rule-source.placeholder": "192.168.1.100 of 192.168.1.0/24 of 2001:0db8::/32",

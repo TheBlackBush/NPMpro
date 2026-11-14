@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "This final rule will only be added if there is at least one other rule",
 	"access-list.help.rules-order": "Note that the allow and deny directives will be applied in the order they are defined.",
 	"access-list.pass-auth": "Pass Auth to Upstream",
+	"access-list.pass-auth-all-hint": "Satisfy Any and the denied page come from the first list. The Authorization header reaches the upstream only when every list with users has Pass Auth to Upstream on.",
 	"access-list.public": "Publicly Accessible",
 	"access-list.public.subtitle": "No basic auth required",
 	"access-list.rule-source.placeholder": "192.168.1.100 or 192.168.1.0/24 or 2001:0db8::/32",

@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "この最後のルールは、他のルールが少なくとも 1 つある場合にのみ追加されます",
 	"access-list.help.rules-order": "許可コマンドと拒否コマンドは定義された順番で適用されます",
 	"access-list.pass-auth": "認証情報をアップストリームに送信する",
+	"access-list.pass-auth-all-hint": "「いずれかを満たす」と拒否ページは最初のリストの設定が使われます。Authorization ヘッダーは、ユーザーを持つすべてのリストで「認証情報をアップストリームに送信する」が有効な場合にのみアップストリームへ渡されます。",
 	"access-list.public": "公開されたアクセス",
 	"access-list.public.subtitle": "ベーシック認証を使用しません",
 	"access-list.rule-source.placeholder": "192.168.1.100、192.168.1.0/24、2001:0db8::/32 など",

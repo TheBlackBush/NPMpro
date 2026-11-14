@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "Ta ostatnia reguła zostanie dodana tylko wtedy, gdy istnieje co najmniej jedna inna reguła",
 	"access-list.help.rules-order": "Należy pamiętać, że dyrektywy zezwolenia i odmowy będą stosowane w kolejności, w jakiej zostały zdefiniowane.",
 	"access-list.pass-auth": "Przekaż uwierzytelnienie do serwera docelowego",
+	"access-list.pass-auth-all-hint": "Opcja Spełnij dowolny i strona odmowy dostępu pochodzą z pierwszej listy. Nagłówek Authorization trafia do serwera docelowego tylko wtedy, gdy każda lista z użytkownikami ma włączone „Przekaż uwierzytelnienie do serwera docelowego”.",
 	"access-list.public": "Publicznie dostępne",
 	"access-list.public.subtitle": "Nie wymaga uwierzytelnienia podstawowego",
 	"access-list.rule-source.placeholder": "192.168.1.100 lub 192.168.1.0/24 lub 2001:0db8::/32",

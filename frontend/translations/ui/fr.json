@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "Cette dernière règle n'est ajoutée que s'il existe au moins une autre règle",
 	"access-list.help.rules-order": "Notez que les directives autoriser et refuser seront appliquées dans l'ordre où elles sont définies.",
 	"access-list.pass-auth": "Transmettre l'authentification au serveur en amont",
+	"access-list.pass-auth-all-hint": "Satisfy Any et la page de refus viennent de la première liste. L'en-tête Authorization n'atteint le serveur en amont que si chaque liste avec des utilisateurs a activé « Transmettre l'authentification au serveur en amont ».",
 	"access-list.public": "Accessible au public",
 	"access-list.public.subtitle": "Aucune authentification de base requise",
 	"access-list.rule-source.placeholder": "192.168.1.100 ou 192.168.1.0/24 ou 2001:0db8::/32",

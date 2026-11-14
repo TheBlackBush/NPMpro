@@ -98,7 +98,7 @@ const internalProxyHostAccessList = {
 	 */
 	buildAclFile: (list) => {
 		const lists = list || [];
-		const first = lists[0] || null; // satisfy any/pass auth need to be specified in the first acl
+		const first = lists[0] || null; // satisfy any and the denied page come from the first acl
 
 		const last = (first?.clients || []).at(-1);
 		const catchAll =
@@ -114,7 +114,8 @@ const internalProxyHostAccessList = {
 			items: getMergedItems(lists),
 			clients,
 			satisfy_any: Boolean(first?.satisfy_any),
-			pass_auth: Boolean(first?.pass_auth),
+			// the Authorization header reaches the upstream only when every list that asks for a password allows it
+			pass_auth: lists.every((l) => l.pass_auth || !l.items?.length),
 			// the denied page of the first list counts, like satisfy any and pass auth; a custom page without html has
 			// no file, so the global page stands in
 			denied_page:

@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "이 마지막 규칙은 다른 규칙이 하나 이상 있을 때만 추가됩니다",
 	"access-list.help.rules-order": "허용/거부 규칙은 정의된 순서대로 적용됩니다.",
 	"access-list.pass-auth": "인증 정보를 원본 서버로 전달",
+	"access-list.pass-auth-all-hint": "조건 중 하나라도 충족과 접근 거부 페이지는 첫 번째 목록의 설정을 따릅니다. Authorization 헤더는 사용자가 있는 모든 목록에서 인증 정보를 원본 서버로 전달이 켜져 있을 때만 원본 서버에 전달됩니다.",
 	"access-list.public": "누구나 접근 가능",
 	"access-list.public.subtitle": "기본 인증 필요 없음",
 	"access-list.rule-source.placeholder": "192.168.1.100 / 192.168.1.0/24 / IPv6",

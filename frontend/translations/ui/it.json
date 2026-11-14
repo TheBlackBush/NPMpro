@@ -12,6 +12,7 @@
 	"access-list.help.rules-last": "Questa regola finale viene aggiunta solo se esiste almeno un'altra regola",
 	"access-list.help.rules-order": "Nota che le direttive di allow e deny saranno applicate nell'ordine in cui sono definite.",
 	"access-list.pass-auth": "Passa Autenticazione all'Upstream",
+	"access-list.pass-auth-all-hint": "Satisfy Any e la pagina di accesso negato provengono dalla prima lista. L'header Authorization raggiunge l'upstream solo se ogni lista con utenti ha attivo «Passa Autenticazione all'Upstream».",
 	"access-list.public": "Accessibile Pubblicamente",
 	"access-list.public.subtitle": "Nessuna autenticazione base richiesta",
 	"access-list.rule-source.placeholder": "192.168.1.100 o 192.168.1.0/24 o 2001:0db8::/32",

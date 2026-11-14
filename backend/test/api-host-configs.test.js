@@ -305,6 +305,35 @@ it("passes the Authorization header on when the access list has pass_auth", asyn
 	assert.doesNotMatch(main, /Authorization ""/u);
 });
 
+it("passes the Authorization header on only when every list with users has pass_auth", async () => {
+	const lists = [];
+	for (const [name, pass_auth] of [
+		["Pass-1", true],
+		["NoPass-2", false],
+	]) {
+		const list = await ctx.admin.post("/nginx/access-lists", {
+			name,
+			pass_auth,
+			items: [{ username: name.toLowerCase(), password: `${name}-password-1` }],
+		});
+		assert.equal(list.status, 201, list.text);
+		lists.push(list.body.id);
+	}
+	const mixed = await make({ npmpro_access_list_type: "custom", npmpro_access_list_ids: lists });
+	assert.match(block(await configOf(mixed), "location / {"), /proxy_set_header Authorization "";/u);
+	// a list without users (rules only) does not count
+	const rulesOnly = await ctx.admin.post("/nginx/access-lists", {
+		name: "Rules-3",
+		pass_auth: false,
+		clients: [{ address: "10.1.0.0/16", directive: "allow" }],
+	});
+	const passing = await make({
+		npmpro_access_list_type: "custom",
+		npmpro_access_list_ids: [lists[0], rulesOnly.body.id],
+	});
+	assert.doesNotMatch(block(await configOf(passing), "location / {"), /Authorization ""/u);
+});
+
 it("merges two access lists into one file for the host and removes the file with the host", async () => {
 	const lists = [];
 	for (const name of ["First", "Second"]) {
