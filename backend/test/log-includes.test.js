@@ -23,15 +23,17 @@ const run = (env, conf, { link = false } = {}) => {
 };
 const expected = (files, access) => ({ access: accessLogDirective(access), ...logIncludes(files) });
 
+const stored = (value, eol = "\n") => `ENABLED=${value}${eol}`;
+
 const CASES = [
 	["nothing set", {}, undefined, false, false],
 	["LOGROTATE", { LOGROTATE: "true" }, undefined, true, true],
 	["TRAFFIC_STATS only", { TRAFFIC_STATS: "true" }, undefined, false, true],
 	["CROWDSEC_ENABLED", { CROWDSEC_ENABLED: " True " }, undefined, true, true],
-	["stored CrowdSec on", {}, "ENABLED=true\r\n", true, true],
-	["env off wins over the file", { CROWDSEC_ENABLED: "false" }, "ENABLED=true\n", false, false],
-	["invalid env: the file", { CROWDSEC_ENABLED: "yes" }, "ENABLED=true\n", true, true],
-	["stored off", {}, "ENABLED=false\n", false, false],
+	["stored CrowdSec on", {}, stored("true", "\r\n"), true, true],
+	["env off wins over the file", { CROWDSEC_ENABLED: "false" }, stored("true"), false, false],
+	["invalid env: the file", { CROWDSEC_ENABLED: "yes" }, stored("true"), true, true],
+	["stored off", {}, stored("false"), false, false],
 ];
 for (const [name, env, conf, files, access] of CASES) {
 	it(`writes the same log includes as the backend: ${name}`, () => {
@@ -40,5 +42,5 @@ for (const [name, env, conf, files, access] of CASES) {
 }
 
 it("ignores a crowdsec.conf that is a symlink", () => {
-	assert.deepEqual(run({}, "ENABLED=true\n", { link: true }), expected(false, false));
+	assert.deepEqual(run({}, stored("true"), { link: true }), expected(false, false));
 });
