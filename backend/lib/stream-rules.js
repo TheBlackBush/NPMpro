@@ -159,4 +159,12 @@ const cleanStreamData = (data, existingData) => {
 	return combinedData;
 };
 
-export { cleanStreamData, rangeSize, reservedPortClash, reservedPorts, STREAM_RANGE_MAX, streamsConflict };
+export {
+	assertIncomingPort,
+	cleanStreamData,
+	rangeSize,
+	reservedPortClash,
+	reservedPorts,
+	STREAM_RANGE_MAX,
+	streamsConflict,
+};

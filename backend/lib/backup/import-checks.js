@@ -14,6 +14,8 @@ import {
 	CONFIG_FIELDS,
 } from "../host-config-guard.js";
 import { PAGE_HTML_FIELDS } from "../landing-pages/types.js";
+import { effectiveEnv } from "../runtime-config.js";
+import { assertIncomingPort, reservedPortClash } from "../stream-rules.js";
 import { BackupError } from "./format.js";
 import { ITEM_TYPES } from "./select.js";
 
@@ -181,6 +183,20 @@ const locationsOf = (typeId, row, data) =>
 			)
 		: [];
 
+// the incoming port rules of a stream save: a range of at most 1000 ports, and an enabled stream not on a port nginx
+// itself listens on for a protocol the stream uses (the next reload would fail for the whole instance). An import
+// writes a new row or overwrites one with the backup's values, so a stored port is no exception here
+const checkStreamPort = (row) => {
+	if (row.incoming_port === undefined) return;
+	try {
+		assertIncomingPort(row.incoming_port);
+	} catch {
+		throw new FieldError("incoming_port");
+	}
+	const enabled = row.enabled === undefined || Boolean(row.enabled);
+	if (enabled && reservedPortClash(row, effectiveEnv())) throw new FieldError("incoming_port");
+};
+
 // the values of one row as the API schemas take them from anyone, administrators too
 const checkRowValues = ({ typeId, row, data }) => {
 	if (Object.hasOwn(HOSTS, typeId)) {
@@ -208,6 +224,7 @@ const checkRowValues = ({ typeId, row, data }) => {
 		} catch {
 			throw new FieldError("locations");
 		}
+		if (typeId === "streams") checkStreamPort(row);
 		return;
 	}
 	checkSchema(LINKED[typeId], row);
@@ -300,7 +317,8 @@ const checkWrittenRows = async ({ knex, plan, data, values, adminOnly }) => {
 /**
  * Refuses a merge (Settings merge or page import, by anyone) whose plan adds or replaces a row with a value the API
  * would refuse everyone: JSON type, pattern, enum, length or range outside the schema, raw config that is no text, two
- * locations with the same path, a certificate domain or access list entry outside its rule.
+ * locations with the same path, a stream port range wider than 1000 ports or an enabled stream on a port NPMpro listens
+ * on, a certificate domain or access list entry outside its rule.
  *
  * @param   {Object}    options
  * @param   {Object}    options.plan

@@ -279,3 +279,33 @@ it("refuses unix: targets, request variables and regex domains on the hosts of a
 		await knex.destroy();
 	}
 });
+
+it("refuses an imported stream on a port NPMpro listens on or with a range wider than 1000 ports, for everyone", async () => {
+	const knex = await database();
+	try {
+		const stream = (values) => ({
+			streams: {
+				stream: [
+					{ id: 1, incoming_port: "8443", forwarding_host: "db", tcp_forwarding: 1, enabled: 1, ...values },
+				],
+			},
+		});
+		const values = (data) => checkItemValues({ plan: { items: [item("streams", 1)] }, data });
+		await values(stream({}));
+		for (const port of ["443", "80", "81", "440-450", "1-65535", "2000-3000"]) {
+			await assert.rejects(values(stream({ incoming_port: port })), refuses("incoming_port"), port);
+			await assert.rejects(
+				check(knex, [item("streams", 1)], stream({ incoming_port: port })),
+				refuses("incoming_port"),
+			);
+		}
+		// UDP on the HTTP and admin ports stays possible, a disabled stream listens nowhere, 1000 ports pass
+		await values(stream({ incoming_port: "80", tcp_forwarding: 0, udp_forwarding: 1 }));
+		await values(stream({ incoming_port: "443", enabled: 0 }));
+		await values(stream({ incoming_port: "2000-2999" }));
+		// the range cap holds for a disabled stream too, it is refused on save as well
+		await assert.rejects(values(stream({ incoming_port: "1-65535", enabled: 0 })), refuses("incoming_port"));
+	} finally {
+		await knex.destroy();
+	}
+});
