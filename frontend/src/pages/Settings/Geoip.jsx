@@ -93,7 +93,7 @@ function AccountFields({ data, isLocked }) {
 				disabled={keyLocked}
 				placeholder={keyPlaceholder}
 			/>
-			<SettingLineNote className="text-sm text-muted-foreground">
+			<SettingLineNote className="text-[0.8rem] text-muted-foreground">
 				<T id="settings.geoip.account.hint" />{" "}
 				<a
 					href={SIGNUP_URL}
@@ -173,17 +173,19 @@ function UpdateStatus({ data }) {
 				</Button>
 			}
 		>
-			<SettingLineNote className="space-y-2 empty:hidden">
+			{/* always mounted, so a screen reader announces the result that appears in it */}
+			<SettingLineNote role="status" aria-live="polite" className="space-y-2 empty:hidden">
 				{result?.updated?.length > 0 ? (
 					<StatusAlert
 						variant="success"
 						icon={CircleCheck}
 						id="settings.geoip.update.ok"
 						data={{ editions: result.updated.join(", ") }}
+						live={false}
 					/>
 				) : null}
 				{result?.ok && !(result.updated?.length > 0) ? (
-					<StatusAlert variant="secondary" icon={Info} id="settings.geoip.update.unchanged" />
+					<StatusAlert variant="secondary" icon={Info} id="settings.geoip.update.unchanged" live={false} />
 				) : null}
 				{result && !result.ok ? (
 					<ErrorAlert error={result.requestError}>
