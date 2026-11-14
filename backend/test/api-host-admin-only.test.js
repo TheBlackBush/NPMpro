@@ -18,6 +18,10 @@ const PERMISSIONS = {
 const UNIX = "error.unix-upstream-admin-only";
 const REGEX = "error.regex-domain-admin-only";
 const REGEX_NAME = "~^re\\d\\.example\\.com$";
+const PROXY = { table: "proxy_host", url: "/nginx/proxy-hosts" };
+const STREAM = { table: "stream", url: "/nginx/streams" };
+const REDIRECTION = { table: "redirection_host", url: "/nginx/redirection-hosts" };
+const DEAD = { table: "dead_host", url: "/nginx/dead-hosts" };
 
 const proxy = (name, extra = {}) => ({
 	domain_names: [`${name}.example.com`],
@@ -27,12 +31,17 @@ const proxy = (name, extra = {}) => ({
 	...extra,
 });
 
-const refused = async (user, table, url, body, key) => {
-	const before = await countRows(ctx.api, table);
-	const answer = await user.post(url, body);
-	assert.equal(answer.status, 400, answer.text);
-	assert.equal(answer.body.error.message_i18n, key);
-	assert.equal(await countRows(ctx.api, table), before);
+// Posts a body the user must not save and returns what the test checks: the answer and the row counts around it.
+const refused = async (user, target, body) => {
+	const rowsBefore = await countRows(ctx.api, target.table);
+	const answer = await user.post(target.url, body);
+	return {
+		status: answer.status,
+		text: answer.text,
+		key: answer.body?.error?.message_i18n,
+		rowsBefore,
+		rowsAfter: await countRows(ctx.api, target.table),
+	};
 };
 
 before(async () => {
@@ -44,57 +53,45 @@ after(() => ctx.api?.stop());
 
 it("refuses a unix: upstream from a non-admin on every host type, and adds no row", async () => {
 	const { user } = ctx;
-	await refused(
-		user,
-		"proxy_host",
-		"/nginx/proxy-hosts",
-		proxy("u1", { forward_host: "unix:/run/npmpro.sock" }),
-		UNIX,
-	);
-	await refused(
-		user,
-		"proxy_host",
-		"/nginx/proxy-hosts",
-		proxy("u2", { locations: [{ path: "/p", forward_host: "UNIX:/run/x.sock" }] }),
-		UNIX,
-	);
-	await refused(
-		user,
-		"stream",
-		"/nginx/streams",
-		{ incoming_port: "9710", forwarding_host: "unix:/run/x.sock", tcp_forwarding: true },
-		UNIX,
-	);
-	await refused(
-		user,
-		"redirection_host",
-		"/nginx/redirection-hosts",
-		{
+	const results = [
+		await refused(user, PROXY, proxy("u1", { forward_host: "unix:/run/npmpro.sock" })),
+		await refused(user, PROXY, proxy("u2", { locations: [{ path: "/p", forward_host: "UNIX:/run/x.sock" }] })),
+		await refused(user, STREAM, {
+			incoming_port: "9710",
+			forwarding_host: "unix:/run/x.sock",
+			tcp_forwarding: true,
+		}),
+		await refused(user, REDIRECTION, {
 			domain_names: ["u4.example.com"],
 			forward_scheme: "http",
 			forward_domain_name: "unix:/x",
 			forward_http_code: 301,
-		},
-		UNIX,
-	);
+		}),
+	];
+	for (const result of results) {
+		assert.equal(result.status, 400, result.text);
+		assert.equal(result.key, UNIX);
+		assert.equal(result.rowsAfter, result.rowsBefore);
+	}
 });
 
 it("refuses a regular expression domain from a non-admin on proxy, redirection and dead hosts", async () => {
 	const { user } = ctx;
-	await refused(user, "proxy_host", "/nginx/proxy-hosts", proxy("r1", { domain_names: [REGEX_NAME] }), REGEX);
-	await refused(
-		user,
-		"redirection_host",
-		"/nginx/redirection-hosts",
-		{
+	const results = [
+		await refused(user, PROXY, proxy("r1", { domain_names: [REGEX_NAME] })),
+		await refused(user, REDIRECTION, {
 			domain_names: [REGEX_NAME],
 			forward_scheme: "http",
 			forward_domain_name: "t.example.org",
 			forward_http_code: 301,
-		},
-		REGEX,
-	);
-	await refused(user, "dead_host", "/nginx/dead-hosts", { domain_names: [REGEX_NAME] }, REGEX);
+		}),
+		await refused(user, DEAD, { domain_names: [REGEX_NAME] }),
+	];
+	for (const result of results) {
+		assert.equal(result.status, 400, result.text);
+		assert.equal(result.key, REGEX);
+		assert.equal(result.rowsAfter, result.rowsBefore);
+	}
 });
 
 it("lets an administrator save both", async () => {

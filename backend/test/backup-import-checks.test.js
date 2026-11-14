@@ -283,10 +283,17 @@ it("refuses unix: targets, request variables and regex domains on the hosts of a
 it("refuses an imported stream on a port NPMpro listens on or with a range wider than 1000 ports, for everyone", async () => {
 	const knex = await database();
 	try {
-		const stream = (values) => ({
+		const stream = (overrides) => ({
 			streams: {
 				stream: [
-					{ id: 1, incoming_port: "8443", forwarding_host: "db", tcp_forwarding: 1, enabled: 1, ...values },
+					{
+						id: 1,
+						incoming_port: "8443",
+						forwarding_host: "db",
+						tcp_forwarding: 1,
+						enabled: 1,
+						...overrides,
+					},
 				],
 			},
 		});

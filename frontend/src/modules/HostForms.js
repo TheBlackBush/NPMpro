@@ -467,7 +467,6 @@ export const streamValidate = (rules, { savedIncomingPort } = {}) =>
 			if (size > STREAM_PORT_RANGE_MAX && text !== savedIncomingPort) {
 				return rules.message("error.stream-port-range-too-wide");
 			}
-			return undefined;
 		},
 		npmproDescription: rules.validateString(0, 255),
 		forwardingHost: (value) => forwardHostError(rules, value),

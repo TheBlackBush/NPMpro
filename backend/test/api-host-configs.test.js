@@ -22,6 +22,9 @@ const body = (overrides = {}) => {
 };
 const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
+const PASS_AUTH_CLEARED = /proxy_set_header Authorization "";/u;
+const AUTHORIZATION_EMPTY = /Authorization ""/u;
+
 const read = (file) => readConfig(ctx.api, file);
 const configOf = async (host) => read(confOf(host.id));
 const make = async (overrides, who = ctx.admin) => created(await who.post(URL, body(overrides)), "create");
@@ -320,7 +323,7 @@ it("passes the Authorization header on only when every list with users has pass_
 		lists.push(list.body.id);
 	}
 	const mixed = await make({ npmpro_access_list_type: "custom", npmpro_access_list_ids: lists });
-	assert.match(block(await configOf(mixed), "location / {"), /proxy_set_header Authorization "";/u);
+	assert.match(block(await configOf(mixed), "location / {"), PASS_AUTH_CLEARED);
 	// a list without users (rules only) does not count
 	const rulesOnly = await ctx.admin.post("/nginx/access-lists", {
 		name: "Rules-3",
@@ -331,7 +334,7 @@ it("passes the Authorization header on only when every list with users has pass_
 		npmpro_access_list_type: "custom",
 		npmpro_access_list_ids: [lists[0], rulesOnly.body.id],
 	});
-	assert.doesNotMatch(block(await configOf(passing), "location / {"), /Authorization ""/u);
+	assert.doesNotMatch(block(await configOf(passing), "location / {"), AUTHORIZATION_EMPTY);
 });
 
 it("merges two access lists into one file for the host and removes the file with the host", async () => {

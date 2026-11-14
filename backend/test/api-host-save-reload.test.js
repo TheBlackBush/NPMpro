@@ -24,6 +24,12 @@ const passReloads = () => {
 	api.outside.control.check = null;
 };
 
+const BIND_SAVED = /^Saved, but nginx could not reload: nginx: \[emerg\] bind\(\)/u;
+const ADDRESS_IN_USE = /Address in use/u;
+const OTHER_HOST_CHANGED = /^Changed, but nginx could not reload: nginx: \[emerg\] other host/u;
+const OTHER_HOST_BROKEN = /other host broken/u;
+const DUPLICATE_MIME = /duplicate MIME type/u;
+
 const TYPES = [
 	{
 		url: "/nginx/proxy-hosts",
@@ -66,25 +72,37 @@ const TYPES = [
 	},
 ];
 
-let counter = 0;
-for (const type of TYPES) {
+// Creates a host whose reload fails, then saves its edit; returns what the test checks, asserted in its it().
+const createWhoseReloadFails = async (type, counter) => {
+	const rowsBefore = await countRows(api, type.table);
+	failEveryReload("nginx: [emerg] bind() to 0.0.0.0:9999 failed (98: Address in use)");
+	const answer = await admin.post(type.url, type.body(counter));
+	passReloads();
+	const id = answer.body?.error?.saved_id;
+	const row = Number.isInteger(id) ? await api.db(type.table).where({ id }).first() : undefined;
+	const again = await admin.put(`${type.url}/${id}`, type.edit);
+	return {
+		answer,
+		rowsBefore,
+		rowsAfterCreate: await countRows(api, type.table),
+		id,
+		row,
+		again,
+		rowsAfterEdit: await countRows(api, type.table),
+	};
+};
+for (const [index, type] of TYPES.entries()) {
 	it(`${type.table}: a create whose reload fails keeps the row and names it, the next save updates it`, async () => {
-		counter += 1;
-		const rows = await countRows(api, type.table);
-		failEveryReload("nginx: [emerg] bind() to 0.0.0.0:9999 failed (98: Address in use)");
-		const answer = await admin.post(type.url, type.body(counter));
-		passReloads();
-		assert.equal(answer.status, 500, answer.text);
-		assert.equal(answer.body.error.message_i18n, "error.nginx-reload-after-save");
-		assert.match(answer.body.error.message, /^Saved, but nginx could not reload: nginx: \[emerg\] bind\(\)/u);
-		assert.match(answer.body.error.output, /Address in use/u);
-		assert.equal(await countRows(api, type.table), rows + 1);
-		const id = answer.body.error.saved_id;
-		assert.ok(Number.isInteger(id));
-		assert.ok(await api.db(type.table).where({ id }).first());
-		const again = await admin.put(`${type.url}/${id}`, type.edit);
-		assert.equal(again.status, 200, again.text);
-		assert.equal(await countRows(api, type.table), rows + 1);
+		const result = await createWhoseReloadFails(type, index + 1);
+		assert.equal(result.answer.status, 500, result.answer.text);
+		assert.equal(result.answer.body.error.message_i18n, "error.nginx-reload-after-save");
+		assert.match(result.answer.body.error.message, BIND_SAVED);
+		assert.match(result.answer.body.error.output, ADDRESS_IN_USE);
+		assert.equal(result.rowsAfterCreate, result.rowsBefore + 1);
+		assert.ok(Number.isInteger(result.id));
+		assert.ok(result.row);
+		assert.equal(result.again.status, 200, result.again.text);
+		assert.equal(result.rowsAfterEdit, result.rowsBefore + 1);
 	});
 }
 
@@ -134,8 +152,8 @@ it("a disable, enable or delete whose reload fails keeps the change and says so,
 	const changed = (answer) => {
 		assert.equal(answer.status, 500, answer.text);
 		assert.equal(answer.body.error.message_i18n, "error.nginx-reload-after-change");
-		assert.match(answer.body.error.message, /^Changed, but nginx could not reload: nginx: \[emerg\] other host/u);
-		assert.match(answer.body.error.output, /other host broken/u);
+		assert.match(answer.body.error.message, OTHER_HOST_CHANGED);
+		assert.match(answer.body.error.output, OTHER_HOST_BROKEN);
 	};
 	api.outside.control.failNext = "nginx: [emerg] other host broken";
 	const disabled = await admin.post(`/nginx/dead-hosts/${host.id}/disable`);
@@ -178,7 +196,7 @@ it("the message names nginx's first [emerg] line, not a warning before it", asyn
 		answer.body.error.message,
 		'Saved, but nginx could not reload: nginx: [emerg] host not found in upstream "x"',
 	);
-	assert.match(answer.body.error.output, /duplicate MIME type/u);
+	assert.match(answer.body.error.output, DUPLICATE_MIME);
 });
 
 it("an access list update whose reload fails keeps the list and names it", async () => {

@@ -129,11 +129,11 @@ it("runs a password check for an unknown, a disabled and a passwordless account,
 		const passwordless = await account();
 		await api.db("auth").where({ user_id: passwordless.id }).delete();
 		for (const identity of ["nobody@example.com", disabled.email, passwordless.email]) {
-			const before = spy.mock.callCount();
+			const callsBefore = spy.mock.callCount();
 			const answer = await api.client().post("/tokens", { identity, secret: PASSWORD });
 			assert.equal(answer.status, 403, answer.text);
 			assert.equal(answer.body.error.message_i18n, "error.invalid-auth");
-			assert.equal(spy.mock.callCount(), before + 1, identity);
+			assert.equal(spy.mock.callCount(), callsBefore + 1, identity);
 		}
 	} finally {
 		spy.mock.restore();

@@ -18,6 +18,9 @@ before(async () => {
 });
 after(() => api?.stop());
 
+const PRIVKEY = /privkey\.pem/u;
+const UNTOUCHED = /# untouched/u;
+
 const proxy = (name, certificate) => ({
 	domain_names: [`${name}.example.com`],
 	forward_scheme: "http",
@@ -64,7 +67,7 @@ it("saves a host whose certificate lost its key together with the other hosts on
 			["dead_host", dead.id],
 		]) {
 			const config = await api.read(`data/nginx/${dir}/${id}.conf`);
-			assert.doesNotMatch(config, /privkey\.pem/u);
+			assert.doesNotMatch(config, PRIVKEY);
 			assert.equal((await api.db(dir).where({ id }).first()).npmpro_nginx_online, 1);
 		}
 	} finally {
@@ -105,8 +108,7 @@ it("marks only the peer that is broken for another reason, not the hosts that sh
 			rows.map((row) => row.npmpro_nginx_online),
 			[1, 0, 1],
 		);
-		for (const id of [a.id, c.id])
-			assert.doesNotMatch(await api.read(`data/nginx/proxy_host/${id}.conf`), /privkey\.pem/u);
+		for (const id of [a.id, c.id]) assert.doesNotMatch(await api.read(`data/nginx/proxy_host/${id}.conf`), PRIVKEY);
 		await api.read(`data/nginx/proxy_host/${b.id}.conf.err`);
 		await assert.rejects(api.read(`data/nginx/proxy_host/${b.id}.conf`));
 	} finally {
@@ -122,5 +124,5 @@ it("leaves the other hosts alone while the certificate is usable", async () => {
 	const file = path.join(api.root, `data/nginx/proxy_host/${b.id}.conf`);
 	await writeFile(file, `${await api.read(`data/nginx/proxy_host/${b.id}.conf`)}\n# untouched\n`);
 	assert.equal((await admin.put(`/nginx/proxy-hosts/${a.id}`, { forward_port: 82 })).status, 200);
-	assert.match(await api.read(`data/nginx/proxy_host/${b.id}.conf`), /# untouched/u);
+	assert.match(await api.read(`data/nginx/proxy_host/${b.id}.conf`), UNTOUCHED);
 });
