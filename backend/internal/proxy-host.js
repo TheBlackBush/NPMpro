@@ -1,5 +1,5 @@
 import errs from "../lib/error.js";
-import { upstreamConflict } from "../lib/forward-auth.js";
+import { upstreamConflicts } from "../lib/forward-auth.js";
 import { PROXY_HOST_EXPAND, PROXY_HOST_GRAPH } from "../lib/host-expand.js";
 import { assertPageFields, keepSavedPages } from "../lib/landing-pages/html.js";
 import locationModel from "../models/location.js";
@@ -72,10 +72,15 @@ const internalProxyHost = createHostService({
 			// an API request that leaves out a location's Auth Request means Same as host
 			for (const location of cleaned.locations ?? []) location.npmpro_auth_request ??= "global";
 			for (const item of [cleaned, ...(cleaned.locations ?? [])]) cleanForwardOptions(item);
-			const conflict = upstreamConflict(cleaned);
-			// a host stored with such a pair keeps saving while the upstreams stay
-			const storedConflict = existingRow ? upstreamConflict(existingRow) : null;
-			if (conflict && JSON.stringify(conflict) !== JSON.stringify(storedConflict)) {
+			// a host stored with such a pair keeps saving while that pair stays; any other conflict is refused
+			const stored = existingRow ? upstreamConflicts(existingRow) : [];
+			const conflict = upstreamConflicts(cleaned).find(
+				(entry) =>
+					!stored.some(
+						(old) => old.provider === entry.provider && old.upstreams.join() === entry.upstreams.join(),
+					),
+			);
+			if (conflict) {
 				throw new errs.ValidationError(
 					`The host and its custom locations set different Auth Request upstreams for ${conflict.provider} (${conflict.upstreams.join(", ")}). Use one upstream per provider, or leave the location's upstream empty.`,
 					"error.auth-request-upstream-conflict",

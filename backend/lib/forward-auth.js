@@ -59,22 +59,31 @@ const ownUpstream = (host, provider) => {
 };
 
 /**
- * The first provider for which the host and its enabled locations set two different upstreams of their own (a global
- * location has none), or null. nginx takes one upstream per provider and host, so the others would be ignored.
+ * Every provider for which the host and its enabled locations set two different upstreams of their own (a global
+ * location has none). nginx takes one upstream per provider and host, so the others would be ignored.
  *
  * @param   {Object}  host  a proxy host row or payload with its locations
- * @returns {{ provider: string, upstreams: string[] }|null}
+ * @returns {{ provider: string, upstreams: string[] }[]}
  */
-const upstreamConflict = (host) => {
+const upstreamConflicts = (host) => {
+	const conflicts = [];
 	for (const provider of AUTH_REQUEST_PROVIDERS) {
 		const own = [host, ...enabledLocations(host).filter((location) => location.npmpro_auth_request !== "global")]
 			.filter((item) => providerOf(item.npmpro_auth_request) === provider && item.npmpro_auth_request_upstream)
 			.map((item) => item.npmpro_auth_request_upstream);
 		const upstreams = [...new Set(own)];
-		if (upstreams.length > 1) return { provider, upstreams };
+		if (upstreams.length > 1) conflicts.push({ provider, upstreams });
 	}
-	return null;
+	return conflicts;
 };
+
+/**
+ * The first conflict of upstreamConflicts, or null
+ *
+ * @param   {Object}  host
+ * @returns {{ provider: string, upstreams: string[] }|null}
+ */
+const upstreamConflict = (host) => upstreamConflicts(host)[0] ?? null;
 
 /**
  * The proxy hosts whose config follows the provider's default upstream: they use the provider (host or location) and
@@ -109,5 +118,6 @@ export {
 	ownUpstream,
 	proxyHostsForProvider,
 	upstreamConflict,
+	upstreamConflicts,
 	usesProvider,
 };

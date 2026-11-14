@@ -950,6 +950,25 @@ it("a forward-auth default re-renders only the proxy hosts that use it without a
 	assert.deepEqual(await r.renderRuntimeHosts("forward-auth", { changed: ["anubis_upstream"], startup: true }), []);
 });
 
+it("a forward-auth default re-renders a host whose provider reaches a location only through Same as host", async () => {
+	const rows = [
+		proxyHost(1, { npmpro_auth_request: "authelia" }, [{ npmpro_auth_request: "global" }]),
+		proxyHost(2, { npmpro_auth_request: "none" }, [{ npmpro_auth_request: "global" }]),
+		proxyHost(3, { npmpro_auth_request: "authelia", npmpro_auth_request_upstream: "http://own:9091" }, [
+			{ npmpro_auth_request: "global" },
+		]),
+	];
+	const files = Object.fromEntries(rows.map((row) => [`proxy_host/${row.id}`, `/c/${row.id}.conf`]));
+	files["redirection_host/1"] = "/c/r1.conf";
+	const r = forwardAuthRenderer(rows, files);
+	const env = { AUTH_REQUEST_ANUBIS_UPSTREAM: "http://anubis:8923" };
+	const out = await r.renderRuntimeHosts("forward-auth", { changed: ["authelia_upstream"], startup: false, env });
+	assert.deepEqual(
+		out.map((file) => file.path),
+		["/c/1.conf"],
+	);
+});
+
 it("the proxy host template uses the host's own upstream over the forward-auth default", async () => {
 	const template = await readFile(path.join(import.meta.dirname, "../templates/proxy_host.conf"), "utf8");
 	const env = { AUTH_REQUEST_ANUBIS_UPSTREAM: "http://default-anubis:8923" };

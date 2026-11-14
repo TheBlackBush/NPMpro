@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { locationAuthRequest, ownUpstream, upstreamConflict, usesProvider } from "../lib/forward-auth.js";
+import {
+	locationAuthRequest,
+	ownUpstream,
+	upstreamConflict,
+	upstreamConflicts,
+	usesProvider,
+} from "../lib/forward-auth.js";
 
 it("a location on global takes the host's provider, none stays none", () => {
 	const host = { npmpro_auth_request: "authelia" };
@@ -49,5 +55,21 @@ it("finds two different upstreams for one provider across the host and its enabl
 			],
 		}),
 		{ provider: "authentik", upstreams: ["http://a:9000", "http://b:9000"] },
+	);
+});
+
+it("upstreamConflicts lists every conflicting provider", () => {
+	const host = {
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://a:1",
+		locations: [
+			{ npmpro_auth_request: "authelia", npmpro_auth_request_upstream: "http://b:1" },
+			{ npmpro_auth_request: "tinyauth", npmpro_auth_request_upstream: "http://c:1" },
+			{ npmpro_auth_request: "tinyauth", npmpro_auth_request_upstream: "http://d:1" },
+		],
+	};
+	assert.deepEqual(
+		upstreamConflicts(host).map((entry) => entry.provider),
+		["tinyauth", "authelia"],
 	);
 });

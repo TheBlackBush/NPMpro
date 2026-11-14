@@ -904,6 +904,36 @@ it("forward auth: refuses two upstreams for one provider, keeps a stored pair", 
 	assert.equal(changed.status, 400, changed.text);
 });
 
+it("forward auth: a stored conflict on one provider does not hide a new conflict on another", async () => {
+	const location = (provider, upstream) => ({
+		path: `/${provider}`,
+		forward_host: "10.9.6.1",
+		forward_port: 80,
+		npmpro_auth_request: provider,
+		npmpro_auth_request_upstream: upstream,
+	});
+	const host = await make({
+		npmpro_auth_request: "authelia",
+		npmpro_auth_request_upstream: "http://a.internal:9091",
+		locations: [location("authelia", "")],
+	});
+	await ctx.api
+		.db("npmpro_location")
+		.where({ proxy_host_id: host.id })
+		.update({ npmpro_auth_request_upstream: "http://b.internal:9091" });
+	const kept = await ctx.admin.put(`${URL}/${host.id}`, { forward_port: 8112 });
+	assert.equal(kept.status, 200, kept.text);
+	const second = await ctx.admin.put(`${URL}/${host.id}`, {
+		locations: [
+			location("authelia", "http://b.internal:9091"),
+			location("authentik", "http://t1.internal:1"),
+			{ ...location("authentik", "http://t2.internal:1"), path: "/authentik2" },
+		],
+	});
+	assert.equal(second.status, 400, second.text);
+	assert.equal(second.body.error.message_values.provider, "authentik");
+});
+
 it("forward auth: an upstream with a variable or a quote is refused", async () => {
 	const rows = await countRows(ctx.api, "proxy_host");
 	for (const npmpro_auth_request_upstream of [
