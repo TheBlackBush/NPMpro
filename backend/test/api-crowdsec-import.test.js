@@ -102,6 +102,10 @@ const setMeta = (meta) =>
 		.update({ meta: JSON.stringify(meta) });
 const BOUNCER_OFF = "# the CrowdSec bouncer is off (Settings, CrowdSec)\n";
 const BOUNCER_ON = "include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n";
+const DECRYPT_OFF = /^CrowdSec: off \(a saved key cannot be decrypted, see the warning\)$/mu;
+const DECRYPT_WARNING =
+	/^Warning: {2}a saved CrowdSec key cannot be decrypted \(instance key changed or data restored\?\): enter it again in Settings, CrowdSec \(api_key\)$/mu;
+const NO_KEY_LINE = /the bouncer is off: AppSec has no API key/u;
 const CERT = "/data/crowdsec/client.crt";
 const KEY = "/data/crowdsec/client.key";
 // a PEM pair under the test root at CERT and KEY
@@ -375,6 +379,30 @@ it("starts with the bouncer off while AppSec has no API key, with the reason in 
 		const on = await startCrowdsec();
 		assert.equal(on.appsecNoKey, false);
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
+	} finally {
+		await setMeta(saved);
+		await startCrowdsec();
+	}
+});
+
+it("starts with the bouncer off while a saved key cannot be decrypted, the block names the key", async () => {
+	const { logCrowdsecBlock, startCrowdsec } = await import("../internal/crowdsec-setting.js");
+	const saved = await storedMeta();
+	// a key sealed by another instance: the start cannot decrypt it
+	await setMeta({ ...saved, enabled: true, appsec_url: "http://127.0.0.1:7422", api_key: "not-a-ciphertext" });
+	try {
+		const started = await startCrowdsec();
+		assert.equal(started.secretError, true);
+		assert.deepEqual(started.failedSecrets, ["api_key"]);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
+		const printed = [];
+		await logCrowdsecBlock(started, {
+			print: (text) => printed.push(text),
+			test: () => ({ checks: [] }),
+		});
+		assert.match(printed[0], DECRYPT_OFF);
+		assert.match(printed[0], DECRYPT_WARNING);
+		assert.doesNotMatch(printed[0], NO_KEY_LINE);
 	} finally {
 		await setMeta(saved);
 		await startCrowdsec();

@@ -150,17 +150,17 @@ const startGate = (values, log) => {
  * @param   {Object} [deps.nginx]  { test }
  * @param   {Object} [deps.log]
  * @returns {Promise<{ values: Object, locked: string[], nginxError: string|null, missingFiles: string[],
- *          appsecNoKey: boolean, missingPages: string[] } | null>}  null when the row could not be read; missingFiles:
- *          the files that keep the bouncer off, appsecNoKey: an AppSec URL without a key keeps it off, missingPages:
- *          the pages it runs without
+ *          appsecNoKey: boolean, missingPages: string[], secretError: boolean, failedSecrets: string[] } | null>}
+ *          null when the row could not be read; missingFiles: the files that keep the bouncer off, appsecNoKey: an
+ *          AppSec URL without a key keeps it off, missingPages: the pages it runs without, failedSecrets: the saved
+ *          keys that cannot be decrypted and are not set by a variable (secretError is true when there is one)
  */
 const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 	try {
 		if (!(await hasStoredCrowdsec())) await importCrowdsecFile({ log });
 		const cfg = await getCrowdsecConfig();
 		if (cfg.invalid.length > 0) log.warn(`CrowdSec: ignored invalid values of ${cfg.invalid.join(", ")}`);
-		if (cfg.secretError)
-			log.warn("CrowdSec: a saved key cannot be decrypted, enter it again in Settings, CrowdSec");
+		const failedSecrets = cfg.failed.filter((key) => !cfg.locked.includes(key));
 		// the bouncer parses its TLS client files when nginx starts, which nginx -t does not do: one it cannot parse
 		// would stop nginx
 		const { missingFiles, appsecNoKey, bouncerOff } = startGate(cfg.values, log);
@@ -172,7 +172,16 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 			nginxError = err.message;
 			log.error(`CrowdSec: the settings did not pass nginx -t and were not applied: ${err.message}`);
 		}
-		return { values: cfg.values, locked: cfg.locked, nginxError, missingFiles, appsecNoKey, missingPages };
+		return {
+			values: cfg.values,
+			locked: cfg.locked,
+			nginxError,
+			missingFiles,
+			appsecNoKey,
+			missingPages,
+			secretError: cfg.secretError,
+			failedSecrets,
+		};
 	} catch (err) {
 		log.error(`Could not apply the CrowdSec settings at startup: ${err.message}`);
 		return null;
@@ -199,7 +208,15 @@ const logCrowdsecBlock = async (
 ) => {
 	if (!start) return;
 	try {
-		const { values, locked, nginxError, missingFiles = [], appsecNoKey = false, missingPages = [] } = start;
+		const {
+			values,
+			locked,
+			nginxError,
+			missingFiles = [],
+			appsecNoKey = false,
+			missingPages = [],
+			failedSecrets = [],
+		} = start;
 		const bouncerOff = missingFiles.length > 0 || appsecNoKey;
 		const active = values.enabled && !nginxError && !bouncerOff;
 		const checks = active ? (await test(values, { timeoutMs })).checks : [];
@@ -210,8 +227,18 @@ const logCrowdsecBlock = async (
 			missingFiles,
 			missingPages,
 			localOverride: fileExists(LOCAL_CONF),
+			failedSecrets,
 		});
-		print(renderStartupBlock({ values, lockedBy: lockedByOf("crowdsec", locked), checks, warnings, bouncerOff }));
+		print(
+			renderStartupBlock({
+				values,
+				lockedBy: lockedByOf("crowdsec", locked),
+				checks,
+				warnings,
+				bouncerOff,
+				failedSecrets,
+			}),
+		);
 	} catch (err) {
 		logger.warn(`CrowdSec: the startup check failed: ${err.message}`);
 	}

@@ -33,6 +33,18 @@ const appsecText = (values, check) => {
 };
 
 /**
+ * The reason the bouncer is off, shown in the first line of the block
+ *
+ * @param   {Object}   values
+ * @param   {string[]} failedSecrets
+ * @returns {string}
+ */
+const offReason = (values, failedSecrets) => {
+	if (!appsecKeyMissing(values)) return "a file it needs is not usable";
+	return failedSecrets.includes("api_key") ? "a saved key cannot be decrypted" : "AppSec has no API key";
+};
+
+/**
  * The warning lines that apply
  *
  * @param   {Object}   input
@@ -42,6 +54,7 @@ const appsecText = (values, check) => {
  * @param   {string[]} [input.missingFiles]  files the bouncer cannot start without that are unusable (bouncer off)
  * @param   {string[]} [input.missingPages]  ban or captcha pages that are missing or unreadable (bouncer on)
  * @param   {boolean}  [input.localOverride] crowdsec.conf.local exists
+ * @param   {string[]} [input.failedSecrets] saved keys that cannot be decrypted (and no variable sets them)
  * @returns {string[]}
  */
 const startupWarnings = ({
@@ -51,12 +64,20 @@ const startupWarnings = ({
 	missingFiles = [],
 	missingPages = [],
 	localOverride = false,
+	failedSecrets = [],
 }) => {
 	const warnings = [];
+	if (failedSecrets.length > 0) {
+		warnings.push(
+			`a saved CrowdSec key cannot be decrypted (instance key changed or data restored?): enter it again in Settings, CrowdSec (${failedSecrets.join(", ")})`,
+		);
+	}
 	if (nginxError)
 		warnings.push(`the bouncer config did not pass nginx -t, the bouncer is off: ${firstLine(nginxError)}`);
 	const override = localOverride ? ["/data/crowdsec/crowdsec.conf.local overrides these settings, remove it"] : [];
 	if (!values.enabled) return [...warnings, ...override];
+	// the bouncer stays off for these: nothing it would check can block the admin UI
+	const bouncerOff = Boolean(nginxError) || missingFiles.length > 0 || appsecKeyMissing(values);
 	const lapi = checks.find((check) => check.name === "lapi");
 	const appsec = checks.find((check) => check.name === "appsec");
 	if (lapi && lapi.result !== "ok") warnings.push("the LAPI check failed, decisions are not applied until it passes");
@@ -67,13 +88,14 @@ const startupWarnings = ({
 				: "AppSec cannot be reached: requests pass unchecked while AppSec is down",
 		);
 	}
-	if (values.appsec_url && values.appsec_failure_action === "deny" && !values.admin_ui_excluded) {
+	if (!bouncerOff && values.appsec_url && values.appsec_failure_action === "deny" && !values.admin_ui_excluded) {
 		warnings.push(
 			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
 		);
 	}
-	// the start gate keeps the bouncer off in this case (appsecKeyMissing): AppSec would refuse every request
-	if (appsecKeyMissing(values)) {
+	// the start gate keeps the bouncer off in this case (appsecKeyMissing): AppSec would refuse every request; a key
+	// that cannot be decrypted has its own warning above
+	if (appsecKeyMissing(values) && !failedSecrets.includes("api_key")) {
 		warnings.push(
 			"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL",
 		);
@@ -94,13 +116,20 @@ const startupWarnings = ({
  * @param   {string[]} [input.warnings]
  * @param   {boolean}  [input.bouncerOff]  enabled in the settings, switched off because a file is not usable or
  *                                          AppSec has no API key
+ * @param   {string[]} [input.failedSecrets] saved keys that cannot be decrypted (the reason of bouncerOff)
  * @returns {string}
  */
-const renderStartupBlock = ({ values, lockedBy = {}, checks = [], warnings = [], bouncerOff = false }) => {
+const renderStartupBlock = ({
+	values,
+	lockedBy = {},
+	checks = [],
+	warnings = [],
+	bouncerOff = false,
+	failedSecrets = [],
+}) => {
 	const warningLines = warnings.map((warning) => `Warning:  ${warning}`);
 	if (bouncerOff) {
-		const reason = appsecKeyMissing(values) ? "AppSec has no API key" : "a file it needs is not usable";
-		return [`CrowdSec: off (${reason}, see the warning)`, ...warningLines].join("\n");
+		return [`CrowdSec: off (${offReason(values, failedSecrets)}, see the warning)`, ...warningLines].join("\n");
 	}
 	if (!values.enabled) return ["CrowdSec: off (Settings, CrowdSec)", ...warningLines].join("\n");
 	const lapi = checks.find((check) => check.name === "lapi");

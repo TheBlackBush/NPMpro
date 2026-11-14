@@ -148,3 +148,34 @@ it("says the bouncer is off while AppSec has no API key, also with TLS authentic
 		/^CrowdSec: off \(a file it needs is not usable, see the warning\)$/u,
 	);
 });
+
+const DECRYPT_WARNING =
+	"a saved CrowdSec key cannot be decrypted (instance key changed or data restored?): enter it again in Settings, CrowdSec (api_key)";
+
+it("does not warn about the admin UI while the bouncer is off", () => {
+	const deny = on({ api_key: "", appsec_failure_action: "deny", admin_ui_excluded: false });
+	assert.deepEqual(startupWarnings({ values: deny }), [NO_KEY_WARNING]);
+	const files = on({ appsec_failure_action: "deny", admin_ui_excluded: false });
+	assert.equal(
+		startupWarnings({ values: files, missingFiles: ["tls_client_key"] }).some((line) => line.includes("admin UI")),
+		false,
+	);
+	assert.equal(
+		startupWarnings({ values: files, nginxError: "x" }).some((line) => line.includes("admin UI")),
+		false,
+	);
+	// the bouncer on: the warning stays
+	assert.ok(startupWarnings({ values: files, checks: [] }).some((line) => line.includes("admin UI")));
+});
+
+it("names an undecryptable saved key first, instead of the missing AppSec key", () => {
+	const values = on({ api_key: "", appsec_failure_action: "passthrough" });
+	const warnings = startupWarnings({ values, failedSecrets: ["api_key"] });
+	assert.deepEqual(warnings, [DECRYPT_WARNING]);
+	assert.equal(
+		renderStartupBlock({ values, warnings, bouncerOff: true, failedSecrets: ["api_key"] }),
+		`CrowdSec: off (a saved key cannot be decrypted, see the warning)\nWarning:  ${DECRYPT_WARNING}`,
+	);
+	// another key failed: the AppSec line stays
+	assert.deepEqual(startupWarnings({ values, failedSecrets: ["captcha_secret_key"] }).at(-1), NO_KEY_WARNING);
+});
