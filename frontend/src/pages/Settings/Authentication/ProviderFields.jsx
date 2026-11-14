@@ -154,6 +154,7 @@ function ProviderFields({ data, isLocked }) {
 				line
 				id="oidc-enabled"
 				label={<T id="settings.authentication.enabled" />}
+				hint={<T id="settings.authentication.enabled.hint" />}
 				badges={enabledLocked ? <LockedBadge env={envOf("enabled")} /> : null}
 				name={enabledField.name}
 				ref={enabledField.ref}
@@ -239,6 +240,7 @@ function ProviderFields({ data, isLocked }) {
 			<ProviderText
 				name="scopes"
 				label={<T id="settings.authentication.scopes" />}
+				hint={<T id="settings.authentication.scopes.hint" />}
 				locked={isLocked("scopes")}
 				env={envOf("scopes")}
 			/>

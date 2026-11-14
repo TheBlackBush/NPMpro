@@ -76,6 +76,7 @@ function AccountFields({ data, isLocked }) {
 				name="accountId"
 				id="geoip-account-id"
 				label={<T id="settings.geoip.account-id" />}
+				hint={<T id="settings.geoip.account-id.hint" />}
 				badges={isLocked("accountId") ? <LockedBadge env={data.lockedBy?.accountId} /> : null}
 				type="text"
 				inputMode="numeric"

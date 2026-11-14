@@ -58,6 +58,7 @@ function ColorFields() {
 			id={groupId}
 			titleId={`${groupId}-label`}
 			title={<T id="settings.authentication.button.color" />}
+			hint={<T id="settings.authentication.button.color.hint" />}
 			controlClassName="@lg:w-auto"
 			error={invalid ? fieldState.error?.message : null}
 			errorId={`${groupId}-hex-error`}
@@ -356,6 +357,7 @@ function ButtonFields({ data }) {
 			<SettingLine
 				id="oidc-button-preview"
 				title={<T id="settings.authentication.button.preview" />}
+				hint={<T id="settings.authentication.button.preview.hint" />}
 				controlClassName="@lg:w-auto"
 				control={
 					// inert: the preview is not interactive and stays out of the tab order
