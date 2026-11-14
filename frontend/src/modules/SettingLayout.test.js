@@ -19,14 +19,21 @@ it("lists the four layouts of a setting line", () => {
 it("draws an inline line as the landing page lines: a row from the lg container width, a 14rem control", () => {
 	const line = settingLineClass("inline");
 	assert.equal(line.container, "@container");
-	assert.equal(line.row, "flex flex-col gap-2 px-4 py-3 @lg:flex-row @lg:items-center @lg:gap-4");
-	assert.equal(line.text, "min-w-0 flex-1");
+	has(line.row, "group/row", "@lg:flex-row", "@lg:items-center");
+	assert.equal(line.text, "min-w-0 flex-1 @lg:group-has-[[data-slot=field-error]]/row:pt-1.5");
 	assert.equal(line.titleRow, "flex flex-wrap items-center gap-x-2 gap-y-1");
 	assert.equal(line.title, "text-sm font-semibold");
 	assert.equal(line.hint, "mt-0.5 text-[0.8rem] text-muted-foreground");
 	assert.equal(line.wrap, "flex items-center gap-2 @lg:shrink-0");
 	assert.equal(line.control, "min-w-0 flex-1 @lg:w-56 @lg:flex-none");
 	assert.deepEqual(settingLineClass(), line);
+});
+
+it("aligns an inline or value line to the top while its control shows an error", () => {
+	const top = "@lg:has-[[data-slot=field-error]]:items-start";
+	has(settingLineClass("inline").row, top);
+	has(settingLineClass("value").row, top);
+	lacks(settingLineClass("block").row, top);
 });
 
 it("puts a block line's field under its name at full width at every width", () => {

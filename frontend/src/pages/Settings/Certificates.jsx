@@ -1,5 +1,4 @@
 import { useFormContext, useWatch } from "react-hook-form";
-import { SwitchList } from "src/components";
 import { useCertificates } from "src/hooks";
 import { intl, T } from "src/locale";
 import { defaultKeySize, isServableCertificate, keySizeOptions } from "src/modules/RuntimeSettings";
@@ -49,7 +48,7 @@ function RequestFields() {
 		}
 	};
 	return (
-		<Part titleId="settings.certificates.requests">
+		<Part titleId="settings.certificates.requests" infoId="settings.certificates.requests.description">
 			<RuntimeSelect
 				name="keyType"
 				label={<T id="settings.certificates.key-type" />}
@@ -69,18 +68,16 @@ function RequestFields() {
 				hint={<T id="settings.certificates.profile.hint" />}
 				placeholder={intl.formatMessage({ id: "settings.certificates.profile.placeholder" })}
 			/>
-			<SwitchList>
-				<RuntimeSwitch
-					name="mustStaple"
-					label={<T id="settings.certificates.must-staple" />}
-					hint={<T id="settings.certificates.must-staple.hint" />}
-				/>
-				<RuntimeSwitch
-					name="serverTlsVerify"
-					label={<T id="settings.certificates.server-tls-verify" />}
-					hint={<T id="settings.certificates.server-tls-verify.hint" />}
-				/>
-			</SwitchList>
+			<RuntimeSwitch
+				name="mustStaple"
+				label={<T id="settings.certificates.must-staple" />}
+				hint={<T id="settings.certificates.must-staple.hint" />}
+			/>
+			<RuntimeSwitch
+				name="serverTlsVerify"
+				label={<T id="settings.certificates.server-tls-verify" />}
+				hint={<T id="settings.certificates.server-tls-verify.hint" />}
+			/>
 		</Part>
 	);
 }
@@ -91,29 +88,27 @@ function StaplingFields() {
 	// must-staple forces OCSP stapling on, unless the environment sets stapling itself
 	const forced = mustStaple && !isLocked("ocspStapling");
 	return (
-		<Part titleId="settings.certificates.stapling">
-			<SwitchList>
-				<RuntimeSwitch
-					name="ocspStapling"
-					forced={forced}
-					label={<T id="settings.certificates.ocsp-stapling" />}
-					hint={
-						<>
-							<T id="settings.certificates.ocsp-stapling.hint" />
-							{forced ? (
-								<span className="block">
-									<T id="settings.certificates.ocsp-stapling.forced" />
-								</span>
-							) : null}
-						</>
-					}
-				/>
-				<RuntimeSwitch
-					name="customOcspStapling"
-					label={<T id="settings.certificates.custom-ocsp-stapling" />}
-					hint={<T id="settings.certificates.custom-ocsp-stapling.hint" />}
-				/>
-			</SwitchList>
+		<Part titleId="settings.certificates.stapling" infoId="settings.certificates.stapling.description">
+			<RuntimeSwitch
+				name="ocspStapling"
+				forced={forced}
+				label={<T id="settings.certificates.ocsp-stapling" />}
+				hint={
+					<>
+						<T id="settings.certificates.ocsp-stapling.hint" />
+						{forced ? (
+							<span className="block">
+								<T id="settings.certificates.ocsp-stapling.forced" />
+							</span>
+						) : null}
+					</>
+				}
+			/>
+			<RuntimeSwitch
+				name="customOcspStapling"
+				label={<T id="settings.certificates.custom-ocsp-stapling" />}
+				hint={<T id="settings.certificates.custom-ocsp-stapling.hint" />}
+			/>
 		</Part>
 	);
 }
@@ -139,10 +134,13 @@ function DefaultCertificateField() {
 		});
 	}
 	return (
-		<Part titleId="settings.certificates.default-certificate">
+		<Part
+			titleId="settings.certificates.default-certificate"
+			infoId="settings.certificates.default-certificate.description"
+		>
 			<RuntimeSelect
 				name="defaultCertificateId"
-				narrow={false}
+				layout="block"
 				label={<T id="settings.certificates.default-certificate.label" />}
 				hint={
 					<>
@@ -155,7 +153,6 @@ function DefaultCertificateField() {
 					</>
 				}
 				options={options}
-				className=""
 			/>
 		</Part>
 	);
@@ -165,19 +162,18 @@ function Fields() {
 	return (
 		<>
 			<RequestFields />
-			<Part titleId="settings.certificates.renewal">
+			<Part titleId="settings.certificates.renewal" infoId="settings.certificates.renewal.description">
 				<RuntimeNumber
 					name="renewalInterval"
 					label={<T id="settings.certificates.renewal-interval" />}
 					hint={<T id="settings.certificates.renewal-interval.hint" data={RENEWAL} />}
 					unit={<T id="settings.runtime.hours" />}
 					{...RENEWAL}
-					className=""
 				/>
 			</Part>
 			<StaplingFields />
 			<DefaultCertificateField />
-			<Part titleId="settings.certificates.ech">
+			<Part titleId="settings.certificates.ech" infoId="settings.certificates.ech.description">
 				<RuntimeNumber
 					name="echRotationInterval"
 					label={<T id="settings.certificates.ech-interval" />}
@@ -195,6 +191,7 @@ export default function Certificates() {
 		<RuntimeSection
 			group="certificates"
 			titleId="settings.certificates"
+			leadId="settings.certificates.intro"
 			toForm={toForm}
 			toApi={toApi}
 			validate={validate}

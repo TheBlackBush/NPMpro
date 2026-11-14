@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleDashed, CircleX, ExternalLink, Info, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed, CircleX, ExternalLink, Info, Lock, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { Link } from "react-router";
@@ -691,7 +691,7 @@ function CrowdsecForm({ data }) {
 				<StatusAlert variant="danger" icon={CircleAlert} id="settings.crowdsec.secret-error" />
 			) : null}
 			{(data.locked ?? []).length > 0 ? (
-				<StatusAlert variant="info" icon={Info} id="settings.authentication.status.locked" />
+				<StatusAlert variant="info" icon={Lock} id="settings.authentication.status.locked" />
 			) : null}
 			<StatusCard data={data} request={() => crowdsecRequest(methods.getValues(), data)} />
 			<ConnectionCard data={data} locks={locks} />

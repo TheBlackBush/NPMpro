@@ -1,14 +1,15 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import { useId, useState } from "react";
 import { useFormState } from "react-hook-form";
+import { TapTooltip } from "src/components/TapTooltip";
 import { cn } from "src/lib/utils";
 import { openOnRefusedSave, settingsCardClass } from "src/modules/SettingLayout";
 
-// the drawn card: the title bar (title and description, actions, the chevron of a collapsible card), the body, notes
+// the drawn card: the title bar (title and info icon, actions, the chevron of a collapsible card), the body, notes
 function CardFrame({
 	baseId,
 	title,
-	description,
+	info,
 	actions,
 	footer,
 	children,
@@ -21,19 +22,16 @@ function CardFrame({
 }) {
 	const card = settingsCardClass({ lines, open, collapsible });
 	const titleId = `${baseId}-title`;
-	const descriptionId = `${baseId}-description`;
-	const hasHeader = Boolean(title || description || actions);
-	// a titled card is a group named by its title and described by its description
-	const group = title
-		? { role: "group", "aria-labelledby": titleId, "aria-describedby": description ? descriptionId : undefined }
-		: {};
+	const hasHeader = Boolean(title || actions);
+	// a titled card is a group named by its title
+	const group = title ? { role: "group", "aria-labelledby": titleId } : {};
 	return (
 		<div {...group} className={cn(card.card, className)}>
 			{hasHeader ? (
 				<div className={card.header}>
-					<div className="min-w-0 flex-1">
+					<div className="flex min-w-0 flex-1 items-center gap-1.5">
 						{title ? (
-							<h3 id={titleId} className="text-base font-medium">
+							<h3 id={titleId} className="min-w-0 text-base font-medium">
 								{collapsible ? (
 									<button
 										type="button"
@@ -50,10 +48,17 @@ function CardFrame({
 								)}
 							</h3>
 						) : null}
-						{description ? (
-							<p id={descriptionId} className="text-sm text-muted-foreground">
-								{description}
-							</p>
+						{info ? (
+							// above the stretched trigger, so the icon keeps its own hover, focus and clicks
+							<TapTooltip content={info}>
+								<button
+									type="button"
+									aria-labelledby={titleId}
+									className="relative z-10 inline-flex shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+								>
+									<Info aria-hidden="true" className="size-3.5" />
+								</button>
+							</TapTooltip>
 						) : null}
 					</div>
 					{actions ? (
@@ -117,15 +122,15 @@ function OpeningCard({ defaultOpen, openOn, ...props }) {
 }
 
 /**
- * The bordered card of a Settings section: a title bar (title and description on the left, the card's actions on
+ * The bordered card of a Settings section: a title bar (title and its info icon on the left, the card's actions on
  * the right, and the chevron of a collapsible card), a divider, then the body: padded, or lines edge to edge with a
  * hairline between them (lines). A collapsible card is closed by default; with openOn a refused save that has an
  * error in one of those fields opens it.
  *
  * @param {Object}          props
- * @param {string}          [props.id]           base of the ids (-title, -description, -trigger, -panel)
+ * @param {string}          [props.id]           base of the ids (-title, -trigger, -panel)
  * @param {React.ReactNode} [props.title]
- * @param {React.ReactNode} [props.description]  one line under the title
+ * @param {React.ReactNode} [props.info]         the description: a tooltip on an info icon after the title
  * @param {React.ReactNode} [props.actions]      buttons that act at once, right aligned in the title bar
  * @param {React.ReactNode} [props.footer]       notes after the body (no buttons)
  * @param {string}          [props.className]    of the card
