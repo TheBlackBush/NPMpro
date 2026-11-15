@@ -214,12 +214,13 @@ labels:
 
 The NPMpro parser reads the old and the new classic lines, JSON lines, and a file that switches from one format to the other. From the error log it reads only the rate-limit lines (`limiting requests, excess`), so `error.log` can be read without counting a failed basic auth twice: it counts once, from the 401 in the access log. The other error log lines show as "unparsed" in `cscli metrics`, which is expected.
 
-The NPMpro collection also brings two scenarios:
+The NPMpro collection also brings three scenarios:
 
 | Scenario | Bans |
 |---|---|
-| `TheBlackBush/npmpro-bad-requests` | A client that sends repeated 400 answers, or 444 from the default site: 10 in 10 seconds from one IP. |
-| `TheBlackBush/npmpro-stream-flood` | A client that opens more than 40 connections a second to one stream. |
+| `TheBlackBush/npmpro-bad-requests` | A client whose requests get repeated 400 answers, or 444 from the default site: more than 10 in quick succession from one IP (the count drops by one every 10 seconds). |
+| `TheBlackBush/npmpro-stream-flood` | A client that opens more than 40 connections to one stream in quick succession (the count drops by one every second). |
+| `TheBlackBush/npmpro-login-bf` | Failed sign-ins to the NPMpro admin UI on port 81 (401, 403 or 429 answers to the login): more than 5 from one IP (the count drops by one every 2 minutes). |
 
 ### Host id
 
