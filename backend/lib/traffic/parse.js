@@ -23,7 +23,9 @@ const DEFAULT_PORTS = new Set(["80", "443"]);
 // $server_port (empty over a unix socket listener; missing in lines written before it was added, which end with
 // $upstream_cache_status, never a number) and, since they were added, "$server_name" $npmpro_host_id $request_id
 // $connection "$upstream_status" "$upstream_response_time". Quoted fields never hold a raw quote (nginx writes \x22).
-const SERVER_PORT = /"[^"]*" \S+ \S+ \S+ \S+(?: (?<port>\d{0,5})(?: "[^"]*" \S+ \S+ \d+ "[^"]*" "[^"]*")?)?$/u;
+// The four fields may be empty: nginx writes a found but empty value as nothing ($ssl_curve over TLS when no group
+// was negotiated); their fixed count and the end anchor keep the match unique.
+const SERVER_PORT = /"[^"]*" \S* \S* \S* \S*(?: (?<port>\d{0,5})(?: "[^"]*" \S+ \S+ \d+ "[^"]*" "[^"]*")?)?$/u;
 const LOOPBACK = new Set(["127.0.0.1", "::1"]);
 
 // The raw host field ($host$is_request_port$request_port) and $remote_addr, the first two fields after the time

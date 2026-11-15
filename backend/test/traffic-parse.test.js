@@ -214,6 +214,19 @@ it("reads the port when no quoted field before the tail holds a space", () => {
 	assert.equal(isOwnRequest(`${SPACELESS} 443${tail}`, 81), false);
 });
 
+it("reads the server port when a TLS or cache field is empty", () => {
+	// nginx writes a found but empty value as nothing: $ssl_curve over TLS when no group was negotiated
+	const noCurve = BASE.replace(" X25519 -", "  -");
+	assert.equal(isOwnRequest(`${noCurve} 81${TAIL}`, 81), true); // admin UI through the remapped port 19381
+	assert.equal(isOwnRequest(`${noCurve} 443${TAIL}`, 81), false);
+	assert.equal(isOwnRequest(`${noCurve} 81`, 81), true);
+	assert.equal(
+		isOwnRequest(`${BASE.replace(" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -", "    ")} 81${TAIL}`, 81),
+		true,
+	);
+	assert.deepEqual(parseAlogLine(`${noCurve} 81${TAIL}`), parseAlogLine(`${BASE} 81`));
+});
+
 it("gives the same answers for every fixture line with and without the new fields", () => {
 	const old = readFileSync(new URL("./fixtures/log-lines/access-classic-old.log", import.meta.url), "utf8")
 		.split("\n")
