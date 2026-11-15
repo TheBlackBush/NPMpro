@@ -17,6 +17,7 @@ const GROUP_KEYS = {
 		"workerProcesses",
 		"workerConnections",
 		"workerShutdownTimeout",
+		"cpuAffinity",
 		"logNotFound",
 		"tls12",
 		"forceMlkem",
@@ -243,6 +244,10 @@ const timeZoneOptions = (zones, current) => {
 	return names.map((name) => ({ value: name, label: name }));
 };
 
+// the form field that shows the error of a key, when the form names it differently
+const FORM_FIELDS = { cpuAffinity: "cpuAffinityList" };
+const formFieldOf = (key) => FORM_FIELDS[key] ?? key;
+
 /**
  * The form field a save error belongs to: the backend prefixes validation errors with the snake_case key. Returns
  * { key (camelCase), message } for a key of the group, else null.
@@ -273,6 +278,7 @@ export {
 	appliesMessageId,
 	defaultKeySize,
 	fieldOfError,
+	formFieldOf,
 	GROUP_KEYS,
 	isEmptyPayload,
 	isRestartField,

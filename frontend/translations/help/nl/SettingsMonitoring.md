@@ -6,7 +6,7 @@ Een variabele die op de container is gezet, gaat voor op de interface en vergren
 
 ### Logbestanden
 
-- **Logbestanden schrijven**: schrijft de nginx-fout-, stream- en toegangslogs naar `/data/nginx/logs` en roteert ze dagelijks. Standaard: uit. Variabele: `LOGROTATE`. Geldt na de nginx-herlaadactie die het opslaan uitvoert. Blijft aan zolang GoAccess draait.
+- **Logbestanden schrijven**: schrijft de nginx-fout-, stream- en toegangslogs naar `/data/nginx/logs` en roteert ze dagelijks. Standaard: uit. Variabele: `LOGROTATE`. Geldt na de nginx-herlaadactie die het opslaan uitvoert. Blijft aan zolang GoAccess draait. Blijft ook aan en vergrendeld zolang CrowdSec is ingeschakeld.
 - **Bewaarde logrotaties**: hoeveel geroteerde logbestanden worden bewaard voordat het oudste wordt verwijderd, 1 tot 1000. Standaard: 3. Variabele: `LOGROTATIONS`. Geldt direct.
 
 ### GoAccess

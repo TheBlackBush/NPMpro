@@ -6,6 +6,7 @@
 		"worker_processes",
 		"worker_connections",
 		"worker_shutdown_timeout",
+		"cpu_affinity",
 		"log_not_found",
 		"tls12",
 		"force_mlkem",
@@ -39,6 +40,12 @@
 			"pattern": "^[0-9]+(ms|s|m|h|d|w|M|y)?([0-9]+(ms|s|m|h|d|w|M|y))*$",
 			"maxLength": 32,
 			"description": "How long an old worker may finish its connections after a reload: 0 or an nginx time such as 1h or 30s (env NGINX_WORKER_SHUTDOWN_TIMEOUT)"
+		},
+		"cpu_affinity": {
+			"type": "string",
+			"pattern": "^(off|auto|[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)$",
+			"maxLength": 256,
+			"description": "Pin the workers to CPUs: off, auto (the CPUs the container may use) or a CPU list such as 16-19 or 16,18,20, cut to the CPUs the container may use when nginx starts or reloads (env NGINX_CPU_AFFINITY)"
 		},
 		"log_not_found": {
 			"type": "boolean",
@@ -84,6 +91,7 @@
 					"worker_processes",
 					"worker_connections",
 					"worker_shutdown_timeout",
+					"cpu_affinity",
 					"log_not_found",
 					"tls12",
 					"force_mlkem",
@@ -111,6 +119,10 @@
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
 				"worker_shutdown_timeout": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"cpu_affinity": {
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
@@ -181,6 +193,7 @@
 				"worker_processes",
 				"worker_connections",
 				"worker_shutdown_timeout",
+				"cpu_affinity",
 				"log_not_found",
 				"tls12",
 				"force_mlkem",
@@ -209,6 +222,14 @@
 					]
 				},
 				"worker_shutdown_timeout": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"cpu_affinity": {
 					"type": "string",
 					"enum": [
 						"next-certificate",
@@ -302,6 +323,13 @@
 			"type": "integer",
 			"minimum": 1,
 			"description": "CPU threads of the container, the maximum of worker_processes (read only)"
+		},
+		"cpus_allowed": {
+			"type": [
+				"string",
+				"null"
+			],
+			"description": "The CPUs the container may use (Cpus_allowed_list of the backend process), null when it cannot be read (read only)"
 		}
 	}
 }

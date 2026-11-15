@@ -2,34 +2,11 @@ import { TriangleAlert } from "lucide-react";
 import { useWatch } from "react-hook-form";
 import { SettingLineNote } from "src/components";
 import { intl, T } from "src/locale";
-import { nginxValidate } from "src/modules/SettingsForms";
+import { nginxToApi, nginxToForm, nginxValidate } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
 import { RuntimeNumber, RuntimeSelect, RuntimeSwitch, RuntimeText } from "./Runtime/fields";
 import { Part, RuntimeSection, useRuntimeSection } from "./Runtime/RuntimeSection";
 import { StatusAlert } from "./StatusAlert";
-
-const KEYS = [
-	"logNotFound",
-	"tls12",
-	"forceMlkem",
-	"secpCurves",
-	"rsaPkcs1",
-	"moduleNjs",
-	"moduleLdap",
-	"moduleNtlm",
-	"moduleVts",
-];
-
-const toForm = (data) => ({
-	workerProcesses: String(data.workerProcesses),
-	workerConnections: String(data.workerConnections),
-	workerShutdownTimeout: data.workerShutdownTimeout,
-	...Object.fromEntries(KEYS.map((key) => [key, Boolean(data[key])])),
-});
-const toApi = (values) => ({
-	...values,
-	workerConnections: Number(values.workerConnections),
-});
 
 const validate = nginxValidate(validations);
 
@@ -52,6 +29,40 @@ function WorkerProcesses() {
 			hint={data.cpuCount ? <T id="settings.nginx.workers.hint" data={{ cpus: data.cpuCount }} /> : undefined}
 			options={options}
 		/>
+	);
+}
+
+function CpuAffinity() {
+	const { data } = useRuntimeSection();
+	const mode = useWatch({ name: "cpuAffinityMode" });
+	const options = ["off", "auto", "custom"].map((value) => ({
+		value,
+		label: intl.formatMessage({ id: `settings.nginx.cpu-affinity.${value}` }),
+	}));
+	return (
+		<>
+			<RuntimeSelect
+				name="cpuAffinityMode"
+				lockName="cpuAffinity"
+				label={<T id="settings.nginx.cpu-affinity" />}
+				hint={
+					data.cpusAllowed ? (
+						<T id="settings.nginx.cpu-affinity.hint" data={{ cpus: data.cpusAllowed }} />
+					) : (
+						<T id="settings.nginx.cpu-affinity.hint-unknown" />
+					)
+				}
+				options={options}
+			/>
+			{mode === "custom" ? (
+				<RuntimeText
+					name="cpuAffinityList"
+					lockName="cpuAffinity"
+					label={<T id="settings.nginx.cpu-affinity.list" />}
+					hint={<T id="settings.nginx.cpu-affinity.list.hint" />}
+				/>
+			) : null}
+		</>
 	);
 }
 
@@ -95,8 +106,8 @@ export default function Nginx() {
 			group="nginx"
 			titleId="settings.nginx"
 			leadId="settings.nginx.intro"
-			toForm={toForm}
-			toApi={toApi}
+			toForm={nginxToForm}
+			toApi={nginxToApi}
 			validate={validate}
 		>
 			<Part titleId="settings.nginx.workers-part" infoId="settings.nginx.workers-part.description">
@@ -113,6 +124,7 @@ export default function Nginx() {
 					label={<T id="settings.nginx.shutdown-timeout" />}
 					hint={<T id="settings.nginx.shutdown-timeout.hint" />}
 				/>
+				<CpuAffinity />
 			</Part>
 			<Part titleId="settings.nginx.logging" infoId="settings.nginx.logging.description">
 				<RuntimeSwitch

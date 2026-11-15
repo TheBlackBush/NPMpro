@@ -6,7 +6,7 @@ A variable set on the container wins over the UI and locks the field (the field 
 
 ### Log files
 
-- **Write log files**: writes the nginx error, stream and access logs to `/data/nginx/logs` and rotates them daily. Default: off. Variable: `LOGROTATE`. Applies after the nginx reload that saving runs. It stays on while GoAccess runs.
+- **Write log files**: writes the nginx error, stream and access logs to `/data/nginx/logs` and rotates them daily. Default: off. Variable: `LOGROTATE`. Applies after the nginx reload that saving runs. It stays on while GoAccess runs. It also stays on and locked while CrowdSec is enabled.
 - **Log rotations kept**: how many rotated log files are kept before the oldest is deleted, 1 to 1000. Default: 3. Variable: `LOGROTATIONS`. Applies at once.
 
 ### GoAccess

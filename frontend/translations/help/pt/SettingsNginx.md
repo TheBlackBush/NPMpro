@@ -9,6 +9,7 @@ Uma variável definida no contentor tem prioridade sobre a interface e bloqueia 
 - **Processos worker**: "Automático (um por thread de CPU)" ou um número até aos threads de CPU que o contentor vê. Predefinição: um por thread, no máximo 4. Variável: `NGINX_WORKER_PROCESSES`.
 - **Ligações por worker**: ligações abertas que cada worker trata ao mesmo tempo, de 64 a 65535. Predefinição: 512. Variável: `NGINX_WORKER_CONNECTIONS`.
 - **Tempo limite de encerramento dos workers**: durante quanto tempo os workers antigos mantêm as suas ligações após um reload. Um valor de tempo do nginx como `30s`, `10m` ou `1h`; `0` significa sem limite. Predefinição: `1h`. Variável: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Fixar workers a CPUs**: fixa cada worker do nginx a um CPU. «Desativado» (predefinição): o kernel distribui os workers. «Automático»: os workers são fixados por turnos aos CPUs que o contentor pode usar. «CPUs personalizados»: uma lista no campo CPUs, como `16-19` ou `16,18,20`; uma lista que indique CPUs que o contentor não pode usar é recusada ao guardar. Uma lista guardada é reduzida aos CPUs permitidos no arranque ou no reload; se não sobrar nenhum, nada é fixado. Variável: `NGINX_CPU_AFFINITY` (`off`, `auto` ou uma lista de CPUs).
 
 ### Registo
 

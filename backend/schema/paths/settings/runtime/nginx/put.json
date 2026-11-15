@@ -38,6 +38,12 @@
 							"maxLength": 32,
 							"description": "How long an old worker may finish its connections after a reload: 0 or an nginx time such as 1h or 30s (env NGINX_WORKER_SHUTDOWN_TIMEOUT)"
 						},
+						"cpu_affinity": {
+							"type": "string",
+							"pattern": "^(off|auto|[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*)$",
+							"maxLength": 256,
+							"description": "Pin the workers to CPUs: off, auto (the CPUs the container may use) or a CPU list such as 16-19 or 16,18,20, cut to the CPUs the container may use when nginx starts or reloads (env NGINX_CPU_AFFINITY)"
+						},
 						"log_not_found": {
 							"type": "boolean",
 							"description": "Log requests for missing files in the error log (env NGINX_LOG_NOT_FOUND)"
@@ -93,6 +99,7 @@
 								"worker_processes": "4",
 								"worker_connections": 512,
 								"worker_shutdown_timeout": "1h",
+								"cpu_affinity": "off",
 								"log_not_found": false,
 								"tls12": true,
 								"force_mlkem": false,
@@ -109,6 +116,7 @@
 									"worker_processes": "reload",
 									"worker_connections": "reload",
 									"worker_shutdown_timeout": "reload",
+									"cpu_affinity": "reload",
 									"log_not_found": "reload",
 									"tls12": "reload",
 									"force_mlkem": "reload",
@@ -120,7 +128,8 @@
 									"module_vts": "reload"
 								},
 								"restart_pending": [],
-								"cpu_count": 4
+								"cpu_count": 4,
+								"cpus_allowed": "0-3"
 							}
 						}
 					},

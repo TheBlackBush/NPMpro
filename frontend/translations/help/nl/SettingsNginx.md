@@ -9,6 +9,7 @@ Een variabele die op de container is gezet, gaat voor op de interface en vergren
 - **Workerprocessen**: „Automatisch (één per CPU-thread)” of een getal tot het aantal CPU-threads dat de container ziet. Standaard: één per thread, hoogstens 4. Variabele: `NGINX_WORKER_PROCESSES`.
 - **Verbindingen per worker**: open verbindingen die elke worker tegelijk afhandelt, 64 tot 65535. Standaard: 512. Variabele: `NGINX_WORKER_CONNECTIONS`.
 - **Time-out voor het afsluiten van workers**: hoe lang oude workers hun verbindingen houden na een herlaadactie. Een nginx-tijdwaarde zoals `30s`, `10m` of `1h`; `0` betekent geen limiet. Standaard: `1h`. Variabele: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Workers aan CPU's koppelen**: koppelt elke nginx-worker aan een CPU. „Uit” (standaard): de kernel verdeelt de workers. „Automatisch”: de workers worden om de beurt gekoppeld aan de CPU's die de container mag gebruiken. „Eigen CPU's”: een lijst in het veld CPU's, zoals `16-19` of `16,18,20`; een lijst met CPU's die de container niet mag gebruiken wordt bij het opslaan geweigerd. Een opgeslagen lijst wordt bij het starten of herladen teruggebracht tot de toegestane CPU's; blijft er geen over, dan wordt niets gekoppeld. Variabele: `NGINX_CPU_AFFINITY` (`off`, `auto` of een CPU-lijst).
 
 ### Logging
 

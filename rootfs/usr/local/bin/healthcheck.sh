@@ -29,7 +29,8 @@ if [ -f /etc/npmpro/healthcheck.env ] && [ ! -L /etc/npmpro/healthcheck.env ]; t
     done < /etc/npmpro/healthcheck.env
 fi
 
-if (if [ "$GOA" = "true" ]; then [ -f /tmp/goa/index.html ] && [ -S /run/goaccess.sock ]; fi && if [ "$PHP83" = true ]; then cgi-fcgi -bind -connect /run/php83.sock > /dev/null 2>&1; fi && if [ "$PHP84" = true ]; then cgi-fcgi -bind -connect /run/php84.sock > /dev/null 2>&1; fi && if [ "$PHP85" = true ]; then cgi-fcgi -bind -connect /run/php85.sock > /dev/null 2>&1; fi && [ "$(curl -A "NPMpro/healthcheck" -sSk https://"$NPM_IPV4_BINDING":"$NPM_PORT"/api | jq --raw-output .status)" = "OK" ]); then
+# no request while the backend has not created its socket yet: nginx would log a crit line for it
+if (if [ "$GOA" = "true" ]; then [ -f /tmp/goa/index.html ] && [ -S /run/goaccess.sock ]; fi && if [ "$PHP83" = true ]; then cgi-fcgi -bind -connect /run/php83.sock > /dev/null 2>&1; fi && if [ "$PHP84" = true ]; then cgi-fcgi -bind -connect /run/php84.sock > /dev/null 2>&1; fi && if [ "$PHP85" = true ]; then cgi-fcgi -bind -connect /run/php85.sock > /dev/null 2>&1; fi && [ -S /run/npmpro.sock ] && [ "$(curl -A "NPMpro/healthcheck" -sSk https://"$NPM_IPV4_BINDING":"$NPM_PORT"/api | jq --raw-output .status)" = "OK" ]); then
 	echo "OK"
 	exit 0
 else

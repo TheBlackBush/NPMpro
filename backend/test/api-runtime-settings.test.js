@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { fileExists, reloads } from "./support/hosts.js";
@@ -21,7 +24,13 @@ const BEAUTIFIER_STUB = `module.exports = {
 	perform_indentation: (lines) => ["# beautified by the stub", ...lines],
 };
 `;
+const AFFINITY_OUTSIDE = /^cpu_affinity: CPUs 0-3 are not allowed in this container \(allowed: 16-23\)$/u;
+const AFFINITY_KEY = /cpu_affinity/u;
 const MARK = "# beautified by the stub";
+
+// the CPUs this container may use, read by the backend from NPMPRO_PROC_STATUS (the image reads /proc/self/status)
+const PROC_STATUS = path.join(tmpdir(), `npmpro-proc-status-${process.pid}`);
+writeFileSync(PROC_STATUS, "Name:\tnode\nCpus_allowed_list:\t16-23\n");
 
 let api;
 let admin;
@@ -92,6 +101,7 @@ before(async () => {
 			DISABLE_GRAVATAR: "false",
 			DISABLE_NGINX_BEAUTIFIER: "false",
 			TZ: "UTC",
+			NPMPRO_PROC_STATUS: PROC_STATUS,
 			NPMPRO_USER_ENV: "NGINX_WORKER_CONNECTIONS AUTH_REQUEST_TINYAUTH_UPSTREAM",
 			NGINX_WORKER_CONNECTIONS: "2048",
 			AUTH_REQUEST_TINYAUTH_UPSTREAM: "http://tinyauth.lan:3000",
@@ -129,6 +139,8 @@ it("shows every group with its values, locks, restart state and when a change ap
 	assert.equal(network.trust_cloudflare, false);
 	const nginx = await get("nginx");
 	assert.ok(nginx.cpu_count >= 1);
+	assert.equal(nginx.cpus_allowed, "16-23");
+	assert.equal(nginx.cpu_affinity, "off");
 	assert.equal(nginx.tls12, true);
 	assert.equal(nginx.worker_shutdown_timeout, "1h");
 	const advanced = await get("advanced");
@@ -210,6 +222,29 @@ it("fetches the Cloudflare ranges when Cloudflare is trusted, and refuses the sa
 	await refused("network", { trust_cloudflare: true }, /Cloudflare/u);
 	assert.equal((await get("network")).trust_cloudflare, false);
 	assert.equal((await storedMeta("network")).trust_cloudflare, false);
+});
+
+it("pins the workers to CPUs: refuses CPUs outside the container, writes the line, keeps a stored list", async () => {
+	await refused("nginx", { cpu_affinity: "0-3" }, AFFINITY_OUTSIDE);
+	await refused("nginx", { cpu_affinity: "3-1" }, AFFINITY_KEY);
+	const calls = reloads(api);
+	const view = await saved("nginx", { cpu_affinity: "16-19" });
+	assert.equal(view.cpu_affinity, "16-19");
+	assert.match(await api.read(NGINX_FILES[0]), new RegExp(`worker_cpu_affinity auto 1111${"0".repeat(16)};`, "u"));
+	assert.equal(reloads(api), calls + 1);
+	assert.equal((await saved("nginx", { cpu_affinity: "auto" })).cpu_affinity, "auto");
+	assert.match(
+		await api.read(NGINX_FILES[0]),
+		new RegExp(`worker_cpu_affinity auto 11111111${"0".repeat(16)};`, "u"),
+	);
+	// a stored list the container no longer allows: the save that keeps it passes, the line is left out
+	await api
+		.db("setting")
+		.where({ id: "nginx" })
+		.update({ meta: JSON.stringify({ ...(await storedMeta("nginx")), cpu_affinity: "0-3" }) });
+	assert.equal((await saved("nginx", { cpu_affinity: "0-3", worker_shutdown_timeout: "2h" })).cpu_affinity, "0-3");
+	assert.equal((await api.read(NGINX_FILES[0])).includes("affinity"), false);
+	await saved("nginx", { cpu_affinity: "off" });
 });
 
 it("writes the four nginx core files on save and reloads once", async () => {

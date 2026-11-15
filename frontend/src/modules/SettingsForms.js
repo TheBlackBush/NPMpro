@@ -154,7 +154,58 @@ export const isNginxTime = (value) => {
 	return true;
 };
 
-export const nginxValidate = (rules) => (values) => {
+const CPU_LIST = /^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/u;
+const MAX_CPUS = 1024;
+
+/**
+ * The CPUs of a list in Cpus_allowed_list syntax (16-19, 16,18,20), null for anything else (the backend's rule)
+ *
+ * @param   {string}  list
+ * @returns {Set<number>|null}
+ */
+export const parseCpuList = (list) => {
+	if (typeof list !== "string" || !CPU_LIST.test(list)) return null;
+	const cpus = new Set();
+	for (const part of list.split(",")) {
+		const [low, high = low] = part.split("-").map(Number);
+		if (high < low || high >= MAX_CPUS) return null;
+		for (let cpu = low; cpu <= high; cpu += 1) cpus.add(cpu);
+	}
+	return cpus;
+};
+
+const NGINX_KEYS = [
+	"logNotFound",
+	"tls12",
+	"forceMlkem",
+	"secpCurves",
+	"rsaPkcs1",
+	"moduleNjs",
+	"moduleLdap",
+	"moduleNtlm",
+	"moduleVts",
+];
+
+/**
+ * The nginx form values: the CPU pinning is a mode (off, auto or custom) and, for custom, a list
+ */
+export const nginxToForm = (data) => ({
+	workerProcesses: String(data.workerProcesses),
+	workerConnections: String(data.workerConnections),
+	workerShutdownTimeout: data.workerShutdownTimeout,
+	cpuAffinityMode: data.cpuAffinity === "off" || data.cpuAffinity === "auto" ? data.cpuAffinity : "custom",
+	cpuAffinityList: data.cpuAffinity === "off" || data.cpuAffinity === "auto" ? "" : (data.cpuAffinity ?? ""),
+	...Object.fromEntries(NGINX_KEYS.map((key) => [key, Boolean(data[key])])),
+});
+
+export const nginxToApi = ({ cpuAffinityMode, cpuAffinityList, ...values }) => ({
+	...values,
+	workerConnections: Number(values.workerConnections),
+	cpuAffinity: cpuAffinityMode === "custom" ? String(cpuAffinityList ?? "").trim() : cpuAffinityMode,
+});
+
+// data: the loaded group (the CPUs the container may use, the saved list, the keys an env var locks)
+export const nginxValidate = (rules) => (values, data) => {
 	const errors = {};
 	const connections = Number(values.workerConnections);
 	if (!Number.isInteger(connections) || connections < 64 || connections > 65535) {
@@ -163,6 +214,19 @@ export const nginxValidate = (rules) => (values) => {
 	const timeout = String(values.workerShutdownTimeout ?? "").trim();
 	if (!isNginxTime(timeout)) {
 		errors.workerShutdownTimeout = rules.message("settings.nginx.shutdown-timeout.invalid");
+	}
+	if (values.cpuAffinityMode === "custom" && !(data?.locked ?? []).includes("cpu_affinity")) {
+		const list = String(values.cpuAffinityList ?? "").trim();
+		const wanted = parseCpuList(list);
+		const allowed = parseCpuList(data?.cpusAllowed ?? null);
+		if (!wanted) {
+			errors.cpuAffinityList = rules.message("settings.nginx.cpu-affinity.list.invalid");
+		} else if (allowed && list !== data.cpuAffinity && [...wanted].some((cpu) => !allowed.has(cpu))) {
+			errors.cpuAffinityList = rules.message("settings.nginx.cpu-affinity.list.outside", {
+				cpus: list,
+				allowed: data.cpusAllowed,
+			});
+		}
 	}
 	return errors;
 };

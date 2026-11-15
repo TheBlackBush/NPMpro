@@ -9,6 +9,7 @@ Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pol
 - **Procesy workerów**: "Automatycznie (jeden na wątek CPU)" lub liczba do wątków CPU, które widzi kontener. Domyślnie: jeden na wątek, co najwyżej 4. Zmienna: `NGINX_WORKER_PROCESSES`.
 - **Połączenia na workera**: otwarte połączenia, które każdy worker obsługuje jednocześnie, od 64 do 65535. Domyślnie: 512. Zmienna: `NGINX_WORKER_CONNECTIONS`.
 - **Limit czasu zamykania workerów**: jak długo stare workery zachowują swoje połączenia po przeładowaniu. Wartość czasu nginx, taka jak `30s`, `10m` lub `1h`; `0` oznacza brak limitu. Domyślnie: `1h`. Zmienna: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Przypnij workery do procesorów**: przypina każdy worker nginx do procesora. "Wyłączone" (domyślnie): workery rozmieszcza jądro. "Automatycznie": workery są przypinane po kolei do procesorów, których kontener może używać. "Własne procesory": lista w polu Procesory, na przykład `16-19` lub `16,18,20`; lista z procesorami niedozwolonymi dla kontenera jest odrzucana przy zapisie. Zapisana lista jest przycinana do dozwolonych procesorów przy starcie lub przeładowaniu; gdy żaden nie zostanie, nic nie jest przypinane. Zmienna: `NGINX_CPU_AFFINITY` (`off`, `auto` lub lista procesorów).
 
 ### Logowanie
 

@@ -1,4 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
+import { crowdsecEnabledNow } from "./crowdsec/config.js";
+import { parseCrowdsecEnabledEnv } from "./crowdsec/settings.js";
 import { isSet, KEY_SIZES, RUNTIME_RULES, serverOf, WHITESPACE } from "./runtime-rule-table.js";
 
 const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "logs", "advanced"];
@@ -8,8 +10,10 @@ const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "log
  * curve or an RSA size), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns stapling off),
  * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log
  * files), goaccess-setting (the same with GoAccess turned on by the GoAccess report setting: not an env lock, left out
- * of the Environment page), force-mlkem (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2
- * and the NIST P curves off), force-mlkem-setting (the same with post-quantum only turned on by the setting)
+ * of the Environment page), crowdsec (CrowdSec, turned on by CROWDSEC_ENABLED, reads the log files),
+ * crowdsec-setting (the same with CrowdSec turned on in Settings, CrowdSec: not an env lock), force-mlkem
+ * (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2 and the NIST P curves off),
+ * force-mlkem-setting (the same with post-quantum only turned on by the setting)
  */
 const LOCK_REASONS = [
 	"key-size",
@@ -17,11 +21,13 @@ const LOCK_REASONS = [
 	"must-staple",
 	"goaccess",
 	"goaccess-setting",
+	"crowdsec",
+	"crowdsec-setting",
 	"force-mlkem",
 	"force-mlkem-setting",
 ];
 // reasons of locks that no env var set by the user causes
-const SETTING_LOCK_REASONS = ["goaccess-setting", "force-mlkem-setting"];
+const SETTING_LOCK_REASONS = ["goaccess-setting", "crowdsec-setting", "force-mlkem-setting"];
 
 const isRestartRule = (rule) => rule.applies === "restart";
 
@@ -72,6 +78,8 @@ const defaultOf = (rule, env, values, opts) =>
  * @param   {Object}  env               process.env or a test object
  * @param   {Object}  [opts]
  * @param   {Function} [opts.fileExists] (path) => boolean, for the Anubis images default
+ * @param   {Function} [opts.crowdsecEnabled] () => boolean, whether CrowdSec is enabled (default: env, then
+ *          crowdsec.conf)
  * @returns {{values: Object, locked: string[], locked_by: Object, locked_reason: Object, invalid: {key: string, source: "env"|"stored"|"server"}[]}}
  *          locked_by names the env var that locks each locked key (the key's own one, or the one that forces it:
  *          ACME_KEY_SIZE for key_type, ACME_OCSP_STAPLING / ACME_MUST_STAPLE for each other, GOA for write_log_files);
@@ -141,6 +149,12 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 				lock("ocsp_stapling", lockedBy.must_staple, "must-staple");
 			}
 		}
+	}
+	// CrowdSec reads the log files: on while it is enabled (env or Settings, CrowdSec); GOA below keeps the reason
+	if (group === "logs" && (opts.crowdsecEnabled ?? (() => crowdsecEnabledNow(env)))()) {
+		values.write_log_files = true;
+		const fromEnv = parseCrowdsecEnabledEnv(env.CROWDSEC_ENABLED) === true;
+		lock("write_log_files", "CROWDSEC_ENABLED", fromEnv ? "crowdsec" : "crowdsec-setting");
 	}
 	// envs.sh: GoAccess needs the log files
 	if (group === "logs" && env.GOA === "true") {

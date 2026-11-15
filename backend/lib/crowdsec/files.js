@@ -47,11 +47,12 @@ const ensurePrivate = async (fs, file) => {
  * @param   {Object}   [deps.fs]
  * @param   {Object}   [deps.log]
  * @param   {boolean}  [deps.bouncerOff]  see crowdsecFiles
+ * @param   {{path: string, content: string, nginx?: true}[]} [deps.extraFiles]  written, tested and put back with them
  * @returns {Promise<*>} the result of fn
  */
-const applyCrowdsecFiles = async (values, fn, { fs = nodeFs, log, bouncerOff = false } = {}) => {
+const applyCrowdsecFiles = async (values, fn, { fs = nodeFs, log, bouncerOff = false, extraFiles = [] } = {}) => {
 	await ensurePrivate(fs, CROWDSEC_CONF_PATH);
-	return await withFiles(crowdsecFiles(values, { bouncerOff }), fn, { fs, log });
+	return await withFiles([...crowdsecFiles(values, { bouncerOff }), ...extraFiles], fn, { fs, log });
 };
 
 /**

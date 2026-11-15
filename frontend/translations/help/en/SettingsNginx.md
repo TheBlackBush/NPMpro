@@ -9,6 +9,7 @@ A variable set on the container wins over the UI and locks the field (the field 
 - **Worker processes**: "Automatic (one per CPU thread)" or a number up to the CPU threads the container sees. Default: one per thread, at most 4. Variable: `NGINX_WORKER_PROCESSES`.
 - **Connections per worker**: open connections each worker handles at once, 64 to 65535. Default: 512. Variable: `NGINX_WORKER_CONNECTIONS`.
 - **Worker shutdown timeout**: how long old workers keep their connections after a reload. An nginx time value such as `30s`, `10m` or `1h`; `0` means no limit. Default: `1h`. Variable: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Pin workers to CPUs**: binds each nginx worker to a CPU. "Off" (default): the kernel places the workers. "Automatic": the workers are bound in turn to the CPUs the container may use. "Custom CPUs": a list in the CPUs field, such as `16-19` or `16,18,20`; a list naming CPUs the container may not use is refused on save. A stored list is cut to the allowed CPUs at start or reload; when none is left, nothing is pinned. Variable: `NGINX_CPU_AFFINITY` (`off`, `auto` or a CPU list).
 
 ### Logging
 

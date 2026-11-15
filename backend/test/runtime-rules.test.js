@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { availableParallelism } from "node:os";
 import { performance } from "node:perf_hooks";
 import { it } from "node:test";
+import { crowdsecEnabledNow } from "../lib/crowdsec/config.js";
 import { createRuntimeConfig } from "../lib/runtime-config.js";
 import {
 	appliesOf,
@@ -44,6 +45,7 @@ const BOOT_ENV = {
 	NGINX_WORKER_PROCESSES: "4",
 	NGINX_WORKER_CONNECTIONS: "512",
 	NGINX_WORKER_SHUTDOWN_TIMEOUT: "1h",
+	NGINX_CPU_AFFINITY: "off",
 	NGINX_LOG_NOT_FOUND: "false",
 	NGINX_FORCE_X25519MLKEM768: "false",
 	NGINX_DISABLE_TLS12: "false",
@@ -280,6 +282,44 @@ it("forces OCSP stapling on with must-staple and locks it when must-staple is se
 	const env = mergeRuntimeConfig("certificates", { ocsp_stapling: false }, userEnv({ ACME_MUST_STAPLE: "true" }));
 	assert.equal(env.values.ocsp_stapling, true);
 	assert.deepEqual(sorted(env.locked), ["must_staple", "ocsp_stapling"]);
+});
+
+it("locks write_log_files on while CrowdSec is enabled, by the env var or by the stored setting", () => {
+	const on = () => true;
+	const stored = mergeRuntimeConfig("logs", { write_log_files: false }, BOOT_ENV, { crowdsecEnabled: on });
+	assert.equal(stored.values.write_log_files, true);
+	assert.deepEqual(stored.locked_by, { write_log_files: "CROWDSEC_ENABLED" });
+	assert.deepEqual(stored.locked_reason, { write_log_files: "crowdsec-setting" });
+
+	const env = mergeRuntimeConfig("logs", { write_log_files: false }, { ...BOOT_ENV, CROWDSEC_ENABLED: "true" });
+	assert.deepEqual(env.locked_reason, { write_log_files: "crowdsec" });
+
+	// LOGROTATE=false from the user is overridden like GOA does
+	const both = mergeRuntimeConfig("logs", {}, userEnv({ LOGROTATE: "false" }), { crowdsecEnabled: on });
+	assert.equal(both.values.write_log_files, true);
+	assert.equal(both.locked_reason.write_log_files, "crowdsec-setting");
+});
+
+it("leaves write_log_files as stored when CrowdSec is off, also with ENABLED=true on disk and CROWDSEC_ENABLED=false", () => {
+	const off = mergeRuntimeConfig("logs", { write_log_files: false }, BOOT_ENV, { crowdsecEnabled: () => false });
+	assert.equal(off.values.write_log_files, false);
+	assert.deepEqual(off.locked, []);
+	const envOff = mergeRuntimeConfig(
+		"logs",
+		{ write_log_files: false },
+		{ ...BOOT_ENV, CROWDSEC_ENABLED: "false" },
+		{
+			crowdsecEnabled: () =>
+				crowdsecEnabledNow({ CROWDSEC_ENABLED: "false" }, { readText: () => "ENABLED=true" }),
+		},
+	);
+	assert.equal(envOff.values.write_log_files, false);
+});
+
+it("gives GOA the reason when GOA and CrowdSec both keep the log files on", () => {
+	const both = mergeRuntimeConfig("logs", {}, userEnv({ GOA: "true" }), { crowdsecEnabled: () => true });
+	assert.equal(both.locked_by.write_log_files, "GOA");
+	assert.equal(both.locked_reason.write_log_files, "goaccess");
 });
 
 it("locks write_log_files on when GOA is on", () => {
@@ -616,6 +656,29 @@ it("refuses invalid nginx values and falls back to the default for a stored one"
 	const { values, invalid } = mergeRuntimeConfig("nginx", { worker_processes: "999" }, BOOT_ENV);
 	assert.equal(values.worker_processes, NGINX_DEFAULTS_CPU);
 	assert.deepEqual(invalid, [{ key: "worker_processes", source: "stored" }]);
+});
+
+it("cpu_affinity is off by default, takes an env value and keeps a stored list the container no longer allows", () => {
+	assert.equal(mergeRuntimeConfig("nginx", {}, BOOT_ENV).values.cpu_affinity, "off");
+	for (const value of ["auto", "16-19", "16,18,20"]) {
+		const {
+			values,
+			locked,
+			locked_by: lockedBy,
+		} = mergeRuntimeConfig("nginx", {}, userEnv({ NGINX_CPU_AFFINITY: value }));
+		assert.equal(values.cpu_affinity, value);
+		assert.deepEqual(locked, ["cpu_affinity"]);
+		assert.equal(lockedBy.cpu_affinity, "NGINX_CPU_AFFINITY");
+	}
+	const bad = mergeRuntimeConfig("nginx", { cpu_affinity: "off" }, userEnv({ NGINX_CPU_AFFINITY: "3-1" }));
+	assert.equal(bad.values.cpu_affinity, "off");
+	assert.deepEqual(bad.invalid, [{ key: "cpu_affinity", source: "env" }]);
+	// the syntax only: a list outside the container's CPUs stays stored
+	assert.equal(mergeRuntimeConfig("nginx", { cpu_affinity: "0-3" }, BOOT_ENV).values.cpu_affinity, "0-3");
+	assert.notEqual(rule("cpu_affinity").validate("1 ,2"), null);
+	assert.equal(rule("cpu_affinity").validate("auto"), null);
+	assert.equal(rule("cpu_affinity").parseEnv(" 16-19 "), "16-19");
+	assert.equal(rule("cpu_affinity").parseEnv("0-1024"), undefined);
 });
 
 it("an env var locks its nginx field, NGINX_DISABLE_TLS12 inverted", () => {

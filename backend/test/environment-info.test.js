@@ -277,3 +277,12 @@ it("names the variable of every locked oidc, monitoring and geoip key (locked_by
 	// a key without a name in the map has no entry
 	assert.deepEqual(lockedByOf("oidc", ["unknown_key", "skip_mfa"]), { skip_mfa: "OIDC_SKIP_MFA" });
 });
+
+it("lists Write log files as locked by CROWDSEC_ENABLED like GOA, and not when CrowdSec is turned on in Settings", () => {
+	const lock = (reason) =>
+		environmentInfo({}, [{ group: "logs", key: "write_log_files", env: "CROWDSEC_ENABLED", reason }]);
+	assert.deepEqual(lock("crowdsec").locked_runtime, [
+		{ group: "logs", key: "write_log_files", env: "CROWDSEC_ENABLED", reason: "crowdsec" },
+	]);
+	assert.deepEqual(lock("crowdsec-setting").locked_runtime, []);
+});

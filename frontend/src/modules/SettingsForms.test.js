@@ -19,7 +19,10 @@ import {
 	monitoringValidate,
 	monitoringValues,
 	networkValidate,
+	nginxToApi,
+	nginxToForm,
 	nginxValidate,
+	parseCpuList,
 	toggleEdition,
 	unlockedErrors,
 } from "./SettingsForms.js";
@@ -137,6 +140,58 @@ it("nginx: the same errors as the Formik validate", () => {
 		workerConnections: RANGE(64, 65535),
 		workerShutdownTimeout: "Enter 0 or a time value like 30s, 10m or 1h",
 	});
+});
+
+it("nginx: the CPU pinning is a mode and a list, and goes back to one value", () => {
+	const base = { workerProcesses: 4, workerConnections: 512, workerShutdownTimeout: "1h", tls12: true };
+	for (const [cpuAffinity, mode, list] of [
+		["off", "off", ""],
+		["auto", "auto", ""],
+		["16-19", "custom", "16-19"],
+		["16,18,20", "custom", "16,18,20"],
+	]) {
+		const form = nginxToForm({ ...base, cpuAffinity });
+		assert.equal(form.cpuAffinityMode, mode);
+		assert.equal(form.cpuAffinityList, list);
+		const api = nginxToApi(form);
+		assert.equal(api.cpuAffinity, cpuAffinity);
+		assert.equal("cpuAffinityMode" in api || "cpuAffinityList" in api, false);
+		assert.equal(api.workerConnections, 512);
+	}
+	assert.equal(
+		nginxToApi({
+			...nginxToForm({ ...base, cpuAffinity: "off" }),
+			cpuAffinityMode: "custom",
+			cpuAffinityList: " 1-2 ",
+		}).cpuAffinity,
+		"1-2",
+	);
+	assert.equal(nginxToApi({ workerConnections: "512", cpuAffinityMode: "custom" }).cpuAffinity, "");
+});
+
+it("nginx: the CPU list needs the syntax and CPUs the container may use, unless it is the saved value", () => {
+	const validate = nginxValidate(rules);
+	const form = { workerConnections: "512", workerShutdownTimeout: "1h", cpuAffinityMode: "custom" };
+	const data = { cpusAllowed: "16-23", cpuAffinity: "off", locked: [] };
+	assert.deepEqual(parseCpuList("0-3,8"), new Set([0, 1, 2, 3, 8]));
+	assert.equal(parseCpuList("3-1"), null);
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "16-19" }, data), {});
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "a" }, data), {
+		cpuAffinityList: "Use CPU numbers and ranges such as 16-19 or 16,18,20.",
+	});
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "" }, data), {
+		cpuAffinityList: "Use CPU numbers and ranges such as 16-19 or 16,18,20.",
+	});
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "0-3" }, data), {
+		cpuAffinityList: "CPUs 0-3 are not allowed in this container (allowed: 16-23).",
+	});
+	// the saved value is never refused, and an unreadable allowed list checks the syntax only
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "0-3" }, { ...data, cpuAffinity: "0-3" }), {});
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "0-3" }, { ...data, cpusAllowed: null }), {});
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "0-3" }), {});
+	// an env lock or another mode is not checked
+	assert.deepEqual(validate({ ...form, cpuAffinityList: "x" }, { ...data, locked: ["cpu_affinity"] }), {});
+	assert.deepEqual(validate({ ...form, cpuAffinityMode: "auto", cpuAffinityList: "x" }, data), {});
 });
 
 it("network: the same errors as the Formik validate", () => {

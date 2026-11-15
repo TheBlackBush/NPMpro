@@ -120,4 +120,13 @@ const beautifierOn = (env = effectiveEnv()) => env.DISABLE_NGINX_BEAUTIFIER === 
  */
 const gravatarOn = (env = effectiveEnv()) => env.DISABLE_GRAVATAR !== "true";
 
-export { beautifierOn, createRuntimeConfig, effectiveEnv, getRuntimeConfig, gravatarOn, loadRuntimeConfig, prime };
+export {
+	beautifierOn,
+	createRuntimeConfig,
+	effectiveEnv,
+	getRuntimeConfig,
+	gravatarOn,
+	invalidate,
+	loadRuntimeConfig,
+	prime,
+};

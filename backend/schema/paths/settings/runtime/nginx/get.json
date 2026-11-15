@@ -20,6 +20,7 @@
 								"worker_processes": "4",
 								"worker_connections": 512,
 								"worker_shutdown_timeout": "1h",
+								"cpu_affinity": "off",
 								"log_not_found": false,
 								"tls12": true,
 								"force_mlkem": false,
@@ -36,6 +37,7 @@
 									"worker_processes": "reload",
 									"worker_connections": "reload",
 									"worker_shutdown_timeout": "reload",
+									"cpu_affinity": "reload",
 									"log_not_found": "reload",
 									"tls12": "reload",
 									"force_mlkem": "reload",
@@ -47,7 +49,8 @@
 									"module_vts": "reload"
 								},
 								"restart_pending": [],
-								"cpu_count": 4
+								"cpu_count": 4,
+								"cpus_allowed": "0-3"
 							}
 						}
 					},

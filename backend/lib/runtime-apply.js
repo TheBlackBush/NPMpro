@@ -7,7 +7,14 @@ import { CERTBOT_INI, RENEWAL_DIR, renderCertbotIni, renewalProfileEdits } from 
 import { DEFAULT_CERT_CONF, defaultCertificatePaths, renderDefaultCertConf, TLS_DIR } from "./default-cert.js";
 import errs from "./error.js";
 import { AUTH_REQUEST_PROVIDERS } from "./forward-auth.js";
-import { ERROR_LOG_CONF, LOGROTATE_CONF, logIncludes, renderRotations, STREAM_LOG_CONF } from "./log-files.js";
+import {
+	ERROR_LOG_CONF,
+	LOGROTATE_CONF,
+	logIncludes,
+	prepareLogFiles,
+	renderRotations,
+	STREAM_LOG_CONF,
+} from "./log-files.js";
 import { NGINX_CORE_FILES, renderNginxCore } from "./nginx-core.js";
 import { rooted } from "./paths.js";
 import { effectiveEnv as defaultEffectiveEnv, getRuntimeConfig as defaultGetRuntimeConfig } from "./runtime-config.js";
@@ -31,9 +38,6 @@ const PATHS = {
 	startupSettings: rooted("/data/npmpro/startup-settings.env"),
 	nginxCore: NGINX_CORE_FILES,
 };
-
-// the log files Write log files turns on, created like start.sh does (mode 0600, /data/nginx/<name> symlinks)
-const LOG_FILES = ["access.log", "error.log", "stream.log"];
 
 const CERTBOT_KEYS = ["key_type", "key_size", "must_staple", "server_tls_verify", "profile"];
 const DEFAULT_CERT_KEYS = ["default_certificate_id", "ocsp_stapling", "custom_ocsp_stapling"];
@@ -379,37 +383,6 @@ const createRuntimeApplier = ({
 	};
 
 	/**
-	 * Creates the missing log files (mode 0600, existing ones are kept as they are) and the missing compatibility
-	 * symlinks /data/nginx/<name> -> logs/<name>, like start.sh with LOGROTATE=true; failures are logged, nginx still
-	 * opens (and creates) the files itself
-	 */
-	const prepareLogFiles = async () => {
-		const logsDir = path.join(paths.nginxDir, "logs");
-		for (const name of LOG_FILES) {
-			const file = path.join(logsDir, name);
-			try {
-				await fs.writeFile(file, "", { flag: "wx", mode: 0o600 });
-			} catch (err) {
-				if (err.code !== "EEXIST") log.warn(`Could not create ${file}: ${err.message}`);
-			}
-			const link = path.join(paths.nginxDir, name);
-			try {
-				await fs.lstat(link);
-			} catch (err) {
-				if (err.code !== "ENOENT") {
-					log.warn(`Could not check ${link}: ${err.message}`);
-					continue;
-				}
-				try {
-					await fs.symlink(path.join("logs", name), link);
-				} catch (linkErr) {
-					log.warn(`Could not create the symlink ${link}: ${linkErr.message}`);
-				}
-			}
-		}
-	};
-
-	/**
 	 * The startup settings file with the restart settings of every group (the other groups as they are in effect);
 	 * envs.sh reads it at the next start, nothing is reloaded
 	 */
@@ -433,7 +406,7 @@ const createRuntimeApplier = ({
 			const plan = { files: [] };
 			if (changed.includes("write_log_files")) {
 				// before the includes are written and tested
-				if (next.write_log_files) await prepareLogFiles();
+				if (next.write_log_files) await prepareLogFiles({ nginxDir: paths.nginxDir, fs, log });
 				const includes = logIncludes(next.write_log_files);
 				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files));
 				// at startup each in its own transaction, like the default certificate include: a failing nginx -t
@@ -462,6 +435,8 @@ const createRuntimeApplier = ({
 		// failing test keeps the files from the last start)
 		nginx: ({ next }) => {
 			const content = renderNginxCore(next);
+			// once per distinct note: a reload loop or repeated saves do not repeat it
+			if (content.affinityNote) logOnce(content.affinityNote, content.affinityNote);
 			return {
 				files: Object.entries(paths.nginxCore).map(([part, file]) => ({
 					path: file,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { parseConfLines, parseCrowdsecConf } from "../lib/crowdsec/config.js";
+import { crowdsecEnabledNow, parseConfLines, parseCrowdsecConf } from "../lib/crowdsec/config.js";
 
 it("reads every key of a hand-edited file: BOM, CRLF, export, quotes, inline comments, last one wins", () => {
 	const text = [
@@ -34,4 +34,14 @@ it("keeps the monitoring view of the file", () => {
 		keyFile: "",
 		sslVerify: true,
 	});
+});
+
+it("reads CrowdSec on from a valid CROWDSEC_ENABLED first, then from crowdsec.conf", () => {
+	const file = (text) => ({ readText: () => text });
+	assert.equal(crowdsecEnabledNow({ CROWDSEC_ENABLED: " TRUE " }, file("ENABLED=false")), true);
+	assert.equal(crowdsecEnabledNow({ CROWDSEC_ENABLED: "false" }, file("ENABLED=true")), false);
+	assert.equal(crowdsecEnabledNow({ CROWDSEC_ENABLED: "yes" }, file("ENABLED=true")), true); // invalid env: the file
+	assert.equal(crowdsecEnabledNow({}, file(`export ENABLED="${true}"\r\n`)), true);
+	assert.equal(crowdsecEnabledNow({}, file(null)), false);
+	assert.equal(crowdsecEnabledNow({}, file("ENABLED=false")), false);
 });

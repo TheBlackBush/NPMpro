@@ -1295,12 +1295,12 @@ it("logIncludes gives the error and stream log lines, off: start.sh's defaults",
 	});
 });
 
-it("data-setup.sh (run by start.sh) writes the same include lines as logIncludes", async () => {
-	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/data-setup.sh", import.meta.url), "utf8");
+it("log-includes.sh (run by data-setup.sh) writes the same include lines as logIncludes", async () => {
+	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/log-includes.sh", import.meta.url), "utf8");
 	for (const on of [true, false]) {
 		const { error, stream } = logIncludes(on);
-		assert.ok(startSh.includes(`echo "${error.trim()}" > /data/npmpro/nginx/error-log.conf`), error);
-		assert.ok(startSh.includes(`echo "${stream.trim()}" > /data/npmpro/nginx/stream-log.conf`), stream);
+		assert.ok(startSh.includes(`echo "${error.trim()}" > "$dir/error-log.conf"`), error);
+		assert.ok(startSh.includes(`echo "${stream.trim()}" > "$dir/stream-log.conf"`), stream);
 	}
 	const nginxConf = await readFile(new URL("../../rootfs/usr/local/nginx/conf/nginx.conf", import.meta.url), "utf8");
 	assert.ok(hasLine(nginxConf, "include /data/npmpro/nginx/error-log.conf;"));
@@ -1652,6 +1652,32 @@ it("a nginx save writes the four include files, tests and reloads", async () => 
 	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
 	assert.ok((await readFile(paths.nginxCore.events, "utf8")).includes("worker_connections 2048;"));
 	assert.ok((await readFile(paths.nginxCore.main, "utf8")).includes("ngx_http_vhost_traffic_status_module.so"));
+});
+
+it("a nginx save writes the affinity line and logs the note once per distinct note", async () => {
+	const { dir, paths } = await setup();
+	const status = path.join(dir, "status");
+	await writeFile(status, "Cpus_allowed_list:\t16-23\n");
+	process.env.NPMPRO_PROC_STATUS = status;
+	try {
+		const a = applier(paths);
+		const prev = mergeRuntimeConfig("nginx", {}, BOOT_ENV).values;
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "auto" }, prev);
+		assert.ok(
+			(await readFile(paths.nginxCore.main, "utf8")).includes(
+				`worker_cpu_affinity auto 11111111${"0".repeat(16)};`,
+			),
+		);
+		assert.deepEqual(a.log.lines, []);
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "0-3" }, prev);
+		await a.applyGroup("nginx", { ...prev, cpu_affinity: "0-3", worker_connections: 600 }, prev);
+		assert.equal((await readFile(paths.nginxCore.main, "utf8")).includes("affinity"), false);
+		assert.deepEqual(a.log.lines, [
+			"Pin workers to CPUs: none of the CPUs 0-3 is allowed in this container (16-23), workers are not pinned",
+		]);
+	} finally {
+		delete process.env.NPMPRO_PROC_STATUS;
+	}
 });
 
 it("a failing nginx -t puts the four files back and reports nginx's message", async () => {

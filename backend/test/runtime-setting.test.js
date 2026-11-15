@@ -285,8 +285,10 @@ it("matches the OpenAPI schemas: GET view, PUT body", async () => {
 it("the nginx view carries the CPU thread count", () => {
 	const view = withCpuCount(runtimeView("nginx", mergeRuntimeConfig("nginx", {}, BOOT_ENV), BOOT_ENV));
 	assert.equal(view.cpu_count, availableParallelism());
+	assert.ok("cpus_allowed" in view);
 	for (const key of [
 		"worker_processes",
+		"cpu_affinity",
 		"worker_connections",
 		"worker_shutdown_timeout",
 		"log_not_found",

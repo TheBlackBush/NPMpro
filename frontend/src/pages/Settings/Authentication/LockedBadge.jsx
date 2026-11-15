@@ -10,6 +10,9 @@ const REASON_BADGES = {
 	goaccess: "settings.runtime.locked.required-by",
 	// GoAccess turned on by the GoAccess report setting, not by an env var: the text names the setting
 	"goaccess-setting": "settings.runtime.locked.required-by-goaccess-setting",
+	crowdsec: "settings.runtime.locked.required-by",
+	// CrowdSec enabled in Settings, CrowdSec, not by an env var: the text names CrowdSec
+	"crowdsec-setting": "settings.runtime.locked.required-by-crowdsec-setting",
 	"force-mlkem": "settings.runtime.locked.required-by",
 	// post-quantum only switched on by its setting, not by an env var
 	"force-mlkem-setting": "settings.nginx.locked.post-quantum",

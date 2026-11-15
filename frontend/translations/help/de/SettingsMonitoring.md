@@ -6,7 +6,7 @@ Eine am Container gesetzte Variable hat Vorrang vor der Oberfläche und sperrt d
 
 ### Logdateien
 
-- **Logdateien schreiben**: schreibt die nginx-Fehler-, Stream- und Zugriffslogs nach `/data/nginx/logs` und rotiert sie täglich. Standard: aus. Variable: `LOGROTATE`. Gilt nach dem nginx-Reload, den das Speichern auslöst. Bleibt an, solange GoAccess läuft.
+- **Logdateien schreiben**: schreibt die nginx-Fehler-, Stream- und Zugriffslogs nach `/data/nginx/logs` und rotiert sie täglich. Standard: aus. Variable: `LOGROTATE`. Gilt nach dem nginx-Reload, den das Speichern auslöst. Bleibt an, solange GoAccess läuft. Es bleibt auch an und gesperrt, solange CrowdSec aktiviert ist.
 - **Aufbewahrte Logrotationen**: wie viele rotierte Logdateien aufbewahrt werden, bevor die älteste gelöscht wird, 1 bis 1000. Standard: 3. Variable: `LOGROTATIONS`. Gilt sofort.
 
 ### GoAccess

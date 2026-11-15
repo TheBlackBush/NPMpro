@@ -6,7 +6,7 @@ Zmienna ustawiona w kontenerze ma pierwszeństwo przed interfejsem i blokuje pol
 
 ### Pliki logów
 
-- **Zapisuj pliki logów**: zapisuje logi błędów, stream i dostępu nginx w `/data/nginx/logs` i rotuje je codziennie. Domyślnie: wyłączone. Zmienna: `LOGROTATE`. Działa po przeładowaniu nginx, które wykonuje zapis. Pozostaje włączone, dopóki działa GoAccess.
+- **Zapisuj pliki logów**: zapisuje logi błędów, stream i dostępu nginx w `/data/nginx/logs` i rotuje je codziennie. Domyślnie: wyłączone. Zmienna: `LOGROTATE`. Działa po przeładowaniu nginx, które wykonuje zapis. Pozostaje włączone, dopóki działa GoAccess. Pozostaje też włączone i zablokowane, dopóki CrowdSec jest włączony.
 - **Zachowywane rotacje logów**: ile obróconych plików logów jest zachowywanych, zanim najstarszy zostanie usunięty, od 1 do 1000. Domyślnie: 3. Zmienna: `LOGROTATIONS`. Działa od razu.
 
 ### GoAccess

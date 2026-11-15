@@ -15,9 +15,15 @@ const useSaveCrowdsecSettings = () => {
 		mutationFn: (values) => updateCrowdsecSettings(values),
 		onSuccess: () =>
 			Promise.all(
-				[["crowdsec-settings"], ["monitoring-crowdsec"], ["monitoring-summary"], ["audit-logs"], ["user"]].map(
-					(queryKey) => queryClient.invalidateQueries({ queryKey }),
-				),
+				[
+					["crowdsec-settings"],
+					["monitoring-crowdsec"],
+					["monitoring-summary"],
+					["audit-logs"],
+					["user"],
+					["runtime-settings", "logs"],
+					["environment"],
+				].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
 			),
 	});
 };
