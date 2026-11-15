@@ -73,11 +73,15 @@ export const CROWDSEC_FIELDS = [
 	bool("ssl_verify", "SSL_VERIFY", true),
 ];
 
+// how the admin UI meets CrowdSec (Settings, CrowdSec, Admin UI and CrowdSec): checked like every host (bans,
+// captchas and AppSec), bans (bans and captchas, AppSec skipped) or out (not checked at all)
+export const ADMIN_UI_CHOICES = ["checked", "bans", "out"];
+
 // settings of NPMpro that are not bouncer keys: how a ban answers (page, redirect or status code, it decides which of
-// the ban keys are written) and the admin UI exemption
+// the ban keys are written) and how the admin UI meets CrowdSec
 const EXTRA_FIELDS = [
 	{ key: "ban_response", kind: "enum", values: BAN_RESPONSES, default: "page" },
-	{ key: "admin_ui_excluded", kind: "bool", default: false },
+	{ key: "admin_ui", kind: "enum", values: ADMIN_UI_CHOICES, default: "checked" },
 ];
 const ALL_FIELDS = [...CROWDSEC_FIELDS, ...EXTRA_FIELDS];
 
@@ -197,6 +201,19 @@ const ENV_PARSERS = {
 };
 
 /**
+ * The admin UI choice of a stored meta: admin_ui when it is valid, else the switch of rows written before the select
+ * (admin_ui_excluded true: bans, false: checked; a restored or merged older backup still has it), else the default
+ *
+ * @param   {Object} [stored]
+ * @returns {"checked"|"bans"|"out"}
+ */
+export const adminUiOf = (stored) => {
+	if (ADMIN_UI_CHOICES.includes(stored?.admin_ui)) return stored.admin_ui;
+	if (typeof stored?.admin_ui_excluded === "boolean") return stored.admin_ui_excluded ? "bans" : "checked";
+	return "checked";
+};
+
+/**
  * The stored settings (secrets already decrypted) over the defaults, with the env vars on top: a set variable wins and
  * locks its field; a variable whose value the rules refuse is ignored and named in invalid. A stored value the rules
  * refuse falls back to its default.
@@ -211,6 +228,7 @@ export const mergeCrowdsecConfig = (stored, env) => {
 		const value = stored?.[field.key];
 		if (value !== undefined && isValidValue(field, value)) values[field.key] = value;
 	}
+	values.admin_ui = adminUiOf(stored);
 	const locked = [];
 	const invalid = [];
 	for (const [key, name] of Object.entries(CROWDSEC_ENV_KEYS)) {
@@ -351,6 +369,8 @@ export const renderCrowdsecConf = (values) =>
  */
 export const applyCrowdsecUpdate = (stored, body, locked, encrypt) => {
 	const next = { ...stored };
+	next.admin_ui = adminUiOf(stored);
+	delete next.admin_ui_excluded;
 	for (const key of EDITABLE_KEYS) {
 		if (!locked.includes(key) && Object.hasOwn(body, key)) next[key] = body[key];
 	}

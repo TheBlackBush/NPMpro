@@ -4,7 +4,17 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import os from "node:os";
 import path from "node:path";
 import { it } from "node:test";
-import { ADMIN_CHECKED, INCLUDE_OFF, INCLUDE_ON } from "../lib/crowdsec/files.js";
+import {
+	ADMIN_BANS,
+	ADMIN_CHECKED,
+	ADMIN_INCLUDE,
+	ADMIN_INCLUDES,
+	ADMIN_OUT,
+	crowdsecFiles,
+	INCLUDE_OFF,
+	INCLUDE_ON,
+} from "../lib/crowdsec/files.js";
+import { CROWDSEC_DEFAULTS } from "../lib/crowdsec/settings.js";
 import { clientPemFiles, opensslMissing } from "./support/tls-files.js";
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
@@ -41,6 +51,7 @@ it("no longer switches the bouncer in start.sh or copies the example config", ()
 
 // launch.sh checks the files the bouncer cannot start without, before nginx starts: the block runs here under sh
 // against a temporary /data
+const DISABLE_APPSEC_MAP = /map \$host \$crowdsec_disable_appsec \{\n {4}default 0;\n {2}\}/u;
 const CHECK = /# crowdsec-files-check begin\n([\s\S]*?)# crowdsec-files-check end/u;
 const runCheck = (root, conf) => {
 	mkdirSync(path.join(root, "data/npmpro/nginx"), { recursive: true });
@@ -205,4 +216,19 @@ it("launch.sh turns the bouncer off while a TLS client file is not set, missing 
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
+});
+
+it("writes the admin include of each admin UI choice", () => {
+	const content = (admin_ui) =>
+		crowdsecFiles({ ...CROWDSEC_DEFAULTS, admin_ui }).find((file) => file.path === ADMIN_INCLUDE).content;
+	assert.equal(content("checked"), ADMIN_CHECKED);
+	assert.equal(content("bans"), "set $crowdsec_disable_appsec 1;\n");
+	assert.equal(content("out"), "set $npmpro_crowdsec_skip 1;\n");
+	assert.equal(content(undefined), ADMIN_CHECKED);
+	assert.equal(ADMIN_INCLUDES.bans, ADMIN_BANS);
+	assert.equal(ADMIN_INCLUDES.out, ADMIN_OUT);
+});
+
+it("keeps the variable that Bans only sets in every nginx config", () => {
+	assert.match(read("rootfs/usr/local/nginx/conf/nginx.conf"), DISABLE_APPSEC_MAP);
 });

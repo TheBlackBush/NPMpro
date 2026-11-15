@@ -11,8 +11,11 @@ const BOUNCER_INCLUDE = rooted("/data/npmpro/nginx/crowdsec.conf");
 const ADMIN_INCLUDE = rooted("/data/npmpro/nginx/crowdsec-admin.conf");
 const INCLUDE_ON = "include /usr/local/nginx/conf/crowdsec-bouncer.conf;\n";
 const INCLUDE_OFF = "# the CrowdSec bouncer is off (Settings, CrowdSec)\n";
-const ADMIN_EXCLUDED = "set $npmpro_crowdsec_skip 1;\n";
 const ADMIN_CHECKED = "# the admin UI is checked by CrowdSec (Settings, CrowdSec)\n";
+// the bouncer's own variable (lib/crowdsec.lua is_appsec_enabled): the ban check runs, AppSec does not
+const ADMIN_BANS = "set $crowdsec_disable_appsec 1;\n";
+const ADMIN_OUT = "set $npmpro_crowdsec_skip 1;\n";
+const ADMIN_INCLUDES = { checked: ADMIN_CHECKED, bans: ADMIN_BANS, out: ADMIN_OUT };
 
 /**
  * @param   {Object} values  effective values, secrets in plain text
@@ -23,7 +26,7 @@ const ADMIN_CHECKED = "# the admin UI is checked by CrowdSec (Settings, CrowdSec
 const crowdsecFiles = (values, { bouncerOff = false } = {}) => [
 	{ path: CROWDSEC_CONF_PATH, content: renderCrowdsecConf(values) },
 	{ path: BOUNCER_INCLUDE, content: values.enabled && !bouncerOff ? INCLUDE_ON : INCLUDE_OFF },
-	{ path: ADMIN_INCLUDE, content: values.admin_ui_excluded ? ADMIN_EXCLUDED : ADMIN_CHECKED },
+	{ path: ADMIN_INCLUDE, content: ADMIN_INCLUDES[values.admin_ui] ?? ADMIN_CHECKED },
 ];
 
 // crowdsec.conf holds the API key: 0600 before the write (withFiles keeps the mode of the file it replaces)
@@ -63,9 +66,11 @@ const bouncerLoaded = async ({ fs = nodeFs } = {}) =>
 	(await fs.readFile(BOUNCER_INCLUDE, "utf8").catch(() => "")) === INCLUDE_ON;
 
 export {
+	ADMIN_BANS,
 	ADMIN_CHECKED,
-	ADMIN_EXCLUDED,
 	ADMIN_INCLUDE,
+	ADMIN_INCLUDES,
+	ADMIN_OUT,
 	applyCrowdsecFiles,
 	BOUNCER_INCLUDE,
 	bouncerLoaded,

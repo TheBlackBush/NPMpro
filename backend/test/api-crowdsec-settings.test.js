@@ -176,16 +176,23 @@ it("refuses even a forced save that would lock the admin UI out, and allows the 
 		const excluded = await admin.put("/settings/crowdsec", {
 			...body,
 			api_key: "wrong-key-secret",
-			admin_ui_excluded: true,
+			admin_ui: "out",
 			force: true,
 		});
 		assert.equal(excluded.status, 200, excluded.text);
+		const bansOnly = await admin.put("/settings/crowdsec", {
+			...body,
+			api_key: "wrong-key-secret",
+			admin_ui: "bans",
+			force: true,
+		});
+		assert.equal(bansOnly.status, 200, bansOnly.text);
 	} finally {
 		await admin.put("/settings/crowdsec", {
 			enabled: false,
 			appsec_url: "",
 			appsec_failure_action: "deny",
-			admin_ui_excluded: false,
+			admin_ui: "checked",
 		});
 		await new Promise((resolve) => appsec.close(resolve));
 	}
@@ -230,8 +237,8 @@ it("puts the file and the row back when the reload fails", async () => {
 	const previous = await conf();
 	const previousIncludes = await includes();
 	api.outside.control.failNext = "reload refused";
-	// admin_ui_excluded changes the admin include, so its rollback is seen too
-	const res = await admin.put("/settings/crowdsec", { captcha_expiration: 901, admin_ui_excluded: true });
+	// admin_ui changes the admin include, so its rollback is seen too
+	const res = await admin.put("/settings/crowdsec", { captcha_expiration: 901, admin_ui: "bans" });
 	assert.equal(res.status, 400, res.text);
 	assert.equal(await conf(), previous);
 	assert.deepEqual(await includes(), previousIncludes);
@@ -281,15 +288,54 @@ it("refuses AppSec without an API key with TLS authentication, also with force",
 	assert.equal(await conf(), previous);
 });
 
-it("leaves the admin UI out of CrowdSec", async () => {
-	const res = await admin.put("/settings/crowdsec", { admin_ui_excluded: true });
-	assert.equal(res.status, 200, res.text);
-	assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $npmpro_crowdsec_skip 1;\n");
-	await admin.put("/settings/crowdsec", { admin_ui_excluded: false });
-	assert.equal(
-		await api.read("/data/npmpro/nginx/crowdsec-admin.conf"),
-		"# the admin UI is checked by CrowdSec (Settings, CrowdSec)\n",
-	);
+it("writes the admin include for each choice", async () => {
+	const expected = {
+		bans: "set $crowdsec_disable_appsec 1;\n",
+		out: "set $npmpro_crowdsec_skip 1;\n",
+		checked: "# the admin UI is checked by CrowdSec (Settings, CrowdSec)\n",
+	};
+	for (const choice of ["bans", "out", "checked"]) {
+		const res = await admin.put("/settings/crowdsec", { admin_ui: choice });
+		assert.equal(res.status, 200, res.text);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), expected[choice]);
+		const current = await settings();
+		assert.equal(current.admin_ui, choice);
+		assert.equal(Object.hasOwn(current, "admin_ui_excluded"), false);
+	}
+});
+
+it("keeps an old row's switch on a save of another field", async () => {
+	const first = await api.db("setting").where({ id: "crowdsec" }).first();
+	const meta = typeof first.meta === "string" ? JSON.parse(first.meta) : first.meta;
+	const stored = async () => {
+		const now = await api.db("setting").where({ id: "crowdsec" }).first();
+		return typeof now.meta === "string" ? JSON.parse(now.meta) : now.meta;
+	};
+	const { admin_ui: _dropped, ...rest } = meta;
+	await api
+		.db("setting")
+		.where({ id: "crowdsec" })
+		.update({ meta: JSON.stringify({ ...rest, admin_ui_excluded: true }) });
+	try {
+		assert.equal((await settings()).admin_ui, "bans");
+		const res = await admin.put("/settings/crowdsec", { captcha_expiration: 902 });
+		assert.equal(res.status, 200, res.text);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $crowdsec_disable_appsec 1;\n");
+		const row = await stored();
+		assert.equal(row.admin_ui, "bans");
+		assert.equal(Object.hasOwn(row, "admin_ui_excluded"), false);
+	} finally {
+		await admin.put("/settings/crowdsec", { captcha_expiration: 7200, admin_ui: "checked" });
+	}
+});
+
+it("refuses the old switch and an unknown choice in a PUT", async () => {
+	const saved = await settings();
+	const include = await api.read("/data/npmpro/nginx/crowdsec-admin.conf");
+	assert.equal((await admin.put("/settings/crowdsec", { admin_ui_excluded: true })).status, 400);
+	assert.equal((await admin.put("/settings/crowdsec", { admin_ui: "all" })).status, 400);
+	assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), include);
+	assert.deepEqual(await settings(), saved);
 });
 
 it("tests unsaved values with the saved key and changes nothing", async () => {

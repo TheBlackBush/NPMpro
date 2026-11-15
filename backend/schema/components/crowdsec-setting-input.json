@@ -207,8 +207,9 @@
 		"ssl_verify": {
 			"type": "boolean"
 		},
-		"admin_ui_excluded": {
-			"type": "boolean"
+		"admin_ui": {
+			"type": "string",
+			"enum": ["checked", "bans", "out"]
 		},
 		"force": {
 			"type": "boolean",

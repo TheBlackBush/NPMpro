@@ -4,6 +4,11 @@ import { appsecKeyMissing } from "./settings.js";
 // the connection test and the file checks. It reads whether an API key is set but never prints the key or the
 // captcha secret.
 
+const ADMIN_UI_LINES = {
+	checked: "checked by CrowdSec",
+	bans: "bans only, AppSec skipped",
+	out: "left out of CrowdSec",
+};
 const LINE = "-------------------------------------";
 const firstLine = (text) => String(text ?? "").split("\n")[0];
 
@@ -88,9 +93,9 @@ const startupWarnings = ({
 				: "AppSec cannot be reached: requests pass unchecked while AppSec is down",
 		);
 	}
-	if (!bouncerOff && values.appsec_url && values.appsec_failure_action === "deny" && !values.admin_ui_excluded) {
+	if (!bouncerOff && values.appsec_url && values.appsec_failure_action === "deny" && values.admin_ui === "checked") {
 		warnings.push(
-			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
+			"AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Admin UI and CrowdSec, Bans only or Left out)",
 		);
 	}
 	// the start gate keeps the bouncer off in this case (appsecKeyMissing): AppSec would refuse every request; a key
@@ -141,7 +146,7 @@ const renderStartupBlock = ({
 		`LAPI:     ${values.api_url}${lapi ? `, ${lapiText(lapi)}` : ""}`,
 		`AppSec:   ${appsecText(values, appsec)}`,
 		`Captcha:  ${values.captcha_provider || "none"}`,
-		`Admin UI: ${values.admin_ui_excluded ? "left out of CrowdSec" : "checked by CrowdSec"}`,
+		`Admin UI: ${ADMIN_UI_LINES[values.admin_ui] ?? ADMIN_UI_LINES.checked}`,
 		...(locked.length > 0 ? [`Locked:   ${locked.join(", ")}`] : []),
 		...warningLines,
 		LINE,

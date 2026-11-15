@@ -323,10 +323,10 @@ const internalCrowdsecSetting = {
 		// the connection test (up to 5 s) runs before the queue, so it does not hold the other runtime changes
 		const tested = await plan();
 		const values = tested.after.values;
-		// AppSec answers 401 to a wrong key and with "deny" every request is refused, the admin UI included: saving
-		// that is never allowed, not even forced
+		// AppSec answers 401 to a wrong key and with "deny" every request is refused, the admin UI included while it is
+		// checked like every host: saving that is never allowed, not even forced
 		const lockoutRisk =
-			values.appsec_url !== "" && values.appsec_failure_action === "deny" && !values.admin_ui_excluded;
+			values.appsec_url !== "" && values.appsec_failure_action === "deny" && values.admin_ui === "checked";
 		if (values.enabled && (!force || lockoutRisk)) {
 			const result = await testConnection(values, { timeoutMs: TEST_TIMEOUT_MS });
 			const blocked = lockoutRisk && result.checks.some((item) => item.name === "appsec" && item.result !== "ok");
