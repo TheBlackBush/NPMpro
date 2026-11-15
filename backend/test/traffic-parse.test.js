@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { ACCESS_FIELDS, tokenizeClassic } from "../lib/log-format.js";
-import { isOwnRequest, parseAlogLine, statusClass } from "../lib/traffic/parse.js";
+import { isOwnRecord, isOwnRequest, parseAlogLine, parseLogLine, statusClass } from "../lib/traffic/parse.js";
 
 const line = (host, ip, status = 200, bytes = 512, request = "GET /a?b=1 HTTP/2.0", ua = "curl/8") =>
 	`[24/Oct/2026:10:15:30 +0200] ${host} ${ip} 0.012 "${request}" ${status} ${bytes} "-" "${ua}" "-" "text/html" TLSv1.3 TLS_AES_128_GCM_SHA256 X25519 -`;
@@ -279,4 +279,137 @@ it("reads the real nginx lines of the access log fixture", () => {
 		path: "/api/items",
 	});
 	assert.equal(fields[2].upstream_status, "502, 200");
+});
+
+// The JSON twin of a classic line: the ACCESS_FIELDS names in order, every value a string, "" for an empty one
+const NO_VALUE = new Set(["-"]);
+const jsonOf = (classic, overrides = {}) => {
+	const fields = tokenizeClassic(classic, ACCESS_FIELDS);
+	const values = Object.fromEntries(
+		ACCESS_FIELDS.map((item) => [
+			item.name,
+			NO_VALUE.has(fields?.[item.name] ?? "") ? "" : (fields?.[item.name] ?? ""),
+		]),
+	);
+	return JSON.stringify({ ...values, ...overrides });
+};
+const FULL = (host, ip, { ua = "curl/8", request = "GET /a?b=1 HTTP/2.0", port = "443" } = {}) =>
+	`[24/Oct/2026:10:15:30 +0200] ${host} ${ip} 0.012 "${request}" 200 512 "-" "${ua}" "-" "text/html" TLSv1.3 TLS_AES_128_GCM_SHA256 X25519 - ${port} "${host}" proxy-1 0123456789abcdef0123456789abcdef 7 "200" "0.001"`;
+
+it("reads a JSON line like its classic line", () => {
+	for (const classic of [
+		FULL("Example.com", "203.0.113.7"),
+		FULL("example.com:8443", "2001:db8::1"),
+		FULL("[2001:DB8::1]:8443", "203.0.113.7"),
+		FULL("example.com", "203.0.113.7", { request: "POST /login?token=secret HTTP/1.1", port: "" }),
+		FULL("example.com", "203.0.113.7", { request: "GET /old", port: "80" }),
+	]) {
+		assert.deepEqual(parseLogLine(jsonOf(classic)), parseLogLine(classic), classic);
+		assert.deepEqual(parseAlogLine(jsonOf(classic)), parseAlogLine(classic), classic);
+	}
+	assert.deepEqual(parseAlogLine(jsonOf(FULL("Example.com", "203.0.113.7"))), {
+		time: Date.UTC(2026, 9, 24, 8, 15, 30),
+		host: "example.com",
+		ip: "203.0.113.7",
+		status: 200,
+		bytes: 512,
+		method: "GET",
+		path: "/a",
+	});
+});
+
+it("returns the raw host, server port and user agent of both formats", () => {
+	const classic = parseLogLine(FULL("Example.com:8443", "203.0.113.7", { port: "81" }));
+	assert.equal(classic.rawHost, "Example.com:8443");
+	assert.equal(classic.serverPort, "81");
+	assert.equal(classic.userAgent, "curl/8");
+	assert.equal(parseLogLine(FULL("a.com", "203.0.113.7", { port: "" })).serverPort, "");
+	assert.equal(parseLogLine(line("a.com", "203.0.113.7")).serverPort, undefined);
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7", { port: "" })))?.serverPort, "");
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7", { port: "81" })))?.serverPort, "81");
+});
+
+it("reads escaped quotes, backslashes and control bytes in a JSON user agent and request", () => {
+	const ua = 'say "hi" \\ \u0000 end';
+	const request = 'GET /a"b HTTP/1.1';
+	const text = jsonOf(FULL("a.com", "203.0.113.7"), { http_user_agent: ua, request });
+	assert.ok(text.includes(String.raw`\"hi\"`));
+	assert.ok(text.includes(String.raw`\u0000`));
+	const record = parseLogLine(text);
+	assert.equal(record.userAgent, ua);
+	assert.equal(record.path, '/a"b');
+	assert.equal(record.status, 200);
+});
+
+it("reads empty JSON values", () => {
+	const text = jsonOf(FULL("a.com", "203.0.113.7"), {
+		http_referer: "",
+		http_user_agent: "",
+		ssl_protocol: "",
+		ssl_curve: "",
+		upstream_status: "",
+	});
+	assert.equal(parseLogLine(text).userAgent, "");
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { request: "" })).method, "-");
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { host: "" })), null);
+});
+
+it("keeps a JSON line with several upstream values", () => {
+	const record = parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { upstream_status: "502, 200" }));
+	assert.equal(record.status, 200);
+});
+
+it("returns null for broken or foreign JSON lines", () => {
+	const good = jsonOf(FULL("a.com", "203.0.113.7"));
+	assert.equal(parseLogLine(good.slice(0, -5)), null);
+	assert.equal(parseLogLine("{"), null);
+	assert.equal(parseLogLine('{"a":1}'), null);
+	assert.equal(parseAlogLine('{"a":1}'), null);
+	assert.equal(parseLogLine("{}"), null);
+	assert.equal(parseLogLine("{}garbage"), null);
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "unix:"))), null);
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { status: "20" })), null);
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { bytes_sent: "-" })), null);
+	assert.equal(parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { time_local: "bad" })), null);
+	assert.equal(
+		parseLogLine(jsonOf(FULL("a.com", "203.0.113.7"), { time_local: "24/Xxx/2026:10:15:30 +0200" })),
+		null,
+	);
+	assert.equal(parseLogLine(JSON.stringify({ ...JSON.parse(good), status: 200 })), null);
+	assert.equal(parseLogLine("[1,2]"), null);
+	assert.equal(isOwnRequest("{broken", "81"), false);
+});
+
+it("recognises NPMpro's own requests in JSON lines like in classic lines", () => {
+	const cases = [
+		[FULL("127.0.0.1:81", "127.0.0.1", { ua: "NPMpro/healthcheck", port: "81" }), "81"],
+		[FULL("npm.lan:8181", "172.17.0.1", { port: "81" }), "81"],
+		[FULL("example.com:81", "203.0.113.7"), "81"],
+		[FULL("example.com", "203.0.113.7", { ua: "NPMpro/healthcheck" }), "81"],
+		[FULL("127.0.0.1", "127.0.0.1", { ua: "NPMpro/healthcheck", port: "" }), "81"],
+		[FULL("127.0.0.1", "::1", { ua: "NPMpro/healthcheck" }), "443"],
+		[FULL("example.com", "203.0.113.7", { port: "80" }), "81"],
+	];
+	for (const [classic, port] of cases) {
+		assert.equal(isOwnRequest(jsonOf(classic), port), isOwnRequest(classic, port), classic);
+		assert.equal(isOwnRecord(parseLogLine(jsonOf(classic)), port), isOwnRequest(classic, port), classic);
+	}
+	assert.deepEqual(
+		cases.map(([classic, port]) => isOwnRequest(classic, port)),
+		[true, true, false, false, true, true, false],
+	);
+	const health = jsonOf(FULL("10.0.0.5", "10.0.0.5", { ua: "NPMpro/healthcheck" }));
+	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
+	assert.equal(isOwnRequest(health, "443"), false);
+});
+
+it("gives the same record for the classic and the JSON line of the same request", () => {
+	const classic = readFileSync(new URL("./fixtures/log-lines/access-classic.log", import.meta.url), "utf8")
+		.split("\n")
+		.filter((entry) => entry !== "");
+	assert.equal(classic.length, 6);
+	for (const entry of classic) {
+		assert.deepEqual(parseLogLine(jsonOf(entry)), parseLogLine(entry), entry);
+		assert.equal(isOwnRequest(jsonOf(entry), 81), isOwnRequest(entry, 81), entry);
+	}
 });

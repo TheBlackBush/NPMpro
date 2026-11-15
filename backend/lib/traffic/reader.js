@@ -1,6 +1,6 @@
 import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { rooted } from "../paths.js";
-import { isOwnRequest, parseAlogLine } from "./parse.js";
+import { isOwnRecord, parseLogLine } from "./parse.js";
 
 const ACCESS_LOG = rooted("/data/nginx/logs/access.log");
 const MISSING_RETRY_MS = 60000;
@@ -47,14 +47,15 @@ const createTrafficReader = ({
 	let skipped = 0;
 
 	const addLine = (line) => {
-		if (line === "" || isOwnRequest(line, adminPort, bindAddresses)) return;
-		const parsed = parseAlogLine(line);
+		if (line === "") return;
+		const parsed = parseLogLine(line);
 		if (!parsed) {
 			skipped++;
 			return;
 		}
-		const { ip, method, path, ...rest } = parsed;
-		const entry = { ...rest, host: hostList.map(parsed.host) };
+		if (isOwnRecord(parsed, adminPort, bindAddresses)) return;
+		const { ip, method, path, time, status, bytes } = parsed;
+		const entry = { time, status, bytes, host: hostList.map(parsed.host) };
 		if (settings.showIps) entry.ip = ip;
 		const available = geo.available();
 		const found = available.country || available.asn ? geo.lookup(ip) : null;
@@ -68,7 +69,7 @@ const createTrafficReader = ({
 			country: found?.country ?? null,
 			...(settings.showIps ? { ip } : {}),
 		});
-		// parseAlogLine() only returns lines with a valid client IP
+		// parseLogLine() only returns lines with a valid client IP
 		const visitorHash = settings.uniqueVisitors && settings.hashVisitor ? settings.hashVisitor(ip) : undefined;
 		counter.add(entry, found, { showIps: settings.showIps, visitorHash });
 	};
