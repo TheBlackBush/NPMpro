@@ -134,8 +134,8 @@ const focusIs = (page, id) => page.waitForFunction((target) => document.activeEl
 const expanded = async (page, expected) => {
 	try {
 		await page.locator(`${ADVANCED}[aria-expanded="${expected}"]`).waitFor({ timeout: 5000 });
-	} catch {
-		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`);
+	} catch (err) {
+		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`, { cause: err });
 	}
 };
 
@@ -288,10 +288,17 @@ async function usersSignIn({ admin }) {
 // opened it; neither is keyboard focus, so no tooltip may open by itself (the avatar's and the eye button's did).
 async function windowFocusTooltip({ admin }) {
 	const { page } = admin;
+	// a tooltip that opens by itself does so within its delay: give it 700 ms to appear
 	const noTooltip = async (where) => {
-		await page.waitForTimeout(700);
-		if ((await page.locator("[data-slot=tooltip-content]").count()) > 0)
-			throw new Error(`a tooltip opened by itself ${where}`);
+		const opened = await page
+			.locator("[data-slot=tooltip-content]")
+			.first()
+			.waitFor({ state: "attached", timeout: 700 })
+			.then(
+				() => true,
+				() => false,
+			);
+		if (opened) throw new Error(`a tooltip opened by itself ${where}`);
 	};
 	await page.goto("/settings/audit-log");
 	await page.locator('button[aria-label^="Details: "]').filter({ visible: true }).first().click();
