@@ -173,10 +173,15 @@ try {
 } catch (error) {
 	failures.push(String(error));
 } finally {
-	await must("PUT", "/settings/runtime/logs", {
-		log_format: saved.log_format,
-		write_log_files: saved.write_log_files,
-	});
+	// a failed restore is reported with the failures before it, not instead of them
+	try {
+		await must("PUT", "/settings/runtime/logs", {
+			log_format: saved.log_format,
+			write_log_files: saved.write_log_files,
+		});
+	} catch (err) {
+		failures.push(`could not restore the logs settings: ${err.message}`);
+	}
 }
 
 if (failures.length > 0) {
