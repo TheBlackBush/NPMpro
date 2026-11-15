@@ -15,8 +15,16 @@ const migrateName = "crowdsec_admin_ui";
 const up = async (knex) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 	const row = await knex("setting").where("id", "crowdsec").first("meta");
-	const meta = typeof row?.meta === "string" ? JSON.parse(row.meta) : row?.meta;
-	if (!meta || !Object.hasOwn(meta, "admin_ui_excluded")) {
+	let meta;
+	try {
+		meta = typeof row?.meta === "string" ? JSON.parse(row.meta) : row?.meta;
+	} catch {
+		// a meta that is no JSON is left for the settings code to report: a migration that throws here would stop every
+		// start (startup retries the migrations every second)
+		logger.warn(`[${migrateName}] the crowdsec setting is no valid JSON, nothing to move`);
+		return;
+	}
+	if (!meta || typeof meta !== "object" || !Object.hasOwn(meta, "admin_ui_excluded")) {
 		logger.info(`[${migrateName}] nothing to move`);
 		return;
 	}
