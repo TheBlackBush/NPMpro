@@ -244,6 +244,10 @@ const timeZoneOptions = (zones, current) => {
 	return names.map((name) => ({ value: name, label: name }));
 };
 
+// the form field that shows the error of a key, when the form names it differently
+const FORM_FIELDS = { cpuAffinity: "cpuAffinityList" };
+const formFieldOf = (key) => FORM_FIELDS[key] ?? key;
+
 /**
  * The form field a save error belongs to: the backend prefixes validation errors with the snake_case key. Returns
  * { key (camelCase), message } for a key of the group, else null.
@@ -252,10 +256,6 @@ const timeZoneOptions = (zones, current) => {
  * @param   {string}  text  the API error message
  * @returns {{ key: string, message: string } | null}
  */
-// the form field that shows the error of a key, when the form names it differently
-const FORM_FIELDS = { cpuAffinity: "cpuAffinityList" };
-const formFieldOf = (key) => FORM_FIELDS[key] ?? key;
-
 const fieldOfError = (group, text) => {
 	const match = FIELD_ERROR.exec(String(text ?? ""));
 	if (!match) return null;

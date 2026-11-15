@@ -81,14 +81,7 @@ const viewOf = async (cfg) => {
 	};
 };
 
-/**
- * Inside the runtime queue: plan() reads the row and works out the new settings (so a save that committed meanwhile is
- * not lost), then the files of the new values, nginx -t, the row, the reload; a failed test or reload puts the files
- * and that row back.
- *
- * @param   {Function} plan  async () => { before, next, after }
- * @returns {Promise<{ before: Object, next: Object, after: Object }>}
- */
+// the save step of applyCrowdsec: nginx -t, the row, the reload; a failed reload puts the row back
 const testSaveReload = (planned) => async () => {
 	try {
 		await internalNginx.test();
@@ -122,6 +115,14 @@ const logFilesForCrowdsec = async (values) => {
 	return { turnsOn, extraFiles: turnsOn ? logFilesOn() : [] };
 };
 
+/**
+ * Inside the runtime queue: plan() reads the row and works out the new settings (so a save that committed meanwhile is
+ * not lost), then the files of the new values, nginx -t, the row, the reload; a failed test or reload puts the files
+ * and that row back.
+ *
+ * @param   {Function} plan  async () => { before, next, after }
+ * @returns {Promise<{ before: Object, next: Object, after: Object }>}
+ */
 const applyCrowdsec = (plan) =>
 	runtimeExclusive(async () => {
 		const planned = await plan();
@@ -169,8 +170,8 @@ const startGate = (values, log, failedSecrets = []) => {
 };
 
 /**
- * At every start: the one-time import, then crowdsec.conf and the two includes written from the row and checked with
- * nginx -t (the reload at the end of prepareApp loads them). A failed nginx -t puts the previous files back (the
+ * At every start: the one-time import, then crowdsec.conf and the two includes written from the row (with the log
+ * includes when CrowdSec is on) and checked with nginx -t (the reload at the end of prepareApp loads them). A failed nginx -t puts the previous files back (the
  * bouncer stays as nginx loaded it) and is returned for the startup block. Never throws.
  *
  * @param   {Object} [deps]
@@ -195,7 +196,15 @@ const startCrowdsec = async ({ nginx = internalNginx, log = logger } = {}) => {
 		const missingPages = missingPagesOf(cfg.values);
 		let nginxError = null;
 		try {
-			await runtimeExclusive(() => applyCrowdsecFiles(cfg.values, () => nginx.test(), { bouncerOff }));
+			await runtimeExclusive(async () => {
+				// the logs settings were worked out from the file the last start left, which may say the other state
+				try {
+					const { extraFiles } = await logFilesForCrowdsec(cfg.values);
+					await applyCrowdsecFiles(cfg.values, () => nginx.test(), { bouncerOff, extraFiles });
+				} finally {
+					invalidate("logs");
+				}
+			});
 		} catch (err) {
 			nginxError = err.message;
 			log.error(`CrowdSec: the settings did not pass nginx -t and were not applied: ${err.message}`);

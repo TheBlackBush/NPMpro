@@ -11,8 +11,9 @@ const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "log
  * must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log
  * files), goaccess-setting (the same with GoAccess turned on by the GoAccess report setting: not an env lock, left out
  * of the Environment page), crowdsec (CrowdSec, turned on by CROWDSEC_ENABLED, reads the log files),
- * crowdsec-setting (the same with CrowdSec turned on in Settings, CrowdSec: not an env lock), force-mlkem (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2
- * and the NIST P curves off), force-mlkem-setting (the same with post-quantum only turned on by the setting)
+ * crowdsec-setting (the same with CrowdSec turned on in Settings, CrowdSec: not an env lock), force-mlkem
+ * (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2 and the NIST P curves off),
+ * force-mlkem-setting (the same with post-quantum only turned on by the setting)
  */
 const LOCK_REASONS = [
 	"key-size",
@@ -77,7 +78,8 @@ const defaultOf = (rule, env, values, opts) =>
  * @param   {Object}  env               process.env or a test object
  * @param   {Object}  [opts]
  * @param   {Function} [opts.fileExists] (path) => boolean, for the Anubis images default
- * @param   {Function} [opts.crowdsecEnabled] () => boolean, whether CrowdSec is enabled (default: env, then crowdsec.conf)
+ * @param   {Function} [opts.crowdsecEnabled] () => boolean, whether CrowdSec is enabled (default: env, then
+ *          crowdsec.conf)
  * @returns {{values: Object, locked: string[], locked_by: Object, locked_reason: Object, invalid: {key: string, source: "env"|"stored"|"server"}[]}}
  *          locked_by names the env var that locks each locked key (the key's own one, or the one that forces it:
  *          ACME_KEY_SIZE for key_type, ACME_OCSP_STAPLING / ACME_MUST_STAPLE for each other, GOA for write_log_files);

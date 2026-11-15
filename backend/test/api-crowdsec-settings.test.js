@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
 import http from "node:http";
+import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { reloads } from "./support/hosts.js";
 
 const KEY = "good-key-0123456789";
+const CONF_ON = /^ENABLED=true$/mu;
+const CONF_OFF = /^ENABLED=false$/mu;
 const BAN_PAGE = "<style>p{color:red}</style><p>banned</p>";
 
 let api;
@@ -493,4 +497,35 @@ it("a restore that turns CrowdSec on writes the log includes", async () => {
 	assert.equal(await includeOf("error-log.conf"), ERROR_ON);
 	assert.equal((await admin.get("/settings/runtime/logs")).body.write_log_files, true);
 	await admin.put("/settings/crowdsec", { enabled: false });
+});
+
+// a start after the container ran with CROWDSEC_ENABLED=false and the variable was removed: the file on disk says off
+const startWithConf = async (enabled) => {
+	await writeFile(path.join(api.root, "data/crowdsec/crowdsec.conf"), `ENABLED=${enabled}\n`);
+	const { prepareApp } = await import("../startup.js");
+	await prepareApp({ background: false });
+};
+
+it("a start with CrowdSec stored on but off in the file on disk writes the log includes and locks Write log files", async () => {
+	await logsOff();
+	const saved = await admin.put("/settings/crowdsec", WORKING());
+	assert.equal(saved.status, 200, saved.text);
+
+	await startWithConf(false);
+	assert.match(await conf(), CONF_ON);
+	assert.equal(await includeOf("error-log.conf"), ERROR_ON);
+	assert.equal(await includeOf("stream-log.conf"), "access_log /data/nginx/logs/stream.log slog;\n");
+	assert.equal(await includeOf("access-log.conf"), "access_log /data/nginx/logs/access.log alog;\n");
+	const logs = (await admin.get("/settings/runtime/logs")).body;
+	assert.equal(logs.write_log_files, true);
+	assert.deepEqual(logs.locked_reason, { write_log_files: "crowdsec-setting" });
+});
+
+it("a start with CrowdSec stored off but on in the file on disk unlocks Write log files", async () => {
+	await logsOff();
+	await startWithConf(true);
+	assert.match(await conf(), CONF_OFF);
+	const logs = (await admin.get("/settings/runtime/logs")).body;
+	assert.equal(logs.write_log_files, false);
+	assert.deepEqual(logs.locked, []);
 });
