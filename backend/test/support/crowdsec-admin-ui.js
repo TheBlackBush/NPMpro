@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, it } from "node:test";
+import { adminUiOf } from "../../lib/crowdsec/settings.js";
 import { up } from "../../migrations/20261115120000_crowdsec_admin_ui.js";
 
 // 20261115120000_crowdsec_admin_ui on each database engine: the admin_ui_excluded switch of the crowdsec setting row
@@ -33,6 +34,25 @@ const crowdsecAdminUiTests = (ctx) => {
 		await put("crowdsec", { admin_ui: "out", admin_ui_excluded: true });
 		await up(ctx.knex);
 		assert.deepEqual(await metaOf(ctx.knex, "crowdsec"), { admin_ui: "out" });
+	});
+
+	it("replaces an admin_ui that is no choice the way the settings read it", async () => {
+		await put("crowdsec", { admin_ui: "nope", admin_ui_excluded: true });
+		await up(ctx.knex);
+		assert.deepEqual(await metaOf(ctx.knex, "crowdsec"), { admin_ui: "bans" });
+	});
+
+	it("gives the choice that adminUiOf reads from the row before the migration", async () => {
+		for (const admin_ui of [undefined, "checked", "bans", "out", "nope", "", null]) {
+			for (const admin_ui_excluded of [true, false, "yes", null]) {
+				const before = admin_ui === undefined ? { admin_ui_excluded } : { admin_ui, admin_ui_excluded };
+				await ctx.knex("setting").del();
+				await put("crowdsec", before);
+				await up(ctx.knex);
+				const after = await metaOf(ctx.knex, "crowdsec");
+				assert.equal(after.admin_ui, adminUiOf(before), JSON.stringify(before));
+			}
+		}
 	});
 
 	it("leaves a row without the switch and a missing row as they are", async () => {

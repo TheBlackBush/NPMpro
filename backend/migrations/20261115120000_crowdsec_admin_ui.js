@@ -1,11 +1,15 @@
 import { migrate as logger } from "../logger.js";
 
 const migrateName = "crowdsec_admin_ui";
+// the choices of lib/crowdsec/settings.js ADMIN_UI_CHOICES, copied so that a later change there does not change what
+// this migration did
+const CHOICES = ["checked", "bans", "out"];
 
 /**
  * Migrate: the CrowdSec switch "Leave the admin UI out of CrowdSec" (admin_ui_excluded) becomes the choice admin_ui:
- * on becomes bans (bans and captchas, no AppSec), off becomes checked. A row that already has admin_ui keeps it. Rows
- * restored later from older backups are read the same way by lib/crowdsec/settings.js adminUiOf.
+ * on becomes bans (bans and captchas, no AppSec), off becomes checked. A row that already has a valid admin_ui keeps it,
+ * an invalid one is replaced from the switch, as lib/crowdsec/settings.js adminUiOf reads it. Rows restored later from
+ * older backups are read the same way by adminUiOf.
  *
  * @see https://knexjs.org/guide/migrations.html#migration-api
  *
@@ -29,7 +33,8 @@ const up = async (knex) => {
 		return;
 	}
 	const { admin_ui_excluded: excluded, ...rest } = meta;
-	const next = { ...rest, admin_ui: rest.admin_ui ?? (excluded === true ? "bans" : "checked") };
+	const fromSwitch = excluded === true ? "bans" : "checked";
+	const next = { ...rest, admin_ui: CHOICES.includes(rest.admin_ui) ? rest.admin_ui : fromSwitch };
 	await knex("setting")
 		.where("id", "crowdsec")
 		.update({ meta: JSON.stringify(next) });
