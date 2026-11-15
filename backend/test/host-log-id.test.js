@@ -6,13 +6,15 @@ import { startApi } from "./support/api.js";
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const SERVER_OPEN = /\bserver \{/u;
 const REWRITE_DIRECTIVES = ["return ", "rewrite ", "if ("];
+const TEMPLATE_VERSION_25 = /^TV="25"$/mu;
 
 let api;
-let internalNginx;
+// filled once the API is up; a const holder so the tests built in loops read no reassigned binding
+const loaded = {};
 
 before(async () => {
 	api = await startApi();
-	internalNginx = (await import("../internal/nginx.js")).default;
+	loaded.nginx = (await import("../internal/nginx.js")).default;
 });
 after(() => api?.stop());
 
@@ -39,16 +41,26 @@ const STREAM_ROW = { id: 7, incoming_port: 5000, forwarding_host: "10.0.0.2", fo
 // each server block of a config: its text up to the end of the config
 const serversOf = (text) => text.split(SERVER_OPEN).slice(1);
 
-const assertSetFirst = (servers, line, label) => {
-	assert.ok(servers.length > 0, `no server in ${label}`);
+// what is wrong with the log id in these servers: none, missing, or after a rewrite-phase directive
+const setProblems = (servers, line, label) => {
+	if (servers.length === 0) {
+		return [`no server in ${label}`];
+	}
+	const problems = [];
 	for (const server of servers) {
 		const set = server.indexOf(line);
-		assert.ok(set >= 0, `missing in ${label}`);
+		if (set === -1) {
+			problems.push(`missing in ${label}`);
+			continue;
+		}
 		for (const later of REWRITE_DIRECTIVES) {
 			const at = server.indexOf(later);
-			assert.ok(at === -1 || set < at, `${later} before the log id in ${label}`);
+			if (at !== -1 && at < set) {
+				problems.push(`${later} before the log id in ${label}`);
+			}
 		}
 	}
+	return problems;
 };
 
 const CASES = [
@@ -59,22 +71,22 @@ const CASES = [
 ];
 for (const [type, row, line, count] of CASES) {
 	it(`${type} sets its log id in every server before any rewrite directive`, async () => {
-		const text = await internalNginx.renderConfig(type, row, { env: {}, fetchMissingOcsp: false });
+		const text = await loaded.nginx.renderConfig(type, row, { env: {}, fetchMissingOcsp: false });
 		const servers = serversOf(text);
 		assert.equal(servers.length, count);
-		assertSetFirst(servers, line, type);
+		assert.deepEqual(setProblems(servers, line, type), []);
 	});
 }
 
 for (const value of ["444", "congratulations", "404", "html"]) {
 	it(`the default site (${value}) sets the log id default in both servers`, async () => {
-		const text = await internalNginx.renderConfig("default", { id: "default-site", value, meta: {} });
+		const text = await loaded.nginx.renderConfig("default", { id: "default-site", value, meta: {} });
 		const servers = serversOf(text);
 		assert.equal(servers.length, 2);
-		assertSetFirst(servers, "set $npmpro_host_id default;", `default ${value}`);
+		assert.deepEqual(setProblems(servers, "set $npmpro_host_id default;", `default ${value}`), []);
 	});
 }
 
 it("bumps the template version, so existing installs rewrite their host configs", () => {
-	assert.match(readFileSync(ENVS_SH, "utf8"), /^TV="25"$/mu);
+	assert.match(readFileSync(ENVS_SH, "utf8"), TEMPLATE_VERSION_25);
 });
