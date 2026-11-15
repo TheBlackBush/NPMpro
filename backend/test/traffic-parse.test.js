@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { isOwnRequest, parseAlogLine, statusClass } from "../lib/traffic/parse.js";
 
@@ -187,4 +188,44 @@ it("skips the health check from the configured IPv4 binding when the admin port 
 	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
 	assert.equal(isOwnRequest(health, "443"), false);
 	assert.equal(isOwnRequest(health, "443", ["0.0.0.0"]), false);
+});
+
+const BASE =
+	'[14/Nov/2026:10:00:00 +0000] npmpro.example.com:19381 192.168.1.10 0.004 "GET /api HTTP/2.0" 200 1530 "-" "Mozilla" "-" "application/json" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -';
+const TAIL = ' "npmpro.example.com" npmpro 0123456789abcdef0123456789abcdef 12 "-" "-"';
+const ENDS_WITH_PORT = / \d{1,5}$/u;
+const SPACELESS =
+	'[14/Nov/2026:10:00:00 +0000] npmpro.example.com:19381 192.168.1.10 0.004 "GET /api HTTP/2.0" 200 1530 "-" "curl/8" "-" "-" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -';
+
+it("reads the server port before the fields added after it", () => {
+	assert.equal(isOwnRequest(`${BASE} 81${TAIL}`, 81), true);
+	assert.equal(isOwnRequest(`${BASE} 443${TAIL}`, 81), false);
+	assert.equal(isOwnRequest(`${BASE} ${TAIL}`, 81), false); // unix socket listener, not a health check
+	assert.equal(
+		isOwnRequest(`${BASE} 443 "" default 0123456789abcdef0123456789abcdef 3 "502, 200" "0.001 : 0.002"`, 81),
+		false,
+	);
+	assert.deepEqual(parseAlogLine(`${BASE} 81${TAIL}`), parseAlogLine(`${BASE} 81`));
+});
+
+it("reads the port when no quoted field before the tail holds a space", () => {
+	const tail = ' "" default 0123456789abcdef0123456789abcdef 3 "502, 200" "0.001 : 0.002"';
+	assert.equal(isOwnRequest(`${SPACELESS} 81${tail}`, 81), true);
+	assert.equal(isOwnRequest(`${SPACELESS} 443${tail}`, 81), false);
+});
+
+it("gives the same answers for every fixture line with and without the new fields", () => {
+	const old = readFileSync(new URL("./fixtures/log-lines/access-classic-old.log", import.meta.url), "utf8")
+		.split("\n")
+		.filter((entry) => entry !== "");
+	assert.ok(old.length > 0);
+	for (const entry of old) {
+		if (!ENDS_WITH_PORT.test(entry)) {
+			continue;
+		}
+		const extended = `${entry}${TAIL}`;
+		assert.equal(isOwnRequest(extended, 81), isOwnRequest(entry, 81), entry);
+		assert.equal(isOwnRequest(extended, 443), isOwnRequest(entry, 443), entry);
+		assert.deepEqual(parseAlogLine(extended), parseAlogLine(entry), entry);
+	}
 });
