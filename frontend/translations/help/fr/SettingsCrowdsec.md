@@ -12,7 +12,7 @@ Indique si nginx charge le bouncer et quand NPMpro a joint la LAPI pour la derni
 
 L'enregistrement avec le bouncer activé lance d'abord le même test. S'il échoue, les raisons s'affichent et **Enregistrer quand même** enregistre malgré tout, par exemple quand CrowdSec ne tourne pas encore.
 
-**Enregistrer quand même** n'est pas proposé quand AppSec échoue, que **Quand AppSec est injoignable** vaut **Refuser la requête** et que l'interface d'administration est vérifiée, car cet enregistrement vous bloquerait l'accès à l'interface d'administration : corrigez la **Clé API** ou l'**URL d'AppSec**, réglez l'action en cas d'échec sur **Laisser passer la requête**, ou activez **Exclure l'interface d'administration de CrowdSec**.
+**Enregistrer quand même** n'est pas proposé quand AppSec échoue, que **Quand AppSec est injoignable** vaut **Refuser la requête** et que **Interface d'administration et CrowdSec** vaut **Vérifiée comme tous les hôtes**, car cet enregistrement vous bloquerait l'accès à l'interface d'administration : corrigez la **Clé API** ou l'**URL d'AppSec**, réglez l'action en cas d'échec sur **Laisser passer la requête**, ou choisissez **Bannissements uniquement** ou **Exclue** pour **Interface d'administration et CrowdSec**.
 
 ### Connexion
 
@@ -27,7 +27,7 @@ L'enregistrement avec le bouncer activé lance d'abord le même test. S'il écho
 - **Mode** : live interroge la LAPI pour chaque IP cliente et met la réponse en cache pendant le nombre de secondes indiqué ; stream télécharge toutes les décisions à l'intervalle indiqué.
 - **Réponse à un bannissement** : la page de bannissement (avec un code d'état facultatif, 403 par défaut), une redirection, ou un code d'état sans page.
 - **Mesure de repli** et **Types de décisions** : comment sont traitées les décisions que le bouncer ne peut pas appliquer, et quels types sont appliqués.
-- **Exclure l'interface d'administration de CrowdSec** : les requêtes vers l'interface d'administration contournent le bouncer et AppSec. Activez-le avant d'utiliser AppSec avec le refus, afin qu'une panne de CrowdSec ne puisse pas vous bloquer l'accès.
+- **Interface d'administration et CrowdSec** : **Vérifiée comme tous les hôtes** applique les bannissements et AppSec à l'interface d'administration. **Bannissements uniquement** applique les bannissements et les captchas mais pas AppSec, et une panne de CrowdSec ne vous bloque pas. **Exclue** ne vérifie rien. Votre propre IP est bannie ? Exécutez `cscli decisions delete --ip <votre IP>` dans le conteneur CrowdSec, ou définissez `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 

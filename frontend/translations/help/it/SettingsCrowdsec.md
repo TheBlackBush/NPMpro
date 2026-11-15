@@ -12,7 +12,7 @@ Mostra se nginx carica il bouncer e quando NPMpro ha raggiunto la LAPI l'ultima 
 
 Salvando con il bouncer attivo viene eseguito prima lo stesso test. Se fallisce, vengono mostrati i motivi e **Salva comunque** salva ugualmente, ad esempio quando CrowdSec non è ancora in esecuzione.
 
-**Salva comunque** non viene offerto quando AppSec fallisce, **Quando AppSec non è raggiungibile** è su **Rifiuta la richiesta** e l'interfaccia di amministrazione è controllata, perché quel salvataggio ti chiuderebbe fuori dall'interfaccia di amministrazione: correggi la **Chiave API** o l'**URL di AppSec**, imposta l'azione in caso di errore su **Lascia passare la richiesta**, oppure attiva **Escludi l'interfaccia di amministrazione da CrowdSec**.
+**Salva comunque** non viene offerto quando AppSec fallisce, **Quando AppSec non è raggiungibile** è su **Rifiuta la richiesta** e **Interfaccia di amministrazione e CrowdSec** è su **Controllata come ogni host**, perché quel salvataggio ti chiuderebbe fuori dall'interfaccia di amministrazione: correggi la **Chiave API** o l'**URL di AppSec**, imposta l'azione in caso di errore su **Lascia passare la richiesta**, oppure scegli **Solo ban** o **Esclusa** per **Interfaccia di amministrazione e CrowdSec**.
 
 ### Connessione
 
@@ -27,7 +27,7 @@ Salvando con il bouncer attivo viene eseguito prima lo stesso test. Se fallisce,
 - **Modalità**: live interroga la LAPI per ogni IP client e memorizza la risposta nella cache per i secondi indicati; stream scarica tutte le decisioni all'intervallo indicato.
 - **Risposta a un ban**: la pagina di ban (con un codice di stato facoltativo, 403 per impostazione predefinita), un reindirizzamento o un codice di stato senza pagina.
 - **Rimedio di riserva** e **Tipi di decisione**: come vengono gestite le decisioni che il bouncer non può applicare e quali tipi vengono applicati.
-- **Escludi l'interfaccia di amministrazione da CrowdSec**: le richieste all'interfaccia di amministrazione ignorano il bouncer e AppSec. Attivalo prima di usare AppSec con il rifiuto, così un'interruzione di CrowdSec non può bloccarti fuori.
+- **Interfaccia di amministrazione e CrowdSec**: **Controllata come ogni host** applica ban e AppSec all'interfaccia di amministrazione. **Solo ban** applica ban e captcha ma non AppSec, e un'interruzione di CrowdSec non ti chiude fuori. **Esclusa** non controlla nulla. Hai bannato il tuo IP? Esegui `cscli decisions delete --ip <il tuo IP>` nel container CrowdSec, oppure imposta `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 

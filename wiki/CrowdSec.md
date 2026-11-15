@@ -282,7 +282,7 @@ The admin UI port (`NPM_PORT`, 81 by default) has three choices:
 
 The ban check fails open. In live mode, when the LAPI does not answer, the bouncer lets the request through after up to **LAPI request timeout**, and then remembers "no decision" for that client IP for **Cache answers for** seconds before it asks again. Stream mode answers from the decisions it holds. So **Bans only** keeps the admin UI reachable while CrowdSec is down, and in live mode an IP waits for an unreachable LAPI at most once per **Cache answers for** period (a ban added in that time applies after it, at the latest).
 
-The container health check makes one request every 30 seconds. With **Cache answers for** below 30 seconds, each check still waits up to **LAPI request timeout** once. In live mode with **Bans only**, keep **LAPI request timeout** under 10 seconds (Docker's health check timeout), raise **Cache answers for**, or use stream mode.
+The container health check makes one request every 30 seconds. With **Cache answers for** below 30 seconds, each check still waits up to **LAPI request timeout** once. In live mode with **Bans only**, keep **LAPI request timeout** under 10 seconds (10000 ms; Docker's health check timeout), raise **Cache answers for**, or use stream mode.
 
 `TheBlackBush/npmpro-login-bf` bans an IP after failed sign-ins on any `NPM_PORT`. With **Bans only** (or **Checked like every host**) that ban now also closes the admin UI to that IP. See [Locked out of the admin UI](#locked-out-of-the-admin-ui).
 

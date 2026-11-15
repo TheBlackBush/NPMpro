@@ -12,7 +12,7 @@ Shows whether nginx loads the bouncer and when NPMpro last reached the LAPI. **T
 
 Saving while the bouncer is on runs the same test first. When it fails, the reasons are shown and **Save anyway** saves all the same, for example when CrowdSec is not running yet.
 
-**Save anyway** is not offered when AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is checked, because that save would lock you out of the admin UI: fix the **API key** or the **AppSec URL**, set the failure action to **Let the request through**, or turn on **Leave the admin UI out of CrowdSec**.
+**Save anyway** is not offered when AppSec fails, **When AppSec cannot be reached** is **Deny the request** and **Admin UI and CrowdSec** is **Checked like every host**, because that save would lock you out of the admin UI: fix the **API key** or the **AppSec URL**, set the failure action to **Let the request through**, or choose **Bans only** or **Left out** for **Admin UI and CrowdSec**.
 
 ### Connection
 
@@ -27,7 +27,7 @@ Saving while the bouncer is on runs the same test first. When it fails, the reas
 - **Mode**: live asks the LAPI per client IP and caches the answer for the given seconds; stream downloads all decisions at the given interval.
 - **Answer to a ban**: the ban page (with an optional status code, 403 by default), a redirect, or a status code without a page.
 - **Fallback remediation** and **Decision types**: how decisions the bouncer cannot apply are handled, and which types are enforced.
-- **Leave the admin UI out of CrowdSec**: requests to the admin UI skip the bouncer and AppSec. Turn it on before you use AppSec with deny, so a CrowdSec outage cannot lock you out.
+- **Admin UI and CrowdSec**: **Checked like every host** applies bans and AppSec to the admin UI. **Bans only** applies bans and captchas but no AppSec, and CrowdSec being down does not lock you out. **Left out** checks nothing. Banned your own IP? Run `cscli decisions delete --ip <your IP>` in the CrowdSec container, or set `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 

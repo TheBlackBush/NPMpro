@@ -12,7 +12,7 @@ Muestra si nginx carga el bouncer y cuándo llegó NPMpro por última vez a la L
 
 Al guardar con el bouncer activado se ejecuta primero la misma prueba. Si falla, se muestran los motivos y **Guardar de todos modos** guarda igualmente, por ejemplo cuando CrowdSec aún no está en marcha.
 
-**Guardar de todos modos** no se ofrece cuando AppSec falla, **Cuando no se puede acceder a AppSec** está en **Denegar la solicitud** y la interfaz de administración se comprueba, porque ese guardado le dejaría fuera de la interfaz de administración: corrija la **Clave de API** o la **URL de AppSec**, cambie la acción en caso de fallo a **Dejar pasar la solicitud**, o active **Excluir la interfaz de administración de CrowdSec**.
+**Guardar de todos modos** no se ofrece cuando AppSec falla, **Cuando no se puede acceder a AppSec** está en **Denegar la solicitud** y **Interfaz de administración y CrowdSec** está en **Comprobada como todos los hosts**, porque ese guardado le dejaría fuera de la interfaz de administración: corrija la **Clave de API** o la **URL de AppSec**, cambie la acción en caso de fallo a **Dejar pasar la solicitud**, o elija **Solo bloqueos** o **Excluida** en **Interfaz de administración y CrowdSec**.
 
 ### Conexión
 
@@ -27,7 +27,7 @@ Al guardar con el bouncer activado se ejecuta primero la misma prueba. Si falla,
 - **Modo**: live consulta a la LAPI por cada IP de cliente y guarda la respuesta en caché durante los segundos indicados; stream descarga todas las decisiones en el intervalo indicado.
 - **Respuesta a un bloqueo**: la página de bloqueo (con un código de estado opcional, 403 por defecto), una redirección o un código de estado sin página.
 - **Medida alternativa** y **Tipos de decisión**: cómo se tratan las decisiones que el bouncer no puede aplicar y qué tipos se aplican.
-- **Excluir la interfaz de administración de CrowdSec**: las solicitudes a la interfaz de administración omiten el bouncer y AppSec. Actívelo antes de usar AppSec con denegar, para que una caída de CrowdSec no pueda dejarle fuera.
+- **Interfaz de administración y CrowdSec**: **Comprobada como todos los hosts** aplica bloqueos y AppSec a la interfaz de administración. **Solo bloqueos** aplica bloqueos y captchas pero no AppSec, y una caída de CrowdSec no le deja fuera. **Excluida** no comprueba nada. ¿Ha bloqueado su propia IP? Ejecute `cscli decisions delete --ip <su IP>` en el contenedor de CrowdSec, o defina `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 

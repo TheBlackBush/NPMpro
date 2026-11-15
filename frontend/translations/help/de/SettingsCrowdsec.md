@@ -12,7 +12,7 @@ Zeigt, ob nginx den Bouncer lädt und wann NPMpro die LAPI zuletzt erreicht hat.
 
 Beim Speichern mit eingeschaltetem Bouncer läuft zuerst derselbe Test. Schlägt er fehl, werden die Gründe angezeigt, und **Trotzdem speichern** speichert dennoch, zum Beispiel wenn CrowdSec noch nicht läuft.
 
-**Trotzdem speichern** wird nicht angeboten, wenn AppSec fehlschlägt, **Wenn AppSec nicht erreichbar ist** auf **Anfrage verweigern** steht und die Admin-Oberfläche geprüft wird, denn dieses Speichern würde Sie aus der Admin-Oberfläche aussperren: Korrigieren Sie den **API-Schlüssel** oder die **AppSec-URL**, stellen Sie die Ausfallaktion auf **Anfrage durchlassen** oder schalten Sie **Admin-Oberfläche von CrowdSec ausnehmen** ein.
+**Trotzdem speichern** wird nicht angeboten, wenn AppSec fehlschlägt, **Wenn AppSec nicht erreichbar ist** auf **Anfrage verweigern** steht und **Admin-Oberfläche und CrowdSec** auf **Wie jeder Host geprüft** steht, denn dieses Speichern würde Sie aus der Admin-Oberfläche aussperren: Korrigieren Sie den **API-Schlüssel** oder die **AppSec-URL**, stellen Sie die Ausfallaktion auf **Anfrage durchlassen** oder wählen Sie bei **Admin-Oberfläche und CrowdSec** **Nur Sperren** oder **Ausgenommen**.
 
 ### Verbindung
 
@@ -27,7 +27,7 @@ Beim Speichern mit eingeschaltetem Bouncer läuft zuerst derselbe Test. Schlägt
 - **Modus**: Live fragt die LAPI pro Client-IP ab und speichert die Antwort für die angegebenen Sekunden zwischen; Stream lädt alle Entscheidungen im angegebenen Intervall herunter.
 - **Antwort auf eine Sperre**: die Sperrseite (mit optionalem Statuscode, standardmäßig 403), eine Weiterleitung oder ein Statuscode ohne Seite.
 - **Ersatzmaßnahme** und **Entscheidungstypen**: wie Entscheidungen behandelt werden, die der Bouncer nicht anwenden kann, und welche Typen durchgesetzt werden.
-- **Admin-Oberfläche von CrowdSec ausnehmen**: Anfragen an die Admin-Oberfläche umgehen Bouncer und AppSec. Schalten Sie es ein, bevor Sie AppSec mit Verweigern verwenden, damit ein CrowdSec-Ausfall Sie nicht aussperren kann.
+- **Admin-Oberfläche und CrowdSec**: **Wie jeder Host geprüft** wendet Sperren und AppSec auf die Admin-Oberfläche an. **Nur Sperren** wendet Sperren und Captchas an, aber kein AppSec, und ein CrowdSec-Ausfall sperrt Sie nicht aus. **Ausgenommen** prüft nichts. Die eigene IP gesperrt? Führen Sie im CrowdSec-Container `cscli decisions delete --ip <Ihre IP>` aus oder setzen Sie `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 

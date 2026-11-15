@@ -12,7 +12,7 @@ Pokazuje, czy nginx ładuje bouncera i kiedy NPMpro ostatnio połączył się z 
 
 Zapis przy włączonym bouncerze najpierw uruchamia ten sam test. Gdy się nie powiedzie, pokazywane są przyczyny, a **Zapisz mimo to** zapisuje mimo wszystko, na przykład gdy CrowdSec jeszcze nie działa.
 
-**Zapisz mimo to** nie jest dostępne, gdy AppSec zawodzi, **Gdy AppSec jest nieosiągalny** ma wartość **Odrzuć żądanie**, a interfejs administracyjny jest sprawdzany, bo taki zapis odciąłby Ci dostęp do interfejsu administracyjnego: popraw **Klucz API** lub **Adres URL AppSec**, ustaw działanie przy awarii na **Przepuść żądanie** albo włącz **Wyłącz interfejs administracyjny spod kontroli CrowdSec**.
+**Zapisz mimo to** nie jest dostępne, gdy AppSec zawodzi, **Gdy AppSec jest nieosiągalny** ma wartość **Odrzuć żądanie**, a **Interfejs administracyjny i CrowdSec** ma wartość **Sprawdzany jak każdy host**, bo taki zapis odciąłby Ci dostęp do interfejsu administracyjnego: popraw **Klucz API** lub **Adres URL AppSec**, ustaw działanie przy awarii na **Przepuść żądanie** albo wybierz dla **Interfejs administracyjny i CrowdSec** opcję **Tylko bany** lub **Pominięty**.
 
 ### Połączenie
 
@@ -27,7 +27,7 @@ Zapis przy włączonym bouncerze najpierw uruchamia ten sam test. Gdy się nie p
 - **Tryb**: live pyta LAPI o każdy adres IP klienta i buforuje odpowiedź przez podaną liczbę sekund; stream pobiera wszystkie decyzje w podanym odstępie.
 - **Odpowiedź na bana**: strona bana (z opcjonalnym kodem statusu, domyślnie 403), przekierowanie albo kod statusu bez strony.
 - **Środek zastępczy** i **Typy decyzji**: jak traktowane są decyzje, których bouncer nie może zastosować, i które typy są egzekwowane.
-- **Wyłącz interfejs administracyjny spod kontroli CrowdSec**: żądania do interfejsu administracyjnego pomijają bouncera i AppSec. Włącz to przed użyciem AppSec z odrzuceniem, aby awaria CrowdSec nie zablokowała Ci dostępu.
+- **Interfejs administracyjny i CrowdSec**: **Sprawdzany jak każdy host** stosuje do interfejsu administracyjnego bany i AppSec. **Tylko bany** stosuje bany i captcha, ale nie AppSec, a awaria CrowdSec nie zablokuje Ci dostępu. **Pominięty** niczego nie sprawdza. Twój adres IP został zbanowany? Uruchom w kontenerze CrowdSec `cscli decisions delete --ip <Twój IP>` albo ustaw `CROWDSEC_ENABLED=false`.
 
 ### Captcha
 
