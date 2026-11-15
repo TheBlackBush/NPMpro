@@ -8,8 +8,8 @@
 
 - **worker 进程**：“自动（每个 CPU 线程一个）”，或不超过容器可见 CPU 线程数的数字。默认值：每个线程一个，最多 4 个。变量：`NGINX_WORKER_PROCESSES`。
 - **每个 worker 的连接数**：每个 worker 同时处理的打开连接数，64 到 65535。默认值：512。变量：`NGINX_WORKER_CONNECTIONS`。
-- **将 worker 绑定到 CPU**：把每个 nginx worker 绑定到某个 CPU。“关闭”（默认）：由内核安排 worker。“自动（容器的 CPU）”：worker 依次绑定到容器可使用的 CPU。“自定义 CPU”：在 CPU 字段中填写列表，例如 `16-19` 或 `16,18,20`；列表中若包含容器不可使用的 CPU，保存时会被拒绝。已保存的列表会在启动或重新加载时裁剪为允许的 CPU；若一个都不剩，则不绑定任何 CPU。变量：`NGINX_CPU_AFFINITY`（`off`、`auto` 或 CPU 列表）。
 - **worker 关闭超时**：重新加载后，旧 worker 保持其连接的时长。为 nginx 时间值，例如 `30s`、`10m` 或 `1h`；`0` 表示不限制。默认值：`1h`。变量：`NGINX_WORKER_SHUTDOWN_TIMEOUT`。
+- **将 worker 绑定到 CPU**：把每个 nginx worker 绑定到某个 CPU。“关闭”（默认）：由内核安排 worker。“自动”：worker 依次绑定到容器可使用的 CPU。“自定义 CPU”：在 CPU 字段中填写列表，例如 `16-19` 或 `16,18,20`；列表中若包含容器不可使用的 CPU，保存时会被拒绝。已保存的列表会在启动或重新加载时裁剪为允许的 CPU；若一个都不剩，则不绑定任何 CPU。变量：`NGINX_CPU_AFFINITY`（`off`、`auto` 或 CPU 列表）。
 
 ### 日志
 

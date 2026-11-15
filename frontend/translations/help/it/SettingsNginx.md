@@ -8,8 +8,8 @@ Una variabile impostata sul container ha la precedenza sull'interfaccia e blocca
 
 - **Processi worker**: "Automatico (uno per thread della CPU)" oppure un numero fino ai thread della CPU che il container vede. Predefinito: uno per thread, al massimo 4. Variabile: `NGINX_WORKER_PROCESSES`.
 - **Connessioni per worker**: connessioni aperte che ogni worker gestisce contemporaneamente, da 64 a 65535. Predefinito: 512. Variabile: `NGINX_WORKER_CONNECTIONS`.
-- **Fissa i worker alle CPU**: fissa ogni worker di nginx a una CPU. «Disattivato» (predefinito): il kernel distribuisce i worker. «Automatico (le CPU del container)»: i worker vengono fissati a turno alle CPU che il container può usare. «CPU personalizzate»: un elenco nel campo CPU, ad esempio `16-19` o `16,18,20`; un elenco che indica CPU che il container non può usare viene rifiutato al salvataggio. Un elenco salvato viene ridotto alle CPU consentite all'avvio o al reload; se non ne resta nessuna, non viene fissato nulla. Variabile: `NGINX_CPU_AFFINITY` (`off`, `auto` o un elenco di CPU).
 - **Timeout di arresto dei worker**: per quanto tempo i vecchi worker mantengono le loro connessioni dopo un reload. Un valore di tempo di nginx come `30s`, `10m` o `1h`; `0` significa nessun limite. Predefinito: `1h`. Variabile: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Fissa i worker alle CPU**: fissa ogni worker di nginx a una CPU. «Disattivato» (predefinito): il kernel distribuisce i worker. «Automatico»: i worker vengono fissati a turno alle CPU che il container può usare. «CPU personalizzate»: un elenco nel campo CPU, ad esempio `16-19` o `16,18,20`; un elenco che indica CPU che il container non può usare viene rifiutato al salvataggio. Un elenco salvato viene ridotto alle CPU consentite all'avvio o al reload; se non ne resta nessuna, non viene fissato nulla. Variabile: `NGINX_CPU_AFFINITY` (`off`, `auto` o un elenco di CPU).
 
 ### Registrazione
 

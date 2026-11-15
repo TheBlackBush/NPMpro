@@ -8,8 +8,8 @@ Une variable définie sur le conteneur l'emporte sur l'interface et verrouille l
 
 - **Processus workers** : « Automatique (un par thread CPU) » ou un nombre jusqu'aux threads CPU que voit le conteneur. Par défaut : un par thread, 4 au plus. Variable : `NGINX_WORKER_PROCESSES`.
 - **Connexions par worker** : connexions ouvertes que chaque worker gère à la fois, de 64 à 65535. Par défaut : 512. Variable : `NGINX_WORKER_CONNECTIONS`.
-- **Lier les workers aux CPU** : lie chaque worker nginx à un CPU. « Désactivé » (par défaut) : le noyau place les workers. « Automatique (les CPU du conteneur) » : les workers sont liés à tour de rôle aux CPU que le conteneur peut utiliser. « CPU personnalisés » : une liste dans le champ CPU, comme `16-19` ou `16,18,20` ; une liste qui nomme des CPU que le conteneur ne peut pas utiliser est refusée à l'enregistrement. Une liste enregistrée est réduite aux CPU autorisés au démarrage ou au rechargement ; s'il n'en reste aucun, rien n'est lié. Variable : `NGINX_CPU_AFFINITY` (`off`, `auto` ou une liste de CPU).
 - **Délai d'arrêt des workers** : combien de temps les anciens workers gardent leurs connexions après un rechargement. Une durée nginx comme `30s`, `10m` ou `1h` ; `0` signifie sans limite. Par défaut : `1h`. Variable : `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Lier les workers aux CPU** : lie chaque worker nginx à un CPU. « Désactivé » (par défaut) : le noyau place les workers. « Automatique » : les workers sont liés à tour de rôle aux CPU que le conteneur peut utiliser. « CPU personnalisés » : une liste dans le champ CPU, comme `16-19` ou `16,18,20` ; une liste qui nomme des CPU que le conteneur ne peut pas utiliser est refusée à l'enregistrement. Une liste enregistrée est réduite aux CPU autorisés au démarrage ou au rechargement ; s'il n'en reste aucun, rien n'est lié. Variable : `NGINX_CPU_AFFINITY` (`off`, `auto` ou une liste de CPU).
 
 ### Journalisation
 

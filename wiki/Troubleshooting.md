@@ -3,7 +3,7 @@
 ## Where the logs are
 
 - **Docker logs:** `docker logs npmpro` (add `-f` to follow). Start messages, backend messages and the nginx error log (level `warn`) always go here.
-- **Log files:** with Write log files on (Settings, Logs & monitoring, or `LOGROTATE=true`), nginx also writes `access.log`, `stream.log` and `error.log` to `/data/nginx/logs` (on the host `/opt/npmpro/nginx/logs` with the default volume). They are rotated daily. With traffic statistics on, `access.log` is written too.
+- **Log files:** with Write log files on (Settings, Logs & monitoring, or `LOGROTATE=true`; CrowdSec turns it on and locks it while it is enabled), nginx also writes `access.log`, `stream.log` and `error.log` to `/data/nginx/logs` (on the host `/opt/npmpro/nginx/logs` with the default volume). They are rotated daily. With traffic statistics on, `access.log` is written too.
 - **Host configs:** `/data/nginx/<type>/<id>.conf`, for example `/data/nginx/proxy_host/3.conf`.
 
 ## The container does not start

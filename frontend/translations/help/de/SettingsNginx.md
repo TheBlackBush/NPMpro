@@ -8,8 +8,8 @@ Eine am Container gesetzte Variable hat Vorrang vor der Oberfläche und sperrt d
 
 - **Worker-Prozesse**: „Automatisch (einer pro CPU-Thread)“ oder eine Zahl bis zu den CPU-Threads, die der Container sieht. Standard: einer pro Thread, höchstens 4. Variable: `NGINX_WORKER_PROCESSES`.
 - **Verbindungen pro Worker**: offene Verbindungen, die jeder Worker gleichzeitig bedient, 64 bis 65535. Standard: 512. Variable: `NGINX_WORKER_CONNECTIONS`.
-- **Worker an CPUs binden**: bindet jeden nginx-Worker an eine CPU. „Aus“ (Standard): der Kernel verteilt die Worker. „Automatisch (die CPUs des Containers)“: die Worker werden der Reihe nach an die CPUs gebunden, die der Container nutzen darf. „Eigene CPUs“: eine Liste im Feld CPUs, etwa `16-19` oder `16,18,20`; eine Liste mit CPUs, die der Container nicht nutzen darf, wird beim Speichern abgelehnt. Eine gespeicherte Liste wird beim Start oder Reload auf die erlaubten CPUs gekürzt; bleibt keine übrig, wird nichts gebunden. Variable: `NGINX_CPU_AFFINITY` (`off`, `auto` oder eine CPU-Liste).
 - **Timeout beim Beenden von Workern**: wie lange alte Worker nach einem Reload ihre Verbindungen behalten. Ein nginx-Zeitwert wie `30s`, `10m` oder `1h`; `0` bedeutet keine Begrenzung. Standard: `1h`. Variable: `NGINX_WORKER_SHUTDOWN_TIMEOUT`.
+- **Worker an CPUs binden**: bindet jeden nginx-Worker an eine CPU. „Aus“ (Standard): der Kernel verteilt die Worker. „Automatisch“: die Worker werden der Reihe nach an die CPUs gebunden, die der Container nutzen darf. „Eigene CPUs“: eine Liste im Feld CPUs, etwa `16-19` oder `16,18,20`; eine Liste mit CPUs, die der Container nicht nutzen darf, wird beim Speichern abgelehnt. Eine gespeicherte Liste wird beim Start oder Reload auf die erlaubten CPUs gekürzt; bleibt keine übrig, wird nichts gebunden. Variable: `NGINX_CPU_AFFINITY` (`off`, `auto` oder eine CPU-Liste).
 
 ### Logging
 

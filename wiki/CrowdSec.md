@@ -76,7 +76,7 @@ Run the two `cscli hub` commands again from time to time (or after pulling a new
 
 ### 3. Log files (on by themselves)
 
-Nothing to do here: once you enable CrowdSec in step 7 (Settings, CrowdSec, or `CROWDSEC_ENABLED=true`), **Write log files** (Settings, Logs & monitoring) is on and locked, with the badge "Required by CrowdSec" ("Required by CROWDSEC_ENABLED" when the variable enables it). `LOGROTATE` is no longer needed for CrowdSec. When CrowdSec is turned off, the switch unlocks with the value you saved earlier.
+Nothing to do here: once you enable CrowdSec in step 7 (Settings, CrowdSec, or `CROWDSEC_ENABLED=true`), **Write log files** (Settings, Logs & monitoring) is on and locked, with the badge "Required by CrowdSec" ("Required by CROWDSEC_ENABLED" when the variable enables it). `LOGROTATE` is no longer needed for CrowdSec. When CrowdSec is turned off, the switch unlocks with the value you saved earlier. If that value is off, nginx keeps writing the log files until the next container restart (or until you save Write log files on and then off).
 
 nginx writes `/opt/npmpro/nginx/logs/access.log` (and `error.log` and `stream.log`), rotated daily.
 
