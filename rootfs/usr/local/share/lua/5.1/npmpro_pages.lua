@@ -63,15 +63,52 @@ local function filled(html, status)
   return page
 end
 
+-- On the admin UI (the admin server sets $npmpro_host_id to npmpro) every location sends a strict CSP that also reaches
+-- the bouncer's answer and would block the page's styles and the captcha: the page is answered from an internal
+-- location of conf.d/npmpro.conf instead, with the CSP of a landing page (and, for the captcha, of its provider)
+local ADMIN_PAGES = { ban = "/.npmpro/crowdsec-ban", captcha = "/.npmpro/crowdsec-captcha" }
+local modules = {}
+
+local function on_admin_ui()
+  return ngx.var.npmpro_host_id == "npmpro"
+end
+
+-- The page of the internal location: filled again here (the request is the same, so are the IP, host and time), with
+-- the status the bouncer chose; the bare status when the page cannot be filled
+function M.serve(kind)
+  local status
+  if kind == "ban" then
+    status = tonumber(ngx.var.arg_status)
+  else
+    status = modules.captcha and modules.captcha.ret_code
+  end
+  if type(status) ~= "number" or status < 200 or status > 599 then
+    status = 403
+  end
+  local source = kind == "ban" and modules.ban and modules.ban.template_str or modules.captcha and modules.captcha.Template
+  local page = filled(source, status)
+  if page == nil then
+    return ngx.exit(status)
+  end
+  ngx.header.content_type = "text/html"
+  ngx.status = status
+  ngx.say(page)
+  return ngx.exit(status)
+end
+
 -- The bouncer's own ban.apply and captcha.apply (lib/plugins/crowdsec/ban.lua and captcha.lua at LCSB_VER), with the
 -- page filled. Compare them with the new upstream files when LCSB_VER changes (the Dockerfile checks their hashes).
 -- When the fill fails, the original function answers with the unfilled page.
 function M.wrap(ban, captcha)
+  modules.ban, modules.captcha = ban, captcha
   local ban_apply, captcha_apply = ban.apply, captcha.apply
   ban.apply = function(ret_code)
     local status = ret_code or ban.ret_code
     if ban.redirect_location ~= "" or ban.template_str == "" then
       return ban_apply(ret_code)
+    end
+    if on_admin_ui() then
+      return ngx.exec(ADMIN_PAGES.ban, { status = status })
     end
     local page = filled(ban.template_str, status)
     if page == nil then
@@ -84,6 +121,9 @@ function M.wrap(ban, captcha)
     ngx.exit(status)
   end
   captcha.apply = function()
+    if on_admin_ui() then
+      return ngx.exec(ADMIN_PAGES.captcha)
+    end
     local page = filled(captcha.Template, captcha.ret_code)
     if page == nil then
       return captcha_apply()

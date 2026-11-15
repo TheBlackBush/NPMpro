@@ -323,9 +323,11 @@ it("restores TLS auth onto an instance without the client files with the bouncer
 }, async () => {
 	const { reloadCrowdsecAfterRestore, startCrowdsec } = await import("../internal/crowdsec-setting.js");
 	const saved = await storedMeta();
-	// the restored row: TLS auth, the bouncer on, the admin UI left out; the client files are in no backup
+	// an older backup's row has the switch and no admin_ui
+	const { admin_ui: _newer, ...older } = saved;
+	// the restored row: TLS auth, the bouncer on, the admin UI on Bans only (an older backup's switch); the client files are in no backup
 	const restored = {
-		...saved,
+		...older,
 		enabled: true,
 		api_url: "https://127.0.0.1:9",
 		use_tls_auth: true,
@@ -337,14 +339,21 @@ it("restores TLS auth onto an instance without the client files with the bouncer
 	try {
 		await reloadCrowdsecAfterRestore();
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_OFF);
-		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $npmpro_crowdsec_skip 1;\n");
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $crowdsec_disable_appsec 1;\n");
 		assert.match(await api.read("/data/crowdsec/crowdsec.conf"), /^USE_TLS_AUTH=true$/mu);
 		assert.deepEqual(await storedMeta(), restored);
 		// once the files are there, the next restore (or start) turns it on
 		writeClientPem();
 		await reloadCrowdsecAfterRestore();
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec.conf"), BOUNCER_ON);
+		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $crowdsec_disable_appsec 1;\n");
+		// a row with the new choice
+		const left = { ...restored, admin_ui: "out" };
+		delete left.admin_ui_excluded;
+		await setMeta(left);
+		await reloadCrowdsecAfterRestore();
 		assert.equal(await api.read("/data/npmpro/nginx/crowdsec-admin.conf"), "set $npmpro_crowdsec_skip 1;\n");
+		assert.deepEqual(await storedMeta(), left);
 	} finally {
 		await setMeta(saved);
 		await removeClientPem();

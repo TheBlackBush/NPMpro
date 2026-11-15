@@ -237,6 +237,7 @@ WORKDIR /app
 RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tmp/git-clone-commit.sh \
     --mount=type=bind,source=backend/certbot/requirements.txt,target=/tmp/certbot-requirements.txt \
     --mount=type=bind,source=patches/lua-cs-bouncer-appsec-request-id.patch,target=/tmp/lua-cs-bouncer-appsec-request-id.patch \
+    --mount=type=bind,source=patches/lua-cs-bouncer-live-failure-cache.patch,target=/tmp/lua-cs-bouncer-live-failure-cache.patch \
     echo "Alpine packages of ${ALPINE_REFRESH:-any week}" && \
     apk upgrade --no-cache -a && \
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
@@ -272,6 +273,8 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     # request to the AppSec, never the upstream; git apply fails the build when upstream changes the file under it
     cd /src/lua-cs-bouncer && \
     git apply /tmp/lua-cs-bouncer-appsec-request-id.patch && \
+    # live mode remembers a failed LAPI answer for Cache answers for (patches/lua-cs-bouncer-live-failure-cache.patch), so an unreachable LAPI delays a client once per period, not every request
+    git apply /tmp/lua-cs-bouncer-live-failure-cache.patch && \
     cd /app && \
     mv /src/lua-cs-bouncer/lib/* /usr/local/share/lua/5.1 && \
     mv /src/lua-cs-bouncer/templates/captcha.html /etc/captcha.html.original && \

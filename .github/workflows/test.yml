@@ -79,6 +79,7 @@ jobs:
           node --test --test-concurrency=1 --test-reporter=tap \
             test/backup-merge-pg.test.js \
             test/backup-schedule-migration.test.js \
+            test/crowdsec-admin-ui-servers.test.js \
             test/database-copy.test.js \
             test/database-move.test.js \
             test/database-schema.test.js \

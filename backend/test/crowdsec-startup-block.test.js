@@ -40,7 +40,7 @@ it("prints the block of the spec, never a secret", () => {
 			"Captcha:  turnstile",
 			"Admin UI: checked by CrowdSec",
 			"Locked:   CROWDSEC_API_KEY",
-			"Warning:  AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Leave the admin UI out of CrowdSec)",
+			"Warning:  AppSec deny also blocks the admin UI while AppSec is down (Settings, CrowdSec: Admin UI and CrowdSec, Bans only or Left out)",
 			LINE,
 		].join("\n"),
 	);
@@ -61,7 +61,7 @@ it("never prints a secret, whatever the checks say", () => {
 });
 
 it("shows failed checks and only the warnings that apply", () => {
-	const values = on({ admin_ui_excluded: true, mode: "stream", captcha_provider: "" });
+	const values = on({ admin_ui: "out", mode: "stream", captcha_provider: "" });
 	const checks = [
 		{ name: "lapi", result: "key_refused", message: "HTTP 403" },
 		{ name: "appsec", result: "unreachable", message: "ECONNREFUSED" },
@@ -127,7 +127,7 @@ const NO_KEY_WARNING =
 	"the bouncer is off: AppSec has no API key and would refuse every request, enter the key in Settings, CrowdSec, or clear the AppSec URL";
 
 it("says the bouncer is off while AppSec has no API key, also with TLS authentication", () => {
-	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny", admin_ui_excluded: true });
+	const noKey = on({ api_key: "", use_tls_auth: true, appsec_failure_action: "deny", admin_ui: "out" });
 	const warnings = startupWarnings({ values: noKey });
 	assert.deepEqual(warnings, [NO_KEY_WARNING]);
 	assert.equal(
@@ -153,9 +153,9 @@ const DECRYPT_WARNING =
 	"a saved CrowdSec key cannot be decrypted (instance key changed or data restored?): enter it again in Settings, CrowdSec (api_key)";
 
 it("does not warn about the admin UI while the bouncer is off", () => {
-	const deny = on({ api_key: "", appsec_failure_action: "deny", admin_ui_excluded: false });
+	const deny = on({ api_key: "", appsec_failure_action: "deny", admin_ui: "checked" });
 	assert.deepEqual(startupWarnings({ values: deny }), [NO_KEY_WARNING]);
-	const files = on({ appsec_failure_action: "deny", admin_ui_excluded: false });
+	const files = on({ appsec_failure_action: "deny", admin_ui: "checked" });
 	assert.equal(
 		startupWarnings({ values: files, missingFiles: ["tls_client_key"] }).some((line) => line.includes("admin UI")),
 		false,
@@ -178,4 +178,23 @@ it("names an undecryptable saved key first, instead of the missing AppSec key", 
 	);
 	// another key failed: the AppSec line stays
 	assert.deepEqual(startupWarnings({ values, failedSecrets: ["captcha_secret_key"] }).at(-1), NO_KEY_WARNING);
+});
+
+it("names the admin UI choice in the startup block", () => {
+	const line = (admin_ui) =>
+		renderStartupBlock({ values: on({ admin_ui }), checks: ok })
+			.split("\n")
+			.find((text) => text.startsWith("Admin UI:"));
+	assert.equal(line("checked"), "Admin UI: checked by CrowdSec");
+	assert.equal(line("bans"), "Admin UI: bans only, AppSec skipped");
+	assert.equal(line("out"), "Admin UI: left out of CrowdSec");
+	assert.equal(line(undefined), "Admin UI: checked by CrowdSec");
+});
+
+it("does not warn about the admin UI when Bans only skips AppSec there", () => {
+	const values = on({ appsec_failure_action: "deny", admin_ui: "bans" });
+	assert.equal(
+		startupWarnings({ values, checks: [] }).some((text) => text.includes("admin UI")),
+		false,
+	);
 });

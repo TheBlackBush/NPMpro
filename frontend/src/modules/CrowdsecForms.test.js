@@ -55,7 +55,7 @@ const DATA = {
 	scenariosContaining: "",
 	scenariosNotContaining: "",
 	excludeLocation: "",
-	adminUiExcluded: false,
+	adminUi: "checked",
 	locked: [],
 	lockedBy: {},
 	secretError: false,
@@ -255,11 +255,23 @@ it("reads the flag that forbids Save anyway", () => {
 });
 
 it("warns about AppSec deny while the admin UI is checked", () => {
-	const deny = { appsecUrl: "http://a:7422", appsecFailureAction: "deny", adminUiExcluded: false };
+	const deny = { appsecUrl: "http://a:7422", appsecFailureAction: "deny", adminUi: "checked" };
 	assert.equal(appsecDenyWarning(deny), true);
-	assert.equal(appsecDenyWarning({ ...deny, adminUiExcluded: true }), false);
+	assert.equal(appsecDenyWarning({ appsecUrl: deny.appsecUrl, appsecFailureAction: "deny" }), true);
+	assert.equal(appsecDenyWarning({ ...deny, adminUi: "bans" }), false);
+	assert.equal(appsecDenyWarning({ ...deny, adminUi: "out" }), false);
 	assert.equal(appsecDenyWarning({ ...deny, appsecFailureAction: "passthrough" }), false);
 	assert.equal(appsecDenyWarning({ ...deny, appsecUrl: " " }), false);
+});
+
+it("keeps the admin UI choice: a stored one stays, an unknown or missing one is checked", () => {
+	assert.equal(crowdsecValues({ ...DATA, adminUi: "bans" }).adminUi, "bans");
+	assert.equal(crowdsecValues({ ...DATA, adminUi: "out" }).adminUi, "out");
+	assert.equal(crowdsecValues({ ...DATA, adminUi: "other" }).adminUi, "checked");
+	assert.equal(crowdsecValues({ ...DATA, adminUi: undefined }).adminUi, "checked");
+	const body = crowdsecRequest({ ...base, adminUi: "bans" }, DATA);
+	assert.equal(body.adminUi, "bans");
+	assert.equal("adminUiExcluded" in body, false);
 });
 
 it("leaves the ban and captcha pages to Landing pages: the page paths the API sends are not form fields", () => {
@@ -320,9 +332,6 @@ it("sends the values as they are, treats unknown results as unexpected and ignor
 		{ name: "lapi", ok: true, labelId: "settings.crowdsec.check.lapi.ok", detail: "" },
 	]);
 	assert.equal(failedChecks({ payload: {} }), null);
-	assert.equal(
-		appsecDenyWarning({ appsecUrl: undefined, appsecFailureAction: "deny", adminUiExcluded: false }),
-		false,
-	);
+	assert.equal(appsecDenyWarning({ appsecUrl: undefined, appsecFailureAction: "deny", adminUi: "checked" }), false);
 	assert.deepEqual(validate({ ...base, enabled: true, apiKey: "k", apiUrl: undefined }), { apiUrl: REQUIRED });
 });

@@ -36,7 +36,7 @@
 		"always_send_to_appsec",
 		"appsec_drop_unreadable_body",
 		"ssl_verify",
-		"admin_ui_excluded",
+		"admin_ui",
 		"locked",
 		"locked_by",
 		"secret_error",
@@ -197,9 +197,10 @@
 		"ssl_verify": {
 			"type": "boolean"
 		},
-		"admin_ui_excluded": {
-			"type": "boolean",
-			"description": "Requests to the admin UI skip the bouncer and AppSec"
+		"admin_ui": {
+			"type": "string",
+			"enum": ["checked", "bans", "out"],
+			"description": "The admin UI and CrowdSec: checked (bans, captchas and AppSec, like every host), bans (bans and captchas, no AppSec) or out (not checked)"
 		},
 		"locked": {
 			"type": "array",

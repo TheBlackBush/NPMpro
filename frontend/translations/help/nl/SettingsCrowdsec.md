@@ -12,7 +12,7 @@ Toont of nginx de bouncer laadt en wanneer NPMpro de LAPI voor het laatst heeft 
 
 Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die mislukt, worden de redenen getoond en slaat **Toch opslaan** toch op, bijvoorbeeld als CrowdSec nog niet draait.
 
-**Toch opslaan** wordt niet aangeboden als AppSec faalt, **Wanneer AppSec niet bereikbaar is** op **Het verzoek weigeren** staat en de beheerinterface wordt gecontroleerd, omdat u zich met die opslag uit de beheerinterface zou buitensluiten: corrigeer de **API-sleutel** of de **AppSec-URL**, zet de actie bij uitval op **Het verzoek doorlaten**, of zet **De beheerinterface uitsluiten van CrowdSec** aan.
+**Toch opslaan** wordt niet aangeboden als AppSec faalt, **Wanneer AppSec niet bereikbaar is** op **Het verzoek weigeren** staat en **Beheerinterface en CrowdSec** op **Gecontroleerd zoals elke host** staat, omdat u zich met die opslag uit de beheerinterface zou buitensluiten: corrigeer de **API-sleutel** of de **AppSec-URL**, zet de actie bij uitval op **Het verzoek doorlaten**, of kies bij **Beheerinterface en CrowdSec** voor **Alleen bans** of **Uitgesloten**.
 
 ### Verbinding
 
@@ -27,7 +27,7 @@ Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die misl
 - **Modus**: live vraagt de LAPI om elk client-IP en cachet het antwoord voor het opgegeven aantal seconden; stream downloadt alle besluiten met het opgegeven interval.
 - **Antwoord op een ban**: de banpagina (met een optionele statuscode, standaard 403), een omleiding, of een statuscode zonder pagina.
 - **Terugvalmaatregel** en **Besluittypen**: hoe besluiten worden behandeld die de bouncer niet kan toepassen, en welke typen worden afgedwongen.
-- **De beheerinterface uitsluiten van CrowdSec**: verzoeken aan de beheerinterface slaan de bouncer en AppSec over. Zet dit aan voordat u AppSec met weigeren gebruikt, zodat een CrowdSec-storing u niet kan buitensluiten.
+- **Beheerinterface en CrowdSec**: **Gecontroleerd zoals elke host** past bans en AppSec ook toe op de beheerinterface. **Alleen bans** past bans en captcha's toe maar geen AppSec, en een CrowdSec-storing sluit u niet buiten. **Uitgesloten** controleert niets. Buitengesloten door een ban- of captcha-beslissing? Zie **Buitengesloten?** hieronder.
 
 ### Captcha
 
@@ -44,6 +44,8 @@ De LAPI-verzoektimeout, scenariofilters, uitgesloten paden, interne verzoeken, e
 
 ### Buitengesloten?
 
-Start CrowdSec opnieuw, of stel `CROWDSEC_ENABLED=false` in op de container en maak hem opnieuw aan; corrigeer daarna de instellingen hier.
+Een ban- of captcha-beslissing voor uw IP: voer in de CrowdSec-container `cscli decisions delete --ip <uw IP>` uit. Een beslissing uit een blocklist (de community-blocklist of een lijst uit de CrowdSec-console) komt bij de volgende download terug, zet uw IP daarom ook op een allowlist (CrowdSec 1.6.6 of nieuwer): `cscli allowlists create npmpro-admins -d "admin IPs"`, daarna `cscli allowlists add npmpro-admins <uw IP>`.
+
+CrowdSec is uitgevallen: start het opnieuw. Geen toegang tot CrowdSec: stel `CROWDSEC_ENABLED=false` in op de container en maak hem opnieuw aan, kies hier **Uitgesloten** voor **Beheerinterface en CrowdSec** (of verwijder de beslissing), corrigeer de instellingen, verwijder dan de variabele en maak de container nogmaals opnieuw aan.
 
 Meer in de wiki: CrowdSec.

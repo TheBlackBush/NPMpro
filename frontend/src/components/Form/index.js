@@ -13,6 +13,7 @@ export * from "./FormField";
 export * from "./FormSection";
 export * from "./FormSubmit";
 export * from "./HookForm";
+export * from "./InfoBadge";
 export * from "./LocationsFields";
 export * from "./ModalTabs";
 export * from "./NginxConfigField";

@@ -16,9 +16,40 @@ import {
 	valuesFromFile,
 } from "../lib/crowdsec/settings.js";
 
+const NO_ADMIN_KEY = /ADMIN/u;
 const EXAMPLE = readFileSync(new URL("../../rootfs/etc/crowdsec.conf.example", import.meta.url), "utf8");
 const exists = () => true;
 const on = (extra = {}) => ({ ...CROWDSEC_DEFAULTS, enabled: true, api_key: "k", ...extra });
+
+it("reads the admin UI choice, also from rows written before the select", () => {
+	const of = (stored) => mergeCrowdsecConfig(stored, {}).values.admin_ui;
+	assert.equal(of({}), "checked");
+	assert.equal(of({ admin_ui: "out" }), "out");
+	assert.equal(of({ admin_ui_excluded: true }), "bans");
+	assert.equal(of({ admin_ui_excluded: false }), "checked");
+	assert.equal(of({ admin_ui: "bans", admin_ui_excluded: false }), "bans");
+	assert.equal(of({ admin_ui: "nope", admin_ui_excluded: true }), "bans");
+	assert.equal(of({ admin_ui_excluded: "yes" }), "checked");
+	assert.equal(
+		Object.hasOwn(mergeCrowdsecConfig({ admin_ui_excluded: true }, {}).values, "admin_ui_excluded"),
+		false,
+	);
+});
+
+it("a save writes admin_ui and drops the old switch, also when the body does not name it", () => {
+	const encrypt = (plain) => plain;
+	assert.deepEqual(applyCrowdsecUpdate({ admin_ui_excluded: true }, { mode: "stream" }, [], encrypt), {
+		admin_ui: "bans",
+		mode: "stream",
+		redirect_location: "",
+	});
+	assert.equal(applyCrowdsecUpdate({ admin_ui_excluded: true }, { admin_ui: "out" }, [], encrypt).admin_ui, "out");
+	assert.equal(applyCrowdsecUpdate({}, {}, [], encrypt).admin_ui, "checked");
+});
+
+it("writes nothing of the admin UI choice into crowdsec.conf", () => {
+	assert.doesNotMatch(renderCrowdsecConf({ ...CROWDSEC_DEFAULTS, admin_ui: "bans" }), NO_ADMIN_KEY);
+});
 
 it("covers every key of crowdsec.conf.example, in its order, with its defaults", () => {
 	const example = parseConfLines(EXAMPLE);

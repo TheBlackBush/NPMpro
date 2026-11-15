@@ -7,6 +7,7 @@ import {
 	Button,
 	ErrorAlert,
 	HookForm,
+	InfoBadge,
 	PasswordField,
 	SelectField,
 	SettingLine,
@@ -19,6 +20,7 @@ import { useCrowdsecSettings, useSaveCrowdsecSettings, useTestCrowdsecSettings }
 import { cn } from "src/lib/utils";
 import { formatDateTime, intl, T } from "src/locale";
 import {
+	ADMIN_UI_CHOICES,
 	ADVANCED_FIELDS,
 	appsecDenyWarning,
 	bouncerOffWarning,
@@ -52,6 +54,11 @@ const useLocks = (data) => {
 };
 
 const MODE_HINTS = { live: "settings.crowdsec.mode.live.hint", stream: "settings.crowdsec.mode.stream.hint" };
+const ADMIN_UI_HINTS = {
+	checked: "settings.crowdsec.admin-ui.checked.hint",
+	bans: "settings.crowdsec.admin-ui.bans.hint",
+	out: "settings.crowdsec.admin-ui.out.hint",
+};
 const BAN_HINTS = {
 	page: "settings.crowdsec.ban-response.page.hint",
 	redirect: "settings.crowdsec.ban-response.redirect.hint",
@@ -259,8 +266,7 @@ function ConnectionCard({ data, locks }) {
 }
 
 function BlockingCard() {
-	const { register } = useFormContext();
-	const [mode, banResponse] = useWatch({ name: ["mode", "banResponse"] });
+	const [mode, banResponse, adminUi] = useWatch({ name: ["mode", "banResponse", "adminUi"] });
 	return (
 		<SettingsCard
 			id="crowdsec-blocking"
@@ -367,13 +373,25 @@ function BlockingCard() {
 				<option value="ban">{label("settings.crowdsec.bouncing-on-type.ban")}</option>
 				<option value="captcha">{label("settings.crowdsec.bouncing-on-type.captcha")}</option>
 			</SelectField>
-			<SwitchField
-				line
-				id="crowdsec-admin-ui-excluded"
-				label={<T id="settings.crowdsec.admin-ui-excluded" />}
-				hint={<T id="settings.crowdsec.admin-ui-excluded.hint" />}
-				{...register("adminUiExcluded")}
-			/>
+			<SelectField
+				line="inline"
+				name="adminUi"
+				id="crowdsec-admin-ui"
+				label={<T id="settings.crowdsec.admin-ui" />}
+				hint={ADMIN_UI_HINTS[adminUi] ? <T id={ADMIN_UI_HINTS[adminUi]} /> : null}
+				badges={
+					<InfoBadge
+						content={<T id="settings.crowdsec.admin-ui.info" />}
+						labelledBy="crowdsec-admin-ui-label"
+					/>
+				}
+			>
+				{ADMIN_UI_CHOICES.map((value) => (
+					<option key={value} value={value}>
+						{label(`settings.crowdsec.admin-ui.${value}`)}
+					</option>
+				))}
+			</SelectField>
 		</SettingsCard>
 	);
 }
@@ -438,8 +456,8 @@ function CaptchaCard({ data }) {
 }
 
 function AppsecCard({ locks }) {
-	const [appsecUrl, appsecFailureAction, adminUiExcluded] = useWatch({
-		name: ["appsecUrl", "appsecFailureAction", "adminUiExcluded"],
+	const [appsecUrl, appsecFailureAction, adminUi] = useWatch({
+		name: ["appsecUrl", "appsecFailureAction", "adminUi"],
 	});
 	return (
 		<SettingsCard
@@ -470,7 +488,7 @@ function AppsecCard({ locks }) {
 				<option value="deny">{label("settings.crowdsec.appsec-failure.deny")}</option>
 				<option value="passthrough">{label("settings.crowdsec.appsec-failure.passthrough")}</option>
 			</SelectField>
-			{appsecDenyWarning({ appsecUrl, appsecFailureAction, adminUiExcluded }) ? (
+			{appsecDenyWarning({ appsecUrl, appsecFailureAction, adminUi }) ? (
 				<SettingLineNote>
 					<StatusAlert variant="warning" icon={TriangleAlert} id="settings.crowdsec.appsec-deny-warning" />
 				</SettingLineNote>
