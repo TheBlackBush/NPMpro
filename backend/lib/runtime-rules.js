@@ -13,7 +13,9 @@ const RUNTIME_GROUPS = ["certificates", "network", "nginx", "forward-auth", "log
  * of the Environment page), crowdsec (CrowdSec, turned on by CROWDSEC_ENABLED, reads the log files),
  * crowdsec-setting (the same with CrowdSec turned on in Settings, CrowdSec: not an env lock), force-mlkem
  * (post-quantum only, turned on by NGINX_FORCE_X25519MLKEM768, turns TLS 1.2 and the NIST P curves off),
- * force-mlkem-setting (the same with post-quantum only turned on by the setting)
+ * force-mlkem-setting (the same with post-quantum only turned on by the setting), proxy-protocol (the TLS handshake
+ * log is off while LISTEN_PROXY_PROTOCOL_HTTPS is on: nginx logs a failed handshake before it reads the client address
+ * from the PROXY header, so every line would name the load balancer)
  */
 const LOCK_REASONS = [
 	"key-size",
@@ -25,6 +27,7 @@ const LOCK_REASONS = [
 	"crowdsec-setting",
 	"force-mlkem",
 	"force-mlkem-setting",
+	"proxy-protocol",
 ];
 // reasons of locks that no env var set by the user causes
 const SETTING_LOCK_REASONS = ["goaccess-setting", "crowdsec-setting", "force-mlkem-setting"];
@@ -162,6 +165,11 @@ const mergeRuntimeConfig = (group, stored, env, opts = {}) => {
 		// GOA is what keeps it on, also when LOGROTATE is set; without GOA from the user it runs from the GoAccess
 		// report setting (startup settings file), not from an env var
 		lock("write_log_files", "GOA", userSet.has("GOA") ? "goaccess" : "goaccess-setting");
+	}
+	// a handshake line names the TCP peer, which behind a PROXY protocol balancer is the balancer: a ban would hit it
+	if (group === "logs" && env.LISTEN_PROXY_PROTOCOL_HTTPS === "true") {
+		values.tls_handshake_log = false;
+		lock("tls_handshake_log", "LISTEN_PROXY_PROTOCOL_HTTPS", "proxy-protocol");
 	}
 	// envs.sh: post-quantum only turns TLS 1.2 and the NIST P curves off
 	if (group === "nginx" && values.force_mlkem) {

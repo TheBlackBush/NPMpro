@@ -161,6 +161,7 @@ it("uses the defaults without stored values and with the envs.sh boot defaults",
 	assert.deepEqual(mergeRuntimeConfig("logs", {}, BOOT_ENV).values, {
 		write_log_files: false,
 		log_format: "classic",
+		tls_handshake_log: false,
 		log_rotations: 3,
 		goaccess: false,
 		goaccess_keep_days: 30,
@@ -708,6 +709,53 @@ it("log_format is classic by default, a stored json is kept, the env locks it an
 	assert.equal(rule("log_format").validate("xml"), "must be classic or json");
 	assert.equal(rule("log_format").parseEnv(" json "), "json");
 	assert.equal(rule("log_format").parseEnv("JSON"), undefined);
+});
+
+it("tls_handshake_log is off by default, a stored true is kept, the env locks it and an invalid env falls back", () => {
+	assert.equal(mergeRuntimeConfig("logs", {}, BOOT_ENV).values.tls_handshake_log, false);
+	assert.equal(mergeRuntimeConfig("logs", { tls_handshake_log: true }, BOOT_ENV).values.tls_handshake_log, true);
+	// the merge never forces it off with the log files off
+	const kept = mergeRuntimeConfig("logs", { tls_handshake_log: true, write_log_files: false }, BOOT_ENV);
+	assert.equal(kept.values.tls_handshake_log, true);
+	const {
+		values,
+		locked,
+		locked_by: lockedBy,
+	} = mergeRuntimeConfig("logs", { tls_handshake_log: false }, userEnv({ NGINX_TLS_HANDSHAKE_LOG: "true" }));
+	assert.equal(values.tls_handshake_log, true);
+	assert.ok(locked.includes("tls_handshake_log"));
+	assert.equal(lockedBy.tls_handshake_log, "NGINX_TLS_HANDSHAKE_LOG");
+	const bad = mergeRuntimeConfig("logs", { tls_handshake_log: true }, userEnv({ NGINX_TLS_HANDSHAKE_LOG: "yes" }));
+	assert.equal(bad.values.tls_handshake_log, true);
+	assert.deepEqual(bad.invalid, [{ key: "tls_handshake_log", source: "env" }]);
+});
+
+it("locks tls_handshake_log off while LISTEN_PROXY_PROTOCOL_HTTPS is on, over a stored true and its own env var", () => {
+	const proxy = { ...BOOT_ENV, LISTEN_PROXY_PROTOCOL_HTTPS: "true" };
+	const stored = mergeRuntimeConfig("logs", { write_log_files: true, tls_handshake_log: true }, proxy);
+	assert.equal(stored.values.tls_handshake_log, false);
+	assert.ok(stored.locked.includes("tls_handshake_log"));
+	assert.equal(stored.locked_by.tls_handshake_log, "LISTEN_PROXY_PROTOCOL_HTTPS");
+	assert.deepEqual(stored.locked_reason, { tls_handshake_log: "proxy-protocol" });
+	const env = mergeRuntimeConfig("logs", {}, { ...userEnv({ NGINX_TLS_HANDSHAKE_LOG: "true" }), ...proxy });
+	assert.equal(env.values.tls_handshake_log, false);
+	assert.equal(env.locked_reason.tls_handshake_log, "proxy-protocol");
+	// with CrowdSec on too: the log files stay on, the TLS handshake log stays off
+	const crowdsec = mergeRuntimeConfig("logs", { tls_handshake_log: true }, proxy, { crowdsecEnabled: () => true });
+	assert.equal(crowdsec.values.write_log_files, true);
+	assert.equal(crowdsec.values.tls_handshake_log, false);
+	// PROXY protocol on port 80 only, or off: no lock
+	for (const value of ["false", undefined]) {
+		const off = mergeRuntimeConfig(
+			"logs",
+			{ tls_handshake_log: true },
+			{ ...BOOT_ENV, LISTEN_PROXY_PROTOCOL_HTTP: "true", LISTEN_PROXY_PROTOCOL_HTTPS: value },
+		);
+		assert.equal(off.values.tls_handshake_log, true);
+		assert.equal(off.locked.includes("tls_handshake_log"), false);
+	}
+	assert.ok(LOCK_REASONS.includes("proxy-protocol"));
+	assert.equal(SETTING_LOCK_REASONS.includes("proxy-protocol"), false);
 });
 
 it("an env var locks its nginx field, NGINX_DISABLE_TLS12 inverted", () => {

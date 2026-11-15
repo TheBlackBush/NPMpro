@@ -325,8 +325,8 @@ if [ ! -e /data/npmpro/nginx/crowdsec-admin.conf ]; then
     echo "# the admin UI is checked by CrowdSec (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec-admin.conf
 fi
 
-# http access log, error log and stream access log: included by nginx.conf, the backend rewrites them when the traffic
-# statistics, Write log files or CrowdSec changes. log-includes.sh turns the files on for CrowdSec too, since it reads them.
+# http access log, error log, stream access log and the TLS handshake log include: included by nginx.conf and the
+# default servers, the backend rewrites them when the traffic statistics, Write log files or CrowdSec changes. log-includes.sh turns the files on for CrowdSec too, since it reads them.
 mkdir -p /data/npmpro/nginx
 log-includes.sh /data/npmpro/nginx /data/crowdsec/crowdsec.conf
 if grep -q "^access_log /" /data/npmpro/nginx/access-log.conf; then
@@ -343,6 +343,9 @@ if grep -q "^error_log /" /data/npmpro/nginx/error-log.conf; then
 
     if [ ! -L /data/nginx/stream.log ]; then rm -f /data/nginx/stream.log; ln -rs /data/nginx/logs/stream.log /data/nginx/stream.log; fi
     if [ ! -L /data/nginx/error.log ]; then rm -f /data/nginx/error.log; ln -rs /data/nginx/logs/error.log /data/nginx/error.log; fi
+fi
+if grep -q "^error_log /data/nginx/logs/tls.log " /data/npmpro/nginx/tls-log.conf; then
+    touch /data/nginx/logs/tls.log
 fi
 
 # secrets live here: TLS keys, htpasswd files, the database and keys, logs, the CrowdSec API key and custom nginx

@@ -12,7 +12,7 @@ import { renderDefaultCertConf } from "../lib/default-cert.js";
 import { ownUpstream, proxyHostsForProvider } from "../lib/forward-auth.js";
 import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
 import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
-import { logFilesOn, logIncludes, renderRotations } from "../lib/log-files.js";
+import { logFilesOn, logIncludes, renderRotations, TLS_LOG_FILE } from "../lib/log-files.js";
 import { NGINX_CORE_FILES, renderNginxCore } from "../lib/nginx-core.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
@@ -49,6 +49,7 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 		errorLogConf: path.join(dir, "error-log.conf"),
 		streamLogConf: path.join(dir, "stream-log.conf"),
 		accessLogConf: path.join(dir, "access-log.conf"),
+		tlsLogConf: path.join(dir, "tls-log.conf"),
 		logrotateConf: path.join(dir, "logrotate"),
 		nginxDir: path.join(dir, "nginx"),
 		startupSettings: path.join(dir, "startup-settings.env"),
@@ -62,6 +63,7 @@ const setup = async ({ crontab = CRONTAB, renewal = {} } = {}) => {
 	await writeFile(paths.errorLogConf, logIncludes(false).error);
 	await writeFile(paths.streamLogConf, logIncludes(false).stream);
 	await writeFile(paths.accessLogConf, accessLogDirective(false));
+	await writeFile(paths.tlsLogConf, logIncludes(false).tls);
 	await writeFile(paths.logrotateConf, LOGROTATE);
 	// what data-setup.sh writes
 	const core = renderNginxCore(mergeRuntimeConfig("nginx", {}, BOOT_ENV).values);
@@ -1282,16 +1284,19 @@ const logFiles = async (paths) => ({
 	error: await readFile(paths.errorLogConf, "utf8"),
 	stream: await readFile(paths.streamLogConf, "utf8"),
 	access: await readFile(paths.accessLogConf, "utf8"),
+	tls: await readFile(paths.tlsLogConf, "utf8"),
 });
 
 it("logIncludes gives the error and stream log lines, off: start.sh's defaults", () => {
 	assert.deepEqual(logIncludes(true), {
 		error: "error_log /data/nginx/logs/error.log warn;\n",
 		stream: "access_log /data/nginx/logs/stream.log slog;\n",
+		tls: "# no TLS handshake log (Settings, Logs & monitoring)\n",
 	});
 	assert.deepEqual(logIncludes(false), {
 		error: "# no error log file, errors go to stderr\n",
 		stream: "access_log off;\n",
+		tls: "# no TLS handshake log (Settings, Logs & monitoring)\n",
 	});
 });
 
@@ -1305,9 +1310,49 @@ it("logIncludes names sjson for the json format and nothing with Write log files
 			"error_log /data/nginx/logs/error.log warn;\n",
 			"access_log /data/nginx/logs/stream.log sjson;\n",
 			"access_log /data/nginx/logs/access.log ajson;\n",
+			"# no TLS handshake log (Settings, Logs & monitoring)\n",
 		],
 	);
 	assert.equal(logFilesOn()[2].content, accessLogDirective(true));
+});
+
+const TLS_ON_LINES = [
+	"error_log stderr warn;",
+	"error_log /data/nginx/logs/error.log warn;",
+	"error_log /data/nginx/logs/tls.log info;",
+];
+
+it("logIncludes writes tls.log only with the log files and the setting on, after the two error logs the default servers would inherit", async () => {
+	const on = `${TLS_ON_LINES.join("\n")}\n`;
+	assert.equal(logIncludes(true, "classic", true).tls, on);
+	assert.equal(logIncludes(false, "classic", true).tls, "# no TLS handshake log (Settings, Logs & monitoring)\n");
+	assert.equal(logIncludes(true, "json", false).tls, "# no TLS handshake log (Settings, Logs & monitoring)\n");
+	const contents = logFilesOn("json", true).map((file) => file.content);
+	assert.equal(contents.length, 4);
+	assert.equal(contents[3], on);
+	// a server-level error_log replaces the inherited ones: the include repeats the main ones, so a changed main level fails here
+	const nginxConf = await readFile(new URL("../../rootfs/usr/local/nginx/conf/nginx.conf", import.meta.url), "utf8");
+	const mainLines = nginxConf.split("\n").filter((line) => line.startsWith("error_log "));
+	assert.deepEqual(mainLines, TLS_ON_LINES.slice(0, 1));
+	assert.equal(logIncludes(true).error.trim(), TLS_ON_LINES[1]);
+});
+
+it("switching the TLS handshake log on writes tls-log.conf, creates tls.log (0600, no link), tests and reloads; the log files off writes the comment", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = logValues({ write_log_files: true });
+	const next = { ...prev, tls_handshake_log: true };
+	const result = await a.applyGroup("logs", next, prev);
+	assert.deepEqual(result, { changed: ["tls_handshake_log"], reloaded: true });
+	assert.equal((await logFiles(paths)).tls, `${TLS_ON_LINES.join("\n")}\n`);
+	const info = await stat(path.join(paths.nginxDir, "logs", TLS_LOG_FILE));
+	assert.equal(info.mode.toString(8).slice(-3), "600");
+	await assert.rejects(stat(path.join(paths.nginxDir, TLS_LOG_FILE)), { code: "ENOENT" });
+	assert.deepEqual(a.nginx.calls, ["test", "reload"]);
+
+	await a.applyGroup("logs", { ...next, write_log_files: false }, next);
+	assert.equal((await logFiles(paths)).tls, "# no TLS handshake log (Settings, Logs & monitoring)\n");
+	assert.equal((await stat(path.join(paths.nginxDir, "logs", TLS_LOG_FILE))).isFile(), true);
 });
 
 it("log-includes.sh (run by data-setup.sh) writes the same include lines as logIncludes", async () => {
@@ -1383,6 +1428,7 @@ it("a log_format change rewrites the three includes with ajson and sjson and rel
 		error: "error_log /data/nginx/logs/error.log warn;\n",
 		stream: "access_log /data/nginx/logs/stream.log sjson;\n",
 		access: "access_log /data/nginx/logs/access.log ajson;\n",
+		tls: logIncludes(false).tls,
 	});
 	assert.deepEqual(a.nginx.calls.slice(calls), ["test", "reload"]);
 });
@@ -1557,6 +1603,7 @@ it("at startup a failing include keeps start.sh's file and does not undo the oth
 		error: logIncludes(false).error,
 		stream: logIncludes(true).stream,
 		access: accessLogDirective(true),
+		tls: logIncludes(false).tls,
 	});
 	assert.equal(tests, 3);
 	assert.ok(a.log.lines.some((line) => line.startsWith(`Could not write ${paths.errorLogConf} at startup`)));

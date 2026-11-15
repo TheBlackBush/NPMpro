@@ -208,19 +208,24 @@ filenames:
   - /opt/npmpro/nginx/logs/access.log
   - /opt/npmpro/nginx/logs/error.log
   - /opt/npmpro/nginx/logs/stream.log
+  - /opt/npmpro/nginx/logs/tls.log
 labels:
   type: npmpro
 ```
 
-The NPMpro parser reads the old and the new classic lines, JSON lines, and a file that switches from one format to the other. From the error log it reads only the rate-limit lines (`limiting requests, excess`), so `error.log` can be read without counting a failed basic auth twice: it counts once, from the 401 in the access log. The other error log lines show as "unparsed" in `cscli metrics`, which is expected.
+`tls.log` is created the first time the [TLS handshake log](#tls-handshake-log) is turned on. It stays on disk when the setting goes off: the daily rotation moves its old lines to the rotated files and deletes them after the number of rotations (Settings, Logs & monitoring), and the empty file is kept. CrowdSec does not wait for a listed file that is missing when it starts: it logs `No matching files for pattern` and does not read the file when it appears later. Restart CrowdSec once after turning the setting on for the first time.
 
-The NPMpro collection also brings three scenarios:
+The NPMpro parser reads the old and the new classic lines, JSON lines, and a file that switches from one format to the other. From the error log it reads only the rate-limit lines (`limiting requests, excess`), so `error.log` can be read without counting a failed basic auth twice: it counts once, from the 401 in the access log. From `tls.log` (the [TLS handshake log](#tls-handshake-log)) it reads only the handshake lines. The other error log lines show as "unparsed" in `cscli metrics`, which is expected.
+
+The NPMpro collection also brings five scenarios:
 
 | Scenario | Bans |
 |---|---|
 | `TheBlackBush/npmpro-bad-requests` | A client whose requests get repeated 400 answers, or 444 from the default site: more than 10 in quick succession from one IP (the count drops by one every 10 seconds). |
 | `TheBlackBush/npmpro-stream-flood` | A client that opens more than 40 connections to one stream in quick succession (the count drops by one every second). |
 | `TheBlackBush/npmpro-login-bf` | Failed sign-ins to the NPMpro admin UI on port 81 (401, 403 or 429 answers to the login): more than 5 from one IP (the count drops by one every 2 minutes). |
+| `TheBlackBush/npmpro-tls-probe` | A client that fails the TLS handshake of the default site or the admin UI on purpose (rejected, old TLS version, no shared cipher, not TLS): more than 10 from one IP, HTTP/3 counted apart (the count drops by one every 30 seconds). Needs the [TLS handshake log](#tls-handshake-log). |
+| `TheBlackBush/npmpro-stream-tls-probe` | A client whose connections to a TLS stream keep failing before the handshake ends (status 500): more than 15 to one stream (the count drops by one every 5 seconds), see [TLS streams](#tls-streams). |
 
 ### Host id
 
@@ -238,6 +243,64 @@ The host id names the NPMpro object that served a request. Its values:
 The stream log has the stream id instead: `stream-<id>` for a stream, `-` otherwise.
 
 The connection number ties a request to the error log. `$connection` is the number nginx gives the connection. An error log line of the same connection shows it as `*<number>`, so `*41` in the error log belongs to the connection `41` of the access log line above.
+
+## TLS handshake log
+
+Scanners such as nmap and testssl, and clients that try old TLS versions or weak ciphers, fail during the TLS handshake. nginx writes no access log line for them, and the error log (level `warn`) leaves them out. The setting **TLS handshake log** (Settings, Logs & monitoring, or `NGINX_TLS_HANDSHAKE_LOG=true`) writes them to `/data/nginx/logs/tls.log` (`/opt/npmpro/nginx/logs/tls.log` on the host) at level `info`, so the scenario `TheBlackBush/npmpro-tls-probe` can ban them. It is off by default and needs the log files: Write log files on, or CrowdSec enabled, which keeps them on. While the log files are off, nothing is written.
+
+The file holds the handshakes that end in the default site (HTTPS and HTTP/3) and in the admin UI:
+
+- rejected handshakes: no host name (SNI) or one that is not yours, on a default site set to No Response (444). The admin UI port does not reject them: it answers with its certificate, so they are not in the file;
+- old TLS versions (1.0 and 1.1), no shared cipher or signature algorithm, an ALPN protocol NPMpro does not offer;
+- plain HTTP sent to the HTTPS port without the name of one of your hosts, and data that starts like a TLS record but is not one (other random bytes are logged as `client sent invalid method` and not counted);
+- connections closed during the handshake (`peer closed connection`, `client closed connection`): written, never counted, since health checks and browsers do this too.
+
+Rejected handshakes need the default site **No Response (444)** (Settings, Landing pages). With any other default site, nginx answers a client without a host name, or with an unknown one, with the default certificate, and nothing is logged; failures of the TLS version or cipher are still logged.
+
+With the PROXY protocol on the HTTPS port (`LISTEN_PROXY_PROTOCOL_HTTPS=true`, also set by `LISTEN_PROXY_PROTOCOL=true`), the setting stays off and shows "Off because of LISTEN_PROXY_PROTOCOL_HTTPS", also when `NGINX_TLS_HANDSHAKE_LOG=true` is set. nginx writes a failed handshake before it reads the client address from the PROXY header, so every line would name the load balancer in front of NPMpro, and a scan through it would ban the balancer and with it every client behind it. The lock also stops the admin UI's lines, although the admin UI port does not use the PROXY protocol: the setting is one switch for both default servers.
+
+Not in the file: a failed handshake that names one of your hosts (for example TLS 1.0 sent to `app.example.com`) is handled by that host and only reaches the error log at level `warn`, which leaves it out. TLS streams are covered by the stream log, see [TLS streams](#tls-streams).
+
+The default site and the admin UI keep writing their errors to `error.log` and to the Docker logs. While the setting is on, `tls.log` also holds those errors and the other `info` lines of these two (for example closed keep-alive connections or client header errors). The NPMpro parser reads only the handshake lines from `tls.log`, and counts a rate-limit line from `error.log` only. If you added an `error_log` of your own at the main level or at the http level in a custom nginx file (for example `/data/custom_nginx/http_top.conf` or `http.conf`), these two servers do not repeat it while the setting is on: their errors go to the standard places (Docker logs and `error.log`) and to `tls.log`.
+
+`tls.log` needs the parser `TheBlackBush/npmpro-logs`; `ZoeyVid/npmplus-logs` cannot read it. Add the file to the `type: npmpro` acquisition of [JSON log format and the NPMpro parser](#json-log-format-and-the-npmpro-parser):
+
+```yaml
+filenames:
+  - /opt/npmpro/nginx/logs/access.log
+  - /opt/npmpro/nginx/logs/error.log
+  - /opt/npmpro/nginx/logs/stream.log
+  - /opt/npmpro/nginx/logs/tls.log
+labels:
+  type: npmpro
+```
+
+To check it: turn the setting on, set the default site to No Response (444), and from a second device run `openssl s_client -connect <NPMpro IP>:443 -noservername </dev/null` eleven times (a probe without a host name). An OpenSSL 3 client refuses `-tls1_1` on its own unless you add `-cipher ALL:@SECLEVEL=0`, so it does not make a good test. `docker exec crowdsec cscli decisions list` then shows a ban for `TheBlackBush/npmpro-tls-probe`; remove it with `docker exec crowdsec cscli decisions delete --ip <IP>`.
+
+### Ban length
+
+CrowdSec sets how long a ban lasts in its profiles, not in the scenario: the default profile bans for 4 hours. To ban TLS probes for 5 minutes (both TLS scenarios: a stream health check that trips the stream one should not lock a client out for 4 hours), add this profile at the top of `/opt/crowdsec/conf/profiles.yaml` (profiles are separated by `---`, and the first profile that applies with `on_success: break` ends the evaluation, so it must come before the default one) and restart CrowdSec:
+
+```yaml
+name: npmpro_tls_probe
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip" && Alert.GetScenario() in ["TheBlackBush/npmpro-tls-probe", "TheBlackBush/npmpro-stream-tls-probe"]
+decisions:
+  - type: ban
+    duration: 5m
+on_success: break
+---
+```
+
+### TLS streams
+
+A stream with a certificate writes status 500 to `stream.log` when the TLS handshake fails or the client leaves before it ends; a failure of the upstream is 502. `TheBlackBush/npmpro-stream-tls-probe` counts the 500 lines per IP and stream: more than 15 in quick succession ban the IP (the count drops by one every 5 seconds). It needs no setting, only `stream.log` in the acquisition. A TCP health check of a TLS stream also ends with status 500: one check every 5 seconds or less often from one IP never triggers it; add a faster one to a CrowdSec allowlist (`cscli allowlists`, see [Locked out of the admin UI](#locked-out-of-the-admin-ui)).
+
+### False bans
+
+A TLS ban can hit clients that are not scanners: a shared IP (mobile networks, company NAT) with one old device, old devices that retry TLS 1.0 or 1.1, company TLS inspection proxies without TLS 1.2 ECDHE ciphers, and uptime monitors or your own `curl https://<IP>` that connect without a host name to a default site set to 444. Allow such IPs (`crowdsecurity/whitelists` already covers private ranges, or a CrowdSec allowlist, see [Locked out of the admin UI](#locked-out-of-the-admin-ui)), and keep the 5 minute profile above.
+
+On a default site set to 444, two more kinds of clients count. Clients that keep calling a host name NPMpro no longer serves: a host that is disabled, deleted or failing its nginx config turns its name into an unknown one, so every handshake of its clients is rejected (polling apps, webhook senders that retry, calendar and contact sync, browsers that retry over HTTP/3 from a cached `Alt-Svc`). And plain-HTTP monitors of the admin UI port (`http://<IP>:81`, for example a dashboard widget). The count drops by one every 30 seconds, so any steady rate above one attempt per 30 seconds bans such a client from every host after a few minutes, not only a burst. Fix or remove the client (turn the host back on, change the client's address, use `https://` for the admin UI), or add it to an allowlist.
 
 ## What each setting means
 
@@ -421,7 +484,7 @@ The nginx bouncer blocks banned IPs at the HTTP level: nginx still accepts their
 
 ## Privacy
 
-Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](Privacy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too. With context sharing on (`cscli console status`, option `context`; `cscli console enroll` turns it on unless you pass `--disable context`), the alert context is sent with each alert too, and with it the request id of AppSec alerts. The id is random and only points to a line of your own access log; `cscli console disable context` keeps the context local.
+Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](Privacy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too. With context sharing on (`cscli console status`, option `context`; `cscli console enroll` turns it on unless you pass `--disable context`), the alert context is sent with each alert too, and with it the request id of AppSec alerts. The id is random and only points to a line of your own access log; `cscli console disable context` keeps the context local. The TLS handshake log holds the IP of every client whose handshake failed or was rejected on the default site and the admin UI, also of clients that never reached a host.
 
 ## Troubleshooting
 

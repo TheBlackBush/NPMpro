@@ -53,6 +53,7 @@ const storedMeta = async (group) => {
 	if (!row) return null;
 	return typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
 };
+const TLS_LOG_NEEDS_FILES = /tls_handshake_log: needs Write log files/u;
 const refused = async (group, body, pattern) => {
 	const done = await put(group, body);
 	assert.equal(done.status, 400, `${JSON.stringify(body)}: ${done.text}`);
@@ -524,6 +525,8 @@ it("answers 401 without a session and 403 for a user who is not an administrator
 	assert.deepEqual((await get("network")).trusted_ips, before_.trusted_ips);
 });
 
+const TLS_OFF = "# no TLS handshake log (Settings, Logs & monitoring)\n";
+
 it("turns the log files on: creates them with mode 0600, writes the includes and reloads nginx", async () => {
 	const calls = reloads(api);
 	const view = await saved("logs", { write_log_files: true });
@@ -531,6 +534,8 @@ it("turns the log files on: creates them with mode 0600, writes the includes and
 	assert.equal(await api.read("data/npmpro/nginx/error-log.conf"), "error_log /data/nginx/logs/error.log warn;\n");
 	assert.equal(await api.read("data/npmpro/nginx/stream-log.conf"), "access_log /data/nginx/logs/stream.log slog;\n");
 	assert.equal(await api.read("data/npmpro/nginx/access-log.conf"), "access_log /data/nginx/logs/access.log alog;\n");
+	assert.equal(await api.read("data/npmpro/nginx/tls-log.conf"), TLS_OFF);
+	assert.equal(await fileExists(api, "data/nginx/logs/tls.log"), false);
 	for (const name of ["access.log", "error.log", "stream.log"]) {
 		const info = await stat(`${api.root}/data/nginx/logs/${name}`);
 		assert.equal(info.mode & 0o777, 0o600, name);
@@ -542,6 +547,23 @@ it("turns the log files on: creates them with mode 0600, writes the includes and
 	assert.equal(await api.read("data/npmpro/nginx/error-log.conf"), "# no error log file, errors go to stderr\n");
 	assert.equal(await api.read("data/npmpro/nginx/stream-log.conf"), "access_log off;\n");
 	assert.equal(await api.read("data/npmpro/nginx/access-log.conf"), "access_log off;\n");
+});
+
+it("the TLS handshake log writes tls-log.conf and creates tls.log with mode 0600", async () => {
+	const calls = reloads(api);
+	const view = await saved("logs", { write_log_files: true, tls_handshake_log: true });
+	assert.equal(view.tls_handshake_log, true);
+	assert.equal(
+		await api.read("data/npmpro/nginx/tls-log.conf"),
+		"error_log stderr warn;\nerror_log /data/nginx/logs/error.log warn;\nerror_log /data/nginx/logs/tls.log info;\n",
+	);
+	assert.equal((await stat(`${api.root}/data/nginx/logs/tls.log`)).mode.toString(8).slice(-3), "600");
+	assert.equal(await fileExists(api, "data/nginx/tls.log"), false);
+	assert.equal(reloads(api), calls + 1);
+
+	await saved("logs", { write_log_files: false });
+	assert.equal(await api.read("data/npmpro/nginx/tls-log.conf"), TLS_OFF);
+	await saved("logs", { tls_handshake_log: false });
 });
 
 it("saves the log format: the includes name ajson and sjson with the log files on, and a bad value is refused", async () => {
@@ -572,6 +594,21 @@ it("saves the log format: the includes name ajson and sjson with the log files o
 	await refused("logs", { log_format: "xml" });
 	assert.equal((await get("logs")).log_format, "classic");
 	await saved("logs", { write_log_files: false });
+});
+
+it("saves the TLS handshake log only with the log files on, and keeps a stored one when they go off", async () => {
+	await refused("logs", { tls_handshake_log: true }, TLS_LOG_NEEDS_FILES);
+	assert.equal((await get("logs")).tls_handshake_log, false);
+	await saved("logs", { write_log_files: true, tls_handshake_log: true });
+	const both = await get("logs");
+	assert.equal(both.write_log_files, true);
+	assert.equal(both.tls_handshake_log, true);
+	await saved("logs", { write_log_files: false });
+	assert.equal((await get("logs")).tls_handshake_log, true);
+	// an unchanged stored value is never refused
+	await saved("logs", { tls_handshake_log: true });
+	await saved("logs", { tls_handshake_log: false });
+	assert.equal((await get("logs")).tls_handshake_log, false);
 });
 
 it("keeps the log includes when nginx refuses the new ones", async () => {

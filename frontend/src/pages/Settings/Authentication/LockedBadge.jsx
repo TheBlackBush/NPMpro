@@ -16,6 +16,8 @@ const REASON_BADGES = {
 	"force-mlkem": "settings.runtime.locked.required-by",
 	// post-quantum only switched on by its setting, not by an env var
 	"force-mlkem-setting": "settings.nginx.locked.post-quantum",
+	// a handshake line would name the load balancer, so LISTEN_PROXY_PROTOCOL_HTTPS keeps the TLS handshake log off
+	"proxy-protocol": "settings.runtime.locked.off-because",
 };
 
 /**

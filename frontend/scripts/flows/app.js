@@ -94,6 +94,53 @@ async function logFormat({ admin }) {
 	}
 }
 
+const TLS_HANDSHAKE_LOG = "#runtime-tlsHandshakeLog";
+const WRITE_LOG_FILES = "#runtime-writeLogFiles";
+
+const storedLogs = (api) => api("GET", "/settings/runtime/logs");
+
+// Settings, Logs & monitoring: with Write log files off the TLS handshake log is off, disabled and explained; with it
+// on the switch is saved on (toast, API, checked after a reload) and then off. The instance ends as it started.
+async function tlsHandshakeLog({ admin }) {
+	const { page, api } = admin;
+	const before = await storedLogs(api);
+	// set by NGINX_TLS_HANDSHAKE_LOG: nothing to switch
+	if (before.locked.includes("tls_handshake_log")) return;
+	try {
+		await page.goto("/settings/monitoring");
+		await page.locator(TLS_HANDSHAKE_LOG).waitFor();
+		if (!before.write_log_files) {
+			if (!(await page.locator(TLS_HANDSHAKE_LOG).isDisabled()))
+				throw new Error("the switch is usable without the log files");
+			await page.getByText("Turn on Write log files to use the TLS handshake log.", { exact: true }).waitFor();
+			// Write log files locked off by LOGROTATE: the disabled state is all there is to check
+			if (before.locked.includes("write_log_files")) return;
+			await page.locator(WRITE_LOG_FILES).click();
+		}
+		for (const wanted of [!before.tls_handshake_log, before.tls_handshake_log]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one save after the other
+			await page.locator(TLS_HANDSHAKE_LOG).click();
+			await withToast(page, "Setting has been saved", () =>
+				page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+			);
+			const stored = (await storedLogs(api)).tls_handshake_log;
+			if (stored !== wanted) throw new Error(`the saved TLS handshake log is ${stored}, expected ${wanted}`);
+			await page.reload();
+			await page.locator(TLS_HANDSHAKE_LOG).waitFor();
+			if ((await page.evaluate(switchOn, TLS_HANDSHAKE_LOG)) !== wanted)
+				throw new Error("the switch does not show the saved value");
+		}
+	} finally {
+		const now = await storedLogs(api);
+		const reset = {};
+		if (now.tls_handshake_log !== before.tls_handshake_log) reset.tls_handshake_log = before.tls_handshake_log;
+		if (now.write_log_files !== before.write_log_files && !before.locked.includes("write_log_files")) {
+			reset.write_log_files = before.write_log_files;
+		}
+		if (Object.keys(reset).length > 0) await api("PUT", "/settings/runtime/logs", reset);
+	}
+}
+
 const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
 
 const ADMIN_UI = "#crowdsec-admin-ui";
@@ -459,6 +506,7 @@ async function languageFallback({ browser, base, password }) {
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "log format", run: logFormat },
+	{ name: "tls handshake log", run: tlsHandshakeLog },
 	{ name: "crowdsec settings", run: crowdsecSettings },
 	{ name: "collapsed card opens", run: collapsedCardOpens },
 	{ name: "landing pages settings", run: landingPagesSettings },

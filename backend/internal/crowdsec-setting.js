@@ -16,7 +16,7 @@ import { effectiveCrowdsec, getCrowdsecConfig, hasStoredCrowdsec, saveStoredCrow
 import { tlsFileParses, unusableStartFiles } from "../lib/crowdsec/tls-files.js";
 import { lockedByOf } from "../lib/environment-info.js";
 import errs from "../lib/error.js";
-import { logFilesOn, prepareLogFiles } from "../lib/log-files.js";
+import { logFilesOn, prepareLogFiles, TLS_LOG_FILE } from "../lib/log-files.js";
 import { rooted } from "../lib/paths.js";
 import { getRuntimeConfig, invalidate } from "../lib/runtime-config.js";
 import { defaultSecretBox } from "../lib/secret-box.js";
@@ -112,8 +112,11 @@ const logFilesForCrowdsec = async (values) => {
 	const logs = (await getRuntimeConfig("logs")).values;
 	const logsOn = logs.write_log_files;
 	const turnsOn = !logsOn && Boolean(values.enabled);
-	if (turnsOn) await prepareLogFiles({ nginxDir: NGINX_DIR });
-	return { turnsOn, extraFiles: turnsOn ? logFilesOn(logs.log_format) : [] };
+	if (turnsOn) {
+		await prepareLogFiles({ nginxDir: NGINX_DIR });
+		if (logs.tls_handshake_log) await prepareLogFiles({ nginxDir: NGINX_DIR, names: [TLS_LOG_FILE], links: false });
+	}
+	return { turnsOn, extraFiles: turnsOn ? logFilesOn(logs.log_format, logs.tls_handshake_log) : [] };
 };
 
 /**

@@ -20,6 +20,7 @@ Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitor
 - CrowdSec bans: the CrowdSec tab shows the currently active bans (total, added in the last 24 hours, by reason (the CrowdSec scenario), origin and type, a map and the newest bans). It needs the bouncer enabled in Settings, CrowdSec (see [CrowdSec](CrowdSec)) with an API key or a TLS client certificate. NPMpro reads the bans with those settings (including Verify TLS certificates), read-only, and polls the LAPI every 60 seconds. It needs no additional key. Only active bans are shown, no alerts.
 - Map data: the country shapes of the maps come from [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth, public domain) and are drawn with [react-simple-maps](https://github.com/zcreativelabs/react-simple-maps) (MIT).
 - For alerts, decision management and CrowdSec metrics I recommend the companion project [CrowdSec Web UI](https://github.com/TheDuffman85/crowdsec-web-ui).
+- The TLS handshake log (`/data/nginx/logs/tls.log`, setting TLS handshake log under Settings, Logs & monitoring) is for CrowdSec. Neither the traffic statistics nor GoAccess read it, see [CrowdSec](CrowdSec#tls-handshake-log).
 - Environment variables win over the saved value and lock their field in the UI ("Set by environment"):
   - `TRAFFIC_STATS` (`true` or `false`); it is the only variable that sets traffic statistics (`LOGROTATE` and `GOA` do not)
   - `TRAFFIC_RETENTION_DAYS` (7 to 365, default 30; any other value stops the container from starting)
