@@ -302,17 +302,19 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 
 ### Find the request of an AppSec event
 
-The setup is built so that the `req_uuid` of an AppSec event is the `request_id` of its access log line. Default alerts and events do not show the `X-Request-Id` header, so match on `req_uuid`. To see the events of an alert, list the alerts and inspect one:
+CrowdSec's alerts do not carry the request id: `cscli alerts inspect -d <alert id>` shows the rule, the URI, the method and the user agent of the request, not its `request_id`. To find the access log line of an alert, search the access log for the client IP and the URI around the time of the alert:
 
 ```bash
 docker exec crowdsec cscli alerts list
 docker exec crowdsec cscli alerts inspect -d <alert id>
+grep '<client IP>' /opt/npmpro/nginx/logs/access.log | grep '<URI>'
 ```
 
-Then search the access log for the `req_uuid` of an event:
+The AppSec log of CrowdSec does carry the id, at the debug level only: with `log_level: debug` in the AppSec part of the acquisition file (step 4), each request the AppSec checks logs `request_uuid=<id>` (and the rule engine logs `tx_id=<id>`), and that id is the `request_id` of the access log line. Debug logging is verbose, so turn it on only while you look for a request:
 
 ```bash
-grep <req_uuid> /opt/npmpro/nginx/logs/access.log
+docker logs crowdsec 2>&1 | grep request_uuid
+grep <request_uuid> /opt/npmpro/nginx/logs/access.log
 ```
 
 ## Access lists and forward authentication
