@@ -143,7 +143,7 @@
 		},
 		"locked_reason": {
 			"type": "object",
-			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log files), goaccess-setting (GoAccess, turned on by the GoAccess report setting, reads the log files: not an env lock), crowdsec (CrowdSec, turned on by CROWDSEC_ENABLED, reads the log files), crowdsec-setting (CrowdSec, turned on in Settings, CrowdSec, reads the log files: not an env lock). Fields locked by their own variable are not listed.",
+			"description": "Fields locked by the environment variable of another setting (an indirect lock), with the reason: key-size (the key type follows ACME_KEY_SIZE), ocsp-stapling-off (Must-Staple is off because ACME_OCSP_STAPLING turns OCSP stapling off), must-staple (OCSP stapling is required by ACME_MUST_STAPLE), goaccess (GoAccess, turned on by GOA, reads the log files), goaccess-setting (GoAccess, turned on by the GoAccess report setting, reads the log files: not an env lock), crowdsec (CrowdSec, turned on by CROWDSEC_ENABLED, reads the log files), crowdsec-setting (CrowdSec, turned on in Settings, CrowdSec, reads the log files: not an env lock), proxy-protocol (the TLS handshake log is off while LISTEN_PROXY_PROTOCOL_HTTPS is on, since a handshake line would name the load balancer). Fields locked by their own variable are not listed.",
 			"additionalProperties": false,
 			"properties": {
 				"write_log_files": {
@@ -153,6 +153,12 @@
 						"goaccess-setting",
 						"crowdsec",
 						"crowdsec-setting"
+					]
+				},
+				"tls_handshake_log": {
+					"type": "string",
+					"enum": [
+						"proxy-protocol"
 					]
 				}
 			}

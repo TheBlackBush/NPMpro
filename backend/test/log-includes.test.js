@@ -149,3 +149,15 @@ it("NGINX_TLS_HANDSHAKE_LOG=false wins over an include that is on", () => {
 		TLS_OFF,
 	);
 });
+
+it("LISTEN_PROXY_PROTOCOL_HTTPS=true writes the comment over NGINX_TLS_HANDSHAKE_LOG=true and an include that is on", () => {
+	const env = { LOGROTATE: "true", NGINX_TLS_HANDSHAKE_LOG: "true", LISTEN_PROXY_PROTOCOL_HTTPS: "true" };
+	const result = run(env);
+	assert.deepEqual(result, expected(true, true));
+	assert.ok(result.stdout.includes("no TLS handshake log is written while LISTEN_PROXY_PROTOCOL_HTTPS is true"));
+	const before = { "tls-log.conf": TLS_ON };
+	assert.equal(run({ LOGROTATE: "true", LISTEN_PROXY_PROTOCOL_HTTPS: "true" }, undefined, { before }).tls, TLS_OFF);
+	assert.equal(run({ CROWDSEC_ENABLED: "true", ...env }).tls, TLS_OFF);
+	// PROXY protocol on port 80 only: the TLS handshake log is written
+	assert.equal(run({ ...env, LISTEN_PROXY_PROTOCOL_HTTPS: "false", LISTEN_PROXY_PROTOCOL_HTTP: "true" }).tls, TLS_ON);
+});

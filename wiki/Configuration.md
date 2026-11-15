@@ -30,7 +30,7 @@ When a saved setting applies:
 | Forward authentication | Custom Anubis images | `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` | on save, with an nginx reload |
 | Logs & monitoring | Write log files | `LOGROTATE` | on save, with an nginx reload |
 | Logs & monitoring | Log format (Classic or JSON, see [CrowdSec](CrowdSec#json-log-format-and-the-npmpro-parser)) | `NGINX_LOG_FORMAT` (`classic` or `json`; any other value stops the container from starting) | on save, with an nginx reload |
-| Logs & monitoring | TLS handshake log (needs Write log files, see [CrowdSec](CrowdSec#tls-handshake-log)) | `NGINX_TLS_HANDSHAKE_LOG` (`true` or `false`; any other value stops the container from starting) | on save, with an nginx reload |
+| Logs & monitoring | TLS handshake log (needs Write log files, off while `LISTEN_PROXY_PROTOCOL_HTTPS` is on, see [CrowdSec](CrowdSec#tls-handshake-log)) | `NGINX_TLS_HANDSHAKE_LOG` (`true` or `false`; any other value stops the container from starting) | on save, with an nginx reload |
 | Logs & monitoring | Log rotations kept | `LOGROTATIONS` | immediately |
 | Logs & monitoring | GoAccess report | `GOA` | after a restart |
 | Logs & monitoring | GoAccess options (keep report data, anonymize visitor IPs, drop query strings, full operating system versions, resolve host names) | `GOACLA` (one variable for all of them) | after a restart |

@@ -1575,6 +1575,7 @@
 	"settings.runtime.locked.reason.key-size": "{env}의 키 크기가 ECDSA 곡선이므로 키 유형은 ECDSA로 유지됩니다. RSA를 사용하려면 ACME_KEY_TYPE=rsa도 설정하세요.",
 	"settings.runtime.locked.reason.must-staple": "Must-Staple 인증서에는 OCSP 스테이플링이 필요하므로 {env}이(가) 이 설정을 켜 둡니다.",
 	"settings.runtime.locked.reason.ocsp-stapling-off": "Must-Staple에는 OCSP 스테이플링이 필요하지만 {env}이(가) 이를 끕니다.",
+	"settings.runtime.locked.reason.proxy-protocol": "PROXY 프로토콜에서는 nginx가 클라이언트 주소를 읽기 전에 실패한 TLS 핸드셰이크를 기록하므로 모든 줄에 로드 밸런서가 표시됩니다. {env}이(가) 이 설정을 끈 상태로 유지합니다.",
 	"settings.runtime.locked.required-by": "{env}에 필요",
 	"settings.runtime.locked.required-by-crowdsec-setting": "CrowdSec에 필요",
 	"settings.runtime.locked.required-by-goaccess-setting": "GoAccess 보고서에 필요",

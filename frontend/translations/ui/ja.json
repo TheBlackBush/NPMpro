@@ -1575,6 +1575,7 @@
 	"settings.runtime.locked.reason.key-size": "{env} の鍵サイズは ECDSA 曲線のため、鍵タイプは ECDSA のままです。RSA にするには ACME_KEY_TYPE=rsa も設定してください。",
 	"settings.runtime.locked.reason.must-staple": "Must-Staple 証明書には OCSP ステープリングが必要なため、{env} によりオンのままになります。",
 	"settings.runtime.locked.reason.ocsp-stapling-off": "Must-Staple には OCSP ステープリングが必要ですが、{env} によりオフになっています。",
+	"settings.runtime.locked.reason.proxy-protocol": "PROXY プロトコルでは、nginx はクライアントのアドレスを読む前に失敗した TLS ハンドシェイクを記録するため、すべての行がロードバランサーを示します。{env} によりこれはオフのままです。",
 	"settings.runtime.locked.required-by": "{env} で必要",
 	"settings.runtime.locked.required-by-crowdsec-setting": "CrowdSec で必要",
 	"settings.runtime.locked.required-by-goaccess-setting": "GoAccess レポートで必要",

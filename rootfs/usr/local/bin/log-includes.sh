@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Writes the log includes nginx.conf and the default servers read (access-log.conf, error-log.conf, stream-log.conf,
-# tls-log.conf) into $1 from LOGROTATE, TRAFFIC_STATS, NGINX_LOG_FORMAT, NGINX_TLS_HANDSHAKE_LOG and CrowdSec
+# tls-log.conf) into $1 from LOGROTATE, TRAFFIC_STATS, NGINX_LOG_FORMAT, NGINX_TLS_HANDSHAKE_LOG, LISTEN_PROXY_PROTOCOL_HTTPS and CrowdSec
 # (CROWDSEC_ENABLED, else ENABLED in the crowdsec.conf $2 the backend writes): CrowdSec reads the log files, so it keeps them on like Write log files. The same lines as
 # backend/lib/log-files.js and backend/lib/traffic/access-log.js (backend/test/log-includes.test.js compares them);
 # the backend rewrites them at start and on every save.
@@ -34,6 +34,10 @@ tls="${NGINX_TLS_HANDSHAKE_LOG:-}"
 if [ -z "$tls" ]; then
     if grep -qs "^error_log /data/nginx/logs/tls.log info;$" "$dir/tls-log.conf"; then tls=true; else tls=false; fi
 fi
+# PROXY protocol on the HTTPS port (envs.sh sets LISTEN_PROXY_PROTOCOL_HTTPS with LISTEN_PROXY_PROTOCOL): nginx logs a
+# failed handshake before it reads the client address from the PROXY header, so every line would name the balancer
+proxy=false
+if [ "${LISTEN_PROXY_PROTOCOL_HTTPS:-}" = "true" ]; then proxy=true; fi
 
 files=false
 if [ "${LOGROTATE:-}" = "true" ] || [ "$crowdsec" = "true" ]; then files=true; fi
@@ -53,11 +57,13 @@ fi
 
 # the default servers include it: their own error logs (a server-level error_log replaces the inherited ones), then
 # tls.log at info for the failed and rejected TLS handshakes
-if [ "$files" = "true" ] && [ "$tls" = "true" ]; then
+if [ "$files" = "true" ] && [ "$tls" = "true" ] && [ "$proxy" = "false" ]; then
     printf "%s\n" "error_log stderr warn;" "error_log /data/nginx/logs/error.log warn;" "error_log /data/nginx/logs/tls.log info;" > "$dir/tls-log.conf"
 else
     echo "# no TLS handshake log (Settings, Logs & monitoring)" > "$dir/tls-log.conf"
-    if [ "${NGINX_TLS_HANDSHAKE_LOG:-}" = "true" ]; then
+    if [ "${NGINX_TLS_HANDSHAKE_LOG:-}" = "true" ] && [ "$proxy" = "true" ]; then
+        echo "NGINX_TLS_HANDSHAKE_LOG is true, but no TLS handshake log is written while LISTEN_PROXY_PROTOCOL_HTTPS is true (its lines would name the load balancer, not the client)."
+    elif [ "${NGINX_TLS_HANDSHAKE_LOG:-}" = "true" ]; then
         echo "NGINX_TLS_HANDSHAKE_LOG is true, but no TLS handshake log is written while the log files are off (LOGROTATE=false and CrowdSec off)."
     fi
 fi

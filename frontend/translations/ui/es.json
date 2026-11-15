@@ -1575,6 +1575,7 @@
 	"settings.runtime.locked.reason.key-size": "El tamaño de clave en {env} es una curva ECDSA, por lo que el tipo de clave sigue siendo ECDSA. Para RSA, define también ACME_KEY_TYPE=rsa.",
 	"settings.runtime.locked.reason.must-staple": "Los certificados Must-Staple necesitan OCSP stapling, por lo que {env} lo mantiene activo.",
 	"settings.runtime.locked.reason.ocsp-stapling-off": "Must-Staple necesita OCSP stapling, que {env} desactiva.",
+	"settings.runtime.locked.reason.proxy-protocol": "Con el protocolo PROXY, nginx registra un handshake TLS fallido antes de leer la dirección del cliente, por lo que cada línea mostraría el balanceador de carga: {env} mantiene esto desactivado.",
 	"settings.runtime.locked.required-by": "Requerido por {env}",
 	"settings.runtime.locked.required-by-crowdsec-setting": "Requerido por CrowdSec",
 	"settings.runtime.locked.required-by-goaccess-setting": "Requerido por el informe de GoAccess",

@@ -1575,6 +1575,7 @@
 	"settings.runtime.locked.reason.key-size": "Die Schlüsselgröße in {env} ist eine ECDSA-Kurve, daher bleibt der Schlüsseltyp ECDSA. Für RSA setzen Sie zusätzlich ACME_KEY_TYPE=rsa.",
 	"settings.runtime.locked.reason.must-staple": "Must-Staple-Zertifikate benötigen OCSP-Stapling, daher hält {env} es aktiv.",
 	"settings.runtime.locked.reason.ocsp-stapling-off": "Must-Staple benötigt OCSP-Stapling, das {env} deaktiviert.",
+	"settings.runtime.locked.reason.proxy-protocol": "Mit dem PROXY-Protokoll protokolliert nginx einen fehlgeschlagenen TLS-Handshake, bevor es die Client-Adresse liest, daher würde jede Zeile den Load Balancer nennen: {env} lässt dies aus.",
 	"settings.runtime.locked.required-by": "Erforderlich für {env}",
 	"settings.runtime.locked.required-by-crowdsec-setting": "Erforderlich für CrowdSec",
 	"settings.runtime.locked.required-by-goaccess-setting": "Erforderlich für den GoAccess-Bericht",

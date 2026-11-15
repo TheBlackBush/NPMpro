@@ -1575,6 +1575,7 @@
 	"settings.runtime.locked.reason.key-size": "{env} 中的密钥长度是 ECDSA 曲线，因此密钥类型保持为 ECDSA。如需使用 RSA，还需设置 ACME_KEY_TYPE=rsa。",
 	"settings.runtime.locked.reason.must-staple": "Must-Staple 证书需要 OCSP 装订，因此 {env} 使其保持开启。",
 	"settings.runtime.locked.reason.ocsp-stapling-off": "Must-Staple 需要 OCSP 装订，但 {env} 将其关闭。",
+	"settings.runtime.locked.reason.proxy-protocol": "使用 PROXY 协议时，nginx 在读取客户端地址之前就记录失败的 TLS 握手，因此每一行都会显示负载均衡器的地址：{env} 使此项保持关闭。",
 	"settings.runtime.locked.required-by": "{env} 需要",
 	"settings.runtime.locked.required-by-crowdsec-setting": "CrowdSec 需要",
 	"settings.runtime.locked.required-by-goaccess-setting": "GoAccess 报告需要",

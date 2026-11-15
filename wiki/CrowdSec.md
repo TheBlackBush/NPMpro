@@ -257,6 +257,8 @@ The file holds the handshakes that end in the default site (HTTPS and HTTP/3) an
 
 Rejected handshakes need the default site **No Response (444)** (Settings, Landing pages). With any other default site, nginx answers a client without a host name, or with an unknown one, with the default certificate, and nothing is logged; failures of the TLS version or cipher are still logged.
 
+With the PROXY protocol on the HTTPS port (`LISTEN_PROXY_PROTOCOL_HTTPS=true`, also set by `LISTEN_PROXY_PROTOCOL=true`), the setting stays off and shows "Off because of LISTEN_PROXY_PROTOCOL_HTTPS", also when `NGINX_TLS_HANDSHAKE_LOG=true` is set. nginx writes a failed handshake before it reads the client address from the PROXY header, so every line would name the load balancer in front of NPMpro, and a scan through it would ban the balancer and with it every client behind it.
+
 Not in the file: a failed handshake that names one of your hosts (for example TLS 1.0 sent to `app.example.com`) is handled by that host and only reaches the error log at level `warn`, which leaves it out. TLS streams are covered by the stream log, see [TLS streams](#tls-streams).
 
 The default site and the admin UI keep writing their errors to `error.log` and to the Docker logs. While the setting is on, `tls.log` also holds those errors and the other `info` lines of these two (for example closed keep-alive connections or client header errors). The NPMpro parser reads only the handshake lines from `tls.log`, and counts a rate-limit line from `error.log` only. If you added an `error_log` of your own at the main level in a custom nginx file, these two servers do not repeat it while the setting is on: their errors go to the standard places (Docker logs and `error.log`) and to `tls.log`.

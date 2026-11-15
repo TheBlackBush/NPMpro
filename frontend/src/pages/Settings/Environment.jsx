@@ -83,6 +83,7 @@ const LABELS = {
 	"nginx/module_vts": "settings.nginx.module.vts",
 	"forward-auth/anubis_custom_images": "settings.forward-auth.anubis-images",
 	"logs/write_log_files": "settings.logs.write",
+	"logs/tls_handshake_log": "settings.logs.tls-handshake",
 	"logs/log_rotations": "settings.logs.rotations",
 	"logs/goaccess": "settings.logs.goaccess",
 	"logs/goaccess_keep_days": "settings.logs.goaccess.keep-days",
