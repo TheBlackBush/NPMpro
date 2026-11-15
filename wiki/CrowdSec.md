@@ -213,7 +213,7 @@ labels:
   type: npmpro
 ```
 
-`tls.log` exists only with the TLS handshake log on; CrowdSec waits for a missing file.
+`tls.log` is created the first time the [TLS handshake log](#tls-handshake-log) is turned on. It stays on disk when the setting goes off: the daily rotation moves its old lines to the rotated files and deletes them after the number of rotations (Settings, Logs & monitoring), and the empty file is kept. CrowdSec does not wait for a listed file that is missing when it starts: it logs `No matching files for pattern` and does not read the file when it appears later. Restart CrowdSec once after turning the setting on for the first time.
 
 The NPMpro parser reads the old and the new classic lines, JSON lines, and a file that switches from one format to the other. From the error log it reads only the rate-limit lines (`limiting requests, excess`), so `error.log` can be read without counting a failed basic auth twice: it counts once, from the 401 in the access log. From `tls.log` (the [TLS handshake log](#tls-handshake-log)) it reads only the handshake lines. The other error log lines show as "unparsed" in `cscli metrics`, which is expected.
 
