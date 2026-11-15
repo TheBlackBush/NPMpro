@@ -1,5 +1,5 @@
 diff --git a/lib/crowdsec.lua b/lib/crowdsec.lua
-index 1106a38..36e2ce7 100644
+index 1106a38..19a3031 100644
 --- a/lib/crowdsec.lua
 +++ b/lib/crowdsec.lua
 @@ -32,6 +32,8 @@ local APPSEC_VERB_HEADER = "x-crowdsec-appsec-verb"
@@ -24,10 +24,10 @@ index 1106a38..36e2ce7 100644
 +    headers[APPSEC_HTTP_VERSION_HEADER] = nil
 +  end
    headers[APPSEC_API_KEY_HEADER] = runtime.conf["API_KEY"]
-+  -- the nginx $request_id of this request: the AppSec uses the transaction id as the req_uuid of its event, so an AppSec
-+  -- event matches its access log line by request_id; a client-sent header with either name is replaced, and only in the
-+  -- request to the AppSec
-+  headers["x-request-id"] = ngx.var.request_id
++  -- the nginx $request_id of this request: the AppSec uses the transaction id as the id of its request (request_uuid,
++  -- tx_id), so it equals the access log request_id; a client-sent transaction id is replaced, and only in the request
++  -- to the AppSec. The client's own X-Request-Id stays in the request, where the AppSec rules inspect it like every
++  -- other client header
 +  headers[APPSEC_TRANSACTION_ID_HEADER] = ngx.var.request_id
  
    -- set CrowdSec APPSEC Host

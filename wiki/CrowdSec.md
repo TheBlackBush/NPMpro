@@ -296,8 +296,8 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 - **Where the option is:** in the proxy host dialog on the **Details** tab, under **Options**, the switch **Disable Crowdsec Appsec**. Each custom location has its own switch: open the location on the **Custom Locations** tab, its **Options** have the same switch. A custom location does not take over the switch of the host.
 - The switch only turns off AppSec. Bans from the LAPI still apply to the host.
 - Without an AppSec URL the switch does nothing.
-- **The request id and the HTTP version.** With AppSec on, the request that the bouncer sends to the AppSec carries three headers. NPMpro sets them for that request only, and the upstream receives the request as before. A client that sends one of these headers has its value replaced in that request.
-  - `X-Request-Id` and `X-Crowdsec-Appsec-Transaction-Id` both carry the request's `$request_id`, the `request_id` field of the access log. CrowdSec uses the transaction id as the id of the AppSec request.
+- **The request id and the HTTP version.** With AppSec on, the request that the bouncer sends to the AppSec carries two more headers. NPMpro sets them for that request only, and the upstream receives the request as before. A client that sends one of these two headers has its value replaced in that request. Every other client header reaches the AppSec unchanged: a client's own `X-Request-Id` reaches the AppSec, where the rules inspect it like any other header, and the upstream, both with the client's value.
+  - `X-Crowdsec-Appsec-Transaction-Id` carries the request's `$request_id`, the `request_id` field of the access log. CrowdSec uses the transaction id as the id of the AppSec request (`request_uuid`, `tx_id`).
   - `X-Crowdsec-Appsec-Http-Version` carries the client's HTTP version (`10`, `11`, `20` or `30`). The AppSec rules see the client's HTTP version and not the bouncer's own, which may change which rules match a request over HTTP/2 or HTTP/3.
 
 ### Find the request of an AppSec event
