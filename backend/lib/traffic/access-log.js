@@ -9,10 +9,11 @@ const ACCESS_LOG_CONF = rooted("/data/npmpro/nginx/access-log.conf");
  * The http level access_log directive nginx includes from ACCESS_LOG_CONF
  *
  * @param   {boolean} enabled
+ * @param   {string}  [format]  the log format setting: classic (alog) or json (ajson)
  * @returns {string}
  */
-const accessLogDirective = (enabled) =>
-	enabled ? "access_log /data/nginx/logs/access.log alog;\n" : "access_log off;\n";
+const accessLogDirective = (enabled, format = "classic") =>
+	enabled ? `access_log /data/nginx/logs/access.log ${format === "json" ? "ajson" : "alog"};\n` : "access_log off;\n";
 
 const readCurrent = async (file) => {
 	try {
@@ -44,13 +45,17 @@ const writeAtomic = async (file, content) => {
  * @param   {boolean}  enabled
  * @param   {Object}   options
  * @param   {string}   [options.file]
+ * @param   {string}   [options.format]     the log format setting (classic or json)
  * @param   {Function} [options.test]       nginx -t
  * @param   {Function} [options.reload]     nginx reload
  * @param   {boolean}  [options.writeOnly]  only write the file, the caller reloads nginx later
  * @returns {Promise<boolean>}  true when the file was changed
  */
-const applyAccessLog = async (enabled, { file = ACCESS_LOG_CONF, test, reload, writeOnly = false } = {}) => {
-	const next = accessLogDirective(enabled);
+const applyAccessLog = async (
+	enabled,
+	{ file = ACCESS_LOG_CONF, format = "classic", test, reload, writeOnly = false } = {},
+) => {
+	const next = accessLogDirective(enabled, format);
 	const previous = await readCurrent(file);
 	if (previous === next) return false;
 
@@ -66,7 +71,7 @@ const applyAccessLog = async (enabled, { file = ACCESS_LOG_CONF, test, reload, w
 	} catch (err) {
 		// Keep the file in line with the saved setting, so a later reload does not switch logging
 		try {
-			await writeAtomic(file, previous || accessLogDirective(!enabled));
+			await writeAtomic(file, previous || accessLogDirective(!enabled, format));
 		} catch (restoreErr) {
 			logger.error(`Could not restore ${file}: ${restoreErr.message}`);
 		}
@@ -94,8 +99,9 @@ const accessLogEnabled = (trafficEnabled, writeLogFiles) => trafficEnabled === t
  * @param   {Object}    deps
  * @param   {Function}  deps.readTrafficEnabled  () => stored monitoring traffic_enabled
  * @param   {Function}  deps.readWriteLogFiles   () => effective logs write_log_files
- * @param   {Function}  deps.apply               (enabled) => Promise<boolean>, writes the include, tests and reloads
- *                                               nginx (true when the file changed)
+ * @param   {Function}  deps.readLogFormat       () => stored logs log_format (classic or json)
+ * @param   {Function}  deps.apply               (enabled, format) => Promise<boolean>, writes the include with the
+ *                                               format, tests and reloads nginx (true when the file changed)
  * @param   {Function}  [deps.exclusive]         (fn) => runs fn in the runtime settings queue
  * @param   {Object}    [deps.log]
  * @returns {{enabled: Function, onTrafficEnabledChange: Function}}
@@ -103,6 +109,7 @@ const accessLogEnabled = (trafficEnabled, writeLogFiles) => trafficEnabled === t
 const createAccessLogSwitch = ({
 	readTrafficEnabled,
 	readWriteLogFiles,
+	readLogFormat,
 	apply,
 	exclusive = (fn) => fn(),
 	log = logger,
@@ -125,14 +132,15 @@ const createAccessLogSwitch = ({
 		onTrafficEnabledChange: (enabled, after) =>
 			exclusive(async () => {
 				const writeLogFiles = await readWriteLogFiles();
+				const format = await readLogFormat();
 				const before = accessLogEnabled(await trafficEnabled(), writeLogFiles);
-				const changed = await apply(accessLogEnabled(enabled, writeLogFiles));
+				const changed = await apply(accessLogEnabled(enabled, writeLogFiles), format);
 				try {
 					await after?.();
 				} catch (err) {
 					if (changed) {
 						try {
-							await apply(before);
+							await apply(before, format);
 						} catch (revertErr) {
 							log.error(`Could not switch the access log back: ${revertErr.message}`);
 						}

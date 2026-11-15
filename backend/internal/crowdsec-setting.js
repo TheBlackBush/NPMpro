@@ -109,10 +109,11 @@ const testSaveReload = (planned) => async () => {
  * @returns {Promise<{ turnsOn: boolean, extraFiles: Object[] }>}
  */
 const logFilesForCrowdsec = async (values) => {
-	const logsOn = (await getRuntimeConfig("logs")).values.write_log_files;
+	const logs = (await getRuntimeConfig("logs")).values;
+	const logsOn = logs.write_log_files;
 	const turnsOn = !logsOn && Boolean(values.enabled);
 	if (turnsOn) await prepareLogFiles({ nginxDir: NGINX_DIR });
-	return { turnsOn, extraFiles: turnsOn ? logFilesOn() : [] };
+	return { turnsOn, extraFiles: turnsOn ? logFilesOn(logs.log_format) : [] };
 };
 
 /**

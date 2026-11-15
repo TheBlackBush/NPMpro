@@ -12,7 +12,7 @@ import { renderDefaultCertConf } from "../lib/default-cert.js";
 import { ownUpstream, proxyHostsForProvider } from "../lib/forward-auth.js";
 import { DEFAULT_AVATAR, fetchGravatar } from "../lib/gravatar.js";
 import { createIpRanges, parseCloudflareRanges } from "../lib/ip-ranges.js";
-import { logIncludes, renderRotations } from "../lib/log-files.js";
+import { logFilesOn, logIncludes, renderRotations } from "../lib/log-files.js";
 import { NGINX_CORE_FILES, renderNginxCore } from "../lib/nginx-core.js";
 import { createRuntimeApplier, PATHS, testAndReload, withFiles } from "../lib/runtime-apply.js";
 import { beautifierOn, createRuntimeConfig, gravatarOn } from "../lib/runtime-config.js";
@@ -1295,12 +1295,29 @@ it("logIncludes gives the error and stream log lines, off: start.sh's defaults",
 	});
 });
 
+it("logIncludes names sjson for the json format and nothing with Write log files off", () => {
+	assert.equal(logIncludes(true, "classic").stream, logIncludes(true).stream);
+	assert.equal(logIncludes(true, "json").stream, "access_log /data/nginx/logs/stream.log sjson;\n");
+	assert.deepEqual(logIncludes(false, "json"), logIncludes(false));
+	assert.deepEqual(
+		logFilesOn("json").map((file) => file.content),
+		[
+			"error_log /data/nginx/logs/error.log warn;\n",
+			"access_log /data/nginx/logs/stream.log sjson;\n",
+			"access_log /data/nginx/logs/access.log ajson;\n",
+		],
+	);
+	assert.equal(logFilesOn()[2].content, accessLogDirective(true));
+});
+
 it("log-includes.sh (run by data-setup.sh) writes the same include lines as logIncludes", async () => {
 	const startSh = await readFile(new URL("../../rootfs/usr/local/bin/log-includes.sh", import.meta.url), "utf8");
+	// the format names are shell variables: alog or ajson, slog or sjson (backend/test/log-includes.test.js runs it)
+	const withVariables = (line) => line.trim().replace(" slog;", " $slog;");
 	for (const on of [true, false]) {
 		const { error, stream } = logIncludes(on);
 		assert.ok(startSh.includes(`echo "${error.trim()}" > "$dir/error-log.conf"`), error);
-		assert.ok(startSh.includes(`echo "${stream.trim()}" > "$dir/stream-log.conf"`), stream);
+		assert.ok(startSh.includes(`echo "${withVariables(stream)}" > "$dir/stream-log.conf"`), stream);
 	}
 	const nginxConf = await readFile(new URL("../../rootfs/usr/local/nginx/conf/nginx.conf", import.meta.url), "utf8");
 	assert.ok(hasLine(nginxConf, "include /data/npmpro/nginx/error-log.conf;"));
@@ -1344,6 +1361,7 @@ it("switching Write log files off keeps the access log while traffic statistics 
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => true,
 		readWriteLogFiles: async () => true,
+		readLogFormat: async () => "classic",
 		apply: async () => true,
 	});
 	const a = applier(paths, { accessLogOn: accessLog.enabled });
@@ -1352,12 +1370,73 @@ it("switching Write log files off keeps the access log while traffic statistics 
 	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(true) });
 });
 
+it("a log_format change rewrites the three includes with ajson and sjson and reloads", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = logValues({ write_log_files: true });
+	await a.applyGroup("logs", prev, logValues());
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(true), access: accessLogDirective(true) });
+	const calls = a.nginx.calls.length;
+	const result = await a.applyGroup("logs", { ...prev, log_format: "json" }, prev);
+	assert.deepEqual(result, { changed: ["log_format"], reloaded: true });
+	assert.deepEqual(await logFiles(paths), {
+		error: "error_log /data/nginx/logs/error.log warn;\n",
+		stream: "access_log /data/nginx/logs/stream.log sjson;\n",
+		access: "access_log /data/nginx/logs/access.log ajson;\n",
+	});
+	assert.deepEqual(a.nginx.calls.slice(calls), ["test", "reload"]);
+});
+
+it("a log_format change with Write log files and traffic statistics off names no format", async () => {
+	const { paths } = await setup();
+	const a = applier(paths);
+	const prev = logValues();
+	const result = await a.applyGroup("logs", { ...prev, log_format: "json" }, prev);
+	assert.deepEqual(result.changed, ["log_format"]);
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(false) });
+});
+
+it("a log_format change keeps the access log on while traffic statistics are on", async () => {
+	const { paths } = await setup();
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => true,
+		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "json",
+		apply: async () => true,
+	});
+	const a = applier(paths, { accessLogOn: accessLog.enabled });
+	const prev = logValues();
+	await a.applyGroup("logs", { ...prev, log_format: "json" }, prev);
+	assert.deepEqual(await logFiles(paths), { ...logIncludes(false), access: accessLogDirective(true, "json") });
+});
+
+it("the access log switch passes the stored log format to apply, also when it reverts", async () => {
+	const applied = [];
+	const accessLog = createAccessLogSwitch({
+		readTrafficEnabled: async () => false,
+		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "json",
+		apply: async (enabled, format) => applied.push([enabled, format]),
+	});
+	await accessLog.onTrafficEnabledChange(true);
+	await assert.rejects(
+		accessLog.onTrafficEnabledChange(false, () => Promise.reject(new Error("boom"))),
+		BOOM,
+	);
+	assert.deepEqual(applied, [
+		[true, "json"],
+		[false, "json"],
+		[true, "json"],
+	]);
+});
+
 it("switching traffic statistics off keeps the access log while Write log files is on, and the reverse", async () => {
 	const applied = [];
 	let writeLogFiles = true;
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => true,
 		readWriteLogFiles: async () => writeLogFiles,
+		readLogFormat: async () => "classic",
 		apply: async (enabled) => applied.push(enabled),
 	});
 	await accessLog.onTrafficEnabledChange(false);
@@ -1372,6 +1451,7 @@ it("the access log switch uses the traffic value the hook applied before it is s
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => false,
 		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "classic",
 		apply: async () => order.push("apply"),
 		exclusive: async (fn) => {
 			order.push("enter");
@@ -1391,6 +1471,7 @@ it("a failing hook apply keeps the previous traffic value", async () => {
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => false,
 		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "classic",
 		apply: () => Promise.reject(new Error("boom")),
 	});
 	await assert.rejects(accessLog.onTrafficEnabledChange(true), BOOM);
@@ -1486,6 +1567,7 @@ it("when the step after the include throws, the hook switches the include back a
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => false,
 		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "classic",
 		apply: (enabled) => {
 			applied.push(enabled);
 			return Promise.resolve(true);
@@ -1505,6 +1587,7 @@ it("a failed monitoring save switches the access log back and the traffic value 
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => false,
 		readWriteLogFiles: async () => false,
+		readLogFormat: async () => "classic",
 		apply: async (enabled) => {
 			files.push(accessLogDirective(enabled));
 			await writeFile(paths.accessLogConf, accessLogDirective(enabled));

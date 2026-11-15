@@ -18,6 +18,7 @@
 						"default": {
 							"value": {
 								"write_log_files": false,
+								"log_format": "classic",
 								"log_rotations": 3,
 								"goaccess": false,
 								"goaccess_keep_days": 30,
@@ -30,6 +31,7 @@
 								"locked_reason": {},
 								"applies": {
 									"write_log_files": "reload",
+									"log_format": "reload",
 									"log_rotations": "immediately",
 									"goaccess": "restart",
 									"goaccess_keep_days": "restart",

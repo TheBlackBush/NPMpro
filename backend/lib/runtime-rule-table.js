@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 import { isIP } from "node:net";
 import { availableParallelism } from "node:os";
+import { LOG_FORMATS } from "./log-format.js";
 import { parseCpuList, readCpusAllowed } from "./nginx-core.js";
 import { rooted } from "./paths.js";
 import { isTimeZone } from "./time-zones.js";
@@ -324,6 +325,17 @@ const RUNTIME_RULES = [
 		applies: "reload",
 	}),
 	boolRule({ group: "logs", key: "write_log_files", env: "LOGROTATE", fallback: false, applies: "reload" }),
+	{
+		group: "logs",
+		key: "log_format",
+		env: "NGINX_LOG_FORMAT",
+		type: "string",
+		validate: (value) => (LOG_FORMATS.includes(value) ? null : "must be classic or json"),
+		parseEnv: (raw) => (LOG_FORMATS.includes(raw.trim()) ? raw.trim() : undefined),
+		toEnv: String,
+		default: "classic",
+		applies: "reload",
+	},
 	rangeRule({
 		group: "logs",
 		key: "log_rotations",

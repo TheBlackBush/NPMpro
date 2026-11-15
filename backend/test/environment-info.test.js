@@ -112,6 +112,28 @@ it("lists the locked runtime settings with their env var and names the variable 
 	}
 });
 
+it("lists NGINX_LOG_FORMAT as a runtime name and as the variable that locks log_format", () => {
+	assert.ok(RUNTIME_ENV_NAMES.includes("NGINX_LOG_FORMAT"));
+	assert.ok(RUNTIME_LINE.exec(readFileSync(ENVS_SH, "utf8"))?.groups.names.split(" ").includes("NGINX_LOG_FORMAT"));
+	assert.deepEqual(environmentInfo({}, [{ group: "logs", key: "log_format" }]).locked_runtime, [
+		{ group: "logs", key: "log_format", env: "NGINX_LOG_FORMAT", reason: null },
+	]);
+});
+
+it("envs.sh accepts an unset, classic or json NGINX_LOG_FORMAT and refuses anything else, also several lines", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf('case "$NGINX_LOG_FORMAT" in');
+	const block = text.slice(start, text.indexOf("esac", start) + "esac".length).replace("sleep inf", "exit 3");
+	const run = (value) =>
+		spawnSync("sh", ["-c", block], { env: { PATH: process.env.PATH, NGINX_LOG_FORMAT: value }, encoding: "utf8" });
+	for (const value of ["", "classic", "json"]) assert.equal(run(value).status, 0, value);
+	for (const value of ["xml", "JSON", "json\nclassic", "classic\n"]) {
+		const out = run(value);
+		assert.equal(out.status, 3, JSON.stringify(value));
+		assert.equal(out.stdout, "NGINX_LOG_FORMAT needs to be classic or json.\n");
+	}
+});
+
 it("lists the runtime and environment names once in envs.sh", () => {
 	const text = readFileSync(ENVS_SH, "utf8");
 	const runtime = RUNTIME_LINE.exec(text)?.groups.names.split(" ") ?? [];

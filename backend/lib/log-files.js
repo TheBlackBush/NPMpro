@@ -12,16 +12,18 @@ const LOGROTATE_CONF = rooted("/run/npmpro/logrotate");
 
 /**
  * The error log and stream log includes for Write log files (start.sh writes the same lines at boot from LOGROTATE);
- * off: no error log file (nginx.conf logs errors to stderr) and no stream access log
+ * off: no error log file (nginx.conf logs errors to stderr) and no stream access log; format (classic or json) picks
+ * the stream log format (slog or sjson)
  *
  * @param   {boolean}  writeLogFiles
+ * @param   {string}   [format]
  * @returns {{error: string, stream: string}}
  */
-const logIncludes = (writeLogFiles) =>
+const logIncludes = (writeLogFiles, format = "classic") =>
 	writeLogFiles
 		? {
 				error: "error_log /data/nginx/logs/error.log warn;\n",
-				stream: "access_log /data/nginx/logs/stream.log slog;\n",
+				stream: `access_log /data/nginx/logs/stream.log ${format === "json" ? "sjson" : "slog"};\n`,
 			}
 		: { error: "# no error log file, errors go to stderr\n", stream: "access_log off;\n" };
 
@@ -68,14 +70,15 @@ const prepareLogFiles = async ({ nginxDir, fs = nodeFs, log = logger }) => {
 /**
  * The three includes with Write log files on (error, stream and access log), as withFiles entries
  *
+ * @param   {string}  [format]  the log format setting (classic or json)
  * @returns {{path: string, content: string, nginx: true}[]}
  */
-const logFilesOn = () => {
-	const includes = logIncludes(true);
+const logFilesOn = (format = "classic") => {
+	const includes = logIncludes(true, format);
 	return [
 		{ path: ERROR_LOG_CONF, content: includes.error, nginx: true },
 		{ path: STREAM_LOG_CONF, content: includes.stream, nginx: true },
-		{ path: ACCESS_LOG_CONF, content: accessLogDirective(true), nginx: true },
+		{ path: ACCESS_LOG_CONF, content: accessLogDirective(true, format), nginx: true },
 	];
 };
 

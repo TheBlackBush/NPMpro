@@ -4,6 +4,7 @@
 	"additionalProperties": false,
 	"required": [
 		"write_log_files",
+		"log_format",
 		"log_rotations",
 		"goaccess",
 		"goaccess_keep_days",
@@ -21,6 +22,14 @@
 		"write_log_files": {
 			"type": "boolean",
 			"description": "Write the error and stream log files; forced on by GOA (env LOGROTATE)"
+		},
+		"log_format": {
+			"type": "string",
+			"enum": [
+				"classic",
+				"json"
+			],
+			"description": "Format of the access and stream log files: classic (space separated) or json, one object per line with the same fields (env NGINX_LOG_FORMAT)"
 		},
 		"log_rotations": {
 			"type": "integer",
@@ -67,6 +76,7 @@
 				"type": "string",
 				"enum": [
 					"write_log_files",
+					"log_format",
 					"log_rotations",
 					"goaccess",
 					"goaccess_keep_days",
@@ -84,6 +94,10 @@
 			"additionalProperties": false,
 			"properties": {
 				"write_log_files": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"log_format": {
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
@@ -139,6 +153,7 @@
 			"additionalProperties": false,
 			"required": [
 				"write_log_files",
+				"log_format",
 				"log_rotations",
 				"goaccess",
 				"goaccess_keep_days",
@@ -149,6 +164,14 @@
 			],
 			"properties": {
 				"write_log_files": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"log_format": {
 					"type": "string",
 					"enum": [
 						"next-certificate",
