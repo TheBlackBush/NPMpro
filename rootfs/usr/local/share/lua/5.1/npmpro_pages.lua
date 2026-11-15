@@ -76,7 +76,12 @@ end
 -- The page of the internal location: filled again here (the request is the same, so are the IP, host and time), with
 -- the status the bouncer chose; the bare status when the page cannot be filled
 function M.serve(kind)
-  local status = kind == "ban" and tonumber(ngx.var.arg_status) or (modules.captcha and modules.captcha.ret_code)
+  local status
+  if kind == "ban" then
+    status = tonumber(ngx.var.arg_status)
+  else
+    status = modules.captcha and modules.captcha.ret_code
+  end
   if type(status) ~= "number" or status < 200 or status > 599 then
     status = 403
   end

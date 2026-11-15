@@ -27,7 +27,7 @@ const SCRIPT_HASH = "sha256-RqUBguKqhOYUtWXvu8LopB+22M46r+nWkfQUkqMSkHw=";
 const CAPTCHA_ORIGINS = {
 	recaptcha: {
 		script: ["https://www.recaptcha.net", "https://www.gstatic.com"],
-		frame: ["https://www.recaptcha.net", "https://www.google.com"],
+		frame: ["https://www.recaptcha.net", "https://www.google.com", "https://recaptcha.google.com"],
 		connect: ["https://www.recaptcha.net"],
 		style: [],
 		img: ["https://www.gstatic.com"],
@@ -53,7 +53,7 @@ const CAPTCHA_ORIGINS = {
  * @returns {string|null} the CSP header value of the captcha page, or null without a known provider
  */
 const captchaCsp = (provider) => {
-	const origins = CAPTCHA_ORIGINS[provider];
+	const origins = Object.hasOwn(CAPTCHA_ORIGINS, provider) ? CAPTCHA_ORIGINS[provider] : undefined;
 	if (!origins) return null;
 	const list = (head, hosts) => [head, ...hosts].join(" ");
 	return [
