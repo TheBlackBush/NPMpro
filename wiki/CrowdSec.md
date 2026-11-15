@@ -250,9 +250,9 @@ Scanners such as nmap and testssl, and clients that try old TLS versions or weak
 
 The file holds the handshakes that end in the default site (HTTPS and HTTP/3) and in the admin UI:
 
-- rejected handshakes: no host name (SNI) or one that is not yours;
+- rejected handshakes: no host name (SNI) or one that is not yours, on a default site set to No Response (444). The admin UI port does not reject them: it answers with its certificate, so they are not in the file;
 - old TLS versions (1.0 and 1.1), no shared cipher or signature algorithm, an ALPN protocol NPMpro does not offer;
-- data that is not TLS, and plain HTTP sent to the HTTPS port without the name of one of your hosts;
+- plain HTTP sent to the HTTPS port without the name of one of your hosts, and data that starts like a TLS record but is not one (other random bytes are logged as `client sent invalid method` and not counted);
 - connections closed during the handshake (`peer closed connection`, `client closed connection`): written, never counted, since health checks and browsers do this too.
 
 Rejected handshakes need the default site **No Response (444)** (Settings, Landing pages). With any other default site, nginx answers a client without a host name, or with an unknown one, with the default certificate, and nothing is logged; failures of the TLS version or cipher are still logged.
@@ -273,11 +273,11 @@ labels:
   type: npmpro
 ```
 
-To check it: turn the setting on, set the default site to No Response (444), and from a second device run `openssl s_client -connect <NPMpro IP>:443 -tls1_1 </dev/null` eleven times. `docker exec crowdsec cscli decisions list` then shows a ban for `TheBlackBush/npmpro-tls-probe`; remove it with `docker exec crowdsec cscli decisions delete --ip <IP>`.
+To check it: turn the setting on, set the default site to No Response (444), and from a second device run `openssl s_client -connect <NPMpro IP>:443 -noservername </dev/null` eleven times (a probe without a host name). An OpenSSL 3 client refuses `-tls1_1` on its own unless you add `-cipher ALL:@SECLEVEL=0`, so it does not make a good test. `docker exec crowdsec cscli decisions list` then shows a ban for `TheBlackBush/npmpro-tls-probe`; remove it with `docker exec crowdsec cscli decisions delete --ip <IP>`.
 
 ### Ban length
 
-CrowdSec sets how long a ban lasts in its profiles, not in the scenario: the default profile bans for 4 hours. To ban TLS probes for 5 minutes, add this profile at the top of `/opt/crowdsec/conf/profiles.yaml` (profiles are separated by `---`, and the first profile that applies with `on_success: break` ends the evaluation, so it must come before the default one) and restart CrowdSec:
+CrowdSec sets how long a ban lasts in its profiles, not in the scenario: the default profile bans for 4 hours. To ban TLS probes for 5 minutes (both TLS scenarios: a stream health check that trips the stream one should not lock a client out for 4 hours), add this profile at the top of `/opt/crowdsec/conf/profiles.yaml` (profiles are separated by `---`, and the first profile that applies with `on_success: break` ends the evaluation, so it must come before the default one) and restart CrowdSec:
 
 ```yaml
 name: npmpro_tls_probe
@@ -296,7 +296,7 @@ A stream with a certificate writes status 500 to `stream.log` when the TLS hands
 
 ### False bans
 
-A TLS ban can hit clients that are not scanners: a shared IP (mobile networks, company NAT) with one old device, old devices that retry TLS 1.0 or 1.1, company TLS inspection proxies without TLS 1.2 ECDHE ciphers, and uptime monitors or your own `curl https://<IP>` that connect without a host name to a default site set to 444. Whitelist such IPs (`crowdsecurity/whitelists` already covers private ranges, or a local whitelist), and keep the 5 minute profile above.
+A TLS ban can hit clients that are not scanners: a shared IP (mobile networks, company NAT) with one old device, old devices that retry TLS 1.0 or 1.1, company TLS inspection proxies without TLS 1.2 ECDHE ciphers, and uptime monitors or your own `curl https://<IP>` that connect without a host name to a default site set to 444. Allow such IPs (`crowdsecurity/whitelists` already covers private ranges, or a CrowdSec allowlist, see [Locked out of the admin UI](#locked-out-of-the-admin-ui)), and keep the 5 minute profile above.
 
 ## What each setting means
 
