@@ -369,7 +369,7 @@ docker exec crowdsec cscli alerts inspect -d <alert id>
 grep <request_id> /opt/npmpro/nginx/logs/access.log
 ```
 
-`cscli alerts inspect -d` shows `request_id` in the Context table; `cscli alerts list -o json` has it in the alert's `meta` list. Alerts of the log scenarios (failed sign-ins, scans, bad requests) have no `request_id`: they count many requests. Without the context, or for requests older than this NPMpro version, search the access log for the client IP and the URI around the time of the alert:
+`cscli alerts inspect -d` shows `request_id` in the Context table; `cscli alerts list -o json` has it in the alert's `meta` list, as a list of one id in a string (`{"key":"request_id","value":"[\"<id>\"]"}`). Alerts of the log scenarios (failed sign-ins, scans, bad requests) count many requests, so their Context has no `request_id`; each event inside such an alert still carries the `request_id` of its own access log line (`cscli alerts inspect -d` lists the events). Without the context, or for requests older than this NPMpro version, search the access log for the client IP and the URI around the time of the alert:
 
 ```bash
 grep '<client IP>' /opt/npmpro/nginx/logs/access.log | grep '<URI>'
