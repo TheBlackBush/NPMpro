@@ -367,6 +367,7 @@ const MONITORING_FIELDS = ["trafficEnabled", "retentionDays", "showIps", "unique
 export const monitoringValues = (data, logs) => ({
 	writeLogFiles: Boolean(logs.writeLogFiles),
 	logFormat: logs.logFormat,
+	tlsHandshakeLog: Boolean(logs.tlsHandshakeLog),
 	logRotations: String(logs.logRotations),
 	goaccess: Boolean(logs.goaccess),
 	// null: a GOACLA from the env without --keep-last (locked)
@@ -420,6 +421,7 @@ export const monitoringValidate = (rules, logsLocked) => (values) => {
 const logsApi = (values) => ({
 	writeLogFiles: values.writeLogFiles,
 	logFormat: values.logFormat,
+	tlsHandshakeLog: values.tlsHandshakeLog,
 	logRotations: Number(values.logRotations),
 	goaccess: values.goaccess,
 	goaccessKeepDays: Number(values.goaccessKeepDays),

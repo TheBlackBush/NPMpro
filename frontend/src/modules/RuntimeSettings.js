@@ -40,6 +40,7 @@ const GROUP_KEYS = {
 	logs: [
 		"writeLogFiles",
 		"logFormat",
+		"tlsHandshakeLog",
 		"logRotations",
 		"goaccess",
 		"goaccessKeepDays",

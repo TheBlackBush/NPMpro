@@ -72,10 +72,10 @@ function useFieldHint(name, hint, lockName = name) {
  * setting needs it), `forcedOff` shows it off and read-only (another setting rules it out); a controller, as the
  * switch may show another state than the field holds.
  */
-function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false }) {
+function RuntimeSwitch({ name, label, hint, info, forced = false, forcedOff = false }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
-	const badges = useFieldBadges(name);
+	const badges = useFieldBadges(name, name, info);
 	const fieldHint = useFieldHint(name, hint);
 	return (
 		<SwitchField

@@ -283,6 +283,7 @@ const DATA = {
 const LOGS = {
 	writeLogFiles: true,
 	logFormat: "classic",
+	tlsHandshakeLog: false,
 	logRotations: 7,
 	goaccess: false,
 	goaccessKeepDays: 30,
@@ -298,6 +299,7 @@ it("monitoring: starting values in the section's order, numbers as text", () => 
 	assert.deepEqual(Object.keys(values), [
 		"writeLogFiles",
 		"logFormat",
+		"tlsHandshakeLog",
 		"logRotations",
 		"goaccess",
 		"goaccessKeepDays",
@@ -326,6 +328,21 @@ it("monitoring: the log format is sent only when changed and not locked", () => 
 	assert.deepEqual(monitoringRequest({ ...saved, logFormat: "json" }, DATA, LOGS).logs, { logFormat: "json" });
 	const locked = { ...LOGS, locked: ["log_format"] };
 	assert.equal(monitoringRequest({ ...saved, logFormat: "json" }, DATA, locked).logs, null);
+});
+
+it("monitoring: the TLS handshake log is sent only when changed and not locked, with Write log files when both change", () => {
+	const saved = monitoringValues(DATA, LOGS);
+	assert.equal(saved.tlsHandshakeLog, false);
+	assert.deepEqual(monitoringRequest({ ...saved, tlsHandshakeLog: true }, DATA, LOGS).logs, {
+		tlsHandshakeLog: true,
+	});
+	const locked = { ...LOGS, locked: ["tls_handshake_log"] };
+	assert.equal(monitoringRequest({ ...saved, tlsHandshakeLog: true }, DATA, locked).logs, null);
+	const filesOff = { ...LOGS, tlsHandshakeLog: true };
+	const savedOn = monitoringValues(DATA, filesOff);
+	assert.deepEqual(monitoringRequest({ ...savedOn, writeLogFiles: false }, DATA, filesOff).logs, {
+		writeLogFiles: false,
+	});
 });
 
 it("monitoring: the same errors as the Formik validate", () => {
