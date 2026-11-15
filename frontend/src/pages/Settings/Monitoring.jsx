@@ -57,6 +57,8 @@ function LogFields() {
 	// GoAccess reads the format it started with, so a change needs a restart while it runs (a GOA env lock holds
 	// the env value, so GOA=false shows no note)
 	const goaccessOn = useWatch({ name: "goaccess" });
+	// the PROXY protocol lock is its own reason: no "needs Write log files" note under it
+	const { reasonOf } = useRuntimeSection();
 	// written next to the other log files: off and not switchable while Write log files is off
 	const writeLogFiles = useWatch({ name: "writeLogFiles" });
 	return (
@@ -88,7 +90,7 @@ function LogFields() {
 				info={<T id="settings.logs.tls-handshake.info" />}
 				forcedOff={!writeLogFiles}
 			/>
-			{writeLogFiles ? null : (
+			{writeLogFiles || reasonOf("tlsHandshakeLog") === "proxy-protocol" ? null : (
 				<SettingLineNote className="text-sm text-muted-foreground">
 					<T id="settings.logs.tls-handshake.needs-files" />
 				</SettingLineNote>
