@@ -3,7 +3,8 @@ import { isIP } from "node:net";
 const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
 
 // Anchored on the start of the "alog" format up to $bytes_sent; later fields (referrer, user agent, ...) are ignored.
-// The format ends with $server_port since it was added; older lines end with $upstream_cache_status (never a number).
+// $server_port follows $upstream_cache_status since it was added (then the fields added after it); older lines end
+// with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
 const LINE =
 	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "((?:[^"\\]|\\.)*)" (\d{3}) (\d+)(?: |$)/u;
@@ -96,9 +97,10 @@ export const statusClass = (status) => {
 /**
  * True for NPMpro's own requests, which are not visitor traffic: requests nginx received on the admin UI port
  * ($server_port, which ends the line or is followed by the fields added after it), including the container health
- * check. When the admin port is 80 or 443, proxy hosts share it, and for requests over a unix socket (empty $server_port) only a health check (user agent
- * "NPMpro/healthcheck") from a loopback address or the configured binding address is skipped. Lines written before
- * $server_port was added fall back to the port the browser sent (a remapped Docker port is not recognised there).
+ * check. When the admin port is 80 or 443, proxy hosts share it, and for requests over a unix socket (empty
+ * $server_port) only a health check (user agent "NPMpro/healthcheck") from a loopback address or the configured
+ * binding address is skipped. Lines written before $server_port was added fall back to the port the browser sent (a
+ * remapped Docker port is not recognised there).
  * @param {string} line a raw alog line
  * @param {string | number | null | undefined} adminPort NPM_PORT
  * @param {string[]} [bindAddresses] addresses the health check may come from besides loopback (NPM_IPV4_BINDING)

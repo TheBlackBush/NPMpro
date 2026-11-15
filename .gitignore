@@ -23,8 +23,9 @@ ruvector.db
 /compose.override.yaml
 /compose.override.yml
 
-# Logs
+# Logs (the sample log lines of the tests are kept)
 *.log
+!/backend/test/fixtures/log-lines/*.log
 npm-debug.log*
 pnpm-debug.log*
 
