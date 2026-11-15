@@ -41,13 +41,22 @@ if [ "$1" = "--trim-affinity" ]; then
             print r
             exit
         }' "$file")"
+    # the file is replaced only from a complete, non-empty copy: a failed write (full disk, folder not writable) keeps
+    # it as it is. cat over the file keeps its owner and mode, like launch.sh.
     tmp="$file.trim"
+    rc=0
     if [ -n "$mask" ]; then
-        sed "s/^worker_cpu_affinity auto [01]*;$/worker_cpu_affinity auto $mask;/" "$file" > "$tmp"
+        sed "s/^worker_cpu_affinity auto [01]*;$/worker_cpu_affinity auto $mask;/" "$file" > "$tmp" || rc=$?
     else
-        grep -v "^worker_cpu_affinity auto [01]*;$" "$file" > "$tmp" || true
+        grep -v "^worker_cpu_affinity auto [01]*;$" "$file" > "$tmp" || rc=$?
+        # grep answers 1 when it prints no line, which is no error (an empty copy is not used below)
+        if [ "$rc" = 1 ]; then rc=0; fi
     fi
-    cat "$tmp" > "$file"
+    if [ "$rc" = 0 ] && [ -s "$tmp" ]; then
+        cat "$tmp" > "$file"
+    else
+        echo "Pin workers to CPUs: could not cut the affinity line of $file, it is kept as it is" >&2
+    fi
     rm -f "$tmp"
     exit 0
 fi

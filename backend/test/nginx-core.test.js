@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { it } from "node:test";
@@ -25,6 +25,7 @@ const SIGALGS =
 	"mldsa87:mldsa65:mldsa44:ed25519:ecdsa_secp521r1_sha512:ecdsa_secp384r1_sha384:ecdsa_secp256r1_sha256:rsa_pss_rsae_sha512:rsa_pss_rsae_sha384:rsa_pss_rsae_sha256";
 const NONE_ALLOWED = /none of the CPUs 0-3 is allowed/u;
 const UNREADABLE = /cannot be read/u;
+const TRIM_KEPT = /could not cut the affinity line of .*core-main\.conf, it is kept as it is/u;
 const ALLOWED_LIST = /Cpus_allowed_list:\t(?<list>\S+)/u;
 const lines = (text) => text.split("\n").filter((line) => line && !line.startsWith("#"));
 
@@ -276,6 +277,30 @@ it("--trim-affinity cuts a stale mask to the allowed CPUs and drops it when none
 	assert.equal(trimAffinity(MAIN_4_7, null), "# header\nworker_processes auto;\nworker_shutdown_timeout 5;\n");
 	const noLine = "# header\nworker_processes auto;\n";
 	assert.equal(trimAffinity(noLine, "0-3"), noLine);
+});
+
+it("--trim-affinity keeps core-main.conf as it is when the cut copy cannot be written", {
+	skip: process.getuid?.() === 0,
+}, () => {
+	// the folder is not writable (the file is): neither the cut nor the drop may empty the file
+	for (const allowed of ["5-6", "0-3"]) {
+		const dir = mkdtempSync(path.join(tmpdir(), "nginx-core-"));
+		const status = path.join(dir, "status");
+		writeFileSync(status, `Cpus_allowed_list:\t${allowed}\n`);
+		writeFileSync(path.join(dir, "core-main.conf"), MAIN_4_7);
+		chmodSync(dir, 0o555);
+		try {
+			const result = spawnSync("sh", [SCRIPT, "--trim-affinity", dir], {
+				env: { PATH: process.env.PATH, NPMPRO_PROC_STATUS: status, ...ENVS },
+				encoding: "utf8",
+			});
+			assert.equal(result.status, 0, result.stderr);
+			assert.match(result.stderr, TRIM_KEPT);
+			assert.equal(readFileSync(path.join(dir, "core-main.conf"), "utf8"), MAIN_4_7);
+		} finally {
+			chmodSync(dir, 0o755);
+		}
+	}
 });
 
 it("--trim-affinity leaves a missing core-main.conf alone", () => {
