@@ -236,6 +236,7 @@ ARG ALPINE_REFRESH=
 WORKDIR /app
 RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tmp/git-clone-commit.sh \
     --mount=type=bind,source=backend/certbot/requirements.txt,target=/tmp/certbot-requirements.txt \
+    --mount=type=bind,source=patches/lua-cs-bouncer-appsec-request-id.patch,target=/tmp/lua-cs-bouncer-appsec-request-id.patch \
     echo "Alpine packages of ${ALPINE_REFRESH:-any week}" && \
     apk upgrade --no-cache -a && \
     apk add --no-cache tzdata tini dinit llvm-libunwind libc++ \
@@ -267,6 +268,11 @@ RUN --mount=type=bind,source=rootfs/usr/local/bin/git-clone-commit.sh,target=/tm
     # npmpro_pages.lua mirrors ban.apply and captcha.apply of these two files: on a hash mismatch (new LCSB_VER) compare
     # them with the copy, then update the hashes
     printf "%s  %s\n" "46635660fbab6a53854a3d08f8384b5dbeaae08cffefadbcb48f10473b552e5e" /src/lua-cs-bouncer/lib/plugins/crowdsec/ban.lua "c9ed3881c7f58d75306840b86c6b24687faf341cdfce48293cbf7d39e713c370" /src/lua-cs-bouncer/lib/plugins/crowdsec/captcha.lua | sha256sum -c && \
+    # the AppSec request carries the request's $request_id (patches/lua-cs-bouncer-appsec-request-id.patch): only the
+    # request to the AppSec, never the upstream; git apply fails the build when upstream changes the file under it
+    cd /src/lua-cs-bouncer && \
+    git apply /tmp/lua-cs-bouncer-appsec-request-id.patch && \
+    cd /app && \
     mv /src/lua-cs-bouncer/lib/* /usr/local/share/lua/5.1 && \
     mv /src/lua-cs-bouncer/templates/captcha.html /etc/captcha.html.original && \
     mv /src/lua-cs-bouncer/templates/ban.html /etc/ban.html.original && \

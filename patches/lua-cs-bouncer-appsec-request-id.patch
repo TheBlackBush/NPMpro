@@ -1,0 +1,34 @@
+diff --git a/lib/crowdsec.lua b/lib/crowdsec.lua
+index 1106a38..19a3031 100644
+--- a/lib/crowdsec.lua
++++ b/lib/crowdsec.lua
+@@ -32,6 +32,8 @@ local APPSEC_VERB_HEADER = "x-crowdsec-appsec-verb"
+ local APPSEC_URI_HEADER = "x-crowdsec-appsec-uri"
+ local APPSEC_USER_AGENT_HEADER = "x-crowdsec-appsec-user-agent"
+ local APPSEC_TRANSFER_ENCODING_HEADER = "x-crowdsec-appsec-transfer-encoding"
++local APPSEC_HTTP_VERSION_HEADER = "x-crowdsec-appsec-http-version"
++local APPSEC_TRANSACTION_ID_HEADER = "x-crowdsec-appsec-transaction-id"
+ local REMEDIATION_API_KEY_HEADER = 'x-api-key'
+ local METRICS_PERIOD = 900
+ 
+@@ -679,7 +681,20 @@ function csmod.AppSecCheck(ip)
+   headers[APPSEC_VERB_HEADER] = ngx.var.request_method
+   headers[APPSEC_URI_HEADER] = uri
+   headers[APPSEC_USER_AGENT_HEADER] = ngx.var.http_user_agent
++  -- the HTTP version of the client request as the two digits the AppSec reads (11, 20, 30); nil (no header, and a
++  -- client-sent one is dropped) for a version the AppSec does not accept
++  local http_version = ngx.req.http_version()
++  if http_version and http_version >= 1 then
++    headers[APPSEC_HTTP_VERSION_HEADER] = string.format("%d", math.floor(http_version * 10 + 0.5))
++  else
++    headers[APPSEC_HTTP_VERSION_HEADER] = nil
++  end
+   headers[APPSEC_API_KEY_HEADER] = runtime.conf["API_KEY"]
++  -- the nginx $request_id of this request: the AppSec uses the transaction id as the id of its request (request_uuid,
++  -- tx_id), so it equals the access log request_id; a client-sent transaction id is replaced, and only in the request
++  -- to the AppSec. The client's own X-Request-Id stays in the request, where the AppSec rules inspect it like every
++  -- other client header
++  headers[APPSEC_TRANSACTION_ID_HEADER] = ngx.var.request_id
+ 
+   -- set CrowdSec APPSEC Host
+   headers["host"] = runtime.conf["APPSEC_HOST"]

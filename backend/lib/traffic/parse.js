@@ -3,7 +3,8 @@ import { isIP } from "node:net";
 const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
 
 // Anchored on the start of the "alog" format up to $bytes_sent; later fields (referrer, user agent, ...) are ignored.
-// The format ends with $server_port since it was added; older lines end with $upstream_cache_status (never a number).
+// $server_port follows $upstream_cache_status since it was added (then the fields added after it); older lines end
+// with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
 const LINE =
 	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "((?:[^"\\]|\\.)*)" (\d{3}) (\d+)(?: |$)/u;
@@ -18,8 +19,13 @@ const MAX_PATH = 200;
 const RAW_PORT = /:(\d+)$/u;
 const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
 const DEFAULT_PORTS = new Set(["80", "443"]);
-// Empty for requests over a unix socket listener (the line then ends with a space)
-const SERVER_PORT = / (?<port>\d{0,5})$/u;
+// The fields after the quoted content type: $ssl_protocol $ssl_cipher $ssl_curve $upstream_cache_status, then
+// $server_port (empty over a unix socket listener; missing in lines written before it was added, which end with
+// $upstream_cache_status, never a number) and, since they were added, "$server_name" $npmpro_host_id $request_id
+// $connection "$upstream_status" "$upstream_response_time". Quoted fields never hold a raw quote (nginx writes \x22).
+// The four fields may be empty: nginx writes a found but empty value as nothing ($ssl_curve over TLS when no group
+// was negotiated); their fixed count and the end anchor keep the match unique.
+const SERVER_PORT = /"[^"]*" \S* \S* \S* \S*(?: (?<port>\d{0,5})(?: "[^"]*" \S+ \S+ \d+ "[^"]*" "[^"]*")?)?$/u;
 const LOOPBACK = new Set(["127.0.0.1", "::1"]);
 
 // The raw host field ($host$is_request_port$request_port) and $remote_addr, the first two fields after the time
@@ -92,10 +98,11 @@ export const statusClass = (status) => {
 
 /**
  * True for NPMpro's own requests, which are not visitor traffic: requests nginx received on the admin UI port
- * ($server_port at the end of the line), including the container health check. When the admin port is 80 or 443, proxy
- * hosts share it, and for requests over a unix socket (empty $server_port) only a health check (user agent
- * "NPMpro/healthcheck") from a loopback address or the configured binding address is skipped. Lines written before
- * $server_port was added fall back to the port the browser sent (a remapped Docker port is not recognised there).
+ * ($server_port, which ends the line or is followed by the fields added after it), including the container health
+ * check. When the admin port is 80 or 443, proxy hosts share it, and for requests over a unix socket (empty
+ * $server_port) only a health check (user agent "NPMpro/healthcheck") from a loopback address or the configured
+ * binding address is skipped. Lines written before $server_port was added fall back to the port the browser sent (a
+ * remapped Docker port is not recognised there).
  * @param {string} line a raw alog line
  * @param {string | number | null | undefined} adminPort NPM_PORT
  * @param {string[]} [bindAddresses] addresses the health check may come from besides loopback (NPM_IPV4_BINDING)
