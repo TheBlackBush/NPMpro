@@ -139,7 +139,7 @@ Saving checks the connection first: a wrong key or an unreachable LAPI or AppSec
 
 ## Log format
 
-NPMpro writes the access log (`access.log`) and the stream log (`stream.log`) in one line per request, or per stream session. The fields are separated by spaces. Text fields are in quotes. A value nginx does not have (for example the upstream status of a request without an upstream) is written as `-`, an empty one as nothing: the server port of a request over the internal unix socket is empty, and so is the quoted server name `""` of a request without a host name. The acquisition file of step 4 reads the access log. The parser of the collection reads the fields up to the server port; the fields after it are new.
+NPMpro writes the access log (`access.log`) and the stream log (`stream.log`) in one line per request, or per stream session. The fields are separated by spaces. Text fields are in quotes. A value nginx does not have (for example the upstream status of a request without an upstream) is written as `-`, an empty one as nothing: the server port of a request over the internal unix socket is empty, and so is the quoted server name `""` of a request without a host name. The acquisition file of step 4 reads the access log. The parser of the collection, `ZoeyVid/npmplus-logs`, reads the fields up to the remote user (the time, host, client IP, request, status, referer, user agent and remote user); it does not read the fields after it, so it gives no port, TLS or cache values. The parser `TheBlackBush/npmpro-logs` reads all fields.
 
 The new fields come at the end of each line, so a parser that reads the start of a line keeps working. The hub item `ZoeyVid/npmplus-logs` is such a parser.
 
