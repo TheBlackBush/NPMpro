@@ -9,13 +9,24 @@ const DOCKERFILE = readFileSync(path.join(ROOT, "Dockerfile"), "utf8");
 const PATCH_FILE = /^\+\+\+ b\/(?<file>\S+)$/gmu;
 const REQUEST_ID_HEADER = /X-Request-Id/iu;
 
-it("patches only the request to the AppSec: one header line in lib/crowdsec.lua", () => {
+it("patches only the request to the AppSec: the HTTP version, request id and transaction id lines in lib/crowdsec.lua", () => {
 	const files = [...PATCH.matchAll(PATCH_FILE)].map((m) => m.groups.file);
 	assert.deepEqual(files, ["lib/crowdsec.lua"]);
 	const lines = PATCH.split("\n");
 	const added = lines.filter((line) => line.startsWith("+") && !line.startsWith("+++"));
 	const code = added.filter((line) => !line.startsWith("+  --") && line.trim() !== "+");
-	assert.deepEqual(code, ['+  headers["x-request-id"] = ngx.var.request_id']);
+	assert.deepEqual(code, [
+		'+local APPSEC_HTTP_VERSION_HEADER = "x-crowdsec-appsec-http-version"',
+		'+local APPSEC_TRANSACTION_ID_HEADER = "x-crowdsec-appsec-transaction-id"',
+		"+  local http_version = ngx.req.http_version()",
+		"+  if http_version and http_version >= 1 then",
+		'+    headers[APPSEC_HTTP_VERSION_HEADER] = string.format("%d", math.floor(http_version * 10 + 0.5))',
+		"+  else",
+		"+    headers[APPSEC_HTTP_VERSION_HEADER] = nil",
+		"+  end",
+		'+  headers["x-request-id"] = ngx.var.request_id',
+		"+  headers[APPSEC_TRANSACTION_ID_HEADER] = ngx.var.request_id",
+	]);
 	assert.equal(
 		lines.some((line) => line.startsWith("-") && !line.startsWith("---")),
 		false,
