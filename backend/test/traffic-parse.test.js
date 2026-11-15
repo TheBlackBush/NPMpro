@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import { ACCESS_FIELDS, tokenizeClassic } from "../lib/log-format.js";
 import { isOwnRequest, parseAlogLine, statusClass } from "../lib/traffic/parse.js";
 
 const line = (host, ip, status = 200, bytes = 512, request = "GET /a?b=1 HTTP/2.0", ua = "curl/8") =>
@@ -241,4 +242,41 @@ it("gives the same answers for every fixture line with and without the new field
 		assert.equal(isOwnRequest(extended, 443), isOwnRequest(entry, 443), entry);
 		assert.deepEqual(parseAlogLine(extended), parseAlogLine(entry), entry);
 	}
+});
+
+it("reads the real nginx lines of the access log fixture", () => {
+	const lines = readFileSync(new URL("./fixtures/log-lines/access-classic.log", import.meta.url), "utf8")
+		.split("\n")
+		.filter((entry) => entry !== "");
+	assert.equal(lines.length, 6);
+	const fields = lines.map((entry) => tokenizeClassic(entry, ACCESS_FIELDS));
+	for (const [index, entry] of fields.entries()) {
+		assert.notEqual(entry, null, lines[index]);
+	}
+	assert.deepEqual(
+		fields.map((entry) => [entry.server_port, entry.host_id]),
+		[
+			["81", "npmpro"],
+			["81", "npmpro"],
+			["80", "proxy-2"],
+			["80", "-"],
+			["80", "default"],
+			["", "default"],
+		],
+	);
+	// the health check and the admin UI request on port 81 are NPMpro's own, the others are visitor traffic
+	assert.deepEqual(
+		lines.map((entry) => isOwnRequest(entry, 81)),
+		[true, true, false, false, false, false],
+	);
+	assert.deepEqual(parseAlogLine(lines[2]), {
+		time: Date.UTC(2026, 10, 15, 7, 36, 56),
+		host: "lb.t40.example",
+		ip: "127.0.0.1",
+		status: 200,
+		bytes: 559,
+		method: "GET",
+		path: "/api/items",
+	});
+	assert.equal(fields[2].upstream_status, "502, 200");
 });
