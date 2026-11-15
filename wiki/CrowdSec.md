@@ -130,7 +130,7 @@ Open **Settings, CrowdSec** in NPMpro:
 2. **LAPI URL**: the LAPI as NPMpro sees it. With the compose file above it is `http://127.0.0.1:8080`.
 3. **API key**: the key from step 6.
 4. **AppSec URL**: the AppSec listener from step 4, `http://127.0.0.1:7422`. New installs start with it empty (AppSec off); leave it empty if you did not set up AppSec.
-5. Turn on **Leave the admin UI out of CrowdSec** (recommended with AppSec): the admin UI then stays reachable when CrowdSec is down.
+5. Set **Admin UI and CrowdSec**: **Bans only** (recommended with AppSec) applies bans and captchas to the admin UI but not AppSec, so an AppSec outage cannot lock you out; **Left out** skips CrowdSec on the admin UI completely.
 6. **Test connection**, then **Save**.
 
 Saving checks the connection first: a wrong key or an unreachable LAPI or AppSec stops the save with the reason, and **Save anyway** saves all the same (for example while CrowdSec is not running yet). The settings apply at once with an nginx reload; NPMpro does not restart. The docker logs show `[Crowdsec] Initialisation done` after each save, and the startup log has a CrowdSec block with the state and a connection check.
@@ -262,17 +262,33 @@ NPMpro writes `/data/crowdsec/crowdsec.conf` (`/opt/npmpro/crowdsec/crowdsec.con
 | Captcha: Provider, Site key, Secret key | `CAPTCHA_PROVIDER`, `SITE_KEY`, `SECRET_KEY` | none | the captcha for decisions of type `captcha`: reCAPTCHA, hCaptcha or Cloudflare Turnstile, with the keys from that provider. The secret key is stored encrypted and never shown again |
 | A solved captcha is valid for | `CAPTCHA_EXPIRATION` | 3600 | seconds a solved captcha stays valid |
 | AppSec URL | `APPSEC_URL` | empty on new installs | the AppSec listener; empty turns AppSec off |
-| When AppSec cannot be reached | `APPSEC_FAILURE_ACTION` | deny | **Deny the request** blocks every checked request while AppSec is down (every host, and the admin UI and with it the container health check unless the admin UI is left out), **Let the request through** leaves them unchecked |
+| When AppSec cannot be reached | `APPSEC_FAILURE_ACTION` | deny | **Deny the request** blocks every checked request while AppSec is down (every host, and the admin UI and with it the container health check unless the admin UI is on Bans only or Left out), **Let the request through** leaves them unchecked |
 | AppSec connect, send and process timeout (Advanced) | `APPSEC_CONNECT_TIMEOUT`, `APPSEC_SEND_TIMEOUT`, `APPSEC_PROCESS_TIMEOUT` | empty | in milliseconds (empty: the defaults of the bouncer) |
 | Always send to AppSec (Advanced) | `ALWAYS_SEND_TO_APPSEC` | off | also send requests of IPs that already have a decision to AppSec |
 | Drop requests with an unreadable body (Advanced) | `APPSEC_DROP_UNREADABLE_BODY` | on | drop requests whose body cannot be read (HTTP/2 or HTTP/3 requests without a content-length header, or gRPC requests) instead of sending them to AppSec without a body |
-| Leave the admin UI out of CrowdSec | not a bouncer key | off | requests to the admin UI skip the bouncer and AppSec, so a CrowdSec outage or a wrong setting cannot lock you out. Off: the admin UI is checked like every host |
+| Admin UI and CrowdSec | not a bouncer key | Checked like every host | **Checked like every host**: bans, captchas and AppSec; **Bans only**: bans and captchas, no AppSec; **Left out**: no check at all |
 
 The `CACHE_SIZE`, `STREAM_REQUEST_TIMEOUT` and `CAPTCHA_RET_CODE` keys of the bouncer have no setting.
 
-### Leave the admin UI out of CrowdSec
+### Admin UI and CrowdSec
 
-With the switch on, the admin UI port (`NPM_PORT`, 81 by default) is not checked by the bouncer or AppSec. Mind one case: if you moved the admin UI to port 80 or 443 with `NPM_PORT`, requests with an unknown Host header land in the admin server too, and they skip CrowdSec as long as the switch is on. Keep the admin UI on its own port if that matters to you.
+The admin UI port (`NPM_PORT`, 81 by default) has three choices:
+
+| Choice | What NPMpro writes for the admin UI |
+| --- | --- |
+| Checked like every host | The bouncer (bans and captchas) and AppSec, as for every host. |
+| Bans only | The bouncer, without AppSec. |
+| Left out | Nothing: no bouncer and no AppSec. |
+
+The ban check fails open. In live mode, when the LAPI does not answer, the bouncer lets the request through after up to **LAPI request timeout**, and then remembers "no decision" for that client IP for **Cache answers for** seconds before it asks again. Stream mode answers from the decisions it holds. So **Bans only** keeps the admin UI reachable while CrowdSec is down, and in live mode an IP waits for an unreachable LAPI at most once per **Cache answers for** period (a ban added in that time applies after it, at the latest).
+
+The container health check makes one request every 30 seconds. With **Cache answers for** below 30 seconds, each check still waits up to **LAPI request timeout** once. In live mode with **Bans only**, keep **LAPI request timeout** under 10 seconds (Docker's health check timeout), raise **Cache answers for**, or use stream mode.
+
+`TheBlackBush/npmpro-login-bf` bans an IP after failed sign-ins on any `NPM_PORT`. With **Bans only** (or **Checked like every host**) that ban now also closes the admin UI to that IP. See [Locked out of the admin UI](#locked-out-of-the-admin-ui).
+
+The ban and captcha pages on the admin UI look as on every host, and the captcha can be solved there. The captcha page allows only the provider set in Captcha: Provider; with no provider set, a captcha decision shows the ban page, because the bouncer falls back to **Fallback remediation** (ban by default). The admin UI's own pages keep their strict content security policy.
+
+Mind one case: if you moved the admin UI to port 80 or 443 with `NPM_PORT`, requests with an unknown Host header land in the admin server too. With **Bans only** they skip AppSec, with **Left out** they skip all of CrowdSec. Keep the admin UI on its own port if that matters to you.
 
 ### TLS client authentication and AppSec
 
@@ -406,11 +422,13 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 - The LAPI URL must be reachable from NPMpro. With `network_mode: host` and the compose file above that is `http://127.0.0.1:8080`. Test it from the host with `curl http://127.0.0.1:8080/v1/decisions -H "X-Api-Key: <key>"`: a working key returns `null` or a list, a wrong key returns 403.
 - A wrong or deleted key: create a new one (step 6), enter it in Settings, CrowdSec and save.
 - A field that is greyed out is locked by an environment variable (see [Environment variables](#environment-variables)).
-- "Save anyway" is not offered when it would lock you out: AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is not left out. There are three ways out: fix the API key or the AppSec URL, set the failure action to **Let the request through**, or turn on **Leave the admin UI out of CrowdSec**. The last one only protects the admin UI: your hosts are still blocked while AppSec fails with deny, so fix AppSec or the failure action as well.
+- "Save anyway" is not offered when it would lock you out: AppSec fails, **When AppSec cannot be reached** is **Deny the request** and the admin UI is on Checked like every host. There are three ways out: fix the API key or the AppSec URL, set the failure action to **Let the request through**, or choose **Bans only** or **Left out** for **Admin UI and CrowdSec**. The last one only protects the admin UI: your hosts are still blocked while AppSec fails with deny, so fix AppSec or the failure action as well.
 
 ### Locked out of the admin UI
 
-This happens when AppSec is set to deny, AppSec fails and the admin UI is not left out of CrowdSec. AppSec fails when CrowdSec is down, or when AppSec refuses the key (for example the bouncer was deleted with `cscli bouncers delete`). A missing key does not lock you out: NPMpro keeps the bouncer off until the key is entered (see [TLS client authentication and AppSec](#tls-client-authentication-and-appsec)). If CrowdSec is down, start it again; the admin UI works again at once. If the key is refused or that is not possible, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it, then turn on **Leave the admin UI out of CrowdSec** (this restores only the admin UI, not your hosts) and set the failure action to **Let the request through** or fix AppSec, fix the settings and remove the variable. A bouncer config nginx rejects (for example a TLS client file that was deleted) never stops NPMpro from starting: the bouncer stays off and the startup log says why, see [If the bouncer file is broken](#if-the-bouncer-file-is-broken).
+Your own IP is banned: with **Checked like every host** or **Bans only**, a ban closes the admin UI to that IP too. Run `docker exec crowdsec cscli decisions list`, then `docker exec crowdsec cscli decisions delete --ip <your IP>`; the admin UI opens again within **Cache answers for** (live mode) or **Update every** (stream mode). Without access to CrowdSec, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it.
+
+AppSec fails and locks you out when AppSec is set to deny and the admin UI is on **Checked like every host**. AppSec fails when CrowdSec is down, or when AppSec refuses the key (for example the bouncer was deleted with `cscli bouncers delete`). A missing key does not lock you out: NPMpro keeps the bouncer off until the key is entered (see [TLS client authentication and AppSec](#tls-client-authentication-and-appsec)). If CrowdSec is down, start it again; the admin UI works again at once. If the key is refused or that is not possible, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it, then choose **Bans only** or **Left out** for **Admin UI and CrowdSec** (this restores only the admin UI, not your hosts) and set the failure action to **Let the request through** or fix AppSec, fix the settings and remove the variable. A bouncer config nginx rejects (for example a TLS client file that was deleted) never stops NPMpro from starting: the bouncer stays off and the startup log says why, see [If the bouncer file is broken](#if-the-bouncer-file-is-broken).
 
 ### The CrowdSec tab says "CrowdSec is not configured"
 
