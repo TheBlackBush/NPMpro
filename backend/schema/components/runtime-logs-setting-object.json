@@ -82,7 +82,7 @@
 				"enum": [
 					"write_log_files",
 					"log_format",
-				"tls_handshake_log",
+					"tls_handshake_log",
 					"log_rotations",
 					"goaccess",
 					"goaccess_keep_days",
