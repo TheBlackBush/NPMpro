@@ -189,6 +189,38 @@ The stream log has these fields, in this order:
 
 The stream id is new. It is `-` when the server does not set one.
 
+### JSON log format and the NPMpro parser
+
+Settings, Logs & monitoring has a Log format setting (`NGINX_LOG_FORMAT`): **Classic** (the default) or **JSON**. Both formats hold the same fields in the same order. JSON writes one object per line with the field names of the tables above as keys (`time_local`, `host`, `remote_addr`, `request_time`, `request`, `status`, `bytes_sent`, `http_referer`, `http_user_agent`, `remote_user`, `sent_http_content_type`, `ssl_protocol`, `ssl_cipher`, `ssl_curve`, `upstream_cache_status`, `server_port`, `server_name`, `host_id`, `request_id`, `connection`, `upstream_status`, `upstream_response_time`; in `stream.log`: `time_local`, `server_port`, `remote_addr`, `protocol`, `ssl_preread_protocol`, `status`, `bytes_sent`, `bytes_received`, `session_time`, `stream_id`). Every value is a string, and `""` when empty, including numbers such as `status` and `request_time`: use `tonumber` for comparisons. The time is `$time_local` and the request is the one `$request` field, as in the classic format.
+
+```sh
+jq -r 'select(.status == "404") | .request' /opt/npmpro/nginx/logs/access.log
+jq -r 'select(.host_id == "proxy-12") | [.time_local, .remote_addr, .status] | @tsv' /opt/npmpro/nginx/logs/access.log
+jq -r 'select((.request_time|tonumber) > 1) | .request' /opt/npmpro/nginx/logs/access.log
+```
+
+The JSON format needs the parser `TheBlackBush/npmpro-logs` (in the collection `TheBlackBush/npmpro`). It is waiting for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)) and cannot be installed from the hub yet. The parser `ZoeyVid/npmplus-logs` of the default setup cannot read JSON lines. Until the NPMpro parser is on the hub, keep Log format on **Classic**.
+
+Once it is on the hub, the acquisition of step 4 becomes this (the AppSec part stays as it is):
+
+```yaml
+filenames:
+  - /opt/npmpro/nginx/logs/access.log
+  - /opt/npmpro/nginx/logs/error.log
+  - /opt/npmpro/nginx/logs/stream.log
+labels:
+  type: npmpro
+```
+
+The NPMpro parser reads the old and the new classic lines, JSON lines, and a file that switches from one format to the other. From the error log it reads only the rate-limit lines (`limiting requests, excess`), so `error.log` can be read without counting a failed basic auth twice: it counts once, from the 401 in the access log. The other error log lines show as "unparsed" in `cscli metrics`, which is expected.
+
+The NPMpro collection also brings two scenarios:
+
+| Scenario | Bans |
+|---|---|
+| `TheBlackBush/npmpro-bad-requests` | A client that sends repeated 400 answers, or 444 from the default site: 10 in 10 seconds from one IP. |
+| `TheBlackBush/npmpro-stream-flood` | A client that opens more than 40 connections a second to one stream. |
+
 ### Host id
 
 The host id names the NPMpro object that served a request. Its values:
@@ -348,7 +380,7 @@ labels:
   type: npmplus
 ```
 
-Then restart CrowdSec. nginx writes the client IP itself, so bans cannot be forged. The request line however is written as the client sent it: a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert. With the error log added, failed basic auth attempts show up in both logs, so `crowdsecurity/http-generic-bf` counts each of them twice and bans after roughly half as many failed attempts (3 instead of 6 in quick succession).
+Then restart CrowdSec. nginx writes the client IP itself, so bans cannot be forged. The request line however is written as the client sent it: a crafted one can put any value into `target_fqdn`, so do not build whitelists on the domain of an error log alert. With the error log added, failed basic auth attempts show up in both logs, so `crowdsecurity/http-generic-bf` counts each of them twice and bans after roughly half as many failed attempts (3 instead of 6 in quick succession). With the NPMpro parser ([JSON log format and the NPMpro parser](#json-log-format-and-the-npmpro-parser)) the double counting is gone.
 
 ## Firewall bouncer
 
