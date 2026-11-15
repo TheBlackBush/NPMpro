@@ -248,7 +248,7 @@ it("reads the real nginx lines of the access log fixture", () => {
 	const lines = readFileSync(new URL("./fixtures/log-lines/access-classic.log", import.meta.url), "utf8")
 		.split("\n")
 		.filter((entry) => entry !== "");
-	assert.equal(lines.length, 6);
+	assert.equal(lines.length, 11);
 	const fields = lines.map((entry) => tokenizeClassic(entry, ACCESS_FIELDS));
 	for (const [index, entry] of fields.entries()) {
 		assert.notEqual(entry, null, lines[index]);
@@ -258,27 +258,32 @@ it("reads the real nginx lines of the access log fixture", () => {
 		[
 			["81", "npmpro"],
 			["81", "npmpro"],
-			["80", "proxy-2"],
-			["80", "-"],
 			["80", "default"],
+			["80", "proxy-1"],
+			["80", "-"],
 			["", "default"],
+			["80", "proxy-2"],
+			["80", "proxy-1"],
+			["80", "proxy-2"],
+			["80", "proxy-3"],
+			["80", "proxy-3"],
 		],
 	);
 	// the health check and the admin UI request on port 81 are NPMpro's own, the others are visitor traffic
 	assert.deepEqual(
 		lines.map((entry) => isOwnRequest(entry, 81)),
-		[true, true, false, false, false, false],
+		[true, true, false, false, false, false, false, false, false, false, false],
 	);
-	assert.deepEqual(parseAlogLine(lines[2]), {
-		time: Date.UTC(2026, 10, 15, 7, 36, 56),
+	assert.deepEqual(parseAlogLine(lines[3]), {
+		time: Date.UTC(2026, 10, 15, 10, 23, 46),
 		host: "lb.t40.example",
-		ip: "127.0.0.1",
+		ip: "192.0.2.45",
 		status: 200,
-		bytes: 559,
+		bytes: 351,
 		method: "GET",
 		path: "/api/items",
 	});
-	assert.equal(fields[2].upstream_status, "502, 200");
+	assert.equal(fields[3].upstream_status, "502, 200");
 });
 
 // The JSON twin of a classic line: the ACCESS_FIELDS names in order, every value a string, "" for an empty one
@@ -407,7 +412,7 @@ it("gives the same record for the classic and the JSON line of the same request"
 	const classic = readFileSync(new URL("./fixtures/log-lines/access-classic.log", import.meta.url), "utf8")
 		.split("\n")
 		.filter((entry) => entry !== "");
-	assert.equal(classic.length, 6);
+	assert.equal(classic.length, 11);
 	for (const entry of classic) {
 		assert.deepEqual(parseLogLine(jsonOf(entry)), parseLogLine(entry), entry);
 		assert.equal(isOwnRequest(jsonOf(entry), 81), isOwnRequest(entry, 81), entry);
