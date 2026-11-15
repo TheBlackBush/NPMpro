@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Bans en captcha's gelden voor de beheerinterface, AppSec niet, dus een AppSec-storing kan u niet buitensluiten.",
 	"settings.crowdsec.admin-ui.checked": "Gecontroleerd zoals elke host",
 	"settings.crowdsec.admin-ui.checked.hint": "Bans, captcha's en AppSec gelden ook voor de beheerinterface.",
-	"settings.crowdsec.admin-ui.info": "Gecontroleerd zoals elke host: bans, captcha's en AppSec. Alleen bans: bans en captcha's zonder AppSec; zolang CrowdSec uitgevallen is, blijft de beheerinterface bereikbaar, omdat de bouncer een verzoek doorlaat als hij CrowdSec niet kan raadplegen. Uitgesloten: helemaal geen CrowdSec-controle. Uw eigen IP verbannen? Voer in de CrowdSec-container cscli decisions delete --ip uit, gevolgd door uw IP, of stel CROWDSEC_ENABLED=false in op NPMpro en maak de container opnieuw aan.",
+	"settings.crowdsec.admin-ui.info": "Gecontroleerd zoals elke host: bans, captcha's en AppSec. Alleen bans: bans en captcha's zonder AppSec; zolang CrowdSec uitgevallen is, blijft de beheerinterface bereikbaar, omdat de bouncer een verzoek doorlaat als hij CrowdSec niet kan raadplegen. Uitgesloten: helemaal geen CrowdSec-controle. Buitengesloten door een ban- of captcha-beslissing? De help (?) van dit onderdeel legt uit hoe u weer binnenkomt.",
 	"settings.crowdsec.admin-ui.out": "Uitgesloten",
 	"settings.crowdsec.admin-ui.out.hint": "De beheerinterface wordt niet gecontroleerd: geen bans, geen captcha's, geen AppSec.",
 	"settings.crowdsec.advanced": "Geavanceerd",

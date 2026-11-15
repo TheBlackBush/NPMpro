@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "封禁和验证码适用于管理界面，AppSec 不适用，因此 AppSec 故障不会把您锁在外面。",
 	"settings.crowdsec.admin-ui.checked": "与所有主机一样检查",
 	"settings.crowdsec.admin-ui.checked.hint": "封禁、验证码和 AppSec 同样适用于管理界面。",
-	"settings.crowdsec.admin-ui.info": "与所有主机一样检查：封禁、验证码和 AppSec。仅封禁：封禁和验证码，不含 AppSec；CrowdSec 不可用时管理界面仍可访问，因为 bouncer 无法询问 CrowdSec 时会放行请求。不检查：完全不做 CrowdSec 检查。封禁了自己的 IP？请在 CrowdSec 容器中运行 cscli decisions delete --ip 后接您的 IP，或在 NPMpro 上设置 CROWDSEC_ENABLED=false 并重新创建容器。",
+	"settings.crowdsec.admin-ui.info": "与所有主机一样检查：封禁、验证码和 AppSec。仅封禁：封禁和验证码，不含 AppSec；CrowdSec 不可用时管理界面仍可访问，因为 bouncer 无法询问 CrowdSec 时会放行请求。不检查：完全不做 CrowdSec 检查。因封禁或验证码决策被锁在外面？本部分的帮助 (?) 说明了如何恢复访问。",
 	"settings.crowdsec.admin-ui.out": "不检查",
 	"settings.crowdsec.admin-ui.out.hint": "管理界面不受检查：没有封禁、没有验证码、没有 AppSec。",
 	"settings.crowdsec.advanced": "高级",

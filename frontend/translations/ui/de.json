@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Sperren und Captchas gelten für die Admin-Oberfläche, AppSec nicht, sodass ein AppSec-Ausfall Sie nicht aussperren kann.",
 	"settings.crowdsec.admin-ui.checked": "Wie jeder Host geprüft",
 	"settings.crowdsec.admin-ui.checked.hint": "Sperren, Captchas und AppSec gelten auch für die Admin-Oberfläche.",
-	"settings.crowdsec.admin-ui.info": "Wie jeder Host geprüft: Sperren, Captchas und AppSec. Nur Sperren: Sperren und Captchas ohne AppSec; solange CrowdSec ausfällt, bleibt die Admin-Oberfläche erreichbar, weil der Bouncer eine Anfrage durchlässt, wenn er CrowdSec nicht fragen kann. Ausgenommen: überhaupt keine CrowdSec-Prüfung. Eigene IP gesperrt? Führen Sie im CrowdSec-Container cscli decisions delete --ip gefolgt von Ihrer IP aus oder setzen Sie CROWDSEC_ENABLED=false bei NPMpro und erstellen Sie den Container neu.",
+	"settings.crowdsec.admin-ui.info": "Wie jeder Host geprüft: Sperren, Captchas und AppSec. Nur Sperren: Sperren und Captchas ohne AppSec; solange CrowdSec ausfällt, bleibt die Admin-Oberfläche erreichbar, weil der Bouncer eine Anfrage durchlässt, wenn er CrowdSec nicht fragen kann. Ausgenommen: überhaupt keine CrowdSec-Prüfung. Durch eine Sperr- oder Captcha-Entscheidung ausgesperrt? Die Hilfe (?) dieses Abschnitts erklärt, wie Sie wieder hineinkommen.",
 	"settings.crowdsec.admin-ui.out": "Ausgenommen",
 	"settings.crowdsec.admin-ui.out.hint": "Die Admin-Oberfläche wird nicht geprüft: keine Sperren, keine Captchas, kein AppSec.",
 	"settings.crowdsec.advanced": "Erweitert",

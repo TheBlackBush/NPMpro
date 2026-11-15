@@ -27,7 +27,7 @@ NPMpro 根据这些设置写入 `/data/crowdsec/crowdsec.conf`。对该文件的
 - **模式**：实时模式为每个客户端 IP 向 LAPI 查询，并将响应缓存指定的秒数；流式模式按指定间隔下载所有决策。
 - **对封禁的响应**：封禁页面（可选状态码，默认 403）、重定向，或不带页面的状态码。
 - **后备处置**和**决策类型**：bouncer 无法执行的决策如何处理，以及执行哪些类型。
-- **管理界面与 CrowdSec**：**与所有主机一样检查**会对管理界面同样应用封禁和 AppSec。**仅封禁**应用封禁和验证码，但不应用 AppSec，CrowdSec 故障时不会把你锁在外面。**不检查**则什么都不检查。自己的 IP 被封禁了？请在 CrowdSec 容器中运行 `cscli decisions delete --ip <你的 IP>`，或设置 `CROWDSEC_ENABLED=false`。
+- **管理界面与 CrowdSec**：**与所有主机一样检查**会对管理界面同样应用封禁和 AppSec。**仅封禁**应用封禁和验证码，但不应用 AppSec，CrowdSec 故障时不会把你锁在外面。**不检查**则什么都不检查。因封禁或验证码决策被锁在外面？请参阅下方的 **被锁在外面了？**。
 
 ### 验证码
 
@@ -44,6 +44,8 @@ LAPI 请求超时、场景过滤、排除的路径、内部请求，以及 AppSe
 
 ### 被锁在外面了？
 
-重新启动 CrowdSec，或在容器上设置 `CROWDSEC_ENABLED=false` 并重新创建容器；然后在此修正设置。
+你的 IP 有封禁或验证码决策：请在 CrowdSec 容器中运行 `cscli decisions delete --ip <你的 IP>`。来自封禁列表（社区封禁列表或 CrowdSec 控制台中的列表）的决策会在下次拉取时回来，因此还要把你的 IP 加入允许列表（CrowdSec 1.6.6 或更高版本）：`cscli allowlists create npmpro-admins -d "admin IPs"`，然后运行 `cscli allowlists add npmpro-admins <你的 IP>`。
+
+CrowdSec 不可用：重新启动它。无法访问 CrowdSec：在容器上设置 `CROWDSEC_ENABLED=false` 并重新创建容器，在此为 **管理界面与 CrowdSec** 选择 **不检查**（或删除该决策），修正设置，然后移除该变量并再次重新创建容器。
 
 更多内容见 wiki：CrowdSec。

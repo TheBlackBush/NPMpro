@@ -412,7 +412,7 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 ### Every host answers with 403
 
 - **AppSec is configured but not reachable.** The AppSec URL is set while the AppSec listener does not run (the acquisition file has no AppSec part, CrowdSec is stopped, or the port is not published), and the failure action **Deny the request** blocks everything. Check `docker logs crowdsec` for the AppSec listener, check that `127.0.0.1:7422` is published, or clear the AppSec URL in Settings, CrowdSec (a locked field: remove `CROWDSEC_APPSEC_URL` first). **Let the request through** (`APPSEC_FAILURE_ACTION=passthrough`) lets requests through while AppSec is down, at the cost of no protection in that time. If the admin UI is blocked too, see [Locked out of the admin UI](#locked-out-of-the-admin-ui).
-- **Your own IP is banned.** Run `docker exec crowdsec cscli decisions list` and delete the decision with `cscli decisions delete --ip <ip>`. If CrowdSec bans the IP of a proxy in front of NPMpro, set Trusted proxy IPs (see [Requirements](#requirements)).
+- **Your own IP has a ban or captcha decision.** Run `docker exec crowdsec cscli decisions list` and delete the decision with `cscli decisions delete --ip <ip>`. A decision from a blocklist comes back with the next pull, so also add the IP to an allowlist, see [Locked out of the admin UI](#locked-out-of-the-admin-ui). If CrowdSec bans the IP of a proxy in front of NPMpro, set Trusted proxy IPs (see [Requirements](#requirements)).
 - **Uploads fail with 403** on a host that receives big files: turn on Disable Crowdsec Appsec for it (see [AppSec and your hosts](#appsec-and-your-hosts)).
 
 ### The bouncer does not connect
@@ -426,7 +426,18 @@ Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/
 
 ### Locked out of the admin UI
 
-Your own IP is banned: with **Checked like every host** or **Bans only**, a ban closes the admin UI to that IP too. Run `docker exec crowdsec cscli decisions list`, then `docker exec crowdsec cscli decisions delete --ip <your IP>`; the admin UI opens again within **Cache answers for** (live mode) or **Update every** (stream mode). Without access to CrowdSec, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it.
+Your own IP has a ban or captcha decision: with **Checked like every host** or **Bans only**, a ban closes the admin UI to that IP too, and so does a captcha that cannot be solved (for example with wrong captcha keys). Run `docker exec crowdsec cscli decisions list`, then `docker exec crowdsec cscli decisions delete --ip <your IP>`; the admin UI opens again within **Cache answers for** (live mode) or **Update every** (stream mode).
+
+That removes the decision for now. A decision from a blocklist (the community blocklist or a list you subscribed to in the CrowdSec console) comes back with the next pull. For a lasting exception, add your IP to an allowlist (CrowdSec 1.6.6 or newer) and then delete the decision as above:
+
+```sh
+docker exec crowdsec cscli allowlists create npmpro-admins -d "admin IPs"
+docker exec crowdsec cscli allowlists add npmpro-admins <your IP>
+```
+
+CrowdSec then keeps that IP out of local decisions, blocklist pulls and AppSec blocks. On an older CrowdSec use a whitelist parser instead (https://docs.crowdsec.net/docs/log_processor/whitelist/intro/).
+
+Without access to CrowdSec, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it. Then, in Settings, CrowdSec, choose **Left out** for **Admin UI and CrowdSec** (or remove the decision or allowlist the IP as above), remove the variable and recreate the container again.
 
 AppSec fails and locks you out when AppSec is set to deny and the admin UI is on **Checked like every host**. AppSec fails when CrowdSec is down, or when AppSec refuses the key (for example the bouncer was deleted with `cscli bouncers delete`). A missing key does not lock you out: NPMpro keeps the bouncer off until the key is entered (see [TLS client authentication and AppSec](#tls-client-authentication-and-appsec)). If CrowdSec is down, start it again; the admin UI works again at once. If the key is refused or that is not possible, set `CROWDSEC_ENABLED=false` on the NPMpro container and recreate it, then choose **Bans only** or **Left out** for **Admin UI and CrowdSec** (this restores only the admin UI, not your hosts) and set the failure action to **Let the request through** or fix AppSec, fix the settings and remove the variable. A bouncer config nginx rejects (for example a TLS client file that was deleted) never stops NPMpro from starting: the bouncer stays off and the startup log says why, see [If the bouncer file is broken](#if-the-bouncer-file-is-broken).
 

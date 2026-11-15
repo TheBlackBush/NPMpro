@@ -27,7 +27,7 @@ Opslaan terwijl de bouncer aan staat voert eerst dezelfde test uit. Als die misl
 - **Modus**: live vraagt de LAPI om elk client-IP en cachet het antwoord voor het opgegeven aantal seconden; stream downloadt alle besluiten met het opgegeven interval.
 - **Antwoord op een ban**: de banpagina (met een optionele statuscode, standaard 403), een omleiding, of een statuscode zonder pagina.
 - **Terugvalmaatregel** en **Besluittypen**: hoe besluiten worden behandeld die de bouncer niet kan toepassen, en welke typen worden afgedwongen.
-- **Beheerinterface en CrowdSec**: **Gecontroleerd zoals elke host** past bans en AppSec ook toe op de beheerinterface. **Alleen bans** past bans en captcha's toe maar geen AppSec, en een CrowdSec-storing sluit u niet buiten. **Uitgesloten** controleert niets. Uw eigen IP verbannen? Voer in de CrowdSec-container `cscli decisions delete --ip <uw IP>` uit, of stel `CROWDSEC_ENABLED=false` in.
+- **Beheerinterface en CrowdSec**: **Gecontroleerd zoals elke host** past bans en AppSec ook toe op de beheerinterface. **Alleen bans** past bans en captcha's toe maar geen AppSec, en een CrowdSec-storing sluit u niet buiten. **Uitgesloten** controleert niets. Buitengesloten door een ban- of captcha-beslissing? Zie **Buitengesloten?** hieronder.
 
 ### Captcha
 
@@ -44,6 +44,8 @@ De LAPI-verzoektimeout, scenariofilters, uitgesloten paden, interne verzoeken, e
 
 ### Buitengesloten?
 
-Start CrowdSec opnieuw, of stel `CROWDSEC_ENABLED=false` in op de container en maak hem opnieuw aan; corrigeer daarna de instellingen hier.
+Een ban- of captcha-beslissing voor uw IP: voer in de CrowdSec-container `cscli decisions delete --ip <uw IP>` uit. Een beslissing uit een blocklist (de community-blocklist of een lijst uit de CrowdSec-console) komt bij de volgende download terug, zet uw IP daarom ook op een allowlist (CrowdSec 1.6.6 of nieuwer): `cscli allowlists create npmpro-admins -d "admin IPs"`, daarna `cscli allowlists add npmpro-admins <uw IP>`.
+
+CrowdSec is uitgevallen: start het opnieuw. Geen toegang tot CrowdSec: stel `CROWDSEC_ENABLED=false` in op de container en maak hem opnieuw aan, kies hier **Uitgesloten** voor **Beheerinterface en CrowdSec** (of verwijder de beslissing), corrigeer de instellingen, verwijder dan de variabele en maak de container nogmaals opnieuw aan.
 
 Meer in de wiki: CrowdSec.

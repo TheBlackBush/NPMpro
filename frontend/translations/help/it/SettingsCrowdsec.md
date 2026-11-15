@@ -27,7 +27,7 @@ Salvando con il bouncer attivo viene eseguito prima lo stesso test. Se fallisce,
 - **Modalità**: live interroga la LAPI per ogni IP client e memorizza la risposta nella cache per i secondi indicati; stream scarica tutte le decisioni all'intervallo indicato.
 - **Risposta a un ban**: la pagina di ban (con un codice di stato facoltativo, 403 per impostazione predefinita), un reindirizzamento o un codice di stato senza pagina.
 - **Rimedio di riserva** e **Tipi di decisione**: come vengono gestite le decisioni che il bouncer non può applicare e quali tipi vengono applicati.
-- **Interfaccia di amministrazione e CrowdSec**: **Controllata come ogni host** applica ban e AppSec all'interfaccia di amministrazione. **Solo ban** applica ban e captcha ma non AppSec, e un'interruzione di CrowdSec non ti chiude fuori. **Esclusa** non controlla nulla. Hai bannato il tuo IP? Esegui `cscli decisions delete --ip <il tuo IP>` nel container CrowdSec, oppure imposta `CROWDSEC_ENABLED=false`.
+- **Interfaccia di amministrazione e CrowdSec**: **Controllata come ogni host** applica ban e AppSec all'interfaccia di amministrazione. **Solo ban** applica ban e captcha ma non AppSec, e un'interruzione di CrowdSec non ti chiude fuori. **Esclusa** non controlla nulla. Chiuso fuori da una decisione di ban o di captcha? Vedi **Bloccato fuori?** più sotto.
 
 ### Captcha
 
@@ -44,6 +44,8 @@ Il timeout delle richieste alla LAPI, i filtri degli scenari, i percorsi esclusi
 
 ### Bloccato fuori?
 
-Avvia di nuovo CrowdSec, oppure imposta `CROWDSEC_ENABLED=false` sul container e ricrealo; poi correggi le impostazioni qui.
+Una decisione di ban o di captcha per il tuo IP: esegui `cscli decisions delete --ip <il tuo IP>` nel container CrowdSec. Una decisione da una blocklist (la blocklist della community o una lista della console CrowdSec) torna con il prossimo download, quindi aggiungi anche il tuo IP a una allowlist (CrowdSec 1.6.6 o successivo): `cscli allowlists create npmpro-admins -d "admin IPs"`, poi `cscli allowlists add npmpro-admins <il tuo IP>`.
+
+CrowdSec non è disponibile: avvialo di nuovo. Nessun accesso a CrowdSec: imposta `CROWDSEC_ENABLED=false` sul container e ricrealo, scegli qui **Esclusa** per **Interfaccia di amministrazione e CrowdSec** (o elimina la decisione), correggi le impostazioni, poi rimuovi la variabile e ricrea di nuovo il container.
 
 Altro nel wiki: CrowdSec.

@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Os bloqueios e os captchas aplicam-se à interface de administração, o AppSec não, por isso uma falha do AppSec não o pode deixar de fora.",
 	"settings.crowdsec.admin-ui.checked": "Verificada como todos os hosts",
 	"settings.crowdsec.admin-ui.checked.hint": "Os bloqueios, os captchas e o AppSec também se aplicam à interface de administração.",
-	"settings.crowdsec.admin-ui.info": "Verificada como todos os hosts: bloqueios, captchas e AppSec. Apenas bloqueios: bloqueios e captchas sem AppSec; enquanto o CrowdSec estiver em baixo, a interface de administração continua acessível, porque o bouncer deixa passar um pedido quando não consegue consultar o CrowdSec. Excluída: nenhuma verificação do CrowdSec. Bloqueou o seu próprio IP? Execute cscli decisions delete --ip seguido do seu IP no contentor do CrowdSec, ou defina CROWDSEC_ENABLED=false no NPMpro e recrie o contentor.",
+	"settings.crowdsec.admin-ui.info": "Verificada como todos os hosts: bloqueios, captchas e AppSec. Apenas bloqueios: bloqueios e captchas sem AppSec; enquanto o CrowdSec estiver em baixo, a interface de administração continua acessível, porque o bouncer deixa passar um pedido quando não consegue consultar o CrowdSec. Excluída: nenhuma verificação do CrowdSec. Ficou sem acesso por uma decisão de bloqueio ou de captcha? A ajuda (?) desta secção explica como voltar a entrar.",
 	"settings.crowdsec.admin-ui.out": "Excluída",
 	"settings.crowdsec.admin-ui.out.hint": "A interface de administração não é verificada: sem bloqueios, sem captchas, sem AppSec.",
 	"settings.crowdsec.advanced": "Avançado",

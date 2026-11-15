@@ -27,7 +27,7 @@ Zapis przy włączonym bouncerze najpierw uruchamia ten sam test. Gdy się nie p
 - **Tryb**: live pyta LAPI o każdy adres IP klienta i buforuje odpowiedź przez podaną liczbę sekund; stream pobiera wszystkie decyzje w podanym odstępie.
 - **Odpowiedź na bana**: strona bana (z opcjonalnym kodem statusu, domyślnie 403), przekierowanie albo kod statusu bez strony.
 - **Środek zastępczy** i **Typy decyzji**: jak traktowane są decyzje, których bouncer nie może zastosować, i które typy są egzekwowane.
-- **Interfejs administracyjny i CrowdSec**: **Sprawdzany jak każdy host** stosuje do interfejsu administracyjnego bany i AppSec. **Tylko bany** stosuje bany i captcha, ale nie AppSec, a awaria CrowdSec nie zablokuje Ci dostępu. **Pominięty** niczego nie sprawdza. Twój adres IP został zbanowany? Uruchom w kontenerze CrowdSec `cscli decisions delete --ip <Twój IP>` albo ustaw `CROWDSEC_ENABLED=false`.
+- **Interfejs administracyjny i CrowdSec**: **Sprawdzany jak każdy host** stosuje do interfejsu administracyjnego bany i AppSec. **Tylko bany** stosuje bany i captcha, ale nie AppSec, a awaria CrowdSec nie zablokuje Ci dostępu. **Pominięty** niczego nie sprawdza. Dostęp zablokowany przez decyzję o banie lub captcha? Zobacz **Zablokowany dostęp?** poniżej.
 
 ### Captcha
 
@@ -44,6 +44,8 @@ Limit czasu żądań do LAPI, filtry scenariuszy, wykluczone ścieżki, żądani
 
 ### Zablokowany dostęp?
 
-Uruchom CrowdSec ponownie albo ustaw `CROWDSEC_ENABLED=false` na kontenerze i utwórz go na nowo; potem popraw ustawienia tutaj.
+Decyzja o banie lub captcha dla Twojego adresu IP: uruchom w kontenerze CrowdSec `cscli decisions delete --ip <Twój IP>`. Decyzja z listy blokad (listy społeczności lub listy z konsoli CrowdSec) wraca przy następnym pobraniu, więc dodaj też swój adres IP do allowlisty (CrowdSec 1.6.6 lub nowszy): `cscli allowlists create npmpro-admins -d "admin IPs"`, a potem `cscli allowlists add npmpro-admins <Twój IP>`.
+
+CrowdSec nie działa: uruchom go ponownie. Brak dostępu do CrowdSec: ustaw `CROWDSEC_ENABLED=false` na kontenerze i utwórz go na nowo, wybierz tutaj **Pominięty** dla **Interfejs administracyjny i CrowdSec** (albo usuń decyzję), popraw ustawienia, a następnie usuń zmienną i ponownie utwórz kontener.
 
 Więcej w wiki: CrowdSec.

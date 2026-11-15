@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Bany i captcha obowiązują w interfejsie administracyjnym, AppSec nie, więc awaria AppSec nie odetnie Ci dostępu.",
 	"settings.crowdsec.admin-ui.checked": "Sprawdzany jak każdy host",
 	"settings.crowdsec.admin-ui.checked.hint": "Bany, captcha i AppSec obowiązują także w interfejsie administracyjnym.",
-	"settings.crowdsec.admin-ui.info": "Sprawdzany jak każdy host: bany, captcha i AppSec. Tylko bany: bany i captcha bez AppSec; gdy CrowdSec nie działa, interfejs administracyjny pozostaje dostępny, bo bouncer przepuszcza żądanie, gdy nie może zapytać CrowdSec. Pominięty: brak jakiejkolwiek kontroli CrowdSec. Zablokowano Twój własny adres IP? Uruchom w kontenerze CrowdSec cscli decisions delete --ip, a po nim podaj swój adres IP, albo ustaw CROWDSEC_ENABLED=false w NPMpro i utwórz kontener ponownie.",
+	"settings.crowdsec.admin-ui.info": "Sprawdzany jak każdy host: bany, captcha i AppSec. Tylko bany: bany i captcha bez AppSec; gdy CrowdSec nie działa, interfejs administracyjny pozostaje dostępny, bo bouncer przepuszcza żądanie, gdy nie może zapytać CrowdSec. Pominięty: brak jakiejkolwiek kontroli CrowdSec. Dostęp zablokowany przez decyzję o banie lub captcha? Pomoc (?) tej sekcji wyjaśnia, jak go odzyskać.",
 	"settings.crowdsec.admin-ui.out": "Pominięty",
 	"settings.crowdsec.admin-ui.out.hint": "Interfejs administracyjny nie jest sprawdzany: bez banów, bez captcha, bez AppSec.",
 	"settings.crowdsec.advanced": "Zaawansowane",

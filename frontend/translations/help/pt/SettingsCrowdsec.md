@@ -27,7 +27,7 @@ Ao guardar com o bouncer ativo, o mesmo teste corre primeiro. Se falhar, os moti
 - **Modo**: live consulta a LAPI por cada IP de cliente e guarda a resposta em cache durante os segundos indicados; stream transfere todas as decisões no intervalo indicado.
 - **Resposta a um bloqueio**: a página de bloqueio (com um código de estado opcional, 403 por predefinição), um redirecionamento ou um código de estado sem página.
 - **Medida alternativa** e **Tipos de decisão**: como são tratadas as decisões que o bouncer não consegue aplicar e quais os tipos aplicados.
-- **Interface de administração e CrowdSec**: **Verificada como todos os hosts** aplica bloqueios e AppSec à interface de administração. **Apenas bloqueios** aplica bloqueios e captchas mas não o AppSec, e uma falha do CrowdSec não o deixa sem acesso. **Excluída** não verifica nada. Bloqueou o seu próprio IP? Execute `cscli decisions delete --ip <o seu IP>` no contentor do CrowdSec, ou defina `CROWDSEC_ENABLED=false`.
+- **Interface de administração e CrowdSec**: **Verificada como todos os hosts** aplica bloqueios e AppSec à interface de administração. **Apenas bloqueios** aplica bloqueios e captchas mas não o AppSec, e uma falha do CrowdSec não o deixa sem acesso. **Excluída** não verifica nada. Ficou sem acesso por uma decisão de bloqueio ou de captcha? Veja **Ficou sem acesso?** mais abaixo.
 
 ### Captcha
 
@@ -44,6 +44,8 @@ O tempo limite dos pedidos à LAPI, os filtros de cenários, os caminhos excluí
 
 ### Ficou sem acesso?
 
-Inicie o CrowdSec novamente, ou defina `CROWDSEC_ENABLED=false` no contentor e volte a criá-lo; depois corrija as definições aqui.
+Uma decisão de bloqueio ou de captcha para o seu IP: execute `cscli decisions delete --ip <o seu IP>` no contentor do CrowdSec. Uma decisão de uma lista de bloqueio (a lista da comunidade ou uma lista da consola do CrowdSec) volta na próxima transferência, por isso adicione também o seu IP a uma allowlist (CrowdSec 1.6.6 ou mais recente): `cscli allowlists create npmpro-admins -d "admin IPs"` e depois `cscli allowlists add npmpro-admins <o seu IP>`.
+
+O CrowdSec está em baixo: inicie-o novamente. Sem acesso ao CrowdSec: defina `CROWDSEC_ENABLED=false` no contentor e volte a criá-lo, escolha aqui **Excluída** para **Interface de administração e CrowdSec** (ou remova a decisão), corrija as definições e depois remova a variável e volte a criar o contentor.
 
 Mais na wiki: CrowdSec.

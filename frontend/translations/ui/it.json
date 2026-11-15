@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Ban e captcha valgono per l'interfaccia di amministrazione, AppSec no, quindi un'interruzione di AppSec non può escluderti.",
 	"settings.crowdsec.admin-ui.checked": "Controllata come ogni host",
 	"settings.crowdsec.admin-ui.checked.hint": "Ban, captcha e AppSec valgono anche per l'interfaccia di amministrazione.",
-	"settings.crowdsec.admin-ui.info": "Controllata come ogni host: ban, captcha e AppSec. Solo ban: ban e captcha senza AppSec; mentre CrowdSec non è disponibile l'interfaccia di amministrazione resta raggiungibile, perché il bouncer lascia passare una richiesta quando non può interrogare CrowdSec. Esclusa: nessun controllo di CrowdSec. Hai bannato il tuo IP? Esegui cscli decisions delete --ip seguito dal tuo IP nel container CrowdSec, oppure imposta CROWDSEC_ENABLED=false su NPMpro e ricrea il container.",
+	"settings.crowdsec.admin-ui.info": "Controllata come ogni host: ban, captcha e AppSec. Solo ban: ban e captcha senza AppSec; mentre CrowdSec non è disponibile l'interfaccia di amministrazione resta raggiungibile, perché il bouncer lascia passare una richiesta quando non può interrogare CrowdSec. Esclusa: nessun controllo di CrowdSec. Chiuso fuori da una decisione di ban o di captcha? L'aiuto (?) di questa sezione spiega come rientrare.",
 	"settings.crowdsec.admin-ui.out": "Esclusa",
 	"settings.crowdsec.admin-ui.out.hint": "L'interfaccia di amministrazione non viene controllata: niente ban, niente captcha, niente AppSec.",
 	"settings.crowdsec.advanced": "Avanzate",

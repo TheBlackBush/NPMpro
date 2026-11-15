@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Баны и капчи действуют на интерфейс администратора, AppSec нет, поэтому сбой AppSec не заблокирует вам доступ.",
 	"settings.crowdsec.admin-ui.checked": "Проверяется как все хосты",
 	"settings.crowdsec.admin-ui.checked.hint": "Баны, капчи и AppSec действуют и на интерфейс администратора.",
-	"settings.crowdsec.admin-ui.info": "Проверяется как все хосты: баны, капчи и AppSec. Только баны: баны и капчи без AppSec; пока CrowdSec недоступен, интерфейс администратора остаётся доступным, потому что bouncer пропускает запрос, если не может обратиться к CrowdSec. Исключён: никакой проверки CrowdSec. Заблокировали собственный IP? Выполните в контейнере CrowdSec cscli decisions delete --ip и укажите после него свой IP или задайте CROWDSEC_ENABLED=false в NPMpro и пересоздайте контейнер.",
+	"settings.crowdsec.admin-ui.info": "Проверяется как все хосты: баны, капчи и AppSec. Только баны: баны и капчи без AppSec; пока CrowdSec недоступен, интерфейс администратора остаётся доступным, потому что bouncer пропускает запрос, если не может обратиться к CrowdSec. Исключён: никакой проверки CrowdSec. Доступ закрыт решением о бане или капче? В справке (?) этого раздела описано, как вернуть доступ.",
 	"settings.crowdsec.admin-ui.out": "Исключён",
 	"settings.crowdsec.admin-ui.out.hint": "Интерфейс администратора не проверяется: ни банов, ни капч, ни AppSec.",
 	"settings.crowdsec.advanced": "Расширенные",

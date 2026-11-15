@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "Les bannissements et les captchas s'appliquent à l'interface d'administration, pas AppSec : une panne d'AppSec ne peut donc pas vous en bloquer l'accès.",
 	"settings.crowdsec.admin-ui.checked": "Vérifiée comme tous les hôtes",
 	"settings.crowdsec.admin-ui.checked.hint": "Les bannissements, les captchas et AppSec s'appliquent aussi à l'interface d'administration.",
-	"settings.crowdsec.admin-ui.info": "Vérifiée comme tous les hôtes : bannissements, captchas et AppSec. Bannissements uniquement : bannissements et captchas sans AppSec ; tant que CrowdSec est indisponible, l'interface d'administration reste accessible, car le bouncer laisse passer une requête quand il ne peut pas interroger CrowdSec. Exclue : aucune vérification CrowdSec. Votre propre IP est bannie ? Exécutez cscli decisions delete --ip suivi de votre IP dans le conteneur CrowdSec, ou définissez CROWDSEC_ENABLED=false sur NPMpro et recréez le conteneur.",
+	"settings.crowdsec.admin-ui.info": "Vérifiée comme tous les hôtes : bannissements, captchas et AppSec. Bannissements uniquement : bannissements et captchas sans AppSec ; tant que CrowdSec est indisponible, l'interface d'administration reste accessible, car le bouncer laisse passer une requête quand il ne peut pas interroger CrowdSec. Exclue : aucune vérification CrowdSec. Bloqué par une décision de bannissement ou de captcha ? L'aide (?) de cette section explique comment retrouver l'accès.",
 	"settings.crowdsec.admin-ui.out": "Exclue",
 	"settings.crowdsec.admin-ui.out.hint": "L'interface d'administration n'est pas vérifiée : ni bannissements, ni captchas, ni AppSec.",
 	"settings.crowdsec.advanced": "Avancé",

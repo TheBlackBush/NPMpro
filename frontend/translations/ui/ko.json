@@ -1129,7 +1129,7 @@
 	"settings.crowdsec.admin-ui.bans.hint": "차단과 캡차는 관리자 UI에 적용되고 AppSec은 적용되지 않으므로, AppSec 장애로 접속이 막히지 않습니다.",
 	"settings.crowdsec.admin-ui.checked": "모든 호스트와 같이 확인",
 	"settings.crowdsec.admin-ui.checked.hint": "차단, 캡차, AppSec이 관리자 UI에도 적용됩니다.",
-	"settings.crowdsec.admin-ui.info": "모든 호스트와 같이 확인: 차단, 캡차, AppSec. 차단만: AppSec 없이 차단과 캡차. CrowdSec이 중단된 동안에도 bouncer가 CrowdSec에 물어볼 수 없으면 요청을 통과시키므로 관리자 UI에 접속할 수 있습니다. 제외: CrowdSec 확인을 전혀 하지 않습니다. 내 IP가 차단되었나요? CrowdSec 컨테이너에서 cscli decisions delete --ip 뒤에 내 IP를 붙여 실행하거나, NPMpro에 CROWDSEC_ENABLED=false를 설정하고 컨테이너를 다시 만드세요.",
+	"settings.crowdsec.admin-ui.info": "모든 호스트와 같이 확인: 차단, 캡차, AppSec. 차단만: AppSec 없이 차단과 캡차. CrowdSec이 중단된 동안에도 bouncer가 CrowdSec에 물어볼 수 없으면 요청을 통과시키므로 관리자 UI에 접속할 수 있습니다. 제외: CrowdSec 확인을 전혀 하지 않습니다. 차단 또는 캡차 결정으로 접속할 수 없나요? 이 섹션의 도움말(?)에서 다시 접속하는 방법을 확인하세요.",
 	"settings.crowdsec.admin-ui.out": "제외",
 	"settings.crowdsec.admin-ui.out.hint": "관리자 UI는 확인하지 않습니다. 차단도 캡차도 AppSec도 없습니다.",
 	"settings.crowdsec.advanced": "고급",
