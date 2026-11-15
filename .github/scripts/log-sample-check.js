@@ -20,8 +20,17 @@ const proxyHost = new URL(base).hostname;
 const httpPort = Number(process.env.CHECK_HTTP_PORT ?? 80);
 const httpsPort = Number(process.env.CHECK_HTTPS_PORT ?? 443);
 const LOG_DIR = "/data/nginx/logs";
-const START_PORT = 20000;
-const PORT_SPAN = 30000;
+// the stream's incoming port: below the Linux ephemeral range (32768 and up), the smoke container shares the runner's
+// network (--network host), so a port in use there makes the reload fail
+const STREAM_PORT_FIRST = 25000;
+const STREAM_PORT_SPAN = 7000;
+const STREAM_TRIES = 5;
+// a save refused or not reloaded because the port is taken: another stream or NPMpro's own ports (400), or a bind that
+// fails on the reload after nginx -t passed (the row is saved offline with the reload error)
+const PORT_IN_USE = /in use|already uses the incoming port|NPMpro itself listens on|nginx reload failed/i;
+
+// an answer with a JSON object or list (a stream list), the other answers are kept as text
+const JSON_TEXT = /^[[{]/;
 
 let cookie = "";
 
@@ -35,7 +44,7 @@ async function call(method, path, body) {
 		body: body === undefined ? undefined : JSON.stringify(body),
 	});
 	const text = await answer.text();
-	return { status: answer.status, text, json: text.startsWith("{") ? JSON.parse(text) : null, answer };
+	return { status: answer.status, text, json: JSON_TEXT.test(text) ? JSON.parse(text) : null, answer };
 }
 
 async function must(method, path, body) {
@@ -86,19 +95,53 @@ async function sendRequests() {
 	await rawRequest(httpPort, "GET / HTTP/1.0\r\n\r\n", false);
 }
 
-async function streamRequest(failures) {
-	const incomingPort = START_PORT + Math.floor(Math.random() * PORT_SPAN);
-	const stream = await must("POST", "/nginx/streams", {
-		incoming_port: String(incomingPort),
-		forwarding_host: "127.0.0.1",
-		forwarding_port: "9",
-		tcp_forwarding: true,
-		udp_forwarding: false,
+// true when nothing on this machine listens on the port (the default host listens on both IPv4 and IPv6)
+function portFree(port) {
+	return new Promise((resolve) => {
+		const server = net.createServer();
+		server.once("error", () => resolve(false));
+		server.listen(port, () => server.close(() => resolve(true)));
 	});
+}
+
+// Saves a TCP stream on a free port, another port when the save fails because the port is in use (STREAM_TRIES
+// tries). A stream saved without a reload is deleted before the next try. Returns the saved row, which may be offline
+// for another reason (an nginx -t error): the caller reports that.
+async function createStream() {
+	const taken = new Set((await must("GET", "/nginx/streams")).map((row) => Number(row.incoming_port)));
+	const tried = [];
+	for (let attempt = 0; attempt < STREAM_TRIES; attempt += 1) {
+		const port = STREAM_PORT_FIRST + Math.floor(Math.random() * STREAM_PORT_SPAN);
+		if (taken.has(port) || !(await portFree(port))) {
+			tried.push(`${port}: in use on the runner or by a stream`);
+			continue;
+		}
+		const done = await call("POST", "/nginx/streams", {
+			incoming_port: String(port),
+			forwarding_host: "127.0.0.1",
+			forwarding_port: "9",
+			tcp_forwarding: true,
+			udp_forwarding: false,
+		});
+		const saved = done.status >= 200 && done.status < 300;
+		if (saved && !(done.json.npmpro_nginx_online === false && PORT_IN_USE.test(done.json.npmpro_nginx_err))) {
+			return done.json;
+		}
+		const message = saved ? done.json.npmpro_nginx_err : (done.json?.error?.message ?? done.text);
+		const savedId = saved ? done.json.id : done.json?.error?.saved_id;
+		if (savedId !== undefined) await must("DELETE", `/nginx/streams/${savedId}`);
+		if (!PORT_IN_USE.test(message)) throw new Error(`POST /nginx/streams on ${port}: ${done.status} ${message}`);
+		tried.push(`${port}: ${message}`);
+	}
+	throw new Error(`no free stream port after ${STREAM_TRIES} tries: ${tried.join("; ")}`);
+}
+
+async function streamRequest(failures) {
+	const stream = await createStream();
 	try {
 		if (stream.npmpro_nginx_online === false)
-			failures.push(`stream on ${incomingPort}: ${stream.npmpro_nginx_err}`);
-		inContainer("sh", "-c", `echo hello | nc -w 1 127.0.0.1 ${incomingPort} > /dev/null || true`);
+			failures.push(`stream on ${stream.incoming_port}: ${stream.npmpro_nginx_err}`);
+		inContainer("sh", "-c", `echo hello | nc -w 1 127.0.0.1 ${Number(stream.incoming_port)} > /dev/null || true`);
 	} finally {
 		await must("DELETE", `/nginx/streams/${stream.id}`);
 	}
