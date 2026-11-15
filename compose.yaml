@@ -143,6 +143,7 @@ services:
       # Logs & monitoring
 #      - "LOGROTATE=true" # Write log files: access log (/opt/npmpro/nginx/logs/access.log), stream log and error log (level warn) on disk, rotated daily, default false (GOA turns it on too, and CrowdSec does while it is enabled); it does not turn on traffic statistics (TRAFFIC_STATS does)
 #      - "LOGROTATIONS=7" # rotated log files kept, 1 to 1000, default 3
+#      - "NGINX_LOG_FORMAT=json" # Log format of the access and stream logs: classic or json, default classic; JSON needs the CrowdSec parser TheBlackBush/npmpro-logs (see the CrowdSec wiki page). Also a setting (Settings > Logs & monitoring), setting it here locks the field
 #      - "GOA=true" # GoAccess report under /goaccess of the web UI (admins only), applies at the next start, default false; it turns on LOGROTATE (Write log files), not traffic statistics; GeoIP in the report uses the databases in /opt/npmpro/goaccess/geoip (Settings, GeoIP)
 #      - "GOACLA=--agent-list --real-os --double-decode --anonymize-ip --anonymize-level=2 --keep-last=7 --with-output-resolver --no-query-string" # your own GoAccess options instead of the GoAccess fields in the UI (they are then locked), applies at the next start, default built from those fields: --agent-list --real-os --double-decode --anonymize-ip --anonymize-level=1 --keep-last=30 --with-output-resolver --no-query-string
 #      - "TRAFFIC_STATS=true" # traffic statistics (Monitoring page), also writes the access log, default false

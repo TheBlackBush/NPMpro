@@ -14,6 +14,9 @@ const tmpConf = async () => path.join(await mkdtemp(path.join(tmpdir(), "alc-"))
 it("builds the directive", () => {
 	assert.equal(accessLogDirective(true), "access_log /data/nginx/logs/access.log alog;\n");
 	assert.equal(accessLogDirective(false), "access_log off;\n");
+	assert.equal(accessLogDirective(true, "classic"), "access_log /data/nginx/logs/access.log alog;\n");
+	assert.equal(accessLogDirective(true, "json"), "access_log /data/nginx/logs/access.log ajson;\n");
+	assert.equal(accessLogDirective(false, "json"), "access_log off;\n");
 });
 
 it("the access log is on while traffic statistics or Write log files is on", () => {
@@ -38,6 +41,18 @@ it("writes, tests and reloads", async () => {
 	});
 	assert.equal(await readFile(file, "utf8"), "access_log /data/nginx/logs/access.log alog;\n");
 	assert.equal(reloaded, true);
+});
+
+it("writes the json format, and restores the opposite directive in the same format without a previous file", async () => {
+	const file = await tmpConf();
+	await applyAccessLog(true, { file, format: "json", test: ok, reload: ok });
+	assert.equal(await readFile(file, "utf8"), "access_log /data/nginx/logs/access.log ajson;\n");
+	assert.equal(await applyAccessLog(true, { file, format: "json", test: ok, reload: ok }), false);
+	assert.equal(await applyAccessLog(true, { file, test: ok, reload: ok }), true);
+	assert.equal(await readFile(file, "utf8"), "access_log /data/nginx/logs/access.log alog;\n");
+	await writeFile(file, "access_log off;\n");
+	await assert.rejects(applyAccessLog(true, { file, format: "json", test: fail("nginx: [emerg] test"), reload: ok }));
+	assert.equal(await readFile(file, "utf8"), "access_log off;\n");
 });
 
 it("restores the previous include on a failed nginx test", async () => {

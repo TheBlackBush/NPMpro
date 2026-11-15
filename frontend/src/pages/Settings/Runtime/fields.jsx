@@ -1,8 +1,9 @@
-import { FileKey, RefreshCw, ServerCog, Zap } from "lucide-react";
+import { FileKey, Info, RefreshCw, ServerCog, Zap } from "lucide-react";
 import { useController, useFormContext } from "react-hook-form";
 import { useIntl } from "react-intl";
 import { FormField, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
+import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
@@ -21,7 +22,7 @@ const APPLIES_ICONS = {
  * The badges under a setting's label: set by an env var (or locked by another setting), restart required, and when
  * a saved change takes effect; null when none applies
  */
-function useFieldBadges(name, lockName = name) {
+function useFieldBadges(name, lockName = name, info = null) {
 	const { formatMessage } = useIntl();
 	const { isLocked, envOf, reasonOf, isRestart, appliesId } = useRuntimeSection();
 	const applies = appliesId(lockName);
@@ -42,6 +43,18 @@ function useFieldBadges(name, lockName = name) {
 			<SettingBadge key="applies" icon={APPLIES_ICONS[applies]} description={formatMessage({ id: applies })}>
 				<T id={`${applies}.short`} />
 			</SettingBadge>,
+		);
+	if (info)
+		badges.push(
+			<TapTooltip key="info" content={info}>
+				<button
+					type="button"
+					aria-labelledby={`${idOf(name)}-label`}
+					className="inline-flex shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+				>
+					<Info aria-hidden="true" className="size-3.5" />
+				</button>
+			</TapTooltip>,
 		);
 	return badges.length > 0 ? badges : null;
 }
@@ -102,13 +115,14 @@ function RuntimeSwitch({ name, label, hint, forced = false, forcedOff = false })
  * @param {string}   [props.lockName]  the setting whose lock, env and applies notes the field shows (default name)
  * @param {*}        props.label
  * @param {*}        [props.hint]
+ * @param {*}        [props.info]  an info icon after the badges with this text as its tooltip
  * @param {"inline"|"block"} [props.layout]  the control on the right (default) or under the name
  * @param {Function} props.children  (control) => the control, with FormField's id and aria attributes on it
  *   (aria-invalid gives it the red border)
  */
-function RuntimeControl({ name, lockName = name, label, hint, layout = "inline", children }) {
+function RuntimeControl({ name, lockName = name, label, hint, info, layout = "inline", children }) {
 	const error = useFieldError(name);
-	const badges = useFieldBadges(name, lockName);
+	const badges = useFieldBadges(name, lockName, info);
 	const fieldHint = useFieldHint(name, hint, lockName);
 	return (
 		<FormField id={idOf(name)} line={layout} label={label} badges={badges} hint={fieldHint} error={error}>
@@ -183,11 +197,11 @@ function RuntimeText({ name, lockName = name, label, hint, placeholder, rows, ty
  * the form is open (key sizes follow the key type, the certificates load later), and the shown option must follow the
  * value.
  */
-function RuntimeSelect({ name, lockName = name, label, hint, options, onChange, layout = "inline" }) {
+function RuntimeSelect({ name, lockName = name, label, hint, info, options, onChange, layout = "inline" }) {
 	const { field } = useController({ name });
 	const { isLocked } = useRuntimeSection();
 	return (
-		<RuntimeControl name={name} lockName={lockName} label={label} hint={hint} layout={layout}>
+		<RuntimeControl name={name} lockName={lockName} label={label} hint={hint} info={info} layout={layout}>
 			{(control) => (
 				<AppSelect
 					{...control}

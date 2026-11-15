@@ -160,6 +160,7 @@ it("uses the defaults without stored values and with the envs.sh boot defaults",
 	assert.deepEqual(mergeRuntimeConfig("network", {}, BOOT_ENV).values, { trusted_ips: [], trust_cloudflare: false });
 	assert.deepEqual(mergeRuntimeConfig("logs", {}, BOOT_ENV).values, {
 		write_log_files: false,
+		log_format: "classic",
 		log_rotations: 3,
 		goaccess: false,
 		goaccess_keep_days: 30,
@@ -679,6 +680,34 @@ it("cpu_affinity is off by default, takes an env value and keeps a stored list t
 	assert.equal(rule("cpu_affinity").validate("auto"), null);
 	assert.equal(rule("cpu_affinity").parseEnv(" 16-19 "), "16-19");
 	assert.equal(rule("cpu_affinity").parseEnv("0-1024"), undefined);
+});
+
+it("log_format is classic by default, a stored json is kept, the env locks it and an invalid env falls back", () => {
+	assert.equal(mergeRuntimeConfig("logs", {}, BOOT_ENV).values.log_format, "classic");
+	const stored = mergeRuntimeConfig("logs", { log_format: "json" }, BOOT_ENV);
+	assert.equal(stored.values.log_format, "json");
+	assert.deepEqual(stored.locked, []);
+	assert.deepEqual(stored.invalid, []);
+	const {
+		values,
+		locked,
+		locked_by: lockedBy,
+	} = mergeRuntimeConfig("logs", { log_format: "classic" }, userEnv({ NGINX_LOG_FORMAT: "json" }));
+	assert.equal(values.log_format, "json");
+	assert.deepEqual(locked, ["log_format"]);
+	assert.equal(lockedBy.log_format, "NGINX_LOG_FORMAT");
+	const bad = mergeRuntimeConfig("logs", { log_format: "json" }, userEnv({ NGINX_LOG_FORMAT: "xml" }));
+	assert.equal(bad.values.log_format, "json");
+	assert.deepEqual(bad.invalid, [{ key: "log_format", source: "env" }]);
+	assert.deepEqual(mergeRuntimeConfig("logs", { log_format: "xml" }, BOOT_ENV).invalid, [
+		{ key: "log_format", source: "stored" },
+	]);
+	// a save that keeps the stored value passes
+	assert.equal(rule("log_format").validate("json"), null);
+	assert.equal(rule("log_format").validate("classic"), null);
+	assert.equal(rule("log_format").validate("xml"), "must be classic or json");
+	assert.equal(rule("log_format").parseEnv(" json "), "json");
+	assert.equal(rule("log_format").parseEnv("JSON"), undefined);
 });
 
 it("an env var locks its nginx field, NGINX_DISABLE_TLS12 inverted", () => {

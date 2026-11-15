@@ -9,8 +9,10 @@ import { accessLogDirective } from "../lib/traffic/access-log.js";
 
 const SCRIPT = path.join(import.meta.dirname, "../../rootfs/usr/local/bin/log-includes.sh");
 
-const run = (env, conf, { link = false } = {}) => {
+const run = (env, conf, { link = false, before = {} } = {}) => {
 	const dir = mkdtempSync(path.join(tmpdir(), "log-includes-"));
+	// includes an earlier start (the backend) left behind
+	for (const [name, content] of Object.entries(before)) writeFileSync(path.join(dir, name), content);
 	const crowdsecConf = path.join(dir, "crowdsec.conf");
 	if (conf !== undefined) {
 		const target = link ? path.join(dir, "real.conf") : crowdsecConf;
@@ -21,7 +23,10 @@ const run = (env, conf, { link = false } = {}) => {
 	const read = (name) => readFileSync(path.join(dir, name), "utf8");
 	return { access: read("access-log.conf"), error: read("error-log.conf"), stream: read("stream-log.conf") };
 };
-const expected = (files, access) => ({ access: accessLogDirective(access), ...logIncludes(files) });
+const expected = (files, access, format = "classic") => ({
+	access: accessLogDirective(access, format),
+	...logIncludes(files, format),
+});
 
 const stored = (value, eol = "\n") => `ENABLED=${value}${eol}`;
 
@@ -43,4 +48,55 @@ for (const [name, env, conf, files, access] of CASES) {
 
 it("ignores a crowdsec.conf that is a symlink", () => {
 	assert.deepEqual(run({}, stored("true"), { link: true }), expected(false, false));
+});
+
+const JSON_INCLUDES = {
+	"access-log.conf": accessLogDirective(true, "json"),
+	"stream-log.conf": logIncludes(true, "json").stream,
+};
+
+it("NGINX_LOG_FORMAT=json names ajson and sjson", () => {
+	assert.deepEqual(run({ LOGROTATE: "true", NGINX_LOG_FORMAT: "json" }), expected(true, true, "json"));
+	assert.deepEqual(run({ TRAFFIC_STATS: "true", NGINX_LOG_FORMAT: "json" }), expected(false, true, "json"));
+	assert.deepEqual(run({ NGINX_LOG_FORMAT: "json" }), expected(false, false, "json"));
+});
+
+it("NGINX_LOG_FORMAT=classic wins over an include that names json", () => {
+	assert.deepEqual(
+		run({ LOGROTATE: "true", NGINX_LOG_FORMAT: "classic" }, undefined, { before: JSON_INCLUDES }),
+		expected(true, true),
+	);
+});
+
+it("an empty NGINX_LOG_FORMAT keeps the json the includes name (backend setting, nginx and GoAccess start first)", () => {
+	assert.deepEqual(run({ LOGROTATE: "true" }, undefined, { before: JSON_INCLUDES }), expected(true, true, "json"));
+	assert.deepEqual(
+		run({ LOGROTATE: "true", NGINX_LOG_FORMAT: "" }, undefined, { before: JSON_INCLUDES }),
+		expected(true, true, "json"),
+	);
+	// either include names it
+	assert.deepEqual(
+		run({ TRAFFIC_STATS: "true" }, undefined, { before: { "access-log.conf": JSON_INCLUDES["access-log.conf"] } }),
+		expected(false, true, "json"),
+	);
+	assert.deepEqual(
+		run({ LOGROTATE: "true" }, undefined, { before: { "stream-log.conf": JSON_INCLUDES["stream-log.conf"] } }),
+		expected(true, true, "json"),
+	);
+});
+
+it("an empty NGINX_LOG_FORMAT without an include, or with classic or off includes, gives classic", () => {
+	assert.deepEqual(run({ LOGROTATE: "true" }), expected(true, true));
+	assert.deepEqual(
+		run({ LOGROTATE: "true" }, undefined, {
+			before: { "access-log.conf": accessLogDirective(true), "stream-log.conf": logIncludes(true).stream },
+		}),
+		expected(true, true),
+	);
+	assert.deepEqual(
+		run({ LOGROTATE: "true" }, undefined, {
+			before: { "access-log.conf": "access_log off;\n", "stream-log.conf": "access_log off;\n" },
+		}),
+		expected(true, true),
+	);
 });

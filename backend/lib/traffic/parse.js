@@ -2,12 +2,16 @@ import { isIP } from "node:net";
 
 const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
 
-// Anchored on the start of the "alog" format up to $bytes_sent; later fields (referrer, user agent, ...) are ignored.
+// Anchored on the start of the "alog" format up to $bytes_sent; the user agent and the server port are read separately.
 // $server_port follows $upstream_cache_status since it was added (then the fields added after it); older lines end
 // with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
-const LINE =
-	/^\[(\d{2})\/([A-Za-z]{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})\] (\S+) (\S+) \S+ "((?:[^"\\]|\\.)*)" (\d{3}) (\d+)(?: |$)/u;
+const TIME = String.raw`(?<day>\d{2})\/(?<month>[A-Za-z]{3})\/(?<year>\d{4}):(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2}) (?<sign>[+-])(?<offsetHours>\d{2})(?<offsetMinutes>\d{2})`;
+const QUOTED = String.raw`"(?:[^"\\]|\\.)*"`;
+const LINE = new RegExp(
+	String.raw`^\[${TIME}\] (?<host>\S+) (?<ip>\S+) \S+ "(?<request>(?:[^"\\]|\\.)*)" (?<status>\d{3}) (?<bytes>\d+)(?: ${QUOTED} "(?<agent>(?:[^"\\]|\\.)*)")?(?: |$)`,
+	"u",
+);
 
 const HOST_PORT = /:\d*$/u;
 // "METHOD target" with an optional protocol; anything else (for example "-" or binary garbage) has no method and path
@@ -17,7 +21,11 @@ const PATH_END = /[;?#]/u;
 const ABSOLUTE = /^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:\/\/)(?<authority>[^/?#]*)/u;
 const MAX_PATH = 200;
 const RAW_PORT = /:(\d+)$/u;
-const HEALTHCHECK_UA = ' "NPMpro/healthcheck" ';
+const HEALTHCHECK_UA = "NPMpro/healthcheck";
+// the time of a JSON line ($time_local without the brackets) and its status and bytes fields
+const JSON_TIME = new RegExp(`^${TIME}$`, "u");
+const STATUS = /^\d{3}$/u;
+const DIGITS = /^\d+$/u;
 const DEFAULT_PORTS = new Set(["80", "443"]);
 // The fields after the quoted content type: $ssl_protocol $ssl_cipher $ssl_curve $upstream_cache_status, then
 // $server_port (empty over a unix socket listener; missing in lines written before it was added, which end with
@@ -27,16 +35,6 @@ const DEFAULT_PORTS = new Set(["80", "443"]);
 // was negotiated); their fixed count and the end anchor keep the match unique.
 const SERVER_PORT = /"[^"]*" \S* \S* \S* \S*(?: (?<port>\d{0,5})(?: "[^"]*" \S+ \S+ \d+ "[^"]*" "[^"]*")?)?$/u;
 const LOOPBACK = new Set(["127.0.0.1", "::1"]);
-
-// The raw host field ($host$is_request_port$request_port) and $remote_addr, the first two fields after the time
-const hostAndClient = (line) => {
-	const start = line.indexOf("] ");
-	if (start === -1) {
-		return [null, null];
-	}
-	const [host = null, client = null] = line.slice(start + 2).split(" ", 2);
-	return [host, client];
-};
 
 const cleanHost = (raw) => {
 	const host = raw.toLowerCase();
@@ -74,19 +72,106 @@ const parseRequest = (request) => {
 	return { method, path: (end === -1 ? target : target.slice(0, end)).slice(0, MAX_PATH) };
 };
 
-export const parseAlogLine = (line) => {
+const toTime = ({ day, month, year, hour, minute, second, sign, offsetHours, offsetMinutes }) => {
+	const monthIndex = MONTHS[month];
+	if (monthIndex === undefined) {
+		return null;
+	}
+	const offset = (sign === "-" ? -1 : 1) * (Number(offsetHours) * 60 + Number(offsetMinutes)) * 60000;
+	return Date.UTC(Number(year), monthIndex, Number(day), Number(hour), Number(minute), Number(second)) - offset;
+};
+
+const toRecord = ({ time, rawHost, ip, status, bytes, request, userAgent, serverPort }) => {
+	if (time === null || isIP(ip) === 0) {
+		return null;
+	}
+	const { method, path } = parseRequest(request);
+	return {
+		time,
+		host: cleanHost(rawHost),
+		rawHost,
+		ip,
+		status: Number(status),
+		bytes: Number(bytes),
+		method,
+		path,
+		serverPort,
+		userAgent,
+	};
+};
+
+// classic lines write an empty value as "-"
+const userAgentOf = (value) => (value === undefined || value === "-" ? "" : value);
+
+const parseClassic = (line) => {
 	const m = LINE.exec(line);
 	if (!m) {
 		return null;
 	}
-	const month = MONTHS[m[2]];
-	if (month === undefined || isIP(m[11]) === 0) {
+	const { host, ip, status, bytes, request, agent } = m.groups;
+	return toRecord({
+		time: toTime(m.groups),
+		rawHost: host,
+		ip,
+		status,
+		bytes,
+		request,
+		userAgent: userAgentOf(agent),
+		serverPort: SERVER_PORT.exec(line)?.groups.port,
+	});
+};
+
+const parseJson = (line) => {
+	let fields;
+	try {
+		fields = JSON.parse(line);
+	} catch {
 		return null;
 	}
-	const offset = (m[7] === "-" ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9])) * 60000;
-	const time = Date.UTC(Number(m[3]), month, Number(m[1]), Number(m[4]), Number(m[5]), Number(m[6])) - offset;
-	const { method, path } = parseRequest(m[12]);
-	return { time, host: cleanHost(m[10]), ip: m[11], status: Number(m[13]), bytes: Number(m[14]), method, path };
+	if (fields === null || typeof fields !== "object" || Array.isArray(fields)) {
+		return null;
+	}
+	const { time_local: timeLocal, host, remote_addr: ip, status, bytes_sent: bytes, request } = fields;
+	if (![timeLocal, host, ip, status, bytes, request].every((value) => typeof value === "string")) {
+		return null;
+	}
+	const t = JSON_TIME.exec(timeLocal);
+	if (!t || !STATUS.test(status) || !DIGITS.test(bytes) || host === "") {
+		return null;
+	}
+	const text = (name) => (typeof fields[name] === "string" ? fields[name] : "");
+	return toRecord({
+		time: toTime(t.groups),
+		rawHost: host,
+		ip,
+		status,
+		bytes,
+		request,
+		userAgent: text("http_user_agent"),
+		serverPort: text("server_port"),
+	});
+};
+
+/**
+ * Reads one access log line, classic or JSON (a line starting with `{`), into the same record: `time` (ms), `host`
+ * (lower case, no port), `rawHost` ($host$is_request_port$request_port as written), `ip`, `status`, `bytes`, `method`,
+ * `path` (see parseRequest), `serverPort` (`undefined` for classic lines written before $server_port was added,
+ * otherwise a string, empty over the unix socket listener) and `userAgent`. Null for anything else, including a line
+ * without a valid client IP. The JSON field names are the ones of ACCESS_FIELDS.
+ * @param {string} line a raw log line
+ * @returns {{time: number, host: string, rawHost: string, ip: string, status: number, bytes: number, method: string,
+ *            path: string, serverPort: string | undefined, userAgent: string} | null}
+ */
+export const parseLogLine = (line) => (line.startsWith("{") ? parseJson(line) : parseClassic(line));
+
+/** The traffic fields of a line in either format (see parseLogLine). */
+export const parseAlogLine = (line) => {
+	const record = parseLogLine(line);
+	if (!record) {
+		return null;
+	}
+	const { time, host, ip, status, bytes, method, path } = record;
+	return { time, host, ip, status, bytes, method, path };
 };
 
 export const statusClass = (status) => {
@@ -103,25 +188,27 @@ export const statusClass = (status) => {
  * $server_port) only a health check (user agent "NPMpro/healthcheck") from a loopback address or the configured
  * binding address is skipped. Lines written before $server_port was added fall back to the port the browser sent (a
  * remapped Docker port is not recognised there).
- * @param {string} line a raw alog line
+ * @param {{rawHost: string, ip: string, serverPort: string | undefined, userAgent: string}} record see parseLogLine
  * @param {string | number | null | undefined} adminPort NPM_PORT
  * @param {string[]} [bindAddresses] addresses the health check may come from besides loopback (NPM_IPV4_BINDING)
  * @returns {boolean}
  */
-export const isOwnRequest = (line, adminPort, bindAddresses = []) => {
+export const isOwnRecord = (record, adminPort, bindAddresses = []) => {
 	const port = String(adminPort ?? "");
 	const adminOnOwnPort = port !== "" && !DEFAULT_PORTS.has(port);
-	const serverPort = SERVER_PORT.exec(line)?.groups.port;
-	const [host, client] = hostAndClient(line);
+	const { serverPort, userAgent, ip, rawHost } = record;
+	const health = userAgent === HEALTHCHECK_UA;
 	if (serverPort !== undefined) {
 		if (serverPort !== "" && adminOnOwnPort) {
 			return serverPort === port;
 		}
-		const local = LOOPBACK.has(client) || (client !== null && bindAddresses.includes(client));
-		return line.includes(HEALTHCHECK_UA) && local;
+		return health && (LOOPBACK.has(ip) || bindAddresses.includes(ip));
 	}
-	if (line.includes(HEALTHCHECK_UA)) {
-		return true;
-	}
-	return adminOnOwnPort && host !== null && RAW_PORT.exec(host)?.[1] === port;
+	return health || (adminOnOwnPort && RAW_PORT.exec(rawHost)?.[1] === port);
+};
+
+/** isOwnRecord() for a raw line of either format; false for a line that is not a log line. */
+export const isOwnRequest = (line, adminPort, bindAddresses = []) => {
+	const record = parseLogLine(line);
+	return record !== null && isOwnRecord(record, adminPort, bindAddresses);
 };

@@ -460,6 +460,21 @@ it("a save that turns CrowdSec on writes the log includes and locks Write log fi
 	assert.deepEqual(unlocked.locked, []);
 });
 
+it("a CrowdSec save with a stored json log format writes ajson and sjson", async () => {
+	await logsOff();
+	assert.equal((await admin.put("/settings/runtime/logs", { log_format: "json" })).status, 200);
+	try {
+		const saved = await admin.put("/settings/crowdsec", WORKING());
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal(await includeOf("error-log.conf"), ERROR_ON);
+		assert.equal(await includeOf("stream-log.conf"), "access_log /data/nginx/logs/stream.log sjson;\n");
+		assert.equal(await includeOf("access-log.conf"), "access_log /data/nginx/logs/access.log ajson;\n");
+	} finally {
+		assert.equal((await admin.put("/settings/runtime/logs", { log_format: "classic" })).status, 200);
+	}
+	await logsOff();
+});
+
 it("a CrowdSec save refused by nginx -t leaves the log includes on their off lines", async () => {
 	await logsOff();
 	assert.equal(await includeOf("error-log.conf"), ERROR_OFF);

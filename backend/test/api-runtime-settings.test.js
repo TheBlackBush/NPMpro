@@ -544,6 +544,36 @@ it("turns the log files on: creates them with mode 0600, writes the includes and
 	assert.equal(await api.read("data/npmpro/nginx/access-log.conf"), "access_log off;\n");
 });
 
+it("saves the log format: the includes name ajson and sjson with the log files on, and a bad value is refused", async () => {
+	const view = await saved("logs", { log_format: "json" });
+	assert.equal(view.log_format, "json");
+	assert.equal((await get("logs")).log_format, "json");
+	assert.equal((await storedMeta("logs")).log_format, "json");
+	// no log file is written: no include names a format
+	assert.equal(await api.read("data/npmpro/nginx/stream-log.conf"), "access_log off;\n");
+	assert.equal(await api.read("data/npmpro/nginx/access-log.conf"), "access_log off;\n");
+
+	await saved("logs", { write_log_files: true });
+	assert.equal(
+		await api.read("data/npmpro/nginx/stream-log.conf"),
+		"access_log /data/nginx/logs/stream.log sjson;\n",
+	);
+	assert.equal(
+		await api.read("data/npmpro/nginx/access-log.conf"),
+		"access_log /data/nginx/logs/access.log ajson;\n",
+	);
+
+	const calls = reloads(api);
+	await saved("logs", { log_format: "classic" });
+	assert.equal(await api.read("data/npmpro/nginx/stream-log.conf"), "access_log /data/nginx/logs/stream.log slog;\n");
+	assert.equal(await api.read("data/npmpro/nginx/access-log.conf"), "access_log /data/nginx/logs/access.log alog;\n");
+	assert.equal(reloads(api), calls + 1);
+
+	await refused("logs", { log_format: "xml" });
+	assert.equal((await get("logs")).log_format, "classic");
+	await saved("logs", { write_log_files: false });
+});
+
 it("keeps the log includes when nginx refuses the new ones", async () => {
 	const include = "data/npmpro/nginx/error-log.conf";
 	const old = await api.read(include);

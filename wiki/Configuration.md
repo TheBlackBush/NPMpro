@@ -29,6 +29,7 @@ When a saved setting applies:
 | Forward authentication | Anubis, Tinyauth, OAuth2 Proxy, VoidAuth, Authelia and Authentik upstream | `AUTH_REQUEST_<PROVIDER>_UPSTREAM` (`ANUBIS`, `TINYAUTH`, `OAUTH2PROXY`, `VOIDAUTH`, `AUTHELIA`, `AUTHENTIK`) | on save, with an nginx reload |
 | Forward authentication | Custom Anubis images | `AUTH_REQUEST_ANUBIS_USE_CUSTOM_IMAGES` | on save, with an nginx reload |
 | Logs & monitoring | Write log files | `LOGROTATE` | on save, with an nginx reload |
+| Logs & monitoring | Log format (Classic or JSON, see [CrowdSec](CrowdSec#json-log-format-and-the-npmpro-parser)) | `NGINX_LOG_FORMAT` (`classic` or `json`; any other value stops the container from starting) | on save, with an nginx reload |
 | Logs & monitoring | Log rotations kept | `LOGROTATIONS` | immediately |
 | Logs & monitoring | GoAccess report | `GOA` | after a restart |
 | Logs & monitoring | GoAccess options (keep report data, anonymize visitor IPs, drop query strings, full operating system versions, resolve host names) | `GOACLA` (one variable for all of them) | after a restart |

@@ -1,0 +1,3 @@
+2026/11/15 10:23:46 [error] 2081#2081: *54 user "alice": password mismatch, client: 192.0.2.45, server: auth.t40.example, request: "GET / HTTP/1.1", host: "auth.t40.example"
+2026/11/15 10:23:46 [error] 2075#2075: *55 user "bob" was not found in "/data/access/1", client: 192.0.2.45, server: auth.t40.example, request: "GET / HTTP/1.1", host: "auth.t40.example"
+2026/11/15 10:23:46 [error] 2074#2074: *58 limiting requests, excess: 1.000 by zone "t40lim", client: 192.0.2.45, server: lim.t40.example, request: "GET / HTTP/1.1", host: "lim.t40.example"

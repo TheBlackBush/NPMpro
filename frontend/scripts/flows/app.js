@@ -55,6 +55,45 @@ async function settingsSave({ admin }) {
 	}
 }
 
+const LOG_FORMAT = "#runtime-logFormat";
+
+const storedLogFormat = async (api) => (await api("GET", "/settings/runtime/logs")).log_format;
+
+// the select shows a format: its trigger text
+const formatShown = (page, text) => page.locator(LOG_FORMAT).filter({ hasText: text }).waitFor({ timeout: 5000 });
+
+// Settings, Logs & monitoring: JSON is chosen and saved (toast, read back from the API, shown again after a reload),
+// then Classic, so the instance ends as it started
+async function logFormat({ admin }) {
+	const { page, api } = admin;
+	const before = await storedLogFormat(api);
+	try {
+		await page.goto("/settings/monitoring");
+		await page.locator(LOG_FORMAT).waitFor();
+		// JSON first, unless it is stored: each step changes the format, and the second restores it
+		const steps = [
+			["json", "JSON"],
+			["classic", "Classic"],
+		];
+		if (before === "json") steps.reverse();
+		for (const [wanted, label] of steps) {
+			// biome-ignore lint/performance/noAwaitInLoops: one save after the other
+			await page.locator(LOG_FORMAT).click();
+			await page.getByRole("option", { name: label, exact: true }).click();
+			await withToast(page, "Setting has been saved", () =>
+				page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+			);
+			const stored = await storedLogFormat(api);
+			if (stored !== wanted) throw new Error(`the saved log format is ${stored}, expected ${wanted}`);
+			await page.reload();
+			await page.locator(LOG_FORMAT).waitFor();
+			await formatShown(page, label);
+		}
+	} finally {
+		if ((await storedLogFormat(api)) !== before) await api("PUT", "/settings/runtime/logs", { log_format: before });
+	}
+}
+
 const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
 
 // Settings, CrowdSec: the section opens, Test connection answers with one line per check (the CI instance has no
@@ -95,8 +134,8 @@ const focusIs = (page, id) => page.waitForFunction((target) => document.activeEl
 const expanded = async (page, expected) => {
 	try {
 		await page.locator(`${ADVANCED}[aria-expanded="${expected}"]`).waitFor({ timeout: 5000 });
-	} catch {
-		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`);
+	} catch (err) {
+		throw new Error(`the Advanced card is not ${expected ? "open" : "closed"}`, { cause: err });
 	}
 };
 
@@ -249,10 +288,17 @@ async function usersSignIn({ admin }) {
 // opened it; neither is keyboard focus, so no tooltip may open by itself (the avatar's and the eye button's did).
 async function windowFocusTooltip({ admin }) {
 	const { page } = admin;
+	// a tooltip that opens by itself does so within its delay: give it 700 ms to appear
 	const noTooltip = async (where) => {
-		await page.waitForTimeout(700);
-		if ((await page.locator("[data-slot=tooltip-content]").count()) > 0)
-			throw new Error(`a tooltip opened by itself ${where}`);
+		const opened = await page
+			.locator("[data-slot=tooltip-content]")
+			.first()
+			.waitFor({ state: "attached", timeout: 700 })
+			.then(
+				() => true,
+				() => false,
+			);
+		if (opened) throw new Error(`a tooltip opened by itself ${where}`);
 	};
 	await page.goto("/settings/audit-log");
 	await page.locator('button[aria-label^="Details: "]').filter({ visible: true }).first().click();
@@ -397,6 +443,7 @@ async function languageFallback({ browser, base, password }) {
 
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
+	{ name: "log format", run: logFormat },
 	{ name: "crowdsec settings", run: crowdsecSettings },
 	{ name: "collapsed card opens", run: collapsedCardOpens },
 	{ name: "landing pages settings", run: landingPagesSettings },

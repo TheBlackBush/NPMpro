@@ -404,11 +404,11 @@ const createRuntimeApplier = ({
 	const planners = {
 		logs: async ({ next, changed }) => {
 			const plan = { files: [] };
-			if (changed.includes("write_log_files")) {
+			if (changed.includes("write_log_files") || changed.includes("log_format")) {
 				// before the includes are written and tested
 				if (next.write_log_files) await prepareLogFiles({ nginxDir: paths.nginxDir, fs, log });
-				const includes = logIncludes(next.write_log_files);
-				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files));
+				const includes = logIncludes(next.write_log_files, next.log_format);
+				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files), next.log_format);
 				// at startup each in its own transaction, like the default certificate include: a failing nginx -t
 				// keeps start.sh's file and does not undo the others
 				for (const [file, content] of [

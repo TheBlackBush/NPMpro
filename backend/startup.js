@@ -51,7 +51,9 @@ const prepareApp = async ({ background = true } = {}) => {
 	const accessLog = createAccessLogSwitch({
 		readTrafficEnabled: async () => (await getMonitoringConfig()).values.traffic_enabled,
 		readWriteLogFiles: async () => (await getRuntimeConfig("logs")).values.write_log_files,
-		apply: (enabled) => applyAccessLog(enabled, { test: internalNginx.test, reload: internalNginx.reload }),
+		readLogFormat: async () => (await getRuntimeConfig("logs")).values.log_format,
+		apply: (enabled, format) =>
+			applyAccessLog(enabled, { format, test: internalNginx.test, reload: internalNginx.reload }),
 		exclusive: runtimeExclusive,
 	});
 	const runtimeApplier = createRuntimeApplier({

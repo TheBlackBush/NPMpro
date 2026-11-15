@@ -39,6 +39,7 @@ const GROUP_KEYS = {
 	],
 	logs: [
 		"writeLogFiles",
+		"logFormat",
 		"logRotations",
 		"goaccess",
 		"goaccessKeepDays",

@@ -16,6 +16,7 @@ const SETTINGS = "/settings/monitoring";
 const GEOIP = "/settings/geoip";
 const ACCESS_LOG_CONF = "data/npmpro/nginx/access-log.conf";
 const ALOG = "access_log /data/nginx/logs/access.log alog;\n";
+const AJSON = "access_log /data/nginx/logs/access.log ajson;\n";
 const MAXMIND = "https://download.maxmind.com";
 const COUNTRY_DOWNLOAD = "/geoip/databases/GeoLite2-Country/download?suffix=tar.gz";
 const KEY = "maxmind-license-SECRET-4711";
@@ -135,6 +136,23 @@ it("switches traffic statistics on: the access log is turned on and nginx reload
 	// the same value again does not touch the access log
 	await saved({ retention_days: 90 });
 	assert.equal(reloads(api), calls + 1);
+});
+
+it("a stored json log format stays ajson when traffic statistics are turned off and on", async () => {
+	const done = await admin.put("/settings/runtime/logs", { log_format: "json" });
+	assert.equal(done.status, 200, done.text);
+	try {
+		// traffic is on: the format change rewrote the include
+		assert.equal(await api.read(ACCESS_LOG_CONF), AJSON);
+		await saved({ traffic_enabled: false });
+		assert.equal(await api.read(ACCESS_LOG_CONF), "access_log off;\n");
+		await saved({ traffic_enabled: true });
+		assert.equal(await api.read(ACCESS_LOG_CONF), AJSON);
+	} finally {
+		const back = await admin.put("/settings/runtime/logs", { log_format: "classic" });
+		assert.equal(back.status, 200, back.text);
+	}
+	assert.equal(await api.read(ACCESS_LOG_CONF), ALOG);
 });
 
 it("keeps the stored setting when nginx refuses the access log change", async () => {
