@@ -1,0 +1,49 @@
+diff --git a/lib/plugins/crowdsec/live.lua b/lib/plugins/crowdsec/live.lua
+index e7ac8d8..4b94767 100644
+--- a/lib/plugins/crowdsec/live.lua
++++ b/lib/plugins/crowdsec/live.lua
+@@ -6,6 +6,20 @@ live.__index = live
+ 
+ live.cache = ngx.shared.crowdsec_cache
+ 
++--- NPMpro: remember a failed LAPI answer as "no decision" for cache_expiration seconds, the entry a "null" answer
++-- leaves, so while the LAPI cannot be reached a request of this IP waits for it at most once per period; add never
++-- replaces an entry another request stored meanwhile (a decision), and the entry expires, so the LAPI is asked again
++local function cache_failure(ip, cache_expiration)
++  local key, _ = utils.item_to_string(ip, "ip")
++  if key == nil or (tonumber(cache_expiration) or 0) <= 0 then
++    return
++  end
++  local ok, err = live.cache:add("decision_cache/" .. key, "none", cache_expiration, 1)
++  if not ok and err ~= "exists" then
++    ngx.log(ngx.ERR, "[Crowdsec] failed to cache the failed LAPI answer for '" .. ip .. "': " .. tostring(err))
++  end
++end
++
+ --- Create a new live object
+ -- Create a new live object to query the live API
+ -- @return live: the live object
+@@ -37,6 +51,7 @@ function live:live_query_api(ip, api_url, timeout, cache_expiration, api_key_hea
+ 
+   if not res then
+     ngx.log(ngx.ERR, "failed to query LAPI " .. link .. ": ".. err)
++    cache_failure(ip, cache_expiration)
+     return true, nil, nil, "request failed: ".. err
+   end
+ 
+@@ -66,6 +81,7 @@ function live:live_query_tls(ip, api_url, timeout, cache_expiration, user_agent,
+ 
+   if not res then
+     ngx.log(ngx.ERR, "failed to query LAPI " .. link .. ": ".. err)
++    cache_failure(ip, cache_expiration)
+     return true, nil, nil, "request failed: ".. err
+   end
+ 
+@@ -86,6 +102,7 @@ function live:live_query_process(res, ip, cache_expiration, bouncing_on_type, li
+   local status = res.status
+   local body = res.body
+   if status~=200 then
++    cache_failure(ip, cache_expiration)
+     return true, nil, nil, "Http error " .. status .. " while talking to LAPI (" .. link .. ")"
+   end
+ 
