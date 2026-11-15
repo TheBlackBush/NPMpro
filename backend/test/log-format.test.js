@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { it } from "node:test";
-import { ACCESS_FIELDS, renderClassic, STREAM_FIELDS, tokenizeClassic } from "../lib/log-format.js";
+import {
+	ACCESS_FIELDS,
+	LOG_FORMATS,
+	renderClassic,
+	renderJson,
+	STREAM_FIELDS,
+	tokenizeClassic,
+} from "../lib/log-format.js";
 
 const NGINX_CONF = readFileSync(path.join(import.meta.dirname, "../../rootfs/usr/local/nginx/conf/nginx.conf"), "utf8");
 const HOST_ID_MAP = /map \$host \$npmpro_host_id \{\s*default "-";\s*\}/u;
@@ -54,4 +61,23 @@ it("keeps an escaped quote inside its field and refuses a line written before th
 	assert.equal(fields.http_user_agent, "say \\x22hi\\x22");
 	assert.equal(fields.host_id, "proxy-3");
 	assert.equal(tokenizeClassic(head, ACCESS_FIELDS), null);
+});
+
+it("nginx.conf writes ajson and sjson from the same field lists as alog and slog", () => {
+	// The braces are separate quoted strings (nginx joins them) because nginxbeautifier splits a line at every brace.
+	const json = (name) => {
+		const body = new RegExp(`log_format ${name} escape=json '\\{' '([^']*)' '\\}';`, "u").exec(NGINX_CONF)?.[1];
+		return body === undefined ? undefined : `{${body}}`;
+	};
+	assert.deepEqual(LOG_FORMATS, ["classic", "json"]);
+	assert.equal(json("ajson"), renderJson(ACCESS_FIELDS));
+	assert.equal(json("sjson"), renderJson(STREAM_FIELDS));
+	assert.deepEqual(
+		Object.keys(JSON.parse(renderJson(ACCESS_FIELDS))),
+		ACCESS_FIELDS.map((field) => field.name),
+	);
+	assert.deepEqual(
+		Object.keys(JSON.parse(renderJson(STREAM_FIELDS))),
+		STREAM_FIELDS.map((field) => field.name),
+	);
 });

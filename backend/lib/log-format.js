@@ -31,6 +31,8 @@ const regexOf = (fields) => {
 	return regex;
 };
 
+export const LOG_FORMATS = ["classic", "json"];
+
 /** @type {LogField[]} */
 export const ACCESS_FIELDS = [
 	field("time_local", "bracket"),
@@ -77,6 +79,14 @@ export const STREAM_FIELDS = [
  * @returns {string}
  */
 export const renderClassic = (fields) => fields.map((item) => WRAP[item.classic](item.variable)).join(" ");
+
+/**
+ * The text of a nginx `log_format escape=json` for a field list: one object per line, every value quoted (nginx
+ * writes a variable that is not found as an empty string, so the line is always valid JSON), keys in field order.
+ * @param {LogField[]} fields
+ * @returns {string}
+ */
+export const renderJson = (fields) => `{${fields.map((item) => `"${item.name}":"${item.variable}"`).join(",")}}`;
 
 /**
  * Splits a classic log line into its fields, or null when the whole line does not match.
