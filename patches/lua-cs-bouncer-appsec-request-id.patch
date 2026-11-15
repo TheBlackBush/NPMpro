@@ -1,5 +1,5 @@
 diff --git a/lib/crowdsec.lua b/lib/crowdsec.lua
-index 1106a38..19a3031 100644
+index 1106a38..ea31d6d 100644
 --- a/lib/crowdsec.lua
 +++ b/lib/crowdsec.lua
 @@ -32,6 +32,8 @@ local APPSEC_VERB_HEADER = "x-crowdsec-appsec-verb"
@@ -11,7 +11,7 @@ index 1106a38..19a3031 100644
  local REMEDIATION_API_KEY_HEADER = 'x-api-key'
  local METRICS_PERIOD = 900
  
-@@ -679,7 +681,20 @@ function csmod.AppSecCheck(ip)
+@@ -679,7 +681,24 @@ function csmod.AppSecCheck(ip)
    headers[APPSEC_VERB_HEADER] = ngx.var.request_method
    headers[APPSEC_URI_HEADER] = uri
    headers[APPSEC_USER_AGENT_HEADER] = ngx.var.http_user_agent
@@ -29,6 +29,10 @@ index 1106a38..19a3031 100644
 +  -- to the AppSec. The client's own X-Request-Id stays in the request, where the AppSec rules inspect it like every
 +  -- other client header
 +  headers[APPSEC_TRANSACTION_ID_HEADER] = ngx.var.request_id
++  -- the same id as a normal request header: CrowdSec strips its own x-crowdsec-appsec-* headers before the alert
++  -- context runs, so the context reads this one (req.Header) and the AppSec alert carries the access log request_id; a
++  -- client-sent value is replaced, and nginx removes the header from every request it passes on (proxy-headers.conf)
++  headers["x-npmpro-request-id"] = ngx.var.request_id
  
    -- set CrowdSec APPSEC Host
    headers["host"] = runtime.conf["APPSEC_HOST"]

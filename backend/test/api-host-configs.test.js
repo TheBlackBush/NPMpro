@@ -23,6 +23,7 @@ const body = (overrides = {}) => {
 const URL = "/nginx/proxy-hosts";
 const confOf = (id) => `data/nginx/proxy_host/${id}.conf`;
 const PASS_AUTH_CLEARED = /proxy_set_header Authorization "";/u;
+const PHP_REQUEST_ID_DROPPED = /fastcgi_param HTTP_X_NPMPRO_REQUEST_ID "" if_not_empty;/u;
 const AUTHORIZATION_EMPTY = /Authorization ""/u;
 const AUTHELIA_CHECK = /auth_request \/internal\/authelia\/authz;/u;
 const ANY_AUTH_REQUEST = /auth_request/u;
@@ -113,6 +114,7 @@ it("uses grpc_pass for gRPC, and no upstream or proxy_pass for a path or empty s
 	const phpConfig = await configOf(php);
 	assert.match(phpConfig, /fancyindex on;/u);
 	assert.match(phpConfig, /fastcgi_pass unix:\/run\/php83\.sock;/u);
+	assert.match(phpConfig, PHP_REQUEST_ID_DROPPED);
 	const empty = await make({ forward_scheme: "empty", forward_host: "", forward_port: 0 });
 	assert.doesNotMatch(await configOf(empty), /proxy_pass http|grpc_pass|upstream upstream_/u);
 });

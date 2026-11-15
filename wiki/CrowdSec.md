@@ -345,21 +345,37 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 - **Where the option is:** in the proxy host dialog on the **Details** tab, under **Options**, the switch **Disable Crowdsec Appsec**. Each custom location has its own switch: open the location on the **Custom Locations** tab, its **Options** have the same switch. A custom location does not take over the switch of the host.
 - The switch only turns off AppSec. Bans from the LAPI still apply to the host.
 - Without an AppSec URL the switch does nothing.
-- **The request id and the HTTP version.** With AppSec on, the request that the bouncer sends to the AppSec carries two more headers. NPMpro sets them for that request only, and the upstream receives the request as before. A client that sends one of these two headers has its value replaced in that request. Every other client header reaches the AppSec unchanged: a client's own `X-Request-Id` reaches the AppSec, where the rules inspect it like any other header, and the upstream, both with the client's value.
+- **The request id and the HTTP version.** With AppSec on, the request that the bouncer sends to the AppSec carries three more headers. NPMpro sets them for that request only, and the upstream receives the request as before. `X-Npmpro-Request-Id` is also removed from every request NPMpro passes on (proxy hosts, custom locations, gRPC, PHP, forward authentication and the admin UI), so no upstream receives it, not even a value the client sent. A client that sends one of these three headers has its value replaced in that request. Every other client header reaches the AppSec unchanged: a client's own `X-Request-Id` reaches the AppSec, where the rules inspect it like any other header, and the upstream, both with the client's value.
   - `X-Crowdsec-Appsec-Transaction-Id` carries the request's `$request_id`, the `request_id` field of the access log. CrowdSec uses the transaction id as the id of the AppSec request (`request_uuid`, `tx_id`).
+  - `X-Npmpro-Request-Id` carries the same id as a normal request header: CrowdSec does not pass its own `X-Crowdsec-Appsec-*` headers to the alert context, but it passes this one, so the alert context below can put the id into the alert.
   - `X-Crowdsec-Appsec-Http-Version` carries the client's HTTP version (`10`, `11`, `20` or `30`). The AppSec rules see the client's HTTP version and not the bouncer's own, which may change which rules match a request over HTTP/2 or HTTP/3.
+- **Your own proxy configs.** A `proxy_pass`, `grpc_pass` or `fastcgi_pass` of your own in a custom config (`/opt/npmpro/custom_nginx/`) or in the advanced config of a host does not include NPMpro's header files. Add `proxy_set_header X-Npmpro-Request-Id "";` (for `grpc_pass`: `grpc_set_header X-Npmpro-Request-Id "";`, for `fastcgi_pass`: `fastcgi_param HTTP_X_NPMPRO_REQUEST_ID "" if_not_empty;`) there, so a client cannot send that header through it.
 
 ### Find the request of an AppSec event
 
-CrowdSec's alerts do not carry the request id: `cscli alerts inspect -d <alert id>` shows the rule, the URI, the method and the user agent of the request, not its `request_id`. To find the access log line of an alert, search the access log for the client IP and the URI around the time of the alert:
+An alert raised by the AppSec carries the request id of the blocked request as `request_id` in its context, the `request_id` field of the access log line. It needs CrowdSec 1.6.4 or newer and the alert context `TheBlackBush/npmpro`. Check your version first (`docker exec crowdsec cscli version`): CrowdSec 1.6.3 and older refuse to start with this context (`unknown name req`), and with **When AppSec cannot be reached** on **Deny the request** a stopped CrowdSec blocks every checked request. Update CrowdSec before you add the context or install the collection. That context is part of the collection `TheBlackBush/npmpro`, which waits for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)); until then, and with any other collection (for example with `ZoeyVid/npmplus`), add it by hand: create `contexts/npmpro.yaml` in CrowdSec's config folder (`/etc/crowdsec/contexts/npmpro.yaml` in the container, `/opt/crowdsec/conf/contexts/npmpro.yaml` on the host) with
+
+```yaml
+context:
+  request_id:
+    - "req.Method != '' ? req.Header.Get('X-Npmpro-Request-Id') : ''"
+```
+
+and restart CrowdSec (`docker restart crowdsec`). Once you install the collection `TheBlackBush/npmpro`, delete this file and restart CrowdSec again: the collection brings the same context, and a hand-made file with the same name can keep the hub version from being installed. Then:
 
 ```bash
 docker exec crowdsec cscli alerts list
 docker exec crowdsec cscli alerts inspect -d <alert id>
+grep <request_id> /opt/npmpro/nginx/logs/access.log
+```
+
+`cscli alerts inspect -d` shows `request_id` in the Context table; `cscli alerts list -o json` has it in the alert's `meta` list, as a list of one id in a string (`{"key":"request_id","value":"[\"<id>\"]"}`). Alerts of the log scenarios (failed sign-ins, scans, bad requests) count many requests, so their Context has no `request_id`; each event inside such an alert still carries the `request_id` of its own access log line (`cscli alerts inspect -d` lists the events). Without the context, or for requests older than this NPMpro version, search the access log for the client IP and the URI around the time of the alert:
+
+```bash
 grep '<client IP>' /opt/npmpro/nginx/logs/access.log | grep '<URI>'
 ```
 
-The AppSec log of CrowdSec does carry the id, at the debug level only: with `log_level: debug` in the AppSec part of the acquisition file (step 4), each request the AppSec checks logs `request_uuid=<id>` (and the rule engine logs `tx_id=<id>`), and that id is the `request_id` of the access log line. Debug logging is verbose, so turn it on only while you look for a request:
+Without the alert context, the AppSec log of CrowdSec carries the id at the debug level only: with `log_level: debug` in the AppSec part of the acquisition file (step 4), each request the AppSec checks logs `request_uuid=<id>` (and the rule engine logs `tx_id=<id>`), and that id is the `request_id` of the access log line. Debug logging is verbose, so turn it on only while you look for a request:
 
 ```bash
 docker logs crowdsec 2>&1 | grep request_uuid
@@ -405,7 +421,7 @@ The nginx bouncer blocks banned IPs at the HTTP level: nginx still accepts their
 
 ## Privacy
 
-Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](Privacy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too.
+Unless you [turn off sharing](https://docs.crowdsec.net/docs/next/configuration/crowdsec_configuration/#sharing) in CrowdSec, the engine sends signals about detected attacks (including the attacking IPs and [this metadata](https://docs.crowdsec.net/docs/central_api/intro/#signal-meta-data)) to CrowdSec, and receives the community blocklist in return. Mention it in your privacy policy, see [Hints for Your Privacy Policy](Privacy). With `crowdsecurity/http-extended-context` and an enrolled engine, the attacked domain is sent too. With context sharing on (`cscli console status`, option `context`; `cscli console enroll` turns it on unless you pass `--disable context`), the alert context is sent with each alert too, and with it the request id of AppSec alerts. The id is random and only points to a line of your own access log; `cscli console disable context` keeps the context local.
 
 ## Troubleshooting
 

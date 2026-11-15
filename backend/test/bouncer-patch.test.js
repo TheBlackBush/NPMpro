@@ -10,7 +10,7 @@ const PATCH_FILE = /^\+\+\+ b\/(?<file>\S+)$/gmu;
 const REQUEST_ID_HEADER = /X-Request-Id/iu;
 const REQUEST_ID_ASSIGNMENT = /headers\[\s*["']x-request-id["']\s*\]\s*=/iu;
 
-it("patches only the request to the AppSec: the HTTP version and transaction id lines in lib/crowdsec.lua", () => {
+it("patches only the request to the AppSec: the HTTP version, transaction id and request id lines in lib/crowdsec.lua", () => {
 	const files = [...PATCH.matchAll(PATCH_FILE)].map((m) => m.groups.file);
 	assert.deepEqual(files, ["lib/crowdsec.lua"]);
 	const lines = PATCH.split("\n");
@@ -26,6 +26,7 @@ it("patches only the request to the AppSec: the HTTP version and transaction id 
 		"+    headers[APPSEC_HTTP_VERSION_HEADER] = nil",
 		"+  end",
 		"+  headers[APPSEC_TRANSACTION_ID_HEADER] = ngx.var.request_id",
+		'+  headers["x-npmpro-request-id"] = ngx.var.request_id',
 	]);
 	assert.equal(
 		lines.some((line) => line.startsWith("-") && !line.startsWith("---")),
@@ -35,6 +36,11 @@ it("patches only the request to the AppSec: the HTTP version and transaction id 
 
 it("leaves the client's X-Request-Id in the request to the AppSec: the patch never assigns it", () => {
 	assert.equal(REQUEST_ID_ASSIGNMENT.test(PATCH), false);
+});
+
+it("sends the request id as X-Npmpro-Request-Id from ngx.var.request_id, the key a client-sent header has", () => {
+	const lines = PATCH.split("\n").filter((line) => line.startsWith("+") && line.includes("x-npmpro-request-id"));
+	assert.deepEqual(lines, ['+  headers["x-npmpro-request-id"] = ngx.var.request_id']);
 });
 
 it("applies the patch to the bouncer in the image build, after the clone and before the files move", () => {
