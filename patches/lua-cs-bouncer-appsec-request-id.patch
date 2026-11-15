@@ -1,0 +1,14 @@
+diff --git a/lib/crowdsec.lua b/lib/crowdsec.lua
+index 1106a38..d30d340 100644
+--- a/lib/crowdsec.lua
++++ b/lib/crowdsec.lua
+@@ -680,6 +680,9 @@ function csmod.AppSecCheck(ip)
+   headers[APPSEC_URI_HEADER] = uri
+   headers[APPSEC_USER_AGENT_HEADER] = ngx.var.http_user_agent
+   headers[APPSEC_API_KEY_HEADER] = runtime.conf["API_KEY"]
++  -- the nginx $request_id of this request, so an AppSec event can be matched with its access log line; it replaces a
++  -- client-sent X-Request-Id in the request to the AppSec only
++  headers["x-request-id"] = ngx.var.request_id
+ 
+   -- set CrowdSec APPSEC Host
+   headers["host"] = runtime.conf["APPSEC_HOST"]
