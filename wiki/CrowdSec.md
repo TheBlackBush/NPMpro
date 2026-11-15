@@ -137,6 +137,75 @@ Saving checks the connection first: a wrong key or an unreachable LAPI or AppSec
 
 **Test connection** checks the values in the form without saving: one decisions request to the LAPI with the key (or the TLS client certificate) and, with an AppSec URL, one request to AppSec. It names the problem: key refused, cannot be reached, TLS error or an unexpected answer. A key field left empty uses the saved key.
 
+## Log format
+
+NPMpro writes the access log (`access.log`) and the stream log (`stream.log`) in one line per request, or per stream session. The fields are separated by spaces. Text fields are in quotes, and an empty value is written as `-`. The acquisition file of step 4 reads the access log, and the parser of the collection reads these fields.
+
+The new fields come at the end of each line, so a parser that reads the start of a line keeps working. The hub item `ZoeyVid/npmplus-logs` is such a parser.
+
+The access log has these fields, in this order:
+
+| Field | nginx variable | Example |
+|---|---|---|
+| Time | `[$time_local]` | `[26/Oct/2026:09:00:12 +0000]` |
+| Host | `$host$is_request_port$request_port` | `app.example.com` |
+| Client IP | `$remote_addr` | `192.168.2.30` |
+| Request time (seconds) | `$request_time` | `0.113` |
+| Request | `"$request"` | `"GET /api/items HTTP/2.0"` |
+| Status | `$status` | `200` |
+| Bytes sent | `$bytes_sent` | `4096` |
+| Referer | `"$http_referer"` | `"https://app.example.com/"` |
+| User agent | `"$http_user_agent"` | `"Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0"` |
+| Remote user | `"$remote_user"` | `"-"` |
+| Response content type | `"$sent_http_content_type"` | `"application/json"` |
+| TLS protocol | `$ssl_protocol` | `TLSv1.3` |
+| TLS cipher | `$ssl_cipher` | `TLS_AES_256_GCM_SHA384` |
+| TLS curve | `$ssl_curve` | `X25519MLKEM768` |
+| Cache status | `$upstream_cache_status` | `-` |
+| Port | `$server_port` | `443` |
+| Server name | `"$server_name"` | `"app.example.com"` |
+| Host id | `$npmpro_host_id` | `proxy-3` |
+| Request id | `$request_id` | `c07d5e1a92b84f36a8d4e0b7c15f2a98` |
+| Connection | `$connection` | `41` |
+| Upstream status | `"$upstream_status"` | `"502, 200"` |
+| Upstream response time | `"$upstream_response_time"` | `"0.001, 0.112"` |
+
+The last six fields (server name, host id, request id, connection, upstream status and upstream response time) are new.
+
+The stream log has these fields, in this order:
+
+| Field | nginx variable | Example |
+|---|---|---|
+| Time | `[$time_local]` | `[26/Oct/2026:09:05:44 +0000]` |
+| Port | `$server_port` | `2222` |
+| Client IP | `$remote_addr` | `203.0.113.9` |
+| Protocol | `$protocol` | `TCP` |
+| TLS protocol | `$ssl_preread_protocol` | `TLSv1.3` |
+| Status | `$status` | `200` |
+| Bytes sent | `$bytes_sent` | `1842` |
+| Bytes received | `$bytes_received` | `512` |
+| Session time (seconds) | `$session_time` | `12.304` |
+| Stream id | `$npmpro_stream_id` | `stream-4` |
+
+The stream id is new. It is `-` when the server does not set one.
+
+### Host id
+
+The host id names the NPMpro object that served a request. Its values:
+
+| Host id | Meaning |
+|---|---|
+| `proxy-<id>` | A proxy host. `proxy-12` is the proxy host with id 12. |
+| `redirection-<id>` | A redirection host. |
+| `dead-<id>` | A 404 host. |
+| `default` | The default site. |
+| `npmpro` | The admin UI. |
+| `-` | A custom config, or a request that nginx refused before it chose a host (for example a malformed request, or a connection that nginx closes without a response). |
+
+The stream log has the stream id instead: `stream-<id>` for a stream, `-` otherwise.
+
+The connection number ties a request to the error log. `$connection` is the number nginx gives the connection. An error log line of the same connection shows it as `*<number>`, so `*41` in the error log belongs to the connection `41` of the access log line above.
+
 ## What each setting means
 
 NPMpro writes `/data/crowdsec/crowdsec.conf` (`/opt/npmpro/crowdsec/crowdsec.conf` on the host) from Settings, CrowdSec at every save and at every start. Hand edits of that file are overwritten, so change the settings in the web UI. `ban.html` and `captcha.html` in the same folder stay yours to edit; they are loaded again at the next save (the **Preview** links in the Advanced part show them). A `crowdsec.conf.local` overrides the settings and is not wanted anymore: remove it (the upgrade keeps your old one as `crowdsec.conf.local.before-settings`).
@@ -227,6 +296,24 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 - **Where the option is:** in the proxy host dialog on the **Details** tab, under **Options**, the switch **Disable Crowdsec Appsec**. Each custom location has its own switch: open the location on the **Custom Locations** tab, its **Options** have the same switch. A custom location does not take over the switch of the host.
 - The switch only turns off AppSec. Bans from the LAPI still apply to the host.
 - Without an AppSec URL the switch does nothing.
+- **The request id and the HTTP version.** With AppSec on, the request that the bouncer sends to the AppSec carries three headers. NPMpro sets them for that request only, and the upstream receives the request as before. A client that sends one of these headers has its value replaced in that request.
+  - `X-Request-Id` and `X-Crowdsec-Appsec-Transaction-Id` both carry the request's `$request_id`, the `request_id` field of the access log. CrowdSec uses the transaction id as the id of the AppSec request.
+  - `X-Crowdsec-Appsec-Http-Version` carries the client's HTTP version (`10`, `11`, `20` or `30`). The AppSec rules see the client's HTTP version and not the bouncer's own, which may change which rules match a request over HTTP/2 or HTTP/3.
+
+### Find the request of an AppSec event
+
+The setup is built so that the `req_uuid` of an AppSec event is the `request_id` of its access log line. Default alerts and events do not show the `X-Request-Id` header, so match on `req_uuid`. To see the events of an alert, list the alerts and inspect one:
+
+```bash
+docker exec crowdsec cscli alerts list
+docker exec crowdsec cscli alerts inspect -d <alert id>
+```
+
+Then search the access log for the `req_uuid` of an event:
+
+```bash
+grep <req_uuid> /opt/npmpro/nginx/logs/access.log
+```
 
 ## Access lists and forward authentication
 
