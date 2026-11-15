@@ -19,13 +19,24 @@ const run = (env, conf, { link = false, before = {} } = {}) => {
 		writeFileSync(target, conf);
 		if (link) symlinkSync(target, crowdsecConf);
 	}
-	execFileSync("sh", [SCRIPT, dir, crowdsecConf], { env: { PATH: process.env.PATH, ...env } });
+	const stdout = execFileSync("sh", [SCRIPT, dir, crowdsecConf], {
+		env: { PATH: process.env.PATH, ...env },
+		encoding: "utf8",
+	});
 	const read = (name) => readFileSync(path.join(dir, name), "utf8");
-	return { access: read("access-log.conf"), error: read("error-log.conf"), stream: read("stream-log.conf") };
+	const files = {
+		access: read("access-log.conf"),
+		error: read("error-log.conf"),
+		stream: read("stream-log.conf"),
+		tls: read("tls-log.conf"),
+	};
+	// the note the script prints
+	Object.defineProperty(files, "stdout", { value: stdout, enumerable: false });
+	return files;
 };
-const expected = (files, access, format = "classic") => ({
+const expected = (files, access, format = "classic", tls = false) => ({
 	access: accessLogDirective(access, format),
-	...logIncludes(files, format),
+	...logIncludes(files, format, tls),
 });
 
 const stored = (value, eol = "\n") => `ENABLED=${value}${eol}`;
@@ -98,5 +109,43 @@ it("an empty NGINX_LOG_FORMAT without an include, or with classic or off include
 			before: { "access-log.conf": "access_log off;\n", "stream-log.conf": "access_log off;\n" },
 		}),
 		expected(true, true),
+	);
+});
+
+const TLS_ON = logIncludes(true, "classic", true).tls;
+const TLS_OFF = logIncludes(true).tls;
+
+it("NGINX_TLS_HANDSHAKE_LOG=true writes tls.log with the log files on (LOGROTATE or CrowdSec)", () => {
+	assert.deepEqual(
+		run({ LOGROTATE: "true", NGINX_TLS_HANDSHAKE_LOG: "true" }),
+		expected(true, true, "classic", true),
+	);
+	assert.deepEqual(
+		run({ CROWDSEC_ENABLED: "true", NGINX_TLS_HANDSHAKE_LOG: "true" }),
+		expected(true, true, "classic", true),
+	);
+	assert.equal(run({ LOGROTATE: "true", NGINX_TLS_HANDSHAKE_LOG: "true" }).tls, TLS_ON);
+});
+
+it("NGINX_TLS_HANDSHAKE_LOG=true with the log files off writes the comment and says so", () => {
+	const result = run({ NGINX_TLS_HANDSHAKE_LOG: "true" });
+	assert.deepEqual(result, expected(false, false));
+	assert.equal(result.tls, TLS_OFF);
+	assert.ok(result.stdout.includes("NGINX_TLS_HANDSHAKE_LOG is true, but no TLS handshake log is written"));
+	assert.equal(run({ LOGROTATE: "true" }).stdout, "");
+});
+
+it("an unset NGINX_TLS_HANDSHAKE_LOG keeps the state of the include written last (backend setting, nginx starts first)", () => {
+	const before = { "tls-log.conf": TLS_ON };
+	assert.equal(run({ LOGROTATE: "true" }, undefined, { before }).tls, TLS_ON);
+	assert.equal(run({}, undefined, { before }).tls, TLS_OFF);
+	assert.equal(run({ LOGROTATE: "true" }).tls, TLS_OFF);
+});
+
+it("NGINX_TLS_HANDSHAKE_LOG=false wins over an include that is on", () => {
+	assert.equal(
+		run({ LOGROTATE: "true", NGINX_TLS_HANDSHAKE_LOG: "false" }, undefined, { before: { "tls-log.conf": TLS_ON } })
+			.tls,
+		TLS_OFF,
 	);
 });

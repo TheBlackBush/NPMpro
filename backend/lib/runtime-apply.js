@@ -14,6 +14,8 @@ import {
 	prepareLogFiles,
 	renderRotations,
 	STREAM_LOG_CONF,
+	TLS_LOG_CONF,
+	TLS_LOG_FILE,
 } from "./log-files.js";
 import { NGINX_CORE_FILES, renderNginxCore } from "./nginx-core.js";
 import { rooted } from "./paths.js";
@@ -31,6 +33,7 @@ const PATHS = {
 	ipRangesConf: rooted("/usr/local/nginx/conf/conf.d/ip_ranges.conf"),
 	errorLogConf: ERROR_LOG_CONF,
 	streamLogConf: STREAM_LOG_CONF,
+	tlsLogConf: TLS_LOG_CONF,
 	accessLogConf: ACCESS_LOG_CONF,
 	logrotateConf: LOGROTATE_CONF,
 	nginxDir: rooted("/data/nginx"),
@@ -404,16 +407,20 @@ const createRuntimeApplier = ({
 	const planners = {
 		logs: async ({ next, changed }) => {
 			const plan = { files: [] };
-			if (changed.includes("write_log_files") || changed.includes("log_format")) {
+			if (["write_log_files", "log_format", "tls_handshake_log"].some((key) => changed.includes(key))) {
 				// before the includes are written and tested
 				if (next.write_log_files) await prepareLogFiles({ nginxDir: paths.nginxDir, fs, log });
-				const includes = logIncludes(next.write_log_files, next.log_format);
+				if (next.write_log_files && next.tls_handshake_log) {
+					await prepareLogFiles({ nginxDir: paths.nginxDir, fs, log, names: [TLS_LOG_FILE], links: false });
+				}
+				const includes = logIncludes(next.write_log_files, next.log_format, next.tls_handshake_log);
 				const accessLog = accessLogDirective(await accessLogOn(next.write_log_files), next.log_format);
 				// at startup each in its own transaction, like the default certificate include: a failing nginx -t
 				// keeps start.sh's file and does not undo the others
 				for (const [file, content] of [
 					[paths.errorLogConf, includes.error],
 					[paths.streamLogConf, includes.stream],
+					[paths.tlsLogConf, includes.tls],
 					[paths.accessLogConf, accessLog],
 				]) {
 					plan.files.push({

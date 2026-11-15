@@ -4,7 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
-import { reloads } from "./support/hosts.js";
+import { fileExists, reloads } from "./support/hosts.js";
 
 const KEY = "good-key-0123456789";
 const CONF_ON = /^ENABLED=true$/mu;
@@ -475,6 +475,7 @@ it("restores a backup without secrets with the bouncer off while AppSec has no k
 
 const ERROR_ON = "error_log /data/nginx/logs/error.log warn;\n";
 const ERROR_OFF = "# no error log file, errors go to stderr\n";
+const TLS_OFF = "# no TLS handshake log (Settings, Logs & monitoring)\n";
 const includeOf = (name) => api.read(`/data/npmpro/nginx/${name}`);
 const WORKING = () => ({ enabled: true, api_url: lapiUrl, api_key: KEY, force: true });
 
@@ -517,6 +518,33 @@ it("a CrowdSec save with a stored json log format writes ajson and sjson", async
 		assert.equal(await includeOf("access-log.conf"), "access_log /data/nginx/logs/access.log ajson;\n");
 	} finally {
 		assert.equal((await admin.put("/settings/runtime/logs", { log_format: "classic" })).status, 200);
+	}
+	await logsOff();
+});
+
+it("a CrowdSec save with a stored TLS handshake log and the log files off writes tls-log.conf on", async () => {
+	await logsOff();
+	assert.equal(
+		(await admin.put("/settings/runtime/logs", { write_log_files: true, tls_handshake_log: true })).status,
+		200,
+	);
+	assert.equal((await admin.put("/settings/runtime/logs", { write_log_files: false })).status, 200);
+	try {
+		assert.equal(await includeOf("tls-log.conf"), TLS_OFF);
+		const saved = await admin.put("/settings/crowdsec", WORKING());
+		assert.equal(saved.status, 200, saved.text);
+		assert.equal(
+			await includeOf("tls-log.conf"),
+			"error_log stderr warn;\nerror_log /data/nginx/logs/error.log warn;\nerror_log /data/nginx/logs/tls.log info;\n",
+		);
+		assert.equal(await fileExists(api, "data/nginx/logs/tls.log"), true);
+
+		// CrowdSec off writes nothing
+		assert.equal((await admin.put("/settings/crowdsec", { enabled: false })).status, 200);
+		assert.notEqual(await includeOf("tls-log.conf"), TLS_OFF);
+	} finally {
+		await admin.put("/settings/crowdsec", { enabled: false });
+		await admin.put("/settings/runtime/logs", { write_log_files: true, tls_handshake_log: false });
 	}
 	await logsOff();
 });

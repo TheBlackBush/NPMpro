@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-# Writes the log includes nginx.conf reads (access-log.conf, error-log.conf, stream-log.conf) into $1 from LOGROTATE,
-# TRAFFIC_STATS, NGINX_LOG_FORMAT and CrowdSec (CROWDSEC_ENABLED, else ENABLED in the crowdsec.conf $2 the backend
-# writes): CrowdSec reads the log files, so it keeps them on like Write log files. The same lines as
+# Writes the log includes nginx.conf and the default servers read (access-log.conf, error-log.conf, stream-log.conf,
+# tls-log.conf) into $1 from LOGROTATE, TRAFFIC_STATS, NGINX_LOG_FORMAT, NGINX_TLS_HANDSHAKE_LOG and CrowdSec
+# (CROWDSEC_ENABLED, else ENABLED in the crowdsec.conf $2 the backend writes): CrowdSec reads the log files, so it keeps them on like Write log files. The same lines as
 # backend/lib/log-files.js and backend/lib/traffic/access-log.js (backend/test/log-includes.test.js compares them);
 # the backend rewrites them at start and on every save.
 set -eu
@@ -28,6 +28,13 @@ if [ -z "$format" ]; then
 fi
 if [ "$format" = "json" ]; then alog=ajson slog=sjson; else alog=alog slog=slog; fi
 
+# NGINX_TLS_HANDSHAKE_LOG (true or false; envs.sh validates it and exports no default). Not set: the state of the
+# include written last (the backend stores the setting); no include yet: off
+tls="${NGINX_TLS_HANDSHAKE_LOG:-}"
+if [ -z "$tls" ]; then
+    if grep -qs "^error_log /data/nginx/logs/tls.log info;$" "$dir/tls-log.conf"; then tls=true; else tls=false; fi
+fi
+
 files=false
 if [ "${LOGROTATE:-}" = "true" ] || [ "$crowdsec" = "true" ]; then files=true; fi
 
@@ -42,4 +49,15 @@ if [ "$files" = "true" ]; then
 else
     echo "# no error log file, errors go to stderr" > "$dir/error-log.conf"
     echo "access_log off;" > "$dir/stream-log.conf"
+fi
+
+# the default servers include it: their own error logs (a server-level error_log replaces the inherited ones), then
+# tls.log at info for the failed and rejected TLS handshakes
+if [ "$files" = "true" ] && [ "$tls" = "true" ]; then
+    printf "%s\n" "error_log stderr warn;" "error_log /data/nginx/logs/error.log warn;" "error_log /data/nginx/logs/tls.log info;" > "$dir/tls-log.conf"
+else
+    echo "# no TLS handshake log (Settings, Logs & monitoring)" > "$dir/tls-log.conf"
+    if [ "${NGINX_TLS_HANDSHAKE_LOG:-}" = "true" ]; then
+        echo "NGINX_TLS_HANDSHAKE_LOG is true, but no TLS handshake log is written while the log files are off (LOGROTATE=false and CrowdSec off)."
+    fi
 fi
