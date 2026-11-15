@@ -139,7 +139,7 @@ Saving checks the connection first: a wrong key or an unreachable LAPI or AppSec
 
 ## Log format
 
-NPMpro writes the access log (`access.log`) and the stream log (`stream.log`) in one line per request, or per stream session. The fields are separated by spaces. Text fields are in quotes, and an empty value is written as `-`. The acquisition file of step 4 reads the access log, and the parser of the collection reads these fields.
+NPMpro writes the access log (`access.log`) and the stream log (`stream.log`) in one line per request, or per stream session. The fields are separated by spaces. Text fields are in quotes. A value nginx does not have (for example the upstream status of a request without an upstream) is written as `-`, an empty one as nothing: the server port of a request over the internal unix socket is empty, and so is the quoted server name `""` of a request without a host name. The acquisition file of step 4 reads the access log, and the parser of the collection reads these fields.
 
 The new fields come at the end of each line, so a parser that reads the start of a line keeps working. The hub item `ZoeyVid/npmplus-logs` is such a parser.
 
@@ -198,9 +198,9 @@ The host id names the NPMpro object that served a request. Its values:
 | `proxy-<id>` | A proxy host. `proxy-12` is the proxy host with id 12. |
 | `redirection-<id>` | A redirection host. |
 | `dead-<id>` | A 404 host. |
-| `default` | The default site. |
+| `default` | The default site, also for the requests it closes without an answer (status 444). |
 | `npmpro` | The admin UI. |
-| `-` | A custom config, or a request that nginx refused before it chose a host (for example a malformed request, or a connection that nginx closes without a response). |
+| `-` | A custom config, or a request that nginx refused before a host could handle it (for example a malformed request, status 400, or a request that timed out, status 408). |
 
 The stream log has the stream id instead: `stream-<id>` for a stream, `-` otherwise.
 
