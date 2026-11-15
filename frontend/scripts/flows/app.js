@@ -96,19 +96,26 @@ async function logFormat({ admin }) {
 
 const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
 
+const ADMIN_UI = "#crowdsec-admin-ui";
+
 // Settings, CrowdSec: the section opens, Test connection answers with one line per check (the CI instance has no
-// CrowdSec, so they fail, which is fine here), and a harmless field (the captcha expiration) is saved and read back.
-// The bouncer stays off, so the save never runs the connection test against a CrowdSec this instance does not have.
+// CrowdSec, so they fail, which is fine here), and two harmless fields (the captcha expiration and the Admin UI and
+// CrowdSec choice) are saved in one save and read back, the choice also after a reload. The bouncer stays off, so the
+// save never runs the connection test against a CrowdSec this instance does not have.
 async function crowdsecSettings({ admin }) {
 	const { page, api } = admin;
 	const before = await api("GET", "/settings/crowdsec");
 	const wanted = before.captcha_expiration === 3600 ? 3601 : 3600;
+	const [adminUi, adminUiLabel] =
+		before.admin_ui === "bans" ? ["checked", "Checked like every host"] : ["bans", "Bans only"];
 	try {
 		await page.goto("/settings/crowdsec");
 		await page.locator("#crowdsec-api-url").waitFor();
 		await page.getByRole("button", { name: "Test connection", exact: true }).click();
 		await page.locator("[data-crowdsec-check=lapi]").waitFor();
 		await page.locator(CAPTCHA_EXPIRATION).fill(String(wanted));
+		await page.locator(ADMIN_UI).click();
+		await page.getByRole("option", { name: adminUiLabel, exact: true }).click();
 		await withToast(page, "Setting has been saved", () =>
 			page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
 		);
@@ -116,11 +123,19 @@ async function crowdsecSettings({ admin }) {
 		if (after.captcha_expiration !== wanted) {
 			throw new Error(`the saved captcha expiration is ${after.captcha_expiration}, expected ${wanted}`);
 		}
+		if (after.admin_ui !== adminUi)
+			throw new Error(`the saved admin UI choice is ${after.admin_ui}, expected ${adminUi}`);
+		await page.reload();
+		await page.locator(ADMIN_UI).filter({ hasText: adminUiLabel }).waitFor({ timeout: 5000 });
 		if (after.enabled !== before.enabled) throw new Error("the save changed whether the bouncer is on");
 	} finally {
 		const now = await api("GET", "/settings/crowdsec");
-		if (now.captcha_expiration !== before.captcha_expiration) {
-			await api("PUT", "/settings/crowdsec", { captcha_expiration: before.captcha_expiration, force: true });
+		if (now.captcha_expiration !== before.captcha_expiration || now.admin_ui !== before.admin_ui) {
+			await api("PUT", "/settings/crowdsec", {
+				captcha_expiration: before.captcha_expiration,
+				admin_ui: before.admin_ui,
+				force: true,
+			});
 		}
 	}
 }

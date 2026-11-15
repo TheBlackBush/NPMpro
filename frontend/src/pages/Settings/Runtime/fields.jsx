@@ -1,9 +1,8 @@
-import { FileKey, Info, RefreshCw, ServerCog, Zap } from "lucide-react";
+import { FileKey, RefreshCw, ServerCog, Zap } from "lucide-react";
 import { useController, useFormContext } from "react-hook-form";
 import { useIntl } from "react-intl";
-import { FormField, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
+import { FormField, InfoBadge, SettingBadge, SwitchField, TextField, useFieldError } from "src/components";
 import { AppSelect } from "src/components/AppSelect";
-import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "src/components/ui/input-group";
 import { T } from "src/locale";
 import { LockedBadge, LockReason } from "../Authentication/LockedBadge";
@@ -44,18 +43,7 @@ function useFieldBadges(name, lockName = name, info = null) {
 				<T id={`${applies}.short`} />
 			</SettingBadge>,
 		);
-	if (info)
-		badges.push(
-			<TapTooltip key="info" content={info}>
-				<button
-					type="button"
-					aria-labelledby={`${idOf(name)}-label`}
-					className="inline-flex shrink-0 cursor-help items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-				>
-					<Info aria-hidden="true" className="size-3.5" />
-				</button>
-			</TapTooltip>,
-		);
+	if (info) badges.push(<InfoBadge key="info" content={info} labelledBy={`${idOf(name)}-label`} />);
 	return badges.length > 0 ? badges : null;
 }
 

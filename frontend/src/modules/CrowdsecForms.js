@@ -30,14 +30,7 @@ const CROWDSEC_PATH = /^\/data\/crowdsec\/[^\s#]+$/u;
 // "." or ".." as a path segment, or an empty one: the backend refuses paths that are not normalised
 const ODD_SEGMENT = /(?:^|\/)\.{1,2}(?:\/|$)|\/\//u;
 
-const SWITCHES = [
-	"enabled",
-	"sslVerify",
-	"enableInternal",
-	"alwaysSendToAppsec",
-	"appsecDropUnreadableBody",
-	"adminUiExcluded",
-];
+const SWITCHES = ["enabled", "sslVerify", "enableInternal", "alwaysSendToAppsec", "appsecDropUnreadableBody"];
 const TEXTS = [
 	"apiUrl",
 	"tlsClientCert",
@@ -49,7 +42,8 @@ const TEXTS = [
 	"captchaSiteKey",
 	"appsecUrl",
 ];
-const CHOICES = ["mode", "bouncingOnType", "fallbackRemediation", "banResponse", "appsecFailureAction"];
+export const ADMIN_UI_CHOICES = ["checked", "bans", "out"];
+const CHOICES = ["mode", "bouncingOnType", "fallbackRemediation", "banResponse", "appsecFailureAction", "adminUi"];
 const INTEGERS = {
 	cacheExpiration: { min: 1, max: 86400 },
 	updateFrequency: { min: 1, max: 86400 },
@@ -146,7 +140,7 @@ export const crowdsecValues = (data) => ({
 	scenariosContaining: data.scenariosContaining ?? "",
 	scenariosNotContaining: data.scenariosNotContaining ?? "",
 	excludeLocation: data.excludeLocation ?? "",
-	adminUiExcluded: Boolean(data.adminUiExcluded),
+	adminUi: ADMIN_UI_CHOICES.includes(data.adminUi) ? data.adminUi : "checked",
 });
 
 /**
@@ -278,11 +272,13 @@ export const forceBlocked = (err) => {
 /**
  * AppSec deny while the admin UI is checked: a CrowdSec outage blocks the admin UI too
  *
- * @param   {{ appsecUrl: string, appsecFailureAction: string, adminUiExcluded: boolean }} values
+ * @param   {{ appsecUrl: string, appsecFailureAction: string, adminUi: string }} values
  * @returns {boolean}
  */
 export const appsecDenyWarning = (values) =>
-	trimmed(values.appsecUrl) !== "" && values.appsecFailureAction === "deny" && !values.adminUiExcluded;
+	trimmed(values.appsecUrl) !== "" &&
+	values.appsecFailureAction === "deny" &&
+	(values.adminUi ?? "checked") === "checked";
 
 /**
  * What to tell the admin when the bouncer is switched on in the settings but nginx does not load it. An AppSec URL
