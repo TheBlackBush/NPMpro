@@ -6,7 +6,7 @@ import { startApi } from "./support/api.js";
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const SERVER_OPEN = /\bserver \{/u;
 const REWRITE_DIRECTIVES = ["return ", "rewrite ", "if ("];
-const TEMPLATE_VERSION_25 = /^TV="25"$/mu;
+const TEMPLATE_VERSION = /^TV="(?<version>\d+)"$/mu;
 
 let api;
 // filled once the API is up; a const holder so the tests built in loops read no reassigned binding
@@ -88,5 +88,7 @@ for (const value of ["444", "congratulations", "404", "html"]) {
 }
 
 it("bumps the template version, so existing installs rewrite their host configs", () => {
-	assert.match(readFileSync(ENVS_SH, "utf8"), TEMPLATE_VERSION_25);
+	// 25 is the version that added the host id; a later template change raises it again
+	const version = TEMPLATE_VERSION.exec(readFileSync(ENVS_SH, "utf8"))?.groups.version;
+	assert.ok(Number(version) >= 25, `TV is ${version}`);
 });
