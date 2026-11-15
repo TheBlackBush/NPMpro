@@ -2,7 +2,7 @@ import { isIP } from "node:net";
 
 const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
 
-// Anchored on the start of the "alog" format up to $bytes_sent; later fields (referrer, user agent, ...) are ignored.
+// Anchored on the start of the "alog" format up to $bytes_sent; the user agent and the server port are read separately.
 // $server_port follows $upstream_cache_status since it was added (then the fields added after it); older lines end
 // with $upstream_cache_status (never a number).
 // The quoted request may contain escaped quotes.
