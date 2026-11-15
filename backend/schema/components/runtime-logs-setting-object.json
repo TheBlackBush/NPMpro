@@ -5,6 +5,7 @@
 	"required": [
 		"write_log_files",
 		"log_format",
+		"tls_handshake_log",
 		"log_rotations",
 		"goaccess",
 		"goaccess_keep_days",
@@ -30,6 +31,10 @@
 				"json"
 			],
 			"description": "Format of the access and stream log files: classic (space separated) or json, one object per line with the same fields (env NGINX_LOG_FORMAT)"
+		},
+		"tls_handshake_log": {
+			"type": "boolean",
+			"description": "Write failed and rejected TLS handshakes of the default site and the admin UI to /data/nginx/logs/tls.log at level info, while the log files are on (env NGINX_TLS_HANDSHAKE_LOG)"
 		},
 		"log_rotations": {
 			"type": "integer",
@@ -77,6 +82,8 @@
 				"enum": [
 					"write_log_files",
 					"log_format",
+				"tls_handshake_log",
+					"tls_handshake_log",
 					"log_rotations",
 					"goaccess",
 					"goaccess_keep_days",
@@ -98,6 +105,10 @@
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
 				"log_format": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"tls_handshake_log": {
 					"type": "string",
 					"pattern": "^[A-Z][A-Z0-9_]*$"
 				},
@@ -172,6 +183,14 @@
 					]
 				},
 				"log_format": {
+					"type": "string",
+					"enum": [
+						"next-certificate",
+						"reload",
+						"immediately"
+					]
+				},
+				"tls_handshake_log": {
 					"type": "string",
 					"enum": [
 						"next-certificate",

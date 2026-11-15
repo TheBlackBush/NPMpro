@@ -42,6 +42,7 @@ it("saves the editable keys and returns the merged values", async () => {
 	assert.deepEqual(out.values, {
 		write_log_files: false,
 		log_format: "classic",
+		tls_handshake_log: false,
 		log_rotations: 10,
 		goaccess: false,
 		goaccess_keep_days: 30,

@@ -134,6 +134,33 @@ it("envs.sh accepts an unset, classic or json NGINX_LOG_FORMAT and refuses anyth
 	}
 });
 
+it("lists NGINX_TLS_HANDSHAKE_LOG as a runtime name and as the variable that locks tls_handshake_log", () => {
+	assert.ok(RUNTIME_ENV_NAMES.includes("NGINX_TLS_HANDSHAKE_LOG"));
+	assert.ok(
+		RUNTIME_LINE.exec(readFileSync(ENVS_SH, "utf8"))?.groups.names.split(" ").includes("NGINX_TLS_HANDSHAKE_LOG"),
+	);
+	assert.deepEqual(environmentInfo({}, [{ group: "logs", key: "tls_handshake_log" }]).locked_runtime, [
+		{ group: "logs", key: "tls_handshake_log", env: "NGINX_TLS_HANDSHAKE_LOG", reason: null },
+	]);
+});
+
+it("envs.sh accepts an unset, true or false NGINX_TLS_HANDSHAKE_LOG and refuses anything else, also several lines", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const start = text.indexOf('case "$NGINX_TLS_HANDSHAKE_LOG" in');
+	const block = text.slice(start, text.indexOf("esac", start) + "esac".length).replace("sleep inf", "exit 3");
+	const run = (value) =>
+		spawnSync("sh", ["-c", block], {
+			env: { PATH: process.env.PATH, NGINX_TLS_HANDSHAKE_LOG: value },
+			encoding: "utf8",
+		});
+	for (const value of ["", "true", "false"]) assert.equal(run(value).status, 0, value);
+	for (const value of ["TRUE", "yes", "1", "true\nfalse"]) {
+		const out = run(value);
+		assert.equal(out.status, 3, JSON.stringify(value));
+		assert.equal(out.stdout, "NGINX_TLS_HANDSHAKE_LOG needs to be true or false.\n");
+	}
+});
+
 it("lists the runtime and environment names once in envs.sh", () => {
 	const text = readFileSync(ENVS_SH, "utf8");
 	const runtime = RUNTIME_LINE.exec(text)?.groups.names.split(" ") ?? [];

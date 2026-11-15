@@ -53,6 +53,7 @@ const storedMeta = async (group) => {
 	if (!row) return null;
 	return typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
 };
+const TLS_LOG_NEEDS_FILES = /tls_handshake_log: needs Write log files/u;
 const refused = async (group, body, pattern) => {
 	const done = await put(group, body);
 	assert.equal(done.status, 400, `${JSON.stringify(body)}: ${done.text}`);
@@ -572,6 +573,21 @@ it("saves the log format: the includes name ajson and sjson with the log files o
 	await refused("logs", { log_format: "xml" });
 	assert.equal((await get("logs")).log_format, "classic");
 	await saved("logs", { write_log_files: false });
+});
+
+it("saves the TLS handshake log only with the log files on, and keeps a stored one when they go off", async () => {
+	await refused("logs", { tls_handshake_log: true }, TLS_LOG_NEEDS_FILES);
+	assert.equal((await get("logs")).tls_handshake_log, false);
+	await saved("logs", { write_log_files: true, tls_handshake_log: true });
+	const both = await get("logs");
+	assert.equal(both.write_log_files, true);
+	assert.equal(both.tls_handshake_log, true);
+	await saved("logs", { write_log_files: false });
+	assert.equal((await get("logs")).tls_handshake_log, true);
+	// an unchanged stored value is never refused
+	await saved("logs", { tls_handshake_log: true });
+	await saved("logs", { tls_handshake_log: false });
+	assert.equal((await get("logs")).tls_handshake_log, false);
 });
 
 it("keeps the log includes when nginx refuses the new ones", async () => {

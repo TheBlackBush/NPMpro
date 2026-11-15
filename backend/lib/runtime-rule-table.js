@@ -336,6 +336,20 @@ const RUNTIME_RULES = [
 		default: "classic",
 		applies: "reload",
 	},
+	{
+		...boolRule({
+			group: "logs",
+			key: "tls_handshake_log",
+			env: "NGINX_TLS_HANDSHAKE_LOG",
+			fallback: false,
+			applies: "reload",
+		}),
+		// turning it on needs the log files (CrowdSec and GoAccess keep them on); a stored value is kept when the files go off
+		validateSave: (value, values) =>
+			value === true && values.write_log_files !== true
+				? "needs Write log files (CrowdSec keeps them on while it is enabled)"
+				: null,
+	},
 	rangeRule({
 		group: "logs",
 		key: "log_rotations",
