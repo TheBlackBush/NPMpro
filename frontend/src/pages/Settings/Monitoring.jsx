@@ -54,9 +54,9 @@ function SaveButton({ allLocked }) {
 
 // Write log files and rotations: the logs runtime settings group (with GoAccess below), saved with its own request
 function LogFields() {
-	const { isLocked } = useRuntimeSection();
-	// GoAccess reads the format it started with, so a change needs a restart while it runs
-	const goaccessOn = useWatch({ name: "goaccess" }) || isLocked("goaccess");
+	// GoAccess reads the format it started with, so a change needs a restart while it runs (a GOA env lock holds
+	// the env value, so GOA=false shows no note)
+	const goaccessOn = useWatch({ name: "goaccess" });
 	return (
 		<Part titleId="settings.logs.files" infoId="settings.logs.files.description">
 			<RuntimeSwitch
@@ -75,7 +75,7 @@ function LogFields() {
 				}))}
 			/>
 			{goaccessOn ? (
-				<SettingLineNote>
+				<SettingLineNote className="text-sm text-muted-foreground">
 					<T id="settings.logs.format.goaccess-restart" />
 				</SettingLineNote>
 			) : null}
