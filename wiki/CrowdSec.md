@@ -353,7 +353,7 @@ The bouncer supports the captcha remediation. In Settings, CrowdSec choose the c
 
 ### Find the request of an AppSec event
 
-An alert raised by the AppSec carries the request id of the blocked request as `request_id` in its context, the `request_id` field of the access log line. It needs CrowdSec 1.6.4 or newer and the alert context `TheBlackBush/npmpro`. That context is part of the collection `TheBlackBush/npmpro`, which waits for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)); until then, and with any other collection (for example with `ZoeyVid/npmplus`), add it by hand: create `contexts/npmpro.yaml` in CrowdSec's config folder (`/etc/crowdsec/contexts/npmpro.yaml` in the container, `/opt/crowdsec/conf/contexts/npmpro.yaml` on the host) with
+An alert raised by the AppSec carries the request id of the blocked request as `request_id` in its context, the `request_id` field of the access log line. It needs CrowdSec 1.6.4 or newer and the alert context `TheBlackBush/npmpro`. Check your version first (`docker exec crowdsec cscli version`): CrowdSec 1.6.3 and older refuse to start with this context (`unknown name req`), and with **When AppSec cannot be reached** on **Deny the request** a stopped CrowdSec blocks every checked request. Update CrowdSec before you add the context or install the collection. That context is part of the collection `TheBlackBush/npmpro`, which waits for review in the CrowdSec hub ([hub#1961](https://github.com/crowdsecurity/hub/pull/1961)); until then, and with any other collection (for example with `ZoeyVid/npmplus`), add it by hand: create `contexts/npmpro.yaml` in CrowdSec's config folder (`/etc/crowdsec/contexts/npmpro.yaml` in the container, `/opt/crowdsec/conf/contexts/npmpro.yaml` on the host) with
 
 ```yaml
 context:
@@ -361,7 +361,7 @@ context:
     - "req.Method != '' ? req.Header.Get('X-Npmpro-Request-Id') : ''"
 ```
 
-and restart CrowdSec (`docker restart crowdsec`). Then:
+and restart CrowdSec (`docker restart crowdsec`). Once you install the collection `TheBlackBush/npmpro`, delete this file and restart CrowdSec again: the collection brings the same context, and a hand-made file with the same name can keep the hub version from being installed. Then:
 
 ```bash
 docker exec crowdsec cscli alerts list
