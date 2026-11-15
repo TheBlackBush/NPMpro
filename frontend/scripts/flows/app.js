@@ -55,6 +55,45 @@ async function settingsSave({ admin }) {
 	}
 }
 
+const LOG_FORMAT = "#runtime-logFormat";
+
+const storedLogFormat = async (api) => (await api("GET", "/settings/runtime/logs")).log_format;
+
+// the select shows a format: its trigger text
+const formatShown = (page, text) => page.locator(LOG_FORMAT).filter({ hasText: text }).waitFor({ timeout: 5000 });
+
+// Settings, Logs & monitoring: JSON is chosen and saved (toast, read back from the API, shown again after a reload),
+// then Classic, so the instance ends as it started
+async function logFormat({ admin }) {
+	const { page, api } = admin;
+	const before = await storedLogFormat(api);
+	try {
+		await page.goto("/settings/monitoring");
+		await page.locator(LOG_FORMAT).waitFor();
+		// JSON first, unless it is stored: each step changes the format, and the second restores it
+		const steps = [
+			["json", "JSON"],
+			["classic", "Classic"],
+		];
+		if (before === "json") steps.reverse();
+		for (const [wanted, label] of steps) {
+			// biome-ignore lint/performance/noAwaitInLoops: one save after the other
+			await page.locator(LOG_FORMAT).click();
+			await page.getByRole("option", { name: label, exact: true }).click();
+			await withToast(page, "Setting has been saved", () =>
+				page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+			);
+			const stored = await storedLogFormat(api);
+			if (stored !== wanted) throw new Error(`the saved log format is ${stored}, expected ${wanted}`);
+			await page.reload();
+			await page.locator(LOG_FORMAT).waitFor();
+			await formatShown(page, label);
+		}
+	} finally {
+		if ((await storedLogFormat(api)) !== before) await api("PUT", "/settings/runtime/logs", { log_format: before });
+	}
+}
+
 const CAPTCHA_EXPIRATION = "#crowdsec-captcha-expiration";
 
 // Settings, CrowdSec: the section opens, Test connection answers with one line per check (the CI instance has no
@@ -397,6 +436,7 @@ async function languageFallback({ browser, base, password }) {
 
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
+	{ name: "log format", run: logFormat },
 	{ name: "crowdsec settings", run: crowdsecSettings },
 	{ name: "collapsed card opens", run: collapsedCardOpens },
 	{ name: "landing pages settings", run: landingPagesSettings },

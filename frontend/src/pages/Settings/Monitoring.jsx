@@ -40,6 +40,7 @@ import { SettingsLead } from "./SettingsLead";
 import { StatusAlert } from "./StatusAlert";
 
 const EDITABLE = ["traffic_enabled", "retention_days", "show_ips", "unique_visitors", "visitors_cap"];
+const LOG_FORMATS = ["classic", "json"];
 const ANONYMIZE_LEVELS = ["off", "1", "2", "3"];
 
 function Heading() {
@@ -53,6 +54,9 @@ function SaveButton({ allLocked }) {
 
 // Write log files and rotations: the logs runtime settings group (with GoAccess below), saved with its own request
 function LogFields() {
+	const { isLocked } = useRuntimeSection();
+	// GoAccess reads the format it started with, so a change needs a restart while it runs
+	const goaccessOn = useWatch({ name: "goaccess" }) || isLocked("goaccess");
 	return (
 		<Part titleId="settings.logs.files" infoId="settings.logs.files.description">
 			<RuntimeSwitch
@@ -60,6 +64,21 @@ function LogFields() {
 				label={<T id="settings.logs.write" />}
 				hint={<T id="settings.logs.write.hint" />}
 			/>
+			<RuntimeSelect
+				name="logFormat"
+				label={<T id="settings.logs.format" />}
+				hint={<T id="settings.logs.format.hint" />}
+				info={<T id="settings.logs.format.info" />}
+				options={LOG_FORMATS.map((value) => ({
+					value,
+					label: intl.formatMessage({ id: `settings.logs.format.${value}` }),
+				}))}
+			/>
+			{goaccessOn ? (
+				<SettingLineNote>
+					<T id="settings.logs.format.goaccess-restart" />
+				</SettingLineNote>
+			) : null}
 			<RuntimeNumber
 				name="logRotations"
 				label={<T id="settings.logs.rotations" />}
