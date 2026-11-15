@@ -18,14 +18,10 @@ before(async () => {
 });
 after(() => api?.stop());
 
-const logs = async () => {
+it("shows the TLS handshake log locked off by LISTEN_PROXY_PROTOCOL_HTTPS, with its reason", async () => {
 	const res = await admin.get("/settings/runtime/logs");
 	assert.equal(res.status, 200, res.text);
-	return res.body;
-};
-
-it("shows the TLS handshake log locked off by LISTEN_PROXY_PROTOCOL_HTTPS, with its reason", async () => {
-	const view = await logs();
+	const view = res.body;
 	assert.equal(view.tls_handshake_log, false);
 	assert.ok(view.locked.includes("tls_handshake_log"));
 	assert.equal(view.locked_by.tls_handshake_log, "LISTEN_PROXY_PROTOCOL_HTTPS");
