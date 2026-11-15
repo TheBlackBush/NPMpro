@@ -345,6 +345,19 @@ it("monitoring: the TLS handshake log is sent only when changed and not locked, 
 	});
 });
 
+it("monitoring: the TLS handshake log is not sent while Write log files goes off in the same save", () => {
+	const saved = monitoringValues(DATA, LOGS);
+	// turned on, then Write log files turned off before the save: the switch shows off, the API would refuse it
+	assert.deepEqual(monitoringRequest({ ...saved, tlsHandshakeLog: true, writeLogFiles: false }, DATA, LOGS).logs, {
+		writeLogFiles: false,
+	});
+	// a Write log files locked on (CrowdSec) keeps it sendable
+	const crowdsec = { ...LOGS, locked: ["write_log_files"] };
+	assert.deepEqual(monitoringRequest({ ...saved, tlsHandshakeLog: true }, DATA, crowdsec).logs, {
+		tlsHandshakeLog: true,
+	});
+});
+
 it("monitoring: the same errors as the Formik validate", () => {
 	const validate = monitoringValidate(rules, []);
 	const values = monitoringValues(DATA, LOGS);

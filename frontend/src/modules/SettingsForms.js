@@ -421,7 +421,8 @@ export const monitoringValidate = (rules, logsLocked) => (values) => {
 const logsApi = (values) => ({
 	writeLogFiles: values.writeLogFiles,
 	logFormat: values.logFormat,
-	tlsHandshakeLog: values.tlsHandshakeLog,
+	// only with Write log files on in the same form: the switch shows off without them, and the API refuses turning it on
+	tlsHandshakeLog: values.writeLogFiles ? values.tlsHandshakeLog : undefined,
 	logRotations: Number(values.logRotations),
 	goaccess: values.goaccess,
 	goaccessKeepDays: Number(values.goaccessKeepDays),
