@@ -16,6 +16,9 @@ import {
 } from "./HostTags.js";
 import { createValidations } from "./ValidationRules.js";
 
+const NAMES_BAD_TAG = /“a\/b”/u;
+const NAMES_LIMIT = /10/u;
+
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
 
 it("accepts letters of any script, with marks, digits, spaces inside, - _ and .", () => {
@@ -72,13 +75,13 @@ it("adds and removes a tag in any case", () => {
 
 it("names the first bad tag and the limit", () => {
 	assert.equal(tagsError(rules, ["ok", "café"]), undefined);
-	assert.match(tagsError(rules, ["ok", "a/b"]), /“a\/b”/u);
+	assert.match(tagsError(rules, ["ok", "a/b"]), NAMES_BAD_TAG);
 	assert.match(
 		tagsError(
 			rules,
 			Array.from({ length: TAGS_MAX + 1 }, (_, n) => `t${n}`),
 		),
-		/10/u,
+		NAMES_LIMIT,
 	);
 });
 
