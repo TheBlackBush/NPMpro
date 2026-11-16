@@ -84,11 +84,19 @@
 			"matchPackageNames": ["certbot", "acme", "certbot-dns-cloudflare", "certbot-dns-digitalocean", "certbot-dns-dnsimple", "certbot-dns-dnsmadeeasy", "certbot-dns-google", "certbot-dns-linode", "certbot-dns-luadns", "certbot-dns-nsone", "certbot-dns-ovh", "certbot-dns-rfc2136"]
 		},
 		{
-			"description": "the packages the generated shadcn components use; radix-ui (its @radix-ui/react-select), sonner and input-otp carry a local patch and stay alone",
+			"description": "the packages the generated shadcn components use, in one PR (radix-ui, sonner and input-otp carry a local patch: each has its own PR below)",
 			"groupName": "shadcn",
 			"matchFileNames": ["frontend/**"],
 			"matchPackageNames": ["shadcn", "cn", "class-variance-authority", "cmdk", "lucide-react", "tw-animate-css"]
 		},
+		{
+			"description": "patched packages (frontend/patches): each update in its own PR, so a patch that no longer applies holds only that one",
+			"groupName": "radix-ui",
+			"matchFileNames": ["frontend/**"],
+			"matchPackageNames": ["radix-ui"]
+		},
+		{ "groupName": "sonner", "matchFileNames": ["frontend/**"], "matchPackageNames": ["sonner"] },
+		{ "groupName": "input-otp", "matchFileNames": ["frontend/**"], "matchPackageNames": ["input-otp"] },
 		{ "groupName": "github actions", "matchManagers": ["github-actions"] },
 		{ "groupName": "base images", "matchManagers": ["dockerfile"] },
 		{
