@@ -7,6 +7,7 @@ Utilisez **Dupliquer** dans le menu de l'hôte pour copier un hôte dans une nou
 ### Détails
 
 - **Noms de domaine** : les noms qui sont redirigés. Obligatoire. Les jokers ne sont autorisés pour un nouveau certificat qu'avec le challenge DNS.
+- **Description** : facultative, une ligne (jusqu'à 255 caractères) qui indique à quoi sert l'hôte. Elle s'affiche sous les noms de domaine dans la liste et la recherche la trouve.
 - **Schéma** : le schéma de la cible. « conserver (identique à la requête) » est la valeur par défaut et garde `http` ou `https` de la visite. Ou choisissez `http` ou `https`.
 - **Domaine de redirection** : le domaine vers lequel les visiteurs sont envoyés, par exemple `example.com`. Obligatoire.
 - **Code HTTP** : le code de réponse. Par défaut 301 Moved permanently. Autres choix : 302 Moved temporarily, 303 See other, 307 Temporary redirect et 308 Permanent redirect. Utilisez 301 ou 308 quand le déménagement est définitif ; les navigateurs et les moteurs de recherche s'en souviennent.

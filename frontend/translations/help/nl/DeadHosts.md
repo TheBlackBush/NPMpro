@@ -2,6 +2,8 @@
 
 Een 404 Host is gewoon een host setup die een 404 pagina toont.
 
+Een optionele **Beschrijving** (één regel) zegt waar de host voor dient; ze staat in de lijst onder de domeinnamen.
+
 Dit kan handig zijn wanneer uw domein in zoekmachines wordt vermeld en u een mooiere foutpagina wilt aanbieden of specifiek om de zoekindexers te informeren dat de domeinpagina's niet meer bestaan.
 
 Een ander voordeel van het hebben van deze host is het volgen van de logboeken voor treffers en het bekijken van de verwijzers.

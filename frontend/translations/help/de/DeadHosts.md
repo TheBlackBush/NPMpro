@@ -2,6 +2,8 @@
 
 Ein 404-Host ist ein Host-Setup, das eine 404-Seite anzeigt.
 
+Eine optionale **Beschreibung** (eine Zeile) sagt, wofür der Host da ist; sie erscheint in der Liste unter den Domains.
+
 Dies kann nützlich sein, wenn Ihre Domain in Suchmaschinen gelistet ist und Sie
 eine ansprechendere Fehlerseite bereitstellen oder den Suchindexern ausdrücklich mitteilen möchten, dass
 die Domain-Seiten nicht mehr existieren.

@@ -7,6 +7,7 @@ Use **Clonar** no menu do host para copiar um host para uma nova janela de adiç
 ### Detalhes
 
 - **Nomes de Domínio**: os nomes que são redirecionados. Obrigatório. Os carateres universais só são permitidos para um novo certificado com o DNS challenge.
+- **Descrição**: opcional, uma linha (até 255 caracteres) que diz para que serve o host. Aparece sob os nomes de domínio na lista e a pesquisa encontra-a.
 - **Esquema**: o esquema do destino. "manter (igual ao pedido)" é a predefinição e mantém o `http` ou `https` da visita. Ou escolha `http` ou `https`.
 - **Domínio de Destino**: o domínio para onde os visitantes são enviados, por exemplo `example.com`. Obrigatório.
 - **Código HTTP**: o código de resposta. Predefinição 301 Moved permanently. Outras opções: 302 Moved temporarily, 303 See other, 307 Temporary redirect e 308 Permanent redirect. Use 301 ou 308 quando a mudança é definitiva; os browsers e os motores de pesquisa memorizam-nos.

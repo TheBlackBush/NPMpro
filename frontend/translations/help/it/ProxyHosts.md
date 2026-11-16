@@ -7,6 +7,7 @@ Usa **Duplica** nel menu dell'host per copiare un host in una nuova finestra di 
 ### Dettagli
 
 - **Nomi di Dominio**: i nomi usati dai visitatori. Obbligatorio. Per un nuovo certificato, i caratteri jolly (`*.example.com`) richiedono la challenge DNS.
+- **Descrizione**: facoltativa, una riga (fino a 255 caratteri) che dice a cosa serve l'host. Appare sotto i nomi di dominio nell'elenco e la ricerca la trova.
 - **Schema**: come NPMpro parla con il servizio: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (serve file o PHP da una cartella) oppure `empty` (nessun upstream). Predefinito `http://`. Cambiando lo schema si disattivano le opzioni che non vi si adattano.
 - **Hostname / IP / path di destinazione**: l'indirizzo del servizio. Puoi aggiungere un sottopercorso, ad esempio `127.0.0.1/path`. Con `path`, inserisci invece una cartella. Monta i tuoi file sotto `/var/www`; solo gli amministratori possono usare una cartella al di fuori. Un nome che inizia con `cu_` indica un tuo blocco upstream di nginx (vedi Load balancing nel wiki).
 - **Porta di Destinazione**: facoltativa. Con `path` è la versione di PHP.

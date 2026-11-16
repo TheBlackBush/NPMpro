@@ -7,6 +7,7 @@ Verwenden Sie **Klonen** im Menü des Hosts, um einen Host in ein neues Fenster 
 ### Details
 
 - **Domains**: die Namen, die weitergeleitet werden. Erforderlich. Wildcards sind für ein neues Zertifikat nur mit der DNS Challenge erlaubt.
+- **Beschreibung**: optional, eine Zeile (bis zu 255 Zeichen), die sagt, wofür der Host da ist. Sie erscheint in der Liste unter den Domains und die Suche findet sie.
 - **Schema**: das Schema des Ziels. „beibehalten (wie in der Anfrage)“ ist der Standard und behält `http` oder `https` des Besuchs bei. Oder wählen Sie `http` oder `https`.
 - **Ziel-Domain**: die Domain, an die Besucher geschickt werden, zum Beispiel `example.com`. Erforderlich.
 - **HTTP-Code**: der Antwortcode. Standard 301 Moved permanently. Weitere Auswahl: 302 Moved temporarily, 303 See other, 307 Temporary redirect und 308 Permanent redirect. Verwenden Sie 301 oder 308, wenn der Umzug dauerhaft ist; Browser und Suchmaschinen merken sie sich.

@@ -2,6 +2,8 @@
 
 Um *404 Host* é simplesmente um host configurado para apresentar uma página 404.
 
+Uma **Descrição** opcional (uma linha) diz para que serve o host; aparece sob os nomes de domínio na lista.
+
 Isto pode ser útil quando o teu domínio aparece em motores de busca e queres fornecer
 uma página de erro mais agradável ou indicar especificamente aos indexadores de pesquisa
 que as páginas desse domínio já não existem.

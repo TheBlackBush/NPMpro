@@ -7,6 +7,7 @@ Gebruik **Dupliceren** in het menu van de host om een host naar een nieuw venste
 ### Details
 
 - **Domeinnamen**: de namen die worden omgeleid. Verplicht. Wildcards zijn voor een nieuw certificaat alleen toegestaan met de DNS-challenge.
+- **Beschrijving**: optioneel, één regel (maximaal 255 tekens) die zegt waar de host voor dient. Ze staat in de lijst onder de domeinnamen en de zoekfunctie vindt haar.
 - **Schema**: het schema van het doel. „behouden (zelfde als het verzoek)” is de standaard en behoudt `http` of `https` van het bezoek. Of kies `http` of `https`.
 - **Doorgestuurd Domein**: het domein waarheen bezoekers worden gestuurd, bijvoorbeeld `example.com`. Verplicht.
 - **HTTP-code**: de antwoordcode. Standaard 301 Moved permanently. Andere keuzes: 302 Moved temporarily, 303 See other, 307 Temporary redirect en 308 Permanent redirect. Gebruik 301 of 308 als de verhuizing definitief is; browsers en zoekmachines onthouden ze.

@@ -2,6 +2,8 @@
 
 Host 404 to po prostu konfiguracja hosta, która wyświetla stronę 404.
 
+Opcjonalny **Opis** (jedna linia) mówi, do czego służy host; widać go na liście pod nazwami domen.
+
 Może to być przydatne, gdy twoja domena jest indeksowana w wyszukiwarkach i chcesz zapewnić ładniejszą stronę błędu lub konkretnie poinformować roboty indeksujące, że strony domeny już nie istnieją.
 
 Kolejną zaletą posiadania tego hosta jest możliwość śledzenia logów dla odwiedzin oraz przeglądania źródeł ruchu (referrerów).
