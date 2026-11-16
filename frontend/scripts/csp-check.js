@@ -216,7 +216,7 @@ try {
 	}
 } catch (error) {
 	// a throw (login, navigation) is a failure too; the findings collected so far are printed below
-	console.error(`${engine}: the run stopped: ${error.message.split("\n")[0]}`);
+	console.error(`${engine}: the run stopped: ${error.message}`);
 	process.exitCode = 1;
 } finally {
 	console.log(`${engine}: ${visited.size} paths, ${actions.length} actions`);

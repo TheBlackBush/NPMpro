@@ -15,7 +15,7 @@ const CONTEXT = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1
 const CONNECTION_RESET = /ECONNRESET|socket hang up/u;
 
 // a save reloads nginx, whose old workers close the idle keep-alive connections: a GET sent on one of them right after
-// fails with a reset before any answer, so it is sent once more on a new connection (only a GET: nothing is sent twice)
+// fails with a reset before any answer, so it is sent once more (only a GET: nothing is sent twice)
 async function fetchOnce(context, url, options) {
 	try {
 		return await context.request.fetch(url, options);
