@@ -2,6 +2,7 @@
 // show the change: the list refreshes without a reload.
 import {
 	addDomain,
+	addTag,
 	assertAbsent,
 	assertFields,
 	assertViewOnly,
@@ -47,10 +48,15 @@ export const TYPES = [
 		fill: async (dialog) => {
 			await addDomain(dialog, "flow-dead.example.com");
 			await dialog.locator("input[name=npmproDescription]").fill("flow dead note");
+			await addTag(dialog, "flow tag a");
 		},
 		edit: (dialog) => addDomain(dialog, "flow-dead2.example.com"),
 		edited: "flow-dead2.example.com",
-		created: { domain_names: ["flow-dead.example.com"], npmpro_description: "flow dead note" },
+		created: {
+			domain_names: ["flow-dead.example.com"],
+			npmpro_description: "flow dead note",
+			npmpro_tags: ["flow tag a"],
+		},
 		changed: { domain_names: ["flow-dead.example.com", "flow-dead2.example.com"], advanced_config: "# flow" },
 		foreign: [...PROXY_ONLY, ...REDIRECTION_ONLY, ...STREAM_ONLY],
 		kept: (dialog) =>
@@ -70,12 +76,14 @@ export const TYPES = [
 			await addDomain(dialog, "flow-redirect.example.com");
 			await dialog.locator("input[name=npmproDescription]").fill("flow redirect note");
 			await dialog.locator("input[name=forwardDomainName]").fill("target.example.org");
+			await addTag(dialog, "flow tag a");
 		},
 		edit: (dialog) => dialog.locator("input[name=forwardDomainName]").fill("target2.example.org"),
 		edited: "target2.example.org",
 		created: {
 			domain_names: ["flow-redirect.example.com"],
 			npmpro_description: "flow redirect note",
+			npmpro_tags: ["flow tag a"],
 			forward_domain_name: "target.example.org",
 			forward_http_code: 301,
 		},
@@ -102,12 +110,14 @@ export const TYPES = [
 			await dialog.locator("input[name=npmproDescription]").fill(LONG_NOTE);
 			await dialog.locator("input[name=forwardHost]").fill("127.0.0.1");
 			await dialog.locator("input[name=forwardPort]").fill("8080");
+			await addTag(dialog, "flow tag a");
 		},
 		edit: (dialog) => dialog.locator("input[name=forwardPort]").fill("8081"),
 		edited: ":8081",
 		created: {
 			domain_names: ["flow-proxy.example.com"],
 			npmpro_description: LONG_NOTE,
+			npmpro_tags: ["flow tag a"],
 			forward_host: "127.0.0.1",
 			forward_port: 8080,
 		},
@@ -131,6 +141,7 @@ export const TYPES = [
 			await dialog.locator("input[name=forwardingHost]").fill("127.0.0.1");
 			await dialog.locator("input[name=forwardingPort]").fill("8080");
 			await dialog.locator("input[name=npmproDescription]").fill("flow-stream");
+			await addTag(dialog, "flow tag a");
 		},
 		edit: (dialog) => dialog.locator("input[name=npmproDescription]").fill("flow-stream edited"),
 		edited: "flow-stream edited",
@@ -139,6 +150,7 @@ export const TYPES = [
 			forwarding_host: "127.0.0.1",
 			forwarding_port: "8080",
 			npmpro_description: "flow-stream",
+			npmpro_tags: ["flow tag a"],
 		},
 		changed: {
 			forwarding_port: "8080",
