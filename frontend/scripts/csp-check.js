@@ -204,7 +204,8 @@ try {
 			await page.waitForTimeout(500);
 		} catch (error) {
 			problems.push(
-				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
+				// the whole Playwright error: its call log says which locator waited for what (the CI log keeps only this)
+				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message}`,
 			);
 		} finally {
 			await removeSeeded();
@@ -215,7 +216,7 @@ try {
 	}
 } catch (error) {
 	// a throw (login, navigation) is a failure too; the findings collected so far are printed below
-	console.error(`${engine}: the run stopped: ${error.message.split("\n")[0]}`);
+	console.error(`${engine}: the run stopped: ${error.message}`);
 	process.exitCode = 1;
 } finally {
 	console.log(`${engine}: ${visited.size} paths, ${actions.length} actions`);

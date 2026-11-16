@@ -12,11 +12,24 @@ export const VIEWER_EMAIL = "flow-viewer@example.com";
 
 const CONTEXT = { ignoreHTTPSErrors: true, locale: "en-US", viewport: { width: 1440, height: 900 } };
 
+const CONNECTION_RESET = /ECONNRESET|socket hang up/u;
+
+// a save reloads nginx, whose old workers close the idle keep-alive connections: a GET sent on one of them right after
+// fails with a reset before any answer, so it is sent once more (only a GET: nothing is sent twice)
+async function fetchOnce(context, url, options) {
+	try {
+		return await context.request.fetch(url, options);
+	} catch (error) {
+		if (options.method !== "GET" || !CONNECTION_RESET.test(error.message)) throw error;
+		return await context.request.fetch(url, options);
+	}
+}
+
 function apiOf(context, base) {
 	// body: JSON data, or { multipart } for an upload
 	return async (method, path, body) => {
 		const options = body?.multipart ? { method, multipart: body.multipart } : { method, data: body };
-		const answer = await context.request.fetch(`${base}/api${path}`, options);
+		const answer = await fetchOnce(context, `${base}/api${path}`, options);
 		const text = await answer.text();
 		if (!answer.ok()) throw new Error(`${method} ${path}: ${answer.status()} ${text}`);
 		return text ? JSON.parse(text) : null;
