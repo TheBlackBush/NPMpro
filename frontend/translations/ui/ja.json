@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Auth Request アップストリーム",
 	"host.auth-request-upstream.placeholder": "空のままにすると、設定 > 転送認証 のデフォルトを使用します",
 	"host.auth-request.global": "ホストと同じ",
+	"host.description": "説明",
+	"host.description.placeholder": "このホストの用途(任意)",
 	"host.flags.disable-crowdsec-appsec": "CrowdSec AppSec を無効化",
 	"host.flags.disable-request-buffering": "リクエストバッファリングを無効化",
 	"host.flags.disable-response-buffering": "レスポンスバッファリングを無効化",

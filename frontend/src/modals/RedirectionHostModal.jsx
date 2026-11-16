@@ -38,6 +38,13 @@ function RedirectionHostFields() {
 		<ModalTabs tabs={REDIRECTION_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				<TextField
+					name="npmproDescription"
+					label={<T id="host.description" />}
+					type="text"
+					maxLength={255}
+					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
+				/>
 				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
 					<SelectField className="mb-0" name="forwardScheme" label={<T id="host.forward-scheme" />}>
 						<option value="$scheme">{intl.formatMessage({ id: "redirection.scheme.keep" })}</option>

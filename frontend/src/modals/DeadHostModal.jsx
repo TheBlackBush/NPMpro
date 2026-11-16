@@ -9,9 +9,10 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 	TabPane,
+	TextField,
 } from "src/components";
 import { useDeadHost, useSetDeadHost } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import {
 	DEAD_HOST_TABS,
 	deadHostDefaults,
@@ -32,6 +33,13 @@ function DeadHostFields({ isAdmin, hostId }) {
 		<ModalTabs tabs={DEAD_HOST_TABS} markers={{ advanced: advancedConfig?.trim() ? "*" : null }}>
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				<TextField
+					name="npmproDescription"
+					label={<T id="host.description" />}
+					type="text"
+					maxLength={255}
+					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
+				/>
 				<DirectoryField labelId="dead-host.directory" />
 				<PageLines className="mt-4">
 					<PageChoiceField

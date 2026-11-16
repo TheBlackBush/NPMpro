@@ -16,6 +16,7 @@ const {
 		modifiedOn: "",
 		ownerUserId: 0,
 		domainNames: [],
+		npmproDescription: "",
 		forwardDomainName: "",
 		preservePath: false,
 		certificateId: 0,

@@ -22,10 +22,12 @@ import {
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
+const DESCRIPTION_LIMIT = /255/u;
 
 const newHost = {
 	id: 0,
 	domainNames: [],
+	npmproDescription: "",
 	forwardHost: "",
 	forwardPort: 0,
 	accessLists: [],
@@ -89,6 +91,7 @@ it("starts a new proxy host with complete values in the window's order", () => {
 	);
 	assert.deepEqual(Object.keys(values), [
 		"domainNames",
+		"npmproDescription",
 		"forwardScheme",
 		"forwardHost",
 		"forwardPort",
@@ -401,4 +404,19 @@ it("acmeRenewalNotice: requested without DNS challenge or an existing HTTP chall
 	assert.equal(acmeRenewalNotice(row, { certificateId: 1, npmproDnsChallenge: false }), false);
 	assert.equal(notice(1, false, certificates, newLocation({ path: "/app/" })), false);
 	assert.equal(notice(1, false, certificates, { ...row, npmproEnabled: false }), false);
+});
+
+it("keeps the description on a clone and places it on the Details tab of the proxy host window", () => {
+	const described = { ...savedHost, npmproDescription: "Kitchen camera" };
+	assert.equal(proxyHostDefaults(described, { isClone: true }).npmproDescription, "Kitchen camera");
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproDescription"), "details");
+	assert.equal(PROXY_HOST_TABS[0].fields[1], "npmproDescription");
+});
+
+it("refuses a proxy host description over 255 characters", () => {
+	const errors = proxyHostValidate(rules)({
+		...proxyHostDefaults(savedHost),
+		npmproDescription: "x".repeat(256),
+	});
+	assert.match(errors.npmproDescription, DESCRIPTION_LIMIT);
 });

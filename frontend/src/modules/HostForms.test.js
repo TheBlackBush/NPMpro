@@ -33,10 +33,12 @@ import { tabOfPath } from "./ModalTabs.js";
 import { createValidations } from "./ValidationRules.js";
 
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
+const DESCRIPTION_LIMIT = /255/u;
 
 const newRedirection = {
 	id: 0,
 	domainNames: [],
+	npmproDescription: "",
 	forwardDomainName: "",
 	preservePath: false,
 	certificateId: 0,
@@ -192,6 +194,7 @@ it("stream: the same errors as the Formik fields", () => {
 it("starts every window with complete values in the window's order", () => {
 	assert.deepEqual(Object.keys(redirectionHostDefaults(newRedirection)), [
 		"domainNames",
+		"npmproDescription",
 		"forwardScheme",
 		"forwardDomainName",
 		"forwardHttpCode",
@@ -556,4 +559,27 @@ it("404 host: the Page field's default, tab, errors and payload", () => {
 	assert.deepEqual(validate({ ...custom, npmproPageHtml: "<p>x</p>" }), {});
 	assert.equal(deadHostPayload({ ...custom, npmproPageHtml: "<p>x</p>" }).npmproPageHtml, "<p>x</p>");
 	assert.equal("npmproPageHtml" in deadHostPayload({ ...custom, npmproPage: "npmpro" }), false);
+});
+
+it("keeps the description on a clone and places it on the Details tab of every host window", () => {
+	const described = { ...newRedirection, npmproDescription: "Kitchen camera" };
+	assert.equal(redirectionHostDefaults(described, { isClone: true }).npmproDescription, "Kitchen camera");
+	assert.equal(deadHostDefaults(described, { isClone: true }).npmproDescription, "Kitchen camera");
+	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
+		assert.equal(tabOfPath(tabs, "npmproDescription"), "details");
+	}
+	assert.equal(REDIRECTION_HOST_TABS[0].fields[1], "npmproDescription");
+	assert.equal(DEAD_HOST_TABS[0].fields[1], "npmproDescription");
+});
+
+it("refuses a description over 255 characters in the redirection and 404 windows", () => {
+	for (const validate of [redirectionHostValidate(rules), deadHostValidate(rules)]) {
+		const errors = validate({
+			...newRedirection,
+			domainNames: ["a.example.com"],
+			forwardDomainName: "b.example.com",
+			npmproDescription: "x".repeat(256),
+		});
+		assert.match(errors.npmproDescription, DESCRIPTION_LIMIT);
+	}
 });

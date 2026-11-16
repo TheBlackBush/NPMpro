@@ -16,6 +16,7 @@ const {
 		modifiedOn: "",
 		ownerUserId: 0,
 		domainNames: [],
+		npmproDescription: "",
 		forwardHost: "",
 		forwardPort: 0,
 		accessLists: [],

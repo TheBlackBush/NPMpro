@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream Auth Request",
 	"host.auth-request-upstream.placeholder": "Pozostaw puste, aby użyć wartości domyślnej z Ustawienia > Uwierzytelnianie przekazywane",
 	"host.auth-request.global": "Jak host",
+	"host.description": "Opis",
+	"host.description.placeholder": "Do czego służy ten host (opcjonalnie)",
 	"host.flags.disable-crowdsec-appsec": "Wyłącz CrowdSec AppSec",
 	"host.flags.disable-request-buffering": "Wyłącz buforowanie żądań",
 	"host.flags.disable-response-buffering": "Wyłącz buforowanie odpowiedzi",

@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream de Auth Request",
 	"host.auth-request-upstream.placeholder": "Déjalo vacío para usar el valor predeterminado de Configuración > Autenticación delegada",
 	"host.auth-request.global": "Igual que el host",
+	"host.description": "Descripción",
+	"host.description.placeholder": "Para qué sirve este host (opcional)",
 	"host.flags.disable-crowdsec-appsec": "Desactivar CrowdSec AppSec",
 	"host.flags.disable-request-buffering": "Desactivar el búfer de solicitudes",
 	"host.flags.disable-response-buffering": "Desactivar el búfer de respuestas",

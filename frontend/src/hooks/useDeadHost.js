@@ -16,6 +16,7 @@ const {
 		modifiedOn: "",
 		ownerUserId: 0,
 		domainNames: [],
+		npmproDescription: "",
 		certificateId: 0,
 		sslForced: false,
 		advancedConfig: "",

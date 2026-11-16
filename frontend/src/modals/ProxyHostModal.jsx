@@ -16,9 +16,10 @@ import {
 	SwitchField,
 	SwitchList,
 	TabPane,
+	TextField,
 } from "src/components";
 import { useAccessLists, useProxyHost, useSetProxyHost } from "src/hooks";
-import { T } from "src/locale";
+import { intl, T } from "src/locale";
 import { domainNamesOptions } from "src/modules/HostForms";
 import { htmlName, PLACE_FIELDS, previewPath } from "src/modules/LandingPageForms";
 import { PROXY_HOSTS } from "src/modules/Permissions";
@@ -71,6 +72,13 @@ function ProxyHostFields({ isAdmin, hostId }) {
 		>
 			<TabPane id="details">
 				<DomainNamesField {...domainNamesOptions({ certificateId, npmproDnsChallenge })} />
+				<TextField
+					name="npmproDescription"
+					label={<T id="host.description" />}
+					type="text"
+					maxLength={255}
+					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
+				/>
 				<ForwardFields className="mb-3" />
 				<DirectoryField labelId="proxy-host.directory" />
 				<ProxyOptionsFields />
