@@ -84,6 +84,45 @@ export const newLocation = (location = {}) => ({
 export const locationAuthNotice = (hostValue, row) =>
 	(hostValue ?? "none") !== "none" && row.npmproAuthRequest === "none";
 
+// the path certbot's HTTP challenge answers under (backend lib/acme-challenge.js)
+const ACME_CHALLENGE_PATH = "/.well-known/acme-challenge/";
+
+// one pair of matching outer quotes removed, as the backend does with a stored path (lib/nginx-quote.js unquote)
+const unquotePath = (text) =>
+	text.length >= 2 && (text[0] === '"' || text[0] === "'") && text.at(-1) === text[0] ? text.slice(1, -1) : text;
+
+/**
+ * Whether a location row replaces NPMpro's own ACME challenge location (backend lib/acme-challenge.js
+ * overridesAcmeChallenge): enabled, type plain prefix or ^~, exactly /.well-known/acme-challenge/
+ *
+ * @param   {Object}  row
+ * @returns {boolean}
+ */
+export const replacesAcmeChallenge = (row) =>
+	row.npmproEnabled !== false &&
+	["", "^~ "].includes(row.locationType ?? "") &&
+	unquotePath(String(row.path ?? "").trim()) === ACME_CHALLENGE_PATH;
+
+/**
+ * Whether a location row shows the note that NPMpro can no longer validate the host's certificate over the HTTP
+ * challenge: the row replaces the ACME location and the host's certificate is a requested one without the DNS
+ * challenge, or an existing Let's Encrypt one without it. Unknown certificates (not in the list) show nothing.
+ *
+ * @param   {Object}   row
+ * @param   {Object}   tls
+ * @param   {*}        tls.certificateId       0, "new" or a certificate id
+ * @param   {boolean}  tls.npmproDnsChallenge  the DNS challenge of a requested certificate
+ * @param   {Object[]} [certificates]          useCertificates() rows
+ * @returns {boolean}
+ */
+export function acmeRenewalNotice(row, { certificateId, npmproDnsChallenge }, certificates = []) {
+	if (!replacesAcmeChallenge(row)) return false;
+	if (certificateId === "new") return !npmproDnsChallenge;
+	if (!(certificateId > 0)) return false;
+	const certificate = certificates.find((item) => item.id === certificateId);
+	return certificate?.provider === "letsencrypt" && !certificate.npmproDnsChallenge;
+}
+
 /**
  * The rows with a path: the "*" of the Custom locations tab and the locations the mTLS options look at
  *

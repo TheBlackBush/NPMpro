@@ -713,6 +713,7 @@
 	"proxy-host.directory": "Groep",
 	"proxy-host.forward-host-path": "Hostname / IP / Path Doorsturen",
 	"proxy-host.global-access-lists": "Globale toegangslijst",
+	"proxy-host.location-acme-override-warning": "Deze locatie neemt /.well-known/acme-challenge/ over van NPMpro, zodat de HTTP-challenge van Let's Encrypt voor deze host haar doel bereikt. NPMpro kan het certificaat van deze host dan niet meer aanvragen of verlengen met de HTTP-challenge: gebruik een certificaat met DNS-challenge of laat het doel de challenges beantwoorden.",
 	"proxy-host.location-auth-request-none-warning": "De host gebruikt forward-authenticatie, maar deze locatie staat op none en is dus openbaar. Kies Zelfde als host om haar te beschermen zoals de host.",
 	"proxy-host.location-no-trailing-slash-warning": "Een locatie zonder afsluitende schuine streep wordt gekoppeld als een bytevoorvoegsel en niet als een padsegment, wat kan leiden tot overmatching en/of pad-traversal. Voeg een afsluitende schuine streep toe, tenzij u voorvoegselmatching wenst.",
 	"proxy-host.no-directory": "Geen groep",

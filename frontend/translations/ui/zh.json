@@ -713,6 +713,7 @@
 	"proxy-host.directory": "分组",
 	"proxy-host.forward-host-path": "转发主机名 / IP / 路径",
 	"proxy-host.global-access-lists": "全局访问列表",
+	"proxy-host.location-acme-override-warning": "此路径接管了 NPMpro 的 /.well-known/acme-challenge/，因此此主机的 Let's Encrypt HTTP 验证会到达它的目标。之后 NPMpro 将无法通过 HTTP 验证申请或续订此主机的证书：请使用 DNS 验证的证书，或让目标应答这些验证。",
 	"proxy-host.location-auth-request-none-warning": "该主机使用转发认证，但此路径设置为 none，因此是公开的。请选择“与主机相同”，像主机一样保护它。",
 	"proxy-host.location-no-trailing-slash-warning": "不以斜杠结尾的路径将按字节前缀而不是路径段进行匹配，可能导致过度匹配和/或路径穿越。除非您确实需要前缀匹配，否则请添加结尾斜杠。",
 	"proxy-host.no-directory": "未分组",

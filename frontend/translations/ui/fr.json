@@ -713,6 +713,7 @@
 	"proxy-host.directory": "Groupe",
 	"proxy-host.forward-host-path": "Nom d'hôte / IP / chemin de destination",
 	"proxy-host.global-access-lists": "Listes d'accès globales",
+	"proxy-host.location-acme-override-warning": "Cet emplacement reprend /.well-known/acme-challenge/ à NPMpro, si bien que le challenge HTTP de Let's Encrypt pour cet hôte atteint sa cible. NPMpro ne peut alors ni demander ni renouveler le certificat de cet hôte avec le challenge HTTP : utilisez un certificat avec le challenge DNS, ou laissez la cible répondre aux challenges.",
 	"proxy-host.location-auth-request-none-warning": "L'hôte utilise l'authentification par transfert, mais cet emplacement est réglé sur none, il est donc public. Choisissez Comme l'hôte pour le protéger comme l'hôte.",
 	"proxy-host.location-no-trailing-slash-warning": "Un emplacement sans barre oblique finale est comparé comme un préfixe d'octets et non comme un segment de chemin, ce qui peut entraîner des correspondances trop larges et/ou une traversée de chemin. Ajoutez une barre oblique finale sauf si vous souhaitez une correspondance par préfixe.",
 	"proxy-host.no-directory": "Aucun groupe",
