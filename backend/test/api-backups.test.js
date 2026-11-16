@@ -354,6 +354,20 @@ it("restores the description of a host from a backup", async () => {
 	assert.equal(row.npmpro_description, "Backed up");
 });
 
+it("restores the tags of a host from a backup", async () => {
+	const host = await addHost("tagged-bk.example.com");
+	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_tags: ["Lab"] })).status, 200);
+	const entry = await keep();
+	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_tags: ["Other"] })).status, 200);
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["proxy_hosts"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	const row = (await admin.get("/nginx/proxy-hosts")).body.find(
+		(item) => item.domain_names[0] === "tagged-bk.example.com",
+	);
+	assert.deepEqual(row.npmpro_tags, ["Lab"]);
+});
+
 it("cancels a restore session, after which its token has expired", async () => {
 	const entry = await keep();
 	const { token } = await inspect(entry.name);

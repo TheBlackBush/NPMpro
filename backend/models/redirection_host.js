@@ -18,12 +18,12 @@ class RedirectionHost extends HostModel {
 	static droppedColumns = ["is_deleted", "meta", "block_exploits", "http2_support"];
 
 	static insertDefaults() {
-		return { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" };
+		return { domain_names: [], meta: {}, npmpro_tags: [], advanced_config: "", npmpro_nginx_err: "" };
 	}
 
 	static tableName = "redirection_host";
 
-	static jsonAttributes = ["domain_names", "meta"];
+	static jsonAttributes = ["domain_names", "meta", "npmpro_tags"];
 
 	static get relationMappings() {
 		return {

@@ -4,10 +4,10 @@
 
 const JSON_COLUMNS = {
 	// locations: left over from before npmpro_location ("[]"), still a column
-	proxy_host: ["domain_names", "meta", "locations"],
-	redirection_host: ["domain_names", "meta"],
-	dead_host: ["domain_names", "meta"],
-	stream: ["meta"],
+	proxy_host: ["domain_names", "meta", "locations", "npmpro_tags"],
+	redirection_host: ["domain_names", "meta", "npmpro_tags"],
+	dead_host: ["domain_names", "meta", "npmpro_tags"],
+	stream: ["meta", "npmpro_tags"],
 	certificate: ["domain_names", "meta"],
 	access_list: ["meta"],
 	access_list_auth: ["meta"],

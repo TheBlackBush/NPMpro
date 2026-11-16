@@ -696,6 +696,40 @@ it("merges an older backup without the description with an empty one", TIMEOUT, 
 	}
 });
 
+it(
+	"carries the tags of a host through a merge, and an older backup without them merges with none",
+	TIMEOUT,
+	async () => {
+		const first = await twoInstances();
+		try {
+			const row = await mergedHost(
+				first.b,
+				await hostFileWith(first.a, { npmpro_tags: JSON.stringify(["Lab", "café"]) }),
+			);
+			assert.deepEqual(JSON.parse(row.npmpro_tags), ["Lab", "café"]);
+		} finally {
+			await first.cleanup();
+		}
+		const second = await twoInstances();
+		try {
+			const source = await hostFileWith(second.a, { npmpro_tags: JSON.stringify(["gone"]) });
+			const file = await craftBackup(
+				source,
+				path.join(second.a.base, "old-tags.npmpro"),
+				async ({ data, writeData }) => {
+					const hosts = await data("proxy_hosts");
+					for (const host of hosts.proxy_host) delete host.npmpro_tags;
+					await writeData("proxy_hosts", hosts);
+				},
+			);
+			const row = await mergedHost(second.b, file);
+			assert.deepEqual(JSON.parse(row.npmpro_tags), []);
+		} finally {
+			await second.cleanup();
+		}
+	},
+);
+
 const invalidItem = (label, field) => (error) =>
 	error.code === "invalid-item" &&
 	error.status === 400 &&
@@ -1075,6 +1109,22 @@ it("refuses an admin Settings merge of a host whose domain holds nginx syntax", 
 		assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
 	} finally {
 		await cleanup();
+	}
+});
+
+it("refuses a merge of a host with a tag outside the rule or more than 10 tags", TIMEOUT, async () => {
+	for (const tags of [["a/b"], Array.from({ length: 11 }, (_, n) => `t${n}`)]) {
+		const { a, b, cleanup } = await twoInstances();
+		try {
+			const { token } = await openOn(b, await hostFileWith(a, { npmpro_tags: JSON.stringify(tags) }));
+			await assert.rejects(
+				b.service.plan(admin, token, { mode: "merge", types: ["proxy_hosts"] }),
+				invalidItem("#1", "npmpro_tags"),
+			);
+			assert.deepEqual(await domainsOf(b.knex, "proxy_host"), [[1, "b.example.com"]]);
+		} finally {
+			await cleanup();
+		}
 	}
 });
 

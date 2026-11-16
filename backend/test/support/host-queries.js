@@ -126,6 +126,34 @@ const hostQueryTests = (ctx) => {
 		assert.equal(ok(await ctx.admin.get(`${DEAD}?query=Parked`)).length, 1);
 	});
 
+	it("stores and finds tags on each engine", async () => {
+		const host = ok(
+			await ctx.admin.post(PROXY, proxy(["tagged.example.com"], { npmpro_tags: ["Lab", "café", "東京"] })),
+		);
+		assert.deepEqual(host.npmpro_tags, ["Lab", "café", "東京"]);
+		const read = ok(await ctx.admin.get(`${PROXY}/${host.id}`));
+		assert.deepEqual(read.npmpro_tags, ["Lab", "café", "東京"]);
+		const found = ok(await ctx.admin.get(`${PROXY}?query=${encodeURIComponent("東京")}`));
+		assert.deepEqual(
+			found.map((row) => row.id),
+			[host.id],
+		);
+		counter += 1;
+		const stream = ok(
+			await ctx.admin.post(STREAM, {
+				incoming_port: String(9400 + counter),
+				forwarding_host: "10.0.0.9",
+				forwarding_port: "22",
+				tcp_forwarding: true,
+				npmpro_tags: ["StreamTag"],
+			}),
+		);
+		assert.deepEqual(
+			ok(await ctx.admin.get(`${STREAM}?query=StreamTag`)).map((row) => row.id),
+			[stream.id],
+		);
+	});
+
 	it("searches and sorts the list of each host type", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["search-b.example.com"])));
 		ok(await ctx.admin.post(PROXY, proxy(["search-a.example.com"])));

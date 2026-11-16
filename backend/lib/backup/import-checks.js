@@ -163,6 +163,7 @@ const checkSchema = (schema, row, { properties = schema.properties, prefix = "" 
 		if (rule.type === "array") {
 			const items = resolve(schema, rule.items);
 			const list = parseList(value);
+			if (rule.maxItems !== undefined && list.length > rule.maxItems) throw new FieldError(`${prefix}${name}`);
 			if (items?.type === "string") {
 				if (!list.every((item) => typeof item === "string" && fits(items, item))) {
 					throw new FieldError(`${prefix}${name}`);

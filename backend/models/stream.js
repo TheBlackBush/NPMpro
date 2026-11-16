@@ -18,12 +18,12 @@ class Stream extends HostModel {
 	static writeOnlyFields = ["domain_names"];
 
 	static insertDefaults() {
-		return { meta: {}, npmpro_advanced_config: "", npmpro_nginx_err: "" };
+		return { meta: {}, npmpro_tags: [], npmpro_advanced_config: "", npmpro_nginx_err: "" };
 	}
 
 	static tableName = "stream";
 
-	static jsonAttributes = ["meta"];
+	static jsonAttributes = ["meta", "npmpro_tags"];
 
 	static get relationMappings() {
 		return {

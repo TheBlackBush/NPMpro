@@ -7,6 +7,9 @@ import { it } from "node:test";
 // its own API (startApi) and passes the live values through ctx: { api, admin }.
 
 let described = 0;
+let tagged = 0;
+const BAD_LONG_TAG = /^The tag "x{33}" is not valid/u;
+const TOO_MANY_TAGS = /more than 10 items/u;
 const EXPANDED_PERMISSIONS = { access_lists: "view", certificates: "view" };
 
 const fileExists = (api, file) =>
@@ -219,6 +222,46 @@ const hostTests = (ctx, type) => {
 			assert.equal(tooLong.status, 400, tooLong.text);
 		},
 	);
+
+	tc(`${type.label}: stores tags as typed, keeps the first of case twins, refuses a bad tag by name`, async () => {
+		tagged += 1;
+		const mark = `tag${tagged}${type.table.replaceAll("_", "")}`;
+		const plain = await created(await admin.post(URL, make()), "create");
+		assert.deepEqual(plain.npmpro_tags, []);
+		const host = await created(
+			await admin.post(URL, {
+				...make(),
+				npmpro_tags: [` ${mark} `, "café", "東京", "खाना", mark.toUpperCase()],
+			}),
+			"create",
+		);
+		assert.deepEqual(host.npmpro_tags, [mark, "café", "東京", "खाना"]);
+		const found = await admin.get(`${URL}?query=${encodeURIComponent(mark)}`);
+		assert.deepEqual(
+			found.body.map((entry) => entry.id),
+			[host.id],
+		);
+		const kept = await admin.put(`${URL}/${host.id}`, edit);
+		assert.deepEqual(kept.body.npmpro_tags, [mark, "café", "東京", "खाना"]);
+		const cleared = await admin.put(`${URL}/${host.id}`, { npmpro_tags: [] });
+		assert.deepEqual(cleared.body.npmpro_tags, []);
+		const slash = await admin.post(URL, { ...make(), npmpro_tags: ["ok", "a/b"] });
+		assert.equal(slash.status, 400);
+		assert.equal(
+			slash.body.error.message,
+			'The tag "a/b" is not valid: a tag has 1 to 32 letters, digits, spaces, "-", "_" or "." and no space at either end.',
+		);
+		const long = await admin.post(URL, { ...make(), npmpro_tags: ["x".repeat(33)] });
+		assert.equal(long.status, 400);
+		assert.match(long.body.error.message, BAD_LONG_TAG);
+		const empty = await admin.post(URL, { ...make(), npmpro_tags: ["  "] });
+		assert.equal(empty.status, 400);
+		const many = await admin.post(URL, { ...make(), npmpro_tags: Array.from({ length: 11 }, (_, n) => `t${n}`) });
+		assert.equal(many.status, 400);
+		assert.match(many.body.error.message, TOO_MANY_TAGS);
+		const ten = await admin.post(URL, { ...make(), npmpro_tags: Array.from({ length: 10 }, (_, n) => `t${n}`) });
+		assert.equal(ten.status, 201, ten.text);
+	});
 
 	tc(`${type.label}: edits it, rewrites the config and reloads nginx once`, async () => {
 		const body = make();
