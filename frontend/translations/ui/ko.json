@@ -713,6 +713,7 @@
 	"proxy-host.directory": "그룹",
 	"proxy-host.forward-host-path": "전달 호스트 이름 / IP / 경로",
 	"proxy-host.global-access-lists": "전역 접근 정책",
+	"proxy-host.location-acme-override-warning": "이 경로는 NPMpro로부터 /.well-known/acme-challenge/ 를 넘겨받으므로 이 호스트에 대한 Let's Encrypt의 HTTP 챌린지가 해당 대상에 도달합니다. 그러면 NPMpro는 HTTP 챌린지로 이 호스트의 인증서를 요청하거나 갱신할 수 없습니다. DNS 챌린지 인증서를 사용하거나 대상이 챌린지에 응답하도록 하세요.",
 	"proxy-host.location-auth-request-none-warning": "이 호스트는 포워드 인증을 사용하지만 이 경로는 none으로 설정되어 공개 상태입니다. 호스트처럼 보호하려면 ‘호스트와 동일’을 선택하세요.",
 	"proxy-host.location-no-trailing-slash-warning": "끝에 슬래시가 없는 경로는 경로 세그먼트가 아닌 바이트 접두사로 일치하므로 과도한 일치나 경로 탐색 공격으로 이어질 수 있습니다. 접두사 일치를 의도한 것이 아니라면 끝에 슬래시를 추가하세요.",
 	"proxy-host.no-directory": "그룹 없음",

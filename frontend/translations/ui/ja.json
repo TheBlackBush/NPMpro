@@ -713,6 +713,7 @@
 	"proxy-host.directory": "グループ",
 	"proxy-host.forward-host-path": "転送先ホスト名 / IP / パス",
 	"proxy-host.global-access-lists": "グローバルアクセスリスト",
+	"proxy-host.location-acme-override-warning": "このロケーションは NPMpro から /.well-known/acme-challenge/ を引き継ぐため、このホストの Let's Encrypt の HTTP チャレンジはそのターゲットに届きます。その結果、NPMpro は HTTP チャレンジでこのホストの証明書を取得も更新もできなくなります。DNS チャレンジの証明書を使うか、ターゲットにチャレンジへ応答させてください。",
 	"proxy-host.location-auth-request-none-warning": "このホストはフォワード認証を使用していますが、このロケーションは none に設定されているため公開状態です。ホストと同様に保護するには「ホストと同じ」を選択してください。",
 	"proxy-host.location-no-trailing-slash-warning": "末尾にスラッシュのないロケーションは、パスセグメントではなくバイト単位のプレフィックスとして照合されるため、過剰な一致やパストラバーサルにつながる可能性があります。プレフィックス照合を意図しない限り、末尾にスラッシュを追加してください。",
 	"proxy-host.no-directory": "グループなし",

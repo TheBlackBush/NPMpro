@@ -7,11 +7,11 @@ import { DESTRUCTIVE_TEXT } from "src/components/Button";
 import { TapTooltip } from "src/components/TapTooltip";
 import { Input } from "src/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
-import { useIsAdmin } from "src/hooks";
+import { useCertificates, useIsAdmin } from "src/hooks";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
 import { forwardSummary } from "src/modules/Forward";
-import { locationAuthNotice, newLocation } from "src/modules/ProxyHostForms";
+import { acmeRenewalNotice, locationAuthNotice, newLocation } from "src/modules/ProxyHostForms";
 import { effectiveAuthRequest } from "src/modules/ProxyOptions";
 import { NoticeAlert } from "../NoticeAlert";
 import { FormField, TextField } from "./FormField";
@@ -32,6 +32,7 @@ function LocationRow({
 	rowKey,
 	row,
 	hostAuthRequest,
+	acmeNotice,
 	isAdmin,
 	readOnly,
 	open,
@@ -149,6 +150,11 @@ function LocationRow({
 								<T id="proxy-host.location-no-trailing-slash-warning" />
 							</NoticeAlert>
 						)}
+					{acmeNotice ? (
+						<NoticeAlert role="status">
+							<T id="proxy-host.location-acme-override-warning" />
+						</NoticeAlert>
+					) : null}
 					<ForwardFields base={base} idSuffix={rowKey} />
 					<ProxyOptionsFields base={base} idSuffix={rowKey} />
 					{locationAuthNotice(hostAuthRequest, row) ? (
@@ -201,6 +207,8 @@ export function LocationsFields({ name = "locations" }) {
 	const { fields, append, remove } = useFieldArray({ name });
 	const rows = useWatch({ name });
 	const hostAuthRequest = useWatch({ name: "npmproAuthRequest" });
+	const [certificateId, npmproDnsChallenge] = useWatch({ name: ["certificateId", "npmproDnsChallenge"] });
+	const { data: certificates } = useCertificates();
 	// the documented controlled field array: the keys of fields with the current values of the rows (useWatch may
 	// still hold the list before an append or a removal)
 	const controlledFields = fields.map((field, index) => ({ ...field, ...rows?.[index] }));
@@ -316,6 +324,7 @@ export function LocationsFields({ name = "locations" }) {
 					rowKey={field.id}
 					row={field}
 					hostAuthRequest={hostAuthRequest}
+					acmeNotice={acmeRenewalNotice(field, { certificateId, npmproDnsChallenge }, certificates)}
 					isAdmin={isAdmin}
 					readOnly={readOnly}
 					open={expanded.includes(field.id) || forcedOpen(index)}

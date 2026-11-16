@@ -251,7 +251,7 @@ it("certificate files missing with Force HTTPS: no HTTPS listener, 495 page on p
 	assert.doesNotMatch(config, /return 301 https/u);
 	assert.match(config, /error_page 495 \/\.npmpro-page\/certificate;/u);
 	assert.match(config, /return 495;/u);
-	assert.match(config, /location \/\.well-known\/acme-challenge\//u);
+	assert.match(config, /location \^~ \/\.well-known\/acme-challenge\//u);
 	assert.match(
 		locationBlock(config, "= /.npmpro-page/certificate"),
 		/alias \/data\/public\/pages\/global\/certificate\.html;/u,

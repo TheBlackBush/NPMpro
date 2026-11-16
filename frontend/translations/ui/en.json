@@ -713,6 +713,7 @@
 	"proxy-host.directory": "Group",
 	"proxy-host.forward-host-path": "Forward Hostname / IP / Path",
 	"proxy-host.global-access-lists": "Global Access Lists",
+	"proxy-host.location-acme-override-warning": "This location takes /.well-known/acme-challenge/ over from NPMpro, so the HTTP challenge of Let's Encrypt for this host reaches its target. NPMpro can then neither request nor renew this host's certificate with the HTTP challenge: use a certificate with the DNS challenge, or let the target answer the challenges.",
 	"proxy-host.location-auth-request-none-warning": "The host uses forward authentication, but this location is set to none, so it is public. Choose Same as host to protect it like the host.",
 	"proxy-host.location-no-trailing-slash-warning": "A location without a trailing slash is matched as a byte prefix, not a path segment, which can lead to over-matching and/or path traversal. Add a trailing slash unless you intend prefix matching.",
 	"proxy-host.no-directory": "No group",

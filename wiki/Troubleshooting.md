@@ -34,7 +34,7 @@ NPMpro tests the nginx config whenever it writes one. If the test fails, the hos
 
 ## A certificate request or renewal fails
 
-- **HTTP challenge:** the domain must resolve to your public IP and port 80 must be forwarded to NPMpro. Use the reachability check in the certificate dialog. With `DISABLE_HTTP=true` or a changed `HTTP_PORT` the HTTP challenge may not work; use the DNS challenge instead.
+- **HTTP challenge:** the domain must resolve to your public IP and port 80 must be forwarded to NPMpro. Use the reachability check in the certificate dialog. With `DISABLE_HTTP=true` or a changed `HTTP_PORT` the HTTP challenge may not work; use the DNS challenge instead. A custom location with exactly the path `/.well-known/acme-challenge/` and the type empty or `^~` on the host passes the challenges to its target, so NPMpro's own request fails: see [Host options](Host-options).
 - **DNS challenge:** check the credentials of your provider and give DNS time to update (Propagation Seconds in the dialog). Some providers need a token with write access to the zone.
 - **ACME profile:** when you save a profile in Settings, Certificates & TLS, NPMpro asks the ACME server. "The ACME server does not offer this profile" means it is not available there; "Could not check the ACME server profiles" means the server was not reachable.
 - **Must-Staple:** Let's Encrypt refuses Must-Staple requests. Turn OCSP Must-Staple off with Let's Encrypt.

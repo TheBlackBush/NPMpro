@@ -1,6 +1,6 @@
-// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list
-// and a certificate (and the lists that must follow), a save that nginx refuses and its re-save, and the
-// unsaved-changes question of all four host windows.
+// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list,
+// a certificate and the ACME override note (and the lists that must follow), a save that nginx refuses and its
+// re-save, and the unsaved-changes question of all four host windows.
 import { TYPES, unsavedChanges, viewOnly } from "./hosts.js";
 import {
 	addDomain,
@@ -19,6 +19,8 @@ import {
 const CUSTOM_OPTION = /^Custom/u;
 const FLOW_LIST_OPTION = /flow-acl/u;
 const FLOW_CERTIFICATE_OPTION = /flow-cert/u;
+const NEW_CERTIFICATE_OPTION = /Request a new Certificate/u;
+const ACME_NOTE = "takes /.well-known/acme-challenge/ over";
 
 async function proxyLocationAccess(env) {
 	const { page, api } = env.admin;
@@ -112,10 +114,32 @@ async function proxyLocationAccess(env) {
 		await dialog.getByRole("combobox", { name: "Auth Request", exact: true }).filter({ visible: true }).click();
 		await page.getByRole("option", { name: "none", exact: true }).click();
 		await notice.waitFor();
+		// a location on the ACME challenge path: no note for the uploaded certificate, the note for a Let's Encrypt
+		// certificate with the HTTP challenge, gone again with the DNS challenge (nothing is saved)
+		const acmeNote = dialog.getByText(ACME_NOTE);
+		await dialog.getByRole("button", { name: "Add Location", exact: true }).click();
+		await dialog.locator('input[name="locations.1.path"]').fill("/.well-known/acme-challenge/");
+		await dialog.locator('input[name="locations.1.forwardHost"]').fill("127.0.0.1");
+		await dialog.locator('input[name="locations.1.forwardPort"]').fill("8082");
+		if (await acmeNote.count()) throw new Error("the ACME note shows for an uploaded certificate");
+		await openTab(dialog, "tls");
+		await dialog.locator("#certificateId").click();
+		await page.getByRole("option", { name: NEW_CERTIFICATE_OPTION }).click();
+		await openTab(dialog, "locations");
+		if (!(await acmeNote.count())) await dialog.locator("button[aria-controls^=location-body-]").nth(1).click();
+		await acmeNote.waitFor();
+		await openTab(dialog, "tls");
+		await dialog.locator("#npmproDnsChallenge").click();
+		await openTab(dialog, "locations");
+		await acmeNote.waitFor({ state: "detached" });
 		// the window was changed: closing it asks, and discarding stores nothing
 		await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
 		await page.getByRole("alertdialog").getByRole("button", { name: "Discard changes", exact: true }).click();
 		await windowClosed(page);
+		const stored = (await api("GET", "/nginx/proxy-hosts")).find((row) =>
+			row.domain_names.includes("flow-location.example.com"),
+		);
+		if (stored.locations?.length !== 1) throw new Error("the discarded window stored a location");
 
 		// and a delete frees them again
 		await rowAction(page, "flow-location.example.com", "Delete");

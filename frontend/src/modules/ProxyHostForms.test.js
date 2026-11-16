@@ -6,6 +6,7 @@ import { fieldPaths } from "./HookForm.js";
 import { CERTIFICATE_REQUEST_DEFAULTS } from "./HostForms.js";
 import { tabOfPath } from "./ModalTabs.js";
 import {
+	acmeRenewalNotice,
 	hostRecheckOnScheme,
 	insideWebroot,
 	locationAuthNotice,
@@ -16,6 +17,7 @@ import {
 	proxyHostDefaults,
 	proxyHostPayload,
 	proxyHostValidate,
+	replacesAcmeChallenge,
 } from "./ProxyHostForms.js";
 import { createValidations } from "./ValidationRules.js";
 
@@ -358,4 +360,45 @@ it("a new location follows the host's Auth Request, a notice marks a public one 
 		locationErrors(rules, [newLocation({ path: "/g", forwardHost: "h", npmproAuthRequestUpstream: "bad" })]),
 		undefined,
 	);
+});
+
+it("replacesAcmeChallenge: only an enabled prefix or ^~ location with exactly /.well-known/acme-challenge/", () => {
+	const path = "/.well-known/acme-challenge/";
+	assert.equal(replacesAcmeChallenge({ path, locationType: "", npmproEnabled: true }), true);
+	assert.equal(replacesAcmeChallenge({ path, locationType: "^~ " }), true);
+	assert.equal(replacesAcmeChallenge({ path: `  ${path} `, locationType: "" }), true);
+	assert.equal(replacesAcmeChallenge({ path: `"${path}"`, locationType: "" }), true);
+	assert.equal(replacesAcmeChallenge({ path: `'${path}'`, locationType: "^~ " }), true);
+	assert.equal(replacesAcmeChallenge({ path }), true);
+	assert.equal(replacesAcmeChallenge(newLocation({ path })), true);
+	for (const locationType of ["= ", "~ ", "~* ", "@"]) {
+		assert.equal(replacesAcmeChallenge({ path, locationType }), false);
+	}
+	assert.equal(replacesAcmeChallenge({ path, locationType: "", npmproEnabled: false }), false);
+	assert.equal(replacesAcmeChallenge({ path: "/.well-known/acme-challenge", locationType: "" }), false);
+	assert.equal(replacesAcmeChallenge({ path: "/.well-known/acme-challenge/x", locationType: "" }), false);
+	assert.equal(replacesAcmeChallenge({ path: "/app/", locationType: "" }), false);
+	assert.equal(replacesAcmeChallenge({ path: `"${path}'`, locationType: "" }), false);
+	assert.equal(replacesAcmeChallenge({ locationType: "" }), false);
+});
+
+it("acmeRenewalNotice: requested without DNS challenge or an existing HTTP challenge Let's Encrypt certificate", () => {
+	const row = newLocation({ path: "/.well-known/acme-challenge/" });
+	const certificates = [
+		{ id: 1, provider: "letsencrypt", npmproDnsChallenge: false },
+		{ id: 2, provider: "letsencrypt", npmproDnsChallenge: true },
+		{ id: 3, provider: "other" },
+	];
+	const notice = (certificateId, npmproDnsChallenge = false, list = certificates, location = row) =>
+		acmeRenewalNotice(location, { certificateId, npmproDnsChallenge }, list);
+	assert.equal(notice("new", false), true);
+	assert.equal(notice("new", true), false);
+	assert.equal(notice(1), true);
+	assert.equal(notice(2), false);
+	assert.equal(notice(3), false);
+	assert.equal(notice(4), false);
+	assert.equal(notice(0), false);
+	assert.equal(acmeRenewalNotice(row, { certificateId: 1, npmproDnsChallenge: false }), false);
+	assert.equal(notice(1, false, certificates, newLocation({ path: "/app/" })), false);
+	assert.equal(notice(1, false, certificates, { ...row, npmproEnabled: false }), false);
 });
