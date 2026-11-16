@@ -15,7 +15,6 @@ const TABLES = ["proxy_host", "redirection_host", "dead_host"];
 const up = async (knex) => {
 	logger.info(`[${migrateName}] Migrating Up...`);
 	for (const table of TABLES) {
-		// biome-ignore lint/performance/noAwaitInLoops: one table after another
 		await knex.schema.alterTable(table, (t) => {
 			t.string("npmpro_description", 255).notNull().defaultTo("");
 		});
