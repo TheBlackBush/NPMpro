@@ -93,7 +93,8 @@ const unquotePath = (text) =>
 
 /**
  * Whether a location row replaces NPMpro's own ACME challenge location (backend lib/acme-challenge.js
- * overridesAcmeChallenge): enabled, type plain prefix or ^~, exactly /.well-known/acme-challenge/
+ * overridesAcmeChallenge): enabled, type plain prefix or ^~, exactly /.well-known/acme-challenge/. The form value is
+ * trimmed here because the save trims the path before the backend sees it.
  *
  * @param   {Object}  row
  * @returns {boolean}

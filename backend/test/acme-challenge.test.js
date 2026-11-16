@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { overridesAcmeChallenge } from "../lib/acme-challenge.js";
+import { ACME_CHALLENGE_PATH, overridesAcmeChallenge } from "../lib/acme-challenge.js";
 
 const ENVS_SH = new URL("../../rootfs/usr/local/bin/envs.sh", import.meta.url);
 const TEMPLATE_VERSION = /^TV="(?<version>\d+)"$/mu;
-const PATH = "/.well-known/acme-challenge/";
+const PATH = ACME_CHALLENGE_PATH;
 
 describe("overridesAcmeChallenge", () => {
 	const yes = [
