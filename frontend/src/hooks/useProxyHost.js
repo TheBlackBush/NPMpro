@@ -26,6 +26,7 @@ const {
 		advancedConfig: "",
 		npmproLocationConfig: "",
 		npmproDirectory: "",
+		npmproTags: [],
 		npmproMtlsCertificateId: 0,
 		npmproMtlsVerifyClientOptional: false,
 		npmproMtlsBypassAuthRequest: false,

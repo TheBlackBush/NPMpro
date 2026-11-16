@@ -16,6 +16,7 @@ import {
 	SwitchField,
 	SwitchList,
 	TabPane,
+	TagsField,
 	TextField,
 } from "src/components";
 import { useAccessLists, useProxyHost, useSetProxyHost } from "src/hooks";
@@ -80,7 +81,10 @@ function ProxyHostFields({ isAdmin, hostId }) {
 					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
 				/>
 				<ForwardFields className="mb-3" />
-				<DirectoryField labelId="proxy-host.directory" />
+				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+					<DirectoryField className="mb-0" labelId="proxy-host.directory" />
+					<TagsField className="mb-0" />
+				</div>
 				<ProxyOptionsFields />
 				<FormSection heading legend={<T id="proxy-host.global-access-lists" />} className="mb-0">
 					<AccessFields

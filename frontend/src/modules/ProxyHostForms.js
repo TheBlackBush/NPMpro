@@ -14,6 +14,7 @@ import {
 	TLS_TAB_FIELDS,
 	tlsRules,
 } from "./HostForms.js";
+import { tagsError } from "./HostTags.js";
 import { htmlName, PLACE_FIELDS, placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 import { hasOwnUpstream } from "./ProxyOptions.js";
 
@@ -259,6 +260,7 @@ export function proxyHostDefaults(data, { isClone = false, isAdmin = false } = {
 		...CERTIFICATE_REQUEST_DEFAULTS,
 		advancedConfig: dropConfig ? "" : data.advancedConfig,
 		npmproDirectory: data.npmproDirectory,
+		npmproTags: data.npmproTags ?? [],
 		npmproMaintenance: data.npmproMaintenance ?? false,
 		...placeDefaults("proxyHost", data),
 	};
@@ -278,6 +280,7 @@ export const PROXY_HOST_TABS = Object.freeze([
 			"forwardHost",
 			"forwardPort",
 			"npmproDirectory",
+			"npmproTags",
 			"npmproNoindex",
 			"npmproCrowdsecAppsec",
 			"npmproProxyRequestBuffering",
@@ -311,6 +314,7 @@ export const proxyHostValidate = (rules, { savedLocations = [] } = {}) =>
 		(values) => ({
 			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
 			npmproDescription: rules.validateString(0, 255),
+			npmproTags: (value) => tagsError(rules, value),
 			forwardPort: rules.validateInteger({ min: 1, max: 65535 }),
 			...(values.npmproAuthRequest === "none" ? {} : { npmproAuthRequestUpstream: rules.validateUpstreamUrl() }),
 			...tlsRules(rules, values),

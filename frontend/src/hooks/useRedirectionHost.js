@@ -23,6 +23,7 @@ const {
 		sslForced: false,
 		advancedConfig: "",
 		npmproDirectory: "",
+		npmproTags: [],
 		npmproMtlsCertificateId: 0,
 		npmproMtlsVerifyClientOptional: false,
 		npmproHttp3Support: false,
