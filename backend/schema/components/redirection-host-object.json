@@ -21,6 +21,7 @@
 		"npmpro_nginx_online",
 		"npmpro_nginx_err",
 		"npmpro_directory",
+		"npmpro_description",
 		"npmpro_mtls_certificate_id",
 		"npmpro_mtls_verify_client_optional"
 	],
@@ -110,6 +111,9 @@
 		},
 		"npmpro_directory": {
 			"$ref": "../common.json#/properties/npmpro_directory"
+		},
+		"npmpro_description": {
+			"$ref": "../common.json#/properties/npmpro_description"
 		},
 		"npmpro_mtls_certificate_id": {
 			"$ref": "../common.json#/properties/npmpro_mtls_certificate_id"

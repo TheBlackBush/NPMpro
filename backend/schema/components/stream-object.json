@@ -107,12 +107,7 @@
 		"npmpro_mtls_verify_client_optional": {
 			"$ref": "../common.json#/properties/npmpro_mtls_verify_client_optional"
 		},
-		"npmpro_description": {
-			"type": "string",
-			"maxLength": 255,
-			"default": "",
-			"example": "MariaDB database connection"
-		},
+		"npmpro_description": { "$ref": "../common.json#/properties/npmpro_description" },
 		"certificate": {
 			"oneOf": [
 				{

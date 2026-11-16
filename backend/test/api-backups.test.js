@@ -340,6 +340,20 @@ it("replaces whole parts on a restore that is confirmed, and refuses one that is
 	assert.ok(audit);
 });
 
+it("restores the description of a host from a backup", async () => {
+	const host = await addHost("described-bk.example.com");
+	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_description: "Backed up" })).status, 200);
+	const entry = await keep();
+	assert.equal((await admin.put(`/nginx/proxy-hosts/${host.id}`, { npmpro_description: "Changed" })).status, 200);
+	const { token } = await inspect(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["proxy_hosts"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	const row = (await admin.get("/nginx/proxy-hosts")).body.find(
+		(item) => item.domain_names[0] === "described-bk.example.com",
+	);
+	assert.equal(row.npmpro_description, "Backed up");
+});
+
 it("cancels a restore session, after which its token has expired", async () => {
 	const entry = await keep();
 	const { token } = await inspect(entry.name);

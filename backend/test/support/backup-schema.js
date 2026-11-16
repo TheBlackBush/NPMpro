@@ -11,6 +11,7 @@ export const createSchema = async (knex) => {
 			t.json("meta").notNull().defaultTo("{}");
 			t.integer("npmpro_nginx_online").notNull().defaultTo(1);
 			t.text("npmpro_nginx_err").notNull().defaultTo("");
+			t.string("npmpro_description", 255).notNull().defaultTo("");
 			t.dateTime("created_on").nullable();
 			t.dateTime("modified_on").nullable();
 			extra(t);
@@ -53,6 +54,7 @@ export const createSchema = async (knex) => {
 		t.integer("enabled").notNull().defaultTo(1);
 		t.integer("npmpro_nginx_online").notNull().defaultTo(1);
 		t.text("npmpro_nginx_err").notNull().defaultTo("");
+		t.string("npmpro_description", 255).notNull().defaultTo("");
 		t.integer("certificate_id").notNull().defaultTo(0);
 		t.json("meta").notNull().defaultTo("{}");
 		t.integer("tcp_forwarding").notNull().defaultTo(1);

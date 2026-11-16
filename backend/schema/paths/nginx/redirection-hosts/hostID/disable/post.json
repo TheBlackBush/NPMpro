@@ -45,6 +45,7 @@
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
+								"npmpro_description": "",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_http3_support": false,

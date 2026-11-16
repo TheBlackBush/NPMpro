@@ -6,6 +6,7 @@ import { it } from "node:test";
 // Helpers and the shared tests of the four host types (proxy, redirection, dead hosts and streams). A test file starts
 // its own API (startApi) and passes the live values through ctx: { api, admin }.
 
+let described = 0;
 const EXPANDED_PERMISSIONS = { access_lists: "view", certificates: "view" };
 
 const fileExists = (api, file) =>
@@ -190,6 +191,34 @@ const hostTests = (ctx, type) => {
 		const unknown = await admin.get(`${URL}?expand=nothing`);
 		assert.equal(unknown.status, 400);
 	});
+
+	tc(
+		`${type.label}: stores the description trimmed, finds it by the search, keeps it on an edit without it`,
+		async () => {
+			described += 1;
+			const note = `Lab note ${described} ${type.table}`;
+			const plain = await created(await admin.post(URL, make()), "create");
+			assert.equal(plain.npmpro_description, "");
+			const host = await created(
+				await admin.post(URL, { ...make(), npmpro_description: `  ${note}  ` }),
+				"create",
+			);
+			assert.equal(host.npmpro_description, note);
+			const found = await admin.get(`${URL}?query=${encodeURIComponent(note)}`);
+			assert.deepEqual(
+				found.body.map((entry) => entry.id),
+				[host.id],
+			);
+			const edited = await admin.put(`${URL}/${host.id}`, edit);
+			assert.equal(edited.status, 200, edited.text);
+			assert.equal(edited.body.npmpro_description, note);
+			const cleared = await admin.put(`${URL}/${host.id}`, { npmpro_description: "" });
+			assert.equal(cleared.status, 200, cleared.text);
+			assert.equal(cleared.body.npmpro_description, "");
+			const tooLong = await admin.post(URL, { ...make(), npmpro_description: "x".repeat(256) });
+			assert.equal(tooLong.status, 400, tooLong.text);
+		},
+	);
 
 	tc(`${type.label}: edits it, rewrites the config and reloads nginx once`, async () => {
 		const body = make();

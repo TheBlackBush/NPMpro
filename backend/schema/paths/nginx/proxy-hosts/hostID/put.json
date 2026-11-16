@@ -225,6 +225,9 @@
 						"npmpro_directory": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_directory"
 						},
+						"npmpro_description": {
+							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_description"
+						},
 						"npmpro_mtls_certificate_id": {
 							"$ref": "../../../../components/proxy-host-object.json#/properties/npmpro_mtls_certificate_id"
 						},
@@ -312,6 +315,7 @@
 								"npmpro_nginx_online": true,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
+								"npmpro_description": "",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,
 								"npmpro_mtls_bypass_auth_request": false,
