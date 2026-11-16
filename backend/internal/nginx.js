@@ -1,5 +1,6 @@
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { Client, fetch } from "undici";
+import { overridesAcmeChallenge } from "../lib/acme-challenge.js";
 import errs from "../lib/error.js";
 import { AUTH_REQUEST_PROVIDERS, ownUpstream, usesProvider } from "../lib/forward-auth.js";
 import { certificateUnusable } from "../lib/landing-pages/certificate.js";
@@ -403,6 +404,10 @@ const internalNginx = {
 				}
 			}
 		}
+
+		// a custom location that takes /.well-known/acme-challenge/ over: the built-in one in _common.conf is left out
+		// (both would be a duplicate location); disabled locations are not rendered, so they do not count
+		host.custom_acme_challenge_location = (host.locations ?? []).some(overridesAcmeChallenge);
 
 		// the host's or a location's own upstream; empty: the template uses the Forward authentication default
 		for (const provider of AUTH_REQUEST_PROVIDERS) {

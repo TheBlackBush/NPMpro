@@ -27,8 +27,13 @@ const PHP_REQUEST_ID_DROPPED = /fastcgi_param HTTP_X_NPMPRO_REQUEST_ID "" if_not
 const AUTHORIZATION_EMPTY = /Authorization ""/u;
 const AUTHELIA_CHECK = /auth_request \/internal\/authelia\/authz;/u;
 const ANY_AUTH_REQUEST = /auth_request/u;
+const BUILT_IN_ACME = /location \^~ \/\.well-known\/acme-challenge\/ \{/gu;
+const CUSTOM_ACME_PROXY_PASS = /proxy_pass http:\/\/upstream_\d+_location_0;/u;
+const UNPREFIXED_HELPER = /location \/(?:\.within\.website\/|oauth2\/|outpost\.goauthentik\.io) /u;
+const ACME_ROOT = /root \/data\/public\/acme-challenge;/u;
 const NO_PROVIDER_CHECK = /auth_request \/|authelia\/authz|goauthentik|\/tinyauth/u;
 
+const count = (text, regex) => (text.match(regex) ?? []).length;
 const read = (file) => readConfig(ctx.api, file);
 const configOf = async (host) => read(confOf(host.id));
 const make = async (overrides, who = ctx.admin) => created(await who.post(URL, body(overrides)), "create");
@@ -65,7 +70,7 @@ it("writes the plain HTTP listeners and the server name of a host without a cert
 	assert.match(config, /listen \[::\]:80;/u);
 	assert.doesNotMatch(config, /ssl_certificate|ssl;|quic;/u);
 	assert.match(config, /more_clear_headers "Strict-Transport-Security";/u);
-	assert.match(config, /location \/\.well-known\/acme-challenge\/ \{\s+root \/data\/public\/acme-challenge;/u);
+	assert.match(config, /location \^~ \/\.well-known\/acme-challenge\/ \{\s+root \/data\/public\/acme-challenge;/u);
 	assert.match(config, /include \/data\/custom_nginx\/server_proxy\.conf;/u);
 });
 
@@ -443,6 +448,82 @@ it("writes custom locations with their own upstream, scheme, access list and fla
 	assert.doesNotMatch(config, /\/off|off\.internal/u);
 });
 
+const ACME_PATH = "/.well-known/acme-challenge/";
+
+it("a custom location with exactly /.well-known/acme-challenge/ replaces the built-in ACME location, plain prefix and ^~", async () => {
+	for (const [location_type, header] of [
+		["", `location "${ACME_PATH}" {`],
+		["^~ ", `location ^~ "${ACME_PATH}" {`],
+	]) {
+		const host = await make({
+			locations: [{ path: ACME_PATH, location_type, forward_host: "10.7.7.7", forward_port: 8080 }],
+		});
+		const config = await configOf(host);
+		assert.equal(count(config, BUILT_IN_ACME), 0, `type "${location_type}"`);
+		assert.doesNotMatch(config, ACME_ROOT);
+		assert.equal(config.split(header).length - 1, 1, header);
+		assert.match(block(config, header), CUSTOM_ACME_PROXY_PASS);
+	}
+});
+
+it("keeps the built-in ACME location for other types, the path without a slash, a deeper path and a disabled location", async () => {
+	const cases = [
+		{ path: ACME_PATH, location_type: "= " },
+		{ path: "^/\\.well-known/acme-challenge/", location_type: "~ " },
+		{ path: ACME_PATH, location_type: "~* " },
+		{ path: "/.well-known/acme-challenge", location_type: "" },
+		{ path: "/.well-known/acme-challenge/sub/", location_type: "" },
+		{ path: ACME_PATH, location_type: "", npmpro_enabled: false },
+	];
+	for (const entry of cases) {
+		const host = await make({ locations: [{ ...entry, forward_host: "10.7.7.8", forward_port: 8080 }] });
+		assert.equal(count(await configOf(host), BUILT_IN_ACME), 1, JSON.stringify(entry));
+	}
+});
+
+it("a hand-quoted stored path counts as the override", async () => {
+	const host = await make({
+		locations: [{ path: `"${ACME_PATH}"`, location_type: "", forward_host: "10.7.7.9", forward_port: 8080 }],
+	});
+	assert.equal(count(await configOf(host), BUILT_IN_ACME), 0);
+});
+
+it("redirection and 404 hosts keep the built-in ACME location with ^~", async () => {
+	const redirection = await created(
+		await ctx.admin.post("/nginx/redirection-hosts", {
+			domain_names: ["acme-redir.example.com"],
+			forward_domain_name: "target.example.org",
+			forward_scheme: "https",
+			forward_http_code: 301,
+		}),
+		"create",
+	);
+	const dead = await created(
+		await ctx.admin.post("/nginx/dead-hosts", { domain_names: ["acme-dead.example.com"] }),
+		"create",
+	);
+	assert.equal(count(await read(`data/nginx/redirection_host/${redirection.id}.conf`), BUILT_IN_ACME), 1);
+	assert.equal(count(await read(`data/nginx/dead_host/${dead.id}.conf`), BUILT_IN_ACME), 1);
+});
+
+it("puts ^~ on the built-in forward authentication prefix locations", async () => {
+	const wanted = {
+		anubis: "location ^~ /.within.website/ {",
+		oauth2proxy: "location ^~ /oauth2/ {",
+		authentik: "location ^~ /outpost.goauthentik.io {",
+	};
+	for (const [provider, header] of Object.entries(wanted)) {
+		const host = await make({
+			npmpro_auth_request: provider,
+			npmpro_auth_request_upstream: "http://127.0.0.1:9000",
+		});
+		const config = await configOf(host);
+		assert.ok(config.includes(header), header);
+		assert.equal(config.includes("location = /oauth2/auth {"), provider === "oauth2proxy");
+		assert.doesNotMatch(config, UNPREFIXED_HELPER);
+	}
+});
+
 it("quotes names and paths so they cannot leave their directive", async () => {
 	const regex = '~^a"b;c{2}$';
 	const host = await make({
@@ -742,7 +823,7 @@ const FORWARD_AUTH = [
 		value: "anubis",
 		path: "/.within.website/x/cmd/anubis/api/check",
 		errorPage: /error_page 401 403 =200 \/\.within\.website\/\?redir=\$request_uri;/u,
-		helpers: ["location /.within.website/ {"],
+		helpers: ["location ^~ /.within.website/ {"],
 	},
 	{
 		value: "tinyauth",
@@ -754,7 +835,7 @@ const FORWARD_AUTH = [
 		value: "oauth2proxy",
 		path: "/oauth2/auth",
 		errorPage: /error_page 401 = @oauth2_signin;/u,
-		helpers: ["location /oauth2/ {", "location = /oauth2/auth {", "location @oauth2_signin {"],
+		helpers: ["location ^~ /oauth2/ {", "location = /oauth2/auth {", "location @oauth2_signin {"],
 	},
 	{
 		value: "voidauth",
@@ -772,13 +853,13 @@ const FORWARD_AUTH = [
 		value: "authentik",
 		path: "/outpost.goauthentik.io/auth/nginx",
 		errorPage: /error_page 401 = @goauthentik_proxy_signin;/u,
-		helpers: ["location /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
+		helpers: ["location ^~ /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
 	},
 	{
 		value: "authentik-send-basic-auth",
 		path: "/outpost.goauthentik.io/auth/nginx",
 		errorPage: /error_page 401 = @goauthentik_proxy_signin;/u,
-		helpers: ["location /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
+		helpers: ["location ^~ /outpost.goauthentik.io {", "location @goauthentik_proxy_signin {"],
 		extra: /proxy_set_header Authorization \$authentik_auth;/u,
 	},
 ];
