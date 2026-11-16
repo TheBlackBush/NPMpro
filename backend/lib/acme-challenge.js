@@ -7,7 +7,8 @@ const OVERRIDING_TYPES = new Set(["", "^~ "]);
 
 /**
  * Whether a custom location replaces NPMpro's built-in ACME challenge location: enabled, a prefix type ("" or "^~ ")
- * and exactly the challenge path (a path quoted by hand counts, as it renders as the same location)
+ * and exactly the challenge path (a path quoted by hand counts, as it renders as the same location; a padded one does
+ * not, as it renders padded and never matches)
  *
  * @param   {Object} location  a custom location row (snake_case, as stored)
  * @returns {boolean}
@@ -15,6 +16,6 @@ const OVERRIDING_TYPES = new Set(["", "^~ "]);
 const overridesAcmeChallenge = (location) =>
 	location?.npmpro_enabled !== false &&
 	OVERRIDING_TYPES.has(location?.location_type ?? "") &&
-	unquote(String(location?.path ?? "").trim()) === ACME_CHALLENGE_PATH;
+	unquote(String(location?.path ?? "")) === ACME_CHALLENGE_PATH;
 
 export { ACME_CHALLENGE_PATH, overridesAcmeChallenge };

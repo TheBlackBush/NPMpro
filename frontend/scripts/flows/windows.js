@@ -1,4 +1,4 @@
-// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list
+// The Pages tab and the denied page of the access list, the proxy host window with a custom location, an access list,
 // a certificate and the ACME override note (and the lists that must follow), a save that nginx refuses and its
 // re-save, and the unsaved-changes question of all four host windows.
 import { TYPES, unsavedChanges, viewOnly } from "./hosts.js";

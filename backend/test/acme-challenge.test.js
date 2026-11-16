@@ -14,7 +14,6 @@ describe("overridesAcmeChallenge", () => {
 		["no type", { path: PATH }],
 		["a double quoted path", { path: `"${PATH}"` }],
 		["a single quoted path", { path: `'${PATH}'` }],
-		["a padded path", { path: `  ${PATH} ` }],
 		["an enabled location", { path: PATH, npmpro_enabled: true }],
 	];
 	for (const [label, location] of yes) {
@@ -23,6 +22,7 @@ describe("overridesAcmeChallenge", () => {
 
 	const no = [
 		["a disabled location", { path: PATH, npmpro_enabled: false }],
+		["a padded path", { path: `  ${PATH} ` }],
 		["=", { path: PATH, location_type: "= " }],
 		["~", { path: PATH, location_type: "~ " }],
 		["~*", { path: PATH, location_type: "~* " }],
