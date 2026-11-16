@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import renovate from "../../renovate.json" with { type: "json" };
 import dnsPlugins from "../certbot/dns-plugins.json" with { type: "json" };
 import { assertProviderForNew, CERTBOT_CONSTRAINTS, certbotEnv, pluginInstallArgs } from "../lib/certbot.js";
 
@@ -113,8 +114,25 @@ it("pins certbot's own DNS plugins and acme at the certbot version of requiremen
 	const certbot = pinnedIn("requirements.in", "certbot");
 	assert.match(certbot, CERTBOT_VERSION);
 	assert.equal(pinnedIn("requirements.txt", "certbot"), certbot);
+	// acme is pinned in requirements.in too, so the weekly lock refresh cannot move it without certbot
+	assert.equal(pinnedIn("requirements.in", "acme"), certbot);
 	assert.equal(pinnedIn("requirements.txt", "acme"), certbot);
 	for (const key of CERTBOT_DNS_PLUGINS) {
 		assert.equal(dnsPlugins[key].version, certbot, key);
 	}
+});
+
+it("lets Renovate's DNS plugin manager find the pin of every entry in dns-plugins.json", () => {
+	const manager = renovate.customManagers.find((entry) =>
+		entry.managerFilePatterns.includes("/^backend/certbot/dns-plugins\\.json$/"),
+	);
+	assert.equal(manager.matchStrings.length, 1);
+	// Renovate runs the pattern with RE2-compatible syntax (named groups, no lookaround): keep it simple
+	const text = readFileSync(new URL("../certbot/dns-plugins.json", import.meta.url), "utf8");
+	const pins = [...text.matchAll(new RegExp(manager.matchStrings[0], "gu"))].map((match) => match.groups.depName);
+	// in file order, one per entry
+	assert.deepEqual(
+		pins,
+		Object.values(dnsPlugins).map((plugin) => plugin.package_name),
+	);
 });

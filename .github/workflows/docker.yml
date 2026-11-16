@@ -18,6 +18,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the PR merge commit and its first parent (the base), for Changed Certbot Files
+          fetch-depth: 2
       - name: build arguments
         id: args
         run: |
@@ -113,12 +116,9 @@ jobs:
         run: docker exec npmpro nginx -t
       - name: Changed Certbot Files
         id: certbot
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        # the PR's merge commit against the base branch tip: only the trees are compared, so the shallow clone is enough
+        # the PR's merge commit against its first parent, the base it was merged onto (a rerun compares the same pair)
         run: |
-          git fetch --no-tags --depth=1 origin "$BASE_REF"
-          if git diff --quiet FETCH_HEAD HEAD -- backend/certbot Dockerfile; then
+          if git diff --quiet HEAD^1 HEAD -- backend/certbot Dockerfile .github/scripts/dns-plugins-check.sh; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"

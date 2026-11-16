@@ -53,7 +53,7 @@
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["hadolint/releases/download/(?<currentValue>v[0-9.]+)/"], "depNameTemplate": "hadolint/hadolint", "datasourceTemplate": "github-releases" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["actionlint/releases/download/v(?<currentValue>[0-9.]+)/", "actionlint_(?<currentValue>[0-9.]+)_linux"], "matchStringsStrategy": "any", "depNameTemplate": "rhysd/actionlint", "datasourceTemplate": "github-releases", "extractVersionTemplate": "^v(?<version>.*)$" },
 		{ "customType": "regex", "managerFilePatterns": ["/^\\.github/workflows/test\\.yml$/"], "matchStrings": ["nginxbeautifier@(?<currentValue>[0-9.]+)"], "depNameTemplate": "nginxbeautifier", "datasourceTemplate": "npm" },
-		{ "customType": "regex", "description": "DNS plugin pins (backend/certbot/dns-plugins.json, keys sorted by jq)", "managerFilePatterns": ["/^backend/certbot/dns-plugins\\.json$/"], "matchStrings": ["\"package_name\": \"(?<depName>[^\"]+)\",\\n\\s*\"version\": \"(?<currentValue>[^\"]+)\""], "datasourceTemplate": "pypi" }
+		{ "customType": "regex", "description": "DNS plugin pins (backend/certbot/dns-plugins.json, keys sorted by jq; backend/test/certbot-plugins.test.js checks every entry matches)", "managerFilePatterns": ["/^backend/certbot/dns-plugins\\.json$/"], "matchStrings": ["\"package_name\": \"(?<depName>[^\"]+)\",\\n\\s*\"version\": \"(?<currentValue>[^\"]+)\""], "datasourceTemplate": "pypi" }
 	],
 	"packageRules": [
 		{ "matchManagers": ["docker-compose"], "pinDigests": false },
@@ -79,15 +79,15 @@
 		{ "groupName": "frontend npm non-major", "matchFileNames": ["frontend/**"], "matchManagers": ["npm"], "matchUpdateTypes": ["minor", "patch", "pin", "digest"] },
 		{ "groupName": "dns plugins", "matchManagers": ["custom.regex"], "matchFileNames": ["backend/certbot/dns-plugins.json"] },
 		{
-			"description": "certbot and its own DNS plugins move together (backend/test/certbot-plugins.test.js)",
+			"description": "certbot, acme (pinned in requirements.in) and certbot's own DNS plugins move together (backend/test/certbot-plugins.test.js)",
 			"groupName": "certbot",
 			"matchPackageNames": ["certbot", "acme", "certbot-dns-cloudflare", "certbot-dns-digitalocean", "certbot-dns-dnsimple", "certbot-dns-dnsmadeeasy", "certbot-dns-google", "certbot-dns-linode", "certbot-dns-luadns", "certbot-dns-nsone", "certbot-dns-ovh", "certbot-dns-rfc2136"]
 		},
 		{
-			"description": "the packages the generated shadcn components use; sonner and input-otp are patched and stay alone",
+			"description": "the packages the generated shadcn components use; radix-ui (its @radix-ui/react-select), sonner and input-otp carry a local patch and stay alone",
 			"groupName": "shadcn",
 			"matchFileNames": ["frontend/**"],
-			"matchPackageNames": ["shadcn", "radix-ui", "cn", "class-variance-authority", "cmdk", "lucide-react", "tw-animate-css"]
+			"matchPackageNames": ["shadcn", "cn", "class-variance-authority", "cmdk", "lucide-react", "tw-animate-css"]
 		},
 		{ "groupName": "github actions", "matchManagers": ["github-actions"] },
 		{ "groupName": "base images", "matchManagers": ["dockerfile"] },

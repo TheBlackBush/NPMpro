@@ -1,5 +1,7 @@
-# certbot for the image (Dockerfile). Renovate updates the pin and regenerates requirements.txt with the command in
+# certbot for the image (Dockerfile). Renovate updates the pins and regenerates requirements.txt with the command in
 # its header; by hand, in the image (so the Python version matches the header):
 #   pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt --strip-extras requirements.in
-# certbot's own DNS plugins in dns-plugins.json follow this version (backend/test/certbot-plugins.test.js).
+# certbot's own DNS plugins in dns-plugins.json follow this version (backend/test/certbot-plugins.test.js). acme is
+# pinned here too, so the weekly lock refresh cannot move it ahead of certbot: the certbot group moves both.
 certbot==5.10.0
+acme==5.10.0
