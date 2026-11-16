@@ -74,6 +74,7 @@ secret_files_read() {
         esac
         export "$secret_file_name=$secret_file_value"
     done
-    unset secret_file_value secret_file_size secret_file_path secret_file_real secret_file_where secret_file_unreadable
+    unset secret_file_value secret_file_size secret_file_path secret_file_real secret_file_where secret_file_unreadable \
+        secret_file_name secret_file_data secret_file_cr secret_file_nl
     return 0
 }
