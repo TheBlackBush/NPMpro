@@ -56,8 +56,9 @@ const pluginInstallArgs = (plugin) => [
 ];
 
 /**
- * A deprecated provider (its service is gone, or its plugin needs an older certbot than the image's) keeps working for
- * what already uses it, but is not offered for new certificates and DNS credentials
+ * A deprecated provider (its service is gone, its plugin needs an older certbot than the image's, or a new plugin with
+ * other credential keys replaces it) keeps working for what already uses it, but is not offered for new certificates
+ * and DNS credentials
  *
  * @param {String} pluginKey
  */

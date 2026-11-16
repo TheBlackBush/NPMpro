@@ -37,16 +37,24 @@
   "baidu": {
     "credentials": "dns_baidu_access_key = 12345678\ndns_baidu_secret_key = 1234567890abcdef1234567890abcdef",
     "full_plugin_name": "dns-baidu",
-    "name": "baidu",
-    "package_name": "certbot-dns-baidu",
-    "version": "0.1.1"
+    "name": "Baidu",
+    "package_name": "certbot-dns-baidu-bcd",
+    "version": "2.0.0"
   },
   "beget": {
     "credentials": "# Beget API credentials used by Certbot\nbeget_plugin_username = username\nbeget_plugin_password = password",
+    "deprecated": true,
     "full_plugin_name": "beget-plugin",
-    "name": "Beget",
+    "name": "Beget (old plugin)",
     "package_name": "certbot-beget-plugin",
     "version": "1.0.0.dev10"
+  },
+  "beget-dns": {
+    "credentials": "# Beget API credentials used by Certbot\ndns_beget_plugin_username = username\ndns_beget_plugin_password = password",
+    "full_plugin_name": "dns-beget-plugin",
+    "name": "Beget",
+    "package_name": "certbot-dns-beget-plugin",
+    "version": "1.0.0"
   },
   "bunny": {
     "credentials": "# Bunny API token used by Certbot (see https://dash.bunny.net/account/settings)\ndns_bunny_api_key = xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx",
@@ -67,7 +75,7 @@
     "full_plugin_name": "dns-cloudflare",
     "name": "Cloudflare",
     "package_name": "certbot-dns-cloudflare",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "cloudns": {
     "credentials": "# Target user ID (see https://www.cloudns.net/api-settings/)\n\tdns_cloudns_auth_id=1234\n\t# Alternatively, one of the following two options can be set:\n\t# dns_cloudns_sub_auth_id=1234\n\t# dns_cloudns_sub_auth_user=foobar\n\n\t# API password\n\tdns_cloudns_auth_password=password1",
@@ -126,7 +134,7 @@
     "full_plugin_name": "dns-digitalocean",
     "name": "DigitalOcean",
     "package_name": "certbot-dns-digitalocean",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "directadmin": {
     "credentials": "dns_directadmin_url = https://my.directadminserver.com:2222\ndns_directadmin_username = username\ndns_directadmin_password = aSuperStrongPassword",
@@ -140,14 +148,14 @@
     "full_plugin_name": "dns-dnsimple",
     "name": "DNSimple",
     "package_name": "certbot-dns-dnsimple",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "dnsmadeeasy": {
     "credentials": "dns_dnsmadeeasy_api_key = 1c1a3c91-4770-4ce7-96f4-54c0eb0e457a\ndns_dnsmadeeasy_secret_key = c9b5625f-9834-4ff8-baba-4ed5f32cae55",
     "full_plugin_name": "dns-dnsmadeeasy",
     "name": "DNS Made Easy",
     "package_name": "certbot-dns-dnsmadeeasy",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "dnspod": {
     "credentials": "certbot_dnspod_token = <your token>\ncertbot_dnspod_token_id = <your token id>",
@@ -267,7 +275,7 @@
     "full_plugin_name": "dns-google",
     "name": "Google",
     "package_name": "certbot-dns-google",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "googledomains": {
     "credentials": "dns_google_domains_access_token = 0123456789abcdef0123456789abcdef01234567\ndns_google_domains_zone = \"example.com\"",
@@ -354,6 +362,13 @@
     "package_name": "certbot-dns-ionos",
     "version": "2024.11.9"
   },
+  "ipp": {
+    "credentials": "dns_ipp_acme_api_key = <ACME API key from the ip-projects customer area>",
+    "full_plugin_name": "dns-ipp",
+    "name": "ip-projects",
+    "package_name": "certbot-dns-ipp",
+    "version": "5.9.0"
+  },
   "ispconfig": {
     "credentials": "dns_ispconfig_username = myremoteuser\ndns_ispconfig_password = verysecureremoteuserpassword\ndns_ispconfig_endpoint = https://you.ipsconfig.host:8080/remote/json.php",
     "full_plugin_name": "dns-ispconfig",
@@ -394,7 +409,7 @@
     "full_plugin_name": "dns-linode",
     "name": "Linode",
     "package_name": "certbot-dns-linode",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "loopia": {
     "credentials": "dns_loopia_user = user@loopiaapi\ndns_loopia_password = abcdef0123456789abcdef01234567abcdef0123",
@@ -408,7 +423,7 @@
     "full_plugin_name": "dns-luadns",
     "name": "LuaDNS",
     "package_name": "certbot-dns-luadns",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "lws": {
     "credentials": "dns_lws_login = 123456\ndns_lws_api_key = YOUR_API_KEY",
@@ -471,7 +486,7 @@
     "full_plugin_name": "dns-nsone",
     "name": "NS1",
     "package_name": "certbot-dns-nsone",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "oci": {
     "credentials": "[DEFAULT]\nuser = ocid1.user.oc1...\nfingerprint = xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx\ntenancy = ocid1.tenancy.oc1...\nregion = us-ashburn-1\nkey_file = ~/.oci/oci_api_key.pem",
@@ -486,7 +501,7 @@
     "full_plugin_name": "dns-ovh",
     "name": "OVH",
     "package_name": "certbot-dns-ovh",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "plesk": {
     "credentials": "dns_plesk_username = your-username\ndns_plesk_password = secret\ndns_plesk_api_url = https://plesk-api-host:8443",
@@ -528,7 +543,7 @@
     "full_plugin_name": "dns-rfc2136",
     "name": "RFC 2136",
     "package_name": "certbot-dns-rfc2136",
-    "version": "5.8.0"
+    "version": "5.10.0"
   },
   "rockenstein": {
     "credentials": "dns_rockenstein_token=<token>",
