@@ -204,7 +204,8 @@ try {
 			await page.waitForTimeout(500);
 		} catch (error) {
 			problems.push(
-				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message.split("\n")[0]}`,
+				// the whole Playwright error: its call log says which locator waited for what (the CI log keeps only this)
+				`${page.step}: the action failed (fix scripts/csp-check.json): ${error.message}`,
 			);
 		} finally {
 			await removeSeeded();
