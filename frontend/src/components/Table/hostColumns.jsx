@@ -77,7 +77,7 @@ export const ownerColumn = () =>
 			);
 		},
 		meta: {
-			className: "whitespace-nowrap",
+			className: "w-px whitespace-nowrap",
 			mobile: "hide-lg",
 		},
 	});

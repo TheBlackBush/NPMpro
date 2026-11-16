@@ -31,7 +31,7 @@ export default function Table({ data, isFetching, onSelectItem }) {
 					);
 				},
 				meta: {
-					className: "whitespace-nowrap",
+					className: "w-px whitespace-nowrap",
 				},
 			}),
 			columnHelper.accessor((row) => row.createdOn, {

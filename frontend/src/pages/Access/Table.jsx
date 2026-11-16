@@ -64,7 +64,7 @@ export function useColumns() {
 					);
 				},
 				meta: {
-					className: "whitespace-nowrap",
+					className: "w-px whitespace-nowrap",
 					mobile: "hide-lg",
 				},
 			}),
