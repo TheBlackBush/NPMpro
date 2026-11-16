@@ -27,7 +27,6 @@ const STREAM_ONLY = [
 	"forwarding_port",
 	"tcp_forwarding",
 	"udp_forwarding",
-	"npmpro_description",
 	"npmpro_advanced_config",
 ];
 const HOST_ONLY = ["domain_names", "advanced_config", "ssl_forced"];
@@ -43,10 +42,13 @@ export const TYPES = [
 		focus: "dead-host",
 		label: "flow-dead.example.com",
 		matches: (row) => row.domain_names.includes("flow-dead.example.com"),
-		fill: (dialog) => addDomain(dialog, "flow-dead.example.com"),
+		fill: async (dialog) => {
+			await addDomain(dialog, "flow-dead.example.com");
+			await dialog.locator("input[name=npmproDescription]").fill("flow dead note");
+		},
 		edit: (dialog) => addDomain(dialog, "flow-dead2.example.com"),
 		edited: "flow-dead2.example.com",
-		created: { domain_names: ["flow-dead.example.com"] },
+		created: { domain_names: ["flow-dead.example.com"], npmpro_description: "flow dead note" },
 		changed: { domain_names: ["flow-dead.example.com", "flow-dead2.example.com"], advanced_config: "# flow" },
 		foreign: [...PROXY_ONLY, ...REDIRECTION_ONLY, ...STREAM_ONLY],
 		kept: (dialog) =>
@@ -64,12 +66,14 @@ export const TYPES = [
 		matches: (row) => row.domain_names.includes("flow-redirect.example.com"),
 		fill: async (dialog) => {
 			await addDomain(dialog, "flow-redirect.example.com");
+			await dialog.locator("input[name=npmproDescription]").fill("flow redirect note");
 			await dialog.locator("input[name=forwardDomainName]").fill("target.example.org");
 		},
 		edit: (dialog) => dialog.locator("input[name=forwardDomainName]").fill("target2.example.org"),
 		edited: "target2.example.org",
 		created: {
 			domain_names: ["flow-redirect.example.com"],
+			npmpro_description: "flow redirect note",
 			forward_domain_name: "target.example.org",
 			forward_http_code: 301,
 		},
@@ -93,12 +97,18 @@ export const TYPES = [
 		matches: (row) => row.domain_names.includes("flow-proxy.example.com"),
 		fill: async (dialog) => {
 			await addDomain(dialog, "flow-proxy.example.com");
+			await dialog.locator("input[name=npmproDescription]").fill("flow proxy note");
 			await dialog.locator("input[name=forwardHost]").fill("127.0.0.1");
 			await dialog.locator("input[name=forwardPort]").fill("8080");
 		},
 		edit: (dialog) => dialog.locator("input[name=forwardPort]").fill("8081"),
 		edited: ":8081",
-		created: { domain_names: ["flow-proxy.example.com"], forward_host: "127.0.0.1", forward_port: 8080 },
+		created: {
+			domain_names: ["flow-proxy.example.com"],
+			npmpro_description: "flow proxy note",
+			forward_host: "127.0.0.1",
+			forward_port: 8080,
+		},
 		changed: { forward_host: "127.0.0.1", forward_port: 8081, advanced_config: "# flow" },
 		foreign: [...REDIRECTION_ONLY, ...STREAM_ONLY],
 		kept: (dialog) =>
@@ -214,6 +224,7 @@ async function hostSteps(type, env) {
 	await type.fill(dialog);
 	const created = await saveWindowSent(page, type.object, sentTo(type));
 	await rowShows(page, type.label, "Online");
+	if (type.created.npmpro_description) await rowShows(page, type.label, type.created.npmpro_description);
 	const { id } = await checkSaved(type, api, created, type.created, "create");
 
 	// the edit also sets an advanced config, which the viewer must see read-only

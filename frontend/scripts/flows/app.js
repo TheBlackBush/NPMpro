@@ -286,7 +286,10 @@ async function phoneList({ browser, base, admin, password }) {
 	const phone = await signIn(browser, base, ADMIN_EMAIL, password, { width: 390, height: 844 });
 	let host;
 	try {
-		host = await admin.api("POST", "/nginx/dead-hosts", { domain_names: ["flow-phone.example.com"] });
+		host = await admin.api("POST", "/nginx/dead-hosts", {
+			domain_names: ["flow-phone.example.com"],
+			npmpro_description: "flow phone note",
+		});
 		const { page } = phone;
 		await page.goto("/nginx/404");
 		await revealRow(page, "flow-phone.example.com");
@@ -294,6 +297,7 @@ async function phoneList({ browser, base, admin, password }) {
 		await row.first().waitFor();
 		// a card: the domain as its title with the TLS summary, the action button; owner and id stay hidden
 		await row.getByText("No TLS").filter({ visible: true }).first().waitFor();
+		await row.getByText("flow phone note").filter({ visible: true }).first().waitFor();
 		await row
 			.getByRole("button", { name: "Actions for flow-phone.example.com" })
 			.filter({ visible: true })
