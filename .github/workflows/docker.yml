@@ -111,6 +111,21 @@ jobs:
         run: node .github/scripts/log-sample-check.js https://127.0.0.1:81
       - name: nginx -t on the whole config
         run: docker exec npmpro nginx -t
+      - name: Changed Certbot Files
+        id: certbot
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # the PR's merge commit against the base branch tip: only the trees are compared, so the shallow clone is enough
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          if git diff --quiet FETCH_HEAD HEAD -- backend/certbot Dockerfile; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Every DNS Plugin Installs
+        if: ${{ steps.certbot.outputs.changed == 'true' }}
+        run: sh .github/scripts/dns-plugins-check.sh npmpro
       - name: PUID binds ports below 1024 without the host sysctl
         run: .github/scripts/puid-low-ports.sh npmpro:test npmpro-puid
       - name: container logs
