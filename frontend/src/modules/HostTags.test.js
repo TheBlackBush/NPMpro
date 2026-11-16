@@ -19,11 +19,23 @@ import { createValidations } from "./ValidationRules.js";
 const rules = createValidations(createIntl({ locale: "en", messages: en }));
 
 it("accepts letters of any script, with marks, digits, spaces inside, - _ and .", () => {
-	for (const tag of ["Prod", "home lab", "v1.2", "a_b-c", "café", "東京", "खाना", "Ünïcode", "x".repeat(32), "-"]) {
+	for (const tag of [
+		"Prod",
+		"home lab",
+		"v1.2",
+		"a_b-c",
+		"café",
+		"東京",
+		"खाना",
+		"Ünïcode",
+		"x".repeat(32),
+		"𝐀".repeat(32),
+		"-",
+	]) {
 		assert.equal(isValidTag(tag), true, tag);
 	}
 	assert.equal(isValidTag("  padded  "), true, "trimmed first");
-	for (const tag of ["", "   ", "a/b", "a,b", "a#b", "x".repeat(33), "emoji 🙂", 'quote"']) {
+	for (const tag of ["", "   ", "a/b", "a,b", "a#b", "x".repeat(33), "𝐀".repeat(33), "emoji 🙂", 'quote"']) {
 		assert.equal(isValidTag(tag), false, tag);
 	}
 });
