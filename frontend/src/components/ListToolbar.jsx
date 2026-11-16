@@ -45,7 +45,7 @@ function TagFilter({ tags, value, onChange }) {
 				<Button
 					variant="outline"
 					size="sm"
-					className="w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 justify-between font-normal md:max-w-64 md:min-w-0 md:flex-none"
+					className="w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 justify-between text-sm font-normal md:max-w-64 md:min-w-0 md:flex-none"
 				>
 					<TruncatedText tap={false}>{`${name}: ${shown}`}</TruncatedText>
 					<ChevronDown data-icon="inline-end" aria-hidden="true" />
