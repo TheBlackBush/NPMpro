@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	Button,
 	ErrorAlert,
@@ -13,12 +13,13 @@ import {
 import { getDirectory, useDirectorySuggestions, useListFilters, usePaging } from "src/hooks";
 import { T } from "src/locale";
 import { showDeleteConfirmModal } from "src/modals";
+import { addTag, tagNames } from "src/modules/HostTags";
 import { deleteInvalidations, toggleInvalidations } from "src/modules/HostTypes";
 import { activeFilterCount, filterHosts } from "src/modules/ListFilters";
 import { MANAGE } from "src/modules/Permissions";
 import { getNginxConfigError, showApiError, showNginxConfigError, showObjectSuccess } from "src/notifications";
 
-const FILTERS = ["status", "tls", "group"];
+const FILTERS = ["status", "tls", "group", "tags"];
 
 /**
  * The list page of a host type: query, filters, toolbar, import and export, and the row actions. list is the type's
@@ -31,10 +32,13 @@ export function HostListPage({ list }) {
 	const columns = list.useColumns();
 	const { isFetching, isPending, isError, error, data } = list.useList(list.expand);
 	const groups = useDirectorySuggestions(data);
-	const { filters, setFilter, clear } = useListFilters(groups);
+	// only the tags of this list (ruling Q2)
+	const tags = useMemo(() => tagNames(data ?? []), [data]);
+	const { filters, setFilter, clear } = useListFilters(groups, tags);
 	const displayedHosts = filterHosts(data ?? [], filters, {
 		searchText: list.searchText,
 		getGroup: (item) => getDirectory(item) ?? "",
+		getTags: (item) => item.npmproTags ?? [],
 	});
 	// a search, a filter or a new sort starts on the first page
 	const paging = usePaging({
@@ -137,6 +141,7 @@ export function HostListPage({ list }) {
 					shown={displayedHosts.length}
 					kinds={FILTERS}
 					groups={groups}
+					tags={tags}
 					sorting={{ columns, state: sorting, onChange: setSorting }}
 				/>
 			}
@@ -155,6 +160,7 @@ export function HostListPage({ list }) {
 				onClone={(id) => showModal(id, true)}
 				onDelete={handleDelete}
 				onDisableToggle={handleDisableToggle}
+				onTagClick={(tag) => setFilter("tag", addTag(filters.tags, tag))}
 				onNew={() => showModal("new")}
 			/>
 		</ListPage>

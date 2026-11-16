@@ -93,7 +93,13 @@ export const domainsColumn = () =>
 				<DomainsFormatter
 					domains={value.domainNames}
 					createdOn={value.createdOn}
-					below={<HostLabels description={value.npmproDescription} />}
+					below={
+						<HostLabels
+							description={value.npmproDescription}
+							tags={value.npmproTags}
+							onTagClick={info.table.options.meta?.actions?.onTagClick}
+						/>
+					}
 				/>
 			);
 		},

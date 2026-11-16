@@ -7,3 +7,7 @@ it("gives the description of a host to the list search, nothing for a host witho
 	assert.equal(labelSearchText({}).trim(), "");
 	assert.equal(labelSearchText(undefined).trim(), "");
 });
+
+it("joins the description and the tags", () => {
+	assert.equal(labelSearchText({ npmproDescription: "Cam", npmproTags: ["Lab", "café"] }), "Cam Lab café");
+});
