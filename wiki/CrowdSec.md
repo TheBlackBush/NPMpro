@@ -359,7 +359,7 @@ AppSec authenticates with the API key, not with the TLS client certificate. With
 
 ### Environment variables
 
-These variables win over Settings, CrowdSec and lock their field there: `CROWDSEC_ENABLED` (`true` or `false`), `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`. A value NPMpro cannot use (not `true`/`false`, not an http or https URL) is ignored and named in the startup log. A variable set to an empty value counts as unset: `CROWDSEC_APPSEC_URL=""` does not lock AppSec off, and the field stays editable. The other settings have no variable. See [Configuration](Configuration).
+These variables win over Settings, CrowdSec and lock their field there: `CROWDSEC_ENABLED` (`true` or `false`), `CROWDSEC_LAPI_URL`, `CROWDSEC_API_KEY`, `CROWDSEC_APPSEC_URL`. A value NPMpro cannot use (not `true`/`false`, not an http or https URL) is ignored and named in the startup log. A variable set to an empty value counts as unset: `CROWDSEC_APPSEC_URL=""` does not lock AppSec off, and the field stays editable. The other settings have no variable. `CROWDSEC_API_KEY_FILE` reads the API key from a file instead, see [Secrets from files](Configuration#secrets-from-files). See [Configuration](Configuration).
 
 ### If the bouncer file is broken
 

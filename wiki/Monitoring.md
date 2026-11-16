@@ -28,6 +28,7 @@ Administrators get a Monitoring page in the web UI with a Traffic tab (`/monitor
   - `TRAFFIC_UNIQUE_VISITORS` (`true` or `false`, default false)
   - `TRAFFIC_VISITORS_CAP` (visitor limit per host and day, 1000 to 1000000, default 100000; any other value stops the container from starting)
   - `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY` and `GEOIP_EDITIONS` (space separated, for example `GeoLite2-Country GeoLite2-ASN`; unknown edition names are ignored, and if none is valid the variable is ignored and the field stays editable)
+  - `GEOIP_ACCOUNT_ID_FILE` and `GEOIP_LICENSE_KEY_FILE` read the account id and the license key from files instead, see [Secrets from files](Configuration#secrets-from-files)
 
 ## GoAccess
 
