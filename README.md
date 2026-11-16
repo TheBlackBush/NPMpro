@@ -23,6 +23,8 @@ It is a hardened fork of nginx-proxy-manager (see [License and credits](#license
 
 Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `develop` and version tags like `1.0.0`). If you do not need a web UI, have a look at [caddy](https://caddyserver.com).
 
+On Unraid: [Installation on Unraid](https://github.com/TheBlackBush/NPMpro/wiki/Installation-on-Unraid).
+
 ## Features
 
 - **Hosts:** proxy hosts, redirection hosts, 404 hosts and TCP/UDP streams, with HTTP/3, gRPC, load balancing, serving files or PHP, zstd and brotli ([Features](https://github.com/TheBlackBush/NPMpro/wiki/Features), [Host options](https://github.com/TheBlackBush/NPMpro/wiki/Host-options), [Load balancing](https://github.com/TheBlackBush/NPMpro/wiki/Load-balancing), [PHP](https://github.com/TheBlackBush/NPMpro/wiki/PHP))

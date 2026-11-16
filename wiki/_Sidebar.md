@@ -2,6 +2,7 @@
 
 **Getting started**
 - [Installation](Installation)
+- [Installation on Unraid](Installation-on-Unraid)
 - [Configuration](Configuration)
 - [Usage](Usage)
 - [Features](Features)

@@ -1,5 +1,7 @@
 # Installation
 
+On Unraid, install it from the template instead: see [Installation on Unraid](Installation-on-Unraid).
+
 ## Requirements
 
 - **CPU architecture:** x86_64-v2 (amd64v2) or aarch64 (arm64). Plain x86-64 (v1) is not supported; check with `/lib/ld-linux-x86-64.so.2 --help` (it lists the supported levels). 32-bit systems are not supported.
