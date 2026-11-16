@@ -2,6 +2,8 @@
 # Fails when the npmpro service in compose.yaml misses a supported environment variable or lists one that envs.sh
 # refuses. Supported: NPMPRO_RUNTIME_ENVS and NPMPRO_STARTUP_ENVS in envs.sh, the OIDC_*, TRAFFIC_* and GEOIP_* names
 # the backend reads, and COOKIE_SECRET. Refused: the names envs.sh stops on with "not supported" or "replaced by".
+# Every NPMPRO_SECRET_ENVS name the service lists also needs its commented NAME_FILE=/run/secrets/ line, and a
+# NAME_FILE line must belong to one of them.
 # POSIX sh, sed, awk and grep -E -q only.
 set -u
 
@@ -16,6 +18,11 @@ runtime="$(list_of NPMPRO_RUNTIME_ENVS)"
 startup="$(list_of NPMPRO_STARTUP_ENVS)"
 if [ -z "$runtime" ] || [ -z "$startup" ]; then
     echo "Could not read NPMPRO_RUNTIME_ENVS or NPMPRO_STARTUP_ENVS from $ENVS"
+    exit 1
+fi
+secret="$(list_of NPMPRO_SECRET_ENVS)"
+if [ -z "$secret" ]; then
+    echo "Could not read NPMPRO_SECRET_ENVS from $ENVS"
     exit 1
 fi
 
@@ -80,8 +87,24 @@ for name in $refused; do
         failed=1
     fi
 done
+# a secret listed as NAME also has its NAME_FILE line (CROWDSEC_API_KEY is not in compose.yaml, so it needs none)
+for name in $secret; do
+    if printf '%s\n' "$service" | grep -E -q "\"$name=" && ! printf '%s\n' "$service" | grep -E -q "\"${name}_FILE=/run/secrets/"; then
+        echo "The npmpro service in $COMPOSE lists $name but not ${name}_FILE"
+        failed=1
+    fi
+done
+for name in $(printf '%s\n' "$service" | sed -n 's/.*"\([A-Z0-9_]*\)_FILE=.*/\1/p'); do
+    case " $secret " in
+        *" $name "*) ;;
+        *)
+            echo "The npmpro service in $COMPOSE lists ${name}_FILE, but $name cannot be read from a file (NPMPRO_SECRET_ENVS in $ENVS)"
+            failed=1
+            ;;
+    esac
+done
 
 if [ "$failed" -ne 0 ]; then
     exit 1
 fi
-echo "The npmpro service in compose.yaml lists every supported variable and no removed one"
+echo "The npmpro service in compose.yaml lists every supported variable, the NAME_FILE line of each secret and no removed one"
