@@ -106,9 +106,16 @@ export function MultipleCombobox({
 	};
 	// add the valid entries of a text; the others stay in the input to be corrected
 	const commit = (text) => {
+		// each entry is checked against the values plus the entries accepted before it, so a pasted list cannot
+		// pass a limit of the field (the tags' 10) that every entry alone would keep
+		let held = values;
 		const { accepted, rejected } = partitionEntries(
 			text,
-			(entry) => (isValidNew ? isValidNew(entry, values) : true),
+			(entry) => {
+				if (isValidNew && !isValidNew(entry, held)) return false;
+				held = appendEntries(held, [entry], { normalize });
+				return true;
+			},
 			separators,
 		);
 		const next = appendEntries(values, accepted, { normalize });

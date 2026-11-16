@@ -48,20 +48,6 @@ export function appendEntries(current, entries, { normalize = defaultNormalize }
 }
 
 /**
- * The list with the entries of a text appended (see appendEntries)
- *
- * @param   {string[]} current
- * @param   {string}   text
- * @param   {Object}   [options]
- * @param   {Function} [options.normalize]   (entry) => the form two entries are compared in
- * @param   {Object}   [options.separators]  WORD_ENTRIES (default) or LINE_ENTRIES
- * @returns {string[]}
- */
-export function addEntries(current, text, { normalize, separators } = {}) {
-	return appendEntries(current, splitEntries(text, separators), { normalize });
-}
-
-/**
  * The list without its last entry
  *
  * @param   {Array} current

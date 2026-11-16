@@ -32,7 +32,7 @@ export function HostListPage({ list }) {
 	const columns = list.useColumns();
 	const { isFetching, isPending, isError, error, data } = list.useList(list.expand);
 	const groups = useDirectorySuggestions(data);
-	// only the tags of this list (ruling Q2)
+	// only the tags of this list: a tag of another host type would filter this one to nothing
 	const tags = useMemo(() => tagNames(data ?? []), [data]);
 	const { filters, setFilter, clear } = useListFilters(groups, tags);
 	const displayedHosts = filterHosts(data ?? [], filters, {

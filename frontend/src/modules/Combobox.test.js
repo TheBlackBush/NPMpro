@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
-	addEntries,
 	appendEntries,
 	canCreate,
 	filterOptions,
@@ -18,7 +17,7 @@ it("splits pasted lists on commas, spaces and new lines", () => {
 });
 
 it("adds entries without duplicates, keeping order", () => {
-	assert.deepEqual(addEntries(["a.com"], "B.com, a.com b.com"), ["a.com", "B.com"]);
+	assert.deepEqual(appendEntries(["a.com"], splitEntries("B.com, a.com b.com")), ["a.com", "B.com"]);
 });
 
 it("removes the last entry", () => {
@@ -59,8 +58,8 @@ it("offers to create only a new, non-empty value", () => {
 });
 
 it("adds entries with a caller's normalize", () => {
-	assert.deepEqual(addEntries(["A"], "a b", { normalize: (v) => v }), ["A", "a", "b"]);
-	assert.deepEqual(addEntries(undefined, "x"), ["x"]);
+	assert.deepEqual(appendEntries(["A"], splitEntries("a b"), { normalize: (v) => v }), ["A", "a", "b"]);
+	assert.deepEqual(appendEntries(undefined, splitEntries("x")), ["x"]);
 });
 
 it("parts typed entries into the ones a field accepts and the ones it keeps as text", () => {
@@ -82,7 +81,7 @@ it("treats null, undefined and an empty string as no value", () => {
 
 it("keeps spaces inside an entry in line mode, splitting on commas and new lines only", () => {
 	assert.deepEqual(splitEntries("home lab, Prod\nedge  case", LINE_ENTRIES), ["home lab", "Prod", "edge  case"]);
-	assert.deepEqual(addEntries(["Prod"], "prod, home lab", { separators: LINE_ENTRIES }), ["Prod", "home lab"]);
+	assert.deepEqual(appendEntries(["Prod"], splitEntries("prod, home lab", LINE_ENTRIES)), ["Prod", "home lab"]);
 	assert.deepEqual(
 		partitionEntries("ok tag, a/b", (entry) => !entry.includes("/"), LINE_ENTRIES),
 		{
