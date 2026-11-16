@@ -12,6 +12,7 @@ Use **Clonar** no menu do host para copiar um host para uma nova janela de adiç
 - **Domínio de Destino**: o domínio para onde os visitantes são enviados, por exemplo `example.com`. Obrigatório.
 - **Código HTTP**: o código de resposta. Predefinição 301 Moved permanently. Outras opções: 302 Moved temporarily, 303 See other, 307 Temporary redirect e 308 Permanent redirect. Use 301 ou 308 quando a mudança é definitiva; os browsers e os motores de pesquisa memorizam-nos.
 - **Grupo**: uma etiqueta livre que mantém as listas longas arrumadas. Escolha uma em uso ou escreva um novo nome.
+- **Etiquetas**: até 10 etiquetas, por exemplo "Produção" ou "laboratório caseiro". Digite uma etiqueta e pressione Enter; as etiquetas já usadas em qualquer host são sugeridas. Clique em uma etiqueta da lista para mostrar só os hosts que a têm.
 - **Preservar Caminho** (desativado por predefinição): acrescenta ao destino o caminho e a query originais. Com esta opção, `old.example/a?b=1` vai para `new.example/a?b=1`. Sem ela, todos os visitantes chegam ao início do destino.
 
 ### TLS

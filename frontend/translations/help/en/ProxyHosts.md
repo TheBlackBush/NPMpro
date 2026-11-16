@@ -12,6 +12,7 @@ Use **Clone** in the host's menu to copy a host into a new Add window. The copy 
 - **Forward Hostname / IP / Path**: the address of the service. You can add a sub path, for example `127.0.0.1/path`. With `path`, enter a folder instead. Mount your files under `/var/www`; only administrators can use a folder outside it. A name starting with `cu_` points to your own nginx upstream block (see Load balancing in the wiki).
 - **Forward Port**: optional. With `path` it is the PHP version.
 - **Group**: a free label that keeps long lists tidy.
+- **Tags**: up to 10 labels, for example "Production" or "home lab". Type a tag and press Enter; the tags already used on any host are suggested. Click a tag in the list to show only hosts with that tag.
 - **Options** (all off by default):
   - **Send noindex header and block some bot user agents**: asks search engines not to index the site and blocks some crawlers.
   - **Disable Crowdsec Appsec**: turns CrowdSec AppSec off for this host only. It has an effect only if AppSec is set up.

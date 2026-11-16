@@ -12,6 +12,7 @@ Gebruik **Dupliceren** in het menu van de host om een host naar een nieuw venste
 - **Doorgestuurd Domein**: het domein waarheen bezoekers worden gestuurd, bijvoorbeeld `example.com`. Verplicht.
 - **HTTP-code**: de antwoordcode. Standaard 301 Moved permanently. Andere keuzes: 302 Moved temporarily, 303 See other, 307 Temporary redirect en 308 Permanent redirect. Gebruik 301 of 308 als de verhuizing definitief is; browsers en zoekmachines onthouden ze.
 - **Groep**: een vrij label dat lange lijsten overzichtelijk houdt. Kies een bestaande of typ een nieuwe naam.
+- **Tags**: tot 10 labels, bijvoorbeeld "Productie" of "thuislab". Typ een tag en druk op Enter; de tags die al op een host zijn gebruikt, worden voorgesteld. Klik op een tag in de lijst om alleen hosts met die tag te tonen.
 - **Pad behouden** (standaard uit): voegt het oorspronkelijke pad en de query toe aan het doel. Dan gaat `old.example/a?b=1` naar `new.example/a?b=1`. Zonder komt elke bezoeker aan het begin van het doel terecht.
 
 ### TLS

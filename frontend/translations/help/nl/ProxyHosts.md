@@ -12,6 +12,7 @@ Gebruik **Dupliceren** in het menu van de host om een host naar een nieuw venste
 - **Hostname / IP / Path Doorsturen**: het adres van de dienst. U kunt een subpad toevoegen, bijvoorbeeld `127.0.0.1/path`. Bij `path` voert u in plaats daarvan een map in. Koppel uw bestanden onder `/var/www`; alleen beheerders kunnen een map daarbuiten gebruiken. Een naam die met `cu_` begint, verwijst naar uw eigen nginx-upstreamblok (zie Load balancing in de wiki).
 - **Poort doorsturen**: optioneel. Bij `path` is het de PHP-versie.
 - **Groep**: een vrij label dat lange lijsten overzichtelijk houdt.
+- **Tags**: tot 10 labels, bijvoorbeeld "Productie" of "thuislab". Typ een tag en druk op Enter; de tags die al op een host zijn gebruikt, worden voorgesteld. Klik op een tag in de lijst om alleen hosts met die tag te tonen.
 - **Opties** (allemaal standaard uit):
   - **Noindex-header versturen en sommige bot user agents blokkeren**: vraagt zoekmachines de site niet te indexeren en blokkeert enkele crawlers.
   - **Crowdsec Appsec uitschakelen**: schakelt CrowdSec AppSec alleen voor deze host uit. Werkt alleen als AppSec is ingesteld.

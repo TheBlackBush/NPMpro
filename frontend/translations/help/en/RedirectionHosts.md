@@ -12,6 +12,7 @@ Use **Clone** in the host's menu to copy a host into a new Add window. The copy 
 - **Forward Domain**: the domain visitors are sent to, for example `example.com`. Required.
 - **HTTP Code**: the answer code. Default 301 Moved permanently. Other choices: 302 Moved temporarily, 303 See other, 307 Temporary redirect and 308 Permanent redirect. Use 301 or 308 when the move is for good; browsers and search engines remember them.
 - **Group**: a free label that keeps long lists tidy. Pick one in use or type a new name.
+- **Tags**: up to 10 labels, for example "Production" or "home lab". Type a tag and press Enter; the tags already used on any host are suggested. Click a tag in the list to show only hosts with that tag.
 - **Preserve Path** (off by default): adds the original path and query to the target. With it, `old.example/a?b=1` goes to `new.example/a?b=1`. Without it, every visitor lands on the start of the target.
 
 ### TLS

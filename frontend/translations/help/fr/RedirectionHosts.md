@@ -12,6 +12,7 @@ Utilisez **Dupliquer** dans le menu de l'hôte pour copier un hôte dans une nou
 - **Domaine de redirection** : le domaine vers lequel les visiteurs sont envoyés, par exemple `example.com`. Obligatoire.
 - **Code HTTP** : le code de réponse. Par défaut 301 Moved permanently. Autres choix : 302 Moved temporarily, 303 See other, 307 Temporary redirect et 308 Permanent redirect. Utilisez 301 ou 308 quand le déménagement est définitif ; les navigateurs et les moteurs de recherche s'en souviennent.
 - **Groupe** : une étiquette libre qui garde les longues listes en ordre. Choisissez-en une déjà utilisée ou saisissez un nouveau nom.
+- **Étiquettes** : jusqu'à 10 étiquettes, par exemple « Production » ou « labo maison ». Saisissez une étiquette et appuyez sur Entrée ; les étiquettes déjà utilisées sur un hôte sont proposées. Cliquez sur une étiquette de la liste pour n'afficher que les hôtes qui la portent.
 - **Préserver le chemin** (désactivé par défaut) : ajoute le chemin et la requête d'origine à la cible. Avec cette option, `old.example/a?b=1` va vers `new.example/a?b=1`. Sans elle, chaque visiteur arrive au début de la cible.
 
 ### TLS

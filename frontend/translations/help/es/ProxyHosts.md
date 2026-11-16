@@ -12,6 +12,7 @@ Usa **Clonar** en el menú del host para copiar un host en una nueva ventana de 
 - **Nombre de host / IP / ruta de reenvío**: la dirección del servicio. Puedes añadir una subruta, por ejemplo `127.0.0.1/path`. Con `path`, introduce en su lugar una carpeta. Monta tus archivos bajo `/var/www`; solo los administradores pueden usar una carpeta fuera de ella. Un nombre que empieza por `cu_` apunta a tu propio bloque upstream de nginx (consulta Load balancing en la wiki).
 - **Puerto**: opcional. Con `path` es la versión de PHP.
 - **Grupo**: una etiqueta libre que mantiene ordenadas las listas largas.
+- **Etiquetas**: hasta 10 etiquetas, por ejemplo "Producción" o "laboratorio casero". Se escribe una etiqueta y se confirma con Intro; se sugieren las etiquetas ya usadas en cualquier host. Un clic en una etiqueta de la lista muestra solo los hosts que la tienen.
 - **Opciones** (todas desactivadas por defecto):
   - **Enviar la cabecera noindex y bloquear algunos user agents de bots**: pide a los buscadores que no indexen el sitio y bloquea algunos rastreadores.
   - **Desactivar CrowdSec AppSec**: desactiva CrowdSec AppSec solo para este host. Solo tiene efecto si AppSec está configurado.

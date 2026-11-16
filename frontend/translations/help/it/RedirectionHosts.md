@@ -12,6 +12,7 @@ Usa **Duplica** nel menu dell'host per copiare un host in una nuova finestra di 
 - **Dominio di Destinazione**: il dominio a cui vengono inviati i visitatori, ad esempio `example.com`. Obbligatorio.
 - **Codice HTTP**: il codice di risposta. Predefinito 301 Moved permanently. Altre scelte: 302 Moved temporarily, 303 See other, 307 Temporary redirect e 308 Permanent redirect. Usa 301 o 308 quando lo spostamento è definitivo; browser e motori di ricerca li ricordano.
 - **Gruppo**: un'etichetta libera che tiene in ordine gli elenchi lunghi. Scegline una in uso o scrivi un nuovo nome.
+- **Tag**: fino a 10 tag, per esempio "Produzione" o "laboratorio casalingo". Si scrive un tag e si preme Invio; vengono suggeriti i tag già usati su qualsiasi host. Un clic su un tag nell'elenco mostra solo gli host che lo hanno.
 - **Preserva Percorso** (disattivato per impostazione predefinita): aggiunge alla destinazione il percorso e la query originali. Con questa opzione, `old.example/a?b=1` va a `new.example/a?b=1`. Senza, ogni visitatore arriva all'inizio della destinazione.
 
 ### TLS

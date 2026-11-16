@@ -8,6 +8,6 @@ indicizzatori di ricerca che le pagine del dominio non esistono più.
 Un altro vantaggio di avere questo host è quello di tracciare i log degli accessi e
 visualizzare i referrer.
 
-Una **Descrizione** facoltativa (una riga) dice a cosa serve l'host; appare sotto i nomi di dominio nell'elenco.
+Una **Descrizione** facoltativa (una riga) dice a cosa serve l'host; appare sotto i nomi di dominio nell'elenco. I **Tag** (fino a 10) etichettano l'host; un clic su uno di essi nell'elenco filtra per quel tag.
 
 **Pagina** (404) sceglie ciò che vedono i visitatori: **Impostazione globale** (la pagina 404 di Impostazioni, Pagine di destinazione), la **Pagina di errore 404** o una **Pagina personalizzata** solo per questo host (incolla o carica un file HTML).

@@ -12,6 +12,7 @@ Utilisez **Dupliquer** dans le menu de l'hôte pour copier un hôte dans une nou
 - **Nom d'hôte / IP / chemin de destination** : l'adresse du service. Vous pouvez ajouter un sous-chemin, par exemple `127.0.0.1/path`. Avec `path`, saisissez plutôt un dossier. Montez vos fichiers sous `/var/www` ; seuls les administrateurs peuvent utiliser un dossier en dehors. Un nom commençant par `cu_` désigne votre propre bloc upstream nginx (voir Load balancing dans le wiki).
 - **Port de destination** : facultatif. Avec `path`, c'est la version de PHP.
 - **Groupe** : une étiquette libre qui garde les longues listes en ordre.
+- **Étiquettes** : jusqu'à 10 étiquettes, par exemple « Production » ou « labo maison ». Saisissez une étiquette et appuyez sur Entrée ; les étiquettes déjà utilisées sur un hôte sont proposées. Cliquez sur une étiquette de la liste pour n'afficher que les hôtes qui la portent.
 - **Options** (toutes désactivées par défaut) :
   - **Envoyer l'en-tête noindex et bloquer certains user agents de robots** : demande aux moteurs de recherche de ne pas indexer le site et bloque certains robots d'indexation.
   - **Désactiver CrowdSec AppSec** : désactive CrowdSec AppSec pour cet hôte seulement. N'a d'effet que si AppSec est configuré.

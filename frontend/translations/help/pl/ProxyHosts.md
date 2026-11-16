@@ -12,6 +12,7 @@ Użyj **Klonuj** w menu hosta, aby skopiować host do nowego okna dodawania. Kop
 - **Docelowa nazwa hosta / IP / ścieżka**: adres usługi. Możesz dodać podścieżkę, na przykład `127.0.0.1/path`. Przy `path` wpisz zamiast tego folder. Zamontuj pliki w `/var/www`; tylko administratorzy mogą użyć folderu poza nim. Nazwa zaczynająca się od `cu_` wskazuje Twój własny blok upstream nginx (zobacz Load balancing w wiki).
 - **Port docelowy**: opcjonalny. Przy `path` jest to wersja PHP.
 - **Grupa**: dowolna etykieta, która utrzymuje porządek na długich listach.
+- **Tagi**: do 10 etykiet, na przykład „Produkcja” lub „domowe laboratorium”. Wpisz tag i naciśnij Enter; podpowiadane są tagi już użyte przy dowolnym hoście. Kliknij tag na liście, aby pokazać tylko hosty z tym tagiem.
 - **Opcje** (wszystkie domyślnie wyłączone):
   - **Wysyłaj nagłówek noindex i blokuj niektóre boty (user agent)**: prosi wyszukiwarki o nieindeksowanie witryny i blokuje niektóre roboty.
   - **Wyłącz CrowdSec AppSec**: wyłącza CrowdSec AppSec tylko dla tego hosta. Działa tylko wtedy, gdy AppSec jest skonfigurowany.
