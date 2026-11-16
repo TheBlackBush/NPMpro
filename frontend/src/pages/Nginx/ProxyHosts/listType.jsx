@@ -4,6 +4,7 @@ import { T } from "src/locale";
 import { showProxyHostModal } from "src/modals";
 import { servesCurrentPage } from "src/modules/CurrentPage";
 import { forwardSummary } from "src/modules/Forward";
+import { labelSearchText } from "src/modules/HostSearch";
 import { HOST_TYPES } from "src/modules/HostTypes";
 import Table, { useColumns } from "./Table";
 
@@ -20,7 +21,8 @@ export const proxyHostList = {
 	toggle: toggleProxyHost,
 	remove: deleteProxyHost,
 	showModal: showProxyHostModal,
-	searchText: (item) => `${item.domainNames.join(" ")} ${forwardSummary(item)} ${getDirectory(item) ?? ""}`,
+	searchText: (item) =>
+		`${item.domainNames.join(" ")} ${forwardSummary(item)} ${getDirectory(item) ?? ""} ${labelSearchText(item)}`,
 	deleteSubject: (host) => host?.domainNames.join(", "),
 	deleteDetails: (host) => host && forwardSummary(host),
 	deleteWarning: (host) => (servesThisPage(host) ? <T id="proxy-host.serves-this-page" /> : null),

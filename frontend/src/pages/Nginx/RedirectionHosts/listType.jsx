@@ -1,6 +1,7 @@
 import { deleteRedirectionHost, toggleRedirectionHost } from "src/api/backend";
 import { getDirectory, useRedirectionHosts } from "src/hooks";
 import { showRedirectionHostModal } from "src/modals";
+import { labelSearchText } from "src/modules/HostSearch";
 import { HOST_TYPES } from "src/modules/HostTypes";
 import Table, { useColumns } from "./Table";
 
@@ -14,7 +15,8 @@ export const redirectionHostList = {
 	toggle: toggleRedirectionHost,
 	remove: deleteRedirectionHost,
 	showModal: showRedirectionHostModal,
-	searchText: (item) => `${item.domainNames.join(" ")} ${item.forwardDomainName} ${getDirectory(item) ?? ""}`,
+	searchText: (item) =>
+		`${item.domainNames.join(" ")} ${item.forwardDomainName} ${getDirectory(item) ?? ""} ${labelSearchText(item)}`,
 	deleteSubject: (host) => host?.domainNames.join(", "),
 	deleteDetails: (host) =>
 		host &&

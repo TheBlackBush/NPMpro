@@ -26,7 +26,7 @@ const DomainLink = ({ domain, color }) => {
 	);
 };
 
-export function DomainsFormatter({ domains, createdOn, niceName, provider, color }) {
+export function DomainsFormatter({ domains, createdOn, niceName, provider, color, below }) {
 	const elms = [];
 
 	if (domains.length === 0 && !niceName) {
@@ -50,6 +50,7 @@ export function DomainsFormatter({ domains, createdOn, niceName, provider, color
 	return (
 		<div className="flex-1">
 			<div className="flex flex-wrap items-center gap-y-1 font-medium">{...elms}</div>
+			{below ?? null}
 			<div className="mt-1 text-muted-foreground">
 				<T id="created-on" data={{ date: formatDateTime(createdOn) }} />
 			</div>
