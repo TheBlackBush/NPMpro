@@ -9,6 +9,7 @@ Every setting can also be set with an environment variable in your `compose.yaml
 - **The Environment page** (Settings, Environment) lists the startup variables (ports, bindings, PUID/PGID, `NGINX_QUIC_BPF` and PHP, database, first start, ACME account) with their value or default, among them `TZ`, `GOA` and `GOACLA`, which are also settings, and every setting that a variable locks. Values of passwords, email addresses and keys are never shown, only whether they are set.
 - **"Restart required" settings** (Time zone, GoAccess report and the GoAccess options) are read when the container starts. Saving them stores the value; the section then shows "Restart the container to apply" with the fields until you restart the container (`docker restart npmpro`).
 - Variables that are only read at startup and have no field (ports, bindings, `PUID`/`PGID`, `DISABLE_HTTP`, `NGINX_QUIC_BPF`, PHP, database, `ACME_SERVER`, `ACME_EMAIL` and the EAB keys, `INITIAL_*`) stay in `compose.yaml`; the [compose.yaml](https://github.com/TheBlackBush/NPMpro/blob/develop/compose.yaml) lists every supported variable with its default.
+- **Secret variables can come from files** (Docker and Compose secrets), so they stay out of `compose.yaml` and `docker inspect`: see [Secrets from files](#secrets-from-files).
 
 When a saved setting applies:
 
@@ -90,6 +91,43 @@ Put the result into `compose.yaml` and recreate the container (`docker compose u
 ```
 
 If you moved from NPMplus, users only stay signed in through the upgrade when you already used a static `COOKIE_SECRET` there and keep it, see [Upgrading from NPMplus](Upgrading-from-NPMplus).
+
+## Secrets from files
+
+A Docker or Compose secret keeps a password out of `compose.yaml` and `docker inspect`: the secret is a file on the host that Compose mounts read-only at `/run/secrets/<name>`. For these variables NPMpro reads the value from a file when you set `<NAME>_FILE` to its path instead of `<NAME>`:
+
+`DB_MYSQL_USER`, `DB_MYSQL_PASSWORD`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `ACME_EMAIL`, `ACME_EAB_KID`, `ACME_EAB_HMAC_KEY`, `COOKIE_SECRET`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `GEOIP_ACCOUNT_ID`, `GEOIP_LICENSE_KEY`, `CROWDSEC_API_KEY`.
+
+Other variables have no `_FILE` form. Example for `COOKIE_SECRET`: create the file once on the host, as root, readable only by root,
+
+```sh
+mkdir -p /opt/npmpro-secrets
+(umask 077 && openssl rand -hex 32 > /opt/npmpro-secrets/cookie_secret)
+```
+
+and use it in `compose.yaml` (remove `COOKIE_SECRET` there), then recreate the container (`docker compose up -d`):
+
+```yaml
+services:
+  npmpro:
+    environment:
+      - "COOKIE_SECRET_FILE=/run/secrets/cookie_secret"
+    secrets:
+      - cookie_secret
+secrets:
+  cookie_secret:
+    file: /opt/npmpro-secrets/cookie_secret
+```
+
+How NPMpro reads the file:
+
+- **Once at every start, as root**, before it switches to `PUID`/`PGID`. The container drops the capabilities it does not need (`cap_drop: ALL`), so root reads only files it owns or that its group or everyone may read: a host file owned by root with mode 600 or 400 works, and the `PUID` user needs no access. A file owned by another user with mode 600 cannot be read, unless the container has `DAC_OVERRIDE` (the `PUID` setup in `compose.yaml` adds it, and then root reads any file). The `PUID` processes keep no capabilities, so they cannot read a root-owned 600 or 400 file either way. Compose mounts the host file as it is, with its owner and mode.
+- **The value is the whole file without its trailing newlines.** Nothing else is removed: spaces at the start or the end are part of the value.
+- **Outside the data folder.** A `<NAME>_FILE` path inside the container's `/data` (`/opt/npmpro` on the host in the example `compose.yaml`), or a link that leads into it, is refused: the `PUID` user can change files there. Keep the host file outside that folder too (NPMpro gives everything in it to `PUID` at start), and point `<NAME>_FILE` at a file Docker mounts, such as a Compose secret under `/run/secrets` or a read-only bind mount: other container paths, `/run` included, can be changed by the `PUID` user between restarts.
+- **These stop the start** with a message in `docker logs npmpro` that names the variable and the path, never the content: `<NAME>` and `<NAME>_FILE` both set (an empty `<NAME>=` does not count; check `compose.yaml` and `/opt/npmpro/.env`), a path that does not start with `/`, a path in the data folder, a missing file, a folder or other non-regular file, a file root cannot read, a file larger than 4096 bytes, an empty file, and a value with a line break or a carriage return inside (one line only; save the file with Unix line ends). Fix it, then restart the container (a fixed file) or recreate it (`docker compose up -d`, a fixed `compose.yaml`; a fixed `/opt/npmpro/.env` also needs a recreate).
+- **The value then counts as the variable.** It goes through the same checks (for example the email format of `INITIAL_ADMIN_EMAIL`), the Environment page shows it as set, a setting it locks reads "Set by OIDC_CLIENT_SECRET" (the name without `_FILE`), and the API never returns it.
+- **A changed file applies at the next restart** (`docker restart npmpro`); recreating the container is not needed, unlike a changed variable.
+- `docker inspect` shows only the path. A `docker exec` session sees `<NAME>_FILE`, not the value, and so do the prerun scripts, which run before the files are read. `ACME_EAB_HMAC_KEY` is still passed on certbot's command line when the ACME account is created, as with the plain variable.
 
 ## Prerun scripts (expert option)
 

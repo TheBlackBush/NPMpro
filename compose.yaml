@@ -84,7 +84,9 @@ services:
 #      - "DB_MYSQL_HOST=127.0.0.1" # MariaDB/MySQL host, used when DB_MYSQL_HOST, DB_MYSQL_USER and DB_MYSQL_NAME are set
 #      - "DB_MYSQL_PORT=3306" # default 3306
 #      - "DB_MYSQL_USER=npmpro"
+#      - "DB_MYSQL_USER_FILE=/run/secrets/db_mysql_user" # DB_MYSQL_USER from a file instead (a Docker secret, see secrets: below)
 #      - "DB_MYSQL_PASSWORD=<password>"
+#      - "DB_MYSQL_PASSWORD_FILE=/run/secrets/db_mysql_password" # DB_MYSQL_PASSWORD from a file instead (a Docker secret, see secrets: below)
 #      - "DB_MYSQL_NAME=npmpro"
 #      - "DB_MYSQL_SSL=true" # TLS to the database, default false
 #      - "DB_MYSQL_SSL_REJECT_UNAUTHORIZED=false" # with DB_MYSQL_SSL: reject an untrusted server certificate, default true
@@ -92,12 +94,17 @@ services:
 #      - "DB_POSTGRES_HOST=127.0.0.1" # PostgreSQL host, used when DB_POSTGRES_HOST, DB_POSTGRES_USER and DB_POSTGRES_NAME are set (and no MySQL host is)
 #      - "DB_POSTGRES_PORT=5432" # default 5432
 #      - "DB_POSTGRES_USER=npmpro"
+#      - "DB_POSTGRES_USER_FILE=/run/secrets/db_postgres_user" # DB_POSTGRES_USER from a file instead (a Docker secret, see secrets: below)
 #      - "DB_POSTGRES_PASSWORD=<password>"
+#      - "DB_POSTGRES_PASSWORD_FILE=/run/secrets/db_postgres_password" # DB_POSTGRES_PASSWORD from a file instead (a Docker secret, see secrets: below)
 #      - "DB_POSTGRES_NAME=npmpro"
 #      - "INITIAL_ADMIN_EMAIL=<initial@email.tld>" # email of the first admin, only with INITIAL_ADMIN_PASSWORD and only on the first start; without both the setup page in the web UI creates the first user
+#      - "INITIAL_ADMIN_EMAIL_FILE=/run/secrets/initial_admin_email" # INITIAL_ADMIN_EMAIL from a file instead (a Docker secret, see secrets: below)
 #      - "INITIAL_ADMIN_PASSWORD=<initial-password>" # password of the first admin (8 to 255 characters), only with INITIAL_ADMIN_EMAIL and only on the first start
+#      - "INITIAL_ADMIN_PASSWORD_FILE=/run/secrets/initial_admin_password" # INITIAL_ADMIN_PASSWORD from a file instead (a Docker secret, see secrets: below)
 #      - "INITIAL_DEFAULT_PAGE=444" # default site on the first start: 404, 444, redirect, congratulations or html, default congratulations
 #      - "COOKIE_SECRET=some-random-string" # secret that signs the session cookie (generate one: openssl rand -hex 32, see https://github.com/TheBlackBush/NPMpro/wiki/Configuration#cookie_secret); without it a new random secret is used at every start, so every restart, recreate and upgrade signs all users out; set a static random string to keep them signed in
+#      - "COOKIE_SECRET_FILE=/run/secrets/cookie_secret" # COOKIE_SECRET from a file instead (a Docker secret, see secrets: below)
 #      - "ENABLE_PRERUN=true" # runs the scripts in /opt/npmpro/prerun/*.sh before NPMpro starts (see the wiki: https://github.com/TheBlackBush/NPMpro/wiki/Configuration#prerun-scripts-expert-option), default false
 #      - "NC_AIO=true" # Nextcloud All-in-One mode: creates a proxy host for NC_DOMAIN to 127.0.0.1:11000 with a new certificate, and DISABLE_HTTP defaults to true, default false
 #      - "NC_DOMAIN=cloud.example.com" # the Nextcloud domain, required with NC_AIO=true
@@ -106,8 +113,11 @@ services:
       # ACME account (certificate authority)
 #      - "ACME_SERVER=https://acme.zerossl.com/v2/DV90" # ACME directory URL, default https://acme-v02.api.letsencrypt.org/directory (Let's Encrypt); Google Public CA: https://dv.acme-v02.api.pki.goog/directory, ZeroSSL: https://acme.zerossl.com/v2/DV90
 #      - "ACME_EMAIL=your-email" # email address for the ACME account, required for ZeroSSL and Google Public CA
+#      - "ACME_EMAIL_FILE=/run/secrets/acme_email" # ACME_EMAIL from a file instead (a Docker secret, see secrets: below)
 #      - "ACME_EAB_KID=123456789abcdef" # External Account Binding key id, not supported by Let's Encrypt, optional for ZeroSSL (on their site: Developer), required for Google Public CA (https://cloud.google.com/certificate-manager/docs/public-ca-tutorial#request-key-hmac); needs ACME_EAB_HMAC_KEY and ACME_EMAIL
+#      - "ACME_EAB_KID_FILE=/run/secrets/acme_eab_kid" # ACME_EAB_KID from a file instead (a Docker secret, see secrets: below)
 #      - "ACME_EAB_HMAC_KEY=123456789abcdef" # External Account Binding HMAC key, see ACME_EAB_KID
+#      - "ACME_EAB_HMAC_KEY_FILE=/run/secrets/acme_eab_hmac_key" # ACME_EAB_HMAC_KEY from a file instead (a Docker secret, see secrets: below)
 
       # Settings you can also change in the web UI
       # The web UI (Settings) is the normal place for these. A variable set here wins over the saved value and locks its
@@ -155,13 +165,17 @@ services:
 
       # GeoIP (NPMpro downloads the GeoLite2 databases itself, no geoipupdate container needed)
 #      - "GEOIP_ACCOUNT_ID=<your-account-id>" # MaxMind account id
+#      - "GEOIP_ACCOUNT_ID_FILE=/run/secrets/geoip_account_id" # GEOIP_ACCOUNT_ID from a file instead (a Docker secret, see secrets: below)
 #      - "GEOIP_LICENSE_KEY=<your-license-key>" # MaxMind license key
+#      - "GEOIP_LICENSE_KEY_FILE=/run/secrets/geoip_license_key" # GEOIP_LICENSE_KEY from a file instead (a Docker secret, see secrets: below)
 #      - "GEOIP_EDITIONS=GeoLite2-Country GeoLite2-ASN" # space separated: GeoLite2-Country, GeoLite2-ASN, GeoLite2-City, default GeoLite2-Country GeoLite2-ASN
 
       # Authentication (OIDC sign-in for the web UI); with the four connection variables set, OIDC is active without enabling it in the UI
 #      - "OIDC_ISSUER_URL=https://..." # issuer URL, must start with https://
 #      - "OIDC_CLIENT_ID=..." # client id
+#      - "OIDC_CLIENT_ID_FILE=/run/secrets/oidc_client_id" # OIDC_CLIENT_ID from a file instead (a Docker secret, see secrets: below)
 #      - "OIDC_CLIENT_SECRET=..." # client secret
+#      - "OIDC_CLIENT_SECRET_FILE=/run/secrets/oidc_client_secret" # OIDC_CLIENT_SECRET from a file instead (a Docker secret, see secrets: below)
 #      - "OIDC_REDIRECT_DOMAIN=<domain-ip>[:<port>]" # domain or ip (with port if not 443) you open NPMpro with, no scheme and no path; the callback URL is https://<this>/api/oidc/callback
 #      - "OIDC_REQUIRE_VERIFIED_EMAIL=false" # refuse users whose provider has not verified their email, default true
 #      - "OIDC_DISABLE_PASSWORD=true" # turns off email/password sign-in, set it to false to restore password sign-in, default false
@@ -170,6 +184,10 @@ services:
       # Advanced (Time zone: TZ at the top)
 #      - "DISABLE_NGINX_BEAUTIFIER=true" # do not format the configs NPMpro writes, useful when nginxbeautifier fails on non-standard custom/advanced configs, default false
 #      - "DISABLE_GRAVATAR=true" # no Gravatar profile pictures, applies to a user at their next profile save, default false
+
+#    secrets: # the Docker secrets of the *_FILE variables above, each mounted read-only at /run/secrets/<name>; set either NAME or NAME_FILE, not both; NPMpro reads each file once at every start, as root: keep it owned by root (mode 600 or 400) and outside /opt/npmpro, see https://github.com/TheBlackBush/NPMpro/wiki/Configuration#secrets-from-files
+#      - cookie_secret
+#      - db_postgres_password
 
 # This can be used to enable crowdsec, see the wiki for a guide: https://github.com/TheBlackBush/NPMpro/wiki/CrowdSec
 #  crowdsec:
@@ -233,3 +251,10 @@ services:
 #      - "80:80"
 #    environment:
 #      - "TZ=your-timezone"
+
+# The secrets the npmpro service uses (its secrets: list above): file: is the path on the host, outside /opt/npmpro
+#secrets:
+#  cookie_secret:
+#    file: /opt/npmpro-secrets/cookie_secret
+#  db_postgres_password:
+#    file: /opt/npmpro-secrets/db_postgres_password

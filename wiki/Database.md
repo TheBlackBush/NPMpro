@@ -69,6 +69,8 @@ When `DB_MYSQL_*` or `DB_POSTGRES_*` variables are set in `compose.yaml`, they a
 2. Change the variables to the new database (or remove them to use SQLite) and recreate the container.
 3. Sign in on the new database (an empty database starts with the setup page) and restore the backup under Settings, Backup and restore.
 
+The user names and passwords can come from files instead: `DB_MYSQL_USER_FILE`, `DB_MYSQL_PASSWORD_FILE`, `DB_POSTGRES_USER_FILE`, `DB_POSTGRES_PASSWORD_FILE`, see [Secrets from files](Configuration#secrets-from-files). The section shows them as coming from the environment, like the plain variables.
+
 ## MySQL and MariaDB time zone
 
 MySQL and MariaDB connections use the container's time zone (`TZ`) for their session, so the times the database writes match the times NPMpro writes. This applies to every MySQL or MariaDB connection, also one set with `DB_MYSQL_*`. Rows written by an older version while the database server used another zone than `TZ` keep their shifted times.
