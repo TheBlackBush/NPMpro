@@ -27,7 +27,7 @@ const CAPTCHA_FORM =
 const read = (rel) => readFileSync(path.join(HERE, rel), "utf8");
 const escapeHtml = (text) => text.replace(SPECIAL, (char) => ESCAPES[char]);
 const logo = (name) =>
-	`data:image/svg+xml;base64,${readFileSync(path.join(REPO, ".github/images/brand", name)).toString("base64")}`;
+	`data:image/svg+xml;base64,${readFileSync(path.join(REPO, "images/brand", name)).toString("base64")}`;
 
 /** @returns {Record<string, Record<string, string>>} the texts by language code */
 export const loadTexts = () =>

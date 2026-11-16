@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/images/brand/npmpro-stacked-dark.svg">
-    <img src=".github/images/brand/npmpro-stacked-light.svg" alt="NPMpro" width="300">
+    <source media="(prefers-color-scheme: dark)" srcset="images/brand/npmpro-stacked-dark.svg">
+    <img src="images/brand/npmpro-stacked-light.svg" alt="NPMpro" width="300">
   </picture>
 </p>
 
@@ -19,7 +19,7 @@
 NPMpro is a reverse proxy with a web UI: you add your domains, point them at your services and get HTTPS certificates, without writing nginx configs.
 It is a hardened fork of nginx-proxy-manager (see [License and credits](#license-and-credits)) and ships as one Docker image with a custom-compiled nginx (HTTP/3, brotli/zstd, lua, njs, ECH), a Node.js backend and a React web UI.
 
-![NPMpro dashboard](.github/images/dashboard.png)
+![NPMpro dashboard](images/dashboard.png)
 
 Images: `ghcr.io/theblackbush/npmpro` and `blackbush/npmpro` (tags: `latest`, `develop` and version tags like `1.0.0`). If you do not need a web UI, have a look at [caddy](https://caddyserver.com).
 
