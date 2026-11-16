@@ -48,6 +48,7 @@ refuse "unknown variable" unraid-npmpro.xml 's|Target="PGID"|Target="PGUID"|' "P
 refuse "_FILE of a name that is not a secret" unraid-npmpro.xml 's|Target="COOKIE_SECRET_FILE"|Target="TZ_FILE"|' "TZ cannot be read from a file"
 refuse "a TZ field" unraid-npmpro.xml 's|Target="PGID"|Target="TZ"|' "sets TZ: Unraid passes"
 refuse "_FILE with a default" unraid-npmpro.xml '/Target="COOKIE_SECRET_FILE"/s|Default=""|Default="/run/secrets/cookie"|' "COOKIE_SECRET_FILE has a default"
+refuse "secret with a default" unraid-npmpro.xml '/Target="INITIAL_ADMIN_PASSWORD"/s|Default=""|Default="changeme1234"|' "INITIAL_ADMIN_PASSWORD has a default"
 refuse "a port variable" unraid-npmpro.xml 's|Target="PUID"|Target="HTTP_PORT"|' "sets HTTP_PORT"
 refuse "secret not masked" unraid-npmpro.xml '/Target="INITIAL_ADMIN_PASSWORD"/s|Mask="true"|Mask="false"|' "INITIAL_ADMIN_PASSWORD is not masked"
 refuse "value differs from Default" unraid-npmpro.xml 's|Mask="false">99<|Mask="false">98<|' "PUID has a value other than its Default"

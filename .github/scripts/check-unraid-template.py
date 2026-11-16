@@ -139,6 +139,8 @@ def check_variable(name, config, readable, secret):
         fail(f"{TEMPLATE} names {name}, which NPMpro does not read (the lists in {ENVS})")
     if name.endswith("_FILE") and config.get("Default"):
         fail(f"{TEMPLATE}: {name} has a default; a _FILE variable is empty unless the user sets it")
+    if SECRET_NAME.search(name) and not name.endswith("_FILE") and config.get("Default"):
+        fail(f"{TEMPLATE}: {name} has a default; a secret is empty unless the user sets it")
     if SECRET_NAME.search(name) and config.get("Mask") != "true":
         fail(f"{TEMPLATE}: {name} is not masked")
 

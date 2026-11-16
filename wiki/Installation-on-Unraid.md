@@ -14,6 +14,8 @@ wget -O /boot/config/plugins/dockerMan/templates-user/my-NPMpro.xml https://raw.
 
 Then Docker, Add Container, Template: choose NPMpro under User templates. Check the fields (below) and Apply.
 
+Until the first release the container's icon stays empty: the template points the icon (and its own address) at the `main` branch, which gets these files with that release. Everything else works.
+
 ## The fields
 
 | Field | Default | What it is |
@@ -50,6 +52,8 @@ On a custom network the Unraid server cannot reach the container, and the contai
 ## Capabilities
 
 The template's Extra Parameters (advanced view) drop all capabilities and add back `NET_BIND_SERVICE`, `SETGID`, `SETUID` and `CHOWN`, like `compose.yaml`, plus `FOWNER` and `DAC_OVERRIDE`, which NPMpro needs because the template sets `PUID` and `PGID`. `no-new-privileges` is on. Add more only for a feature that needs it, see [Installation](Installation#capabilities). Do not turn on Privileged.
+
+With `PUID` 99 and `PGID` 100 (Unraid's usual `nobody:users`) the appdata files belong to the same user as every other app's, so shares and backup tools read them as usual. NPMpro then runs as that user, nginx's workers included, so a worker shares its user with the data folder. Leave `PUID` and `PGID` empty for a stricter split: NPMpro then starts as root inside the container and runs nginx's workers as a separate user, but the appdata files belong to root on the server.
 
 ## Secrets from files
 
