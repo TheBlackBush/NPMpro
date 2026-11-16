@@ -2,12 +2,12 @@
 
 Un Host 404 è semplicemente una configurazione host che mostra una pagina 404.
 
-Una **Descrizione** facoltativa (una riga) dice a cosa serve l'host; appare sotto i nomi di dominio nell'elenco.
-
 Questo può essere utile quando il tuo dominio è elencato nei motori di ricerca e desideri fornire una pagina di errore più gradevole o specificare agli 
 indicizzatori di ricerca che le pagine del dominio non esistono più.
 
 Un altro vantaggio di avere questo host è quello di tracciare i log degli accessi e
 visualizzare i referrer.
+
+Una **Descrizione** facoltativa (una riga) dice a cosa serve l'host; appare sotto i nomi di dominio nell'elenco.
 
 **Pagina** (404) sceglie ciò che vedono i visitatori: **Impostazione globale** (la pagina 404 di Impostazioni, Pagine di destinazione), la **Pagina di errore 404** o una **Pagina personalizzata** solo per questo host (incolla o carica un file HTML).

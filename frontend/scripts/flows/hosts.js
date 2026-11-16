@@ -19,6 +19,8 @@ import {
 } from "./lib.js";
 
 // The fields only another host type has: a window must never send them, and a stored host never holds them
+// the longest description a host takes: the list must cut it to its cell, not widen the table
+const LONG_NOTE = `flow proxy note ${"x".repeat(239)}`;
 const PROXY_ONLY = ["forward_host", "forward_port", "locations"];
 const REDIRECTION_ONLY = ["forward_domain_name", "preserve_path", "forward_http_code"];
 const STREAM_ONLY = [
@@ -97,7 +99,7 @@ export const TYPES = [
 		matches: (row) => row.domain_names.includes("flow-proxy.example.com"),
 		fill: async (dialog) => {
 			await addDomain(dialog, "flow-proxy.example.com");
-			await dialog.locator("input[name=npmproDescription]").fill("flow proxy note");
+			await dialog.locator("input[name=npmproDescription]").fill(LONG_NOTE);
 			await dialog.locator("input[name=forwardHost]").fill("127.0.0.1");
 			await dialog.locator("input[name=forwardPort]").fill("8080");
 		},
@@ -105,7 +107,7 @@ export const TYPES = [
 		edited: ":8081",
 		created: {
 			domain_names: ["flow-proxy.example.com"],
-			npmpro_description: "flow proxy note",
+			npmpro_description: LONG_NOTE,
 			forward_host: "127.0.0.1",
 			forward_port: 8080,
 		},
@@ -225,6 +227,13 @@ async function hostSteps(type, env) {
 	const created = await saveWindowSent(page, type.object, sentTo(type));
 	await rowShows(page, type.label, "Online");
 	if (type.created.npmpro_description) await rowShows(page, type.label, type.created.npmpro_description);
+	if (type.created.npmpro_description === LONG_NOTE) {
+		const wide = await page
+			.locator("table")
+			.first()
+			.evaluate((table) => table.scrollWidth > table.parentElement.clientWidth + 1);
+		if (wide) throw new Error("a description of 255 characters widens the host table");
+	}
 	const { id } = await checkSaved(type, api, created, type.created, "create");
 
 	// the edit also sets an advanced config, which the viewer must see read-only

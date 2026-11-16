@@ -2,13 +2,13 @@
 
 A 404 Host is simply a host setup that shows a 404 page.
 
-An optional **Description** (one line) says what the host is for; it shows under the domain names in the list.
-
 This can be useful when your domain is listed in search engines and you want
 to provide a nicer error page or specifically to tell the search indexers that
 the domain pages no longer exist.
 
 Another benefit of having this host is to track the logs for hits to it and
 view the referrers.
+
+An optional **Description** (one line) says what the host is for; it shows under the domain names in the list.
 
 **Page** (404) chooses what visitors see: **Global setting** (the 404 page of Settings, Landing pages), the **Not found page**, or a **Custom page** for this host only (paste or upload one HTML file).

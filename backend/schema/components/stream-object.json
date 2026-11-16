@@ -107,7 +107,9 @@
 		"npmpro_mtls_verify_client_optional": {
 			"$ref": "../common.json#/properties/npmpro_mtls_verify_client_optional"
 		},
-		"npmpro_description": { "$ref": "../common.json#/properties/npmpro_description" },
+		"npmpro_description": {
+			"$ref": "../common.json#/properties/npmpro_description"
+		},
 		"certificate": {
 			"oneOf": [
 				{
