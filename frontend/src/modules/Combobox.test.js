@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	addEntries,
+	appendEntries,
 	canCreate,
 	filterOptions,
 	isEmptyValue,
+	LINE_ENTRIES,
 	partitionEntries,
 	removeLast,
 	splitEntries,
@@ -76,4 +78,19 @@ it("treats null, undefined and an empty string as no value", () => {
 	assert.equal(isEmptyValue(""), true);
 	assert.equal(isEmptyValue(0), false);
 	assert.equal(isEmptyValue("x"), false);
+});
+
+it("keeps spaces inside an entry in line mode, splitting on commas and new lines only", () => {
+	assert.deepEqual(splitEntries("home lab, Prod\nedge  case", LINE_ENTRIES), ["home lab", "Prod", "edge  case"]);
+	assert.deepEqual(addEntries(["Prod"], "prod, home lab", { separators: LINE_ENTRIES }), ["Prod", "home lab"]);
+	assert.deepEqual(
+		partitionEntries("ok tag, a/b", (entry) => !entry.includes("/"), LINE_ENTRIES),
+		{
+			accepted: ["ok tag"],
+			rejected: ["a/b"],
+		},
+	);
+	assert.deepEqual(appendEntries(["a"], ["b", "A", "c"]), ["a", "b", "c"]);
+	// the default stays the word mode of the domain names
+	assert.deepEqual(splitEntries("a.example.com b.example.com"), ["a.example.com", "b.example.com"]);
 });

@@ -8,8 +8,8 @@ import { Button } from "src/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "src/components/ui/popover";
 import { cn } from "src/lib/utils";
 import { intl } from "src/locale";
-import { addEntries, partitionEntries, removeLast } from "src/modules/Combobox";
-import { ComboboxItems, keepScroll, LIST_TEXT, labelOf, listFor, popoverClass, useElementId } from "./ComboboxParts";
+import { appendEntries, partitionEntries, removeLast, WORD_ENTRIES } from "src/modules/Combobox";
+import { ComboboxItems, keepScroll, labelOf, listFor, popoverClass, useElementId } from "./ComboboxParts";
 
 /**
  * The text input of a multiple combobox, inside cmdk's root so its keys move through the list. cmdk renders no
@@ -65,6 +65,7 @@ export function MultipleCombobox({
 	createText,
 	isValidNew,
 	normalize,
+	separators = WORD_ENTRIES,
 	commitRef,
 	onQueryChange,
 	onBlur,
@@ -105,12 +106,14 @@ export function MultipleCombobox({
 	};
 	// add the valid entries of a text; the others stay in the input to be corrected
 	const commit = (text) => {
-		const { accepted, rejected } = partitionEntries(text, (entry) =>
-			isValidNew ? isValidNew(entry, values) : true,
+		const { accepted, rejected } = partitionEntries(
+			text,
+			(entry) => (isValidNew ? isValidNew(entry, values) : true),
+			separators,
 		);
-		const next = addEntries(values, accepted.join(" "), { normalize });
+		const next = appendEntries(values, accepted, { normalize });
 		if (next.length !== values.length) onChange(next);
-		typed(rejected.join(" "));
+		typed(rejected.join(separators.join));
 		if (rejected.length === 0) setOpen(false);
 		return rejected;
 	};
@@ -161,9 +164,9 @@ export function MultipleCombobox({
 	};
 	const onPaste = (event) => {
 		const text = event.clipboardData?.getData("text") ?? "";
-		if (!(creatable && LIST_TEXT.test(text)) || locked) return;
+		if (!(creatable && separators.paste.test(text)) || locked) return;
 		event.preventDefault();
-		commit(`${query} ${text}`);
+		commit(`${query}${separators.join}${text}`);
 	};
 	const onInputBlur = (event) => {
 		// a tap on the list (touch browsers may move the focus there): the item's click still has to arrive

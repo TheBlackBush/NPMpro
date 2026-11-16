@@ -32,6 +32,8 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string|Function} [props.createText]  or (query) => text
  * @param {Function} [props.isValidNew]      (query, values) => whether a typed value may be added
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
+ * @param {Object}   [props.separators]      multiple: WORD_ENTRIES (default, spaces and commas separate) or
+ *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)
  * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
  *                                           adds the typed text as values (as Enter does) for a save
  * @param {Function} [props.onQueryChange]   multiple: (text) after the typed text changed
@@ -63,6 +65,7 @@ export function Combobox({
 	createText,
 	isValidNew,
 	normalize = defaultNormalize,
+	separators,
 	commitRef,
 	onQueryChange,
 	invalid,
@@ -117,6 +120,7 @@ export function Combobox({
 					{...shared}
 					value={value}
 					normalize={normalize}
+					separators={separators}
 					commitRef={commitRef}
 					onQueryChange={onQueryChange}
 				/>

@@ -3,38 +3,41 @@
  * query shows and when a typed value is offered as a new one. Pure, so node --test checks them without a DOM.
  */
 
-// commas, spaces and line breaks separate entries
-const SEPARATORS = /[\s,]+/u;
+// how typed and pasted text becomes entries: words (domain names: spaces, commas and line breaks separate) or lines
+// (tags, which may hold spaces: only commas and line breaks separate); join puts refused entries back as text
+export const WORD_ENTRIES = Object.freeze({ split: /[\s,]+/u, join: " ", paste: /[\s,]/u });
+export const LINE_ENTRIES = Object.freeze({ split: /[,\r\n]+/u, join: ", ", paste: /[,\r\n]/u });
 
 const defaultNormalize = (entry) => String(entry).trim().toLowerCase();
 
 /**
- * The entries of a typed or pasted text: split on commas, spaces and new lines, trimmed, without empty ones
+ * The entries of a typed or pasted text: split by the separators (words by default), trimmed, without empty ones
  *
  * @param   {string} text
+ * @param   {Object} [separators]  WORD_ENTRIES or LINE_ENTRIES
  * @returns {string[]}
  */
-export function splitEntries(text) {
+export function splitEntries(text, separators = WORD_ENTRIES) {
 	return String(text ?? "")
-		.split(SEPARATORS)
+		.split(separators.split)
 		.map((entry) => entry.trim())
 		.filter(Boolean);
 }
 
 /**
- * The list with the entries of a text appended, in order, skipping the ones it already holds (compared after
- * normalize, lower case and trimmed by default)
+ * The list with the entries appended, in order, skipping the ones it already holds (compared after normalize,
+ * lower case and trimmed by default)
  *
  * @param   {string[]} current
- * @param   {string}   text
+ * @param   {string[]} entries
  * @param   {Object}   [options]
  * @param   {Function} [options.normalize]  (entry) => the form two entries are compared in
  * @returns {string[]}
  */
-export function addEntries(current, text, { normalize = defaultNormalize } = {}) {
+export function appendEntries(current, entries, { normalize = defaultNormalize } = {}) {
 	const list = [...(current ?? [])];
 	const seen = new Set(list.map(normalize));
-	for (const entry of splitEntries(text)) {
+	for (const entry of entries) {
 		const key = normalize(entry);
 		if (!seen.has(key)) {
 			seen.add(key);
@@ -42,6 +45,20 @@ export function addEntries(current, text, { normalize = defaultNormalize } = {})
 		}
 	}
 	return list;
+}
+
+/**
+ * The list with the entries of a text appended (see appendEntries)
+ *
+ * @param   {string[]} current
+ * @param   {string}   text
+ * @param   {Object}   [options]
+ * @param   {Function} [options.normalize]   (entry) => the form two entries are compared in
+ * @param   {Object}   [options.separators]  WORD_ENTRIES (default) or LINE_ENTRIES
+ * @returns {string[]}
+ */
+export function addEntries(current, text, { normalize, separators } = {}) {
+	return appendEntries(current, splitEntries(text, separators), { normalize });
 }
 
 /**
@@ -98,13 +115,14 @@ export function canCreate(query, options, current, getLabel) {
  * for the user to correct
  *
  * @param   {string}   text
- * @param   {Function} [isValid]  (entry) => boolean, every entry by default
+ * @param   {Function} [isValid]     (entry) => boolean, every entry by default
+ * @param   {Object}   [separators]  WORD_ENTRIES (default) or LINE_ENTRIES
  * @returns {{ accepted: string[], rejected: string[] }}
  */
-export function partitionEntries(text, isValid = () => true) {
+export function partitionEntries(text, isValid = () => true, separators = WORD_ENTRIES) {
 	const accepted = [];
 	const rejected = [];
-	for (const entry of splitEntries(text)) {
+	for (const entry of splitEntries(text, separators)) {
 		(isValid(entry) ? accepted : rejected).push(entry);
 	}
 	return { accepted, rejected };

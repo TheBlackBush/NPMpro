@@ -6,8 +6,6 @@ import { canCreate, filterOptions } from "src/modules/Combobox";
 // the cmdk value of the "Add ..." item; option items are "o:" and their value
 export const CREATE_KEY = "create:";
 export const optionKey = (value) => `o:${String(value)}`;
-// pasted text with a separator is a list of entries (Combobox.js splitEntries)
-export const LIST_TEXT = /[\s,]/u;
 
 export const defaultLabel = (option) => option?.label;
 export const defaultValue = (option) => option?.value;
