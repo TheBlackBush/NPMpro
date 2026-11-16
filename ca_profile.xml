@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<CommunityApplications>
+  <Profile>NPMpro is a reverse proxy with a web UI: add your domains, point them at your services and get HTTPS certificates, without writing nginx configs. A hardened fork of Nginx Proxy Manager, maintained by TheBlackBush. Questions and bug reports: GitHub issues.</Profile>
+  <Icon>https://raw.githubusercontent.com/TheBlackBush/NPMpro/main/images/brand/npmpro-app-icon-256.png</Icon>
+  <WebPage>https://github.com/TheBlackBush/NPMpro</WebPage>
+</CommunityApplications>

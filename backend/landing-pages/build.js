@@ -11,11 +11,8 @@ import { ICONS, PAGES, TONES } from "./pages.js";
 
 const HERE = import.meta.dirname;
 const REPO = path.join(HERE, "../..");
-export const OUT_DIR = path.join(REPO, "rootfs/usr/local/nginx/html/npmpro");
-// the UI's languages (frontend/translations/ui), English first: the HTML holds its texts, the script the others
-export const LANGUAGES = ["en", "de", "zh", "fr", "es", "pt", "ru", "it", "nl", "pl", "ja", "ko", "uk"];
 
-const PLACEHOLDER = /@@([A-Z_]+)@@/gu;
+const PLACEHOLDER = /@@(?<name>[A-Z_]+)@@/gu;
 const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const SPECIAL = /[&<>"']/gu;
 const CHIPS =
@@ -27,17 +24,20 @@ const CAPTCHA_FORM =
 const read = (rel) => readFileSync(path.join(HERE, rel), "utf8");
 const escapeHtml = (text) => text.replace(SPECIAL, (char) => ESCAPES[char]);
 const logo = (name) =>
-	`data:image/svg+xml;base64,${readFileSync(path.join(REPO, ".github/images/brand", name)).toString("base64")}`;
+	`data:image/svg+xml;base64,${readFileSync(path.join(REPO, "images/brand", name)).toString("base64")}`;
+
+const OUT_DIR = path.join(REPO, "rootfs/usr/local/nginx/html/npmpro");
+// the UI's languages (frontend/translations/ui), English first: the HTML holds its texts, the script the others
+const LANGUAGES = ["en", "de", "zh", "fr", "es", "pt", "ru", "it", "nl", "pl", "ja", "ko", "uk"];
 
 /** @returns {Record<string, Record<string, string>>} the texts by language code */
-export const loadTexts = () =>
-	Object.fromEntries(LANGUAGES.map((code) => [code, JSON.parse(read(`texts/${code}.json`))]));
+const loadTexts = () => Object.fromEntries(LANGUAGES.map((code) => [code, JSON.parse(read(`texts/${code}.json`))]));
 
 /** @returns {string} the inline script, as every page holds it */
-export const pageScript = () => read("page-script.js").trim();
+const pageScript = () => read("page-script.js").trim();
 
 /** @returns {string} the CSP source of the inline script, "sha256-<base64>" */
-export const scriptHash = () => `sha256-${createHash("sha256").update(pageScript()).digest("base64")}`;
+const scriptHash = () => `sha256-${createHash("sha256").update(pageScript()).digest("base64")}`;
 
 const textsOf = (page, texts) =>
 	Object.fromEntries(
@@ -67,7 +67,7 @@ const codeLine = (page) => {
  * @param   {Object} texts  loadTexts()
  * @returns {string}  the page's HTML
  */
-export const renderPage = (page, texts) => {
+const renderPage = (page, texts) => {
 	const own = textsOf(page, texts);
 	const tone = TONES[page.tone];
 	const values = {
@@ -97,7 +97,7 @@ export const renderPage = (page, texts) => {
 };
 
 /** @returns {{ file: string, html: string }[]} the eight pages, in the order of PAGES */
-export const buildAll = () => {
+const buildAll = () => {
 	const texts = loadTexts();
 	return PAGES.map((page) => ({ file: page.file, html: renderPage(page, texts) }));
 };
@@ -120,3 +120,5 @@ if (process.argv[1] === import.meta.filename) {
 		console.log(`wrote ${pages.length} pages to ${OUT_DIR}, script ${scriptHash()}`);
 	}
 }
+
+export { buildAll, LANGUAGES, loadTexts, OUT_DIR, pageScript, renderPage, scriptHash };

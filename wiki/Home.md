@@ -7,6 +7,7 @@ This wiki is the documentation. The [README](https://github.com/TheBlackBush/NPM
 ## Getting started
 
 - [Installation](Installation): requirements, the compose file, the first start
+- [Installation on Unraid](Installation-on-Unraid): the Unraid template, its fields, bridge or br0, secrets from files, updates
 - [Configuration](Configuration): every setting and environment variable, and `COOKIE_SECRET`
 - [Usage](Usage): hosts, certificates, access lists, streams, settings, users
 - [Features](Features): what NPMpro offers, grouped by topic

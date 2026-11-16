@@ -317,7 +317,7 @@ COPY --from=nginx /usr/local/lib/libcrypto.so                                   
 COPY --from=backend  /app      /app
 COPY rootfs  /
 COPY MIT.LICENSE /MIT.LICENSE
-COPY COPYING /COPYING
+COPY LICENSE /LICENSE
 COPY --from=frontend /app/dist /app/frontend
 
 # CI passes the version (a plain build keeps 0.0.0); chmod covers a checkout without file modes

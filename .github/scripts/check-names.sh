@@ -8,7 +8,7 @@ set -u
 RENAME_MIGRATION="20261023180000_rename_to_npmpro.js"
 
 hits="$(git grep -n -i npmplus -- . \
-    ':!README.md' ':!COPYING' ':!MIT.LICENSE' \
+    ':!README.md' ':!LICENSE' ':!MIT.LICENSE' \
     ':!wiki/Upgrading-from-NPMplus.md' ':!wiki/Home.md' ':!wiki/_Sidebar.md' ':!wiki/Troubleshooting.md' \
     ':!wiki/Configuration.md' ':!wiki/Upgrade-notes.md' \
     ':!frontend/src/shell/Credits.jsx' \
