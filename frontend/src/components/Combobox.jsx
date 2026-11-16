@@ -42,6 +42,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {Function} [props.onBlur]
  * @param {string}   [props.name]            a hidden input with the value (comma separated with multiple)
  * @param {*}        [props.ref]             the button or the input (react-hook-form focuses it)
+ * @param {Function} [props.chipClassName]   multiple: (value) => extra classes of that value's chip
  * @param {string}   [props.className]       of the wrapper
  */
 export function Combobox({
@@ -73,6 +74,7 @@ export function Combobox({
 	onBlur,
 	name,
 	className,
+	chipClassName,
 	...rest
 }) {
 	const ownId = useId();
@@ -123,6 +125,7 @@ export function Combobox({
 					separators={separators}
 					commitRef={commitRef}
 					onQueryChange={onQueryChange}
+					chipClassName={chipClassName}
 				/>
 			) : (
 				<SingleCombobox {...shared} value={value} clearable={clearable} searchable={searchable} />

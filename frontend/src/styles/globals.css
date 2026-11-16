@@ -105,6 +105,17 @@
 	--accent-certificates: #d91aff;
 	--accent-access: #ff5c2b;
 	--accent-users: #3d86ff;
+	/* tag tones: the logo mark's yellow to blue and the cyan end of the brand gradient, picked from a tag's name */
+	--tag-0: #ffdb43;
+	--tag-1: #ffac1c;
+	--tag-2: #ff8520;
+	--tag-3: #e90023;
+	--tag-4: #ff087f;
+	--tag-5: #ed00cd;
+	--tag-6: #9610fa;
+	--tag-7: #5415ff;
+	--tag-8: #145bff;
+	--tag-9: #00b3db;
 	--radius: 0.625rem;
 	--sidebar: oklch(0.985 0 0);
 	--sidebar-foreground: oklch(0.145 0 0);
@@ -154,6 +165,10 @@
 	--accent-certificates: #d91aff;
 	--accent-access: #ff5c2b;
 	--accent-users: #3d86ff;
+	/* tag tones that need a lighter shade on the dark card */
+	--tag-7: #7a4dff;
+	--tag-8: #3d7bff;
+	--tag-9: #00d1ff;
 	--sidebar: oklch(0.205 0 0);
 	--sidebar-foreground: oklch(0.985 0 0);
 	--sidebar-primary: oklch(0.7 0.18 293);
@@ -233,6 +248,66 @@
 	[data-input-otp] + * {
 		pointer-events: all !important;
 	}
+}
+
+/* NPMpro: a tag badge in the tone picked from its name (modules/TagTone.js): a tint of the tone over the card, a border
+   of it and text mixed dark (light theme) or light (dark theme) enough to read. Outside any layer so it wins over the
+   Badge utilities. The dark hover rules come after the dark base rule and are as specific as it. */
+.tag-tone-0 {
+	--tag-h: var(--tag-0);
+}
+.tag-tone-1 {
+	--tag-h: var(--tag-1);
+}
+.tag-tone-2 {
+	--tag-h: var(--tag-2);
+}
+.tag-tone-3 {
+	--tag-h: var(--tag-3);
+}
+.tag-tone-4 {
+	--tag-h: var(--tag-4);
+}
+.tag-tone-5 {
+	--tag-h: var(--tag-5);
+}
+.tag-tone-6 {
+	--tag-h: var(--tag-6);
+}
+.tag-tone-7 {
+	--tag-h: var(--tag-7);
+}
+.tag-tone-8 {
+	--tag-h: var(--tag-8);
+}
+.tag-tone-9 {
+	--tag-h: var(--tag-9);
+}
+.tag-tone {
+	background-color: color-mix(in oklab, var(--tag-h) 12%, var(--card));
+	border-color: color-mix(in oklab, var(--tag-h) 40%, var(--card));
+	color: color-mix(in oklab, var(--tag-h) 62%, black);
+}
+.tag-tone:hover,
+.tag-tone:focus-visible {
+	background-color: color-mix(in oklab, var(--tag-h) 24%, var(--card));
+	border-color: color-mix(in oklab, var(--tag-h) 65%, var(--card));
+}
+/* yellow is the one tone whose light hover text needs a darker mix (4.41:1 otherwise) */
+.tag-tone-0:hover,
+.tag-tone-0:focus-visible {
+	color: color-mix(in oklab, var(--tag-h) 55%, black);
+}
+.dark .tag-tone {
+	background-color: color-mix(in oklab, var(--tag-h) 20%, var(--card));
+	border-color: color-mix(in oklab, var(--tag-h) 45%, var(--card));
+	color: color-mix(in oklab, var(--tag-h) 55%, white);
+}
+.dark .tag-tone:hover,
+.dark .tag-tone:focus-visible {
+	background-color: color-mix(in oklab, var(--tag-h) 36%, var(--card));
+	border-color: color-mix(in oklab, var(--tag-h) 75%, var(--card));
+	color: color-mix(in oklab, var(--tag-h) 35%, white);
 }
 
 @keyframes npmpro-loader {

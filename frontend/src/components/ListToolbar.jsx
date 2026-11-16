@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { AppSelect } from "src/components/AppSelect";
 import { TapTooltip } from "src/components/TapTooltip";
 import { TruncatedText } from "src/components/TruncatedText";
+import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
 import {
 	DropdownMenu,
@@ -15,6 +16,7 @@ import { intl, T } from "src/locale";
 import { addTag, removeTag, sameTag } from "src/modules/HostTags";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
+import { tagToneClass } from "src/modules/TagTone";
 
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
@@ -59,7 +61,9 @@ function TagFilter({ tags, value, onChange }) {
 						onSelect={(event) => event.preventDefault()}
 						onCheckedChange={(on) => onChange(on ? addTag(value, tag) : removeTag(value, tag))}
 					>
-						{tag}
+						<Badge variant="outline" className={`h-5 font-normal ${tagToneClass(tag)}`}>
+							{tag}
+						</Badge>
 					</DropdownMenuCheckboxItem>
 				))}
 			</DropdownMenuContent>

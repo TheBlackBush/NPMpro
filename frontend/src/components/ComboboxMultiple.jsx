@@ -71,6 +71,7 @@ export function MultipleCombobox({
 	onBlur,
 	aria,
 	className,
+	chipClassName,
 }) {
 	const values = Array.isArray(value) ? value : [];
 	const [open, setOpen] = useState(false);
@@ -211,7 +212,10 @@ export function MultipleCombobox({
 									key={String(entry)}
 									variant="secondary"
 									data-window-start-skip=""
-									className="h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal"
+									className={cn(
+										"h-6 max-w-full gap-0.5 pr-0.5 text-sm font-normal",
+										chipClassName?.(entry),
+									)}
 								>
 									<TruncatedText>{label}</TruncatedText>
 									{locked ? null : (

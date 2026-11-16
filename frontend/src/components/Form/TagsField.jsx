@@ -4,6 +4,7 @@ import { useTagSuggestions } from "src/hooks";
 import { intl, T } from "src/locale";
 import { LINE_ENTRIES } from "src/modules/Combobox";
 import { isValidTag, TAGS_MAX, tagInputMessage, tagOptions } from "src/modules/HostTags";
+import { tagToneClass } from "src/modules/TagTone";
 import { FormField } from "./FormField";
 import { usePendingEntry, useReadOnly } from "./HookForm";
 
@@ -40,6 +41,7 @@ export function TagsField({ name = "npmproTags", className }) {
 					multiple
 					creatable
 					separators={LINE_ENTRIES}
+					chipClassName={tagToneClass}
 					disabled={readOnly}
 					options={tagOptions(used, values)}
 					value={values}
