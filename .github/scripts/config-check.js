@@ -197,6 +197,40 @@ const hosts = [
 	],
 	[
 		"proxy-hosts",
+		"proxy whose custom location takes /.well-known/acme-challenge/ over (plain prefix)",
+		{
+			...plainProxy("acme-override"),
+			locations: [
+				{ path: "/.well-known/acme-challenge/", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 },
+			],
+		},
+	],
+	[
+		"proxy-hosts",
+		"proxy whose custom location takes /.well-known/acme-challenge/ over (^~)",
+		{
+			...plainProxy("acme-override-prefix"),
+			locations: [
+				{ path: "/.well-known/acme-challenge/", location_type: "^~ ", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 },
+			],
+		},
+	],
+	[
+		"proxy-hosts",
+		"proxy with Anubis, an exact ACME location and regex locations over the built-in ones",
+		{
+			...plainProxy("acme-regex"),
+			npmpro_auth_request: "anubis",
+			npmpro_auth_request_upstream: authUpstream,
+			locations: [
+				{ path: "/.well-known/acme-challenge/", location_type: "= ", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 },
+				{ path: "/\\.", location_type: "~ ", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 },
+				{ path: "\\.(js|css)$", location_type: "~* ", forward_scheme: "http", forward_host: "127.0.0.1", forward_port: 8081 },
+			],
+		},
+	],
+	[
+		"proxy-hosts",
 		"proxy with every landing page: custom pages, maintenance, a denied page on the host and a location",
 		{
 			...tls,
