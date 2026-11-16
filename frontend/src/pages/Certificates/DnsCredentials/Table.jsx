@@ -92,7 +92,7 @@ export function useColumns() {
 					);
 				},
 				meta: {
-					className: "w-px whitespace-nowrap",
+					className: "w-px whitespace-nowrap pr-4",
 					mobile: "hide-lg",
 				},
 			}),
