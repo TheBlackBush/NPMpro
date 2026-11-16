@@ -7,7 +7,12 @@ import { isValidTag, TAGS_MAX, tagInputMessage, tagOptions } from "src/modules/H
 import { FormField } from "./FormField";
 import { usePendingEntry, useReadOnly } from "./HookForm";
 
-const refusedMessage = (refused) => intl.formatMessage({ id: "error.tag-invalid" }, { tag: refused.join(", ") });
+// a typed tag refused on save: the invalid ones are named; when all are valid, the host already has the most tags
+const refusedMessage = (refused) => {
+	const invalid = refused.filter((tag) => !isValidTag(tag));
+	if (invalid.length === 0) return intl.formatMessage({ id: "error.tags-too-many" }, { max: TAGS_MAX });
+	return intl.formatMessage({ id: "error.tag-invalid" }, { tag: invalid.join(", ") });
+};
 
 /**
  * The tags of a host, on the Details tab next to Group: chips with a text input (the app's combobox, as Domain
