@@ -59,3 +59,47 @@ jobs:
       - run: gh workflow run docker.yml --repo "$GITHUB_REPOSITORY" --ref develop
         env:
           GH_TOKEN: ${{ github.token }}
+
+  shadcn-drift:
+    # The first run of the week compares the generated shadcn components with the registry and keeps one open issue
+    # with the result; the fallback run skips it. It skips with a notice while develop has no drift script.
+    if: github.event.schedule == '17 2 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: develop
+          persist-credentials: false
+      - name: check script
+        id: script
+        run: |
+          if [ -f .github/scripts/shadcn-drift.sh ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::develop has no .github/scripts/shadcn-drift.sh yet, skipping the drift report"
+          fi
+      - if: steps.script.outputs.found == 'true'
+        uses: ./.github/actions/setup
+      - if: steps.script.outputs.found == 'true'
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: drift report
+        if: steps.script.outputs.found == 'true'
+        working-directory: frontend
+        run: sh ../.github/scripts/shadcn-drift.sh > "$RUNNER_TEMP/drift.md"
+      - name: update the issue
+        if: steps.script.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: shadcn drift report
+        run: |
+          number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" \
+            --json number,title --jq "map(select(.title == \"$TITLE\")) | .[0].number // empty")"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/drift.md"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body-file "$RUNNER_TEMP/drift.md"
+          fi
