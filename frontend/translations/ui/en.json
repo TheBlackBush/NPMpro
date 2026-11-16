@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Auth Request Upstream",
 	"host.auth-request-upstream.placeholder": "Keep empty to use the default from Settings > Forward authentication",
 	"host.auth-request.global": "Same as host",
+	"host.description": "Description",
+	"host.description.placeholder": "What this host is for (optional)",
 	"host.flags.disable-crowdsec-appsec": "Disable Crowdsec Appsec",
 	"host.flags.disable-request-buffering": "Disable Request Buffering",
 	"host.flags.disable-response-buffering": "Disable Response Buffering",

@@ -7,6 +7,7 @@ export * from "./EmailFormatter";
 export * from "./EventFormatter";
 export * from "./ExpiryFormatter";
 export * from "./GravatarFormatter";
+export * from "./HostLabels";
 export * from "./RolesFormatter";
 export * from "./SignInFormatter";
 export * from "./StatusFormatter";

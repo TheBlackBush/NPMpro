@@ -660,6 +660,42 @@ const hostFileWith = async (a, values) => {
 	return backupOf(a, { types: ["proxy_hosts"], secrets: false });
 };
 
+// merges A's proxy hosts into B and answers B's row of a.example.com
+const mergedHost = async (b, file) => {
+	const types = ["proxy_hosts"];
+	const { token } = await openOn(b, file);
+	const plan = await b.service.plan(admin, token, { mode: "merge", types });
+	await b.service.restore(admin, token, { mode: "merge", types, planHash: plan.hash });
+	const rows = await b.knex("proxy_host").select();
+	return rows.find((row) => JSON.parse(row.domain_names).includes("a.example.com"));
+};
+
+it("carries the description of a host through a merge", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const row = await mergedHost(b, await hostFileWith(a, { npmpro_description: "Kitchen camera" }));
+		assert.equal(row.npmpro_description, "Kitchen camera");
+	} finally {
+		await cleanup();
+	}
+});
+
+it("merges an older backup without the description with an empty one", TIMEOUT, async () => {
+	const { a, b, cleanup } = await twoInstances();
+	try {
+		const source = await hostFileWith(a, { npmpro_description: "not in old backups" });
+		const file = await craftBackup(source, path.join(a.base, "old.npmpro"), async ({ data, writeData }) => {
+			const hosts = await data("proxy_hosts");
+			for (const host of hosts.proxy_host) delete host.npmpro_description;
+			await writeData("proxy_hosts", hosts);
+		});
+		const row = await mergedHost(b, file);
+		assert.equal(row.npmpro_description, "");
+	} finally {
+		await cleanup();
+	}
+});
+
 const invalidItem = (label, field) => (error) =>
 	error.code === "invalid-item" &&
 	error.status === 400 &&

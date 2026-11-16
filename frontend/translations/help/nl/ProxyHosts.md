@@ -7,6 +7,7 @@ Gebruik **Dupliceren** in het menu van de host om een host naar een nieuw venste
 ### Details
 
 - **Domeinnamen**: de namen die bezoekers gebruiken. Verplicht. Voor een nieuw certificaat hebben wildcards (`*.example.com`) de DNS-challenge nodig.
+- **Beschrijving**: optioneel, één regel (maximaal 255 tekens) die zegt waar de host voor dient. Ze staat in de lijst onder de domeinnamen en de zoekfunctie vindt haar.
 - **Schema**: hoe NPMpro met de dienst praat: `http://`, `https://`, `grpc://`, `grpcs://`, `path` (bestanden of PHP uit een map aanbieden) of `empty` (geen upstream). Standaard `http://`. Een wijziging van het schema schakelt opties uit die er niet bij passen.
 - **Hostname / IP / Path Doorsturen**: het adres van de dienst. U kunt een subpad toevoegen, bijvoorbeeld `127.0.0.1/path`. Bij `path` voert u in plaats daarvan een map in. Koppel uw bestanden onder `/var/www`; alleen beheerders kunnen een map daarbuiten gebruiken. Een naam die met `cu_` begint, verwijst naar uw eigen nginx-upstreamblok (zie Load balancing in de wiki).
 - **Poort doorsturen**: optioneel. Bij `path` is het de PHP-versie.

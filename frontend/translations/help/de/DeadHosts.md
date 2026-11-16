@@ -9,4 +9,6 @@ die Domain-Seiten nicht mehr existieren.
 Ein weiterer Vorteil dieses Hosts besteht darin, dass Sie die Protokolle für Zugriffe darauf verfolgen und
 die Verweise anzeigen können.
 
+Eine optionale **Beschreibung** (eine Zeile) sagt, wofür der Host da ist; sie erscheint in der Liste unter den Domains.
+
 **Seite** (404) bestimmt, was Besucher sehen: **Globale Einstellung** (die 404-Seite aus Einstellungen, Landing Pages), die **404-Fehlerseite** oder eine **Benutzerdefinierte Seite** nur für diesen Host (eine HTML-Datei einfügen oder hochladen).

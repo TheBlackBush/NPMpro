@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream do Auth Request",
 	"host.auth-request-upstream.placeholder": "Deixe vazio para usar a predefinição de Definições > Autenticação encaminhada",
 	"host.auth-request.global": "Igual ao host",
+	"host.description": "Descrição",
+	"host.description.placeholder": "Para que serve este host (opcional)",
 	"host.flags.disable-crowdsec-appsec": "Desativar CrowdSec AppSec",
 	"host.flags.disable-request-buffering": "Desativar Buffering de Pedidos",
 	"host.flags.disable-response-buffering": "Desativar Buffering de Respostas",

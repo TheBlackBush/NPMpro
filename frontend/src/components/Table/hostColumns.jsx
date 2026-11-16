@@ -5,6 +5,7 @@ import { intl, T } from "src/locale";
 import { CertificateFormatter } from "./Formatter/CertificateFormatter";
 import { DomainsFormatter } from "./Formatter/DomainsFormatter";
 import { GravatarFormatter } from "./Formatter/GravatarFormatter";
+import { HostLabels } from "./Formatter/HostLabels";
 import { StatusFormatter } from "./Formatter/StatusFormatter";
 import { appColumnHelper as columnHelper } from "./useAppTable";
 
@@ -88,7 +89,13 @@ export const domainsColumn = () =>
 		header: intl.formatMessage({ id: "column.source" }),
 		cell: (info) => {
 			const value = info.row.original;
-			return <DomainsFormatter domains={value.domainNames} createdOn={value.createdOn} />;
+			return (
+				<DomainsFormatter
+					domains={value.domainNames}
+					createdOn={value.createdOn}
+					below={<HostLabels description={value.npmproDescription} />}
+				/>
+			);
 		},
 	});
 

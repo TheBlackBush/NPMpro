@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream Auth Request",
 	"host.auth-request-upstream.placeholder": "Laisser vide pour utiliser la valeur par défaut de Paramètres > Authentification déléguée",
 	"host.auth-request.global": "Comme l'hôte",
+	"host.description": "Description",
+	"host.description.placeholder": "À quoi sert cet hôte (facultatif)",
 	"host.flags.disable-crowdsec-appsec": "Désactiver CrowdSec AppSec",
 	"host.flags.disable-request-buffering": "Désactiver la mise en tampon des requêtes",
 	"host.flags.disable-response-buffering": "Désactiver la mise en tampon des réponses",

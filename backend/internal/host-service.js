@@ -31,7 +31,11 @@ const domainHooks = (model, takenType) => ({
 	applyListOrder: (query) => query.orderBy(castJsonIfNeed("domain_names"), "ASC"),
 	applySearch: (query, searchQuery) =>
 		query.where(function () {
-			this.where(castJsonIfNeed("domain_names"), "like", `%${searchQuery}%`);
+			this.where(castJsonIfNeed("domain_names"), "like", `%${searchQuery}%`).orWhere(
+				"npmpro_description",
+				"like",
+				`%${searchQuery}%`,
+			);
 		}),
 });
 

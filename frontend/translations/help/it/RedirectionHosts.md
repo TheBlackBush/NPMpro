@@ -7,6 +7,7 @@ Usa **Duplica** nel menu dell'host per copiare un host in una nuova finestra di 
 ### Dettagli
 
 - **Nomi di Dominio**: i nomi che vengono reindirizzati. Obbligatorio. I caratteri jolly sono consentiti per un nuovo certificato solo con la challenge DNS.
+- **Descrizione**: facoltativa, una riga (fino a 255 caratteri) che dice a cosa serve l'host. Appare sotto i nomi di dominio nell'elenco e la ricerca la trova.
 - **Schema**: lo schema della destinazione. "mantieni (come la richiesta)" è il valore predefinito e mantiene `http` o `https` della visita. Oppure scegli `http` o `https`.
 - **Dominio di Destinazione**: il dominio a cui vengono inviati i visitatori, ad esempio `example.com`. Obbligatorio.
 - **Codice HTTP**: il codice di risposta. Predefinito 301 Moved permanently. Altre scelte: 302 Moved temporarily, 303 See other, 307 Temporary redirect e 308 Permanent redirect. Usa 301 o 308 quando lo spostamento è definitivo; browser e motori di ricerca li ricordano.

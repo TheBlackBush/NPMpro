@@ -223,6 +223,7 @@ export function proxyHostDefaults(data, { isClone = false, isAdmin = false } = {
 	const clonedPath = (scheme, host) => (dropConfig && scheme === "path" && !insideWebroot(host) ? "" : host);
 	return {
 		domainNames: isClone ? [] : data.domainNames,
+		npmproDescription: data.npmproDescription ?? "",
 		forwardScheme: data.forwardScheme,
 		forwardHost: clonedPath(data.forwardScheme, data.forwardHost),
 		forwardPort: portText(data.forwardPort),
@@ -272,6 +273,7 @@ export const PROXY_HOST_TABS = Object.freeze([
 		labelId: "column.details",
 		fields: [
 			"domainNames",
+			"npmproDescription",
 			"forwardScheme",
 			"forwardHost",
 			"forwardPort",
@@ -308,6 +310,7 @@ export const proxyHostValidate = (rules, { savedLocations = [] } = {}) =>
 	fieldsValidate(
 		(values) => ({
 			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
+			npmproDescription: rules.validateString(0, 255),
 			forwardPort: rules.validateInteger({ min: 1, max: 65535 }),
 			...(values.npmproAuthRequest === "none" ? {} : { npmproAuthRequestUpstream: rules.validateUpstreamUrl() }),
 			...tlsRules(rules, values),

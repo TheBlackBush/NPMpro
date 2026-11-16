@@ -112,6 +112,20 @@ const hostQueryTests = (ctx) => {
 		assert.equal(seen.length, 3);
 	});
 
+	it("stores and finds a description on each engine", async () => {
+		const host = ok(
+			await ctx.admin.post(PROXY, proxy(["described.example.com"], { npmpro_description: "Kitchen camera ünï" })),
+		);
+		assert.equal(host.npmpro_description, "Kitchen camera ünï");
+		const found = ok(await ctx.admin.get(`${PROXY}?query=${encodeURIComponent("camera ünï")}`));
+		assert.deepEqual(
+			found.map((row) => row.id),
+			[host.id],
+		);
+		ok(await ctx.admin.post(DEAD, { domain_names: ["dead-described.example.com"], npmpro_description: "Parked" }));
+		assert.equal(ok(await ctx.admin.get(`${DEAD}?query=Parked`)).length, 1);
+	});
+
 	it("searches and sorts the list of each host type", async () => {
 		ok(await ctx.admin.post(PROXY, proxy(["search-b.example.com"])));
 		ok(await ctx.admin.post(PROXY, proxy(["search-a.example.com"])));

@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream Auth-verzoeken",
 	"host.auth-request-upstream.placeholder": "Laat leeg om de standaard uit Instellingen > Forward-authenticatie te gebruiken",
 	"host.auth-request.global": "Zelfde als host",
+	"host.description": "Beschrijving",
+	"host.description.placeholder": "Waarvoor deze host dient (optioneel)",
 	"host.flags.disable-crowdsec-appsec": "Crowdsec Appsec uitschakelen",
 	"host.flags.disable-request-buffering": "Request Buffering uitschakelen",
 	"host.flags.disable-response-buffering": "Response Buffering uitschakelen",

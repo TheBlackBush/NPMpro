@@ -271,6 +271,7 @@ export const redirectionHostDefaults = (data, options) =>
 	cloneValues(
 		{
 			domainNames: data.domainNames,
+			npmproDescription: data.npmproDescription ?? "",
 			forwardScheme: data.forwardScheme,
 			forwardDomainName: data.forwardDomainName,
 			forwardHttpCode: data.forwardHttpCode,
@@ -299,6 +300,7 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 		labelId: "column.details",
 		fields: [
 			"domainNames",
+			"npmproDescription",
 			"forwardScheme",
 			"forwardDomainName",
 			"forwardHttpCode",
@@ -316,6 +318,7 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 export const redirectionHostValidate = (rules) =>
 	fieldsValidate((values) => ({
 		domainNames: domainNamesRule(rules, domainNamesOptions(values)),
+		npmproDescription: rules.validateString(0, 255),
 		forwardDomainName: (value) => forwardHostError(rules, value),
 		...tlsRules(rules, values),
 	}));
@@ -333,6 +336,7 @@ export const deadHostDefaults = (data, options) =>
 	cloneValues(
 		{
 			domainNames: data.domainNames,
+			npmproDescription: data.npmproDescription ?? "",
 			certificateId: data.certificateId,
 			npmproMtlsCertificateId: data.npmproMtlsCertificateId,
 			npmproMtlsVerifyClientOptional: data.npmproMtlsVerifyClientOptional,
@@ -356,7 +360,7 @@ export const DEAD_HOST_TABS = Object.freeze([
 	{
 		id: "details",
 		labelId: "column.details",
-		fields: ["domainNames", "npmproDirectory", "npmproPage", "npmproPageHtml"],
+		fields: ["domainNames", "npmproDescription", "npmproDirectory", "npmproPage", "npmproPageHtml"],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),
@@ -369,6 +373,7 @@ export const deadHostValidate = (rules) =>
 	fieldsValidate(
 		(values) => ({
 			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
+			npmproDescription: rules.validateString(0, 255),
 			...tlsRules(rules, values),
 		}),
 		(values) => placeErrors(rules, "deadHost", values),

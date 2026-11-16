@@ -143,6 +143,13 @@
 			"default": "",
 			"example": "Production"
 		},
+		"npmpro_description": {
+			"description": "A one-line note on what this host is for, shown in the lists",
+			"type": "string",
+			"maxLength": 255,
+			"default": "",
+			"example": "Home Assistant on the NAS"
+		},
 		"npmpro_mtls_certificate_id": {
 			"description": "mTLS Certificate ID: an mTLS CA certificate with its file present, 0 for none",
 			"type": "integer",

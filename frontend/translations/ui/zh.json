@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "认证请求上游",
 	"host.auth-request-upstream.placeholder": "留空则使用“设置 > 转发认证”中的默认值",
 	"host.auth-request.global": "与主机相同",
+	"host.description": "描述",
+	"host.description.placeholder": "此主机的用途（可选）",
 	"host.flags.disable-crowdsec-appsec": "禁用 Crowdsec Appsec",
 	"host.flags.disable-request-buffering": "禁用请求缓冲",
 	"host.flags.disable-response-buffering": "禁用响应缓冲",

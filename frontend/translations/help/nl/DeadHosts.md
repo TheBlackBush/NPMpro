@@ -6,4 +6,6 @@ Dit kan handig zijn wanneer uw domein in zoekmachines wordt vermeld en u een moo
 
 Een ander voordeel van het hebben van deze host is het volgen van de logboeken voor treffers en het bekijken van de verwijzers.
 
+Een optionele **Beschrijving** (één regel) zegt waar de host voor dient; ze staat in de lijst onder de domeinnamen.
+
 **Pagina** (404) kiest wat bezoekers zien: **Globale instelling** (de 404-pagina van Instellingen, Landingspagina's), de **404-foutpagina** of een **Aangepaste pagina** alleen voor deze host (plak of upload één HTML-bestand).

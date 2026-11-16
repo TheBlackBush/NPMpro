@@ -389,6 +389,8 @@
 	"host.auth-request-upstream": "Upstream для Auth Request",
 	"host.auth-request-upstream.placeholder": "Залиште порожнім, щоб використати значення за замовчуванням із Налаштування > Зовнішня автентифікація",
 	"host.auth-request.global": "Як у хоста",
+	"host.description": "Опис",
+	"host.description.placeholder": "Для чого цей хост (необов'язково)",
 	"host.flags.disable-crowdsec-appsec": "Вимкнути CrowdSec AppSec",
 	"host.flags.disable-request-buffering": "Вимкнути буферизацію запитів",
 	"host.flags.disable-response-buffering": "Вимкнути буферизацію відповідей",
