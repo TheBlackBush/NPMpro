@@ -129,12 +129,16 @@ def check_profile(root):
 
 def check_variable(name, config, readable, secret):
     base = name.removesuffix("_FILE")
-    if name in PORT_VARS:
+    if name == "TZ":
+        fail(f"{TEMPLATE} sets TZ: Unraid passes the server's time zone to every container")
+    elif name in PORT_VARS:
         fail(f"{TEMPLATE} sets {name}: the container keeps its default ports, the mapping sets the outside ones")
     elif name.endswith("_FILE") and base not in secret:
         fail(f"{TEMPLATE} names {name}, but {base} cannot be read from a file (NPMPRO_SECRET_ENVS in {ENVS})")
     elif not name.endswith("_FILE") and name not in readable:
         fail(f"{TEMPLATE} names {name}, which NPMpro does not read (the lists in {ENVS})")
+    if name.endswith("_FILE") and config.get("Default"):
+        fail(f"{TEMPLATE}: {name} has a default; a _FILE variable is empty unless the user sets it")
     if SECRET_NAME.search(name) and config.get("Mask") != "true":
         fail(f"{TEMPLATE}: {name} is not masked")
 

@@ -46,6 +46,8 @@ refuse "Icon of a missing file" ca_profile.xml 's|app-icon-256|app-icon-512|' "w
 refuse "Icon not 256 px" unraid-npmpro.xml 's|<Icon>.*</Icon>|<Icon>https://raw.githubusercontent.com/TheBlackBush/NPMpro/main/images/brand/npmpro-app-icon-1024.png</Icon>|' "not 256 x 256"
 refuse "unknown variable" unraid-npmpro.xml 's|Target="PGID"|Target="PGUID"|' "PGUID, which NPMpro does not read"
 refuse "_FILE of a name that is not a secret" unraid-npmpro.xml 's|Target="COOKIE_SECRET_FILE"|Target="TZ_FILE"|' "TZ cannot be read from a file"
+refuse "a TZ field" unraid-npmpro.xml 's|Target="PGID"|Target="TZ"|' "sets TZ: Unraid passes"
+refuse "_FILE with a default" unraid-npmpro.xml '/Target="COOKIE_SECRET_FILE"/s|Default=""|Default="/run/secrets/cookie"|' "COOKIE_SECRET_FILE has a default"
 refuse "a port variable" unraid-npmpro.xml 's|Target="PUID"|Target="HTTP_PORT"|' "sets HTTP_PORT"
 refuse "secret not masked" unraid-npmpro.xml '/Target="INITIAL_ADMIN_PASSWORD"/s|Mask="true"|Mask="false"|' "INITIAL_ADMIN_PASSWORD is not masked"
 refuse "value differs from Default" unraid-npmpro.xml 's|Mask="false">99<|Mask="false">98<|' "PUID has a value other than its Default"
