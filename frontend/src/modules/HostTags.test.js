@@ -87,3 +87,19 @@ it("says why a typed tag cannot be added", () => {
 	assert.deepEqual(tagInputMessage("a/b", 1), { id: "error.tag-invalid", values: { tag: "a/b" } });
 	assert.deepEqual(tagInputMessage("ok", TAGS_MAX), { id: "error.tags-too-many", values: { max: TAGS_MAX } });
 });
+
+it("takes a missing list, host, tag or input as empty", () => {
+	assert.equal(isValidTag(undefined), false);
+	assert.equal(isValidTag(null), false);
+	assert.deepEqual(tagNames(undefined, null, [{ npmproTags: ["a"] }, {}, null]), ["a"]);
+	assert.deepEqual(tagOptions(["a", "b"], undefined), [
+		{ label: "a", value: "a" },
+		{ label: "b", value: "b" },
+	]);
+	assert.equal(hasAllTags(undefined, undefined), true);
+	assert.equal(hasAllTags(undefined, ["a"]), false);
+	assert.deepEqual(canonicalTags(undefined, ["a"]), []);
+	assert.deepEqual(canonicalTags(["A"], undefined), []);
+	assert.equal(tagsError(rules, undefined), undefined);
+	assert.deepEqual(tagInputMessage(undefined, 0), { id: "host.tags.none", values: {} });
+});
