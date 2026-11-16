@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -7,6 +8,8 @@ import { it } from "node:test";
 
 const BIN = new URL("../../rootfs/usr/local/bin/", import.meta.url);
 const HELPER = new URL("secret-files.sh", BIN).pathname;
+const ENVS_SH = new URL("envs.sh", BIN);
+const SECRET_LINE = /^NPMPRO_SECRET_ENVS="(?<names>[^"]*)"$/mu;
 const ECHO_VALUE = /\becho\b[^\n]*secret_file_value/u;
 const SECRET_NAMES = [
 	"DB_MYSQL_USER",
@@ -67,13 +70,13 @@ const read = async (work, env) => {
 	return { status: out.status, stdout: out.stdout, stderr: out.stderr, vars };
 };
 
-const refused = async (work, env, message) => {
-	const out = await read(work, env);
-	assert.equal(out.status, 3, out.stdout + out.stderr);
-	assert.equal(out.stdout, `${message}\n`);
-	assert.equal(out.stderr, "");
-	assert.equal(out.stdout.includes(MARK), false);
+// the status and the output of a run that must refuse; the tests compare them with refusedAs. A helper holds no
+// assertion, so a failing comparison names the test that made it.
+const refusal = async (work, env) => {
+	const { status, stdout, stderr } = await read(work, env);
+	return { status, stdout, stderr };
 };
+const refusedAs = (message) => ({ status: 3, stdout: `${message}\n`, stderr: "" });
 
 it("reads NAME_FILE into NAME, exports it and unsets every listed NAME_FILE", async () => {
 	const work = await workDir();
@@ -116,19 +119,20 @@ it("changes nothing when no NAME_FILE is set", async () => {
 
 it("stops when NAME and NAME_FILE are both set, naming both and neither value", async () => {
 	const work = await workDir();
-	await refused(
-		work,
-		{ COOKIE_SECRET: `${MARK}-plain`, COOKIE_SECRET_FILE: await secretFile(work, "cookie", `${MARK}-file`) },
-		"COOKIE_SECRET and COOKIE_SECRET_FILE are both set: set only one of them.",
+	assert.deepEqual(
+		await refusal(work, {
+			COOKIE_SECRET: `${MARK}-plain`,
+			COOKIE_SECRET_FILE: await secretFile(work, "cookie", `${MARK}-file`),
+		}),
+		refusedAs("COOKIE_SECRET and COOKIE_SECRET_FILE are both set: set only one of them."),
 	);
 });
 
 it("refuses a relative path", async () => {
 	const work = await workDir();
-	await refused(
-		work,
-		{ COOKIE_SECRET_FILE: "run/secrets/cookie" },
-		"COOKIE_SECRET_FILE must be an absolute path, such as /run/secrets/<name>.",
+	assert.deepEqual(
+		await refusal(work, { COOKIE_SECRET_FILE: "run/secrets/cookie" }),
+		refusedAs("COOKIE_SECRET_FILE must be an absolute path, such as /run/secrets/<name>."),
 	);
 });
 
@@ -141,10 +145,11 @@ it("refuses a path in the data folder, through .. or a link into it", async () =
 	await symlink(inside, link);
 	await secretFile(work, "outside", `${MARK}-outside`);
 	for (const file of [inside, data, link, `${work}/run/../data/cookie`, `${data}/../secrets/outside`]) {
-		await refused(
-			work,
-			{ COOKIE_SECRET_FILE: file },
-			`COOKIE_SECRET_FILE points to ${file}, which is inside the data folder ${data}: keep secret files outside it, on their own mount such as /run/secrets.`,
+		assert.deepEqual(
+			await refusal(work, { COOKIE_SECRET_FILE: file }),
+			refusedAs(
+				`COOKIE_SECRET_FILE points to ${file}, which is inside the data folder ${data}: keep secret files outside it, on their own mount such as /run/secrets.`,
+			),
 		);
 	}
 });
@@ -155,19 +160,19 @@ it("refuses a missing file, a dangling link, a folder and a FIFO", async () => {
 	const dangling = path.join(work, "run", "dangling");
 	await symlink(missing, dangling);
 	for (const file of [missing, dangling]) {
-		await refused(
-			work,
-			{ ACME_EAB_HMAC_KEY_FILE: file },
-			`ACME_EAB_HMAC_KEY_FILE points to ${file}, which does not exist (or root cannot reach it inside the container).`,
+		assert.deepEqual(
+			await refusal(work, { ACME_EAB_HMAC_KEY_FILE: file }),
+			refusedAs(
+				`ACME_EAB_HMAC_KEY_FILE points to ${file}, which does not exist (or root cannot reach it inside the container).`,
+			),
 		);
 	}
 	const fifo = path.join(work, "secrets", "fifo");
 	assert.equal(spawnSync("mkfifo", [fifo]).status, 0);
 	for (const file of [path.join(work, "secrets"), fifo]) {
-		await refused(
-			work,
-			{ ACME_EAB_HMAC_KEY_FILE: file },
-			`ACME_EAB_HMAC_KEY_FILE points to ${file}, which is not a regular file.`,
+		assert.deepEqual(
+			await refusal(work, { ACME_EAB_HMAC_KEY_FILE: file }),
+			refusedAs(`ACME_EAB_HMAC_KEY_FILE points to ${file}, which is not a regular file.`),
 		);
 	}
 });
@@ -176,10 +181,11 @@ it("refuses a file root cannot read", { skip: IS_ROOT && "root reads every file 
 	const work = await workDir();
 	const file = await secretFile(work, "locked", `${MARK}-locked`);
 	await chmod(file, 0o000);
-	await refused(
-		work,
-		{ DB_POSTGRES_PASSWORD_FILE: file },
-		`DB_POSTGRES_PASSWORD_FILE points to ${file}, which root cannot read: the file must be readable by root inside the container (for example owned by root with mode 600 or 400).`,
+	assert.deepEqual(
+		await refusal(work, { DB_POSTGRES_PASSWORD_FILE: file }),
+		refusedAs(
+			`DB_POSTGRES_PASSWORD_FILE points to ${file}, which root cannot read: the file must be readable by root inside the container (for example owned by root with mode 600 or 400).`,
+		),
 	);
 });
 
@@ -191,10 +197,9 @@ it("accepts a file of 4096 bytes and refuses one of 4097, a trailing newline inc
 	assert.equal(out.vars.GEOIP_LICENSE_KEY.length, 4096);
 	for (const content of [`${"a".repeat(4096)}\n`, `${MARK}${"a".repeat(5000)}`]) {
 		const file = await secretFile(work, "big", content);
-		await refused(
-			work,
-			{ GEOIP_LICENSE_KEY_FILE: file },
-			`GEOIP_LICENSE_KEY_FILE points to ${file}, which is larger than 4096 bytes.`,
+		assert.deepEqual(
+			await refusal(work, { GEOIP_LICENSE_KEY_FILE: file }),
+			refusedAs(`GEOIP_LICENSE_KEY_FILE points to ${file}, which is larger than 4096 bytes.`),
 		);
 	}
 });
@@ -203,10 +208,9 @@ it("refuses an empty file and one with only newlines", async () => {
 	const work = await workDir();
 	for (const content of ["", "\n", "\n\n\n"]) {
 		const file = await secretFile(work, "empty", content);
-		await refused(
-			work,
-			{ OIDC_CLIENT_SECRET_FILE: file },
-			`OIDC_CLIENT_SECRET_FILE points to ${file}, which is empty.`,
+		assert.deepEqual(
+			await refusal(work, { OIDC_CLIENT_SECRET_FILE: file }),
+			refusedAs(`OIDC_CLIENT_SECRET_FILE points to ${file}, which is empty.`),
 		);
 	}
 });
@@ -215,10 +219,11 @@ it("refuses a line break or a carriage return inside, also CRLF line ends", asyn
 	const work = await workDir();
 	for (const content of [`${MARK}-1\n${MARK}-2\n`, `${MARK}\r\n`, `${MARK}\rmore`, `\n${MARK}`, "\r"]) {
 		const file = await secretFile(work, "lines", content);
-		await refused(
-			work,
-			{ INITIAL_ADMIN_PASSWORD_FILE: file },
-			`INITIAL_ADMIN_PASSWORD_FILE points to ${file}, which has a line break or a carriage return inside: the value must be one line (a newline at the end is fine, Windows line ends are not).`,
+		assert.deepEqual(
+			await refusal(work, { INITIAL_ADMIN_PASSWORD_FILE: file }),
+			refusedAs(
+				`INITIAL_ADMIN_PASSWORD_FILE points to ${file}, which has a line break or a carriage return inside: the value must be one line (a newline at the end is fine, Windows line ends are not).`,
+			),
 		);
 	}
 });
@@ -227,4 +232,64 @@ it("takes the data folder from the caller and never echoes the value", async () 
 	const helper = await readFile(HELPER, "utf8");
 	assert.equal(helper.includes("/data"), false);
 	assert.equal(ECHO_VALUE.test(helper), false);
+});
+
+it("lists exactly the 15 secret names once in envs.sh", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	assert.deepEqual(SECRET_LINE.exec(text)?.groups.names.split(" "), SECRET_NAMES);
+	assert.equal(text.split("\nNPMPRO_SECRET_ENVS=").length, 2);
+});
+
+it("reads the secret files in envs.sh after /data/.env and before NPMPRO_USER_ENV and every check of the values", () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const at = (needle) => {
+		const index = text.indexOf(needle);
+		assert.notEqual(index, -1, needle);
+		return index;
+	};
+	const source = at(". /usr/local/bin/secret-files.sh");
+	const call = at('if ! secret_files_read /data "$NPMPRO_SECRET_ENVS"; then');
+	assert.ok(at(". /data/.env\n") < source);
+	assert.ok(at('mv -f "$env_sum" /etc/npmpro/env.sha512sum') < source);
+	assert.ok(source < call);
+	assert.ok(call < at("for name in $NPMPRO_RUNTIME_ENVS $NPMPRO_STARTUP_ENVS; do"));
+	assert.ok(call < at('if [ -n "$ACME_EMAIL" ] && ! echo "$ACME_EMAIL" | grep -q "@"; then'));
+	assert.ok(call < at('if [ -n "$INITIAL_ADMIN_EMAIL" ] && ! echo "$INITIAL_ADMIN_EMAIL" | grep -q "@.*\\."; then'));
+	assert.ok(call < at(`if [ -n "$INITIAL_ADMIN_PASSWORD" ] && { [ "\${#INITIAL_ADMIN_PASSWORD}" -lt 8 ]`));
+	const before = text.slice(0, source);
+	for (const name of SECRET_NAMES) {
+		assert.equal(before.includes(`$${name}`), false, name);
+		assert.equal(before.includes(`\${${name}`), false, name);
+	}
+});
+
+it("envs.sh counts a variable read from a file as set by the user, and stops when both are set", async () => {
+	const text = readFileSync(ENVS_SH, "utf8");
+	const block = text
+		.slice(
+			text.indexOf("NPMPRO_SECRET_ENVS="),
+			text.indexOf("export NPMPRO_USER_ENV") + "export NPMPRO_USER_ENV".length,
+		)
+		.replace(". /usr/local/bin/secret-files.sh", '. "$HELPER"')
+		.replace('secret_files_read /data "$NPMPRO_SECRET_ENVS"', 'secret_files_read "$DATA" "$NPMPRO_SECRET_ENVS"')
+		.replace("sleep inf", "exit 3");
+	assert.ok(block.includes('. "$HELPER"') && block.includes('"$DATA"') && block.includes("exit 3"));
+	const work = await workDir();
+	const file = await secretFile(work, "pg", `${MARK}-pg\n`);
+	const run = (env) =>
+		spawnSync("sh", ["-c", `${block}\nprintf '%s' "$NPMPRO_USER_ENV"`], {
+			env: { PATH: process.env.PATH, HELPER, DATA: path.join(work, "data"), TZ: "UTC", ...env },
+			encoding: "utf8",
+		});
+	const ok = run({ DB_POSTGRES_PASSWORD_FILE: file });
+	assert.equal(ok.status, 0, ok.stderr);
+	assert.deepEqual(ok.stdout.split(" ").toSorted(), ["DB_POSTGRES_PASSWORD", "TZ"]);
+	assert.equal(ok.stderr, "");
+	const both = run({ DB_POSTGRES_PASSWORD_FILE: file, DB_POSTGRES_PASSWORD: `${MARK}-plain` });
+	assert.equal(both.status, 3);
+	assert.equal(
+		both.stdout,
+		"DB_POSTGRES_PASSWORD and DB_POSTGRES_PASSWORD_FILE are both set: set only one of them.\n",
+	);
+	assert.equal(`${both.stdout}${both.stderr}`.includes(MARK), false);
 });

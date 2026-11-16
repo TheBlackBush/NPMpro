@@ -72,6 +72,18 @@ env_sum="$(mktemp /etc/npmpro/.env-sum.XXXXXX)"
 sha512sum < /data/.env > "$env_sum"
 mv -f "$env_sum" /etc/npmpro/env.sha512sum
 
+# The secret variables that can also be given as a file (Docker and Compose secrets): NAME_FILE=/run/secrets/<name>
+# sets NAME to the content of that file and is unset. Read here, once and as root, after /data/.env (which may set
+# NAME_FILE too) and before NPMPRO_USER_ENV and the checks below, so a value from a file counts as set by the user and
+# goes through the same checks. Nothing before this line reads these names. See secret-files.sh; the list is checked by
+# test/secret-files.test.js and .github/scripts/check-compose-envs.sh.
+NPMPRO_SECRET_ENVS="DB_MYSQL_USER DB_MYSQL_PASSWORD DB_POSTGRES_USER DB_POSTGRES_PASSWORD INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD ACME_EMAIL ACME_EAB_KID ACME_EAB_HMAC_KEY COOKIE_SECRET OIDC_CLIENT_ID OIDC_CLIENT_SECRET GEOIP_ACCOUNT_ID GEOIP_LICENSE_KEY CROWDSEC_API_KEY"
+# shellcheck source=/dev/null
+. /usr/local/bin/secret-files.sh
+if ! secret_files_read /data "$NPMPRO_SECRET_ENVS"; then
+    sleep inf
+fi
+
 # Env vars that are settings in the UI (backend/lib/runtime-rules.js) and the ones listed on the Environment page
 # (backend/lib/environment-info.js), checked by test/environment-info.test.js.
 # NPMPRO_USER_ENV lists those set (non-empty) before the defaults below: the backend treats only these as set by the
