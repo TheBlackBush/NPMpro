@@ -2,6 +2,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { getDeadHosts, getProxyHosts, getRedirectionHosts, getStreams } from "src/api/backend";
 import { groupNames } from "src/modules/HostGroups";
+import { tagNames } from "src/modules/HostTags";
 import { DEAD_HOSTS, hasPermission, PROXY_HOSTS, REDIRECTION_HOSTS, STREAMS, VIEW } from "src/modules/Permissions";
 import { useUser } from "./useUser";
 
@@ -26,15 +27,9 @@ const HOST_LISTS = [
 // the lists' data, once per change of any of them (useQueries keeps a combine result while its input is the same)
 const combineLists = (results) => results.map((result) => result.data);
 
-/**
- * The groups already used by any host type, for the Group field of the host windows: a list the user may not view is
- * not fetched (and adds nothing), a list that fails to load adds nothing
- *
- * @returns {string[]}
- */
-const useGroupSuggestions = () => {
+const useHostLists = () => {
 	const { data: user } = useUser("me");
-	const lists = useQueries({
+	return useQueries({
 		queries: HOST_LISTS.map(({ key, fetch, section }) => ({
 			queryKey: [key, { expand: undefined }],
 			queryFn: () => fetch(),
@@ -43,7 +38,27 @@ const useGroupSuggestions = () => {
 		})),
 		combine: combineLists,
 	});
+};
+
+/**
+ * The groups already used by any host type, for the Group field of the host windows: a list the user may not view is
+ * not fetched (and adds nothing), a list that fails to load adds nothing
+ *
+ * @returns {string[]}
+ */
+const useGroupSuggestions = () => {
+	const lists = useHostLists();
 	return useMemo(() => groupNames(...lists), [lists]);
 };
 
-export { getDirectory, useDirectorySuggestions, useGroupSuggestions };
+/**
+ * The tags already used by any host type, for the Tags field of the host windows (same lists as the groups)
+ *
+ * @returns {string[]}
+ */
+const useTagSuggestions = () => {
+	const lists = useHostLists();
+	return useMemo(() => tagNames(...lists), [lists]);
+};
+
+export { getDirectory, useDirectorySuggestions, useGroupSuggestions, useTagSuggestions };

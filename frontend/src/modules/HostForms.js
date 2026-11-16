@@ -5,6 +5,7 @@
  */
 import { dnsChallengeRules } from "./CertificateForms.js";
 import { fieldsValidate } from "./HookForm.js";
+import { tagsError } from "./HostTags.js";
 import { placeDefaults, placeErrors, placePayload } from "./LandingPageForms.js";
 import { ACCESS_LISTS, CERTIFICATES, hasPermission, VIEW } from "./Permissions.js";
 import { HOST_PATTERN } from "./ValidationRules.js";
@@ -286,6 +287,7 @@ export const redirectionHostDefaults = (data, options) =>
 			...CERTIFICATE_REQUEST_DEFAULTS,
 			advancedConfig: data.advancedConfig,
 			npmproDirectory: data.npmproDirectory,
+			npmproTags: data.npmproTags ?? [],
 		},
 		CLONE_RULES.redirectionHost,
 		options,
@@ -305,6 +307,7 @@ export const REDIRECTION_HOST_TABS = Object.freeze([
 			"forwardDomainName",
 			"forwardHttpCode",
 			"npmproDirectory",
+			"npmproTags",
 			"preservePath",
 		],
 	},
@@ -319,6 +322,7 @@ export const redirectionHostValidate = (rules) =>
 	fieldsValidate((values) => ({
 		domainNames: domainNamesRule(rules, domainNamesOptions(values)),
 		npmproDescription: rules.validateString(0, 255),
+		npmproTags: (value) => tagsError(rules, value),
 		forwardDomainName: (value) => forwardHostError(rules, value),
 		...tlsRules(rules, values),
 	}));
@@ -347,6 +351,7 @@ export const deadHostDefaults = (data, options) =>
 			...CERTIFICATE_REQUEST_DEFAULTS,
 			advancedConfig: data.advancedConfig,
 			npmproDirectory: data.npmproDirectory,
+			npmproTags: data.npmproTags ?? [],
 			...placeDefaults("deadHost", data),
 		},
 		CLONE_RULES.deadHost,
@@ -360,7 +365,7 @@ export const DEAD_HOST_TABS = Object.freeze([
 	{
 		id: "details",
 		labelId: "column.details",
-		fields: ["domainNames", "npmproDescription", "npmproDirectory", "npmproPage", "npmproPageHtml"],
+		fields: ["domainNames", "npmproDescription", "npmproDirectory", "npmproTags", "npmproPage", "npmproPageHtml"],
 	},
 	{ id: "tls", labelId: "column.ssl", fields: TLS_TAB_FIELDS },
 	advancedTab("advancedConfig"),
@@ -374,6 +379,7 @@ export const deadHostValidate = (rules) =>
 		(values) => ({
 			domainNames: domainNamesRule(rules, domainNamesOptions(values)),
 			npmproDescription: rules.validateString(0, 255),
+			npmproTags: (value) => tagsError(rules, value),
 			...tlsRules(rules, values),
 		}),
 		(values) => placeErrors(rules, "deadHost", values),
@@ -419,6 +425,7 @@ export const streamDefaults = (data, options) =>
 			npmproPropagationSeconds: 0,
 			npmproAdvancedConfig: data.npmproAdvancedConfig,
 			npmproDirectory: data.npmproDirectory,
+			npmproTags: data.npmproTags ?? [],
 		},
 		CLONE_RULES.stream,
 		options,
@@ -437,6 +444,7 @@ export const STREAM_TABS = Object.freeze([
 			"forwardingHost",
 			"forwardingPort",
 			"npmproDirectory",
+			"npmproTags",
 			"tcpForwarding",
 			"udpForwarding",
 			"npmproProxyTls",
@@ -474,6 +482,7 @@ export const streamValidate = (rules, { savedIncomingPort } = {}) =>
 			}
 		},
 		npmproDescription: rules.validateString(0, 255),
+		npmproTags: (value) => tagsError(rules, value),
 		forwardingHost: (value) => forwardHostError(rules, value),
 		forwardingPort: (value) => {
 			const text = String(value ?? "").trim();

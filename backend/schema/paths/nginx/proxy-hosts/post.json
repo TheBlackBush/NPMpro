@@ -220,6 +220,9 @@
 						"npmpro_description": {
 							"$ref": "../../../components/proxy-host-object.json#/properties/npmpro_description"
 						},
+						"npmpro_tags": {
+							"$ref": "../../../components/proxy-host-object.json#/properties/npmpro_tags"
+						},
 						"npmpro_mtls_certificate_id": {
 							"$ref": "../../../components/proxy-host-object.json#/properties/npmpro_mtls_certificate_id"
 						},
@@ -315,6 +318,7 @@
 								"npmpro_nginx_online": false,
 								"npmpro_nginx_err": "",
 								"npmpro_directory": "",
+								"npmpro_tags": [],
 								"npmpro_description": "",
 								"npmpro_mtls_certificate_id": 0,
 								"npmpro_mtls_verify_client_optional": false,

@@ -77,7 +77,7 @@ export const ownerColumn = () =>
 			);
 		},
 		meta: {
-			className: "whitespace-nowrap",
+			className: "w-px whitespace-nowrap pr-4",
 			mobile: "hide-lg",
 		},
 	});
@@ -93,7 +93,13 @@ export const domainsColumn = () =>
 				<DomainsFormatter
 					domains={value.domainNames}
 					createdOn={value.createdOn}
-					below={<HostLabels description={value.npmproDescription} />}
+					below={
+						<HostLabels
+							description={value.npmproDescription}
+							tags={value.npmproTags}
+							onTagClick={info.table.options.meta?.actions?.onTagClick}
+						/>
+					}
 				/>
 			);
 		},

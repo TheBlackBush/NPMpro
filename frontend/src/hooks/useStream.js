@@ -24,6 +24,7 @@ const {
 		npmproProxyTls: false,
 		npmproAdvancedConfig: "",
 		npmproDirectory: "",
+		npmproTags: [],
 		npmproMtlsCertificateId: 0,
 		npmproMtlsVerifyClientOptional: false,
 		enabled: true,

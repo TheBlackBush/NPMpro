@@ -19,7 +19,7 @@ You can turn on two-factor authentication (TOTP, with one-time backup codes) for
 - **Redirection hosts** send visitors of a domain to another address with the HTTP code you choose.
 - **404 hosts** answer a domain with a 404 page.
 - **Streams** forward TCP or UDP ports (for example a game server or SSH), optionally with TLS from an NPMpro certificate. A new certificate requested from the stream form needs the DNS challenge. nginx only sends PROXY protocol v2 over UDP, so when UDP forwarding is on the form switches PROXY protocol v1 to v2, and a stream with both TCP and UDP then sends v2 on the TCP side as well. The incoming port is a port or a range of at most 1000 ports, and the ports NPMpro listens on (80, 443 and 81 by default) cannot be used by a stream.
-- Hosts can be put into groups to keep long lists tidy. Proxy, redirection and 404 hosts (and streams, as before) can have a one-line description, shown under the domain names in the list and found by the search.
+- Hosts can be put into groups to keep long lists tidy. Proxy, redirection and 404 hosts (and streams, as before) can have a one-line description, shown under the domain names in the list and found by the search. Every host type can also carry up to 10 tags (a tag has 1 to 32 letters, digits, spaces, "-", "_" or "."; "Prod" and "prod" are one tag). Click a tag in a list, or use the Tags filter, to show only the hosts that have all the picked tags; the search finds tags too.
 
 The meaning of several options differs from nginx-proxy-manager, see [Comments on some buttons](Host-options). Websockets are always on.
 

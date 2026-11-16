@@ -45,6 +45,7 @@ const newRedirection = {
 	sslForced: false,
 	advancedConfig: "",
 	npmproDirectory: "",
+	npmproTags: [],
 	npmproMtlsCertificateId: 0,
 	npmproMtlsVerifyClientOptional: false,
 	npmproHttp3Support: false,
@@ -65,6 +66,7 @@ const newStream = {
 	npmproProxyTls: false,
 	npmproAdvancedConfig: "",
 	npmproDirectory: "",
+	npmproTags: [],
 	npmproMtlsCertificateId: 0,
 	npmproMtlsVerifyClientOptional: false,
 	certificateId: 0,
@@ -213,6 +215,7 @@ it("starts every window with complete values in the window's order", () => {
 		"npmproPropagationSeconds",
 		"advancedConfig",
 		"npmproDirectory",
+		"npmproTags",
 	]);
 	const stream = streamDefaults(newStream);
 	assert.equal(
@@ -256,6 +259,22 @@ it("puts every field of the redirection host, 404 host and stream windows on exa
 		assert.equal(tabOfPath(tabs, "npmproDirectory"), "details");
 	}
 	assert.equal(tabOfPath(DEAD_HOST_TABS, "npmproDnsCredentialId"), "tls");
+});
+
+it("keeps the tags on a clone, places them on the Details tab and refuses a bad one", () => {
+	const tagged = { ...newRedirection, npmproTags: ["Lab"] };
+	assert.deepEqual(redirectionHostDefaults(tagged, { isClone: true }).npmproTags, ["Lab"]);
+	assert.deepEqual(streamDefaults({ ...newStream, npmproTags: ["Lab"] }, { isClone: true }).npmproTags, ["Lab"]);
+	for (const tabs of [REDIRECTION_HOST_TABS, DEAD_HOST_TABS, STREAM_TABS]) {
+		assert.equal(tabOfPath(tabs, "npmproTags"), "details");
+	}
+	const errors = redirectionHostValidate(rules)({
+		...newRedirection,
+		domainNames: ["a.example.com"],
+		forwardDomainName: "b.example.com",
+		npmproTags: ["a/b"],
+	});
+	assert.ok(errors.npmproTags);
 });
 
 it("sets what a certificate choice turns off, as the Formik certificate field did", () => {

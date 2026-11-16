@@ -16,6 +16,9 @@ import {
 } from "./lib.js";
 
 // the German strings are a chunk of their own, named after de.json
+const TAG_B_URL = /[?&]tag=flow-b(?:&|$)/u;
+const TAGS_BUTTON = /^Tags: /u;
+const BOTH_TAGS_URL = /tag=flow-b&tag=flow-a/u;
 const GERMAN_CHUNK = /\/assets\/de-[\w-]+\.js$/u;
 const SWITCH = "#runtime-logNotFound";
 // a switch is a checkbox input or a button with aria-checked
@@ -507,6 +510,63 @@ async function languageFallback({ browser, base, password }) {
 	}
 }
 
+// Two proxy hosts with tags: a tag badge filters the list, a second tag narrows it, Clear filters shows both; the
+// window suggests a tag already used
+async function tagFilter({ admin }) {
+	const { page, api } = admin;
+	const made = [];
+	try {
+		const host = (domain, tags) =>
+			api("POST", "/nginx/proxy-hosts", {
+				domain_names: [domain],
+				forward_scheme: "http",
+				forward_host: "127.0.0.1",
+				forward_port: 8080,
+				npmpro_tags: tags,
+			});
+		made.push(await host("flow-tag1.example.com", ["flow-a", "flow-b"]));
+		made.push(await host("flow-tag2.example.com", ["flow-a"]));
+		await page.goto("/nginx/proxy");
+		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-tag");
+		await rowOf(page, "flow-tag2.example.com").first().waitFor();
+		await rowOf(page, "flow-tag1.example.com")
+			.getByRole("button", { name: "Show only hosts tagged flow-b", exact: true })
+			.filter({ visible: true })
+			.first()
+			.click();
+		await page.waitForURL(TAG_B_URL);
+		await rowOf(page, "flow-tag2.example.com").first().waitFor({ state: "detached" });
+		await rowOf(page, "flow-tag1.example.com").first().waitFor();
+		await page.getByRole("button", { name: TAGS_BUTTON }).click();
+		await page.getByRole("menuitemcheckbox", { name: "flow-a", exact: true }).click();
+		await page.keyboard.press("Escape");
+		await page.waitForURL(BOTH_TAGS_URL);
+		await rowOf(page, "flow-tag1.example.com").first().waitFor();
+		await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+		await page.waitForURL((url) => !url.searchParams.has("tag"));
+		// a search typed before the router has settled would be merged into the old address, so wait for the cleared bar
+		await page.getByRole("button", { name: "Clear filters", exact: true }).waitFor({ state: "detached" });
+		// Clear filters also empties the search: search again so both rows are on the first page
+		await page.getByRole("textbox", { name: "Search", exact: true }).fill("flow-tag");
+		await rowOf(page, "flow-tag2.example.com").first().waitFor();
+		// the window suggests the tags in use
+		await page.getByRole("button", { name: "Add Proxy Host", exact: true }).first().click();
+		const dialog = page.getByRole("dialog");
+		await dialog.locator("#npmproTags").fill("flow-");
+		await page.getByRole("option", { name: "flow-a", exact: true }).waitFor();
+		await page.keyboard.press("Escape");
+		await dialog.getByRole("button", { name: "Close", exact: true }).click();
+		const ask = page.getByRole("alertdialog");
+		if ((await ask.count()) > 0) await ask.getByRole("button", { name: "Discard changes", exact: true }).click();
+		await windowClosed(page);
+	} finally {
+		for (const row of made) {
+			// biome-ignore lint/performance/noAwaitInLoops: one delete after another
+			await api("DELETE", `/nginx/proxy-hosts/${row.id}`).catch(() => undefined);
+		}
+	}
+}
+
 export const appFlows = [
 	{ name: "settings save", run: settingsSave },
 	{ name: "log format", run: logFormat },
@@ -520,6 +580,7 @@ export const appFlows = [
 	{ name: "window focus tooltip", run: windowFocusTooltip },
 	{ name: "help sheet", run: helpSheet },
 	{ name: "list paging", run: listPaging },
+	{ name: "tag filter", run: tagFilter },
 	{ name: "language fallback", run: languageFallback },
 	{ name: "language", run: languageSwitch },
 ];

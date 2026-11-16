@@ -40,6 +40,23 @@ const untrimmedPaths = new Set([
 	"/pages/captcha/html",
 ]);
 
+// errors that name the value the user sent, by the path of the value
+const TAG_ITEM = /^\/npmpro_tags\/\d+$/u;
+const valueMessages = [
+	{
+		path: TAG_ITEM,
+		message: (value) =>
+			`The tag "${value}" is not valid: a tag has 1 to 32 letters, digits, spaces, "-", "_" or "." and no space at either end.`,
+	},
+];
+
+// the message of the first error: a value message when one names its path, else AJV's
+const messageOf = (errors) => {
+	const [first] = errors;
+	const named = valueMessages.find(({ path }) => path.test(first.instancePath));
+	return named && typeof first.data === "string" ? named.message(first.data) : ajv.errorsText(errors);
+};
+
 const trimStrings = (value, path = "", depth = 0) => {
 	if (depth > 8) throw new errs.ValidationError("Payload is nested too deeply");
 	if (typeof value === "string") return untrimmedPaths.has(path) ? value : value.trim();
@@ -69,7 +86,7 @@ const apiValidator = (schema, payload /*, description*/) => {
 
 	if (validate(data)) return data;
 
-	const message = ajv.errorsText(validate.errors);
+	const message = messageOf(validate.errors);
 	const err = new errs.ValidationError(message);
 	err.debug = { validationErrors: validate.errors, payload };
 	throw err;

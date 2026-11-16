@@ -58,7 +58,8 @@ const internalStream = createHostService({
 				this.where(castJsonIfNeed("incoming_port"), "like", `%${searchQuery}%`)
 					.orWhere(castJsonIfNeed("forwarding_port"), "like", `%${searchQuery}%`)
 					.orWhere("forwarding_host", "like", `%${searchQuery}%`)
-					.orWhere("npmpro_description", "like", `%${searchQuery}%`);
+					.orWhere("npmpro_description", "like", `%${searchQuery}%`)
+					.orWhere(castJsonIfNeed("npmpro_tags"), "like", `%${searchQuery}%`);
 			}),
 	},
 });

@@ -12,6 +12,7 @@ Użyj **Klonuj** w menu hosta, aby skopiować host do nowego okna dodawania. Kop
 - **Domena docelowa**: domena, do której kierowani są odwiedzający, na przykład `example.com`. Wymagana.
 - **Kod HTTP**: kod odpowiedzi. Domyślnie 301 Moved permanently. Inne opcje: 302 Moved temporarily, 303 See other, 307 Temporary redirect i 308 Permanent redirect. Użyj 301 lub 308, gdy przeniesienie jest na stałe; przeglądarki i wyszukiwarki je zapamiętują.
 - **Grupa**: dowolna etykieta, która utrzymuje porządek na długich listach. Wybierz używaną lub wpisz nową nazwę.
+- **Tagi**: do 10 etykiet, na przykład „Produkcja” lub „domowe laboratorium”. Wpisz tag i naciśnij Enter; podpowiadane są tagi już użyte przy dowolnym hoście. Kliknij tag na liście, aby pokazać tylko hosty z tym tagiem.
 - **Zachowaj ścieżkę** (domyślnie wyłączone): dodaje do celu oryginalną ścieżkę i zapytanie. Po włączeniu `old.example/a?b=1` trafia na `new.example/a?b=1`. Bez tego każdy odwiedzający ląduje na początku celu.
 
 ### TLS

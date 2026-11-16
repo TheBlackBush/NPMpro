@@ -14,6 +14,7 @@ export function HostTable({
 	data,
 	isFetching,
 	onEdit,
+	onTagClick,
 	onClone,
 	onDelete,
 	onDisableToggle,
@@ -37,7 +38,7 @@ export function HostTable({
 		data,
 		meta: {
 			isFetching,
-			actions: { onClone, onDelete, onDisableToggle, onEdit },
+			actions: { onClone, onDelete, onDisableToggle, onEdit, onTagClick },
 		},
 		state: { sorting, pagination },
 		onSortingChange,

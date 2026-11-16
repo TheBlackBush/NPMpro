@@ -12,6 +12,7 @@ Use **Clonar** no menu do host para copiar um host para uma nova janela de adiç
 - **Hostname / IP / Caminho de Destino**: o endereço do serviço. Pode acrescentar um subcaminho, por exemplo `127.0.0.1/path`. Com `path`, indique antes uma pasta. Monte os seus ficheiros em `/var/www`; só os administradores podem usar uma pasta fora dela. Um nome que comece por `cu_` aponta para um bloco upstream do nginx seu (veja Load balancing na wiki).
 - **Porta de Encaminhamento**: opcional. Com `path` é a versão do PHP.
 - **Grupo**: uma etiqueta livre que mantém as listas longas arrumadas.
+- **Etiquetas**: até 10 etiquetas, por exemplo "Produção" ou "laboratório caseiro". Digite uma etiqueta e pressione Enter; as etiquetas já usadas em qualquer host são sugeridas. Clique em uma etiqueta da lista para mostrar só os hosts que a têm.
 - **Opções** (todas desativadas por predefinição):
   - **Enviar cabeçalho noindex e bloquear alguns user agents de bots**: pede aos motores de pesquisa que não indexem o site e bloqueia alguns crawlers.
   - **Desativar CrowdSec AppSec**: desativa o CrowdSec AppSec só para este host. Só tem efeito se o AppSec estiver configurado.

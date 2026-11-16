@@ -16,6 +16,7 @@
 		"enabled",
 		"npmpro_advanced_config",
 		"npmpro_description",
+		"npmpro_tags",
 		"certificate_id",
 		"npmpro_nginx_online",
 		"npmpro_nginx_err",
@@ -109,6 +110,9 @@
 		},
 		"npmpro_description": {
 			"$ref": "../common.json#/properties/npmpro_description"
+		},
+		"npmpro_tags": {
+			"$ref": "../common.json#/properties/npmpro_tags"
 		},
 		"certificate": {
 			"oneOf": [

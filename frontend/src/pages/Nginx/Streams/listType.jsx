@@ -1,6 +1,7 @@
 import { deleteStream, toggleStream } from "src/api/backend";
 import { getDirectory, useStreams } from "src/hooks";
 import { showStreamModal } from "src/modals";
+import { labelSearchText } from "src/modules/HostSearch";
 import { HOST_TYPES } from "src/modules/HostTypes";
 import Table, { useColumns } from "./Table";
 
@@ -15,7 +16,7 @@ export const streamList = {
 	remove: deleteStream,
 	showModal: showStreamModal,
 	searchText: (item) =>
-		`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${item.npmproDescription ?? ""} ${getDirectory(item) ?? ""}`,
+		`${item.incomingPort} ${item.forwardingHost}:${item.forwardingPort} ${labelSearchText(item)} ${getDirectory(item) ?? ""}`,
 	deleteSubject: (stream) =>
 		stream
 			? `${stream.incomingPort} → ${stream.forwardingHost}${stream.forwardingPort ? `:${stream.forwardingPort}` : ""}`

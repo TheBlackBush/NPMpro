@@ -12,6 +12,7 @@ Usa **Clonar** en el menú del host para copiar un host en una nueva ventana de 
 - **Dominio de Reenvío**: el dominio al que se envía a los visitantes, por ejemplo `example.com`. Obligatorio.
 - **Código HTTP**: el código de respuesta. Por defecto 301 Moved permanently. Otras opciones: 302 Moved temporarily, 303 See other, 307 Temporary redirect y 308 Permanent redirect. Usa 301 o 308 cuando el cambio es definitivo; los navegadores y los buscadores lo recuerdan.
 - **Grupo**: una etiqueta libre que mantiene ordenadas las listas largas. Elige una en uso o escribe un nombre nuevo.
+- **Etiquetas**: hasta 10 etiquetas, por ejemplo "Producción" o "laboratorio casero". Se escribe una etiqueta y se confirma con Intro; se sugieren las etiquetas ya usadas en cualquier host. Un clic en una etiqueta de la lista muestra solo los hosts que la tienen.
 - **Preservar Ruta** (desactivado por defecto): añade la ruta y la consulta originales al destino. Con ella, `old.example/a?b=1` va a `new.example/a?b=1`. Sin ella, cada visitante llega al inicio del destino.
 
 ### TLS

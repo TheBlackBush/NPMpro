@@ -1,11 +1,16 @@
 import errs from "../lib/error.js";
 import { castJsonIfNeed } from "../lib/helpers.js";
 import { assertHostConfig } from "../lib/host-config-guard.js";
+import { uniqueTags } from "../lib/host-tags.js";
 import { auditPageHtml, withoutPageHtml } from "../lib/landing-pages/types.js";
 import internalAuditLog from "./audit-log.js";
 import internalCertificate from "./certificate.js";
 import internalHost from "./host.js";
 import internalNginx from "./nginx.js";
+
+// two tags that differ only in case are one tag
+const withUniqueTags = (data) =>
+	Array.isArray(data.npmpro_tags) ? { ...data, npmpro_tags: uniqueTags(data.npmpro_tags) } : data;
 
 /** The hooks of a host with domain names; a type replaces what differs */
 const domainHooks = (model, takenType) => ({
@@ -31,11 +36,9 @@ const domainHooks = (model, takenType) => ({
 	applyListOrder: (query) => query.orderBy(castJsonIfNeed("domain_names"), "ASC"),
 	applySearch: (query, searchQuery) =>
 		query.where(function () {
-			this.where(castJsonIfNeed("domain_names"), "like", `%${searchQuery}%`).orWhere(
-				"npmpro_description",
-				"like",
-				`%${searchQuery}%`,
-			);
+			this.where(castJsonIfNeed("domain_names"), "like", `%${searchQuery}%`)
+				.orWhere("npmpro_description", "like", `%${searchQuery}%`)
+				.orWhere(castJsonIfNeed("npmpro_tags"), "like", `%${searchQuery}%`);
 		}),
 });
 
@@ -70,7 +73,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 	const service = {
 		create: async (access, data) => {
-			let thisData = flow.prepareCreate(data);
+			let thisData = flow.prepareCreate(withUniqueTags(data));
 			const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 			access.can(`${permission}:manage`);
@@ -94,7 +97,7 @@ const createHostService = ({ type, model, expand, hooks = {} }) => {
 
 		update: async (access, data) => {
 			let existingRow = flow.loadExistingFirst ? await service.get(access, { id: data.id }) : undefined;
-			let thisData = flow.prepareUpdate(data, existingRow);
+			let thisData = flow.prepareUpdate(withUniqueTags(data), existingRow);
 			const createCertificate = await internalHost.checkCertificates(access, thisData);
 
 			access.can(`${permission}:manage`);

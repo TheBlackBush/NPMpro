@@ -18,6 +18,7 @@
 		"npmpro_nginx_err",
 		"npmpro_directory",
 		"npmpro_description",
+		"npmpro_tags",
 		"npmpro_mtls_certificate_id",
 		"npmpro_mtls_verify_client_optional",
 		"npmpro_page"
@@ -74,6 +75,9 @@
 		},
 		"npmpro_description": {
 			"$ref": "../common.json#/properties/npmpro_description"
+		},
+		"npmpro_tags": {
+			"$ref": "../common.json#/properties/npmpro_tags"
 		},
 		"npmpro_mtls_certificate_id": {
 			"$ref": "../common.json#/properties/npmpro_mtls_certificate_id"

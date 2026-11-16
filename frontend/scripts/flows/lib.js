@@ -143,6 +143,13 @@ export async function addDomain(dialog, name) {
 	await dialog.locator("[data-slot=combobox-chips]").getByText(name, { exact: true }).waitFor();
 }
 
+export async function addTag(dialog, name) {
+	const input = dialog.locator("#npmproTags");
+	await input.fill(name);
+	await input.press("Enter");
+	await dialog.locator("[data-slot=combobox-chips]").getByText(name, { exact: true }).waitFor();
+}
+
 export const openTab = (dialog, tab) => dialog.locator(`[role=tab][data-tab=${tab}]`).click();
 
 /** Saves the open window and waits for its toast and for the window to go */

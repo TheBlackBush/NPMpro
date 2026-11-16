@@ -32,6 +32,8 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {string|Function} [props.createText]  or (query) => text
  * @param {Function} [props.isValidNew]      (query, values) => whether a typed value may be added
  * @param {Function} [props.normalize]       multiple: (entry) => the form two entries are compared in
+ * @param {Object}   [props.separators]      multiple: WORD_ENTRIES (default, spaces and commas separate) or
+ *                                           LINE_ENTRIES (only commas and line breaks: entries may hold spaces)
  * @param {Object}   [props.commitRef]       multiple and creatable: its current is set to () => refused parts, which
  *                                           adds the typed text as values (as Enter does) for a save
  * @param {Function} [props.onQueryChange]   multiple: (text) after the typed text changed
@@ -40,6 +42,7 @@ import { SingleCombobox } from "./ComboboxSingle";
  * @param {Function} [props.onBlur]
  * @param {string}   [props.name]            a hidden input with the value (comma separated with multiple)
  * @param {*}        [props.ref]             the button or the input (react-hook-form focuses it)
+ * @param {Function} [props.chipClassName]   multiple: (value) => extra classes of that value's chip
  * @param {string}   [props.className]       of the wrapper
  */
 export function Combobox({
@@ -63,6 +66,7 @@ export function Combobox({
 	createText,
 	isValidNew,
 	normalize = defaultNormalize,
+	separators,
 	commitRef,
 	onQueryChange,
 	invalid,
@@ -70,6 +74,7 @@ export function Combobox({
 	onBlur,
 	name,
 	className,
+	chipClassName,
 	...rest
 }) {
 	const ownId = useId();
@@ -117,8 +122,10 @@ export function Combobox({
 					{...shared}
 					value={value}
 					normalize={normalize}
+					separators={separators}
 					commitRef={commitRef}
 					onQueryChange={onQueryChange}
+					chipClassName={chipClassName}
 				/>
 			) : (
 				<SingleCombobox {...shared} value={value} clearable={clearable} searchable={searchable} />

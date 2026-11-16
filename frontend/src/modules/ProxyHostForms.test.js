@@ -37,6 +37,7 @@ const newHost = {
 	advancedConfig: "",
 	npmproLocationConfig: "",
 	npmproDirectory: "",
+	npmproTags: [],
 	npmproMtlsCertificateId: 0,
 	npmproMtlsVerifyClientOptional: false,
 	npmproMtlsBypassAuthRequest: false,
@@ -119,6 +120,7 @@ it("starts a new proxy host with complete values in the window's order", () => {
 		...Object.keys(CERTIFICATE_REQUEST_DEFAULTS),
 		"advancedConfig",
 		"npmproDirectory",
+		"npmproTags",
 		"npmproMaintenance",
 		"npmproPageNotFound",
 		"npmproPageNotFoundHtml",
@@ -419,4 +421,18 @@ it("refuses a proxy host description over 255 characters", () => {
 		npmproDescription: "x".repeat(256),
 	});
 	assert.match(errors.npmproDescription, DESCRIPTION_LIMIT);
+});
+
+it("keeps the tags on a clone, places them on the Details tab and refuses a bad one", () => {
+	const tagged = { ...newHost, npmproTags: ["Lab"] };
+	assert.deepEqual(proxyHostDefaults(tagged, { isClone: true }).npmproTags, ["Lab"]);
+	assert.equal(tabOfPath(PROXY_HOST_TABS, "npmproTags"), "details");
+	const errors = proxyHostValidate(rules)({
+		...proxyHostDefaults(newHost),
+		domainNames: ["a.example.com"],
+		forwardHost: "b.example.com",
+		forwardPort: "80",
+		npmproTags: ["a/b"],
+	});
+	assert.ok(errors.npmproTags);
 });

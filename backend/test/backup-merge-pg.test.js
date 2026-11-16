@@ -44,6 +44,7 @@ it("adds rows with free ids after rows were inserted with explicit ids (Postgres
 						access_list_id: 0,
 						enabled: 1,
 						meta: {},
+						npmpro_tags: ["Lab", "café"],
 					},
 				],
 				npmpro_location: [],
@@ -88,6 +89,7 @@ it("adds rows with free ids after rows were inserted with explicit ids (Postgres
 			(await knex("proxy_host").where({ id: newId }).first()).domain_names.includes("new.example.com"),
 			true,
 		);
+		assert.deepEqual((await knex("proxy_host").where({ id: newId }).first()).npmpro_tags, ["Lab", "café"]);
 	} finally {
 		await knex.raw("drop schema public cascade").catch(() => undefined);
 		await knex.raw("create schema public").catch(() => undefined);

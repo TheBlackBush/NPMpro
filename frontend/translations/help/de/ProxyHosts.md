@@ -12,6 +12,7 @@ Verwenden Sie **Klonen** im Menü des Hosts, um einen Host in ein neues Fenster 
 - **Forward Hostname / IP / Pfad**: die Adresse des Dienstes. Sie können einen Unterpfad angeben, zum Beispiel `127.0.0.1/path`. Bei `path` geben Sie stattdessen einen Ordner an. Binden Sie Ihre Dateien unter `/var/www` ein; nur Administratoren können einen Ordner außerhalb davon verwenden. Ein Name, der mit `cu_` beginnt, verweist auf Ihren eigenen nginx-Upstream-Block (siehe Load balancing im Wiki).
 - **Ziel-Port**: optional. Bei `path` ist es die PHP-Version.
 - **Gruppe**: ein freies Label, das lange Listen übersichtlich hält.
+- **Tags**: bis zu 10 Labels, zum Beispiel "Production" oder "Heimlabor". Tag eingeben und Enter drücken; die Tags, die schon an einem Host stehen, werden vorgeschlagen. Ein Klick auf einen Tag in der Liste zeigt nur Hosts mit diesem Tag.
 - **Optionen** (alle standardmäßig aus):
   - **noindex-Header senden und einige Bot-User-Agents blockieren**: bittet Suchmaschinen, die Seite nicht zu indexieren, und blockiert einige Crawler.
   - **Crowdsec Appsec deaktivieren**: schaltet CrowdSec AppSec nur für diesen Host ab. Wirkt nur, wenn AppSec eingerichtet ist.

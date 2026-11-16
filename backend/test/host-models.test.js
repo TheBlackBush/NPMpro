@@ -35,12 +35,20 @@ const KEPT = {
 	proxy: [],
 };
 const DEFAULTS = {
-	dead: { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "", npmpro_page: "global" },
-	redirection: { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "" },
-	stream: { meta: {}, npmpro_advanced_config: "", npmpro_nginx_err: "" },
+	dead: {
+		domain_names: [],
+		meta: {},
+		npmpro_tags: [],
+		advanced_config: "",
+		npmpro_nginx_err: "",
+		npmpro_page: "global",
+	},
+	redirection: { domain_names: [], meta: {}, npmpro_tags: [], advanced_config: "", npmpro_nginx_err: "" },
+	stream: { meta: {}, npmpro_tags: [], npmpro_advanced_config: "", npmpro_nginx_err: "" },
 	proxy: {
 		domain_names: [],
 		meta: {},
+		npmpro_tags: [],
 		advanced_config: "",
 		npmpro_location_config: "",
 		npmpro_nginx_err: "",

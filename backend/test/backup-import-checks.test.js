@@ -217,6 +217,20 @@ it("checks the values of every merge apart from the admin-only fields", async ()
 	}
 });
 
+it("refuses host tags outside the API rule: a bad tag or more than 10, and passes a valid list", async () => {
+	const host = { id: 1, domain_names: '["a.example.com"]', forward_host: "app", forward_port: 80 };
+	const run = (tags) =>
+		checkItemValues({
+			plan: { items: [item("proxy_hosts", 1)] },
+			data: { proxy_hosts: { proxy_host: [{ ...host, npmpro_tags: tags }], npmpro_location: [] } },
+		});
+	await run(["Lab", "café"]);
+	await run(JSON.stringify(["Lab"]));
+	for (const tags of [["a/b"], [" lead"], Array.from({ length: 11 }, (_, n) => `t${n}`)]) {
+		await assert.rejects(run(tags), refuses("npmpro_tags"));
+	}
+});
+
 it("refuses unix: targets, request variables and regex domains on the hosts of a non-admin import", async () => {
 	const knex = await database();
 	try {

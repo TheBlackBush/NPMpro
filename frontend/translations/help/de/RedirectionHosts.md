@@ -12,6 +12,7 @@ Verwenden Sie **Klonen** im Menü des Hosts, um einen Host in ein neues Fenster 
 - **Ziel-Domain**: die Domain, an die Besucher geschickt werden, zum Beispiel `example.com`. Erforderlich.
 - **HTTP-Code**: der Antwortcode. Standard 301 Moved permanently. Weitere Auswahl: 302 Moved temporarily, 303 See other, 307 Temporary redirect und 308 Permanent redirect. Verwenden Sie 301 oder 308, wenn der Umzug dauerhaft ist; Browser und Suchmaschinen merken sie sich.
 - **Gruppe**: ein freies Label, das lange Listen übersichtlich hält. Wählen Sie eine verwendete aus oder tippen Sie einen neuen Namen.
+- **Tags**: bis zu 10 Labels, zum Beispiel "Production" oder "Heimlabor". Tag eingeben und Enter drücken; die Tags, die schon an einem Host stehen, werden vorgeschlagen. Ein Klick auf einen Tag in der Liste zeigt nur Hosts mit diesem Tag.
 - **Pfad beibehalten** (standardmäßig aus): hängt den ursprünglichen Pfad und die Query an das Ziel an. Damit geht `old.example/a?b=1` an `new.example/a?b=1`. Ohne landet jeder Besucher am Anfang des Ziels.
 
 ### TLS

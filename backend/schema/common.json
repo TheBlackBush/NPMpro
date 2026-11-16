@@ -150,6 +150,19 @@
 			"default": "",
 			"example": "Home Assistant on the NAS"
 		},
+		"npmpro_tags": {
+			"description": "Labels of this host for the lists, at most 10. A tag has 1 to 32 letters, digits, spaces, \"-\", \"_\" or \".\" and no space at either end; tags that differ only in case are one tag, the first is kept",
+			"type": "array",
+			"maxItems": 10,
+			"default": [],
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 32,
+				"pattern": "^[\\p{L}\\p{M}\\p{N}._-](?:[\\p{L}\\p{M}\\p{N} ._-]*[\\p{L}\\p{M}\\p{N}._-])?$"
+			},
+			"example": ["Production", "Home lab"]
+		},
 		"npmpro_mtls_certificate_id": {
 			"description": "mTLS Certificate ID: an mTLS CA certificate with its file present, 0 for none",
 			"type": "integer",

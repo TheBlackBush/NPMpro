@@ -10,6 +10,7 @@ import {
 	SwitchField,
 	SwitchList,
 	TabPane,
+	TagsField,
 	TextField,
 } from "src/components";
 import { useSetStream, useStream } from "src/hooks";
@@ -102,7 +103,10 @@ function StreamFields() {
 						placeholder={intl.formatMessage({ id: "form.example" }, { example: "8081" })}
 					/>
 				</div>
-				<DirectoryField labelId="stream.directory" />
+				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+					<DirectoryField className="mb-0" labelId="stream.directory" />
+					<TagsField className="mb-0" />
+				</div>
 				<FormSection heading legend={<T id="host.flags.protocols" />} className="mb-0">
 					<SwitchList className="mb-3">
 						<SwitchField

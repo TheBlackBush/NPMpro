@@ -23,7 +23,7 @@ export function GravatarFormatter({ url, name, email, size, decorative }) {
 	const avatar = (
 		<Avatar
 			{...(name && !decorative ? { role: "img", "aria-label": name } : { "aria-hidden": "true" })}
-			className={cn("mr-2 rounded-md after:rounded-md", sizes[size] || "size-10")}
+			className={cn("rounded-md after:rounded-md", sizes[size] || "size-10")}
 		>
 			{hasNoPicture(url) ? null : <AvatarImage src={url} alt="" className="rounded-md" />}
 			{letters ? (

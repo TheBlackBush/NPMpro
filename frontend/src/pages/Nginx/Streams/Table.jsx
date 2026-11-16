@@ -1,6 +1,7 @@
 import { Disc3 } from "lucide-react";
 import { useMemo } from "react";
 import { BreakableHost } from "src/components/Table/Formatter/BreakableHost";
+import { HostLabels } from "src/components/Table/Formatter/HostLabels";
 import { ValueWithDateFormatter } from "src/components/Table/Formatter/ValueWithDateFormatter";
 import { HostTable } from "src/components/Table/HostTable";
 import {
@@ -51,7 +52,18 @@ export function useColumns() {
 				header: intl.formatMessage({ id: "column.incoming-port" }),
 				cell: (info) => {
 					const value = info.row.original;
-					return <ValueWithDateFormatter value={value.incomingPort} createdOn={value.createdOn} />;
+					return (
+						<ValueWithDateFormatter
+							value={value.incomingPort}
+							createdOn={value.createdOn}
+							below={
+								<HostLabels
+									tags={value.npmproTags}
+									onTagClick={info.table.options.meta?.actions?.onTagClick}
+								/>
+							}
+						/>
+					);
 				},
 			}),
 			columnHelper.accessor((row) => row.npmproDescription, {

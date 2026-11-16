@@ -9,6 +9,7 @@ import {
 	SSLCertificateField,
 	SSLOptionsFields,
 	TabPane,
+	TagsField,
 	TextField,
 } from "src/components";
 import { useDeadHost, useSetDeadHost } from "src/hooks";
@@ -40,7 +41,10 @@ function DeadHostFields({ isAdmin, hostId }) {
 					maxLength={255}
 					placeholder={intl.formatMessage({ id: "host.description.placeholder" })}
 				/>
-				<DirectoryField labelId="dead-host.directory" />
+				<div className="mb-3 grid items-start gap-3 sm:grid-cols-2">
+					<DirectoryField className="mb-0" labelId="dead-host.directory" />
+					<TagsField className="mb-0" />
+				</div>
 				<PageLines className="mt-4">
 					<PageChoiceField
 						name="npmproPage"

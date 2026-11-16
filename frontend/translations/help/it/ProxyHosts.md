@@ -12,6 +12,7 @@ Usa **Duplica** nel menu dell'host per copiare un host in una nuova finestra di 
 - **Hostname / IP / path di destinazione**: l'indirizzo del servizio. Puoi aggiungere un sottopercorso, ad esempio `127.0.0.1/path`. Con `path`, inserisci invece una cartella. Monta i tuoi file sotto `/var/www`; solo gli amministratori possono usare una cartella al di fuori. Un nome che inizia con `cu_` indica un tuo blocco upstream di nginx (vedi Load balancing nel wiki).
 - **Porta di Destinazione**: facoltativa. Con `path` è la versione di PHP.
 - **Gruppo**: un'etichetta libera che tiene in ordine gli elenchi lunghi.
+- **Tag**: fino a 10 tag, per esempio "Produzione" o "laboratorio casalingo". Si scrive un tag e si preme Invio; vengono suggeriti i tag già usati su qualsiasi host. Un clic su un tag nell'elenco mostra solo gli host che lo hanno.
 - **Opzioni** (tutte disattivate per impostazione predefinita):
   - **Invia l'header noindex e blocca alcuni user agent di bot**: chiede ai motori di ricerca di non indicizzare il sito e blocca alcuni crawler.
   - **Disattiva CrowdSec AppSec**: disattiva CrowdSec AppSec solo per questo host. Ha effetto solo se AppSec è configurato.

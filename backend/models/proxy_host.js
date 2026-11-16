@@ -44,6 +44,7 @@ class ProxyHost extends HostModel {
 		return {
 			domain_names: [],
 			meta: {},
+			npmpro_tags: [],
 			advanced_config: "",
 			npmpro_location_config: "",
 			npmpro_nginx_err: "",
@@ -56,7 +57,7 @@ class ProxyHost extends HostModel {
 
 	static tableName = "proxy_host";
 
-	static jsonAttributes = ["domain_names", "meta"];
+	static jsonAttributes = ["domain_names", "meta", "npmpro_tags"];
 
 	static get relationMappings() {
 		return {

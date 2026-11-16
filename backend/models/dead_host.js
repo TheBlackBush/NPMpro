@@ -19,12 +19,19 @@ class DeadHost extends HostModel {
 	static emptyWhenNull = ["npmpro_page_html"];
 
 	static insertDefaults() {
-		return { domain_names: [], meta: {}, advanced_config: "", npmpro_nginx_err: "", npmpro_page: "global" };
+		return {
+			domain_names: [],
+			meta: {},
+			npmpro_tags: [],
+			advanced_config: "",
+			npmpro_nginx_err: "",
+			npmpro_page: "global",
+		};
 	}
 
 	static tableName = "dead_host";
 
-	static jsonAttributes = ["domain_names", "meta"];
+	static jsonAttributes = ["domain_names", "meta", "npmpro_tags"];
 
 	static get relationMappings() {
 		return {

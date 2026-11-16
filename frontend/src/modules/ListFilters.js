@@ -1,11 +1,12 @@
 import { expiryInfo } from "./Expiry.js";
+import { canonicalTags, hasAllTags } from "./HostTags.js";
 
 const STATUSES = ["online", "error", "disabled"];
 const TLS = ["with", "without"];
 
 /**
  * @param {URLSearchParams} searchParams
- * @param {{ groups?: string[] }} [allowed]
+ * @param {{ groups?: string[], tags?: string[] }} [allowed]
  */
 export function parseFilters(searchParams, allowed = {}) {
 	const pick = (key, values) => {
@@ -18,6 +19,7 @@ export function parseFilters(searchParams, allowed = {}) {
 		status: pick("status", STATUSES),
 		tls: pick("tls", TLS),
 		group: group && (allowed.groups ?? []).includes(group) ? group : null,
+		tags: canonicalTags(searchParams.getAll("tag"), allowed.tags ?? []),
 		expiry: pick("expiry", ["soon"]),
 	};
 }
@@ -33,13 +35,14 @@ const matchesSearch = (row, q, searchText) => {
 	return needle === "" || searchText(row).toLowerCase().includes(needle);
 };
 
-export function filterHosts(rows, filters, { searchText, getGroup }) {
+export function filterHosts(rows, filters, { searchText, getGroup, getTags = () => [] }) {
 	return rows.filter((row) => {
 		if (!matchesSearch(row, filters.q, searchText)) return false;
 		if (filters.status !== "all" && hostStatus(row) !== filters.status) return false;
 		if (filters.tls === "with" && !row.certificate) return false;
 		if (filters.tls === "without" && row.certificate) return false;
 		if (filters.group !== null && (getGroup(row) ?? "") !== filters.group) return false;
+		if (filters.tags?.length > 0 && !hasAllTags(getTags(row), filters.tags)) return false;
 		return true;
 	});
 }
@@ -55,12 +58,13 @@ export function filterCertificates(rows, filters, { searchText, now = new Date()
 	});
 }
 
-export function activeFilterCount(filters, kinds = ["status", "tls", "group", "expiry"]) {
+export function activeFilterCount(filters, kinds = ["status", "tls", "group", "tags", "expiry"]) {
 	let count = 0;
 	if (filters.q.trim() !== "") count++;
 	if (kinds.includes("status") && filters.status !== "all") count++;
 	if (kinds.includes("tls") && filters.tls !== "all") count++;
 	if (kinds.includes("group") && filters.group !== null) count++;
+	if (kinds.includes("tags") && filters.tags?.length > 0) count++;
 	if (kinds.includes("expiry") && filters.expiry !== "all") count++;
 	return count;
 }

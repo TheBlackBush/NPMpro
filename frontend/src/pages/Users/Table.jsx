@@ -130,7 +130,7 @@ export function useColumns() {
 					return <GravatarFormatter url={value.avatar} name={value.name} email={value.email} decorative />;
 				},
 				meta: {
-					className: "whitespace-nowrap md:@max-3xl:hidden",
+					className: "w-px whitespace-nowrap pr-4 md:@max-3xl:hidden",
 					mobile: "hide",
 				},
 			}),

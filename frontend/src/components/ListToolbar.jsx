@@ -1,12 +1,22 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, Search } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { AppSelect } from "src/components/AppSelect";
 import { TapTooltip } from "src/components/TapTooltip";
+import { TruncatedText } from "src/components/TruncatedText";
+import { Badge } from "src/components/ui/badge";
 import { Button } from "src/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+} from "src/components/ui/dropdown-menu";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "src/components/ui/input-group";
 import { intl, T } from "src/locale";
+import { addTag, removeTag, sameTag } from "src/modules/HostTags";
 import { activeFilterCount } from "src/modules/ListFilters";
 import { sortOptions, sortSelectValue } from "src/modules/MobileColumns";
+import { tagToneClass } from "src/modules/TagTone";
 
 const STATUS_OPTIONS = ["online", "error", "disabled"];
 const TLS_OPTIONS = ["with", "without"];
@@ -27,15 +37,50 @@ function FilterSelect({ label, value, onChange, options }) {
 	);
 }
 
+// several tags at once: a menu of check items that stays open while they are toggled
+function TagFilter({ tags, value, onChange }) {
+	const name = intl.formatMessage({ id: "list.filter.tags" });
+	const shown = value.length === 0 ? intl.formatMessage({ id: "list.filter.all" }) : value.join(", ");
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="outline"
+					size="sm"
+					className="w-auto min-w-[calc(50%-0.25rem)] max-w-full flex-1 justify-between text-sm font-normal md:max-w-64 md:min-w-0 md:flex-none"
+				>
+					<TruncatedText tap={false}>{`${name}: ${shown}`}</TruncatedText>
+					<ChevronDown data-icon="inline-end" aria-hidden="true" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+				{tags.map((tag) => (
+					<DropdownMenuCheckboxItem
+						key={tag}
+						checked={value.some((picked) => sameTag(picked, tag))}
+						onSelect={(event) => event.preventDefault()}
+						onCheckedChange={(on) => onChange(on ? addTag(value, tag) : removeTag(value, tag))}
+					>
+						<Badge variant="outline" className={`h-5 font-normal ${tagToneClass(tag)}`}>
+							{tag}
+						</Badge>
+					</DropdownMenuCheckboxItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 /**
  * @param {object} props
  * @param {object} props.filters result of parseFilters
- * @param {(key: string, value: string|null) => void} props.setFilter
+ * @param {(key: string, value: string|string[]|null) => void} props.setFilter
  * @param {() => void} props.clear
  * @param {number} props.total rows before filtering
  * @param {number} props.shown rows after filtering
- * @param {string[]} props.kinds any of "status", "tls", "group", "expiry"
+ * @param {string[]} props.kinds any of "status", "tls", "group", "tags", "expiry"
  * @param {string[]} [props.groups]
+ * @param {string[]} [props.tags] the tags of this list
  * @param {object} [props.sorting] phone-only "Sort by" control, hidden from 768 px up
  * @param {{ id: string, header: *, enableSorting?: boolean }[]} props.sorting.columns the table's columns: either
  *   resolved ones, tableInstance.getAllLeafColumns().map((column) => ({ id: column.id, header: column.columnDef.header,
@@ -44,7 +89,7 @@ function FilterSelect({ label, value, onChange, options }) {
  * @param {{ id: string, desc: boolean }[]} props.sorting.state TanStack SortingState
  * @param {(state: { id: string, desc: boolean }[]) => void} props.sorting.onChange
  */
-function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [], sorting }) {
+function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = [], tags = [], sorting }) {
 	const active = activeFilterCount(filters, kinds) > 0;
 	const [text, setText] = useState(filters.q);
 	const inputRef = useRef(null);
@@ -112,6 +157,9 @@ function ListToolbar({ filters, setFilter, clear, total, shown, kinds, groups = 
 							onChange={(v) => setFilter("group", v)}
 							options={groups.map((value) => ({ value, label: value }))}
 						/>
+					) : null}
+					{kinds.includes("tags") && tags.length > 0 ? (
+						<TagFilter tags={tags} value={filters.tags ?? []} onChange={(next) => setFilter("tag", next)} />
 					) : null}
 					{kinds.includes("expiry") ? (
 						<FilterSelect
