@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/TheBlackBush/NPMpro/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/TheBlackBush/NPMpro/docker.yml?branch=develop&style=for-the-badge&label=docker%20build" alt="Docker build"></a>
   <a href="https://github.com/TheBlackBush/NPMpro/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/TheBlackBush/NPMpro/test.yml?branch=develop&style=for-the-badge&label=tests" alt="Tests"></a>
-  <a href="COPYING"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge" alt="License AGPL-3.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge" alt="License AGPL-3.0"></a>
   <a href="https://github.com/TheBlackBush/NPMpro/pkgs/container/npmpro"><img src="https://img.shields.io/badge/image-npmpro-blue?style=for-the-badge&logo=github" alt="GHCR package"></a>
   <a href="https://github.com/TheBlackBush/NPMpro/pkgs/container/npmpro"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2FTheBlackBush%2FNPMpro%2Fnpmpro&query=downloadCount&label=ghcr%20pulls&style=for-the-badge&logo=docker&logoColor=white" alt="GHCR pulls"></a>
   <a href="https://hub.docker.com/r/blackbush/npmpro"><img src="https://img.shields.io/docker/pulls/blackbush/npmpro?style=for-the-badge&logo=docker&logoColor=white&label=docker%20hub%20pulls" alt="Docker Hub pulls"></a>
@@ -76,6 +76,6 @@ All are welcome to create pull requests for this project, but this does not mean
 
 ## License and credits
 
-NPMpro is licensed under the GNU Affero General Public License version 3 or any later version (see COPYING), with parts under MIT (see MIT.LICENSE).
+NPMpro is licensed under the GNU Affero General Public License version 3 or any later version (see LICENSE), with parts under MIT (see MIT.LICENSE).
 
 NPMpro is based on [NPMplus](https://github.com/ZoeyVid/NPMplus) by ZoeyVid, which is based on [Nginx Proxy Manager](https://github.com/NginxProxyManager/nginx-proxy-manager) by jc21.
