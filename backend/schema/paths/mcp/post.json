@@ -1,0 +1,44 @@
+{
+	"operationId": "mcp",
+	"summary": "MCP endpoint (Streamable HTTP, stateless, JSON responses)",
+	"tags": [
+		"mcp"
+	],
+	"security": [
+		{
+			"bearerAuth": []
+		}
+	],
+	"requestBody": {
+		"required": true,
+		"description": "One JSON-RPC 2.0 message of the MCP Streamable HTTP transport",
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object"
+				}
+			}
+		}
+	},
+	"responses": {
+		"200": {
+			"description": "The JSON-RPC response",
+			"content": {
+				"application/json": {
+					"schema": {
+						"type": "object"
+					}
+				}
+			}
+		},
+		"202": {
+			"description": "A notification was accepted"
+		},
+		"400": {
+			"description": "Unsupported MCP protocol version"
+		},
+		"401": {
+			"description": "An API token is required"
+		}
+	}
+}
