@@ -5,6 +5,7 @@ import multer from "multer";
 import { maintenance } from "./lib/database/maintenance.js";
 import errs from "./lib/error.js";
 import { jsonReplacer } from "./lib/helpers.js";
+import { parseErrorHandler } from "./lib/mcp/server.js";
 import { express as logger } from "./logger.js";
 import mainRoutes from "./routes/main.js";
 
@@ -23,6 +24,8 @@ app.use(
 	["/api/settings/landing-pages", "/api/nginx/proxy-hosts", "/api/nginx/dead-hosts", "/api/nginx/access-lists"],
 	express.json({ limit: "16mb" }),
 );
+// the MCP endpoint answers an unparsable body as a JSON-RPC parse error
+app.use("/api/mcp", express.json(), parseErrorHandler);
 app.use(express.json());
 
 // request logging, before the routes

@@ -5,6 +5,8 @@ import { startApi } from "./support/api.js";
 
 const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "access_lists", "certificates"];
 const levels = (level) => ({ visibility: "user", ...Object.fromEntries(SECTIONS.map((s) => [s, level])) });
+const BEARER = /Bearer/u;
+const JSON_TYPE = /application\/json/u;
 const now = () => Math.floor(Date.now() / 1000);
 const INITIALIZE = {
 	jsonrpc: "2.0",
@@ -45,7 +47,7 @@ const send = (token, body, headers = {}) =>
 it("refuses a request without an Authorization header", async () => {
 	const res = await api.client().post("/mcp", INITIALIZE);
 	assert.equal(res.status, 401);
-	assert.match(res.headers.get("www-authenticate"), /Bearer/u);
+	assert.match(res.headers.get("www-authenticate"), BEARER);
 });
 
 it("refuses the admin's session and a foreign bearer", async () => {
@@ -70,7 +72,7 @@ it("a token alone drives the protocol", async () => {
 	const token = await makeToken();
 	const init = await send(token, INITIALIZE);
 	assert.equal(init.status, 200);
-	assert.match(init.headers.get("content-type"), /application\/json/u);
+	assert.match(init.headers.get("content-type"), JSON_TYPE);
 	assert.equal(init.body.result.serverInfo.name, "npmpro");
 	const note = await send(token, { jsonrpc: "2.0", method: "notifications/initialized" });
 	assert.equal(note.status, 202);
@@ -113,4 +115,47 @@ it("lists the tool catalogue for an administrator only", async () => {
 	assert.ok(Array.isArray(res.body));
 	const limited = await api.limited(levels("view"));
 	assert.equal((await limited.get("/mcp/tools")).status, 403);
+});
+
+it("answers a body that is not JSON with a JSON-RPC parse error", async () => {
+	const token = await makeToken();
+	const res = await api.client().send("POST", "/mcp", {
+		form: "{not json",
+		headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+	});
+	assert.equal(res.status, 400);
+	assert.deepEqual(res.body, { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } });
+});
+
+it("refuses a batch array with -32600", async () => {
+	const token = await makeToken();
+	const res = await send(token, [INITIALIZE, { jsonrpc: "2.0", id: 2, method: "ping" }]);
+	assert.equal(res.status, 200);
+	assert.equal(res.body.error.code, -32600);
+});
+
+it("answers a response message of the client with 202", async () => {
+	const token = await makeToken();
+	assert.equal((await send(token, { jsonrpc: "2.0", id: 7, result: {} })).status, 202);
+	assert.equal((await send(token, { jsonrpc: "2.0", id: 8, error: { code: -1, message: "no" } })).status, 202);
+	const bad = await send(token, { jsonrpc: "2.0", id: { a: 1 }, method: "ping" });
+	assert.equal(bad.body.error.code, -32600);
+});
+
+it("refuses a body over 100 kB", async () => {
+	const token = await makeToken();
+	const res = await send(token, { jsonrpc: "2.0", id: 1, method: "ping", params: { pad: "x".repeat(150000) } });
+	assert.equal(res.status, 413);
+});
+
+it("limits failed token attempts from one address", async () => {
+	const client = api.client();
+	const bad = `npmpro_${"a".repeat(16)}_${"b".repeat(43)}`;
+	const statuses = [];
+	for (let attempt = 0; attempt < 8; attempt += 1) {
+		const res = await client.post("/mcp", INITIALIZE, { headers: { authorization: `Bearer ${bad}` } });
+		statuses.push(res.status);
+	}
+	assert.equal(statuses[0], 401);
+	assert.ok(statuses.includes(429), statuses.join(","));
 });
