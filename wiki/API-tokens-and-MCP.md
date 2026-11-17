@@ -18,7 +18,7 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
   OIDC link, name or email.
 - The token is shown once when it is created. NPMpro stores only a hash of it.
 - Tokens are never in backups. Restoring the Users part of a backup deletes the API tokens of every user except the
-  administrator who runs the restore, even users who come back with the same name and email: they create new tokens.
+  administrator who runs the restore, even users who come back with the same name and email: they create new tokens. The deleted tokens are in the audit log (revoked, reason restore).
   Restoring other parts and merging keep every token.
 - Creating, revoking and expiring a token and its first use are in the audit log, and every change a token makes
   shows the token's name next to the user.
@@ -33,7 +33,8 @@ described in the OpenAPI documentation at `/api/docs`). The answer carries the t
     curl -H "Authorization: Bearer npmpro_..." https://npm.example.com:81/api/nginx/proxy-hosts
 
 - Send the token in the `Authorization` header only, never in the address.
-- A request with both a session cookie and a token is refused (400).
+- When a request carries a token, the token acts: a session cookie sent with it is ignored.
+- Without the token's Allow delete switch, every DELETE request with the token is refused; turn it on for scripts and MCP clients that should delete.
 - Five failed token attempts from one address in five minutes block that address for the rest of the five minutes.
 - The OpenAPI documentation is at `/api/docs` on the admin port (signed in). Its Authorize button takes a token.
 - Expiry: 30, 90 or 365 days, a date, or none (default 90 days).

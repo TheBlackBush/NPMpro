@@ -338,6 +338,20 @@ const createRestore = (
 				},
 			}),
 		});
+		// the tokens a users restore deleted are revoked ones: one entry each, like a revoke by hand
+		for (const token of result.revokedTokens ?? []) {
+			try {
+				await audit(access, {
+					action: "revoked",
+					object_type: "api-token",
+					object_id: token.id,
+					meta: { name: token.name, owner_id: token.user_id, reason: "restore" },
+				});
+			} catch (error) {
+				// the restore itself succeeded
+				log.error(`Could not write the audit log entry of the revoked API token ${token.id}: ${error.message}`);
+			}
+		}
 		if (types.includes("backup_schedules")) {
 			// the restored schedules may hold ids of other schedules: they start their retention with their own new
 			// files only, earlier scheduled files stay as plain stored backups. Runs under the backup lock, so no

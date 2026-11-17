@@ -128,6 +128,29 @@ it("a users restore removes the replaced users' tokens, not the admin's", async 
 	assert.ok(await api.db("user").where({ id: user.user.id }).first());
 });
 
+it("a users restore audits every token it deletes", async () => {
+	const one = await api.limited(levels("view"));
+	const two = await api.limited(levels("view"));
+	const first = await makeToken(one.user.id);
+	const second = await makeToken(two.user.id);
+	const ids = (
+		await api.db("npmpro_api_token").whereIn("lookup_id", [first.lookupId, second.lookupId]).select("id", "name")
+	).sort((a, b) => a.id - b.id);
+	const entry = await keepBackup();
+	const token = await open(entry.name);
+	const done = await admin.post(`${BASE}/restore/${token}`, { types: ["users"], confirm: true });
+	assert.equal(done.status, 200, done.text);
+	for (const row of ids) {
+		const logged = await api
+			.db("audit_log")
+			.where({ action: "revoked", object_type: "api-token", object_id: row.id });
+		assert.equal(logged.length, 1);
+		const meta = typeof logged[0].meta === "string" ? JSON.parse(logged[0].meta) : logged[0].meta;
+		assert.equal(meta.name, row.name);
+		assert.equal(meta.reason, "restore");
+	}
+});
+
 it("other restores keep tokens", async () => {
 	const user = await api.limited(levels("view"));
 	const adminId = (await admin.get("/users/me")).body.id;

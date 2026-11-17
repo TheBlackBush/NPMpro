@@ -281,13 +281,19 @@ const createInserter = (trx) => {
 
 const deleteType = async (trx, typeId, adminUserId) => {
 	// the restored users replace these rows, and an id may now name someone else: their API tokens go too
-	if (typeId === "users") await trx("npmpro_api_token").whereNot("user_id", adminUserId).del();
+	const revokedTokens = [];
+	if (typeId === "users") {
+		const rows = await trx("npmpro_api_token").whereNot("user_id", adminUserId).select("id", "name", "user_id");
+		revokedTokens.push(...rows);
+		await trx("npmpro_api_token").whereNot("user_id", adminUserId).del();
+	}
 	for (const { table, where } of [...typeOf(typeId).tables].reverse()) {
 		const query = trx(table);
 		if (typeId === "users") query.whereNot(table === "user" ? "id" : "user_id", adminUserId);
 		if (where) where(query);
 		await query.del();
 	}
+	return revokedTokens;
 };
 
 // the rows just inserted into a shared table must all be rows of the type
@@ -367,7 +373,8 @@ const insertUsers = async ({ trx, inserter, rowsByTable, adminUserId, now }) => 
  * @param   {Object}    options.box           the secret box that seals the secrets
  * @param   {?number}   [options.now]         seconds, npmpro_token_valid_after of the restored users; null keeps the
  *                                            backup's values (the rollback to the automatic backup)
- * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number>, users: ?Object }>}
+ * @returns {Promise<{ references: Array, skippedUsers: Array, counts: Object<string, number>, users: ?Object, revokedTokens: Array }>}
+ *          revokedTokens: the { id, name, user_id } of the API tokens a users restore deleted;
  *          users, when users were restored: { ids, moved: { from, to } of the backup user that held the admin's id or
  *          null, skippedIds: the backup ids of the skipped users }
  */
@@ -383,13 +390,14 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		let idMap = new Map();
 		let skippedUsers = [];
 		let users = null;
+		const revokedTokens = [];
 		for (const typeId of chosen) {
 			const type = TYPES[typeId];
 			const sealed = type.secrets.seal(remapOwners(prepared[typeId], idMap), box);
 			const rowsByTable = type.restoreRows
 				? type.restoreRows(sealed, { adminUserId, nowMs: (now ?? Math.floor(Date.now() / 1000)) * 1000 })
 				: sealed;
-			await deleteType(trx, typeId, adminUserId);
+			revokedTokens.push(...(await deleteType(trx, typeId, adminUserId)));
 			if (typeId === "users") {
 				const result = await insertUsers({ trx, inserter, rowsByTable, adminUserId, now });
 				({ idMap } = result);
@@ -409,7 +417,7 @@ const replaceTypes = async ({ knex, data, types, adminUserId, box, now = Math.fl
 		for (const table of REFERENCE_TABLES) finalRows[table] = await readReferenceRows(trx, table);
 		const references = planReferences({ finalRows, adminUserId });
 		await applyReferences(trx, references);
-		return { references, skippedUsers, counts, users };
+		return { references, skippedUsers, counts, users, revokedTokens };
 	});
 };
 

@@ -12,14 +12,16 @@ const bearerLimiter = createAuthLimiter({
 	requestWasSuccessful: (_, res) => res.statusCode !== 401,
 });
 
+// a bearer acts alone: a session cookie sent with it is ignored
 const decodeBearer = async (bearer, req, res, next) => {
 	req.npmproBearerSeen = true;
-	if (req.signedCookies?.[COOKIE]) {
-		return res.status(400).json({ error: { message: "Send a session cookie or an API token, not both" } });
-	}
 	try {
 		const access = new Access(null, { apiToken: bearer });
 		await access.load();
+		// without the switch no DELETE of a token goes through: the section permission is only asked with it
+		if (req.method === "DELETE" && access.apiToken?.allow_delete !== true) {
+			return res.status(403).json({ error: { message: "This API token cannot delete: turn on Allow delete" } });
+		}
 		res.locals.access = access;
 		return next();
 	} catch (error) {

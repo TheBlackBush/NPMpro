@@ -193,17 +193,51 @@ it("a disabled or deleted owner is a 401", async () => {
 	assert.equal((await bearer(token).get("/nginx/proxy-hosts")).status, 401);
 });
 
-it("a cookie plus a bearer is a 400 and keeps the cookie", async () => {
-	const user = await api.limited(levels("view"));
-	const token = await makeToken(user.user.id);
-	const both = await user.get("/nginx/proxy-hosts", { headers: { authorization: `Bearer ${token}` } });
-	assert.equal(both.status, 400);
-	assert.equal(both.body.error.message, "Send a session cookie or an API token, not both");
-	assert.equal(
-		both.headers.getSetCookie().some((line) => line.startsWith("__Host-Http-token=;")),
-		false,
-	);
-	assert.equal((await user.get("/nginx/proxy-hosts")).status, 200);
+it("a cookie plus a bearer acts as the token and the cookie is ignored", async () => {
+	const owner = await api.limited(levels("view"));
+	const token = await makeToken(owner.user.id);
+	const asToken = { authorization: `Bearer ${token}` };
+	const boss = await adminId();
+	// an admin cookie with a view token of another user: the token acts
+	const me = await admin.get("/users/me", { headers: asToken });
+	assert.equal(me.status, 200);
+	assert.equal(me.body.id, owner.user.id);
+	hosts += 1;
+	const created = await admin.post("/nginx/proxy-hosts", host(hosts), { headers: asToken });
+	assert.equal(created.status, 403);
+	assert.equal((await admin.get("/nginx/proxy-hosts", { headers: asToken })).status, 200);
+	// a token route stays session only
+	assert.equal((await admin.get("/tokens", { headers: asToken })).status, 403);
+	assert.equal((await admin.get("/users/me/api-tokens", { headers: asToken })).status, 403);
+	assert.notEqual(me.body.id, boss);
+	// a bad token does not fall back to the cookie
+	const bad = await admin.get("/nginx/proxy-hosts", { headers: { authorization: "Bearer garbage" } });
+	assert.equal(bad.status, 401);
+	assert.equal((await admin.get("/nginx/proxy-hosts")).status, 200);
+});
+
+it("without Allow delete every token DELETE is a 403, with it the permission decides", async () => {
+	const user = await api.limited(levels("manage"));
+	const plain = await makeToken(user.user.id, levels("manage"));
+	const allowed = await makeToken(user.user.id, { ...levels("manage"), allow_delete: true });
+	hosts += 1;
+	const created = await user.post("/nginx/proxy-hosts", host(hosts));
+	assert.equal(created.status, 201);
+	const refused = await bearer(plain).delete(`/nginx/proxy-hosts/${created.body.id}`);
+	assert.equal(refused.status, 403);
+	assert.equal(refused.body.error.message, "This API token cannot delete: turn on Allow delete");
+	assert.ok(await api.db("proxy_host").where({ id: created.body.id }).first());
+	assert.equal((await bearer(allowed).delete(`/nginx/proxy-hosts/${created.body.id}`)).status, 200);
+	assert.equal(await api.db("proxy_host").where({ id: created.body.id }).first(), undefined);
+	// a session deletes as before
+	hosts += 1;
+	const second = await user.post("/nginx/proxy-hosts", host(hosts));
+	assert.equal((await user.delete(`/nginx/proxy-hosts/${second.body.id}`)).status, 200);
+	// a view token with the switch still has no delete permission
+	const view = await makeToken(user.user.id, { ...levels("view"), allow_delete: true });
+	hosts += 1;
+	const third = await user.post("/nginx/proxy-hosts", host(hosts));
+	assert.equal((await bearer(view).delete(`/nginx/proxy-hosts/${third.body.id}`)).status, 403);
 });
 
 it("five failed bearer requests limit the address, refusals other than 401 do not count", async () => {
