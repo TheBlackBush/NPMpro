@@ -1,6 +1,6 @@
 // A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages
-// section (with the visit time choices), the phone layout of a host list, the MFA and help windows, and the language switch (last: it reloads the
-// page).
+// section (with the visit time choices), the phone layout of a host list, the MFA and help windows, and the language
+// switch (last: it reloads the page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
 import {
@@ -242,7 +242,8 @@ async function collapsedCardOpens({ admin }) {
 const MAINTENANCE_PAGE = '<!DOCTYPE html><p>flow maintenance <!--# echo var="host" --></p>';
 
 // Settings, Landing pages, Visit time: each choice is saved in the window, and the ban preview, opened in a browser in
-// Tokyo (UTC+9, no summer time), shows that choice's text. The expected local text comes from the same browser's Intl
+// Tokyo (UTC+9, no summer time), shows that choice's text. The expected local text comes from the same browser's Intl,
+// so a browser and Node with different time zone data cannot disagree.
 const VISIT_TIMES = [
 	["local", "Visitor's local time"],
 	["local-utc", "Visitor's local time and UTC"],
