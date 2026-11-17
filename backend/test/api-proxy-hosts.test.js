@@ -68,6 +68,9 @@ hostTests(ctx, {
 		["no domain names", { domain_names: [] }],
 	],
 	adminOnly: { advanced_config: "add_header X-Admin yes;" },
+	advanced:
+		/proxy_pass http:\/\/upstream_\d+;[\s\S]*add_header X-Admin yes;[\s\S]*include \/data\/custom_nginx\/server_proxy\.conf;/u,
+	domains: true,
 });
 
 it("answers the post without domain names or forward host with the missing property", async () => {
@@ -93,14 +96,6 @@ it("does not let a value break out of its nginx directive", async () => {
 	}
 	assert.equal(await countRows(ctx.api, "proxy_host"), rows);
 	assert.deepEqual(await listDir(ctx.api, "data/nginx/proxy_host"), files);
-});
-
-it("gives a domain name to one of two requests at once", async () => {
-	const race = body({ domain_names: ["race.example.com"] });
-	const answers = await Promise.all([ctx.admin.post(URL, race), ctx.admin.post(URL, race)]);
-	const rows = await ctx.api.db("proxy_host").where("domain_names", "like", "%race.example.com%");
-	assert.deepEqual(answers.map(({ status }) => status).sort(), [201, 400]);
-	assert.equal(rows.length, 1);
 });
 
 it("refuses a domain name that another host uses, whatever the case or the spelling", async () => {
@@ -176,19 +171,6 @@ it("does not enable a disabled host whose domain a new host took meanwhile", asy
 	assert.equal((await ctx.api.db("proxy_host").where({ id: first.id }).first()).enabled, 0);
 	assert.equal(await fileExists(ctx.api, confOf(first.id)), false);
 	assert.equal(await fileExists(ctx.api, confOf(second.id)), true);
-});
-
-it("refuses a name that a redirection host or a 404 host uses", async () => {
-	await created(
-		await ctx.admin.post("/nginx/redirection-hosts", {
-			domain_names: ["shared-r.example.com"],
-			forward_domain_name: "t.example.org",
-		}),
-		"redirection",
-	);
-	await created(await ctx.admin.post("/nginx/dead-hosts", { domain_names: ["shared-d.example.com"] }), "dead");
-	taken(await ctx.admin.post(URL, body({ domain_names: ["shared-r.example.com"] })), "shared-r.example.com");
-	taken(await ctx.admin.post(URL, body({ domain_names: ["shared-d.example.com"] })), "shared-d.example.com");
 });
 
 it("stores custom locations and writes an upstream and a location block for each", async () => {

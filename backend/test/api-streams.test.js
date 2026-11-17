@@ -54,6 +54,8 @@ hostTests(ctx, {
 		["an unknown property", { bogus: true }],
 	],
 	adminOnly: { npmpro_advanced_config: "proxy_timeout 1s;" },
+	advanced:
+		/proxy_pass stream_upstream_\d+;[\s\S]*proxy_timeout 1s;[\s\S]*include \/data\/custom_nginx\/server_stream\.conf;/u,
 });
 
 it("answers the post without the port or the host with the missing property", async () => {
@@ -120,15 +122,6 @@ it("refuses a second stream on the same port and protocol", async () => {
 	assert.equal(rows[0].id, first.id);
 });
 
-it("refuses a port above 65535 or 0", async () => {
-	const rows = await countRows(ctx.api, "stream");
-	for (const incoming_port of ["99999", "70000", "0"]) {
-		const answer = await ctx.admin.post(URL, body({ incoming_port }));
-		assert.equal(answer.status, 400, incoming_port);
-	}
-	assert.equal(await countRows(ctx.api, "stream"), rows);
-});
-
 it("treats overlapping port ranges on one protocol as a duplicate", async () => {
 	await created(await ctx.admin.post(URL, body({ incoming_port: "20000-20010" })), "range");
 	for (const incoming_port of ["20005", "20010-20020", "19990-20000", "19000-21000"]) {
@@ -185,15 +178,17 @@ it("lets a save that keeps the port, protocols and state work on a row that alre
 	assert.notEqual(first.id, second.id);
 });
 
-it("accepts the ports 1 and 65535 and refuses 65536, a reversed range and a range past 65535", async () => {
+it("accepts the ports 1 and 65535 and refuses 0, 65536 and more, a reversed range and a range past 65535", async () => {
 	for (const incoming_port of ["1", "65535"]) {
 		const answer = await ctx.admin.post(URL, body({ incoming_port }));
 		assert.equal(answer.status, 201, `${incoming_port}: ${answer.text}`);
 		await ctx.admin.delete(`${URL}/${answer.body.id}`);
 	}
-	for (const incoming_port of ["65536", "9010-9000", "65530-65540", "0-10", "00000"]) {
+	const rows = await countRows(ctx.api, "stream");
+	for (const incoming_port of ["0", "00000", "65536", "70000", "99999", "9010-9000", "65530-65540", "0-10"]) {
 		assert.equal((await ctx.admin.post(URL, body({ incoming_port }))).status, 400, incoming_port);
 	}
+	assert.equal(await countRows(ctx.api, "stream"), rows);
 });
 
 it("lets a save that keeps an out of range port work on an older row", async () => {
@@ -261,17 +256,6 @@ it("forwards to the port of the connection with $server_port, and to a custom up
 	const custom = await ctx.api.read(confOf(named.id));
 	assert.match(custom, /proxy_pass cu_backend;/u);
 	assert.doesNotMatch(custom, /upstream stream_upstream_/u);
-});
-
-it("renders the advanced config of an administrator into the server block", async () => {
-	const stream = await created(
-		await ctx.admin.post(URL, body({ npmpro_advanced_config: "proxy_timeout 5s;" })),
-		"create",
-	);
-	assert.match(
-		await ctx.api.read(confOf(stream.id)),
-		/proxy_pass stream_upstream_\d+;[\s\S]*proxy_timeout 5s;[\s\S]*include \/data\/custom_nginx\/server_stream\.conf;/u,
-	);
 });
 
 it("finds a stream by its forwarding host, its forwarding port and its description", async () => {

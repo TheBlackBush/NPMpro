@@ -3,7 +3,7 @@ import path from "node:path";
 import { after, before, it } from "node:test";
 import { startApi } from "./support/api.js";
 import { certbotSucceeds, makeCertificate } from "./support/certbot.js";
-import { checkFields, countRows, created, hostTests, listDir } from "./support/hosts.js";
+import { checkFields, created, hostTests } from "./support/hosts.js";
 
 // /nginx/redirection-hosts (schema/paths/nginx/redirection-hosts). The shared tests of every host type are in
 // support/hosts.js.
@@ -55,6 +55,9 @@ hostTests(ctx, {
 		["no domain names", { domain_names: [] }],
 	],
 	adminOnly: { advanced_config: "add_header X-Admin yes;" },
+	advanced:
+		/location \/ \{ return [\s\S]*add_header X-Admin yes;[\s\S]*include \/data\/custom_nginx\/server_redirect\.conf;/u,
+	domains: true,
 });
 
 it("answers the post without the target with the missing property", async () => {
@@ -86,56 +89,6 @@ it("keeps the path of the request when preserve_path is set, and the scheme of t
 	assert.match(
 		await ctx.api.read(confOf(defaults.id)),
 		/location \/ \{ return 302 \$npmpro_forwarded_proto:\/\/d\.example\.org; \}/u,
-	);
-});
-
-it("refuses a domain name that any host type uses, and lets a host keep its own on edit", async () => {
-	const first = await created(
-		await ctx.admin.post(URL, body({ domain_names: ["redir-used.example.com"] })),
-		"create",
-	);
-	await created(
-		await ctx.admin.post("/nginx/proxy-hosts", {
-			domain_names: ["redir-proxy.example.com"],
-			forward_host: "10.0.0.1",
-		}),
-		"proxy",
-	);
-	await created(await ctx.admin.post("/nginx/dead-hosts", { domain_names: ["redir-dead.example.com"] }), "dead");
-	const rows = await countRows(ctx.api, "redirection_host");
-	const files = await listDir(ctx.api, "data/nginx/redirection_host");
-	for (const name of [
-		"redir-used.example.com",
-		"REDIR-USED.example.com",
-		"redir-proxy.example.com",
-		"redir-dead.example.com",
-	]) {
-		const answer = await ctx.admin.post(URL, body({ domain_names: [name] }));
-		assert.equal(answer.status, 400, name);
-		assert.equal(answer.body.error.message, `${name} is already in use`);
-	}
-	assert.equal(await countRows(ctx.api, "redirection_host"), rows);
-	assert.deepEqual(await listDir(ctx.api, "data/nginx/redirection_host"), files);
-	const same = await ctx.admin.put(`${URL}/${first.id}`, {
-		domain_names: ["redir-used.example.com", "redir-more.example.com"],
-	});
-	assert.equal(same.status, 200, same.text);
-	assert.match(
-		await ctx.api.read(confOf(first.id)),
-		/server_name "redir-used\.example\.com" "redir-more\.example\.com";/u,
-	);
-	const clash = await ctx.admin.put(`${URL}/${first.id}`, { domain_names: ["redir-proxy.example.com"] });
-	assert.equal(clash.status, 400);
-	assert.equal(clash.body.error.message, "redir-proxy.example.com is already in use");
-});
-
-it("gives a domain name to one of two requests at once", async () => {
-	const race = body({ domain_names: ["redir-race.example.com"] });
-	const answers = await Promise.all([ctx.admin.post(URL, race), ctx.admin.post(URL, race)]);
-	assert.deepEqual(answers.map(({ status }) => status).sort(), [201, 400]);
-	assert.equal(
-		(await ctx.api.db("redirection_host").where("domain_names", "like", "%redir-race.example.com%")).length,
-		1,
 	);
 });
 

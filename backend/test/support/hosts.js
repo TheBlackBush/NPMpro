@@ -11,6 +11,12 @@ let tagged = 0;
 const BAD_LONG_TAG = /^The tag "x{33}" is not valid/u;
 const TOO_MANY_TAGS = /more than 10 items/u;
 const EXPANDED_PERMISSIONS = { access_lists: "view", certificates: "view" };
+// the smallest valid body of each host type with domain names, by its API path
+const DOMAIN_HOSTS = {
+	"/nginx/proxy-hosts": (name) => ({ domain_names: [name], forward_host: "10.0.0.1" }),
+	"/nginx/redirection-hosts": (name) => ({ domain_names: [name], forward_domain_name: "t.example.org" }),
+	"/nginx/dead-hosts": (name) => ({ domain_names: [name] }),
+};
 
 const fileExists = (api, file) =>
 	stat(path.join(api.root, file)).then(
@@ -20,6 +26,7 @@ const fileExists = (api, file) =>
 const listDir = async (api, dir) => (await readdir(path.join(api.root, dir))).sort();
 const countRows = async (api, table) => Number((await api.db(table).count({ n: "*" }).first()).n);
 const reloads = (api) => api.outside.control.reloads;
+const dotted = (text) => text.replaceAll(".", "\\.");
 
 /**
  * A certificate row of the "other" (custom) provider with the file the host templates and the host checks look for
@@ -124,6 +131,7 @@ const created = async (response, what) => {
  * @param {Function} type.search          (body) => text the list search finds the host by
  * @param {Array}    type.invalid         [label, patch]: fields that make a valid body or edit invalid
  * @param {Object}   type.adminOnly       fields only an administrator may set
+ * @param {RegExp}   type.advanced        what the config holds once an administrator saved type.adminOnly
  * @param {Boolean}  [type.domains]       the type has domain names that must be unique across host types
  */
 const hostTests = (ctx, type) => {
@@ -400,7 +408,7 @@ const hostTests = (ctx, type) => {
 		assert.equal(await fileExists(api, configOf(host.id)), false);
 	});
 
-	tc(`${type.label}: refuses the raw nginx config to a user with manage, on create and on edit`, async () => {
+	it(`${type.label}: refuses the raw nginx config to a user with manage, on create and on edit`, async () => {
 		const managing = await manager();
 		const rows = await countRows(api, type.table);
 		const files = await listDir(api, type.dir);
@@ -418,6 +426,8 @@ const hostTests = (ctx, type) => {
 		const allowed = await admin.put(`${URL}/${own.id}`, type.adminOnly);
 		assert.equal(allowed.status, 200, allowed.text);
 		for (const field of Object.keys(type.adminOnly)) assert.equal(allowed.body[field], type.adminOnly[field]);
+		// and it is written into the server block, before the custom include of the type
+		assert.match(await readConfig(api, configOf(own.id)), type.advanced);
 	});
 
 	tc(`${type.label}: disable removes the config and enable writes it again, each with one reload`, async () => {
@@ -619,17 +629,49 @@ const hostTests = (ctx, type) => {
 			}
 		},
 	);
+
+	if (!type.domains) return;
+	// a name per test and type, so the three types' files can run together against their own API
+	const named = (word) => `${word}-${type.permission.replaceAll("_", "-")}.example.com`;
+
+	it(`${type.label}: gives a domain name to one of two requests at once`, async () => {
+		const name = named("race");
+		const race = { ...make(), domain_names: [name] };
+		const answers = await Promise.all([post(admin, race), post(admin, race)]);
+		assert.deepEqual(answers.map(({ status }) => status).sort(), [201, 400]);
+		assert.equal((await api.db(type.table).where("domain_names", "like", `%${name}%`)).length, 1);
+	});
+
+	it(`${type.label}: refuses a domain name that any host type uses, and lets a host keep its own on edit`, async () => {
+		const used = named("used");
+		const first = await created(await post(admin, { ...make(), domain_names: [used] }), "create");
+		const others = [];
+		for (const [otherPath, otherBody] of Object.entries(DOMAIN_HOSTS)) {
+			if (otherPath === URL) continue;
+			const name = named(`other-${otherPath.split("/").pop()}`);
+			await created(await admin.post(otherPath, otherBody(name)), otherPath);
+			others.push(name);
+		}
+		const rows = await countRows(api, type.table);
+		const files = await listDir(api, type.dir);
+		for (const name of [used, used.toUpperCase(), ...others]) {
+			const answer = await post(admin, { ...make(), domain_names: [name] });
+			assert.equal(answer.status, 400, name);
+			assert.equal(answer.body.error.message, `${name} is already in use`);
+		}
+		assert.equal(await countRows(api, type.table), rows);
+		assert.deepEqual(await listDir(api, type.dir), files);
+		const more = named("more");
+		const same = await admin.put(`${URL}/${first.id}`, { domain_names: [used, more] });
+		assert.equal(same.status, 200, same.text);
+		assert.match(
+			await readConfig(api, configOf(first.id)),
+			new RegExp(`server_name "${dotted(used)}" "${dotted(more)}";`, "u"),
+		);
+		const clash = await admin.put(`${URL}/${first.id}`, { domain_names: [others[0]] });
+		assert.equal(clash.status, 400);
+		assert.equal(clash.body.error.message, `${others[0]} is already in use`);
+	});
 };
 
-export {
-	addCertificate,
-	assertWellFormed,
-	checkFields,
-	countRows,
-	created,
-	fileExists,
-	hostTests,
-	listDir,
-	readConfig,
-	reloads,
-};
+export { addCertificate, checkFields, countRows, created, fileExists, hostTests, listDir, readConfig, reloads };
