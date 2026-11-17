@@ -114,11 +114,14 @@ For clients that start a local command (a desktop app, for example), add this to
   "mcpServers": {
     "npmpro": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://npm.example.com:81/api/mcp", "--header", "Authorization: Bearer YOUR_TOKEN"]
+      "args": ["-y", "mcp-remote", "https://npm.example.com:81/api/mcp", "--header", "Authorization:${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer YOUR_TOKEN" }
     }
   }
 }
 ```
+
+The token goes in `env`, not in the arguments: a space inside an argument breaks on Windows.
 
 ### Tools
 

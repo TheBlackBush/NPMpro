@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
 import en from "../../translations/ui/en.json" with { type: "json" };
-import { claudeCodeCommand, desktopConfig, endpointOf, NEEDS, toolsByNeed } from "./Mcp.js";
+import { AUTH_HEADER_REF, claudeCodeCommand, desktopConfig, endpointOf, NEEDS, toolsByNeed } from "./Mcp.js";
 
 const ENDPOINT = "https://npm.example.com:81/api/mcp";
 
@@ -22,7 +22,8 @@ it("desktopConfig is JSON that starts mcp-remote with the header and never holds
 		mcpServers: {
 			npmpro: {
 				command: "npx",
-				args: ["-y", "mcp-remote", ENDPOINT, "--header", "Authorization: Bearer YOUR_TOKEN"],
+				args: ["-y", "mcp-remote", ENDPOINT, "--header", `Authorization:${AUTH_HEADER_REF}`],
+				env: { AUTH_HEADER: "Bearer YOUR_TOKEN" },
 			},
 		},
 	});

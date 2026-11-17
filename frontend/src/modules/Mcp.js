@@ -25,13 +25,20 @@ const claudeCodeCommand = (endpoint) =>
  * @param {string} endpoint
  * @returns {string} JSON
  */
+// mcp-remote expands this reference to the AUTH_HEADER variable of env itself: the literal text, built from two parts
+// so it is not taken for a template string mistake
+const AUTH_HEADER_REF = ["$", "{AUTH_HEADER}"].join("");
+
 const desktopConfig = (endpoint) =>
 	JSON.stringify(
 		{
 			mcpServers: {
 				npmpro: {
 					command: "npx",
-					args: ["-y", "mcp-remote", endpoint, "--header", `Authorization: Bearer ${PLACEHOLDER}`],
+					// no space inside an argument (it breaks on Windows): the header value comes from env, as mcp-remote
+					// recommends
+					args: ["-y", "mcp-remote", endpoint, "--header", `Authorization:${AUTH_HEADER_REF}`],
+					env: { AUTH_HEADER: `Bearer ${PLACEHOLDER}` },
 				},
 			},
 		},
@@ -52,4 +59,4 @@ const toolsByNeed = (tools) => {
 	return groups;
 };
 
-export { claudeCodeCommand, desktopConfig, endpointOf, NEEDS, toolsByNeed };
+export { AUTH_HEADER_REF, claudeCodeCommand, desktopConfig, endpointOf, NEEDS, toolsByNeed };
