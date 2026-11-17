@@ -1,3 +1,4 @@
+import { bearerOf } from "../api-token.js";
 import errs from "../error.js";
 
 /**
@@ -13,6 +14,9 @@ import errs from "../error.js";
 const createLogoutHandler =
 	({ revokeSession, loadToken }) =>
 	async (req, res) => {
+		// an API token is not a session: it cannot sign one out (account routes refuse tokens, user decision 2026-11-17)
+		if (bearerOf(req.get?.("authorization")) !== null)
+			throw new errs.PermissionError("API tokens cannot sign out a session");
 		const token = req.signedCookies?.["__Host-Http-token"];
 		if (token) {
 			try {

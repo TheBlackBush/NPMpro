@@ -414,3 +414,11 @@ it("refusals of the user management guard do not count toward the sign-in limit"
 	// the limit is 5 failed requests from one address: a counted refusal would have turned these into 429
 	assert.equal((await client.get("/users/me")).status, 200);
 });
+
+it("Allow delete also guards deletes outside the host routes, and a token cannot sign out a session", async () => {
+	const token = await makeToken(await adminId(), { ...levels("manage"), is_admin: true });
+	const deleted = await bearer(token).delete("/backups/npmpro-missing.json");
+	assert.equal(deleted.status, 403);
+	assert.equal((await bearer(token).delete("/tokens")).status, 403);
+	assert.equal((await admin.get("/users/me")).status, 200);
+});
