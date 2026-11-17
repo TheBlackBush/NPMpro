@@ -11,7 +11,7 @@ Open `https://<server-ip>:81` and create the admin account on the setup page (or
 
 On the login page, **Sign in** becomes available once a valid email address and a password are entered. If you leave the email field with an address that is not valid, "Invalid email address" shows under it. In the two-factor step, **Verify** becomes available once a code is entered.
 
-You can turn on two-factor authentication (TOTP, with one-time backup codes) for your account in the user menu.
+You can turn on two-factor authentication (TOTP, with one-time backup codes) for your account in the user menu. Scripts and AI assistants can use an API token from the same menu, see [API tokens and MCP](API-tokens-and-MCP).
 
 ## Hosts
 

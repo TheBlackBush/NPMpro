@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
+import { ChevronsUpDown, KeyRound, Lock, LogOut, MonitorSmartphone, ShieldCheck, User } from "lucide-react";
 import { useRef } from "react";
 import { TruncatedText } from "src/components/TruncatedText";
 import { Avatar, AvatarFallback, AvatarImage } from "src/components/ui/avatar";
@@ -20,7 +20,7 @@ import { useUser } from "src/hooks";
 import { useIsMobile } from "src/hooks/use-mobile";
 import { cn } from "src/lib/utils";
 import { intl, T } from "src/locale";
-import { showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
+import { showApiTokensModal, showChangePasswordModal, showMfaModal, showUserModal } from "src/modals";
 import { avatarColor, defaultAvatar, hasNoPicture, initials } from "src/modules/Avatar";
 import { returnFocusOnlyForKeyboard } from "src/modules/InputModality";
 import { isAdmin } from "src/modules/Permissions";
@@ -154,6 +154,10 @@ export function UserMenu({ variant = "topbar" }) {
 				<DropdownMenuItem onSelect={openModal(showMfaModal)}>
 					<ShieldCheck aria-hidden="true" />
 					<T id="user.mfa" />
+				</DropdownMenuItem>
+				<DropdownMenuItem onSelect={openModal(showApiTokensModal)}>
+					<KeyRound aria-hidden="true" />
+					<T id="user.api-tokens" />
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuLabel>

@@ -26,6 +26,7 @@
 		"/settings/environment",
 		"/settings/users",
 		"/settings/audit-log",
+		"/settings/api-access",
 		"/monitoring",
 		"/monitoring/traffic",
 		"/monitoring/crowdsec",

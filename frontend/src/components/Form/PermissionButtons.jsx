@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 import { T } from "src/locale";
+import { clampChanges, levelAllowed } from "src/modules/ApiTokens";
 import { applyChanges } from "src/modules/HookForm";
 import { hiddenRuledOut, PERMISSION_SECTIONS, permissionChanges } from "src/modules/Permissions";
 import { ChoiceGroup } from "./ChoiceGroup";
@@ -38,8 +39,10 @@ const PERMISSION_ROWS = [
  * @param {Object} props
  * @param {string} props.name
  * @param {*}      props.legend
+ * @param {Object}  [props.caps]  section -> the highest level that can be chosen (an API token never has more than
+ *                                its owner); a level above it is disabled and no automatic change goes above it
  */
-function PermissionButtons({ name, legend }) {
+function PermissionButtons({ name, legend, caps }) {
 	const { prefix, key } = splitName(name);
 	const { setValue } = useFormContext();
 	const { field } = useController({ name });
@@ -51,7 +54,8 @@ function PermissionButtons({ name, legend }) {
 	const siblingValues = useWatch({ name: siblingNames });
 	const siblings = Object.fromEntries(PERMISSION_SECTIONS.map((section, index) => [section, siblingValues[index]]));
 	const choose = (perm) => {
-		applyChanges(setValue, permissionChanges(siblings, key, perm), prefix);
+		const changes = permissionChanges(siblings, key, perm);
+		applyChanges(setValue, caps ? clampChanges(changes, caps) : changes, prefix);
 		field.onChange(perm);
 	};
 	return (
@@ -66,7 +70,8 @@ function PermissionButtons({ name, legend }) {
 			options={PERMS.map(([perm, labelId]) => ({
 				value: perm,
 				label: <T id={labelId} />,
-				disabled: perm === "hidden" && hiddenRuledOut(siblings, key),
+				disabled:
+					(perm === "hidden" && hiddenRuledOut(siblings, key)) || (caps && !levelAllowed(perm, caps[key])),
 			}))}
 		/>
 	);
@@ -82,8 +87,9 @@ const VISIBILITY_OPTIONS = [
  *
  * @param {Object} props
  * @param {string} props.name
+ * @param {boolean} [props.allowAll]  false disables "All Items" (an API token of a user who sees only their own)
  */
-function VisibilityButtons({ name }) {
+function VisibilityButtons({ name, allowAll = true }) {
 	const { field } = useController({ name });
 	return (
 		<ChoiceGroup
@@ -94,7 +100,9 @@ function VisibilityButtons({ name }) {
 			inputRef={field.ref}
 			onBlur={field.onBlur}
 			onChange={field.onChange}
-			options={VISIBILITY_OPTIONS}
+			options={
+				allowAll ? VISIBILITY_OPTIONS : VISIBILITY_OPTIONS.map((o) => ({ ...o, disabled: o.value === "all" }))
+			}
 		/>
 	);
 }

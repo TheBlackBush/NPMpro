@@ -11,7 +11,10 @@ import { formatDateTime, intl } from "src/locale";
 function eventName(row) {
 	const type = intl.formatMessage({ id: row.objectType, defaultMessage: row.objectType });
 	const value = row.meta?.domainNames?.join(", ") || row.meta?.name || row.meta?.id || "";
-	return [`${type} ${value}`.trim(), row.user?.name, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
+	const via = row.npmproApiTokenName
+		? intl.formatMessage({ id: "audit.via-token" }, { name: row.npmproApiTokenName })
+		: "";
+	return [`${type} ${value}`.trim(), row.user?.name, via, formatDateTime(row.createdOn)].filter(Boolean).join(", ");
 }
 
 export default function Table({ data, isFetching, onSelectItem }) {

@@ -56,7 +56,7 @@ it("gives every section in sections.js one of the categories, in the menu's orde
 			["monitoring", ["monitoring", "geoip"]],
 			["data", ["backup", "database"]],
 			["system", ["advanced", "environment"]],
-			["administration", ["users", "audit-log"]],
+			["administration", ["users", "audit-log", "api-access"]],
 		],
 	);
 	// the menu lists the sections category by category, so sections.js keeps that order too

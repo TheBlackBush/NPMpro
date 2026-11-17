@@ -40,6 +40,8 @@ below as its release notes.
   cosign signatures.
 - **API:** API tokens for scripts, sent as `Authorization: Bearer`, with their own permissions that never exceed their
   owner's; they work with OIDC-only sign-in and MFA, are stored as a hash and never in backups.
+- **API:** API tokens in the user menu (new token with expiry and permissions capped at your own, shown once, revoke)
+  and every token in Settings, API access, with a link to the API documentation.
 
 ### Changed
 
