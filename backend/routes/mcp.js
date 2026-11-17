@@ -32,6 +32,8 @@ const notAllowed = (_, res) =>
 router
 	.route("/")
 	.post(bearerRequired, jwtdecode(), tokenOnly, knownVersion, async (req, res) => {
+		// a certificate request or renewal waits for the ACME challenge: the same 15 minutes as the REST routes
+		req.setTimeout(900000);
 		const answer = await handleMessage(req.body, { access: res.locals.access, registry, version: VERSION });
 		if (answer === null) return res.status(202).end();
 		res.status(200).json(answer);
