@@ -425,7 +425,7 @@ const adminTools = [
 		area: "monitoring",
 		needs: "admin",
 		description:
-			"Returns the traffic of a time range, for all hosts or one host (the query of GET /monitoring/traffic).",
+			"Returns the traffic of a time range, for all hosts or one host (the query of GET /monitoring/traffic). The range defaults to 1h here: 24h and longer return over a thousand time buckets.",
 		annotations: READ,
 		schema: () =>
 			objectOf({
@@ -438,7 +438,8 @@ const adminTools = [
 			internalMonitoring.getTraffic(
 				access,
 				parseTrafficQuery({
-					...(range === undefined ? {} : { range }),
+					// 1h unless asked: the REST default (24h, minute buckets) is too large for many AI clients
+					range: range ?? "1h",
 					...(host === undefined ? {} : { host }),
 					...(hostType === undefined ? {} : { host_type: hostType }),
 					...(hostId === undefined ? {} : { host_id: String(hostId) }),

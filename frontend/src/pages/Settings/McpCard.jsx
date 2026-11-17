@@ -1,5 +1,5 @@
 import { CopyIcon } from "lucide-react";
-import { Fragment } from "react";
+
 import { ErrorAlert, Loading } from "src/components";
 import { SettingLine, SettingLineNote } from "src/components/Form/SettingLine";
 import { TapTooltip } from "src/components/TapTooltip";
@@ -50,10 +50,10 @@ function ToolsLine({ id }) {
 			{error ? <ErrorAlert error={error} /> : null}
 			{isPending ? <Loading noLogo /> : null}
 			{groups ? (
-				<dl className="m-0 mt-2 space-y-3">
+				<dl className="m-0 mt-2 flex flex-col gap-4">
 					{NEEDS.map((need) =>
 						groups[need].length === 0 ? null : (
-							<Fragment key={need}>
+							<div key={need} className="flex flex-col gap-1.5">
 								<dt className="font-medium text-sm">
 									<T id={`settings.api-access.mcp.needs.${need}`} />
 								</dt>
@@ -67,7 +67,7 @@ function ToolsLine({ id }) {
 										</code>
 									))}
 								</dd>
-							</Fragment>
+							</div>
 						),
 					)}
 				</dl>

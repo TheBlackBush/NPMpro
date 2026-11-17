@@ -215,6 +215,8 @@ it("a call for each tool", async () => {
 
 	assert.ok(await run(token, "get_monitoring_summary"));
 	assert.ok(await run(token, "get_traffic", { range: "7d" }));
+	// without a range the tool reads 1h, not the REST default of 24h (too large for many AI clients)
+	assert.deepEqual(await run(token, "get_traffic"), await run(token, "get_traffic", { range: "1h" }));
 	assert.ok(await run(token, "get_traffic", { range: "1h", host: "T.example.com" }));
 	// host_id needs host_type, like the API
 	assert.equal((await call(token, "get_traffic", { host_id: 1 })).result.isError, true);
