@@ -18,6 +18,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # the PR merge commit and its first parent (the base), for Changed Certbot Files
+          fetch-depth: 2
       - name: build arguments
         id: args
         run: |
@@ -111,6 +114,18 @@ jobs:
         run: node .github/scripts/log-sample-check.js https://127.0.0.1:81
       - name: nginx -t on the whole config
         run: docker exec npmpro nginx -t
+      - name: Changed Certbot Files
+        id: certbot
+        # the PR's merge commit against its first parent, the base it was merged onto (a rerun compares the same pair)
+        run: |
+          if git diff --quiet HEAD^1 HEAD -- backend/certbot Dockerfile .github/scripts/dns-plugins-check.sh; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Every DNS Plugin Installs
+        if: ${{ steps.certbot.outputs.changed == 'true' }}
+        run: sh .github/scripts/dns-plugins-check.sh npmpro
       - name: PUID binds ports below 1024 without the host sysctl
         run: .github/scripts/puid-low-ports.sh npmpro:test npmpro-puid
       - name: container logs
