@@ -12,7 +12,7 @@ import { createMerge } from "./backup-merge.js";
 import { createOfflineChecks } from "./backup-offline.js";
 import { createBackupPages } from "./backup-pages.js";
 import { createRestore } from "./backup-restore.js";
-import { ALL_TYPES, chosenTypes, exists, unknownMigrations, withoutStage } from "./backup-shared.js";
+import { ALL_TYPES, chosenTypes, exists, withoutStage } from "./backup-shared.js";
 
 // Creating, storing and restoring backups. Everything the service touches is injected (createBackupService), so it
 // runs against a test database and folders; internal/backup-service.js wires the default instance.
@@ -444,4 +444,5 @@ const createBackupService = ({
 	};
 };
 
-export { createBackupService, unknownMigrations };
+export { unknownMigrations } from "./backup-shared.js";
+export { createBackupService };
