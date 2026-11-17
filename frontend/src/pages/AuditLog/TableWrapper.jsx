@@ -24,6 +24,7 @@ const OBJECT_TYPES = [
 	"backup-schedule",
 	"backup",
 	"database",
+	"api-token",
 ];
 const ACTIONS = [
 	"created",
@@ -44,6 +45,9 @@ const ACTIONS = [
 	"oidc-linked",
 	"oidc-unlinked",
 	"oidc-refused",
+	"revoked",
+	"expired",
+	"first-used",
 ];
 
 // two filters per row on phones (half the row minus half the gap-2; a lone last one grows to the full row), their own width from md

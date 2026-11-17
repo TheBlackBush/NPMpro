@@ -20,6 +20,7 @@ const getEventValue = (event) => {
 	switch (event.objectType) {
 		case "access-list":
 		case "backup":
+		case "api-token":
 		case "backup-schedule":
 		case "database":
 		case "dns-credential":
@@ -48,6 +49,8 @@ const getColorForAction = (action) => {
 		case "oidc-linked":
 			return "text-success";
 		case "deleted":
+		case "revoked":
+		case "expired":
 		case "backup-failed":
 		case "move-failed":
 		case "oidc-refused":
@@ -91,6 +94,9 @@ const getIcon = (row) => {
 		case "backup-schedule":
 			ico = <CalendarClock className={c} aria-hidden="true" />;
 			break;
+		case "api-token":
+			ico = <KeyRound className={c} aria-hidden="true" />;
+			break;
 		case "database":
 			ico = <Database className={c} aria-hidden="true" />;
 			break;
@@ -112,6 +118,11 @@ export function EventFormatter({ row }) {
 				</Badge>
 			</div>
 			<div className="mt-1 text-muted-foreground">{formatDateTime(row.createdOn)}</div>
+			{row.npmproApiTokenName ? (
+				<div className="text-muted-foreground text-sm break-words">
+					<T id="audit.via-token" data={{ name: row.npmproApiTokenName }} />
+				</div>
+			) : null}
 		</div>
 	);
 }

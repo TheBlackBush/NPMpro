@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import {
 	defaultPageSize,
+	PAGED_LISTS,
 	pageSizeKey,
 	parseCollapsed,
 	parseEditorStyle,
@@ -48,10 +49,16 @@ it("the stored backups default to 10 rows, every other list to 25", () => {
 		"certificates",
 		"access-lists",
 		"audit-log",
+		"api-tokens",
 	]) {
 		assert.equal(defaultPageSize(list), 25);
 	}
 	assert.equal(parsePageSize(null, defaultPageSize("backups")), 10);
 	assert.equal(parsePageSize("30", defaultPageSize("backups")), 10);
 	assert.equal(parsePageSize("50", defaultPageSize("backups")), 50);
+});
+
+it("the API tokens list of Settings pages with its own stored size", () => {
+	assert.ok(PAGED_LISTS.includes("api-tokens"));
+	assert.equal(defaultPageSize("api-tokens"), 25);
 });

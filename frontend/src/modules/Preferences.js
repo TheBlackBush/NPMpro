@@ -28,6 +28,7 @@ export const PAGED_LISTS = Object.freeze([
 	"access-lists",
 	"backups",
 	"audit-log",
+	"api-tokens",
 ]);
 
 /** @returns {string} the storage key of a list's rows per page */

@@ -3,6 +3,7 @@ import {
 	ChartColumn,
 	DatabaseBackup,
 	Database as DatabaseIcon,
+	KeyRound,
 	LayoutList,
 	Lock,
 	MapPin,
@@ -18,6 +19,7 @@ import {
 import AuditLog from "src/pages/AuditLog";
 import Users from "src/pages/Users";
 import Advanced from "./Advanced";
+import ApiAccess from "./ApiAccess";
 import Authentication from "./Authentication";
 import Backup from "./Backup";
 import Certificates from "./Certificates";
@@ -88,4 +90,11 @@ export const SECTIONS = [
 	// component); the palette offers them to admins like every other section
 	{ id: "users", category: "administration", labelKey: "users", icon: UsersIcon, element: Users },
 	{ id: "audit-log", category: "administration", labelKey: "auditlogs", icon: ScrollText, element: AuditLog },
+	{
+		id: "api-access",
+		category: "administration",
+		labelKey: "settings.api-access",
+		icon: KeyRound,
+		element: ApiAccess,
+	},
 ];

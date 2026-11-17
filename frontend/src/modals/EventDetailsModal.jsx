@@ -31,6 +31,12 @@ const EventDetailsModal = EasyModal.create(({ id, visible, remove }) => {
 							/>
 							<EventFormatter row={data} />
 						</div>
+						{data.npmproApiTokenName ? (
+							<p className="mb-3 text-muted-foreground text-sm">
+								<T id="api-token" />:{" "}
+								<span className="font-medium text-foreground">{data.npmproApiTokenName}</span>
+							</p>
+						) : null}
 						{/* pre-wrap wraps long values instead of scrolling sideways */}
 						<pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-3 font-mono text-sm">
 							{JSON.stringify(decamelizeKeys(data.meta), null, 2)}

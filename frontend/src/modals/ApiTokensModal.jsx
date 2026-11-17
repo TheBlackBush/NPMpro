@@ -2,24 +2,16 @@ import { CopyIcon } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 import { ApiErrorContent, AppModal, Button, ErrorAlert, FormSubmit, Loading, NoticeAlert } from "src/components";
+import { TokenBadges, TokenCreated, TokenExpiry, TokenLastUsed, TokenPermissions } from "src/components/ApiTokenCells";
 import { HookForm, SelectField, SwitchField, SwitchList, TextField, useAppForm } from "src/components/Form";
 import { FormSection } from "src/components/Form/FormSection";
 import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
-import { StatusBadge } from "src/components/StatusBadge";
 import { TapTooltip } from "src/components/TapTooltip";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
 import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
-import {
-	EXPIRY_CHOICES,
-	newTokenValues,
-	ownerCaps,
-	permissionSummary,
-	tokenPayload,
-	tokenState,
-	tomorrowOf,
-} from "src/modules/ApiTokens";
+import { EXPIRY_CHOICES, newTokenValues, ownerCaps, tokenPayload, tomorrowOf } from "src/modules/ApiTokens";
 import EasyModal from "src/modules/easyModal";
 import { fieldsValidate } from "src/modules/HookForm";
 import { isAdmin } from "src/modules/Permissions";
@@ -30,48 +22,27 @@ const showApiTokensModal = (id) => {
 	EasyModal.show(ApiTokensModal, { id });
 };
 
-const PERMISSION_LABELS = Object.fromEntries(PERMISSION_ROWS);
-
-const formatDate = (value) => new Intl.DateTimeFormat(intl.locale, { dateStyle: "medium" }).format(new Date(value));
-
 const validate = fieldsValidate((values) => ({
 	name: validateString(1, 100, true),
 	...(values.expiry === "date" ? { expiryDate: validateRequired() } : {}),
 }));
 
 function TokenRow({ token, now, onRevoke }) {
-	const expired = tokenState(token, now) === "expired";
-	const summary = permissionSummary(token);
 	return (
 		<li className="flex items-start justify-between gap-3 border-b py-3 last:border-b-0">
 			<div className="flex min-w-0 flex-col gap-1.5">
 				<div className="flex flex-wrap items-center gap-2">
 					<span className="break-words font-medium">{token.name}</span>
-					{token.admin ? (
-						<StatusBadge tone="warning">
-							<T id="api-tokens.admin" />
-						</StatusBadge>
-					) : null}
-					{expired ? (
-						<StatusBadge tone="destructive">
-							<T id="api-tokens.expired" />
-						</StatusBadge>
-					) : null}
+					<TokenBadges token={token} now={now} />
 				</div>
-				<div className="flex flex-wrap gap-1.5">
-					{summary.map(([section, level]) => (
-						<StatusBadge key={section} tone="muted">
-							<T id={PERMISSION_LABELS[section]} />: <T id={`permissions.${level}`} />
-						</StatusBadge>
-					))}
-				</div>
+				<TokenPermissions token={token} />
 				<dl className="m-0 flex flex-wrap gap-x-4 gap-y-0.5 text-muted-foreground text-sm">
 					<div className="flex gap-1">
 						<dt>
 							<T id="api-tokens.expires" />:
 						</dt>
 						<dd className="m-0">
-							{token.expiresOn ? formatDate(token.expiresOn) : <T id="api-tokens.no-expiry" />}
+							<TokenExpiry token={token} />
 						</dd>
 					</div>
 					<div className="flex gap-1">
@@ -79,14 +50,16 @@ function TokenRow({ token, now, onRevoke }) {
 							<T id="api-tokens.last-used" />:
 						</dt>
 						<dd className="m-0">
-							{token.lastUsedOn ? formatDate(token.lastUsedOn) : <T id="api-tokens.not-used" />}
+							<TokenLastUsed token={token} />
 						</dd>
 					</div>
 					<div className="flex gap-1">
 						<dt>
 							<T id="api-tokens.created" />:
 						</dt>
-						<dd className="m-0">{token.createdOn ? formatDate(token.createdOn) : null}</dd>
+						<dd className="m-0">
+							<TokenCreated token={token} />
+						</dd>
 					</div>
 				</dl>
 			</div>
