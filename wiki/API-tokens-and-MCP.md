@@ -32,8 +32,36 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-Create a token while signed in: `POST /api/users/me/api-tokens` with its name, permissions and expiry (the request is
-described in the OpenAPI documentation at `/api/docs`). The answer carries the token once: copy it then.
+Open the user menu (your avatar, top right) and choose **API tokens**. The window lists your tokens with their
+permissions, expiry, last use and creation date. To make one:
+
+1. Choose **New token**.
+2. **Name**: up to 100 characters, to tell the token apart from your others.
+3. **Expiry**: **30 days**, **90 days** (the default), **365 days**, **On a date** (then **Expiry date**, tomorrow or
+   later) or **No expiry**.
+4. **Item Visibility**: **Created Items Only** or **All Items**. **All Items** is offered only when your own
+   visibility is all items.
+5. **Permissions**: for each of proxy hosts, redirection hosts, 404 hosts, streams, access lists and certificates,
+   **Manage**, **View Only** or **Hidden**. A level above your own cannot be chosen. Choosing a section turns on what
+   it needs, such as access lists for proxy hosts.
+6. **Administrator** (only for administrators): the token acts as an administrator for settings, the audit log,
+   backups and monitoring, but never for users. It is off by default; keep such a token like your password.
+7. **Allow delete**: lets the token delete (delete requests, replace restores and the MCP delete tools). It is off by
+   default.
+8. **Create**. The token is shown once in a window with **Copy** and the note "This token is shown only once": copy
+   it then and choose **Done**.
+
+To end a token, choose **Revoke** on its row in the list and confirm. It stops working at once.
+
+Scripts can also create a token through the API: `POST /api/users/me/api-tokens`, described in the OpenAPI
+documentation at `/api/docs`. The answer carries the token once.
+
+## Administrators: Settings, API access
+
+Administrators see every API token of every user in Settings, **API access** (under Administration). The table gives
+each token's owner, permissions, expiry, last use and creation date, and **Revoke** stops any token at once, including
+another user's. Users create their own tokens in the user menu; administrators cannot create or edit a token for
+someone else. The section links to the API documentation.
 
 ## Using a token
 
