@@ -19,6 +19,10 @@ inputs:
   token:
     description: token that may push to GHCR
     required: true
+  push:
+    description: push the image to GHCR by digest; "false" builds only (the release dry run)
+    required: false
+    default: "true"
 outputs:
   digest:
     description: digest of the pushed image
@@ -31,6 +35,7 @@ runs:
       with:
         driver-opts: env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
     - name: Log In to GHCR
+      if: ${{ inputs.push == 'true' }}
       uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         registry: ghcr.io
@@ -48,7 +53,7 @@ runs:
         context: .
         platforms: ${{ inputs.platform }}
         labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-        outputs: type=image,name=${{ inputs.image }},push-by-digest=true,name-canonical=true,push=true
+        outputs: type=image,name=${{ inputs.image }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
         cache-from: type=gha,scope=${{ inputs.cache-scope }}
         cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max
         build-args: |

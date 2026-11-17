@@ -10,6 +10,11 @@ on:
         description: space separated image tags to publish
         required: true
         type: string
+      push:
+        description: push and sign the images; false builds both architectures and publishes nothing
+        required: false
+        type: boolean
+        default: true
     secrets:
       DOCKER_USERNAME:
         description: Docker Hub user, the copy to Docker Hub is skipped when this or the token is missing
@@ -43,6 +48,7 @@ jobs:
           version: ${{ inputs.version }}
           image: ${{ env.GHCR_IMAGE }}
           token: ${{ github.token }}
+          push: ${{ inputs.push }}
 
   build-aarch64:
     name: Build arm64
@@ -65,9 +71,11 @@ jobs:
           version: ${{ inputs.version }}
           image: ${{ env.GHCR_IMAGE }}
           token: ${{ github.token }}
+          push: ${{ inputs.push }}
 
   merge:
     name: Merge and Sign
+    if: ${{ inputs.push }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
