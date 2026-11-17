@@ -25,7 +25,8 @@ below as its release notes.
 - **CrowdSec:** the bouncer configuration in Settings with a connection test, the admin UI choice (Checked, Bans only,
   Left out) and a safe start when its files are broken.
 - **CrowdSec:** log files for CrowdSec parsing: more access and stream log fields, a JSON log format, a TLS handshake
-  log and a request id in AppSec alerts, read by the hub parser and scenarios `TheBlackBush/npmpro`.
+  log and a request id in AppSec alerts, for NPMpro's own CrowdSec parser and scenarios (submitted to the CrowdSec hub
+  as `TheBlackBush/npmpro`).
 - **Monitoring:** traffic and CrowdSec statistics in the UI, unique visitors (off by default, keyed hashes), traffic
   per host, recent requests and a world map; an off switch that deletes the stored statistics.
 - **Backup and restore:** encrypted backups with a choice of items, replace and merge restore, single items, page
@@ -54,7 +55,7 @@ below as its release notes.
 
 - **Container:** the Compose file and the Unraid template drop every capability NPMpro does not need, nginx workers
   run as their own user, `PUID` binds ports below 1024 without a host setting, and certbot and every DNS plugin are
-  pinned to a version installed against the image's certbot.
+  pinned and checked against the image's certbot.
 - **Sign-in:** a constant-time login check, a rate limit on sign-in, and stricter validation of upstreams, forward
   authentication and domain names; users who are not administrators cannot set unix socket targets or regex domains.
 - **Requests:** a client cannot pass its own `X-Npmpro-Request-Id` to an upstream, and `X-Forwarded-Proto` is taken

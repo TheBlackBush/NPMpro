@@ -55,7 +55,8 @@ runs:
         labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
         outputs: type=image,name=${{ inputs.image }},push-by-digest=true,name-canonical=true,push=${{ inputs.push }}
         cache-from: type=gha,scope=${{ inputs.cache-scope }}
-        cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max
+        # only a build that pushes writes the cache: a pull request's dry run reads it and leaves develop's cache alone
+        cache-to: ${{ inputs.push == 'true' && format('type=gha,scope={0},mode=max', inputs.cache-scope) || '' }}
         build-args: |
           FLAGS=${{ inputs.flags }}
           VERSION=${{ steps.args.outputs.version }}
