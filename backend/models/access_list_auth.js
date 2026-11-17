@@ -22,6 +22,12 @@ class AccessListAuth extends Model {
 		return thisJson;
 	}
 
+	// the bcrypt hash is write-only: API answers never carry it (htpasswd files and backups read the stored row)
+	$formatJson(json) {
+		const { password: _hash, ...thisJson } = super.$formatJson(json);
+		return thisJson;
+	}
+
 	static tableName = "access_list_auth";
 
 	static jsonAttributes = ["meta"];
