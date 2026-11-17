@@ -1,9 +1,14 @@
 {
 	"type": "object",
-	"description": "Settings, Landing pages: the Default page (the default-site setting) and the seven global pages",
-	"required": ["default_site", "pages"],
+	"description": "Settings, Landing pages: the Default page (the default-site setting) and the seven global pages and the visit time",
+	"required": ["default_site", "pages", "visit_time"],
 	"additionalProperties": false,
 	"properties": {
+		"visit_time": {
+			"type": "string",
+			"enum": ["utc", "local", "local-utc"],
+			"description": "How the built-in pages show the visit time"
+		},
 		"default_site": {
 			"type": "object",
 			"required": ["value", "meta"],

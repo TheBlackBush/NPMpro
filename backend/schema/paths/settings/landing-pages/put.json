@@ -1,7 +1,7 @@
 {
 	"operationId": "updateLandingPages",
 	"summary": "Update Settings, Landing pages",
-	"description": "Admins only. An empty html with the custom choice keeps the saved page; another choice keeps the saved html for later. The files are written, nginx is tested and reloaded; a failure puts everything back.",
+	"description": "Admins only. An empty html with the custom choice keeps the saved page; another choice keeps the saved html for later. The files are written, nginx is tested and reloaded; a failure puts everything back. visit_time: how the built-in pages show the visit time.",
 	"tags": [
 		"settings"
 	],
@@ -20,6 +20,14 @@
 					"additionalProperties": false,
 					"minProperties": 1,
 					"properties": {
+						"visit_time": {
+							"type": "string",
+							"enum": [
+								"utc",
+								"local",
+								"local-utc"
+							]
+						},
 						"default_site": {
 							"type": "object",
 							"required": [

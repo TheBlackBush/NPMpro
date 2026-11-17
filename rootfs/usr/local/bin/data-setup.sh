@@ -325,6 +325,17 @@ if [ ! -e /data/npmpro/nginx/crowdsec-admin.conf ]; then
     echo "# the admin UI is checked by CrowdSec (Settings, CrowdSec)" > /data/npmpro/nginx/crowdsec-admin.conf
 fi
 
+# The visit time include of nginx.conf ($npmpro_visit_time), written by the backend from Settings, Landing pages.
+# Missing only at the first start of this version: utc, as before.
+if [ ! -e /data/npmpro/nginx/landing-pages.conf ]; then
+    cat > /data/npmpro/nginx/landing-pages.conf <<'EOF'
+# the visit time of the built-in landing pages (Settings, Landing pages): utc, local or local-utc
+map $host $npmpro_visit_time {
+  default "utc";
+}
+EOF
+fi
+
 # http access log, error log, stream access log and the TLS handshake log include: included by nginx.conf and the
 # default servers, the backend rewrites them when the traffic statistics, Write log files or CrowdSec changes. log-includes.sh turns the files on for CrowdSec too, since it reads them.
 mkdir -p /data/npmpro/nginx

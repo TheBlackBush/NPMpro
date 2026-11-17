@@ -1,4 +1,5 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { applyDefaultSite, assertDefaultSiteMeta } from "../lib/default-site.js";
 import errs from "../lib/error.js";
 import { globalPageFiles, makeReadable, writePlacePages } from "../lib/landing-pages/files.js";
@@ -13,6 +14,7 @@ import {
 	saveStoredLandingPages,
 } from "../lib/landing-pages/store.js";
 import { BUILTIN_DIR, GLOBAL_DIR, PAGE_FILES, PAGE_TYPES, PAGES_DIR, PLACES } from "../lib/landing-pages/types.js";
+import { VISIT_TIME_CONF, visitTimeConf, visitTimeOf } from "../lib/landing-pages/visit-time.js";
 import { rooted } from "../lib/paths.js";
 import { withFiles } from "../lib/runtime-apply.js";
 import { global as logger } from "../logger.js";
@@ -33,25 +35,33 @@ const readDefaultSite = () => settingModel.query().where("id", DEFAULT_SITE_ID).
 
 const viewOf = async () => {
 	const site = await readDefaultSite();
+	const stored = await readStoredLandingPages();
 	return {
 		default_site: { value: site?.value ?? "congratulations", meta: site?.meta ?? {} },
-		pages: effectivePages(await readStoredLandingPages()),
+		pages: effectivePages(stored),
+		visit_time: visitTimeOf(stored),
 	};
 };
 
 /**
- * Writes the seven global files, runs fn and puts the previous files back when fn throws. For code in the runtime
- * queue (a save, the start, a restore).
+ * Writes the seven global files and the visit time include from the row's meta, runs fn and puts the previous files
+ * back when fn throws. For code in the runtime queue (a save, the start, a restore).
  *
- * @param   {Object}   pages  effectivePages
- * @param   {Function} [fn]
+ * @param   {Object|null} stored  the landing_pages row's meta
+ * @param   {Function}    [fn]
  * @returns {Promise<*>}
  */
-const writeGlobalPages = async (pages, fn = async () => {}) => {
+const writeGlobalPages = async (stored, fn = async () => {}) => {
 	await mkdir(rooted(GLOBAL_DIR), { recursive: true, mode: 0o755 });
-	const files = await globalPageFiles(pages);
+	await mkdir(path.dirname(rooted(VISIT_TIME_CONF)), { recursive: true, mode: 0o700 });
+	const conf = rooted(VISIT_TIME_CONF);
+	const files = [
+		...(await globalPageFiles(effectivePages(stored))),
+		{ path: conf, content: visitTimeConf(visitTimeOf(stored)) },
+	];
 	return await withFiles(files, async (written) => {
-		await makeReadable(written);
+		// the pages are read by the nginx workers; the include only by the master, like the other files there
+		await makeReadable(written.filter((file) => file !== conf));
 		return await fn(written);
 	});
 };
@@ -107,12 +117,16 @@ const internalLandingPages = {
 		access.canAdmin();
 		const changes = body?.pages ?? {};
 		const site = body?.default_site;
+		const visitTime = body?.visit_time;
 		assertPages(changes);
 		assertDefaultSite(site);
 		const changed = await runtimeExclusive(async () => {
 			const stored = (await readStoredLandingPages()) ?? {};
 			const before = effectivePages(stored);
-			const nextStored = applyPagesUpdate(stored, keepSavedHtml(stored, changes));
+			const nextStored = {
+				...applyPagesUpdate(stored, keepSavedHtml(stored, changes)),
+				...(visitTime === undefined ? {} : { visit_time: visitTime }),
+			};
 			const after = effectivePages(nextStored);
 			for (const [type, change] of Object.entries(changes)) {
 				if (change.choice === "custom" && after[type]?.choice !== "custom") {
@@ -124,7 +138,7 @@ const internalLandingPages = {
 				value: "congratulations",
 				meta: {},
 			};
-			await writeGlobalPages(after, async () => {
+			await writeGlobalPages(nextStored, async () => {
 				// the row first, then one test and one reload (the default site's own apply reloads); a failure puts the
 				// row back, the files are put back by writeGlobalPages and the default site by applyDefaultSite
 				await saveStoredLandingPages(nextStored);
@@ -157,7 +171,11 @@ const internalLandingPages = {
 					throw err;
 				}
 			});
-			return [...changedPageTypes(before, after), ...(site ? ["default_site"] : [])];
+			return [
+				...changedPageTypes(before, after),
+				...(site ? ["default_site"] : []),
+				...(visitTimeOf(stored) === visitTimeOf(nextStored) ? [] : ["visit_time"]),
+			];
 		});
 		await internalAuditLog.add(access, {
 			action: "updated",
@@ -283,7 +301,7 @@ const startLandingPages = async ({ log = logger } = {}) => {
 		if (stored === null) {
 			stored = await importLegacyPages({ log, save: saveStoredLandingPages });
 		}
-		await runtimeExclusive(() => writeGlobalPages(effectivePages(stored)));
+		await runtimeExclusive(() => writeGlobalPages(stored));
 	} catch (err) {
 		log.error(
 			`Landing pages: could not write the global pages at startup, the CrowdSec ban and captcha pages are unavailable until the files are written (the bouncer turns captcha off): ${err.message}`,
@@ -333,7 +351,7 @@ const reloadLandingPagesAfterRestore = async (types = []) => {
 		}
 		if (taken) await saveStoredLandingPages(stored);
 	}
-	await writeGlobalPages(effectivePages(stored));
+	await writeGlobalPages(stored);
 };
 
 export { reloadLandingPagesAfterRestore, startLandingPages, writeGlobalPages };
