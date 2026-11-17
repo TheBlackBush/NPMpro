@@ -17,7 +17,7 @@ Landing pages are the pages NPMpro shows instead of a site: when nothing is set 
 
 ## Settings, Landing pages
 
-Settings, Landing pages (administrators) shows a short note and four cards. Every line has a dropdown and a **Preview** button, which opens the saved page in a new tab with sample values (save first to preview a change).
+Settings, Landing pages (administrators) shows a short note and four cards. Every page line has a dropdown and a **Preview** button, which opens the saved page in a new tab with sample values (save first to preview a change).
 
 - **Default site:** the answer to a request that matches no host. Options: **Congratulations Page** (the default), **404 Page**, **No Response (444)**, **Redirect** (to an address you enter) and **Custom HTML** (your own page, with an optional status code). A new choice is tested with nginx before it is saved.
 - **Errors:** **Page not found** (404), **Upstream error** (502, 503, 504), **Maintenance** (503) and **Certificate problem** (495).

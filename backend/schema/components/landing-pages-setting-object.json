@@ -1,6 +1,6 @@
 {
 	"type": "object",
-	"description": "Settings, Landing pages: the Default page (the default-site setting) and the seven global pages and the visit time",
+	"description": "Settings, Landing pages: the Default page (the default-site setting), the seven global pages and the visit time",
 	"required": ["default_site", "pages", "visit_time"],
 	"additionalProperties": false,
 	"properties": {
