@@ -37,3 +37,7 @@ The first OIDC sign-in of a user links the account to the provider's identity (i
 - Changing a user's email address keeps the link.
 - The Users table has a Sign-in column: Local (the user has a password) and OIDC (linked; the tooltip shows when).
 - A backup merge clears the links of the users it adds or replaces; they link again at their next OIDC sign-in.
+
+## Scripts and AI assistants
+
+Scripts and AI assistants do not sign in with a password or OIDC. They use an API token, sent as `Authorization: Bearer`, which keeps working with OIDC-only sign-in and with MFA. Tokens have their own expiry and can be revoked at any time. See [API tokens and MCP](API-tokens-and-MCP).

@@ -38,6 +38,8 @@ below as its release notes.
   Docker and Compose secrets.
 - **Images:** images for amd64 (x86-64-v2) and arm64 on GHCR and Docker Hub, with an SBOM, provenance and keyless
   cosign signatures.
+- **API:** API tokens for scripts, sent as `Authorization: Bearer`, with their own permissions that never exceed their
+  owner's; they work with OIDC-only sign-in and MFA, are stored as a hash and never in backups.
 
 ### Changed
 
@@ -62,3 +64,4 @@ below as its release notes.
   authentication and domain names; users who are not administrators cannot set unix socket targets or regex domains.
 - **Requests:** a client cannot pass its own `X-Npmpro-Request-Id` to an upstream, and `X-Forwarded-Proto` is taken
   only from trusted proxies.
+- **Access lists:** the API no longer returns the basic-auth users' password hashes.
