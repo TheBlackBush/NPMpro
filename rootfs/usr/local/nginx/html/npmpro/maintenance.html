@@ -54,8 +54,8 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 <div class="foot" data-t="footer">Served by NPMpro</div>
 <script type="application/json" id="npmpro-texts">{"en":{"title":"Back soon","text":"This site is down for planned maintenance. Please try again a little later.","witty":"Tightening a few screws, back in a moment.","footer":"Served by NPMpro"},"de":{"title":"Gleich wieder da","text":"Diese Website ist wegen geplanter Wartungsarbeiten nicht erreichbar. Bitte versuchen Sie es etwas später erneut.","witty":"Wir ziehen noch ein paar Schrauben fest, gleich geht es weiter.","footer":"Bereitgestellt von NPMpro"},"zh":{"title":"马上回来","text":"本站正在进行计划内维护。请稍后再试。","witty":"正在拧紧几颗螺丝，稍等片刻。","footer":"由 NPMpro 提供服务"},"fr":{"title":"De retour bientôt","text":"Ce site est en maintenance planifiée. Veuillez réessayer un peu plus tard.","witty":"On resserre quelques vis, de retour dans un instant.","footer":"Propulsé par NPMpro"},"es":{"title":"Volvemos enseguida","text":"Este sitio está en mantenimiento programado. Inténtalo de nuevo un poco más tarde.","witty":"Apretando unos tornillos, volvemos en un momento.","footer":"Servido por NPMpro"},"pt":{"title":"Volta já","text":"Este site está em manutenção programada. Tente novamente um pouco mais tarde.","witty":"A apertar uns parafusos, já voltamos.","footer":"Servido por NPMpro"},"ru":{"title":"Скоро вернёмся","text":"Сайт закрыт на плановое обслуживание. Пожалуйста, повторите попытку чуть позже.","witty":"Затягиваем пару винтиков, скоро вернёмся.","footer":"Работает на NPMpro"},"it":{"title":"Torniamo subito","text":"Questo sito è fermo per manutenzione programmata. Riprova un po' più tardi.","witty":"Stiamo stringendo qualche vite, torniamo tra un attimo.","footer":"Servito da NPMpro"},"nl":{"title":"Zo terug","text":"Deze site ligt plat voor gepland onderhoud. Probeer het straks opnieuw.","witty":"We draaien nog even een paar schroeven vast, zo terug.","footer":"Geleverd door NPMpro"},"pl":{"title":"Zaraz wracamy","text":"Ta witryna jest wyłączona z powodu planowanych prac. Spróbuj ponownie nieco później.","witty":"Dokręcamy kilka śrubek, zaraz wracamy.","footer":"Obsługiwane przez NPMpro"},"ja":{"title":"まもなく再開します","text":"このサイトは計画メンテナンスのため停止しています。しばらくしてからもう一度お試しください。","witty":"ネジを締め直しています。もうすぐ戻ります。","footer":"NPMpro で配信"},"ko":{"title":"곧 돌아옵니다","text":"이 사이트는 예정된 점검으로 중단되었습니다. 잠시 후 다시 시도하세요.","witty":"나사를 몇 개 조이는 중입니다. 곧 돌아옵니다.","footer":"NPMpro 제공"},"uk":{"title":"Скоро повернемося","text":"Сайт зупинено на планове обслуговування. Будь ласка, спробуйте ще раз трохи пізніше.","witty":"Підкручуємо кілька гвинтиків, скоро повернемося.","footer":"Працює на NPMpro"}}</script>
 <script>// Inlined into every landing page by build.js (identical in all eight, so one CSP hash allows it): shows the texts of
-// the visitor's browser language (English is in the HTML already), fills the time chip when nginx did not, and holds
-// the captcha form's callback.
+// the visitor's browser language (English is in the HTML already), shows the visit time as Settings, Landing pages
+// chose (nginx writes UTC), fills the time chip when nginx did not, and holds the captcha form's callback.
 (() => {
 	const texts = JSON.parse(document.getElementById("npmpro-texts").textContent);
 	const wanted = [...(navigator.languages ?? []), navigator.language ?? ""];
@@ -76,6 +76,38 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 	const time = document.querySelector("[data-npmpro-time]");
 	if (time && time.textContent.trim() === "") {
 		time.textContent = `${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`;
+	} else if (time) {
+		const choice = time.dataset.visitTime;
+		const moment = new Date(time.dataset.utc ?? "");
+		if ((choice === "local" || choice === "local-utc") && !Number.isNaN(moment.getTime())) {
+			try {
+				const local = new Intl.DateTimeFormat(code, {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					timeZoneName: "short",
+				}).format(moment);
+				// local-utc: the UTC time, with the UTC date (page's language, month short, day numeric) when the
+				// visitor's date is another day
+				const dayIn = (zone) =>
+					new Intl.DateTimeFormat(code, {
+						year: "numeric",
+						month: "numeric",
+						day: "numeric",
+						...(zone ? { timeZone: zone } : {}),
+					}).format(moment);
+				const utcTime = moment.toISOString().slice(11, 16);
+				const utcDate =
+					dayIn() === dayIn("UTC")
+						? ""
+						: `${new Intl.DateTimeFormat(code, { month: "short", day: "numeric", timeZone: "UTC" }).format(moment)}, `;
+				time.textContent = choice === "local" ? local : `${local} (${utcDate}${utcTime} UTC)`;
+			} catch {
+				// a browser without these options keeps nginx's UTC text
+			}
+		}
 	}
 	window.captchaCallback = () => {
 		setTimeout(() => document.getElementById("captcha-form")?.submit(), 500);

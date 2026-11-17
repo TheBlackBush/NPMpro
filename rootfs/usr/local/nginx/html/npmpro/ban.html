@@ -49,13 +49,13 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 <p class="text" data-t="text">This site&#39;s security system blocked your connection because it looked like an attack. If that&#39;s a mistake, contact the site owner with the details below.</p>
 <p class="witty" data-t="witty">Our bouncer says your name is not on the list.</p>
 
-<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>
+<div class="chips"><span class="chip">IP <!--# echo var="remote_addr" --></span><span class="chip" data-npmpro-time data-utc='<!--# config timefmt="%Y-%m-%dT%H:%M:%SZ" --><!--# echo var="date_gmt" -->' data-visit-time='<!--# echo var="npmpro_visit_time" default="utc" -->'><!--# config timefmt="%Y-%m-%d %H:%M UTC" --><!--# echo var="date_gmt" --></span></div>
 </div></main>
 <div class="foot" data-t="footer">Protected by CrowdSec</div>
 <script type="application/json" id="npmpro-texts">{"en":{"title":"Access blocked","text":"This site's security system blocked your connection because it looked like an attack. If that's a mistake, contact the site owner with the details below.","witty":"Our bouncer says your name is not on the list.","footer":"Protected by CrowdSec"},"de":{"title":"Zugriff blockiert","text":"Das Sicherheitssystem dieser Website hat Ihre Verbindung blockiert, weil sie wie ein Angriff aussah. Falls das ein Irrtum ist, wenden Sie sich mit den Angaben unten an den Betreiber der Website.","witty":"Unser Türsteher findet Ihren Namen nicht auf der Liste.","footer":"Geschützt durch CrowdSec"},"zh":{"title":"访问被阻止","text":"本站的安全系统认为您的连接像是攻击，因此将其拦截。如果这是误判，请携带下方的信息联系网站所有者。","witty":"我们的保安说，名单上没有您的名字。","footer":"由 CrowdSec 保护"},"fr":{"title":"Accès bloqué","text":"Le système de sécurité de ce site a bloqué votre connexion, car elle ressemblait à une attaque. Si c'est une erreur, contactez le propriétaire du site avec les informations ci-dessous.","witty":"Notre videur dit que votre nom n'est pas sur la liste.","footer":"Protégé par CrowdSec"},"es":{"title":"Acceso bloqueado","text":"El sistema de seguridad de este sitio bloqueó tu conexión porque parecía un ataque. Si es un error, ponte en contacto con el propietario del sitio con los datos de abajo.","witty":"Nuestro portero dice que tu nombre no está en la lista.","footer":"Protegido por CrowdSec"},"pt":{"title":"Acesso bloqueado","text":"O sistema de segurança deste site bloqueou a sua ligação porque parecia um ataque. Se for um engano, contacte o proprietário do site com os dados abaixo.","witty":"O nosso porteiro diz que o seu nome não está na lista.","footer":"Protegido por CrowdSec"},"ru":{"title":"Доступ заблокирован","text":"Система безопасности этого сайта заблокировала ваше соединение, так как оно было похоже на атаку. Если это ошибка, свяжитесь с владельцем сайта и сообщите данные ниже.","witty":"Наш охранник говорит, что вас нет в списке.","footer":"Защищено CrowdSec"},"it":{"title":"Accesso bloccato","text":"Il sistema di sicurezza di questo sito ha bloccato la tua connessione perché sembrava un attacco. Se è un errore, contatta il proprietario del sito con i dettagli qui sotto.","witty":"Il nostro buttafuori dice che il tuo nome non è in lista.","footer":"Protetto da CrowdSec"},"nl":{"title":"Toegang geblokkeerd","text":"Het beveiligingssysteem van deze site heeft je verbinding geblokkeerd omdat die op een aanval leek. Als dat een vergissing is, neem dan contact op met de eigenaar van de site en geef de gegevens hieronder door.","witty":"Onze uitsmijter zegt dat jouw naam niet op de lijst staat.","footer":"Beschermd door CrowdSec"},"pl":{"title":"Dostęp zablokowany","text":"System bezpieczeństwa tej witryny zablokował Twoje połączenie, bo wyglądało jak atak. Jeśli to pomyłka, skontaktuj się z właścicielem witryny i podaj dane poniżej.","witty":"Nasz bramkarz mówi, że nie ma Cię na liście.","footer":"Chronione przez CrowdSec"},"ja":{"title":"アクセスがブロックされました","text":"このサイトのセキュリティシステムは、攻撃のように見えたためあなたの接続をブロックしました。誤りだと思われる場合は、下の情報を添えてサイトの管理者にご連絡ください。","witty":"うちの警備員いわく、あなたの名前はリストにないそうです。","footer":"CrowdSec で保護"},"ko":{"title":"접근이 차단되었습니다","text":"이 사이트의 보안 시스템이 공격처럼 보이는 연결이라서 차단했습니다. 오류라고 생각되면 아래 정보를 가지고 사이트 소유자에게 문의하세요.","witty":"경비원이 말하길, 명단에 이름이 없다고 합니다.","footer":"CrowdSec 보호 중"},"uk":{"title":"Доступ заблоковано","text":"Система безпеки цього сайту заблокувала ваше з'єднання, бо воно скидалося на атаку. Якщо це помилка, зверніться до власника сайту та повідомте дані нижче.","witty":"Наш охоронець каже, що вас немає в списку.","footer":"Захищено CrowdSec"}}</script>
 <script>// Inlined into every landing page by build.js (identical in all eight, so one CSP hash allows it): shows the texts of
-// the visitor's browser language (English is in the HTML already), fills the time chip when nginx did not, and holds
-// the captcha form's callback.
+// the visitor's browser language (English is in the HTML already), shows the visit time as Settings, Landing pages
+// chose (nginx writes UTC), fills the time chip when nginx did not, and holds the captcha form's callback.
 (() => {
 	const texts = JSON.parse(document.getElementById("npmpro-texts").textContent);
 	const wanted = [...(navigator.languages ?? []), navigator.language ?? ""];
@@ -76,6 +76,38 @@ h1{font-size:22px;margin:16px 0 0;font-weight:700;letter-spacing:-.01em}
 	const time = document.querySelector("[data-npmpro-time]");
 	if (time && time.textContent.trim() === "") {
 		time.textContent = `${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`;
+	} else if (time) {
+		const choice = time.dataset.visitTime;
+		const moment = new Date(time.dataset.utc ?? "");
+		if ((choice === "local" || choice === "local-utc") && !Number.isNaN(moment.getTime())) {
+			try {
+				const local = new Intl.DateTimeFormat(code, {
+					year: "numeric",
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+					timeZoneName: "short",
+				}).format(moment);
+				// local-utc: the UTC time, with the UTC date (page's language, month short, day numeric) when the
+				// visitor's date is another day
+				const dayIn = (zone) =>
+					new Intl.DateTimeFormat(code, {
+						year: "numeric",
+						month: "numeric",
+						day: "numeric",
+						...(zone ? { timeZone: zone } : {}),
+					}).format(moment);
+				const utcTime = moment.toISOString().slice(11, 16);
+				const utcDate =
+					dayIn() === dayIn("UTC")
+						? ""
+						: `${new Intl.DateTimeFormat(code, { month: "short", day: "numeric", timeZone: "UTC" }).format(moment)}, `;
+				time.textContent = choice === "local" ? local : `${local} (${utcDate}${utcTime} UTC)`;
+			} catch {
+				// a browser without these options keeps nginx's UTC text
+			}
+		}
 	}
 	window.captchaCallback = () => {
 		setTimeout(() => document.getElementById("captcha-form")?.submit(), 500);

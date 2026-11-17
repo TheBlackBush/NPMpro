@@ -5,6 +5,7 @@ import { scriptHash } from "../landing-pages/build.js";
 import { startApi } from "./support/api.js";
 
 let api;
+const CHIP = /data-utc='\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z' data-visit-time='local'>/u;
 let admin;
 
 before(async () => {
@@ -96,4 +97,11 @@ it("nginx serves the previews sandboxed, scripts limited to the built-in pages' 
 	assert.ok(!csp.includes("allow-same-origin"));
 	assert.ok(csp.includes("default-src 'none';"));
 	assert.ok(csp.includes("img-src data:;"));
+});
+
+it("the built-in preview carries the saved visit time in the chip", async () => {
+	await admin.put("/settings/landing-pages", { visit_time: "local" });
+	const page = (await admin.get("/settings/landing-pages/preview/npmpro/ban")).text;
+	assert.match(page, CHIP);
+	await admin.put("/settings/landing-pages", { visit_time: "utc" });
 });

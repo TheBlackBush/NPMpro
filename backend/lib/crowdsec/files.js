@@ -23,7 +23,7 @@ const ADMIN_INCLUDES = { checked: ADMIN_CHECKED, bans: ADMIN_BANS, out: ADMIN_OU
 // provider conf.d/npmpro.conf sets the ban page's CSP as the default and this file sets nothing. The hash is the one of
 // backend/landing-pages/page-script.js (test/crowdsec-admin-pages.test.js keeps them equal).
 // biome-ignore lint/security/noSecrets: a public CSP hash of a script, not a secret
-const SCRIPT_HASH = "sha256-RqUBguKqhOYUtWXvu8LopB+22M46r+nWkfQUkqMSkHw=";
+const SCRIPT_HASH = "sha256-UMMDl3diDTKE9V5ubP1R7s9y1M3O5vKVc3mx70HVL24=";
 const CAPTCHA_ORIGINS = {
 	recaptcha: {
 		script: ["https://www.recaptcha.net", "https://www.gstatic.com"],
