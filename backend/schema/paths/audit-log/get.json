@@ -7,6 +7,9 @@
 	"security": [
 		{
 			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
 		}
 	],
 	"parameters": [
@@ -68,7 +71,8 @@
 					"setting",
 					"backup-schedule",
 					"backup",
-					"database"
+					"database",
+					"api-token"
 				]
 			}
 		},
@@ -96,7 +100,10 @@
 					"downloaded",
 					"oidc-linked",
 					"oidc-unlinked",
-					"oidc-refused"
+					"oidc-refused",
+					"revoked",
+					"expired",
+					"first-used"
 				]
 			}
 		},

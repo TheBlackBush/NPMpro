@@ -36,6 +36,18 @@
 			"type": "string",
 			"example": "created"
 		},
+		"npmpro_api_token_id": {
+			"type": [
+				"integer",
+				"null"
+			]
+		},
+		"npmpro_api_token_name": {
+			"type": [
+				"string",
+				"null"
+			]
+		},
 		"meta": {
 			"type": "object",
 			"example": {}

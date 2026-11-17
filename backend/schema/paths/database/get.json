@@ -3,7 +3,7 @@
 	"summary": "The database in use, its tables and the current or last move",
 	"description": "Admin only.",
 	"tags": ["database"],
-	"security": [{ "cookieAuth": [] }],
+	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
 	"responses": {
 		"200": {
 			"description": "200 response",

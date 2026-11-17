@@ -3,7 +3,7 @@
 	"summary": "Progress of the current or last database move",
 	"description": "Admin only. In memory: empty after a restart.",
 	"tags": ["database"],
-	"security": [{ "cookieAuth": [] }],
+	"security": [{ "cookieAuth": [] }, { "bearerAuth": [] }],
 	"responses": {
 		"200": {
 			"description": "200 response",

@@ -8,6 +8,9 @@
 	"security": [
 		{
 			"cookieAuth": []
+		},
+		{
+			"bearerAuth": []
 		}
 	],
 	"parameters": [
