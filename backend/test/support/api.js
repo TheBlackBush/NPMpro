@@ -171,6 +171,8 @@ const startApi = async ({ env = {}, files = {} } = {}) => {
 			COOKIE_SECRET: "api-test-cookie-secret",
 			DISABLE_GRAVATAR: "true",
 			DISABLE_NGINX_BEAUTIFIER: "true",
+			// a cheap argon2 cost for the passwords and backup codes of the tests (lib/argon2.js hashParams)
+			NPMPRO_TEST_ARGON2: "fast",
 			...env,
 		});
 		controlSocket = await startControlSocket(path.join(root, "run/nginx-control.sock"));

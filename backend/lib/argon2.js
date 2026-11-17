@@ -3,20 +3,34 @@ import { promisify } from "node:util";
 
 const derive = promisify(argon2);
 
+const STRONG = Object.freeze({ memory: 65536, passes: 3, parallelism: 4 });
+const MINIMAL = Object.freeze({ memory: 19456, passes: 2, parallelism: 1 });
+const TEST = Object.freeze({ memory: 64, passes: 1, parallelism: 1 });
+
 /**
- * Hashes a secret with argon2id, encoded as JSON
+ * The cost of a new hash: the second recommended option of RFC 9106, or with minimal the OWASP minimum (for secrets
+ * that are randomly generated instead of chosen by a user). The backend tests (test/support/api.js) set
+ * NPMPRO_TEST_ARGON2=fast for a cheap cost; it counts only together with the tests' temporary root NPMPRO_TEST_ROOT,
+ * which the image never sets.
  *
- * Defaults to the second recommended option of RFC 9106, minimal uses the OWASP minimum
- * and is meant for secrets that are randomly generated instead of chosen by a user
+ * @param   {Boolean} minimal
+ * @param   {Object}  [env]
+ * @returns {{ memory: number, passes: number, parallelism: number }}
+ */
+const hashParams = (minimal, env = process.env) => {
+	if (env.NPMPRO_TEST_ROOT && env.NPMPRO_TEST_ARGON2 === "fast") return TEST;
+	return minimal ? MINIMAL : STRONG;
+};
+
+/**
+ * Hashes a secret with argon2id, encoded as JSON, with the cost of hashParams()
  *
  * @param   {String}  plain
  * @param   {Boolean} minimal
  * @returns {Promise<String>}
  */
 const hash = async (plain, minimal = false) => {
-	const params = minimal
-		? { memory: 19456, passes: 2, parallelism: 1 }
-		: { memory: 65536, passes: 3, parallelism: 4 };
+	const params = hashParams(minimal);
 	const nonce = randomBytes(16);
 	const tag = await derive("argon2id", { message: plain, nonce, tagLength: 32, ...params });
 
@@ -66,4 +80,4 @@ const verifyDummy = async (plain) => {
 // an object, so the sign-in calls it through a property a test can watch
 const loginTiming = { verifyDummy };
 
-export { hash, loginTiming, verify };
+export { hash, hashParams, loginTiming, verify };
