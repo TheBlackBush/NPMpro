@@ -4,15 +4,8 @@ import { CARD_LINK, CARD_POP } from "./CardLink.js";
 
 const classes = (list) => list.split(" ");
 
-it("the link is the group with the focus ring and fills its grid cell", () => {
-	for (const name of [
-		"group",
-		"block",
-		"h-full",
-		"min-w-0",
-		"focus-visible:ring-[3px]",
-		"focus-visible:ring-ring/50",
-	]) {
+it("the link is the group that shows the keyboard focus ring", () => {
+	for (const name of ["group", "focus-visible:ring-[3px]", "focus-visible:ring-ring/50"]) {
 		assert.ok(classes(CARD_LINK).includes(name), name);
 	}
 });

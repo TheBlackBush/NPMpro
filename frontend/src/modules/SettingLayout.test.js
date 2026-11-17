@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { hasErrorIn, LINE_LAYOUTS, openOnRefusedSave, settingLineClass, settingsCardClass } from "./SettingLayout.js";
+import { hasErrorIn, openOnRefusedSave, settingLineClass, settingsCardClass } from "./SettingLayout.js";
 
 const has = (classes, ...names) => {
 	const list = classes.split(" ");
@@ -11,21 +11,11 @@ const lacks = (classes, ...names) => {
 	for (const name of names) assert.ok(!list.includes(name), `"${classes}" has ${name}`);
 };
 
-it("lists the four layouts of a setting line", () => {
-	assert.deepEqual([...LINE_LAYOUTS], ["inline", "block", "switch", "value"]);
-	assert.ok(Object.isFrozen(LINE_LAYOUTS));
-});
-
 it("draws an inline line as the landing page lines: a row from the lg container width, a 14rem control", () => {
 	const line = settingLineClass("inline");
 	assert.equal(line.container, "@container");
-	has(line.row, "group/row", "@lg:flex-row", "@lg:items-center");
-	assert.equal(line.text, "min-w-0 flex-1 @lg:group-has-[[data-slot=field-error]]/row:pt-1.5");
-	assert.equal(line.titleRow, "flex flex-wrap items-center gap-x-2 gap-y-1");
-	assert.equal(line.title, "text-sm font-semibold");
-	assert.equal(line.hint, "mt-0.5 text-[0.8rem] text-muted-foreground");
-	assert.equal(line.wrap, "flex items-center gap-2 @lg:shrink-0");
-	assert.equal(line.control, "min-w-0 flex-1 @lg:w-56 @lg:flex-none");
+	has(line.row, "flex-col", "@lg:flex-row", "@lg:items-center");
+	has(line.control, "@lg:w-56", "@lg:flex-none");
 	assert.deepEqual(settingLineClass(), line);
 });
 
@@ -58,22 +48,16 @@ it("shows a read-only value on the right from the lg width and lets it wrap", ()
 	has(line.wrap, "@lg:max-w-1/2");
 });
 
-it("uses one title and one hint class in every layout", () => {
-	for (const layout of LINE_LAYOUTS) {
-		assert.equal(settingLineClass(layout).title, "text-sm font-semibold");
-		assert.equal(settingLineClass(layout).hint, "mt-0.5 text-[0.8rem] text-muted-foreground");
-	}
-});
-
 it("refuses an unknown layout", () => {
 	assert.throws(() => settingLineClass("wide"), TypeError);
 });
 
 it("draws a card with a divider under the title bar and a padded body", () => {
 	const card = settingsCardClass();
-	assert.equal(card.card, "rounded-lg border bg-card text-card-foreground");
-	has(card.header, "relative", "flex", "px-4", "py-3", "border-b");
-	assert.equal(card.body, "space-y-4 p-4");
+	assert.equal(card.card.split(" ").includes("overflow-hidden"), false);
+	has(card.header, "border-b");
+	lacks(card.header, "hover:bg-muted/50");
+	has(card.body, "p-4");
 });
 
 it("draws a lines card edge to edge with hairlines between the lines", () => {

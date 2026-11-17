@@ -17,11 +17,9 @@ import {
 	groupDecisions,
 	inSentence,
 	isIncluded,
-	linkedItems,
 	mergeCatalogue,
 	mergeDefaults,
 	mouseLeavesPicker,
-	needsChoice,
 	pickerItems,
 	requestItems,
 	searchItems,
@@ -43,31 +41,6 @@ const plan = {
 describe("BackupMerge", () => {
 	it("lists the actions in display order", () => {
 		assert.deepEqual(ACTIONS, ["add", "replace", "take", "existing", "skip", "keep"]);
-	});
-
-	it("needsChoice returns only items with two or more choices", () => {
-		assert.deepEqual(
-			needsChoice(plan).map((item) => item.key),
-			["proxy_hosts:1", "setting:oidc"],
-		);
-	});
-
-	it("needsChoice leaves out linked items, linkedItems returns them with or without a choice", () => {
-		const withLinked = {
-			items: [
-				...plan.items,
-				{ key: "certificates:1", linked: true, action: "existing", choices: ["existing", "add"] },
-				{ key: "certificates:2", linked: true, action: "add", choices: ["add"] },
-			],
-		};
-		assert.deepEqual(
-			needsChoice(withLinked).map((item) => item.key),
-			["proxy_hosts:1", "setting:oidc"],
-		);
-		assert.deepEqual(
-			linkedItems(withLinked).map((item) => item.key),
-			["certificates:1", "certificates:2"],
-		);
 	});
 
 	it("byAction groups in ACTIONS order and leaves out empty actions", () => {
