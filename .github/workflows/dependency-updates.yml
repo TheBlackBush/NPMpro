@@ -59,3 +59,81 @@ jobs:
       - run: gh workflow run docker.yml --repo "$GITHUB_REPOSITORY" --ref develop
         env:
           GH_TOKEN: ${{ github.token }}
+
+  shadcn-drift:
+    # The first run of the week compares the generated shadcn components with the registry and keeps one open issue
+    # (found by its label) with the result; the fallback run skips it. It skips with a notice while develop has no drift
+    # script. When the script fails, the issue shows what it printed and the job fails.
+    if: github.event.schedule == '17 2 * * 1' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: develop
+          persist-credentials: false
+      - name: check script
+        id: script
+        run: |
+          if [ -f .github/scripts/shadcn-drift.sh ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::develop has no .github/scripts/shadcn-drift.sh yet, skipping the drift report"
+          fi
+      - if: steps.script.outputs.found == 'true'
+        uses: ./.github/actions/setup
+      - if: steps.script.outputs.found == 'true'
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - name: drift report
+        id: drift
+        if: steps.script.outputs.found == 'true'
+        working-directory: frontend
+        run: |
+          status=0
+          sh ../.github/scripts/shadcn-drift.sh > "$RUNNER_TEMP/drift.md" 2> "$RUNNER_TEMP/drift.err" || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -ne 0 ]; then
+            {
+              echo
+              echo "## The report failed"
+              echo
+              echo "\`shadcn-drift.sh\` exited with $status in [this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID):"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/drift.err"
+              echo '```'
+            } >> "$RUNNER_TEMP/drift.md"
+          fi
+      - name: update the issue
+        if: steps.script.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: shadcn drift report
+          LABEL: shadcn-drift
+        # the list API by label, not the search index: no lag, and an issue a person opens with the same title stays theirs
+        run: |
+          gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --force --color FBCA04 \
+            --description "The weekly shadcn drift report"
+          issue="$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state all --limit 1 \
+            --json number,state --jq '.[0] // empty | "\(.number) \(.state)"')"
+          if [ -n "$issue" ]; then
+            number="${issue% *}"
+            if [ "${issue#* }" = CLOSED ]; then
+              gh issue reopen "$number" --repo "$GITHUB_REPOSITORY"
+            fi
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/drift.md"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label "$LABEL" \
+              --body-file "$RUNNER_TEMP/drift.md"
+          fi
+      - name: fail on a report error
+        if: steps.script.outputs.found == 'true' && steps.drift.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.drift.outputs.status }}
+        run: |
+          echo "::error::shadcn-drift.sh exited with $STATUS (the issue shows its output)"
+          exit 1
