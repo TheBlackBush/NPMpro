@@ -3,10 +3,26 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # a dry run: the version, branch and notes checks and both architectures built, nothing pushed or released
+  workflow_dispatch:
+    inputs:
+      version:
+        description: the version to try, X.Y.Z (it must equal .version)
+        required: true
+        type: string
+  # the same dry run on PRs that change the release path (this also registers the workflow, which a dispatch needs)
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/workflows/build.yml
+      - .github/actions/build-image/**
+      - .github/actions/build-args/**
+      - .github/scripts/release-version.sh
+      - .github/scripts/changelog-section.sh
 permissions: {}
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   version:
     name: Version
@@ -17,14 +33,62 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tags: ${{ steps.version.outputs.tags }}
+      latest: ${{ steps.version.outputs.latest }}
+    env:
+      DRY_RUN: ${{ github.event_name != 'push' }}
     steps:
       - name: Check Out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # every tag (the highest release) and origin/main (the branch check)
+          persist-credentials: false
       - name: Version and Tags
         id: version
         env:
-          TAG: ${{ github.ref_name }}
-        run: sh .github/scripts/release-version.sh .version "$TAG" >> "$GITHUB_OUTPUT"
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            push) tag="$GITHUB_REF_NAME" ;;
+            workflow_dispatch) tag="v$INPUT_VERSION" ;;
+            *) tag="v$(tr -d '[:space:]' < .version)" ;;
+          esac
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          git tag -l 'v*' > "$RUNNER_TEMP/tags"
+          # through a file, not a pipe: the step fails when the script refuses the version (bash -e, no pipefail)
+          sh .github/scripts/release-version.sh .version "$tag" "$RUNNER_TEMP/tags" > "$RUNNER_TEMP/version.out"
+          cat "$RUNNER_TEMP/version.out"
+          cat "$RUNNER_TEMP/version.out" >> "$GITHUB_OUTPUT"
+      - name: Tag on Main
+        run: |
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "$GITHUB_SHA is on main"
+          elif [ "$DRY_RUN" = true ]; then
+            echo "::warning::dry run: $GITHUB_SHA is not on main, the release of a tag on it would stop here"
+          else
+            echo "::error::$TAG points at $GITHUB_SHA, which is not on main"
+            exit 1
+          fi
+      - name: Release Notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAGS: ${{ steps.version.outputs.tags }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          section="$VERSION"
+          # a dry run before the release has no section for the version yet: it previews Unreleased instead (checked
+          # first, so a green dry run carries no error annotation); a real release always needs its own section
+          if [ "$DRY_RUN" = true ] && ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::notice::dry run: CHANGELOG.md has no section for $VERSION yet, the preview shows Unreleased"
+            section=Unreleased
+          fi
+          sh .github/scripts/changelog-section.sh CHANGELOG.md "$section" > "$notes"
+          {
+            echo "## $TAG"
+            echo
+            echo "Image tags: $TAGS"
+            echo
+            cat "$notes"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: Publish
@@ -37,19 +101,30 @@ jobs:
     with:
       version: ${{ needs.version.outputs.version }}
       tags: ${{ needs.version.outputs.tags }}
+      push: ${{ github.event_name == 'push' }}
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   release:
     name: GitHub Release
+    if: ${{ github.event_name == 'push' }}
     needs: [version, publish]
     runs-on: ubuntu-slim
     permissions:
       contents: write
     steps:
+      - name: Check Out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Create Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --generate-notes
+          VERSION: ${{ needs.version.outputs.version }}
+          LATEST: ${{ needs.version.outputs.latest }}
+        run: |
+          sh .github/scripts/changelog-section.sh CHANGELOG.md "$VERSION" > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" --latest="$LATEST"

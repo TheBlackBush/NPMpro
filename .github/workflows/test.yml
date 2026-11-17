@@ -176,6 +176,8 @@ jobs:
           sh .github/scripts/check-unraid-template.test.sh
       - name: Release Version Script
         run: sh .github/scripts/release-version.test.sh
+      - name: Changelog
+        run: sh .github/scripts/changelog.test.sh
       - name: Update Scripts
         run: sh .github/scripts/update-sources.test.sh
       - name: nginx Config Format
