@@ -13,6 +13,24 @@
 	},
 	{
 		"type": "index",
+		"name": "npmpro_api_token_lookup_id",
+		"table": "npmpro_api_token",
+		"sql": "CREATE UNIQUE INDEX `npmpro_api_token_lookup_id` on `npmpro_api_token` (`lookup_id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_api_token_user_id",
+		"table": "npmpro_api_token",
+		"sql": "CREATE INDEX `npmpro_api_token_user_id` on `npmpro_api_token` (`user_id`)"
+	},
+	{
+		"type": "index",
+		"name": "npmpro_api_token_user_name",
+		"table": "npmpro_api_token",
+		"sql": "CREATE UNIQUE INDEX `npmpro_api_token_user_name` on `npmpro_api_token` (`user_id`, `name`)"
+	},
+	{
+		"type": "index",
 		"name": "npmpro_backup_schedule_name",
 		"table": "npmpro_backup_schedule",
 		"sql": "CREATE UNIQUE INDEX `npmpro_backup_schedule_name` on `npmpro_backup_schedule` (`name`)"
@@ -147,7 +165,7 @@
 		"type": "table",
 		"name": "audit_log",
 		"table": "audit_log",
-		"sql": "CREATE TABLE `audit_log` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `user_id` integer not null, `object_type` varchar(255) not null default '', `object_id` integer not null default '0', `action` varchar(255) not null, `meta` json not null)"
+		"sql": "CREATE TABLE `audit_log` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `user_id` integer not null, `object_type` varchar(255) not null default '', `object_id` integer not null default '0', `action` varchar(255) not null, `meta` json not null, `npmpro_api_token_id` integer null default null, `npmpro_api_token_name` varchar(100) null default null)"
 	},
 	{
 		"type": "table",
@@ -166,6 +184,12 @@
 		"name": "dead_host",
 		"table": "dead_host",
 		"sql": "CREATE TABLE `dead_host` (`id` integer not null primary key autoincrement, `created_on` datetime not null, `modified_on` datetime not null, `owner_user_id` integer not null, `is_deleted` integer not null default '0', `domain_names` json not null, `certificate_id` integer not null default '0', `ssl_forced` integer not null default '0', `advanced_config` text not null default '', `meta` json not null, `http2_support` integer not null default '0', `enabled` integer not null default '1', `hsts_enabled` integer not null default '0', `hsts_subdomains` integer not null default '0', \"npmpro_http3_support\" integer not null default '0', \"npmpro_nginx_online\" integer not null default '0', \"npmpro_nginx_err\" text not null default '', \"npmpro_directory\" varchar(255) not null default '', \"npmpro_mtls_certificate_id\" integer not null default '0', \"npmpro_mtls_verify_client_optional\" integer not null default '0', `npmpro_page` varchar(16) not null default 'global', `npmpro_page_html` text null, `npmpro_description` varchar(255) not null default '', `npmpro_tags` json not null default '[]')"
+	},
+	{
+		"type": "table",
+		"name": "npmpro_api_token",
+		"table": "npmpro_api_token",
+		"sql": "CREATE TABLE `npmpro_api_token` (`id` integer not null primary key autoincrement, `user_id` integer not null, `name` varchar(100) not null, `lookup_id` varchar(16) not null, `secret_hash` varchar(64) not null, `visibility` varchar(10) not null, `proxy_hosts` varchar(10) not null, `redirection_hosts` varchar(10) not null, `dead_hosts` varchar(10) not null, `streams` varchar(10) not null, `access_lists` varchar(10) not null, `certificates` varchar(10) not null, `is_admin` boolean not null default '0', `allow_delete` boolean not null default '0', `expiry_audited` boolean not null default '0', `expires_on` bigint null default null, `last_used_on` bigint null default null, `created_on` bigint not null)"
 	},
 	{
 		"type": "table",
