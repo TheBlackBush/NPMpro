@@ -56,7 +56,10 @@ jobs:
           esac
           echo "TAG=$tag" >> "$GITHUB_ENV"
           git tag -l 'v*' > "$RUNNER_TEMP/tags"
-          sh .github/scripts/release-version.sh .version "$tag" "$RUNNER_TEMP/tags" | tee -a "$GITHUB_OUTPUT"
+          # through a file, not a pipe: the step fails when the script refuses the version (bash -e, no pipefail)
+          sh .github/scripts/release-version.sh .version "$tag" "$RUNNER_TEMP/tags" > "$RUNNER_TEMP/version.out"
+          cat "$RUNNER_TEMP/version.out"
+          cat "$RUNNER_TEMP/version.out" >> "$GITHUB_OUTPUT"
       - name: Tag on Main
         run: |
           if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
@@ -73,13 +76,14 @@ jobs:
           TAGS: ${{ steps.version.outputs.tags }}
         run: |
           notes="$RUNNER_TEMP/notes.md"
-          if ! sh .github/scripts/changelog-section.sh CHANGELOG.md "$VERSION" > "$notes"; then
-            if [ "$DRY_RUN" != true ]; then
-              exit 1
-            fi
+          section="$VERSION"
+          # a dry run before the release has no section for the version yet: it previews Unreleased instead (checked
+          # first, so a green dry run carries no error annotation); a real release always needs its own section
+          if [ "$DRY_RUN" = true ] && ! grep -qF "## [$VERSION]" CHANGELOG.md; then
             echo "::notice::dry run: CHANGELOG.md has no section for $VERSION yet, the preview shows Unreleased"
-            sh .github/scripts/changelog-section.sh CHANGELOG.md Unreleased > "$notes"
+            section=Unreleased
           fi
+          sh .github/scripts/changelog-section.sh CHANGELOG.md "$section" > "$notes"
           {
             echo "## $TAG"
             echo
