@@ -43,13 +43,16 @@ it("parses only the exact token form", () => {
 	});
 });
 
-it("reads a bearer from the Authorization header: null without one, the text (maybe empty) with one", () => {
+it("reads an API token from the Authorization header: null without an npmpro_ bearer, the text (maybe empty) with one", () => {
 	assert.equal(bearerOf(undefined), null);
 	assert.equal(bearerOf("Basic dXNlcjpwYXNz"), null);
-	assert.equal(bearerOf("Bearer abc"), "abc");
-	assert.equal(bearerOf("bearer   abc  "), "abc");
-	assert.equal(bearerOf("Bearer"), "");
-	assert.equal(bearerOf("Bearer a b"), "");
+	// a bearer that is not an API token (an auth proxy's own) is not ours
+	assert.equal(bearerOf("Bearer abc"), null);
+	assert.equal(bearerOf("Bearer"), null);
+	assert.equal(bearerOf("Bearer eyJhbGciOiJSUzI1NiJ9.e30.sig"), null);
+	assert.equal(bearerOf("Bearer npmpro_abc"), "npmpro_abc");
+	assert.equal(bearerOf("bearer   npmpro_abc  "), "npmpro_abc");
+	assert.equal(bearerOf("Bearer npmpro_a b"), "");
 });
 
 it("owner levels: an administrator has manage everywhere and visibility all; a user without a row has nothing", () => {

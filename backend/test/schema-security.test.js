@@ -26,6 +26,16 @@ const SESSION_ONLY = new Set([
 	"put /users/{userID}",
 	"delete /users/{userID}",
 	"put /users/{userID}/permissions",
+	// the settings that decide who can sign in (Administrator switch included)
+	"put /settings/oidc",
+	"post /settings/oidc/test",
+	"post /settings/oidc/icon",
+	"delete /settings/oidc/icon",
+	"post /settings/oidc/icon/url",
+	"put /settings/runtime/forward-auth",
+	// the nginx auth_request checks serve browser pages
+	"get /auth",
+	"get /auth/admin",
 ]);
 
 const operations = (schema) =>

@@ -96,6 +96,13 @@ const createBackupService = ({
 		if (access.apiToken && Array.isArray(types) && types.includes("users")) throw new errs.PermissionError();
 	};
 
+	// a replace restore deletes every row of its types: like a DELETE, a token needs Allow delete for it
+	const refuseTokenReplace = (access, mode) => {
+		if (mode === "replace" && access.apiToken && access.apiToken.allow_delete !== true) {
+			throw new errs.PermissionError("This API token cannot delete: turn on Allow delete");
+		}
+	};
+
 	// one shared set of the injected values (defaults applied) for the files the service is built from
 	const deps = {
 		knex,
@@ -403,6 +410,7 @@ const createBackupService = ({
 		 */
 		restore: async (access, token, { mode = "replace", types, items, choices, planHash } = {}) => {
 			refuseTokenUsers(access, types);
+			refuseTokenReplace(access, mode);
 			if (mode === "merge") return await mergeRestore(access, token, { types, items, choices, planHash });
 			if (mode !== "replace") throw new BackupError("invalid-types", "Unknown restore mode");
 			const adminUserId = adminOf(access);

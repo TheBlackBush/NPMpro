@@ -211,7 +211,7 @@ it("a cookie plus a bearer acts as the token and the cookie is ignored", async (
 	assert.equal((await admin.get("/users/me/api-tokens", { headers: asToken })).status, 403);
 	assert.notEqual(me.body.id, boss);
 	// a bad token does not fall back to the cookie
-	const bad = await admin.get("/nginx/proxy-hosts", { headers: { authorization: "Bearer garbage" } });
+	const bad = await admin.get("/nginx/proxy-hosts", { headers: { authorization: "Bearer npmpro_garbage" } });
 	assert.equal(bad.status, 401);
 	assert.equal((await admin.get("/nginx/proxy-hosts")).status, 200);
 });
@@ -245,7 +245,7 @@ it("five failed bearer requests limit the address, refusals other than 401 do no
 	const token = await makeToken(user.user.id);
 	const limited = bearer(token);
 	for (let i = 0; i < 5; i += 1) {
-		assert.equal((await limited.get("/nginx/proxy-hosts", { authorization: "Bearer garbage" })).status, 401);
+		assert.equal((await limited.get("/nginx/proxy-hosts", { authorization: "Bearer npmpro_garbage" })).status, 401);
 	}
 	assert.equal((await limited.get("/nginx/proxy-hosts")).status, 429);
 	assert.equal((await bearer(token).get("/nginx/proxy-hosts")).status, 200);
@@ -421,4 +421,107 @@ it("Allow delete also guards deletes outside the host routes, and a token cannot
 	assert.equal(deleted.status, 403);
 	assert.equal((await bearer(token).delete("/tokens")).status, 403);
 	assert.equal((await admin.get("/users/me")).status, 200);
+});
+
+it("only a bearer starting with npmpro_ is a token: another one leaves the session cookie in charge", async () => {
+	const boss = await adminId();
+	const foreign = { authorization: "Bearer some-proxy-jwt" };
+	const me = await admin.get("/users/me", { headers: foreign });
+	assert.equal(me.status, 200);
+	assert.equal(me.body.id, boss);
+	assert.equal((await admin.get("/nginx/proxy-hosts", { headers: foreign })).status, 200);
+	// a malformed or wrong npmpro_ bearer is still a 401, with no fallback to the cookie
+	const bad = await admin.get("/users/me", { headers: { authorization: "Bearer npmpro_bad" } });
+	assert.equal(bad.status, 401);
+	assert.equal(
+		(await admin.get("/nginx/proxy-hosts", { headers: { authorization: "Bearer npmpro_bad" } })).status,
+		401,
+	);
+});
+
+it("a foreign bearer does not count toward the bearer limit", async () => {
+	const user = await api.limited(levels("view"));
+	const token = await makeToken(user.user.id);
+	const client = bearer(token);
+	for (let i = 0; i < 6; i += 1) {
+		assert.equal((await client.get("/nginx/proxy-hosts", { authorization: "Bearer some-proxy-jwt" })).status, 401);
+	}
+	assert.equal((await client.get("/nginx/proxy-hosts")).status, 200);
+	for (let i = 0; i < 6; i += 1) {
+		assert.equal(
+			(await admin.get("/users/me", { headers: { authorization: "Bearer some-proxy-jwt" } })).status,
+			200,
+		);
+	}
+});
+
+it("the sign-in settings refuse every token and stay unchanged", async () => {
+	const token = await makeToken(await adminId(), { ...levels("manage"), is_admin: true, allow_delete: true });
+	const as = bearer(token);
+	const stored = () => api.db("setting").whereIn("id", ["oidc", "forward-auth"]).orderBy("id");
+	assert.equal(
+		(await admin.put("/settings/runtime/forward-auth", { authelia_upstream: "http://10.0.0.8:9091" })).status,
+		200,
+	);
+	assert.equal((await admin.put("/settings/oidc", { enabled: false, client_id: "mine" })).status, 200);
+	const saved = await stored();
+	assert.equal(saved.length, 2);
+	const refused = [
+		["put", "/settings/oidc", { enabled: true, issuer_url: "https://idp.evil.example", client_id: "evil" }],
+		["post", "/settings/oidc/test", { issuer_url: "https://idp.evil.example" }],
+		["post", "/settings/oidc/icon", {}],
+		["delete", "/settings/oidc/icon"],
+		["post", "/settings/oidc/icon/url", { url: "https://evil.example/icon.png" }],
+		["put", "/settings/runtime/forward-auth", { authelia_upstream: "http://10.0.0.9:9091" }],
+	];
+	for (const [method, url, body] of refused) {
+		const done = await as[method](url, body);
+		assert.equal(done.status, 403, `${method} ${url}`);
+		assert.equal(done.body.error.message, "API tokens cannot be used for this request", `${method} ${url}`);
+	}
+	assert.deepEqual(await stored(), saved);
+	// reading stays open to the Administrator switch
+	assert.equal((await as.get("/settings/oidc")).status, 200);
+	assert.equal((await as.get("/settings/runtime/forward-auth")).status, 200);
+	// a session still saves them
+	assert.equal((await admin.put("/settings/runtime/forward-auth", { authelia_upstream: "" })).status, 200);
+});
+
+it("the nginx auth_request checks are for sessions only", async () => {
+	const token = await makeToken(await adminId(), { ...levels("manage"), is_admin: true });
+	assert.equal((await bearer(token).get("/auth")).status, 403);
+	assert.equal((await bearer(token).get("/auth/admin")).status, 403);
+	assert.equal((await admin.get("/auth")).status, 200);
+	assert.equal((await admin.get("/auth/admin")).status, 200);
+});
+
+it("a token lookup that fails for another reason is a 500, not a 401", async () => {
+	const user = await api.limited(levels("view"));
+	const token = await makeToken(user.user.id);
+	await api.db.schema.renameTable("npmpro_api_token", "npmpro_api_token_away");
+	try {
+		const done = await bearer(token).get("/nginx/proxy-hosts");
+		assert.equal(done.status, 500);
+		assert.equal(done.headers.get("www-authenticate"), null);
+	} finally {
+		await api.db.schema.renameTable("npmpro_api_token_away", "npmpro_api_token");
+	}
+	assert.equal((await bearer(token).get("/nginx/proxy-hosts")).status, 200);
+});
+
+it("the last use is not written during a database move, and the request does not fail", async () => {
+	const { default: internalApiToken } = await import("../internal/api-token.js");
+	const { maintenance } = await import("../lib/database/maintenance.js");
+	const user = await api.limited(levels("view"));
+	const token = await makeToken(user.user.id);
+	const lookupId = token.split("_")[1];
+	const row = await api.db("npmpro_api_token").where({ lookup_id: lookupId }).first();
+	maintenance.start("test-move");
+	try {
+		await internalApiToken.recordUse(row);
+	} finally {
+		maintenance.end();
+	}
+	assert.equal((await api.db("npmpro_api_token").where({ id: row.id }).first()).last_used_on, null);
+	assert.equal((await rows({ action: "first-used", object_id: row.id, object_type: "api-token" })).length, 0);
 });

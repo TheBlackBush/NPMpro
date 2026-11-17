@@ -3,6 +3,7 @@ import multer from "multer";
 import internalOidcSetting from "../internal/oidc-setting.js";
 import errs from "../lib/error.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import sessionOnly from "../lib/express/session-only.js";
 import { ICON_MAX_BYTES } from "../lib/oidc-icon.js";
 import apiValidator from "../lib/validator/api.js";
 import { getValidationSchema } from "../schema/index.js";
@@ -29,8 +30,8 @@ router
 		res.status(200).send(await internalOidcSetting.get(res.locals.access));
 	})
 
-	/** PUT /api/settings/oidc */
-	.put(async (req, res) => {
+	/** PUT /api/settings/oidc: it decides who can sign in, so an API token is refused */
+	.put(sessionOnly(), async (req, res) => {
 		const payload = apiValidator(getValidationSchema("/settings/oidc", "put"), req.body);
 		res.status(200).send(await internalOidcSetting.update(res.locals.access, payload));
 	});
@@ -41,6 +42,7 @@ router
 router
 	.route("/test")
 	.all(jwtdecode())
+	.all(sessionOnly())
 
 	/** POST /api/settings/oidc/test */
 	.post(async (req, res) => {
@@ -80,6 +82,7 @@ const uploadIcon = (req, res, next) => {
 router
 	.route("/icon")
 	.all(jwtdecode())
+	.all(sessionOnly())
 	.all(requireAdmin)
 
 	/**
@@ -106,6 +109,7 @@ router
 router
 	.route("/icon/url")
 	.all(jwtdecode())
+	.all(sessionOnly())
 	.all(requireAdmin)
 
 	/** POST /api/settings/oidc/icon/url */

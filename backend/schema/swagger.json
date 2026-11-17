@@ -3,7 +3,7 @@
 	"info": {
 		"title": "NPMpro API",
 		"version": "2.x.x",
-		"description": "This is the official API documentation for NPMpro.\n\nRequests authenticate with the session cookie of a signed-in browser, or with an API token sent as `Authorization: Bearer <token>` (create one in the user menu, API tokens). A request may not send both. The login is `POST /tokens`."
+		"description": "This is the official API documentation for NPMpro.\n\nRequests authenticate with the session cookie of a signed-in browser, or with an API token sent as `Authorization: Bearer <token>` (create one in the user menu, API tokens). When a request carries both, the token acts and the cookie is ignored. Only a bearer starting with npmpro_ is an API token. The login is `POST /tokens`."
 	},
 	"servers": [
 		{

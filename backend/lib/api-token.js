@@ -7,7 +7,8 @@ import crypto from "node:crypto";
 const TOKEN_PREFIX = "npmpro_";
 const TOKEN_FORM = /^npmpro_(?<lookupId>[0-9a-f]{16})_(?<secret>[\w-]{43})$/u;
 const BEARER = /^Bearer +(?<value>\S*) *$/iu;
-const BEARER_SCHEME = /^Bearer(?: |$)/iu;
+// only a bearer that starts with the prefix is an API token: any other one (an auth proxy's own) is not ours
+const API_TOKEN_BEARER = /^Bearer +npmpro_/iu;
 
 /** @returns {string} the SHA-256 of a secret, hex */
 const hashSecret = (secret) => crypto.createHash("sha256").update(secret, "utf8").digest("hex");
@@ -34,10 +35,11 @@ const secretMatches = (secret, storedHex) => {
 
 /**
  * @param   {string|undefined} header  the Authorization header
- * @returns {?string} null without a bearer; the token text, or "" for a bearer header without a single token
+ * @returns {?string} null without an npmpro_ bearer; the token text, or "" for an npmpro_ bearer that is not a single
+ *                    token
  */
 const bearerOf = (header) => {
-	if (typeof header !== "string" || !BEARER_SCHEME.test(header.trim())) return null;
+	if (typeof header !== "string" || !API_TOKEN_BEARER.test(header.trim())) return null;
 	return BEARER.exec(header.trim())?.groups.value ?? "";
 };
 

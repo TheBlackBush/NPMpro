@@ -195,3 +195,28 @@ it("a token cannot restore users", async () => {
 	const plan = await as.post(`${BASE}/restore/${token}/plan`, { mode: "merge", types: ["proxy_hosts"] });
 	assert.equal(plan.status, 200, plan.text);
 });
+
+it("a replace restore needs Allow delete", async () => {
+	const adminId = (await admin.get("/users/me")).body.id;
+	const plain = await makeToken(adminId, { is_admin: true });
+	const allowed = await makeToken(adminId, { is_admin: true, allow_delete: true });
+	const entry = await keepBackup(["proxy_hosts"]);
+	const token = await open(entry.name);
+	const refused = await bearer(plain.token).post(`${BASE}/restore/${token}`, {
+		types: ["proxy_hosts"],
+		confirm: true,
+	});
+	assert.equal(refused.status, 403, refused.text);
+	assert.equal(refused.body.error.message, "This API token cannot delete: turn on Allow delete");
+	// a merge adds and replaces, it deletes nothing: the switch is not needed
+	const plan = await bearer(plain.token).post(`${BASE}/restore/${token}/plan`, {
+		mode: "merge",
+		types: ["proxy_hosts"],
+	});
+	assert.equal(plan.status, 200, plan.text);
+	const done = await bearer(allowed.token).post(`${BASE}/restore/${token}`, {
+		types: ["proxy_hosts"],
+		confirm: true,
+	});
+	assert.equal(done.status, 200, done.text);
+});
