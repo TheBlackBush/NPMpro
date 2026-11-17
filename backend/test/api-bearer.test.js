@@ -372,3 +372,11 @@ it("the Origin check applies to a bearer request", async () => {
 	assert.match(foreign.text, REJECTED_ORIGIN);
 	assert.equal((await bearer(token).get("/nginx/proxy-hosts", { "sec-fetch-site": "cross-site" })).status, 403);
 });
+
+it("refusals of the user management guard do not count toward the sign-in limit", async () => {
+	const token = await makeToken(await adminId(), { ...levels("manage"), is_admin: true });
+	const client = bearer(token);
+	for (let i = 0; i < 7; i += 1) assert.equal((await client.get("/users")).status, 403);
+	// the limit is 5 failed requests from one address: a counted refusal would have turned these into 429
+	assert.equal((await client.get("/users/me")).status, 200);
+});

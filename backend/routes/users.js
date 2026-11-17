@@ -54,7 +54,10 @@ const router = express.Router({
 
 let setupRunning = false;
 
-const limiter = createAuthLimiter();
+// a token refused by the user management guard is not a failed sign-in: it does not count toward the limit
+const limiter = createAuthLimiter({
+	requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.locals.apiTokenRefused === true,
+});
 
 router.use(limiter);
 
@@ -68,7 +71,9 @@ const userManagementGuard = (req, res, next) => {
 		req.method === "GET" &&
 		OWN_USER.test(req.path) &&
 		(req.path === "/me" || Number(req.path.slice(1)) === access.token.getUserId(0));
-	next(own ? undefined : new errs.PermissionError("API tokens cannot manage users"));
+	if (own) return next();
+	res.locals.apiTokenRefused = true;
+	next(new errs.PermissionError("API tokens cannot manage users"));
 };
 
 // a bearer is decoded here for every path but /setup (the cookie path stays per route), then the guard runs
