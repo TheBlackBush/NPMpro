@@ -24,6 +24,9 @@ it("aligns an inline or value line to the top while its control shows an error",
 	has(settingLineClass("inline").row, top);
 	has(settingLineClass("value").row, top);
 	lacks(settingLineClass("block").row, top);
+	// and moves an inline name down to the errored control
+	has(settingLineClass("inline").row, "group/row");
+	has(settingLineClass("inline").text, "@lg:group-has-[[data-slot=field-error]]/row:pt-1.5");
 });
 
 it("puts a block line's field under its name at full width at every width", () => {

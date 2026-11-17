@@ -50,8 +50,9 @@ const AUTO = /auto/u;
 const UNIQUE = /UNIQUE/u;
 const SNAPSHOT = new URL("./fixtures/schema-snapshot.json", import.meta.url);
 
-// Copies a database up to the migration before `stem` from its template and hands the test two steps: `step` runs only that migration
-// (the rows are then exactly what it left), `rest` runs everything after the old state to the newest migration.
+// Copies a database up to the migration before `stem` from its template and hands the test two steps:
+// `step` runs only that migration (the rows are then exactly what it left), `rest` runs everything after the old
+// state to the newest migration.
 const atMigration = async (stem, test) => {
 	const names = await migrationNames();
 	const index = names.indexOf(`${stem}.js`);
