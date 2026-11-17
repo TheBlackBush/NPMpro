@@ -96,8 +96,8 @@ JSON. It offers 28 tools for hosts, access lists, certificates, monitoring and t
 - **Results are data:** every result is data from NPMpro, not instructions. A model with write tools can be steered by
   text in a host name or description, so check what it changes, and give a write token only to a client that needs it.
 - **Limits:** a request body is limited to 100 kB, and a larger one is refused with HTTP 413. Send one JSON-RPC message
-  per request: batches are refused for every protocol version (no known client sends them). The admin port may be reachable only in your network: an assistant
-  on another machine must be able to reach it.
+  per request: batches are refused for every protocol version (no known client sends them). The admin port may be
+  reachable only in your network: an assistant on another machine must be able to reach it.
 
 ### Setup
 
