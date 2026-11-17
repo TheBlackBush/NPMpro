@@ -1,5 +1,5 @@
 // A settings save with its toast, the CrowdSec section, a refused save that opens a collapsed card, the Landing pages
-// section, the phone layout of a host list, the MFA and help windows, and the language switch (last: it reloads the
+// section (with the visit time choices), the phone layout of a host list, the MFA and help windows, and the language switch (last: it reloads the
 // page).
 import langs from "../../translations/lang-list.json" with { type: "json" };
 import de from "../../translations/ui/de.json" with { type: "json" };
@@ -241,9 +241,76 @@ async function collapsedCardOpens({ admin }) {
 
 const MAINTENANCE_PAGE = '<!DOCTYPE html><p>flow maintenance <!--# echo var="host" --></p>';
 
+// Settings, Landing pages, Visit time: each choice is saved in the window, and the ban preview, opened in a browser in
+// Tokyo (UTC+9, no summer time), shows that choice's text. The expected local text comes from the same browser's Intl
+const VISIT_TIMES = [
+	["local", "Visitor's local time"],
+	["local-utc", "Visitor's local time and UTC"],
+	["utc", "UTC"],
+];
+const VISIT_ZONE = "Asia/Tokyo";
+const VISIT_FORMAT = {
+	year: "numeric",
+	month: "short",
+	day: "numeric",
+	hour: "2-digit",
+	minute: "2-digit",
+	timeZoneName: "short",
+};
+
+async function visitTimePreview(admin, base, browser, choice) {
+	const context = await browser.newContext({
+		ignoreHTTPSErrors: true,
+		locale: "en-US",
+		timezoneId: VISIT_ZONE,
+		baseURL: base,
+		storageState: await admin.context.storageState(),
+	});
+	try {
+		const page = await context.newPage();
+		await page.goto("/api/settings/landing-pages/preview/npmpro/ban");
+		const chip = page.locator("[data-npmpro-time]");
+		await chip.waitFor();
+		const browserZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+		if (browserZone !== VISIT_ZONE)
+			throw new Error(`the preview browser runs in ${browserZone}, not ${VISIT_ZONE}`);
+		const text = await chip.textContent();
+		const utc = await chip.getAttribute("data-utc");
+		const shown = await chip.getAttribute("data-visit-time");
+		if (shown !== choice) throw new Error(`the preview carries the visit time ${shown}, expected ${choice}`);
+		// the same rule as page-script.js, in the same browser: the UTC date only when the Tokyo date is another day
+		// (either case can happen, depending on the hour of the run)
+		const [local, utcDate] = await page.evaluate(
+			([iso, format]) => {
+				const moment = new Date(iso);
+				const day = (zone) =>
+					new Intl.DateTimeFormat("en", {
+						year: "numeric",
+						month: "numeric",
+						day: "numeric",
+						...(zone ? { timeZone: zone } : {}),
+					}).format(moment);
+				const date =
+					day() === day("UTC")
+						? ""
+						: `${new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(moment)}, `;
+				return [new Intl.DateTimeFormat("en", format).format(moment), date];
+			},
+			[utc, VISIT_FORMAT],
+		);
+		const utcText = `${utc.slice(0, 10)} ${utc.slice(11, 16)} UTC`;
+		const expected = { utc: utcText, local, "local-utc": `${local} (${utcDate}${utc.slice(11, 16)} UTC)` }[choice];
+		if (text !== expected)
+			throw new Error(`visit time ${choice}: the chip shows "${text}", expected "${expected}"`);
+	} finally {
+		await context.close();
+	}
+}
+
 // Settings, Landing pages: a custom maintenance page is pasted and saved, the API returns it, the old
-// /settings/default-site address leads here, and the page is set back
-async function landingPagesSettings({ admin }) {
+// /settings/default-site address leads here, each visit time is saved and read in the ban preview, and the page and
+// the visit time are set back
+async function landingPagesSettings({ admin, base, browser }) {
 	const { page, api } = admin;
 	const before = await api("GET", "/settings/landing-pages");
 	try {
@@ -274,9 +341,27 @@ async function landingPagesSettings({ admin }) {
 		if ((await page.locator("#landing-maintenance-html").inputValue()) !== MAINTENANCE_PAGE) {
 			throw new Error("the page shows another maintenance page than the saved one");
 		}
+		// start at the first choice that differs from the saved one, so the select changes and Save is enabled
+		const start = Math.max(
+			0,
+			VISIT_TIMES.findIndex(([choice]) => choice !== before.visit_time),
+		);
+		for (const [choice, label] of [...VISIT_TIMES.slice(start), ...VISIT_TIMES.slice(0, start)]) {
+			// biome-ignore lint/performance/noAwaitInLoops: one save after the other
+			await page.locator("#landing-visit-time").click();
+			await page.getByRole("option", { name: label, exact: true }).click();
+			await withToast(page, "Setting has been saved", () =>
+				page.locator("form").getByRole("button", { name: "Save", exact: true }).click(),
+			);
+			if ((await api("GET", "/settings/landing-pages")).visit_time !== choice) {
+				throw new Error(`the visit time ${choice} was not saved`);
+			}
+			await visitTimePreview(admin, base, browser, choice);
+		}
 	} finally {
 		const { choice, html } = before.pages.maintenance;
 		await api("PUT", "/settings/landing-pages", {
+			visit_time: before.visit_time,
 			pages: { maintenance: choice === "custom" ? { choice, html } : { choice } },
 		});
 	}
