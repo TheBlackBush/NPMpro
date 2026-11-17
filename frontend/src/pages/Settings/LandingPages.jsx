@@ -25,6 +25,7 @@ import {
 	PAGE_GROUPS,
 	PAGE_TYPES,
 	previewPath,
+	VISIT_TIMES,
 } from "src/modules/LandingPageForms";
 import { DEFAULT_SITE_OPTIONS, defaultSiteHiddenFields } from "src/modules/SettingsForms";
 import { validations } from "src/modules/Validations";
@@ -182,6 +183,21 @@ function LandingPagesForm({ data }) {
 					})}
 				</PageGroup>
 			))}
+			<PageGroup labelId="landing-pages.group.details" infoId="landing-pages.group.details.description">
+				<SelectField
+					name="visitTime"
+					id="landing-visit-time"
+					line="inline"
+					label={<T id="landing-pages.visit-time" />}
+					hint={<T id="landing-pages.visit-time.description" />}
+				>
+					{VISIT_TIMES.map((option) => (
+						<option key={option} value={option}>
+							{intl.formatMessage({ id: `landing-pages.visit-time.${option}` })}
+						</option>
+					))}
+				</SelectField>
+			</PageGroup>
 			<SaveBar />
 		</HookForm>
 	);

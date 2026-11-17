@@ -18,6 +18,7 @@ import {
 	previewPath,
 	readPageFile,
 	ssiAllowed,
+	VISIT_TIMES,
 } from "./LandingPageForms.js";
 
 const rules = { message: (id, data) => (data ? `${id} ${JSON.stringify(data)}` : id) };
@@ -142,6 +143,23 @@ it("Settings: values, validation, and a payload of what changed only", () => {
 	second.pages.ban.html = "<p>again</p>";
 	assert.deepEqual(landingPayload(second, saved), { pages: { ban: { choice: "custom", html: "<p>again</p>" } } });
 	assert.deepEqual(landingValues({ defaultSite: DATA.defaultSite }).pages.ban, { choice: "npmpro", html: "" });
+});
+
+it("Settings: the visit time is read, utc without one, and sent only when it changed", () => {
+	assert.deepEqual(VISIT_TIMES, ["utc", "local", "local-utc"]);
+	assert.equal(landingValues(DATA).visitTime, "utc");
+	assert.equal(landingValues({ ...DATA, visitTime: "local" }).visitTime, "local");
+	assert.equal(landingValues({ ...DATA, visitTime: "other" }).visitTime, "utc");
+	const values = landingValues(DATA);
+	assert.deepEqual(landingPayload(values, values), {});
+	assert.deepEqual(landingPayload({ ...values, visitTime: "local-utc" }, values), { visitTime: "local-utc" });
+	const both = structuredClone(values);
+	both.visitTime = "local";
+	both.pages.ban = { choice: "custom", html: "<p>b</p>" };
+	assert.deepEqual(landingPayload(both, values), {
+		visitTime: "local",
+		pages: { ban: { choice: "custom", html: "<p>b</p>" } },
+	});
 });
 
 it("PAGE_GROUPS lists every page type exactly once", () => {
