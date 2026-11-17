@@ -31,6 +31,7 @@ const listSchema = {
 				"backup-schedule",
 				"backup",
 				"database",
+				"api-token",
 			],
 		},
 		action: {
@@ -54,6 +55,9 @@ const listSchema = {
 				"oidc-linked",
 				"oidc-unlinked",
 				"oidc-refused",
+				"revoked",
+				"expired",
+				"first-used",
 			],
 		},
 		user_id: { $ref: "common#/properties/id" },

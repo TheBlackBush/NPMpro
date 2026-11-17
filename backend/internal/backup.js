@@ -6,12 +6,13 @@ import { pipeline } from "node:stream/promises";
 import { BackupError, readHeader } from "../lib/backup/format.js";
 import { loadStageData, previewReplace } from "../lib/backup/restore-db.js";
 import { CATEGORIES, TYPES } from "../lib/backup/types.js";
+import errs from "../lib/error.js";
 import { createBackupWriter } from "./backup-create.js";
 import { createMerge } from "./backup-merge.js";
 import { createOfflineChecks } from "./backup-offline.js";
 import { createBackupPages } from "./backup-pages.js";
 import { createRestore } from "./backup-restore.js";
-import { ALL_TYPES, chosenTypes, exists, unknownMigrations, withoutStage } from "./backup-shared.js";
+import { ALL_TYPES, chosenTypes, exists, withoutStage } from "./backup-shared.js";
 
 // Creating, storing and restoring backups. Everything the service touches is injected (createBackupService), so it
 // runs against a test database and folders; internal/backup-service.js wires the default instance.
@@ -87,6 +88,23 @@ const createBackupService = ({
 	const adminOf = (access) => {
 		access.canAdmin();
 		return access.token.getUserId(0);
+	};
+
+	// a token may not replace or add users, nor the settings that decide who can sign in (the OIDC settings with the
+	// password login switch, and the runtime settings with forward-auth): their restore or merge stays in a session
+	// (the routes require types, so "every part" is a list holding them)
+	const SESSION_ONLY_TYPES = ["users", "settings_oidc", "settings_runtime"];
+	const refuseTokenUsers = (access, types) => {
+		if (access.apiToken && Array.isArray(types) && types.some((type) => SESSION_ONLY_TYPES.includes(type))) {
+			throw new errs.PermissionError();
+		}
+	};
+
+	// a replace restore deletes every row of its types: like a DELETE, a token needs Allow delete for it
+	const refuseTokenReplace = (access, mode) => {
+		if (mode === "replace" && access.apiToken && access.apiToken.allow_delete !== true) {
+			throw new errs.PermissionError("This API token cannot delete: turn on Allow delete");
+		}
 	};
 
 	// one shared set of the injected values (defaults applied) for the files the service is built from
@@ -381,6 +399,7 @@ const createBackupService = ({
 		 * @returns {Promise<Object>}  the plan
 		 */
 		plan: async (access, token, { mode = "merge", types, items, choices } = {}) => {
+			refuseTokenUsers(access, types);
 			if (mode !== "merge") throw new BackupError("invalid-types", "Only a merge is planned");
 			const { entry, scope } = openSession(access, token);
 			return (await buildPlan({ entry, scope, types, items, choices })).plan;
@@ -394,6 +413,8 @@ const createBackupService = ({
 		 *          offlineHosts }; merge: { counts, cleared, needsSecrets, restartNeeded, runtimeFailed, offlineHosts }
 		 */
 		restore: async (access, token, { mode = "replace", types, items, choices, planHash } = {}) => {
+			refuseTokenUsers(access, types);
+			refuseTokenReplace(access, mode);
 			if (mode === "merge") return await mergeRestore(access, token, { types, items, choices, planHash });
 			if (mode !== "replace") throw new BackupError("invalid-types", "Unknown restore mode");
 			const adminUserId = adminOf(access);
@@ -435,4 +456,4 @@ const createBackupService = ({
 	};
 };
 
-export { createBackupService, unknownMigrations };
+export { createBackupService };

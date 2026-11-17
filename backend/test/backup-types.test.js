@@ -195,3 +195,8 @@ it("puts the landing pages after the default site in the settings category and t
 	assert.equal(settings.indexOf("settings_landing_pages"), settings.indexOf("settings_default_site") + 1);
 	assert.equal(RESTORE_ORDER.indexOf("settings_landing_pages"), RESTORE_ORDER.indexOf("settings_default_site") + 1);
 });
+
+it("no backup type holds the API token table", () => {
+	const tables = Object.values(TYPES).flatMap((type) => type.tables.map((entry) => entry.table));
+	assert.equal(tables.includes("npmpro_api_token"), false);
+});

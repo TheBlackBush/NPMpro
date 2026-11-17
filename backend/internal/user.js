@@ -9,6 +9,7 @@ import auditLogModel from "../models/audit-log.js";
 import authModel from "../models/auth.js";
 import userModel from "../models/user.js";
 import userPermissionModel from "../models/user_permission.js";
+import internalApiToken from "./api-token.js";
 import internalAuditLog from "./audit-log.js";
 import { createOidcIdentity } from "./oidc-identity.js";
 import internalToken from "./token.js";
@@ -235,6 +236,7 @@ const internalUser = {
 		await userModel.transaction(async (trx) => {
 			await authModel.query(trx).where("user_id", user.id).delete();
 			await userPermissionModel.query(trx).where("user_id", user.id).delete();
+			await internalApiToken.deleteForUser(trx, user.id);
 			await userModel.query(trx).deleteById(user.id);
 		});
 		await internalUser.deleteAvatarFiles(user.id);

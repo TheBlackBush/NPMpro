@@ -7,9 +7,11 @@ import { maintenance } from "../lib/database/maintenance.js";
 import errs from "../lib/error.js";
 import hostRouter from "../lib/express/host-router.js";
 import requireLogin from "../lib/express/require-login.js";
+import sessionOnly from "../lib/express/session-only.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { OIDC_DEFAULTS } from "../lib/oidc-rules.js";
 import { isSetup } from "../setup.js";
+import apiTokensRoutes from "./api-tokens.js";
 import auditLogRoutes from "./audit-log.js";
 import backupSchedulesRoutes from "./backup-schedules.js";
 import backupsRoutes from "./backups.js";
@@ -66,18 +68,18 @@ router.get(["/api", "/api/"], async (_, res /*, next*/) => {
 });
 
 /**
- * Auth Check, used by the nginx auth_request directive
+ * Auth Check, used by the nginx auth_request directive for browser pages: a session only
  * GET /api/auth
  */
-router.get("/api/auth", requireLogin(), (_, res) => {
+router.get("/api/auth", requireLogin(), sessionOnly(), (_, res) => {
 	res.sendStatus(200);
 });
 
 /**
- * Admin Auth Check, used by the nginx auth_request directive
+ * Admin Auth Check, used by the nginx auth_request directive for browser pages: a session only
  * GET /api/auth/admin
  */
-router.get("/api/auth/admin", requireLogin(), (_, res) => {
+router.get("/api/auth/admin", requireLogin(), sessionOnly(), (_, res) => {
 	res.locals.access.canAdmin();
 	res.sendStatus(200);
 });
@@ -87,6 +89,7 @@ router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
 router.use("/api/oidc", oidcRoutes);
 router.use("/api/users", usersRoutes);
+router.use("/api/api-tokens", apiTokensRoutes);
 router.use("/api/audit-log", auditLogRoutes);
 // before /api/backups, whose /:name would take /schedules
 router.use("/api/backups/schedules", backupSchedulesRoutes);

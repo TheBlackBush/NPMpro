@@ -3,5 +3,10 @@
 		"type": "apiKey",
 		"in": "cookie",
 		"name": "__Host-Http-token"
+	},
+	"bearerAuth": {
+		"type": "http",
+		"scheme": "bearer",
+		"description": "An API token (npmpro_...), created in the user menu, API tokens"
 	}
 }

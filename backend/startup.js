@@ -1,3 +1,4 @@
+import { startExpirySweep } from "./internal/api-token.js";
 import { backupStore } from "./internal/backup-service.js";
 import internalCertificate from "./internal/certificate.js";
 import { logCrowdsecBlock, setCrowdsecHooks, startCrowdsec } from "./internal/crowdsec-setting.js";
@@ -91,6 +92,7 @@ const prepareApp = async ({ background = true } = {}) => {
 	await getCompiledSchema();
 
 	if (background) internalCertificate.initTimer();
+	if (background) startExpirySweep();
 
 	// the status line of Settings, CrowdSec reads the reader's last poll; a save asks for a new poll
 	setCrowdsecHooks({ result: () => crowdsecService.result(), onApplied: () => crowdsecService.poll() });

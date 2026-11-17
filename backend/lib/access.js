@@ -2,22 +2,50 @@
  * "scope" is where a token came from and what uses it ("user" or "mfa-challenge"); not the "role" ("user" or "admin").
  */
 
+import internalApiToken from "../internal/api-token.js";
 import TokenModel from "../models/token.js";
 import userModel from "../models/user.js";
+import { authenticateApiToken } from "./api-token-auth.js";
+import { effectivePermissions, tokenIsAdmin } from "./api-token-permissions.js";
 import errs from "./error.js";
 import { isSessionRevoked } from "./session.js";
 
-export default function (tokenString) {
+export default function (tokenString, { apiToken: bearerText = null } = {}) {
 	const Token = TokenModel();
 	let initialised = false;
 	let isAdmin = false;
 	let permissions = {};
+	let apiToken = null;
+	let bearerToken = null;
 
 	/**
 	 * @returns {Promise}
 	 */
 	const init = async () => {
 		if (initialised) {
+			return;
+		}
+
+		if (bearerText !== null) {
+			const { row, user } = await authenticateApiToken(bearerText);
+			isAdmin = tokenIsAdmin(row, user);
+			permissions = effectivePermissions(row, user);
+			apiToken = {
+				id: row.id,
+				name: row.name,
+				user_id: row.user_id,
+				is_admin: isAdmin,
+				allow_delete: row.allow_delete,
+			};
+			bearerToken = {
+				getUserId: (defaultValue) => user.id || defaultValue || 0,
+				hasScope: () => false,
+				// not an OIDC session: the OIDC settings treat it like a password session
+				getAuthMethod: () => "password",
+				getSession: () => ({ sid: undefined, auth_time: undefined }),
+			};
+			await internalApiToken.recordUse(row);
+			initialised = true;
 			return;
 		}
 
@@ -58,7 +86,20 @@ export default function (tokenString) {
 	};
 
 	return {
-		token: Token,
+		get token() {
+			return bearerToken ?? Token;
+		},
+
+		/** @returns {?{id: number, name: string, user_id: number, is_admin: boolean, allow_delete: boolean}} the API token of a bearer request */
+		get apiToken() {
+			return apiToken;
+		},
+
+		/**
+		 * @param   {string} section  proxy_hosts, ...
+		 * @returns {"manage"|"view"|"hidden"}
+		 */
+		level: (section) => (isAdmin ? "manage" : (permissions[section] ?? "hidden")),
 
 		get visibility() {
 			return permissions.visibility;
@@ -88,7 +129,7 @@ export default function (tokenString) {
 		 * @returns {Boolean}
 		 */
 		canUser: (id) => {
-			if (isAdmin || Number(id) === Token.getUserId(0)) return true;
+			if (isAdmin || Number(id) === (bearerToken ?? Token).getUserId(0)) return true;
 			throw new errs.PermissionError();
 		},
 

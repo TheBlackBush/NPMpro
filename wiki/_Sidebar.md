@@ -11,6 +11,7 @@
 - [Security](Security)
 - [CrowdSec](CrowdSec)
 - [Authentication](Authentication)
+- [API tokens and MCP](API-tokens-and-MCP)
 - [Forward authentication](Forward-Authentication)
 - [Privacy](Privacy)
 

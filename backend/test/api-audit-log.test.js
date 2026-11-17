@@ -226,6 +226,14 @@ it("refuses invalid filters with 400", async () => {
 	}
 });
 
+it("filters by the token object type and the token actions", async () => {
+	const done = await list("?object_type=api-token&action=first-used");
+	assert.deepEqual(done.body, []);
+	for (const action of ["revoked", "expired"]) {
+		assert.equal((await admin.get(`${BASE}?object_type=api-token&action=${action}`)).status, 200);
+	}
+});
+
 it("opens one entry with the user expanded, and answers 404 for an unknown one", async () => {
 	const host = await writeHost();
 	const row = (await list("?object_type=proxy-host&limit=1")).body[0];

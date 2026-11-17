@@ -38,6 +38,11 @@ export const createSchema = async (knex) => {
 		t.integer("user_id").notNull();
 		t.string("visibility").notNull();
 	});
+	await knex.schema.createTable("npmpro_api_token", (t) => {
+		t.increments("id");
+		t.integer("user_id").notNull();
+		t.string("name").notNull().defaultTo("");
+	});
 	await hostTable("proxy_host", (t) => {
 		t.integer("npmpro_mtls_certificate_id").notNull().defaultTo(0);
 		t.integer("access_list_id").notNull().defaultTo(0);

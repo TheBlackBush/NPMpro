@@ -1,7 +1,42 @@
 import Access from "../access.js";
+import { bearerOf } from "../api-token.js";
+import errs from "../error.js";
+import { createAuthLimiter } from "./auth-limiter.js";
 
-export default () => async (req, res, next) => {
-	const token = req.signedCookies?.["__Host-Http-token"] || null;
+const COOKIE = "__Host-Http-token";
+
+// failed bearer attempts per address, like the sign-in: only a 401 counts, only requests with a bearer, and a request
+// that passes several routers is counted once
+const bearerLimiter = createAuthLimiter({
+	skip: (req) => req.npmproBearerSeen === true || bearerOf(req.get("authorization")) === null,
+	requestWasSuccessful: (_, res) => res.statusCode !== 401,
+});
+
+// a bearer acts alone: a session cookie sent with it is ignored
+const decodeBearer = async (bearer, req, res, next) => {
+	req.npmproBearerSeen = true;
+	try {
+		const access = new Access(null, { apiToken: bearer });
+		await access.load();
+		// without the switch no DELETE of a token goes through: the section permission is only asked with it
+		if (req.method === "DELETE" && access.apiToken?.allow_delete !== true) {
+			return res.status(403).json({ error: { message: "This API token cannot delete: turn on Allow delete" } });
+		}
+		res.locals.access = access;
+		return next();
+	} catch (error) {
+		if (!(error instanceof errs.AuthError)) return next(error);
+		res.set("WWW-Authenticate", 'Bearer error="invalid_token"');
+		return res.status(401).json({ error: { message: error.message } });
+	}
+};
+
+const decode = async (req, res, next) => {
+	if (res.locals.access) return next();
+	const bearer = bearerOf(req.get("authorization"));
+	if (bearer !== null) return decodeBearer(bearer, req, res, next);
+
+	const token = req.signedCookies?.[COOKIE] || null;
 
 	try {
 		const access = new Access(token);
@@ -9,7 +44,7 @@ export default () => async (req, res, next) => {
 		res.locals.access = access;
 		next();
 	} catch {
-		res.clearCookie("__Host-Http-token", {
+		res.clearCookie(COOKIE, {
 			httpOnly: true,
 			secure: true,
 			sameSite: "Strict",
@@ -28,3 +63,5 @@ export default () => async (req, res, next) => {
 		});
 	}
 };
+
+export default () => [bearerLimiter, decode];

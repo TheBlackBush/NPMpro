@@ -1,0 +1,61 @@
+{
+	"operationId": "getApiTokens",
+	"summary": "List the API tokens of every user (administrators)",
+	"tags": [
+		"api-tokens"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"responses": {
+		"200": {
+			"description": "200 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": [
+								{
+									"id": 1,
+									"name": "ci",
+									"prefix": "npmpro_0123456789abcdef",
+									"visibility": "user",
+									"permissions": {
+										"proxy_hosts": "view",
+										"redirection_hosts": "view",
+										"dead_hosts": "view",
+										"streams": "view",
+										"access_lists": "view",
+										"certificates": "view"
+									},
+									"admin": false,
+									"allow_delete": false,
+									"expires_on": "2027-02-15T12:00:00.000Z",
+									"last_used_on": null,
+									"created_on": "2026-11-17T12:00:00.000Z",
+									"expired": false,
+									"owner": {
+										"id": 1,
+										"name": "Admin",
+										"email": "admin@example.com"
+									}
+								}
+							]
+						}
+					},
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "../../components/api-token-object.json"
+						}
+					}
+				}
+			}
+		},
+		"403": {
+			"description": "403 response"
+		}
+	}
+}

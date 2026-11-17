@@ -1,13 +1,17 @@
 import express from "express";
-import { rateLimit } from "express-rate-limit";
 import multer from "multer";
+import internalApiToken from "../internal/api-token.js";
 import internalMfa from "../internal/mfa.js";
 import internalToken from "../internal/token.js";
 import internalTotp from "../internal/totp.js";
 import internalUser from "../internal/user.js";
 import Access from "../lib/access.js";
+import { bearerOf } from "../lib/api-token.js";
 import errs from "../lib/error.js";
+import { createAuthLimiter } from "../lib/express/auth-limiter.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import pathId from "../lib/express/path-id.js";
+import sessionOnly from "../lib/express/session-only.js";
 import userIdFromMe from "../lib/express/user-id-from-me.js";
 import { addMonitoringFlag, createMonitoringAvailable } from "../lib/monitoring-available.js";
 import { getMonitoringConfig } from "../lib/monitoring-config.js";
@@ -52,17 +56,45 @@ const router = express.Router({
 
 let setupRunning = false;
 
-const limiter = rateLimit({
-	windowMs: 5 * 60 * 1000,
-	limit: 5,
-	message: { error: { message: "Too many requests, please try again later." } },
-	standardHeaders: "draft-8",
-	legacyHeaders: false,
-	ipv6Subnet: 48,
-	skipSuccessfulRequests: true,
+// a token refused by the user management guard is not a failed sign-in: it does not count toward the limit
+const limiter = createAuthLimiter({
+	requestWasSuccessful: (_req, res) => res.statusCode < 400 || res.locals.apiTokenRefused === true,
 });
 
 router.use(limiter);
+
+// no API token manages users, not even with the Administrator switch (user decision 2026-11-17): a token may only
+// read its own user. The setup route is unauthenticated and refuses once a user exists.
+const OWN_USER = /^\/(?:me|\d+)$/u;
+const userManagementGuard = (req, res, next) => {
+	const access = res.locals.access;
+	if (!access?.apiToken) return next();
+	const own =
+		req.method === "GET" &&
+		OWN_USER.test(req.path) &&
+		(req.path === "/me" || Number(req.path.slice(1)) === access.token.getUserId(0));
+	if (own) return next();
+	res.locals.apiTokenRefused = true;
+	next(new errs.PermissionError("API tokens cannot manage users"));
+};
+
+// a bearer is decoded here for every path but /setup (the cookie path stays per route), then the guard runs
+const [bearerLimiter, decode] = jwtdecode();
+router.use((req, res, next) => {
+	if (req.path === "/setup" || bearerOf(req.get("authorization")) === null) return next();
+	const after = (step) => (error) => (error ? next(error) : step());
+	bearerLimiter(
+		req,
+		res,
+		after(() =>
+			decode(
+				req,
+				res,
+				after(() => userManagementGuard(req, res, next)),
+			),
+		),
+	);
+});
 
 /**
  * /api/users
@@ -168,6 +200,7 @@ router
 	.route("/:user_id/auth")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** PUT /api/users/123/auth */
 	.put(async (req, res) => {
@@ -210,6 +243,7 @@ router
 	.route("/:user_id/mfa")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** GET /api/users/123/mfa */
 	.get(async (req, res) => {
@@ -234,6 +268,7 @@ router
 	.route("/:user_id/mfa/totp")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** POST /api/users/123/mfa/totp */
 	.post(async (req, res) => {
@@ -248,6 +283,7 @@ router
 	.route("/:user_id/mfa/totp/enable")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** POST /api/users/123/mfa/totp/enable */
 	.post(async (req, res) => {
@@ -268,6 +304,7 @@ router
 	.route("/:user_id/mfa/totp/disable")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** POST /api/users/123/mfa/totp/disable */
 	.post(async (req, res) => {
@@ -283,6 +320,7 @@ router
 	.route("/:user_id/mfa/backup-codes")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** POST /api/users/123/mfa/backup-codes */
 	.post(async (req, res) => {
@@ -303,6 +341,7 @@ router
 	.route("/:user_id/sessions")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/**
 	 * DELETE /api/users/123/sessions
@@ -333,6 +372,7 @@ router
 	.route("/:user_id/oidc")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/**
 	 * DELETE /api/users/123/oidc
@@ -351,6 +391,7 @@ router
 	.route("/:user_id/avatar")
 	.all(jwtdecode())
 	.all(userIdFromMe)
+	.all(sessionOnly())
 
 	/** POST /api/users/123/avatar */
 	.post(
@@ -369,6 +410,44 @@ router
 	.delete(async (req, res) => {
 		const result = await internalUser.deleteAvatar(res.locals.access, req.params.user_id);
 		res.status(200).send(result);
+	});
+
+/**
+ * /api/users/me/api-tokens: the signed-in user's own API tokens (never with a token)
+ */
+router
+	.route("/:user_id/api-tokens")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+	.all(sessionOnly())
+
+	/** GET /api/users/me/api-tokens */
+	.get(async (req, res) => {
+		res.status(200).send(await internalApiToken.listOwn(res.locals.access, req.params.user_id));
+	})
+
+	/** POST /api/users/me/api-tokens */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/users/{userID}/api-tokens", "post"), req.body);
+		res.status(201).send(await internalApiToken.create(res.locals.access, req.params.user_id, payload));
+	});
+
+router.param("token_id", pathId);
+
+/**
+ * /api/users/me/api-tokens/123
+ */
+router
+	.route("/:user_id/api-tokens/:token_id")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+	.all(sessionOnly())
+
+	/** DELETE /api/users/me/api-tokens/123 */
+	.delete(async (req, res) => {
+		res.status(200).send(
+			await internalApiToken.revokeOwn(res.locals.access, req.params.user_id, Number(req.params.token_id)),
+		);
 	});
 
 export default router;

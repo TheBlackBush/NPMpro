@@ -451,3 +451,36 @@ it("shows a user with the visibility user only their own lists", async () => {
 	assert.equal(await fileExists(api, `data/access/${foreign.id}`), true);
 	assert.equal((await own.delete(`${BASE}/${mine.id}`)).status, 200);
 });
+
+it("never returns a user's password hash: create, update, get and list", async () => {
+	const created = await create();
+	const hash = (await api.db("access_list_auth").where({ access_list_id: created.id }).first()).password;
+	assert.equal(hash.startsWith("$2"), true);
+	const updated = await admin.put(`${BASE}/${created.id}`, {
+		items: [
+			{ username: "bob", password: "" },
+			{ username: "erin", password: "erins-password-1" },
+		],
+	});
+	assert.equal(updated.status, 200, updated.text);
+	const answers = [
+		created,
+		updated.body,
+		(await admin.get(`${BASE}/${created.id}?expand=items,clients`)).body,
+		(await admin.get(`${BASE}?expand=items,clients`)).body.find((row) => row.id === created.id),
+	];
+	for (const answer of answers) {
+		assert.notEqual(answer.items.length, 0);
+		for (const item of answer.items) {
+			assert.equal(typeof item.username, "string");
+			assert.equal(Object.hasOwn(item, "password"), false);
+		}
+		assert.equal(JSON.stringify(answer).includes("$2"), false);
+	}
+	// the stored hash and the htpasswd file are untouched
+	assert.equal(
+		(await api.db("access_list_auth").where({ access_list_id: created.id, username: "bob" }).first()).password,
+		hash,
+	);
+	assert.equal((await api.read(`data/access/${created.id}`)).split("\n").includes(`bob:${hash}`), true);
+});

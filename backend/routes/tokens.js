@@ -1,9 +1,10 @@
 import express from "express";
-import { rateLimit } from "express-rate-limit";
 import internalToken from "../internal/token.js";
 import errs from "../lib/error.js";
+import { createAuthLimiter } from "../lib/express/auth-limiter.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
 import { createLogoutHandler } from "../lib/express/logout.js";
+import sessionOnly from "../lib/express/session-only.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { revokeSession } from "../lib/session.js";
 import apiValidator from "../lib/validator/api.js";
@@ -16,21 +17,13 @@ const router = express.Router({
 	mergeParams: true,
 });
 
-const limiter = rateLimit({
-	windowMs: 5 * 60 * 1000,
-	limit: 5,
-	message: { error: { message: "Too many requests, please try again later." } },
-	standardHeaders: "draft-8",
-	legacyHeaders: false,
-	ipv6Subnet: 48,
-	skipSuccessfulRequests: true,
-});
+const limiter = createAuthLimiter();
 
 router
 	.route("/")
 
 	/** GET /tokens: refreshes the token of a caller who already has one */
-	.get(jwtdecode(), (_, res) => {
+	.get(jwtdecode(), sessionOnly(), (_, res) => {
 		const data = internalToken.getFreshToken(res.locals.access);
 
 		res.cookie("__Host-Http-token", data.token, {
