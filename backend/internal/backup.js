@@ -444,5 +444,4 @@ const createBackupService = ({
 	};
 };
 
-export { unknownMigrations } from "./backup-shared.js";
 export { createBackupService };

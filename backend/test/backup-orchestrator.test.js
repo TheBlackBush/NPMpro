@@ -4,7 +4,7 @@ import { mkdir, readdir, readFile, rm, symlink, writeFile } from "node:fs/promis
 import path from "node:path";
 import { Readable } from "node:stream";
 import { it } from "node:test";
-import { unknownMigrations } from "../internal/backup.js";
+import { unknownMigrations } from "../internal/backup-shared.js";
 import { writeBackupFile } from "../lib/backup/format.js";
 import { createSerializer } from "../lib/serializer.js";
 import { MIGRATIONS, setup } from "./support/backup-service.js";
