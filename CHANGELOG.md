@@ -42,6 +42,9 @@ below as its release notes.
   owner's; they work with OIDC-only sign-in and MFA, are stored as a hash and never in backups.
 - **API:** API tokens in the user menu (new token with expiry and permissions capped at your own, shown once, revoke)
   and every token in Settings, API access, with a link to the API documentation.
+- **MCP:** an MCP server at `/api/mcp` for AI assistants, using API tokens: 28 tools for hosts, access
+  lists, certificates, monitoring and the audit log, limited to the token's permissions; delete tools only with the
+  token's Allow delete switch.
 
 ### Changed
 

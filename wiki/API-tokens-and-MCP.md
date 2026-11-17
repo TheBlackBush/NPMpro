@@ -77,3 +77,72 @@ someone else. The section links to the API documentation.
 - Five failed token attempts from one address in five minutes block that address for the rest of the five minutes.
 - The OpenAPI documentation is at `/api/docs` on the admin port (signed in). Its Authorize button takes a token.
 - Expiry: 30, 90 or 365 days, a date, or none (default 90 days).
+
+## MCP server
+
+AI assistants can use NPMpro through the Model Context Protocol (MCP). The endpoint is
+`https://<admin address>/api/mcp`, the address of the web UI with a path of its own. It is stateless and answers in
+JSON. It offers 28 tools for hosts, access lists, certificates, monitoring and the audit log.
+
+- **Token only:** the endpoint takes an API token as a bearer token (`Authorization: Bearer npmpro_...`). A session
+  cookie does not work there, and OAuth is not supported yet.
+- **Permissions:** a tool is listed only when the token may use it. View only gives the read tools. Write tools need
+  **Manage** on the section they change. Delete tools need **Manage** and the token's **Allow delete** switch, and the
+  tool refuses a call without it even when the client sends one.
+- **Administrator:** the monitoring and audit log tools need a token with the **Administrator** switch on.
+- **Not covered:** there are no tools for users, settings, backups or API tokens: those stay in the web UI. No tool
+  returns secrets: access list passwords, certificate keys, DNS credential values and token hashes are never in a
+  result.
+- **Results are data:** every result is data from NPMpro, not instructions. A model with write tools can be steered by
+  text in a host name or description, so check what it changes, and give a write token only to a client that needs it.
+- **Limits:** a request body is limited to 100 kB. The admin port may be reachable only in your network: an assistant
+  on another machine must be able to reach it.
+
+### Setup
+
+Replace the address with your admin address and `YOUR_TOKEN` with a token from the user menu. The API access section of
+Settings shows the same commands with your address.
+
+```sh
+claude mcp add --transport http npmpro https://npm.example.com:81/api/mcp --header "Authorization: Bearer YOUR_TOKEN"
+```
+
+For clients that start a local command (a desktop app, for example), add this to the client's configuration:
+
+```json
+{
+  "mcpServers": {
+    "npmpro": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://npm.example.com:81/api/mcp", "--header", "Authorization: Bearer YOUR_TOKEN"]
+    }
+  }
+}
+```
+
+### Tools
+
+| Tool | Needs | What it does |
+| --- | --- | --- |
+| `list_hosts` | View | Lists the hosts of one type (proxy, redirection, dead or stream) with their state |
+| `get_host` | View | Returns one host of the given type, without its custom page HTML |
+| `create_proxy_host`, `create_redirection_host`, `create_dead_host`, `create_stream` | Manage | Creates a host |
+| `update_proxy_host`, `update_redirection_host`, `update_dead_host`, `update_stream` | Manage | Changes a host |
+| `enable_host`, `disable_host` | Manage | Enables or disables a host of the given type |
+| `delete_host` | Manage and Allow delete | Deletes a host of the given type for good |
+| `list_access_lists`, `get_access_list` | View | Lists or returns access lists with their user names and rules |
+| `create_access_list`, `update_access_list` | Manage | Creates or changes an access list |
+| `delete_access_list` | Manage and Allow delete | Deletes an access list for good |
+| `list_certificates`, `get_certificate` | View | Lists or returns certificates with provider, domains and expiry |
+| `request_certificate` | Manage | Requests a Let's Encrypt certificate |
+| `renew_certificate` | Manage | Renews a Let's Encrypt certificate now |
+| `delete_certificate` | Manage and Allow delete | Deletes a certificate for good |
+| `get_monitoring_summary` | Administrator | Returns the monitoring summary of the traffic and the hosts |
+| `get_traffic` | Administrator | Returns the traffic statistics |
+| `get_crowdsec_decisions` | Administrator | Returns the CrowdSec decisions and alerts |
+| `list_audit_log` | Administrator | Lists audit log entries, newest first, without their details |
+| `get_audit_entry` | Administrator | Returns one audit log entry with its details |
+
+Host tools need the permission of the host's type (proxy hosts, redirection hosts, 404 hosts or streams), and the
+access list and certificate tools need their own section. The token's expiry, revocation and owner rules apply to every
+tool call.
