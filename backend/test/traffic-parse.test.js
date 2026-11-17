@@ -2,44 +2,53 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { ACCESS_FIELDS, tokenizeClassic } from "../lib/log-format.js";
-import { isOwnRecord, isOwnRequest, parseAlogLine, parseLogLine, statusClass } from "../lib/traffic/parse.js";
+import { isOwnRecord, parseLogLine, statusClass } from "../lib/traffic/parse.js";
+
+// The traffic reader's two steps (lib/traffic/reader.js): a line that does not parse is skipped, never NPMpro's own
+const ownLine = (text, adminPort, bindAddresses) => {
+	const record = parseLogLine(text);
+	return record !== null && isOwnRecord(record, adminPort, bindAddresses);
+};
 
 const line = (host, ip, status = 200, bytes = 512, request = "GET /a?b=1 HTTP/2.0", ua = "curl/8") =>
 	`[24/Oct/2026:10:15:30 +0200] ${host} ${ip} 0.012 "${request}" ${status} ${bytes} "-" "${ua}" "-" "text/html" TLSv1.3 TLS_AES_128_GCM_SHA256 X25519 -`;
 
 it("parses a normal line", () => {
-	assert.deepEqual(parseAlogLine(line("Example.com", "203.0.113.7")), {
+	assert.deepEqual(parseLogLine(line("Example.com", "203.0.113.7")), {
 		time: Date.UTC(2026, 9, 24, 8, 15, 30),
 		host: "example.com",
+		rawHost: "Example.com",
 		ip: "203.0.113.7",
 		status: 200,
 		bytes: 512,
 		method: "GET",
 		path: "/a",
+		serverPort: undefined,
+		userAgent: "curl/8",
 	});
 });
 
 it("strips a port from the host and accepts IPv6", () => {
-	const r = parseAlogLine(line("example.com:8443", "2001:db8::1", 404, 0));
+	const r = parseLogLine(line("example.com:8443", "2001:db8::1", 404, 0));
 	assert.equal(r.host, "example.com");
 	assert.equal(r.ip, "2001:db8::1");
 	assert.equal(r.status, 404);
 });
 
 it("keeps a bracketed IPv6 literal host lower-cased and strips its port", () => {
-	assert.equal(parseAlogLine(line("[2001:DB8::1]:8443", "203.0.113.7")).host, "[2001:db8::1]");
-	assert.equal(parseAlogLine(line("[2001:db8::1]", "203.0.113.7")).host, "[2001:db8::1]");
+	assert.equal(parseLogLine(line("[2001:DB8::1]:8443", "203.0.113.7")).host, "[2001:db8::1]");
+	assert.equal(parseLogLine(line("[2001:db8::1]", "203.0.113.7")).host, "[2001:db8::1]");
 });
 
 it("ignores quoted fields with spaces and handles escaped quotes in the user agent and in the request", () => {
 	{
 		const ua = String.raw`Mozilla/5.0 (X11; Linux) say \"hi\" 200 99`;
-		const r = parseAlogLine(line("example.com", "203.0.113.7", 200, 512, "GET /a HTTP/1.1", ua));
+		const r = parseLogLine(line("example.com", "203.0.113.7", 200, 512, "GET /a HTTP/1.1", ua));
 		assert.equal(r.status, 200);
 		assert.equal(r.bytes, 512);
 	}
 	{
-		const r = parseAlogLine(line("example.com", "203.0.113.7", 301, 7, String.raw`GET /a\"b 200 5 HTTP/1.1`));
+		const r = parseLogLine(line("example.com", "203.0.113.7", 301, 7, String.raw`GET /a\"b 200 5 HTTP/1.1`));
 		assert.equal(r.status, 301);
 		assert.equal(r.bytes, 7);
 	}
@@ -47,7 +56,7 @@ it("ignores quoted fields with spaces and handles escaped quotes in the user age
 
 it("returns method and path with the query string and fragment cut off", () => {
 	const parse = (request) => {
-		const { method, path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, request));
+		const { method, path } = parseLogLine(line("example.com", "203.0.113.7", 200, 1, request));
 		return { method, path };
 	};
 	assert.deepEqual(parse("POST /login?token=secret HTTP/1.1"), { method: "POST", path: "/login" });
@@ -59,7 +68,7 @@ it("returns method and path with the query string and fragment cut off", () => {
 });
 
 it("cuts path parameters and removes userinfo from absolute-form targets", () => {
-	const path = (request) => parseAlogLine(line("example.com", "203.0.113.7", 200, 1, request)).path;
+	const path = (request) => parseLogLine(line("example.com", "203.0.113.7", 200, 1, request)).path;
 	assert.equal(path("GET /app;jsessionid=abc?x=1 HTTP/1.1"), "/app");
 	assert.equal(path("GET /a;b HTTP/1.1"), "/a");
 	assert.equal(path("GET http://user:pass@example.com/x?y=1 HTTP/1.1"), "http://example.com/x");
@@ -71,7 +80,7 @@ it("cuts path parameters and removes userinfo from absolute-form targets", () =>
 });
 
 it("cuts a long path at 200 characters", () => {
-	const { path } = parseAlogLine(line("example.com", "203.0.113.7", 200, 1, `GET /${"a".repeat(300)}?q=1 HTTP/1.1`));
+	const { path } = parseLogLine(line("example.com", "203.0.113.7", 200, 1, `GET /${"a".repeat(300)}?q=1 HTTP/1.1`));
 	assert.equal(path, `/${"a".repeat(199)}`);
 });
 
@@ -85,21 +94,21 @@ it("returns method - and an empty path for a malformed request field", () => {
 		"G3T / HTTP/1.1",
 		"GET / HTTP/1.1 extra",
 	]) {
-		const r = parseAlogLine(line("example.com", "203.0.113.7", 400, 0, request));
+		const r = parseLogLine(line("example.com", "203.0.113.7", 400, 0, request));
 		assert.equal(r.status, 400, request);
 		assert.deepEqual({ method: r.method, path: r.path }, { method: "-", path: "" }, request);
 	}
 });
 
 it("returns null for non-IP client addresses such as unix sockets", () => {
-	assert.equal(parseAlogLine(line("example.com", "unix:")), null);
-	assert.equal(parseAlogLine(line("example.com", "not-an-ip")), null);
+	assert.equal(parseLogLine(line("example.com", "unix:")), null);
+	assert.equal(parseLogLine(line("example.com", "not-an-ip")), null);
 });
 
 it("returns null for malformed lines", () => {
-	assert.equal(parseAlogLine(""), null);
-	assert.equal(parseAlogLine("garbage"), null);
-	assert.equal(parseAlogLine('[bad date] h 1.2.3.4 0.1 "GET / HTTP/1.1" 200 1'), null);
+	assert.equal(parseLogLine(""), null);
+	assert.equal(parseLogLine("garbage"), null);
+	assert.equal(parseLogLine('[bad date] h 1.2.3.4 0.1 "GET / HTTP/1.1" 200 1'), null);
 });
 
 it("maps status classes", () => {
@@ -112,83 +121,82 @@ it("maps status classes", () => {
 
 it("recognises NPMpro's own requests in lines without the server port", () => {
 	const health = line("127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
-	assert.equal(isOwnRequest(health, "81"), true);
-	assert.equal(isOwnRequest(health, "443"), true);
-	assert.equal(isOwnRequest(line("npm.lan:81", "192.168.1.10"), "81"), true);
-	assert.equal(isOwnRequest(line("[fd00::1]:81", "fd00::2"), "81"), true);
-	assert.equal(isOwnRequest(line("npm.lan:8181", "192.168.1.10"), "81"), false);
-	assert.equal(isOwnRequest(line("example.com", "203.0.113.7"), "81"), false);
-	assert.equal(isOwnRequest(line("example.com:443", "203.0.113.7"), "443"), false);
-	assert.equal(isOwnRequest(line("example.com", "203.0.113.7", 200, 1, "GET /:81 HTTP/1.1"), "81"), false);
+	assert.equal(ownLine(health, "81"), true);
+	assert.equal(ownLine(health, "443"), true);
+	assert.equal(ownLine(line("npm.lan:81", "192.168.1.10"), "81"), true);
+	assert.equal(ownLine(line("[fd00::1]:81", "fd00::2"), "81"), true);
+	assert.equal(ownLine(line("npm.lan:8181", "192.168.1.10"), "81"), false);
+	assert.equal(ownLine(line("example.com", "203.0.113.7"), "81"), false);
+	assert.equal(ownLine(line("example.com:443", "203.0.113.7"), "443"), false);
+	assert.equal(ownLine(line("example.com", "203.0.113.7", 200, 1, "GET /:81 HTTP/1.1"), "81"), false);
 	assert.equal(
-		isOwnRequest(line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/1.1", "NPMpro/healthcheck2"), "81"),
+		ownLine(line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/1.1", "NPMpro/healthcheck2"), "81"),
 		false,
 	);
-	assert.equal(isOwnRequest("garbage", "81"), false);
 });
 
 // Lines written since the alog format ends with $server_port: the port nginx received the request on
 const withPort = (serverPort, ...args) => `${line(...args)} ${serverPort}`;
 
 it("parses lines that end with the server port", () => {
-	assert.deepEqual(parseAlogLine(withPort(443, "example.com", "203.0.113.7", 404, 1200)), {
+	assert.deepEqual(parseLogLine(withPort(443, "example.com", "203.0.113.7", 404, 1200)), {
 		time: Date.UTC(2026, 9, 24, 8, 15, 30),
 		host: "example.com",
+		rawHost: "example.com",
 		ip: "203.0.113.7",
 		status: 404,
 		bytes: 1200,
 		method: "GET",
 		path: "/a",
+		serverPort: "443",
+		userAgent: "curl/8",
 	});
 });
 
 it("uses the server port, not the Host header, for NPMpro's own requests", () => {
 	// admin UI behind a remapped Docker port: the browser sends 8181, nginx received it on 81
-	assert.equal(isOwnRequest(withPort(81, "npm.lan:8181", "172.17.0.1"), "81"), true);
+	assert.equal(ownLine(withPort(81, "npm.lan:8181", "172.17.0.1"), "81"), true);
 	// a visitor cannot hide from the stats with a chosen Host port or the health check user agent
-	assert.equal(isOwnRequest(withPort(443, "example.com:81", "203.0.113.7"), "81"), false);
+	assert.equal(ownLine(withPort(443, "example.com:81", "203.0.113.7"), "81"), false);
 	assert.equal(
-		isOwnRequest(withPort(443, "example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck"), "81"),
+		ownLine(withPort(443, "example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck"), "81"),
 		false,
 	);
 	// the health check calls the admin port
 	assert.equal(
-		isOwnRequest(
-			withPort(81, "127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck"),
-			"81",
-		),
+		ownLine(withPort(81, "127.0.0.1:81", "127.0.0.1", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck"), "81"),
 		true,
 	);
 	// real traffic on 80/443 is never dropped
-	assert.equal(isOwnRequest(withPort(80, "example.com", "203.0.113.7"), "81"), false);
+	assert.equal(ownLine(withPort(80, "example.com", "203.0.113.7"), "81"), false);
 });
 
 it("skips only a local health check when the admin port is 80 or 443", () => {
 	const health = (ip) => withPort(443, "127.0.0.1", ip, 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
-	assert.equal(isOwnRequest(health("127.0.0.1"), "443"), true);
-	assert.equal(isOwnRequest(health("::1"), "443"), true);
-	assert.equal(isOwnRequest(health("203.0.113.7"), "443"), false);
-	assert.equal(isOwnRequest(withPort(443, "example.com", "203.0.113.7"), "443"), false);
+	assert.equal(ownLine(health("127.0.0.1"), "443"), true);
+	assert.equal(ownLine(health("::1"), "443"), true);
+	assert.equal(ownLine(health("203.0.113.7"), "443"), false);
+	assert.equal(ownLine(withPort(443, "example.com", "203.0.113.7"), "443"), false);
 });
 
 it("treats an empty server port (unix socket listener) as the new format with no admin port", () => {
 	// $server_port is empty for requests over /run/nginx.sock, so the line ends with a space
-	assert.equal(isOwnRequest(`${line("example.com:81", "203.0.113.7")} `, "81"), false);
+	assert.equal(ownLine(`${line("example.com:81", "203.0.113.7")} `, "81"), false);
 	assert.equal(
-		isOwnRequest(`${line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
+		ownLine(`${line("example.com", "203.0.113.7", 200, 1, "GET / HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
 		false,
 	);
 	assert.equal(
-		isOwnRequest(`${line("127.0.0.1", "127.0.0.1", 200, 1, "GET /api HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
+		ownLine(`${line("127.0.0.1", "127.0.0.1", 200, 1, "GET /api HTTP/2.0", "NPMpro/healthcheck")} `, "81"),
 		true,
 	);
 });
 
 it("skips the health check from the configured IPv4 binding when the admin port is 80 or 443", () => {
 	const health = withPort(443, "10.0.0.5", "10.0.0.5", 200, 512, "GET /api HTTP/2.0", "NPMpro/healthcheck");
-	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
-	assert.equal(isOwnRequest(health, "443"), false);
-	assert.equal(isOwnRequest(health, "443", ["0.0.0.0"]), false);
+	assert.equal(ownLine(health, "443", ["10.0.0.5"]), true);
+	assert.equal(ownLine(health, "443"), false);
+	assert.equal(ownLine(health, "443", ["0.0.0.0"]), false);
 });
 
 const BASE =
@@ -199,33 +207,30 @@ const SPACELESS =
 	'[14/Nov/2026:10:00:00 +0000] npmpro.example.com:19381 192.168.1.10 0.004 "GET /api HTTP/2.0" 200 1530 "-" "curl/8" "-" "-" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -';
 
 it("reads the server port before the fields added after it", () => {
-	assert.equal(isOwnRequest(`${BASE} 81${TAIL}`, 81), true);
-	assert.equal(isOwnRequest(`${BASE} 443${TAIL}`, 81), false);
-	assert.equal(isOwnRequest(`${BASE} ${TAIL}`, 81), false); // unix socket listener, not a health check
+	assert.equal(ownLine(`${BASE} 81${TAIL}`, 81), true);
+	assert.equal(ownLine(`${BASE} 443${TAIL}`, 81), false);
+	assert.equal(ownLine(`${BASE} ${TAIL}`, 81), false); // unix socket listener, not a health check
 	assert.equal(
-		isOwnRequest(`${BASE} 443 "" default 0123456789abcdef0123456789abcdef 3 "502, 200" "0.001 : 0.002"`, 81),
+		ownLine(`${BASE} 443 "" default 0123456789abcdef0123456789abcdef 3 "502, 200" "0.001 : 0.002"`, 81),
 		false,
 	);
-	assert.deepEqual(parseAlogLine(`${BASE} 81${TAIL}`), parseAlogLine(`${BASE} 81`));
+	assert.deepEqual(parseLogLine(`${BASE} 81${TAIL}`), parseLogLine(`${BASE} 81`));
 });
 
 it("reads the port when no quoted field before the tail holds a space", () => {
 	const tail = ' "" default 0123456789abcdef0123456789abcdef 3 "502, 200" "0.001 : 0.002"';
-	assert.equal(isOwnRequest(`${SPACELESS} 81${tail}`, 81), true);
-	assert.equal(isOwnRequest(`${SPACELESS} 443${tail}`, 81), false);
+	assert.equal(ownLine(`${SPACELESS} 81${tail}`, 81), true);
+	assert.equal(ownLine(`${SPACELESS} 443${tail}`, 81), false);
 });
 
 it("reads the server port when a TLS or cache field is empty", () => {
 	// nginx writes a found but empty value as nothing: $ssl_curve over TLS when no group was negotiated
 	const noCurve = BASE.replace(" X25519 -", "  -");
-	assert.equal(isOwnRequest(`${noCurve} 81${TAIL}`, 81), true); // admin UI through the remapped port 19381
-	assert.equal(isOwnRequest(`${noCurve} 443${TAIL}`, 81), false);
-	assert.equal(isOwnRequest(`${noCurve} 81`, 81), true);
-	assert.equal(
-		isOwnRequest(`${BASE.replace(" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -", "    ")} 81${TAIL}`, 81),
-		true,
-	);
-	assert.deepEqual(parseAlogLine(`${noCurve} 81${TAIL}`), parseAlogLine(`${BASE} 81`));
+	assert.equal(ownLine(`${noCurve} 81${TAIL}`, 81), true); // admin UI through the remapped port 19381
+	assert.equal(ownLine(`${noCurve} 443${TAIL}`, 81), false);
+	assert.equal(ownLine(`${noCurve} 81`, 81), true);
+	assert.equal(ownLine(`${BASE.replace(" TLSv1.3 TLS_AES_256_GCM_SHA384 X25519 -", "    ")} 81${TAIL}`, 81), true);
+	assert.deepEqual(parseLogLine(`${noCurve} 81${TAIL}`), parseLogLine(`${BASE} 81`));
 });
 
 it("gives the same answers for every fixture line with and without the new fields", () => {
@@ -238,9 +243,9 @@ it("gives the same answers for every fixture line with and without the new field
 			continue;
 		}
 		const extended = `${entry}${TAIL}`;
-		assert.equal(isOwnRequest(extended, 81), isOwnRequest(entry, 81), entry);
-		assert.equal(isOwnRequest(extended, 443), isOwnRequest(entry, 443), entry);
-		assert.deepEqual(parseAlogLine(extended), parseAlogLine(entry), entry);
+		assert.equal(ownLine(extended, 81), ownLine(entry, 81), entry);
+		assert.equal(ownLine(extended, 443), ownLine(entry, 443), entry);
+		assert.deepEqual(parseLogLine(extended), parseLogLine(entry), entry);
 	}
 });
 
@@ -271,17 +276,20 @@ it("reads the real nginx lines of the access log fixture", () => {
 	);
 	// the health check and the admin UI request on port 81 are NPMpro's own, the others are visitor traffic
 	assert.deepEqual(
-		lines.map((entry) => isOwnRequest(entry, 81)),
+		lines.map((entry) => ownLine(entry, 81)),
 		[true, true, false, false, false, false, false, false, false, false, false],
 	);
-	assert.deepEqual(parseAlogLine(lines[3]), {
+	assert.deepEqual(parseLogLine(lines[3]), {
 		time: Date.UTC(2026, 10, 15, 10, 23, 46),
 		host: "lb.t40.example",
+		rawHost: "lb.t40.example",
 		ip: "192.0.2.45",
 		status: 200,
 		bytes: 351,
 		method: "GET",
 		path: "/api/items",
+		serverPort: "80",
+		userAgent: "curl/8.5.0",
 	});
 	assert.equal(fields[3].upstream_status, "502, 200");
 });
@@ -310,16 +318,18 @@ it("reads a JSON line like its classic line", () => {
 		FULL("example.com", "203.0.113.7", { request: "GET /old", port: "80" }),
 	]) {
 		assert.deepEqual(parseLogLine(jsonOf(classic)), parseLogLine(classic), classic);
-		assert.deepEqual(parseAlogLine(jsonOf(classic)), parseAlogLine(classic), classic);
 	}
-	assert.deepEqual(parseAlogLine(jsonOf(FULL("Example.com", "203.0.113.7"))), {
+	assert.deepEqual(parseLogLine(jsonOf(FULL("Example.com", "203.0.113.7"))), {
 		time: Date.UTC(2026, 9, 24, 8, 15, 30),
 		host: "example.com",
+		rawHost: "Example.com",
 		ip: "203.0.113.7",
 		status: 200,
 		bytes: 512,
 		method: "GET",
 		path: "/a",
+		serverPort: "443",
+		userAgent: "curl/8",
 	});
 });
 
@@ -369,7 +379,6 @@ it("returns null for broken or foreign JSON lines", () => {
 	assert.equal(parseLogLine(good.slice(0, -5)), null);
 	assert.equal(parseLogLine("{"), null);
 	assert.equal(parseLogLine('{"a":1}'), null);
-	assert.equal(parseAlogLine('{"a":1}'), null);
 	assert.equal(parseLogLine("{}"), null);
 	assert.equal(parseLogLine("{}garbage"), null);
 	assert.equal(parseLogLine(jsonOf(FULL("a.com", "unix:"))), null);
@@ -382,7 +391,7 @@ it("returns null for broken or foreign JSON lines", () => {
 	);
 	assert.equal(parseLogLine(JSON.stringify({ ...JSON.parse(good), status: 200 })), null);
 	assert.equal(parseLogLine("[1,2]"), null);
-	assert.equal(isOwnRequest("{broken", "81"), false);
+	assert.equal(parseLogLine("{broken"), null);
 });
 
 it("recognises NPMpro's own requests in JSON lines like in classic lines", () => {
@@ -396,16 +405,15 @@ it("recognises NPMpro's own requests in JSON lines like in classic lines", () =>
 		[FULL("example.com", "203.0.113.7", { port: "80" }), "81"],
 	];
 	for (const [classic, port] of cases) {
-		assert.equal(isOwnRequest(jsonOf(classic), port), isOwnRequest(classic, port), classic);
-		assert.equal(isOwnRecord(parseLogLine(jsonOf(classic)), port), isOwnRequest(classic, port), classic);
+		assert.equal(ownLine(jsonOf(classic), port), ownLine(classic, port), classic);
 	}
 	assert.deepEqual(
-		cases.map(([classic, port]) => isOwnRequest(classic, port)),
+		cases.map(([classic, port]) => ownLine(classic, port)),
 		[true, true, false, false, true, true, false],
 	);
 	const health = jsonOf(FULL("10.0.0.5", "10.0.0.5", { ua: "NPMpro/healthcheck" }));
-	assert.equal(isOwnRequest(health, "443", ["10.0.0.5"]), true);
-	assert.equal(isOwnRequest(health, "443"), false);
+	assert.equal(ownLine(health, "443", ["10.0.0.5"]), true);
+	assert.equal(ownLine(health, "443"), false);
 });
 
 it("gives the same record for the classic and the JSON line of the same request", () => {
@@ -415,6 +423,6 @@ it("gives the same record for the classic and the JSON line of the same request"
 	assert.equal(classic.length, 11);
 	for (const entry of classic) {
 		assert.deepEqual(parseLogLine(jsonOf(entry)), parseLogLine(entry), entry);
-		assert.equal(isOwnRequest(jsonOf(entry), 81), isOwnRequest(entry, 81), entry);
+		assert.equal(ownLine(jsonOf(entry), 81), ownLine(entry, 81), entry);
 	}
 });

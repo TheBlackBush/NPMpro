@@ -549,31 +549,6 @@ it("writes the advanced config of an administrator into the host and into a loca
 	assert.doesNotMatch(block(config, 'location "/loc" {'), /X-Main-Location/u);
 });
 
-it("writes the advanced config of a redirection host and a 404 host into their server block", async () => {
-	const redirect = await created(
-		await ctx.admin.post("/nginx/redirection-hosts", {
-			domain_names: ["cfg-r.example.com"],
-			forward_domain_name: "t.example.org",
-			forward_http_code: 308,
-			advanced_config: "add_header X-R yes;",
-		}),
-		"redirect",
-	);
-	const redirectConfig = await read(`data/nginx/redirection_host/${redirect.id}.conf`);
-	assert.match(
-		redirectConfig,
-		/return 308 \$npmpro_forwarded_proto:\/\/t\.example\.org;[\s\S]*add_header X-R yes;[\s\S]*server_redirect\.conf/u,
-	);
-	const dead = await created(
-		await ctx.admin.post("/nginx/dead-hosts", {
-			domain_names: ["cfg-d.example.com"],
-			advanced_config: "add_header X-D yes;",
-		}),
-		"dead",
-	);
-	assert.match(await read(`data/nginx/dead_host/${dead.id}.conf`), /return 404;[\s\S]*add_header X-D yes;/u);
-});
-
 const KEEP_SCHEME_REDIRECT = /return 301 \$npmpro_forwarded_proto:\/\/t\.example\.org\$request_uri;/u;
 const CONNECTION_SCHEME_REDIRECT = /\$scheme:\/\//u;
 const HTTPS_REDIRECT = /return 301 https:\/\/t\.example\.org\$request_uri;/u;

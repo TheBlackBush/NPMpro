@@ -10,7 +10,7 @@ const { compareSchemas, foreignKeys, keyColumns, runMigrations, tableOrder } = a
 );
 const { columnKinds } = await import("../lib/database/values.js");
 const { default: errs } = await import("../lib/error.js");
-const { fillRow, migratedSqlite, pgConnection, pgSkip, resetPg, seedSource } = await import("./support/database.js");
+const { fillRow, migratedSqlite, pgConnection, pgSkip, resetPg, seededSqlite } = await import("./support/database.js");
 
 const isMoveError = (code) => (error) => error instanceof errs.DatabaseMoveError && error.code === code;
 
@@ -66,10 +66,10 @@ const bigBytes = async (knex) =>
 	);
 
 it("copies every table in pages and verifies it (SQLite to SQLite)", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		const { counts } = await seedSource(source.knex);
+		const { counts } = source;
 		// a local time that does not exist in New York (spring forward); only SQLite to SQLite can keep it as it is
 		await source.knex("user").where("id", 1).update({ created_on: "2026-03-08 02:30:00" });
 		const { progress } = await copyAll(source.knex, target.knex, { batchSize: 4 });
@@ -92,10 +92,9 @@ it("copies every table in pages and verifies it (SQLite to SQLite)", async () =>
 });
 
 it("keeps integers above 2^53 exact (SQLite to SQLite)", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		await addBigRow(source.knex);
 		assert.equal(await bigBytes(source.knex), BIG);
 		await copyAll(source.knex, target.knex);
@@ -114,10 +113,9 @@ it("keeps integers above 2^53 exact (SQLite to SQLite)", async () => {
 });
 
 it("the next insert after the copy gets max id + 1 (SQLite)", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		await copyAll(source.knex, target.knex);
 		const info = await target.knex("proxy_host").columnInfo();
 		const [id] = await target.knex("proxy_host").insert(fillRow(info, { domain_names: "[]", meta: "{}" }));
@@ -129,10 +127,9 @@ it("the next insert after the copy gets max id + 1 (SQLite)", async () => {
 });
 
 it("ids of rows deleted in the database in use are not handed out again (SQLite)", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		// the counter is at 13, the highest id left is 11
 		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
 		await copyAll(source.knex, target.knex);
@@ -154,10 +151,9 @@ it("ids of rows deleted in the database in use are not handed out again (SQLite)
 });
 
 it("a table that ends on a full page is copied with one more empty read", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		const { progress } = await copyAll(source.knex, target.knex, { batchSize: 7 });
 		// 7 users in a page of 7, then an empty page; 11 proxy hosts in 7 and 4
 		assert.deepEqual(
@@ -243,10 +239,9 @@ it("a page larger than 500 rows is inserted in SQLite statements of at most 500 
 });
 
 it("the verification finds a changed value and a missing row", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		await copyAll(source.knex, target.knex);
 		const kinds = await kindsOf(source.knex, target.knex, "setting");
 		await target.knex("setting").where("id", "alpha").update({ value: "changed" });
@@ -270,10 +265,9 @@ it("the verification finds a changed value and a missing row", async () => {
 });
 
 it("a composite key finds the row and its changed column", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const target = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		await copyAll(source.knex, target.knex);
 		const table = "npmpro_proxy_host_access_list";
 		const key = await keyColumns(source.knex, table);
@@ -296,10 +290,9 @@ it("a composite key finds the row and its changed column", async () => {
 it("text keys are verified by key, not by order", { skip: pgSkip, timeout: 120_000 }, async () => {
 	// SQLite sorts setting ids binary (Zeta, alpha, default-site), Postgres by its collation (alpha, default-site, Zeta):
 	// the first source row must be looked up by its key, a pairing by position would compare Zeta with alpha
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await resetPg(pg);
 		await runMigrations(pg);
 		await copyAll(source.knex, pg);
@@ -321,10 +314,9 @@ it("a row the target refuses fails the copy with the table and the row key, neve
 	skip: pgSkip,
 	timeout: 120_000,
 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		// cut JSON text that Postgres json refuses, holding a secret
 		await source.knex("setting").where("id", "default-site").update({ meta: '{"password":"hunter2-secret"' });
 		await resetPg(pg);
@@ -356,10 +348,9 @@ it("ids of rows deleted in the database in use are not handed out again (Postgre
 	skip: pgSkip,
 	timeout: 120_000,
 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
 		await resetPg(pg);
 		await runMigrations(pg);
@@ -380,10 +371,9 @@ it("a lost connection during the copy is a copy failure, not a refused row", {
 	skip: pgSkip,
 	timeout: 120_000,
 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await resetPg(pg);
 		await runMigrations(pg);
 		// every insert into setting ends the session that runs it
@@ -408,11 +398,10 @@ it("a lost connection during the copy is a copy failure, not a refused row", {
 });
 
 it("SQLite to Postgres and back keeps every value", { skip: pgSkip, timeout: 180_000 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const back = await migratedSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await addBigRow(source.knex);
 		await resetPg(pg);
 		await runMigrations(pg);
@@ -477,11 +466,10 @@ it("a Postgres counter set but not used yet is still kept on the next move (Post
 	skip: pgSkip,
 	timeout: 120_000,
 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	const back = await migratedSqlite();
 	try {
-		await seedSource(source.knex);
 		await source.knex("proxy_host").whereIn("id", [12, 13]).delete();
 		await resetPg(pg);
 		await runMigrations(pg);

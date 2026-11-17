@@ -164,16 +164,6 @@ const parseJson = (line) => {
  */
 export const parseLogLine = (line) => (line.startsWith("{") ? parseJson(line) : parseClassic(line));
 
-/** The traffic fields of a line in either format (see parseLogLine). */
-export const parseAlogLine = (line) => {
-	const record = parseLogLine(line);
-	if (!record) {
-		return null;
-	}
-	const { time, host, ip, status, bytes, method, path } = record;
-	return { time, host, ip, status, bytes, method, path };
-};
-
 export const statusClass = (status) => {
 	if (status >= 200 && status < 600) {
 		return `${Math.floor(status / 100)}xx`;
@@ -205,10 +195,4 @@ export const isOwnRecord = (record, adminPort, bindAddresses = []) => {
 		return health && (LOOPBACK.has(ip) || bindAddresses.includes(ip));
 	}
 	return health || (adminOnOwnPort && RAW_PORT.exec(rawHost)?.[1] === port);
-};
-
-/** isOwnRecord() for a raw line of either format; false for a line that is not a log line. */
-export const isOwnRequest = (line, adminPort, bindAddresses = []) => {
-	const record = parseLogLine(line);
-	return record !== null && isOwnRecord(record, adminPort, bindAddresses);
 };

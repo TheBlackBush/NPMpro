@@ -159,4 +159,4 @@ const setup = async ({
 	return { base, dataDir, backupsDir, knex, clock, calls, store, service, isPaused: () => paused, cleanup };
 };
 
-export { box, DB_VERSION, MIGRATIONS, setup };
+export { box, MIGRATIONS, setup };
