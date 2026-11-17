@@ -44,7 +44,8 @@ function Owner({ owner }) {
 }
 
 function TokensTable({ data }) {
-	const now = new Date();
+	// one moment per mount: a new Date on every render would rebuild the columns each time
+	const [now] = useState(() => new Date());
 	const columns = useMemo(() => {
 		const columnHelper = createColumnHelper();
 		return [

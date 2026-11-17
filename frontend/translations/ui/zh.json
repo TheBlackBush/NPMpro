@@ -40,7 +40,6 @@
 	"action.view": "查看",
 	"action.view-details": "查看详情",
 	"actions": "操作",
-	"api-token": "API 令牌",
 	"api-tokens.admin": "管理员",
 	"api-tokens.admin.help": "该令牌以管理员身份操作（设置、原始 nginx 配置、备份），但用户和登录设置除外。请像保管密码一样保管此类令牌。不开启此开关时，它只拥有下方所选的权限。",
 	"api-tokens.allow-delete": "允许删除",

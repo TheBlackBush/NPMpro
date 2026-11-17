@@ -40,7 +40,6 @@
 	"action.view": "Bekijken",
 	"action.view-details": "Details weergeven",
 	"actions": "Acties",
-	"api-token": "API-token",
 	"api-tokens.admin": "Beheerder",
 	"api-tokens.admin.help": "Het token werkt als beheerder (instellingen, ruwe nginx-configuratie, back-ups), behalve voor gebruikers en de inloginstellingen. Bewaar zo'n token als je wachtwoord. Zonder deze schakelaar heeft het alleen de hieronder gekozen rechten.",
 	"api-tokens.allow-delete": "Verwijderen toestaan",

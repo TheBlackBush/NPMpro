@@ -40,7 +40,6 @@
 	"action.view": "Afficher",
 	"action.view-details": "Voir les détails",
 	"actions": "Actions",
-	"api-token": "Jeton API",
 	"api-tokens.admin": "Administrateur",
 	"api-tokens.admin.help": "Le jeton agit en tant qu'administrateur (paramètres, configuration nginx brute, sauvegardes), sauf pour les utilisateurs et les paramètres de connexion. Gardez un tel jeton comme votre mot de passe. Sans ce bouton, il n'a que les autorisations choisies ci-dessous.",
 	"api-tokens.allow-delete": "Autoriser la suppression",

@@ -40,7 +40,6 @@
 	"action.view": "View",
 	"action.view-details": "View Details",
 	"actions": "Actions",
-	"api-token": "API token",
 	"api-tokens.admin": "Administrator",
 	"api-tokens.admin.help": "The token acts as an administrator (settings, raw nginx config, backups), except for users and the sign-in settings. Keep such a token like your password. Without this switch it has only the permissions chosen below.",
 	"api-tokens.allow-delete": "Allow delete",

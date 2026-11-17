@@ -40,7 +40,6 @@
 	"action.view": "보기",
 	"action.view-details": "자세히 보기",
 	"actions": "작업",
-	"api-token": "API 토큰",
 	"api-tokens.admin": "관리자",
 	"api-tokens.admin.help": "이 토큰은 관리자로 동작합니다(설정, 원본 nginx 구성, 백업). 단 사용자와 로그인 설정은 제외입니다. 이런 토큰은 비밀번호처럼 보관하세요. 이 스위치가 없으면 아래에서 고른 권한만 가집니다.",
 	"api-tokens.allow-delete": "삭제 허용",

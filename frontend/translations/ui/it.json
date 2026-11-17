@@ -40,7 +40,6 @@
 	"action.view": "Visualizza",
 	"action.view-details": "Visualizza Dettagli",
 	"actions": "Azioni",
-	"api-token": "Token API",
 	"api-tokens.admin": "Amministratore",
 	"api-tokens.admin.help": "Il token agisce come amministratore (impostazioni, configurazione nginx grezza, backup), tranne che per gli utenti e le impostazioni di accesso. Conserva un token simile come la tua password. Senza questo interruttore ha solo i permessi scelti qui sotto.",
 	"api-tokens.allow-delete": "Consenti eliminazione",

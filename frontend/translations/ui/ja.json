@@ -40,7 +40,6 @@
 	"action.view": "表示",
 	"action.view-details": "詳細",
 	"actions": "操作",
-	"api-token": "API トークン",
 	"api-tokens.admin": "管理者",
 	"api-tokens.admin.help": "このトークンは管理者として動作します（設定、生の nginx 設定、バックアップ）。ただしユーザーとサインイン設定は除きます。このようなトークンはパスワードと同じように保管してください。このスイッチがない場合は、下で選んだ権限だけを持ちます。",
 	"api-tokens.allow-delete": "削除を許可",

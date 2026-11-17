@@ -40,7 +40,6 @@
 	"action.view": "Ver",
 	"action.view-details": "Ver Detalhes",
 	"actions": "Ações",
-	"api-token": "Token de API",
 	"api-tokens.admin": "Administrador",
 	"api-tokens.admin.help": "O token age como administrador (definições, configuração nginx bruta, cópias de segurança), exceto para utilizadores e as definições de início de sessão. Guarde um token assim como a sua palavra-passe. Sem este interruptor, ele só tem as permissões escolhidas abaixo.",
 	"api-tokens.allow-delete": "Permitir eliminar",
