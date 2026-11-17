@@ -30,10 +30,11 @@ const runScript = (html, languages, { chip = {}, zone = "UTC", intl } = {}) => {
 	const root = { lang: "en" };
 	const document = {
 		documentElement: root,
-		getElementById: (id) => (id === "npmpro-texts" ? { textContent: html.match(TEXTS)[1] } : null),
 		querySelectorAll: (selector) => (selector === "[data-t]" ? elements : []),
-		querySelector: (selector) =>
-			selector === "[data-npmpro-time]" && html.includes("data-npmpro-time") ? time : null,
+		querySelector: (selector) => {
+			if (selector === "#npmpro-texts") return { textContent: html.match(TEXTS)[1] };
+			return selector === "[data-npmpro-time]" && html.includes("data-npmpro-time") ? time : null;
+		},
 	};
 	// the context is the script's global object, so window.x and globalThis.x land in the same place
 	// the visitor's zone unless the script asks for one (the UTC date of local-utc asks for UTC)

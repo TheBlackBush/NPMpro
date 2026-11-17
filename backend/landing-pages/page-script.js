@@ -2,7 +2,7 @@
 // the visitor's browser language (English is in the HTML already), shows the visit time as Settings, Landing pages
 // chose (nginx writes UTC), fills the time chip when nginx did not, and holds the captcha form's callback.
 (() => {
-	const texts = JSON.parse(document.getElementById("npmpro-texts").textContent);
+	const texts = JSON.parse(document.querySelector("#npmpro-texts").textContent);
 	const wanted = [...(navigator.languages ?? []), navigator.language ?? ""];
 	let code = "en";
 	for (const tag of wanted) {
@@ -54,7 +54,7 @@
 			}
 		}
 	}
-	window.captchaCallback = () => {
-		setTimeout(() => document.getElementById("captcha-form")?.submit(), 500);
+	globalThis.captchaCallback = () => {
+		setTimeout(() => document.querySelector("#captcha-form")?.submit(), 500);
 	};
 })();
