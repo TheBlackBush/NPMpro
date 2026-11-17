@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "吊销 {name}",
 	"api-tokens.revoke.confirm": "吊销令牌 {name}？使用它的脚本将立即失效。",
 	"api-tokens.revoked": "令牌已吊销",
+	"api-tokens.secret": "令牌",
 	"api-tokens.secret.warning": "此令牌只显示一次。请立即复制并妥善保存。",
 	"api-tokens.title": "API 令牌",
 	"appearance": "外观",

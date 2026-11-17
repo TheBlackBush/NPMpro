@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "Відкликати {name}",
 	"api-tokens.revoke.confirm": "Відкликати токен {name}? Скрипти, які його використовують, одразу перестануть працювати.",
 	"api-tokens.revoked": "Токен відкликано",
+	"api-tokens.secret": "Токен",
 	"api-tokens.secret.warning": "Цей токен показується лише один раз. Скопіюйте його зараз і зберігайте в надійному місці.",
 	"api-tokens.title": "API-токени",
 	"appearance": "Вигляд",

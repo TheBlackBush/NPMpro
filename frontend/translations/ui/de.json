@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "{name} widerrufen",
 	"api-tokens.revoke.confirm": "Das Token {name} widerrufen? Skripte, die es verwenden, funktionieren sofort nicht mehr.",
 	"api-tokens.revoked": "Token widerrufen",
+	"api-tokens.secret": "Token",
 	"api-tokens.secret.warning": "Dieses Token wird nur einmal angezeigt. Kopieren Sie es jetzt und bewahren Sie es sicher auf.",
 	"api-tokens.title": "API-Tokens",
 	"appearance": "Darstellung",

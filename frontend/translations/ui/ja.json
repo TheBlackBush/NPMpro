@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "{name} を無効化",
 	"api-tokens.revoke.confirm": "トークン {name} を無効化しますか？これを使っているスクリプトはすぐに動かなくなります。",
 	"api-tokens.revoked": "トークンを無効化しました",
+	"api-tokens.secret": "トークン",
 	"api-tokens.secret.warning": "このトークンは一度だけ表示されます。今すぐコピーして安全に保管してください。",
 	"api-tokens.title": "API トークン",
 	"appearance": "外観",

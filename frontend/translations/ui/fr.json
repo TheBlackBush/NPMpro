@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "Révoquer {name}",
 	"api-tokens.revoke.confirm": "Révoquer le jeton {name} ? Les scripts qui l'utilisent cessent de fonctionner immédiatement.",
 	"api-tokens.revoked": "Jeton révoqué",
+	"api-tokens.secret": "Jeton",
 	"api-tokens.secret.warning": "Ce jeton n'est affiché qu'une seule fois. Copiez-le maintenant et conservez-le en lieu sûr.",
 	"api-tokens.title": "Jetons API",
 	"appearance": "Apparence",

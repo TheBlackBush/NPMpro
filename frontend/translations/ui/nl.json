@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "{name} intrekken",
 	"api-tokens.revoke.confirm": "Het token {name} intrekken? Scripts die het gebruiken werken meteen niet meer.",
 	"api-tokens.revoked": "Token ingetrokken",
+	"api-tokens.secret": "Token",
 	"api-tokens.secret.warning": "Dit token wordt maar één keer getoond. Kopieer het nu en bewaar het veilig.",
 	"api-tokens.title": "API-tokens",
 	"appearance": "Weergave",

@@ -71,6 +71,7 @@
 	"api-tokens.revoke-name": "Unieważnij {name}",
 	"api-tokens.revoke.confirm": "Unieważnić token {name}? Skrypty, które go używają, natychmiast przestaną działać.",
 	"api-tokens.revoked": "Token unieważniony",
+	"api-tokens.secret": "Token",
 	"api-tokens.secret.warning": "Ten token jest pokazywany tylko raz. Skopiuj go teraz i zapisz w bezpiecznym miejscu.",
 	"api-tokens.title": "Tokeny API",
 	"appearance": "Wygląd",

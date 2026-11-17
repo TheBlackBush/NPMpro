@@ -7,7 +7,7 @@ import { HookForm, SelectField, SwitchField, SwitchList, TextField, useAppForm }
 import { FormSection } from "src/components/Form/FormSection";
 import { PERMISSION_ROWS, PermissionButtons, VisibilityButtons } from "src/components/Form/PermissionButtons";
 import { TapTooltip } from "src/components/TapTooltip";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "src/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "src/components/ui/input-group";
 import { Label } from "src/components/ui/label";
 import { useCreateApiToken, useOwnApiTokens, useRevokeApiToken, useUser } from "src/hooks";
 import { intl, T } from "src/locale";
@@ -253,13 +253,15 @@ function SecretStep({ token, onDone }) {
 				</NoticeAlert>
 				<div className="flex flex-col gap-1.5">
 					<Label htmlFor={id} className="text-muted-foreground">
-						<T id="api-tokens.title" />
+						<T id="api-tokens.secret" />
 					</Label>
 					<InputGroup>
-						<InputGroupInput
+						{/* a textarea: the whole token wraps instead of running off a phone screen */}
+						<InputGroupTextarea
 							ref={input}
 							id={id}
-							className="font-mono"
+							rows={2}
+							className="break-all font-mono text-sm"
 							value={token}
 							readOnly
 							data-api-token-secret
