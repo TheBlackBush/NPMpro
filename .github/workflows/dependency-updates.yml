@@ -26,7 +26,7 @@ jobs:
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
           configurationFile: .github/renovate-global.json
-          renovate-version: 44.246.4
+          renovate-version: 44.247.2
 
   sources:
     runs-on: ubuntu-latest
