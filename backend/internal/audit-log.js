@@ -68,26 +68,32 @@ const internalAuditLog = {
 	 * Not for public use: permission to add is assumed to be checked already; the access token only gives the
 	 * default user id.
 	 *
-	 * @param   {Access}   access
+	 * @param   {?Access}  access  null when data.user_id is set
 	 * @param   {Object}   data
 	 * @param   {String}   data.action
 	 * @param   {Number}   [data.user_id]
 	 * @param   {Number}   [data.object_id]
 	 * @param   {Number}   [data.object_type]
 	 * @param   {Object}   [data.meta]
+	 * @param   {Object}   [data.api_token]  { id, name } of the API token that acted; default: the token of access
 	 * @returns {Promise}
 	 */
 	add: (access, data) => {
-		data.user_id ||= access.token.getUserId(1);
+		const { api_token: given, ...entry } = data;
+		entry.user_id ||= access.token.getUserId(1);
 
-		if (!data.action) throw new errs.InternalValidationError("Audit log entry must contain an Action");
+		if (!entry.action) throw new errs.InternalValidationError("Audit log entry must contain an Action");
 
+		// the API token of the request (or the one given), so the log shows which token acted
+		const token = given ?? access?.apiToken ?? null;
 		return auditLogModel.query().insert({
-			user_id: data.user_id,
-			action: data.action,
-			object_type: data.object_type || "",
-			object_id: data.object_id || 0,
-			meta: data.meta || {},
+			user_id: entry.user_id,
+			action: entry.action,
+			object_type: entry.object_type || "",
+			object_id: entry.object_id || 0,
+			meta: entry.meta || {},
+			npmpro_api_token_id: token?.id ?? null,
+			npmpro_api_token_name: token?.name ?? null,
 		});
 	},
 };
