@@ -25,6 +25,10 @@
 			"description": "Endpoints used by the nginx auth_request directive"
 		},
 		{
+			"name": "api-tokens",
+			"description": "API tokens of the signed-in user, and all tokens for administrators (signed-in session only)"
+		},
+		{
 			"name": "audit-log",
 			"description": "Endpoints related to Audit Logs"
 		},
@@ -123,6 +127,16 @@
 		"/oidc/callback": {
 			"get": {
 				"$ref": "./paths/oidc/callback/get.json"
+			}
+		},
+		"/api-tokens": {
+			"get": {
+				"$ref": "./paths/api-tokens/get.json"
+			}
+		},
+		"/api-tokens/{tokenID}": {
+			"delete": {
+				"$ref": "./paths/api-tokens/tokenID/delete.json"
 			}
 		},
 		"/audit-log": {
@@ -580,6 +594,19 @@
 			},
 			"delete": {
 				"$ref": "./paths/users/userID/avatar/delete.json"
+			}
+		},
+		"/users/{userID}/api-tokens": {
+			"get": {
+				"$ref": "./paths/users/userID/api-tokens/get.json"
+			},
+			"post": {
+				"$ref": "./paths/users/userID/api-tokens/post.json"
+			}
+		},
+		"/users/{userID}/api-tokens/{tokenID}": {
+			"delete": {
+				"$ref": "./paths/users/userID/api-tokens/tokenID/delete.json"
 			}
 		},
 		"/users/{userID}/mfa": {

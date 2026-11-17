@@ -10,6 +10,7 @@ import requireLogin from "../lib/express/require-login.js";
 import { getOidcConfig } from "../lib/oidc-config.js";
 import { OIDC_DEFAULTS } from "../lib/oidc-rules.js";
 import { isSetup } from "../setup.js";
+import apiTokensRoutes from "./api-tokens.js";
 import auditLogRoutes from "./audit-log.js";
 import backupSchedulesRoutes from "./backup-schedules.js";
 import backupsRoutes from "./backups.js";
@@ -87,6 +88,7 @@ router.use("/api/schema", schemaRoutes);
 router.use("/api/tokens", tokensRoutes);
 router.use("/api/oidc", oidcRoutes);
 router.use("/api/users", usersRoutes);
+router.use("/api/api-tokens", apiTokensRoutes);
 router.use("/api/audit-log", auditLogRoutes);
 // before /api/backups, whose /:name would take /schedules
 router.use("/api/backups/schedules", backupSchedulesRoutes);

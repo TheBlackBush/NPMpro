@@ -1,5 +1,6 @@
 import express from "express";
 import multer from "multer";
+import internalApiToken from "../internal/api-token.js";
 import internalMfa from "../internal/mfa.js";
 import internalToken from "../internal/token.js";
 import internalTotp from "../internal/totp.js";
@@ -9,6 +10,7 @@ import { bearerOf } from "../lib/api-token.js";
 import errs from "../lib/error.js";
 import { createAuthLimiter } from "../lib/express/auth-limiter.js";
 import jwtdecode from "../lib/express/jwt-decode.js";
+import pathId from "../lib/express/path-id.js";
 import sessionOnly from "../lib/express/session-only.js";
 import userIdFromMe from "../lib/express/user-id-from-me.js";
 import { addMonitoringFlag, createMonitoringAvailable } from "../lib/monitoring-available.js";
@@ -408,6 +410,44 @@ router
 	.delete(async (req, res) => {
 		const result = await internalUser.deleteAvatar(res.locals.access, req.params.user_id);
 		res.status(200).send(result);
+	});
+
+/**
+ * /api/users/me/api-tokens: the signed-in user's own API tokens (never with a token)
+ */
+router
+	.route("/:user_id/api-tokens")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+	.all(sessionOnly())
+
+	/** GET /api/users/me/api-tokens */
+	.get(async (req, res) => {
+		res.status(200).send(await internalApiToken.listOwn(res.locals.access, req.params.user_id));
+	})
+
+	/** POST /api/users/me/api-tokens */
+	.post(async (req, res) => {
+		const payload = apiValidator(getValidationSchema("/users/{userID}/api-tokens", "post"), req.body);
+		res.status(201).send(await internalApiToken.create(res.locals.access, req.params.user_id, payload));
+	});
+
+router.param("token_id", pathId);
+
+/**
+ * /api/users/me/api-tokens/123
+ */
+router
+	.route("/:user_id/api-tokens/:token_id")
+	.all(jwtdecode())
+	.all(userIdFromMe)
+	.all(sessionOnly())
+
+	/** DELETE /api/users/me/api-tokens/123 */
+	.delete(async (req, res) => {
+		res.status(200).send(
+			await internalApiToken.revokeOwn(res.locals.access, req.params.user_id, Number(req.params.token_id)),
+		);
 	});
 
 export default router;

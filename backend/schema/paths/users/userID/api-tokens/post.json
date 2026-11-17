@@ -1,0 +1,188 @@
+{
+	"operationId": "createApiToken",
+	"summary": "Create an API token (the secret is shown once)",
+	"tags": [
+		"api-tokens"
+	],
+	"security": [
+		{
+			"cookieAuth": []
+		}
+	],
+	"parameters": [
+		{
+			"in": "path",
+			"name": "userID",
+			"schema": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"required": true,
+			"description": "User ID (the signed-in user)",
+			"example": 2
+		}
+	],
+	"requestBody": {
+		"description": "API token to create",
+		"required": true,
+		"content": {
+			"application/json": {
+				"schema": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"name",
+						"permissions"
+					],
+					"properties": {
+						"name": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 100
+						},
+						"expires_on": {
+							"type": [
+								"string",
+								"null"
+							],
+							"description": "ISO date and time; null for no expiry; left out: 90 days"
+						},
+						"visibility": {
+							"type": "string",
+							"enum": [
+								"all",
+								"user"
+							]
+						},
+						"permissions": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"proxy_hosts",
+								"redirection_hosts",
+								"dead_hosts",
+								"streams",
+								"access_lists",
+								"certificates"
+							],
+							"properties": {
+								"proxy_hosts": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								},
+								"redirection_hosts": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								},
+								"dead_hosts": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								},
+								"streams": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								},
+								"access_lists": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								},
+								"certificates": {
+									"type": "string",
+									"enum": [
+										"manage",
+										"view",
+										"hidden"
+									]
+								}
+							}
+						},
+						"admin": {
+							"type": "boolean"
+						},
+						"allow_delete": {
+							"type": "boolean"
+						}
+					}
+				},
+				"examples": {
+					"default": {
+						"value": {
+							"name": "ci",
+							"permissions": {
+								"proxy_hosts": "view",
+								"redirection_hosts": "view",
+								"dead_hosts": "view",
+								"streams": "view",
+								"access_lists": "view",
+								"certificates": "view"
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"responses": {
+		"201": {
+			"description": "201 response",
+			"content": {
+				"application/json": {
+					"examples": {
+						"default": {
+							"value": {
+								"id": 1,
+								"name": "ci",
+								"prefix": "npmpro_0123456789abcdef",
+								"visibility": "user",
+								"permissions": {
+									"proxy_hosts": "view",
+									"redirection_hosts": "view",
+									"dead_hosts": "view",
+									"streams": "view",
+									"access_lists": "view",
+									"certificates": "view"
+								},
+								"admin": false,
+								"allow_delete": false,
+								"expires_on": "2027-02-15T12:00:00.000Z",
+								"last_used_on": null,
+								"created_on": "2026-11-17T12:00:00.000Z",
+								"expired": false,
+								"token": "npmpro_0123456789abcdef_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+							}
+						}
+					},
+					"schema": {
+						"$ref": "../../../../components/api-token-object.json"
+					}
+				}
+			}
+		},
+		"400": {
+			"description": "400 response"
+		},
+		"403": {
+			"description": "403 response"
+		}
+	}
+}

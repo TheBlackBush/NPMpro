@@ -1,0 +1,157 @@
+{
+	"type": "object",
+	"description": "API token object",
+	"additionalProperties": false,
+	"required": [
+		"id",
+		"name",
+		"prefix",
+		"visibility",
+		"permissions",
+		"admin",
+		"allow_delete",
+		"expires_on",
+		"last_used_on",
+		"created_on",
+		"expired"
+	],
+	"properties": {
+		"id": {
+			"type": "integer",
+			"minimum": 1,
+			"example": 1
+		},
+		"name": {
+			"type": "string",
+			"example": "ci"
+		},
+		"prefix": {
+			"type": "string",
+			"description": "npmpro_ and the token's lookup id, shown to tell tokens apart",
+			"example": "npmpro_0123456789abcdef"
+		},
+		"visibility": {
+			"type": "string",
+			"enum": [
+				"all",
+				"user"
+			]
+		},
+		"permissions": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"proxy_hosts",
+				"redirection_hosts",
+				"dead_hosts",
+				"streams",
+				"access_lists",
+				"certificates"
+			],
+			"properties": {
+				"proxy_hosts": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				},
+				"redirection_hosts": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				},
+				"dead_hosts": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				},
+				"streams": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				},
+				"access_lists": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				},
+				"certificates": {
+					"type": "string",
+					"enum": [
+						"manage",
+						"view",
+						"hidden"
+					]
+				}
+			}
+		},
+		"admin": {
+			"type": "boolean"
+		},
+		"allow_delete": {
+			"type": "boolean"
+		},
+		"expires_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"last_used_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"created_on": {
+			"type": [
+				"string",
+				"null"
+			],
+			"format": "date-time"
+		},
+		"expired": {
+			"type": "boolean"
+		},
+		"token": {
+			"type": "string",
+			"description": "Only in the answer of the create request"
+		},
+		"owner": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"name",
+				"email"
+			],
+			"properties": {
+				"id": {
+					"type": "integer"
+				},
+				"name": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
