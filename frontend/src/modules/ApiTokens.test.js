@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { it } from "node:test";
+import en from "../../translations/ui/en.json" with { type: "json" };
 import {
 	clampChanges,
 	expiresOnOf,
@@ -10,8 +10,10 @@ import {
 	permissionSummary,
 	tokenPayload,
 	tokenState,
+	tomorrowOf,
 } from "./ApiTokens.js";
 
+const ANGLE_BRACKET = /[<>]/u;
 const NOW = new Date("2026-11-17T10:00:00Z");
 const all = (level, visibility = "user") => ({
 	visibility,
@@ -49,6 +51,8 @@ it("clampChanges drops dependency changes above the cap", () => {
 
 it("expiresOnOf: days, a date (end of that day), never", () => {
 	assert.equal(expiresOnOf("30", "", NOW), new Date(NOW.getTime() + 30 * 86_400_000).toISOString());
+	assert.equal(expiresOnOf("90", "", NOW), new Date(NOW.getTime() + 90 * 86_400_000).toISOString());
+	assert.equal(expiresOnOf("365", "", NOW), new Date(NOW.getTime() + 365 * 86_400_000).toISOString());
 	assert.equal(expiresOnOf("never", "", NOW), null);
 	const date = new Date(expiresOnOf("date", "2027-01-31", NOW));
 	assert.equal(date.getFullYear(), 2027);
@@ -81,10 +85,20 @@ it("permissionSummary lists the shown sections in order; tokenState", () => {
 });
 
 it("no API token message has angle brackets (react-intl reads them as tags)", () => {
-	const en = JSON.parse(readFileSync(new URL("../../translations/ui/en.json", import.meta.url), "utf8"));
 	const bad = Object.entries(en).filter(
 		([key, value]) =>
-			(key.startsWith("api-tokens.") || key.startsWith("settings.api-access")) && /[<>]/u.test(value),
+			(key.startsWith("api-tokens.") || key.startsWith("settings.api-access")) && ANGLE_BRACKET.test(value),
 	);
 	assert.deepEqual(bad, []);
+});
+
+it("ownerCaps: a non-admin with visibility all gets all, user or missing gets user", () => {
+	assert.equal(ownerCaps({ roles: [], permissions: { visibility: "all" } }).visibility, "all");
+	assert.equal(ownerCaps({ roles: [], permissions: { visibility: "user" } }).visibility, "user");
+	assert.equal(ownerCaps({ roles: [], permissions: {} }).visibility, "user");
+});
+
+it("tomorrowOf: the next local day, across a month end", () => {
+	assert.equal(tomorrowOf(new Date(2026, 10, 17, 23, 30)), "2026-11-18");
+	assert.equal(tomorrowOf(new Date(2026, 11, 31, 8)), "2027-01-01");
 });

@@ -11,7 +11,7 @@ const DAY = 86_400_000;
  */
 export const ownerCaps = (user) => {
 	const admin = isAdmin(user?.roles);
-	const caps = { visibility: admin ? "all" : "user" };
+	const caps = { visibility: admin || user?.permissions?.visibility === "all" ? "all" : "user" };
 	for (const section of PERMISSION_SECTIONS) {
 		caps[section] = admin ? "manage" : (user?.permissions?.[section] ?? "hidden");
 	}
@@ -25,6 +25,18 @@ export const levelAllowed = (level, cap) => LEVELS.indexOf(level) <= LEVELS.inde
  */
 export const clampChanges = (changes, caps) =>
 	Object.fromEntries(Object.entries(changes).filter(([section, level]) => levelAllowed(level, caps[section])));
+
+/**
+ * The day after now as YYYY-MM-DD in local time, the earliest expiry date
+ */
+export const tomorrowOf = (now) => {
+	const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+	return [
+		next.getFullYear(),
+		String(next.getMonth() + 1).padStart(2, "0"),
+		String(next.getDate()).padStart(2, "0"),
+	].join("-");
+};
 
 export const expiresOnOf = (choice, date, now) => {
 	if (choice === "never") return null;
