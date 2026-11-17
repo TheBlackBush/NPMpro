@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { rmSync } from "node:fs";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import knexFactory from "knex";
@@ -37,11 +38,42 @@ const tempSqlite = async (name = "database.sqlite") => {
 	};
 };
 
+// The template files of one test process, made on first use: every NPMpro migration applied (migrated), and the
+// same with the rows of seedSource (seeded). Every caller gets its own copy, so no test sees another test's writes.
+const templates = {};
+const makeTemplate = (name, build) => {
+	templates[name] ??= (async () => {
+		const db = await tempSqlite(`${name}.sqlite`);
+		process.once("exit", () => rmSync(db.dir, { recursive: true, force: true }));
+		return { file: db.file, ...(await build(db.file)) };
+	})();
+	return templates[name];
+};
+const withKnex = async (file, use) => {
+	const knex = knexFactory(knexConfigOf({ engine: "sqlite", file }));
+	try {
+		return await use(knex);
+	} finally {
+		await knex.destroy();
+	}
+};
+const migratedTemplate = () =>
+	makeTemplate("migrated", (file) =>
+		withKnex(file, async (knex) => {
+			await runMigrations(knex);
+		}),
+	);
+const seededTemplate = () =>
+	makeTemplate("seeded", async (file) => {
+		await copyFile((await migratedTemplate()).file, file);
+		return withKnex(file, (knex) => seedSource(knex));
+	});
+
 // a temp SQLite file with every NPMpro migration applied
 const migratedSqlite = async (name) => {
 	const db = await tempSqlite(name);
+	await copyFile((await migratedTemplate()).file, db.file);
 	const knex = knexFactory(knexConfigOf(db.connection));
-	await runMigrations(knex);
 	return {
 		...db,
 		knex,
@@ -135,4 +167,21 @@ const seedSource = async (knex) => {
 	return { counts };
 };
 
-export { fillRow, migratedSqlite, pgConnection, pgSkip, resetPg, seedSource, tempSqlite };
+// migratedSqlite() with the rows of seedSource() already in it, and their counts
+const seededSqlite = async (name) => {
+	const { file, counts } = await seededTemplate();
+	const db = await tempSqlite(name);
+	await copyFile(file, db.file);
+	const knex = knexFactory(knexConfigOf(db.connection));
+	return {
+		...db,
+		knex,
+		counts,
+		cleanup: async () => {
+			await knex.destroy();
+			await db.cleanup();
+		},
+	};
+};
+
+export { fillRow, migratedSqlite, pgConnection, pgSkip, resetPg, seededSqlite, seedSource, tempSqlite };

@@ -10,7 +10,7 @@ import { countRows } from "../lib/database/copy.js";
 import { knexConfigOf } from "../lib/database/knex-config.js";
 import { createMaintenance } from "../lib/database/maintenance.js";
 import { MIGRATIONS } from "../lib/database/schema.js";
-import { migratedSqlite, pgConnection, pgSkip, resetPg, seedSource, tempSqlite } from "./support/database.js";
+import { migratedSqlite, pgConnection, pgSkip, resetPg, seededSqlite, tempSqlite } from "./support/database.js";
 
 const access = { canAdmin: () => {}, token: { getUserId: () => 1 } };
 const box = { encrypt: (value) => `v1:${JSON.stringify(value)}`, decrypt: (text) => JSON.parse(text.slice(3)) };
@@ -152,10 +152,10 @@ const make = async ({
 };
 
 it("moves SQLite to a new SQLite file, writes the file last and exits", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const ctx = await make({ source });
 	try {
-		const { counts } = await seedSource(source.knex);
+		const { counts } = source;
 		const before = await countRows(source.knex, "audit_log");
 		const { id } = await ctx.service.move(access, { engine: "sqlite" });
 		assert.match(id, MOVE_ID);
@@ -212,7 +212,7 @@ it("moves SQLite to a new SQLite file, writes the file last and exits", async ()
 });
 
 it("exits only after the answer went out and the window saw restarting; a later logout goes to the new database", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	let tick = null;
 	const ctx = await make({
 		source,
@@ -221,7 +221,6 @@ it("exits only after the answer went out and the window saw restarting; a later 
 		},
 	});
 	try {
-		await seedSource(source.knex);
 		let sent;
 		const answered = new Promise((resolve) => {
 			sent = resolve;
@@ -261,7 +260,7 @@ it("exits only after the answer went out and the window saw restarting; a later 
 });
 
 it("after database.json is written nothing reaches the failure path, a throwing log included", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const lines = [];
 	const log = {
 		info: () => {
@@ -272,7 +271,6 @@ it("after database.json is written nothing reaches the failure path, a throwing 
 	};
 	const ctx = await make({ source, log });
 	try {
-		await seedSource(source.knex);
 		await ctx.service.move(access, { engine: "sqlite" });
 		await ctx.service.settled();
 		const { move } = ctx.service.progress(access);
@@ -391,11 +389,10 @@ for (const [step, options] of [
 	["switch", { writeFile: async () => Promise.reject(new Error("read-only file system")) }],
 ]) {
 	it(`a failure at ${step} writes no file, keeps the old database and resumes`, async () => {
-		const source = await migratedSqlite();
+		const source = await seededSqlite();
 		const sourceKnex = options.select || options.count ? failing(source.knex, options) : undefined;
 		const ctx = await make({ source, sourceKnex, ...options });
 		try {
-			await seedSource(source.knex);
 			const before = await countRows(source.knex, "proxy_host");
 			await ctx.service.move(access, { engine: "sqlite" });
 			await ctx.service.settled();
@@ -542,10 +539,9 @@ it("never overwrites an existing SQLite file", async () => {
 });
 
 it("reports the database in use without secrets", async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const ctx = await make({ source });
 	try {
-		await seedSource(source.knex);
 		const status = await ctx.service.status(access);
 		assert.equal(status.engine, "sqlite");
 		assert.match(status.version, SQLITE_VERSION);
@@ -569,7 +565,7 @@ it("reports the database in use without secrets", async () => {
 });
 
 it("moves SQLite to Postgres with a sealed password", { skip: pgSkip, timeout: 180_000 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const lines = [];
 	const log = {
 		info: (line) => lines.push(line),
@@ -579,7 +575,6 @@ it("moves SQLite to Postgres with a sealed password", { skip: pgSkip, timeout: 1
 	const ctx = await make({ source, log });
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await resetPg(pg);
 		await ctx.service.move(access, pgConnection);
 		await ctx.service.settled();
@@ -621,11 +616,10 @@ it("moves SQLite to Postgres with a sealed password", { skip: pgSkip, timeout: 1
 });
 
 it("a failed move to Postgres leaves the target and says so", { skip: pgSkip, timeout: 180_000 }, async () => {
-	const source = await migratedSqlite();
+	const source = await seededSqlite();
 	const ctx = await make({ source, sourceKnex: failing(source.knex, { select: "setting" }) });
 	const pg = knexFactory(knexConfigOf(pgConnection));
 	try {
-		await seedSource(source.knex);
 		await resetPg(pg);
 		await ctx.service.move(access, pgConnection);
 		await ctx.service.settled();
