@@ -178,13 +178,20 @@ it("other restores keep tokens", async () => {
 	}
 });
 
-it("a token cannot restore users", async () => {
+it("a token cannot restore users or the sign-in settings", async () => {
 	const adminId = (await admin.get("/users/me")).body.id;
 	const made = await makeToken(adminId, { is_admin: true });
 	const entry = await keepBackup();
 	const token = await open(entry.name);
 	const as = bearer(made.token);
-	for (const body of [{ types: ["users"] }, { types: ["proxy_hosts", "users"] }, { types: ALL_TYPES }]) {
+	const refusedLists = [
+		{ types: ["users"] },
+		{ types: ["proxy_hosts", "users"] },
+		{ types: ["settings_oidc"] },
+		{ types: ["proxy_hosts", "settings_runtime"] },
+		{ types: ALL_TYPES },
+	];
+	for (const body of refusedLists) {
 		const plan = await as.post(`${BASE}/restore/${token}/plan`, { mode: "merge", ...body });
 		assert.equal(plan.status, 403, JSON.stringify(body));
 		const replace = await as.post(`${BASE}/restore/${token}`, { ...body, confirm: true });

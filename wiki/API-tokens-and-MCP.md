@@ -15,7 +15,8 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
   backups, the database), except users and the sign-in settings: keep such a token like the administrator's password.
 - The sign-in settings need a signed-in session: no token can save the OIDC settings (including password login on or
   off), test them or change the OIDC button icon, and no token can save the forward authentication settings. A token
-  is also refused by the nginx checks of the admin pages (`/api/auth`, `/api/auth/admin`).
+  is also refused by the nginx checks of the admin pages (`/api/auth`, `/api/auth/admin`), and cannot restore or merge
+  the OIDC or runtime settings of a backup.
 - No token manages users, whatever its switches: creating, listing, editing, disabling and deleting users, their
   permissions and their tokens need a signed-in session. A token can read only its own user (`GET /api/users/me`, or
   its own id). A token also cannot restore or merge the Users part of a backup.
