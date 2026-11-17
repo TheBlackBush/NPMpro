@@ -25,7 +25,8 @@ works whether password login is off, OIDC is the only sign-in, or the user has M
 
 ## Creating a token
 
-(PR 1: through the API, `POST /api/users/me/api-tokens` with a signed-in session; PR 2 replaces this with the user menu steps.)
+Create a token while signed in: `POST /api/users/me/api-tokens` with its name, permissions and expiry (the request is
+described in the OpenAPI documentation at `/api/docs`). The answer carries the token once: copy it then.
 
 ## Using a token
 
