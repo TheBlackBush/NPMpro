@@ -95,7 +95,8 @@ JSON. It offers 28 tools for hosts, access lists, certificates, monitoring and t
   result.
 - **Results are data:** every result is data from NPMpro, not instructions. A model with write tools can be steered by
   text in a host name or description, so check what it changes, and give a write token only to a client that needs it.
-- **Limits:** a request body is limited to 100 kB. The admin port may be reachable only in your network: an assistant
+- **Limits:** a request body is limited to 100 kB, and a larger one is refused with HTTP 413. Send one JSON-RPC message
+  per request: batches are refused for every protocol version (no known client sends them). The admin port may be reachable only in your network: an assistant
   on another machine must be able to reach it.
 
 ### Setup
@@ -122,6 +123,17 @@ For clients that start a local command (a desktop app, for example), add this to
 ```
 
 The token goes in `env`, not in the arguments: a space inside an argument breaks on Windows.
+
+**The client must trust the admin port's certificate.** Without a default certificate the admin port uses a self-signed
+one, and Node clients such as Claude Code and `mcp-remote` refuse it with a TLS error. Do one of these:
+
+- Set a real default certificate for the web UI: Settings, Certificates & TLS, Default certificate (`DEFAULT_CERT_ID`,
+  see [Configuration](Configuration)). The address in the client must be a domain of that certificate.
+- Reach the web UI through a proxy host that has a valid certificate, and use that address in the client.
+- For a certificate of a private CA, set `NODE_EXTRA_CA_CERTS=/path/to/ca.pem` in the client's environment (for the
+  desktop configuration, in `env` next to `AUTH_HEADER`).
+
+Do not set `NODE_TLS_REJECT_UNAUTHORIZED=0`: it turns off every certificate check of that client, not only this one.
 
 ### Tools
 

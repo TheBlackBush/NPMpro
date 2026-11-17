@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "Ningún usuario tiene un token de API",
 	"settings.api-access.intro": "Todos los tokens de API de todos los usuarios. Los propietarios crean los tokens en el menú de usuario, Tokens de API. Revocar un token lo detiene al instante.",
 	"settings.api-access.mcp": "Servidor MCP",
+	"settings.api-access.mcp.certificate": "Clientes como Claude Code rechazan el certificado autofirmado del puerto de administración. Configure un certificado predeterminado real en Configuración, Certificados y TLS, acceda a la interfaz a través de un host proxy con un certificado válido, o indique al cliente su CA con NODE_EXTRA_CA_CERTS. No desactive la verificación de certificados.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "Copiado",
 	"settings.api-access.mcp.endpoint": "Punto de conexión",

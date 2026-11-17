@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "Nessun utente ha un token API",
 	"settings.api-access.intro": "Tutti i token API di tutti gli utenti. I token sono creati dai loro proprietari nel menu utente, Token API. Revocare un token lo ferma subito.",
 	"settings.api-access.mcp": "Server MCP",
+	"settings.api-access.mcp.certificate": "Client come Claude Code rifiutano il certificato autofirmato della porta di amministrazione. Imposta un vero certificato predefinito in Impostazioni, Certificati e TLS, raggiungi l'interfaccia tramite un host proxy con un certificato valido, oppure indica al client la tua CA con NODE_EXTRA_CA_CERTS. Non disattivare la verifica dei certificati.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "Copiato",
 	"settings.api-access.mcp.endpoint": "Endpoint",

@@ -7,6 +7,7 @@ const SECTIONS = ["proxy_hosts", "redirection_hosts", "dead_hosts", "streams", "
 const levels = (level) => ({ visibility: "user", ...Object.fromEntries(SECTIONS.map((s) => [s, level])) });
 const BEARER = /Bearer/u;
 const JSON_TYPE = /application\/json/u;
+const BATCHES = /batches are not supported/u;
 const now = () => Math.floor(Date.now() / 1000);
 const INITIALIZE = {
 	jsonrpc: "2.0",
@@ -129,9 +130,16 @@ it("answers a body that is not JSON with a JSON-RPC parse error", async () => {
 
 it("refuses a batch array with -32600", async () => {
 	const token = await makeToken();
-	const res = await send(token, [INITIALIZE, { jsonrpc: "2.0", id: 2, method: "ping" }]);
-	assert.equal(res.status, 200);
-	assert.equal(res.body.error.code, -32600);
+	// refused for every version, 2025-03-26 included: no known client sends batches
+	for (const version of ["2025-11-25", "2025-03-26"]) {
+		const res = await send(token, [INITIALIZE, { jsonrpc: "2.0", id: 2, method: "ping" }], {
+			"mcp-protocol-version": version,
+		});
+		assert.equal(res.status, 200);
+		assert.equal(res.body.id, null);
+		assert.equal(res.body.error.code, -32600);
+		assert.match(res.body.error.message, BATCHES);
+	}
 });
 
 it("answers a response message of the client with 202", async () => {
@@ -146,6 +154,7 @@ it("refuses a body over 100 kB", async () => {
 	const token = await makeToken();
 	const res = await send(token, { jsonrpc: "2.0", id: 1, method: "ping", params: { pad: "x".repeat(150000) } });
 	assert.equal(res.status, 413);
+	assert.deepEqual(res.body, { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Request too large" } });
 });
 
 it("limits failed token attempts from one address", async () => {

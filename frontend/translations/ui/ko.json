@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "API 토큰이 있는 사용자가 없습니다",
 	"settings.api-access.intro": "모든 사용자의 모든 API 토큰입니다. 토큰은 소유자가 사용자 메뉴의 API 토큰에서 만듭니다. 토큰을 폐기하면 즉시 사용할 수 없습니다.",
 	"settings.api-access.mcp": "MCP 서버",
+	"settings.api-access.mcp.certificate": "Claude Code 같은 클라이언트는 관리 포트의 자체 서명 인증서를 거부합니다. 설정의 인증서 및 TLS에서 실제 기본 인증서를 설정하거나, 유효한 인증서가 있는 프록시 호스트를 통해 UI에 접속하거나, NODE_EXTRA_CA_CERTS로 클라이언트에 CA를 지정하세요. 인증서 검사를 끄지 마세요.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "복사됨",
 	"settings.api-access.mcp.endpoint": "엔드포인트",

@@ -19,7 +19,10 @@ const validatorOf = (schema) => {
 
 const reply = (id, result) => ({ jsonrpc: "2.0", id, result });
 const failure = (id, code, message) => ({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
-const text = (value) => ({ content: [{ type: "text", text: JSON.stringify(value, null, 2) }] });
+// compact: the text block is what the model reads, and pretty-printing can make it several times larger
+const text = (value) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
+// JSON-RPC allows only a string or a number as id: anything else is answered with null
+const idOf = (message) => (typeof message?.id === "string" || typeof message?.id === "number" ? message.id : null);
 
 const toolError = (message) => ({ ...text({ error: message }), isError: true });
 
@@ -48,14 +51,16 @@ const callTool = async (params, { access, registry }) => {
  * @returns {Promise<?Object>} the response, null for a notification (answered 202)
  */
 const handleMessage = async (message, { access, registry, version }) => {
-	if (Array.isArray(message)) return failure(null, -32600, "Batches are not supported");
+	// refused for every version: 2025-03-26 allows batches, 2025-06-18 removed them, and no known client sends them
+	if (Array.isArray(message))
+		return failure(null, -32600, "JSON-RPC batches are not supported: send one message per request");
 	// a response of the client (this server sends no requests) is accepted and ignored
 	if (message?.jsonrpc === "2.0" && !("method" in message) && ("result" in message || "error" in message))
 		return null;
 	if (message?.jsonrpc !== "2.0" || typeof message.method !== "string")
-		return failure(message?.id, -32600, "Invalid Request");
+		return failure(idOf(message), -32600, "Invalid Request");
 	if (!Object.hasOwn(message, "id")) return null;
-	if (typeof message.id !== "string" && typeof message.id !== "number") {
+	if (idOf(message) === null) {
 		return failure(null, -32600, "Invalid Request: id must be a string or a number");
 	}
 	const { id, method, params } = message;
@@ -82,10 +87,14 @@ const handleMessage = async (message, { access, registry, version }) => {
 	}
 };
 
-/** Express error handler for /api/mcp: a body that is not JSON is a JSON-RPC parse error; other errors pass on */
+/**
+ * Express error handler for /api/mcp: a body that is not JSON is a JSON-RPC parse error, a body over the limit a
+ * JSON-RPC invalid request with HTTP 413; other errors pass on
+ */
 const parseErrorHandler = (error, _req, res, next) => {
-	if (error?.type !== "entity.parse.failed") return next(error);
-	return res.status(400).json(failure(null, -32700, "Parse error"));
+	if (error?.type === "entity.parse.failed") return res.status(400).json(failure(null, -32700, "Parse error"));
+	if (error?.type === "entity.too.large") return res.status(413).json(failure(null, -32600, "Request too large"));
+	return next(error);
 };
 
 export { handleMessage, INSTRUCTIONS, PROTOCOL_VERSIONS, parseErrorHandler };

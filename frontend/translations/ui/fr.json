@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "Aucun utilisateur n'a de jeton API",
 	"settings.api-access.intro": "Tous les jetons API de tous les utilisateurs. Les jetons sont créés par leurs propriétaires dans le menu utilisateur, Jetons API. Révoquer un jeton l'arrête immédiatement.",
 	"settings.api-access.mcp": "Serveur MCP",
+	"settings.api-access.mcp.certificate": "Les clients comme Claude Code refusent le certificat auto-signé du port d'administration. Définissez un vrai certificat par défaut dans Paramètres, Certificats et TLS, accédez à l'interface via un hôte proxy doté d'un certificat valide, ou donnez votre CA au client avec NODE_EXTRA_CA_CERTS. Ne désactivez pas la vérification des certificats.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "Copié",
 	"settings.api-access.mcp.endpoint": "Point de terminaison",

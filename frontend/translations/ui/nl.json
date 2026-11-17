@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "Geen gebruiker heeft een API-token",
 	"settings.api-access.intro": "Alle API-tokens van alle gebruikers. Tokens worden door hun eigenaren aangemaakt in het gebruikersmenu, API-tokens. Een token intrekken stopt het meteen.",
 	"settings.api-access.mcp": "MCP-server",
+	"settings.api-access.mcp.certificate": "Clients zoals Claude Code weigeren het zelfondertekende certificaat van de beheerpoort. Stel een echt standaardcertificaat in bij Instellingen, Certificaten en TLS, bereik de interface via een proxyhost met een geldig certificaat, of geef de client uw CA met NODE_EXTRA_CA_CERTS. Schakel de certificaatcontrole niet uit.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "Gekopieerd",
 	"settings.api-access.mcp.endpoint": "Eindpunt",

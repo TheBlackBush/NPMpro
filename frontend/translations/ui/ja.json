@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "API トークンを持つユーザーはいません",
 	"settings.api-access.intro": "全ユーザーのすべての API トークンです。トークンは所有者がユーザーメニューの API トークンで作成します。トークンを取り消すと、すぐに使えなくなります。",
 	"settings.api-access.mcp": "MCP サーバー",
+	"settings.api-access.mcp.certificate": "Claude Code などのクライアントは、管理ポートの自己署名証明書を拒否します。設定の「証明書と TLS」で実際のデフォルト証明書を設定するか、有効な証明書を持つプロキシホスト経由で UI にアクセスするか、NODE_EXTRA_CA_CERTS でクライアントに CA を指定してください。証明書の検証は無効にしないでください。",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "コピーしました",
 	"settings.api-access.mcp.endpoint": "エンドポイント",

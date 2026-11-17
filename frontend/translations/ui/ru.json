@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "Ни у одного пользователя нет API-токена",
 	"settings.api-access.intro": "Все API-токены всех пользователей. Токены создают их владельцы в меню пользователя, API-токены. Отзыв токена останавливает его сразу.",
 	"settings.api-access.mcp": "Сервер MCP",
+	"settings.api-access.mcp.certificate": "Клиенты, такие как Claude Code, отклоняют самоподписанный сертификат порта администрирования. Задайте настоящий сертификат по умолчанию в разделе Настройки, Сертификаты и TLS, откройте интерфейс через прокси-хост с действительным сертификатом или укажите клиенту ваш CA через NODE_EXTRA_CA_CERTS. Не отключайте проверку сертификатов.",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "Скопировано",
 	"settings.api-access.mcp.endpoint": "Конечная точка",

@@ -822,6 +822,7 @@
 	"settings.api-access.empty": "没有用户拥有 API 令牌",
 	"settings.api-access.intro": "所有用户的全部 API 令牌。令牌由其所有者在用户菜单的 API 令牌中创建。吊销令牌会立即使其失效。",
 	"settings.api-access.mcp": "MCP 服务器",
+	"settings.api-access.mcp.certificate": "Claude Code 等客户端会拒绝管理端口的自签名证书。请在 设置、证书与 TLS 中设置一个真实的默认证书，或通过带有有效证书的代理主机访问界面，或使用 NODE_EXTRA_CA_CERTS 将您的 CA 提供给客户端。不要关闭证书检查。",
 	"settings.api-access.mcp.claude-code": "Claude Code",
 	"settings.api-access.mcp.copied": "已复制",
 	"settings.api-access.mcp.endpoint": "端点",

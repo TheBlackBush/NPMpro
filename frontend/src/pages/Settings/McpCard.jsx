@@ -100,6 +100,9 @@ function McpCard() {
 			</SettingLine>
 			<ToolsLine id="mcp-tools" />
 			<SettingLineNote className="text-muted-foreground text-sm">
+				<T id="settings.api-access.mcp.certificate" />
+			</SettingLineNote>
+			<SettingLineNote className="text-muted-foreground text-sm">
 				<T id="settings.api-access.mcp.reach" />
 			</SettingLineNote>
 		</SettingsCard>
