@@ -8,8 +8,8 @@ below as its release notes.
 
 ### Added
 
-- **Hosts:** a one-line description on proxy, redirection and 404 hosts and up to 10 tags on every host type, with a
-  Tags filter and search in the lists.
+- **Hosts:** a one-line description on proxy, redirection and 404 hosts and up to 10 tags on every host type, shown in
+  automatic brand colours picked from the tag's name, with a Tags filter and search in the lists.
 - **Hosts:** a custom location with exactly `/.well-known/acme-challenge/` passes the ACME challenges to its own
   target.
 - **Landing pages:** NPMpro's own pages in the visitor's language for a ban, a captcha, a 404, an upstream error, the
@@ -18,7 +18,6 @@ below as its release notes.
 - **Certificates:** saved, reusable DNS credentials, stored encrypted and shared by several certificates.
 - **Certificates:** a clear certificate request progress and the expiry shown on the dashboard and in the list.
 - **Certificates:** the DNS providers ip-projects and the new Beget plugin; certbot 5.10.0.
-- **Hosts:** tags in the lists get automatic brand colours picked from the tag's name.
 - **Sign-in:** OIDC settings in the UI with automatic accounts, a login button with its own name, colour and icon, and
   a link between a user and one OIDC identity (Sign-in column, unlink).
 - **Settings:** the runtime settings, the nginx core settings and the nginx module switches (njs, LDAP, NTLM, VTS) in
